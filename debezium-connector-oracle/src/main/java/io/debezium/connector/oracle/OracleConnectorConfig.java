@@ -35,6 +35,8 @@ import io.debezium.config.Field.ValidationOutput;
 import io.debezium.config.Instantiator;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
+import io.debezium.connector.oracle.jdbc.CaptureMode;
+import io.debezium.connector.oracle.jdbc.OracleJdbcConfiguration;
 import io.debezium.connector.oracle.logminer.buffered.infinispan.RemoteInfinispanCacheProvider;
 import io.debezium.connector.oracle.logminer.logwriter.LogWriterFlushStrategy;
 import io.debezium.connector.oracle.util.OracleUtils;
@@ -225,6 +227,16 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDefault(ARCHIVE_LOG_ONLY_POLL_TIME.toMillis())
             .withDescription("The interval in milliseconds to wait between polls checking to see if the SCN is in the archive logs.");
 
+    public static final Field LOG_MINING_READ_ONLY = Field.create("log.mining.read.only")
+            .withDisplayName("Runs the connector in read-only mode")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(Boolean.FALSE)
+            .withValidation(OracleConnectorConfig::validateLogMiningReadOnly)
+            .withDescription("When set to 'true', the connector will not attempt to flush the LGWR buffer to disk, allowing connecting to read-only databases.")
+            .withDeprecatedAliases("internal.log.mining.read.only");
+
     public static final Field LOG_MINING_PATH_DICTIONARY = Field.create("log.mining.path.dictionary")
             .withDisplayName("Defines the dictionary path for the mining session")
             .withType(Type.STRING)
@@ -233,12 +245,48 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withValidation(OracleConnectorConfig::validateDictionaryFromFile)
             .withDescription("This is required when using the connector against a read-only database replica.");
 
-    public static final Field LOG_MINING_READONLY_HOSTNAME = Field.create("log.mining.readonly.hostname")
-            .withDisplayName("Read-only connector hostname.")
+    public static final Field CAPTURE_MODE = Field.create("capture.mode")
+            .withDisplayName("The streaming capture mode")
+            .withEnum(CaptureMode.class, CaptureMode.PRIMARY)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.HIGH)
+            .withValidation(OracleConnectorConfig::validateCaptureMode)
+            .withDescription("Specifies the capture mode used to capture streaming changes from Oracle" +
+                    "'primary' (the default) captures changes from the primary, specified by database.* configurations, " +
+                    "'physical_standby' captures changes from a read-only physical standby, specified by secondary.* configurations, " +
+                    "'downstream' captures changes from a downstream real-time mining database, specified by secondary.* configurations.");
+
+    public static final Field SECONDARY_DATABASE = Field.create(OracleJdbcConfiguration.SECONDARY_DATABASE.name())
+            .withDisplayName("The secondary Oracle instance database name")
             .withType(Type.STRING)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.LOW)
-            .withDescription("The hostname the connector will use to connect and perform read-only operations for the the replica.");
+            .withDescription("The secondary Oracle instance database name, if different from primary");
+
+    public static final Field SECONDARY_HOSTNAME = Field.create(OracleJdbcConfiguration.SECONDARY_HOSTNAME.name())
+            .withDisplayName("The secondary Oracle instance host name")
+            .withType(Type.STRING)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withValidation(OracleConnectorConfig::validateSecondaryStrategy)
+            .withDescription("The secondary Oracle instance where changes will be streamed")
+            .withDeprecatedAliases("log.mining.readonly.hostname");
+
+    public static final Field SECONDARY_PORT = Field.create(OracleJdbcConfiguration.SECONDARY_PORT.name())
+            .withDisplayName("The secondary Oracle instance port")
+            .withDefault(DEFAULT_PORT)
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("The secondary Oracle instance port where changes will be streamed");
+
+    public static final Field SECONDARY_URL = Field.create(OracleJdbcConfiguration.SECONDARY_URL.name())
+            .withDisplayName("The secondary Oracle instance connection string")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.LOW)
+            .withValidation(OracleConnectorConfig::validateSecondaryStrategy)
+            .withDescription("The secondary Oracle instance connection string URL where changes will be streamed");
 
     public static final Field LOB_ENABLED = Field.create("lob.enabled")
             .withDisplayName("Specifies whether the connector supports mining LOB fields and operations")
@@ -513,15 +561,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     "none - The query does not apply any schema or table filters, all filtering is at runtime by the connector." + System.lineSeparator() +
                     "in - The query uses SQL in-clause expressions to specify the schema or table filters." + System.lineSeparator() +
                     "regex - The query uses Oracle REGEXP_LIKE expressions to specify the schema or table filters." + System.lineSeparator());
-
-    public static final Field LOG_MINING_READ_ONLY = Field.createInternal("log.mining.read.only")
-            .withDisplayName("Runs the connector in read-only mode")
-            .withType(Type.BOOLEAN)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.LOW)
-            .withDefault(Boolean.FALSE)
-            .withValidation(OracleConnectorConfig::validateLogMiningReadOnly)
-            .withDescription("When set to 'true', the connector will not attempt to flush the LGWR buffer to disk, allowing connecting to read-only databases.");
 
     public static final Field LOG_MINING_FLUSH_TABLE_NAME = Field.create("log.mining.flush.table.name")
             .withDisplayName("Specifies the name of the flush table used by the connector")
@@ -865,7 +904,11 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_RESUME_POSITION_INTERVAL_MS,
                     LOG_MINING_BUFFER_MEMORY_LEGACY_TRANSACTION_START,
                     LOG_MINING_PATH_DICTIONARY,
-                    LOG_MINING_READONLY_HOSTNAME,
+                    CAPTURE_MODE,
+                    SECONDARY_DATABASE,
+                    SECONDARY_HOSTNAME,
+                    SECONDARY_PORT,
+                    SECONDARY_URL,
                     LEGACY_DECIMAL_HANDLING_STRATEGY,
                     LOG_MINING_USE_CTE_QUERY,
                     LOG_MINING_REDO_THREAD_SCN_ADJUSTMENT,
@@ -899,6 +942,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     private ConnectorAdapter connectorAdapter;
     private final StreamingAdapter streamingAdapter;
+    private CaptureMode captureMode;
     private final String snapshotEnhancementToken;
     private final SnapshotLockingMode snapshotLockingMode;
     private final int queryFetchSize;
@@ -940,7 +984,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final Set<String> logMiningClientIdExcludes;
     private final String logMiningPathToDictionary;
     private final boolean logMiningUseCteQuery;
-    private final String readonlyHostname;
+    private final OracleJdbcConfiguration oracleJdbcConfig;
     private final Integer logMiningRedoThreadScnAdjustment;
     private final Long logMiningHashAreaSize;
     private final Long logMiningSortAreaSize;
@@ -984,6 +1028,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         if (this.streamingAdapter == null) {
             throw new DebeziumException("Unable to instantiate the connector adapter implementation");
         }
+
+        this.captureMode = CaptureMode.parse(config.getString(CAPTURE_MODE));
 
         this.queryFetchSize = config.getInteger(QUERY_FETCH_SIZE);
         this.snapshotRetryDatabaseErrorsMaxRetries = config.getInteger(SNAPSHOT_DATABASE_ERRORS_MAX_RETRIES);
@@ -1031,7 +1077,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             this.logMiningWindowMaxMs = configuredWindowMaxMs;
         }
 
-        this.readonlyHostname = config.getString(LOG_MINING_READONLY_HOSTNAME);
+        this.oracleJdbcConfig = OracleJdbcConfiguration.adaptWithSubset(config);
         this.logMiningRedoThreadScnAdjustment = config.getInteger(LOG_MINING_REDO_THREAD_SCN_ADJUSTMENT);
         this.logMiningHashAreaSize = config.getLong(LOG_MINING_HASH_AREA_SIZE);
         this.logMiningSortAreaSize = config.getLong(LOG_MINING_SORT_AREA_SIZE);
@@ -1772,6 +1818,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     /**
+     * @return the streaming capture mode
+     */
+    public CaptureMode getCaptureMode() {
+        return captureMode;
+    }
+
+    /**
      * @return {@code true} if the legacy decimal handling behavior is used, {@code false} otherwise
      */
     public boolean isUsingLegacyDecimalHandlingStrategy() {
@@ -2137,13 +2190,9 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         return logMiningPathToDictionary;
     }
 
-    /**
-     * Return the read-only database hostname.
-     *
-     * @return the read-only hostname
-     */
-    public String getReadonlyHostname() {
-        return readonlyHostname;
+    @Override
+    public OracleJdbcConfiguration getJdbcConfig() {
+        return oracleJdbcConfig;
     }
 
     /**
@@ -2296,6 +2345,32 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                 final Set<String> racNodes = Strings.setOf(config.getString(RAC_NODES), String::new);
                 if (!racNodes.isEmpty()) {
                     LOGGER.warn("The property '{}' is set, but is ignored due to using read-only mode.", RAC_NODES.name());
+                }
+            }
+        }
+        return 0;
+    }
+
+    public static int validateCaptureMode(Configuration config, Field field, ValidationOutput problems) {
+        final CaptureMode captureMode = CaptureMode.parse(config.getString(CAPTURE_MODE));
+        if (CaptureMode.DOWNSTREAM.equals(captureMode) && isLogMiner(config)) {
+            problems.accept(CAPTURE_MODE, config.getString(CAPTURE_MODE), "Downstream mining is currently only supported by XStream");
+            return 1;
+        }
+        return 0;
+    }
+
+    public static int validateSecondaryStrategy(Configuration config, Field field, ValidationOutput problems) {
+        if (isLogMiner(config)) {
+            final boolean hasStandbyHost = !Strings.isNullOrBlank(config.getString(SECONDARY_HOSTNAME));
+            final boolean hasStandbyUrl = !Strings.isNullOrEmpty(config.getString(SECONDARY_URL));
+            if (isLogMiner(config) && (hasStandbyHost || hasStandbyUrl)) {
+                final LogMiningStrategy strategy = LogMiningStrategy.parse(config.getString(LOG_MINING_STRATEGY));
+                if (!LogMiningStrategy.DICTIONARY_FROM_FILE.equals(strategy)) {
+                    problems.accept(LOG_MINING_STRATEGY, config.getString(LOG_MINING_STRATEGY),
+                            String.format("LogMiner secondary streaming currently require '%s' to be set to '%s'.",
+                                    LOG_MINING_STRATEGY.name(), LogMiningStrategy.DICTIONARY_FROM_FILE.getValue()));
+                    return 1;
                 }
             }
         }

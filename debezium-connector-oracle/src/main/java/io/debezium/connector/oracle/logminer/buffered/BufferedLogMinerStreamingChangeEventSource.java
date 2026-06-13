@@ -31,6 +31,7 @@ import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.Scn;
+import io.debezium.connector.oracle.jdbc.OracleConnectionFactory;
 import io.debezium.connector.oracle.logminer.AbstractLogMinerStreamingChangeEventSource;
 import io.debezium.connector.oracle.logminer.LogFile;
 import io.debezium.connector.oracle.logminer.LogMinerChangeRecordEmitter;
@@ -84,14 +85,14 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     private Scn lastLoggedWindowAdvanceScn = Scn.NULL;
 
     public BufferedLogMinerStreamingChangeEventSource(OracleConnectorConfig connectorConfig,
-                                                      OracleConnection jdbcConnection,
+                                                      OracleConnectionFactory connectionFactory,
                                                       EventDispatcher<OraclePartition, TableId> dispatcher,
                                                       ErrorHandler errorHandler,
                                                       Clock clock,
                                                       OracleDatabaseSchema schema,
                                                       Configuration jdbcConfig,
                                                       LogMinerStreamingChangeEventSourceMetrics streamingMetrics) {
-        super(connectorConfig, jdbcConnection, dispatcher, errorHandler, clock, schema, jdbcConfig, streamingMetrics);
+        super(connectorConfig, connectionFactory, dispatcher, errorHandler, clock, schema, jdbcConfig, streamingMetrics);
 
         this.queryString = new BufferedLogMinerQueryBuilder(connectorConfig).getQuery();
         this.cacheProvider = createCacheProvider(connectorConfig);
@@ -320,12 +321,12 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
     @VisibleForTesting
     protected PreparedStatement createQueryStatement() throws SQLException {
-        final PreparedStatement statement = getConnection().connection()
+        final PreparedStatement statement = getStreamingConnection().connection()
                 .prepareStatement(queryString,
                         ResultSet.TYPE_FORWARD_ONLY,
                         ResultSet.CONCUR_READ_ONLY,
                         ResultSet.HOLD_CURSORS_OVER_COMMIT);
-        statement.setQueryTimeout((int) getConnection().config().getQueryTimeout().toSeconds());
+        statement.setQueryTimeout((int) getStreamingConnection().config().getQueryTimeout().toSeconds());
         return statement;
     }
 
@@ -1121,7 +1122,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                 return;
             }
 
-            Optional<Scn> lastScnToAbandonTransactions = getLastScnToAbandon(getConnection(), retention);
+            Optional<Scn> lastScnToAbandonTransactions = getLastScnToAbandon(getStreamingConnection(), retention);
             if (lastScnToAbandonTransactions.isPresent()) {
                 Scn thresholdScn = lastScnToAbandonTransactions.get();
                 if (thresholdScn.compareTo(smallestScn) >= 0) {

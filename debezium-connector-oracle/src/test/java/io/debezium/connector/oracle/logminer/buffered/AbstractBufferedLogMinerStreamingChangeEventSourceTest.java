@@ -46,6 +46,8 @@ import io.debezium.connector.oracle.OracleTaskContext;
 import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.StreamingAdapter.TableNameCaseSensitivity;
+import io.debezium.connector.oracle.jdbc.OracleConnectionFactory;
+import io.debezium.connector.oracle.jdbc.StandardOracleConnectionFactory;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.logminer.OffsetActivityMonitor;
 import io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerStreamingChangeEventSource.ProcessResult;
@@ -92,7 +94,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     protected LogMinerStreamingChangeEventSourceMetrics metrics;
     protected OraclePartition partition;
     protected OracleOffsetContext offsetContext;
-    protected OracleConnection connection;
+    protected OracleConnectionFactory connectionFactory;
 
     @BeforeEach
     @SuppressWarnings({ "unchecked" })
@@ -106,7 +108,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         final CommitScn commitScn = CommitScn.valueOf((String) null);
         Mockito.when(this.offsetContext.getCommitScn()).thenReturn(commitScn);
         Mockito.when(this.offsetContext.getSnapshotScn()).thenReturn(Scn.valueOf("1"));
-        this.connection = createOracleConnection(false);
+        this.connectionFactory = createOracleConnectionFactory(false);
         this.schema = createOracleDatabaseSchema();
         this.metrics = createMetrics(schema);
     }
@@ -384,6 +386,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             final BufferedStreamingChangeEventSource mock = Mockito.spy(source);
             Mockito.doReturn(ps).when(mock).createQueryStatement();
 
+            final OracleConnection connection = connectionFactory.mainConnection();
             Mockito.doReturn("CREATE TABLE DEBEZIUM.ABC (ID primary key(9,0), data varchar2(50))")
                     .when(connection)
                     .getTableMetadataDdl(Mockito.any(TableId.class));
@@ -498,7 +501,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         // re-create some mocked objects
         this.schema.close();
 
-        connection = createOracleConnection(true);
+        connectionFactory = createOracleConnectionFactory(true);
         schema = createOracleDatabaseSchema();
         metrics = createMetrics(schema);
 
@@ -534,7 +537,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         // re-create some mocked objects
         this.schema.close();
 
-        connection = createOracleConnection(true);
+        connectionFactory = createOracleConnectionFactory(true);
         schema = createOracleDatabaseSchema();
         metrics = createMetrics(schema);
 
@@ -631,6 +634,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(configuration);
         final TopicNamingStrategy topicNamingStrategy = SchemaTopicNamingStrategy.create(connectorConfig);
         final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
+        final OracleConnection connection = connectionFactory.mainConnection();
         final OracleValueConverters converters = connectorConfig.getAdapter().getValueConverter(connectorConfig, connection);
         final OracleDefaultValueConverter defaultValueConverter = new OracleDefaultValueConverter(converters, connection);
         final TableNameCaseSensitivity sensitivity = connectorConfig.getAdapter().getTableNameCaseSensitivity(connection);
@@ -661,7 +665,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         return schema;
     }
 
-    private OracleConnection createOracleConnection(boolean singleOptionalValueThrowException) throws Exception {
+    private OracleConnectionFactory createOracleConnectionFactory(boolean singleOptionalValueThrowException) throws Exception {
         final ResultSet rs = Mockito.mock(ResultSet.class);
         Mockito.when(rs.next()).thenReturn(true);
         Mockito.when(rs.getFloat(1)).thenReturn(2.f);
@@ -685,7 +689,12 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
                     .thenThrow(new SQLException("ORA-01555 Snapshot too old", null, 1555));
         }
         Mockito.when(connection.isArchiveLogDestinationValid(eq("LOG_ARCHIVE_DEST_1"))).thenReturn(true);
-        return connection;
+
+        final OracleConnectionFactory factory = Mockito.mock(StandardOracleConnectionFactory.class);
+        Mockito.when(factory.mainConnection()).thenReturn(connection);
+        Mockito.when(factory.streamingConnectionFactory()).thenReturn(factory);
+
+        return factory;
     }
 
     private LogMinerStreamingChangeEventSourceMetrics createMetrics(OracleDatabaseSchema schema) throws Exception {
@@ -808,7 +817,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
 
         final BufferedStreamingChangeEventSource source = new BufferedStreamingChangeEventSource(
                 connectorConfig,
-                connection,
+                connectionFactory,
                 dispatcher,
                 schema,
                 metrics,
@@ -828,13 +837,13 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
 
         public BufferedStreamingChangeEventSource(
                                                   OracleConnectorConfig connectorConfig,
-                                                  OracleConnection connection,
+                                                  OracleConnectionFactory connectionFactory,
                                                   EventDispatcher<OraclePartition, TableId> dispatcher,
                                                   OracleDatabaseSchema schema,
                                                   LogMinerStreamingChangeEventSourceMetrics metrics,
                                                   ChangeEventSourceContext context,
                                                   OracleOffsetContext offsetContext) {
-            super(connectorConfig, connection, dispatcher, null, Clock.SYSTEM, schema, connectorConfig.getJdbcConfig(), metrics);
+            super(connectorConfig, connectionFactory, dispatcher, null, Clock.SYSTEM, schema, connectorConfig.getJdbcConfig(), metrics);
             this.context = context;
             this.offsetActivityMonitor = new OffsetActivityMonitor(25, offsetContext, metrics);
         }
