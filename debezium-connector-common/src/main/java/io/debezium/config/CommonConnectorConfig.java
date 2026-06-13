@@ -638,6 +638,8 @@ public abstract class CommonConnectorConfig {
     public static final int DEFAULT_MAX_BATCH_SIZE = 2048;
     public static final int DEFAULT_QUERY_FETCH_SIZE = 0;
     public static final long DEFAULT_POLL_INTERVAL_MILLIS = 500;
+    public static final long MAX_ALLOWED_POLL_INTERVAL_MILLIS = 5000;
+    public static final long DEFAULT_POLL_DISPATCH_INTERVAL_MILLIS = 0;
     public static final String DATABASE_CONFIG_PREFIX = ConfigurationNames.DATABASE_CONFIG_PREFIX;
     public static final String DRIVER_CONFIG_PREFIX = ConfigurationNames.DRIVER_CONFIG_PREFIX;
     public static final long DEFAULT_RETRIABLE_RESTART_WAIT = 10000L;
@@ -713,9 +715,22 @@ public abstract class CommonConnectorConfig {
             .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 17))
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
-            .withDescription("Time to wait for new change events to appear after receiving no events, given in milliseconds. Defaults to 500 ms.")
+            .withDescription(
+                    "Time to wait for new change events to appear after receiving no events, given in milliseconds. Defaults to %d ms. Values will be capped at %d ms."
+                            .formatted(
+                                    DEFAULT_POLL_INTERVAL_MILLIS, MAX_ALLOWED_POLL_INTERVAL_MILLIS))
             .withDefault(DEFAULT_POLL_INTERVAL_MILLIS)
-            .withValidation(Field::isPositiveInteger);
+            .withValidation(CommonConnectorConfig::validatePollIntervalMs);
+
+    public static final Field POLL_DISPATCH_INTERVAL_MS = Field.create("poll.dispatch.interval.ms")
+            .withDisplayName("Poll dispatch interval (ms)")
+            .withType(Type.LONG)
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 50))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Time to accumulate change events in the queue between subsequent polls. Defaults to 0 ms.")
+            .withDefault(DEFAULT_POLL_DISPATCH_INTERVAL_MILLIS)
+            .withValidation(Field::isNonNegativeInteger);
 
     public static final Field MAX_QUEUE_SIZE_IN_BYTES = Field.create("max.queue.size.in.bytes")
             .withDisplayName("Change event buffer size in bytes")
@@ -1547,6 +1562,7 @@ public abstract class CommonConnectorConfig {
     private final long maxQueueSizeInBytes;
     private final String queueProviderType;
     private final Duration pollInterval;
+    private final Duration pollDispatchInterval;
     protected final String logicalName;
     private final String heartbeatTopicsPrefix;
     private Duration heartbeatInterval;
@@ -1597,6 +1613,7 @@ public abstract class CommonConnectorConfig {
         this.maxQueueSize = config.getInteger(MAX_QUEUE_SIZE);
         this.maxBatchSize = config.getInteger(MAX_BATCH_SIZE);
         this.pollInterval = config.getDuration(POLL_INTERVAL_MS, ChronoUnit.MILLIS);
+        this.pollDispatchInterval = config.getDuration(POLL_DISPATCH_INTERVAL_MS, ChronoUnit.MILLIS);
         this.maxQueueSizeInBytes = config.getLong(MAX_QUEUE_SIZE_IN_BYTES);
         this.queueProviderType = config.getString(QUEUE_PROVIDER_TYPE);
         this.logicalName = config.getString(CommonConnectorConfig.TOPIC_PREFIX);
@@ -1735,6 +1752,10 @@ public abstract class CommonConnectorConfig {
 
     public Duration getPollInterval() {
         return pollInterval;
+    }
+
+    public Duration getPollDispatchInterval() {
+        return pollDispatchInterval;
     }
 
     public String getLogicalName() {
@@ -2040,6 +2061,19 @@ public abstract class CommonConnectorConfig {
             ++count;
         }
         return count;
+    }
+
+    private static int validatePollIntervalMs(Configuration config, Field field, ValidationOutput problems) {
+        int isPositive = Field.isPositiveInteger(config, field, problems);
+        if (isPositive == 0) {
+            int pollIntervalMsConfigured = config.getInteger(field);
+            if (pollIntervalMsConfigured > MAX_ALLOWED_POLL_INTERVAL_MILLIS) {
+                LOGGER.warn("The value for {} is bigger than the maximum allowed value: {}. Using the maximum allowed value instead.", POLL_INTERVAL_MS.name(),
+                        MAX_ALLOWED_POLL_INTERVAL_MILLIS);
+            }
+        }
+        return isPositive;
+
     }
 
     protected static int validateSkippedOperation(Configuration config, Field field, ValidationOutput problems) {
