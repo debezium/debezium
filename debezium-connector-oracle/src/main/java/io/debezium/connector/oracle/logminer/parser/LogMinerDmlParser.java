@@ -312,6 +312,12 @@ public class LogMinerDmlParser implements DmlParser {
                 }
                 else if (lookAhead == '\'') {
                     collectedValue.append('\'');
+                    // In relaxed mode, '' before an end-of-value boundary means (lone ') + (closing ').
+                    // Check whether the following after '' chars signal end-of-value.
+                    lookAhead = (index + 2 < sqlLength) ? sql.charAt(index + 2) : 0;
+                    if (useRelaxedQuotes && (lookAhead == ',' || lookAhead == ')')) {
+                        continue;
+                    }
                     index = index + 1;
                     continue;
                 }
@@ -425,6 +431,13 @@ public class LogMinerDmlParser implements DmlParser {
                 else {
                     if (lookAhead == '\'') {
                         collectedValue.append('\'');
+                        // In relaxed mode, '' before an end-of-value boundary means (lone ') + (closing ').
+                        // Check whether the following after '' chars signal end-of-value.
+                        if (useRelaxedQuotes && (sql.startsWith(", \"", index + 2) ||
+                                sql.startsWith(" where ", index + 2) ||
+                                (lookAhead2 == ';' && lookAhead3 == 0))) {
+                            continue;
+                        }
                         index = index + 1;
                         continue;
                     }
