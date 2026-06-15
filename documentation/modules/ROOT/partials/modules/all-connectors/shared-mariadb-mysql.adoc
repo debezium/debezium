@@ -2059,6 +2059,16 @@ a|`io.debezium.time.IsoTimestamp`
 Represents the datetime value in UTC format, according to the ISO 8601 standard, for example, `2019-07-09T02:28:57.123456Z`.
 
 |===
+
+[IMPORTANT]
+====
+The `time.precision.mode` connector property also accepts the values `microseconds` and `nanoseconds`, although these modes are not currently illustrated in the mapping tables above.
+{connector-name} `DATETIME` and `TIME` columns are limited to microsecond precision (`DATETIME(0 - 6)`, `TIME(0 - 6)`), so `nanoseconds` does not provide additional precision beyond what `microseconds` already offers.
+If you set `time.precision.mode=nanoseconds`, be aware that nanoseconds since the Unix epoch are stored in a signed `INT64`, restricting the representable range to approximately *`1677-09-21T00:12:43Z` to `2262-04-11T23:47:16Z`*.
+Values outside this range — for example a `9999-12-31` end-of-time sentinel — cannot be represented and cause the connector to throw an `IllegalArgumentException` from the value converter.
+The exception is routed through the standard `event.processing.failure.handling.mode` configuration, so operators can choose `fail` (the default), `warn`, or `skip`.
+Use `time.precision.mode=microseconds` (or `isostring`) to avoid the limitation.
+====
 end::temporal-data-types[]
 
 
