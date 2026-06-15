@@ -8,7 +8,7 @@ package io.debezium.engine.source;
 import java.util.Map;
 
 import io.debezium.common.annotation.Incubating;
-import io.debezium.embedded.Transformations;
+import io.debezium.embedded.SourceRecordTransformations;
 import io.debezium.engine.spi.OffsetCommitPolicy;
 import io.debezium.spi.storage.OffsetStorageReader;
 import io.debezium.spi.storage.OffsetStorageWriter;
@@ -49,7 +49,7 @@ public interface DebeziumSourceTaskContext {
     /**
      * Gets the transformations which the task should apply to source events before passing them to the consumer.
      */
-    Transformations transformations();
+    SourceRecordTransformations transformations();
 
     /**
      * Gets the {@link EngineTaskId} of this SourceTask.

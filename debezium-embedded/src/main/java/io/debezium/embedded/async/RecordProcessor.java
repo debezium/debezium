@@ -11,7 +11,7 @@ import java.util.concurrent.ExecutorService;
 import org.apache.kafka.connect.source.SourceRecord;
 
 import io.debezium.common.annotation.Incubating;
-import io.debezium.embedded.Transformations;
+import io.debezium.embedded.SourceRecordTransformations;
 import io.debezium.engine.DebeziumEngine;
 
 /**
@@ -30,7 +30,7 @@ public interface RecordProcessor<R> {
      * @param recordService {@link ExecutorService} which allows to run processing of individual records in parallel.
      * @param transformations chain of transformations to be applied on every individual record.
      */
-    void initialize(ExecutorService recordService, Transformations transformations);
+    void initialize(ExecutorService recordService, SourceRecordTransformations transformations);
 
     /**
      * Processes a batch of records provided by the source connector.

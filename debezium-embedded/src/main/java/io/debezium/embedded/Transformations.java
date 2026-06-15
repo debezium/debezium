@@ -5,7 +5,6 @@
  */
 package io.debezium.embedded;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -27,7 +26,7 @@ import io.debezium.config.Configuration;
  *
  * @author Jiri Pechanec
  */
-public class Transformations implements Closeable {
+public class Transformations implements SourceRecordTransformations {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Transformations.class);
 

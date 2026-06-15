@@ -7,7 +7,7 @@ package io.debezium.engine.source;
 
 import java.util.Map;
 
-import io.debezium.embedded.Transformations;
+import io.debezium.embedded.SourceRecordTransformations;
 import io.debezium.engine.spi.OffsetCommitPolicy;
 import io.debezium.spi.storage.OffsetStorageReader;
 import io.debezium.spi.storage.OffsetStorageWriter;
@@ -24,7 +24,7 @@ public class EngineSourceTaskContext implements DebeziumSourceTaskContext {
     private final OffsetStorageWriter offsetWriter;
     private final OffsetCommitPolicy offsetCommitPolicy;
     private final io.debezium.util.Clock clock;
-    private final Transformations transformations;
+    private final SourceRecordTransformations transformations;
     private final EngineTaskId connectorTaskId;
 
     public EngineSourceTaskContext(
@@ -33,7 +33,7 @@ public class EngineSourceTaskContext implements DebeziumSourceTaskContext {
                                    final OffsetStorageWriter offsetWriter,
                                    final OffsetCommitPolicy offsetCommitPolicy,
                                    final io.debezium.util.Clock clock,
-                                   final Transformations transformations,
+                                   final SourceRecordTransformations transformations,
                                    final EngineTaskId connectorTaskId) {
         this.config = config;
         this.offsetReader = offsetReader;
@@ -70,7 +70,7 @@ public class EngineSourceTaskContext implements DebeziumSourceTaskContext {
     }
 
     @Override
-    public Transformations transformations() {
+    public SourceRecordTransformations transformations() {
         return transformations;
     }
 

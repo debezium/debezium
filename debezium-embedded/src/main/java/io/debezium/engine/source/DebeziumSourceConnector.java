@@ -5,6 +5,9 @@
  */
 package io.debezium.engine.source;
 
+import java.util.List;
+import java.util.Map;
+
 import io.debezium.common.annotation.Incubating;
 
 /**
@@ -32,4 +35,30 @@ public interface DebeziumSourceConnector {
      * @param context {@link DebeziumSourceConnectorContext} containing references to auxiliary objects.
      */
     void initialize(DebeziumSourceConnectorContext context);
+
+    /**
+     * Start the connector with the given configuration.
+     * @param config connector configuration
+     */
+    void start(Map<String, String> config);
+
+    /**
+     * Stop the connector.
+     */
+    void stop();
+
+    /**
+     * Returns the task configurations for the requested number of tasks.
+     * @param maxTasks maximum number of task configurations to generate
+     * @return list of task configurations
+     */
+    List<Map<String, String>> taskConfigs(int maxTasks);
+
+    /**
+     * Creates and initializes a new {@link DebeziumSourceTask} with the given context.
+     * @param context task context containing configuration and offset management objects
+     * @return a new initialized source task
+     * @throws Exception if the task cannot be created or initialized
+     */
+    DebeziumSourceTask createTask(DebeziumSourceTaskContext context) throws Exception;
 }
