@@ -1814,6 +1814,15 @@ When `time.precision.mode` is set to `nanoseconds`, these special values are con
 
 |===
 
+[IMPORTANT]
+====
+Because nanoseconds since the Unix epoch are stored in a signed `INT64`, the representable range of `time.precision.mode=nanoseconds` is approximately *`1677-09-21T00:12:43Z` to `2262-04-11T23:47:16Z`*.
+Values outside this range — for example the common `9999-12-31` end-of-time sentinel — cannot be represented and cause the connector to throw an `IllegalArgumentException` from the value converter.
+The exception is routed through the standard `event.processing.failure.handling.mode` configuration, so operators can choose `fail` (the default), `warn`, or `skip` per their requirements.
+
+If the source schema may contain values outside the representable range, use `time.precision.mode=microseconds` (covers approximately ±290000 years) or `time.precision.mode=isostring` instead.
+====
+
 
 [id="postgresql-timestamp-type"]
 === TIMESTAMP type
