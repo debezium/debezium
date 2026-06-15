@@ -78,11 +78,17 @@ public class NanoTimestamp {
      *
      * @param timestamp the Java timestamp value
      * @return the epoch nanoseconds
+     * @throws IllegalArgumentException if the value is outside the representable range for INT64 epoch nanoseconds
      */
     private static long toEpochNanos(LocalDateTime timestamp) {
         long nanoInDay = timestamp.toLocalTime().toNanoOfDay();
         long nanosOfDay = toEpochNanos(timestamp.toLocalDate());
-        return nanosOfDay + nanoInDay;
+        try {
+            return Math.addExact(nanosOfDay, nanoInDay);
+        }
+        catch (ArithmeticException e) {
+            throw newOutOfRangeException(timestamp, e);
+        }
     }
 
     /**
@@ -90,10 +96,24 @@ public class NanoTimestamp {
      *
      * @param date the Java date value
      * @return the epoch nanoseconds
+     * @throws IllegalArgumentException if the value is outside the representable range for INT64 epoch nanoseconds
      */
     private static long toEpochNanos(LocalDate date) {
         long epochDay = date.toEpochDay();
-        return epochDay * Conversions.NANOSECONDS_PER_DAY;
+        try {
+            return Math.multiplyExact(epochDay, Conversions.NANOSECONDS_PER_DAY);
+        }
+        catch (ArithmeticException e) {
+            throw newOutOfRangeException(date, e);
+        }
+    }
+
+    private static IllegalArgumentException newOutOfRangeException(Object value, ArithmeticException cause) {
+        return new IllegalArgumentException(
+                "Value '" + value + "' is outside the representable range for INT64 epoch nanoseconds " +
+                        "(approximately 1677-09-21T00:12:43Z to 2262-04-11T23:47:16Z). " +
+                        "Use 'time.precision.mode=microseconds' or 'isostring' for values outside this range.",
+                cause);
     }
 
     private NanoTimestamp() {
