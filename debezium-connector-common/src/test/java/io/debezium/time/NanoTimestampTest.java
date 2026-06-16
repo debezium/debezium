@@ -13,6 +13,8 @@ import java.time.LocalDateTime;
 
 import org.junit.jupiter.api.Test;
 
+import io.debezium.doc.FixFor;
+
 public class NanoTimestampTest {
 
     @Test
@@ -34,6 +36,7 @@ public class NanoTimestampTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2075")
     public void shouldFailFastForDateAboveNanosecondRange() {
         // 9999-12-31 — common end-of-time sentinel that overflows INT64 nanos
         assertThatThrownBy(() -> NanoTimestamp.toEpochNanos(LocalDate.of(9999, 12, 31), null))
@@ -44,6 +47,7 @@ public class NanoTimestampTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2075")
     public void shouldFailFastForDateBelowNanosecondRange() {
         // 1000-01-01 — well before 1677-09-21 lower bound
         assertThatThrownBy(() -> NanoTimestamp.toEpochNanos(LocalDate.of(1000, 1, 1), null))
@@ -53,6 +57,7 @@ public class NanoTimestampTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2075")
     public void shouldFailFastForTimestampJustAboveUpperBoundary() {
         // One nanosecond past the upper boundary 2262-04-11T23:47:16.854775807Z
         LocalDateTime justOver = LocalDateTime.of(2262, 4, 11, 23, 47, 16, 854_775_808);
@@ -63,6 +68,7 @@ public class NanoTimestampTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2075")
     public void shouldFailFastForFarFutureDate() {
         // 2286-11-20 — the value that motivated this fix (silent wrap to 1702 in Debezium <= 3.6)
         assertThatThrownBy(() -> NanoTimestamp.toEpochNanos(LocalDate.of(2286, 11, 20), null))
