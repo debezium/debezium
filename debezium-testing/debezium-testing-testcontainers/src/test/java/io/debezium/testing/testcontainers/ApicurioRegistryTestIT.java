@@ -234,7 +234,8 @@ public class ApicurioRegistryTestIT {
                 .with("value.converter.avro.apicurio.registry.url", apicurioUrl)
                 .with("value.converter.avro.apicurio.registry.auto-register", "true")
                 .with("value.converter.avro.apicurio.registry.artifact.group-id", "dummy")
-                .with("value.converter.avro.apicurio.registry.request.ssl.truststore.location", "TroubleMaker");
+                .with("value.converter.avro.apicurio.registry.http.adapter", "JDK")
+                .with("value.converter.avro.apicurio.registry.tls.truststore.location", "TroubleMaker");
 
         debeziumContainer.registerConnector("my-connector-test-apicurio-header", config);
         debeziumContainer.ensureConnectorTaskState("my-connector-test-apicurio-header", 0, Connector.State.FAILED);
