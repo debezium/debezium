@@ -25,24 +25,24 @@ YashanDB is a next-generation database management system independently developed
 Based on classical database theory, it integrates original computing paradigms including bounded computation, approximate computation, parallel scalability, and cross-modal fusion computing.
 This enables YashanDB to meet the demanding requirements of core industries such as finance, government, and energy for high performance, high concurrency, and high security.
 
-{prodname}'s YashanDB connector captures and records row-level changes that occur in databases on a YashanDB server, including tables that are added while the connector is running.
+The {prodname} YashanDB connector captures and records row-level changes that occur in databases on a YashanDB server, including tables that are added while the connector is running.
 You can configure the connector to emit change events for specific subsets of schemas and tables, synchronizing the change events to Kafka.
 
 For information about the YashanDB versions that are compatible with this connector, see the {prodname} release overview.
 
 {prodname} can ingest change events from YashanDB by using the native YStream database package.
-For more information about YashanDB and YStream, see the https://www.yashandb.com/[YashanDB official website].
+For more information about YashanDB and YStream, see the https://www.yashandb.com/[YashanDB website^].
 
-[[how-the-yashandb-connector-works]]
-== How the YashanDB connector works
+[[how-the-debezium-yashandb-connector-works]]
+== How the {prodname} YashanDB connector works
 
 To optimally configure and run a {prodname} YashanDB connector, it is helpful to understand how the connector works.
 
 [[yashandb-ystream-mechanism]]
 === YStream Mechanism
 
-The YashanDB connector uses YashanDB's native YStream feature to capture changes from the database transaction logs.
-YStream is YashanDB's Change Data Capture (CDC) mechanism.
+The {prodname} YashanDB connector uses the YashanDB YStream interface to capture changes from the database transaction logs.
+YStream is the native Change Data Capture (CDC) engine in YashanDB.
 
 The YashanDB connector works as follows:
 
@@ -73,7 +73,8 @@ After the snapshot completes, the connector begins to stream event records for s
 After the snapshot completes, the connector begins to stream event records for subsequent database changes.
 
 |`initial_only`
-|The connector performs a database snapshot and stops before streaming any change event records, not allowing any subsequent change events to be captured.
+|The connector performs a database snapshot and stops before streaming any change event records.
+The connector does not capture any change events that occur after the snapshot.
 
 |`no_data`
 |The connector captures the structure of all relevant tables, performing all of the steps described in the default snapshot workflow, except that it does not create `READ` events to represent the data set at the point of the connector's start-up.
@@ -158,7 +159,8 @@ The schema for the schema change event has the following elements:
 
 `name`:: The name of the schema change event message.
 `type`:: The type of the change event message.
-`version`:: The version of the schema. The version is an integer that is incremented each time the schema is changed.
+`version`:: The version of the schema.
+The version is an integer that is incremented each time the schema is changed.
 `fields`:: The fields that are included in the change event message.
 
 .Example: Schema of the YashanDB connector schema change topic
@@ -329,7 +331,8 @@ The time is based on the system clock in the JVM running the Kafka Connect task.
 
 |6
 |`type`
-a|Describes the kind of change. The `type` can be set to one of the following values:
+a|Describes the kind of change.
+The `type` can be set to one of the following values:
 
 `CREATE`:: Table created.
 `ALTER`:: Table modified.
@@ -447,8 +450,8 @@ For information about how {prodname} constructs topic names, see xref:yashandb-t
 [WARNING]
 ====
 The {prodname} YashanDB connector ensures that all Kafka Connect _schema names_ are http://avro.apache.org/docs/current/spec.html#names[valid Avro schema names].
-This means that the logical server name must start with alphabetic characters or an underscore ([a-z,A-Z,\_]),
-and the remaining characters in the logical server name and all characters in the schema and table names must be alphanumeric characters or an underscore ([a-z,A-Z,0-9,\_]).
+To qualify as a valid Avro schema name, the logical server name must start with an alphabetic character or an underscore ([a-z,A-Z,\_]).
+The remaining characters in the logical server name, and all characters in the schema and table names, must be alphanumeric characters or underscores ([a-z,A-Z,0-9,\_]).
 The connector automatically replaces invalid characters with an underscore character.
 
 Unexpected naming conflicts can result when the only distinguishing characters between multiple logical server names, schema names, or table names are not valid characters, and those characters are replaced with underscores.
@@ -465,7 +468,7 @@ The schema describes the structure of the payload, while the payload contains th
 
 For each changed table, the change event key is structured such that a field exists for each column in the primary key (or unique key constraint) of the table at the time when the event is created.
 
-For example, a `customers` table that is defined in the `inventory` database schema:
+For example, consider the following SQL for a `customers` table that is defined in the `inventory` database schema:
 
 [source,sql,indent=0]
 ----
@@ -765,7 +768,7 @@ The connector uses it for all events that it generates.
 `"name": "server1.inventory.customers.Envelope"`::
 Specifies the name of the schema for the overall structure of the payload.
 The schema name is made up of the following elements:
-
++
 `server1`::: Specifies the name of the connector that generated this event.
 `inventory`::: Specifies the database that contains the table that was changed.
 `customers`::: Specifies the table that was changed.
@@ -780,6 +783,7 @@ To reduce the size of the messages that the connector streams to Kafka topics, y
 Specifies the type of operation that caused the connector to generate the event.
 In this example, `c` indicates that a `create` operation was performed resulting in a new row.
 This field can contain one of the following values:
++
 [horizontal]
 `c`::: Create a row.
 `u`::: Update a row.
@@ -802,7 +806,7 @@ In this example, the `after` field contains the values of the new row's `ID` and
 Mandatory field that describes the source metadata for the event.
 This field contains information that you can use to compare this event to other events, with regard to the origin of the events, the order in which the events occurred, and whether events were part of the same transaction.
 The source metadata provides the following information:
-
++
 `version`::: {prodname} version.
 `connector`::: The type of connector.
 `name`::: Connector name.
@@ -936,7 +940,7 @@ This allows Kafka to reclaim storage space while ensuring the topic contains a c
 
 When a row is deleted, the _delete_ event value shown in the preceding example still works with log compaction, because Kafka is able to remove all earlier messages that use the same key.
 The message value must be set to `null` to instruct Kafka to remove _all messages_ that share the same key.
-To make this possible, by default, {prodname}'s YashanDB connector always follows a _delete_ event with a special _tombstone_ event that has the same key but `null` value.
+To make this possible, by default, the {prodname} YashanDB connector always follows a _delete_ event with a special _tombstone_ event that has the same key but `null` value.
 
 [[yashandb-truncate-events]]
 === _truncate_ events
@@ -1002,14 +1006,16 @@ a|Mandatory field that describes the source metadata for the event. In a _trunca
 
 |2
 |`op`
-a|Mandatory string that describes the type of operation. The `op` field value is `t`, signifying that this table was truncated.
+a|Mandatory string that describes the type of operation.
+The `op` field value is `t`, signifying that this table was truncated.
 
 |3
 |`ts_ms`, `ts_us`, `ts_ns`
 a|Optional field that displays the time at which the connector processed the event.
 The time is based on the system clock in the JVM running the Kafka Connect task. +
 
-In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
+In the `source` object, `ts_ms` indicates the time that the change was made in the database.
+By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
 
 |===
 
@@ -1023,7 +1029,7 @@ For example, if a consumer reads events for a table from multiple partitions, it
 Ordering is guaranteed only for topics that use a single partition.
 ====
 
-If you do not want the connector to capture _truncate_ events, use the xref:yashandb-property-skipped-operations[`skipped.operations`] option to filter them out.
+If you do not want the connector to capture _truncate_ events, set the xref:yashandb-property-skipped-operations[`skipped.operations`] option to filter them out.
 
 [[yashandb-data-types]]
 == Data type mapping
@@ -1032,11 +1038,9 @@ When the {prodname} YashanDB connector detects that a value in a table row has c
 Each change event record has the same structure as the original table, and the event record contains a field for each column value.
 The data type of the table column determines how the connector represents the column's value in the change event field.
 
-For each column in the table, Debezium maps the source data type to a literal type.
+For each column in the table, {prodname} maps the source data type to a literal type.
 
-Literal types
-
-Describe how values are represented literally, using one of the following Kafka Connect schema types: `INT8`, `INT16`, `INT32`, `INT64`, `FLOAT32`, `FLOAT64`, `BOOLEAN`, `STRING`, `BYTES`, `ARRAY`, `MAP`, `STRUCT`.
+Literal types describe how {prodname} represents values literally, using one of the following Kafka Connect schema types: `INT8`, `INT16`, `INT32`, `INT64`, `FLOAT32`, `FLOAT64`, `BOOLEAN`, `STRING`, `BYTES`, `ARRAY`, `MAP`, `STRUCT`.
 
 [NOTE]
 ====
@@ -1177,32 +1181,32 @@ The way that the connector converts temporal types depends on the `time.precisio
 
 |`DATE`
 |`INT64`
-|`io.debezium.time.Timestamp` +
- +
+|`io.debezium.time.Timestamp`
+
 Represents the number of milliseconds since the UNIX epoch.
 
 |`TIME`
 |`INT64`
-|`io.debezium.time.MicroTime` +
- +
+|`io.debezium.time.MicroTime`
+
 Represents the number of microseconds past midnight.
 
 |`TIMESTAMP`
 |`INT64`
-|`io.debezium.time.MicroTimestamp` +
- +
+|`io.debezium.time.MicroTimestamp`
+
 Represents the number of microseconds since the UNIX epoch.
 
 |`INTERVAL YEAR TO MONTH`
 |`FLOAT64`
-|`io.debezium.time.MicroDuration` +
- +
+|`io.debezium.time.MicroDuration`
+
 Represents the number of months in the interval, expressed as years with decimal precision.
 
 |`INTERVAL DAY TO SECOND`
 |`FLOAT64`
-|`io.debezium.time.MicroDuration` +
- +
+|`io.debezium.time.MicroDuration`
+
 Represents the number of microseconds in the interval.
 
 |===
@@ -1263,7 +1267,7 @@ If you want to map them to a fixed format string such as `yyyy-MM-dd HH:mm:ss.SS
 
 By default, the {prodname} YashanDB connector provides several `CustomConverter` implementations specific to YashanDB data types.
 These custom converters provide alternative mappings for specific data types based on the connector configuration.
-To add a `CustomConverter` to the connector, follow the instructions in the link:../development/converters.adoc[Custom Converters documentation].
+To add a `CustomConverter` to the connector, follow the instructions in the {link-prefix}:{link-custom-converters}#custom-converters.adoc[Custom Converters documentation].
 
 The {prodname} YashanDB connector provides the following custom converters:
 
@@ -1348,7 +1352,7 @@ Specify the following in the configuration:
 [[setting-up-yashandb]]
 == Setting up YashanDB
 
-Before deploying and running the {prodname} YashanDB connector, you need to perform some configuration on the YashanDB database.
+Before deploying and running the {prodname} YashanDB connector, adjust the YashanDB database configuration to ensure compatibility.
 
 [[yashandb-excluded-schemas]]
 === Schemas excluded from capture
@@ -1374,9 +1378,9 @@ ALTER SYSTEM SET STREAM_POOL_SIZE = '512M';
 
 [CAUTION]
 ====
-Failure to configure this parameter may cause the task to fail.
+Failure to configure this parameter can cause the task to fail.
 This parameter is a global parameter.
-Please refer to the YashanDB official documentation for further assistance.
+For more information, see the https://doc.yashandb.com/en/[YashanDB documentation].
 ====
 
 [[yashandb-supplemental-logging]]
@@ -1386,7 +1390,7 @@ Reading incremental data changes requires supplemental logging to be enabled.
 
 ==== Database-level supplemental logging
 
-When you need to monitor all objects in the database (including new objects), you can enable database-level supplemental logging:
+To permit the connector to monitor all objects in the database, including new objects, enable database-level supplemental logging: in YashanDB:
 
 [source,sql,indent=0]
 ----
@@ -1396,7 +1400,7 @@ ALTER DATABASE ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;
 
 ==== Table-level supplemental logging
 
-When you only need to monitor certain tables, you can enable table-level supplemental logging:
+If you want the connector to monitor only specific tables, enable table-level supplemental logging in YashanDB:
 
 [source,sql,indent=0]
 ----
@@ -1405,7 +1409,7 @@ ALTER TABLE tablename ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;
 
 [CAUTION]
 ====
-It is important to note that failing to enable supplemental logging, or enabling it incorrectly, can result in data loss or even task failure.
+It is important to note that failing to enable supplemental logging, or enabling it incorrectly, can result in data loss or task failure.
 ====
 
 [[yashandb-create-user]]
@@ -1475,10 +1479,14 @@ DBMS_YSTREAM_ADM.ADD_TABLES(
 
 [NOTE]
 ====
-The table names and schemas added here must be the same as those that the connector is configured to capture.
+The table names and schemas that you add to the service must be the same as those that the connector is configured to capture.
 ====
 
 ==== Set YStream service parameters
+
+.Prerequisites
+* The YStream service is available to configure.
+Query the `V$YSTREAM_SERVER` view to obtain the service status.
 
 Use the link:https://doc.yashandb.com/yashandb/23.5/zh/SQL-Guide/Built-in-Packages/DBMS_YSTREAM_ADM.html#set-parameter[`DBMS_YSTREAM_ADM.SET_PARAMETER` procedure] to set parameters for an existing service:
 
@@ -1489,8 +1497,6 @@ DBMS_YSTREAM_ADM.SET_PARAMETER(
     parameter   IN VARCHAR(64),
     value       IN VARCHAR(64));
 ----
-
-The corresponding service must be in a state that allows the current operation to be executed (the service status can be obtained by querying the `V$YSTREAM_SERVER` view).
 
 ==== Start the YStream service
 
@@ -1560,7 +1566,8 @@ The following example shows a JSON request for registering an instance of the {p
 <9> The maximum number of tasks to create for this connector.
 <10> The name of the YStream service that the connector uses to capture changes.
 <11> The list of Kafka brokers that this connector uses to write and recover DDL statements to the database schema history topic.
-<12> The name of the database schema history topic where the connector writes and recovers DDL statements. This topic is for internal use only and should not be used by consumers.
+<12> The name of the database schema history topic where the connector writes and recovers DDL statements.
+This topic is for internal use only and should not be used by consumers.
 
 For the complete list of the configuration properties that you can set for the {prodname} YashanDB connector, see xref:yashandb-properties[Connector configuration properties].
 
@@ -1622,15 +1629,22 @@ Descriptions of these properties are organized as follows:
 
 |[[yashandb-property-name]]<<yashandb-property-name, `+name+`>>
 |No default
-|Unique name for the connector. Attempting to register again with the same name will fail. (This property is required by all Kafka Connect connectors.)
+|Unique name for the connector.
+You can use the specified name to register a connector only once.
+Registration fails if you attempt to reuse a connector name.
+(This property is required by all Kafka Connect connectors.)
 
 |[[yashandb-property-connector-class]]<<yashandb-property-connector-class, `+connector.class+`>>
 |No default
-|The name of the Java class for the connector. Always use a value of `io.debezium.connector.yashandb.YashanDbConnector` for the YashanDB connector.
+|The name of the Java class for the connector.
+Always use the following value for the YashanDB connector:
+
+`io.debezium.connector.yashandb.YashanDbConnector`
 
 |[[yashandb-property-tasks-max]]<<yashandb-property-tasks-max, `+tasks.max+`>>
 |`1`
-|The maximum number of tasks to create for this connector. The YashanDB connector always uses a single task and therefore does not use this value, so the default is always acceptable.
+|The maximum number of tasks to create for this connector.
+The YashanDB connector always uses a single task and therefore does not use this value, so the default is always acceptable.
 
 |[[yashandb-property-database-hostname]]<<yashandb-property-database-hostname, `+database.hostname+`>>
 |No default
@@ -1658,11 +1672,15 @@ Descriptions of these properties are organized as follows:
 
 |[[yashandb-property-ystream-server-name]]<<yashandb-property-ystream-server-name, `+database.ystream.server.name+`>>
 |No default
-|The name of the YStream service on the YashanDB database. Specify the YStream service name created in the "Configure YStream service" step.
+|The name of the YStream service on the YashanDB database.
+Specify the YStream service name created in the "Configure YStream service" step.
 
 |[[yashandb-property-topic-prefix]]<<yashandb-property-topic-prefix, `+topic.prefix+`>>
 |No default
-|Topic prefix that provides a namespace for the YashanDB database server from which the connector captures changes. The value you set is used as the prefix for all Kafka topic names that the connector emits. Specify a topic prefix that is unique across all connectors in your Debezium environment. Valid characters include alphanumeric characters, hyphens, dots, and underscores.
+|Topic prefix that provides a namespace for the YashanDB database server from which the connector captures changes.
+The value that you set is used as the prefix for all Kafka topic names that the connector emits.
+Specify a topic prefix that is unique across all connectors in your {prodname} environment.
+Valid characters include alphanumeric characters, hyphens, dots, and underscores.
 
 |[[yashandb-property-schema-history-internal-kafka-bootstrap-servers]]<<yashandb-property-schema-history-internal-kafka-bootstrap-servers, `+schema.history.internal.kafka.bootstrap.servers+`>>
 |No default
@@ -1670,7 +1688,8 @@ Descriptions of these properties are organized as follows:
 
 |[[yashandb-property-schema-history-internal-kafka-topic]]<<yashandb-property-schema-history-internal-kafka-topic, `+schema.history.internal.kafka.topic+`>>
 |No default
-|The name of the database schema history topic where the connector writes and recovers DDL statements. This topic is for internal use only and should not be used by consumers.
+|The name of the database schema history topic where the connector writes and recovers DDL statements.
+This topic is for internal use only and should not be used by consumers.
 
 |===
 
@@ -1685,7 +1704,8 @@ Descriptions of these properties are organized as follows:
 
 |[[yashandb-property-ystream-blocking-queue-size]]<<yashandb-property-ystream-blocking-queue-size, `+ystream.blocking.queue.size+`>>
 |`128`
-|The size of the built-in blocking queue in the YStream client. Incremental logical logs are obtained directly from this queue.
+|The size of the built-in blocking queue in the YStream client.
+Incremental logical logs are obtained directly from this queue.
 
 |[[yashandb-property-ystream-poll-timeout]]<<yashandb-property-ystream-poll-timeout, `+ystream.poll.timeout+`>>
 |`10`
@@ -1697,17 +1717,22 @@ Descriptions of these properties are organized as follows:
 
 |[[yashandb-property-schema-include-list]]<<yashandb-property-schema-include-list, `+schema.include.list+`>>
 |No default
-|An optional comma-separated list of regular expressions that match the names of schemas for which you want to capture changes. Any schema names not included in `schema.include.list` are excluded from having their changes captured. By default, changes for all non-system schemas are captured. To match schema names, Debezium applies the regular expressions you specify as anchored regular expressions.
+|An optional comma-separated list of regular expressions that match the names of schemas for which you want to capture changes.
+The connector captures changes for any schema  whose name is not included in `schema.exclude.list` , except for system schemas.
+By default, changes for all non-system schemas are captured.
+To match schema names, {prodname} applies the regular expressions you specify as anchored regular expressions.
 
 |[[yashandb-property-schema-exclude-list]]<<yashandb-property-schema-exclude-list, `+schema.exclude.list+`>>
 |No default
-|An optional comma-separated list of regular expressions that match the names of schemas for which you do not want to capture changes. Any schema names not included in `schema.exclude.list` have their changes captured, except for system schemas.
+|An optional comma-separated list of regular expressions that match the names of schemas for which you do not want to capture changes.
+The connector captures changes for any schema  whose name is not included in `schema.exclude.list` , except for system schemas.
 
 |[[yashandb-property-table-include-list]]<<yashandb-property-table-include-list, `+table.include.list+`>>
 |No default
 |An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be captured.
 When this property is set, the connector captures changes only from the specified tables.
-Each table identifier uses the following format: `<schema_name>.<table_name>`. By default, the connector monitors every non-system table in each captured database schema.
+Each table identifier uses the following format: `<schema_name>.<table_name>`.
+By default, the connector monitors every non-system table in each captured database schema.
 
 To match the name of a table, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
 
@@ -1725,11 +1750,16 @@ To match the name of a table, {prodname} applies the regular expression that you
 
 |[[yashandb-property-max-queue-size]]<<yashandb-property-max-queue-size, `+max.queue.size+`>>
 |`8192`
-|A positive integer value that specifies the maximum number of records that the blocking queue can hold. When Debezium reads the stream of events from the database, it places them in a blocking queue before writing the events to Kafka. The blocking queue prevents data loss in situations where the connector receives messages faster than it can write them to Kafka, or when Kafka is unavailable.
+|A positive integer value that specifies the maximum number of records that the blocking queue can hold.
+When {prodname} reads the stream of events from the database, it places them in a blocking queue before writing the events to Kafka.
+The blocking queue prevents data loss in situations where the connector receives messages faster than it can write them to Kafka, or when Kafka is unavailable.
 
 |[[yashandb-property-max-queue-size-in-bytes]]<<yashandb-property-max-queue-size-in-bytes, `+max.queue.size.in.bytes+`>>
 |`0` (disabled)
-|A long integer value that specifies the maximum capacity of the blocking queue in bytes. By default, no volume limit is specified for the blocking queue. To specify the number of bytes the queue can consume, set this property to a positive long value. If `max.queue.size` is also set, writes to the queue are blocked when the queue size reaches the limit specified by either property.
+|A long integer value that specifies the maximum capacity of the blocking queue in bytes.
+By default, no volume limit is specified for the blocking queue.
+To specify the number of bytes the queue can consume, set this property to a positive long value.
+If `max.queue.size` is also set, writes to the queue are blocked when the queue size reaches the limit specified by either property.
 
 |[[yashandb-property-poll-interval-ms]]<<yashandb-property-poll-interval-ms, `+poll.interval.ms+`>>
 |`500` (0.5 seconds)
@@ -1737,83 +1767,108 @@ To match the name of a table, {prodname} applies the regular expression that you
 
 |[[yashandb-property-skipped-operations]]<<yashandb-property-skipped-operations, `+skipped.operations+`>>
 |`t`
-|A comma-separated list of operation types that you want the connector to skip during streaming. You can configure the connector to skip the following types of operations: `c` (insert/create), `u` (update), `d` (delete), `t` (truncate). By default, only truncate operations are skipped.
+|A comma-separated list of operation types that you want the connector to skip during streaming.
+You can configure the connector to skip the following types of operations: `c` (insert/create), `u` (update), `d` (delete), `t` (truncate).
+By default, only truncate operations are skipped.
 
 |[[yashandb-property-snapshot-mode]]<<yashandb-property-snapshot-mode, `+snapshot.mode+`>>
 |`initial`
-|Specifies the mode that the connector uses to perform a snapshot of the captured tables. You can set the following values:
+|Specifies the mode that the connector uses to perform a snapshot of the captured tables.
+You can set the following values:
 
-* `always`: Perform a snapshot every time the connector starts.
-* `initial`: Perform an initial snapshot when the connector starts.
-* `initial_only`: Perform only the initial snapshot, without streaming subsequent changes.
-* `no_data`: Capture only table structures, not data.
-* `recovery`: Restore a lost or corrupted schema history topic.
-* `when_needed`: Perform a snapshot only when needed.
+`always`:: Perform a snapshot every time the connector starts.
+`initial`:: Perform an initial snapshot when the connector starts.
+`initial_only`:: Perform only the initial snapshot, without streaming subsequent changes.
+`no_data`:: Capture only table structures, not data.
+`recovery`:: Restore a lost or corrupted schema history topic.
+`when_needed`:: Perform a snapshot only when needed.
 
 |[[yashandb-property-snapshot-fetch-size]]<<yashandb-property-snapshot-fetch-size, `+snapshot.fetch.size+`>>
 |`10000`
-|Specifies the maximum number of rows to read from each table at a time during a snapshot. The connector reads table contents in multiple batches of the specified size.
+|Specifies the maximum number of rows to read from each table at a time during a snapshot.
+The connector reads table contents in multiple batches of the specified size.
 
 |[[yashandb-property-snapshot-max-threads]]<<yashandb-property-snapshot-max-threads, `+snapshot.max.threads+`>>
 |`1`
-|Specifies the number of threads the connector uses when performing the initial snapshot. To enable parallel initial snapshots, set the property to a value greater than 1. In a parallel initial snapshot, the connector processes multiple tables simultaneously. This feature is in incubation.
+|Specifies the number of threads the connector uses when performing the initial snapshot.
+To enable parallel initial snapshots, set the property to a value greater than 1.
+In a parallel initial snapshot, the connector processes multiple tables simultaneously.
+
+This feature is incubating and is subject to change.
 
 |[[yashandb-property-snapshot-locking-mode]]<<yashandb-property-snapshot-locking-mode, `+snapshot.locking.mode+`>>
 |No default
-|Locking mode to prevent DDL changes before synchronizing snapshot data.
+|Specifies whether the connector uses locking mode to prevent DDL changes before synchronizing snapshot data.
+Set one of the following values:
 
-* `none`: No locks are acquired.
-* `shared`: Shared locks are acquired.
+[horizontal]
+`none`:: No locks are acquired.
+`shared`:: Shared locks are acquired.
 
 |[[yashandb-property-lob-enabled]]<<yashandb-property-lob-enabled, `+lob.enabled+`>>
 |`false`
-|Controls whether large object (CLOB or BLOB, etc.) column values are emitted in change events. By default, change events have large object columns, but these columns do not contain values. There is some overhead when processing and managing large object column types and payloads. To capture large object values and serialize them in change events, set this option to `true`.
+|Specifies whether large object (CLOB or BLOB, etc.) column values are emitted in change events.
+By default, change events have large object columns, but these columns do not contain values.
+There is some overhead when processing and managing large object column types and payloads.
+To capture large object values and serialize them in change events, set this option to `true`.
 
 |[[yashandb-property-decimal-handling-mode]]<<yashandb-property-decimal-handling-mode, `+decimal.handling.mode+`>>
 |`precise`
-|Specifies how the connector should handle floating-point values for `NUMBER` columns. You can set one of the following options:
+|Specifies how the connector should handle floating-point values for `NUMBER` columns.
+You can set one of the following options:
 
-* `precise` (default): Use `java.math.BigDecimal` to represent values precisely. Represented in binary form in change events.
-* `double`: Use `FLOAT64` (double-precision floating-point) to represent values.
-* `string`: Use `STRING` to represent values.
+`precise`:: (default) Use `java.math.BigDecimal` to represent values precisely.
+Represented in binary form in change events.
+`double`:: Use `FLOAT64` (double-precision floating-point) to represent values.
+`string`:: Use `STRING` to represent values.
 
 |[[yashandb-property-unavailable-value-placeholder]]<<yashandb-property-unavailable-value-placeholder, `+unavailable.value.placeholder+`>>
 |`__debezium_unavailable_value`
-|Specifies the constant provided by the connector to indicate that the original value was not changed and is not provided by the database. For example, if a LOB fails to be retrieved, this placeholder is used instead.
+|Specifies the constant provided by the connector to indicate that the original value was not changed and is not provided by the database.
+For example, if a LOB fails to be retrieved, this placeholder is used instead.
 
 |[[yashandb-property-signal-data-collection]]<<yashandb-property-signal-data-collection, `+signal.data.collection+`>>
 |No default
-|The fully qualified name of the data collection used to send signals to the connector. Specify the collection name using the following format: `<databaseName>.<schemaName>.<tableName>`.
+|The fully qualified name of the data collection used to send signals to the connector.
+Specify the collection name using the following format: `<databaseName>.<schemaName>.<tableName>`.
 
 |[[yashandb-property-signal-enabled-channels]]<<yashandb-property-signal-enabled-channels, `+signal.enabled.channels+`>>
 |`source`
-|The list of signal channel names enabled for the connector. By default, the following channels are available: `source`, `kafka`, `file`, `jmx`.
+|The list of signal channel names enabled for the connector.
+By default, the following channels are available: `source`, `kafka`, `file`, `jmx`.
 
 |[[yashandb-property-notification-enabled-channels]]<<yashandb-property-notification-enabled-channels, `+notification.enabled.channels+`>>
 |No default
-|The list of notification channel names enabled for the connector. By default, the following channels are available: `sink`, `log`, `jmx`.
+|The list of notification channel names enabled for the connector.
+By default, the following channels are available: `sink`, `log`, `jmx`.
 
 |[[yashandb-property-incremental-snapshot-chunk-size]]<<yashandb-property-incremental-snapshot-chunk-size, `+incremental.snapshot.chunk.size+`>>
 |`1024`
-|The maximum number of rows that the connector fetches and reads into memory during an incremental snapshot chunk. Increasing the chunk size can provide higher efficiency because the snapshot runs fewer snapshot queries, but the queries are larger. However, larger chunk sizes also require more memory to buffer snapshot data. Tune the chunk size to a value that provides optimal performance in your environment.
+|The maximum number of rows that the connector fetches and reads into memory during an incremental snapshot chunk.
+Increasing the chunk size can provide higher efficiency because the snapshot runs fewer snapshot queries, but the queries are larger.
+However, larger chunk sizes also require more memory to buffer snapshot data.
+Tune the chunk size to a value that provides optimal performance in your environment.
 
 |[[yashandb-property-topic-naming-strategy]]<<yashandb-property-topic-naming-strategy, `+topic.naming.strategy+`>>
 |`io.debezium.schema.SchemaTopicNamingStrategy`
-|The name of the class used to determine topic names for data changes, schema changes, transactions, heartbeat events, etc. Defaults to `SchemaTopicNamingStrategy`.
+|The name of the class used to determine topic names for data changes, schema changes, transactions, heartbeat events, etc.
+Defaults to `SchemaTopicNamingStrategy`.
 
 |[[yashandb-property-topic-delimiter]]<<yashandb-property-topic-delimiter, `+topic.delimiter+`>>
 |`.`
-|Specifies the delimiter for topic names. Defaults to a dot (`.`).
+|Specifies the delimiter for topic names.
+Defaults to a dot (`.`).
 
 |[[yashandb-property-converters]]<<yashandb-property-converters, `+converters+`>>
 |No default
-|Enumerates a comma-separated list of the symbolic names of the custom converter instances that the connector can use. This property is required to enable the connector to use a custom converter.
+|Enumerates a comma-separated list of the symbolic names of the custom converter instances that the connector can use.
+This property is required to enable the connector to use a custom converter.
 
 For each converter that you configure for a connector, you must also add a `.type` property, which specifies the fully-qualified name of the class that implements the converter interface.
 
 |[[yashandb-property-converter-type]]<<yashandb-property-converter-type, `+<converter_name>.type+`>>
 |No default
-|Configures the class name of a custom converter for Debezium.
+|Configures the class name of a custom converter for {prodname}.
 
 |[[yashandb-property-converter-param]]<<yashandb-property-converter-param, `+<converter_name>.<param_name>+`>>
 |No default
@@ -1825,15 +1880,18 @@ For each converter that you configure for a connector, you must also add a `.typ
 
 |[[yashandb-property-ddl-parse-fail-retry-read-table]]<<yashandb-property-ddl-parse-fail-retry-read-table, `+ddl.parse.fail.retry.read.table+`>>
 |`false`
-|After incremental DDL parsing fails, fully read the source table structure for analysis when processing DML events. This takes effect when both `schema.history.internal.skip.unparseable.ddl` and `ddl.parse.fail.retry.read.table` are set to `true`.
+|After incremental DDL parsing fails, fully read the source table structure for analysis when processing DML events.
+This property takes effect when both `schema.history.internal.skip.unparseable.ddl` and `ddl.parse.fail.retry.read.table` are set to `true`.
 
 |[[yashandb-property-schema-history-internal-class]]<<yashandb-property-schema-history-internal-class, `+schema.history.internal+`>>
 |No default
-|The name of the class that handles schema changes for the connector. For YashanDB, use `io.debezium.relational.history.KafkaSchemaHistory`.
+|The name of the class that handles schema changes for the connector.
+For YashanDB, use `io.debezium.relational.history.KafkaSchemaHistory`.
 
 |[[yashandb-property-schema-history-internal-store-only-captured-tables-ddl]]<<yashandb-property-schema-history-internal-store-only-captured-tables-ddl, `+schema.history.internal.store.only.captured.tables.ddl+`>>
 |`false`
-|Controls whether the connector records the DDL statements for all tables in the database, or only for tables that are captured. Set to `true` to store DDL only for captured tables.
+|Specifies whether the connector records the DDL statements for all tables in the database, or only for tables that are captured.
+Set to `true` to store DDL only for captured tables.
 
 |===
 
@@ -1882,7 +1940,7 @@ The {prodname} YashanDB connector provides three metric types in addition to the
 * xref:yashandb-streaming-metrics[streaming metrics]; for monitoring the connector when processing change events
 * xref:yashandb-schema-history-metrics[schema history metrics]; for monitoring the status of the connector's schema history
 
-Please refer to the {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[monitoring documentation] for details of how to expose these metrics via JMX.
+For details about how to expose use JMX to expose metrics, see the {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[{prodname} monitoring documentation] .
 
 === Customized MBean names
 
@@ -1944,12 +2002,14 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-schema-hi
 [[yashandb-faq-ystream-server-not-found]]
 *Error: YashanDB does not yet have the YStream server 'serverxx' or check option 'database.ystream.server.name' if the parameters are filled in correctly.*::
 +
-The YStream server corresponding to the `database.ystream.server.name` parameter does not exist in the YashanDB database. Create the relevant YStream server as described in xref:yashandb-ystream-service[Configure the YStream service].
+The YStream server corresponding to the `database.ystream.server.name` parameter does not exist in the YashanDB database.
+Create the relevant YStream server as described in xref:yashandb-ystream-service[Configure the YStream service].
 
 [[yashandb-faq-ystream-server-not-started]]
 *Error: YashanDB YStream server status is xxx. Please execute 'DBMS_YSTREAM_ADM.START(...)' start YStream server.*::
 +
-The YStream server corresponding to the `database.ystream.server.name` parameter is not in a running state. Please execute the following command in the database to start the YStream service:
+The YStream server corresponding to the `database.ystream.server.name` parameter is not in a running state.
+Please execute the following command in the database to start the YStream service:
 +
 [source,sql,indent=0]
 ----
@@ -1959,43 +2019,56 @@ EXEC DBMS_YSTREAM_ADM.START('server1');
 [[yashandb-faq-decimal-serialization]]
 *After Decimal values are synchronized to Kafka, why is the serialized data incorrect?*::
 +
-Debezium performs special handling for Decimals with negative scale. It is recommended to use the parameter `decimal.handling.mode=string` to work around this issue.
+{prodname} performs special handling for Decimals with negative scale.
+To work around this issue, use the parameter `decimal.handling.mode=string`.
 
 [[yashandb-faq-timestamp-format]]
 *After DATE/TIME/TIMESTAMP values are synchronized to Kafka, why are they in timestamp form rather than 'yyyy-MM-dd HH:mm:ss.SSSSSS' form?*::
 +
-Debezium's default behavior is to map temporal types to `INT64`. If you need to map them to a fixed format string, please refer to the <<yashandb-custom-converters,Data type conversion>> section to configure custom converters.
+By default, {prodname} maps temporal types to `INT64`.
+For information about how to map temporal types to a fixed format string, configure custom converters, as described in the <<yashandb-custom-converters,Data type conversion>> section.
 
 [[yashandb-faq-resume-from-checkpoint]]
 *Does the YashanDB Connector support resuming from a checkpoint? After a task stops or fails, can it capture incremental data from the last committed position?*::
 +
-Yes, the YashanDB Connector supports resuming from a checkpoint. Based on Kafka's two-phase commit, after a task stops or fails, the last successfully committed log position is recorded in Kafka's metadata. When the task is resumed, the connector obtains the last committed log position and starts capturing data from that position, ensuring exactly-once data synchronization to Kafka topics.
+Yes, the YashanDB Connector supports resuming from a checkpoint.
+Based on Kafka's two-phase commit, after a task stops or fails, the last successfully committed log position is recorded in Kafka's metadata.
+When the task is resumed, the connector obtains the last committed log position and starts capturing data from that position, ensuring exactly-once data synchronization to Kafka topics.
 
 [[yashandb-faq-schema-capture-scope]]
 *The YashanDB Connector captures the metadata structure of all tables in the database in the task logs. Is there a way to make the connector only capture the metadata structure for configured tables (schema.include.list and table.include.list)?*::
 +
-Debezium captures the structure of all tables in the database by default. You can set `schema.history.internal.store.only.captured.tables.ddl=true` in the task configuration to capture only the structure of configured tables.
+By default, {prodname} captures the structure of all tables in the database.
+You can set `schema.history.internal.store.only.captured.tables.ddl=true` in the task configuration to capture only the structure of configured tables.
 
 [[yashandb-faq-schema-not-captured-after-recreate]]
-*After deleting and recreating a task, the table metadata structure is not captured upon restart (e.g., "Capturing structure of table" does not appear in the logs). What causes this?*::
+*After deleting and recreating a task, the table metadata structure is not captured upon restart (for example, "Capturing structure of table" does not appear in the logs). What causes this?*::
 +
-The connector stores table metadata in the Kafka topic specified by the `schema.history.internal.kafka.topic` property. When you delete and recreate a task with the same name, the connector reads the existing metadata from the schema history topic rather than capturing a new snapshot of the table structures, provided that the schema history topic has not been deleted. To capture the table metadata again, either delete the schema history topic or change the task name.
+The connector stores table metadata in the Kafka topic specified by the `schema.history.internal.kafka.topic` property.
+When you delete and recreate a task with the same name, the connector reads the existing metadata from the schema history topic rather than capturing a new snapshot of the table structures, provided that the schema history topic has not been deleted.
+To capture the table metadata again, either delete the schema history topic or change the task name.
 
 [[yashandb-faq-unsupported-types]]
 *The documentation states that custom data types, XMLTYPE, and JSON data types are not supported, yet XMLTYPE and JSON data can still be synchronized to Kafka topics. Why?*::
 +
-The type support of the YashanDB Connector depends on the support range of YashanDB YStream. XMLTYPE and JSON data can be synchronized normally, but the correctness of the data cannot be guaranteed and depends on YStream's support.
+The type support of the YashanDB Connector depends on the support range of YashanDB YStream.
+XMLTYPE and JSON data can be synchronized normally, but the correctness of the data cannot be guaranteed and depends on YStream's support.
 
 [[yashandb-faq-skip-ddl]]
 *A DDL on the YashanDB source caused the task to fail when parsing this DDL. How can I skip this failed DDL?*::
 +
-Debezium provides a feature to skip failed DDL parsing. You can enable this feature by modifying the task configuration to set `schema.history.internal.skip.unparseable.ddl=true`.
+{prodname} provides a feature to skip failed DDL parsing.
+You can enable this feature by modifying the task configuration to set `schema.history.internal.skip.unparseable.ddl=true`.
 
 [[yashandb-faq-ctas-failure]]
 *The YashanDB source executed a DDL like "CREATE TABLE ... AS SELECT", and subsequent DML data parsing for this table fails. How should this be handled?*::
 +
-This type of DDL cannot be parsed to obtain the table's metadata, causing subsequent DML data parsing to fail. After research, the Debezium Oracle Connector has the same issue. If this occurs, please restart a new synchronization task.
+This type of DDL cannot be parsed to obtain the table's metadata, causing subsequent DML data parsing to fail.
+The {prodname} Oracle Connector has the same issue.
+If you encouter this problem, restart a new synchronization task.
 
 *Incremental DDL created using stored procedure packages (such as `DBMS_STATS.CREATE_STAT_TABLE`) cannot be identified for specific DDL statements. What causes this and how can it be handled?*::
 +
-DDL statements created through stored procedure packages are not identifiable as specific DDL statements by the connector. This may cause metadata mismatches during data synchronization and result in synchronization errors. To avoid this issue, execute DDL statements directly rather than through stored procedure packages.
+The connector cannot identify DDL statements created through stored procedure packages as specific DDL statements.
+As a result metadata mismatches might occur during data synchronization, which can lead to synchronization errors.
+To avoid this issue, execute DDL statements directly rather than through stored procedure packages.
