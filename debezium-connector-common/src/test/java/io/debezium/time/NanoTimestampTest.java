@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 public class NanoTimestampTest {
 
     @Test
+    @FixFor("debezium/dbz#2075")
     public void shouldConvertWithinRangeValues() {
         // epoch
         assertThat(NanoTimestamp.toEpochNanos(LocalDateTime.of(1970, 1, 1, 0, 0, 0), null))
