@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.jdbc.dialect.postgres;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import org.apache.kafka.connect.data.Schema;
@@ -42,8 +43,7 @@ class IntervalType extends AbstractType {
     @Override
     public String getDefaultValueBinding(Schema schema, Object value) {
         if (value instanceof Long) {
-            final double doubleValue = ((Long) value).doubleValue() / 1_000_000d;
-            return String.format("'%d seconds'", (long) doubleValue);
+            return String.format("'%s'", getIntervalSeconds((Long) value));
         }
         // apply no default
         return null;
@@ -53,10 +53,13 @@ class IntervalType extends AbstractType {
     public List<ValueBindDescriptor> bind(int index, Schema schema, Object value) {
 
         if (value != null && Long.class.isAssignableFrom(value.getClass())) {
-            final double doubleValue = ((Long) value).doubleValue() / 1_000_000d;
-            return List.of(new ValueBindDescriptor(index, ((long) doubleValue) + " seconds"));
+            return List.of(new ValueBindDescriptor(index, getIntervalSeconds((Long) value)));
         }
 
         return super.bind(index, schema, value);
+    }
+
+    private String getIntervalSeconds(long durationMicros) {
+        return BigDecimal.valueOf(durationMicros, 6).stripTrailingZeros().toPlainString() + " seconds";
     }
 }
