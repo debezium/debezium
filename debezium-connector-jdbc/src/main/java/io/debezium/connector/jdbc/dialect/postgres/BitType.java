@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.jdbc.dialect.postgres;
 
-import java.math.BigInteger;
+import java.util.BitSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -17,7 +17,6 @@ import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.data.Bits;
 import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
-import io.debezium.util.Strings;
 
 /**
  * An implementation of {@link JdbcType} for {@link Bits} types.
@@ -85,16 +84,21 @@ class BitType extends AbstractType {
         }
 
         final int length = Integer.parseInt(schema.parameters().get(Bits.LENGTH_FIELD));
-        final String binaryBitString = new BigInteger((byte[]) value).toString(2);
-        if (length == Integer.MAX_VALUE) {
-            return List.of(new ValueBindDescriptor(index, binaryBitString));
-        }
-
-        return List.of(new ValueBindDescriptor(index, Strings.justifyRight(binaryBitString, length, '0')));
+        return List.of(new ValueBindDescriptor(index, toBitString((byte[]) value, length)));
     }
 
     private boolean isBitOne(Schema schema) {
         return Objects.isNull(schema.name());
+    }
+
+    private String toBitString(byte[] value, int length) {
+        final BitSet bits = BitSet.valueOf(value);
+        final int width = length == Integer.MAX_VALUE ? bits.length() : length;
+        final StringBuilder builder = new StringBuilder(width);
+        for (int i = width - 1; i >= 0; --i) {
+            builder.append(bits.get(i) ? '1' : '0');
+        }
+        return builder.toString();
     }
 
 }

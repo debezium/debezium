@@ -219,6 +219,39 @@ public class JdbcSinkPipelineToPostgresIT extends AbstractJdbcSinkPipelineIT {
     }
 
     @TestTemplate
+    @ForSource(value = SourceType.POSTGRES, reason = "PostgreSQL source emits multi-byte BIT values as Debezium Bits")
+    public void testBitDataTypeWithMultiByteValues(Source source, Sink sink) throws Exception {
+        assertDataTypesNonKeyOnly(source,
+                sink,
+                List.of("bit(8)", "bit(16)", "bit(24)"),
+                List.of("B'11111111'", "B'0000000100000010'", "B'000000110000001000000001'"),
+                List.of("11111111", "0000000100000010", "000000110000001000000001"),
+                (record) -> {
+                    assertColumn(sink, record, "data0", getBitsDataType(), 8);
+                    assertColumn(sink, record, "data1", getBitsDataType(), 16);
+                    assertColumn(sink, record, "data2", getBitsDataType(), 24);
+                },
+                ResultSet::getString);
+    }
+
+    @TestTemplate
+    @ForSource(value = SourceType.POSTGRES, reason = "PostgreSQL source emits multi-byte VARBIT values as Debezium Bits")
+    public void testBitVaryingDataTypeWithMultiByteValues(Source source, Sink sink) throws Exception {
+        assertDataTypesNonKeyOnly(source,
+                sink,
+                List.of("bit varying(8)", "bit varying(16)", "bit varying(24)"),
+                List.of("B'11111111'", "B'0000000100000010'", "B'000000110000001000000001'"),
+                List.of("11111111", "0000000100000010", "000000110000001000000001"),
+                (record) -> {
+                    final String dataType = source.getOptions().isColumnTypePropagated() ? "VARBIT" : getBitsDataType();
+                    assertColumn(sink, record, "data0", dataType, 8);
+                    assertColumn(sink, record, "data1", dataType, 16);
+                    assertColumn(sink, record, "data2", dataType, 24);
+                },
+                ResultSet::getString);
+    }
+
+    @TestTemplate
     @ForSource(value = { SourceType.POSTGRES }, reason = "The infinity value is valid only for PostgreSQL")
     @WithTemporalPrecisionMode
     @Override
