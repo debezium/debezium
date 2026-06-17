@@ -432,7 +432,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 noMessageIterations = 0;
             }
             else {
-                dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
+                dispatcher.dispatchHeartbeatEventAlsoToIncrementalSnapshot(partition, offsetContext);
                 noMessageIterations++;
                 if (noMessageIterations >= THROTTLE_NO_MESSAGE_BEFORE_PAUSE) {
                     noMessageIterations = 0;
