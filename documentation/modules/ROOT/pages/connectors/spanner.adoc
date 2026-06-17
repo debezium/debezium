@@ -868,7 +868,7 @@ The Spanner connector represents changes to rows with events that are structured
 .Checklist
 
 * Make sure to provide a project ID, Spanner instance ID, Spanner database ID, and change stream name. See link:https://cloud.google.com/spanner/docs/change-streams/manage[documentation] on how to create change streams.
-* Make sure to create and configure a GCP service account with the proper credentials. The service account key will need to be provided in the connector configuration. See more link:https://cloud.google.com/iam/docs/service-accounts[information] about service accounts here.
+* Make sure to create and configure a GCP service account with the proper credentials. The service account key can be provided explicitly or by path in the connector configuration, but by default the connector uses link:https://docs.cloud.google.com/docs/authentication/application-default-credentials[Application Default Credentials (ADC)]. See more link:https://cloud.google.com/iam/docs/service-accounts[information] about service accounts here.
 
 See the following section on how to configure a {prodname} Spanner connector.
 
@@ -1146,7 +1146,7 @@ The following configuration properties are _required_ unless a default value is 
 
 |[[spanner-property-credentialsjson]]<<spanner-property-credentialsjson, `+gcp.spanner.credentials.json+`>>
 |No default
-|The GCP service account key JSON. Required if gcp.spanner.credentials.path is not provided.
+|The GCP service account key JSON. Required if gcp.spanner.credentials.path is not provided and Application Default Credentials are not available.
 
 |[[spanner-property-schema-name-adjustment-mode]]<<spanner-property-schema-name-adjustment-mode,`+schema.name.adjustment.mode+`>>
 |none
