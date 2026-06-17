@@ -2391,8 +2391,8 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
             assertDataTypeNonKeyOnly(source,
                     sink,
                     "interval",
-                    List.of("'P1Y2M3DT4H5M6.78S'::INTERVAL"),
-                    List.of("10303:05:06"),
+                    List.of("'P1Y2M3DT4H5M6.123456S'::INTERVAL"),
+                    List.of("10303:05:06.123456"),
                     (config) -> config.with("interval.handling.mode", "numeric"),
                     (record) -> assertColumn(sink, record, "data", getIntervalType(source, true)),
                     ResultSet::getString);
@@ -2401,8 +2401,8 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
             assertDataTypeNonKeyOnly(source,
                     sink,
                     "interval",
-                    List.of("'P1Y2M3DT4H5M6.78S'::INTERVAL"),
-                    List.of(MicroDuration.durationMicros(1, 2, 3, 4, 5, 6.78, 365.25 / 12.0)),
+                    List.of("'P1Y2M3DT4H5M6.123456S'::INTERVAL"),
+                    List.of(MicroDuration.durationMicros(1, 2, 3, 4, 5, 6.123456, 365.25 / 12.0)),
                     (config) -> config.with("interval.handling.mode", "numeric"),
                     (record) -> assertColumn(sink, record, "data", getIntervalType(source, true)),
                     ResultSet::getLong);
@@ -2431,7 +2431,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                     sink,
                     "interval day to second",
                     List.of("TO_DSINTERVAL('P10DT50H99M1000.365S')"),
-                    List.of("291:55:40"),
+                    List.of("291:55:40.365"),
                     (config) -> config.with("interval.handling.mode", "numeric"),
                     (record) -> assertColumn(sink, record, "data", getIntervalType(source, true)),
                     ResultSet::getString);
