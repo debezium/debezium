@@ -7,6 +7,7 @@ package io.debezium.connector.jdbc.e2e;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -22,6 +23,8 @@ import io.debezium.connector.jdbc.junit.jupiter.e2e.ForSource;
 import io.debezium.connector.jdbc.junit.jupiter.e2e.WithTemporalPrecisionMode;
 import io.debezium.connector.jdbc.junit.jupiter.e2e.source.Source;
 import io.debezium.connector.jdbc.junit.jupiter.e2e.source.SourceType;
+import io.debezium.doc.FixFor;
+import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.spatial.GeometryBytes;
 import io.debezium.util.HexConverter;
 
@@ -247,6 +250,40 @@ public class JdbcSinkPipelineToPostgresIT extends AbstractJdbcSinkPipelineIT {
                     assertColumn(sink, record, "data0", dataType, 8);
                     assertColumn(sink, record, "data1", dataType, 16);
                     assertColumn(sink, record, "data2", dataType, 24);
+                },
+                ResultSet::getString);
+    }
+
+    @TestTemplate
+    @FixFor("debezium/dbz#2100")
+    @ForSource(value = SourceType.POSTGRES, reason = "PostgreSQL TIME allows 24:00:00 as a boundary value")
+    @WithTemporalPrecisionMode(include = {
+            TemporalPrecisionMode.ADAPTIVE,
+            TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS,
+            TemporalPrecisionMode.MICROSECONDS,
+            TemporalPrecisionMode.NANOSECONDS
+    })
+    public void testTimeDataTypeWithBoundaryValue(Source source, Sink sink) throws Exception {
+        final List<String> typeNames = List.of("time(0)", "time(1)", "time(2)", "time(3)", "time(4)", "time(5)", "time(6)");
+        final List<String> values = List.of(
+                "'23:59:59.999999'",
+                "'23:59:59.999999'",
+                "'23:59:59.999999'",
+                "'23:59:59.999999'",
+                "'23:59:59.999999'",
+                "'23:59:59.999999'",
+                "'24:00:00'");
+
+        assertDataTypes2(source,
+                sink,
+                typeNames,
+                values,
+                Collections.nCopies(14, "24:00:00"),
+                (record) -> {
+                    for (int i = 0; i < typeNames.size(); ++i) {
+                        assertColumn(sink, record, "id" + i, getTimeType(source, true, i));
+                        assertColumn(sink, record, "data" + i, getTimeType(source, false, i));
+                    }
                 },
                 ResultSet::getString);
     }

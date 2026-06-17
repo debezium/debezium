@@ -15,6 +15,7 @@ import org.apache.kafka.connect.errors.ConnectException;
 
 import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.connector.jdbc.type.debezium.ZonedTimeType;
+import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
 import io.debezium.time.ZonedTime;
 
@@ -33,10 +34,30 @@ class TimeWithTimezoneType extends ZonedTimeType {
     }
 
     @Override
+    public String getQueryBinding(ColumnDescriptor column, Schema schema, Object value) {
+        if (PostgresTimeBoundary.isBoundaryTimeWithTimezone(value)) {
+            return PostgresTimeBoundary.TIME_WITH_TIMEZONE_QUERY_BINDING;
+        }
+        return super.getQueryBinding(column, schema, value);
+    }
+
+    @Override
+    public String getDefaultValueBinding(Schema schema, Object value) {
+        if (PostgresTimeBoundary.isBoundaryTimeWithTimezone(value)) {
+            return "'" + PostgresTimeBoundary.BOUNDARY_TIME_WITH_TIMEZONE + "'";
+        }
+        return super.getDefaultValueBinding(schema, value);
+    }
+
+    @Override
     public List<ValueBindDescriptor> bind(int index, Schema schema, Object value) {
 
         if (value == null) {
             return List.of(new ValueBindDescriptor(index, null));
+        }
+
+        if (PostgresTimeBoundary.isBoundaryTimeWithTimezone(value)) {
+            return List.of(new ValueBindDescriptor(index, PostgresTimeBoundary.BOUNDARY_TIME_WITH_TIMEZONE));
         }
 
         if (value instanceof String) {

@@ -117,7 +117,7 @@ public class ReplicationMessageColumnValueResolver {
 
             case "time with time zone":
             case "timetz":
-                return value.asOffsetTimeUtc();
+                return value.asTimeWithTimeZone();
 
             case "bytea":
                 return value.asByteArray();

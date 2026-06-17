@@ -24,6 +24,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.postgresql.PgOid;
 import io.debezium.connector.postgresql.PostgresStreamingChangeEventSource.PgConnectionSupplier;
+import io.debezium.connector.postgresql.PostgresTimeBoundary;
 import io.debezium.connector.postgresql.PostgresType;
 import io.debezium.connector.postgresql.PostgresValueConverter;
 import io.debezium.connector.postgresql.TypeRegistry;
@@ -191,6 +192,19 @@ public class PgProtoColumnValue extends AbstractColumnValue<PgProto.DatumMessage
     }
 
     @Override
+    public Object asTimeWithTimeZone() {
+        if (value.hasDatumDouble()) {
+            final long micros = (long) value.getDatumDouble();
+            if (PostgresTimeBoundary.isBoundaryMicroseconds(micros)) {
+                return PostgresTimeBoundary.TIME_WITH_TIMEZONE_BOUNDARY_AT_UTC;
+            }
+            return Conversions.toInstantFromMicros(micros).atOffset(ZoneOffset.UTC).toOffsetTime();
+        }
+
+        return super.asTimeWithTimeZone();
+    }
+
+    @Override
     public OffsetDateTime asOffsetDateTimeAtUtc() {
         if (value.hasDatumInt64()) {
             if (value.getDatumInt64() >= TIMESTAMP_MAX) {
@@ -327,6 +341,10 @@ public class PgProtoColumnValue extends AbstractColumnValue<PgProto.DatumMessage
             }
             String dataString = new String(data, Charset.forName("UTF-8"));
             PgArray arrayData = new PgArray(connection.get(), (int) value.getColumnType(), dataString);
+            if (type.getElementType().getOid() == PgOid.TIMETZ) {
+                return arrayData;
+            }
+
             Object deserializedArray = arrayData.getArray();
             return Arrays.asList((Object[]) deserializedArray);
         }
