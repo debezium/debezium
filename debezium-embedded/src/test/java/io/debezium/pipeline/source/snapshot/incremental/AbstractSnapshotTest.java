@@ -97,8 +97,12 @@ public abstract class AbstractSnapshotTest<T extends SourceConnector> extends Ab
     }
 
     protected void populateTable(JdbcConnection connection, String tableName) throws SQLException {
+        populateTable(connection, tableName, ROW_COUNT);
+    }
+
+    protected void populateTable(JdbcConnection connection, String tableName, int count) throws SQLException {
         connection.setAutoCommit(false);
-        for (int i = 0; i < ROW_COUNT; i++) {
+        for (int i = 0; i < count; i++) {
             connection.executeWithoutCommitting(String.format("INSERT INTO %s (%s, aa) VALUES (%s, %s)",
                     tableName, connection.quoteIdentifier(pkFieldName()), i + 1, i));
         }
@@ -118,6 +122,12 @@ public abstract class AbstractSnapshotTest<T extends SourceConnector> extends Ab
     protected void populateTable() throws SQLException {
         try (JdbcConnection connection = databaseConnection()) {
             populateTable(connection);
+        }
+    }
+
+    protected void populateTable(int count) throws SQLException {
+        try (JdbcConnection connection = databaseConnection()) {
+            populateTable(connection, tableName(), count);
         }
     }
 

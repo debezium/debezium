@@ -422,22 +422,23 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     public void snapshotOnlyWithRestart() throws Exception {
         // Testing.Print.enable();
 
+        final int ROW_COUNT_LOCAL = ROW_COUNT * 10;
+
         final Configuration config = config()
                 .with(Heartbeat.HEARTBEAT_INTERVAL_PROPERTY_NAME, 5000)
                 .build();
         startAndConsumeTillEnd(connectorClass(), config);
         waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task());
 
-        populateTable();
-        consumeRecords(ROW_COUNT);
+        populateTable(ROW_COUNT_LOCAL);
+        consumeRecords(ROW_COUNT_LOCAL);
         consumedLines.clear();
 
         sendAdHocSnapshotSignal();
 
-        final int expectedRecordCount = ROW_COUNT;
         final AtomicInteger recordCounter = new AtomicInteger();
         final AtomicBoolean restarted = new AtomicBoolean();
-        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount, x -> true,
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(ROW_COUNT_LOCAL, x -> true,
                 x -> {
                     if (recordCounter.addAndGet(x.size()) > 50 && !restarted.get()) {
                         stopConnector();
@@ -449,7 +450,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
                         restarted.set(true);
                     }
                 });
-        for (int i = 0; i < expectedRecordCount; i++) {
+        for (int i = 0; i < ROW_COUNT_LOCAL; i++) {
             assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
