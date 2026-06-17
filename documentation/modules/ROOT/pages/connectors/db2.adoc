@@ -1790,6 +1790,7 @@ The following sections describe these mappings:
 
 * xref:db2-time-precision-mode-adaptive[`time.precision.mode=adaptive`]
 * xref:db2-time-precision-mode-connect[`time.precision.mode=connect`]
+* xref:db2-time-precision-mode-isostring[`time.precision.mode=isostring`]
 
 [[db2-time-precision-mode-adaptive]]
 .`time.precision.mode=adaptive`
@@ -1862,6 +1863,37 @@ Db2 allows `P` to be in the range 0-7 to store up to tenth of a microsecond prec
 |`org.apache.kafka.connect.data.Timestamp` +
  +
 Represents the number of milliseconds since the epoch, and does not include timezone information.
+
+|===
+
+[[db2-time-precision-mode-isostring]]
+.`time.precision.mode=isostring`
+Set the `time.precision.mode` property to `isostring` to configure the connector to map temporal values as ISO-8601 formatted strings at the UTC time zone.
+When you apply this setting, the connector uses the semantic types `io.debezium.time.IsoDate`, `io.debezium.time.IsoTime`, and `io.debezium.time.IsoTimestamp` to map date, time, and timestamp values.
+Because the values are represented as strings, this mode avoids the loss of precision that can occur in `connect` mode when the fractional second precision is greater than 3.
+
+.Mappings when `time.precision.mode` is `isostring`
+[cols="25%a,20%a,55%a",options="header"]
+|===
+|Db2 data type |Literal type (schema type) |Semantic type (schema name) and Notes
+
+|`DATE`
+|`STRING`
+|`io.debezium.time.IsoDate` +
+ +
+Represents date values in UTC format, according to the ISO 8601 standard, for example, `2017-09-15Z`.
+
+|`TIME([P])`
+|`STRING`
+|`io.debezium.time.IsoTime` +
+ +
+Represents time values in UTC format, according to the ISO 8601 standard, for example, `04:05:11.789Z`.
+
+|`DATETIME`
+|`STRING`
+|`io.debezium.time.IsoTimestamp` +
+ +
+Represents timestamp values in UTC format, according to the ISO 8601 standard, for example, `2019-07-09T02:28:57.123456Z`.
 
 |===
 
