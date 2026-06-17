@@ -13,6 +13,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -1010,6 +1011,10 @@ public class PostgresValueConverter extends JdbcValueConverters {
     protected Object convertTimeWithZone(Column column, Field fieldDefn, Object data) {
         // during snapshotting; already receiving OffsetTime @ UTC during streaming
         if (data instanceof String) {
+            if (PostgresTimeBoundary.isTimeWithTimeZoneBoundaryAtUtc((String) data)) {
+                return PostgresTimeBoundary.TIME_WITH_TIMEZONE_BOUNDARY_AT_UTC;
+            }
+
             // The TIMETZ column is returned as a String which we initially parse here
             // The parsed offset-time potentially has a zone-offset from the data, shift it after to GMT.
             final OffsetTime offsetTime = OffsetTime.parse((String) data, TIME_WITH_TIMEZONE_FORMATTER);
@@ -1138,10 +1143,16 @@ public class PostgresValueConverter extends JdbcValueConverters {
             }
             else if (data instanceof PgArray) {
                 try {
-                    final Object[] values = (Object[]) ((PgArray) data).getArray();
-                    final List<Object> converted = new ArrayList<>(values.length);
-                    for (Object value : values) {
-                        converted.add(elementConverter.convert(resolveArrayValue(value, elementType)));
+                    final List<Object> converted;
+                    if (elementType.getOid() == PgOid.TIMETZ) {
+                        converted = convertTimeWithTimeZoneArray((PgArray) data, elementType, elementConverter);
+                    }
+                    else {
+                        final Object[] values = (Object[]) ((PgArray) data).getArray();
+                        converted = new ArrayList<>(values.length);
+                        for (Object value : values) {
+                            converted.add(elementConverter.convert(resolveArrayValue(value, elementType)));
+                        }
                     }
                     r.deliver(converted);
                 }
@@ -1150,6 +1161,16 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 }
             }
         });
+    }
+
+    private List<Object> convertTimeWithTimeZoneArray(PgArray data, PostgresType elementType, ValueConverter elementConverter) throws SQLException {
+        final List<Object> converted = new ArrayList<>();
+        try (ResultSet values = data.getResultSet()) {
+            while (values.next()) {
+                converted.add(elementConverter.convert(resolveArrayValue(values.getString(2), elementType)));
+            }
+        }
+        return converted;
     }
 
     private Object resolveArrayValue(Object value, PostgresType elementType) {

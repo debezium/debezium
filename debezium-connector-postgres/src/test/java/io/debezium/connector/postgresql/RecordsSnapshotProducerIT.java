@@ -57,6 +57,7 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingM
 import io.debezium.spi.converter.CustomConverter;
 import io.debezium.spi.converter.RelationalColumn;
 import io.debezium.time.MicroTimestamp;
+import io.debezium.time.ZonedTime;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.Collect;
 
@@ -650,6 +651,49 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
 
         final Map<String, List<SchemaAndValueField>> expectedValueByTopicName = Collect.hashMapOf("public.time_table", schemaAndValuesForDateTimeTypes());
+
+        consumer.process(record -> assertReadRecord(record, expectedValueByTopicName));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2100")
+    public void shouldGenerateSnapshotForTwentyFourHourTimeWithTimeZone() throws Exception {
+        TestHelper.dropAllSchemas();
+        TestHelper.execute("CREATE TABLE timetz_boundary_table (pk SERIAL, ttz0 TIME(0) WITH TIME ZONE, ttz6 TIME(6) WITH TIME ZONE, PRIMARY KEY(pk));");
+        TestHelper.execute("INSERT INTO timetz_boundary_table (ttz0, ttz6) VALUES ('23:59:59.999999+00'::TIMETZ, '24:00:00+00'::TIMETZ);");
+
+        buildNoStreamProducer(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.timetz_boundary_table"));
+
+        TestConsumer consumer = testConsumer(1, "public");
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        final Map<String, List<SchemaAndValueField>> expectedValueByTopicName = Collect.hashMapOf("public.timetz_boundary_table",
+                Arrays.asList(
+                        new SchemaAndValueField("ttz0", ZonedTime.builder().optional().build(), "24:00:00Z"),
+                        new SchemaAndValueField("ttz6", ZonedTime.builder().optional().build(), "24:00:00Z")));
+
+        consumer.process(record -> assertReadRecord(record, expectedValueByTopicName));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2100")
+    public void shouldGenerateSnapshotForTwentyFourHourTimeWithTimeZoneArray() throws Exception {
+        TestHelper.dropAllSchemas();
+        TestHelper.execute("CREATE TABLE timetz_boundary_array_table (pk SERIAL, ttz TIMETZ[] NOT NULL, PRIMARY KEY(pk));");
+        TestHelper.execute("INSERT INTO timetz_boundary_array_table (ttz) VALUES ("
+                + "ARRAY['23:59:59.999999+00'::TIMETZ(0), '24:00:00+00'::TIMETZ, '00:00:00+00'::TIMETZ, NULL::TIMETZ]);");
+
+        buildNoStreamProducer(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.timetz_boundary_array_table"));
+
+        TestConsumer consumer = testConsumer(1, "public");
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        final Map<String, List<SchemaAndValueField>> expectedValueByTopicName = Collect.hashMapOf("public.timetz_boundary_array_table",
+                Collections.singletonList(new SchemaAndValueField("ttz",
+                        SchemaBuilder.array(ZonedTime.builder().optional().build()).build(),
+                        Arrays.asList("24:00:00Z", "24:00:00Z", "00:00:00Z", null))));
 
         consumer.process(record -> assertReadRecord(record, expectedValueByTopicName));
     }

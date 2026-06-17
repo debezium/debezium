@@ -253,6 +253,45 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2100")
+    public void shouldReceiveTwentyFourHourTimeWithTimeZone() throws Exception {
+        TestHelper.execute("CREATE TABLE timetz_boundary_table (pk SERIAL, ttz0 TIME(0) WITH TIME ZONE, ttz6 TIME(6) WITH TIME ZONE, PRIMARY KEY(pk));");
+
+        startConnector(config -> config
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.timetz_boundary_table"), false);
+        waitForStreamingToStart();
+
+        consumer = testConsumer(1);
+        executeAndWait("INSERT INTO timetz_boundary_table (ttz0, ttz6) VALUES ('23:59:59.999999+00'::TIMETZ, '24:00:00+00'::TIMETZ);");
+
+        final SourceRecord rec = assertRecordInserted("public.timetz_boundary_table", PK_FIELD, 1);
+        assertRecordSchemaAndValues(Arrays.asList(
+                new SchemaAndValueField("ttz0", ZonedTime.builder().optional().build(), "24:00:00Z"),
+                new SchemaAndValueField("ttz6", ZonedTime.builder().optional().build(), "24:00:00Z")), rec, Envelope.FieldName.AFTER);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2100")
+    public void shouldReceiveTwentyFourHourTimeWithTimeZoneArray() throws Exception {
+        TestHelper.execute("CREATE TABLE timetz_boundary_array_table (pk SERIAL, ttz TIMETZ[] NOT NULL, PRIMARY KEY(pk));");
+
+        startConnector(config -> config
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.timetz_boundary_array_table"), false);
+        waitForStreamingToStart();
+
+        consumer = testConsumer(1);
+        executeAndWait("INSERT INTO timetz_boundary_array_table (ttz) VALUES ("
+                + "ARRAY['23:59:59.999999+00'::TIMETZ(0), '24:00:00+00'::TIMETZ, '00:00:00+00'::TIMETZ, NULL::TIMETZ]);");
+
+        final SourceRecord rec = assertRecordInserted("public.timetz_boundary_array_table", PK_FIELD, 1);
+        assertRecordSchemaAndValues(Collections.singletonList(new SchemaAndValueField("ttz",
+                SchemaBuilder.array(ZonedTime.builder().optional().build()).build(),
+                Arrays.asList("24:00:00Z", "24:00:00Z", "00:00:00Z", null))), rec, Envelope.FieldName.AFTER);
+    }
+
+    @Test
     @FixFor("DBZ-766")
     public void shouldReceiveChangesAfterConnectionRestart() throws Exception {
         TestHelper.dropDefaultReplicationSlot();

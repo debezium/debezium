@@ -113,6 +113,10 @@ public interface ReplicationMessage {
 
         OffsetTime asOffsetTimeUtc();
 
+        default Object asTimeWithTimeZone() {
+            return asOffsetTimeUtc();
+        }
+
         byte[] asByteArray();
 
         PGbox asBox();

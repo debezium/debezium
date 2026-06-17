@@ -255,6 +255,9 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
     protected void registerTypes() {
         super.registerTypes();
 
+        registerType(TimeType.INSTANCE);
+        registerType(MicroTimeType.INSTANCE);
+        registerType(NanoTimeType.INSTANCE);
         registerType(TimeWithTimezoneType.INSTANCE);
         registerType(ZonedTimestampType.INSTANCE);
         registerType(IntervalType.INSTANCE);
