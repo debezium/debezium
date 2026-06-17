@@ -14,6 +14,7 @@ import org.apache.kafka.connect.data.Schema;
 
 import io.debezium.connector.jdbc.type.AbstractType;
 import io.debezium.connector.jdbc.type.JdbcType;
+import io.debezium.connector.jdbc.util.ByteArrayUtils;
 import io.debezium.data.Bits;
 import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
@@ -84,7 +85,7 @@ class BitType extends AbstractType {
         }
 
         final int length = Integer.parseInt(schema.parameters().get(Bits.LENGTH_FIELD));
-        return List.of(new ValueBindDescriptor(index, toBitString((byte[]) value, length)));
+        return List.of(new ValueBindDescriptor(index, toBitString(ByteArrayUtils.getByteArrayFromValue(value), length)));
     }
 
     private boolean isBitOne(Schema schema) {

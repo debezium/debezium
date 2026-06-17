@@ -7,6 +7,7 @@ package io.debezium.connector.jdbc.dialect.postgres;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 
 import org.apache.kafka.connect.data.Schema;
@@ -41,6 +42,14 @@ class BitTypeTest {
 
     @Test
     @FixFor("debezium/dbz#2099")
+    @DisplayName("Should bind ByteBuffer bit values from Avro converter")
+    void testBindByteBufferBitValues() {
+        assertBindValue(Bits.schema(16), ByteBuffer.wrap(new byte[]{ 0x02, 0x01 }), "0000000100000010");
+        assertBindValue(Bits.schema(24), ByteBuffer.wrap(new byte[]{ 0x01, 0x02, 0x03 }), "000000110000001000000001");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2099")
     @DisplayName("Should bind values with the high bit set as unsigned bit strings")
     void testBindHighBitValues() {
         assertBindValue(Bits.schema(8), new byte[]{ (byte) 0x80 }, "10000000");
@@ -63,7 +72,7 @@ class BitTypeTest {
         assertBindValue(Bits.schema(Integer.MAX_VALUE), new byte[]{ 0x05 }, "101");
     }
 
-    private void assertBindValue(Schema schema, byte[] value, String expected) {
+    private void assertBindValue(Schema schema, Object value, String expected) {
         final List<ValueBindDescriptor> descriptors = BitType.INSTANCE.bind(1, schema, value);
 
         assertThat(descriptors).hasSize(1);
