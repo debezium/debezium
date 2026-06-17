@@ -2446,6 +2446,27 @@ A string representation of a timestamp in UTC.
 
 |===
 
+When the `time.precision.mode` configuration property is set to `isostring`, the connector maps temporal values to ISO-8601 formatted strings at the UTC time zone, using the `io.debezium.time.IsoTimestamp` semantic type.
+Because Oracle `DATE` and `TIMESTAMP` values include a time component, both are represented as timestamps:
+
+[cols="25%a,20%a,55%a",options="header"]
+|===
+|Oracle data type |Literal type (schema type) |Semantic type (schema name) and Notes
+
+|`DATE`
+|`STRING`
+|`io.debezium.time.IsoTimestamp` +
+ +
+Represents the timestamp value in UTC format, according to the ISO 8601 standard, for example, `2018-03-27T00:00:00Z`.
+
+|`TIMESTAMP(0 - 9)`
+|`STRING`
+|`io.debezium.time.IsoTimestamp` +
+ +
+Represents the timestamp value in UTC format, according to the ISO 8601 standard, for example, `2018-03-27T12:34:56.125456789Z`.
+
+|===
+
 [id="oracle-rowid-types"]
 === ROWID types
 

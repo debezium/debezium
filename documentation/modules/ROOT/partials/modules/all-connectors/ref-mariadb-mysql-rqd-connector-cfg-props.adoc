@@ -604,6 +604,7 @@ ifdef::community[]
 `adaptive`::::  (deprecated) The connector captures time and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the data type of the column.
 endif::community[]
 `connect`:::: The connector always represents time and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, which use millisecond precision regardless of the database columns' precision.
+`isostring`:::: The connector represents time, date, and datetime values as ISO-8601 formatted strings at the UTC time zone, using the `io.debezium.time.IsoDate`, `io.debezium.time.IsoTime`, and `io.debezium.time.IsoTimestamp` semantic types.
 
 
 
