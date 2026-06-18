@@ -15,11 +15,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.awaitility.Awaitility;
 import org.testcontainers.containers.JdbcDatabaseContainer;
 import org.testcontainers.containers.output.FrameConsumerResultCallback;
 import org.testcontainers.containers.output.OutputFrame;
 import org.testcontainers.containers.output.WaitingConsumer;
-import org.testcontainers.shaded.org.awaitility.Awaitility;
 
 import com.github.dockerjava.api.command.LogContainerCmd;
 
