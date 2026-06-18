@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -29,6 +30,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -724,6 +726,23 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
         final Map<String, List<SchemaAndValueField>> expectedValueByTopicName = Collect.hashMapOf("public.cash_table", schemaAndValuesForNullMoneyTypes());
         consumer.process(record -> assertReadRecord(record, expectedValueByTopicName));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2100")
+    public void shouldGenerateSnapshotForLargeNegativeMoneyWithoutPrecisionLoss() throws Exception {
+        TestHelper.dropAllSchemas();
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+        TestHelper.execute("INSERT INTO cash_table (csh) VALUES ('-92233720368547758.08'::money)");
+
+        buildNoStreamProducer(TestHelper.defaultConfig().with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.cash_table"));
+
+        TestConsumer consumer = testConsumer(1, "public");
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        final List<SchemaAndValueField> expected = Collections.singletonList(new SchemaAndValueField("csh", Decimal.builder(2).optional().build(),
+                new BigDecimal("-92233720368547758.08")));
+        consumer.process(record -> assertReadRecord(record, Collect.hashMapOf("public.cash_table", expected)));
     }
 
     @Test
