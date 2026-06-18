@@ -190,4 +190,23 @@ public class SqlUtilsTest {
                         "AND A.RESETLOGS_TIME = D.RESETLOGS_TIME " +
                         "ORDER BY A.SEQUENCE# DESC");
     }
+
+    @Test
+    @FixFor("dbz#1532")
+    void testDeletedArchiveLogsQuery() throws Exception {
+        String result = SqlUtils.deletedArchiveLogsQuery(Scn.valueOf(12345L), List.of("LOG_ARCHIVE_DEST_1"));
+        assertThat(result).isEqualTo(
+                "SELECT A.NAME AS FILE_NAME, A.FIRST_CHANGE# FIRST_CHANGE, A.NEXT_CHANGE# NEXT_CHANGE, " +
+                        "A.SEQUENCE# AS SEQ, A.THREAD# AS THREAD " +
+                        "FROM V$ARCHIVED_LOG A, V$DATABASE D, V$ARCHIVE_DEST_STATUS DS " +
+                        "WHERE A.NAME IS NOT NULL " +
+                        "AND A.ARCHIVED = 'YES' " +
+                        "AND A.STATUS = 'D' " +
+                        "AND A.FIRST_CHANGE# <= 12345 " +
+                        "AND A.NEXT_CHANGE# > 12345 " +
+                        "AND A.DEST_ID = DS.DEST_ID " +
+                        "AND DS.DEST_NAME = 'LOG_ARCHIVE_DEST_1' " +
+                        "AND A.RESETLOGS_CHANGE# = D.RESETLOGS_CHANGE# " +
+                        "AND A.RESETLOGS_TIME = D.RESETLOGS_TIME");
+    }
 }

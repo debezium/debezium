@@ -2341,6 +2341,82 @@ public class LogFileCollectorTest {
         assertThat(collector.isScnInArchiveLogs(Scn.valueOf(6642814010836L))).isTrue();
     }
 
+    @Test
+    @FixFor("dbz#1532")
+    public void testGetLogsThrowsDeletedLogExceptionWhenArchiveLogDeleted() throws Exception {
+        final Scn offsetScn = Scn.valueOf(12345L);
+        final RedoThreadState state = getSingleThreadOpenState(Scn.valueOf(100), Scn.valueOf(200));
+
+        final Configuration config = getDefaultConfig().build();
+        final OracleConnection connection = getOracleConnectionMock(state);
+
+        final LogFileCollector collector = getLogFileCollector(config, connection);
+        final LogFileCollector spy = Mockito.spy(collector);
+        Mockito.doReturn(Collections.emptyList()).when(spy).getLogsForOffsetScn(any(Scn.class));
+
+        final List<LogFile> deletedLogs = List.of(
+                createArchiveLog("deleted_archive.log", 12000, 13000, 1, 1));
+        Mockito.doReturn(deletedLogs).when(spy).getDeletedLogsForOffsetScn(any(Scn.class));
+
+        try {
+            spy.getLogs(offsetScn);
+            org.junit.jupiter.api.Assertions.fail("Expected LogFileNotFoundException to be thrown");
+        }
+        catch (LogFileNotFoundException e) {
+            assertThat(e.getMessage()).contains("has been deleted");
+            assertThat(e.getMessage()).contains("12345");
+        }
+    }
+
+    @Test
+    @FixFor("dbz#1532")
+    public void testGetLogsThrowsGenericExceptionWhenNoDeletedLogsFound() throws Exception {
+        final Scn offsetScn = Scn.valueOf(12345L);
+        final RedoThreadState state = getSingleThreadOpenState(Scn.valueOf(100), Scn.valueOf(200));
+
+        final Configuration config = getDefaultConfig().build();
+        final OracleConnection connection = getOracleConnectionMock(state);
+
+        final LogFileCollector collector = getLogFileCollector(config, connection);
+        final LogFileCollector spy = Mockito.spy(collector);
+        Mockito.doReturn(Collections.emptyList()).when(spy).getLogsForOffsetScn(any(Scn.class));
+        Mockito.doReturn(Collections.emptyList()).when(spy).getDeletedLogsForOffsetScn(any(Scn.class));
+
+        try {
+            spy.getLogs(offsetScn);
+            org.junit.jupiter.api.Assertions.fail("Expected LogFileNotFoundException to be thrown");
+        }
+        catch (LogFileNotFoundException e) {
+            assertThat(e.getMessage()).contains("None of the log files contain");
+            assertThat(e.getMessage()).contains("12345");
+            assertThat(e.getMessage()).doesNotContain("deleted");
+        }
+    }
+
+    @Test
+    @FixFor("dbz#1532")
+    public void testGetLogsThrowsGenericExceptionWhenDeletedLogCheckFails() throws Exception {
+        final Scn offsetScn = Scn.valueOf(12345L);
+        final RedoThreadState state = getSingleThreadOpenState(Scn.valueOf(100), Scn.valueOf(200));
+
+        final Configuration config = getDefaultConfig().build();
+        final OracleConnection connection = getOracleConnectionMock(state);
+
+        final LogFileCollector collector = getLogFileCollector(config, connection);
+        final LogFileCollector spy = Mockito.spy(collector);
+        Mockito.doReturn(Collections.emptyList()).when(spy).getLogsForOffsetScn(any(Scn.class));
+        Mockito.doThrow(new SQLException("Database error")).when(spy).getDeletedLogsForOffsetScn(any(Scn.class));
+
+        try {
+            spy.getLogs(offsetScn);
+            org.junit.jupiter.api.Assertions.fail("Expected LogFileNotFoundException to be thrown");
+        }
+        catch (LogFileNotFoundException e) {
+            assertThat(e.getMessage()).contains("None of the log files contain");
+            assertThat(e.getMessage()).contains("12345");
+        }
+    }
+
     private static LogFile createRedoLog(String name, long startScn, int sequence, int threadId) {
         return createRedoLog(name, startScn, Long.MAX_VALUE, sequence, threadId);
     }

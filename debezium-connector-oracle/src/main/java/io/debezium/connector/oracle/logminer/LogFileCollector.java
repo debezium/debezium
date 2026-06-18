@@ -94,7 +94,20 @@ public class LogFileCollector {
 
             return new LogFilesResult(files, currentRedoThreadState);
         }
-        throw new LogFileNotFoundException(offsetScn);
+
+        try {
+            final List<LogFile> deletedLogs = getDeletedLogsForOffsetScn(offsetScn);
+            if (!deletedLogs.isEmpty()) {
+                throw new LogFileNotFoundException(
+                        String.format("The archive log containing offset SCN: %s has been deleted. A re-snapshot is required.", offsetScn));
+            }
+        }
+        catch (SQLException e) {
+            LOGGER.debug("Failed to check for deleted archive logs: {}", e.getMessage());
+        }
+
+        throw new LogFileNotFoundException(
+                String.format("None of the log files contain offset SCN: %s, re-snapshot is required.", offsetScn));
     }
 
     /**
@@ -171,6 +184,27 @@ public class LogFileCollector {
                     mergeLogsByPrecedence(archiveLogsByDestination, archiveLogDestinationNames));
             return deduplicateLogFiles(archiveLogs, onlineRedoLogs);
         });
+    }
+
+    @VisibleForTesting
+    public List<LogFile> getDeletedLogsForOffsetScn(Scn offsetScn) throws SQLException {
+        return connection.queryAndMap(
+                SqlUtils.deletedArchiveLogsQuery(offsetScn, archiveLogDestinationNames),
+                rs -> {
+                    final List<LogFile> logs = new ArrayList<>();
+                    while (rs.next()) {
+                        logs.add(LogFile.forArchive(
+                                rs.getString(1),
+                                getScnFromString(rs.getString(2)),
+                                getScnFromString(rs.getString(3)),
+                                new BigInteger(rs.getString(4)),
+                                rs.getInt(5),
+                                0,
+                                false,
+                                false));
+                    }
+                    return logs;
+                });
     }
 
     private LogFile createLogFileFromResultSetRow(ResultSet rs) throws SQLException {
