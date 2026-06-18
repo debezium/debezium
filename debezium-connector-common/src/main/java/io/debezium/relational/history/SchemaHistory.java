@@ -243,4 +243,26 @@ public interface SchemaHistory {
     default void checkStorageSettings() {
         return;
     }
+
+    /**
+     * Starts buffering write operations. While buffering is active, calls to
+     * {@link #record(Map, Map, String, String) record()} may defer persistence
+     * to improve throughput. When buffering is not active, each record is
+     * persisted and acknowledged individually before returning.
+     *
+     * Callers must guarantee that {@link #stopBuffering()} is called in a
+     * finally block to flush and verify all pending writes.
+     */
+    default void startBuffering() {
+    }
+
+    /**
+     * Stops buffering and ensures all pending writes are flushed and verified
+     * before returning. After this call, subsequent {@link #record(Map, Map, String, String) record()}
+     * calls revert to the default behavior of persisting each record individually.
+     *
+     * @throws SchemaHistoryException if any pending writes failed
+     */
+    default void stopBuffering() {
+    }
 }

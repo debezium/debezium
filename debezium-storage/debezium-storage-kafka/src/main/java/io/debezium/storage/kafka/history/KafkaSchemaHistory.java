@@ -8,8 +8,10 @@ package io.debezium.storage.kafka.history;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
@@ -73,6 +75,13 @@ import io.debezium.util.Threads;
 /**
  * A {@link SchemaHistory} implementation that records schema changes as normal {@link SourceRecord}s on the specified topic,
  * and that recovers the history by establishing a Kafka Consumer re-processing all messages on that topic.
+ *
+ * This implementation supports two write modes. In the default mode (streaming), each call to
+ * {@link #storeRecord} sends the record to Kafka, flushes the producer, and blocks until the
+ * broker acknowledges the write. In buffered mode, activated by {@link #startBuffering()},
+ * records are sent without blocking and futures are collected into a bounded list. The list is
+ * drained and verified when it reaches its configured capacity or when {@link #stopBuffering()}
+ * is called. This avoids per-record round-trip latency during snapshot schema persistence.
  *
  * @author Randall Hauch
  */
@@ -167,8 +176,21 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
             .withDefault(Duration.ofSeconds(30).toMillis())
             .withValidation(Field::isPositiveInteger);
 
+    public static final Field BUFFER_BATCH_SIZE = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "kafka.buffer.batch.size")
+            .withDisplayName("Buffered writes batch size")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("The maximum number of schema history records to accumulate in the buffer before "
+                    + "draining and verifying the pending writes. Only applies when buffering is active "
+                    + "(between startBuffering/stopBuffering calls). A larger value reduces the number of "
+                    + "blocking drain operations but increases memory usage.")
+            .withDefault(1024)
+            .withValidation(Field::isPositiveInteger);
+
     public static Field.Set ALL_FIELDS = Field.setOf(TOPIC, BOOTSTRAP_SERVERS, NAME, RECOVERY_POLL_INTERVAL_MS,
-            RECOVERY_POLL_ATTEMPTS, INTERNAL_CONNECTOR_CLASS, INTERNAL_CONNECTOR_ID, KAFKA_QUERY_TIMEOUT_MS);
+            RECOVERY_POLL_ATTEMPTS, INTERNAL_CONNECTOR_CLASS, INTERNAL_CONNECTOR_ID, KAFKA_QUERY_TIMEOUT_MS,
+            BUFFER_BATCH_SIZE);
 
     private static final String CONSUMER_PREFIX = CONFIGURATION_FIELD_PREFIX_STRING + "consumer.";
     private static final String PRODUCER_PREFIX = CONFIGURATION_FIELD_PREFIX_STRING + "producer.";
@@ -188,6 +210,8 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
     private ExecutorService checkTopicSettingsExecutor;
     private Duration kafkaQueryTimeout;
     private Duration kafkaCreateTimeout;
+    private int bufferBatchSize;
+    private List<Future<RecordMetadata>> pendingFutures;
 
     private static final boolean USE_KAFKA_24_NEW_TOPIC_CONSTRUCTOR = hasNewTopicConstructorWithOptionals();
 
@@ -212,6 +236,7 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
         this.maxRecoveryAttempts = config.getInteger(RECOVERY_POLL_ATTEMPTS);
         this.kafkaQueryTimeout = Duration.ofMillis(config.getLong(KAFKA_QUERY_TIMEOUT_MS));
         this.kafkaCreateTimeout = Duration.ofMillis(config.getLong(KAFKA_CREATE_TIMEOUT_MS));
+        this.bufferBatchSize = config.getInteger(BUFFER_BATCH_SIZE);
 
         String bootstrapServers = config.getString(BOOTSTRAP_SERVERS);
         // Copy the relevant portions of the configuration and add useful defaults ...
@@ -271,6 +296,23 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
     }
 
     @Override
+    public void startBuffering() {
+        LOGGER.info("Starting buffered writes for schema history (batch size: {})", bufferBatchSize);
+        pendingFutures = new ArrayList<>();
+    }
+
+    @Override
+    public void stopBuffering() {
+        LOGGER.info("Stopping buffered writes for schema history — draining {} pending writes", pendingFutures != null ? pendingFutures.size() : 0);
+        try {
+            drainFutures();
+        }
+        finally {
+            pendingFutures = null;
+        }
+    }
+
+    @Override
     protected void storeRecord(HistoryRecord record) throws SchemaHistoryException {
         if (this.producer == null) {
             throw new IllegalStateException("No producer is available. Ensure that 'start()' is called before storing database schema history records.");
@@ -279,16 +321,50 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
         try {
             ProducerRecord<String, String> produced = new ProducerRecord<>(topicName, PARTITION, null, record.toString());
             Future<RecordMetadata> future = this.producer.send(produced);
-            // Flush and then wait ...
-            this.producer.flush();
-            RecordMetadata metadata = future.get(); // block forever since we have to be sure this gets recorded
-            if (metadata != null) {
-                LOGGER.debug("Stored record in topic '{}' partition {} at offset {} ",
-                        metadata.topic(), metadata.partition(), metadata.offset());
+
+            if (pendingFutures != null) {
+                pendingFutures.add(future);
+                if (pendingFutures.size() >= bufferBatchSize) {
+                    LOGGER.debug("Snapshot batch size reached ({}), draining pending writes", bufferBatchSize);
+                    drainFutures();
+                }
+            }
+            else {
+                this.producer.flush();
+                RecordMetadata metadata = future.get();
+                if (metadata != null) {
+                    LOGGER.debug("Stored record in topic '{}' partition {} at offset {} ",
+                            metadata.topic(), metadata.partition(), metadata.offset());
+                }
             }
         }
         catch (InterruptedException e) {
             LOGGER.trace("Interrupted before record was written into database schema history: {}", record);
+            Thread.currentThread().interrupt();
+            throw new SchemaHistoryException(e);
+        }
+        catch (ExecutionException e) {
+            throw new SchemaHistoryException(e);
+        }
+    }
+
+    private void drainFutures() throws SchemaHistoryException {
+        if (pendingFutures == null || pendingFutures.isEmpty()) {
+            return;
+        }
+        try {
+            this.producer.flush();
+            for (Future<RecordMetadata> future : pendingFutures) {
+                RecordMetadata metadata = future.get();
+                if (metadata != null) {
+                    LOGGER.trace("Stored record in topic '{}' partition {} at offset {} ",
+                            metadata.topic(), metadata.partition(), metadata.offset());
+                }
+            }
+            LOGGER.debug("Drained {} pending schema history writes", pendingFutures.size());
+            pendingFutures.clear();
+        }
+        catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new SchemaHistoryException(e);
         }

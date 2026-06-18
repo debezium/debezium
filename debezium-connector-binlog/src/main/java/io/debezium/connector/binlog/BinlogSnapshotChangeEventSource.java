@@ -55,6 +55,7 @@ import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.RelationalTableFilters;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
+import io.debezium.relational.history.SchemaHistory;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.snapshot.SnapshotterService;
 import io.debezium.util.Clock;
@@ -614,24 +615,31 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
             throws Exception {
         tryStartingSnapshot(snapshotContext);
 
-        for (final SchemaChangeEvent event : schemaEvents) {
-            if (!sourceContext.isRunning()) {
-                throw new InterruptedException("Interrupted while processing event " + event);
-            }
+        final SchemaHistory schemaHistory = databaseSchema.getSchemaHistory();
+        schemaHistory.startBuffering();
+        try {
+            for (final SchemaChangeEvent event : schemaEvents) {
+                if (!sourceContext.isRunning()) {
+                    throw new InterruptedException("Interrupted while processing event " + event);
+                }
 
-            if (databaseSchema.skipSchemaChangeEvent(event)) {
-                continue;
-            }
+                if (databaseSchema.skipSchemaChangeEvent(event)) {
+                    continue;
+                }
 
-            LOGGER.debug("Processing schema event {}", event);
+                LOGGER.debug("Processing schema event {}", event);
 
-            final TableId tableId = event.getTables().isEmpty() ? null : event.getTables().iterator().next().id();
-            if (snapshottingTask.isOnDemand() && !snapshotContext.capturedTables.contains(tableId)) {
-                LOGGER.debug("Event {} will be skipped since it's not related to blocking snapshot captured table {}", event, snapshotContext.capturedTables);
-                continue;
+                final TableId tableId = event.getTables().isEmpty() ? null : event.getTables().iterator().next().id();
+                if (snapshottingTask.isOnDemand() && !snapshotContext.capturedTables.contains(tableId)) {
+                    LOGGER.debug("Event {} will be skipped since it's not related to blocking snapshot captured table {}", event, snapshotContext.capturedTables);
+                    continue;
+                }
+                snapshotContext.offset.event(tableId, getClock().currentTime());
+                dispatcher.dispatchSchemaChangeEvent(snapshotContext.partition, snapshotContext.offset, tableId, (receiver) -> receiver.schemaChangeEvent(event));
             }
-            snapshotContext.offset.event(tableId, getClock().currentTime());
-            dispatcher.dispatchSchemaChangeEvent(snapshotContext.partition, snapshotContext.offset, tableId, (receiver) -> receiver.schemaChangeEvent(event));
+        }
+        finally {
+            schemaHistory.stopBuffering();
         }
 
         // Make schema available for snapshot source
