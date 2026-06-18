@@ -29,7 +29,7 @@ then
   export LD_LIBRARY_PATH=$ORACLE_ARTIFACT_DIR
   if [ "$ORACLE_REGISTRY" != "quay.io/rh_integration/dbz-oracle" ]
   then
-    export ORACLE_HOME=/usr/lib/oracle/21/client64
+    export ORACLE_HOME=/usr/lib/oracle/23/client64
     export PATH=$ORACLE_HOME/bin:$PATH
     export LD_LIBRARY_PATH=$ORACLE_HOME/lib:$LD_LIBRARY_PATH
     export ORACLE_CONNECTION="-Ddatabase.dbname=FREEPDB1 -Ddatabase.pdb.name=FREEPDB1"
