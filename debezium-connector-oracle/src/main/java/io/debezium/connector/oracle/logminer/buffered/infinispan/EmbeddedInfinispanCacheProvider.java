@@ -79,21 +79,29 @@ public class EmbeddedInfinispanCacheProvider extends AbstractCacheProvider<Infin
 
     @Override
     public void close() throws Exception {
-        if (dropBufferOnStop) {
-            LOGGER.info("Clearing infinispan caches");
-            transactionCache.clear();
-            schemaChangesCache.clear();
-            processedTransactionsCache.clear();
+        final boolean wasInterrupted = Thread.interrupted();
+        try {
+            if (dropBufferOnStop) {
+                LOGGER.info("Clearing infinispan caches");
+                transactionCache.clear();
+                schemaChangesCache.clear();
+                processedTransactionsCache.clear();
 
-            // this block should only be used by tests, should we wrap this in case admin rights aren't given?
-            cacheManager.administration().removeCache(TRANSACTIONS_CACHE_NAME);
-            cacheManager.administration().removeCache(PROCESSED_TRANSACTIONS_CACHE_NAME);
-            cacheManager.administration().removeCache(SCHEMA_CHANGES_CACHE_NAME);
-            cacheManager.administration().removeCache(EVENTS_CACHE_NAME);
-            cacheManager.administration().removeCache(ROLLBACKS_CACHE_NAME);
+                // this block should only be used by tests, should we wrap this in case admin rights aren't given?
+                cacheManager.administration().removeCache(TRANSACTIONS_CACHE_NAME);
+                cacheManager.administration().removeCache(PROCESSED_TRANSACTIONS_CACHE_NAME);
+                cacheManager.administration().removeCache(SCHEMA_CHANGES_CACHE_NAME);
+                cacheManager.administration().removeCache(EVENTS_CACHE_NAME);
+                cacheManager.administration().removeCache(ROLLBACKS_CACHE_NAME);
+            }
+            LOGGER.info("Shutting down infinispan embedded caches");
+            cacheManager.close();
         }
-        LOGGER.info("Shutting down infinispan embedded caches");
-        cacheManager.close();
+        finally {
+            if (wasInterrupted) {
+                Thread.currentThread().interrupt();
+            }
+        }
     }
 
     private InfinispanLogMinerTransactionCache createTransactionCache(OracleConnectorConfig connectorConfig) {

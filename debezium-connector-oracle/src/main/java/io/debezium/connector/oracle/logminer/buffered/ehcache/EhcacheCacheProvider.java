@@ -94,22 +94,30 @@ public class EhcacheCacheProvider extends AbstractCacheProvider<EhcacheTransacti
 
     @Override
     public void close() throws Exception {
-        if (cacheManager != null) {
-            if (dropBufferOnStop) {
-                LOGGER.info("Clearing Ehcache caches");
-                transactionCache.clear();
-                schemaChangesCache.clear();
-                processedTransactionsCache.clear();
+        final boolean wasInterrupted = Thread.interrupted();
+        try {
+            if (cacheManager != null) {
+                if (dropBufferOnStop) {
+                    LOGGER.info("Clearing Ehcache caches");
+                    transactionCache.clear();
+                    schemaChangesCache.clear();
+                    processedTransactionsCache.clear();
 
-                cacheManager.removeCache(TRANSACTIONS_CACHE_NAME);
-                cacheManager.removeCache(PROCESSED_TRANSACTIONS_CACHE_NAME);
-                cacheManager.removeCache(SCHEMA_CHANGES_CACHE_NAME);
-                cacheManager.removeCache(EVENTS_CACHE_NAME);
-                cacheManager.removeCache(ROLLBACKS_CACHE_NAME);
+                    cacheManager.removeCache(TRANSACTIONS_CACHE_NAME);
+                    cacheManager.removeCache(PROCESSED_TRANSACTIONS_CACHE_NAME);
+                    cacheManager.removeCache(SCHEMA_CHANGES_CACHE_NAME);
+                    cacheManager.removeCache(EVENTS_CACHE_NAME);
+                    cacheManager.removeCache(ROLLBACKS_CACHE_NAME);
+                }
+
+                LOGGER.info("Shutting down Ehcache embedded caches");
+                cacheManager.close();
             }
-
-            LOGGER.info("Shutting down Ehcache embedded caches");
-            cacheManager.close();
+        }
+        finally {
+            if (wasInterrupted) {
+                Thread.currentThread().interrupt();
+            }
         }
     }
 
