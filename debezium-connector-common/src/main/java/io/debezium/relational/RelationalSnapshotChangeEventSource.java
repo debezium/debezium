@@ -66,6 +66,7 @@ import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.pipeline.spi.SnapshotResult;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.SnapshotTablesRowCountOrder;
+import io.debezium.relational.history.SchemaHistory;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.snapshot.SnapshotterService;
 import io.debezium.spi.schema.DataCollectionId;
@@ -453,41 +454,49 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         if (!schema.isHistorized()) {
             return;
         }
-        for (Iterator<TableId> iterator = getTablesForSchemaChange(snapshotContext).iterator(); iterator.hasNext();) {
-            final TableId tableId = iterator.next();
-            if (!sourceContext.isRunning()) {
-                throw new InterruptedException("Interrupted while capturing schema of table " + tableId);
-            }
 
-            LOGGER.info("Capturing structure of table {}", tableId);
-
-            snapshotContext.offset.event(tableId, getClock().currentTime());
-
-            // If data are not snapshotted then the last schema change must set last snapshot flag
-            if (!snapshottingTask.snapshotData() && !iterator.hasNext()) {
-                lastSnapshotRecord(snapshotContext);
-            }
-
-            final Table table = snapshotContext.tables.forTable(tableId);
-            if (table == null) {
-                throw new DebeziumException("Unable to find relational table model for '" + tableId +
-                        "', there may be an issue with your include/exclude list configuration.");
-            }
-
-            SchemaChangeEvent event = getCreateTableEvent(snapshotContext, table);
-            if (HistorizedRelationalDatabaseSchema.class.isAssignableFrom(schema.getClass()) &&
-                    ((HistorizedRelationalDatabaseSchema) schema).skipSchemaChangeEvent(event)) {
-                continue;
-            }
-
-            dispatcher.dispatchSchemaChangeEvent(snapshotContext.partition, snapshotContext.offset, tableId, (receiver) -> {
-                try {
-                    receiver.schemaChangeEvent(event);
+        final SchemaHistory schemaHistory = ((HistorizedRelationalDatabaseSchema) schema).getSchemaHistory();
+        schemaHistory.startBuffering();
+        try {
+            for (Iterator<TableId> iterator = getTablesForSchemaChange(snapshotContext).iterator(); iterator.hasNext();) {
+                final TableId tableId = iterator.next();
+                if (!sourceContext.isRunning()) {
+                    throw new InterruptedException("Interrupted while capturing schema of table " + tableId);
                 }
-                catch (Exception e) {
-                    throw new DebeziumException(e);
+
+                LOGGER.info("Capturing structure of table {}", tableId);
+
+                snapshotContext.offset.event(tableId, getClock().currentTime());
+
+                // If data are not snapshotted then the last schema change must set last snapshot flag
+                if (!snapshottingTask.snapshotData() && !iterator.hasNext()) {
+                    lastSnapshotRecord(snapshotContext);
                 }
-            });
+
+                final Table table = snapshotContext.tables.forTable(tableId);
+                if (table == null) {
+                    throw new DebeziumException("Unable to find relational table model for '" + tableId +
+                            "', there may be an issue with your include/exclude list configuration.");
+                }
+
+                SchemaChangeEvent event = getCreateTableEvent(snapshotContext, table);
+                if (HistorizedRelationalDatabaseSchema.class.isAssignableFrom(schema.getClass()) &&
+                        ((HistorizedRelationalDatabaseSchema) schema).skipSchemaChangeEvent(event)) {
+                    continue;
+                }
+
+                dispatcher.dispatchSchemaChangeEvent(snapshotContext.partition, snapshotContext.offset, tableId, (receiver) -> {
+                    try {
+                        receiver.schemaChangeEvent(event);
+                    }
+                    catch (Exception e) {
+                        throw new DebeziumException(e);
+                    }
+                });
+            }
+        }
+        finally {
+            schemaHistory.stopBuffering();
         }
     }
 
