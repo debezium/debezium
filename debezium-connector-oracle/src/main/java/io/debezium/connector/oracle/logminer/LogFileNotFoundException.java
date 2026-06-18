@@ -6,7 +6,6 @@
 package io.debezium.connector.oracle.logminer;
 
 import io.debezium.DebeziumException;
-import io.debezium.connector.oracle.Scn;
 
 /**
  * Identifies when log files could not be found.
@@ -14,7 +13,7 @@ import io.debezium.connector.oracle.Scn;
  * @author Chris Cranford
  */
 public class LogFileNotFoundException extends DebeziumException {
-    public LogFileNotFoundException(Scn scn) {
-        super(String.format("None of the log files contain offset SCN: %s, re-snapshot is required.", scn));
+    public LogFileNotFoundException(String message) {
+        super(message);
     }
 }

@@ -230,6 +230,26 @@ public class SqlUtils {
         return columnName + " IN (" + formattedValues + ")";
     }
 
+    public static String deletedArchiveLogsQuery(Scn scn, List<String> archiveDestinationNames) {
+        final StringBuilder sb = new StringBuilder();
+        sb.append("SELECT A.NAME AS FILE_NAME, A.FIRST_CHANGE# FIRST_CHANGE, A.NEXT_CHANGE# NEXT_CHANGE, ");
+        sb.append("A.SEQUENCE# AS SEQ, A.THREAD# AS THREAD ");
+        sb.append("FROM ");
+        sb.append(ARCHIVED_LOG_VIEW).append(" A, ");
+        sb.append(DATABASE_VIEW).append(" D, ");
+        sb.append(ARCHIVE_DEST_STATUS_VIEW).append(" DS ");
+        sb.append("WHERE A.NAME IS NOT NULL ");
+        sb.append("AND A.ARCHIVED = 'YES' ");
+        sb.append("AND A.STATUS = 'D' ");
+        sb.append("AND A.FIRST_CHANGE# <= ").append(scn).append(" ");
+        sb.append("AND A.NEXT_CHANGE# > ").append(scn).append(" ");
+        sb.append("AND A.DEST_ID = DS.DEST_ID ");
+        sb.append("AND ").append(destinationNamesPredicate("DS.DEST_NAME", archiveDestinationNames)).append(" ");
+        sb.append("AND A.RESETLOGS_CHANGE# = D.RESETLOGS_CHANGE# ");
+        sb.append("AND A.RESETLOGS_TIME = D.RESETLOGS_TIME");
+        return sb.toString();
+    }
+
     // ***** LogMiner methods ***
     public static String getScnByTimeDeltaQuery(Scn scn, Duration duration) {
         if (scn == null) {
