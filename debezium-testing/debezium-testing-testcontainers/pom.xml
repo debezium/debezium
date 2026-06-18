@@ -103,6 +103,11 @@
             <groupId>io.debezium</groupId>
             <artifactId>debezium-util</artifactId>
         </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-storage-kafka</artifactId>
+            <scope>test</scope>
+        </dependency>
 
         <dependency>
             <groupId>org.junit.platform</groupId>
