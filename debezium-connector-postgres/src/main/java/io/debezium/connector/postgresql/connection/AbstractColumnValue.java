@@ -23,7 +23,6 @@ import org.postgresql.geometric.PGpoint;
 import org.postgresql.geometric.PGpolygon;
 import org.postgresql.jdbc.PgArray;
 import org.postgresql.util.PGInterval;
-import org.postgresql.util.PGtokenizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -138,21 +137,7 @@ public abstract class AbstractColumnValue<T> implements ReplicationMessage.Colum
 
     @Override
     public BigDecimal asMoney() {
-        final String value = asString();
-        if (value == null) {
-            return null;
-        }
-        try {
-            if (value.startsWith("-")) {
-                final String negativeMoney = "(" + value.substring(1) + ")";
-                return new BigDecimal(removeCurrencySymbol(negativeMoney));
-            }
-            return new BigDecimal(removeCurrencySymbol(value));
-        }
-        catch (final Exception e) {
-            LOGGER.error("Failed to parse money value '{}': {}", value, e.getMessage());
-            throw new ConnectException("Failed to parse money value: " + value, e);
-        }
+        return PostgresMoney.parse(asString());
     }
 
     @Override
@@ -218,29 +203,4 @@ public abstract class AbstractColumnValue<T> implements ReplicationMessage.Colum
         return null;
     }
 
-    /**
-     * Remove any () (for negative) & currency symbol (for example: $,)
-     */
-    protected String removeCurrencySymbol(String currency) {
-        String s1;
-        boolean negative;
-
-        negative = (currency.charAt(0) == '(');
-
-        // Remove any surrounding parentheses (for negative accounting format)
-        s1 = PGtokenizer.removePara(currency);
-
-        if (s1.length() > 0 && !Character.isDigit(s1.charAt(0)) && s1.charAt(0) != '.') {
-            s1 = s1.substring(1);
-        }
-
-        // Strip out any thousands-separator commas in currency
-        int pos = s1.indexOf(',');
-        while (pos != -1) {
-            s1 = s1.substring(0, pos) + s1.substring(pos + 1);
-            pos = s1.indexOf(',');
-        }
-
-        return negative ? "-" + s1 : s1;
-    }
 }

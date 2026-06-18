@@ -31,7 +31,6 @@ import org.postgresql.core.BaseConnection;
 import org.postgresql.jdbc.PgConnection;
 import org.postgresql.jdbc.TimestampUtils;
 import org.postgresql.replication.LogSequenceNumber;
-import org.postgresql.util.PGmoney;
 import org.postgresql.util.PSQLState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -761,17 +760,8 @@ public class PostgresConnection extends JdbcConnection {
 
             switch (type.getOid()) {
                 case PgOid.MONEY:
-                    // TODO author=Horia Chiorean date=14/11/2016 description=workaround for https://github.com/pgjdbc/pgjdbc/issues/100
                     final String sMoney = rs.getString(columnIndex);
-                    if (sMoney == null) {
-                        return sMoney;
-                    }
-                    if (sMoney.startsWith("-")) {
-                        // PGmoney expects negative values to be provided in the format of "($XXXXX.YY)"
-                        final String negativeMoney = "(" + sMoney.substring(1) + ")";
-                        return new PGmoney(negativeMoney).val;
-                    }
-                    return new PGmoney(sMoney).val;
+                    return PostgresMoney.parse(sMoney);
                 case PgOid.BIT:
                     return rs.getString(columnIndex);
                 case PgOid.NUMERIC:
