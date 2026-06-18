@@ -112,6 +112,16 @@ public interface LogMinerTransactionCache<T extends Transaction> {
     LogMinerEvent getTransactionEvent(T transaction, int eventKey);
 
     /**
+     * Get the last transaction event by transaction reference.
+     *
+     * @param transaction the transaction, should not be {@code null}
+     * @return the event if found, {@code null} if not found
+     */
+    default LogMinerEvent getLastTransactionEvent(T transaction) {
+        return transaction.getNumberOfEvents() > 0 ? getTransactionEvent(transaction, transaction.getNumberOfEvents() - 1) : null;
+    };
+
+    /**
      * Applies a consumer to all event keys in the cache.
      * No assumptions should be made about the order of the event keys.
      *
@@ -122,14 +132,12 @@ public interface LogMinerTransactionCache<T extends Transaction> {
     /**
      * Apply a predicate over all cached events associated with the specified transaction.
      * The events will be supplied in insertion order.
-     * As its second parameter the predicate receives a boolean indicating
-     * whether the event has been marked as rolled back via a savepoint rollback.
      *
      * @param transaction the transaction, should not be {@code null}
      * @param predicate the consumer, should not be {@code null}
      * @throws InterruptedException thrown if the thread is interrupted
      */
-    void forEachEvent(T transaction, LogMinerEventPredicate predicate) throws InterruptedException;
+    void forEachEvent(T transaction, InterruptiblePredicate<LogMinerEvent> predicate) throws InterruptedException;
 
     /**
      * Add a transaction event to the cache.
@@ -148,13 +156,13 @@ public interface LogMinerTransactionCache<T extends Transaction> {
     void removeTransactionEvents(T transaction);
 
     /**
-     * Marks as rolled back a specific transaction event by unique row identifier.
+     * Removes a specific transaction event by unique row identifier.
      *
      * @param transaction the transaction, should not be {@code null}
      * @param rowId the event's unique row identifier
      * @return {@code true} if the event was found and removed, {@code false} if it was not found
      */
-    boolean rollbackTransactionEventWithRowId(T transaction, String rowId);
+    boolean removeTransactionEventWithRowId(T transaction, String rowId);
 
     /**
      * Checks whether a specific transaction's event with the event key is cached.
@@ -233,7 +241,7 @@ public interface LogMinerTransactionCache<T extends Transaction> {
     }
 
     @FunctionalInterface
-    interface LogMinerEventPredicate {
-        boolean test(LogMinerEvent event, boolean rolledBack) throws InterruptedException;
+    interface InterruptiblePredicate<T> {
+        boolean test(T t) throws InterruptedException;
     }
 }
