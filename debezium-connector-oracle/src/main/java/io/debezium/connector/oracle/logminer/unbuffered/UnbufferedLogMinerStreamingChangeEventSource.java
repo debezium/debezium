@@ -318,6 +318,9 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
 
     @Override
     protected boolean isEventSkipped(LogMinerEventRow event) {
+        if (super.isEventSkipped(event)) {
+            return true;
+        }
         return skipCurrentTransaction || isEventIncludedInSnapshot(event) || isNonSchemaChangeEventSkipped(event);
     }
 

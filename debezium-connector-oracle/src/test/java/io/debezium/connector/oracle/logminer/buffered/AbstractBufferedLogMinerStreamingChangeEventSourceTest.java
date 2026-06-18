@@ -44,8 +44,10 @@ import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.OracleTaskContext;
 import io.debezium.connector.oracle.OracleValueConverters;
+import io.debezium.connector.oracle.RedoThreadState;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.StreamingAdapter.TableNameCaseSensitivity;
+import io.debezium.connector.oracle.logminer.AbstractLogMinerStreamingChangeEventSource;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.logminer.OffsetActivityMonitor;
 import io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerStreamingChangeEventSource.ProcessResult;
@@ -54,6 +56,7 @@ import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
+import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
@@ -626,6 +629,80 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         }
     }
 
+    @Test
+    @FixFor("dbz#2049")
+    void testEventFromPublicThreadIsNotSkipped() throws Exception {
+        try (var source = getChangeEventSource(getConfig().build())) {
+            source.setCurrentRedoThreadState(buildRedoThreadState(1, "PUBLIC"));
+
+            final LogMinerEventRow start = getStartLogMinerEventRow(1, TRANSACTION_ID_1);
+            Mockito.when(start.getThread()).thenReturn(1);
+            source.processEvent(start);
+
+            final LogMinerEventRow insert = getInsertLogMinerEventRow(2, TRANSACTION_ID_1);
+            Mockito.when(insert.getThread()).thenReturn(1);
+            source.processEvent(insert);
+
+            assertThat(source.getTransactionCache().isEmpty()).isFalse();
+        }
+    }
+
+    @Test
+    @FixFor("dbz#2049")
+    void testEventFromPrivateThreadIsSkipped() throws Exception {
+        try (var source = getChangeEventSource(getConfig().build())) {
+            source.setCurrentRedoThreadState(buildTwoThreadRedoThreadState(1, "PUBLIC", 2, "PRIVATE"));
+
+            final LogMinerEventRow start1 = getStartLogMinerEventRow(1, TRANSACTION_ID_1);
+            Mockito.when(start1.getThread()).thenReturn(2);
+            source.processEvent(start1);
+
+            final LogMinerEventRow insert1 = getInsertLogMinerEventRow(2, TRANSACTION_ID_1);
+            Mockito.when(insert1.getThread()).thenReturn(2);
+            source.processEvent(insert1);
+
+            final LogMinerEventRow start2 = getStartLogMinerEventRow(3, TRANSACTION_ID_2);
+            Mockito.when(start2.getThread()).thenReturn(1);
+            source.processEvent(start2);
+
+            final LogMinerEventRow insert2 = getInsertLogMinerEventRow(4, TRANSACTION_ID_2);
+            Mockito.when(insert2.getThread()).thenReturn(1);
+            source.processEvent(insert2);
+
+            assertThat(source.getTransactionCache().isEmpty()).isFalse();
+            assertThat(source.getTransactionCache().getTransaction(TRANSACTION_ID_1)).isNull();
+            assertThat(source.getTransactionCache().getTransaction(TRANSACTION_ID_2)).isNotNull();
+        }
+    }
+
+    @Test
+    @FixFor("dbz#2049")
+    void testRedoThreadTransitionFromPublicToPrivateLogsWarning() throws Exception {
+        final LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerStreamingChangeEventSource.class);
+        try (var source = getChangeEventSource(getConfig().build())) {
+            source.setCurrentRedoThreadState(buildRedoThreadState(1, "PUBLIC"));
+            source.detectRedoThreadTransitions(buildRedoThreadState(1, "PRIVATE"));
+
+            assertThat(logInterceptor.containsWarnMessage(
+                    "Redo Thread 1 just changed from PUBLIC to PRIVATE, which can lead to data loss and unexpected results."))
+                    .isTrue();
+        }
+    }
+
+    @Test
+    @FixFor("dbz#2049")
+    void testRedoThreadTransitionFromPrivateToPublicLogsWarning() throws Exception {
+        final LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerStreamingChangeEventSource.class);
+        try (var source = getChangeEventSource(getConfig().build())) {
+            source.setCurrentRedoThreadState(buildRedoThreadState(1, "PRIVATE"));
+            source.detectRedoThreadTransitions(buildRedoThreadState(1, "PUBLIC"));
+
+            assertThat(logInterceptor.containsWarnMessage(
+                    "Redo Thread 1 just changed from PRIVATE to PUBLIC, which can lead to unexpected results."))
+                    .isTrue();
+        }
+    }
+
     private OracleDatabaseSchema createOracleDatabaseSchema() throws Exception {
         Configuration configuration = getConfig().build();
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(configuration);
@@ -817,7 +894,87 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
 
         source.init(offsetContext);
 
+        try {
+            source.setCurrentRedoThreadState(buildRedoThreadState(1, "PUBLIC"));
+        }
+        catch (Exception e) {
+            throw new RuntimeException("Failed to set redo thread state", e);
+        }
+
         return source;
+    }
+
+    private static RedoThreadState buildRedoThreadState(int threadId, String enabled) {
+        return RedoThreadState.builder()
+                .thread()
+                .threadId(threadId)
+                .status("OPEN")
+                .enabled(enabled)
+                .logGroups(2L)
+                .instanceName("ORCLCDB")
+                .openTime(Instant.now())
+                .currentGroupNumber(1L)
+                .currentSequenceNumber(1L)
+                .checkpointScn(Scn.valueOf(1))
+                .checkpointTime(Instant.now())
+                .enabledScn(Scn.valueOf(1))
+                .enabledTime(Instant.now())
+                .disabledScn(Scn.valueOf(0))
+                .disabledTime(null)
+                .lastRedoSequenceNumber(1L)
+                .lastRedoBlock(1L)
+                .lastRedoScn(Scn.valueOf(1))
+                .lastRedoTime(Instant.now())
+                .conId(0L)
+                .build()
+                .build();
+    }
+
+    private static RedoThreadState buildTwoThreadRedoThreadState(int threadId1, String enabled1, int threadId2, String enabled2) {
+        return RedoThreadState.builder()
+                .thread()
+                .threadId(threadId1)
+                .status("OPEN")
+                .enabled(enabled1)
+                .logGroups(2L)
+                .instanceName("ORCLCDB1")
+                .openTime(Instant.now())
+                .currentGroupNumber(1L)
+                .currentSequenceNumber(1L)
+                .checkpointScn(Scn.valueOf(1))
+                .checkpointTime(Instant.now())
+                .enabledScn(Scn.valueOf(1))
+                .enabledTime(Instant.now())
+                .disabledScn(Scn.valueOf(0))
+                .disabledTime(null)
+                .lastRedoSequenceNumber(1L)
+                .lastRedoBlock(1L)
+                .lastRedoScn(Scn.valueOf(1))
+                .lastRedoTime(Instant.now())
+                .conId(0L)
+                .build()
+                .thread()
+                .threadId(threadId2)
+                .status("OPEN")
+                .enabled(enabled2)
+                .logGroups(2L)
+                .instanceName("ORCLCDB2")
+                .openTime(Instant.now())
+                .currentGroupNumber(1L)
+                .currentSequenceNumber(1L)
+                .checkpointScn(Scn.valueOf(1))
+                .checkpointTime(Instant.now())
+                .enabledScn(Scn.valueOf(1))
+                .enabledTime(Instant.now())
+                .disabledScn(Scn.valueOf(0))
+                .disabledTime(null)
+                .lastRedoSequenceNumber(1L)
+                .lastRedoBlock(1L)
+                .lastRedoScn(Scn.valueOf(1))
+                .lastRedoTime(Instant.now())
+                .conId(0L)
+                .build()
+                .build();
     }
 
     // Helper class that permits exposing some protected methods for mocking
@@ -861,6 +1018,17 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         public void processEvent(LogMinerEventRow event) throws SQLException, InterruptedException {
             // Necessary for mock purposes only
             super.processEvent(event);
+        }
+
+        public void setCurrentRedoThreadState(RedoThreadState state) throws Exception {
+            var field = AbstractLogMinerStreamingChangeEventSource.class.getDeclaredField("currentRedoThreadState");
+            field.setAccessible(true);
+            field.set(this, state);
+        }
+
+        @Override
+        public void detectRedoThreadTransitions(RedoThreadState newRedoThreadState) {
+            super.detectRedoThreadTransitions(newRedoThreadState);
         }
     }
 }
