@@ -35,6 +35,7 @@ import io.debezium.connector.jdbc.dialect.DatabaseDialectProvider;
 import io.debezium.connector.jdbc.dialect.GeneralDatabaseDialect;
 import io.debezium.connector.jdbc.dialect.SqlStatementBuilder;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
+import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.sink.field.FieldDescriptor;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.Strings;
@@ -108,6 +109,7 @@ public class MySqlDatabaseDialect extends GeneralDatabaseDialect {
         super.registerTypes();
 
         registerType(BooleanType.INSTANCE);
+        registerType(BigIntUnsignedType.INSTANCE);
         registerType(BitType.INSTANCE);
         registerType(BytesType.INSTANCE);
         registerType(EnumType.INSTANCE);
@@ -125,6 +127,14 @@ public class MySqlDatabaseDialect extends GeneralDatabaseDialect {
 
         registerType(FloatVectorType.INSTANCE);
         registerType(DoubleVectorType.INSTANCE);
+    }
+
+    @Override
+    public JdbcType getSchemaType(Schema schema) {
+        if (BigIntUnsignedType.INSTANCE.matchesSourceColumnType(schema)) {
+            return BigIntUnsignedType.INSTANCE;
+        }
+        return super.getSchemaType(schema);
     }
 
     @Override
