@@ -35,6 +35,7 @@ import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.OracleSchemaChangeEventEmitter;
 import io.debezium.connector.oracle.RedoThreadState;
+import io.debezium.connector.oracle.RedoThreadState.RedoThread;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.LogFileCollector.LogFilesResult;
 import io.debezium.connector.oracle.logminer.LogFileSessionSelector.SessionLogSelection;
@@ -125,6 +126,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     private boolean sequenceUnavailable = false;
     private List<LogFile> currentLogFiles;
     private List<LogFile> sessionLogFiles;
+    private RedoThreadState currentRedoThreadState;
     private LogFileSessionSelector logFileSessionSelector;
     private boolean sessionLogFilesChanged = false;
     private List<BigInteger> currentRedoLogSequences;
@@ -474,7 +476,31 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      * @return true if the event should be skipped, false otherwise
      */
     protected boolean isEventSkipped(LogMinerEventRow event) {
-        return false;
+        final RedoThread threadState = currentRedoThreadState.getRedoThread(event.getThread());
+        return threadState != null && threadState.isPrivate();
+    }
+
+    /**
+     * Detects redo thread state transitions between PUBLIC and PRIVATE and logs warnings.
+     * Updates {@link #currentRedoThreadState} to the new state.
+     *
+     * @param newRedoThreadState the new redo thread state, should not be {@code null}
+     */
+    protected void detectRedoThreadTransitions(RedoThreadState newRedoThreadState) {
+        if (currentRedoThreadState != null) {
+            for (RedoThread thread : newRedoThreadState.getThreads()) {
+                final RedoThread currentThreadInfo = currentRedoThreadState.getRedoThread(thread.getThreadId());
+                if (currentThreadInfo != null) {
+                    if (currentThreadInfo.isPrivate() && thread.isPublic()) {
+                        LOGGER.warn("Redo Thread {} just changed from PRIVATE to PUBLIC, which can lead to unexpected results.", thread.getThreadId());
+                    }
+                    else if (currentThreadInfo.isPublic() && thread.isPrivate()) {
+                        LOGGER.warn("Redo Thread {} just changed from PUBLIC to PRIVATE, which can lead to data loss and unexpected results.", thread.getThreadId());
+                    }
+                }
+            }
+        }
+        currentRedoThreadState = newRedoThreadState;
     }
 
     /**
@@ -907,8 +933,8 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         Scn minOpenRedoThreadLastScn = jdbcConnection.getRedoThreadState()
                 .getThreads()
                 .stream()
-                .filter(RedoThreadState.RedoThread::isOpen)
-                .map(RedoThreadState.RedoThread::getLastRedoScn)
+                .filter(RedoThread::isOpen)
+                .map(RedoThread::getLastRedoScn)
                 .min(Scn::compareTo)
                 .orElse(Scn.NULL);
 
@@ -1098,6 +1124,8 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     protected Scn collectLogsAndFinalUpperBoundary(Scn lowerBoundsScn, Scn upperBoundsScn) throws SQLException {
         final LogFilesResult logFilesResult = logCollector.getLogs(lowerBoundsScn);
         currentLogFiles = logFilesResult.logFiles();
+
+        detectRedoThreadTransitions(logFilesResult.redoThreadState());
 
         Scn upperBoundaryScn = upperBoundsScn;
         if (!useContinuousMining) {

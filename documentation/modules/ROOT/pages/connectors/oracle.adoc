@@ -87,7 +87,7 @@ endif::product[]
 // ModuleID: descriptions-of-debezium-oracle-connector-adapters
 // Title: Descriptions of {prodname} Oracle connector adapters
 [[oracle-adapter-modes]]
-== Adapter Modes
+=== Adapter Modes
 
 The {prodname} Oracle connector supports multiple adapters for capturing changes from the Oracle database transaction logs.
 You can configure the connector to use a specific adapter by setting the xref:oracle-property-database-connection-adapter[`database.connection.adapter`] configuration property.
@@ -1087,6 +1087,24 @@ The connector reports a failure only if both Oracle LogMiner and the connector a
 ====
 You cannot use the `hybrid` mining strategy if the xref:oracle-property-lob-enabled[`lob.enabled`] property is set to `true`.
 If you require streaming `CLOB`, `BLOB`, or `XML` data, only the `online_catalog` or `redo_log_catalog` (deprecated) strategies can be used.
+====
+
+[[oracle-logminer-private-redo-threads]]
+=== LogMiner and Private Redo Threads
+
+In Oracle RAC environments, each redo thread is associated with an instance and is classified as either `PUBLIC` or `PRIVATE`.
+A `PUBLIC` redo thread is available for use by any instance, while a `PRIVATE` redo thread is reserved for a specific instance and is not shared across the cluster.
+
+When the {prodname} Oracle connector detects that a redo thread is marked as `PRIVATE`, the connector automatically skips all change events originating from that thread.
+Because private redo threads are not shared across instances, their changes are not visible to other nodes and cannot be reliably consumed by a change data capture process.
+
+[IMPORTANT]
+====
+Do not change a redo thread from `PUBLIC` to `PRIVATE` or from `PRIVATE` to `PUBLIC` while a connector is deployed.
+Transitioning a thread from `PUBLIC` to `PRIVATE` can result in data loss, because the connector will begin skipping events from that thread.
+Transitioning a thread from `PRIVATE` to `PUBLIC` can lead to unexpected results, because the connector may process events that were previously excluded.
+
+If a redo thread transition is required, a re-snapshot of data may be required to avoid data loss and to remain consistent.
 ====
 
 ifdef::community[]

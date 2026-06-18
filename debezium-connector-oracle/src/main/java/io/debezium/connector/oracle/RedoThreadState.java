@@ -69,6 +69,8 @@ public class RedoThreadState {
 
         private static final String OPEN = "OPEN";
         private static final String DISABLED = "DISABLED";
+        private static final String PUBLIC = "PUBLIC";
+        private static final String PRIVATE = "PRIVATE";
 
         private final Integer threadId;
         private final String status;
@@ -202,6 +204,14 @@ public class RedoThreadState {
 
         public boolean isDisabled() {
             return DISABLED.equals(enabled);
+        }
+
+        public boolean isPublic() {
+            return PUBLIC.equals(enabled);
+        }
+
+        public boolean isPrivate() {
+            return PRIVATE.equals(enabled);
         }
 
         @Override

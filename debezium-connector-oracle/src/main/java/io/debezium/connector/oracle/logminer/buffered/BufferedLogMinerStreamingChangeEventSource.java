@@ -341,6 +341,10 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
     @Override
     protected boolean isEventSkipped(LogMinerEventRow event) {
+        if (super.isEventSkipped(event)) {
+            return true;
+        }
+
         // Check whether the row has a table reference and if so, is the reference included by the filter.
         // If the reference isn't included, the row will be skipped entirely.
         if (event.getTableId() != null) {
