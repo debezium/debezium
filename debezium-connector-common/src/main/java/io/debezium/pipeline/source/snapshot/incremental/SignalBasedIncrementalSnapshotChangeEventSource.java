@@ -115,15 +115,49 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
             return;
         }
 
-        String signalWindowStatement = "INSERT INTO " + signalTableName + " VALUES (?, ?, ?)";
-        signalMetadata = new SignalMetadata(Instant.now(), null);
-        jdbcConnection.prepareUpdate(signalWindowStatement, x -> {
-            LOGGER.trace("Emitting open window for chunk = '{}' to signal table '{}'", context.currentChunkId(), signalTableName);
-            x.setString(1, context.currentChunkId() + "-open");
-            x.setString(2, OpenIncrementalSnapshotWindow.NAME);
-            x.setString(3, signalMetadata.metadataString());
-        });
-        jdbcConnection.commit();
+        boolean success = false;
+        int count = 0;
+        while (!success && count < connectorConfig.getSignalEmitFailureMaxRetries()) {
+            count++;
+            try {
+                try {
+                    String signalWindowStatement = "INSERT INTO " + signalTableName + " VALUES (?, ?, ?)";
+                    signalMetadata = new SignalMetadata(Instant.now(), null);
+                    jdbcConnection.prepareUpdate(signalWindowStatement, x -> {
+                        LOGGER.trace("Emitting open window for chunk = '{}' to signal table '{}'", context.currentChunkId(), signalTableName);
+                        x.setString(1, context.currentChunkId() + "-open");
+                        x.setString(2, OpenIncrementalSnapshotWindow.NAME);
+                        x.setString(3, signalMetadata.metadataString());
+                    });
+                    jdbcConnection.commit();
+                    success = true;
+                }
+                catch (SQLException e) {
+                    LOGGER.error("Error emitting open window to signal table '{}'. Closing connection and re-connecting", signalTableName, e);
+                    try {
+                        jdbcConnection.close();
+                    }
+                    catch (Exception ignore) {
+                        // Ignore
+                    }
+                    LOGGER.trace("Reconnecting JDBC connection");
+                    jdbcConnection.connect();
+                }
+            }
+            catch (SQLException ex) {
+                LOGGER.error("Reconnection to signal table '{}' failed. Backing off", signalTableName, ex);
+                try {
+                    Thread.sleep(connectorConfig.getSignalEmitFailureBackoff().toMillis());
+                }
+                catch (InterruptedException e) {
+                    throw new SQLException("Interrupted while backing off");
+                }
+            }
+        }
+        if (!success) {
+            throw new SQLException("Unable to establish a working connection to signal table "
+                    + signalTableName + " after " + count + " attempts");
+        }
     }
 
     @Override
