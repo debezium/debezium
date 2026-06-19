@@ -826,10 +826,10 @@ For these columns, the connector omits the default from the schema so that Cockr
 [[setting-up-cockroachdb]]
 == Setting up CockroachDB
 
-Before you deploy the {prodname} CockroachDB connector, complete the following tasks in your CockroachDB environment:
-
-* Verify that the required components, user account, and connectivity are available.
-* Grant the changefeed permissions that the connector requires.
+Before you deploy the {prodname} CockroachDB connector, prepare your CockroachDB environment so that the connector can create and read changefeeds.
+At a high level, ensure that the required components and connectivity are in place, enable rangefeeds on the cluster, and grant the database user that the connector uses the privileges that changefeeds require.
+The prerequisites that follow describe what must be available before you begin.
+For the commands that enable rangefeeds and grant the required privileges, see xref:cockroachdb-grant-changefeed-permissions[Granting changefeed permissions].
 
 .Prerequisites
 
