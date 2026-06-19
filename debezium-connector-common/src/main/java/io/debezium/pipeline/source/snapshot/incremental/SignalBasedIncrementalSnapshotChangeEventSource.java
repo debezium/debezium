@@ -149,6 +149,9 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
             catch (SQLException ex) {
                 LOGGER.error("Reconnection to signal table '{}' failed. Backing off", signalTableName, ex);
                 retryStrategy.sleepWhen(true);
+                if (Thread.currentThread().isInterrupted()) {
+                    throw new SQLException("Interrupted while sleeping in DelayStrategy", ex);
+                }
             }
         }
         if (!success) {
