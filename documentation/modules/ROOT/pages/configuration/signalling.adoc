@@ -31,7 +31,9 @@ When {prodname} detects that a new xref:debezium-signaling-example-of-a-logging-
 
 Signaling is available for use with the following {prodname} connectors:
 
+ifdef::community[]
 * CockroachDB
+endif::community[]
 * Db2
 * MariaDB
 * MongoDB
@@ -90,7 +92,9 @@ NOTE: If you use the `table.include.list` property, you do not need to include t
 === Formats for specifying fully qualified names for data collections
 
 [horizontal]
+ifdef::community[]
 CockroachDB:: `_<databaseName>_._<schemaName>_._<tableName>_`
+endif::community[]
 Db2:: `_<schemaName>_._<tableName>_`
 MariaDB:: `_<databaseName>_._<tableName>_`
 MongoDB:: `_<databaseName>_._<collectionName>_`
@@ -524,7 +528,9 @@ You can initiate ad hoc snapshots at any time.
 
 Ad hoc snapshots are available for the following {prodname} connectors:
 
+ifdef::community[]
 * CockroachDB
+endif::community[]
 * Db2
 * MariaDB
 * MongoDB
@@ -592,7 +598,9 @@ After processing the signal, the connector will stop the current in-progress sna
 
 You can stop ad hoc snapshots for the following {prodname} connectors:
 
+ifdef::community[]
 * CockroachDB
+endif::community[]
 * Db2
 * MariaDB
 * MongoDB
@@ -651,7 +659,9 @@ Therefor it's not possible to specify the data collection as the snapshot proces
 
 You can pause incremental snapshots for the following {prodname} connectors:
 
+ifdef::community[]
 * CockroachDB
+endif::community[]
 * Db2
 * MariaDB
 * MongoDB
@@ -685,7 +695,9 @@ After processing the signal, the connector will resume previously paused snapsho
 
 You can resume incremental snapshots for the following {prodname} connectors:
 
+ifdef::community[]
 * CockroachDB
+endif::community[]
 * Db2
 * MariaDB
 * MongoDB
@@ -736,7 +748,9 @@ You can initiate ad hoc blocking snapshots at any time.
 
 Blocking snapshots are available for the following {prodname} connectors:
 
+ifdef::community[]
 * CockroachDB
+endif::community[]
 * Db2
 * MariaDB
 ifdef::community[]
