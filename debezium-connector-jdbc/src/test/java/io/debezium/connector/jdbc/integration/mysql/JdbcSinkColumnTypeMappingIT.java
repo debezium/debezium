@@ -89,7 +89,7 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
 
     @ParameterizedTest
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
-    @FixFor("DBZ-2102")
+    @FixFor("debezium/dbz#2102")
     public void testShouldCreateAndWriteUnsignedBigIntColumnType(SinkRecordFactory factory) throws Exception {
         final Map<String, String> properties = getDefaultSinkConfig();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.BASIC.getValue());
