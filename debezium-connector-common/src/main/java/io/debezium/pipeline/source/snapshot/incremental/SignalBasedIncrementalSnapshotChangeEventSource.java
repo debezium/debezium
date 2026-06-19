@@ -30,6 +30,7 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.schema.DatabaseSchema;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
+import io.debezium.util.DelayStrategy;
 import io.debezium.util.LoggingContext;
 
 @NotThreadSafe
@@ -116,9 +117,10 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
         }
 
         boolean success = false;
-        int count = 0;
-        while (!success && count < connectorConfig.getSignalEmitFailureMaxRetries()) {
-            count++;
+        int attempt = 0;
+        final DelayStrategy retryStrategy = DelayStrategy.constant(connectorConfig.getSignalEmitFailureBackoff());
+        while (!success && attempt < connectorConfig.getSignalEmitFailureMaxRetries()) {
+            attempt++;
             try {
                 try {
                     String signalWindowStatement = "INSERT INTO " + signalTableName + " VALUES (?, ?, ?)";
@@ -146,17 +148,12 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
             }
             catch (SQLException ex) {
                 LOGGER.error("Reconnection to signal table '{}' failed. Backing off", signalTableName, ex);
-                try {
-                    Thread.sleep(connectorConfig.getSignalEmitFailureBackoff().toMillis());
-                }
-                catch (InterruptedException e) {
-                    throw new SQLException("Interrupted while backing off");
-                }
+                retryStrategy.sleepWhen(true);
             }
         }
         if (!success) {
             throw new SQLException("Unable to establish a working connection to signal table "
-                    + signalTableName + " after " + count + " attempts");
+                    + signalTableName + " after " + attempt + " attempts");
         }
     }
 
