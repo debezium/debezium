@@ -1879,20 +1879,20 @@ Because the values are represented as strings, this mode avoids the loss of prec
 
 |`DATE`
 |`STRING`
-|`io.debezium.time.IsoDate` +
- +
+|`io.debezium.time.IsoDate`
+
 Represents date values in UTC format, according to the ISO 8601 standard, for example, `2017-09-15Z`.
 
 |`TIME([P])`
 |`STRING`
-|`io.debezium.time.IsoTime` +
- +
+|`io.debezium.time.IsoTime`
+
 Represents time values in UTC format, according to the ISO 8601 standard, for example, `04:05:11.789Z`.
 
 |`DATETIME`
 |`STRING`
-|`io.debezium.time.IsoTimestamp` +
- +
+|`io.debezium.time.IsoTimestamp`
+
 Represents timestamp values in UTC format, according to the ISO 8601 standard, for example, `2019-07-09T02:28:57.123456Z`.
 
 |===
