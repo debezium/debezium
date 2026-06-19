@@ -7,6 +7,7 @@ package io.debezium.connector.mongodb;
 
 import static java.util.Comparator.comparing;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -270,8 +271,12 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
 
     @Override
     public List<SourceRecord> doPoll() throws InterruptedException {
-        List<DataChangeEvent> records = queue.poll();
-        return records.stream().map(DataChangeEvent::getRecord).collect(Collectors.toList());
+        final List<DataChangeEvent> records = queue.poll();
+        final List<SourceRecord> sourceRecords = new ArrayList<>(records.size());
+        for (final DataChangeEvent record : records) {
+            sourceRecords.add(record.getRecord());
+        }
+        return sourceRecords;
     }
 
     @Override
