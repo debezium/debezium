@@ -62,7 +62,7 @@ The following table lists the interner metrics that are available.
 |`int`
 |Current number of entries held in the pool. Includes entries whose referents may have been garbage-collected but not yet expunged.
 
-|[[connectors-interner-metric-hitratioppercent_{context}]]<<connectors-interner-metric-hitratioppercent_{context}, `HitRatioPercent`>>
+|[[connectors-interner-metric-hitratiopercent_{context}]]<<connectors-interner-metric-hitratiopercent_{context}, `HitRatioPercent`>>
 |`double`
 |Hit ratio as a percentage (`hitCount / (hitCount + missCount) * 100`), or `0.0` if no calls have been recorded yet.
 
