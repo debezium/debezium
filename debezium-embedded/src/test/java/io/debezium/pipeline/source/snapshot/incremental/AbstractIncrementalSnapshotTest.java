@@ -42,7 +42,6 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
-import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.EqualityCheck;
 import io.debezium.junit.SkipWhenConnectorUnderTest;
@@ -425,7 +424,8 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         final int ROW_COUNT_LOCAL = ROW_COUNT * 10;
 
         final Configuration config = config()
-                .with(Heartbeat.HEARTBEAT_INTERVAL_PROPERTY_NAME, 5000)
+                // This makes SQL server to run very slowly. Keeping it here as a future reproducer for dbz#2122.
+                // .with(Heartbeat.HEARTBEAT_INTERVAL_PROPERTY_NAME, 5000)
                 .build();
         startAndConsumeTillEnd(connectorClass(), config);
         waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task());
