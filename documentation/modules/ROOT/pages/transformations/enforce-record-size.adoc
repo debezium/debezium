@@ -13,11 +13,13 @@
 
 toc::[]
 
+The `EnforceRecordSize` SMT estimates the serialized size of each record and, if it exceeds the configured maximum, truncates eligible string and bytes columns proportionally to bring the record within the size limit.
+
 Some downstream systems, such as Apache Kafka brokers or sink connectors, impose a maximum message size limit.
 When {prodname} captures a change event for a row that contains large string or bytes columns, the serialized record can exceed that limit, causing the connector to fail.
 
-The `EnforceRecordSize` SMT estimates the serialized size of each record and, if it exceeds the configured maximum, truncates eligible string and bytes columns proportionally to bring the record within the size limit.
-Larger columns are truncated more aggressively, while smaller columns (at or below a configurable minimum threshold) are left untouched.
+The SMT truncates larger columns aggressively to comply with the threshold.
+If does not modify columns if their sizes are at or below the configured threshold.
 
 // Type: concept
 // Title: Example: Basic configuration of the {prodname} enforce record size SMT
@@ -25,8 +27,8 @@ Larger columns are truncated more aggressively, while smaller columns (at or bel
 [[example-basic-enforce-record-size-configuration]]
 == Example: Basic configuration
 
-To configure the SMT, add it to the connector's `transforms` configuration.
-The following example limits records to 1 MB:
+You apply the SMT to a connector by adding its details to the connector's `transforms` configuration.
+The following example shows a configuration for the SMT that limits records to 1 MB:
 
 [source]
 ----
@@ -35,31 +37,30 @@ transforms.EnforceRecordSize.type=io.debezium.transforms.EnforceRecordSize
 transforms.EnforceRecordSize.max.bytes=1048576
 ----
 
-With this configuration, any record whose estimated serialized size exceeds 1,048,576 bytes (1 MB) has its large string and bytes fields truncated proportionally until the record fits within the limit.
+When this configuration is active, if the estimated serialized size of a record exceeds 1,048,576 bytes (1 MB), its large string and bytes fields are truncated proportionally until the record conforms to the configured limit.
 
 // Type: concept
-// Title: How the SMT estimates record size
+// Title: How the enforce record size SMT estimates record size
 // ModuleID: how-the-enforce-record-size-smt-estimates-record-size
 [[enforce-record-size-how-it-works]]
 == How the SMT estimates record size
 
 The SMT uses an approximate size calculation that examines the key, value, headers, and topic of the record.
 For string fields, it uses `String.length()` as a constant-time proxy for byte size.
-This assumes one byte per character, which understates multi-byte UTF-8 content but avoids the performance cost of encoding each string.
+The string size calculation assumes one byte per character, which understates multi-byte UTF-8 content but avoids the performance cost of encoding each string.
 
 When the estimated size (adjusted by the optional `compression.ratio`) exceeds `max.bytes`, the SMT identifies all string and bytes fields in the `before` and `after` sections of the envelope that are larger than `min.field.size`.
-It then distributes the excess bytes proportionally across those fields, truncating larger fields more.
+It then distributes the excess bytes proportionally across those fields, truncating larger fields more than smaller fields.
 
 // Type: concept
-// Title: Example: Configuration with compression ratio
-// ModuleID: configuration-with-compression-ratio
+// ModuleID: enforce-record-size-smt-configuration-with-compression-ratio
 [[enforce-record-size-compression-ratio-example]]
 == Example: Configuration with compression ratio
 
-If your Kafka producer uses compression (for example, LZ4 or Snappy), the actual on-wire size of a record is smaller than the raw serialized size.
-You can account for this by setting `compression.ratio` to a value less than 1.0.
+If your Kafka producer uses compression, for example, LZ4 or Snappy, the actual size of a record as transmitted over the network is smaller than its raw serialized size.
+You can account for the use of compression by setting a `compression.ratio` in the configuration with a value of less than 1.0.
 
-For example, if Kafka producer metrics show an average compression rate of 0.6:
+For example, if Kafka producer metrics show an average compression rate of 0.6, set the `compression.ratio` as in the following example:
 
 [source]
 ----
@@ -70,21 +71,20 @@ transforms.EnforceRecordSize.compression.ratio=0.6
 ----
 
 With this configuration, the SMT multiplies the estimated raw size by 0.6 before comparing it to the 1 MB limit.
-This means the SMT only truncates when the _compressed_ size would exceed the limit, avoiding unnecessary truncation.
+As a result, the SMT only truncates columns if the _compressed_ size would exceed the limit, avoiding unnecessary truncation.
 
-You can discover the effective compression ratio from Kafka producer metrics:
+You can determine the effective compression ratio by examining Kafka producer metrics:
 `kafka.producer:type=producer-metrics,client-id=<id>/compression-rate-avg`.
 
 // Type: concept
-// Title: Example: Configuration with minimum field size
-// ModuleID: configuration-with-minimum-field-size
+// ModuleID: enforce-record-size-smt-configuration-to-protect-small-fields-from-truncation
 [[enforce-record-size-min-field-size-example]]
 == Example: Protecting small fields from truncation
 
 By default, the SMT only truncates fields larger than 25,000 bytes (25 KB).
-This protects small fields, which are unlikely to contribute meaningfully to size reduction, from being truncated.
+By acting only on these large fields, the SMT protects small fields, which are unlikely to contribute meaningfully to size reduction, from being truncated.
 
-To change the threshold:
+You can modify the default threshold by setting the `min.field.size`  attributes in the configuration, as in the following example:
 
 [source]
 ----
@@ -94,12 +94,12 @@ transforms.EnforceRecordSize.max.bytes=1048576
 transforms.EnforceRecordSize.min.field.size=10000
 ----
 
-Setting `min.field.size=10000` means only fields larger than 10 KB are eligible for truncation.
-Setting `min.field.size=0` makes all string and bytes fields eligible.
+If you set `min.field.size=10000`, the SMT only truncates fields larger than 10 KB.
+To make all string and bytes fields eligible for truncation, set `min.field.size=0`.
 
 // Type: concept
-// Title: Behavior details
-// ModuleID: enforce-record-size-behavior-details
+// Title: Behavior of the {prodname} enforce record size transformation 
+// ModuleID: enforce-record-size-smt-behavior-details
 [[enforce-record-size-behavior]]
 == Behavior details
 
@@ -109,7 +109,15 @@ Setting `min.field.size=0` makes all string and bytes fields eligible.
   The excess is distributed between the two sections in proportion to their truncatable content.
 * The SMT does not guarantee that the final serialized record will be exactly at or below `max.bytes`.
   The size estimate is approximate, and actual serialized size depends on the converter (JSON, Avro, Protobuf) and its overhead.
-  Use a conservative `max.bytes` value or adjust `compression.ratio` to provide a safety margin.
+During processing, the enforce record size transformation applies the following constraints and behaviors.
+
+* The SMT processes only records whose value contains a {prodname} change event envelope, that is, a Struct with `before` and `after` fields. 
+It passes non-envelope records, such as schema change events or tombstones, unchanged.
+
+* The SMT applies truncation to both the `before` and `after` sections of the envelope and distributes the excess between the two sections in proportion to their truncatable content.
+
+* The SMT does not guarantee that the final serialized record is exactly at or below max.bytes, because it estimates size approximately and the actual serialized size depends on the converter (JSON, Avro, or Protobuf) and its associated overhead. 
+To provide a safety margin, configure a conservative max.bytes value or adjust the compression.ratio setting.
 
 // Type: reference
 // ModuleID: options-for-configuring-the-enforce-record-size-transformation
@@ -127,21 +135,20 @@ The following table lists the configuration options that you can set for the enf
 |Description
 
 |[[enforce-record-size-max-bytes]]<<enforce-record-size-max-bytes, `max.bytes`>>
-|_No default (required)_
-|The maximum record size in bytes.
-Records whose estimated serialized size (adjusted by `compression.ratio`) exceeds this value have their string and bytes columns truncated proportionally to fit within this limit.
+|No default  value.
+|(Required) The maximum record size in bytes.
+If the estimated serialized size of a record (adjusted by `compression.ratio`) exceeds the specified limit, the transformation proportionally truncates values in string and bytes columns to conform to the limit
 
 |[[enforce-record-size-compression-ratio]]<<enforce-record-size-compression-ratio, `compression.ratio`>>
 |`1.0`
 |Ratio to account for record serialization differences.
-The estimated record size is multiplied by this ratio before comparing to `max.bytes`.
-For example, if your serialization compresses raw record size by 50%, set this to `0.5`.
-Must be a positive number.
+A positive number value that specifies the ratio that the transformation applies to the estimated record size before it compares the size to the value of `max.bytes`.
+For example, if serialization compresses raw record size by 50%, set this to `0.5`.
 
 |[[enforce-record-size-min-field-size]]<<enforce-record-size-min-field-size, `min.field.size`>>
 |`25000`
-|Fields with a size at or below this value (in bytes) are not truncated.
+|A non-negative number that specifies the maximum size of fields that are subject to truncation.
+The transformation does not truncate fields if their size is less than or equal to this value (in bytes).
 Only fields larger than this threshold are eligible for proportional truncation.
-Must be non-negative.
 
 |===
