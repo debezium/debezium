@@ -52,7 +52,6 @@ import io.debezium.doc.FixFor;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.junit.SkipWhenDatabaseVersion;
-import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
 import io.debezium.spi.converter.CustomConverter;
 import io.debezium.spi.converter.RelationalColumn;
@@ -330,8 +329,6 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
 
     @Test
     void shouldStreamAfterSnapshot() throws Exception {
-
-        LogInterceptor logInterceptor = new LogInterceptor(PostgresStreamingChangeEventSource.class);
         TestHelper.dropAllSchemas();
         TestHelper.executeDDL("postgres_create_tables.ddl");
 
@@ -354,7 +351,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         consumer.await(TestHelper.waitTimeForRecords(), TimeUnit.SECONDS);
         consumer.clear();
 
-        assertThat(logInterceptor.containsMessage("Processing messages")).isTrue();
+        waitForStreamingToStart();
     }
 
     @Test
