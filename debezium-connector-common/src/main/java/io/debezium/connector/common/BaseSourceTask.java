@@ -10,6 +10,7 @@ import static io.debezium.util.Loggings.maybeRedactSensitiveData;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -40,12 +41,14 @@ import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
+import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.base.QueueProviderServiceProvider;
 import io.debezium.converters.custom.CustomConverterServiceProvider;
 import io.debezium.data.Envelope;
 import io.debezium.function.LogPositionValidator;
 import io.debezium.openlineage.DebeziumOpenLineageEmitter;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
+import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.notification.channels.NotificationChannel;
 import io.debezium.pipeline.signal.channels.SignalChannelReader;
@@ -440,6 +443,15 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
      * Returns the next batch of source records, if any are available.
      */
     protected abstract List<SourceRecord> doPoll() throws InterruptedException;
+
+    protected final List<SourceRecord> pollRecords(ChangeEventQueue<DataChangeEvent> queue) throws InterruptedException {
+        final List<DataChangeEvent> records = queue.poll();
+        final List<SourceRecord> sourceRecords = new ArrayList<>(records.size());
+        for (final DataChangeEvent record : records) {
+            sourceRecords.add(record.getRecord());
+        }
+        return sourceRecords;
+    }
 
     protected abstract Optional<ErrorHandler> getErrorHandler();
 
