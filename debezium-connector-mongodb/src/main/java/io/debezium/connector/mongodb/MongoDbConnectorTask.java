@@ -270,8 +270,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
 
     @Override
     public List<SourceRecord> doPoll() throws InterruptedException {
-        List<DataChangeEvent> records = queue.poll();
-        return records.stream().map(DataChangeEvent::getRecord).collect(Collectors.toList());
+        return pollRecords(queue);
     }
 
     @Override
