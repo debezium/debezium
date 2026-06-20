@@ -220,7 +220,7 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
         final Configuration heartbeatConfig = config;
         final DebeziumHeaderProducer debeziumHeaderProducer = connectorConfig.getServiceRegistry().tryGetService(
                 DebeziumHeaderProducer.class);
-        final MysqlEventDispatcher<MySqlPartition, TableId> dispatcher = new MysqlEventDispatcher<>(
+        final MysqlEventDispatcher<MySqlPartition> dispatcher = new MysqlEventDispatcher<>(
                 connectorConfig,
                 topicNamingStrategy,
                 schema,
