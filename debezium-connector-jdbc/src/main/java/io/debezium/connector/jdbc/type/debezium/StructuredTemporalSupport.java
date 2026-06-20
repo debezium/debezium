@@ -16,9 +16,9 @@ import org.apache.kafka.connect.errors.ConnectException;
 
 import io.debezium.time.StructuredTemporal;
 
-final class StructuredTemporalSupport {
+public final class StructuredTemporalSupport {
 
-    static LocalDate toLocalDate(Struct value) {
+    public static LocalDate toLocalDate(Struct value) {
         requireFinite(value);
         return LocalDate.of(
                 value.getInt32(StructuredTemporal.YEAR_FIELD),
@@ -26,7 +26,7 @@ final class StructuredTemporalSupport {
                 value.getInt8(StructuredTemporal.DAY_FIELD));
     }
 
-    static LocalTime toLocalTime(Struct value) {
+    public static LocalTime toLocalTime(Struct value) {
         requireFinite(value);
         return LocalTime.of(
                 value.getInt8(StructuredTemporal.HOUR_FIELD),
@@ -35,17 +35,17 @@ final class StructuredTemporalSupport {
                 value.getInt32(StructuredTemporal.NANOS_FIELD));
     }
 
-    static LocalDateTime toLocalDateTime(Struct value) {
+    public static LocalDateTime toLocalDateTime(Struct value) {
         return LocalDateTime.of(toLocalDate(value), toLocalTime(value));
     }
 
-    static OffsetDateTime toOffsetDateTime(Struct value) {
+    public static OffsetDateTime toOffsetDateTime(Struct value) {
         final LocalDateTime localDateTime = toLocalDateTime(value);
         final Integer offsetSeconds = value.getInt32(StructuredTemporal.OFFSET_SECONDS_FIELD);
         return OffsetDateTime.of(localDateTime, offsetSeconds == null ? ZoneOffset.UTC : ZoneOffset.ofTotalSeconds(offsetSeconds));
     }
 
-    static void requireFinite(Struct value) {
+    public static void requireFinite(Struct value) {
         if (!StructuredTemporal.isFinite(value)) {
             throw new ConnectException("Non-finite structured temporal values require dialect-specific handling");
         }
