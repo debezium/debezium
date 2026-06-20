@@ -145,11 +145,15 @@ public class OracleValueConverters extends JdbcValueConverters {
             case OracleTypes.TIMESTAMPTZ:
             case OracleTypes.TIMESTAMPLTZ:
                 if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
-                    return StructuredZonedTimestamp.builder();
+                    return StructuredZonedTimestamp.builder(getTimePrecision(column));
                 }
                 return ZonedTimestamp.builder();
-            case OracleTypes.INTERVALYM:
             case OracleTypes.INTERVALDS:
+                if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
+                    return StructuredDuration.builder(getTimePrecision(column));
+                }
+                return intervalHandlingMode == OracleConnectorConfig.IntervalHandlingMode.STRING ? Interval.builder() : MicroDuration.builder();
+            case OracleTypes.INTERVALYM:
                 if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
                     return StructuredDuration.builder();
                 }
@@ -164,6 +168,11 @@ public class OracleValueConverters extends JdbcValueConverters {
                 return builder;
             }
         }
+    }
+
+    @Override
+    protected int getTimePrecision(Column column) {
+        return column.scale().orElse(column.length());
     }
 
     private SchemaBuilder getNumericSchema(Column column) {

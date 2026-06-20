@@ -12,6 +12,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.hibernate.engine.jdbc.Size;
 
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
+import io.debezium.time.StructuredTemporal;
 
 /**
  * An abstract temporal implementation of {@link JdbcType} for {@code TIME} based columns.
@@ -31,14 +32,18 @@ public abstract class AbstractTimeType extends AbstractTemporalType {
         DatabaseDialect dialect = getDialect();
         // We use TIMESTAMP here even for source TIME types as Oracle will use DATE types for
         // such columns, and it only supports second-based precision.
-        if (precision > 0 && precision <= dialect.getDefaultTimestampPrecision()) {
+        if (precision >= 0 && precision <= dialect.getDefaultTimestampPrecision()) {
             return dialect.getJdbcTypeName(Types.TIME, Size.precision(precision));
         }
         return dialect.getJdbcTypeName(Types.TIME, Size.precision(dialect.getDefaultTimePrecision()));
     }
 
     protected int getTimePrecision(Schema schema) {
-        final String length = getSourceColumnSize(schema).orElse("0");
+        final Optional<String> structuredPrecision = getSchemaParameter(schema, StructuredTemporal.PRECISION_PARAMETER);
+        if (structuredPrecision.isPresent()) {
+            return Integer.parseInt(structuredPrecision.get());
+        }
+        final String length = getSourceColumnSize(schema).orElse("-1");
         final Optional<String> scale = getSourceColumnPrecision(schema);
         return scale.map(Integer::parseInt).orElseGet(() -> Integer.parseInt(length));
     }

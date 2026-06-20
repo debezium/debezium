@@ -20,7 +20,11 @@ public final class StructuredTimestamp {
     public static final String SCHEMA_NAME = "io.debezium.time.StructuredTimestamp";
 
     public static SchemaBuilder builder() {
-        return SchemaBuilder.struct()
+        return builder(-1);
+    }
+
+    public static SchemaBuilder builder(int precision) {
+        return StructuredTemporal.withPrecision(SchemaBuilder.struct()
                 .name(SCHEMA_NAME)
                 .version(1)
                 .field(StructuredTemporal.YEAR_FIELD, StructuredTemporal.optionalInt32())
@@ -30,7 +34,7 @@ public final class StructuredTimestamp {
                 .field(StructuredTemporal.MINUTE_FIELD, StructuredTemporal.optionalInt8())
                 .field(StructuredTemporal.SECOND_FIELD, StructuredTemporal.optionalInt8())
                 .field(StructuredTemporal.NANOS_FIELD, StructuredTemporal.optionalInt32())
-                .field(StructuredTemporal.SPECIAL_VALUE_FIELD, StructuredTemporal.optionalString());
+                .field(StructuredTemporal.SPECIAL_VALUE_FIELD, StructuredTemporal.optionalString()), precision);
     }
 
     public static Schema schema() {
