@@ -24,6 +24,7 @@ public final class StructuredTemporal {
     public static final String OFFSET_SECONDS_FIELD = "offsetSeconds";
     public static final String ZONE_ID_FIELD = "zoneId";
     public static final String SPECIAL_VALUE_FIELD = "specialValue";
+    public static final String PRECISION_PARAMETER = "precision";
 
     public static final String YEARS_FIELD = "years";
     public static final String MONTHS_FIELD = "months";
@@ -57,6 +58,13 @@ public final class StructuredTemporal {
 
     static Struct specialValue(Schema schema, String value) {
         return new Struct(schema).put(SPECIAL_VALUE_FIELD, value);
+    }
+
+    static SchemaBuilder withPrecision(SchemaBuilder builder, int precision) {
+        if (precision >= 0) {
+            builder.parameter(PRECISION_PARAMETER, Integer.toString(precision));
+        }
+        return builder;
     }
 
     public static boolean isPositiveInfinity(Struct value) {

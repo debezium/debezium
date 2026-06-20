@@ -77,4 +77,19 @@ class StructuredTemporalTest {
         assertThat(value.getInt64(StructuredTemporal.SECONDS_FIELD)).isEqualTo(-6L);
         assertThat(value.getInt32(StructuredTemporal.NANOS_FIELD)).isEqualTo(-7);
     }
+
+    @Test
+    void shouldAttachPrecisionParameterToStructuredSchemas() {
+        assertThat(StructuredTime.builder(0).build().parameters())
+                .containsEntry(StructuredTemporal.PRECISION_PARAMETER, "0");
+        assertThat(StructuredTimestamp.builder(3).build().parameters())
+                .containsEntry(StructuredTemporal.PRECISION_PARAMETER, "3");
+        assertThat(StructuredZonedTime.builder(6).build().parameters())
+                .containsEntry(StructuredTemporal.PRECISION_PARAMETER, "6");
+        assertThat(StructuredZonedTimestamp.builder(9).build().parameters())
+                .containsEntry(StructuredTemporal.PRECISION_PARAMETER, "9");
+        assertThat(StructuredDuration.builder(6).build().parameters())
+                .containsEntry(StructuredTemporal.PRECISION_PARAMETER, "6");
+        assertThat(StructuredTimestamp.schema().parameters()).isNullOrEmpty();
+    }
 }

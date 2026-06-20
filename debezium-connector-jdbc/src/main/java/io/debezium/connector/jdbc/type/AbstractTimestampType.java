@@ -12,6 +12,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.hibernate.engine.jdbc.Size;
 
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
+import io.debezium.time.StructuredTemporal;
 
 /**
  * An abstract temporal implementation of {@link JdbcType} for {@code TIMESTAMP} based columns.
@@ -24,14 +25,18 @@ public abstract class AbstractTimestampType extends AbstractTemporalType {
     public String getTypeName(Schema schema, boolean isKey) {
         final int precision = getTimePrecision(schema);
         DatabaseDialect dialect = getDialect();
-        if (precision > 0 && precision <= dialect.getMaxTimestampPrecision()) {
+        if (precision >= 0 && precision <= dialect.getMaxTimestampPrecision()) {
             return dialect.getJdbcTypeName(getJdbcType(), Size.precision(precision));
         }
         return dialect.getJdbcTypeName(getJdbcType(), Size.precision(dialect.getDefaultTimestampPrecision()));
     }
 
     protected int getTimePrecision(Schema schema) {
-        final String length = getSourceColumnSize(schema).orElse("0");
+        final Optional<String> structuredPrecision = getSchemaParameter(schema, StructuredTemporal.PRECISION_PARAMETER);
+        if (structuredPrecision.isPresent()) {
+            return Integer.parseInt(structuredPrecision.get());
+        }
+        final String length = getSourceColumnSize(schema).orElse("-1");
         final Optional<String> scale = getSourceColumnPrecision(schema);
         return scale.map(Integer::parseInt).orElseGet(() -> Integer.parseInt(length));
     }

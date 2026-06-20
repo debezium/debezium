@@ -25,7 +25,11 @@ public final class StructuredZonedTimestamp {
     public static final String SCHEMA_NAME = "io.debezium.time.StructuredZonedTimestamp";
 
     public static SchemaBuilder builder() {
-        return SchemaBuilder.struct()
+        return builder(-1);
+    }
+
+    public static SchemaBuilder builder(int precision) {
+        return StructuredTemporal.withPrecision(SchemaBuilder.struct()
                 .name(SCHEMA_NAME)
                 .version(1)
                 .field(StructuredTemporal.YEAR_FIELD, StructuredTemporal.optionalInt32())
@@ -37,7 +41,7 @@ public final class StructuredZonedTimestamp {
                 .field(StructuredTemporal.NANOS_FIELD, StructuredTemporal.optionalInt32())
                 .field(StructuredTemporal.OFFSET_SECONDS_FIELD, StructuredTemporal.optionalInt32())
                 .field(StructuredTemporal.ZONE_ID_FIELD, StructuredTemporal.optionalString())
-                .field(StructuredTemporal.SPECIAL_VALUE_FIELD, StructuredTemporal.optionalString());
+                .field(StructuredTemporal.SPECIAL_VALUE_FIELD, StructuredTemporal.optionalString()), precision);
     }
 
     public static Schema schema() {
