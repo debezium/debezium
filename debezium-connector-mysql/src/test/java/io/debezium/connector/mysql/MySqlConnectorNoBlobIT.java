@@ -19,9 +19,9 @@ import java.util.TimeZone;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.util.UniqueDatabase;
@@ -58,7 +58,7 @@ public class MySqlConnectorNoBlobIT extends AbstractAsyncEngineConnectorTest {
     private KeyValueStore store;
     private SchemaChangeHistory schemaChanges;
 
-    @Before
+    @BeforeEach
     public void beforeEach() {
         Files.delete(SCHEMA_HISTORY_PATH);
         DATABASE.createAndInitialize();
@@ -67,7 +67,7 @@ public class MySqlConnectorNoBlobIT extends AbstractAsyncEngineConnectorTest {
         schemaChanges = new SchemaChangeHistory(DATABASE.getServerName());
     }
 
-    @After
+    @AfterEach
     public void afterEach() {
         try {
             stopConnector();
