@@ -8,6 +8,8 @@ package io.debezium.connector.jdbc.dialect.postgres;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.Types;
+import java.time.OffsetTime;
+import java.time.ZoneOffset;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
@@ -17,6 +19,7 @@ import io.debezium.sink.valuebinding.ValueBindDescriptor;
 import io.debezium.time.StructuredDate;
 import io.debezium.time.StructuredDuration;
 import io.debezium.time.StructuredTimestamp;
+import io.debezium.time.StructuredZonedTime;
 import io.debezium.time.StructuredZonedTimestamp;
 
 @Tag("UnitTests")
@@ -72,8 +75,24 @@ class StructuredTemporalTypeTest {
         assertThat(StructuredDurationType.INSTANCE.getQueryBinding(null, schema, value)).isEqualTo("cast(? as interval)");
     }
 
+    @Test
+    @DisplayName("Should bind structured zoned time as a PostgreSQL timetz literal")
+    void shouldBindStructuredZonedTimeAsString() {
+        final var schema = StructuredZonedTime.schema();
+        final var value = StructuredZonedTime.from(schema, OffsetTime.of(12, 13, 14, 123_456_789, ZoneOffset.ofHours(9)));
+        final var type = new StructuredZonedTimeType();
+
+        final var bindings = type.bind(5, schema, value);
+
+        assertThat(bindings).hasSize(1);
+        assertThat(bindings.get(0).getValue()).isEqualTo("12:13:14.123456789+09:00");
+        assertThat(bindings.get(0).getTargetSqlType()).isNull();
+        assertThat(type.getQueryBinding(null, schema, value)).isEqualTo("cast(? as timetz)");
+    }
+
     private void assertInfinityBinding(ValueBindDescriptor binding, String expectedValue) {
         assertThat(binding.getValue()).isEqualTo(expectedValue);
         assertThat(binding.getTargetSqlType()).isEqualTo(Types.VARCHAR);
     }
+
 }
