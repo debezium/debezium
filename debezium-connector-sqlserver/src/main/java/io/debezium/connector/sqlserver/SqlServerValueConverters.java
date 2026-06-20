@@ -20,6 +20,7 @@ import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
 import io.debezium.relational.ValueConverter;
+import io.debezium.time.StructuredZonedTimestamp;
 import io.debezium.time.ZonedTimestamp;
 
 import microsoft.sql.DateTimeOffset;
@@ -111,6 +112,9 @@ public class SqlServerValueConverters extends JdbcValueConverters {
             case microsoft.sql.Types.MONEY:
                 return SpecialValueDecimal.builder(decimalMode, column.length(), column.scale().get());
             case microsoft.sql.Types.DATETIMEOFFSET:
+                if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
+                    return StructuredZonedTimestamp.builder();
+                }
                 return ZonedTimestamp.builder();
             default:
                 return super.schemaBuilder(column);

@@ -499,7 +499,9 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
             .withDescription("Time, date and timestamps can be represented with different kinds of precisions, including: "
                     + "'adaptive_time_microseconds': the precision of date and timestamp values is based the database column's precision; but time fields always use microseconds precision; "
                     + "'connect': always represents time, date and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, "
-                    + "which uses millisecond precision regardless of the database columns' precision.");
+                    + "which uses millisecond precision regardless of the database columns' precision; "
+                    + "'isostring': represents time, date, and datetime values as ISO-8601 formatted strings at the UTC time zone; "
+                    + "'structured': represents time, date, timestamp, and datetime values as Kafka Connect structs with separate calendar and clock components.");
 
     public static final Field BIGINT_UNSIGNED_HANDLING_MODE = Field.create("bigint.unsigned.handling.mode")
             .withDisplayName("The mode for handling bigint-unsigned values")

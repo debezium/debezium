@@ -19,6 +19,9 @@ import io.debezium.time.MicroTime;
 import io.debezium.time.MicroTimestamp;
 import io.debezium.time.NanoTime;
 import io.debezium.time.NanoTimestamp;
+import io.debezium.time.StructuredDate;
+import io.debezium.time.StructuredTime;
+import io.debezium.time.StructuredTimestamp;
 import io.debezium.time.Time;
 import io.debezium.time.Timestamp;
 
@@ -67,7 +70,12 @@ public enum TemporalPrecisionMode implements EnumeratedValue {
      * Represent timestamp, datetime, time values using {@link io.debezium.time.NanoTime} semantic type,
      * which always have nanoseconds precision
      */
-    NANOSECONDS("nanoseconds", Date::builder, x -> NanoTime.builder(), x -> NanoTimestamp.builder());
+    NANOSECONDS("nanoseconds", Date::builder, x -> NanoTime.builder(), x -> NanoTimestamp.builder()),
+
+    /**
+     * Represent date, time, timestamp and datetime values as structured temporal components.
+     */
+    STRUCTURED("structured", StructuredDate::builder, x -> StructuredTime.builder(), x -> StructuredTimestamp.builder());
 
     private final String value;
     private final Supplier<SchemaBuilder> dateBuilder;

@@ -77,6 +77,11 @@ import io.debezium.relational.ValueConverter;
 import io.debezium.time.Conversions;
 import io.debezium.time.Interval;
 import io.debezium.time.MicroDuration;
+import io.debezium.time.StructuredDate;
+import io.debezium.time.StructuredDuration;
+import io.debezium.time.StructuredTimestamp;
+import io.debezium.time.StructuredZonedTime;
+import io.debezium.time.StructuredZonedTimestamp;
 import io.debezium.time.ZonedTime;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.NumberConversions;
@@ -204,12 +209,21 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.VARBIT:
                 return column.length() > 1 ? Bits.builder(column.length()) : SchemaBuilder.bool();
             case PgOid.INTERVAL:
+                if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
+                    return StructuredDuration.builder();
+                }
                 return intervalMode == IntervalHandlingMode.STRING ? Interval.builder() : MicroDuration.builder();
             case PgOid.TIMESTAMPTZ:
                 // JDBC reports this as "timestamp" even though it's with tz, so we can't use the base class...
+                if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
+                    return StructuredZonedTimestamp.builder();
+                }
                 return ZonedTimestamp.builder();
             case PgOid.TIMETZ:
                 // JDBC reports this as "time" but this contains TZ information
+                if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
+                    return StructuredZonedTime.builder();
+                }
                 return ZonedTime.builder();
             case PgOid.OID:
                 return SchemaBuilder.int64();
@@ -280,10 +294,16 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.TIME_ARRAY:
                 return SchemaBuilder.array(temporalPrecisionMode.getTimeBuilder(getTimePrecision(column)).optional().build());
             case PgOid.TIMETZ_ARRAY:
+                if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
+                    return SchemaBuilder.array(StructuredZonedTime.builder().optional().build());
+                }
                 return SchemaBuilder.array(ZonedTime.builder().optional().build());
             case PgOid.TIMESTAMP_ARRAY:
                 return SchemaBuilder.array(temporalPrecisionMode.getTimestampBuilder(getTimePrecision(column)).optional().build());
             case PgOid.TIMESTAMPTZ_ARRAY:
+                if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
+                    return SchemaBuilder.array(StructuredZonedTimestamp.builder().optional().build());
+                }
                 return SchemaBuilder.array(ZonedTimestamp.builder().optional().build());
             case PgOid.BYTEA_ARRAY:
                 return SchemaBuilder.array(binaryMode.getSchema().optional().build());
@@ -931,6 +951,9 @@ public class PostgresValueConverter extends JdbcValueConverters {
     }
 
     protected Object convertInterval(Column column, Field fieldDefn, Object data) {
+        if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
+            return convertIntervalToStructured(column, fieldDefn, data);
+        }
         Object fallback = intervalMode == IntervalHandlingMode.STRING ? Interval.toIsoString(0, 0, 0, 0, 0, new BigDecimal(0)) : NumberConversions.LONG_FALSE;
         return convertValue(column, fieldDefn, data, fallback, (r) -> {
             if (data instanceof Number) {
@@ -969,8 +992,40 @@ public class PostgresValueConverter extends JdbcValueConverters {
         });
     }
 
+    protected Object convertIntervalToStructured(Column column, Field fieldDefn, Object data) {
+        return convertValue(column, fieldDefn, data, StructuredDuration.from(fieldDefn.schema(), 0, 0, 0, 0, 0, 0, 0), (r) -> {
+            if (data instanceof Number) {
+                final long micros = ((Number) data).longValue();
+                final long seconds = micros / 1_000_000;
+                final int nanos = (int) (micros % 1_000_000) * 1_000;
+                r.deliver(StructuredDuration.from(fieldDefn.schema(), 0, 0, 0, 0, 0, seconds, nanos));
+            }
+            if (data instanceof PGInterval) {
+                final PGInterval interval = (PGInterval) data;
+                final BigDecimal seconds = BigDecimal.valueOf(interval.getSeconds());
+                final long wholeSeconds = seconds.longValue();
+                final int nanos = seconds.subtract(BigDecimal.valueOf(wholeSeconds))
+                        .movePointRight(9)
+                        .setScale(0, RoundingMode.HALF_UP)
+                        .intValueExact();
+                r.deliver(StructuredDuration.from(
+                        fieldDefn.schema(),
+                        interval.getYears(),
+                        interval.getMonths(),
+                        interval.getDays(),
+                        interval.getHours(),
+                        interval.getMinutes(),
+                        wholeSeconds,
+                        nanos));
+            }
+        });
+    }
+
     @Override
     protected Object convertTimestampWithZone(Column column, Field fieldDefn, Object data) {
+        if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
+            return convertPostgresTimestampWithZoneToStructured(column, fieldDefn, data);
+        }
         if (data instanceof String str) {
             if (POSITIVE_INFINITY_TIMESTAMP_PG_STRING.equals(str) || NEGATIVE_INFINITY_TIMESTAMP_PG_STRING.equals(str)) {
                 return str;
@@ -1022,6 +1077,85 @@ public class PostgresValueConverter extends JdbcValueConverters {
         }
 
         return super.convertTimeWithZone(column, fieldDefn, data);
+    }
+
+    protected Object convertPostgresTimestampWithZoneToStructured(Column column, Field fieldDefn, Object data) {
+        if (isPositiveInfinityTimestampWithZone(data)) {
+            return StructuredZonedTimestamp.positiveInfinity(fieldDefn.schema());
+        }
+        if (isNegativeInfinityTimestampWithZone(data)) {
+            return StructuredZonedTimestamp.negativeInfinity(fieldDefn.schema());
+        }
+        if (data instanceof String str) {
+            data = DateTimeFormat.get().timestampWithTimeZoneToOffsetDateTime(str).withOffsetSameInstant(ZoneOffset.UTC);
+        }
+        if (data instanceof java.util.Date) {
+            data = OffsetDateTime.ofInstant(((Date) data).toInstant(), ZoneOffset.UTC);
+        }
+        if (data instanceof OffsetDateTime) {
+            data = ((OffsetDateTime) data).toZonedDateTime();
+        }
+        return super.convertTimestampWithZone(column, fieldDefn, data);
+    }
+
+    @Override
+    protected Object convertDateToStructured(Column column, Field fieldDefn, Object data) {
+        if (isPositiveInfinityDate(data)) {
+            return StructuredDate.positiveInfinity(fieldDefn.schema());
+        }
+        if (isNegativeInfinityDate(data)) {
+            return StructuredDate.negativeInfinity(fieldDefn.schema());
+        }
+        return super.convertDateToStructured(column, fieldDefn, data);
+    }
+
+    @Override
+    protected Object convertTimestampToStructured(Column column, Field fieldDefn, Object data) {
+        if (isPositiveInfinityTimestamp(data)) {
+            return StructuredTimestamp.positiveInfinity(fieldDefn.schema());
+        }
+        if (isNegativeInfinityTimestamp(data)) {
+            return StructuredTimestamp.negativeInfinity(fieldDefn.schema());
+        }
+        return super.convertTimestampToStructured(column, fieldDefn, data);
+    }
+
+    private boolean isPositiveInfinityDate(Object data) {
+        return POSITIVE_INFINITY_TIMESTAMP_PG_STRING.equals(data)
+                || POSITIVE_INFINITY_DATE.equals(data)
+                || POSITIVE_INFINITY_LOCAL_DATE.equals(data);
+    }
+
+    private boolean isNegativeInfinityDate(Object data) {
+        return NEGATIVE_INFINITY_TIMESTAMP_PG_STRING.equals(data)
+                || NEGATIVE_INFINITY_DATE.equals(data)
+                || NEGATIVE_INFINITY_LOCAL_DATE.equals(data);
+    }
+
+    private boolean isPositiveInfinityTimestamp(Object data) {
+        return POSITIVE_INFINITY_TIMESTAMP_PG_STRING.equals(data)
+                || POSITIVE_INFINITY_TIMESTAMP.equals(data)
+                || POSITIVE_INFINITY_LOCAL_DATE_TIME.equals(data)
+                || POSITIVE_INFINITY_INSTANT.equals(data);
+    }
+
+    private boolean isNegativeInfinityTimestamp(Object data) {
+        return NEGATIVE_INFINITY_TIMESTAMP_PG_STRING.equals(data)
+                || NEGATIVE_INFINITY_TIMESTAMP.equals(data)
+                || NEGATIVE_INFINITY_LOCAL_DATE_TIME.equals(data)
+                || NEGATIVE_INFINITY_INSTANT.equals(data);
+    }
+
+    private boolean isPositiveInfinityTimestampWithZone(Object data) {
+        return isPositiveInfinityTimestamp(data)
+                || POSITIVE_INFINITY_DATE.equals(data)
+                || POSITIVE_INFINITY_OFFSET_DATE_TIME.equals(data);
+    }
+
+    private boolean isNegativeInfinityTimestampWithZone(Object data) {
+        return isNegativeInfinityTimestamp(data)
+                || NEGATIVE_INFINITY_DATE.equals(data)
+                || NEGATIVE_INFINITY_OFFSET_DATE_TIME.equals(data);
     }
 
     protected Object convertGeometry(Column column, Field fieldDefn, Object data) {
