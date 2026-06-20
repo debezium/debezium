@@ -235,6 +235,11 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
                     // MySQL explicitly prohibits the use of adaptive so we only allow the other two in the matrix.
                     continue;
                 }
+                if (TemporalPrecisionMode.STRUCTURED == temporalPrecisionMode && includeList.length == 0) {
+                    // Structured temporal mode requires source-side support in the source connector runtime used by
+                    // the e2e pipeline. Keep existing temporal matrices on legacy modes unless a test opts in.
+                    continue;
+                }
                 if (includeList.length > 0 && Arrays.stream(includeList).noneMatch(p -> p == temporalPrecisionMode)) {
                     continue;
                 }

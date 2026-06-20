@@ -69,8 +69,7 @@ public abstract class BinlogFieldReader {
             // This is for DATETIME columns (a logical date + time without time zone).
             // Reading them with a calendar based on the default time zone, we make sure that the value
             // is constructed correctly using the database's (or connection's) time zone.
-            case Types.TIMESTAMP:
-            case Types.TIMESTAMP_WITH_TIMEZONE: {
+            case Types.TIMESTAMP: {
                 try {
                     return readTimestampField(rs, columnIndex, column, table);
                 }
@@ -79,6 +78,19 @@ public abstract class BinlogFieldReader {
                     // Workaround for DBZ-5084
                     return rs.getObject(columnIndex);
                 }
+            }
+            case Types.TIMESTAMP_WITH_TIMEZONE: {
+                if (isStructuredTemporalMode()) {
+                    try {
+                        return readTimestampField(rs, columnIndex, column, table);
+                    }
+                    catch (RuntimeException e) {
+                        LOGGER.warn("Failed to read data value: '{}'. Trying default implementation.", e.getMessage());
+                        // Workaround for DBZ-5084
+                        return rs.getObject(columnIndex);
+                    }
+                }
+                break;
             }
 
             // JDBC getObject returns a Boolean for all TINYINT(1) columns.

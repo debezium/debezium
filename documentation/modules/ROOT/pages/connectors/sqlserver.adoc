@@ -1863,6 +1863,7 @@ Represents timestamp values in UTC format, according to the ISO 8601 standard, f
 
 When the `time.precision.mode` configuration property is set to `structured`, the connector maps temporal values to Kafka Connect structs with separate calendar and clock components.
 This mode avoids flattening high-precision temporal values into a single epoch-based integer:
+Structured temporal values that have fractional seconds include an optional `precision` field that records the source column's fractional second precision.
 
 [cols="30%a,25%a,45%a",options="header"]
 |===
@@ -1880,19 +1881,19 @@ Contains `year`, `month`, and `day` fields.
 |`STRUCT`
 |`io.debezium.time.StructuredTime` +
  +
-Contains `hour`, `minute`, `second`, and `nanos` fields.
+Contains `hour`, `minute`, `second`, `nanos`, and optional `precision` fields.
 
 |`DATETIME`, `SMALLDATETIME`, `DATETIME2`
 |`STRUCT`
 |`io.debezium.time.StructuredTimestamp` +
  +
-Contains `year`, `month`, `day`, `hour`, `minute`, `second`, and `nanos` fields.
+Contains `year`, `month`, `day`, `hour`, `minute`, `second`, `nanos`, and optional `precision` fields.
 
 |`DATETIMEOFFSET`
 |`STRUCT`
 |`io.debezium.time.StructuredZonedTimestamp` +
  +
-Contains calendar and clock component fields, `offsetSeconds`, and optional `zoneId`.
+Contains calendar and clock component fields, `offsetSeconds`, optional `zoneId`, and optional `precision`.
 
 |===
 

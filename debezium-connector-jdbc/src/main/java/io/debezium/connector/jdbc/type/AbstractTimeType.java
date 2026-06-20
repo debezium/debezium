@@ -6,13 +6,11 @@
 package io.debezium.connector.jdbc.type;
 
 import java.sql.Types;
-import java.util.Optional;
 
 import org.apache.kafka.connect.data.Schema;
 import org.hibernate.engine.jdbc.Size;
 
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
-import io.debezium.time.StructuredTemporal;
 
 /**
  * An abstract temporal implementation of {@link JdbcType} for {@code TIME} based columns.
@@ -39,12 +37,7 @@ public abstract class AbstractTimeType extends AbstractTemporalType {
     }
 
     protected int getTimePrecision(Schema schema) {
-        final Optional<String> structuredPrecision = getSchemaParameter(schema, StructuredTemporal.PRECISION_PARAMETER);
-        if (structuredPrecision.isPresent()) {
-            return Integer.parseInt(structuredPrecision.get());
-        }
         final String length = getSourceColumnSize(schema).orElse("-1");
-        final Optional<String> scale = getSourceColumnPrecision(schema);
-        return scale.map(Integer::parseInt).orElseGet(() -> Integer.parseInt(length));
+        return getSourceColumnPrecision(schema).map(Integer::parseInt).orElseGet(() -> Integer.parseInt(length));
     }
 }

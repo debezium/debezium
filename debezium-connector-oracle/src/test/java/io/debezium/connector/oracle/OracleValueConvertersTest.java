@@ -181,7 +181,8 @@ public class OracleValueConvertersTest {
                 .convert(new TIMESTAMP(LocalDateTime.of(9999, 12, 31, 23, 59, 59, 999_999_999)));
 
         assertThat(field.schema().name()).isEqualTo(StructuredTimestamp.SCHEMA_NAME);
-        assertThat(field.schema().parameters()).containsEntry(StructuredTemporal.PRECISION_PARAMETER, "9");
+        assertThat(field.schema().parameters()).isNullOrEmpty();
+        assertThat(result.getInt32(StructuredTemporal.PRECISION_FIELD)).isEqualTo(9);
         assertThat(result.getString(StructuredTemporal.SPECIAL_VALUE_FIELD)).isNull();
         assertThat(result.getInt32(StructuredTemporal.YEAR_FIELD)).isEqualTo(9999);
         assertThat(result.getInt8(StructuredTemporal.MONTH_FIELD)).isEqualTo((byte) 12);
@@ -207,7 +208,8 @@ public class OracleValueConvertersTest {
                 .convert(new TIMESTAMPTZ(OffsetDateTime.of(9999, 12, 31, 23, 59, 59, 999_999_999, ZoneOffset.ofHours(14))));
 
         assertThat(field.schema().name()).isEqualTo(StructuredZonedTimestamp.SCHEMA_NAME);
-        assertThat(field.schema().parameters()).containsEntry(StructuredTemporal.PRECISION_PARAMETER, "9");
+        assertThat(field.schema().parameters()).isNullOrEmpty();
+        assertThat(result.getInt32(StructuredTemporal.PRECISION_FIELD)).isEqualTo(9);
         assertThat(result.getString(StructuredTemporal.SPECIAL_VALUE_FIELD)).isNull();
         assertThat(result.getInt32(StructuredTemporal.YEAR_FIELD)).isEqualTo(9999);
         assertThat(result.getInt8(StructuredTemporal.MONTH_FIELD)).isEqualTo((byte) 12);
@@ -251,7 +253,8 @@ public class OracleValueConvertersTest {
                 .convert(new INTERVALDS("-999 23:59:59.999999999"));
 
         assertThat(daySecondField.schema().name()).isEqualTo(StructuredDuration.SCHEMA_NAME);
-        assertThat(daySecondField.schema().parameters()).containsEntry(StructuredTemporal.PRECISION_PARAMETER, "9");
+        assertThat(daySecondField.schema().parameters()).isNullOrEmpty();
+        assertThat(daySecond.getInt32(StructuredTemporal.PRECISION_FIELD)).isEqualTo(9);
         assertThat(daySecond.getInt32(StructuredTemporal.DAYS_FIELD)).isEqualTo(-999);
         assertThat(daySecond.getInt32(StructuredTemporal.HOURS_FIELD)).isEqualTo(-23);
         assertThat(daySecond.getInt32(StructuredTemporal.MINUTES_FIELD)).isEqualTo(-59);
