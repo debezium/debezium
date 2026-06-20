@@ -32,6 +32,7 @@ import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
 import io.debezium.util.DelayStrategy;
 import io.debezium.util.LoggingContext;
+import io.debezium.util.RetryingRunnable;
 
 @NotThreadSafe
 public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition, T extends DataCollectionId>
@@ -116,13 +117,10 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
             return;
         }
 
-        boolean success = false;
-        int attempt = 0;
-        final DelayStrategy retryStrategy = DelayStrategy.constant(connectorConfig.getSignalEmitFailureBackoff());
-        while (!success && attempt < connectorConfig.getSignalEmitFailureMaxRetries()) {
-            attempt++;
-            try {
-                try {
+        RetryingRunnable.<SQLException> builder()
+                .retries(connectorConfig.getSignalEmitFailureMaxRetries())
+                .delayStrategy(DelayStrategy.constant(connectorConfig.getSignalEmitFailureBackoff()))
+                .doRun(() -> {
                     String signalWindowStatement = "INSERT INTO " + signalTableName + " VALUES (?, ?, ?)";
                     signalMetadata = new SignalMetadata(Instant.now(), null);
                     jdbcConnection.prepareUpdate(signalWindowStatement, x -> {
@@ -132,10 +130,9 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
                         x.setString(3, signalMetadata.metadataString());
                     });
                     jdbcConnection.commit();
-                    success = true;
-                }
-                catch (SQLException e) {
-                    LOGGER.error("Error emitting open window to signal table '{}'. Closing connection and re-connecting", signalTableName, e);
+                })
+                .doAutoHeal(() -> {
+                    LOGGER.error("Error emitting open window to signal table '{}'. Closing connection and re-connecting", signalTableName);
                     try {
                         jdbcConnection.close();
                     }
@@ -144,20 +141,9 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
                     }
                     LOGGER.trace("Reconnecting JDBC connection");
                     jdbcConnection.connect();
-                }
-            }
-            catch (SQLException ex) {
-                LOGGER.error("Reconnection to signal table '{}' failed. Backing off", signalTableName, ex);
-                retryStrategy.sleepWhen(true);
-                if (Thread.currentThread().isInterrupted()) {
-                    throw new SQLException("Interrupted while sleeping in DelayStrategy", ex);
-                }
-            }
-        }
-        if (!success) {
-            throw new SQLException("Unable to establish a working connection to signal table "
-                    + signalTableName + " after " + attempt + " attempts");
-        }
+                })
+                .build()
+                .runWrapped(cause -> new SQLException("Interrupted", cause));
     }
 
     @Override
