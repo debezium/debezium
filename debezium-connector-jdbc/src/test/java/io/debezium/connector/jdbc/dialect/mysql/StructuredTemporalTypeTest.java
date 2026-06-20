@@ -70,18 +70,18 @@ class StructuredTemporalTypeTest {
     }
 
     @Test
-    @DisplayName("Should prefer structured duration precision over propagated source column precision")
-    void shouldPreferStructuredDurationPrecision() {
+    @DisplayName("Should use propagated source column length for structured duration precision")
+    void shouldUseSourceColumnLengthForStructuredDurationPrecision() {
         final var type = new StructuredDurationType();
         final DatabaseDialect dialect = mock(DatabaseDialect.class);
         when(dialect.getJdbcTypeName(eq(Types.TIME), any(Size.class)))
                 .thenAnswer(invocation -> "time(" + ((Size) invocation.getArgument(1)).getPrecision() + ")");
         type.configure(mock(SinkConnectorConfig.class), dialect);
 
-        final var schema = StructuredDuration.builder(2)
+        final var schema = StructuredDuration.builder()
                 .parameter("__debezium.source.column.length", "6")
                 .build();
 
-        assertThat(type.getTypeName(schema, false)).isEqualTo("time(2)");
+        assertThat(type.getTypeName(schema, false)).isEqualTo("time(6)");
     }
 }

@@ -413,6 +413,7 @@ public class PostgresTemporalPrecisionHandlingIT extends AbstractAsyncEngineConn
                 .build());
         start(PostgresConnector.class, config.getConfig());
         assertConnectorIsRunning();
+        waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
 
         TestHelper.execute(
                 """

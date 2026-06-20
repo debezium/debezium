@@ -2074,6 +2074,7 @@ Use `time.precision.mode=microseconds` (or `isostring`) to avoid the limitation.
 time.precision.mode=structured::
 The {connector-name} connector represents temporal values as Kafka Connect structs with separate calendar and clock components.
 This mode can preserve zero and invalid temporal components without converting them to epoch-based numeric values.
+Structured temporal values that have fractional seconds include an optional `precision` field that records the source column's fractional second precision.
 +
 .Mappings when `time.precision.mode=structured`
 [cols="25%a,20%a,55%a",options="header",subs="+attributes"]
@@ -2088,17 +2089,17 @@ Contains `year`, `month`, and `day` fields.
 |`TIME[(M)]`
 |`STRUCT`
 a|`io.debezium.time.StructuredDuration` +
-Contains signed `years`, `months`, `days`, `hours`, `minutes`, `seconds`, and `nanos` fields.
+Contains signed `years`, `months`, `days`, `hours`, `minutes`, `seconds`, `nanos`, and optional `precision` fields.
 
 |`DATETIME[(M)]`
 |`STRUCT`
 a|`io.debezium.time.StructuredTimestamp` +
-Contains `year`, `month`, `day`, `hour`, `minute`, `second`, and `nanos` fields.
+Contains `year`, `month`, `day`, `hour`, `minute`, `second`, `nanos`, and optional `precision` fields.
 
 |`TIMESTAMP[(M)]`
 |`STRUCT`
 a|`io.debezium.time.StructuredZonedTimestamp` +
-Contains calendar and clock component fields, `offsetSeconds`, and optional `zoneId`.
+Contains calendar and clock component fields, `offsetSeconds`, optional `zoneId`, and optional `precision`.
 
 |===
 end::temporal-data-types[]

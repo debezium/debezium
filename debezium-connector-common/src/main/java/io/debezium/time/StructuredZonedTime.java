@@ -23,18 +23,15 @@ public final class StructuredZonedTime {
     public static final String SCHEMA_NAME = "io.debezium.time.StructuredZonedTime";
 
     public static SchemaBuilder builder() {
-        return builder(-1);
-    }
-
-    public static SchemaBuilder builder(int precision) {
-        return StructuredTemporal.withPrecision(SchemaBuilder.struct()
+        return SchemaBuilder.struct()
                 .name(SCHEMA_NAME)
                 .version(1)
                 .field(StructuredTemporal.HOUR_FIELD, StructuredTemporal.optionalInt8())
                 .field(StructuredTemporal.MINUTE_FIELD, StructuredTemporal.optionalInt8())
                 .field(StructuredTemporal.SECOND_FIELD, StructuredTemporal.optionalInt8())
                 .field(StructuredTemporal.NANOS_FIELD, StructuredTemporal.optionalInt32())
-                .field(StructuredTemporal.OFFSET_SECONDS_FIELD, StructuredTemporal.optionalInt32()), precision);
+                .field(StructuredTemporal.OFFSET_SECONDS_FIELD, StructuredTemporal.optionalInt32())
+                .field(StructuredTemporal.PRECISION_FIELD, StructuredTemporal.optionalInt32());
     }
 
     public static Schema schema() {
@@ -46,15 +43,23 @@ public final class StructuredZonedTime {
     }
 
     public static Struct from(Schema schema, OffsetTime value) {
-        return new Struct(schema)
+        return from(schema, value, -1);
+    }
+
+    public static Struct from(Schema schema, OffsetTime value, int precision) {
+        return StructuredTemporal.withPrecision(new Struct(schema)
                 .put(StructuredTemporal.HOUR_FIELD, (byte) value.getHour())
                 .put(StructuredTemporal.MINUTE_FIELD, (byte) value.getMinute())
                 .put(StructuredTemporal.SECOND_FIELD, (byte) value.getSecond())
                 .put(StructuredTemporal.NANOS_FIELD, value.getNano())
-                .put(StructuredTemporal.OFFSET_SECONDS_FIELD, value.getOffset().getTotalSeconds());
+                .put(StructuredTemporal.OFFSET_SECONDS_FIELD, value.getOffset().getTotalSeconds()), precision);
     }
 
     public static Struct toStructuredZonedTime(Schema schema, Object value, ZoneOffset defaultOffset, TemporalAdjuster adjuster) {
+        return toStructuredZonedTime(schema, value, defaultOffset, adjuster, -1);
+    }
+
+    public static Struct toStructuredZonedTime(Schema schema, Object value, ZoneOffset defaultOffset, TemporalAdjuster adjuster, int precision) {
         OffsetTime time;
         if (value instanceof OffsetTime) {
             time = (OffsetTime) value;
@@ -69,7 +74,7 @@ public final class StructuredZonedTime {
         if (adjuster != null) {
             time = time.with(adjuster);
         }
-        return from(schema, time);
+        return from(schema, time, precision);
     }
 
     private StructuredZonedTime() {

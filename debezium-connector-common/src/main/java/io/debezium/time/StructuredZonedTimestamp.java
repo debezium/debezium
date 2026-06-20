@@ -25,11 +25,7 @@ public final class StructuredZonedTimestamp {
     public static final String SCHEMA_NAME = "io.debezium.time.StructuredZonedTimestamp";
 
     public static SchemaBuilder builder() {
-        return builder(-1);
-    }
-
-    public static SchemaBuilder builder(int precision) {
-        return StructuredTemporal.withPrecision(SchemaBuilder.struct()
+        return SchemaBuilder.struct()
                 .name(SCHEMA_NAME)
                 .version(1)
                 .field(StructuredTemporal.YEAR_FIELD, StructuredTemporal.optionalInt32())
@@ -41,7 +37,8 @@ public final class StructuredZonedTimestamp {
                 .field(StructuredTemporal.NANOS_FIELD, StructuredTemporal.optionalInt32())
                 .field(StructuredTemporal.OFFSET_SECONDS_FIELD, StructuredTemporal.optionalInt32())
                 .field(StructuredTemporal.ZONE_ID_FIELD, StructuredTemporal.optionalString())
-                .field(StructuredTemporal.SPECIAL_VALUE_FIELD, StructuredTemporal.optionalString()), precision);
+                .field(StructuredTemporal.SPECIAL_VALUE_FIELD, StructuredTemporal.optionalString())
+                .field(StructuredTemporal.PRECISION_FIELD, StructuredTemporal.optionalInt32());
     }
 
     public static Schema schema() {
@@ -53,11 +50,20 @@ public final class StructuredZonedTimestamp {
     }
 
     public static Struct from(Schema schema, OffsetDateTime value, String zoneId) {
+        return from(schema, value, zoneId, -1);
+    }
+
+    public static Struct from(Schema schema, OffsetDateTime value, String zoneId, int precision) {
         return from(schema, value.getYear(), value.getMonthValue(), value.getDayOfMonth(), value.getHour(), value.getMinute(), value.getSecond(), value.getNano(),
-                value.getOffset().getTotalSeconds(), zoneId);
+                value.getOffset().getTotalSeconds(), zoneId, precision);
     }
 
     public static Struct from(Schema schema, int year, int month, int day, int hour, int minute, int second, int nanos, int offsetSeconds, String zoneId) {
+        return from(schema, year, month, day, hour, minute, second, nanos, offsetSeconds, zoneId, -1);
+    }
+
+    public static Struct from(Schema schema, int year, int month, int day, int hour, int minute, int second, int nanos, int offsetSeconds, String zoneId,
+                              int precision) {
         final Struct struct = new Struct(schema)
                 .put(StructuredTemporal.YEAR_FIELD, year)
                 .put(StructuredTemporal.MONTH_FIELD, (byte) month)
@@ -70,10 +76,14 @@ public final class StructuredZonedTimestamp {
         if (zoneId != null) {
             struct.put(StructuredTemporal.ZONE_ID_FIELD, zoneId);
         }
-        return struct;
+        return StructuredTemporal.withPrecision(struct, precision);
     }
 
     public static Struct toStructuredZonedTimestamp(Schema schema, Object value, ZoneOffset defaultOffset, TemporalAdjuster adjuster) {
+        return toStructuredZonedTimestamp(schema, value, defaultOffset, adjuster, -1);
+    }
+
+    public static Struct toStructuredZonedTimestamp(Schema schema, Object value, ZoneOffset defaultOffset, TemporalAdjuster adjuster, int precision) {
         OffsetDateTime timestamp;
         String zoneId = null;
         if (value instanceof ZonedDateTime) {
@@ -94,15 +104,23 @@ public final class StructuredZonedTimestamp {
         if (adjuster != null) {
             timestamp = timestamp.with(adjuster);
         }
-        return from(schema, timestamp, zoneId);
+        return from(schema, timestamp, zoneId, precision);
     }
 
     public static Struct positiveInfinity(Schema schema) {
         return StructuredTemporal.specialValue(schema, StructuredTemporal.POSITIVE_INFINITY);
     }
 
+    public static Struct positiveInfinity(Schema schema, int precision) {
+        return StructuredTemporal.specialValue(schema, StructuredTemporal.POSITIVE_INFINITY, precision);
+    }
+
     public static Struct negativeInfinity(Schema schema) {
         return StructuredTemporal.specialValue(schema, StructuredTemporal.NEGATIVE_INFINITY);
+    }
+
+    public static Struct negativeInfinity(Schema schema, int precision) {
+        return StructuredTemporal.specialValue(schema, StructuredTemporal.NEGATIVE_INFINITY, precision);
     }
 
     public static ZoneId zoneId(Struct value) {

@@ -9,10 +9,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.Collections;
 
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.Test;
+
+import io.debezium.data.VerifyRecord;
 
 class StructuredTemporalTest {
 
@@ -79,17 +84,35 @@ class StructuredTemporalTest {
     }
 
     @Test
-    void shouldAttachPrecisionParameterToStructuredSchemas() {
-        assertThat(StructuredTime.builder(0).build().parameters())
-                .containsEntry(StructuredTemporal.PRECISION_PARAMETER, "0");
-        assertThat(StructuredTimestamp.builder(3).build().parameters())
-                .containsEntry(StructuredTemporal.PRECISION_PARAMETER, "3");
-        assertThat(StructuredZonedTime.builder(6).build().parameters())
-                .containsEntry(StructuredTemporal.PRECISION_PARAMETER, "6");
-        assertThat(StructuredZonedTimestamp.builder(9).build().parameters())
-                .containsEntry(StructuredTemporal.PRECISION_PARAMETER, "9");
-        assertThat(StructuredDuration.builder(6).build().parameters())
-                .containsEntry(StructuredTemporal.PRECISION_PARAMETER, "6");
+    void shouldPreservePrecisionAsValueComponent() {
+        final Schema timestampSchema = StructuredTimestamp.builder().build();
+        final Struct timestamp = StructuredTimestamp.from(timestampSchema, 2026, 6, 20, 12, 13, 14, 123_000_000, 3);
+
+        assertThat(timestampSchema.parameters()).isNullOrEmpty();
+        assertThat(timestamp.getInt32(StructuredTemporal.PRECISION_FIELD)).isEqualTo(3);
+
+        final Schema durationSchema = StructuredDuration.builder().build();
+        final Struct duration = StructuredDuration.from(durationSchema, 0, 0, 0, 1, 2, 3, 456_000_000, 6);
+
+        assertThat(durationSchema.parameters()).isNullOrEmpty();
+        assertThat(duration.getInt32(StructuredTemporal.PRECISION_FIELD)).isEqualTo(6);
         assertThat(StructuredTimestamp.schema().parameters()).isNullOrEmpty();
+    }
+
+    @Test
+    void shouldSerializeRepeatedStructuredTimestampSchemasWithDifferentPrecisionValues() {
+        final Schema timestamp3Schema = StructuredTimestamp.builder().build();
+        final Schema timestamp6Schema = StructuredTimestamp.builder().build();
+        final Schema valueSchema = SchemaBuilder.struct()
+                .name("server.schema.table.Value")
+                .field("ts3", timestamp3Schema)
+                .field("ts6", timestamp6Schema)
+                .build();
+        final Struct value = new Struct(valueSchema)
+                .put("ts3", StructuredTimestamp.from(timestamp3Schema, 2026, 6, 20, 12, 13, 14, 123_000_000, 3))
+                .put("ts6", StructuredTimestamp.from(timestamp6Schema, 2026, 6, 20, 12, 13, 14, 123_456_000, 6));
+        final SourceRecord record = new SourceRecord(Collections.emptyMap(), Collections.emptyMap(), "server.schema.table", null, null, valueSchema, value);
+
+        VerifyRecord.isValid(record);
     }
 }

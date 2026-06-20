@@ -221,19 +221,19 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 return column.length() > 1 ? Bits.builder(column.length()) : SchemaBuilder.bool();
             case PgOid.INTERVAL:
                 if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
-                    return StructuredDuration.builder(getTimePrecision(column));
+                    return StructuredDuration.builder();
                 }
                 return intervalMode == IntervalHandlingMode.STRING ? Interval.builder() : MicroDuration.builder();
             case PgOid.TIMESTAMPTZ:
                 // JDBC reports this as "timestamp" even though it's with tz, so we can't use the base class...
                 if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
-                    return StructuredZonedTimestamp.builder(getTimePrecision(column));
+                    return StructuredZonedTimestamp.builder();
                 }
                 return ZonedTimestamp.builder();
             case PgOid.TIMETZ:
                 // JDBC reports this as "time" but this contains TZ information
                 if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
-                    return StructuredZonedTime.builder(getTimePrecision(column));
+                    return StructuredZonedTime.builder();
                 }
                 return ZonedTime.builder();
             case PgOid.OID:
@@ -315,14 +315,14 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 return SchemaBuilder.array(temporalPrecisionMode.getTimeBuilder(getTimePrecision(column)).optional().build());
             case PgOid.TIMETZ_ARRAY:
                 if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
-                    return SchemaBuilder.array(StructuredZonedTime.builder(getTimePrecision(column)).optional().build());
+                    return SchemaBuilder.array(StructuredZonedTime.builder().optional().build());
                 }
                 return SchemaBuilder.array(ZonedTime.builder().optional().build());
             case PgOid.TIMESTAMP_ARRAY:
                 return SchemaBuilder.array(temporalPrecisionMode.getTimestampBuilder(getTimePrecision(column)).optional().build());
             case PgOid.TIMESTAMPTZ_ARRAY:
                 if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
-                    return SchemaBuilder.array(StructuredZonedTimestamp.builder(getTimePrecision(column)).optional().build());
+                    return SchemaBuilder.array(StructuredZonedTimestamp.builder().optional().build());
                 }
                 return SchemaBuilder.array(ZonedTimestamp.builder().optional().build());
             case PgOid.BYTEA_ARRAY:
@@ -1025,12 +1025,13 @@ public class PostgresValueConverter extends JdbcValueConverters {
     }
 
     protected Object convertIntervalToStructured(Column column, Field fieldDefn, Object data) {
-        return convertValue(column, fieldDefn, data, StructuredDuration.from(fieldDefn.schema(), 0, 0, 0, 0, 0, 0, 0), (r) -> {
+        final int precision = getTimePrecision(column);
+        return convertValue(column, fieldDefn, data, StructuredDuration.from(fieldDefn.schema(), 0, 0, 0, 0, 0, 0, 0, precision), (r) -> {
             if (data instanceof Number) {
                 final long micros = ((Number) data).longValue();
                 final long seconds = micros / 1_000_000;
                 final int nanos = (int) (micros % 1_000_000) * 1_000;
-                r.deliver(StructuredDuration.from(fieldDefn.schema(), 0, 0, 0, 0, 0, seconds, nanos));
+                r.deliver(StructuredDuration.from(fieldDefn.schema(), 0, 0, 0, 0, 0, seconds, nanos, precision));
             }
             if (data instanceof PGInterval) {
                 final PGInterval interval = (PGInterval) data;
@@ -1048,7 +1049,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
                         interval.getHours(),
                         interval.getMinutes(),
                         wholeSeconds,
-                        nanos));
+                        nanos,
+                        precision));
             }
         });
     }
@@ -1113,10 +1115,10 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
     protected Object convertPostgresTimestampWithZoneToStructured(Column column, Field fieldDefn, Object data) {
         if (isPositiveInfinityTimestampWithZone(data)) {
-            return StructuredZonedTimestamp.positiveInfinity(fieldDefn.schema());
+            return StructuredZonedTimestamp.positiveInfinity(fieldDefn.schema(), getTimePrecision(column));
         }
         if (isNegativeInfinityTimestampWithZone(data)) {
-            return StructuredZonedTimestamp.negativeInfinity(fieldDefn.schema());
+            return StructuredZonedTimestamp.negativeInfinity(fieldDefn.schema(), getTimePrecision(column));
         }
         if (data instanceof String str) {
             data = DateTimeFormat.get().timestampWithTimeZoneToOffsetDateTime(str).withOffsetSameInstant(ZoneOffset.UTC);
@@ -1144,10 +1146,10 @@ public class PostgresValueConverter extends JdbcValueConverters {
     @Override
     protected Object convertTimestampToStructured(Column column, Field fieldDefn, Object data) {
         if (isPositiveInfinityTimestamp(data)) {
-            return StructuredTimestamp.positiveInfinity(fieldDefn.schema());
+            return StructuredTimestamp.positiveInfinity(fieldDefn.schema(), getTimePrecision(column));
         }
         if (isNegativeInfinityTimestamp(data)) {
-            return StructuredTimestamp.negativeInfinity(fieldDefn.schema());
+            return StructuredTimestamp.negativeInfinity(fieldDefn.schema(), getTimePrecision(column));
         }
         return super.convertTimestampToStructured(column, fieldDefn, data);
     }
