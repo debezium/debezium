@@ -29,11 +29,19 @@ public class TransactionPayloadDeserializer extends TransactionPayloadEventDataD
 
     private final Map<Long, TableMapEventData> tableMapEventByTableId;
     private final CommonConnectorConfig.EventProcessingFailureHandlingMode eventDeserializationFailureHandlingMode;
+    private final boolean preserveInvalidTemporalValues;
 
     public TransactionPayloadDeserializer(Map<Long, TableMapEventData> tableMapEventByTableId,
                                           CommonConnectorConfig.EventProcessingFailureHandlingMode eventDeserializationFailureHandlingMode) {
+        this(tableMapEventByTableId, eventDeserializationFailureHandlingMode, false);
+    }
+
+    public TransactionPayloadDeserializer(Map<Long, TableMapEventData> tableMapEventByTableId,
+                                          CommonConnectorConfig.EventProcessingFailureHandlingMode eventDeserializationFailureHandlingMode,
+                                          boolean preserveInvalidTemporalValues) {
         this.tableMapEventByTableId = tableMapEventByTableId;
         this.eventDeserializationFailureHandlingMode = eventDeserializationFailureHandlingMode;
+        this.preserveInvalidTemporalValues = preserveInvalidTemporalValues;
     }
 
     @Override
@@ -94,20 +102,20 @@ public class TransactionPayloadDeserializer extends TransactionPayloadEventDataD
         ArrayList<Event> decompressedEvents = new ArrayList<>();
         EventDeserializer transactionPayloadEventDeserializer = new EventDeserializer();
         transactionPayloadEventDeserializer.setEventDataDeserializer(EventType.WRITE_ROWS,
-                new RowDeserializers.WriteRowsDeserializer(tableMapEventByTableId, eventDeserializationFailureHandlingMode));
+                new RowDeserializers.WriteRowsDeserializer(tableMapEventByTableId, eventDeserializationFailureHandlingMode, preserveInvalidTemporalValues));
         transactionPayloadEventDeserializer.setEventDataDeserializer(EventType.UPDATE_ROWS,
-                new RowDeserializers.UpdateRowsDeserializer(tableMapEventByTableId, eventDeserializationFailureHandlingMode));
+                new RowDeserializers.UpdateRowsDeserializer(tableMapEventByTableId, eventDeserializationFailureHandlingMode, preserveInvalidTemporalValues));
         transactionPayloadEventDeserializer.setEventDataDeserializer(EventType.DELETE_ROWS,
-                new RowDeserializers.DeleteRowsDeserializer(tableMapEventByTableId, eventDeserializationFailureHandlingMode));
+                new RowDeserializers.DeleteRowsDeserializer(tableMapEventByTableId, eventDeserializationFailureHandlingMode, preserveInvalidTemporalValues));
         transactionPayloadEventDeserializer.setEventDataDeserializer(EventType.EXT_WRITE_ROWS,
                 new RowDeserializers.WriteRowsDeserializer(
-                        tableMapEventByTableId, eventDeserializationFailureHandlingMode).setMayContainExtraInformation(true));
+                        tableMapEventByTableId, eventDeserializationFailureHandlingMode, preserveInvalidTemporalValues).setMayContainExtraInformation(true));
         transactionPayloadEventDeserializer.setEventDataDeserializer(EventType.EXT_UPDATE_ROWS,
                 new RowDeserializers.UpdateRowsDeserializer(
-                        tableMapEventByTableId, eventDeserializationFailureHandlingMode).setMayContainExtraInformation(true));
+                        tableMapEventByTableId, eventDeserializationFailureHandlingMode, preserveInvalidTemporalValues).setMayContainExtraInformation(true));
         transactionPayloadEventDeserializer.setEventDataDeserializer(EventType.EXT_DELETE_ROWS,
                 new RowDeserializers.DeleteRowsDeserializer(
-                        tableMapEventByTableId, eventDeserializationFailureHandlingMode).setMayContainExtraInformation(true));
+                        tableMapEventByTableId, eventDeserializationFailureHandlingMode, preserveInvalidTemporalValues).setMayContainExtraInformation(true));
 
         ByteArrayInputStream destinationInputStream = new ByteArrayInputStream(dst);
 

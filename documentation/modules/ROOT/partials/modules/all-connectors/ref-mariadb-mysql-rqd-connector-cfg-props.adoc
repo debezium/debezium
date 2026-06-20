@@ -613,6 +613,7 @@ ifdef::community[]
 endif::community[]
 `connect`:::: The connector always represents time and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, which use millisecond precision regardless of the database columns' precision.
 `isostring`:::: The connector represents time, date, and datetime values as ISO-8601 formatted strings at the UTC time zone, using the `io.debezium.time.IsoDate`, `io.debezium.time.IsoTime`, and `io.debezium.time.IsoTimestamp` semantic types.
+`structured`:::: The connector represents time, date, timestamp, and datetime values as Kafka Connect structs with separate calendar and clock components.
 
 
 

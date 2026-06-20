@@ -78,6 +78,9 @@ public class MySqlBinaryProtocolFieldReader extends AbstractFieldReader {
         }
         else if (b.length() == 0) {
             // Zero date has zero length when binary protocol uses compression.
+            if (isStructuredTemporalMode()) {
+                return MySqlValueConverters.stringToBinlogDateValue("0000-00-00");
+            }
             return column.isOptional() ? null : LocalDate.EPOCH;
         }
         // length is 4
@@ -92,7 +95,11 @@ public class MySqlBinaryProtocolFieldReader extends AbstractFieldReader {
         final int month = bytes[2];
         final int day = bytes[3];
 
-        return MySqlValueConverters.stringToLocalDate(String.format("%d-%d-%d", year, month, day), column, table);
+        final String value = String.format("%d-%d-%d", year, month, day);
+        if (isStructuredTemporalMode()) {
+            return MySqlValueConverters.stringToBinlogDateValue(value);
+        }
+        return MySqlValueConverters.stringToLocalDate(value, column, table);
     }
 
     /**
@@ -106,7 +113,7 @@ public class MySqlBinaryProtocolFieldReader extends AbstractFieldReader {
         }
         else if (b.length() == 0) {
             LOGGER.warn("Encountered a zero length blob for column index {}", columnIndex);
-            return null;
+            return isStructuredTemporalMode() ? MySqlValueConverters.stringToBinlogDateTimeValue("0000-00-00 00:00:00") : null;
         }
 
         // if hour, minutes, seconds and micro_seconds are all 0, length is 4; if micro_seconds is 0, length is 7; otherwise length is 11
@@ -134,7 +141,11 @@ public class MySqlBinaryProtocolFieldReader extends AbstractFieldReader {
             nanos = 1000 * ((bytes[7] & 0xFF) | ((bytes[8] & 0xFF) << 8) | ((bytes[9] & 0xFF) << 16) | ((bytes[10] & 0xFF) << 24));
         }
 
-        return MySqlValueConverters.containsZeroValuesInDatePart(String.format("%d-%d-%d %d:%d:%d.%d", year, month, day, hours, minutes, seconds, nanos), column, table)
+        final String value = String.format("%d-%d-%d %d:%d:%d.%d", year, month, day, hours, minutes, seconds, nanos);
+        if (isStructuredTemporalMode()) {
+            return MySqlValueConverters.stringToBinlogDateTimeValue(value);
+        }
+        return MySqlValueConverters.containsZeroValuesInDatePart(value, column, table)
                 ? null
                 : rs.getTimestamp(columnIndex, Calendar.getInstance());
     }

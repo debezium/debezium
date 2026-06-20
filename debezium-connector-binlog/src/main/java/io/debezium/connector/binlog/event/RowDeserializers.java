@@ -65,11 +65,19 @@ public class RowDeserializers {
      */
     public static class DeleteRowsDeserializer extends DeleteRowsEventDataDeserializer {
         private EventProcessingFailureHandlingMode eventProcessingFailureHandlingMode;
+        private final boolean preserveInvalidTemporalValues;
 
         public DeleteRowsDeserializer(Map<Long, TableMapEventData> tableMapEventByTableId,
                                       EventProcessingFailureHandlingMode eventProcessingFailureHandlingMode) {
+            this(tableMapEventByTableId, eventProcessingFailureHandlingMode, false);
+        }
+
+        public DeleteRowsDeserializer(Map<Long, TableMapEventData> tableMapEventByTableId,
+                                      EventProcessingFailureHandlingMode eventProcessingFailureHandlingMode,
+                                      boolean preserveInvalidTemporalValues) {
             super(tableMapEventByTableId);
             this.eventProcessingFailureHandlingMode = eventProcessingFailureHandlingMode;
+            this.preserveInvalidTemporalValues = preserveInvalidTemporalValues;
         }
 
         @Override
@@ -84,17 +92,17 @@ public class RowDeserializers {
 
         @Override
         protected Serializable deserializeDate(ByteArrayInputStream inputStream) throws IOException {
-            return RowDeserializers.deserializeDate(inputStream, eventProcessingFailureHandlingMode);
+            return RowDeserializers.deserializeDate(inputStream, eventProcessingFailureHandlingMode, preserveInvalidTemporalValues);
         }
 
         @Override
         protected Serializable deserializeDatetime(ByteArrayInputStream inputStream) throws IOException {
-            return RowDeserializers.deserializeDatetime(inputStream, eventProcessingFailureHandlingMode);
+            return RowDeserializers.deserializeDatetime(inputStream, eventProcessingFailureHandlingMode, preserveInvalidTemporalValues);
         }
 
         @Override
         protected Serializable deserializeDatetimeV2(int meta, ByteArrayInputStream inputStream) throws IOException {
-            return RowDeserializers.deserializeDatetimeV2(meta, inputStream, eventProcessingFailureHandlingMode);
+            return RowDeserializers.deserializeDatetimeV2(meta, inputStream, eventProcessingFailureHandlingMode, preserveInvalidTemporalValues);
         }
 
         @Override
@@ -109,12 +117,12 @@ public class RowDeserializers {
 
         @Override
         protected Serializable deserializeTimestamp(ByteArrayInputStream inputStream) throws IOException {
-            return RowDeserializers.deserializeTimestamp(inputStream);
+            return RowDeserializers.deserializeTimestamp(inputStream, preserveInvalidTemporalValues);
         }
 
         @Override
         protected Serializable deserializeTimestampV2(int meta, ByteArrayInputStream inputStream) throws IOException {
-            return RowDeserializers.deserializeTimestampV2(meta, inputStream);
+            return RowDeserializers.deserializeTimestampV2(meta, inputStream, preserveInvalidTemporalValues);
         }
 
         @Override
@@ -130,11 +138,19 @@ public class RowDeserializers {
      */
     public static class UpdateRowsDeserializer extends UpdateRowsEventDataDeserializer {
         private EventProcessingFailureHandlingMode eventProcessingFailureHandlingMode;
+        private final boolean preserveInvalidTemporalValues;
 
         public UpdateRowsDeserializer(Map<Long, TableMapEventData> tableMapEventByTableId,
                                       EventProcessingFailureHandlingMode eventProcessingFailureHandlingMode) {
+            this(tableMapEventByTableId, eventProcessingFailureHandlingMode, false);
+        }
+
+        public UpdateRowsDeserializer(Map<Long, TableMapEventData> tableMapEventByTableId,
+                                      EventProcessingFailureHandlingMode eventProcessingFailureHandlingMode,
+                                      boolean preserveInvalidTemporalValues) {
             super(tableMapEventByTableId);
             this.eventProcessingFailureHandlingMode = eventProcessingFailureHandlingMode;
+            this.preserveInvalidTemporalValues = preserveInvalidTemporalValues;
         }
 
         @Override
@@ -149,17 +165,17 @@ public class RowDeserializers {
 
         @Override
         protected Serializable deserializeDate(ByteArrayInputStream inputStream) throws IOException {
-            return RowDeserializers.deserializeDate(inputStream, eventProcessingFailureHandlingMode);
+            return RowDeserializers.deserializeDate(inputStream, eventProcessingFailureHandlingMode, preserveInvalidTemporalValues);
         }
 
         @Override
         protected Serializable deserializeDatetime(ByteArrayInputStream inputStream) throws IOException {
-            return RowDeserializers.deserializeDatetime(inputStream, eventProcessingFailureHandlingMode);
+            return RowDeserializers.deserializeDatetime(inputStream, eventProcessingFailureHandlingMode, preserveInvalidTemporalValues);
         }
 
         @Override
         protected Serializable deserializeDatetimeV2(int meta, ByteArrayInputStream inputStream) throws IOException {
-            return RowDeserializers.deserializeDatetimeV2(meta, inputStream, eventProcessingFailureHandlingMode);
+            return RowDeserializers.deserializeDatetimeV2(meta, inputStream, eventProcessingFailureHandlingMode, preserveInvalidTemporalValues);
         }
 
         @Override
@@ -174,12 +190,12 @@ public class RowDeserializers {
 
         @Override
         protected Serializable deserializeTimestamp(ByteArrayInputStream inputStream) throws IOException {
-            return RowDeserializers.deserializeTimestamp(inputStream);
+            return RowDeserializers.deserializeTimestamp(inputStream, preserveInvalidTemporalValues);
         }
 
         @Override
         protected Serializable deserializeTimestampV2(int meta, ByteArrayInputStream inputStream) throws IOException {
-            return RowDeserializers.deserializeTimestampV2(meta, inputStream);
+            return RowDeserializers.deserializeTimestampV2(meta, inputStream, preserveInvalidTemporalValues);
         }
 
         @Override
@@ -195,11 +211,19 @@ public class RowDeserializers {
      */
     public static class WriteRowsDeserializer extends WriteRowsEventDataDeserializer {
         private EventProcessingFailureHandlingMode eventProcessingFailureHandlingMode;
+        private final boolean preserveInvalidTemporalValues;
 
         public WriteRowsDeserializer(Map<Long, TableMapEventData> tableMapEventByTableId,
                                      EventProcessingFailureHandlingMode eventProcessingFailureHandlingMode) {
+            this(tableMapEventByTableId, eventProcessingFailureHandlingMode, false);
+        }
+
+        public WriteRowsDeserializer(Map<Long, TableMapEventData> tableMapEventByTableId,
+                                     EventProcessingFailureHandlingMode eventProcessingFailureHandlingMode,
+                                     boolean preserveInvalidTemporalValues) {
             super(tableMapEventByTableId);
             this.eventProcessingFailureHandlingMode = eventProcessingFailureHandlingMode;
+            this.preserveInvalidTemporalValues = preserveInvalidTemporalValues;
         }
 
         @Override
@@ -214,17 +238,17 @@ public class RowDeserializers {
 
         @Override
         protected Serializable deserializeDate(ByteArrayInputStream inputStream) throws IOException {
-            return RowDeserializers.deserializeDate(inputStream, eventProcessingFailureHandlingMode);
+            return RowDeserializers.deserializeDate(inputStream, eventProcessingFailureHandlingMode, preserveInvalidTemporalValues);
         }
 
         @Override
         protected Serializable deserializeDatetime(ByteArrayInputStream inputStream) throws IOException {
-            return RowDeserializers.deserializeDatetime(inputStream, eventProcessingFailureHandlingMode);
+            return RowDeserializers.deserializeDatetime(inputStream, eventProcessingFailureHandlingMode, preserveInvalidTemporalValues);
         }
 
         @Override
         protected Serializable deserializeDatetimeV2(int meta, ByteArrayInputStream inputStream) throws IOException {
-            return RowDeserializers.deserializeDatetimeV2(meta, inputStream, eventProcessingFailureHandlingMode);
+            return RowDeserializers.deserializeDatetimeV2(meta, inputStream, eventProcessingFailureHandlingMode, preserveInvalidTemporalValues);
         }
 
         @Override
@@ -239,12 +263,12 @@ public class RowDeserializers {
 
         @Override
         protected Serializable deserializeTimestamp(ByteArrayInputStream inputStream) throws IOException {
-            return RowDeserializers.deserializeTimestamp(inputStream);
+            return RowDeserializers.deserializeTimestamp(inputStream, preserveInvalidTemporalValues);
         }
 
         @Override
         protected Serializable deserializeTimestampV2(int meta, ByteArrayInputStream inputStream) throws IOException {
-            return RowDeserializers.deserializeTimestampV2(meta, inputStream);
+            return RowDeserializers.deserializeTimestampV2(meta, inputStream, preserveInvalidTemporalValues);
         }
 
         @Override
@@ -297,18 +321,31 @@ public class RowDeserializers {
     protected static Serializable deserializeDate(ByteArrayInputStream inputStream,
                                                   EventProcessingFailureHandlingMode eventProcessingFailureHandlingMode)
             throws IOException {
+        return deserializeDate(inputStream, eventProcessingFailureHandlingMode, false);
+    }
+
+    protected static Serializable deserializeDate(ByteArrayInputStream inputStream,
+                                                  EventProcessingFailureHandlingMode eventProcessingFailureHandlingMode,
+                                                  boolean preserveInvalidTemporalValues)
+            throws IOException {
         int value = inputStream.readInteger(3);
         int day = value % 32; // 1-based day of the month
         value >>>= 5;
         int month = value % 16; // 1-based month number
         int year = value >> 4;
         if (year == 0 || month == 0 || day == 0) {
+            if (preserveInvalidTemporalValues) {
+                return new BinlogDateValue(year, month, day);
+            }
             return null;
         }
         try {
             return LocalDate.of(year, month, day);
         }
         catch (DateTimeException e) {
+            if (preserveInvalidTemporalValues) {
+                return new BinlogDateValue(year, month, day);
+            }
             return handleException(eventProcessingFailureHandlingMode, "date", e, LocalDate.EPOCH);
         }
     }
@@ -393,6 +430,13 @@ public class RowDeserializers {
     protected static Serializable deserializeDatetime(ByteArrayInputStream inputStream,
                                                       EventProcessingFailureHandlingMode eventProcessingFailureHandlingMode)
             throws IOException {
+        return deserializeDatetime(inputStream, eventProcessingFailureHandlingMode, false);
+    }
+
+    protected static Serializable deserializeDatetime(ByteArrayInputStream inputStream,
+                                                      EventProcessingFailureHandlingMode eventProcessingFailureHandlingMode,
+                                                      boolean preserveInvalidTemporalValues)
+            throws IOException {
         int[] split = split(inputStream.readLong(8), 100, 6);
         int year = split[5];
         int month = split[4]; // 1-based month number
@@ -402,12 +446,18 @@ public class RowDeserializers {
         int seconds = split[0];
         int nanoOfSecond = 0; // This version does not support fractional seconds
         if (year == 0 || month == 0 || day == 0) {
+            if (preserveInvalidTemporalValues) {
+                return new BinlogDateTimeValue(year, month, day, hours, minutes, seconds, nanoOfSecond);
+            }
             return null;
         }
         try {
             return LocalDateTime.of(year, month, day, hours, minutes, seconds, nanoOfSecond);
         }
         catch (DateTimeException e) {
+            if (preserveInvalidTemporalValues) {
+                return new BinlogDateTimeValue(year, month, day, hours, minutes, seconds, nanoOfSecond);
+            }
             return handleException(eventProcessingFailureHandlingMode, "datetime", e,
                     LocalDateTime.of(LocalDate.EPOCH, LocalTime.MIDNIGHT));
         }
@@ -426,6 +476,13 @@ public class RowDeserializers {
      */
     protected static Serializable deserializeDatetimeV2(int meta, ByteArrayInputStream inputStream,
                                                         EventProcessingFailureHandlingMode eventProcessingFailureHandlingMode)
+            throws IOException {
+        return deserializeDatetimeV2(meta, inputStream, eventProcessingFailureHandlingMode, false);
+    }
+
+    protected static Serializable deserializeDatetimeV2(int meta, ByteArrayInputStream inputStream,
+                                                        EventProcessingFailureHandlingMode eventProcessingFailureHandlingMode,
+                                                        boolean preserveInvalidTemporalValues)
             throws IOException {
         /*
          * (in big endian)
@@ -451,12 +508,18 @@ public class RowDeserializers {
         int seconds = bitSlice(datetime, 34, 6, 40);
         int nanoOfSecond = deserializeFractionalSecondsInNanos(meta, inputStream);
         if (year == 0 || month == 0 || day == 0) {
+            if (preserveInvalidTemporalValues) {
+                return new BinlogDateTimeValue(year, month, day, hours, minutes, seconds, nanoOfSecond);
+            }
             return null;
         }
         try {
             return LocalDateTime.of(year, month, day, hours, minutes, seconds, nanoOfSecond);
         }
         catch (DateTimeException e) {
+            if (preserveInvalidTemporalValues) {
+                return new BinlogDateTimeValue(year, month, day, hours, minutes, seconds, nanoOfSecond);
+            }
             return handleException(eventProcessingFailureHandlingMode, "datetimeV2", e,
                     LocalDateTime.of(LocalDate.EPOCH, LocalTime.MIDNIGHT));
         }
@@ -472,8 +535,15 @@ public class RowDeserializers {
      * @throws IOException if there is an error reading from the binlog event data
      */
     protected static Serializable deserializeTimestamp(ByteArrayInputStream inputStream) throws IOException {
+        return deserializeTimestamp(inputStream, false);
+    }
+
+    protected static Serializable deserializeTimestamp(ByteArrayInputStream inputStream, boolean preserveInvalidTemporalValues) throws IOException {
         long epochSecond = inputStream.readLong(4);
         if (epochSecond == 0) {
+            if (preserveInvalidTemporalValues) {
+                return new BinlogDateTimeValue(0, 0, 0, 0, 0, 0, 0);
+            }
             return null; // 0000-00-00 00:00:00 — MySQL TIMESTAMP min is 1970-01-01 00:00:01 UTC
         }
         int nanoSeconds = 0; // no fractional seconds
@@ -491,9 +561,16 @@ public class RowDeserializers {
      * @throws IOException if there is an error reading from the binlog event data
      */
     protected static Serializable deserializeTimestampV2(int meta, ByteArrayInputStream inputStream) throws IOException {
+        return deserializeTimestampV2(meta, inputStream, false);
+    }
+
+    protected static Serializable deserializeTimestampV2(int meta, ByteArrayInputStream inputStream, boolean preserveInvalidTemporalValues) throws IOException {
         long epochSecond = bigEndianLong(inputStream.read(4), 0, 4);
         int nanoSeconds = deserializeFractionalSecondsInNanos(meta, inputStream);
         if (epochSecond == 0 && nanoSeconds == 0) {
+            if (preserveInvalidTemporalValues) {
+                return new BinlogDateTimeValue(0, 0, 0, 0, 0, 0, 0);
+            }
             return null; // 0000-00-00 00:00:00.000000 — outside legal MySQL TIMESTAMP range
         }
         return ZonedDateTime.ofInstant(Instant.ofEpochSecond(epochSecond, nanoSeconds), ZoneOffset.UTC);

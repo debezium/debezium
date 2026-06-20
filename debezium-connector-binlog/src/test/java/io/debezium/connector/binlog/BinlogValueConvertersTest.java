@@ -12,6 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.math.BigDecimal;
 import java.sql.Timestamp;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Month;
@@ -19,12 +20,15 @@ import java.time.ZonedDateTime;
 import java.time.temporal.TemporalAdjuster;
 
 import org.apache.kafka.connect.data.Field;
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode;
+import io.debezium.connector.binlog.event.BinlogDateTimeValue;
+import io.debezium.connector.binlog.event.BinlogDateValue;
 import io.debezium.connector.binlog.jdbc.BinlogValueConverters;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcValueConverters;
@@ -36,6 +40,11 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ValueConverter;
 import io.debezium.relational.ddl.DdlParser;
+import io.debezium.time.StructuredDate;
+import io.debezium.time.StructuredDuration;
+import io.debezium.time.StructuredTemporal;
+import io.debezium.time.StructuredTimestamp;
+import io.debezium.time.StructuredZonedTimestamp;
 
 /**
  * @author Randall Hauch
@@ -412,6 +421,82 @@ public abstract class BinlogValueConvertersTest<C extends SourceConnector> imple
 
         Boolean actual = BinlogValueConverters.containsZeroValuesInDatePart(timestampString, colA, table);
         assertThat(actual).isFalse();
+    }
+
+    @Test
+    void shouldUseStructuredTemporalMode() {
+        String tableName = "TEMPORAL_TABLE";
+        String sql = "CREATE TABLE " + tableName + " (D DATE NOT NULL, DT DATETIME(6) NOT NULL, TS TIMESTAMP(6) NOT NULL, T TIME(6) NOT NULL);";
+
+        final BinlogValueConverters converters = getValueConverters(
+                JdbcValueConverters.DecimalMode.PRECISE,
+                TemporalPrecisionMode.STRUCTURED,
+                JdbcValueConverters.BigIntUnsignedMode.LONG,
+                BinaryHandlingMode.BYTES,
+                x -> x,
+                EventConvertingFailureHandlingMode.WARN);
+
+        DdlParser parser = getDdlParser();
+        Tables tables = new Tables();
+        parser.parse(sql, tables);
+        Table table = tables.forTable(new TableId(null, null, tableName));
+
+        Column dateColumn = table.columnWithName("D");
+        Field dateField = new Field(dateColumn.name(), -1, converters.schemaBuilder(dateColumn).build());
+        assertThat(dateField.schema().name()).isEqualTo(StructuredDate.SCHEMA_NAME);
+        Struct date = (Struct) converters.converter(dateColumn, dateField).convert(new BinlogDateValue(0, 0, 0));
+        assertThat(date.getInt32(StructuredTemporal.YEAR_FIELD)).isZero();
+        assertThat(date.getInt8(StructuredTemporal.MONTH_FIELD)).isEqualTo((byte) 0);
+        assertThat(date.getInt8(StructuredTemporal.DAY_FIELD)).isEqualTo((byte) 0);
+        date = (Struct) converters.converter(dateColumn, dateField).convert(new BinlogDateValue(9999, 12, 31));
+        assertThat(date.getInt32(StructuredTemporal.YEAR_FIELD)).isEqualTo(9999);
+        assertThat(date.getInt8(StructuredTemporal.MONTH_FIELD)).isEqualTo((byte) 12);
+        assertThat(date.getInt8(StructuredTemporal.DAY_FIELD)).isEqualTo((byte) 31);
+
+        Column datetimeColumn = table.columnWithName("DT");
+        Field datetimeField = new Field(datetimeColumn.name(), -1, converters.schemaBuilder(datetimeColumn).build());
+        assertThat(datetimeField.schema().name()).isEqualTo(StructuredTimestamp.SCHEMA_NAME);
+        Struct datetime = (Struct) converters.converter(datetimeColumn, datetimeField).convert(new BinlogDateTimeValue(2026, 2, 31, 12, 13, 14, 123_456_000));
+        assertThat(datetime.getInt32(StructuredTemporal.YEAR_FIELD)).isEqualTo(2026);
+        assertThat(datetime.getInt8(StructuredTemporal.MONTH_FIELD)).isEqualTo((byte) 2);
+        assertThat(datetime.getInt8(StructuredTemporal.DAY_FIELD)).isEqualTo((byte) 31);
+        assertThat(datetime.getInt32(StructuredTemporal.NANOS_FIELD)).isEqualTo(123_456_000);
+        datetime = (Struct) converters.converter(datetimeColumn, datetimeField).convert(new BinlogDateTimeValue(9999, 12, 31, 23, 59, 59, 999_999_000));
+        assertThat(datetime.getInt32(StructuredTemporal.YEAR_FIELD)).isEqualTo(9999);
+        assertThat(datetime.getInt8(StructuredTemporal.MONTH_FIELD)).isEqualTo((byte) 12);
+        assertThat(datetime.getInt8(StructuredTemporal.DAY_FIELD)).isEqualTo((byte) 31);
+        assertThat(datetime.getInt8(StructuredTemporal.HOUR_FIELD)).isEqualTo((byte) 23);
+        assertThat(datetime.getInt8(StructuredTemporal.MINUTE_FIELD)).isEqualTo((byte) 59);
+        assertThat(datetime.getInt8(StructuredTemporal.SECOND_FIELD)).isEqualTo((byte) 59);
+        assertThat(datetime.getInt32(StructuredTemporal.NANOS_FIELD)).isEqualTo(999_999_000);
+
+        Column timestampColumn = table.columnWithName("TS");
+        Field timestampField = new Field(timestampColumn.name(), -1, converters.schemaBuilder(timestampColumn).build());
+        assertThat(timestampField.schema().name()).isEqualTo(StructuredZonedTimestamp.SCHEMA_NAME);
+        Struct timestamp = (Struct) converters.converter(timestampColumn, timestampField).convert(new BinlogDateTimeValue(0, 0, 0, 0, 0, 0, 0));
+        assertThat(timestamp.getInt32(StructuredTemporal.YEAR_FIELD)).isZero();
+        assertThat(timestamp.getInt8(StructuredTemporal.MONTH_FIELD)).isEqualTo((byte) 0);
+        assertThat(timestamp.getInt8(StructuredTemporal.DAY_FIELD)).isEqualTo((byte) 0);
+        assertThat(timestamp.getInt32(StructuredTemporal.OFFSET_SECONDS_FIELD)).isZero();
+
+        Column timeColumn = table.columnWithName("T");
+        Field timeField = new Field(timeColumn.name(), -1, converters.schemaBuilder(timeColumn).build());
+        assertThat(timeField.schema().name()).isEqualTo(StructuredDuration.SCHEMA_NAME);
+        Struct duration = (Struct) converters.converter(timeColumn, timeField).convert(Duration.ofHours(-13).minusMinutes(14).minusSeconds(15).minusNanos(123_456_000));
+        assertThat(duration.getInt32(StructuredTemporal.HOURS_FIELD)).isEqualTo(-13);
+        assertThat(duration.getInt32(StructuredTemporal.MINUTES_FIELD)).isEqualTo(-14);
+        assertThat(duration.getInt64(StructuredTemporal.SECONDS_FIELD)).isEqualTo(-15L);
+        assertThat(duration.getInt32(StructuredTemporal.NANOS_FIELD)).isEqualTo(-123_456_000);
+        duration = (Struct) converters.converter(timeColumn, timeField).convert(Duration.ofHours(838).plusMinutes(59).plusSeconds(59).plusNanos(999_999_000));
+        assertThat(duration.getInt32(StructuredTemporal.HOURS_FIELD)).isEqualTo(838);
+        assertThat(duration.getInt32(StructuredTemporal.MINUTES_FIELD)).isEqualTo(59);
+        assertThat(duration.getInt64(StructuredTemporal.SECONDS_FIELD)).isEqualTo(59L);
+        assertThat(duration.getInt32(StructuredTemporal.NANOS_FIELD)).isEqualTo(999_999_000);
+        duration = (Struct) converters.converter(timeColumn, timeField).convert(Duration.ofHours(-838).minusMinutes(59).minusSeconds(59).minusNanos(999_999_000));
+        assertThat(duration.getInt32(StructuredTemporal.HOURS_FIELD)).isEqualTo(-838);
+        assertThat(duration.getInt32(StructuredTemporal.MINUTES_FIELD)).isEqualTo(-59);
+        assertThat(duration.getInt64(StructuredTemporal.SECONDS_FIELD)).isEqualTo(-59L);
+        assertThat(duration.getInt32(StructuredTemporal.NANOS_FIELD)).isEqualTo(-999_999_000);
     }
 
     protected LocalDate localDateWithYear(int year) {

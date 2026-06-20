@@ -21,6 +21,7 @@ import java.sql.SQLException;
 import java.sql.SQLXML;
 import java.sql.Types;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
@@ -52,6 +53,11 @@ import io.debezium.time.MicroTime;
 import io.debezium.time.MicroTimestamp;
 import io.debezium.time.NanoTime;
 import io.debezium.time.NanoTimestamp;
+import io.debezium.time.StructuredDate;
+import io.debezium.time.StructuredTime;
+import io.debezium.time.StructuredTimestamp;
+import io.debezium.time.StructuredZonedTime;
+import io.debezium.time.StructuredZonedTimestamp;
 import io.debezium.time.Time;
 import io.debezium.time.Timestamp;
 import io.debezium.time.ZonedTime;
@@ -226,8 +232,14 @@ public class JdbcValueConverters implements ValueConverterProvider {
             case Types.TIMESTAMP:
                 return temporalPrecisionMode.getTimestampBuilder(getTimePrecision(column));
             case Types.TIME_WITH_TIMEZONE:
+                if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
+                    return StructuredZonedTime.builder();
+                }
                 return ZonedTime.builder();
             case Types.TIMESTAMP_WITH_TIMEZONE:
+                if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
+                    return StructuredZonedTimestamp.builder();
+                }
                 return ZonedTimestamp.builder();
 
             // Other types ...
@@ -355,6 +367,9 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertTimestampWithZone(Column column, Field fieldDefn, Object data) {
+        if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
+            return convertTimestampWithZoneToStructured(column, fieldDefn, data);
+        }
         return convertValue(column, fieldDefn, data, fallbackTimestampWithTimeZone, (r) -> {
             try {
                 r.deliver(ZonedTimestamp.toIsoString(data, defaultOffset, adjuster, column.length()));
@@ -363,6 +378,17 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 logger.warn("Failed to convert value '{}' from column '{}' to '{}'", data, column, fieldDefn, e);
             }
         });
+    }
+
+    protected Object convertTimestampWithZoneToStructured(Column column, Field fieldDefn, Object data) {
+        return convertValue(column, fieldDefn, data,
+                StructuredZonedTimestamp.from(fieldDefn.schema(), OffsetDateTime.of(LocalDate.ofEpochDay(0), LocalTime.MIDNIGHT, defaultOffset), null), (r) -> {
+                    try {
+                        r.deliver(StructuredZonedTimestamp.toStructuredZonedTimestamp(fieldDefn.schema(), data, defaultOffset, adjuster));
+                    }
+                    catch (IllegalArgumentException e) {
+                    }
+                });
     }
 
     /**
@@ -382,6 +408,9 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertTimeWithZone(Column column, Field fieldDefn, Object data) {
+        if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
+            return convertTimeWithZoneToStructured(column, fieldDefn, data);
+        }
         return convertValue(column, fieldDefn, data, fallbackTimeWithTimeZone, (r) -> {
             try {
                 r.deliver(ZonedTime.toIsoString(data, defaultOffset, adjuster));
@@ -392,10 +421,22 @@ public class JdbcValueConverters implements ValueConverterProvider {
         });
     }
 
+    protected Object convertTimeWithZoneToStructured(Column column, Field fieldDefn, Object data) {
+        return convertValue(column, fieldDefn, data, StructuredZonedTime.from(fieldDefn.schema(), OffsetTime.of(LocalTime.MIDNIGHT, defaultOffset)), (r) -> {
+            try {
+                r.deliver(StructuredZonedTime.toStructuredZonedTime(fieldDefn.schema(), data, defaultOffset, adjuster));
+            }
+            catch (IllegalArgumentException e) {
+            }
+        });
+    }
+
     protected Object convertDate(Column column, Field fieldDefn, Object data) {
         switch (temporalPrecisionMode) {
             case ISOSTRING:
                 return convertDateToUtcIsoString(column, fieldDefn, data);
+            case STRUCTURED:
+                return convertDateToStructured(column, fieldDefn, data);
             case ADAPTIVE_TIME_MICROSECONDS:
             case NANOSECONDS:
             case MICROSECONDS:
@@ -410,6 +451,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
         switch (temporalPrecisionMode) {
             case ISOSTRING:
                 return convertTimeToUtcIsoString(column, fieldDefn, data);
+            case STRUCTURED:
+                return convertTimeToStructured(column, fieldDefn, data);
             case MICROSECONDS:
                 return convertTimeToMicrosPastMidnight(column, fieldDefn, data);
             case NANOSECONDS:
@@ -446,6 +489,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 return convertTimestampToEpochMicros(column, fieldDefn, data);
             case NANOSECONDS:
                 return convertTimestampToEpochNanos(column, fieldDefn, data);
+            case STRUCTURED:
+                return convertTimestampToStructured(column, fieldDefn, data);
             default:
                 return convertTimestampToEpochMillisAsDate(column, fieldDefn, data);
         }
@@ -473,6 +518,16 @@ public class JdbcValueConverters implements ValueConverterProvider {
             }
             catch (IllegalArgumentException e) {
                 logger.warn("Failed to convert value '{}' from column '{}' to '{}'", data, column, fieldDefn, e);
+            }
+        });
+    }
+
+    protected Object convertTimestampToStructured(Column column, Field fieldDefn, Object data) {
+        return convertValue(column, fieldDefn, data, StructuredTimestamp.from(fieldDefn.schema(), LocalDateTime.of(LocalDate.ofEpochDay(0), LocalTime.MIDNIGHT)), (r) -> {
+            try {
+                r.deliver(StructuredTimestamp.toStructuredTimestamp(fieldDefn.schema(), data, adjuster));
+            }
+            catch (IllegalArgumentException e) {
             }
         });
     }
@@ -582,6 +637,16 @@ public class JdbcValueConverters implements ValueConverterProvider {
         });
     }
 
+    protected Object convertTimeToStructured(Column column, Field fieldDefn, Object data) {
+        return convertValue(column, fieldDefn, data, StructuredTime.from(fieldDefn.schema(), LocalTime.MIDNIGHT), (r) -> {
+            try {
+                r.deliver(StructuredTime.toStructuredTime(fieldDefn.schema(), data, adjuster));
+            }
+            catch (IllegalArgumentException e) {
+            }
+        });
+    }
+
     /**
      * Converts a value object for an expected JDBC type of {@link Types#TIME} to {@link MicroTime} values, or microseconds past
      * midnight.
@@ -682,6 +747,18 @@ public class JdbcValueConverters implements ValueConverterProvider {
         return convertValue(column, fieldDefn, data, 0, (r) -> {
             try {
                 r.deliver(Date.toEpochDay(data, adjuster));
+            }
+            catch (IllegalArgumentException e) {
+                logger.warn("Unexpected JDBC DATE value for field {} with schema {}: class={}, value={}", fieldDefn.name(),
+                        fieldDefn.schema(), data.getClass(), data);
+            }
+        });
+    }
+
+    protected Object convertDateToStructured(Column column, Field fieldDefn, Object data) {
+        return convertValue(column, fieldDefn, data, StructuredDate.from(fieldDefn.schema(), LocalDate.ofEpochDay(0)), (r) -> {
+            try {
+                r.deliver(StructuredDate.toStructuredDate(fieldDefn.schema(), data, adjuster));
             }
             catch (IllegalArgumentException e) {
                 logger.warn("Unexpected JDBC DATE value for field {} with schema {}: class={}, value={}", fieldDefn.name(),

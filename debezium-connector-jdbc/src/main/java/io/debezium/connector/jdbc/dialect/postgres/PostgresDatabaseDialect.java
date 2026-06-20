@@ -279,6 +279,11 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
         registerType(NanoTimeType.INSTANCE);
         registerType(TimeWithTimezoneType.INSTANCE);
         registerType(ZonedTimestampType.INSTANCE);
+        registerType(StructuredDateType.INSTANCE);
+        registerType(StructuredTimestampType.INSTANCE);
+        registerType(StructuredZonedTimeType.INSTANCE);
+        registerType(StructuredZonedTimestampType.INSTANCE);
+        registerType(StructuredDurationType.INSTANCE);
         registerType(IntervalType.INSTANCE);
         registerType(SerialType.INSTANCE);
         registerType(BitType.INSTANCE);
