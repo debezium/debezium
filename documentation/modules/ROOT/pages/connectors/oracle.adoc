@@ -2486,6 +2486,7 @@ Represents the timestamp value in UTC format, according to the ISO 8601 standard
 
 When the `time.precision.mode` configuration property is set to `structured`, the connector maps temporal values to Kafka Connect structs with separate calendar and clock components.
 This mode avoids flattening high-precision temporal values into a single epoch-based integer:
+Structured temporal values that have fractional seconds include an optional `precision` field that records the source column's fractional second precision.
 
 [cols="25%a,20%a,55%a",options="header"]
 |===
@@ -2495,37 +2496,37 @@ This mode avoids flattening high-precision temporal values into a single epoch-b
 |`STRUCT`
 |`io.debezium.time.StructuredTimestamp` +
  +
-Contains `year`, `month`, `day`, `hour`, `minute`, `second`, and `nanos` fields.
+Contains `year`, `month`, `day`, `hour`, `minute`, `second`, `nanos`, and optional `precision` fields.
 
 |`INTERVAL DAY[(M)] TO SECOND`
 |`STRUCT`
 |`io.debezium.time.StructuredDuration` +
  +
-Contains signed `years`, `months`, `days`, `hours`, `minutes`, `seconds`, and `nanos` fields.
+Contains signed `years`, `months`, `days`, `hours`, `minutes`, `seconds`, `nanos`, and optional `precision` fields.
 
 |`INTERVAL YEAR[(M)] TO MONTH`
 |`STRUCT`
 |`io.debezium.time.StructuredDuration` +
  +
-Contains signed `years`, `months`, `days`, `hours`, `minutes`, `seconds`, and `nanos` fields.
+Contains signed `years`, `months`, `days`, `hours`, `minutes`, `seconds`, `nanos`, and optional `precision` fields.
 
 |`TIMESTAMP(0 - 9)`
 |`STRUCT`
 |`io.debezium.time.StructuredTimestamp` +
  +
-Contains calendar and clock component fields with nanosecond precision.
+Contains calendar and clock component fields with nanosecond precision and optional `precision`.
 
 |`TIMESTAMP WITH TIME ZONE`
 |`STRUCT`
 |`io.debezium.time.StructuredZonedTimestamp` +
  +
-Contains calendar and clock component fields, `offsetSeconds`, and optional `zoneId`.
+Contains calendar and clock component fields, `offsetSeconds`, optional `zoneId`, and optional `precision`.
 
 |`TIMESTAMP WITH LOCAL TIME ZONE`
 |`STRUCT`
 |`io.debezium.time.StructuredZonedTimestamp` +
  +
-Contains calendar and clock component fields, `offsetSeconds`, and optional `zoneId`.
+Contains calendar and clock component fields, `offsetSeconds`, optional `zoneId`, and optional `precision`.
 
 |===
 

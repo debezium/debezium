@@ -233,12 +233,12 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 return temporalPrecisionMode.getTimestampBuilder(getTimePrecision(column));
             case Types.TIME_WITH_TIMEZONE:
                 if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
-                    return StructuredZonedTime.builder(getTimePrecision(column));
+                    return StructuredZonedTime.builder();
                 }
                 return ZonedTime.builder();
             case Types.TIMESTAMP_WITH_TIMEZONE:
                 if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
-                    return StructuredZonedTimestamp.builder(getTimePrecision(column));
+                    return StructuredZonedTimestamp.builder();
                 }
                 return ZonedTimestamp.builder();
 
@@ -381,10 +381,12 @@ public class JdbcValueConverters implements ValueConverterProvider {
     }
 
     protected Object convertTimestampWithZoneToStructured(Column column, Field fieldDefn, Object data) {
+        final int precision = getTimePrecision(column);
         return convertValue(column, fieldDefn, data,
-                StructuredZonedTimestamp.from(fieldDefn.schema(), OffsetDateTime.of(LocalDate.ofEpochDay(0), LocalTime.MIDNIGHT, defaultOffset), null), (r) -> {
+                StructuredZonedTimestamp.from(fieldDefn.schema(), OffsetDateTime.of(LocalDate.ofEpochDay(0), LocalTime.MIDNIGHT, defaultOffset), null, precision),
+                (r) -> {
                     try {
-                        r.deliver(StructuredZonedTimestamp.toStructuredZonedTimestamp(fieldDefn.schema(), data, defaultOffset, adjuster));
+                        r.deliver(StructuredZonedTimestamp.toStructuredZonedTimestamp(fieldDefn.schema(), data, defaultOffset, adjuster, precision));
                     }
                     catch (IllegalArgumentException e) {
                     }
@@ -422,9 +424,10 @@ public class JdbcValueConverters implements ValueConverterProvider {
     }
 
     protected Object convertTimeWithZoneToStructured(Column column, Field fieldDefn, Object data) {
-        return convertValue(column, fieldDefn, data, StructuredZonedTime.from(fieldDefn.schema(), OffsetTime.of(LocalTime.MIDNIGHT, defaultOffset)), (r) -> {
+        final int precision = getTimePrecision(column);
+        return convertValue(column, fieldDefn, data, StructuredZonedTime.from(fieldDefn.schema(), OffsetTime.of(LocalTime.MIDNIGHT, defaultOffset), precision), (r) -> {
             try {
-                r.deliver(StructuredZonedTime.toStructuredZonedTime(fieldDefn.schema(), data, defaultOffset, adjuster));
+                r.deliver(StructuredZonedTime.toStructuredZonedTime(fieldDefn.schema(), data, defaultOffset, adjuster, precision));
             }
             catch (IllegalArgumentException e) {
             }
@@ -523,13 +526,15 @@ public class JdbcValueConverters implements ValueConverterProvider {
     }
 
     protected Object convertTimestampToStructured(Column column, Field fieldDefn, Object data) {
-        return convertValue(column, fieldDefn, data, StructuredTimestamp.from(fieldDefn.schema(), LocalDateTime.of(LocalDate.ofEpochDay(0), LocalTime.MIDNIGHT)), (r) -> {
-            try {
-                r.deliver(StructuredTimestamp.toStructuredTimestamp(fieldDefn.schema(), data, adjuster));
-            }
-            catch (IllegalArgumentException e) {
-            }
-        });
+        final int precision = getTimePrecision(column);
+        return convertValue(column, fieldDefn, data,
+                StructuredTimestamp.from(fieldDefn.schema(), LocalDateTime.of(LocalDate.ofEpochDay(0), LocalTime.MIDNIGHT), precision), (r) -> {
+                    try {
+                        r.deliver(StructuredTimestamp.toStructuredTimestamp(fieldDefn.schema(), data, adjuster, precision));
+                    }
+                    catch (IllegalArgumentException e) {
+                    }
+                });
     }
 
     /**
@@ -638,9 +643,10 @@ public class JdbcValueConverters implements ValueConverterProvider {
     }
 
     protected Object convertTimeToStructured(Column column, Field fieldDefn, Object data) {
-        return convertValue(column, fieldDefn, data, StructuredTime.from(fieldDefn.schema(), LocalTime.MIDNIGHT), (r) -> {
+        final int precision = getTimePrecision(column);
+        return convertValue(column, fieldDefn, data, StructuredTime.from(fieldDefn.schema(), LocalTime.MIDNIGHT, precision), (r) -> {
             try {
-                r.deliver(StructuredTime.toStructuredTime(fieldDefn.schema(), data, adjuster));
+                r.deliver(StructuredTime.toStructuredTime(fieldDefn.schema(), data, adjuster, precision));
             }
             catch (IllegalArgumentException e) {
             }

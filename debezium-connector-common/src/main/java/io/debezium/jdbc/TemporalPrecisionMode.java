@@ -75,7 +75,7 @@ public enum TemporalPrecisionMode implements EnumeratedValue {
     /**
      * Represent date, time, timestamp and datetime values as structured temporal components.
      */
-    STRUCTURED("structured", StructuredDate::builder, StructuredTime::builder, StructuredTimestamp::builder);
+    STRUCTURED("structured", StructuredDate::builder, x -> StructuredTime.builder(), x -> StructuredTimestamp.builder());
 
     private final String value;
     private final Supplier<SchemaBuilder> dateBuilder;

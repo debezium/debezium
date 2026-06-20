@@ -28,24 +28,26 @@ import io.debezium.time.StructuredZonedTimestamp;
 class StructuredTemporalPrecisionTest {
 
     @Test
-    @DisplayName("Should prefer structured timestamp precision over propagated source column precision")
-    void shouldPreferStructuredTimestampPrecision() {
+    @DisplayName("Should use propagated source column scale for structured timestamp precision")
+    void shouldUseSourceColumnScaleForStructuredTimestampPrecision() {
         final var type = new StructuredTimestampType();
         type.configure(config(), timestampDialect());
-        final var schema = StructuredTimestamp.builder(3)
+        final var schema = StructuredTimestamp.builder()
                 .parameter("__debezium.source.column.scale", "6")
                 .parameter("__debezium.source.column.length", "6")
                 .build();
 
-        assertThat(type.getTypeName(schema, false)).isEqualTo("timestamp(3)");
+        assertThat(type.getTypeName(schema, false)).isEqualTo("timestamp(6)");
     }
 
     @Test
-    @DisplayName("Should preserve structured timestamp zero precision")
-    void shouldPreserveStructuredTimestampZeroPrecision() {
+    @DisplayName("Should preserve source column zero precision")
+    void shouldPreserveSourceColumnZeroPrecision() {
         final var type = new StructuredTimestampType();
         type.configure(config(), timestampDialect());
-        final var schema = StructuredTimestamp.builder(0).build();
+        final var schema = StructuredTimestamp.builder()
+                .parameter("__debezium.source.column.scale", "0")
+                .build();
 
         assertThat(type.getTypeName(schema, false)).isEqualTo("timestamp(0)");
     }
@@ -63,27 +65,27 @@ class StructuredTemporalPrecisionTest {
     }
 
     @Test
-    @DisplayName("Should prefer structured time precision over propagated source column precision")
-    void shouldPreferStructuredTimePrecision() {
+    @DisplayName("Should use propagated source column scale for structured time precision")
+    void shouldUseSourceColumnScaleForStructuredTimePrecision() {
         final var type = new StructuredTimeType();
         type.configure(config(), timeDialect());
-        final var schema = StructuredTime.builder(0)
+        final var schema = StructuredTime.builder()
                 .parameter("__debezium.source.column.scale", "6")
                 .build();
 
-        assertThat(type.getTypeName(schema, false)).isEqualTo("time(0)");
+        assertThat(type.getTypeName(schema, false)).isEqualTo("time(6)");
     }
 
     @Test
-    @DisplayName("Should prefer structured zoned timestamp precision")
-    void shouldPreferStructuredZonedTimestampPrecision() {
+    @DisplayName("Should use propagated source column scale for structured zoned timestamp precision")
+    void shouldUseSourceColumnScaleForStructuredZonedTimestampPrecision() {
         final var type = new StructuredZonedTimestampType();
         type.configure(config(), timestampDialect());
-        final var schema = StructuredZonedTimestamp.builder(7)
+        final var schema = StructuredZonedTimestamp.builder()
                 .parameter("__debezium.source.column.scale", "3")
                 .build();
 
-        assertThat(type.getTypeName(schema, false)).isEqualTo("timestamptz(7)");
+        assertThat(type.getTypeName(schema, false)).isEqualTo("timestamptz(3)");
     }
 
     private SinkConnectorConfig config() {

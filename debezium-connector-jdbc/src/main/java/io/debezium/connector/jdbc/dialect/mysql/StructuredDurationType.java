@@ -14,7 +14,6 @@ import org.hibernate.engine.jdbc.Size;
 import io.debezium.connector.jdbc.type.AbstractType;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
 import io.debezium.time.StructuredDuration;
-import io.debezium.time.StructuredTemporal;
 
 /**
  * MySQL implementation of {@link StructuredDuration} values.
@@ -30,8 +29,7 @@ public class StructuredDurationType extends AbstractType {
 
     @Override
     public String getTypeName(Schema schema, boolean isKey) {
-        final int precision = getSchemaParameter(schema, StructuredTemporal.PRECISION_PARAMETER)
-                .or(() -> getSourceColumnPrecision(schema))
+        final int precision = getSourceColumnPrecision(schema)
                 .map(Integer::parseInt)
                 .orElseGet(() -> getSourceColumnSize(schema).map(Integer::parseInt).orElse(6));
         return getDialect().getJdbcTypeName(Types.TIME, Size.precision(Math.min(precision, 6)));

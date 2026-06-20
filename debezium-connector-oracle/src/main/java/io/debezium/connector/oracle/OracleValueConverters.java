@@ -145,12 +145,12 @@ public class OracleValueConverters extends JdbcValueConverters {
             case OracleTypes.TIMESTAMPTZ:
             case OracleTypes.TIMESTAMPLTZ:
                 if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
-                    return StructuredZonedTimestamp.builder(getTimePrecision(column));
+                    return StructuredZonedTimestamp.builder();
                 }
                 return ZonedTimestamp.builder();
             case OracleTypes.INTERVALDS:
                 if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
-                    return StructuredDuration.builder(getTimePrecision(column));
+                    return StructuredDuration.builder();
                 }
                 return intervalHandlingMode == OracleConnectorConfig.IntervalHandlingMode.STRING ? Interval.builder() : MicroDuration.builder();
             case OracleTypes.INTERVALYM:
@@ -838,12 +838,13 @@ public class OracleValueConverters extends JdbcValueConverters {
 
     protected Object convertIntervalDaySecond(Column column, Field fieldDefn, Object data) {
         if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
-            return convertValue(column, fieldDefn, data, StructuredDuration.from(fieldDefn.schema(), 0, 0, 0, 0, 0, 0, 0), (r) -> {
+            final int precision = getTimePrecision(column);
+            return convertValue(column, fieldDefn, data, StructuredDuration.from(fieldDefn.schema(), 0, 0, 0, 0, 0, 0, 0, precision), (r) -> {
                 if (data instanceof Number) {
-                    convertMicrosToStructuredDuration(((Number) data).longValue(), fieldDefn.schema(), r);
+                    convertMicrosToStructuredDuration(((Number) data).longValue(), fieldDefn.schema(), precision, r);
                 }
                 else if (data instanceof INTERVALDS) {
-                    convertOracleIntervalDaySecondToStructured(data, fieldDefn.schema(), r);
+                    convertOracleIntervalDaySecondToStructured(data, fieldDefn.schema(), precision, r);
                 }
                 else if (data instanceof String) {
                     final String value = (String) data;
@@ -854,7 +855,7 @@ public class OracleValueConverters extends JdbcValueConverters {
                     else {
                         interval = new INTERVALDS(value.substring(15, value.length() - 2));
                     }
-                    convertOracleIntervalDaySecondToStructured(interval, fieldDefn.schema(), r);
+                    convertOracleIntervalDaySecondToStructured(interval, fieldDefn.schema(), precision, r);
                 }
             });
         }
@@ -918,9 +919,13 @@ public class OracleValueConverters extends JdbcValueConverters {
     }
 
     private void convertMicrosToStructuredDuration(long micros, Schema schema, ResultReceiver r) {
+        convertMicrosToStructuredDuration(micros, schema, -1, r);
+    }
+
+    private void convertMicrosToStructuredDuration(long micros, Schema schema, int precision, ResultReceiver r) {
         final long seconds = micros / 1_000_000;
         final int nanos = (int) (micros % 1_000_000) * 1_000;
-        r.deliver(StructuredDuration.from(schema, 0, 0, 0, 0, 0, seconds, nanos));
+        r.deliver(StructuredDuration.from(schema, 0, 0, 0, 0, 0, seconds, nanos, precision));
     }
 
     private void convertOracleIntervalYearMonthToStructured(Object data, Schema schema, ResultReceiver r) {
@@ -940,7 +945,7 @@ public class OracleValueConverters extends JdbcValueConverters {
         }
     }
 
-    private void convertOracleIntervalDaySecondToStructured(Object data, Schema schema, ResultReceiver r) {
+    private void convertOracleIntervalDaySecondToStructured(Object data, Schema schema, int precision, ResultReceiver r) {
         final String interval = ((INTERVALDS) data).stringValue();
         final Matcher m = INTERVAL_DAY_SECOND_PATTERN.matcher(interval);
         if (m.matches()) {
@@ -953,7 +958,8 @@ public class OracleValueConverters extends JdbcValueConverters {
                     sign * Integer.valueOf(m.group(3)),
                     sign * Integer.valueOf(m.group(4)),
                     sign * Long.parseLong(m.group(5)),
-                    sign * Integer.parseInt(Strings.pad(m.group(6), 9, '0'))));
+                    sign * Integer.parseInt(Strings.pad(m.group(6), 9, '0')),
+                    precision));
         }
     }
 

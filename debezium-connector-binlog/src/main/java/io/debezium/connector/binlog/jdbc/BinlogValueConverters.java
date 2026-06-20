@@ -155,7 +155,7 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
             return Year.builder();
         }
         if (matches(typeName, "TIME") && temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
-            return StructuredDuration.builder(getTimePrecision(column));
+            return StructuredDuration.builder();
         }
         if (matches(typeName, "ENUM")) {
             String commaSeparatedOptions = extractEnumAndSetOptionsAsString(column);
@@ -847,7 +847,8 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
     }
 
     protected Object convertDurationToStructured(Column column, Field fieldDefn, Object data) {
-        return convertValue(column, fieldDefn, data, StructuredDuration.from(fieldDefn.schema(), 0, 0, 0, 0, 0, 0, 0), (r) -> {
+        final int precision = getTimePrecision(column);
+        return convertValue(column, fieldDefn, data, StructuredDuration.from(fieldDefn.schema(), 0, 0, 0, 0, 0, 0, 0, precision), (r) -> {
             try {
                 if (data instanceof Duration) {
                     final Duration duration = (Duration) data;
@@ -861,7 +862,8 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
                             Math.toIntExact(abs.toHours() * sign),
                             abs.toMinutesPart() * sign,
                             abs.toSecondsPart() * sign,
-                            abs.toNanosPart() * sign));
+                            abs.toNanosPart() * sign,
+                            precision));
                 }
             }
             catch (IllegalArgumentException | ArithmeticException e) {
@@ -888,7 +890,8 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
                     value.getHour(),
                     value.getMinute(),
                     value.getSecond(),
-                    value.getNanos());
+                    value.getNanos(),
+                    getTimePrecision(column));
         }
         return super.convertTimestampToStructured(column, fieldDefn, data);
     }
@@ -906,7 +909,8 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
                     value.getSecond(),
                     value.getNanos(),
                     ZoneOffset.UTC.getTotalSeconds(),
-                    ZoneOffset.UTC.getId());
+                    ZoneOffset.UTC.getId(),
+                    getTimePrecision(column));
         }
         return super.convertTimestampWithZoneToStructured(column, fieldDefn, data);
     }
