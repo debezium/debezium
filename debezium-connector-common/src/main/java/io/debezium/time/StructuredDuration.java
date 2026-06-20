@@ -17,7 +17,11 @@ public final class StructuredDuration {
     public static final String SCHEMA_NAME = "io.debezium.time.StructuredDuration";
 
     public static SchemaBuilder builder() {
-        return SchemaBuilder.struct()
+        return builder(-1);
+    }
+
+    public static SchemaBuilder builder(int precision) {
+        return StructuredTemporal.withPrecision(SchemaBuilder.struct()
                 .name(SCHEMA_NAME)
                 .version(1)
                 .field(StructuredTemporal.YEARS_FIELD, StructuredTemporal.optionalInt32())
@@ -26,7 +30,7 @@ public final class StructuredDuration {
                 .field(StructuredTemporal.HOURS_FIELD, StructuredTemporal.optionalInt32())
                 .field(StructuredTemporal.MINUTES_FIELD, StructuredTemporal.optionalInt32())
                 .field(StructuredTemporal.SECONDS_FIELD, StructuredTemporal.optionalInt64())
-                .field(StructuredTemporal.NANOS_FIELD, StructuredTemporal.optionalInt32());
+                .field(StructuredTemporal.NANOS_FIELD, StructuredTemporal.optionalInt32()), precision);
     }
 
     public static Schema schema() {

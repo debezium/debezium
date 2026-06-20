@@ -221,19 +221,19 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 return column.length() > 1 ? Bits.builder(column.length()) : SchemaBuilder.bool();
             case PgOid.INTERVAL:
                 if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
-                    return StructuredDuration.builder();
+                    return StructuredDuration.builder(getTimePrecision(column));
                 }
                 return intervalMode == IntervalHandlingMode.STRING ? Interval.builder() : MicroDuration.builder();
             case PgOid.TIMESTAMPTZ:
                 // JDBC reports this as "timestamp" even though it's with tz, so we can't use the base class...
                 if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
-                    return StructuredZonedTimestamp.builder();
+                    return StructuredZonedTimestamp.builder(getTimePrecision(column));
                 }
                 return ZonedTimestamp.builder();
             case PgOid.TIMETZ:
                 // JDBC reports this as "time" but this contains TZ information
                 if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
-                    return StructuredZonedTime.builder();
+                    return StructuredZonedTime.builder(getTimePrecision(column));
                 }
                 return ZonedTime.builder();
             case PgOid.OID:
@@ -315,14 +315,14 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 return SchemaBuilder.array(temporalPrecisionMode.getTimeBuilder(getTimePrecision(column)).optional().build());
             case PgOid.TIMETZ_ARRAY:
                 if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
-                    return SchemaBuilder.array(StructuredZonedTime.builder().optional().build());
+                    return SchemaBuilder.array(StructuredZonedTime.builder(getTimePrecision(column)).optional().build());
                 }
                 return SchemaBuilder.array(ZonedTime.builder().optional().build());
             case PgOid.TIMESTAMP_ARRAY:
                 return SchemaBuilder.array(temporalPrecisionMode.getTimestampBuilder(getTimePrecision(column)).optional().build());
             case PgOid.TIMESTAMPTZ_ARRAY:
                 if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
-                    return SchemaBuilder.array(StructuredZonedTimestamp.builder().optional().build());
+                    return SchemaBuilder.array(StructuredZonedTimestamp.builder(getTimePrecision(column)).optional().build());
                 }
                 return SchemaBuilder.array(ZonedTimestamp.builder().optional().build());
             case PgOid.BYTEA_ARRAY:

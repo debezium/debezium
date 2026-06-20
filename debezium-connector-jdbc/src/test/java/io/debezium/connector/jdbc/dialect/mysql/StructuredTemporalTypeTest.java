@@ -6,13 +6,20 @@
 package io.debezium.connector.jdbc.dialect.mysql;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.sql.Types;
 
+import org.hibernate.engine.jdbc.Size;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
+import io.debezium.connector.jdbc.dialect.DatabaseDialect;
+import io.debezium.sink.SinkConnectorConfig;
 import io.debezium.time.StructuredDate;
 import io.debezium.time.StructuredDuration;
 import io.debezium.time.StructuredTimestamp;
@@ -60,5 +67,21 @@ class StructuredTemporalTypeTest {
         assertThat(bindings.get(0).getValue()).isEqualTo("-838:59:58.999999");
         assertThat(bindings.get(0).getTargetSqlType()).isEqualTo(Types.VARCHAR);
         assertThat(StructuredDurationType.INSTANCE.getDefaultValueBinding(schema, value)).isEqualTo("'-838:59:58.999999'");
+    }
+
+    @Test
+    @DisplayName("Should prefer structured duration precision over propagated source column precision")
+    void shouldPreferStructuredDurationPrecision() {
+        final var type = new StructuredDurationType();
+        final DatabaseDialect dialect = mock(DatabaseDialect.class);
+        when(dialect.getJdbcTypeName(eq(Types.TIME), any(Size.class)))
+                .thenAnswer(invocation -> "time(" + ((Size) invocation.getArgument(1)).getPrecision() + ")");
+        type.configure(mock(SinkConnectorConfig.class), dialect);
+
+        final var schema = StructuredDuration.builder(2)
+                .parameter("__debezium.source.column.length", "6")
+                .build();
+
+        assertThat(type.getTypeName(schema, false)).isEqualTo("time(2)");
     }
 }

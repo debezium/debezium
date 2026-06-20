@@ -233,12 +233,12 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 return temporalPrecisionMode.getTimestampBuilder(getTimePrecision(column));
             case Types.TIME_WITH_TIMEZONE:
                 if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
-                    return StructuredZonedTime.builder();
+                    return StructuredZonedTime.builder(getTimePrecision(column));
                 }
                 return ZonedTime.builder();
             case Types.TIMESTAMP_WITH_TIMEZONE:
                 if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
-                    return StructuredZonedTimestamp.builder();
+                    return StructuredZonedTimestamp.builder(getTimePrecision(column));
                 }
                 return ZonedTimestamp.builder();
 
