@@ -37,6 +37,23 @@ class RowDeserializersTest {
         assertThat(RowDeserializers.deserializeTimestamp(input)).isNull();
     }
 
+    @Test
+    void deserializeTimestampPreservesZeroEpochWhenRequested() throws IOException {
+        ByteArrayInputStream input = new ByteArrayInputStream(new byte[]{ 0, 0, 0, 0 });
+
+        Object result = RowDeserializers.deserializeTimestamp(input, true);
+
+        assertThat(result).isInstanceOf(BinlogDateTimeValue.class);
+        BinlogDateTimeValue value = (BinlogDateTimeValue) result;
+        assertThat(value.getYear()).isZero();
+        assertThat(value.getMonth()).isZero();
+        assertThat(value.getDay()).isZero();
+        assertThat(value.getHour()).isZero();
+        assertThat(value.getMinute()).isZero();
+        assertThat(value.getSecond()).isZero();
+        assertThat(value.getNanos()).isZero();
+    }
+
     /** Sanity check: a non-zero epoch second is converted to the corresponding UTC ZonedDateTime.
      *  V1 reads {@code epochSecond} as a little-endian 32-bit value (per shyiko binlog client). */
     @Test
@@ -57,6 +74,20 @@ class RowDeserializersTest {
     void deserializeTimestampV2ReturnsNullForZeroBytesNoFraction() throws IOException {
         ByteArrayInputStream input = new ByteArrayInputStream(new byte[]{ 0, 0, 0, 0 });
         assertThat(RowDeserializers.deserializeTimestampV2(0, input)).isNull();
+    }
+
+    @Test
+    void deserializeTimestampV2PreservesZeroBytesWhenRequested() throws IOException {
+        ByteArrayInputStream input = new ByteArrayInputStream(new byte[]{ 0, 0, 0, 0 });
+
+        Object result = RowDeserializers.deserializeTimestampV2(0, input, true);
+
+        assertThat(result).isInstanceOf(BinlogDateTimeValue.class);
+        BinlogDateTimeValue value = (BinlogDateTimeValue) result;
+        assertThat(value.getYear()).isZero();
+        assertThat(value.getMonth()).isZero();
+        assertThat(value.getDay()).isZero();
+        assertThat(value.getNanos()).isZero();
     }
 
     /** V2 at {@code meta=0} with a non-zero epoch decodes normally. */

@@ -1861,6 +1861,41 @@ Represents timestamp values in UTC format, according to the ISO 8601 standard, f
 
 |===
 
+When the `time.precision.mode` configuration property is set to `structured`, the connector maps temporal values to Kafka Connect structs with separate calendar and clock components.
+This mode avoids flattening high-precision temporal values into a single epoch-based integer:
+
+[cols="30%a,25%a,45%a",options="header"]
+|===
+|SQL Server data type
+|Literal type (schema type)
+|Semantic type (schema name) and Notes
+
+|`DATE`
+|`STRUCT`
+|`io.debezium.time.StructuredDate` +
+ +
+Contains `year`, `month`, and `day` fields.
+
+|`TIME([P])`
+|`STRUCT`
+|`io.debezium.time.StructuredTime` +
+ +
+Contains `hour`, `minute`, `second`, and `nanos` fields.
+
+|`DATETIME`, `SMALLDATETIME`, `DATETIME2`
+|`STRUCT`
+|`io.debezium.time.StructuredTimestamp` +
+ +
+Contains `year`, `month`, `day`, `hour`, `minute`, `second`, and `nanos` fields.
+
+|`DATETIMEOFFSET`
+|`STRUCT`
+|`io.debezium.time.StructuredZonedTimestamp` +
+ +
+Contains calendar and clock component fields, `offsetSeconds`, and optional `zoneId`.
+
+|===
+
 [[sql-server-timestamp-values]]
 ===== Timestamp values
 
@@ -2781,7 +2816,7 @@ Hashing strategy version 2 should be used to ensure fidelity if the value is bei
 
 |[[sqlserver-property-time-precision-mode]]<<sqlserver-property-time-precision-mode, `+time.precision.mode+`>>
 |`adaptive`
-| Time, date, and timestamps can be represented with different kinds of precision, including: `adaptive` (the default) captures the time and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type; or `connect` always represents time and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, which uses millisecond precision regardless of the database columns' precision.
+| Time, date, and timestamps can be represented with different kinds of precision, including: `adaptive` (the default) captures the time and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type; `connect` always represents time and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, which uses millisecond precision regardless of the database columns' precision; `isostring` represents temporal values as ISO-8601 formatted strings at the UTC time zone; or `structured` represents temporal values as Kafka Connect structs with separate calendar and clock components.
 For more information, see xref:sql-server-temporal-values[temporal values].
 
 |[[sqlserver-property-decimal-handling-mode]]<<sqlserver-property-decimal-handling-mode,`+decimal.handling.mode+`>>

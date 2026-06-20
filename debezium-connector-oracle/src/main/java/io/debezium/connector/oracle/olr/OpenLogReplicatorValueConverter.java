@@ -24,6 +24,7 @@ import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleValueConverters;
+import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
 import io.debezium.util.Strings;
 
@@ -136,6 +137,9 @@ public class OpenLogReplicatorValueConverter extends OracleValueConverters {
 
             final Instant instant = Instant.ofEpochSecond(0, Long.parseLong(valueBits[0]));
             final ZoneId zoneId = getZoneIdFromTimeZone(valueBits[1]);
+            if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
+                return super.convertTimestampWithZone(column, fieldDefn, OffsetDateTime.ofInstant(instant, zoneId));
+            }
             return getTimestampWithTimeZoneFormatter(column).format(OffsetDateTime.ofInstant(instant, zoneId));
         }
         return super.convertTimestampWithZone(column, fieldDefn, value);
@@ -145,6 +149,9 @@ public class OpenLogReplicatorValueConverter extends OracleValueConverters {
     protected Object convertTimestampWithLocalZone(Column column, Field fieldDefn, Object value) {
         if (value instanceof Number) {
             final Instant instant = Instant.ofEpochSecond(0, ((Number) value).longValue());
+            if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
+                return super.convertTimestampWithLocalZone(column, fieldDefn, OffsetDateTime.ofInstant(instant, ZoneOffset.UTC));
+            }
             return getTimestampWithLocalTimeZoneFormatter(column).format(OffsetDateTime.ofInstant(instant, ZoneOffset.UTC));
         }
         return super.convertTimestampWithLocalZone(column, fieldDefn, value);

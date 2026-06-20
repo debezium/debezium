@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.binlog.BinlogConnectorConfig;
 import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
+import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
 import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.Table;
@@ -68,7 +69,8 @@ public abstract class BinlogFieldReader {
             // This is for DATETIME columns (a logical date + time without time zone).
             // Reading them with a calendar based on the default time zone, we make sure that the value
             // is constructed correctly using the database's (or connection's) time zone.
-            case Types.TIMESTAMP: {
+            case Types.TIMESTAMP:
+            case Types.TIMESTAMP_WITH_TIMEZONE: {
                 try {
                     return readTimestampField(rs, columnIndex, column, table);
                 }
@@ -146,5 +148,9 @@ public abstract class BinlogFieldReader {
 
     protected BinlogCharsetRegistry getCharsetRegistry() {
         return connectorConfig.getServiceRegistry().getService(BinlogCharsetRegistry.class);
+    }
+
+    protected boolean isStructuredTemporalMode() {
+        return connectorConfig.getTemporalPrecisionMode() == TemporalPrecisionMode.STRUCTURED;
     }
 }

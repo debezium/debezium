@@ -1607,6 +1607,7 @@ Other than PostgreSQL's `TIMESTAMPTZ` and `TIMETZ` data types, which contain tim
 * xref:postgresql-time-precision-mode-isostring[`time.precision.mode=isostring`]
 * xref:postgresql-time-precision-mode-microseconds[`time.precision.mode=microseconds`]
 * xref:postgresql-time-precision-mode-nanoseconds[`time.precision.mode=nanoseconds`]
+* xref:postgresql-time-precision-mode-structured[`time.precision.mode=structured`]
 
 [[postgresql-time-precision-mode-adaptive]]
 .`time.precision.mode=adaptive`
@@ -1835,6 +1836,66 @@ The exception is routed through the standard `event.processing.failure.handling.
 
 If the source schema may contain values outside the representable range, use `time.precision.mode=microseconds` (covers approximately ±290000 years) or `time.precision.mode=isostring` instead.
 ====
+
+
+[[postgresql-time-precision-mode-structured]]
+.`time.precision.mode=structured`
+Set the `time.precision.mode` property to `structured` to configure the connector to represent temporal values as Kafka Connect structs with separate calendar and clock components.
+This mode avoids flattening high-precision temporal values into a single epoch-based integer.
+PostgreSQL `infinity` and `-infinity` values are represented by the `specialValue` field instead of by finite sentinel timestamps.
+
+[NOTE]
+====
+To preserve finite PostgreSQL `TIMESTAMP` values that exceed the range of an epoch-microsecond integer, use the `pgoutput` logical decoding plug-in.
+The `pgoutput` plug-in passes the PostgreSQL text representation to the connector, which enables values such as `294276-12-31 23:59:59.999999` to be represented as structured calendar and clock components.
+When you use the `decoderbufs` plug-in, these values can reach the connector as already-converted epoch-based instants.
+If that conversion overflows before structured conversion, the connector cannot recover the original calendar value.
+====
+
+.Mappings when `time.precision.mode` is `structured`
+[cols="25%a,20%a,55%a",options="header"]
+|===
+|PostgreSQL data type
+|Literal type (schema type)
+|Semantic type (schema name) and Notes
+
+|`DATE`
+|`STRUCT`
+|`io.debezium.time.StructuredDate` +
+ +
+Contains `year`, `month`, and `day` fields. PostgreSQL `infinity` and `-infinity` values are represented as `specialValue`.
+
+|`TIME([P])`
+|`STRUCT`
+|`io.debezium.time.StructuredTime` +
+ +
+Contains `hour`, `minute`, `second`, and `nanos` fields.
+
+|`TIMESTAMP([P])`
+|`STRUCT`
+|`io.debezium.time.StructuredTimestamp` +
+ +
+Contains `year`, `month`, `day`, `hour`, `minute`, `second`, and `nanos` fields. PostgreSQL `infinity` and `-infinity` values are represented as `specialValue`.
+
+|`TIMETZ`
+|`STRUCT`
+|`io.debezium.time.StructuredZonedTime` +
+ +
+Contains clock component fields and an `offsetSeconds` field.
+
+|`TIMESTAMPTZ`
+|`STRUCT`
+|`io.debezium.time.StructuredZonedTimestamp` +
+ +
+Contains calendar and clock component fields, `offsetSeconds`, and optional `zoneId`. PostgreSQL `infinity` and `-infinity` values are represented as `specialValue`.
+
+|`INTERVAL`
+|`STRUCT`
+|`io.debezium.time.StructuredDuration` +
+ +
+Contains signed `years`, `months`, `days`, `hours`, `minutes`, `seconds`, and `nanos` fields.
+
+|===
 
 
 [id="postgresql-timestamp-type"]
@@ -3374,6 +3435,7 @@ The following configuration properties are _required_ unless a default value is 
 
 ifdef::community[]
 Supported values are `decoderbufs`, and `pgoutput`.
+If you use xref:postgresql-time-precision-mode-structured[`time.precision.mode=structured`] to preserve finite `TIMESTAMP` values beyond the epoch-microsecond range, set `plugin.name` to `pgoutput`.
 endif::community[]
 ifdef::product[]
 The only supported value is `pgoutput`.
@@ -3593,6 +3655,14 @@ This property is applied only when the REPLICA IDENTITY of the table is set to `
 An exception is `TIME` type fields, which are always captured as microseconds. +
  +
 `connect` always represents time and timestamp values by using Kafka Connect's built-in representations for `Time`, `Date`, and `Timestamp`, which use millisecond precision regardless of the database columns' precision.
+ +
+`isostring` represents time, date, and timestamp values as ISO-8601 formatted strings at the UTC time zone. +
+ +
+`microseconds` represents time, date, and timestamp values using microsecond precision. +
+ +
+`nanoseconds` represents time, date, and timestamp values using nanosecond precision. +
+ +
+`structured` represents time, date, timestamp, and interval values as Kafka Connect structs with separate calendar and clock components.
 For more information, see xref:postgresql-temporal-types[temporal values].
 
 |[[postgresql-property-decimal-handling-mode]]<<postgresql-property-decimal-handling-mode, `+decimal.handling.mode+`>>

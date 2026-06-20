@@ -47,6 +47,8 @@ import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMo
 import io.debezium.connector.binlog.BinlogGeometry;
 import io.debezium.connector.binlog.BinlogUnsignedIntegerConverter;
 import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
+import io.debezium.connector.binlog.event.BinlogDateTimeValue;
+import io.debezium.connector.binlog.event.BinlogDateValue;
 import io.debezium.data.Json;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.data.vector.FloatVector;
@@ -56,6 +58,10 @@ import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.ValueConverter;
 import io.debezium.service.spi.ServiceRegistry;
+import io.debezium.time.StructuredDate;
+import io.debezium.time.StructuredDuration;
+import io.debezium.time.StructuredTimestamp;
+import io.debezium.time.StructuredZonedTimestamp;
 import io.debezium.time.Year;
 import io.debezium.util.Loggings;
 import io.debezium.util.Strings;
@@ -97,6 +103,7 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
      * Used to parse values of TIMESTAMP columns. Format: 000-00-00 00:00:00.000.
      */
     private static final Pattern TIMESTAMP_FIELD_PATTERN = Pattern.compile("([0-9]*)-([0-9]*)-([0-9]*) .*");
+    private static final Pattern TIMESTAMP_FIELD_COMPONENT_PATTERN = Pattern.compile("([0-9]*)-([0-9]*)-([0-9]*)[ T]([0-9]*):([0-9]*):([0-9]*)(\\.([0-9]*))?.*");
 
     private final EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode;
     private final BinlogCharsetRegistry charsetRegistry;
@@ -146,6 +153,9 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
         }
         if (matches(typeName, "YEAR")) {
             return Year.builder();
+        }
+        if (matches(typeName, "TIME") && temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
+            return StructuredDuration.builder();
         }
         if (matches(typeName, "ENUM")) {
             String commaSeparatedOptions = extractEnumAndSetOptionsAsString(column);
@@ -279,6 +289,9 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
                 logger.warn("Using UTF-8 charset by default for column without charset: {}", column);
                 return (data) -> convertString(column, fieldDefn, StandardCharsets.UTF_8, data);
             case Types.TIME:
+                if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
+                    return data -> convertDurationToStructured(column, fieldDefn, data);
+                }
                 if (temporalPrecisionMode == TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS) {
                     return data -> convertDurationToMicroseconds(column, fieldDefn, data);
                 }
@@ -833,6 +846,71 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
         });
     }
 
+    protected Object convertDurationToStructured(Column column, Field fieldDefn, Object data) {
+        return convertValue(column, fieldDefn, data, StructuredDuration.from(fieldDefn.schema(), 0, 0, 0, 0, 0, 0, 0), (r) -> {
+            try {
+                if (data instanceof Duration) {
+                    final Duration duration = (Duration) data;
+                    final int sign = duration.isNegative() ? -1 : 1;
+                    final Duration abs = duration.abs();
+                    r.deliver(StructuredDuration.from(
+                            fieldDefn.schema(),
+                            0,
+                            0,
+                            0,
+                            Math.toIntExact(abs.toHours() * sign),
+                            abs.toMinutesPart() * sign,
+                            abs.toSecondsPart() * sign,
+                            abs.toNanosPart() * sign));
+                }
+            }
+            catch (IllegalArgumentException | ArithmeticException e) {
+            }
+        });
+    }
+
+    @Override
+    protected Object convertDateToStructured(Column column, Field fieldDefn, Object data) {
+        if (data instanceof BinlogDateValue value) {
+            return StructuredDate.from(fieldDefn.schema(), value.getYear(), value.getMonth(), value.getDay());
+        }
+        return super.convertDateToStructured(column, fieldDefn, data);
+    }
+
+    @Override
+    protected Object convertTimestampToStructured(Column column, Field fieldDefn, Object data) {
+        if (data instanceof BinlogDateTimeValue value) {
+            return StructuredTimestamp.from(
+                    fieldDefn.schema(),
+                    value.getYear(),
+                    value.getMonth(),
+                    value.getDay(),
+                    value.getHour(),
+                    value.getMinute(),
+                    value.getSecond(),
+                    value.getNanos());
+        }
+        return super.convertTimestampToStructured(column, fieldDefn, data);
+    }
+
+    @Override
+    protected Object convertTimestampWithZoneToStructured(Column column, Field fieldDefn, Object data) {
+        if (data instanceof BinlogDateTimeValue value) {
+            return StructuredZonedTimestamp.from(
+                    fieldDefn.schema(),
+                    value.getYear(),
+                    value.getMonth(),
+                    value.getDay(),
+                    value.getHour(),
+                    value.getMinute(),
+                    value.getSecond(),
+                    value.getNanos(),
+                    ZoneOffset.UTC.getTotalSeconds(),
+                    ZoneOffset.UTC.getId());
+        }
+        return super.convertTimestampWithZoneToStructured(column, fieldDefn, data);
+    }
+
     protected Object convertTimestampToLocalDateTime(Column column, Field fieldDefn, Object data) {
         if (data == null && !fieldDefn.schema().isOptional()) {
             return null;
@@ -959,6 +1037,40 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
             return null;
         }
         return LocalDate.of(year, month, day);
+    }
+
+    public static BinlogDateValue stringToBinlogDateValue(String dateString) {
+        final Matcher matcher = DATE_FIELD_PATTERN.matcher(dateString);
+        if (!matcher.matches()) {
+            throw new RuntimeException("Unexpected format for DATE column: " + dateString);
+        }
+
+        return new BinlogDateValue(
+                Integer.parseInt(matcher.group(1)),
+                Integer.parseInt(matcher.group(2)),
+                Integer.parseInt(matcher.group(3)));
+    }
+
+    public static BinlogDateTimeValue stringToBinlogDateTimeValue(String timestampString) {
+        final Matcher matcher = TIMESTAMP_FIELD_COMPONENT_PATTERN.matcher(timestampString);
+        if (!matcher.matches()) {
+            throw new RuntimeException("Unexpected format for TIMESTAMP column: " + timestampString);
+        }
+
+        int nanos = 0;
+        final String fractionalSeconds = matcher.group(8);
+        if (!Objects.isNull(fractionalSeconds)) {
+            nanos = Integer.parseInt(Strings.justifyLeft(fractionalSeconds, 9, '0'));
+        }
+
+        return new BinlogDateTimeValue(
+                Integer.parseInt(matcher.group(1)),
+                Integer.parseInt(matcher.group(2)),
+                Integer.parseInt(matcher.group(3)),
+                Integer.parseInt(matcher.group(4)),
+                Integer.parseInt(matcher.group(5)),
+                Integer.parseInt(matcher.group(6)),
+                nanos);
     }
 
     /**
