@@ -41,7 +41,6 @@ import io.debezium.relational.TableId;
 import io.debezium.schema.DataCollectionFilters.DataCollectionFilter;
 import io.debezium.schema.DataCollectionSchema;
 import io.debezium.schema.SchemaNameAdjuster;
-import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.spi.topic.TopicNamingStrategy;
 
 /**
@@ -52,17 +51,17 @@ import io.debezium.spi.topic.TopicNamingStrategy;
  *
  * @author Bue-Von-Hun
  */
-public class MysqlEventDispatcher<P extends Partition, T extends DataCollectionId> extends EventDispatcher<P, T> {
+public class MysqlEventDispatcher<P extends Partition> extends EventDispatcher<P, TableId> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MysqlEventDispatcher.class);
 
     private final MySqlDatabaseSchema schema;
     private final MySqlConnectorConfig mySqlConnectorConfig;
 
-    public MysqlEventDispatcher(CommonConnectorConfig connectorConfig, TopicNamingStrategy<T> topicNamingStrategy,
-                                MySqlDatabaseSchema schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
+    public MysqlEventDispatcher(CommonConnectorConfig connectorConfig, TopicNamingStrategy<TableId> topicNamingStrategy,
+                                MySqlDatabaseSchema schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<TableId> filter,
                                 ChangeEventCreator changeEventCreator,
-                                InconsistentSchemaHandler<P, T> inconsistentSchemaHandler,
+                                InconsistentSchemaHandler<P, TableId> inconsistentSchemaHandler,
                                 EventMetadataProvider metadataProvider, ScheduledHeartbeat heartbeat,
                                 SchemaNameAdjuster schemaNameAdjuster, SignalProcessor<P, ?> signalProcessor,
                                 DebeziumHeaderProducer debeziumHeaderProducer) {
@@ -106,7 +105,7 @@ public class MysqlEventDispatcher<P extends Partition, T extends DataCollectionI
             applyUnavailablePlaceholdersForNoblobColumns(value, dataCollectionSchema);
 
             final Schema keySchema = dataCollectionSchema.keySchema();
-            final String topicName = topicNamingStrategy.dataChangeTopic((T) dataCollectionSchema.id());
+            final String topicName = topicNamingStrategy.dataChangeTopic((TableId) dataCollectionSchema.id());
 
             doPostProcessing(key, value);
 
@@ -162,7 +161,7 @@ public class MysqlEventDispatcher<P extends Partition, T extends DataCollectionI
             final SourceRecord record = new SourceRecord(
                     partition.getSourcePartition(),
                     offsetContext.getOffset(),
-                    topicNamingStrategy.dataChangeTopic((T) dataCollectionSchema.id()),
+                    topicNamingStrategy.dataChangeTopic((TableId) dataCollectionSchema.id()),
                     null,
                     dataCollectionSchema.keySchema(),
                     key,
