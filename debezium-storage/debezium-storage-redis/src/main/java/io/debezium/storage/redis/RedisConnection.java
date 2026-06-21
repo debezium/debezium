@@ -6,6 +6,7 @@
 package io.debezium.storage.redis;
 
 import java.io.File;
+import java.time.Duration;
 import java.util.regex.Pattern;
 
 import javax.net.ssl.SSLParameters;
@@ -15,6 +16,11 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.util.Strings;
+import io.lettuce.core.ClientOptions;
+import io.lettuce.core.RedisException;
+import io.lettuce.core.RedisURI;
+import io.lettuce.core.api.StatefulRedisConnection;
+import io.lettuce.core.codec.ByteArrayCodec;
 
 import redis.clients.jedis.DefaultJedisClientConfig;
 import redis.clients.jedis.DefaultJedisClientConfig.Builder;
@@ -46,6 +52,7 @@ public class RedisConnection {
     private final boolean sslEnabled;
     private final boolean hostnameVerificationEnabled;
     private final boolean clusterEnabled;
+    private final String clientLibrary;
     private final String truststorePath;
     private final String truststorePassword;
     private final String truststoreType;
@@ -108,6 +115,14 @@ public class RedisConnection {
     public RedisConnection(String address, int dbIndex, String user, String password, int connectionTimeout, int socketTimeout, boolean sslEnabled,
                            boolean hostnameVerificationEnabled, String truststorePath, String truststorePassword, String truststoreType,
                            String keystorePath, String keystorePassword, String keystoreType, boolean clusterEnabled) {
+        this(address, dbIndex, user, password, connectionTimeout, socketTimeout, sslEnabled, hostnameVerificationEnabled,
+                truststorePath, truststorePassword, truststoreType, keystorePath, keystorePassword, keystoreType, clusterEnabled,
+                RedisCommonConfig.CLIENT_LIBRARY_JEDIS);
+    }
+
+    public RedisConnection(String address, int dbIndex, String user, String password, int connectionTimeout, int socketTimeout, boolean sslEnabled,
+                           boolean hostnameVerificationEnabled, String truststorePath, String truststorePassword, String truststoreType,
+                           String keystorePath, String keystorePassword, String keystoreType, boolean clusterEnabled, String clientLibrary) {
         validateHostPort(address);
 
         this.address = address;
@@ -119,6 +134,7 @@ public class RedisConnection {
         this.sslEnabled = sslEnabled;
         this.hostnameVerificationEnabled = hostnameVerificationEnabled;
         this.clusterEnabled = clusterEnabled;
+        this.clientLibrary = clientLibrary;
         this.truststorePath = truststorePath;
         this.truststorePassword = truststorePassword;
         this.truststoreType = truststoreType;
@@ -149,7 +165,8 @@ public class RedisConnection {
                 config.getKeystorePath(),
                 config.getKeystorePassword(),
                 config.getKeystoreType(),
-                config.isClusterEnabled());
+                config.isClusterEnabled(),
+                config.getClientLibrary());
     }
 
     /**
@@ -167,6 +184,14 @@ public class RedisConnection {
             throw new DebeziumException("Redis client wait timeout should be positive");
         }
 
+        // Use config-driven driver selection; when 'lettuce' is requested, a Lettuce-backed client is created.
+        if (RedisCommonConfig.CLIENT_LIBRARY_LETTUCE.equalsIgnoreCase(this.clientLibrary)) {
+            return createLettuceClient(clientName, waitEnabled, waitTimeout, waitRetry, waitRetryDelay);
+        }
+        return createJedisClient(clientName, waitEnabled, waitTimeout, waitRetry, waitRetryDelay);
+    }
+
+    private RedisClient createJedisClient(String clientName, boolean waitEnabled, long waitTimeout, boolean waitRetry, long waitRetryDelay) {
         // Use config-driven cluster mode; when enabled, a JedisCluster client is created.
         boolean isCluster = this.clusterEnabled;
 
@@ -255,6 +280,82 @@ public class RedisConnection {
             }
         }
         catch (JedisConnectionException e) {
+            throw new RedisClientConnectionException(e);
+        }
+    }
+
+    private RedisClient createLettuceClient(String clientName, boolean waitEnabled, long waitTimeout, boolean waitRetry, long waitRetryDelay) {
+        if (this.clusterEnabled) {
+            throw new DebeziumException(
+                    "The Lettuce client does not yet support Redis Cluster mode; use the Jedis client (redis.client.library=jedis) for cluster mode.");
+        }
+
+        // Lettuce standalone connects to a single node; if multiple addresses are provided, use the first.
+        String firstAddress = this.address.split(",")[0].trim();
+        if (this.address.contains(",")) {
+            LOGGER.warn("Multiple Redis addresses provided but Lettuce cluster mode is not supported; using the first address: {}", firstAddress);
+        }
+        int separatorIndex = firstAddress.lastIndexOf(':');
+        String host = firstAddress.substring(0, separatorIndex);
+        int port = Integer.parseInt(firstAddress.substring(separatorIndex + 1));
+
+        RedisURI.Builder uriBuilder = RedisURI.builder()
+                .withHost(host)
+                .withPort(port)
+                .withDatabase(this.dbIndex)
+                .withTimeout(Duration.ofMillis(this.connectionTimeout))
+                .withSsl(this.sslEnabled);
+
+        if (this.sslEnabled) {
+            // Mirror the Jedis behaviour: full hostname verification when enabled, otherwise CA-only verification.
+            uriBuilder.withVerifyPeer(hostnameVerificationEnabled ? io.lettuce.core.SslVerifyMode.FULL : io.lettuce.core.SslVerifyMode.CA);
+        }
+
+        if (!Strings.isNullOrEmpty(this.user) && !Strings.isNullOrEmpty(this.password)) {
+            uriBuilder.withAuthentication(this.user, this.password.toCharArray());
+        }
+        else if (!Strings.isNullOrEmpty(this.password)) {
+            uriBuilder.withPassword(this.password.toCharArray());
+        }
+
+        io.lettuce.core.RedisClient lettuceClient = io.lettuce.core.RedisClient.create(uriBuilder.build());
+
+        boolean configureSslOptions = this.sslEnabled && (!Strings.isNullOrEmpty(this.truststorePath) || !Strings.isNullOrEmpty(this.keystorePath));
+        if (configureSslOptions) {
+            // Lettuce derives the store type (JKS/PKCS12) from the file itself, so the *.type properties are not applied here.
+            io.lettuce.core.SslOptions.Builder sslBuilder = io.lettuce.core.SslOptions.builder();
+            if (!Strings.isNullOrEmpty(this.truststorePath)) {
+                sslBuilder.truststore(new File(this.truststorePath), this.truststorePassword);
+            }
+            if (!Strings.isNullOrEmpty(this.keystorePath)) {
+                char[] ksPassword = !Strings.isNullOrEmpty(this.keystorePassword) ? this.keystorePassword.toCharArray() : null;
+                sslBuilder.keystore(new File(this.keystorePath), ksPassword);
+            }
+            lettuceClient.setOptions(ClientOptions.builder().sslOptions(sslBuilder.build()).build());
+        }
+
+        try {
+            StatefulRedisConnection<String, String> stringConnection = lettuceClient.connect();
+            StatefulRedisConnection<byte[], byte[]> byteConnection = lettuceClient.connect(ByteArrayCodec.INSTANCE);
+
+            // make sure that the client is connected
+            stringConnection.sync().ping();
+
+            try {
+                stringConnection.sync().clientSetname(clientName);
+            }
+            catch (RedisException e) {
+                LOGGER.warn("Failed to set client name", e);
+            }
+
+            RedisClient lettuce = new LettuceClient(lettuceClient, stringConnection, byteConnection, this.socketTimeout);
+            // Use WAIT wrapper only for standalone
+            RedisClient redisClient = waitEnabled ? new WaitReplicasRedisClient(lettuce, 1, waitTimeout, waitRetry, waitRetryDelay) : lettuce;
+            LOGGER.info("Using Redis client '{}'", redisClient);
+            return redisClient;
+        }
+        catch (RedisException e) {
+            lettuceClient.shutdown();
             throw new RedisClientConnectionException(e);
         }
     }

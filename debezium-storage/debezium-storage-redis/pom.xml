@@ -63,6 +63,10 @@
             <artifactId>jedis</artifactId>
         </dependency>
         <dependency>
+            <groupId>io.lettuce</groupId>
+            <artifactId>lettuce-core</artifactId>
+        </dependency>
+        <dependency>
             <groupId>io.smallrye.reactive</groupId>
             <artifactId>mutiny</artifactId>
         </dependency>
