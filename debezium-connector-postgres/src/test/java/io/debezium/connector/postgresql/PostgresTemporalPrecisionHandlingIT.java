@@ -409,6 +409,7 @@ public class PostgresTemporalPrecisionHandlingIT extends AbstractAsyncEngineConn
                 .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "temporaltype")
                 // pgoutput preserves the PostgreSQL text representation needed to verify far-future values.
                 .with(PostgresConnectorConfig.PLUGIN_NAME, PostgresConnectorConfig.LogicalDecoder.PGOUTPUT)
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.NO_DATA)
                 .with(PostgresConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.STRUCTURED)
                 .build());
         start(PostgresConnector.class, config.getConfig());
@@ -577,6 +578,20 @@ public class PostgresTemporalPrecisionHandlingIT extends AbstractAsyncEngineConn
 
         assertEquals(StructuredZonedTimestamp.SCHEMA_NAME, after.schema().field("c_timestamptz").schema().name());
         assertStructuredSpecialValue(after.getStruct("c_timestamptz"), StructuredTemporal.POSITIVE_INFINITY);
+
+        assertEquals(StructuredZonedTime.SCHEMA_NAME, after.schema().field("c_time").schema().name());
+        final Struct zonedTime = after.getStruct("c_time");
+        assertEquals((byte) 12, zonedTime.getInt8(StructuredTemporal.HOUR_FIELD));
+        assertEquals((byte) 5, zonedTime.getInt8(StructuredTemporal.MINUTE_FIELD));
+        assertEquals((byte) 11, zonedTime.getInt8(StructuredTemporal.SECOND_FIELD));
+        assertEquals(0, zonedTime.getInt32(StructuredTemporal.OFFSET_SECONDS_FIELD));
+
+        assertEquals(StructuredTime.SCHEMA_NAME, after.schema().field("c_time_whtz").schema().name());
+        final Struct time = after.getStruct("c_time_whtz");
+        assertEquals((byte) 4, time.getInt8(StructuredTemporal.HOUR_FIELD));
+        assertEquals((byte) 5, time.getInt8(StructuredTemporal.MINUTE_FIELD));
+        assertEquals((byte) 11, time.getInt8(StructuredTemporal.SECOND_FIELD));
+        assertEquals(789_000_000, time.getInt32(StructuredTemporal.NANOS_FIELD));
 
         assertEquals(StructuredDuration.SCHEMA_NAME, after.schema().field("c_interval").schema().name());
         final Struct interval = after.getStruct("c_interval");

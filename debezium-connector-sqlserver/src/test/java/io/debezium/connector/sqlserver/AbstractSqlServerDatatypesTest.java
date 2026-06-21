@@ -186,19 +186,19 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractAsyncEngine
             new SchemaAndValueField("val_date", STRUCTURED_DATE_SCHEMA,
                     StructuredDate.from(STRUCTURED_DATE_SCHEMA, LocalDate.of(2018, 7, 13))),
             new SchemaAndValueField("val_time_p2", STRUCTURED_TIME_SCHEMA,
-                    StructuredTime.from(STRUCTURED_TIME_SCHEMA, LocalTime.of(10, 23, 45, 680_000_000))),
+                    StructuredTime.from(STRUCTURED_TIME_SCHEMA, LocalTime.of(10, 23, 45, 680_000_000), 2)),
             new SchemaAndValueField("val_time", STRUCTURED_TIME_SCHEMA,
-                    StructuredTime.from(STRUCTURED_TIME_SCHEMA, LocalTime.of(10, 23, 45, 678_900_000))),
+                    StructuredTime.from(STRUCTURED_TIME_SCHEMA, LocalTime.of(10, 23, 45, 678_900_000), 4)),
             new SchemaAndValueField("val_time_p7", STRUCTURED_TIME_SCHEMA,
-                    StructuredTime.from(STRUCTURED_TIME_SCHEMA, LocalTime.of(10, 23, 45, 678_901_200))),
+                    StructuredTime.from(STRUCTURED_TIME_SCHEMA, LocalTime.of(10, 23, 45, 678_901_200), 7)),
             new SchemaAndValueField("val_datetime2", STRUCTURED_TIMESTAMP_SCHEMA,
-                    StructuredTimestamp.from(STRUCTURED_TIMESTAMP_SCHEMA, LocalDateTime.of(2018, 7, 13, 11, 23, 45, 340_000_000))),
+                    StructuredTimestamp.from(STRUCTURED_TIMESTAMP_SCHEMA, LocalDateTime.of(2018, 7, 13, 11, 23, 45, 340_000_000), 7)),
             new SchemaAndValueField("val_datetimeoffset", STRUCTURED_ZONED_TIMESTAMP_SCHEMA,
-                    StructuredZonedTimestamp.from(STRUCTURED_ZONED_TIMESTAMP_SCHEMA, 2018, 7, 13, 12, 23, 45, 456_000_000, 39_600, null)),
+                    StructuredZonedTimestamp.from(STRUCTURED_ZONED_TIMESTAMP_SCHEMA, 2018, 7, 13, 12, 23, 45, 456_000_000, 39_600, null, 7)),
             new SchemaAndValueField("val_datetime", STRUCTURED_TIMESTAMP_SCHEMA,
-                    StructuredTimestamp.from(STRUCTURED_TIMESTAMP_SCHEMA, LocalDateTime.of(2018, 7, 13, 13, 23, 45, 780_000_000))),
+                    StructuredTimestamp.from(STRUCTURED_TIMESTAMP_SCHEMA, LocalDateTime.of(2018, 7, 13, 13, 23, 45, 780_000_000), 3)),
             new SchemaAndValueField("val_smalldatetime", STRUCTURED_TIMESTAMP_SCHEMA,
-                    StructuredTimestamp.from(STRUCTURED_TIMESTAMP_SCHEMA, LocalDateTime.of(2018, 7, 13, 14, 24, 0))));
+                    StructuredTimestamp.from(STRUCTURED_TIMESTAMP_SCHEMA, LocalDateTime.of(2018, 7, 13, 14, 24, 0), 0)));
 
     private static final List<SchemaAndValueField> EXPECTED_DATE_TIME_EDGE_AS_STRUCTURED = Arrays.asList(
             new SchemaAndValueField("val_date_min", STRUCTURED_DATE_SCHEMA,
@@ -206,11 +206,11 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractAsyncEngine
             new SchemaAndValueField("val_date_max", STRUCTURED_DATE_SCHEMA,
                     StructuredDate.from(STRUCTURED_DATE_SCHEMA, LocalDate.of(9999, 12, 31))),
             new SchemaAndValueField("val_time_p7_edge", STRUCTURED_TIME_SCHEMA,
-                    StructuredTime.from(STRUCTURED_TIME_SCHEMA, LocalTime.of(23, 59, 59, 999_999_900))),
+                    StructuredTime.from(STRUCTURED_TIME_SCHEMA, LocalTime.of(23, 59, 59, 999_999_900), 7)),
             new SchemaAndValueField("val_datetime2_edge", STRUCTURED_TIMESTAMP_SCHEMA,
-                    StructuredTimestamp.from(STRUCTURED_TIMESTAMP_SCHEMA, LocalDateTime.of(9999, 12, 31, 23, 59, 59, 999_999_900))),
+                    StructuredTimestamp.from(STRUCTURED_TIMESTAMP_SCHEMA, LocalDateTime.of(9999, 12, 31, 23, 59, 59, 999_999_900), 7)),
             new SchemaAndValueField("val_datetimeoffset_edge", STRUCTURED_ZONED_TIMESTAMP_SCHEMA,
-                    StructuredZonedTimestamp.from(STRUCTURED_ZONED_TIMESTAMP_SCHEMA, 9999, 12, 31, 23, 59, 59, 999_999_900, 50_400, null)));
+                    StructuredZonedTimestamp.from(STRUCTURED_ZONED_TIMESTAMP_SCHEMA, 9999, 12, 31, 23, 59, 59, 999_999_900, 50_400, null, 7)));
 
     private static final List<SchemaAndValueField> EXPECTED_XML = Arrays.asList(
             new SchemaAndValueField("val_xml", Schema.OPTIONAL_STRING_SCHEMA, "<a>b</a>"));
