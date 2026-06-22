@@ -21,6 +21,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
+import io.debezium.connector.jdbc.type.debezium.StructuredTimestampType;
+import io.debezium.connector.jdbc.type.debezium.StructuredZonedTimestampType;
 import io.debezium.time.StructuredTime;
 import io.debezium.time.StructuredTimestamp;
 import io.debezium.time.StructuredZonedTime;
