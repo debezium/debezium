@@ -1987,6 +1987,7 @@ Set the `time.precision.mode` property to `structured` to configure the connecto
 This mode avoids flattening high-precision temporal values into a single epoch-based integer.
 PostgreSQL `infinity` and `-infinity` values are represented by the `specialValue` field instead of by finite sentinel timestamps.
 Structured temporal values that have fractional seconds include an optional `precision` field that records the source column's fractional second precision.
+The {prodname} JDBC sink connector can consume these structured temporal schemas directly and maps them according to the target database dialect.
 
 [NOTE]
 ====
