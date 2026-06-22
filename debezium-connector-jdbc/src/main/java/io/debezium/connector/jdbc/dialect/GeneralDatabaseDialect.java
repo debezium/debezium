@@ -74,6 +74,7 @@ import io.debezium.connector.jdbc.type.debezium.MicroTimestampType;
 import io.debezium.connector.jdbc.type.debezium.NanoTimeType;
 import io.debezium.connector.jdbc.type.debezium.NanoTimestampType;
 import io.debezium.connector.jdbc.type.debezium.StructuredDateType;
+import io.debezium.connector.jdbc.type.debezium.StructuredDurationType;
 import io.debezium.connector.jdbc.type.debezium.StructuredTimeType;
 import io.debezium.connector.jdbc.type.debezium.StructuredTimestampType;
 import io.debezium.connector.jdbc.type.debezium.StructuredZonedTimeType;
@@ -669,6 +670,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         registerType(StructuredTimestampType.INSTANCE);
         registerType(StructuredZonedTimeType.INSTANCE);
         registerType(StructuredZonedTimestampType.INSTANCE);
+        registerType(StructuredDurationType.INSTANCE);
         registerType(VariableScaleDecimalType.INSTANCE);
 
         // Supported connect data types
