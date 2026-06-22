@@ -49,6 +49,7 @@ import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.RedoThreadState;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.StreamingAdapter.TableNameCaseSensitivity;
+import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.logminer.AbstractLogMinerStreamingChangeEventSource;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.logminer.OffsetActivityMonitor;
@@ -77,6 +78,7 @@ import oracle.sql.CharacterSet;
  *
  * @author Debezium Authors
  */
+@SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER_BUFFERED)
 public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncEngineConnectorTest {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DeferredMemoryStreamingChangeEventSourceTest.class);
