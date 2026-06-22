@@ -1141,14 +1141,14 @@ public class PostgresValueConverter extends JdbcValueConverters {
                         .map(elementConverter::convert)
                         .collect(Collectors.toList()));
             }
-            else if (data instanceof PgArray) {
+            else if (data instanceof PgArray array) {
                 try {
                     final List<Object> converted;
                     if (elementType.getOid() == PgOid.TIMETZ) {
-                        converted = convertTimeWithTimeZoneArray((PgArray) data, elementType, elementConverter);
+                        converted = convertTimeWithTimeZoneArray(array, elementType, elementConverter);
                     }
                     else {
-                        final Object[] values = (Object[]) ((PgArray) data).getArray();
+                        final Object[] values = (Object[]) array.getArray();
                         converted = new ArrayList<>(values.length);
                         for (Object value : values) {
                             converted.add(elementConverter.convert(resolveArrayValue(value, elementType)));
