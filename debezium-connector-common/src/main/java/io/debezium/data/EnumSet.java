@@ -11,7 +11,6 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
 import io.debezium.schema.SchemaFactory;
-import io.debezium.util.Strings;
 
 /**
  * A semantic type for a set of enumerated values, where the string values contain comma-separated values from an enumeration.
@@ -43,10 +42,7 @@ public class EnumSet {
      * @return the schema builder
      */
     public static SchemaBuilder builder(List<String> allowedValues) {
-        if (allowedValues == null) {
-            return builder("");
-        }
-        return builder(Strings.join(",", allowedValues));
+        return builder(EnumeratedValues.toCommaSeparatedString(allowedValues));
     }
 
     /**
