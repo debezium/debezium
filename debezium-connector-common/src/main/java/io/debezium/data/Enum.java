@@ -11,7 +11,6 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
 import io.debezium.schema.SchemaFactory;
-import io.debezium.util.Strings;
 
 /**
  * A semantic type for an enumeration, where the string values are one of the enumeration's values.
@@ -43,10 +42,7 @@ public class Enum {
      * @return the schema builder
      */
     public static SchemaBuilder builder(List<String> allowedValues) {
-        if (allowedValues == null) {
-            return builder("");
-        }
-        return builder(Strings.join(",", allowedValues));
+        return builder(EnumeratedValues.toCommaSeparatedString(allowedValues));
     }
 
     /**
@@ -68,9 +64,6 @@ public class Enum {
      * @see #builder(String)
      */
     public static Schema schema(List<String> allowedValues) {
-        if (allowedValues == null) {
-            return builder("").build();
-        }
-        return builder(Strings.join(",", allowedValues)).build();
+        return builder(allowedValues).build();
     }
 }

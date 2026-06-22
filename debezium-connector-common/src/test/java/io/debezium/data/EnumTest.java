@@ -21,6 +21,7 @@ public class EnumTest {
     public void shouldCreateSchemaBuilderFromValues() {
         assertBuilder(Enum.builder(Arrays.asList("a", "b", "c")), "a,b,c");
         assertBuilder(Enum.builder(Arrays.asList("a")), "a");
+        assertBuilder(Enum.builder(Arrays.asList("a,b", "c")), "a\\,b,c");
         assertBuilder(Enum.builder(Collections.EMPTY_LIST), "");
         assertBuilder(Enum.builder((List<String>) null), "");
     }
@@ -29,6 +30,7 @@ public class EnumTest {
     public void shouldCreateSchemaFromValues() {
         assertSchema(Enum.schema(Arrays.asList("a", "b", "c")), "a,b,c");
         assertSchema(Enum.schema(Arrays.asList("a")), "a");
+        assertSchema(Enum.schema(Arrays.asList("a,b", "c")), "a\\,b,c");
         assertSchema(Enum.schema(Collections.EMPTY_LIST), "");
         assertSchema(Enum.schema((List<String>) null), "");
     }

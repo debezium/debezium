@@ -5,9 +5,7 @@
  */
 package io.debezium.connector.jdbc.dialect.mysql;
 
-import java.util.Arrays;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Schema;
 import org.slf4j.Logger;
@@ -36,10 +34,9 @@ class EnumType extends AbstractType {
     @Override
     public String getTypeName(Schema schema, boolean isKey) {
         // Debezium passes parameter called "allowed" which contains the value-set for the ENUM.
-        final Optional<String> allowedValues = getSchemaParameter(schema, "allowed");
+        final Optional<String> allowedValues = getSchemaParameter(schema, Enum.VALUES_FIELD);
         if (allowedValues.isPresent()) {
-            final String[] values = allowedValues.get().split(",");
-            return "enum(" + Arrays.stream(values).map(v -> "'" + v + "'").collect(Collectors.joining(",")) + ")";
+            return MySqlEnumSetTypeSupport.getTypeName("enum", allowedValues.get());
         }
         LOGGER.warn("ENUM was detected without any allowed values.");
         return "enum()";
