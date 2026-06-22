@@ -20,6 +20,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
+import io.debezium.time.StructuredDuration;
 import io.debezium.time.StructuredTime;
 import io.debezium.time.StructuredTimestamp;
 import io.debezium.time.StructuredZonedTime;
@@ -72,6 +73,22 @@ class StructuredTemporalTypeTest {
         assertThat(((OffsetDateTime) bindings.get(0).getValue()).toOffsetTime())
                 .isEqualTo(OffsetTime.of(12, 13, 14, 123_456_789, ZoneOffset.ofHours(9)));
         assertThat(bindings.get(0).getTargetSqlType()).isEqualTo(Types.TIMESTAMP_WITH_TIMEZONE);
+    }
+
+    @Test
+    @DisplayName("Should bind structured duration as SQL Server string value")
+    void shouldBindStructuredDuration() {
+        final var schema = StructuredDuration.schema();
+        final var value = StructuredDuration.from(schema, 1, 2, 3, 4, 5, 6, 789_000_000);
+
+        final var bindings = StructuredDurationType.INSTANCE.bind(4, schema, value);
+
+        assertThat(StructuredDurationType.INSTANCE.getQueryBinding(null, schema, value)).isEqualTo("?");
+        assertThat(StructuredDurationType.INSTANCE.getDefaultValueBinding(schema, value))
+                .isEqualTo("'1 years 2 months 3 days 4 hours 5 minutes 6.789 seconds'");
+        assertThat(bindings).hasSize(1);
+        assertThat(bindings.get(0).getValue()).isEqualTo("1 years 2 months 3 days 4 hours 5 minutes 6.789 seconds");
+        assertThat(bindings.get(0).getTargetSqlType()).isEqualTo(Types.VARCHAR);
     }
 
     @Test

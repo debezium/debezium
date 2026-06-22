@@ -97,6 +97,7 @@ public class SqlServerDatabaseDialect extends GeneralDatabaseDialect {
         registerType(StructuredTimestampType.INSTANCE);
         registerType(StructuredZonedTimeType.INSTANCE);
         registerType(StructuredZonedTimestampType.INSTANCE);
+        registerType(StructuredDurationType.INSTANCE);
         registerType(GeometryType.INSTANCE);
     }
 

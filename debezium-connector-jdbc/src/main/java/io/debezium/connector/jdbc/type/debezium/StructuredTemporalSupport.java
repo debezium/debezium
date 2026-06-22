@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.jdbc.type.debezium;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -49,6 +50,38 @@ public final class StructuredTemporalSupport {
         if (!StructuredTemporal.isFinite(value)) {
             throw new ConnectException("Non-finite structured temporal values require dialect-specific handling");
         }
+    }
+
+    public static String toDurationString(Struct value) {
+        final StringBuilder builder = new StringBuilder();
+        append(builder, value.getInt32(StructuredTemporal.YEARS_FIELD), " years");
+        append(builder, value.getInt32(StructuredTemporal.MONTHS_FIELD), " months");
+        append(builder, value.getInt32(StructuredTemporal.DAYS_FIELD), " days");
+        append(builder, value.getInt32(StructuredTemporal.HOURS_FIELD), " hours");
+        append(builder, value.getInt32(StructuredTemporal.MINUTES_FIELD), " minutes");
+
+        final Long seconds = value.getInt64(StructuredTemporal.SECONDS_FIELD);
+        final Integer nanos = value.getInt32(StructuredTemporal.NANOS_FIELD);
+        final BigDecimal fractionalSeconds = BigDecimal.valueOf(seconds == null ? 0 : seconds)
+                .add(BigDecimal.valueOf(nanos == null ? 0 : nanos, 9))
+                .stripTrailingZeros();
+        if (fractionalSeconds.signum() != 0 || builder.length() == 0) {
+            append(builder, fractionalSeconds.toPlainString(), " seconds");
+        }
+        return builder.toString().trim();
+    }
+
+    private static void append(StringBuilder builder, Integer value, String suffix) {
+        if (value != null && value != 0) {
+            append(builder, value.toString(), suffix);
+        }
+    }
+
+    private static void append(StringBuilder builder, String value, String suffix) {
+        if (builder.length() > 0) {
+            builder.append(' ');
+        }
+        builder.append(value).append(suffix);
     }
 
     private StructuredTemporalSupport() {
