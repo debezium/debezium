@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.jdbc.dialect.sqlserver;
+package io.debezium.connector.jdbc.type.debezium;
 
 import java.sql.Types;
 import java.util.List;
@@ -12,13 +12,12 @@ import org.apache.kafka.connect.data.Schema;
 import org.hibernate.engine.jdbc.Size;
 
 import io.debezium.connector.jdbc.type.AbstractType;
-import io.debezium.connector.jdbc.type.debezium.StructuredTemporalSupport;
 import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
 import io.debezium.time.StructuredDuration;
 
 /**
- * SQL Server implementation of {@link StructuredDuration} values.
+ * An implementation of {@link StructuredDuration} values.
  */
 public class StructuredDurationType extends AbstractType {
 
