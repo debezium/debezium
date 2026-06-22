@@ -42,20 +42,16 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
-            <groupId>org.apache.kafka</groupId>
-            <artifactId>connect-api</artifactId>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-storage-api</artifactId>
+            <version>${project.version}</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
-            <groupId>org.apache.kafka</groupId>
-            <artifactId>connect-runtime</artifactId>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-storage-common</artifactId>
+            <version>${project.version}</version>
             <scope>provided</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.slf4j</groupId>
-                    <artifactId>slf4j-reload4j</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
 
         <!-- Testing -->

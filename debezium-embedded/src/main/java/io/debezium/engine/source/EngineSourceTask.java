@@ -5,8 +5,11 @@
  */
 package io.debezium.engine.source;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
+import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
 
 import io.debezium.connector.common.BaseSourceTask;
@@ -33,15 +36,41 @@ public class EngineSourceTask implements DebeziumSourceTask {
         return context;
     }
 
-    public SourceTask connectTask() {
-        return connectTask;
+    @Override
+    public void start(Map<String, String> config) {
+        connectTask.start(config);
     }
 
+    @Override
+    public List<SourceRecord> poll() throws InterruptedException {
+        return connectTask.poll();
+    }
+
+    @Override
+    public void stop() {
+        connectTask.stop();
+    }
+
+    @Override
+    public void commit() throws InterruptedException {
+        connectTask.commit();
+    }
+
+    @Override
+    public void commitRecord(SourceRecord record) throws InterruptedException {
+        connectTask.commitRecord(record, null);
+    }
+
+    @Override
     @SuppressWarnings("unchecked")
     public Optional<? extends SignalChannelWriter> signalChannelWriter() {
         return Optional.of(connectTask)
                 .filter(BaseSourceTask.class::isInstance)
                 .map(BaseSourceTask.class::cast)
                 .flatMap(BaseSourceTask::getAvailableSignalChannelWriter);
+    }
+
+    public SourceTask connectTask() {
+        return connectTask;
     }
 }

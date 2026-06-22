@@ -8,11 +8,6 @@ package io.debezium.embedded;
 import java.time.Duration;
 
 import org.apache.kafka.common.config.ConfigDef;
-import org.apache.kafka.connect.runtime.distributed.DistributedConfig;
-import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
-import org.apache.kafka.connect.storage.FileOffsetBackingStore;
-import org.apache.kafka.connect.storage.KafkaOffsetBackingStore;
-import org.apache.kafka.connect.storage.OffsetBackingStore;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Field;
@@ -22,6 +17,9 @@ import io.debezium.engine.spi.OffsetCommitPolicy;
  * Common configuration options used in embedded implementations of {@link io.debezium.engine.DebeziumEngine}.
  */
 public interface EmbeddedEngineConfig {
+
+    String FILE_OFFSET_BACKING_STORE_CLASS = "org.apache.kafka.connect.storage.FileOffsetBackingStore";
+    String KAFKA_OFFSET_BACKING_STORE_CLASS = "org.apache.kafka.connect.storage.KafkaOffsetBackingStore";
 
     /**
      * A required field for an embedded connector that specifies the unique name for the connector instance.
@@ -43,58 +41,57 @@ public interface EmbeddedEngineConfig {
     Field.Set CONNECTOR_FIELDS = Field.setOf(ENGINE_NAME, CONNECTOR_CLASS);
 
     /**
-     * An optional field that specifies the name of the class that implements the {@link OffsetBackingStore} interface,
+     * An optional field that specifies the name of the class that implements the Kafka Connect OffsetBackingStore interface,
      * and that will be used to store offsets recorded by the connector.
      */
     Field OFFSET_STORAGE = Field.create("offset.storage")
             .withDescription("The Java class that implements the `OffsetBackingStore` "
                     + "interface, used to periodically store offsets so that, upon "
                     + "restart, the connector can resume where it last left off.")
-            .withDefault(FileOffsetBackingStore.class.getName());
+            .withDefault(FILE_OFFSET_BACKING_STORE_CLASS);
 
     /**
-     * An optional field that specifies the file location for the {@link FileOffsetBackingStore}.
+     * An optional field that specifies the file location for the Kafka Connect FileOffsetBackingStore.
      *
      * @see #OFFSET_STORAGE
      */
-    Field OFFSET_STORAGE_FILE_FILENAME = Field.create(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG)
+    Field OFFSET_STORAGE_FILE_FILENAME = Field.create("offset.storage.file.filename")
             .withDescription("The file where offsets are to be stored. Required when "
-                    + "'offset.storage' is set to the " +
-                    FileOffsetBackingStore.class.getName() + " class.")
+                    + "'offset.storage' is set to the " + FILE_OFFSET_BACKING_STORE_CLASS + " class.")
             .withDefault("");
 
     /**
-     * An optional field that specifies the topic name for the {@link KafkaOffsetBackingStore}.
+     * An optional field that specifies the topic name for the Kafka Connect KafkaOffsetBackingStore.
      *
      * @see #OFFSET_STORAGE
      */
-    Field OFFSET_STORAGE_KAFKA_TOPIC = Field.create(DistributedConfig.OFFSET_STORAGE_TOPIC_CONFIG)
+    Field OFFSET_STORAGE_KAFKA_TOPIC = Field.create("offset.storage.topic")
             .withDescription("The name of the Kafka topic where offsets are to be stored. "
                     + "Required with other properties when 'offset.storage' is set to the "
-                    + KafkaOffsetBackingStore.class.getName() + " class.")
+                    + KAFKA_OFFSET_BACKING_STORE_CLASS + " class.")
             .withDefault("");
 
     /**
-     * An optional field that specifies the number of partitions for the {@link KafkaOffsetBackingStore}.
+     * An optional field that specifies the number of partitions for the Kafka Connect KafkaOffsetBackingStore.
      *
      * @see #OFFSET_STORAGE
      */
-    Field OFFSET_STORAGE_KAFKA_PARTITIONS = Field.create(DistributedConfig.OFFSET_STORAGE_PARTITIONS_CONFIG)
+    Field OFFSET_STORAGE_KAFKA_PARTITIONS = Field.create("offset.storage.partitions")
             .withType(ConfigDef.Type.INT)
             .withDescription("The number of partitions used when creating the offset storage topic. "
                     + "Required with other properties when 'offset.storage' is set to the "
-                    + KafkaOffsetBackingStore.class.getName() + " class.");
+                    + KAFKA_OFFSET_BACKING_STORE_CLASS + " class.");
 
     /**
-     * An optional field that specifies the replication factor for the {@link KafkaOffsetBackingStore}.
+     * An optional field that specifies the replication factor for the Kafka Connect KafkaOffsetBackingStore.
      *
      * @see #OFFSET_STORAGE
      */
-    Field OFFSET_STORAGE_KAFKA_REPLICATION_FACTOR = Field.create(DistributedConfig.OFFSET_STORAGE_REPLICATION_FACTOR_CONFIG)
+    Field OFFSET_STORAGE_KAFKA_REPLICATION_FACTOR = Field.create("offset.storage.replication.factor")
             .withType(ConfigDef.Type.SHORT)
             .withDescription("Replication factor used when creating the offset storage topic. "
                     + "Required with other properties when 'offset.storage' is set to the "
-                    + KafkaOffsetBackingStore.class.getName() + " class.");
+                    + KAFKA_OFFSET_BACKING_STORE_CLASS + " class.");
 
     /**
      * An optional advanced field that specifies the maximum amount of time that the embedded connector should wait

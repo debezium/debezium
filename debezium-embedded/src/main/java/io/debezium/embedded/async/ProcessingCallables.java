@@ -11,7 +11,7 @@ import java.util.function.Function;
 
 import org.apache.kafka.connect.source.SourceRecord;
 
-import io.debezium.embedded.Transformations;
+import io.debezium.embedded.SourceRecordTransformations;
 
 /**
  * // TODO: Document this
@@ -23,10 +23,10 @@ public class ProcessingCallables {
      */
     public static class TransformAndConsumeRecord implements Callable<Void> {
         private final SourceRecord record;
-        private final Transformations transformations;
+        private final SourceRecordTransformations transformations;
         private final Consumer<SourceRecord> consumer;
 
-        TransformAndConsumeRecord(final SourceRecord record, final Transformations transformations, final Consumer<SourceRecord> consumer) {
+        TransformAndConsumeRecord(final SourceRecord record, final SourceRecordTransformations transformations, final Consumer<SourceRecord> consumer) {
             this.record = record;
             this.transformations = transformations;
             this.consumer = consumer;
@@ -47,9 +47,9 @@ public class ProcessingCallables {
      */
     public static class TransformRecord implements Callable<SourceRecord> {
         private final SourceRecord record;
-        private final Transformations transformations;
+        private final SourceRecordTransformations transformations;
 
-        TransformRecord(final SourceRecord record, final Transformations transformations) {
+        TransformRecord(final SourceRecord record, final SourceRecordTransformations transformations) {
             this.record = record;
             this.transformations = transformations;
         }
@@ -66,10 +66,10 @@ public class ProcessingCallables {
      */
     public static class TransformAndConvertRecord<R> implements Callable<R> {
         private final SourceRecord record;
-        private final Transformations transformations;
+        private final SourceRecordTransformations transformations;
         private final Function<SourceRecord, R> converter;
 
-        TransformAndConvertRecord(final SourceRecord record, final Transformations transformations, final Function<SourceRecord, R> converter) {
+        TransformAndConvertRecord(final SourceRecord record, final SourceRecordTransformations transformations, final Function<SourceRecord, R> converter) {
             this.record = record;
             this.transformations = transformations;
             this.converter = converter;
@@ -87,11 +87,11 @@ public class ProcessingCallables {
      */
     public static class TransformConvertConsumeRecord<R> implements Callable<Void> {
         private final SourceRecord record;
-        private final Transformations transformations;
+        private final SourceRecordTransformations transformations;
         private final Function<SourceRecord, R> serializer;
         private final Consumer<R> consumer;
 
-        TransformConvertConsumeRecord(final SourceRecord record, final Transformations transformations, final Function<SourceRecord, R> serializer,
+        TransformConvertConsumeRecord(final SourceRecord record, final SourceRecordTransformations transformations, final Function<SourceRecord, R> serializer,
                                       final Consumer<R> consumer) {
             this.record = record;
             this.transformations = transformations;

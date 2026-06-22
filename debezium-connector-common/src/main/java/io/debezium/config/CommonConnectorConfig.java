@@ -662,6 +662,15 @@ public abstract class CommonConnectorConfig {
                     "since it is used as a prefix for all Kafka topic names that receive events emitted by this connector. " +
                     "Only alphanumeric characters, hyphens, dots and underscores must be accepted.");
 
+    public static final Field TASKS_MAX = Field.create("tasks.max")
+            .withDisplayName("Maximum number of tasks")
+            .withType(Type.INT)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 0))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.HIGH)
+            .required()
+            .withDescription("Maximum number of tasks this connector can run.");
+
     public static final Field RETRIABLE_RESTART_WAIT = Field.create("retriable.restart.connector.wait.ms")
             .withDisplayName("Retriable restart wait (ms)")
             .withType(Type.LONG)

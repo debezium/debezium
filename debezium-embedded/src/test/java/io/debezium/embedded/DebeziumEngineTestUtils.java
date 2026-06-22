@@ -9,28 +9,19 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.Task;
-import org.apache.kafka.connect.runtime.WorkerConfig;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.apache.kafka.connect.storage.OffsetBackingStore;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.apache.kafka.connect.transforms.predicates.Predicate;
-import org.apache.kafka.connect.util.Callback;
 
 import io.debezium.connector.simple.SimpleSourceConnector;
 import io.debezium.engine.DebeziumEngine;
@@ -292,59 +283,5 @@ class RandomlyFailingDuringStartTask extends SimpleSourceConnector.SimpleConnect
             }
             throw new IllegalStateException("Exception during start of the task");
         }
-    }
-}
-
-class InterruptingOffsetStore implements OffsetBackingStore {
-
-    @Override
-    public void start() {
-    }
-
-    @Override
-    public void stop() {
-    }
-
-    @Override
-    public Future<Map<ByteBuffer, ByteBuffer>> get(Collection<ByteBuffer> collection) {
-        // called by the offset reader. return null for no offsets stored.
-        return new CompletableFuture<Map<ByteBuffer, ByteBuffer>>() {
-            @Override
-            public Map<ByteBuffer, ByteBuffer> get(long timeout, TimeUnit unit) {
-                return new HashMap<ByteBuffer, ByteBuffer>();
-            }
-
-            @Override
-            public Map<ByteBuffer, ByteBuffer> get() {
-                return new HashMap<ByteBuffer, ByteBuffer>();
-            }
-        };
-    }
-
-    /**
-     * Implementation that throws InterruptedException when offset commits are called.
-     */
-    @Override
-    public Future<Void> set(Map<ByteBuffer, ByteBuffer> map, Callback<Void> callback) {
-        return new CompletableFuture<Void>() {
-            @Override
-            public Void get() throws InterruptedException {
-                throw new InterruptedException();
-            }
-
-            @Override
-            public Void get(long timeout, TimeUnit unit) throws InterruptedException {
-                throw new InterruptedException();
-            }
-        };
-    }
-
-    @Override
-    public void configure(WorkerConfig workerConfig) {
-    }
-
-    @Override
-    public Set<Map<String, Object>> connectorPartitions(String connectorName) {
-        return null;
     }
 }

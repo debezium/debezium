@@ -5,8 +5,14 @@
  */
 package io.debezium.engine.source;
 
+import java.util.List;
+import java.util.Map;
+
 import org.apache.kafka.connect.source.SourceConnector;
-import org.apache.kafka.connect.source.SourceConnectorContext;
+import org.apache.kafka.connect.source.SourceTask;
+
+import io.debezium.source.kafka.KafkaConnectSourceConnectorContextAdapter;
+import io.debezium.source.kafka.KafkaConnectSourceTaskContextAdapter;
 
 /**
  * Implementation of {@link DebeziumSourceConnector} which currently serves only as a wrapper
@@ -35,6 +41,30 @@ public class EngineSourceConnector implements DebeziumSourceConnector {
     @Override
     public void initialize(DebeziumSourceConnectorContext context) {
         this.context = context;
-        this.connectConnector.initialize((SourceConnectorContext) context);
+        // TODO: remove switching to Kafka
+        this.connectConnector.initialize(new KafkaConnectSourceConnectorContextAdapter(context.offsetStorageReader()).getDelegate());
+    }
+
+    @Override
+    public void start(Map<String, String> config) {
+        connectConnector.start(config);
+    }
+
+    @Override
+    public void stop() {
+        connectConnector.stop();
+    }
+
+    @Override
+    public List<Map<String, String>> taskConfigs(int maxTasks) {
+        return connectConnector.taskConfigs(maxTasks);
+    }
+
+    @Override
+    public DebeziumSourceTask createTask(DebeziumSourceTaskContext context) throws Exception {
+        final SourceTask task = (SourceTask) connectConnector.taskClass().getDeclaredConstructor().newInstance();
+        // TODO: remove switching to Kafka
+        task.initialize(new KafkaConnectSourceTaskContextAdapter(context.config(), context.offsetStorageReader()).getDelegate());
+        return new EngineSourceTask(task, context);
     }
 }
