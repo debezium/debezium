@@ -200,9 +200,9 @@
                                 </env>
                                 <volumes>
                                     <bind>
-                                        <volume>${project.basedir}/src/test/docker/mssql.key:/etc/ssl/debezium/private/mssql.key</volume>
-                                        <volume>${project.basedir}/src/test/docker/mssql.pem:/etc/ssl/debezium/certs/mssql.pem</volume>
-                                        <volume>${project.basedir}/src/test/docker/mssql.conf:/var/opt/mssql/mssql.conf</volume>
+                                        <volume>${project.basedir}/src/test/docker/mssql.key:/etc/ssl/debezium/private/mssql.key:Z</volume>
+                                        <volume>${project.basedir}/src/test/docker/mssql.pem:/etc/ssl/debezium/certs/mssql.pem:Z</volume>
+                                        <volume>${project.basedir}/src/test/docker/mssql.conf:/var/opt/mssql/mssql.conf:Z</volume>
                                     </bind>
                                 </volumes>
                                 <ports>
