@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Test;
 
 import io.debezium.connector.jdbc.type.debezium.StructuredTimestampType;
 import io.debezium.connector.jdbc.type.debezium.StructuredZonedTimestampType;
+import io.debezium.time.StructuredDuration;
 import io.debezium.time.StructuredTime;
 import io.debezium.time.StructuredTimestamp;
 import io.debezium.time.StructuredZonedTime;
@@ -57,6 +58,44 @@ class StructuredTemporalTypeTest {
         assertThat(((ZonedDateTime) bindings.get(0).getValue()).toOffsetDateTime().toOffsetTime())
                 .isEqualTo(OffsetTime.of(12, 13, 14, 123_456_789, ZoneOffset.ofHours(9)));
         assertThat(bindings.get(0).getTargetSqlType()).isEqualTo(Types.TIME_WITH_TIMEZONE);
+    }
+
+    @Test
+    @DisplayName("Should bind structured year-month duration as Oracle interval")
+    void shouldBindStructuredYearMonthDuration() {
+        final var schema = StructuredDuration.builder()
+                .parameter("__debezium.source.column.type", "INTERVAL YEAR TO MONTH")
+                .build();
+        final var value = StructuredDuration.from(schema, -3, -6, 0, 0, 0, 0, 0);
+
+        final var bindings = StructuredDurationType.INSTANCE.bind(3, schema, value);
+
+        assertThat(StructuredDurationType.INSTANCE.getTypeName(schema, false)).isEqualTo("INTERVAL YEAR TO MONTH");
+        assertThat(StructuredDurationType.INSTANCE.getQueryBinding(null, schema, value)).isEqualTo("TO_YMINTERVAL(?)");
+        assertThat(StructuredDurationType.INSTANCE.getDefaultValueBinding(schema, value)).isEqualTo("TO_YMINTERVAL('-3-06')");
+        assertThat(bindings).hasSize(1);
+        assertThat(bindings.get(0).getValue()).isEqualTo("-3-06");
+        assertThat(bindings.get(0).getTargetSqlType()).isEqualTo(Types.VARCHAR);
+    }
+
+    @Test
+    @DisplayName("Should bind structured day-second duration as Oracle interval")
+    void shouldBindStructuredDaySecondDuration() {
+        final var schema = StructuredDuration.builder()
+                .parameter("__debezium.source.column.type", "INTERVAL DAY TO SECOND")
+                .parameter("__debezium.source.column.length", "3")
+                .parameter("__debezium.source.column.scale", "9")
+                .build();
+        final var value = StructuredDuration.from(schema, 0, 0, -1, -2, -3, -4, -567_890_000);
+
+        final var bindings = StructuredDurationType.INSTANCE.bind(4, schema, value);
+
+        assertThat(StructuredDurationType.INSTANCE.getTypeName(schema, false)).isEqualTo("INTERVAL DAY(3) TO SECOND(9)");
+        assertThat(StructuredDurationType.INSTANCE.getQueryBinding(null, schema, value)).isEqualTo("TO_DSINTERVAL(?)");
+        assertThat(StructuredDurationType.INSTANCE.getDefaultValueBinding(schema, value)).isEqualTo("TO_DSINTERVAL('-1 02:03:04.567890000')");
+        assertThat(bindings).hasSize(1);
+        assertThat(bindings.get(0).getValue()).isEqualTo("-1 02:03:04.567890000");
+        assertThat(bindings.get(0).getTargetSqlType()).isEqualTo(Types.VARCHAR);
     }
 
     @Test
