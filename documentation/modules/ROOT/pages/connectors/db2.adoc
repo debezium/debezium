@@ -1791,6 +1791,7 @@ The following sections describe these mappings:
 * xref:db2-time-precision-mode-adaptive[`time.precision.mode=adaptive`]
 * xref:db2-time-precision-mode-connect[`time.precision.mode=connect`]
 * xref:db2-time-precision-mode-isostring[`time.precision.mode=isostring`]
+* xref:db2-time-precision-mode-structured[`time.precision.mode=structured`]
 
 [[db2-time-precision-mode-adaptive]]
 .`time.precision.mode=adaptive`
@@ -1894,6 +1895,44 @@ Represents time values in UTC format, according to the ISO 8601 standard, for ex
 |`io.debezium.time.IsoTimestamp`
 
 Represents timestamp values in UTC format, according to the ISO 8601 standard, for example, `2019-07-09T02:28:57.123456Z`.
+
+|===
+
+[[db2-time-precision-mode-structured]]
+.`time.precision.mode=structured`
+Set the `time.precision.mode` property to `structured` to configure the connector to represent temporal values as Kafka Connect structs with separate calendar and clock components.
+This mode avoids flattening high-precision temporal values into a single epoch-based integer.
+Structured temporal values that have fractional seconds include an optional `precision` field that records the source column's fractional second precision.
+The {prodname} JDBC sink connector can consume these structured temporal schemas directly and maps them according to the target database dialect.
+
+.Mappings when `time.precision.mode` is `structured`
+[cols="25%a,20%a,55%a",options="header"]
+|===
+|Db2 data type |Literal type (schema type) |Semantic type (schema name) and Notes
+
+|`DATE`
+|`STRUCT`
+|`io.debezium.time.StructuredDate` +
+ +
+Contains `year`, `month`, and `day` fields.
+
+|`TIME([P])`
+|`STRUCT`
+|`io.debezium.time.StructuredTime` +
+ +
+Contains `hour`, `minute`, `second`, `nanos`, and optional `precision` fields.
+
+|`DATETIME`
+|`STRUCT`
+|`io.debezium.time.StructuredTimestamp` +
+ +
+Contains `year`, `month`, `day`, `hour`, `minute`, `second`, `nanos`, and optional `precision` fields.
+
+|`DATETIMEOFFSET`
+|`STRUCT`
+|`io.debezium.time.StructuredZonedTimestamp` +
+ +
+Contains calendar and clock component fields, `offsetSeconds`, optional `zoneId`, and optional `precision`.
 
 |===
 
@@ -2729,7 +2768,11 @@ Depending on the _hashAlgorithm_ used, the _salt_ selected, and the actual data 
  +
 `adaptive` captures the time and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type. +
  +
-`connect` always represents time and timestamp values by using Kafka Connect's built-in representations for `Time`, `Date`, and `Timestamp`, which uses millisecond precision regardless of the database columns' precision.
+`connect` always represents time and timestamp values by using Kafka Connect's built-in representations for `Time`, `Date`, and `Timestamp`, which uses millisecond precision regardless of the database columns' precision. +
+ +
+`isostring` represents temporal values as ISO-8601 formatted strings at the UTC time zone. +
+ +
+`structured` represents temporal values as Kafka Connect structs with separate calendar and clock components.
 For more information, see xref:db2-temporal-types[temporal types].
 
 |[[db2-property-tombstones-on-delete]]<<db2-property-tombstones-on-delete, `+tombstones.on.delete+`>>
