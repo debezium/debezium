@@ -18,7 +18,7 @@ class NanoTimeType extends io.debezium.connector.jdbc.type.debezium.NanoTimeType
 
     @Override
     public String getQueryBinding(ColumnDescriptor column, Schema schema, Object value) {
-        if (isBoundary(value)) {
+        if (PostgresTimeBoundary.isBoundaryNanoseconds(value)) {
             return PostgresTimeBoundary.TIME_QUERY_BINDING;
         }
         return super.getQueryBinding(column, schema, value);
@@ -26,7 +26,7 @@ class NanoTimeType extends io.debezium.connector.jdbc.type.debezium.NanoTimeType
 
     @Override
     public String getDefaultValueBinding(Schema schema, Object value) {
-        if (isBoundary(value)) {
+        if (PostgresTimeBoundary.isBoundaryNanoseconds(value)) {
             return "'" + PostgresTimeBoundary.BOUNDARY_TIME + "'";
         }
         return super.getDefaultValueBinding(schema, value);
@@ -34,13 +34,9 @@ class NanoTimeType extends io.debezium.connector.jdbc.type.debezium.NanoTimeType
 
     @Override
     public List<ValueBindDescriptor> bind(int index, Schema schema, Object value) {
-        if (isBoundary(value)) {
+        if (PostgresTimeBoundary.isBoundaryNanoseconds(value)) {
             return List.of(new ValueBindDescriptor(index, PostgresTimeBoundary.BOUNDARY_TIME));
         }
         return super.bind(index, schema, value);
-    }
-
-    private boolean isBoundary(Object value) {
-        return value instanceof Number && PostgresTimeBoundary.isBoundaryNanoseconds((Number) value);
     }
 }

@@ -18,7 +18,7 @@ class TimeType extends io.debezium.connector.jdbc.type.debezium.TimeType {
 
     @Override
     public String getQueryBinding(ColumnDescriptor column, Schema schema, Object value) {
-        if (isBoundary(value)) {
+        if (PostgresTimeBoundary.isBoundaryMilliseconds(value)) {
             return PostgresTimeBoundary.TIME_QUERY_BINDING;
         }
         return super.getQueryBinding(column, schema, value);
@@ -26,7 +26,7 @@ class TimeType extends io.debezium.connector.jdbc.type.debezium.TimeType {
 
     @Override
     public String getDefaultValueBinding(Schema schema, Object value) {
-        if (isBoundary(value)) {
+        if (PostgresTimeBoundary.isBoundaryMilliseconds(value)) {
             return "'" + PostgresTimeBoundary.BOUNDARY_TIME + "'";
         }
         return super.getDefaultValueBinding(schema, value);
@@ -34,13 +34,9 @@ class TimeType extends io.debezium.connector.jdbc.type.debezium.TimeType {
 
     @Override
     public List<ValueBindDescriptor> bind(int index, Schema schema, Object value) {
-        if (isBoundary(value)) {
+        if (PostgresTimeBoundary.isBoundaryMilliseconds(value)) {
             return List.of(new ValueBindDescriptor(index, PostgresTimeBoundary.BOUNDARY_TIME));
         }
         return super.bind(index, schema, value);
-    }
-
-    private boolean isBoundary(Object value) {
-        return value instanceof Number && PostgresTimeBoundary.isBoundaryMilliseconds((Number) value);
     }
 }

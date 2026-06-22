@@ -23,20 +23,20 @@ final class PostgresTimeBoundary {
     private static final long DAY_NANOS = TimeUnit.DAYS.toNanos(1);
     private static final Pattern BOUNDARY_TIME_WITH_TIMEZONE_PATTERN = Pattern.compile("^24:00:00(?:\\.0{1,6})?(?:Z|[+-]00(?::?00)?)$");
 
-    static boolean isBoundaryMilliseconds(Number value) {
-        return value.longValue() == DAY_MILLIS;
+    static boolean isBoundaryMilliseconds(Object value) {
+        return value instanceof Number number && number.longValue() == DAY_MILLIS;
     }
 
-    static boolean isBoundaryMicroseconds(Number value) {
-        return value.longValue() == DAY_MICROS;
+    static boolean isBoundaryMicroseconds(Object value) {
+        return value instanceof Number number && number.longValue() == DAY_MICROS;
     }
 
-    static boolean isBoundaryNanoseconds(Number value) {
-        return value.longValue() == DAY_NANOS;
+    static boolean isBoundaryNanoseconds(Object value) {
+        return value instanceof Number number && number.longValue() == DAY_NANOS;
     }
 
     static boolean isBoundaryTimeWithTimezone(Object value) {
-        return value instanceof String && BOUNDARY_TIME_WITH_TIMEZONE_PATTERN.matcher((String) value).matches();
+        return value instanceof String string && BOUNDARY_TIME_WITH_TIMEZONE_PATTERN.matcher(string).matches();
     }
 
     private PostgresTimeBoundary() {
