@@ -2075,6 +2075,7 @@ time.precision.mode=structured::
 The {connector-name} connector represents temporal values as Kafka Connect structs with separate calendar and clock components.
 This mode can preserve zero and invalid temporal components without converting them to epoch-based numeric values.
 Structured temporal values that have fractional seconds include an optional `precision` field that records the source column's fractional second precision.
+The {prodname} JDBC sink connector can consume these structured temporal schemas directly and maps them according to the target database dialect.
 +
 .Mappings when `time.precision.mode=structured`
 [cols="25%a,20%a,55%a",options="header",subs="+attributes"]
