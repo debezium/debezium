@@ -31,6 +31,17 @@ public class StructuredZonedTimeType extends AbstractTimeType {
     }
 
     @Override
+    protected int getTimePrecision(Schema schema) {
+        final String length = getSourceColumnSize(schema).orElse("-1");
+        return getSourceColumnPrecision(schema).map(Integer::parseInt).orElseGet(() -> Integer.parseInt(length));
+    }
+
+    @Override
+    protected boolean shouldUseSourcePrecision(int precision, int maxPrecision) {
+        return precision >= 0 && precision <= maxPrecision;
+    }
+
+    @Override
     public List<ValueBindDescriptor> bind(int index, Schema schema, Object value) {
         if (value == null) {
             return List.of(new ValueBindDescriptor(index, null));

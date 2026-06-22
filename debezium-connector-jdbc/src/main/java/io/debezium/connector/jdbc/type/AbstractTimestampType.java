@@ -6,6 +6,7 @@
 package io.debezium.connector.jdbc.type;
 
 import java.sql.Types;
+import java.util.Optional;
 
 import org.apache.kafka.connect.data.Schema;
 import org.hibernate.engine.jdbc.Size;
@@ -23,15 +24,20 @@ public abstract class AbstractTimestampType extends AbstractTemporalType {
     public String getTypeName(Schema schema, boolean isKey) {
         final int precision = getTimePrecision(schema);
         DatabaseDialect dialect = getDialect();
-        if (precision >= 0 && precision <= dialect.getMaxTimestampPrecision()) {
+        if (shouldUseSourcePrecision(precision, dialect.getMaxTimestampPrecision())) {
             return dialect.getJdbcTypeName(getJdbcType(), Size.precision(precision));
         }
         return dialect.getJdbcTypeName(getJdbcType(), Size.precision(dialect.getDefaultTimestampPrecision()));
     }
 
     protected int getTimePrecision(Schema schema) {
-        final String length = getSourceColumnSize(schema).orElse("-1");
-        return getSourceColumnPrecision(schema).map(Integer::parseInt).orElseGet(() -> Integer.parseInt(length));
+        final String length = getSourceColumnSize(schema).orElse("0");
+        final Optional<String> scale = getSourceColumnPrecision(schema);
+        return scale.map(Integer::parseInt).orElseGet(() -> Integer.parseInt(length));
+    }
+
+    protected boolean shouldUseSourcePrecision(int precision, int maxPrecision) {
+        return precision > 0 && precision <= maxPrecision;
     }
 
     protected int getJdbcType() {

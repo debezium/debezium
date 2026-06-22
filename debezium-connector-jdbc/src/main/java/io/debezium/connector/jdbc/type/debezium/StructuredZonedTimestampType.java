@@ -34,6 +34,17 @@ public class StructuredZonedTimestampType extends AbstractTimestampType {
     }
 
     @Override
+    protected int getTimePrecision(Schema schema) {
+        final String length = getSourceColumnSize(schema).orElse("-1");
+        return getSourceColumnPrecision(schema).map(Integer::parseInt).orElseGet(() -> Integer.parseInt(length));
+    }
+
+    @Override
+    protected boolean shouldUseSourcePrecision(int precision, int maxPrecision) {
+        return precision >= 0 && precision <= maxPrecision;
+    }
+
+    @Override
     public String getDefaultValueBinding(Schema schema, Object value) {
         return getDialect().getFormattedDateTime(StructuredTemporalSupport.toOffsetDateTime(requireStruct(value)));
     }
