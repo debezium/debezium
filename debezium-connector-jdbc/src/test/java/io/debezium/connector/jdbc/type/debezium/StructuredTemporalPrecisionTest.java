@@ -28,6 +28,30 @@ import io.debezium.time.StructuredZonedTimestamp;
 class StructuredTemporalPrecisionTest {
 
     @Test
+    @DisplayName("Should keep default precision for non-structured timestamp zero precision")
+    void shouldKeepDefaultPrecisionForNonStructuredTimestampZeroPrecision() {
+        final var type = new io.debezium.connector.jdbc.type.connect.ConnectTimestampType();
+        type.configure(config(), timestampDialect());
+        final var schema = org.apache.kafka.connect.data.Timestamp.builder()
+                .parameter("__debezium.source.column.scale", "0")
+                .build();
+
+        assertThat(type.getTypeName(schema, false)).isEqualTo("timestamp(6)");
+    }
+
+    @Test
+    @DisplayName("Should keep default precision for non-structured time zero precision")
+    void shouldKeepDefaultPrecisionForNonStructuredTimeZeroPrecision() {
+        final var type = new io.debezium.connector.jdbc.type.connect.ConnectTimeType();
+        type.configure(config(), timeDialect());
+        final var schema = org.apache.kafka.connect.data.Time.builder()
+                .parameter("__debezium.source.column.scale", "0")
+                .build();
+
+        assertThat(type.getTypeName(schema, false)).isEqualTo("time(6)");
+    }
+
+    @Test
     @DisplayName("Should use propagated source column scale for structured timestamp precision")
     void shouldUseSourceColumnScaleForStructuredTimestampPrecision() {
         final var type = new StructuredTimestampType();
