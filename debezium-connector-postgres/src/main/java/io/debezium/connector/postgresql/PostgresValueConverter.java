@@ -1010,14 +1010,14 @@ public class PostgresValueConverter extends JdbcValueConverters {
     @Override
     protected Object convertTimeWithZone(Column column, Field fieldDefn, Object data) {
         // during snapshotting; already receiving OffsetTime @ UTC during streaming
-        if (data instanceof String) {
-            if (PostgresTimeBoundary.isTimeWithTimeZoneBoundaryAtUtc((String) data)) {
+        if (data instanceof String value) {
+            if (PostgresTimeBoundary.isTimeWithTimeZoneBoundaryAtUtc(value)) {
                 return PostgresTimeBoundary.TIME_WITH_TIMEZONE_BOUNDARY_AT_UTC;
             }
 
             // The TIMETZ column is returned as a String which we initially parse here
             // The parsed offset-time potentially has a zone-offset from the data, shift it after to GMT.
-            final OffsetTime offsetTime = OffsetTime.parse((String) data, TIME_WITH_TIMEZONE_FORMATTER);
+            final OffsetTime offsetTime = OffsetTime.parse(value, TIME_WITH_TIMEZONE_FORMATTER);
             data = offsetTime.withOffsetSameInstant(ZoneOffset.UTC);
         }
 
