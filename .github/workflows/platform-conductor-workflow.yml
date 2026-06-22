@@ -18,12 +18,12 @@ jobs:
 
     steps:
       - name: Checkout Action (Core)
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           path: core
 
       - name: Checkout Debezium Platform
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: debezium/debezium-platform
           path: platform-conductor
