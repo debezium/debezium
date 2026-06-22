@@ -389,6 +389,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
                         r.deliver(StructuredZonedTimestamp.toStructuredZonedTimestamp(fieldDefn.schema(), data, defaultOffset, adjuster, precision));
                     }
                     catch (IllegalArgumentException e) {
+                        logger.warn("Unexpected JDBC TIMESTAMP_WITH_TIMEZONE value for field {} with schema {}: class={}, value={}", fieldDefn.name(),
+                                fieldDefn.schema(), data.getClass(), data);
                     }
                 });
     }
@@ -430,6 +432,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 r.deliver(StructuredZonedTime.toStructuredZonedTime(fieldDefn.schema(), data, defaultOffset, adjuster, precision));
             }
             catch (IllegalArgumentException e) {
+                logger.warn("Unexpected JDBC TIME_WITH_TIMEZONE value for field {} with schema {}: class={}, value={}", fieldDefn.name(),
+                        fieldDefn.schema(), data.getClass(), data);
             }
         });
     }
@@ -533,6 +537,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
                         r.deliver(StructuredTimestamp.toStructuredTimestamp(fieldDefn.schema(), data, adjuster, precision));
                     }
                     catch (IllegalArgumentException e) {
+                        logger.warn("Unexpected JDBC TIMESTAMP value for field {} with schema {}: class={}, value={}", fieldDefn.name(),
+                                fieldDefn.schema(), data.getClass(), data);
                     }
                 });
     }
@@ -649,6 +655,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 r.deliver(StructuredTime.toStructuredTime(fieldDefn.schema(), data, adjuster, precision));
             }
             catch (IllegalArgumentException e) {
+                logger.warn("Unexpected JDBC Time value for field {} with schema {}: class={}, value={}", fieldDefn.name(),
+                        fieldDefn.schema(), data.getClass(), data);
             }
         });
     }
