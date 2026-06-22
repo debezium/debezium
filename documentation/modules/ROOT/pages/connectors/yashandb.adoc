@@ -92,6 +92,7 @@ After a restart, the connector runs a snapshot that rebuilds the topic from the 
 |===
 [[yashandb-custom-snapshotter-spi]]
 === Custom snapshotter SPI
+
 include::{partialsdir}/modules/all-connectors/custom-snapshotter-spi.adoc[leveloffset=+3]
 
 For more information, see xref:yashandb-property-snapshot-mode[`snapshot.mode`] in the table of connector configuration properties.
@@ -194,7 +195,7 @@ The payload of a schema change event message includes the following elements:
 `databaseName`:: The name of the database to which the statements are applied.
 The value of `databaseName` serves as the message key.
 `schemaName`:: The name of the schema to which the statements are applied.
-`tableChanges`::  A structured representation of the entire table schema after the schema change.
+`tableChanges`:: A structured representation of the entire table schema after the schema change.
 The `tableChanges` field contains an array that includes entries for each column of the table.
 Because the structured representation presents data in JSON or Avro format, consumers can easily read messages without first processing them through a DDL parser.
 
@@ -940,7 +941,7 @@ This allows Kafka to reclaim storage space while ensuring the topic contains a c
 
 When a row is deleted, the _delete_ event value shown in the preceding example still works with log compaction, because Kafka is able to remove all earlier messages that use the same key.
 The message value must be set to `null` to instruct Kafka to remove _all messages_ that share the same key.
-To make this possible, by default, the {prodname} YashanDB connector always follows a _delete_ event with a special _tombstone_ event that has the same key but `null` value.
+To make this possible, by default, the {prodname} YashanDB connector always follows a _delete_ event with a special _tombstone_ event that has the same key but a `null` value.
 
 [[yashandb-truncate-events]]
 === _truncate_ events
@@ -1390,7 +1391,7 @@ Reading incremental data changes requires supplemental logging to be enabled.
 
 ==== Database-level supplemental logging
 
-To permit the connector to monitor all objects in the database, including new objects, enable database-level supplemental logging: in YashanDB:
+To permit the connector to monitor all objects in the database, including new objects, enable database-level supplemental logging in YashanDB:
 
 [source,sql,indent=0]
 ----
@@ -1608,6 +1609,17 @@ Many properties have default values.
 Information about the properties is organized as follows:
 
 * xref:yashandb-properties-required[Required {prodname} YashanDB connector configuration properties]
+* xref:debezium-yashandb-connector-optional-configuration-properties[Optional {prodname} YashanDB configuration properties]
+* xref:debezium-yashandb-connector-database-history-configuration-properties[{prodname} YashanDB connector database schema history configuration properties]
+** xref:debezium-yashandb-connector-pass-through-properties[Pass-through YashanDB connector configuration properties]
+** xref:debezium-yashandb-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients[Pass-through properties for configuring how producer and consumer clients interact with schema history topics]
+** xref:debezium-yashandb-connector-pass-through-kafka-signals-configuration-properties[Pass-through properties for configuring how the YashanDB connector interacts with the Kafka signaling topic]
+** xref:debezium-yashandb-connector-pass-through-signals-kafka-consumer-client-configuration-properties[Pass-through properties for configuring the Kafka consumer client for the signaling channel]
+** xref:debezium-yashandb-connector-pass-through-kafka-sink-notification-configuration-properties[Pass-through properties for configuring the YashanDB connector sink notification channel]
+** xref:debezium-yashandb-connector-pass-through-database-driver-configuration-properties[{prodname} connector pass-through database driver configuration properties]
+
+
+
 
 [[yashandb-properties-required]]
 === Required {prodname} YashanDB connector configuration properties
@@ -1807,7 +1819,7 @@ Set one of the following values:
 
 |[[yashandb-property-lob-enabled]]<<yashandb-property-lob-enabled, `+lob.enabled+`>>
 |`false`
-|Specifies whether large object (CLOB or BLOB, etc.) column values are emitted in change events.
+|Specifies whether large object (CLOB or BLOB, and so on.) column values are emitted in change events.
 By default, change events have large object columns, but these columns do not contain values.
 There is some overhead when processing and managing large object column types and payloads.
 To capture large object values and serialize them in change events, set this option to `true`.
@@ -1851,7 +1863,7 @@ Tune the chunk size to a value that provides optimal performance in your environ
 
 |[[yashandb-property-topic-naming-strategy]]<<yashandb-property-topic-naming-strategy, `+topic.naming.strategy+`>>
 |`io.debezium.schema.SchemaTopicNamingStrategy`
-|The name of the class used to determine topic names for data changes, schema changes, transactions, heartbeat events, etc.
+|The name of the class used to determine topic names for data changes, schema changes, transactions, heartbeat events, and so on.
 Defaults to `SchemaTopicNamingStrategy`.
 
 |[[yashandb-property-topic-delimiter]]<<yashandb-property-topic-delimiter, `+topic.delimiter+`>>
@@ -1897,6 +1909,7 @@ Set to `true` to store DDL only for captured tables.
 
 [id="debezium-yashandb-connector-database-history-configuration-properties"]
 ==== {prodname} YashanDB connector database schema history configuration properties
+
 include::{partialsdir}/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc[leveloffset=+1]
 
 [id="debezium-yashandb-connector-pass-through-properties"]
@@ -1936,9 +1949,9 @@ include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-databas
 
 The {prodname} YashanDB connector provides three metric types in addition to the built-in support for JMX metrics that Apache Kafka and Kafka Connect have.
 
-* xref:yashandb-snapshot-metrics[snapshot metrics]; for monitoring the connector when performing snapshots
-* xref:yashandb-streaming-metrics[streaming metrics]; for monitoring the connector when processing change events
-* xref:yashandb-schema-history-metrics[schema history metrics]; for monitoring the status of the connector's schema history
+* xref:yashandb-snapshot-metrics[Snapshot metrics] for monitoring the connector when performing snapshots
+* xref:yashandb-streaming-metrics[Streaming metrics] for monitoring the connector when processing change events
+* xref:yashandb-schema-history-metrics[Schema history metrics] for monitoring the status of the connector's schema history
 
 For details about how to expose use JMX to expose metrics, see the {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[{prodname} monitoring documentation] .
 
