@@ -38,7 +38,7 @@ public class SpecialTableTypesIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    @FixFor("dbz#25")
+    @FixFor("dbz#28")
     public void shouldIgnoreTemporalTable() throws Exception {
         TestHelper.createTestDatabase();
         connection = TestHelper.testConnection();
