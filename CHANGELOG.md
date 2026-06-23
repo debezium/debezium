@@ -3,6 +3,71 @@
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
 
+## 3.6.0.CR1
+June 23rd 2026 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A3.6.0.CR1)
+
+### New features since 3.6.0.Beta2
+
+* Verify archive log entry has been deleted on exception [debezium/dbz#1532](https://github.com/debezium/dbz/issues/1532)
+* Make Spanner Connector compatible with Spanner Omni [debezium/dbz#1858](https://github.com/debezium/dbz/issues/1858)
+* Implement Monitoring REST API in Conductor [debezium/dbz#1898](https://github.com/debezium/dbz/issues/1898)
+* Update the Connection edit flow to match with source/destination [debezium/dbz#1978](https://github.com/debezium/dbz/issues/1978)
+* Add support for memory management for table history and schemas [debezium/dbz#2015](https://github.com/debezium/dbz/issues/2015)
+* Multi-Panel Dashboard for Pipeline monitoring with Smart Caching [debezium/dbz#2025](https://github.com/debezium/dbz/issues/2025)
+* Add retry/back-off to XStream attach retry loop [debezium/dbz#2031](https://github.com/debezium/dbz/issues/2031)
+* Allow transaction creation in Oracle to be deferred until first DML occurs [debezium/dbz#2046](https://github.com/debezium/dbz/issues/2046)
+* Oracle RAC: PRIVATE redo thread logs collected but not validated, can cause LogFileNotFoundException [debezium/dbz#2049](https://github.com/debezium/dbz/issues/2049)
+* Add support for JDBC sink in Debezium Platform [debezium/dbz#2079](https://github.com/debezium/dbz/issues/2079)
+* Reduce allocation and CPU overhead in MySQL source connector poll batch conversion [debezium/dbz#2113](https://github.com/debezium/dbz/issues/2113)
+
+
+### Breaking changes since 3.6.0.Beta2
+
+None
+
+
+### Fixes since 3.6.0.Beta2
+
+* Platform watcher may lead to unbounded WAL [debezium/dbz#2027](https://github.com/debezium/dbz/issues/2027)
+* KafkaSchemaHistory recovery race (subscribe vs assign) [debezium/dbz#2032](https://github.com/debezium/dbz/issues/2032)
+* The original value 1 of the varbit[1] column becomes null in the Kafka topic. [debezium/dbz#2045](https://github.com/debezium/dbz/issues/2045)
+* Postgres read only incremental snapshot may not resume after restart [debezium/dbz#2055](https://github.com/debezium/dbz/issues/2055)
+* Vitess connector ignores time.precision.mode=connect for TIMESTAMP columns [debezium/dbz#2060](https://github.com/debezium/dbz/issues/2060)
+* Vitess connector emits raw MySQL datetime strings under the ZonedTimestamp schema for TIMESTAMP columns [debezium/dbz#2063](https://github.com/debezium/dbz/issues/2063)
+* Incorrect parsing of single quoted values in logminer [debezium/dbz#2070](https://github.com/debezium/dbz/issues/2070)
+* NanoTimestamp silently overflows for dates outside 1677-09-21 ~ 2262-04-11 when time.precision.mode=nanoseconds [debezium/dbz#2075](https://github.com/debezium/dbz/issues/2075)
+* Remove the tabel search query field form the Filter section in the destination flow. [debezium/dbz#2081](https://github.com/debezium/dbz/issues/2081)
+* CockroachDB: TIMESTAMP without time zone emitted as null; align temporal types with Debezium logical types [debezium/dbz#2083](https://github.com/debezium/dbz/issues/2083)
+* JDBC sink truncates fractional seconds when binding Debezium MicroDuration to PostgreSQL interval [debezium/dbz#2097](https://github.com/debezium/dbz/issues/2097)
+* JDBC sink corrupts or fails PostgreSQL BIT and VARBIT values with multi-byte Debezium Bits payloads [debezium/dbz#2099](https://github.com/debezium/dbz/issues/2099)
+* clang19 no longer available for alpine based postgres images [debezium/dbz#2109](https://github.com/debezium/dbz/issues/2109)
+* Not able to update a pipeline in Debezium Platform [debezium/dbz#2111](https://github.com/debezium/dbz/issues/2111)
+* Not able to add transformations to pipeline in Debezium Platform [debezium/dbz#2112](https://github.com/debezium/dbz/issues/2112)
+* Not able to delete a transform that cannot be applied [debezium/dbz#2114](https://github.com/debezium/dbz/issues/2114)
+* InterruptedException is not handled well for off-heap Oracle buffers [debezium/dbz#2117](https://github.com/debezium/dbz/issues/2117)
+* MS SQL server docker image may fail to start [debezium/dbz#2132](https://github.com/debezium/dbz/issues/2132)
+
+
+### Other changes since 3.6.0.Beta2
+
+* The iso_string time.precision.mode is should be documented [DBZ-9691] [debezium/dbz#1437](https://github.com/debezium/dbz/issues/1437)
+* Update to latest Oracle 23.26.x driver [debezium/dbz#1837](https://github.com/debezium/dbz/issues/1837)
+* Implement Week 1: Project skeleton, event models, and ingestion handlers for PyDebeziumAI [debezium/dbz#2003](https://github.com/debezium/dbz/issues/2003)
+* Build Week 1: Platform Client Foundation and Pipeline Management Commands [debezium/dbz#2019](https://github.com/debezium/dbz/issues/2019)
+* Convert CommittedRecord class to Java record [debezium/dbz#2062](https://github.com/debezium/dbz/issues/2062)
+* add `engine.factory` option for batch processing for debezium engine [debezium/dbz#2067](https://github.com/debezium/dbz/issues/2067)
+* compatibility mode should avoid override for `"connector.class"` in case of multiple connectors [debezium/dbz#2082](https://github.com/debezium/dbz/issues/2082)
+* ApicurioRegistryTestIT is failing after Apicurio upgrade [debezium/dbz#2084](https://github.com/debezium/dbz/issues/2084)
+* Release Debezium CLI snapshots [debezium/dbz#2091](https://github.com/debezium/dbz/issues/2091)
+* debezium CLI native build with `quarkus-picocli` [debezium/dbz#2096](https://github.com/debezium/dbz/issues/2096)
+* Update the node version on the stage containner to LTS [debezium/dbz#2098](https://github.com/debezium/dbz/issues/2098)
+* Add Checkstyle rule to error on Awaitility imported via shaded jar [debezium/dbz#2103](https://github.com/debezium/dbz/issues/2103)
+* Clarify documentation about spanner auth/creds [debezium/dbz#2116](https://github.com/debezium/dbz/issues/2116)
+* Upgrade debezium vitess connector java protobuf version [debezium/dbz#2126](https://github.com/debezium/dbz/issues/2126)
+* reduce parallelism in github action matrix in debezium-quarkus [debezium/dbz#2133](https://github.com/debezium/dbz/issues/2133)
+
+
+
 ## 3.6.0.Beta2
 June 12nd 2026 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A3.6.0.Beta2)
 
