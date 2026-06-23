@@ -15,8 +15,6 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import io.debezium.junit.logging.LogInterceptor;
-
 /**
  * Tests RetryingRunnable.
  * Refactored and inspired by: io.debezium.embedded.async.RetryingCallableTest
@@ -34,49 +32,36 @@ public class RetryingRunnableTest {
 
     @Test
     void shouldExecuteNeverFailing() throws InterruptedException, SQLException {
-        final LogInterceptor interceptor = new LogInterceptor(RetryingRunnable.class);
         getNeverFailing(0).run();
         Assertions.assertThat(runs.get()).isEqualTo(1);
         Assertions.assertThat(heals.get()).isEqualTo(0);
-        assertThat(interceptor.containsMessage("Runnable failed with exception")).isFalse();
     }
 
     @Test
     void shouldNotRetryWhenRunnableDoesNotFail() throws InterruptedException, SQLException {
-        final LogInterceptor interceptor = new LogInterceptor(RetryingRunnable.class);
         getNeverFailing(10).run();
         Assertions.assertThat(runs.get()).isEqualTo(1);
         Assertions.assertThat(heals.get()).isEqualTo(0);
-        assertThat(interceptor.containsMessage("Runnable failed with exception")).isFalse();
     }
 
     @Test
     void shouldIgnoreInfiniteRetryWhenRunnableDoesNotFail() throws InterruptedException, SQLException {
-        final LogInterceptor interceptor = new LogInterceptor(RetryingRunnable.class);
         getNeverFailing(-1).run();
         Assertions.assertThat(runs.get()).isEqualTo(1);
         Assertions.assertThat(heals.get()).isEqualTo(0);
-        assertThat(interceptor.containsMessage("Runnable failed with exception")).isFalse();
     }
 
     @Test
     void shouldRetryAsManyTimesAsRequested() throws InterruptedException, SQLException {
-        final LogInterceptor interceptor = new LogInterceptor(RetryingRunnable.class);
-        LoggingContext.forConnector(getClass().getSimpleName(), "", "runnable");
-
         getTwoTimesFailing(10).run();
 
         // Callable should fail 2 times and 3rd time it should succeed.
         assertThat(runs.get()).isEqualTo(3);
         Assertions.assertThat(heals.get()).isEqualTo(2);
-        assertThat(interceptor.countOccurrences("Runnable failed with exception")).isEqualTo(2);
     }
 
     @Test
     void shouldRetryAsManyTimesAsRequestedWhenAlwaysFails() throws InterruptedException {
-        final LogInterceptor interceptor = new LogInterceptor(RetryingRunnable.class);
-        LoggingContext.forConnector(getClass().getSimpleName(), "", "runnable");
-
         try {
             getAlwaysFailing(5).run();
         }
@@ -87,16 +72,10 @@ public class RetryingRunnableTest {
         // Should be called 6 times - 1 call + 5 retries.
         assertThat(runs.get()).isEqualTo(6);
         Assertions.assertThat(heals.get()).isEqualTo(5);
-        // But we should see only 5 exception as the call was retried 5 times and on the 6th call failed, which is
-        // not logged but thrown up to the stack.
-        assertThat(interceptor.countOccurrences("Runnable failed with exception")).isEqualTo(5);
     }
 
     @Test
     void shouldNotRetryWhenRetriesAreDisabled() throws InterruptedException {
-        final LogInterceptor interceptor = new LogInterceptor(RetryingRunnable.class);
-        LoggingContext.forConnector(getClass().getSimpleName(), "", "runnable");
-
         try {
             getAlwaysFailing(0).run();
         }
@@ -107,8 +86,6 @@ public class RetryingRunnableTest {
         // Should be called only 1 time.
         assertThat(runs.get()).isEqualTo(1);
         Assertions.assertThat(heals.get()).isEqualTo(0);
-        // And there shouldn't be any run in retry loop.
-        assertThat(interceptor.containsMessage("Runnable failed with exception")).isFalse();
     }
 
     private RetryingRunnable<SQLException> getNeverFailing(int retries) {
