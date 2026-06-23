@@ -22,6 +22,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
@@ -51,6 +52,7 @@ public class PostgresTemporalPrecisionHandlingIT extends AbstractAsyncEngineConn
 
     @BeforeEach
     void before() {
+        dropDefaultPublication();
         createTable();
         initializeConnectorTestFramework();
     }
@@ -59,7 +61,11 @@ public class PostgresTemporalPrecisionHandlingIT extends AbstractAsyncEngineConn
     void after() throws SQLException {
         stopConnector();
         TestHelper.dropDefaultReplicationSlot();
-        TestHelper.dropPublication();
+        dropDefaultPublication();
+    }
+
+    private void dropDefaultPublication() {
+        TestHelper.execute("DROP PUBLICATION IF EXISTS " + ReplicationConnection.Builder.DEFAULT_PUBLICATION_NAME);
     }
 
     public void createTable() {
