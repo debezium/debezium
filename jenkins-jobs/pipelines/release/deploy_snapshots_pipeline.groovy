@@ -56,7 +56,7 @@ node('Slave') {
 
             dir(DEBEZIUM_DIR) {
                 ORACLE_ARTIFACT_VERSION = (readFile('pom.xml') =~ /(?ms)<version.oracle.driver>(.+)<\/version.oracle.driver>/)[0][1]
-                ORACLE_ARTIFACT_DIR = "$HOME_DIR/oracle-libs/${ORACLE_ARTIFACT_VERSION}${(ORACLE_ARTIFACT_VERSION =~ /^(\d+)/)[0][1] as int >= 23 ? '' : '.0'}"
+                ORACLE_ARTIFACT_DIR = "$HOME_DIR/oracle-libs/${ORACLE_ARTIFACT_VERSION}${((ORACLE_ARTIFACT_VERSION =~ /^(\d+)/)[0][1] as int) >= 23 ? '' : '.0'}"
             }
 
             dir(ORACLE_ARTIFACT_DIR) {
