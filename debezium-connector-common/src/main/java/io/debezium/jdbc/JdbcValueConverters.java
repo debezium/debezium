@@ -360,6 +360,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 r.deliver(ZonedTimestamp.toIsoString(data, defaultOffset, adjuster, column.length()));
             }
             catch (IllegalArgumentException e) {
+                logger.warn("Failed to convert value '{}' from column '{}' to '{}'", data, column, fieldDefn, e);
             }
         });
     }
@@ -386,6 +387,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 r.deliver(ZonedTime.toIsoString(data, defaultOffset, adjuster));
             }
             catch (IllegalArgumentException e) {
+                logger.warn("Failed to convert value '{}' from column '{}' to '{}'", data, column, fieldDefn, e);
             }
         });
     }
@@ -470,6 +472,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 r.deliver(Timestamp.toEpochMillis(data, adjuster));
             }
             catch (IllegalArgumentException e) {
+                logger.warn("Failed to convert value '{}' from column '{}' to '{}'", data, column, fieldDefn, e);
             }
         });
     }
@@ -495,6 +498,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 r.deliver(MicroTimestamp.toEpochMicros(data, adjuster));
             }
             catch (IllegalArgumentException e) {
+                logger.warn("Failed to convert value '{}' from column '{}' to '{}'", data, column, fieldDefn, e);
             }
         });
     }
@@ -520,6 +524,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 r.deliver(NanoTimestamp.toEpochNanos(data, adjuster));
             }
             catch (IllegalArgumentException e) {
+                logger.warn("Failed to convert value '{}' from column '{}' to '{}'", data, column, fieldDefn, e);
             }
         });
     }
@@ -545,6 +550,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 r.deliver(new java.util.Date(Timestamp.toEpochMillis(data, adjuster)));
             }
             catch (IllegalArgumentException e) {
+                logger.warn("Failed to convert value '{}' from column '{}' to '{}'", data, column, fieldDefn, e);
             }
         });
     }
@@ -571,6 +577,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 r.deliver(Time.toMilliOfDay(data, supportsLargeTimeValues()));
             }
             catch (IllegalArgumentException e) {
+                logger.warn("Failed to convert value '{}' from column '{}' to '{}'", data, column, fieldDefn, e);
             }
         });
     }
@@ -597,6 +604,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 r.deliver(MicroTime.toMicroOfDay(data, supportsLargeTimeValues()));
             }
             catch (IllegalArgumentException e) {
+                logger.warn("Failed to convert value '{}' from column '{}' to '{}'", data, column, fieldDefn, e);
             }
         });
     }
@@ -623,6 +631,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 r.deliver(NanoTime.toNanoOfDay(data, supportsLargeTimeValues()));
             }
             catch (IllegalArgumentException e) {
+                logger.warn("Failed to convert value '{}' from column '{}' to '{}'", data, column, fieldDefn, e);
             }
         });
     }
@@ -649,6 +658,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 r.deliver(new java.util.Date(Time.toMilliOfDay(data, supportsLargeTimeValues())));
             }
             catch (IllegalArgumentException e) {
+                logger.warn("Failed to convert value '{}' from column '{}' to '{}'", data, column, fieldDefn, e);
             }
         });
     }
