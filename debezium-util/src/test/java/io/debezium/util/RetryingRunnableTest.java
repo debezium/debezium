@@ -8,7 +8,9 @@ package io.debezium.util;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.SQLException;
+import java.sql.SQLRecoverableException;
 import java.time.Duration;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.assertj.core.api.Assertions;
@@ -21,6 +23,7 @@ import org.junit.jupiter.api.Test;
  */
 public class RetryingRunnableTest {
 
+    private final List<Class<? extends Exception>> retriableExceptions = List.of(SQLRecoverableException.class);
     private final AtomicInteger runs = new AtomicInteger();
     private final AtomicInteger heals = new AtomicInteger();
 
@@ -55,7 +58,7 @@ public class RetryingRunnableTest {
     void shouldRetryAsManyTimesAsRequested() throws InterruptedException, SQLException {
         getTwoTimesFailing(10).run();
 
-        // Callable should fail 2 times and 3rd time it should succeed.
+        // Runnable should fail 2 times and 3rd time it should succeed.
         assertThat(runs.get()).isEqualTo(3);
         Assertions.assertThat(heals.get()).isEqualTo(2);
     }
@@ -88,6 +91,43 @@ public class RetryingRunnableTest {
         Assertions.assertThat(heals.get()).isEqualTo(0);
     }
 
+    @Test
+    void shouldNotRetryAsManyTimesAsRequestedForNonMatchingSuppliedRetriableExceptions() throws InterruptedException {
+        try {
+            getAlwaysFailing(5, retriableExceptions).run();
+        }
+        catch (SQLException e) {
+            // Good
+        }
+
+        // Should be called 1 time with no heals.
+        assertThat(runs.get()).isEqualTo(1);
+        Assertions.assertThat(heals.get()).isEqualTo(0);
+    }
+
+    @Test
+    void shouldRetryAsManyTimesAsRequestedForMatchingSuppliedRetriableExceptions() throws InterruptedException, SQLException {
+        getTwoTimesFailingButRetriable(10, retriableExceptions).run();
+
+        // Runnable should fail 2 times and 3rd time it should succeed.
+        assertThat(runs.get()).isEqualTo(3);
+        Assertions.assertThat(heals.get()).isEqualTo(2);
+    }
+
+    @Test
+    void shouldRetryAsManyTimesAsRequestedWhenAlwaysFailsForMatchingSuppliedRetriableExceptions() throws InterruptedException {
+        try {
+            getAlwaysFailingButRetriable(5, retriableExceptions).run();
+        }
+        catch (SQLException e) {
+            // Good
+        }
+
+        // Should be called 6 times - 1 call + 5 retries.
+        assertThat(runs.get()).isEqualTo(6);
+        Assertions.assertThat(heals.get()).isEqualTo(5);
+    }
+
     private RetryingRunnable<SQLException> getNeverFailing(int retries) {
         return RetryingRunnable.<SQLException> builder()
                 .retries(retries)
@@ -98,6 +138,11 @@ public class RetryingRunnableTest {
     }
 
     private RetryingRunnable<SQLException> getAlwaysFailing(int retries) {
+        return getAlwaysFailing(retries, null);
+    }
+
+    private RetryingRunnable<SQLException> getAlwaysFailing(int retries,
+                                                            List<Class<? extends Exception>> retriableExceptions) {
         return RetryingRunnable.<SQLException> builder()
                 .retries(retries)
                 .doRun(() -> {
@@ -106,10 +151,30 @@ public class RetryingRunnableTest {
                 })
                 .doAutoHeal(heals::incrementAndGet)
                 .delayStrategy(DelayStrategy.linear(Duration.ofMillis(100)))
+                .retriableExceptions(retriableExceptions)
+                .build();
+    }
+
+    private RetryingRunnable<SQLException> getAlwaysFailingButRetriable(int retries,
+                                                                        List<Class<? extends Exception>> retriableExceptions) {
+        return RetryingRunnable.<SQLException> builder()
+                .retries(retries)
+                .doRun(() -> {
+                    runs.incrementAndGet();
+                    throw new SQLRecoverableException("Good try, but I always fail");
+                })
+                .doAutoHeal(heals::incrementAndGet)
+                .delayStrategy(DelayStrategy.linear(Duration.ofMillis(100)))
+                .retriableExceptions(retriableExceptions)
                 .build();
     }
 
     private RetryingRunnable<SQLException> getTwoTimesFailing(int retries) {
+        return getTwoTimesFailing(retries, null);
+    }
+
+    private RetryingRunnable<SQLException> getTwoTimesFailing(int retries,
+                                                              List<Class<? extends Exception>> retriableExceptions) {
         return RetryingRunnable.<SQLException> builder()
                 .retries(retries)
                 .doRun(() -> {
@@ -119,6 +184,22 @@ public class RetryingRunnableTest {
                 })
                 .doAutoHeal(heals::incrementAndGet)
                 .delayStrategy(DelayStrategy.linear(Duration.ofMillis(100)))
+                .retriableExceptions(retriableExceptions)
+                .build();
+    }
+
+    private RetryingRunnable<SQLException> getTwoTimesFailingButRetriable(int retries,
+                                                                          List<Class<? extends Exception>> retriableExceptions) {
+        return RetryingRunnable.<SQLException> builder()
+                .retries(retries)
+                .doRun(() -> {
+                    if (runs.incrementAndGet() <= 2) {
+                        throw new SQLRecoverableException(String.format("Good try, but I fail this time (call #%s)", runs));
+                    }
+                })
+                .doAutoHeal(heals::incrementAndGet)
+                .delayStrategy(DelayStrategy.linear(Duration.ofMillis(100)))
+                .retriableExceptions(retriableExceptions)
                 .build();
     }
 }
