@@ -18,6 +18,7 @@ import io.debezium.connector.postgresql.connection.Lsn;
 import io.debezium.connector.postgresql.connection.ReplicationMessage;
 import io.debezium.connector.postgresql.connection.TransactionMessage;
 import io.debezium.connector.postgresql.connection.WalPositionLocator;
+import io.debezium.doc.FixFor;
 
 /**
  * @author Pranav Tiwari
@@ -342,6 +343,233 @@ public class WALPositionLocatorTest {
 
         assertThat(result).contains("firstLsnReceived=" + lsn)
                 .contains("startStreamingLsn=" + lsn);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1554")
+    void whenMultipleEventsShareSameLsnShouldResumeAfterProcessedCount() {
+        // Simulate: 5 events all at LSN 140, we processed 3 before crash
+        final Lsn lastCommitStoredLsn = Lsn.valueOf(100L);
+        final Lsn lastEventStoredLsn = Lsn.valueOf(140L);
+        final long lsnEventsProcessed = 3;
+        final var locator = new WalPositionLocator(lastCommitStoredLsn, lastEventStoredLsn,
+                ReplicationMessage.Operation.INSERT, lsnEventsProcessed);
+
+        final Lsn beginLsn = Lsn.valueOf(110L);
+        final Lsn sameLsn = Lsn.valueOf(140L);
+        final Lsn commitLsn = Lsn.valueOf(150L);
+
+        final var beginMessage = createBeginMessage(1L);
+        final var insertMessage = createInsertMessage(2L);
+        final var commitMessage = createCommitMessage(2L);
+
+        // Search phase: find the resume position
+        assertThat(locator.resumeFromLsn(beginLsn, beginMessage)).isEmpty();
+        assertThat(locator.resumeFromLsn(sameLsn, insertMessage)).isEmpty(); // event #1
+        assertThat(locator.resumeFromLsn(sameLsn, insertMessage)).isEmpty(); // event #2
+        assertThat(locator.resumeFromLsn(sameLsn, insertMessage)).isEmpty(); // event #3 (matches count)
+
+        // Event #4 exceeds processed count, resume from stored LSN with skip
+        final Optional<Lsn> result = locator.resumeFromLsn(sameLsn, insertMessage);
+        assertThat(result).isPresent();
+        assertThat(result.get()).isEqualTo(sameLsn);
+
+        // Replay phase: enableFiltering then skipMessage should skip first 3 events at this LSN
+        locator.enableFiltering();
+
+        // Events before stored LSN are filtered by lsnSeen
+        assertThat(locator.skipMessage(beginLsn)).isTrue();
+
+        // First 3 events at stored LSN are skipped (already processed)
+        assertThat(locator.skipMessage(sameLsn)).isTrue(); // skip #1
+        assertThat(locator.skipMessage(sameLsn)).isTrue(); // skip #2
+        assertThat(locator.skipMessage(sameLsn)).isTrue(); // skip #3
+
+        // Events 4 and 5 should pass through (not yet processed)
+        assertThat(locator.skipMessage(sameLsn)).isFalse(); // event #4 passes
+        assertThat(locator.skipMessage(sameLsn)).isFalse(); // event #5 passes
+        assertThat(locator.skipMessage(commitLsn)).isFalse(); // COMMIT passes
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1554")
+    void whenAllSameLsnEventsProcessedShouldResumeFromNextLsn() {
+        // All 3 events at LSN 140 were processed, then crash after COMMIT
+        final Lsn lastCommitStoredLsn = Lsn.valueOf(100L);
+        final Lsn lastEventStoredLsn = Lsn.valueOf(140L);
+        final var locator = new WalPositionLocator(lastCommitStoredLsn, lastEventStoredLsn,
+                ReplicationMessage.Operation.INSERT, 3);
+
+        final Lsn beginLsn = Lsn.valueOf(110L);
+        final Lsn sameLsn = Lsn.valueOf(140L);
+        final Lsn commitLsn = Lsn.valueOf(150L);
+
+        final var beginMessage = createBeginMessage(1L);
+        final var insertMessage = createInsertMessage(2L);
+        final var commitMessage = createCommitMessage(2L);
+
+        assertThat(locator.resumeFromLsn(beginLsn, beginMessage)).isEmpty();
+        assertThat(locator.resumeFromLsn(sameLsn, insertMessage)).isEmpty(); // event #1
+        assertThat(locator.resumeFromLsn(sameLsn, insertMessage)).isEmpty(); // event #2
+        assertThat(locator.resumeFromLsn(sameLsn, insertMessage)).isEmpty(); // event #3
+
+        // No more events at this LSN, next different LSN arrives
+        final Optional<Lsn> result = locator.resumeFromLsn(commitLsn, commitMessage);
+        assertThat(result).isPresent();
+        assertThat(result.get()).isEqualTo(commitLsn);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1554")
+    void whenLsnEventsProcessedIsZeroShouldReplayAllEventsAtThatLsn() {
+        // Backward compatibility: old offsets without counter (effectively 0)
+        final Lsn lastCommitStoredLsn = Lsn.valueOf(100L);
+        final Lsn lastEventStoredLsn = Lsn.valueOf(140L);
+        final var locator = new WalPositionLocator(lastCommitStoredLsn, lastEventStoredLsn,
+                ReplicationMessage.Operation.INSERT, 0);
+
+        final Lsn beginLsn = Lsn.valueOf(110L);
+        final Lsn sameLsn = Lsn.valueOf(140L);
+        final Lsn nextLsn = Lsn.valueOf(150L);
+
+        final var beginMessage = createBeginMessage(1L);
+        final var insertMessage = createInsertMessage(2L);
+
+        assertThat(locator.resumeFromLsn(beginLsn, beginMessage)).isEmpty();
+        assertThat(locator.resumeFromLsn(sameLsn, insertMessage)).isEmpty();
+
+        // Next different LSN should resume from here (original behavior preserved)
+        final Optional<Lsn> result = locator.resumeFromLsn(nextLsn, insertMessage);
+        assertThat(result).isPresent();
+        assertThat(result.get()).isEqualTo(nextLsn);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1554")
+    void whenLsnEventsProcessedIsOneShouldUseNormalResumeLogic() {
+        // Normal case: single event at each LSN, counter is 1.
+        // Should NOT trigger skip logic, should use existing "next different LSN" behavior.
+        final Lsn lastCommitStoredLsn = Lsn.valueOf(100L);
+        final Lsn lastEventStoredLsn = Lsn.valueOf(140L);
+        final var locator = new WalPositionLocator(lastCommitStoredLsn, lastEventStoredLsn,
+                ReplicationMessage.Operation.INSERT, 1);
+
+        final Lsn beginLsn = Lsn.valueOf(110L);
+        final Lsn eventLsn = Lsn.valueOf(140L);
+        final Lsn nextLsn = Lsn.valueOf(150L);
+
+        final var beginMessage = createBeginMessage(1L);
+        final var insertMessage = createInsertMessage(2L);
+
+        assertThat(locator.resumeFromLsn(beginLsn, beginMessage)).isEmpty();
+        assertThat(locator.resumeFromLsn(eventLsn, insertMessage)).isEmpty();
+
+        // Next different LSN triggers resume (normal behavior, no skip)
+        final Optional<Lsn> result = locator.resumeFromLsn(nextLsn, insertMessage);
+        assertThat(result).isPresent();
+        assertThat(result.get()).isEqualTo(nextLsn);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1554")
+    void whenExactlyTwoEventsShareSameLsnShouldSkipCorrectly() {
+        // Boundary case: lsnEventsProcessed=2 is the minimum value that triggers
+        // the same-LSN skip logic (threshold is > 1).
+        final Lsn lastCommitStoredLsn = Lsn.valueOf(100L);
+        final Lsn lastEventStoredLsn = Lsn.valueOf(140L);
+        final var locator = new WalPositionLocator(lastCommitStoredLsn, lastEventStoredLsn,
+                ReplicationMessage.Operation.INSERT, 2);
+
+        final Lsn beginLsn = Lsn.valueOf(110L);
+        final Lsn sameLsn = Lsn.valueOf(140L);
+        final Lsn commitLsn = Lsn.valueOf(150L);
+
+        final var beginMessage = createBeginMessage(1L);
+        final var insertMessage = createInsertMessage(2L);
+
+        assertThat(locator.resumeFromLsn(beginLsn, beginMessage)).isEmpty();
+        assertThat(locator.resumeFromLsn(sameLsn, insertMessage)).isEmpty(); // event #1
+        assertThat(locator.resumeFromLsn(sameLsn, insertMessage)).isEmpty(); // event #2 (matches count)
+
+        // Event #3 exceeds count, triggers resume
+        final Optional<Lsn> result = locator.resumeFromLsn(sameLsn, insertMessage);
+        assertThat(result).isPresent();
+        assertThat(result.get()).isEqualTo(sameLsn);
+
+        locator.enableFiltering();
+        assertThat(locator.skipMessage(beginLsn)).isTrue();
+        assertThat(locator.skipMessage(sameLsn)).isTrue(); // skip #1
+        assertThat(locator.skipMessage(sameLsn)).isTrue(); // skip #2
+        assertThat(locator.skipMessage(sameLsn)).isFalse(); // event #3 passes
+        assertThat(locator.skipMessage(commitLsn)).isFalse();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1554")
+    void whenAllSameLsnEventsProcessedAndNoMoreAtThatLsnShouldResumeFromCommit() {
+        // Edge case: processed exactly all events at the stored LSN, and the next
+        // message is a COMMIT (no unprocessed events remain at that LSN).
+        final Lsn lastCommitStoredLsn = Lsn.valueOf(100L);
+        final Lsn lastEventStoredLsn = Lsn.valueOf(140L);
+        final var locator = new WalPositionLocator(lastCommitStoredLsn, lastEventStoredLsn,
+                ReplicationMessage.Operation.INSERT, 2);
+
+        final Lsn beginLsn = Lsn.valueOf(110L);
+        final Lsn sameLsn = Lsn.valueOf(140L);
+        final Lsn commitLsn = Lsn.valueOf(150L);
+
+        final var beginMessage = createBeginMessage(1L);
+        final var insertMessage = createInsertMessage(2L);
+        final var commitMessage = createCommitMessage(2L);
+
+        assertThat(locator.resumeFromLsn(beginLsn, beginMessage)).isEmpty();
+        assertThat(locator.resumeFromLsn(sameLsn, insertMessage)).isEmpty(); // event #1
+        assertThat(locator.resumeFromLsn(sameLsn, insertMessage)).isEmpty(); // event #2 (matches count)
+
+        // Next message is COMMIT at different LSN: all events at stored LSN were processed,
+        // so we resume from the commit LSN (next different LSN path)
+        final Optional<Lsn> result = locator.resumeFromLsn(commitLsn, commitMessage);
+        assertThat(result).isPresent();
+        assertThat(result.get()).isEqualTo(commitLsn);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1554")
+    void whenSameLsnEventsSpanMultipleResumeCallsSkipCountShouldDecrementCorrectly() {
+        // Verify that skipMessage skip counter decrements to exactly zero and then
+        // all subsequent messages at the same LSN pass through.
+        final Lsn lastCommitStoredLsn = Lsn.valueOf(100L);
+        final Lsn lastEventStoredLsn = Lsn.valueOf(140L);
+        final long processed = 4;
+        final var locator = new WalPositionLocator(lastCommitStoredLsn, lastEventStoredLsn,
+                ReplicationMessage.Operation.INSERT, processed);
+
+        final Lsn beginLsn = Lsn.valueOf(110L);
+        final Lsn sameLsn = Lsn.valueOf(140L);
+        final Lsn commitLsn = Lsn.valueOf(150L);
+
+        final var beginMessage = createBeginMessage(1L);
+        final var insertMessage = createInsertMessage(2L);
+
+        // Search phase
+        assertThat(locator.resumeFromLsn(beginLsn, beginMessage)).isEmpty();
+        for (int i = 0; i < processed; i++) {
+            assertThat(locator.resumeFromLsn(sameLsn, insertMessage)).isEmpty();
+        }
+        // Event after processed count triggers resume
+        final Optional<Lsn> result = locator.resumeFromLsn(sameLsn, insertMessage);
+        assertThat(result).isPresent();
+
+        // Replay phase: exactly 4 skips, then all pass
+        locator.enableFiltering();
+        assertThat(locator.skipMessage(beginLsn)).isTrue();
+        for (int i = 0; i < processed; i++) {
+            assertThat(locator.skipMessage(sameLsn)).isTrue();
+        }
+        // Remaining events at same LSN should all pass
+        assertThat(locator.skipMessage(sameLsn)).isFalse();
+        assertThat(locator.skipMessage(sameLsn)).isFalse();
+        assertThat(locator.skipMessage(commitLsn)).isFalse();
     }
 
     // =============================================================================

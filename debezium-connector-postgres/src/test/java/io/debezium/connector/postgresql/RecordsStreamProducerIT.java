@@ -4825,6 +4825,66 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         assertThat(((Struct) insert2.value()).getStruct("after").getInt32("aa")).isEqualTo(2);
     }
 
+    @Test
+    @FixFor("debezium/dbz#1554")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Only supported on PgOutput")
+    public void shouldNotLoseEventsWhenMultipleDmlEventsShareSameLsn() throws Exception {
+        // Testing.Print.enable();
+        final int numberOfEvents = 20;
+        final int stopAtPk = 10;
+
+        TestHelper.execute("DROP TABLE IF EXISTS test_copy;",
+                "CREATE TABLE test_copy (pk SERIAL PRIMARY KEY, data TEXT);");
+
+        startConnector(config -> config
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, false)
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.test_copy"),
+                true,
+                record -> {
+                    if (!"test_server.public.test_copy.Envelope".equals(record.valueSchema().name())) {
+                        return false;
+                    }
+                    final Struct envelope = (Struct) record.value();
+                    final Struct after = envelope.getStruct("after");
+                    final Integer pk = after.getInt32("pk");
+                    return pk == stopAtPk;
+                });
+        waitForStreamingToStart();
+
+        final String topicName = topicName("public.test_copy");
+
+        final String inserts = IntStream.rangeClosed(1, numberOfEvents)
+                .boxed()
+                .map(i -> "INSERT INTO test_copy (data) VALUES ('row" + i + "')")
+                .collect(Collectors.joining(";"));
+
+        final int expectFirstRun = stopAtPk - 1;
+        final int expectSecondRun = numberOfEvents - stopAtPk + 1;
+
+        consumer = testConsumer(expectFirstRun);
+        executeAndWait(inserts);
+
+        for (int i = 0; i < expectFirstRun; i++) {
+            final SourceRecord record = consumer.remove();
+            assertEquals(topicName, record.topic());
+            VerifyRecord.isValidInsert(record, PK_FIELD, i + 1);
+        }
+
+        waitForEngineShutdown();
+        cleanupTestFwkState();
+
+        startConnector(config -> config
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.test_copy"), false);
+        consumer.expects(expectSecondRun);
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        for (int i = 0; i < expectSecondRun; i++) {
+            final SourceRecord record = consumer.remove();
+            assertEquals(topicName, record.topic());
+            VerifyRecord.isValidInsert(record, PK_FIELD, stopAtPk + i);
+        }
+    }
+
     private String getMessagePrefix(SourceRecord record) {
         Struct message = ((Struct) record.value()).getStruct(LogicalDecodingMessageMonitor.DEBEZIUM_LOGICAL_DECODING_MESSAGE_KEY);
         return message.getString(LogicalDecodingMessageMonitor.DEBEZIUM_LOGICAL_DECODING_MESSAGE_PREFIX_KEY);

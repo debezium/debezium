@@ -39,6 +39,7 @@ public class WalPositionLocator {
     private final Lsn lastCommitStoredLsn;
     private final Lsn lastEventStoredLsn;
     private final Operation lastProcessedMessageType;
+    private final long lastEventStoredLsnEventsProcessed;
     private Lsn txStartLsn = null;
     private Lsn lsnAfterLastEventStoredLsn = null;
     private Lsn firstLsnReceived = null;
@@ -46,20 +47,28 @@ public class WalPositionLocator {
     private Lsn startStreamingLsn = null;
     private boolean storeLsnAfterLastEventStoredLsn = false;
     private Set<Lsn> lsnSeen = new HashSet<>(1_000);
+    private long currentLsnEventCount = 0;
+    private long startStreamingEventsToSkip = 0;
 
     public WalPositionLocator(Lsn lastCommitStoredLsn, Lsn lastEventStoredLsn, Operation lastProcessedMessageType) {
+        this(lastCommitStoredLsn, lastEventStoredLsn, lastProcessedMessageType, 0);
+    }
+
+    public WalPositionLocator(Lsn lastCommitStoredLsn, Lsn lastEventStoredLsn, Operation lastProcessedMessageType, long lsnEventsProcessed) {
         this.lastCommitStoredLsn = lastCommitStoredLsn;
         this.lastEventStoredLsn = lastEventStoredLsn;
         this.lastProcessedMessageType = lastProcessedMessageType;
+        this.lastEventStoredLsnEventsProcessed = lsnEventsProcessed;
 
-        LOGGER.info("Looking for WAL restart position for last commit LSN '{}' and last change LSN '{}'",
-                lastCommitStoredLsn, lastEventStoredLsn);
+        LOGGER.info("Looking for WAL restart position for last commit LSN '{}' and last change LSN '{}', events processed at LSN '{}'",
+                lastCommitStoredLsn, lastEventStoredLsn, lsnEventsProcessed);
     }
 
     public WalPositionLocator() {
         this.lastCommitStoredLsn = null;
         this.lastEventStoredLsn = null;
         this.lastProcessedMessageType = null;
+        this.lastEventStoredLsnEventsProcessed = 0;
 
         LOGGER.info("WAL position will not be searched");
     }
@@ -81,6 +90,29 @@ public class WalPositionLocator {
             // Event that immediately follows the last event seen
             // We can resume streaming from it
             if (currentLsn.equals(lastEventStoredLsn)) {
+                // Multiple events can share the same LSN (e.g. COPY or batched inserts).
+                // Count events at this LSN to find the precise resume point.
+                currentLsnEventCount++;
+
+                // Same-LSN skip logic only applies when multiple DML events share the same LSN
+                // (e.g. COPY or batched inserts). When lsnEventsProcessed is 1, the existing
+                // "find next different LSN" logic handles restart correctly.
+                if (lastEventStoredLsnEventsProcessed > 1 && currentLsnEventCount <= lastEventStoredLsnEventsProcessed) {
+                    LOGGER.trace("At LSN '{}', event count {} <= processed count {}, continuing search",
+                            currentLsn, currentLsnEventCount, lastEventStoredLsnEventsProcessed);
+                    return Optional.empty();
+                }
+
+                // We've passed all processed events at this LSN and there are more events remaining.
+                // Resume from this LSN, skipping the already-processed events during the replay phase.
+                if (lastEventStoredLsnEventsProcessed > 1) {
+                    startStreamingLsn = lastEventStoredLsn;
+                    startStreamingEventsToSkip = lastEventStoredLsnEventsProcessed;
+                    LOGGER.info("Will restart from LSN '{}' skipping first {} already-processed events",
+                            startStreamingLsn, startStreamingEventsToSkip);
+                    return Optional.of(startStreamingLsn);
+                }
+
                 // BEGIN and first message after change have the same LSN
                 if (txStartLsn != null
                         && (lastProcessedMessageType == null || lastProcessedMessageType == Operation.BEGIN || lastProcessedMessageType == Operation.COMMIT)) {
@@ -99,6 +131,15 @@ public class WalPositionLocator {
         }
         if (currentLsn.equals(lastEventStoredLsn)) {
             storeLsnAfterLastEventStoredLsn = true;
+            // Start counting events at this LSN
+            currentLsnEventCount = 1;
+
+            // If we have a counter and this is not the last event at this LSN, stay in searching mode
+            if (lastEventStoredLsnEventsProcessed > 1) {
+                LOGGER.trace("At LSN '{}', starting same-LSN event count, processed count is {}",
+                        currentLsn, lastEventStoredLsnEventsProcessed);
+                return Optional.empty();
+            }
         }
 
         if (lastCommitStoredLsn == null) {
@@ -169,6 +210,11 @@ public class WalPositionLocator {
             return false;
         }
         if (startStreamingLsn == null || startStreamingLsn.equals(lsn)) {
+            if (startStreamingEventsToSkip > 0) {
+                startStreamingEventsToSkip--;
+                LOGGER.debug("Message with LSN '{}' skipped, {} events remaining to skip", lsn, startStreamingEventsToSkip);
+                return true;
+            }
             LOGGER.info("Message with LSN '{}' arrived, switching off the filtering", lsn);
             passMessages = true;
             lsnSeen = new HashSet<>(); // Empty the Map as it might be large and is no longer needed
@@ -209,9 +255,11 @@ public class WalPositionLocator {
     @Override
     public String toString() {
         return "WalPositionLocator [lastCommitStoredLsn=" + lastCommitStoredLsn + ", lastEventStoredLsn="
-                + lastEventStoredLsn + ", lastProcessedMessageType=" + lastProcessedMessageType + ", txStartLsn="
+                + lastEventStoredLsn + ", lastProcessedMessageType=" + lastProcessedMessageType
+                + ", lastEventStoredLsnEventsProcessed=" + lastEventStoredLsnEventsProcessed + ", txStartLsn="
                 + txStartLsn + ", lsnAfterLastEventStoredLsn=" + lsnAfterLastEventStoredLsn + ", firstLsnReceived="
                 + firstLsnReceived + ", passMessages=" + passMessages + ", startStreamingLsn=" + startStreamingLsn
-                + ", storeLsnAfterLastEventStoredLsn=" + storeLsnAfterLastEventStoredLsn + "]";
+                + ", storeLsnAfterLastEventStoredLsn=" + storeLsnAfterLastEventStoredLsn + ", startStreamingEventsToSkip="
+                + startStreamingEventsToSkip + "]";
     }
 }
