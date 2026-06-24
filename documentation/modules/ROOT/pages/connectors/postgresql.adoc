@@ -2763,7 +2763,7 @@ You cannot configure logical replication on replica servers in the cluster.
 Consequently, the {prodname} PostgreSQL connector can connect and communicate only with the primary server.
 If the primary server fails, the connector stops.
 To recover from a failure, you must repair the cluster and then either promote the original primary server to `primary`, or promote a different PostgreSQL server to `primary`.
-For more information, see xref:postgresql-cluster-failures-capturing-from-new-pg15-primary[Capturing data from a new primary after a failure].
+For more information, see xref:postgresql-cluster-failures-capturing-from-new-pg16-primary[Capturing data from a new primary after a failure].
 
 // Type: concept
 [id="postgresql-supported-topologies-pg16"]
@@ -4839,28 +4839,40 @@ endif::product[]
 
 // Type: procedure
 [id="postgresql-cluster-failures-recovering-from-failures-pg17-cluster"]
-==== Recovering from failures in a PostgreSQL 17 cluster
+==== Recovering from primary server failures in a PostgreSQL 17 cluster with failover replication slots
 
 Environments that run PostgreSQL 17 or later support the use of failover replication slots.
-If a failure occurs in a PostgreSQL 17 or later cluster, and a standby is configured with a failover replication slot, complete the following steps to enable {prodname} to resume capture:
+If a primary server failure occurs in a PostgreSQL 17 or later cluster, and a standby is configured with a failover replication slot, complete the following steps to enable {prodname} to resume capture.
+For information about configuring a failover replication slot, see xref:enabling-postgresql-failover-slots[Enable failover slots for the PostgreSQL connector].
 
-. Pause {prodname} until you can verify that you have an intact replication slot that has not lost data.
+[WARNING]
+====
+Do not drop or re-create the failover replication slot.
+The slot preserves the position that {prodname} uses to resume streaming after failover.
+====
 
-. Re-create the {prodname} replication slot before applications begin to write to the *new* primary.
-Although the connector can normally create a missing slot automatically after it starts, to prevent the connector from missing change events after failover recovery, you must re-create a missing slot manually before clients resume writing to the database.
+. Pause Debezium until you can verify that you have an intact replication slot that has not lost data.
+For information about verifying whether a replication slot is ready for failover, see link:https://www.postgresql.org/docs/current/logical-replication-failover.html[PostgreSQL documentation].
+. Update the values of properties in the connector configuration to reflect the details of the new primary server if necessary.
+For example, verify that the configuration includes the correct values for the following properties:
 
-. Restart the connector.
+* xref:postgresql-property-database-hostname[`database.hostname`]
+* xref:postgresql-property-database-port[`database.port`]
+* xref:postgresql-property-database-dbname[`database.dbname`]
+* xref:postgresql-property-database-user[`database.user`]
+* xref:postgresql-property-database-password[`database.password`]
 
-. Verify that {prodname} can read the LSN from the replication slot for any change that occurred before the original primary failed.
- +
-For example, recover a backup of the failed primary from the point immediately before failure, and identify the last position that is recorded in the slot.
-Although retrieving backup data can be administratively difficult, inspecting the backup provides a mechanism for reliably determining whether {prodname} has consumed all changes.
+. Promote the standby PostgreSQL node to primary.
+. Resume the connector.
+
+You might also need to restore redundancy, for example, by recovering the original primary server and adding it back to the cluster as a new standby.
+
 
 // Type: procedure
-[id="postgresql-cluster-failures-capturing-from-new-pg15-primary"]
-==== Capturing data from a new primary server after a failure in a PostgreSQL 15 or earlier cluster
+[id="postgresql-cluster-failures-capturing-from-new-pg16-primary"]
+==== Capturing data from a new primary server after a failure in a PostgreSQL 16 or earlier cluster, or in a PostgreSQL 17 or later cluster that does not use failover replication slots
 
-Following the failure of the primary server in a PostgreSQL 15 or earlier cluster, you might decide to configure {prodname} to capture data from one of the former replica servers rather than from the original primary server.
+Following the failure of the primary server in a PostgreSQL 16 or earlier cluster, or in a PostgreSQL 17 or later cluster that does not use failover replication slots, you might decide to configure {prodname} to capture data from one of the former replica servers rather than from the original primary server.
 To enable {prodname} to capture data from a former replica server, complete the following procedure.
 
 .Procedure
