@@ -86,7 +86,8 @@ node('Slave') {
                     // Execute a dependency installation script if provided by the repository
                     sh "if [ -f install-artifacts.sh ]; then ./install-artifacts.sh; fi"
 
-                    sh "MAVEN_OPTS=\"-Xmx4096m -Xms512m\" mvn clean deploy -s $env.HOME/.m2/settings-snapshots.xml -DdeployAtEnd=true -Dpublish.skip=false -DskipITs -DskipTests -Passembly,docs -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 -Dmaven.wagon.rto=20000 -Dmaven.wagon.http.retryHandler.count=1 -Dmaven.wagon.http.serviceUnavailableRetryStrategy.retryInterval=5000 -Dschema.generator.output.dir=${DESCRIPTORS_OUTPUT_DIR}"
+                    def profile = (id == 'jbang-catalog') ? '' : '-Passembly,docs'
+                    sh "MAVEN_OPTS=\"-Xmx4096m -Xms512m\" mvn clean deploy -s $env.HOME/.m2/settings-snapshots.xml -DdeployAtEnd=true -Dpublish.skip=false -DskipITs -DskipTests $profile -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 -Dmaven.wagon.rto=20000 -Dmaven.wagon.http.retryHandler.count=1 -Dmaven.wagon.http.serviceUnavailableRetryStrategy.retryInterval=5000 -Dschema.generator.output.dir=${DESCRIPTORS_OUTPUT_DIR}"
                 }
             }
         }
