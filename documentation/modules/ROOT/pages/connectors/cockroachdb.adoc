@@ -992,9 +992,6 @@ include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[levelo
 
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
 
-// Type: reference
-// ModuleID: descriptions-of-debezium-cockroachdb-connector-configuration-properties
-// Title: Description of {prodname} CockroachDB connector configuration properties
 [[cockroachdb-connector-properties]]
 === Connector configuration properties
 
@@ -1142,7 +1139,7 @@ The following properties configure the CockroachDB changefeed behavior.
 |[[cockroachdb-property-resolved-interval]]<<cockroachdb-property-resolved-interval, `+cockroachdb.changefeed.resolved.interval+`>>
 |`10s`
 |The interval for resolved timestamp messages.
-Format: `10s`, `1m`, etc.
+Format: `10s`, `1m`, and so on.
 Resolved timestamps are used for offset tracking.
 
 |[[cockroachdb-property-include-updated]]<<cockroachdb-property-include-updated, `+cockroachdb.changefeed.include.updated+`>>
@@ -1156,12 +1153,12 @@ When enabled, UPDATE events include the previous row state in the `before` field
 
 |[[cockroachdb-property-enriched-properties]]<<cockroachdb-property-enriched-properties, `+cockroachdb.changefeed.enriched.properties+`>>
 |`source`
-|Comma-separated enriched envelope properties, passed through verbatim to the CockroachDB `CREATE CHANGEFEED` statement.
+|Comma-separated list of enriched envelope properties, passed through verbatim to the CockroachDB `CREATE CHANGEFEED` statement.
 The connector always uses the enriched envelope, so this applies to every changefeed it creates.
 CockroachDB owns the set of valid values, currently `source` and `schema`, and validates them when the changefeed is created.
 The connector derives the schema of each event from the table metadata that it discovers over JDBC, and it identifies each event's table from the topic on which the event arrives.
 The connector does not read the `schema` block, which duplicates information that it already has; `schema` is accepted and passed through for other consumers of the intermediate topics, but it is not used by the connector.
-The default is `source` because that block identifies the originating database, schema, table, and commit timestamp.
+The default value is `source` because that block identifies the originating database, schema, table, and commit timestamp.
 This information is useful when you inspect the intermediate topics or when other tools also consume them.
 
 |[[cockroachdb-property-cursor]]<<cockroachdb-property-cursor, `+cockroachdb.changefeed.cursor+`>>
@@ -1197,7 +1194,8 @@ The default of `0` places all configured tables in one changefeed.
 Set the value to a positive number to instruct the connector to split captured tables into multiple changefeeds.
 The specified value sets the maximum number of tables in each resulting changefeed.
 Split captured tables into multiple changefeeds if CockroachDB returns a warning about the high number of tables that a changefeed watches.
-Smaller values reduce coupling but create more changefeed jobs, so balance this against CockroachDB's recommended limit on the number of changefeed jobs per cluster.
+Smaller values reduce coupling but create more changefeed jobs.
+Specify a value that optimizes performance while honoring CockroachDB recommendations for limiting the number of changefeed jobs per cluster.
 
 |[[cockroachdb-property-sink-options]]<<cockroachdb-property-sink-options, `+cockroachdb.changefeed.sink.options+`>>
 |No default value
@@ -1337,9 +1335,6 @@ For more information, see xref:cockroachdb-heartbeats[Heartbeats] .
 
 |===
 
-// Type: assembly
-// ModuleID: how-debezium-cockroachdb-connectors-handle-faults-and-problems
-// Title: How {prodname} CockroachDB connectors handle faults and problems
 [[cockroachdb-when-things-go-wrong]]
 == Behavior when things go wrong
 
@@ -1385,7 +1380,7 @@ There is a short delay in processing while the connector tasks are stopped grace
 [id="cockroachdb-kafka-connect-process-crashes"]
 === Kafka Connect process crashes
 
-If the Kafka Connector process stops unexpectedly, any connector tasks it was running terminate without recording their most recently processed offsets.
+If the Kafka Connector process stops unexpectedly, any connector tasks it was running terminates without recording the most recently processed offsets.
 When Kafka Connect is being run in distributed mode, Kafka Connect restarts those connector tasks on other processes.
 However, CockroachDB connectors resume from the last offset that was _recorded_ by the earlier processes.
 This means that the new replacement tasks might generate some of the same change events that were processed just prior to the crash.
@@ -1461,14 +1456,11 @@ curl -X PUT -H "Content-Type: application/json" \
     http://localhost:8083/admin/loggers/io.debezium.connector.cockroachdb
 ----
 
-// Type: assembly
-// ModuleID: debezium-cockroachdb-limitations
-// Title: Current Limitations
 [[cockroachdb-limitations]]
 == Limitations
 
-* **Kafka sink only**: The connector currently only supports Kafka as the intermediate changefeed sink.
+Kafka sink only:: The connector currently only supports Kafka as the intermediate changefeed sink.
 Support for webhook, Pub/Sub, and cloud storage sinks is planned (see link:https://github.com/debezium/dbz/issues/1632[debezium/dbz#1632]).
 
-* **Before state in updates**: CockroachDB changefeeds do not include the previous row state by default.
+Before state in updates:: By default, CockroachDB changefeeds do not include the previous row state.
 To include the `before` field in update events, set `cockroachdb.changefeed.include.diff=true` to enable the `diff` changefeed option.
