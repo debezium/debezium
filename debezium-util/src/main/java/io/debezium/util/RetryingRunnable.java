@@ -5,6 +5,8 @@
  */
 package io.debezium.util;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Function;
 
 import org.slf4j.Logger;
@@ -17,6 +19,9 @@ import io.debezium.function.ThrowingRunnable;
  * The action is re-tried {@code retries} number of times.
  * The delay between retries is defined by {@link DelayStrategy}, which needs to be provided by the implementing class.
  * Optionally, an auto-heal action can be provided, which is executed before each retry.
+ * Optionally, a list of retriable exception types can be provided: if the list is empty, the action is retried for
+ * all exceptions, otherwise it is retried only for exceptions which are instances of one of the supplied types
+ * (i.e. the supplied type or any of its descendants). A non-retriable exception is propagated immediately.
  * Inspired by: io.debezium.embedded.async.RetryingCallable.
  */
 public class RetryingRunnable<E extends Exception> {
@@ -27,6 +32,7 @@ public class RetryingRunnable<E extends Exception> {
     private final ThrowingRunnable<E> doRun;
     private final ThrowingRunnable<E> doAutoHeal;
     private final DelayStrategy delayStrategy;
+    private final List<Class<? extends Exception>> retriableExceptions;
 
     // package-private / private: construction goes through the builder
     private RetryingRunnable(Builder<E> b) {
@@ -34,6 +40,7 @@ public class RetryingRunnable<E extends Exception> {
         this.doRun = b.doRun;
         this.doAutoHeal = b.doAutoHeal;
         this.delayStrategy = b.delayStrategy;
+        this.retriableExceptions = b.retriableExceptions;
     }
 
     public static <E extends Exception> Builder<E> builder() {
@@ -66,6 +73,10 @@ public class RetryingRunnable<E extends Exception> {
             }
             catch (Exception ex) {
                 // This must be E or a RuntimeException
+                if (!isRetriable(ex)) {
+                    // Not in the retriable list: propagate immediately without auto heal or delay.
+                    throwAsEOrRuntime(ex);
+                }
                 attempts--;
                 String retriesExplained = retries == -1 ? "infinity" : String.valueOf(retries);
                 LOGGER.info("Runnable failed with exception, will try and auto heal; attempt #{} out of {}",
@@ -96,6 +107,36 @@ public class RetryingRunnable<E extends Exception> {
         doRun.run();
     }
 
+    /**
+     * Returns {@code true} if the given exception should be retried. When no retriable exception types were
+     * configured (empty list), every exception is retriable. Otherwise the exception is retriable only if it is
+     * an instance of one of the configured types (or a descendant thereof).
+     */
+    private boolean isRetriable(Exception ex) {
+        if (retriableExceptions.isEmpty()) {
+            return true;
+        }
+        for (Class<? extends Exception> retriable : retriableExceptions) {
+            if (retriable.isInstance(ex)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Re-throws the given exception. Inside {@link #run()} a caught {@link Exception} must be either {@code E} or a
+     * {@link RuntimeException}, so this cast is safe; it lets us propagate a non-retriable exception while keeping
+     * the checked {@code throws E} contract.
+     */
+    @SuppressWarnings("unchecked")
+    private void throwAsEOrRuntime(Exception ex) throws E {
+        if (ex instanceof RuntimeException) {
+            throw (RuntimeException) ex;
+        }
+        throw (E) ex;
+    }
+
     // ---- Builder ----
     public static final class Builder<E extends Exception> {
         private int retries = 0;
@@ -103,6 +144,7 @@ public class RetryingRunnable<E extends Exception> {
         private ThrowingRunnable<E> doAutoHeal = () -> {
         }; // default: no-op heal
         private DelayStrategy delayStrategy = DelayStrategy.none(); // default: no delay
+        private List<Class<? extends Exception>> retriableExceptions = new ArrayList<>(); // default: retry all
 
         private Builder() {
         }
@@ -127,11 +169,36 @@ public class RetryingRunnable<E extends Exception> {
             return this;
         }
 
+        /**
+         * Sets the list of retriable exception types. If empty (the default), all exceptions are retried;
+         * otherwise only exceptions assignable to one of the supplied types are retried. A {@code null} argument
+         * is treated as an empty list (retry all).
+         */
+        public Builder<E> retriableExceptions(List<Class<? extends Exception>> retriableExceptions) {
+            this.retriableExceptions = (retriableExceptions == null)
+                    ? new ArrayList<>()
+                    : new ArrayList<>(retriableExceptions);
+            return this;
+        }
+
+        @SafeVarargs
+        public final Builder<E> retriableExceptions(Class<? extends Exception>... retriableExceptions) {
+            this.retriableExceptions = new ArrayList<>();
+            if (retriableExceptions != null) {
+                for (Class<? extends Exception> type : retriableExceptions) {
+                    if (type != null) {
+                        this.retriableExceptions.add(type);
+                    }
+                }
+            }
+            return this;
+        }
+
         public RetryingRunnable<E> build() {
             if (doRun == null) {
                 throw new IllegalStateException("doRun must be provided");
             }
-            // delayStrategy / doAutoHeal have sensible defaults above
+            // delayStrategy / doAutoHeal / retriableExceptions have sensible defaults above
             return new RetryingRunnable<>(this);
         }
     }
