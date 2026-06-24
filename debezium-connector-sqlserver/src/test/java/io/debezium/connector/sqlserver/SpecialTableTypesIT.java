@@ -93,6 +93,7 @@ public class SpecialTableTypesIT extends AbstractAsyncEngineConnectorTest {
         TestHelper.enableTableCdc(connection, "normal_table");
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
+        TestHelper.waitForStreamingStarted();
 
         final var actualRecords = consumeRecordsByTopic(1, false);
         assertEquals(1, actualRecords.recordsForTopic("server1.testDB1.dbo.temporal_table").size());
