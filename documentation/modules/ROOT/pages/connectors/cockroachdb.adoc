@@ -1,4 +1,3 @@
-// Category: debezium-using
 
 [id="debezium-connector-for-cockroachdb"]
 = {prodname} connector for CockroachDB
@@ -15,7 +14,7 @@ toc::[]
 
 The {prodname} CockroachDB connector captures row-level changes from a link:https://www.cockroachlabs.com/docs/stable/changefeed-messages[CockroachDB enriched changefeed] and streams them into Kafka topics.
 
-CockroachDB link:https://www.cockroachlabs.com/docs/stable/change-data-capture-overview[changefeeds] detect  data changes in the database -- inserts, updates, deletes -- in near-real-time.
+CockroachDB link:https://www.cockroachlabs.com/docs/stable/change-data-capture-overview[changefeeds] detects data changes in the database -- inserts, updates, and deletes -- in near-real-time.
 The connector creates a link:https://www.cockroachlabs.com/docs/stable/create-changefeed[changefeed] that publishes events to an intermediate Kafka cluster, then consumes those events, transforms them into the standard {prodname} envelope format, and produces them to the output Kafka topics that downstream consumers subscribe to.
 
 [NOTE]
@@ -23,9 +22,6 @@ The connector creates a link:https://www.cockroachlabs.com/docs/stable/create-ch
 The CockroachDB connector is an incubating connector.
 An incubating connector is one that has been released for preview purposes and is subject to changes that may not always be backward compatible.
 ====
-
-// Type: concept
-// Title: Overview of {prodname} CockroachDB connector
 
 [[cockroachdb-overview]]
 == Overview
@@ -41,16 +37,10 @@ The connector is tolerant of failures.
 As the connector reads changes and produces events, it records the last resolved timestamp it processes.
 If the connector stops for any reason (including communication failures, network problems, or crashes), after the connector restarts, it resumes streaming from the last record that it processed.
 
-// Type: assembly
-// ModuleID: how-debezium-cockroachdb-connectors-work
-
 [[how-the-cockroachdb-connector-works]]
 == How the connector works
 
 To optimally configure and run a {prodname} CockroachDB connector, it is helpful to understand how the connector performs snapshots, streams change events, determines Kafka topic names, and uses metadata.
-
-// Type: concept
-// ModuleID: cockroachdb-connector-architecture
 
 [[cockroachdb-architecture]]
 === Architecture
@@ -63,13 +53,11 @@ The enriched format includes both schema metadata and the full before and after 
 
 2. **Intermediate Kafka to {prodname} to Output Kafka**: The connector subscribes to all per-table Kafka topics in a single KafkaConsumer; routes each event to the correct table based on the topic name; transforms the enriched changefeed events into the standard {prodname} envelope format (with `before`, `after`, `source`, and `op` fields); and produces them to the final output Kafka topics.
 
-This architecture allows the connector to leverage CockroachDB's native, highly-available changefeed infrastructure for capture reliability, while providing the standard {prodname} event format that downstream consumers expect.
-By default the connector consolidates all configured tables into a single changefeed, which keeps it to one changefeed job and helps stay within CockroachDB's link:https://www.cockroachlabs.com/docs/stable/create-and-configure-changefeeds#recommendations[recommended limit] on the number of changefeeds per cluster (approximately 80 at the time of writing).
-CockroachDB also link:https://www.cockroachlabs.com/docs/stable/changefeed-best-practices[advises against] watching very many tables with a single changefeed, because their performance becomes coupled.
-For large table counts, set xref:cockroachdb-property-max-tables-per-changefeed[`cockroachdb.changefeed.max.tables.per.changefeed`] to split the tables across several changefeeds, or run multiple connector instances that each capture a related subset of the tables.
-
-// Type: concept
-// ModuleID: cockroachdb-snapshots
+By using this architecture the connector can leverage the native, highly-available changefeed infrastructure of CockroachDB to reliably capture data and provide it to downstream consumers in the standard {prodname} event format.
+By default, the connector consolidates all configured tables into a single changefeed.
+By consolidating data in a single changefeed job, the connector conforms to the link:https://www.cockroachlabs.com/docs/stable/create-and-configure-changefeeds#recommendations[recommended limit] on the number of changefeeds per CockroachDB cluster (approximately 80 at the time of writing).
+To improve throughput and prevent performance coupling, CockroachDB link:https://www.cockroachlabs.com/docs/stable/changefeed-best-practices[best practices] advise against using a single changefeed to monitor a large number of tables.
+In environments with large table counts, consider setting xref:cockroachdb-property-max-tables-per-changefeed[`cockroachdb.changefeed.max.tables.per.changefeed`] to split the tables across several changefeeds, or running multiple connector instances so that each connector captures a related subset of the tables.
 
 [[cockroachdb-snapshots]]
 === Snapshots
@@ -77,7 +65,7 @@ For large table counts, set xref:cockroachdb-property-max-tables-per-changefeed[
 CockroachDB changefeeds natively support an link:https://www.cockroachlabs.com/docs/stable/create-changefeed#initial-scan[`initial_scan`] option that backfills all existing rows before streaming ongoing changes.
 The {prodname} CockroachDB connector maps its `snapshot.mode` configuration to the CockroachDB `initial_scan` changefeed option, so the connector does not require a separate JDBC-based snapshot phase.
 
-During the initial scan phase, captured events are marked `op=r` (read) to distinguish them from ongoing change events.
+During the initial scan phase, captured events are marked `op=r` to designate a read operation, which distinguishes snapshot events from ongoing change events.
 After the initial scan completes and the changefeed transitions to streaming, events are marked with the appropriate operation type (`c` for create, `u` for update, `d` for delete).
 
 The following table shows how each `snapshot.mode` maps to the CockroachDB `initial_scan` option:
@@ -113,9 +101,6 @@ Only ongoing changes after the changefeed is created are captured.
 |Same as `initial`, but if the stored offset is no longer valid, the connector performs a new initial snapshot.
 |===
 
-// Type: concept
-// ModuleID: how-debezium-cockroachdb-connectors-stream-change-event-records
-
 [[cockroachdb-streaming-changes]]
 === Streaming changes
 
@@ -138,9 +123,6 @@ For the CockroachDB connector, the last resolved timestamp is the offset.
 When Kafka Connect gracefully shuts down, it stops the connectors, flushes all event records to Kafka, and records the last offset received from each connector.
 When Kafka Connect restarts, it reads the last recorded offset for each connector, and starts each connector at its last recorded offset.
 
-// Type: concept
-// ModuleID: cockroachdb-reusing-an-existing-changefeed
-
 [[cockroachdb-reusing-an-existing-changefeed]]
 === Reusing an existing changefeed
 
@@ -159,14 +141,18 @@ For the connector to consume the existing changefeed correctly, the changefeed m
 To produce that topic layout, and to emit events in the structure that the connector expects, create the changefeed with the following options:
 
 `full_table_name`:: Required so that CockroachDB names topics in `_database_._schema_._table_` form.
-`topic_prefix='_prefix_.'`:: Required, and must equal the connector's topic prefix described in the preceding list. Note the trailing dot.
+`topic_prefix='_prefix_.'`:: Required, and must equal the connector's topic prefix described in the preceding list. 
+The specified prefix must include a trailing dot (`.`).
 `envelope='enriched'`:: Required. The connector consumes the enriched envelope.
-`enriched_properties`:: Optional. The connector reads the base enriched fields (`op`, `ts_ns`, `after`, and `before` when `diff` is set), so it does not require any enriched property to consume the feed. Including `source` (the connector default) is recommended so that the intermediate topics carry origin and commit-time metadata.
+`enriched_properties`:: Optional. The connector reads the base enriched fields (`op`, `ts_ns`, `after`, and `before` when `diff` is set), so it does not require any enriched property to consume the feed. 
+The default value,  `source` ensures that intermediate topics include origin and commit-time metadata.
 `format='json'`:: Required. The connector consumes JSON-encoded changefeed messages.
 `diff`, `updated`, `resolved`:: Set these to match the connector configuration so that before-images, update markers, and resolved timestamps are available.
 
 If any of these conditions is not met, the connector does not recognize the existing changefeed and creates its own.
-A changefeed created with a different `topic_prefix` or without `full_table_name` is not recognized as a match, and the connector creates its own. If a running changefeed does match the connector's topic prefix and tables but was created with an envelope other than `enriched`, the connector cannot consume it: it fails to start with an error asking you to recreate that changefeed with `envelope='enriched'` or to use a different topic prefix.
+A changefeed created with a different `topic_prefix` or without `full_table_name` is not recognized as a match, and the connector creates its own. 
+If a running changefeed matches the connector's topic prefix and tables, but it was created with an envelope other than `enriched`, the connector cannot consume it.
+The connector then fails to start and returns an error stating that you must recreate that changefeed with `envelope='enriched'` or else use a different topic prefix.
 
 [NOTE]
 ====
@@ -174,8 +160,6 @@ For most deployments, the simplest approach is to let the connector create and m
 Reuse an existing changefeed only when you have a specific reason to do so, such as preserving an existing cursor position or a custom partitioning scheme.
 ====
 
-// Type: concept
-// ModuleID: cockroachdb-heartbeats
 
 [[cockroachdb-heartbeats]]
 === Heartbeats
@@ -186,14 +170,11 @@ When the connector receives a resolved timestamp, it performs the following oper
 1. Updates the stored offset cursor to the resolved timestamp value.
 2. Dispatches a {prodname} heartbeat event to advance Kafka Connect offsets.
 
-This ensures that offsets advance even during idle periods when no data changes occur.
+By emitting heartbeat messages the connector helps to ensure that offsets advance even during idle periods in which no data changes occur.
 When offsets fail to advance, monitoring systems might report that the connector is unresponsive, which can cause CockroachDB protected timestamps to accumulate, preventing garbage collection.
 
 To enable {prodname} heartbeat records on the `__debezium-heartbeat.<topic.prefix>` Kafka topic, set `heartbeat.interval.ms` to a value greater than `0` (in milliseconds).
 The `cockroachdb.changefeed.resolved.interval` property controls how frequently CockroachDB emits resolved timestamps (default: `10s`).
-
-// Type: concept
-// ModuleID: cockroachdb-schema-evolution
 
 [[cockroachdb-schema-evolution]]
 === Schema evolution
@@ -216,9 +197,6 @@ It does not maintain a database history and does not emit DDL change events to a
 The schema that the connector uses comes from its own JDBC discovery of the table, not from the `schema` block in the changefeed message, so schema changes are handled even when xref:cockroachdb-property-enriched-properties[`cockroachdb.changefeed.enriched.properties`] is set to `source` alone.
 ====
 
-// Type: concept
-// ModuleID: cockroachdb-incremental-snapshots
-
 [[cockroachdb-incremental-snapshots]]
 === Incremental snapshots
 
@@ -227,7 +205,7 @@ An incremental snapshot re-reads existing rows from one or more tables and emits
 
 You can use incremental snapshots to perform the following tasks:
 
-* Re-populate a downstream consumer that lost data.
+* Repopulate a downstream consumer that lost data.
 * Backfill a newly added sink or topic.
 * Verify source-target consistency by re-snapshotting and comparing.
 
@@ -277,17 +255,14 @@ INSERT INTO debezium_signal (id, type, data) VALUES
      '{"data-collections": ["mydb.public.my_table"]}');
 ----
 
-The connector re-reads all rows from the specified table(s) and emits them as `op=r` events.
+The connector rereads all rows from the specified tables and emits them as `op=r` events.
 
 For more information about signaling, see {link-prefix}:{link-signalling}#sending-signals-to-a-debezium-connector[Sending signals to a {prodname} connector].
-
-// Type: concept
-// ModuleID: default-names-of-kafka-topics-that-receive-debezium-cockroachdb-change-event-records
 
 [[cockroachdb-topic-names]]
 === Topic names
 
-The CockroachDB connector all data change events for a table (insert, update, and delete) to a Kafka topic that is dedicated to that table.
+The CockroachDB connector emits all data change events for a table (insert, update, and delete) to a Kafka topic that is dedicated to that table.
 By default, the Kafka topic name is _topicPrefix_._schemaName_._tableName_ where:
 
 * _topicPrefix_ is the topic prefix as specified by the xref:cockroachdb-property-topic-prefix[`topic.prefix`] connector configuration property.
@@ -302,9 +277,6 @@ The connector would stream records to the following two Kafka topics:
 
 The connector applies naming conventions that are similar to those used by other {prodname} connectors, and it supports the standard topic naming strategies.
 
-// Type: assembly
-// ModuleID: descriptions-of-debezium-cockroachdb-connector-data-change-events
-
 [[cockroachdb-events]]
 == Data change events
 
@@ -315,11 +287,11 @@ The structure of the key and the value depends on the table that was changed.
 
 {prodname} and Kafka Connect are designed around _continuous streams of event messages_.
 However, the structure of these events may change over time, which can be difficult for consumers to handle.
-To help consumers adapt to structural volatility, the connector emits self-contained events; that is, each event message contains either the schema for its content.
-Or in environments  that use a schema registry, each message contains a schema ID that a consumer can use to obtain the schema from the registry.
+To help consumers adapt to structural volatility, the connector emits self-contained events.
+That is, each event message either contains the schema for its content , or in environments  that use a schema registry, each message contains a schema ID that a consumer can use to obtain the schema from the registry.
 
 
-The following skeleton JSON documents show the basic structure for the key and value documents.
+The following skeleton JSON documents show the basic structure of the key and value fields in an event message.
 However, the exact representation of the key and value documents depends on how you configure the Kafka Connect converter that you use in your application.
 A `schema` field is present a change event key or change event value only if you configure the converter to produce it.
 Likewise, the event key and event payload are present only if you configure a converter to produce it.
@@ -380,9 +352,6 @@ It has the structure described by the previous `schema` field and it contains th
 
 The default xref: xref:cockroachdb-topic-names[topic naming behavior] results in the connector streaming change event records to a topic whose name matches the name of the table that the event describes.
 
-// Type: concept
-// ModuleID: about-keys-in-debezium-cockroachdb-change-events
-
 [[cockroachdb-change-events-key]]
 === Change event keys
 
@@ -403,7 +372,7 @@ CREATE TABLE orders (
 ----
 
 .Example change event key
-Based on the preceding definition of the `orders` table, the key structure for every change event for the table is the same key structure. 
+Based on the preceding definition of the `orders` table, every change event for the table uses the same key structure. 
 The following JSON represents this key structure:
 
 [source,json,indent=0]
@@ -426,9 +395,6 @@ The following JSON represents this key structure:
   }
 }
 ----
-
-// Type: concept
-// ModuleID: about-values-in-debezium-cockroachdb-change-events
 
 [[cockroachdb-change-events-value]]
 === Change event values
@@ -521,7 +487,8 @@ The source metadata includes:
 * The schema name
 * The logical cluster name
 * The resolved timestamp (for consistency tracking)
-* The Hybrid Logical Clock (HLC) timestamp (CockroachDB's internal timestamp format)
+* The Hybrid Logical Clock (HLC) timestamp. 
+HLC is the internal timestamp format for CockroachDB.
 
 |4
 |`op`
@@ -537,8 +504,8 @@ Valid values are:
 |5
 |`ts_ms`, `ts_us`, `ts_ns`
 |Optional field that displays the time at which the connector processed the event.
-The time is based on the system clock in the JVM running the Kafka Connect task.  +
- +
+The time is based on the system clock in the JVM running the Kafka Connect task. 
+ 
 In the `source` object, `ts_ms` indicates the time that the change was made in the database.
 By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
 
@@ -548,7 +515,7 @@ By comparing the value for `payload.source.ts_ms` with the value for `payload.ts
 [[cockroachdb-update-events]]
 === _update_ events
 
-The value of a change event for an update in the sample `orders` table has the same schema as a _create_ event for that table.
+The value portion of a an event record for an update event in the sample `orders` table has the same schema as a _create_ event for that table.
 Likewise, the event value's payload has the same structure.
 However, the event value payload contains different values in an _update_ event.
 The following example shows the JSON for the value portion of a change event that the connector generates for an update in the `orders` table:
@@ -628,9 +595,9 @@ To include the `before` state for a row in update events, enable the CockroachDB
 === _delete_ events
 
 The value in a _delete_ change event has the same `schema` portion as _create_ and _update_ events for the same table.
-A delete_ change event record provides a consumer with the information that it needs to process the removal of a row.
+A _delete_ change event record provides a consumer with the information that it needs to process the removal of a row.
 
-The {prodname} CockroachDB connector events are designed to work with link:{link-kafka-docs}#compaction[Kafka log compaction].
+{prodname} CockroachDB connector events are designed to work with link:{link-kafka-docs}#compaction[Kafka log compaction].
 Log compaction enables removal of some older messages as long as at least the most recent message for every key is kept.
 Removing older messages lets Kafka reclaim storage space while ensuring that the topic contains a complete data set and can be used for reloading key-based state.
 
@@ -690,19 +657,15 @@ The `op` field value is `d`, signifying that this row was deleted.
 
 A _delete_ change event record provides a consumer with the information it needs to process the removal of this row.
 
-CockroachDB connector events are designed to work with link:{link-kafka-docs}#compaction[Kafka log compaction].
-Log compaction enables removal of some older messages as long as at least the most recent message for every key is kept.
 
 
 
 [[cockroachdb-tombstone-events]]
-.Tombstone events
+=== Tombstone events
+
 When you delete a row, the _delete_ event value still works with log compaction, because Kafka can remove all earlier messages that have that same key.
 However, for Kafka to remove all messages that have that same key, the message value must be `null`.
 To make this possible, the connector follows a _delete_ event with a special _tombstone_ event that has the same key but a `null` value.
-
-// Type: reference
-// ModuleID: how-debezium-cockroachdb-connectors-map-data-types
 
 [[cockroachdb-data-types]]
 == Data type mappings
@@ -815,13 +778,11 @@ Uses the {prodname} `DoubleVector` logical type.
 === Default values
 
 When a CockroachDB column is created with a `DEFAULT` clause, the connector parses the JDBC-reported default expression into the Java type that matches the column's Kafka Connect schema, and sets it as the schema default for that field.
-CockroachDB annotates default expressions with a CRDB-specific `:::TYPE` suffix (for example, `0:::INT8`, `'PENDING':::STRING`, `'[1.0,2.0,3.0]':::VECTOR`); the connector strips this annotation, unwraps quoted literals, and converts the value to the column's Java type.
+CockroachDB annotates default expressions with a CockroachDB-specific `:::TYPE` suffix (for example, `0:::INT8`, `'PENDING':::STRING`, `'[1.0,2.0,3.0]':::VECTOR`).
+The connector strips this annotation, unwraps quoted literals, and converts the value to the column's Java type.
 
 Function-generated defaults such as `current_timestamp()`, `gen_random_uuid()`, `now()`, and `unique_rowid()` are not evaluated by the connector.
 For these columns, the connector omits the default from the schema so that CockroachDB computes the value at insert time.
-
-// Type: assembly
-// ModuleID: setting-up-cockroachdb-for-debezium
 
 [[setting-up-cockroachdb]]
 == Setting up CockroachDB
@@ -829,7 +790,7 @@ For these columns, the connector omits the default from the schema so that Cockr
 Before you deploy the {prodname} CockroachDB connector, prepare your CockroachDB environment so that the connector can create and read changefeeds.
 At a high level, ensure that the required components and connectivity are in place, enable rangefeeds on the cluster, and grant the database user that the connector uses the privileges that changefeeds require.
 The prerequisites that follow describe what must be available before you begin.
-For the commands that enable rangefeeds and grant the required privileges, see xref:cockroachdb-grant-changefeed-permissions[Granting changefeed permissions].
+For information about enabling rangefeeds and granting the required privileges, see xref:cockroachdb-grant-changefeed-permissions[Granting changefeed permissions].
 
 .Prerequisites
 
@@ -877,8 +838,6 @@ GRANT CHANGEFEED ON ALL TABLES IN DATABASE defaultdb TO myuser;
 +
 Granting `VIEWCLUSTERSETTING` lets the connector verify that `kv.rangefeed.enabled` is set to `true`, which is a prerequisite for changefeeds.
 
-// Type: concept
-// ModuleID: securing-the-changefeed-sink
 [id="cockroachdb-securing-the-changefeed-sink"]
 == Securing the changefeed sink
 
@@ -915,15 +874,12 @@ File-based values overwrite any same-named query parameter that is already prese
 The connector validates each configured file path at startup and fails fast if the file does not exist, is unreadable, or is empty.
 Currently only the Kafka sink consumes these TLS parameters; for other sink types the sink URI passes through unchanged.
 
-// Type: assembly
-// ModuleID: deploying-and-managing-debezium-cockroachdb-connectors
-
 [[cockroachdb-deploying-a-connector]]
 == Deployment
 
 To deploy a {prodname} CockroachDB connector you obtain the connector plug-in files archive, add the JAR files to your Kafka Connect environment, and then edit the `plugin.path` configuration to reference the location of the files.
 
-If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s container images] for Kafka and Kafka Connect.
+If you are working with immutable containers, see link:https://quay.io/organization/debezium[the {prodname} container images] for Kafka and Kafka Connect.
 
 [IMPORTANT]
 ====
@@ -946,8 +902,6 @@ You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and Ope
 5. xref:cockroachdb-example-configuration[Configure the connector] and xref:cockroachdb-adding-connector-configuration[add the configuration] to your Kafka Connect cluster.
 6. Restart the Kafka Connect process so that it picks up the new JAR files.
 
-// Type: concept
-// ModuleID: debezium-cockroachdb-connector-configuration-example
 [[cockroachdb-example-configuration]]
 === Connector configuration example
 
@@ -985,8 +939,6 @@ The following example shows a possible configuration for a CockroachDB connector
 
 For more information about the properties that you can specify in the connector configuration, see the xref:cockroachdb-connector-properties[complete list of CockroachDB connector properties] .
 
-// Type: procedure
-// ModuleID: adding-debezium-cockroachdb-connector-configuration-to-kafka-connect
 [[cockroachdb-adding-connector-configuration]]
 === Adding connector configuration
 
@@ -1019,28 +971,20 @@ curl -i -X POST -H "Accept:application/json" -H "Content-Type:application/json" 
 
 When the connector starts, it connects to the CockroachDB database, creates a changefeed, and starts generating data change events for row-level operations and streaming change event records to Kafka topics.
 
-// Type: assembly
-// ModuleID: monitoring-debezium-cockroachdb-connector-performance
 [[cockroachdb-monitoring]]
 === Monitoring
 
-The {prodname} CockroachDB connector includes built-in support for both the JMX metrics that Kafka and Kafka Connect provide, as well as cockroachdb-streaming-metrics[streaming metrics] that provide insights into connector behavior during the captures and streaming of change event records.
+The {prodname} CockroachDB connector includes built-in support for both the JMX metrics that Kafka and Kafka Connect provide, as well as cockroachdb-streaming-metrics[streaming metrics] that provide insights into connector behavior during the capture and streaming of change event records.
 
 
 
 .Additional resources
 * xref:{link-debezium-monitoring}#monitoring-debezium[Using JMX to expose metrics ({prodname} monitoring documentation)^] .
 
-// Type: concept
-// ModuleID: monitoring-debezium-cockroachdb-connectors-customized-mbean-names
-// Title: Customized names for CockroachDB connector MBean objects
 === Customized MBean names
 
 include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[leveloffset=+1,tags=mbeans-shared]
 
-// Type: reference
-// ModuleID: monitoring-debezium-cockroachdb-connector-record-streaming
-// Title: Monitoring {prodname} CockroachDB connector record streaming
 [[cockroachdb-streaming-metrics]]
 ==== Streaming metrics
 
