@@ -32,7 +32,7 @@ final class TableImpl implements Table {
 
     @PackagePrivate
     TableImpl(TableId id, List<Column> sortedColumns, List<String> pkColumnNames, String defaultCharsetName, String comment, List<Attribute> attributes) {
-        this.id = id;
+        this.id = Interner.intern(id);
         this.columnDefs = Interner.intern(Collections.unmodifiableList(sortedColumns));
         this.pkColumnNames = pkColumnNames == null ? Collections.emptyList() : Interner.intern(Collections.unmodifiableList(pkColumnNames));
         Map<String, Column> defsByLowercaseName = new LinkedHashMap<>();
