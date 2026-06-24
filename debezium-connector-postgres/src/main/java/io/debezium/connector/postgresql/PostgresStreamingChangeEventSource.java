@@ -171,7 +171,8 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                         : this.effectiveOffset.lsn();
                 final Operation lastProcessedMessageType = this.effectiveOffset.lastProcessedMessageType();
                 LOGGER.info("Retrieved latest position from stored offset '{}'", lsn);
-                walPosition = new WalPositionLocator(this.effectiveOffset.lastCommitLsn(), lsn, lastProcessedMessageType);
+                walPosition = new WalPositionLocator(this.effectiveOffset.lastCommitLsn(), lsn, lastProcessedMessageType,
+                        this.effectiveOffset.lsnEventsProcessed());
                 replicationStream.compareAndSet(null, replicationConnection.startStreaming(lsn, walPosition));
             }
             else {
@@ -339,6 +340,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 // Don't skip on BEGIN message as it would flush LSN for the whole transaction
                 // too early
                 if (message.getOperation() == Operation.COMMIT) {
+                    offsetContext.resetLsnEventsProcessed();
                     commitMessage(partition, offsetContext, lsn);
                     dispatcher.dispatchTransactionCommittedEvent(partition, offsetContext, message.getCommitTime());
                 }
@@ -349,6 +351,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 dispatcher.dispatchTransactionStartedEvent(partition, toString(message.getTransactionId()), offsetContext, message.getCommitTime());
             }
             else if (message.getOperation() == Operation.COMMIT) {
+                offsetContext.resetLsnEventsProcessed();
                 commitMessage(partition, offsetContext, lsn);
                 dispatcher.dispatchTransactionCommittedEvent(partition, offsetContext, message.getCommitTime());
             }
@@ -361,6 +364,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
 
             // non-transactional message that will not be followed by a COMMIT message
             if (message.isLastEventForLsn()) {
+                offsetContext.resetLsnEventsProcessed();
                 commitMessage(partition, offsetContext, lsn);
             }
 
@@ -392,6 +396,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 Objects.requireNonNull(tableId);
             }
 
+            offsetContext.incrementLsnEventsProcessed(lsn);
             offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), toLong(message.getTransactionId()),
                     getSlotXmin(),
                     tableId,
@@ -432,7 +437,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 noMessageIterations = 0;
             }
             else {
-                dispatcher.dispatchHeartbeatEventAlsoToIncrementalSnapshot(partition, offsetContext);
+                dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
                 noMessageIterations++;
                 if (noMessageIterations >= THROTTLE_NO_MESSAGE_BEFORE_PAUSE) {
                     noMessageIterations = 0;
