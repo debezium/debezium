@@ -55,11 +55,13 @@ class ${connectorName}StreamingChangeEventSource
 
         while (context.isRunning()) {
             // TODO: poll or watch the data source for new change events.
-            // For each event, determine the operation and read the raw row, then dispatch:
+            // For each event, determine the operation and the changed column values, then dispatch:
             //   Envelope.Operation operation = ...; // CREATE, UPDATE, or DELETE
-            //   dispatcher.dispatchDataChangeEvent(partition, dataCollectionId,
+            //   Object[] oldValues = ...; // before image, or null for an insert
+            //   Object[] newValues = ...; // after image, or null for a delete
+            //   dispatcher.dispatchDataChangeEvent(partition, tableId,
             //       new ${connectorName}ChangeRecordEmitter(
-            //           partition, offsetContext, operation, rawRowData, clock, config));
+            //           partition, offsetContext, operation, oldValues, newValues, clock, config));
             // Then advance offsetContext.setPosition(...) and persist it.
 
             // Remove this placeholder sleep once real polling is implemented.
