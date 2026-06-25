@@ -8,6 +8,7 @@ package ${package};
 import java.util.HashMap;
 import java.util.Map;
 
+import io.debezium.relational.TableId;
 import io.debezium.schema.DataCollectionSchema;
 import io.debezium.schema.DatabaseSchema;
 import io.debezium.schema.SchemaNameAdjuster;
@@ -22,7 +23,7 @@ import io.debezium.schema.SchemaNameAdjuster;
  * schema before dispatching each event.
  */
 public class ${connectorName}DatabaseSchema
-        implements DatabaseSchema<${connectorName}DataCollectionId> {
+        implements DatabaseSchema<TableId> {
 
     private final Map<String, DataCollectionSchema> schemas = new HashMap<>();
     private final ${connectorName}ConnectorConfig config;
@@ -38,12 +39,12 @@ public class ${connectorName}DatabaseSchema
      * Registers (or replaces) the schema for the given collection.
      * Call this whenever the structure of a collection is discovered or changes.
      */
-    public void registerSchema(${connectorName}DataCollectionId id, DataCollectionSchema schema) {
+    public void registerSchema(TableId id, DataCollectionSchema schema) {
         schemas.put(id.identifier(), schema);
     }
 
     @Override
-    public DataCollectionSchema schemaFor(${connectorName}DataCollectionId id) {
+    public DataCollectionSchema schemaFor(TableId id) {
         return schemas.get(id.identifier());
     }
 

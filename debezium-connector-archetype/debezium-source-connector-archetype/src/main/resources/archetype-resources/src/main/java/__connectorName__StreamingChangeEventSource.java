@@ -12,6 +12,7 @@ import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
+import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
 
 /**
@@ -28,14 +29,14 @@ class ${connectorName}StreamingChangeEventSource
     private static final Logger LOGGER = LoggerFactory.getLogger(${connectorName}StreamingChangeEventSource.class);
 
     private final ${connectorName}ConnectorConfig config;
-    private final ${connectorName}DataCollectionId dataCollectionId;
-    private final EventDispatcher<${connectorName}Partition, ${connectorName}DataCollectionId> dispatcher;
+    private final TableId dataCollectionId;
+    private final EventDispatcher<${connectorName}Partition, TableId> dispatcher;
     private final ErrorHandler errorHandler;
     private final Clock clock;
 
     ${connectorName}StreamingChangeEventSource(${connectorName}ConnectorConfig config,
-                                               ${connectorName}DataCollectionId dataCollectionId,
-                                               EventDispatcher<${connectorName}Partition, ${connectorName}DataCollectionId> dispatcher,
+                                               TableId dataCollectionId,
+                                               EventDispatcher<${connectorName}Partition, TableId> dispatcher,
                                                ErrorHandler errorHandler,
                                                Clock clock) {
         this.config = config;
