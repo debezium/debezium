@@ -5,60 +5,58 @@
  */
 package ${package};
 
-import java.util.HashMap;
-import java.util.Map;
+import java.sql.SQLException;
 
+import io.debezium.connector.common.CdcSourceTaskContext;
+import io.debezium.jdbc.JdbcConnection;
+import io.debezium.jdbc.JdbcValueConverters;
+import io.debezium.relational.CustomConverterRegistry;
+import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.TableId;
-import io.debezium.schema.DataCollectionSchema;
-import io.debezium.schema.DatabaseSchema;
-import io.debezium.schema.SchemaNameAdjuster;
+import io.debezium.relational.TableSchemaBuilder;
+import io.debezium.spi.topic.TopicNamingStrategy;
 
 /**
- * Maintains the Kafka Connect schemas (key, value, envelope) for each data collection
- * tracked by the ${connectorName} connector.
+ * Holds the relational schema (tables, columns, and their Kafka Connect schemas) for the
+ * ${connectorName} connector.
  *
- * <p>Call {@link #registerSchema} whenever a collection's structure becomes known
- * (typically in the snapshot or when the source signals a schema change). The
- * {@link io.debezium.pipeline.EventDispatcher} calls {@link #schemaFor} to look up the
- * schema before dispatching each event.
+ * <p>Extends {@link RelationalDatabaseSchema}, the non-historized base: the schema is read
+ * live from the database on startup and is not persisted to a schema history topic. Call
+ * {@link #refresh} to (re)load it from the database.
+ *
+ * <p>The schema uses {@link JdbcValueConverters} to map standard JDBC types to Kafka Connect
+ * types. Replace it with a connector-specific {@code ValueConverterProvider} if your database
+ * has types the default converter does not handle.
  */
-public class ${connectorName}DatabaseSchema
-        implements DatabaseSchema<TableId> {
-
-    private final Map<String, DataCollectionSchema> schemas = new HashMap<>();
-    private final ${connectorName}ConnectorConfig config;
-    private final SchemaNameAdjuster schemaNameAdjuster;
+public class ${connectorName}DatabaseSchema extends RelationalDatabaseSchema {
 
     public ${connectorName}DatabaseSchema(${connectorName}ConnectorConfig config,
-                                          SchemaNameAdjuster schemaNameAdjuster) {
-        this.config = config;
-        this.schemaNameAdjuster = schemaNameAdjuster;
+                                          TopicNamingStrategy<TableId> topicNamingStrategy,
+                                          CdcSourceTaskContext<${connectorName}ConnectorConfig> taskContext) {
+        super(config, topicNamingStrategy,
+                config.getTableFilters().dataCollectionFilter(),
+                config.getColumnFilter(),
+                new TableSchemaBuilder(
+                        new JdbcValueConverters(),
+                        null,
+                        config.schemaNameAdjuster(),
+                        config.getServiceRegistry().tryGetService(CustomConverterRegistry.class),
+                        config.getSourceInfoStructMaker().schema(),
+                        config.getFieldNamer(),
+                        false,
+                        config.getEventConvertingFailureHandlingMode()),
+                false,
+                config.getKeyMapper(),
+                taskContext);
     }
 
     /**
-     * Registers (or replaces) the schema for the given collection.
-     * Call this whenever the structure of a collection is discovered or changes.
+     * Reads the structure of the captured tables from the database and rebuilds their Kafka
+     * Connect schemas. Call this on startup and whenever the source signals a DDL change.
      */
-    public void registerSchema(TableId id, DataCollectionSchema schema) {
-        schemas.put(id.identifier(), schema);
-    }
-
-    @Override
-    public DataCollectionSchema schemaFor(TableId id) {
-        return schemas.get(id.identifier());
-    }
-
-    @Override
-    public boolean tableInformationComplete() {
-        return true;
-    }
-
-    @Override
-    public boolean isHistorized() {
-        return false;
-    }
-
-    @Override
-    public void close() {
+    public void refresh(JdbcConnection connection) throws SQLException {
+        connection.readSchema(tables(), null, null, getTableFilter(), null, true);
+        clearSchemas();
+        tableIds().forEach(this::refreshSchema);
     }
 }
