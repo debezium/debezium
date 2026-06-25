@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.data.EnumSet;
+import io.debezium.data.EnumeratedValues;
 import io.debezium.doc.FixFor;
 
 /**
@@ -27,16 +28,21 @@ class SetTypeTest {
     @FixFor("debezium/dbz#2102")
     @DisplayName("Should render escaped set values")
     void shouldRenderEscapedSetValues() {
-        assertThat(SetType.INSTANCE.getTypeName(EnumSet.schema(Arrays.asList("plain", "a,b", "it's")), false))
-                .isEqualTo("set('plain','a,b','it''s')");
+        final var schema = EnumSet.schema(Arrays.asList("plain", "it's", "back\\slash", "ends\\"));
+
+        assertThat(SetType.INSTANCE.getTypeName(schema, false))
+                .isEqualTo("set('plain','it''s','back\\\\slash','ends\\\\')");
     }
 
     @Test
     @FixFor("debezium/dbz#2102")
     @DisplayName("Should render escaped set values from allowed parameter")
     void shouldRenderEscapedSetValuesFromAllowedParameter() {
-        assertThat(SetType.INSTANCE.getTypeName(EnumSet.schema("plain,a\\,b,it's"), false))
-                .isEqualTo("set('plain','a,b','it''s')");
+        final String allowedValues = EnumeratedValues.toCommaSeparatedString(
+                Arrays.asList("plain", "it's", "back\\slash", "ends\\"));
+
+        assertThat(SetType.INSTANCE.getTypeName(EnumSet.schema(allowedValues), false))
+                .isEqualTo("set('plain','it''s','back\\\\slash','ends\\\\')");
     }
 
     @Test

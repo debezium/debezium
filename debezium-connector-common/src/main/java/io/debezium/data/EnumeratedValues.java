@@ -38,10 +38,12 @@ public final class EnumeratedValues {
         for (int i = 0; i != values.length(); ++i) {
             final char c = values.charAt(i);
             if (escaped) {
-                if (c != ',') {
-                    value.append('\\');
+                if (c == ',' || c == '\\') {
+                    value.append(c);
                 }
-                value.append(c);
+                else {
+                    value.append('\\').append(c);
+                }
                 escaped = false;
             }
             else if (c == '\\') {
@@ -63,6 +65,6 @@ public final class EnumeratedValues {
     }
 
     private static String escape(String value) {
-        return value.replace(",", "\\,");
+        return value.replace("\\", "\\\\").replace(",", "\\,");
     }
 }
