@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test;
 
 import io.debezium.data.geometry.Geography;
 import io.debezium.data.geometry.Geometry;
+
 import mil.nga.wkb.geom.MultiPoint;
 import mil.nga.wkb.io.ByteWriter;
 import mil.nga.wkb.io.WkbGeometryWriter;
