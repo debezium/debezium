@@ -33,6 +33,14 @@
             <scope>provided</scope>
         </dependency>
 
+        <!-- TODO: add your database's JDBC driver so ${connectorName}Connection can reach it, for example:
+        <dependency>
+            <groupId>org.example</groupId>
+            <artifactId>example-jdbc-driver</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+        -->
+
         <!-- Logging (provided by the Connect runtime) -->
         <dependency>
             <groupId>org.slf4j</groupId>
