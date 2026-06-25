@@ -1,4 +1,3 @@
-
 [id="debezium-connector-for-cockroachdb"]
 = {prodname} connector for CockroachDB
 :context: CockroachDB
@@ -104,7 +103,7 @@ Only ongoing changes after the changefeed is created are captured.
 [[cockroachdb-streaming-changes]]
 === Streaming changes
 
-After any initial scan completes, the CockroachDB connector streams changes continuously.
+After an initial scan completes, the CockroachDB connector streams changes continuously.
 When a row-level change occurs in CockroachDB, the changefeed writes a corresponding event to the intermediate Kafka topic.
 The connector consumes these events, transforms them into {prodname} change events, and forwards them to the output Kafka topics.
 
@@ -112,11 +111,11 @@ CockroachDB changefeeds emit link:https://www.cockroachlabs.com/docs/stable/chan
 These messages indicate that all changes up to that timestamp have been emitted.
 The connector uses resolved timestamps for offset tracking, so that on restart it can create a new changefeed with a `cursor` pointing to the last resolved timestamp, ensuring that it does not miss any events.
 
-When the connector receives changes it transforms the events into {prodname} _read_, _create_, _update_, or _delete_ events.
-The connector forwards these change events in records to the Kafka Connect framework, which is running in the same process.
+When the connector receives changes it transforms the events into {prodname} _read_, _create_, _update_, or _delete_ event records.
+The connector forwards these change records to the Kafka Connect framework, which is running in the same process.
 The Kafka Connect process asynchronously writes the change event records in the same order in which they were generated to the appropriate Kafka topic.
 
-Periodically, Kafka Connect records the most recent _offset_ in another Kafka topic.
+Periodically, Kafka Connect writes the most recent _offset_ to another Kafka topic.
 The offset indicates source-specific position information that {prodname} includes with each event.
 For the CockroachDB connector, the last resolved timestamp is the offset.
 
@@ -785,7 +784,7 @@ Uses the {prodname} `DoubleVector` logical type.
 [id="cockroachdb-default-values"]
 === Default values
 
-When a CockroachDB column is created with a `DEFAULT` clause, the connector parses the JDBC-reported default expression into the Java type that matches the column's Kafka Connect schema, and sets it as the schema default for that field.
+When a CockroachDB column specifies a `DEFAULT` clause, the connector parses the JDBC-reported default expression into the Java type that matches the column's Kafka Connect schema, and sets it as the schema default for that field.
 CockroachDB annotates default expressions with a CockroachDB-specific `:::TYPE` suffix (for example, `0:::INT8`, `'PENDING':::STRING`, `'[1.0,2.0,3.0]':::VECTOR`).
 The connector strips this annotation, unwraps quoted literals, and converts the value to the column's Java type.
 
@@ -797,7 +796,6 @@ For these columns, the connector omits the default from the schema so that Cockr
 
 Before you deploy the {prodname} CockroachDB connector, prepare your CockroachDB environment so that the connector can create and read changefeeds.
 At a high level, ensure that the required components and connectivity are in place, enable rangefeeds on the cluster, and grant the database user that the connector uses the privileges that changefeeds require.
-The prerequisites that follow describe what must be available before you begin.
 For information about enabling rangefeeds and granting the required privileges, see xref:cockroachdb-grant-changefeed-permissions[Granting changefeed permissions].
 
 .Prerequisites
@@ -811,8 +809,8 @@ A Kafka cluster where CockroachDB publishes changefeed events.
 This can be the same Kafka cluster that Kafka Connect uses, or a separate one.
 
 Network connectivity::
-The CockroachDB cluster must be able to reach the intermediate Kafka cluster to publish changefeed events.
-The Kafka Connect worker must be able to reach both the CockroachDB cluster (for JDBC) and the intermediate Kafka cluster (for consuming changefeed events).
+The CockroachDB cluster must be able to connect to the intermediate Kafka cluster to publish changefeed events.
+The Kafka Connect worker must be able to read from both the CockroachDB cluster (for JDBC) and the intermediate Kafka cluster (for consuming changefeed events).
 
 Changefeed user account::
 A CockroachDB user that has one of the following privileges on the target tables:
@@ -849,10 +847,10 @@ Granting `VIEWCLUSTERSETTING` lets the connector verify that `kv.rangefeed.enabl
 [id="cockroachdb-securing-the-changefeed-sink"]
 == Securing the changefeed sink
 
-When a changefeed sink requires TLS, or mutual TLS (mTLS), the connector can read PEM files from disk and inject the base64-encoded material into the sink URI at startup.
-This method of securing the sink connection avoids the need to base64-encode certificates by hand and paste large strings into the connector configuration.
+When a changefeed sink uses TLS or mutual TLS (mTLS), the connector can load PEM files from disk and automatically add their base64-encoded contents to the sink URI at startup. 
+This automatic injection removes the need to manually copy large, encoded certificate strings into the connector configuration.
 
-Set any combination of the following properties:
+Set one or more of the following properties to specify the mechanism that the connector uses to encrypt sink connections:
 
 `+cockroachdb.changefeed.sink.tls.ca.cert.file+`::
 Path to a PEM-encoded CA certificate that verifies the sink broker's certificate.
@@ -941,14 +939,14 @@ The following example shows a possible configuration for a CockroachDB connector
 <6> The password of the CockroachDB user.
 <7> The name of the CockroachDB database to connect to.
 <8> The topic prefix for Kafka topics that the connector writes to.
-<9> The URI of the Kafka cluster where CockroachDB will publish changefeed events.
+<9> The URI of the Kafka cluster where CockroachDB publishes changefeed events.
 <10> The snapshot mode; `initial` backfills existing rows on first start.
 <11> The maximum number of tasks.
 
 For more information about the properties that you can specify in the connector configuration, see the xref:cockroachdb-connector-properties[complete list of CockroachDB connector properties] .
 
 [[cockroachdb-adding-connector-configuration]]
-=== Adding connector configuration
+=== Adding the connector configuration
 
 Edit the CockroachDB connector configuration to specify how you want the connector to behave.
 After you finalize the configuration, use the Kafka Connect API to apply the configuration to the cluster.
@@ -1074,9 +1072,9 @@ This is a required property.
 
 |===
 
-[id="cockroachdb-connection-configuration-properties"]
 The following properties configure the JDBC connection to the CockroachDB database.
 
+[id="cockroachdb-connection-configuration-properties"]
 .Connection configuration properties
 [cols="30%a,25%a,45%a",options="header"]
 |===
@@ -1112,8 +1110,8 @@ See the link:https://www.cockroachlabs.com/docs/stable/authentication[CockroachD
 
 |[[cockroachdb-property-on-connect-statements]]<<cockroachdb-property-on-connect-statements, `+database.on.connect.statements+`>>
 |No default
-|A semicolon-separated list of SQL statements to be executed when a JDBC connection to the database is established.
-Use doubled semicolons (`;;`) to use a semicolon as a character and not as a delimiter.
+|Specifies a semicolon-separated list of SQL statements that the connector runs when it establishes a JDBC connection.
+Use double semicolons (;;) to specify a literal semicolon instead of treating it as a separator.
 
 |[[cockroachdb-property-connection-timeout]]<<cockroachdb-property-connection-timeout, `+connection.timeout.ms+`>>
 |`30000`
@@ -1134,9 +1132,10 @@ The actual delay is multiplied by the attempt number (linear backoff).
 
 |===
 
-[id="cockroachdb-changefeed-configuration-properties"]
+
 The following properties configure the CockroachDB changefeed behavior.
 
+[id="cockroachdb-changefeed-configuration-properties"]
 .Changefeed configuration properties
 [cols="30%a,25%a,45%a",options="header"]
 |===
@@ -1254,9 +1253,9 @@ When `cockroachdb.changefeed.sink.tls.*` is set, the consumer's SSL is derived a
 
 |===
 
-[id="cockroachdb-connector-configuration-properties"]
 Set the following properties to configure the connector's snapshot and schema behavior.
 
+[id="cockroachdb-connector-configuration-properties"]
 .Connector configuration properties
 [cols="30%a,25%a,45%a",options="header"]
 |===
@@ -1309,9 +1308,10 @@ If you include this property in the configuration, do not also set the `schema.i
 
 |===
 
-[id="cockroachdb-advanced-configuration-properties"]
+
 The following _advanced_ configuration properties have defaults that work in most situations and therefore rarely need to be specified in the connector's configuration.
 
+[id="cockroachdb-advanced-configuration-properties"]
 .Advanced connector configuration properties
 [cols="30%a,25%a,45%a",options="header"]
 |===
