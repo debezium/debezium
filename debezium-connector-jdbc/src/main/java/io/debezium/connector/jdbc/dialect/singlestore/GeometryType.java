@@ -17,6 +17,7 @@ import io.debezium.connector.jdbc.type.debezium.AbstractGeometryType;
 import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
 import io.debezium.spatial.GeometryBytes;
+
 import mil.nga.wkb.geom.LineString;
 import mil.nga.wkb.geom.Point;
 import mil.nga.wkb.geom.Polygon;
