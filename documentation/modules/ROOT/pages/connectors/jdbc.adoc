@@ -22,7 +22,7 @@ toc::[]
 endif::community[]
 
 The {prodname} JDBC connector is a Kafka Connect sink connector implementation that can consume events from multiple source topics, and then write those events to a relational database by using a JDBC driver.
-This connector supports a wide variety of database dialects, including Db2, MySQL, Oracle, PostgreSQL, and SQL Server.
+This connector supports a wide variety of database dialects, including Db2, MySQL, Oracle, PostgreSQL, SingleStore, and SQL Server.
 
 // Type: assembly
 // ModuleID: debezium-jdbc-connector-how-the-debezium-connector-works
@@ -44,8 +44,28 @@ The {prodname} JDBC connector provides the following features:
 * xref:jdbc-delete-mode[Delete mode]
 * xref:jdbc-idempotent-writes[Idempotent writes]
 * xref:jdbc-schema-evolution[Schema evolution]
+* xref:jdbc-singlestore-targets[SingleStore sink targets]
 * xref:jdbc-quoting-case-sensitivity[JDBC quoting and case-sensitivity]
 * xref:jdbc-connection-idle-timeouts[Connection idle timeouts]
+
+// Type: concept
+// Title: Using SingleStore as a sink target
+// ModuleID: debezium-jdbc-connector-using-singlestore-as-a-sink-target
+[[jdbc-singlestore-targets]]
+=== SingleStore sink targets
+
+To write to SingleStore, configure xref:jdbc-property-connection-url[`connection.url`] with a SingleStore JDBC URL, for example, `jdbc:singlestore://<_host_>:3306/<_database_>`.
+The SingleStore JDBC driver is included in the {prodname} JDBC connector archive, so Kafka Connect deployments that use the connector archive do not require an additional SingleStore driver JAR.
+
+SingleStore targets support idempotent writes through the same xref:jdbc-property-insert-mode[`insert.mode=upsert`] setting that the connector uses for other databases.
+For SingleStore, the connector generates `INSERT ... ON DUPLICATE KEY UPDATE ...` statements.
+
+If xref:jdbc-property-schema-evolution[`schema.evolution`] is set to `basic`, the connector can create or alter destination tables from event schemas.
+Automatic table creation does not expose SingleStore-specific shard key, sort key, or other table option settings.
+If the target table requires explicit shard keys, sort keys, or other SingleStore table options, create the destination table in SingleStore before the connector writes to it.
+
+For SingleStore targets, {prodname} maps {prodname} `io.debezium.data.Json` logical values and Kafka Connect `MAP` schema values to the SingleStore `JSON` column type.
+SingleStore support does not currently include {prodname} geospatial logical types.
 
 // Type: concept
 // Title: Description of how the {prodname} JDBC connector consumes complex change events
@@ -211,6 +231,9 @@ The following table shows the `upsert` DML syntax for the database dialects that
 |PostgreSQL
 |`INSERT ... ON CONFLICT ... DO UPDATE SET ...`
 
+|SingleStore
+|`INSERT ... ON DUPLICATE KEY UPDATE ...`
+
 |SQL Server
 |`MERGE ...`
 
@@ -249,6 +272,9 @@ The schema of each field determines whether a column is `NULL` or `NOT NULL`.
 The schema also defines the default values for each column.
 If the connector attempts to create a table with a nullability setting or a default value that don't want, you must either create the table manually, ahead of time, or adjust the schema of the associated field before the sink connector processes the event.
 To adjust nullability settings or default values, you can introduce a custom single message transformation that applies changes in the pipeline, or modifies the column state defined in the source database.
+
+For SingleStore targets, automatic table creation does not configure SingleStore-specific shard keys, sort keys, or other table options.
+For more information, see xref:jdbc-singlestore-targets[].
 
 A field's data type is resolved based on a predefined set of mappings.
 For more information, see xref:jdbc-field-types[JDBC field types].
@@ -633,6 +659,11 @@ To enable the use of these stricter data type conversions, set the `column.propa
 When these properties are set in the source connector, the events that it generates include additional column metadata that the JDBC connector then uses to construct columns with a stricter concrete data type.
 In the preceding table, where a second entry, marked with an asterisk, appears in a table cell, it represents the stricter data type.
 
+For SingleStore targets, {prodname} uses MySQL/MariaDB-compatible mappings for most dialect-specific logical types.
+SingleStore maps {prodname} `io.debezium.data.Json` logical values to `json`.
+Kafka Connect `MAP` schema values are also written to SingleStore `json` columns.
+SingleStore support does not currently include {prodname} geospatial logical types.
+
 // Type: reference
 // Title: Mappings between {prodname} vector data types and RDBMS column types
 [[jdbc-debezium-vector-logical-mappings]]
@@ -885,6 +916,8 @@ To deploy a {prodname} JDBC connector, you install the {prodname} JDBC connector
 Drivers for Oracle and Db2 are not included with the JDBC sink connector.
 You must download the drivers and install them manually.
 ====
++
+The SingleStore JDBC driver is included with the JDBC connector archive.
 . Add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`]. Make sure that the path where you install the JDBC sink connector is part of the {link-kafka-docs}/#connectconfigs[Kafka Connect `plugin.path`].
 . Restart the Kafka Connect process to pick up the new JAR files.
 endif::community[]
@@ -1424,6 +1457,19 @@ For more information, see the xref:jdbc-property-schema-evolution[schema.evoluti
 |List of topics to consume, separated by commas.
 
 |===
+
+For a SingleStore sink, set `connection.url` to a SingleStore JDBC URL.
+For example:
+
+.Example: SingleStore connection settings
+[source,json,indent=0,subs="+quotes"]
+----
+{
+    "connection.url": "jdbc:singlestore://<_host_>:3306/<_database_>",
+    "connection.username": "<_user_>",
+    "connection.password": "<_password_>"
+}
+----
 
 For a complete list of configuration properties that you can set for the {prodname} JDBC connector, see xref:jdbc-connector-properties[JDBC connector properties].
 
