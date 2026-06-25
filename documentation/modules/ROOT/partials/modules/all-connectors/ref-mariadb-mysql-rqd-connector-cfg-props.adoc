@@ -11,12 +11,18 @@ Specifies how the connector represents BIGINT UNSIGNED columns in change events.
 Set one of the following options:
 
 `long`:::: Uses Java `long` data types to represent BIGINT UNSIGNED column values.
-Although the `long` type does not offer the greatest precision, it is easy implement in most consumers.
-In most environments, this is the preferred setting.
+Although the `long` type is easy to consume in most clients, it cannot represent the full range of BIGINT UNSIGNED values.
++
+[WARNING]
+====
+Because `long` is the default value, the connector uses signed `long` semantics for BIGINT UNSIGNED columns unless you set this property to `precise`.
+Values greater than 2^63 - 1 overflow and are emitted to change events as negative numbers, which results in silent data corruption that the connector does not report as an error.
+If a BIGINT UNSIGNED column can hold values larger than 2^63 - 1, set `bigint.unsigned.handling.mode` to `precise`.
+====
 
 `precise`:::: Uses `java.math.BigDecimal` data types to represent values.
 The connector uses the Kafka Connect `org.apache.kafka.connect.data.Decimal` data type to represent values in encoded binary format.
-Set this option if the connector typically works with values larger than 2^63.
+Set this option if the connector can work with values larger than 2^63 - 1.
 The `long` data type cannot convey values of that size.
 
 
