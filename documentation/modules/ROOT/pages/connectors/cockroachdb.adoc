@@ -729,16 +729,24 @@ The following data type mappings are applied for CockroachDB data:
 |
 
 |`DATE`
-|`STRING`
-|ISO-8601 date format.
+|`INT32` (`io.debezium.time.Date` logical type)
+|Number of days since the epoch.
 
-|`TIME`, `TIMETZ`
-|`STRING`
-|ISO-8601 time format.
+|`TIME`
+|`INT64` (`io.debezium.time.MicroTime` logical type)
+|Number of microseconds since midnight.
 
-|`TIMESTAMP`, `TIMESTAMPTZ`
-|`STRING`
-|ISO-8601 timestamp format.
+|`TIMETZ`
+|`STRING` (`io.debezium.time.ZonedTime` logical type)
+|Offset-qualified ISO-8601 time (for example `14:36:34.873+02:00`).
+
+|`TIMESTAMP`
+|`INT64` (`io.debezium.time.MicroTimestamp` logical type)
+|Number of microseconds since the epoch, interpreted as UTC.
+
+|`TIMESTAMPTZ`
+|`STRING` (`io.debezium.time.ZonedTimestamp` logical type)
+|Offset-qualified ISO-8601 timestamp (for example `2026-06-15T14:36:34.873Z`).
 
 |`INTERVAL`
 |`STRING`
