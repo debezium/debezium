@@ -14,15 +14,16 @@ import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.connector.Task;
 
 import io.debezium.config.Configuration;
-import io.debezium.connector.common.BaseSourceConnector;
+import io.debezium.connector.common.RelationalBaseSourceConnector;
 
 /**
  * The top-level Kafka Connect source connector for ${connectorName}.
  *
  * <p>Registers the connector with Kafka Connect and always runs exactly one
- * {@link ${connectorName}ConnectorTask}.
+ * {@link ${connectorName}ConnectorTask}. Extends {@link RelationalBaseSourceConnector}, which
+ * validates the configured fields and then the database connection.
  */
-public class ${connectorName}SourceConnector extends BaseSourceConnector {
+public class ${connectorName}SourceConnector extends RelationalBaseSourceConnector {
 
     private Map<String, String> properties;
 
@@ -58,5 +59,12 @@ public class ${connectorName}SourceConnector extends BaseSourceConnector {
     @Override
     protected Map<String, ConfigValue> validateAllFields(Configuration config) {
         return config.validate(${connectorName}ConnectorConfig.ALL_FIELDS);
+    }
+
+    @Override
+    protected void validateConnection(Map<String, ConfigValue> configValues, Configuration config) {
+        // TODO: open a ${connectorName}Connection with the supplied configuration and, if it
+        // fails, attach the error to the relevant field (for example the database.hostname
+        // ConfigValue) so it surfaces during connector validation.
     }
 }
