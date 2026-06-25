@@ -6,16 +6,14 @@
 package io.debezium.connector.jdbc.junit.jupiter;
 
 import org.testcontainers.containers.Network;
-import org.testcontainers.utility.DockerImageName;
 
 import io.debezium.connector.jdbc.junit.TestHelper;
+import io.debezium.testing.testcontainers.ImageNames;
 
 /**
  * An implementation of {@link AbstractSinkDatabaseContextProvider} for SingleStore.
  */
 public class SingleStoreSinkDatabaseContextProvider extends AbstractSinkDatabaseContextProvider {
-
-    private static final DockerImageName IMAGE_NAME = DockerImageName.parse("ghcr.io/singlestore-labs/singlestoredb-dev:0.2.77");
 
     @SuppressWarnings("resource")
     public SingleStoreSinkDatabaseContextProvider() {
@@ -23,7 +21,7 @@ public class SingleStoreSinkDatabaseContextProvider extends AbstractSinkDatabase
     }
 
     private static SingleStoreContainer<?> createContainer() {
-        final SingleStoreContainer<?> container = new SingleStoreContainer<>(IMAGE_NAME)
+        final SingleStoreContainer<?> container = new SingleStoreContainer<>(ImageNames.SINGLESTORE_DOCKER_IMAGE_NAME)
                 .withNetwork(Network.SHARED)
                 .withUsername("root")
                 .withPassword("root")
