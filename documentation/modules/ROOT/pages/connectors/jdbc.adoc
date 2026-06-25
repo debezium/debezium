@@ -65,7 +65,9 @@ Automatic table creation does not expose SingleStore-specific shard key, sort ke
 If the target table requires explicit shard keys, sort keys, or other SingleStore table options, create the destination table in SingleStore before the connector writes to it.
 
 For SingleStore targets, {prodname} maps {prodname} `io.debezium.data.Json` logical values and Kafka Connect `MAP` schema values to the SingleStore `JSON` column type.
-SingleStore support does not currently include {prodname} geospatial logical types.
+The connector maps {prodname} `io.debezium.data.geometry.Geometry` and `io.debezium.data.geometry.Geography` logical values to the SingleStore `GEOGRAPHY` column type, and `io.debezium.data.geometry.Point` logical values to the SingleStore `GEOGRAPHYPOINT` column type.
+SingleStore supports a subset of WKT geospatial values.
+The connector writes `POINT`, `LINESTRING`, and `POLYGON` WKB values to SingleStore as WKT strings.
 
 // Type: concept
 // Title: Description of how the {prodname} JDBC connector consumes complex change events
@@ -662,7 +664,8 @@ In the preceding table, where a second entry, marked with an asterisk, appears i
 For SingleStore targets, {prodname} uses MySQL/MariaDB-compatible mappings for most dialect-specific logical types.
 SingleStore maps {prodname} `io.debezium.data.Json` logical values to `json`.
 Kafka Connect `MAP` schema values are also written to SingleStore `json` columns.
-SingleStore support does not currently include {prodname} geospatial logical types.
+{prodname} `io.debezium.data.geometry.Geometry` and `io.debezium.data.geometry.Geography` logical values are written to SingleStore `geography` columns, and `io.debezium.data.geometry.Point` logical values are written to SingleStore `geographypoint` columns.
+The SingleStore dialect writes supported `POINT`, `LINESTRING`, and `POLYGON` WKB values as WKT strings.
 
 // Type: reference
 // Title: Mappings between {prodname} vector data types and RDBMS column types
