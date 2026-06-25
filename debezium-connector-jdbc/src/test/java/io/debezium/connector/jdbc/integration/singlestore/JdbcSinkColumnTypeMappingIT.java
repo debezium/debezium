@@ -8,6 +8,8 @@ package io.debezium.connector.jdbc.integration.singlestore;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.ByteBuffer;
+import java.util.Base64;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
@@ -23,6 +25,8 @@ import io.debezium.connector.jdbc.junit.jupiter.SingleStoreSinkDatabaseContextPr
 import io.debezium.connector.jdbc.junit.jupiter.Sink;
 import io.debezium.connector.jdbc.junit.jupiter.SinkRecordFactoryArgumentsProvider;
 import io.debezium.connector.jdbc.util.SinkRecordFactory;
+import io.debezium.data.geometry.Geometry;
+import io.debezium.data.geometry.Point;
 import io.debezium.doc.FixFor;
 
 /**
@@ -74,6 +78,48 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
         getSink().assertRows(destinationTable, rs -> {
             assertThat(rs.getInt(1)).isEqualTo(1);
             assertThat(rs.getBytes(2)).isEqualTo(new byte[]{ 1, 2, 3 });
+            return null;
+        });
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("DBZ-2146")
+    public void testShouldCreateAndWriteGeospatialColumnTypes(SinkRecordFactory factory) throws Exception {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server2", "schema", tableName);
+        final byte[] pointWkb = Base64.getDecoder().decode("AQEAAAAAAAAAAADwPwAAAAAAAPA/");
+        final byte[] polygonWkb = Base64.getDecoder().decode(
+                "AQMAAAABAAAABQAAAAAAAAAAAAAAAAAAAAAAFEAAAAAAAAAAQAAAAAAAABRAAAAAAAAAAEAAAAAAAAAcQAAAAAAAAAAAAAAAAAAAHEAAAAAAAAAAAAAAAAAAABRA");
+        final Schema pointSchema = Point.builder().build();
+
+        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        final JdbcKafkaSinkRecord createRecord = factory.createRecordWithSchemaValue(
+                topicName,
+                (byte) 1,
+                List.of("geometry_data", "point_data"),
+                List.of(Geometry.schema(), pointSchema),
+                List.of(
+                        Geometry.createValue(Geometry.schema(), polygonWkb, 4326),
+                        Point.createValue(pointSchema, pointWkb, 4326)),
+                config);
+
+        final String destinationTable = destinationTableName(createRecord);
+
+        consume(createRecord);
+
+        getSink().assertColumn(destinationTable, "geometry_data", "GEOGRAPHY");
+        getSink().assertColumn(destinationTable, "point_data", "GEOGRAPHYPOINT");
+        getSink().assertRows(destinationTable, rs -> {
+            assertThat(rs.getObject("geometry_data")).isNotNull();
+            assertThat(rs.getObject("point_data")).isNotNull();
             return null;
         });
     }
