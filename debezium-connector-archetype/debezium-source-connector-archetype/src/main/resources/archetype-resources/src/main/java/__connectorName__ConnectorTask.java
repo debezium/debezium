@@ -27,6 +27,7 @@ import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.metrics.DefaultChangeEventSourceMetricsFactory;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.spi.Offsets;
+import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.topic.TopicNamingStrategy;
@@ -73,11 +74,10 @@ public class ${connectorName}ConnectorTask
 
         final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
 
-        // Derive the data collection identifier from the connector configuration.
-        // Adapt this to your connector's notion of a "table" or "collection".
+        // A placeholder table the snapshot/streaming stubs emit against. A real relational
+        // connector reads the captured tables from the schema instead of using a fixed id.
         final String collectionName = connectorConfig.getLogicalName();
-        final ${connectorName}DataCollectionId dataCollectionId =
-                new ${connectorName}DataCollectionId(collectionName);
+        final TableId dataCollectionId = new TableId(null, null, collectionName);
 
         // Restore or initialise offset context.
         final Offsets<${connectorName}Partition, ${connectorName}OffsetContext> previousOffsets =
@@ -99,12 +99,12 @@ public class ${connectorName}ConnectorTask
         final ${connectorName}DatabaseSchema schema =
                 new ${connectorName}DatabaseSchema(connectorConfig, schemaNameAdjuster);
 
-        final TopicNamingStrategy<${connectorName}DataCollectionId> topicNamingStrategy =
+        final TopicNamingStrategy<TableId> topicNamingStrategy =
                 connectorConfig.getTopicNamingStrategy(CommonConnectorConfig.TOPIC_NAMING_STRATEGY);
 
         final ${connectorName}EventMetadataProvider metadataProvider = new ${connectorName}EventMetadataProvider();
 
-        final EventDispatcher<${connectorName}Partition, ${connectorName}DataCollectionId> dispatcher =
+        final EventDispatcher<${connectorName}Partition, TableId> dispatcher =
                 new EventDispatcher<>(
                         connectorConfig,
                         topicNamingStrategy,
