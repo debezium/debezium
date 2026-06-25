@@ -200,7 +200,7 @@ If you configure a different snapshot mode, the connector completes the snapshot
 5. Capture the schema of all tables or all tables that are designated for capture.
 The connector persists schema information in its internal database schema history topic.
 The schema history provides information about the structure that is in effect when a change event occurs.
-
++
 [NOTE]
 ====
 By default, the connector captures the schema of every table in the database that is in capture mode, including tables that are not configured for capture.
@@ -346,7 +346,7 @@ For information about capturing data from a new table that has undergone structu
 2. Remove the internal database schema history topic that is specified by the xref:{context}-property-database-history-kafka-topic[`schema.history.internal.kafka.topic property`].
 3. Clear the offsets in the configured Kafka Connect link:{link-kafka-docs}/#connectconfigs_offset.storage.topic[`offset.storage.topic`].
 For more information about how to remove offsets, see the link:https://debezium.io/documentation/faq/#how_to_remove_committed_offsets_for_a_connector[{prodname} community FAQ].
-
++
 [WARNING]
 ====
 Removing offsets should be performed only by advanced users who have experience in manipulating internal Kafka Connect data.
@@ -355,7 +355,7 @@ This operation is potentially destructive, and should be performed only as a las
 4. Apply the following changes to the connector configuration:
 .. (Optional) Set the value of xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.captured.tables.ddl`] to `false`.
 This setting causes the snapshot to capture the schema for all tables, and guarantees that, in the future, the connector can reconstruct the schema history for all tables.
-
++
 [NOTE]
 ====
 Snapshots that capture the schema for all tables require more time to complete.
@@ -409,12 +409,13 @@ You can then initiate an incremental snapshot to enable the connector to synchro
 2. Remove the internal database schema history topic that is specified by the xref:{context}-property-database-history-kafka-topic[`schema.history.internal.kafka.topic property`].
 3. Clear the offsets in the configured Kafka Connect link:{link-kafka-docs}/#connectconfigs_offset.storage.topic[`offset.storage.topic`].
 For more information about how to remove offsets, see the link:https://debezium.io/documentation/faq/#how_to_remove_committed_offsets_for_a_connector[{prodname} community FAQ].
-
++
 [WARNING]
 ====
 Removing offsets should be performed only by advanced users who have experience in manipulating internal Kafka Connect data.
 This operation is potentially destructive, and should be performed only as a last resort.
 ====
+
 4. Set values for properties in the connector configuration as described in the following steps:
 .. Set the value of the xref:{context}-property-snapshot-mode[`snapshot.mode`] property to `no_data`.
 .. Edit the xref:{context}-property-table-include-list[`table.include.list`] to add the tables that you want to capture.
