@@ -37,19 +37,8 @@ public class ${connectorName}ConnectorConfig extends RelationalDatabaseConnector
 
     public enum SnapshotMode implements EnumeratedValue {
 
-        INITIAL("initial") {
-            @Override
-            public boolean shouldSnapshotData(boolean offsetExists, boolean snapshotInProgress) {
-                return !offsetExists || snapshotInProgress;
-            }
-        },
-
-        NEVER("never") {
-            @Override
-            public boolean shouldSnapshotData(boolean offsetExists, boolean snapshotInProgress) {
-                return false;
-            }
-        };
+        INITIAL("initial"),
+        NO_DATA("no_data");
 
         private final String value;
 
@@ -61,8 +50,6 @@ public class ${connectorName}ConnectorConfig extends RelationalDatabaseConnector
         public String getValue() {
             return value;
         }
-
-        public abstract boolean shouldSnapshotData(boolean offsetExists, boolean snapshotInProgress);
 
         public static SnapshotMode parse(String value) {
             return Arrays.stream(values())
@@ -77,8 +64,8 @@ public class ${connectorName}ConnectorConfig extends RelationalDatabaseConnector
             .withEnum(SnapshotMode.class, SnapshotMode.INITIAL)
             .withImportance(ConfigDef.Importance.LOW)
             .withDescription("Specifies the criteria for performing a snapshot on startup. "
-                    + "Options include: 'initial' (default) to snapshot only when no offset exists; "
-                    + "'never' to skip snapshot entirely.");
+                    + "Options include: 'initial' (default) to snapshot schema and data when no offset exists; "
+                    + "'no_data' to capture only the schema. The value maps to a registered Snapshotter.");
 
     // Add connector-specific fields below, then register them in CONFIG_DEFINITION.
     // public static final Field MY_FIELD = Field.create("my.setting") ...

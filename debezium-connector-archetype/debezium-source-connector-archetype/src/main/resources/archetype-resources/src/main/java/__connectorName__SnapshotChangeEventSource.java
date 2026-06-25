@@ -5,91 +5,123 @@
  */
 package ${package};
 
+import java.sql.SQLException;
 import java.util.List;
-import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import io.debezium.jdbc.JdbcConfiguration;
+import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.SnapshottingTask;
 import io.debezium.pipeline.source.spi.ChangeEventSource;
-import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
-import io.debezium.pipeline.signal.actions.snapshotting.SnapshotConfiguration;
-import io.debezium.pipeline.spi.SnapshotResult;
+import io.debezium.relational.RelationalSnapshotChangeEventSource;
+import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
+import io.debezium.schema.SchemaChangeEvent;
+import io.debezium.snapshot.SnapshotterService;
 import io.debezium.util.Clock;
 
 /**
- * Performs an initial snapshot of the ${connectorName} data source.
+ * Performs the initial snapshot of the ${connectorName} database.
  *
- * <p>Override {@link #execute} to read existing data and emit READ events via the
- * {@link EventDispatcher}. When the snapshot is complete, update the offset context
- * so that streaming resumes at the correct position.
+ * <p>Extends {@link RelationalSnapshotChangeEventSource}, which drives the whole snapshot
+ * lifecycle: table enumeration, connection and transaction management, chunked reading, and
+ * emitting one read ('r') record per row through the dispatcher. This class fills in only the
+ * database-specific steps. The TODO methods are where most of the connector-specific work goes.
  */
-class ${connectorName}SnapshotChangeEventSource
-        implements SnapshotChangeEventSource<${connectorName}Partition, ${connectorName}OffsetContext> {
+public class ${connectorName}SnapshotChangeEventSource
+        extends RelationalSnapshotChangeEventSource<${connectorName}Partition, ${connectorName}OffsetContext> {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(${connectorName}SnapshotChangeEventSource.class);
+    private final ${connectorName}ConnectorConfig connectorConfig;
+    private final ${connectorName}Connection jdbcConnection;
 
-    private final ${connectorName}ConnectorConfig config;
-    private final TableId dataCollectionId;
-    private final EventDispatcher<${connectorName}Partition, TableId> dispatcher;
-    private final SnapshotProgressListener<${connectorName}Partition> progressListener;
-    private final Clock clock;
-
-    ${connectorName}SnapshotChangeEventSource(${connectorName}ConnectorConfig config,
-                                               TableId dataCollectionId,
-                                               EventDispatcher<${connectorName}Partition, TableId> dispatcher,
-                                               SnapshotProgressListener<${connectorName}Partition> progressListener,
-                                               Clock clock) {
-        this.config = config;
-        this.dataCollectionId = dataCollectionId;
-        this.dispatcher = dispatcher;
-        this.progressListener = progressListener;
-        this.clock = clock;
+    public ${connectorName}SnapshotChangeEventSource(${connectorName}ConnectorConfig connectorConfig,
+                                                     MainConnectionProvidingConnectionFactory<${connectorName}Connection> connectionFactory,
+                                                     ${connectorName}DatabaseSchema schema,
+                                                     EventDispatcher<${connectorName}Partition, TableId> dispatcher,
+                                                     Clock clock,
+                                                     SnapshotProgressListener<${connectorName}Partition> snapshotProgressListener,
+                                                     NotificationService<${connectorName}Partition, ${connectorName}OffsetContext> notificationService,
+                                                     SnapshotterService snapshotterService) {
+        super(connectorConfig, connectionFactory, schema, dispatcher, clock, snapshotProgressListener,
+                notificationService, snapshotterService);
+        this.connectorConfig = connectorConfig;
+        this.jdbcConnection = connectionFactory.mainConnection();
     }
 
     @Override
-    public SnapshottingTask getSnapshottingTask(${connectorName}Partition partition,
-                                                ${connectorName}OffsetContext offsetContext) {
-        boolean offsetExists = offsetContext.getPosition() > 0;
-        boolean shouldSnapshot = config.getSnapshotMode().shouldSnapshotData(offsetExists, false);
-        LOGGER.info("Snapshot decision: mode={}, offsetExists={}, shouldSnapshot={}",
-                config.getSnapshotMode(), offsetExists, shouldSnapshot);
-        return new SnapshottingTask(shouldSnapshot, false, List.of(), Map.of(), false);
+    protected SnapshotContext<${connectorName}Partition, ${connectorName}OffsetContext> prepare(
+            ${connectorName}Partition partition, boolean onDemand) {
+        String catalogName = connectorConfig.getJdbcConfig().getString(JdbcConfiguration.DATABASE);
+        return new RelationalSnapshotContext<>(partition, catalogName, onDemand);
     }
 
     @Override
-    public SnapshottingTask getBlockingSnapshottingTask(${connectorName}Partition partition,
-                                                        ${connectorName}OffsetContext offsetContext,
-                                                        SnapshotConfiguration snapshotConfiguration) {
-        return getSnapshottingTask(partition, offsetContext);
+    protected Set<TableId> getAllTableIds(RelationalSnapshotContext<${connectorName}Partition, ${connectorName}OffsetContext> ctx)
+            throws Exception {
+        return jdbcConnection.readTableNames(ctx.catalogName, null, null, new String[]{ "TABLE" });
     }
 
     @Override
-    public SnapshotResult<${connectorName}OffsetContext> execute(
-            ChangeEventSource.ChangeEventSourceContext context,
-            ${connectorName}Partition partition,
-            ${connectorName}OffsetContext offsetContext,
-            SnapshottingTask task) throws InterruptedException {
+    protected void lockTablesForSchemaSnapshot(ChangeEventSource.ChangeEventSourceContext sourceContext,
+                                               RelationalSnapshotContext<${connectorName}Partition, ${connectorName}OffsetContext> snapshotContext)
+            throws Exception {
+        // TODO: lock the captured tables if your database needs to block concurrent DDL during the
+        // schema snapshot. Many databases provide a consistent read view without locking, in which
+        // case this can stay empty.
+    }
 
-        if (task.shouldSkipSnapshot()) {
-            LOGGER.info("Skipping snapshot – resuming streaming from position {}", offsetContext.getPosition());
-            return SnapshotResult.skipped(offsetContext);
+    @Override
+    protected void releaseSchemaSnapshotLocks(RelationalSnapshotContext<${connectorName}Partition, ${connectorName}OffsetContext> snapshotContext)
+            throws Exception {
+        // TODO: release whatever lockTablesForSchemaSnapshot acquired. Empty if no locks were taken.
+    }
+
+    @Override
+    protected void determineSnapshotOffset(RelationalSnapshotContext<${connectorName}Partition, ${connectorName}OffsetContext> ctx,
+                                           ${connectorName}OffsetContext previousOffset)
+            throws Exception {
+        if (previousOffset != null && !snapshotterService.getSnapshotter().shouldStreamEventsStartingFromSnapshot()) {
+            ctx.offset = previousOffset;
+            return;
         }
+        // TODO: read the current streaming position (LSN, change id, log offset, ...) from the same
+        // read view the snapshot uses, and store it on the offset so streaming resumes without gaps.
+        ctx.offset = new ${connectorName}OffsetContext(new ${connectorName}SourceInfo(connectorConfig));
+    }
 
-        LOGGER.info("Starting ${connectorName} snapshot");
+    @Override
+    protected void readTableStructure(ChangeEventSource.ChangeEventSourceContext sourceContext,
+                                      RelationalSnapshotContext<${connectorName}Partition, ${connectorName}OffsetContext> snapshotContext,
+                                      ${connectorName}OffsetContext offsetContext, SnapshottingTask snapshottingTask)
+            throws SQLException {
+        jdbcConnection.readSchema(
+                snapshotContext.tables,
+                snapshotContext.catalogName,
+                null,
+                connectorConfig.getTableFilters().dataCollectionFilter(),
+                null,
+                false);
+    }
 
-        // TODO: implement snapshot logic here.
-        // For each existing record, read the raw row from your source, then dispatch:
-        //   dispatcher.dispatchDataChangeEvent(partition, dataCollectionId,
-        //       new ${connectorName}ChangeRecordEmitter(
-        //           partition, offsetContext, Envelope.Operation.READ, rawRowData, clock, config));
-        // Update offsetContext.setPosition(...) as you advance through the source.
+    @Override
+    protected SchemaChangeEvent getCreateTableEvent(RelationalSnapshotContext<${connectorName}Partition, ${connectorName}OffsetContext> snapshotContext,
+                                                    Table table) {
+        return SchemaChangeEvent.ofSnapshotCreate(snapshotContext.partition, snapshotContext.offset,
+                snapshotContext.catalogName, table);
+    }
 
-        LOGGER.info("${connectorName} snapshot complete");
-        return SnapshotResult.completed(offsetContext);
+    @Override
+    protected Optional<String> getSnapshotSelect(RelationalSnapshotContext<${connectorName}Partition, ${connectorName}OffsetContext> snapshotContext,
+                                                 TableId tableId, List<String> columns) {
+        return snapshotterService.getSnapshotQuery().snapshotQuery(jdbcConnection.quotedTableIdString(tableId), columns);
+    }
+
+    @Override
+    protected ${connectorName}OffsetContext copyOffset(RelationalSnapshotContext<${connectorName}Partition, ${connectorName}OffsetContext> snapshotContext) {
+        return new ${connectorName}OffsetLoader(connectorConfig).load(snapshotContext.offset.getOffset());
     }
 }
