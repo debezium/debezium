@@ -18,7 +18,7 @@ jobs:
       fail-fast: false
       matrix:
         # Runs JDBC sink tests based on specific target platforms concurrently
-        test-tags: [ "it-mysql,e2e-mysql", "it-postgresql,e2e-postgresql", "it-sqlserver,e2e-sqlserver" ]
+        test-tags: [ "it-mysql,e2e-mysql", "it-postgresql,e2e-postgresql", "it-sqlserver,e2e-sqlserver", "it-singlestore,e2e-singlestore" ]
     name: JDBC - ${{ matrix.test-tags }}
     runs-on: ubuntu-latest
 
