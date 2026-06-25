@@ -162,9 +162,16 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
         getSink().assertColumn(destinationTable, "float_vector_data", "VECTOR");
         getSink().assertColumn(destinationTable, "double_vector_data", "VECTOR");
         getSink().assertRows(destinationTable, rs -> {
-            assertThat(rs.getObject("float_vector_data")).isNotNull();
-            assertThat(rs.getObject("double_vector_data")).isNotNull();
+            assertThat(normalizeVector(rs.getString("float_vector_data"))).isEqualTo("[1,2,3]");
+            assertThat(normalizeVector(rs.getString("double_vector_data"))).isEqualTo("[1,2,3]");
             return null;
         });
+    }
+
+    private static String normalizeVector(String value) {
+        if (value == null) {
+            return null;
+        }
+        return value.replace(" ", "").replace(".0", "");
     }
 }
