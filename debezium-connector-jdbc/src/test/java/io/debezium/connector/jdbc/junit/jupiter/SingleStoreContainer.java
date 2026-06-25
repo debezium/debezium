@@ -10,6 +10,8 @@ import java.time.Duration;
 import org.testcontainers.containers.JdbcDatabaseContainer;
 import org.testcontainers.utility.DockerImageName;
 
+import io.debezium.testing.testcontainers.ImageNames;
+
 /**
  * A Testcontainers database container for the SingleStore Dev Image.
  */
@@ -18,7 +20,6 @@ public class SingleStoreContainer<SELF extends SingleStoreContainer<SELF>> exten
     public static final String NAME = "singlestore";
     public static final Integer SINGLESTORE_PORT = 3306;
 
-    private static final DockerImageName DEFAULT_IMAGE_NAME = DockerImageName.parse("ghcr.io/singlestore-labs/singlestoredb-dev:0.2.77");
     private static final String DEFAULT_USER = "root";
     private static final String DEFAULT_PASSWORD = "root";
 
@@ -27,7 +28,7 @@ public class SingleStoreContainer<SELF extends SingleStoreContainer<SELF>> exten
     private String password = DEFAULT_PASSWORD;
 
     public SingleStoreContainer() {
-        this(DEFAULT_IMAGE_NAME);
+        this(ImageNames.SINGLESTORE_DOCKER_IMAGE_NAME);
     }
 
     public SingleStoreContainer(String dockerImageName) {
@@ -36,7 +37,7 @@ public class SingleStoreContainer<SELF extends SingleStoreContainer<SELF>> exten
 
     public SingleStoreContainer(DockerImageName dockerImageName) {
         super(dockerImageName);
-        dockerImageName.assertCompatibleWith(DEFAULT_IMAGE_NAME);
+        dockerImageName.assertCompatibleWith(ImageNames.SINGLESTORE_DOCKER_IMAGE_NAME);
         addExposedPort(SINGLESTORE_PORT);
         withStartupTimeout(Duration.ofMinutes(5));
     }
