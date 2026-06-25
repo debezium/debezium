@@ -14,12 +14,15 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.bean.StandardBeanNames;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.common.CdcSourceTaskContext;
+import io.debezium.jdbc.DefaultMainConnectionProvidingConnectionFactory;
+import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
@@ -28,6 +31,7 @@ import io.debezium.pipeline.metrics.DefaultChangeEventSourceMetricsFactory;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.TableId;
+import io.debezium.snapshot.SnapshotterService;
 import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.topic.TopicNamingStrategy;
@@ -99,6 +103,14 @@ public class ${connectorName}ConnectorTask
         final TopicNamingStrategy<TableId> topicNamingStrategy =
                 connectorConfig.getTopicNamingStrategy(CommonConnectorConfig.TOPIC_NAMING_STRATEGY);
 
+        // Register the connector's SPI service providers (snapshotter, custom converters, ...).
+        registerServiceProviders(connectorConfig.getServiceRegistry());
+
+        // The connection factory's mainConnection() is reused for schema reads and the snapshot.
+        final MainConnectionProvidingConnectionFactory<${connectorName}Connection> connectionFactory =
+                new DefaultMainConnectionProvidingConnectionFactory<>(
+                        () -> new ${connectorName}Connection(connectorConfig.getJdbcConfig()));
+
         final ${connectorName}DatabaseSchema schema =
                 new ${connectorName}DatabaseSchema(connectorConfig, topicNamingStrategy, taskContext);
 
@@ -123,6 +135,16 @@ public class ${connectorName}ConnectorTask
                         SchemaFactory.get(),
                         dispatcher::enqueueNotification);
 
+        // Beans the snapshotter service and other framework services look up by name.
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.CONFIGURATION, config);
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.CONNECTOR_CONFIG, connectorConfig);
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.DATABASE_SCHEMA, schema);
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.OFFSETS, previousOffsets);
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.CDC_SOURCE_TASK_CONTEXT, taskContext);
+
+        final SnapshotterService snapshotterService =
+                connectorConfig.getServiceRegistry().tryGetService(SnapshotterService.class);
+
         final ChangeEventSourceCoordinator<${connectorName}Partition, ${connectorName}OffsetContext> coordinator =
                 new ChangeEventSourceCoordinator<>(
                         previousOffsets,
@@ -130,7 +152,8 @@ public class ${connectorName}ConnectorTask
                         ${connectorName}SourceConnector.class,
                         connectorConfig,
                         new ${connectorName}ChangeEventSourceFactory(
-                                connectorConfig, dataCollectionId, dispatcher, errorHandler, Clock.system()),
+                                connectorConfig, connectionFactory, schema, dataCollectionId, dispatcher,
+                                errorHandler, Clock.system(), snapshotterService),
                         new DefaultChangeEventSourceMetricsFactory<>(),
                         dispatcher,
                         schema,
