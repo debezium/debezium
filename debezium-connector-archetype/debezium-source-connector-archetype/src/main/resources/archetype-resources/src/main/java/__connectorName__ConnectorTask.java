@@ -96,11 +96,11 @@ public class ${connectorName}ConnectorTask
 
         this.errorHandler = new ${connectorName}ErrorHandler(connectorConfig, queue, null);
 
-        final ${connectorName}DatabaseSchema schema =
-                new ${connectorName}DatabaseSchema(connectorConfig, schemaNameAdjuster);
-
         final TopicNamingStrategy<TableId> topicNamingStrategy =
                 connectorConfig.getTopicNamingStrategy(CommonConnectorConfig.TOPIC_NAMING_STRATEGY);
+
+        final ${connectorName}DatabaseSchema schema =
+                new ${connectorName}DatabaseSchema(connectorConfig, topicNamingStrategy, taskContext);
 
         final ${connectorName}EventMetadataProvider metadataProvider = new ${connectorName}EventMetadataProvider();
 
