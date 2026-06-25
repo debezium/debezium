@@ -727,7 +727,9 @@ For more information about incremental snapshots, see the _Snapshots_ topic in t
 
 .Additional resources
 
+ifdef::community[]
 * {link-prefix}:{link-cockroachdb-connector}#cockroachdb-incremental-snapshots[CockroachDB connector incremental snapshots]
+endif::community[]
 * {link-prefix}:{link-db2-connector}#debezium-db2-incremental-snapshots[Db2 connector incremental snapshots]
 * {link-prefix}:{link-mongodb-connector}#debezium-mongodb-incremental-snapshots[MongoDB connector incremental snapshots]
 * {link-prefix}:{link-mysql-connector}#debezium-mysql-incremental-snapshots[MySQL connector incremental snapshots]
