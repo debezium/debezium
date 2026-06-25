@@ -27,6 +27,8 @@ import io.debezium.connector.jdbc.junit.jupiter.SinkRecordFactoryArgumentsProvid
 import io.debezium.connector.jdbc.util.SinkRecordFactory;
 import io.debezium.data.geometry.Geometry;
 import io.debezium.data.geometry.Point;
+import io.debezium.data.vector.DoubleVector;
+import io.debezium.data.vector.FloatVector;
 import io.debezium.doc.FixFor;
 
 /**
@@ -120,6 +122,48 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
         getSink().assertRows(destinationTable, rs -> {
             assertThat(rs.getObject("geometry_data")).isNotNull();
             assertThat(rs.getObject("point_data")).isNotNull();
+            return null;
+        });
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("DBZ-2146")
+    public void testShouldCreateAndWriteVectorColumnTypes(SinkRecordFactory factory) throws Exception {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server2", "schema", tableName);
+        final Schema floatVectorSchema = FloatVector.builder()
+                .parameter("__debezium.source.column.length", "3")
+                .build();
+        final Schema doubleVectorSchema = DoubleVector.builder()
+                .parameter("__debezium.source.column.length", "3")
+                .build();
+
+        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        final JdbcKafkaSinkRecord createRecord = factory.createRecordWithSchemaValue(
+                topicName,
+                (byte) 1,
+                List.of("float_vector_data", "double_vector_data"),
+                List.of(floatVectorSchema, doubleVectorSchema),
+                List.of(List.of(1.0f, 2.0f, 3.0f), List.of(1.0d, 2.0d, 3.0d)),
+                config);
+
+        final String destinationTable = destinationTableName(createRecord);
+
+        consume(createRecord);
+
+        getSink().assertColumn(destinationTable, "float_vector_data", "VECTOR");
+        getSink().assertColumn(destinationTable, "double_vector_data", "VECTOR");
+        getSink().assertRows(destinationTable, rs -> {
+            assertThat(rs.getObject("float_vector_data")).isNotNull();
+            assertThat(rs.getObject("double_vector_data")).isNotNull();
             return null;
         });
     }

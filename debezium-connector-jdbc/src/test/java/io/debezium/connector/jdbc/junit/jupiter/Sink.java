@@ -239,6 +239,11 @@ public class Sink extends JdbcConnectionProvider {
                     statement.execute("USE testDB");
                 }
             }
+            if (SinkType.SINGLESTORE.is(type)) {
+                try (Statement statement = connection.createStatement()) {
+                    statement.execute("SET vector_type_project_format = JSON");
+                }
+            }
         }
     }
 

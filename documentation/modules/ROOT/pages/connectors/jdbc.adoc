@@ -693,12 +693,16 @@ Sink databases must meet the following requirements to support direct mapping of
 * MariaDB version 11.7 or later
 * MySQL version 9.0 or later
 * PostgreSQL requires the pgvector extension
+* SingleStore requires the native `VECTOR` data type
 
-Earlier versions of MariaDB or MySQL, and PostgreSQL without pgvector, do not support special vector types.
+Earlier versions of MariaDB or MySQL, PostgreSQL without pgvector, and SingleStore deployments without the native `VECTOR` data type do not support special vector types.
+
+For SingleStore, `FloatVector` maps to `vector(n, F32)` and `DoubleVector` maps to `vector(n, F64)`.
+If the source column length is unavailable, the connector uses default dimensions of `2048` for `FloatVector` and `16383` for `DoubleVector`.
 
 .Mappings between {prodname} Vector Types and Column Data Types
 |===
-|Logical Type |Db2 |MySQL |PostgreSQL |Oracle |SQL Server
+|Logical Type |Db2 |MySQL |PostgreSQL |Oracle |SQL Server |SingleStore
 
 |io.debezium.data.DoubleVector
 |Unsupported
@@ -706,6 +710,7 @@ Earlier versions of MariaDB or MySQL, and PostgreSQL without pgvector, do not su
 |`vector`
 |Unsupported
 |Unsupported
+|`vector`
 
 |io.debezium.data.FloatVector
 |Unsupported
@@ -713,11 +718,13 @@ Earlier versions of MariaDB or MySQL, and PostgreSQL without pgvector, do not su
 |`halfvec`
 |Unsupported
 |Unsupported
+|`vector`
 
 |io.debezium.data.SparseVector
 |Unsupported
 |Unsupported
 |`sparsevec`
+|Unsupported
 |Unsupported
 |Unsupported
 
