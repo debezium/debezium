@@ -18,6 +18,7 @@ import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.signal.actions.snapshotting.SnapshotConfiguration;
 import io.debezium.pipeline.spi.SnapshotResult;
+import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
 
 /**
@@ -33,14 +34,14 @@ class ${connectorName}SnapshotChangeEventSource
     private static final Logger LOGGER = LoggerFactory.getLogger(${connectorName}SnapshotChangeEventSource.class);
 
     private final ${connectorName}ConnectorConfig config;
-    private final ${connectorName}DataCollectionId dataCollectionId;
-    private final EventDispatcher<${connectorName}Partition, ${connectorName}DataCollectionId> dispatcher;
+    private final TableId dataCollectionId;
+    private final EventDispatcher<${connectorName}Partition, TableId> dispatcher;
     private final SnapshotProgressListener<${connectorName}Partition> progressListener;
     private final Clock clock;
 
     ${connectorName}SnapshotChangeEventSource(${connectorName}ConnectorConfig config,
-                                               ${connectorName}DataCollectionId dataCollectionId,
-                                               EventDispatcher<${connectorName}Partition, ${connectorName}DataCollectionId> dispatcher,
+                                               TableId dataCollectionId,
+                                               EventDispatcher<${connectorName}Partition, TableId> dispatcher,
                                                SnapshotProgressListener<${connectorName}Partition> progressListener,
                                                Clock clock) {
         this.config = config;
