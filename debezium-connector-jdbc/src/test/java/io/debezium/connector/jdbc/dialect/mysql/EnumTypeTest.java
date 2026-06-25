@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.data.Enum;
+import io.debezium.data.EnumeratedValues;
 import io.debezium.doc.FixFor;
 
 /**
@@ -27,16 +28,22 @@ class EnumTypeTest {
     @FixFor("debezium/dbz#2102")
     @DisplayName("Should render escaped enum values")
     void shouldRenderEscapedEnumValues() {
-        assertThat(EnumType.INSTANCE.getTypeName(Enum.schema(Arrays.asList("plain", "a,b", "it's")), false))
-                .isEqualTo("enum('plain','a,b','it''s')");
+        final var schema = Enum.schema(Arrays.asList(
+                "plain", "a,b", "it's", "back\\slash", "back\\,comma", "ends\\", ""));
+
+        assertThat(EnumType.INSTANCE.getTypeName(schema, false))
+                .isEqualTo("enum('plain','a,b','it''s','back\\\\slash','back\\\\,comma','ends\\\\','')");
     }
 
     @Test
     @FixFor("debezium/dbz#2102")
     @DisplayName("Should render escaped enum values from allowed parameter")
     void shouldRenderEscapedEnumValuesFromAllowedParameter() {
-        assertThat(EnumType.INSTANCE.getTypeName(Enum.schema("plain,a\\,b,it's"), false))
-                .isEqualTo("enum('plain','a,b','it''s')");
+        final String allowedValues = EnumeratedValues.toCommaSeparatedString(Arrays.asList(
+                "plain", "a,b", "it's", "back\\slash", "back\\,comma", "ends\\", ""));
+
+        assertThat(EnumType.INSTANCE.getTypeName(Enum.schema(allowedValues), false))
+                .isEqualTo("enum('plain','a,b','it''s','back\\\\slash','back\\\\,comma','ends\\\\','')");
     }
 
     @Test

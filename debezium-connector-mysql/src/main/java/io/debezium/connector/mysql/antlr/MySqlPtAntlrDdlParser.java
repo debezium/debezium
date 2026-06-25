@@ -419,7 +419,7 @@ public class MySqlPtAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParse
     }
 
     /**
-     * Extracts the enumeration values properly parsed and escaped.
+     * Extracts the enumeration values properly parsed and unescaped.
      *
      * @param enumValues the raw enumeration values from the parsed column definition
      * @return the list of options allowed for the {@code ENUM} or {@code SET}; never null.
@@ -432,10 +432,9 @@ public class MySqlPtAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParse
     }
 
     public static String escapeOption(String option) {
-        // Replace comma to backslash followed by comma (this escape sequence implies comma is part of the option)
-        // Replace backlash+single-quote to a single-quote.
+        // Replace backslash+single-quote to a single-quote.
         // Replace double single-quote to a single-quote.
-        return option.replaceAll(",", "\\\\,").replaceAll("\\\\'", "'").replace("''", "'");
+        return option.replace("\\'", "'").replace("''", "'");
     }
 
     public TableFilter getTableFilter() {

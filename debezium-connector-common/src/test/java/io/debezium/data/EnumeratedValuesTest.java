@@ -24,6 +24,33 @@ class EnumeratedValuesTest {
     }
 
     @Test
+    void shouldPreserveBackslashWhenEncodingAndDecodingCommaSeparatedString() {
+        final String values = EnumeratedValues.toCommaSeparatedString(Arrays.asList("plain", "back\\slash"));
+
+        assertThat(values).isEqualTo("plain,back\\\\slash");
+        assertThat(EnumeratedValues.fromCommaSeparatedString(values)).containsExactly("plain", "back\\slash");
+    }
+
+    @Test
+    void shouldPreserveBackslashBeforeCommaWhenEncodingAndDecodingCommaSeparatedString() {
+        final String values = EnumeratedValues.toCommaSeparatedString(Arrays.asList("plain", "back\\,comma", "tail"));
+
+        assertThat(EnumeratedValues.fromCommaSeparatedString(values)).containsExactly("plain", "back\\,comma", "tail");
+    }
+
+    @Test
+    void shouldPreserveBackslashBeforeDelimiterWhenEncodingAndDecodingCommaSeparatedString() {
+        final String values = EnumeratedValues.toCommaSeparatedString(Arrays.asList("ends\\", "next"));
+
+        assertThat(EnumeratedValues.fromCommaSeparatedString(values)).containsExactly("ends\\", "next");
+    }
+
+    @Test
+    void shouldPreserveLegacyUnescapedBackslashWhenDecodingCommaSeparatedString() {
+        assertThat(EnumeratedValues.fromCommaSeparatedString("plain,back\\slash")).containsExactly("plain", "back\\slash");
+    }
+
+    @Test
     void shouldPreserveWhitespaceWhenDecodingCommaSeparatedString() {
         assertThat(EnumeratedValues.fromCommaSeparatedString(" a\\, b, c ")).containsExactly(" a, b", " c ");
     }
