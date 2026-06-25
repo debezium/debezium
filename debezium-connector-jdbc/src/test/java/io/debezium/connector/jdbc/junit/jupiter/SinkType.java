@@ -13,6 +13,7 @@ package io.debezium.connector.jdbc.junit.jupiter;
 public enum SinkType {
 
     MYSQL("mysql"),
+    SINGLESTORE("singlestore"),
     POSTGRES("postgres"),
     SQLSERVER("sqlserver"),
     ORACLE("oracle"),

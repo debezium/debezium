@@ -1,0 +1,99 @@
+/*
+ * Copyright Debezium Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
+package io.debezium.connector.jdbc.junit.jupiter;
+
+import java.time.Duration;
+
+import org.testcontainers.containers.JdbcDatabaseContainer;
+import org.testcontainers.utility.DockerImageName;
+
+/**
+ * A Testcontainers database container for the SingleStore Dev Image.
+ */
+public class SingleStoreContainer<SELF extends SingleStoreContainer<SELF>> extends JdbcDatabaseContainer<SELF> {
+
+    public static final String NAME = "singlestore";
+    public static final Integer SINGLESTORE_PORT = 3306;
+
+    private static final DockerImageName DEFAULT_IMAGE_NAME = DockerImageName.parse("ghcr.io/singlestore-labs/singlestoredb-dev:0.2.77");
+    private static final String DEFAULT_USER = "root";
+    private static final String DEFAULT_PASSWORD = "root";
+
+    private String databaseName = "test";
+    private String username = DEFAULT_USER;
+    private String password = DEFAULT_PASSWORD;
+
+    public SingleStoreContainer() {
+        this(DEFAULT_IMAGE_NAME);
+    }
+
+    public SingleStoreContainer(String dockerImageName) {
+        this(DockerImageName.parse(dockerImageName));
+    }
+
+    public SingleStoreContainer(DockerImageName dockerImageName) {
+        super(dockerImageName);
+        dockerImageName.assertCompatibleWith(DEFAULT_IMAGE_NAME);
+        addExposedPort(SINGLESTORE_PORT);
+        withStartupTimeout(Duration.ofMinutes(5));
+    }
+
+    @Override
+    protected void configure() {
+        addEnv("DATABASE_NAME", databaseName);
+        addEnv("ROOT_PASSWORD", password);
+        setStartupAttempts(1);
+    }
+
+    @Override
+    public String getDriverClassName() {
+        return "com.singlestore.jdbc.Driver";
+    }
+
+    @Override
+    public String getJdbcUrl() {
+        final String additionalUrlParams = constructUrlParameters("?", "&");
+        return "jdbc:singlestore://" + getHost() + ":" + getMappedPort(SINGLESTORE_PORT) + "/" + databaseName + additionalUrlParams;
+    }
+
+    @Override
+    public String getDatabaseName() {
+        return databaseName;
+    }
+
+    @Override
+    public String getUsername() {
+        return username;
+    }
+
+    @Override
+    public String getPassword() {
+        return password;
+    }
+
+    @Override
+    public String getTestQueryString() {
+        return "SELECT 1";
+    }
+
+    @Override
+    public SELF withDatabaseName(String databaseName) {
+        this.databaseName = databaseName;
+        return self();
+    }
+
+    @Override
+    public SELF withUsername(String username) {
+        this.username = username;
+        return self();
+    }
+
+    @Override
+    public SELF withPassword(String password) {
+        this.password = password;
+        return self();
+    }
+}
