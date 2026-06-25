@@ -47,6 +47,7 @@ import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMo
 import io.debezium.connector.binlog.BinlogGeometry;
 import io.debezium.connector.binlog.BinlogUnsignedIntegerConverter;
 import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
+import io.debezium.data.EnumeratedValues;
 import io.debezium.data.Json;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.data.vector.FloatVector;
@@ -600,7 +601,7 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
     }
 
     protected String extractEnumAndSetOptionsAsString(Column column) {
-        return Strings.join(",", extractEnumAndSetOptions(column));
+        return EnumeratedValues.toCommaSeparatedString(extractEnumAndSetOptions(column));
     }
 
     protected String convertSetValue(Column column, long indexes, List<String> options) {

@@ -22,6 +22,7 @@ import io.debezium.connector.mysql.charset.MySqlCharsetRegistry;
 import io.debezium.connector.mysql.jdbc.MySqlDefaultValueConverter;
 import io.debezium.connector.mysql.jdbc.MySqlValueConverters;
 import io.debezium.connector.mysql.util.MySqlValueConvertersFactory;
+import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
@@ -160,6 +161,41 @@ public class MySqlAntlrDdlParserTest
         assertThat(c2).isNotNull();
         assertThat(c2.defaultValueExpression()).isPresent();
         assertThat(c2.defaultValueExpression().get()).isEqualTo("0");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2102")
+    public void shouldParseEnumOptionsWithCommaQuoteAndBackslash() {
+        final String ddl = "CREATE TABLE enum_literals ("
+                + "e ENUM('plain','a,b','it''s','back\\\\slash','back\\\\,comma','ends\\\\','')"
+                + ");";
+
+        parser.parse(ddl, tables);
+
+        final Table table = tables.forTable(null, null, "enum_literals");
+        assertThat(table).isNotNull();
+        final Column column = table.columnWithName("e");
+        assertThat(column).isNotNull();
+        assertThat(MySqlAntlrDdlParser.extractEnumAndSetOptions(column.enumValues()))
+                .containsExactly(
+                        "plain", "a,b", "it's", "back\\\\slash", "back\\\\,comma", "ends\\\\", "");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2102")
+    public void shouldParseSetOptionsWithQuoteAndBackslash() {
+        final String ddl = "CREATE TABLE set_literals ("
+                + "s SET('plain','it''s','back\\\\slash')"
+                + ");";
+
+        parser.parse(ddl, tables);
+
+        final Table table = tables.forTable(null, null, "set_literals");
+        assertThat(table).isNotNull();
+        final Column column = table.columnWithName("s");
+        assertThat(column).isNotNull();
+        assertThat(MySqlAntlrDdlParser.extractEnumAndSetOptions(column.enumValues()))
+                .containsExactly("plain", "it's", "back\\\\slash");
     }
 
     public static class MySqlDdlParserWithSimpleTestListener extends MySqlAntlrDdlParser {

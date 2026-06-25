@@ -1570,6 +1570,9 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
         assertParseEnumAndSetOptions("ENUM('a\\'','b','c')", "a'", "b", "c");
         assertParseEnumAndSetOptions("ENUM(\"a\\\"\",'b','c')", "a\\\"", "b", "c");
         assertParseEnumAndSetOptions("ENUM(\"a\"\"\",'b','c')", "a\"\"", "b", "c");
+        assertParseEnumAndSetOptions(
+                "ENUM('a,b','back\\\\slash','back\\\\,comma','ends\\\\')",
+                "a,b", "back\\\\slash", "back\\\\,comma", "ends\\\\");
     }
 
     @Test
