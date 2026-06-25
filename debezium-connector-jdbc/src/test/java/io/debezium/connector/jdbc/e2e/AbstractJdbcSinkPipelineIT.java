@@ -2903,7 +2903,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
     @TestTemplate
     @ForSource(value = { SourceType.POSTGRES, SourceType.MYSQL }, reason = "The VECTOR data type only applies to PostgreSQL and MySQL")
     @SkipWhenSink(value = { SinkType.DB2, SinkType.DB2I, SinkType.ORACLE,
-            SinkType.SQLSERVER }, reason = "The VECTOR data type can only be consumed natively by PostgreSQL and MySQL")
+            SinkType.SQLSERVER }, reason = "The VECTOR data type can only be consumed natively by PostgreSQL, MySQL, and SingleStore")
     @WithPostgresExtension("vector")
     public void testVectorDataType(Source source, Sink sink) throws Exception {
         List<String> values = List.of("'[1,2,3]'");
@@ -2915,7 +2915,6 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
         if (sink.getType().is(SinkType.MYSQL)) {
             expectedValues = List.of("[1.0,2.0,3.0]");
         }
-
         assertDataTypeNonKeyOnly(source,
                 sink,
                 "vector(3)",
@@ -2938,6 +2937,9 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                         return FloatVector.fromLogical(field, data).stream()
                                 .map(String::valueOf)
                                 .collect(Collectors.joining(",", "[", "]"));
+                    }
+                    if (sink.getType().is(SinkType.SINGLESTORE)) {
+                        return rs.getString(index).replace(".0", "");
                     }
                     return rs.getString(index);
                 });
