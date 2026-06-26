@@ -304,7 +304,10 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
     }
 
     @Test
-    public void testOffsetScnPinnedToOldestDeferredTransaction() throws Exception {
+    // Verifies the getOldestDeferredTransactionStartScn() helper's lifecycle (add on START,
+    // stays min after rollback, NULL when empty). Offset behaviour that consumes this helper
+    // is covered by testOffsetScnPinnedToMinOfDeferredAndCachedTransactions.
+    public void testOldestDeferredTransactionStartScnLifecycle() throws Exception {
         try (var source = getChangeEventSource(getConfig().build())) {
             source.processEvent(getStartLogMinerEventRow(100, TRANSACTION_ID_1));
             source.processEvent(getStartLogMinerEventRow(150, TRANSACTION_ID_2));
@@ -318,6 +321,65 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
             source.processEvent(getRollbackLogMinerEventRow(170, TRANSACTION_ID_1));
 
             assertThat(source.getOldestDeferredTransactionStartScn()).isEqualTo(Scn.NULL);
+        }
+    }
+
+    @Test
+    public void testOffsetScnPinnedToMinOfDeferredAndCachedTransactions() throws Exception {
+        final ResultSet rs = Mockito.mock(ResultSet.class);
+        Mockito.when(rs.next()).thenReturn(true, false);
+        Mockito.when(rs.getString(1)).thenReturn("200");
+        Mockito.when(rs.getString(2)).thenReturn(
+                "insert into \"DEBEZIUM\".\"ABC\"(\"ID\",\"DATA\") values ('3','test3');");
+        Mockito.when(rs.getInt(3)).thenReturn(EventType.INSERT.getValue());
+        Mockito.when(rs.getTimestamp(eq(4), any(Calendar.class))).thenReturn(Timestamp.valueOf(LocalDateTime.now()));
+        Mockito.when(rs.getString(7)).thenReturn("ABC");
+        Mockito.when(rs.getString(8)).thenReturn("DEBEZIUM");
+        Mockito.when(rs.getString(10)).thenReturn("AAAAAAAAAAAAAAAAAD");
+        Mockito.when(rs.getBytes(5)).thenReturn(new byte[]{ 0x12, 0x34, 0x56, 0x78 });
+
+        final PreparedStatement ps = Mockito.mock(PreparedStatement.class);
+        Mockito.when(ps.executeQuery()).thenReturn(rs);
+
+        Mockito.when(commitScn.getMaxCommittedScn()).thenReturn(Scn.valueOf(500));
+
+        try (var source = getChangeEventSource(getConfig().build())) {
+            final BufferedStreamingChangeEventSource mock = Mockito.spy(source);
+            Mockito.doReturn(ps).when(mock).createQueryStatement();
+
+            final OracleConnection mainConnection = connectionFactory.streamingConnectionFactory().mainConnection();
+            Mockito.when(mainConnection.getTableMetadataDdl(Mockito.any(TableId.class)))
+                    .thenReturn("CREATE TABLE DEBEZIUM.ABC (ID primary key(9,0), data varchar2(50))");
+
+            final Table table = Table.editor()
+                    .tableId(TableId.parse("ORCLPDB1.DEBEZIUM.ABC"))
+                    .addColumn(Column.editor().name("ID").create())
+                    .addColumn(Column.editor().name("DATA").create())
+                    .setPrimaryKeyNames("ID").create();
+
+            Mockito.doReturn(table)
+                    .when(mock)
+                    .dispatchSchemaChangeEventAndGetTableForNewConfiguredTable(Mockito.any(TableId.class));
+
+            // Promote TRANSACTION_ID_1 into the cache with startScn=100
+            source.processEvent(getStartLogMinerEventRow(100, TRANSACTION_ID_1));
+            source.processEvent(getInsertLogMinerEventRow(110, TRANSACTION_ID_1));
+
+            // Leave TRANSACTION_ID_2 in the deferred map with startScn=150
+            source.processEvent(getStartLogMinerEventRow(150, TRANSACTION_ID_2));
+
+            assertThat(source.getTransactionCache().containsTransaction(TRANSACTION_ID_1)).isTrue();
+            assertThat(source.getDeferredTransactionCount()).isEqualTo(1);
+
+            // process() triggers calculateNewStartScn. The offset SCN should be
+            // min(oldestDeferredScn=150, minCacheScn=100) - 1 = 99, not just 150.
+            // The subtract(ONE) matches the non-deferred path so the START event at
+            // the oldest SCN is included by the mining query's exclusive SCN > ? bound.
+            final ProcessResult result = mock.process(Scn.valueOf(100), Scn.valueOf(100), Scn.valueOf(200));
+
+            Mockito.verify(offsetContext).setScn(Scn.valueOf(99));
+            assertThat(result.miningSessionStartScn()).isEqualTo(Scn.valueOf(199));
+            assertThat(result.readStartScn()).isEqualTo(Scn.valueOf(200));
         }
     }
 
