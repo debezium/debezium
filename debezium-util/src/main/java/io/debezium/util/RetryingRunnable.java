@@ -116,10 +116,23 @@ public class RetryingRunnable<E extends Exception> {
         if (retriableExceptions.isEmpty()) {
             return true;
         }
-        for (Class<? extends Exception> retriable : retriableExceptions) {
-            if (retriable.isInstance(ex)) {
-                return true;
+        Throwable current = ex;
+        Throwable slow = ex; // Floyd's cycle guard
+        boolean advanceSlow = false;
+        while (current != null) {
+            for (Class<? extends Exception> retriable : retriableExceptions) {
+                if (retriable.isInstance(current)) {
+                    return true;
+                }
             }
+            current = current.getCause();
+            if (advanceSlow) {
+                slow = slow.getCause();
+                if (current == slow) {
+                    break; // cycle detected
+                }
+            }
+            advanceSlow = !advanceSlow;
         }
         return false;
     }

@@ -17,6 +17,8 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import io.debezium.DebeziumException;
+
 /**
  * Tests RetryingRunnable.
  * Refactored and inspired by: io.debezium.embedded.async.RetryingCallableTest
@@ -115,6 +117,15 @@ public class RetryingRunnableTest {
     }
 
     @Test
+    void shouldRetryAsManyTimesAsRequestedForMatchingSuppliedRetriableCause() throws InterruptedException, SQLException {
+        getTwoTimesFailingWithRetriableCause(10, retriableExceptions).run();
+
+        // Runnable should fail 2 times and 3rd time it should succeed.
+        assertThat(runs.get()).isEqualTo(3);
+        Assertions.assertThat(heals.get()).isEqualTo(2);
+    }
+
+    @Test
     void shouldRetryAsManyTimesAsRequestedWhenAlwaysFailsForMatchingSuppliedRetriableExceptions() throws InterruptedException {
         try {
             getAlwaysFailingButRetriable(5, retriableExceptions).run();
@@ -195,6 +206,22 @@ public class RetryingRunnableTest {
                 .doRun(() -> {
                     if (runs.incrementAndGet() <= 2) {
                         throw new SQLRecoverableException(String.format("Good try, but I fail this time (call #%s)", runs));
+                    }
+                })
+                .doAutoHeal(heals::incrementAndGet)
+                .delayStrategy(DelayStrategy.linear(Duration.ofMillis(100)))
+                .retriableExceptions(retriableExceptions)
+                .build();
+    }
+
+    private RetryingRunnable<SQLException> getTwoTimesFailingWithRetriableCause(int retries,
+                                                                                List<Class<? extends Exception>> retriableExceptions) {
+        return RetryingRunnable.<SQLException> builder()
+                .retries(retries)
+                .doRun(() -> {
+                    if (runs.incrementAndGet() <= 2) {
+                        Exception cause = new SQLRecoverableException(String.format("Good try, but I fail this time (call #%s)", runs));
+                        throw new DebeziumException(cause);
                     }
                 })
                 .doAutoHeal(heals::incrementAndGet)
