@@ -859,13 +859,26 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             // by transactions in the cache. Always use a sliding window block-by-block.
             final Scn miningSessionStartScn = endScn.subtract(Scn.ONE);
 
-            // The offset SCN must not advance past the oldest deferred transaction's start SCN.
-            // This ensures that on restart, the connector goes back far enough to re-mine the START
-            // events of deferred transactions and reconstruct their metadata.
+            // The offset SCN must not advance past the oldest in-flight transaction's start SCN,
+            // considering both the deferred metadata map and the promoted (DML-bearing) transaction
+            // cache. This ensures that on restart the connector goes back far enough to re-mine
+            // the START events of deferred transactions and to reconstruct any non-persisted
+            // transactions that were already promoted into the cache.
             final Scn oldestDeferredScn = getOldestDeferredTransactionStartScn();
+            final Scn oldestScn;
+            if (oldestDeferredScn.isNull()) {
+                oldestScn = minCacheScn;
+            }
+            else if (minCacheScn.isNull()) {
+                oldestScn = oldestDeferredScn;
+            }
+            else {
+                oldestScn = oldestDeferredScn.compareTo(minCacheScn) <= 0 ? oldestDeferredScn : minCacheScn;
+            }
+
             final Scn offsetScn;
-            if (!oldestDeferredScn.isNull() && !maxCommittedScn.isNull() && oldestDeferredScn.compareTo(maxCommittedScn) < 0) {
-                offsetScn = oldestDeferredScn;
+            if (!oldestScn.isNull() && !maxCommittedScn.isNull() && oldestScn.compareTo(maxCommittedScn) < 0) {
+                offsetScn = oldestScn.subtract(Scn.ONE);
             }
             else if (!maxCommittedScn.isNull()) {
                 offsetScn = maxCommittedScn;
