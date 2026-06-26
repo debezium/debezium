@@ -131,17 +131,7 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
                     });
                     jdbcConnection.commit();
                 })
-                .doAutoHeal(() -> {
-                    LOGGER.error("Error emitting open window to signal table '{}'. Closing connection and re-connecting", signalTableName);
-                    try {
-                        jdbcConnection.close();
-                    }
-                    catch (Exception ignore) {
-                        // Ignore
-                    }
-                    LOGGER.trace("Reconnecting JDBC connection");
-                    jdbcConnection.connect();
-                })
+                .doAutoHeal(this::autoHealJdbcConnection)
                 .build()
                 .runWrapped(cause -> new SQLException("Interrupted", cause));
     }
@@ -157,7 +147,25 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
         LOGGER.trace("Emitting close window for chunk = '{}' to signal table '{}'", context.currentChunkId(), signalTableName);
         WatermarkWindowCloser watermarkWindowCloser = getWatermarkWindowCloser(connectorConfig, jdbcConnection, signalTableName);
 
-        watermarkWindowCloser.closeWindow(partition, offsetContext, context.currentChunkId());
+        RetryingRunnable.builder()
+                .retries(connectorConfig.getSignalEmitFailureMaxRetries())
+                .delayStrategy(DelayStrategy.constant(connectorConfig.getSignalEmitFailureBackoff()))
+                .doRun(() -> watermarkWindowCloser.closeWindow(partition, offsetContext, context.currentChunkId()))
+                .doAutoHeal(this::autoHealJdbcConnection)
+                .build()
+                .run();
+    }
+
+    private void autoHealJdbcConnection() throws SQLException {
+        LOGGER.info("Closing JDBC connection and re-connecting");
+        try {
+            jdbcConnection.close();
+        }
+        catch (Exception ignore) {
+            // Ignore
+        }
+        LOGGER.trace("Reconnecting JDBC connection");
+        jdbcConnection.connect();
     }
 
     private WatermarkWindowCloser getWatermarkWindowCloser(CommonConnectorConfig connectorConfig, JdbcConnection jdbcConnection, String signalTable) {
