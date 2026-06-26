@@ -5,8 +5,13 @@
  */
 package io.debezium.connector.jdbc.junit.jupiter;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.Statement;
 import java.time.Duration;
+import java.util.concurrent.TimeUnit;
 
+import org.rnorth.ducttape.unreliables.Unreliables;
 import org.testcontainers.containers.JdbcDatabaseContainer;
 import org.testcontainers.utility.DockerImageName;
 
@@ -47,6 +52,23 @@ public class SingleStoreContainer<SELF extends SingleStoreContainer<SELF>> exten
         addEnv("DATABASE_NAME", databaseName);
         addEnv("ROOT_PASSWORD", password);
         setStartupAttempts(1);
+    }
+
+    @Override
+    protected void waitUntilContainerStarted() {
+        // The SingleStore dev image does not auto-create a database from the DATABASE_NAME environment
+        // variable, so create it before the JDBC readiness probe (which connects to getJdbcUrl(), i.e.
+        // the "/<databaseName>" schema) runs and would otherwise fail with "Unknown database".
+        final String baseUrl = "jdbc:singlestore://" + getHost() + ":" + getMappedPort(SINGLESTORE_PORT)
+                + "/" + constructUrlParameters("?", "&");
+        Unreliables.retryUntilSuccess(getConnectTimeoutSeconds(), TimeUnit.SECONDS, () -> {
+            try (Connection connection = DriverManager.getConnection(baseUrl, getUsername(), getPassword());
+                    Statement statement = connection.createStatement()) {
+                statement.execute("CREATE DATABASE IF NOT EXISTS " + databaseName);
+            }
+            return null;
+        });
+        super.waitUntilContainerStarted();
     }
 
     @Override
