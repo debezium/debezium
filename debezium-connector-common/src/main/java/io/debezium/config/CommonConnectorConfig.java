@@ -967,9 +967,10 @@ public abstract class CommonConnectorConfig {
             .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 24))
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
-            .withDefault(10)
+            .withDefault(0)
             .withValidation(Field::isPositiveInteger)
-            .withDescription("The maximum number of retries after encountering an error emitting a window event. Defaults to 10.");
+            .withDescription(
+                    "The maximum number of retries after encountering an error emitting a window event (-1 = no limit, 0 = disabled, > 0 = num of retries). Defaults to 0.");
 
     public static final Field SIGNAL_EMIT_FAILURE_BACKOFF_INTERVAL_MS = Field.create("signal.emit.failure.backoff.ms")
             .withDisplayName("Signal emit window event failure backoff time in ms")
