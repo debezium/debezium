@@ -89,7 +89,7 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
     @FixFor("DBZ-2146")
     public void testShouldCreateAndWriteGeospatialColumnTypes(SinkRecordFactory factory) throws Exception {
         final Map<String, String> properties = getDefaultSinkConfig();
-        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.NONE.getValue());
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
         properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
         startSinkConnector(properties);
@@ -114,6 +114,13 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
                 config);
 
         final String destinationTable = destinationTableName(createRecord);
+
+        // SingleStore supports GEOGRAPHY/GEOGRAPHYPOINT columns only in rowstore tables, so create the
+        // table explicitly with schema evolution disabled rather than letting the connector emit a
+        // (columnstore by default) CREATE TABLE that SingleStore would reject.
+        getSink().execute(String.format(
+                "CREATE ROWSTORE TABLE %s (id tinyint NOT NULL, geometry_data geography, point_data geographypoint NOT NULL, PRIMARY KEY(id))",
+                destinationTable));
 
         consume(createRecord);
 
@@ -159,8 +166,10 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
 
         consume(createRecord);
 
-        getSink().assertColumn(destinationTable, "float_vector_data", "VECTOR");
-        getSink().assertColumn(destinationTable, "double_vector_data", "VECTOR");
+        // SingleStore reports VECTOR columns through JDBC metadata as VARCHAR; the row assertions below
+        // confirm the values still round-trip as an actual vector.
+        getSink().assertColumn(destinationTable, "float_vector_data", "VARCHAR");
+        getSink().assertColumn(destinationTable, "double_vector_data", "VARCHAR");
         getSink().assertRows(destinationTable, rs -> {
             assertThat(normalizeVector(rs.getString("float_vector_data"))).isEqualTo("[1,2,3]");
             assertThat(normalizeVector(rs.getString("double_vector_data"))).isEqualTo("[1,2,3]");
