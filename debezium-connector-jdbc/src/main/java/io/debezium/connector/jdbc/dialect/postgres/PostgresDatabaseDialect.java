@@ -56,7 +56,7 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
         }
     }
 
-    private PostgresDatabaseDialect(JdbcSinkConnectorConfig config, SessionFactory sessionFactory) {
+    protected PostgresDatabaseDialect(JdbcSinkConnectorConfig config, SessionFactory sessionFactory) {
         super(config, sessionFactory);
     }
 
