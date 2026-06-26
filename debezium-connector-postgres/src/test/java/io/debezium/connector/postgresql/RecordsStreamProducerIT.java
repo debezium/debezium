@@ -4839,7 +4839,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         startConnector(config -> config
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, false)
                 .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.test_copy"),
-                true,
+                false,
                 record -> {
                     if (!"test_server.public.test_copy.Envelope".equals(record.valueSchema().name())) {
                         return false;
@@ -4849,7 +4849,6 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                     final Integer pk = after.getInt32("pk");
                     return pk == stopAtPk;
                 });
-        waitForStreamingToStart();
 
         final String topicName = topicName("public.test_copy");
 
