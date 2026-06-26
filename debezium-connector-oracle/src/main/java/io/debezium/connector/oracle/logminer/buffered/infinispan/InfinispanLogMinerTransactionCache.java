@@ -142,7 +142,7 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
     }
 
     @Override
-    public boolean rollbackTransactionEventWithRowId(InfinispanTransaction transaction, String rowId) {
+    public boolean rollbackTransactionEventWithRowId(InfinispanTransaction transaction, int rollbackId, String rowId) {
         final long encodedRowId = RowIdCodec.encode(rowId);
         final TreeSet<Integer> eventIds = eventIdsByTransactionId.get(transaction.getTransactionId());
         for (Integer eventId : eventIds.descendingSet()) {
