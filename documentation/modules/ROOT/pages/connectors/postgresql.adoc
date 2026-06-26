@@ -42,8 +42,8 @@ Information and procedures for using a {prodname} PostgreSQL connector is organi
 * xref:how-debezium-postgresql-connectors-work[]
 * xref:descriptions-of-debezium-postgresql-connector-data-change-events[]
 * xref:how-debezium-postgresql-connectors-map-data-types[]
-* xref:setting-up-postgresql-to-run-a-debezium-connector[]
 * xref:custom-postgres-connector-converters[]
+* xref:setting-up-postgresql-to-run-a-debezium-connector[]
 * xref:deployment-of-debezium-postgresql-connectors[]
 * xref:monitoring-debezium-postgresql-connector-performance[]
 * xref:how-debezium-postgresql-connectors-handle-faults-and-problems[]
@@ -2185,6 +2185,7 @@ Support for the propagation of default values exists primarily to allow for safe
 This behaviour may be unexpected, but it is still safe. Only the schema definition is affected, while the real values present in the message will remain consistent with what was written to the source database.
 ====
 
+// Type: concept
 [[custom-postgres-connector-converters]]
 == Custom converters
 
