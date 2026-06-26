@@ -166,8 +166,10 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
 
         consume(createRecord);
 
-        // SingleStore reports VECTOR columns through JDBC metadata as VARCHAR; the row assertions below
-        // confirm the values still round-trip as an actual vector.
+        // With the default SingleStore JDBC driver options, VECTOR columns are surfaced through JDBC
+        // metadata as VARCHAR. Enabling the driver's extended data types (enableExtendedDataTypes=true)
+        // would report them as VECTOR instead; this test exercises the default options, and the row
+        // assertions below confirm the values still round-trip as an actual vector.
         getSink().assertColumn(destinationTable, "float_vector_data", "VARCHAR");
         getSink().assertColumn(destinationTable, "double_vector_data", "VARCHAR");
         getSink().assertRows(destinationTable, rs -> {
