@@ -527,6 +527,18 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
                     + "'warn' the problematic event and its binlog position will be logged and the event will be skipped; "
                     + "'ignore' the problematic event will be skipped.");
 
+    public static final Field RESOLVE_LIKE_TABLE_SCHEMA = Field.create("resolve.create.table.like.schema")
+            .withDisplayName("Resolve CREATE TABLE LIKE reference schema")
+            .withType(ConfigDef.Type.BOOLEAN)
+            .withDefault(false)
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.MEDIUM)
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 1))
+            .withDescription("When a CREATE TABLE ... LIKE statement reference a table " +
+                    "whose schema is not in the internal cache(e.g., excluded by table filters), " +
+                    "automatically fetch the reference table's schema via SHOW CREATE TABLE " +
+                    "and retry DDL parsing. Default: false.");
+
     public static final Field INCONSISTENT_SCHEMA_HANDLING_MODE = Field.create("inconsistent.schema.handling.mode")
             .withDisplayName("Inconsistent schema failure handling")
             .withEnum(EventProcessingFailureHandlingMode.class, EventProcessingFailureHandlingMode.FAIL)
@@ -664,6 +676,7 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
                     BUFFER_SIZE_FOR_BINLOG_READER,
                     EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE,
                     INCONSISTENT_SCHEMA_HANDLING_MODE,
+                    RESOLVE_LIKE_TABLE_SCHEMA,
                     GTID_SOURCE_INCLUDES,
                     GTID_SOURCE_EXCLUDES,
                     GTID_SOURCE_FILTER_DML_EVENTS,
@@ -678,6 +691,7 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
     private final BigIntUnsignedHandlingMode bigIntUnsignedHandlingMode;
     private final boolean readOnlyConnection;
     private final boolean ignoreGtidOnRecovery;
+    private final boolean resolveLikeTableSchema;
 
     /**
      * Create a binlog-based connector configuration.
@@ -704,6 +718,7 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
         this.inconsistentSchemaFailureHandlingMode = EventProcessingFailureHandlingMode.parse(config.getString(INCONSISTENT_SCHEMA_HANDLING_MODE));
         this.bigIntUnsignedHandlingMode = BigIntUnsignedHandlingMode.parse(config.getString(BIGINT_UNSIGNED_HANDLING_MODE));
         this.ignoreGtidOnRecovery = config.getBoolean(IGNORE_GTID_ON_RECOVERY);
+        this.resolveLikeTableSchema = config.getBoolean(RESOLVE_LIKE_TABLE_SCHEMA);
     }
 
     @Override
@@ -740,6 +755,13 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
      */
     public EventProcessingFailureHandlingMode getInconsistentSchemaFailureHandlingMode() {
         return inconsistentSchemaFailureHandlingMode;
+    }
+
+    /**
+     * @return whether to resolve CREATE TABLE LIKE reference table schema via JDBC when missing from cache
+     */
+    public boolean isResolveLikeTableSchema() {
+        return resolveLikeTableSchema;
     }
 
     /**
