@@ -28,6 +28,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Predicate;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import javax.net.ssl.KeyManager;
@@ -114,6 +115,17 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
     private static final String DML_DELETE_PREFIX = "DELETE ";
     private static final String DML_REPLACE_PREFIX = "REPLACE ";
 
+    /**
+     * Regex to detect Create TABLE ... LIKE statements and extract both the new table and the
+     * reference (template) table.
+     */
+    private static final Pattern CREATE_TABLE_LIKE_PATTERN = Pattern.compile(
+            "(?i)CREATE\\s+TABLE\\s+"
+                    + "(?:IF\\s+NOT\\s+EXISTS\\s+)?"
+                    + "(?:(`[^`]+`|[^.`\\s]+)\\.)?(`[^`]+`|[^.`\\s]+)"
+                    + "\\s+LIKE\\s+"
+                    + "(?:(`[^`]+`|[^.`\\s;]+)\\.)?(`[^`]+`|[^.\\s;]+)");
+
     private final BinaryLogClient client;
     private final BinlogStreamingChangeEventSourceMetrics<?, P> metrics;
     // todo: can we go back to accessing schema via task context? issue is all the generics :/
@@ -126,6 +138,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
     private final ErrorHandler errorHandler;
     private final EventProcessingFailureHandlingMode eventDeserializationFailureHandlingMode;
     private final EventProcessingFailureHandlingMode inconsistentSchemaHandlingMode;
+    private final boolean resolveLikeTableSchema;
     private final SnapshotterService snapshotterService;
     private final Predicate<String> gtidDmlSourceFilter;
     private final boolean isGtidModeEnabled;
@@ -164,6 +177,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         this.metrics = metrics;
         this.eventDeserializationFailureHandlingMode = connectorConfig.getEventProcessingFailureHandlingMode();
         this.inconsistentSchemaHandlingMode = connectorConfig.getInconsistentSchemaFailureHandlingMode();
+        this.resolveLikeTableSchema = connectorConfig.isResolveLikeTableSchema();
         this.snapshotterService = snapshotterService;
         this.client = client;
         configureBinaryLogClient(client, connectorConfig, binaryLogClientThreads, connection);
@@ -784,8 +798,17 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
                     BinlogConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER.name());
         }
 
-        final List<SchemaChangeEvent> schemaChangeEvents = schema.parseStreamingDdl(partition, sql,
+        List<SchemaChangeEvent> schemaChangeEvents = schema.parseStreamingDdl(partition, sql,
                 command.getDatabase(), offsetContext, eventTime);
+
+        // DBZ-1496: Resolve-and-retry for CREATE TABLE ... LIKE statements.
+        // If parsing produced no schema change events and the DDL is a LIKE statement,
+        // try to resolve the reference table's schema via JDBC and try parsing.
+        if (schemaChangeEvents.isEmpty() && resolveLikeTableSchema) {
+            schemaChangeEvents = resolveCreateTableLikeAndRetry(partition, offsetContext, sql,
+                    command.getDatabase(), eventTime);
+        }
+
         try {
             for (SchemaChangeEvent schemaChangeEvent : schemaChangeEvents) {
                 if (schema.skipSchemaChangeEvent(schemaChangeEvent)) {
@@ -818,6 +841,87 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
 
     private String removeSetStatement(String sql) {
         return sql.replaceAll(SET_STATEMENT_REGEX, "").trim();
+    }
+
+    private List<SchemaChangeEvent> resolveCreateTableLikeAndRetry(P partition, O offsetContext,
+                                                                   String sql, String database, Instant eventTime) {
+        final TableId[] likeTables = extractLikeTables(sql, database);
+        if (likeTables == null || likeTables.length == 0) {
+            return List.of();
+        }
+        final TableId newTableId = likeTables[0];
+        final TableId refTableId = likeTables[1];
+
+        // An empty parse result can have several causes;only resolve when the reference schema is
+        // genuinely missing from the cache and the new table is one we are configured to capture.
+        // Otherwise(e.g. the new table is itself filtered out) there is nothing useful to do, and
+        // we avoid an unnecessary SHOW CREATE TABLE round-trip on the streaming thread.
+        if (schema.tableFor(refTableId) != null) {
+            return List.of();
+        }
+        if (!connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(newTableId)) {
+            return List.of();
+        }
+
+        LOGGER.info("Detected CREATE TABLE ... LIKE: new table {} referencing {}; attempting to resolve schema",
+                newTableId, refTableId);
+
+        final String refCreateDdl = fetchShowCreateTable(refTableId);
+        if (refCreateDdl == null) {
+            LOGGER.warn("Failed to resolve reference table schema for {}; " +
+                    "the new table {} will not be tracked until its schema is resolved", refTableId, newTableId);
+            return List.of();
+        }
+
+        final String syntheticDdl = refCreateDdl.replaceFirst(
+                "(?i)CREATE\\s+TABLE\\s+`?" + Pattern.quote(refTableId.table()) + "`?",
+                Matcher.quoteReplacement("CREATE TABLE `" + newTableId.table() + "`"));
+
+        LOGGER.info("Resolved schema for {} via SHOW CREATE TABLE on {}; parsing synthetic DDL", newTableId, refTableId);
+
+        // Parse the synthetic DDL to register the new table's schema
+        return schema.parseStreamingDdl(partition, syntheticDdl, newTableId.catalog(), offsetContext, eventTime);
+    }
+
+    /**
+     * Extract the new table and reference (template) table from a {@code CREATE TABLE ... LIKE}
+     * statement
+     */
+    static TableId[] extractLikeTables(String sql, String currentDatabase) {
+        final String stripped = sql.replaceFirst("(?s)^\\s*/\\*.*?\\*/\\s*", "");
+        final Matcher matcher = CREATE_TABLE_LIKE_PATTERN.matcher(stripped);
+        if (!matcher.find()) {
+            return null;
+        }
+
+        final TableId newTableId = new TableId(unquote(matcher.group(1), currentDatabase), null, unquote(matcher.group(2), null));
+        final TableId refTableId = new TableId(unquote(matcher.group(3), currentDatabase), null, unquote(matcher.group(4), null));
+        return new TableId[]{ newTableId, refTableId };
+    }
+
+    private static String unquote(String identifier, String fallback) {
+        return identifier == null ? fallback : identifier.replace("`", "");
+    }
+
+    private String fetchShowCreateTable(TableId tableId) {
+        String quotedRef = (tableId.catalog() != null)
+                ? "`" + tableId.catalog() + "`.`" + tableId.table() + "`"
+                : "`" + tableId.table() + "`";
+
+        try {
+            return connection.queryAndMap(
+                    "SHOW CREATE TABLE " + quotedRef,
+                    rs -> {
+                        if (rs.next()) {
+                            return rs.getString(2);
+                        }
+                        return null;
+                    });
+        }
+        catch (SQLException e) {
+            LOGGER.warn("SHOW CREATE TABLE {} FAILED, {}", tableId, e.getMessage());
+            return null;
+        }
     }
 
     /**
