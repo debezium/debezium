@@ -16,6 +16,6 @@
     <packaging>pom</packaging>
 
     <modules>
-        <module>debezium-source-connector-archetype</module>
+        <module>debezium-source-connector-relational-archetype</module>
     </modules>
 </project>

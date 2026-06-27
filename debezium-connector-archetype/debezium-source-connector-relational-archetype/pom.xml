@@ -10,9 +10,9 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>debezium-source-connector-archetype</artifactId>
-    <name>Debezium Source Connector Archetype</name>
-    <description>Maven archetype for bootstrapping a new Debezium source connector</description>
+    <artifactId>debezium-source-connector-relational-archetype</artifactId>
+    <name>Debezium Relational Source Connector Archetype</name>
+    <description>Maven archetype for bootstrapping a new Debezium relational source connector</description>
     <packaging>maven-archetype</packaging>
 
     <build>
