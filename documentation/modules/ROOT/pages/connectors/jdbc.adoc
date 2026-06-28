@@ -508,6 +508,24 @@ As a workaround, if you need a BOOLEAN data type for an Oracle 23 sink, add the 
 |io.debezium.time.ZonedTimestamp
 |Types.TIMESTAMP_WITH_TIMEZONE
 
+|io.debezium.time.StructuredDate
+|Types.DATE
+
+|io.debezium.time.StructuredTime
+|Types.TIME
+
+|io.debezium.time.StructuredTimestamp
+|Types.TIMESTAMP
+
+|io.debezium.time.StructuredZonedTime
+|Types.TIME_WITH_TIMEZONE
+
+|io.debezium.time.StructuredZonedTimestamp
+|Types.TIMESTAMP_WITH_TIMEZONE
+
+|io.debezium.time.StructuredDuration
+|Types.VARCHAR
+
 |io.debezium.data.VariableScaleDecimal
 |Types.DOUBLE
 
@@ -528,7 +546,7 @@ If the database does not support time or timestamps with time zones, the mapping
 .Mappings between {prodname} dialect-specific logical types and column data types
 [cols="as,as,as,as,as,as",options="header"]
 |===
-|Logical type |Db2 type |MySQL type |PostgreSQL type |Oracle type |SQL Server type
+|Logical type |Db2 and Db2 iSeries type |MySQL type |PostgreSQL type |Oracle type |SQL Server type
 
 |io.debezium.data.Bits
 |`blob`
@@ -572,6 +590,14 @@ If the database does not support time or timestamps with time zones, the mapping
 |`int8`
 |`number`
 |`bigint`
+
+|io.debezium.time.StructuredDuration
+|`varchar(128)`
+|`time`
+|`interval`
+|`interval year to month` +
+`interval day to second`
+|`varchar(128)`
 
 |io.debezium.data.Ltree
 |`clob`

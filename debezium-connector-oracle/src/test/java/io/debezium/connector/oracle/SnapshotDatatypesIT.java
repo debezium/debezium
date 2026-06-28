@@ -86,6 +86,8 @@ public class SnapshotDatatypesIT extends AbstractOracleDatatypesTest {
             case "timeTypesAsAdaptiveMicroseconds":
             case "timeTypesAsConnect":
             case "timeTypesAsIsoString":
+            case "timeTypesAsStructured":
+            case "timeTypeEdgesAsStructured":
                 return "debezium.type_time";
             case "clobTypes":
                 return "debezium.type_clob";

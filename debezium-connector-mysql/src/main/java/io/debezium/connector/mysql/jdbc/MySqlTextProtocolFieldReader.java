@@ -62,7 +62,11 @@ public class MySqlTextProtocolFieldReader extends AbstractFieldReader {
         }
 
         try {
-            return MySqlValueConverters.stringToLocalDate(new String(b.getBytes(1, (int) (b.length())), "UTF-8"), column, table);
+            final String value = new String(b.getBytes(1, (int) (b.length())), "UTF-8");
+            if (isStructuredTemporalMode()) {
+                return MySqlValueConverters.stringToBinlogDateValue(value);
+            }
+            return MySqlValueConverters.stringToLocalDate(value, column, table);
         }
         catch (UnsupportedEncodingException e) {
             logInvalidValue(rs, columnIndex, b);
@@ -80,11 +84,15 @@ public class MySqlTextProtocolFieldReader extends AbstractFieldReader {
         }
         else if (b.length() == 0) {
             LOGGER.warn("Encountered a zero length blob for column index {}", columnIndex);
-            return null;
+            return isStructuredTemporalMode() ? MySqlValueConverters.stringToBinlogDateTimeValue("0000-00-00 00:00:00") : null;
         }
 
         try {
-            return MySqlValueConverters.containsZeroValuesInDatePart((new String(b.getBytes(1, (int) (b.length())), "UTF-8")), column, table) ? null
+            final String value = new String(b.getBytes(1, (int) (b.length())), "UTF-8");
+            if (isStructuredTemporalMode()) {
+                return MySqlValueConverters.stringToBinlogDateTimeValue(value);
+            }
+            return MySqlValueConverters.containsZeroValuesInDatePart(value, column, table) ? null
                     : rs.getTimestamp(columnIndex, Calendar.getInstance());
         }
         catch (UnsupportedEncodingException e) {

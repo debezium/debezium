@@ -49,11 +49,16 @@ import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.SnapshotTablesRowCountOrder;
 import io.debezium.relational.history.MemorySchemaHistory;
+import io.debezium.time.StructuredDate;
+import io.debezium.time.StructuredTemporal;
+import io.debezium.time.StructuredTimestamp;
+import io.debezium.time.StructuredZonedTimestamp;
 
 /**
  * @author Randall Hauch
@@ -132,6 +137,56 @@ public abstract class BinlogSnapshotSourceIT<C extends SourceConnector> extends 
     @Test
     void shouldCreateSnapshotOfSingleDatabaseWithoutGlobalLockAndStoreOnlyCapturedTablesNoData() throws Exception {
         snapshotOfSingleDatabase(false, true, false);
+    }
+
+    @Test
+    public void shouldPreserveStructuredTemporalValuesInSnapshot() throws Exception {
+        final String tableName = "structured_temporal_snapshot";
+        executeStatements(DATABASE.getDatabaseName(),
+                "SET SESSION sql_mode = 'ALLOW_INVALID_DATES'",
+                "DROP TABLE IF EXISTS " + tableName,
+                "CREATE TABLE " + tableName + " (" +
+                        "id INT PRIMARY KEY, " +
+                        "d_zero DATE, " +
+                        "d_invalid DATE, " +
+                        "dt_zero DATETIME(6), " +
+                        "dt_invalid DATETIME(6), " +
+                        "dt_max DATETIME(6), " +
+                        "ts_zero TIMESTAMP(6) NULL)",
+                "INSERT INTO " + tableName + " VALUES (" +
+                        "1, " +
+                        "'0000-00-00', " +
+                        "'2026-02-31', " +
+                        "'0000-00-00 00:00:00.000000', " +
+                        "'2026-02-31 12:13:14.123456', " +
+                        "'9999-12-31 23:59:59.999999', " +
+                        "'0000-00-00 00:00:00.000000')");
+
+        config = simpleConfig()
+                .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName(tableName))
+                .with(BinlogConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.STRUCTURED)
+                .build();
+
+        start(getConnectorClass(), config);
+        waitForSnapshotToBeCompleted(getConnectorName(), DATABASE.getServerName());
+
+        final SourceRecords sourceRecords = consumeRecordsByTopic(1);
+        final SourceRecord record = sourceRecords.recordsForTopic(DATABASE.topicForTable(tableName)).get(0);
+        VerifyRecord.isValidRead(record, "id", 1);
+
+        final Struct after = ((Struct) record.value()).getStruct("after");
+        assertThat(after.schema().field("d_zero").schema().name()).isEqualTo(StructuredDate.SCHEMA_NAME);
+        assertDate(after.getStruct("d_zero"), 0, 0, 0);
+        assertDate(after.getStruct("d_invalid"), 2026, 2, 31);
+
+        assertThat(after.schema().field("dt_zero").schema().name()).isEqualTo(StructuredTimestamp.SCHEMA_NAME);
+        assertTimestamp(after.getStruct("dt_zero"), 0, 0, 0, 0, 0, 0, 0);
+        assertTimestamp(after.getStruct("dt_invalid"), 2026, 2, 31, 12, 13, 14, 123_456_000);
+        assertTimestamp(after.getStruct("dt_max"), 9999, 12, 31, 23, 59, 59, 999_999_000);
+
+        assertThat(after.schema().field("ts_zero").schema().name()).isEqualTo(StructuredZonedTimestamp.SCHEMA_NAME);
+        assertTimestamp(after.getStruct("ts_zero"), 0, 0, 0, 0, 0, 0, 0);
+        assertThat(after.getStruct("ts_zero").getInt32(StructuredTemporal.OFFSET_SECONDS_FIELD)).isZero();
     }
 
     private void snapshotOfSingleDatabase(boolean useGlobalLock, boolean storeOnlyCapturedTables, boolean data) throws Exception {
@@ -851,5 +906,20 @@ public abstract class BinlogSnapshotSourceIT<C extends SourceConnector> extends 
 
     protected long toMicroSeconds(String duration) {
         return Duration.parse(duration).toNanos() / 1_000;
+    }
+
+    private static void assertDate(Struct value, int year, int month, int day) {
+        assertThat(value.getString(StructuredTemporal.SPECIAL_VALUE_FIELD)).isNull();
+        assertThat(value.getInt32(StructuredTemporal.YEAR_FIELD)).isEqualTo(year);
+        assertThat(value.getInt8(StructuredTemporal.MONTH_FIELD)).isEqualTo((byte) month);
+        assertThat(value.getInt8(StructuredTemporal.DAY_FIELD)).isEqualTo((byte) day);
+    }
+
+    private static void assertTimestamp(Struct value, int year, int month, int day, int hour, int minute, int second, int nanos) {
+        assertDate(value, year, month, day);
+        assertThat(value.getInt8(StructuredTemporal.HOUR_FIELD)).isEqualTo((byte) hour);
+        assertThat(value.getInt8(StructuredTemporal.MINUTE_FIELD)).isEqualTo((byte) minute);
+        assertThat(value.getInt8(StructuredTemporal.SECOND_FIELD)).isEqualTo((byte) second);
+        assertThat(value.getInt32(StructuredTemporal.NANOS_FIELD)).isEqualTo(nanos);
     }
 }

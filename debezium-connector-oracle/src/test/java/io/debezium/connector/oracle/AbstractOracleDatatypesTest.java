@@ -43,6 +43,10 @@ import io.debezium.time.IsoTimestamp;
 import io.debezium.time.MicroDuration;
 import io.debezium.time.MicroTimestamp;
 import io.debezium.time.NanoTimestamp;
+import io.debezium.time.StructuredDuration;
+import io.debezium.time.StructuredTemporal;
+import io.debezium.time.StructuredTimestamp;
+import io.debezium.time.StructuredZonedTimestamp;
 import io.debezium.time.Timestamp;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.Testing;
@@ -121,6 +125,10 @@ public abstract class AbstractOracleDatatypesTest extends AbstractAsyncEngineCon
             "  val_int_ytm interval year to month, " +
             "  val_int_dts interval day(3) to second(2), " +
             "  val_max_date date, " +
+            "  val_ts_precision9_edge timestamp(9), " +
+            "  val_tstz_edge timestamp with time zone, " +
+            "  val_int_ytm_edge interval year to month, " +
+            "  val_int_dts_edge interval day(3) to second(9), " +
             "  primary key (id)" +
             ")";
 
@@ -663,6 +671,148 @@ public abstract class AbstractOracleDatatypesTest extends AbstractAsyncEngineCon
     }
 
     @Test
+    public void timeTypesAsStructured() throws Exception {
+        stopConnector();
+        init(TemporalPrecisionMode.STRUCTURED);
+
+        int expectedRecordCount = 0;
+
+        if (insertRecordsDuringTest()) {
+            insertTimeTypes();
+        }
+
+        Testing.debug("Inserted");
+        expectedRecordCount++;
+
+        final SourceRecords records = consumeRecordsByTopic(expectedRecordCount);
+
+        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TYPE_TIME");
+        assertThat(testTableRecords).hasSize(expectedRecordCount);
+        SourceRecord record = testTableRecords.get(0);
+
+        VerifyRecord.isValid(record);
+
+        if (insertRecordsDuringTest()) {
+            VerifyRecord.isValidInsert(record, "ID", 1);
+        }
+        else {
+            VerifyRecord.isValidRead(record, "ID", 1);
+        }
+
+        Struct after = (Struct) ((Struct) record.value()).get("after");
+
+        assertThat(after.schema().field("VAL_TS_PRECISION9").schema().name()).isEqualTo(StructuredTimestamp.SCHEMA_NAME);
+        Struct timestamp = after.getStruct("VAL_TS_PRECISION9");
+        assertThat(timestamp.getString(StructuredTemporal.SPECIAL_VALUE_FIELD)).isNull();
+        assertThat(timestamp.getInt32(StructuredTemporal.YEAR_FIELD)).isEqualTo(2018);
+        assertThat(timestamp.getInt8(StructuredTemporal.MONTH_FIELD)).isEqualTo((byte) 3);
+        assertThat(timestamp.getInt8(StructuredTemporal.DAY_FIELD)).isEqualTo((byte) 27);
+        assertThat(timestamp.getInt8(StructuredTemporal.HOUR_FIELD)).isEqualTo((byte) 12);
+        assertThat(timestamp.getInt8(StructuredTemporal.MINUTE_FIELD)).isEqualTo((byte) 34);
+        assertThat(timestamp.getInt8(StructuredTemporal.SECOND_FIELD)).isEqualTo((byte) 56);
+        assertThat(timestamp.getInt32(StructuredTemporal.NANOS_FIELD)).isEqualTo(125_456_789);
+
+        assertThat(after.schema().field("VAL_TSTZ").schema().name()).isEqualTo(StructuredZonedTimestamp.SCHEMA_NAME);
+        Struct zonedTimestamp = after.getStruct("VAL_TSTZ");
+        assertThat(zonedTimestamp.getString(StructuredTemporal.SPECIAL_VALUE_FIELD)).isNull();
+        assertThat(zonedTimestamp.getInt32(StructuredTemporal.YEAR_FIELD)).isEqualTo(2018);
+        assertThat(zonedTimestamp.getInt8(StructuredTemporal.MONTH_FIELD)).isEqualTo((byte) 3);
+        assertThat(zonedTimestamp.getInt8(StructuredTemporal.DAY_FIELD)).isEqualTo((byte) 27);
+        assertThat(zonedTimestamp.getInt8(StructuredTemporal.HOUR_FIELD)).isEqualTo((byte) 1);
+        assertThat(zonedTimestamp.getInt8(StructuredTemporal.MINUTE_FIELD)).isEqualTo((byte) 34);
+        assertThat(zonedTimestamp.getInt8(StructuredTemporal.SECOND_FIELD)).isEqualTo((byte) 56);
+        assertThat(zonedTimestamp.getInt32(StructuredTemporal.NANOS_FIELD)).isEqualTo(7_891_000);
+        assertThat(zonedTimestamp.getInt32(StructuredTemporal.OFFSET_SECONDS_FIELD)).isEqualTo(-39_600);
+
+        assertThat(after.schema().field("VAL_INT_YTM").schema().name()).isEqualTo(StructuredDuration.SCHEMA_NAME);
+        Struct yearMonth = after.getStruct("VAL_INT_YTM");
+        assertThat(yearMonth.getInt32(StructuredTemporal.YEARS_FIELD)).isEqualTo(-3);
+        assertThat(yearMonth.getInt32(StructuredTemporal.MONTHS_FIELD)).isEqualTo(-6);
+
+        assertThat(after.schema().field("VAL_INT_DTS").schema().name()).isEqualTo(StructuredDuration.SCHEMA_NAME);
+        Struct daySecond = after.getStruct("VAL_INT_DTS");
+        assertThat(daySecond.getInt32(StructuredTemporal.DAYS_FIELD)).isEqualTo(-1);
+        assertThat(daySecond.getInt32(StructuredTemporal.HOURS_FIELD)).isEqualTo(-2);
+        assertThat(daySecond.getInt32(StructuredTemporal.MINUTES_FIELD)).isEqualTo(-3);
+        assertThat(daySecond.getInt64(StructuredTemporal.SECONDS_FIELD)).isEqualTo(-4L);
+        assertThat(daySecond.getInt32(StructuredTemporal.NANOS_FIELD)).isEqualTo(-560_000_000);
+    }
+
+    @Test
+    public void timeTypeEdgesAsStructured() throws Exception {
+        stopConnector();
+
+        if (!insertRecordsDuringTest()) {
+            deleteStructuredEdgeTimeTypes();
+            insertStructuredEdgeTimeTypes();
+        }
+
+        try {
+            init(TemporalPrecisionMode.STRUCTURED);
+
+            if (insertRecordsDuringTest()) {
+                insertStructuredEdgeTimeTypes();
+            }
+
+            final SourceRecords records = consumeRecordsByTopic(insertRecordsDuringTest() ? 1 : 2);
+            final List<SourceRecord> testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TYPE_TIME");
+            final SourceRecord record = findRecordById(testTableRecords, 2);
+
+            VerifyRecord.isValid(record);
+            if (insertRecordsDuringTest()) {
+                VerifyRecord.isValidInsert(record, "ID", 2);
+            }
+            else {
+                VerifyRecord.isValidRead(record, "ID", 2);
+            }
+
+            final Struct after = (Struct) ((Struct) record.value()).get("after");
+
+            assertThat(after.schema().field("VAL_TS_PRECISION9_EDGE").schema().name()).isEqualTo(StructuredTimestamp.SCHEMA_NAME);
+            final Struct timestamp = after.getStruct("VAL_TS_PRECISION9_EDGE");
+            assertThat(timestamp.getString(StructuredTemporal.SPECIAL_VALUE_FIELD)).isNull();
+            assertThat(timestamp.getInt32(StructuredTemporal.YEAR_FIELD)).isEqualTo(9999);
+            assertThat(timestamp.getInt8(StructuredTemporal.MONTH_FIELD)).isEqualTo((byte) 12);
+            assertThat(timestamp.getInt8(StructuredTemporal.DAY_FIELD)).isEqualTo((byte) 31);
+            assertThat(timestamp.getInt8(StructuredTemporal.HOUR_FIELD)).isEqualTo((byte) 23);
+            assertThat(timestamp.getInt8(StructuredTemporal.MINUTE_FIELD)).isEqualTo((byte) 59);
+            assertThat(timestamp.getInt8(StructuredTemporal.SECOND_FIELD)).isEqualTo((byte) 59);
+            assertThat(timestamp.getInt32(StructuredTemporal.NANOS_FIELD)).isEqualTo(999_999_999);
+
+            assertThat(after.schema().field("VAL_TSTZ_EDGE").schema().name()).isEqualTo(StructuredZonedTimestamp.SCHEMA_NAME);
+            final Struct zonedTimestamp = after.getStruct("VAL_TSTZ_EDGE");
+            assertThat(zonedTimestamp.getString(StructuredTemporal.SPECIAL_VALUE_FIELD)).isNull();
+            assertThat(zonedTimestamp.getInt32(StructuredTemporal.YEAR_FIELD)).isEqualTo(9999);
+            assertThat(zonedTimestamp.getInt8(StructuredTemporal.MONTH_FIELD)).isEqualTo((byte) 12);
+            assertThat(zonedTimestamp.getInt8(StructuredTemporal.DAY_FIELD)).isEqualTo((byte) 31);
+            assertThat(zonedTimestamp.getInt8(StructuredTemporal.HOUR_FIELD)).isEqualTo((byte) 23);
+            assertThat(zonedTimestamp.getInt8(StructuredTemporal.MINUTE_FIELD)).isEqualTo((byte) 59);
+            assertThat(zonedTimestamp.getInt8(StructuredTemporal.SECOND_FIELD)).isEqualTo((byte) 59);
+            assertThat(zonedTimestamp.getInt32(StructuredTemporal.NANOS_FIELD)).isEqualTo(999_999_999);
+            assertThat(zonedTimestamp.getInt32(StructuredTemporal.OFFSET_SECONDS_FIELD)).isEqualTo(50_400);
+
+            assertThat(after.schema().field("VAL_INT_YTM_EDGE").schema().name()).isEqualTo(StructuredDuration.SCHEMA_NAME);
+            final Struct yearMonth = after.getStruct("VAL_INT_YTM_EDGE");
+            assertThat(yearMonth.getInt32(StructuredTemporal.YEARS_FIELD)).isEqualTo(-123);
+            assertThat(yearMonth.getInt32(StructuredTemporal.MONTHS_FIELD)).isEqualTo(-11);
+
+            assertThat(after.schema().field("VAL_INT_DTS_EDGE").schema().name()).isEqualTo(StructuredDuration.SCHEMA_NAME);
+            final Struct daySecond = after.getStruct("VAL_INT_DTS_EDGE");
+            assertThat(daySecond.getInt32(StructuredTemporal.DAYS_FIELD)).isEqualTo(-999);
+            assertThat(daySecond.getInt32(StructuredTemporal.HOURS_FIELD)).isEqualTo(-23);
+            assertThat(daySecond.getInt32(StructuredTemporal.MINUTES_FIELD)).isEqualTo(-59);
+            assertThat(daySecond.getInt64(StructuredTemporal.SECONDS_FIELD)).isEqualTo(-59L);
+            assertThat(daySecond.getInt32(StructuredTemporal.NANOS_FIELD)).isEqualTo(-999_999_999);
+        }
+        finally {
+            stopConnector();
+            if (!insertRecordsDuringTest()) {
+                deleteStructuredEdgeTimeTypes();
+            }
+        }
+    }
+
+    @Test
     @SkipWhenLogMiningStrategyIs(value = SkipWhenLogMiningStrategyIs.Strategy.HYBRID, reason = "Cannot use lob.enabled with Hybrid")
     public void clobTypes() throws Exception {
         int expectedRecordCount = 0;
@@ -773,7 +923,37 @@ public abstract class AbstractOracleDatatypesTest extends AbstractAsyncEngineCon
                 + ", INTERVAL '-3-6' YEAR TO MONTH"
                 + ", INTERVAL '-1 2:3:4.56' DAY TO SECOND"
                 + ", TO_DATE('4247-04-05', 'yyyy-mm-dd')"
+                + ", null"
+                + ", null"
+                + ", null"
+                + ", null"
                 + ")");
+        connection.execute("COMMIT");
+    }
+
+    protected static void insertStructuredEdgeTimeTypes() throws SQLException {
+        connection.execute("INSERT INTO debezium.type_time VALUES ("
+                + "2"
+                + ", null"
+                + ", null"
+                + ", null"
+                + ", null"
+                + ", null"
+                + ", null"
+                + ", null"
+                + ", null"
+                + ", null"
+                + ", null"
+                + ", TO_TIMESTAMP('9999-12-31 23:59:59.999999999', 'yyyy-mm-dd HH24:MI:SS.FF9')"
+                + ", TO_TIMESTAMP_TZ('9999-12-31 23:59:59.999999999 +14:00', 'yyyy-mm-dd HH24:MI:SS.FF9 TZH:TZM')"
+                + ", INTERVAL '-123-11' YEAR TO MONTH"
+                + ", INTERVAL '-999 23:59:59.999999999' DAY(3) TO SECOND(9)"
+                + ")");
+        connection.execute("COMMIT");
+    }
+
+    protected static void deleteStructuredEdgeTimeTypes() throws SQLException {
+        connection.execute("DELETE FROM debezium.type_time WHERE id = 2");
         connection.execute("COMMIT");
     }
 
@@ -839,6 +1019,16 @@ public abstract class AbstractOracleDatatypesTest extends AbstractAsyncEngineCon
 
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {
         expected.forEach(schemaAndValueField -> schemaAndValueField.assertFor(record));
+    }
+
+    private SourceRecord findRecordById(List<SourceRecord> records, int id) {
+        return records.stream()
+                .filter(record -> {
+                    final Struct after = (Struct) ((Struct) record.value()).get("after");
+                    return ((Number) after.get("ID")).intValue() == id;
+                })
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("No record found for ID " + id));
     }
 
     protected static boolean isHybridMiningStrategy() {

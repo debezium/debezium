@@ -31,7 +31,7 @@ public abstract class AbstractTimeType extends AbstractTemporalType {
         DatabaseDialect dialect = getDialect();
         // We use TIMESTAMP here even for source TIME types as Oracle will use DATE types for
         // such columns, and it only supports second-based precision.
-        if (precision > 0 && precision <= dialect.getDefaultTimestampPrecision()) {
+        if (shouldUseSourcePrecision(precision, dialect.getDefaultTimestampPrecision())) {
             return dialect.getJdbcTypeName(Types.TIME, Size.precision(precision));
         }
         return dialect.getJdbcTypeName(Types.TIME, Size.precision(dialect.getDefaultTimePrecision()));
@@ -41,5 +41,9 @@ public abstract class AbstractTimeType extends AbstractTemporalType {
         final String length = getSourceColumnSize(schema).orElse("0");
         final Optional<String> scale = getSourceColumnPrecision(schema);
         return scale.map(Integer::parseInt).orElseGet(() -> Integer.parseInt(length));
+    }
+
+    protected boolean shouldUseSourcePrecision(int precision, int maxPrecision) {
+        return precision > 0 && precision <= maxPrecision;
     }
 }

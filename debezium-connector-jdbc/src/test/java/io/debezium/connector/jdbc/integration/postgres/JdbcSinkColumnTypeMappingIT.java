@@ -31,6 +31,10 @@ import io.debezium.connector.jdbc.junit.jupiter.Sink;
 import io.debezium.connector.jdbc.util.SinkRecordFactory;
 import io.debezium.data.Uuid;
 import io.debezium.doc.FixFor;
+import io.debezium.time.StructuredDate;
+import io.debezium.time.StructuredDuration;
+import io.debezium.time.StructuredTimestamp;
+import io.debezium.time.StructuredZonedTimestamp;
 
 /**
  * Column type mapping tests for PostgreSQL.
@@ -149,6 +153,75 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
         getSink().assertRows(destinationTable, rs -> {
             assertThat(rs.getInt(1)).isEqualTo(1);
             assertThat(rs.getBytes(2)).isEqualTo(new byte[]{ 1, 2, 3 });
+            return null;
+        });
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
+    @FixFor("debezium/dbz#2119")
+    public void testShouldCreateAndWriteStructuredTemporalColumnTypes(SinkRecordFactory factory, PostgresInsertMode insertMode) throws Exception {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, String.valueOf(insertMode.isUnnestEnabled()));
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server2", "schema", tableName);
+        final Schema timestampSchema = StructuredTimestamp.schema();
+        final Schema dateSchema = StructuredDate.schema();
+        final Schema zonedTimestampSchema = StructuredZonedTimestamp.schema();
+        final Schema durationSchema = StructuredDuration.schema();
+
+        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        final JdbcKafkaSinkRecord createRecord = factory.createRecordWithSchemaValue(
+                topicName,
+                (byte) 1,
+                List.of(
+                        "timestamp_max",
+                        "timestamp_pos_inf",
+                        "timestamp_neg_inf",
+                        "date_pos_inf",
+                        "date_neg_inf",
+                        "timestamptz_pos_inf",
+                        "timestamptz_neg_inf",
+                        "interval_value"),
+                List.of(
+                        timestampSchema,
+                        timestampSchema,
+                        timestampSchema,
+                        dateSchema,
+                        dateSchema,
+                        zonedTimestampSchema,
+                        zonedTimestampSchema,
+                        durationSchema),
+                List.of(
+                        StructuredTimestamp.from(timestampSchema, 294276, 12, 31, 23, 59, 59, 999_999_000),
+                        StructuredTimestamp.positiveInfinity(timestampSchema),
+                        StructuredTimestamp.negativeInfinity(timestampSchema),
+                        StructuredDate.positiveInfinity(dateSchema),
+                        StructuredDate.negativeInfinity(dateSchema),
+                        StructuredZonedTimestamp.positiveInfinity(zonedTimestampSchema),
+                        StructuredZonedTimestamp.negativeInfinity(zonedTimestampSchema),
+                        StructuredDuration.from(durationSchema, 1, 2, 3, 4, 5, 6, 789_000_000)),
+                config);
+
+        final String destinationTable = destinationTableName(createRecord);
+
+        consume(createRecord);
+
+        getSink().assertRows(destinationTable, rs -> {
+            assertThat(rs.getString(2)).isEqualTo("294276-12-31 23:59:59.999999");
+            assertThat(rs.getString(3)).isEqualTo("infinity");
+            assertThat(rs.getString(4)).isEqualTo("-infinity");
+            assertThat(rs.getString(5)).isEqualTo("infinity");
+            assertThat(rs.getString(6)).isEqualTo("-infinity");
+            assertThat(rs.getString(7)).isEqualTo("infinity");
+            assertThat(rs.getString(8)).isEqualTo("-infinity");
+            assertThat(rs.getString(9)).isEqualTo("1 year 2 mons 3 days 04:05:06.789");
             return null;
         });
     }

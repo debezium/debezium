@@ -29,6 +29,9 @@ import io.debezium.connector.jdbc.junit.jupiter.SinkRecordFactoryArgumentsProvid
 import io.debezium.connector.jdbc.util.SinkRecordFactory;
 import io.debezium.data.Bits;
 import io.debezium.doc.FixFor;
+import io.debezium.time.StructuredDate;
+import io.debezium.time.StructuredDuration;
+import io.debezium.time.StructuredTimestamp;
 
 /**
  * Column type mappings for MySQL
@@ -179,6 +182,56 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
             assertThat(rs.getInt(5)).isEqualTo(341);
             assertThat(rs.getInt(6)).isEqualTo(255);
             assertThat(rs.getBigDecimal(7)).isEqualTo(UNSIGNED_64BIT_MAX_VALUE);
+            return null;
+        });
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("debezium/dbz#2119")
+    public void testShouldCreateAndWriteStructuredTemporalColumnTypes(SinkRecordFactory factory) throws Exception {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server2", "schema", tableName);
+        final Schema dateSchema = StructuredDate.schema();
+        final Schema timestampSchema = StructuredTimestamp.builder()
+                .parameter("__debezium.source.column.type", "DATETIME")
+                .parameter("__debezium.source.column.length", "6")
+                .build();
+        final Schema durationSchema = StructuredDuration.builder()
+                .parameter("__debezium.source.column.type", "TIME")
+                .parameter("__debezium.source.column.length", "6")
+                .build();
+
+        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        final JdbcKafkaSinkRecord createRecord = factory.createRecordWithSchemaValue(
+                topicName,
+                (byte) 1,
+                List.of("date_max", "datetime_max", "time_min"),
+                List.of(dateSchema, timestampSchema, durationSchema),
+                List.of(
+                        StructuredDate.from(dateSchema, 9999, 12, 31),
+                        StructuredTimestamp.from(timestampSchema, 9999, 12, 31, 23, 59, 59, 999_999_000),
+                        StructuredDuration.from(durationSchema, 0, 0, 0, -838, -59, -58, -999_999_000)),
+                config);
+
+        final String destinationTable = destinationTableName(createRecord);
+
+        consume(createRecord);
+
+        getSink().assertColumn(destinationTable, "date_max", "DATE");
+        getSink().assertColumn(destinationTable, "datetime_max", "DATETIME");
+        getSink().assertColumn(destinationTable, "time_min", "TIME");
+        getSink().assertRows(destinationTable, rs -> {
+            assertThat(rs.getString(2)).isEqualTo("9999-12-31");
+            assertThat(rs.getString(3)).isEqualTo("9999-12-31 23:59:59.999999");
+            assertThat(rs.getString(4)).isEqualTo("-838:59:58.999999");
             return null;
         });
     }

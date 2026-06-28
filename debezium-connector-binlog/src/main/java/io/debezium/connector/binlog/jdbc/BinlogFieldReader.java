@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.binlog.BinlogConnectorConfig;
 import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
+import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
 import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.Table;
@@ -77,6 +78,19 @@ public abstract class BinlogFieldReader {
                     // Workaround for DBZ-5084
                     return rs.getObject(columnIndex);
                 }
+            }
+            case Types.TIMESTAMP_WITH_TIMEZONE: {
+                if (isStructuredTemporalMode()) {
+                    try {
+                        return readTimestampField(rs, columnIndex, column, table);
+                    }
+                    catch (RuntimeException e) {
+                        LOGGER.warn("Failed to read data value: '{}'. Trying default implementation.", e.getMessage());
+                        // Workaround for DBZ-5084
+                        return rs.getObject(columnIndex);
+                    }
+                }
+                break;
             }
 
             // JDBC getObject returns a Boolean for all TINYINT(1) columns.
@@ -146,5 +160,9 @@ public abstract class BinlogFieldReader {
 
     protected BinlogCharsetRegistry getCharsetRegistry() {
         return connectorConfig.getServiceRegistry().getService(BinlogCharsetRegistry.class);
+    }
+
+    protected boolean isStructuredTemporalMode() {
+        return connectorConfig.getTemporalPrecisionMode() == TemporalPrecisionMode.STRUCTURED;
     }
 }

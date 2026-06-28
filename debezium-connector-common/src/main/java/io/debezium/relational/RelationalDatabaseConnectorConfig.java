@@ -428,6 +428,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
                     + "'connect' always represents time, date, and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, "
                     + "which uses millisecond precision regardless of the database columns' precision; "
                     + "'isostring' represents time, date, and timestamp values as ISO-8601 formatted strings at the UTC time zone; "
+                    + "'structured' represents time, date, timestamp, and datetime values as Kafka Connect structs with separate calendar and clock components; "
                     + "'microseconds' always represents time, date, and timestamp values using microsecond precision; "
                     + "'nanoseconds' always represents time, date, and timestamp values using nanosecond precision.");
 

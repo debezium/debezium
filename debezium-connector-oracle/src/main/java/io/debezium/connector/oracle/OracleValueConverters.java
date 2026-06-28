@@ -29,6 +29,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.kafka.connect.data.Field;
+import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
 import io.debezium.DebeziumException;
@@ -39,11 +40,14 @@ import io.debezium.data.SpecialValueDecimal;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.ResultReceiver;
+import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
 import io.debezium.relational.ValueConverter;
 import io.debezium.time.Date;
 import io.debezium.time.Interval;
 import io.debezium.time.MicroDuration;
+import io.debezium.time.StructuredDuration;
+import io.debezium.time.StructuredZonedTimestamp;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.NumberConversions;
 import io.debezium.util.Strings;
@@ -140,9 +144,19 @@ public class OracleValueConverters extends JdbcValueConverters {
                 return SchemaBuilder.float64();
             case OracleTypes.TIMESTAMPTZ:
             case OracleTypes.TIMESTAMPLTZ:
+                if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
+                    return StructuredZonedTimestamp.builder();
+                }
                 return ZonedTimestamp.builder();
-            case OracleTypes.INTERVALYM:
             case OracleTypes.INTERVALDS:
+                if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
+                    return StructuredDuration.builder();
+                }
+                return intervalHandlingMode == OracleConnectorConfig.IntervalHandlingMode.STRING ? Interval.builder() : MicroDuration.builder();
+            case OracleTypes.INTERVALYM:
+                if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
+                    return StructuredDuration.builder();
+                }
                 return intervalHandlingMode == OracleConnectorConfig.IntervalHandlingMode.STRING ? Interval.builder() : MicroDuration.builder();
             case Types.STRUCT:
                 return SchemaBuilder.string();
@@ -154,6 +168,11 @@ public class OracleValueConverters extends JdbcValueConverters {
                 return builder;
             }
         }
+    }
+
+    @Override
+    protected int getTimePrecision(Column column) {
+        return column.scale().orElse(column.length());
     }
 
     private SchemaBuilder getNumericSchema(Column column) {
@@ -698,6 +717,17 @@ public class OracleValueConverters extends JdbcValueConverters {
     }
 
     @Override
+    protected Object convertTimestampToStructured(Column column, Field fieldDefn, Object data) {
+        if (data instanceof String strData) {
+            data = resolveTimestampStringAsInstant(strData);
+        }
+        else if (data instanceof Long longData) {
+            data = Instant.ofEpochSecond(0, longData);
+        }
+        return super.convertTimestampToStructured(column, fieldDefn, fromOracleTimeClasses(column, data));
+    }
+
+    @Override
     protected Object convertTimestampWithZone(Column column, Field fieldDefn, Object data) {
         if (data instanceof String) {
             String s = (String) data;
@@ -713,6 +743,9 @@ public class OracleValueConverters extends JdbcValueConverters {
             }
         }
         final Object javaData = fromOracleTimeClasses(column, data);
+        if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
+            return super.convertTimestampWithZone(column, fieldDefn, javaData);
+        }
         return convertValue(column, fieldDefn, javaData, fallbackTimestampWithTimeZone, (r) -> {
             try {
                 // Fractional width for zoned timestamp is set in scale if schema obtained via snapshot
@@ -730,6 +763,27 @@ public class OracleValueConverters extends JdbcValueConverters {
     }
 
     protected Object convertIntervalYearMonth(Column column, Field fieldDefn, Object data) {
+        if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
+            return convertValue(column, fieldDefn, data, StructuredDuration.from(fieldDefn.schema(), 0, 0, 0, 0, 0, 0, 0), (r) -> {
+                if (data instanceof Number) {
+                    convertMicrosToStructuredDuration(((Number) data).longValue(), fieldDefn.schema(), r);
+                }
+                else if (data instanceof INTERVALYM) {
+                    convertOracleIntervalYearMonthToStructured(data, fieldDefn.schema(), r);
+                }
+                else if (data instanceof String) {
+                    final String value = (String) data;
+                    final INTERVALYM interval;
+                    if (isHexToRawFunctionCall(value)) {
+                        interval = new INTERVALYM(convertHexToRawFunctionToByteArray(value));
+                    }
+                    else {
+                        interval = new INTERVALYM(value.substring(15, value.length() - 2));
+                    }
+                    convertOracleIntervalYearMonthToStructured(interval, fieldDefn.schema(), r);
+                }
+            });
+        }
         return convertValue(column, fieldDefn, data, NumberConversions.LONG_FALSE, (r) -> {
             if (data instanceof Number) {
                 // we expect to get back from the plugin a double value
@@ -783,6 +837,28 @@ public class OracleValueConverters extends JdbcValueConverters {
     }
 
     protected Object convertIntervalDaySecond(Column column, Field fieldDefn, Object data) {
+        if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
+            final int precision = getTimePrecision(column);
+            return convertValue(column, fieldDefn, data, StructuredDuration.from(fieldDefn.schema(), 0, 0, 0, 0, 0, 0, 0, precision), (r) -> {
+                if (data instanceof Number) {
+                    convertMicrosToStructuredDuration(((Number) data).longValue(), fieldDefn.schema(), precision, r);
+                }
+                else if (data instanceof INTERVALDS) {
+                    convertOracleIntervalDaySecondToStructured(data, fieldDefn.schema(), precision, r);
+                }
+                else if (data instanceof String) {
+                    final String value = (String) data;
+                    final INTERVALDS interval;
+                    if (isHexToRawFunctionCall(value)) {
+                        interval = new INTERVALDS(convertHexToRawFunctionToByteArray(value));
+                    }
+                    else {
+                        interval = new INTERVALDS(value.substring(15, value.length() - 2));
+                    }
+                    convertOracleIntervalDaySecondToStructured(interval, fieldDefn.schema(), precision, r);
+                }
+            });
+        }
         return convertValue(column, fieldDefn, data, NumberConversions.LONG_FALSE, (r) -> {
             if (data instanceof Number) {
                 // we expect to get back from the plugin a double value
@@ -839,6 +915,51 @@ public class OracleValueConverters extends JdbcValueConverters {
                         sign * Integer.valueOf(Strings.pad(m.group(6), 6, '0')),
                         MicroDuration.DAYS_PER_MONTH_AVG));
             }
+        }
+    }
+
+    private void convertMicrosToStructuredDuration(long micros, Schema schema, ResultReceiver r) {
+        convertMicrosToStructuredDuration(micros, schema, -1, r);
+    }
+
+    private void convertMicrosToStructuredDuration(long micros, Schema schema, int precision, ResultReceiver r) {
+        final long seconds = micros / 1_000_000;
+        final int nanos = (int) (micros % 1_000_000) * 1_000;
+        r.deliver(StructuredDuration.from(schema, 0, 0, 0, 0, 0, seconds, nanos, precision));
+    }
+
+    private void convertOracleIntervalYearMonthToStructured(Object data, Schema schema, ResultReceiver r) {
+        final String interval = ((INTERVALYM) data).stringValue();
+        int sign = 1;
+        int start = 0;
+        if (interval.charAt(0) == '-') {
+            sign = -1;
+            start = 1;
+        }
+        for (int i = 1; i < interval.length(); i++) {
+            if (interval.charAt(i) == '-') {
+                final int year = sign * Integer.parseInt(interval.substring(start, i));
+                final int month = sign * Integer.parseInt(interval.substring(i + 1, interval.length()));
+                r.deliver(StructuredDuration.from(schema, year, month, 0, 0, 0, 0, 0));
+            }
+        }
+    }
+
+    private void convertOracleIntervalDaySecondToStructured(Object data, Schema schema, int precision, ResultReceiver r) {
+        final String interval = ((INTERVALDS) data).stringValue();
+        final Matcher m = INTERVAL_DAY_SECOND_PATTERN.matcher(interval);
+        if (m.matches()) {
+            final int sign = "-".equals(m.group(1)) ? -1 : 1;
+            r.deliver(StructuredDuration.from(
+                    schema,
+                    0,
+                    0,
+                    sign * Integer.valueOf(m.group(2)),
+                    sign * Integer.valueOf(m.group(3)),
+                    sign * Integer.valueOf(m.group(4)),
+                    sign * Long.parseLong(m.group(5)),
+                    sign * Integer.parseInt(Strings.pad(m.group(6), 9, '0')),
+                    precision));
         }
     }
 
