@@ -3819,7 +3819,7 @@ Information about the properties is organized as follows:
 * xref:required-debezium-oracle-connector-configuration-properties[Required {prodname} Oracle connector configuration properties]
 * xref:debezium-oracle-connector-database-history-configuration-properties[Database schema history connector configuration properties] that control how {prodname} processes events that it reads from the database schema history topic.
 
-* xref:debezium-oracle-connector-pass-through-properties[Pass-through Db2 connector configuration properties]
+* xref:debezium-oracle-connector-pass-through-properties[Pass-through Oracle connector configuration properties]
 ** xref:debezium-oracle-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients[Pass-through database schema history properties for configuring producer and consumer clients]
 ** xref:debezium-oracle-connector-pass-through-kafka-signals-configuration-properties[Pass-through Kafka signals configuration properties]
 ** xref:debezium-oracle-connector-pass-through-signals-kafka-consumer-client-configuration-properties[Pass-through Kafka signals consumer client configuration properties]
