@@ -101,24 +101,54 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
     @Override
     public String getUpsertStatement(TableDescriptor table, JdbcSinkRecord record) {
         final SqlStatementBuilder builder = new SqlStatementBuilder();
-        builder.append("INSERT INTO ");
-        builder.append(getQualifiedTableName(table.getId()));
-        builder.append(" (");
-        builder.appendLists(",", record.keyFieldNames(), record.nonKeyFieldNames(), (name) -> columnNameFromField(name, record));
-        builder.append(") VALUES (");
-        builder.appendLists(",", record.keyFieldNames(), record.nonKeyFieldNames(), (name) -> columnQueryBindingFromField(name, table, record));
-        builder.append(") ON CONFLICT (");
-        builder.appendList(",", record.keyFieldNames(), (name) -> columnNameFromField(name, record));
-        if (record.nonKeyFieldNames().isEmpty()) {
-            builder.append(") DO NOTHING");
+        if (getDatabaseVersion().isSameOrAfter(15)) {
+            builder.append("MERGE INTO ");
+            builder.append(getQualifiedTableName(table.getId()));
+            builder.append(" AS TARGET USING (SELECT ");
+            builder.appendLists(", ", record.keyFieldNames(), record.nonKeyFieldNames(),
+                    (name) -> columnNameFromField(name, columnQueryBindingFromField(name, table, record) + " AS ", record));
+            builder.append(") AS INCOMING ON (");
+            builder.appendList(" AND ", record.keyFieldNames(), (name) -> {
+                final String columnName = columnNameFromField(name, record);
+                return "TARGET." + columnName + "=INCOMING." + columnName;
+            });
+            builder.append(")");
+
+            if (!record.nonKeyFieldNames().isEmpty()) {
+                builder.append(" WHEN MATCHED THEN UPDATE SET ");
+                builder.appendList(",", record.nonKeyFieldNames(), (name) -> {
+                    final String columnName = columnNameFromField(name, record);
+                    return columnName + "=INCOMING." + columnName;
+                });
+            }
+
+            builder.append(" WHEN NOT MATCHED THEN INSERT (");
+            builder.appendLists(", ", record.nonKeyFieldNames(), record.keyFieldNames(), (name) -> columnNameFromField(name, record));
+            builder.append(") VALUES (");
+            builder.appendLists(",", record.nonKeyFieldNames(), record.keyFieldNames(), (name) -> columnNameFromField(name, "INCOMING.", record));
+            builder.append(")");
         }
         else {
-            builder.append(") DO UPDATE SET ");
-            builder.appendList(",", record.nonKeyFieldNames(), (name) -> {
-                final String columnNme = columnNameFromField(name, record);
-                return columnNme + "=EXCLUDED." + columnNme;
-            });
+            builder.append("INSERT INTO ");
+            builder.append(getQualifiedTableName(table.getId()));
+            builder.append(" (");
+            builder.appendLists(",", record.keyFieldNames(), record.nonKeyFieldNames(), (name) -> columnNameFromField(name, record));
+            builder.append(") VALUES (");
+            builder.appendLists(",", record.keyFieldNames(), record.nonKeyFieldNames(), (name) -> columnQueryBindingFromField(name, table, record));
+            builder.append(") ON CONFLICT (");
+            builder.appendList(",", record.keyFieldNames(), (name) -> columnNameFromField(name, record));
+            if (record.nonKeyFieldNames().isEmpty()) {
+                builder.append(") DO NOTHING");
+            }
+            else {
+                builder.append(") DO UPDATE SET ");
+                builder.appendList(",", record.nonKeyFieldNames(), (name) -> {
+                    final String columnNme = columnNameFromField(name, record);
+                    return columnNme + "=EXCLUDED." + columnNme;
+                });
+            }
         }
+
         return builder.build();
     }
 
@@ -220,6 +250,12 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
             }
             else if ("jsonb".equals(typeName)) {
                 return "cast(? as jsonb)";
+            }
+        }
+        if (schema.type() == Schema.Type.BYTES) {
+            final String typeName = column.getTypeName().toLowerCase();
+            if ("bytea".equals(typeName)) {
+                return "cast(? as bytea)";
             }
         }
         return super.getQueryBindingWithValueCast(column, schema, type);
