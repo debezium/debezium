@@ -2702,6 +2702,12 @@ That is, the specified expression is matched against the entire name string of t
 Primary key columns are always included in the event's key, even if they are excluded from the value.
 If you include this property in the configuration, do not set the `column.include.list` property.
 
+|[[db2-property-skip-messages-without-change]]<<db2-property-skip-messages-without-change, `+skip.messages.without.change+`>>
+|_false_
+|Specifies whether the connector emits messages for records when it does not detect a change in the included columns.
+Columns are considered to be included if they are listed in the `column.include.list`, or are not listed in the `column.exclude.list`.
+Set the value to `true` to prevent the connector from capturing records when no changes are present in the included columns.
+
 |[[db2-property-column-mask-hash]]<<db2-property-column-mask-hash, `column.mask.hash._hashAlgorithm_.with.salt._salt_`>>
 |_n/a_
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns.
