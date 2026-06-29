@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.common.DebeziumTaskState;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
+import io.debezium.connector.jdbc.metrics.JdbcSinkConnectorMetrics;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
 import io.debezium.metadata.CollectionId;
 import io.debezium.openlineage.ConnectorContext;
@@ -52,14 +53,16 @@ public class JdbcChangeEventSink implements ChangeEventSink {
 
     private final RecordWriter recordWriter;
     private final ConnectorContext connectorContext;
+    private final JdbcSinkConnectorMetrics metrics;
 
     public JdbcChangeEventSink(JdbcSinkConnectorConfig config, StatelessSession session, DatabaseDialect dialect, RecordWriter recordWriter,
-                               ConnectorContext connectorContext) {
+                               ConnectorContext connectorContext, JdbcSinkConnectorMetrics metrics) {
         this.config = config;
         this.dialect = dialect;
         this.session = session;
         this.recordWriter = recordWriter;
         this.connectorContext = connectorContext;
+        this.metrics = metrics;
 
         final DatabaseVersion version = this.dialect.getVersion();
         LOGGER.info("Database version {}.{}.{}", version.getMajor(), version.getMinor(), version.getMicro());
@@ -75,6 +78,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
 
             if (record.isSchemaChange()) {
                 SCHEMA_CHANGE_LOGGER.warn("Ignored schema change event for topic '{}'. " + FOUND_SCHEMA_CHANGE_RECORD_MSG, record.topicName());
+                metrics.onFilteredEvent();
                 continue;
             }
 
@@ -82,12 +86,14 @@ public class JdbcChangeEventSink implements ChangeEventSink {
             if (null == collectionId) {
                 LOGGER.warn("Ignored to write record from topic '{}' partition '{}' offset '{}'. No resolvable table name", record.topicName(), record.partition(),
                         record.offset());
+                metrics.onFilteredEvent();
                 continue;
             }
 
             if (record.isTruncate()) {
                 if (!config.isTruncateEnabled()) {
                     LOGGER.debug("Truncates are not enabled, skipping truncate for topic '{}'", record.topicName());
+                    metrics.onFilteredEvent();
                     continue;
                 }
 
@@ -98,6 +104,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                 try {
                     final TableDescriptor table = recordWriter.checkAndApplyTableChangesIfNeeded(collectionId, record);
                     recordWriter.writeTruncate(table.getId());
+                    metrics.onTruncate();
                     continue;
                 }
                 catch (SQLException | JDBCException e) {
@@ -108,6 +115,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
             if (record.isDelete() || record.isTombstone()) {
                 if (!config.isDeleteEnabled()) {
                     LOGGER.debug("Deletes are not enabled, skipping delete for topic '{}'", record.topicName());
+                    metrics.onFilteredEvent();
                     continue;
                 }
 
@@ -124,6 +132,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                 }
 
                 flushBufferRecordsWithRetries(collectionId, getRecordsToFlush(deleteBufferByTable, collectionId, record));
+                metrics.onDelete();
             }
             else {
                 final Buffer deleteBufferToFlush = deleteBufferByTable.get(collectionId);
@@ -139,6 +148,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                 }
 
                 flushBufferRecordsWithRetries(collectionId, getRecordsToFlush(upsertBufferByTable, collectionId, record));
+                metrics.onUpsert();
             }
         }
 

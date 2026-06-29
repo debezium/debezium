@@ -1436,6 +1436,48 @@ The service records the configuration and starts a sink connector task(s) that p
 endif::community[]
 
 // Type: assembly
+// Title: Monitoring {prodname} JDBC sink connector performance
+// ModuleID: monitoring-debezium-jdbc-sink-connector-performance
+[[jdbc-monitoring]]
+== Monitoring
+
+In addition to the built-in JMX metrics that Kafka Connect provides for every sink task (for example, record-throughput and batch metrics), the {prodname} JDBC sink connector exposes its own metrics under the `debezium.jdbc` JMX domain.
+These metrics describe what the connector applies to the target database, which the Kafka Connect metrics do not report.
+
+The connector registers the following MBean while the task is running:
+
+`debezium.jdbc:type=connector-metrics,context=sink,server=__<connector_name>__,task=__<task_id>__`
+
+The following table describes the available metrics.
+
+[cols="30%a,20%a,50%a",options="header"]
+|===
+|Attribute |Type |Description
+
+|`TotalNumberOfUpsertEventsSeen`
+|`long`
+|The total number of upsert (insert or update) operations that the connector applied to the target database. +
+The connector cannot distinguish an insert from an update because flattened records carry no operation field and the connector applies both as an upsert.
+
+|`TotalNumberOfDeleteEventsSeen`
+|`long`
+|The total number of delete operations that the connector applied to the target database.
+
+|`TotalNumberOfTruncateEventsSeen`
+|`long`
+|The total number of truncate operations that the connector applied to the target database.
+
+|`NumberOfFilteredEvents`
+|`long`
+|The number of records that the connector skipped without applying them, for example because the table name could not be resolved, deletes or truncates are disabled, or the record is a schema-change event.
+
+|`Connected`
+|`boolean`
+|Indicates whether the connector currently has a connection to the target database.
+
+|===
+
+// Type: assembly
 // Title: Descriptions of {prodname} JDBC connector configuration properties
 // ModuleID: debezium-jdbc-connector-descriptions-of-connector-configuration-properties
 [[jdbc-connector-properties]]
