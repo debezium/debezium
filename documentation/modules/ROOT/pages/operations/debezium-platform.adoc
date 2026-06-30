@@ -104,32 +104,105 @@ Instead, specify an existing database instance, by setting the `database.name`, 
 See the following table for more information.
 ====
 
-The following tables lists all the chart's properties:
+The following table lists all the chart's properties:
 
 [cols="1,3,1", options="header"]
 |===
 |Name |Description |Default
 
-|domain.url
-|Domain used as the ingress host (DEPRECATED). Use `domain.name` instead.
-|""
+3+h|Domain
 
 |domain.name
 |Domain used as the ingress host.
 |""
 
+|domain.url
+|Domain used as the ingress host (DEPRECATED). Use `domain.name` instead.
+|""
+
+3+h|Stage
+
 |stage.image
 |Image that Helm uses to deploy the stage (UI) pod.
 |quay.io/debezium/platform-stage:<release_tag>
 
+|stage.imagePullPolicy
+|Image pull policy for the stage container. If empty, defaults to `IfNotPresent`.
+|IfNotPresent
+
+3+h|Conductor
+
 |conductor.image
-|Image that Helm uses to deploy  the conductor pod.
+|Image that Helm uses to deploy the conductor pod.
 |quay.io/debezium/platform-conductor:<release_tag>
 
+|conductor.imagePullPolicy
+|Image pull policy for the conductor container. If empty, defaults to `IfNotPresent`.
+|IfNotPresent
+
 |conductor.offset.existingConfigMap
-|Name of the ConfigMap that stores conductor offsets. 
-If no value is specified, Helm creates a ConfigMap automatically. 
+|Name of the ConfigMap that stores conductor offsets.
+If no value is specified, Helm creates a ConfigMap automatically.
 |""
+
+|conductor.descriptors.official.enabled
+|Enables official {prodname} descriptors, which are downloaded via ORAS at startup.
+|true
+
+|conductor.descriptors.official.registry
+|OCI registry hosting the descriptor artifact.
+|quay.io
+
+|conductor.descriptors.official.image
+|Image name for the descriptor OCI artifact.
+|debezium/debezium-descriptors
+
+|conductor.descriptors.official.tag
+|Image tag for the descriptor OCI artifact.
+|nightly
+
+|conductor.descriptors.official.mountPath
+|Path where descriptors are downloaded inside the container.
+|/opt/descriptors
+
+|conductor.extraVolumes
+|Extra volumes to add to the conductor deployment.
+|[]
+
+|conductor.extraVolumeMounts
+|Extra volume mounts to add to the conductor container.
+|[]
+
+3+h|Server
+
+|server.image
+|Image for {prodname} Server instances created by pipelines.
+If empty, the operator's `ServerImageProvider` determines the image.
+|""
+
+3+h|Ingress
+
+|ingress.enabled
+|Enables the ingress resource for conductor and stage.
+|true
+
+|ingress.className
+|Optional ingress class name.
+|""
+
+|ingress.annotations
+|Extra ingress annotations.
+|{}
+
+|ingress.tls.enabled
+|Enables the TLS section on the ingress.
+|false
+
+|ingress.tls.secretName
+|Secret name used when TLS is enabled.
+|""
+
+3+h|Database
 
 |database.enabled
 |Enables Helm to install PostgreSQL.
@@ -145,21 +218,23 @@ If no value is specified, Helm creates a ConfigMap automatically.
 
 |database.auth.existingSecret
 |Name of the secret that stores the `username` and `password` that the platform uses to authenticate with the database.
-If no value is specified, Helm automatically creates a secret based on the credentials that you provide in the`database.auth.username` and `database.auth.password` properties.
+If no value is specified, Helm automatically creates a secret based on the credentials that you provide in the `database.auth.username` and `database.auth.password` properties.
 
 If you provide a value for this property, do not set `database.auth.username` or `database.auth.password`.
 |""
 
 |database.auth.username
-|Username through which the platform connects to the database. 
+|Username through which the platform connects to the database.
 |user
 
 |database.auth.password
 |Password for the user specified by `database.auth.username`.
 |password
 
+3+h|Offset storage
+
 |offset.reusePlatformDatabase
-|Specifies whether pipelines use the configured platform database to store offsets. 
+|Specifies whether pipelines use the configured platform database to store offsets.
 To configure pipelines to use a different, dedicated database to store offsets, set the value to `false`.
 |true
 
@@ -176,23 +251,24 @@ To configure pipelines to use a different, dedicated database to store offsets, 
 |5432
 
 |offset.database.auth.existingSecret
-|Name of the secret that stores the `username` and `password` that the platform uses to authenticate with the database that stores offsets. 
-If you do not specify value, instead of using a secret to store credentials, the platform uses the values of  the `offset.database.auth.username` and `offset.database.auth.password` properties to authenticate with the database.
+|Name of the secret that stores the `username` and `password` that the platform uses to authenticate with the database that stores offsets.
+If you do not specify a value, the platform uses the values of the `offset.database.auth.username` and `offset.database.auth.password` properties to authenticate with the database.
 
 If you provide the name of a secret, do not set the `offset.database.auth.username` and `offset.database.auth.password` properties.
 |""
 
 |offset.database.auth.username
-|Username through which the platform connects to the offsets database. 
+|Username through which the platform connects to the offsets database.
 |user
 
 |offset.database.auth.password
 |Password for the offsets database user specified by `offset.database.auth.username`.
-
 |password
 
+3+h|Schema history storage
+
 |schemaHistory.reusePlatformDatabase
-|Specifies whether pipelines use the configured platform database to store the schema history. 
+|Specifies whether pipelines use the configured platform database to store the schema history.
 To configure pipelines to use a different, dedicated database to store the schema history, set the value to `false`.
 |true
 
@@ -209,8 +285,8 @@ To configure pipelines to use a different, dedicated database to store the schem
 |5432
 
 |schemaHistory.database.auth.existingSecret
-|Name of the secret that stores the `username` and `password` that the platform uses to authenticate with the database that stores the schema history. 
-If you do not specify value, instead of using a secret to store credentials, the platform uses the values of the `schemaHistory.database.auth.username` and `schemaHistory.database.auth.password` properties to authenticate with the database.
+|Name of the secret that stores the `username` and `password` that the platform uses to authenticate with the database that stores the schema history.
+If you do not specify a value, the platform uses the values of the `schemaHistory.database.auth.username` and `schemaHistory.database.auth.password` properties to authenticate with the database.
 
 If you provide the name of a secret, do not set the `schemaHistory.database.auth.username` and `schemaHistory.database.auth.password` properties.
 |""
@@ -223,25 +299,91 @@ If you provide the name of a secret, do not set the `schemaHistory.database.auth
 |Password for the schema history database user specified by `schemaHistory.database.auth.username` property.
 |password
 
-|ingress.enabled
-|Enable ingress resource for conductor/stage
+3+h|Debezium Operator
+
+|debezium-operator.enabled
+|Enables the installation of the {prodname} Operator by the chart.
 |true
 
-|ingress.className
-|Optional ingress class name
-|""
+3+h|Pipeline
 
-|ingress.annotations
-|Extra ingress annotations
+|pipeline.labels
+|Map of labels to apply to `DebeziumServer` custom resources created by pipelines.
+These labels are merged with the internal `debezium.io/conductor-id` label.
 |{}
 
-|ingress.tls.enabled
-|Enable TLS section on ingress
+3+h|Monitoring
+
+|monitoring.otel.enabled
+|Enables the OpenTelemetry monitoring infrastructure.
+Requires the OpenTelemetry Operator to be installed.
+For more information, see xref:debezium-platform-monitoring-enabling[Enabling monitoring].
 |false
 
-|ingress.tls.secretName
-|Secret name used when TLS is enabled
+|monitoring.otel.collector.image
+|OpenTelemetry Collector image.
+Must include the Prometheus exporter.
+If empty, the operator's default image is used.
 |""
+
+|monitoring.otel.collector.replicas
+|Number of OpenTelemetry Collector replicas.
+|1
+
+|monitoring.otel.collector.receivers.grpc.port
+|Port for the OTLP gRPC receiver.
+|4317
+
+|monitoring.otel.collector.receivers.http.port
+|Port for the OTLP HTTP receiver.
+|4318
+
+|monitoring.otel.collector.processors.batch.timeout
+|Batch processor flush timeout.
+|5s
+
+|monitoring.otel.collector.processors.batch.sendBatchSize
+|Maximum number of metrics per batch.
+|512
+
+|monitoring.otel.collector.exporters.prometheus.port
+|Port on which the Prometheus exporter listens.
+|8889
+
+|monitoring.otel.collector.exporters.prometheus.resourceToTelemetryConversion
+|Converts OpenTelemetry resource attributes to Prometheus labels.
+|true
+
+|monitoring.otel.collector.exporters.prometheus.constLabels
+|Static labels added to all exported metrics.
+|{platform: debezium}
+
+|monitoring.panels.additionalPanelsPath
+|Path to a YAML file that contains additional monitoring panels.
+Panels are merged with built-in defaults; matching IDs override built-in panels.
+For more information, see xref:debezium-platform-monitoring-custom-panels[Custom monitoring panels].
+|""
+
+|monitoring.prometheus.url
+|URL of the Prometheus instance used by the Conductor to query metrics.
+*Required* when `monitoring.otel.enabled` is `true`.
+|""
+
+|monitoring.prometheus.serviceMonitor.enabled
+|Creates a `ServiceMonitor` for automatic Prometheus scraping.
+Requires the Prometheus Operator to be installed.
+|true
+
+|monitoring.prometheus.serviceMonitor.scrapeInterval
+|Prometheus scrape interval.
+|15s
+
+|monitoring.prometheus.serviceMonitor.labels
+|Labels for Prometheus Operator `ServiceMonitor` discovery.
+Must match the `serviceMonitorSelector` labels configured in your Prometheus instance.
+|{prometheus: kube-prometheus}
+
+3+h|Other
 
 |env
 |List of environment variables to pass to the conductor.
@@ -765,6 +907,441 @@ You can update the default value, but always ensure that the value is unique for
 . After you finish editing the form, click **Submit** to trigger an action.
 
 
+== Pipeline monitoring
+
+The {prodname} Management Platform provides built-in monitoring capabilities that enable you to observe pipeline health and performance directly from the Stage UI.
+By using the integrated monitoring dashboard, you can track key metrics such as event throughput, replication lag, queue utilization, and snapshot progress without requiring external monitoring tools or separate authentication.
+
+The monitoring infrastructure is based on industry-standard open-source components: link:https://opentelemetry.io/[OpenTelemetry] for metrics collection and link:https://prometheus.io/[Prometheus] for metrics storage.
+
+[id="debezium-platform-monitoring-architecture"]
+=== Monitoring architecture
+
+The monitoring system consists of the following components working together to collect, store, and display pipeline metrics:
+
+{prodname} Server:: Each pipeline runs as a {prodname} Server instance that exports metrics via OpenTelemetry (OTLP protocol).
+OpenTelemetry Collector:: Receives metrics from all {prodname} Server instances and exports them in Prometheus format.
+Prometheus:: Scrapes metrics from the OpenTelemetry Collector and stores them as time-series data.
+Conductor API:: Queries Prometheus to retrieve metrics and serves them to the Stage UI through a REST API. The Conductor substitutes pipeline-specific identifiers into predefined queries and enforces access control.
+Stage UI:: Displays interactive monitoring dashboards with configurable time ranges and auto-refresh.
+
+image::debezium-platform-monitoring-architecture.svg[{prodname} platform monitoring architecture]
+
+[id="debezium-platform-monitoring-dashboard"]
+=== Monitoring dashboard
+
+To access the monitoring dashboard for a pipeline, navigate to the pipeline detail page and click the **Monitoring** tab.
+
+image::debezium-platform-monitoring-dashboard.png[{prodname} platform monitoring dashboard]
+
+The monitoring dashboard provides the following controls:
+
+Time range:: Select the time window for the displayed metrics.
+Available presets include 5 minutes, 15 minutes, 30 minutes, 1 hour, 6 hours, 12 hours, and 24 hours.
+You can also specify a custom time range with specific start and end timestamps.
+
+Refresh interval:: Configure how often the dashboard automatically refreshes its data.
+Available options include off (manual refresh), 15 seconds, 30 seconds, 1 minute, and 5 minutes.
+
+image::debezium-platform-monitoring-toolbar.png[{prodname} platform monitoring toolbar]
+
+[id="debezium-platform-monitoring-panels"]
+=== Built-in monitoring panels
+
+The platform ships with a set of built-in monitoring panels organized into the following categories: streaming and snapshot.
+
+==== Streaming panels
+
+The streaming panels display metrics about the ongoing change data capture process.
+
+image::debezium-platform-monitoring-streaming-panels.png[{prodname} platform streaming monitoring panels]
+
+[cols="1,1,3", options="header"]
+|===
+|Panel |Unit |Description
+
+|Streaming Event Count Rate
+|events/s
+|Rate of streaming change data capture events per second, grouped by event type (create, update, delete). Displayed as an area chart.
+
+|Source Lag
+|seconds
+|Time between a change occurring in the source database and {prodname} processing it. Displayed as a line chart.
+
+|Time Since Last Event
+|seconds
+|Elapsed time since the last change event was processed. Useful for detecting stalled pipelines. Displayed as a line chart.
+
+|Erroneous Events Rate
+|events/s
+|Rate of events that resulted in an error during processing. Displayed as a line chart.
+
+|Events Filtered Rate
+|events/s
+|Rate of events excluded by the connector filter configuration. Displayed as an area chart.
+
+|Committed Transactions Rate
+|transactions/s
+|Rate of committed transactions processed from the source database. Displayed as an area chart.
+
+|Connection Status
+|--
+|Whether the connector is connected to the source database and listening for changes. Displayed as a donut chart.
+
+|Queue Utilization
+|%
+|Percentage of the internal event queue currently in use. High utilization may indicate that the destination cannot keep up with the source. Displayed as a donut chart.
+
+|Queue Size Utilization
+|%
+|Percentage of the internal event queue byte capacity currently in use. Displayed as a donut chart.
+|===
+
+==== Snapshot panels
+
+The snapshot panels display metrics about the initial snapshot process when a pipeline first starts or when a snapshot is triggered.
+
+The following image shows the snapshot panels while a snapshot is in progress:
+
+image::debezium-platform-monitoring-snapshot-running-panels.png[{prodname} platform snapshot monitoring panels - snapshot in progress]
+
+The following image shows the snapshot panels after the snapshot has completed:
+
+image::debezium-platform-monitoring-snapshot-panels.png[{prodname} platform snapshot monitoring panels - snapshot completed]
+
+[cols="1,1,3", options="header"]
+|===
+|Panel |Unit |Description
+
+|Snapshot Table Progress
+|tables remaining
+|Number of tables remaining to be captured during the snapshot. Displayed as a donut chart.
+
+|Snapshot Duration
+|seconds
+|Total elapsed time of the current or most recent snapshot. Displayed as a line chart.
+
+|Snapshot Status
+|--
+|Current snapshot lifecycle state: running, completed, aborted, or skipped. Displayed as a donut chart.
+|===
+
+[id="debezium-platform-monitoring-prerequisites"]
+=== Prerequisites
+
+Before you enable monitoring in the {prodname} Platform, install the following operators in your Kubernetes cluster.
+
+==== OpenTelemetry Operator (required)
+
+The link:https://github.com/open-telemetry/opentelemetry-operator[OpenTelemetry Operator] manages the `OpenTelemetryCollector` custom resource that the platform Helm chart creates.
+
+Install the operator by using Helm:
+
+[source,bash]
+----
+helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
+helm install opentelemetry-operator open-telemetry/opentelemetry-operator \
+  -n opentelemetry-operator-system --create-namespace \
+  --set admissionWebhooks.certManager.enabled=false \
+  --set admissionWebhooks.autoGenerateCert.enabled=true
+----
+
+[NOTE]
+====
+The preceding command uses Helm auto-generated self-signed certificates for the operator webhooks, which is suitable for development and testing environments.
+For production environments, use a proper certificate management solution such as link:https://cert-manager.io/[cert-manager] or provide your own certificates.
+See the link:https://github.com/open-telemetry/opentelemetry-helm-charts/tree/main/charts/opentelemetry-operator[OTel Operator Helm chart documentation] for all available options.
+====
+
+[IMPORTANT]
+====
+The OpenTelemetry Collector must include the **Prometheus exporter** component.
+The base `otelcol` distribution includes this component, but when the OpenTelemetry Operator is installed by using Helm, it defaults to the `otelcol-k8s` distribution, which does *not* include the Prometheus exporter.
+
+If your operator uses the `k8s` distribution, override the collector image by setting `monitoring.otel.collector.image` in your Helm values.
+For example:
+
+* Base distribution: `ghcr.io/open-telemetry/opentelemetry-collector-releases/opentelemetry-collector:<version>`
+* Contrib distribution: `ghcr.io/open-telemetry/opentelemetry-collector-releases/opentelemetry-collector-contrib:<version>`
+
+See the link:https://github.com/open-telemetry/opentelemetry-collector-releases[opentelemetry-collector-releases] repository for available distributions and their included components.
+====
+
+==== Prometheus Operator (optional)
+
+The link:https://github.com/prometheus-operator/prometheus-operator[Prometheus Operator] is required only if you want the Helm chart to create a `ServiceMonitor` for automatic Prometheus scraping.
+It is commonly installed through the link:https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack[kube-prometheus-stack] chart:
+
+[source,bash]
+----
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+  -n monitoring --create-namespace
+----
+
+If you already have a Prometheus instance that does not use the Prometheus Operator, see xref:debezium-platform-monitoring-external-prometheus[Using an external Prometheus instance].
+
+[id="debezium-platform-monitoring-enabling"]
+=== Enabling monitoring
+
+To enable the monitoring infrastructure, set `monitoring.otel.enabled` to `true` and provide the Prometheus URL in your Helm values.
+
+.Procedure
+
+. Create a values file or add the following to your existing Helm values:
++
+[source,yaml]
+----
+monitoring:
+  otel:
+    enabled: true
+    collector:
+      # Override the collector image if needed (see Prerequisites)
+      image: ""
+  prometheus:
+    url: "http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090"  # <1>
+    serviceMonitor:
+      enabled: true
+      labels:
+        prometheus: kube-prometheus
+----
+<1> Required. Set the URL to match your Prometheus installation. The example assumes `kube-prometheus-stack` installed in the `monitoring` namespace with default settings.
+
+. Install or upgrade the platform with the monitoring values:
++
+[source,bash]
+----
+helm upgrade --install debezium-platform debezium/debezium-platform \
+  --set database.enabled=true \
+  --set domain.name=platform.debezium.io \
+  -f monitoring-values.yaml
+----
+
+When monitoring is enabled, the Helm chart automatically:
+
+* Creates an `OpenTelemetryCollector` custom resource that is configured with OTLP receivers, a batch processor, and a Prometheus exporter.
+* Creates a `ServiceMonitor` (if `monitoring.prometheus.serviceMonitor.enabled` is `true`) for automatic Prometheus scraping.
+* Configures each pipeline's {prodname} Server to export metrics to the OpenTelemetry Collector.
+
+[id="debezium-platform-monitoring-configuration"]
+=== Monitoring configuration reference
+
+The following table lists the Helm chart properties for configuring monitoring.
+
+[cols="2,3,1", options="header"]
+|===
+|Name |Description |Default
+
+|monitoring.otel.enabled
+|Enables the OpenTelemetry monitoring infrastructure.
+Requires the OpenTelemetry Operator to be installed.
+|false
+
+|monitoring.otel.collector.image
+|OpenTelemetry Collector image.
+Must include the Prometheus exporter.
+If empty, the operator's default image is used.
+|""
+
+|monitoring.otel.collector.replicas
+|Number of OpenTelemetry Collector replicas.
+|1
+
+|monitoring.otel.collector.receivers.grpc.port
+|Port for the OTLP gRPC receiver.
+|4317
+
+|monitoring.otel.collector.receivers.http.port
+|Port for the OTLP HTTP receiver.
+|4318
+
+|monitoring.otel.collector.processors.batch.timeout
+|Batch processor flush timeout.
+|5s
+
+|monitoring.otel.collector.processors.batch.sendBatchSize
+|Maximum number of metrics per batch.
+|512
+
+|monitoring.otel.collector.exporters.prometheus.port
+|Port on which the Prometheus exporter listens.
+|8889
+
+|monitoring.otel.collector.exporters.prometheus.resourceToTelemetryConversion
+|Converts OpenTelemetry resource attributes to Prometheus labels.
+|true
+
+|monitoring.otel.collector.exporters.prometheus.constLabels
+|Static labels added to all exported metrics.
+|{platform: debezium}
+
+|monitoring.prometheus.url
+|URL of the Prometheus instance used by the Conductor to query metrics.
+*Required* when `monitoring.otel.enabled` is `true`.
+|""
+
+|monitoring.prometheus.serviceMonitor.enabled
+|Creates a `ServiceMonitor` for automatic Prometheus scraping.
+Requires the Prometheus Operator to be installed.
+|true
+
+|monitoring.prometheus.serviceMonitor.scrapeInterval
+|Prometheus scrape interval.
+|15s
+
+|monitoring.prometheus.serviceMonitor.labels
+|Labels for Prometheus Operator `ServiceMonitor` discovery.
+Must match the `serviceMonitorSelector` labels configured in your Prometheus instance.
+|{prometheus: kube-prometheus}
+
+|monitoring.panels.additionalPanelsPath
+|Path to a YAML file that contains additional monitoring panels.
+Panels are merged with built-in defaults.
+Panels with matching `id` values override the built-in panels.
+|""
+|===
+
+[id="debezium-platform-monitoring-custom-panels"]
+=== Custom monitoring panels
+
+You can extend the built-in monitoring dashboard by adding custom panels or overriding existing ones.
+Custom panels are defined in a YAML file and mounted into the Conductor container.
+
+==== Panel definition format
+
+Each panel is defined with the following fields:
+
+[source,yaml]
+----
+panels:
+  - id: my-custom-panel           # <1>
+    title: "Custom Metric"         # <2>
+    description: "Description"     # <3>
+    category: streaming            # <4>
+    query: 'rate(my_metric{service_name="{{pipeline_id}}"}[5m])'  # <5>
+    unit: ops/s                    # <6>
+    visualization:                 # <7>
+      type: line
+      suggestedStep: 15s
+----
+<1> Unique identifier. If it matches a built-in panel ID, the custom definition overrides the built-in one.
+<2> Display title shown in the dashboard.
+<3> Description shown as a tooltip.
+<4> Category grouping: `streaming` or `snapshot`.
+<5> PromQL query. Use `{{pipeline_id}}` as a placeholder for the pipeline identifier.
+<6> Unit label displayed on the chart axis.
+<7> Visualization configuration: `type` can be `line`, `area`, or `donut-utilization`. For more information about chart types, see the link:https://www.patternfly.org/charts/about-charts[PatternFly charts documentation].
+
+==== Adding custom panels
+
+.Procedure
+
+. Create a YAML file that contains your panel definitions (for example, `panels.yml`).
+
+. Create a Kubernetes ConfigMap from the file:
++
+[source,bash]
+----
+kubectl create configmap custom-panels \
+  --from-file=panels.yml \
+  -n debezium-platform
+----
+
+. Configure the Helm chart to mount the ConfigMap and set the panels path.
++
+You can mount the ConfigMap in two ways:
++
+--
+*Option 1: Directory mount (recommended)*
+
+Mount the ConfigMap as a directory.
+Kubernetes automatically propagates ConfigMap updates to the mounted volume, and the Conductor periodically reloads the panels file without requiring a pod restart.
+
+[source,yaml]
+----
+conductor:
+  extraVolumes:
+    - name: custom-panels
+      configMap:
+        name: custom-panels
+  extraVolumeMounts:
+    - name: custom-panels
+      mountPath: /opt/config
+      readOnly: true
+
+monitoring:
+  panels:
+    additionalPanelsPath: /opt/config/panels.yml
+----
+
+*Option 2: `subPath` mount*
+
+Mount only the specific file by using `subPath`.
+This approach avoids creating extra files in the mount directory, but Kubernetes does not automatically update `subPath` mounts when the ConfigMap changes.
+You must restart the Conductor pod to pick up changes.
+
+[source,yaml]
+----
+conductor:
+  extraVolumes:
+    - name: custom-panels
+      configMap:
+        name: custom-panels
+  extraVolumeMounts:
+    - name: custom-panels
+      mountPath: /opt/config/panels.yml
+      subPath: panels.yml
+      readOnly: true
+
+monitoring:
+  panels:
+    additionalPanelsPath: /opt/config/panels.yml
+----
+--
+
+. Upgrade the Helm release to apply the changes:
++
+[source,bash]
+----
+helm upgrade debezium-platform debezium/debezium-platform \
+  -n debezium-platform -f values.yaml
+----
+
+The Conductor automatically merges custom panels with the built-in defaults.
+Panels with matching `id` values override the corresponding built-in panels.
+
+[id="debezium-platform-monitoring-external-prometheus"]
+=== Using an external Prometheus instance
+
+If you already have a Prometheus instance running in your cluster and you do not use the Prometheus Operator, you can point the platform to your existing Prometheus and disable the `ServiceMonitor`.
+
+.Procedure
+
+. Set `monitoring.prometheus.url` to the URL of your Prometheus instance and disable the `ServiceMonitor`:
++
+[source,yaml]
+----
+monitoring:
+  otel:
+    enabled: true
+  prometheus:
+    url: "http://prometheus.monitoring.svc.cluster.local:9090"
+    serviceMonitor:
+      enabled: false
+----
+
+. Add a scrape configuration to your Prometheus configuration to scrape the OpenTelemetry Collector:
++
+[source,yaml]
+----
+scrape_configs:
+  - job_name: 'otel-collector'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['debezium-platform-otel-collector-collector.<namespace>.svc.cluster.local:8889']
+----
++
+Replace `<namespace>` with the namespace where the {prodname} Platform is deployed.
 
 
 
