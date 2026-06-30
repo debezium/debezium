@@ -53,7 +53,8 @@ runs:
         -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
         -Dmaven.wagon.http.pool=false
         -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
-        -Ddebezium.test.records.waittime=10
+        -Ddebezium.test.engine.waittime=10
+        -Ddebezium.test.records.waittime=3
         -Ddebezium.test.records.waittime.after.nulls=10
         -DfailFlakyTests=false
         ${{ inputs.only-build == 'true' && '-DskipTests=true -DskipITs=true' || '' }}
