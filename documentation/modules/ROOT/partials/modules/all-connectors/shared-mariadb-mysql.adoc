@@ -3173,9 +3173,10 @@ As a result, the replacement tasks might regenerate some events that were proces
 
 Each change event message includes source-specific information that you can use to identify duplicate events, for example:
 
-* Event origin
-* {connector-name} server's event time
-* The binlog file name and position
+* Event origin.
+* {connector-name} server's event time.
+* The binlog file name and position.
+
 include::{snippetsdir}/frag-{context}-props-snippets.adoc[leveloffset=+1,tags=kc-process-crash-gtid-in-change-event-msg]
 
 [id="debezium-{context}-kafka-process-becomes-unavailable"]
