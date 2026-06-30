@@ -107,6 +107,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
     private static final String KEEPALIVE_THREAD_NAME = "blc-keepalive";
     private static final String SET_STATEMENT_REGEX = "SET STATEMENT .* FOR";
     private static final Pattern TRUNCATE_STATEMENT_PATTERN = Pattern.compile("(SET STATEMENT .*)?TRUNCATE TABLE .*", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+    private static final int STALE_CONNECTION_CHECK_MULTIPLIER = 3;
 
     // DML statement prefixes used to filter out DML from DDL processing (DBZ-9428)
     private static final String DML_INSERT_PREFIX = "INSERT ";
@@ -351,6 +352,45 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
             while (context.isRunning()) {
                 Thread.sleep(100);
                 waitWhenStreamingPaused(context);
+
+                // DBZ-9755: Detect stale/dead connections that don't cause the task to fail.
+                if (client.isKeepAlive()) {
+                    long keepAliveInterval = connectorConfig.getConfig().getLong(BinlogConnectorConfig.KEEP_ALIVE_INTERVAL_MS);
+                    long staleThreshold = keepAliveInterval * STALE_CONNECTION_CHECK_MULTIPLIER;
+
+                    // Case 1: Client reports disconnected but task is still running.
+                    // This happens when the keepalive thread detects a dead connection but
+                    // fails to reconnect, leaving the task in a zombie RUNNING state.
+                    if (!client.isConnected()) {
+                        long millisSinceLastEvent = metrics.getMilliSecondsSinceLastEvent();
+                        if (millisSinceLastEvent > staleThreshold && millisSinceLastEvent > 0) {
+                            LOGGER.warn("BinaryLogClient is disconnected and no events received for {} ms. "
+                                    + "Triggering task failure to force reconnection (DBZ-9755).",
+                                    millisSinceLastEvent);
+                            errorHandler.setProducerThrowable(new DebeziumException(
+                                    String.format("Binlog client disconnected: no events for %d ms. "
+                                            + "See https://github.com/debezium/dbz/issues/1474",
+                                            millisSinceLastEvent)));
+                            break;
+                        }
+                    }
+                    // Case 2: Client reports connected but connection is actually stale.
+                    // TCP remains ESTABLISHED but MySQL session is dead (half-open connection).
+                    else {
+                        long millisSinceLastEvent = metrics.getMilliSecondsSinceLastEvent();
+                        if (millisSinceLastEvent > staleThreshold && millisSinceLastEvent > 0) {
+                            LOGGER.warn("No binlog events received for {} ms (threshold: {} ms). "
+                                    + "Connection may be stale (DBZ-9755). Triggering task failure to force reconnection.",
+                                    millisSinceLastEvent, staleThreshold);
+                            errorHandler.setProducerThrowable(new DebeziumException(
+                                    String.format("Stale binlog connection detected: no events received for %d ms "
+                                            + "(keepAliveInterval=%d ms, threshold=%d ms). "
+                                            + "See https://github.com/debezium/dbz/issues/1474",
+                                            millisSinceLastEvent, keepAliveInterval, staleThreshold)));
+                            break;
+                        }
+                    }
+                }
             }
         }
         finally {
