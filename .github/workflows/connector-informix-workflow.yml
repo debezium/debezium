@@ -7,7 +7,7 @@ on:
         required: true
         type: string
       checkout-ref:
-        description: "The checkout reference to be used for the Cassandra repository."
+        description: "The checkout reference to be used for the Informix repository."
         required: true
         type: string
       max-parallel:
