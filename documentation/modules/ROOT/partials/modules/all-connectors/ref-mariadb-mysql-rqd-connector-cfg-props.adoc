@@ -15,9 +15,11 @@ Although the `long` type is easy for most clients to consume, it cannot represen
 +
 [WARNING]
 ====
-Because `long` is the default value, the connector uses signed `long` semantics for BIGINT UNSIGNED columns unless you set this property to `precise`.
-Values greater than 2^63 - 1 overflow and are emitted to change events as negative numbers, which results in silent data corruption that the connector does not report as an error.
-If a BIGINT UNSIGNED column can hold values larger than 2^63 - 1, set `bigint.unsigned.handling.mode` to `precise`.
+The `long` type represents BIGINT UNSIGNED columns as 64-bit signed integers.
+Because the maximum value for a signed Java long is 2^63 - 1, values that exceed that size are not represented correctly.
+If a value in a BIGINT UNSIGNED column exceeds the maximum size of a Java long, the connector emits the column value as a negative number.
+Because the connector does not report an error, the mapping can result in silent data corruption.
+If BIGINT UNSIGNED columns in the source database hold values larger than 2^63 - 1, set `bigint.unsigned.handling.mode` to `precise`.
 ====
 
 `precise`:::: Uses `java.math.BigDecimal` data types to represent values.
