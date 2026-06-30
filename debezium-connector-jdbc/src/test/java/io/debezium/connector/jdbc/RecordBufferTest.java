@@ -47,7 +47,7 @@ class RecordBufferTest extends AbstractRecordBufferTest {
     }
 
     private static @NotNull JdbcSinkConnectorConfig getJdbcSinkConnectorConfig() {
-        return new JdbcSinkConnectorConfig(Map.of("batch.size", "5"));
+        return getConfig(Map.of("batch.size", "5"));
     }
 
     @ParameterizedTest

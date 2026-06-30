@@ -15,6 +15,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 
 import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
+import io.debezium.connector.jdbc.AbstractBaseJdbcSinkTest;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.junit.jupiter.SinkRecordFactoryArgumentsProvider;
 import io.debezium.connector.jdbc.util.NamingStyle;
@@ -26,7 +27,7 @@ import io.debezium.doc.FixFor;
  *
  * @author Chris Cranford
  */
-public class CollectionNameTransformationTest {
+public class CollectionNameTransformationTest extends AbstractBaseJdbcSinkTest {
 
     @ParameterizedTest
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
@@ -36,7 +37,7 @@ public class CollectionNameTransformationTest {
             final Map<String, String> properties = new HashMap<>();
             transform.configure(properties);
 
-            JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+            JdbcSinkConnectorConfig config = getConfig(properties);
             final KafkaDebeziumSinkRecord topicEvent = factory.createRecord("public.INVENTORY_ONHAND_QUANTITIES", (byte) 1, config);
             assertThat(transform.apply(topicEvent.getOriginalKafkaRecord()).topic()).isEqualTo("public.INVENTORY_ONHAND_QUANTITIES");
         }
@@ -52,7 +53,7 @@ public class CollectionNameTransformationTest {
             properties.put("collection.naming.suffix", "bb");
             transform.configure(properties);
 
-            JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+            JdbcSinkConnectorConfig config = getConfig(properties);
             final KafkaDebeziumSinkRecord topicEvent = factory.createRecord("public.INVENTORY_ONHAND_QUANTITIES", (byte) 1, config);
             assertThat(transform.apply(topicEvent.getOriginalKafkaRecord()).topic()).isEqualTo("aapublic.INVENTORY_ONHAND_QUANTITIESbb");
         }
@@ -67,7 +68,7 @@ public class CollectionNameTransformationTest {
             properties.put("collection.naming.style", NamingStyle.SNAKE_CASE.getValue());
             transform.configure(properties);
 
-            JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+            JdbcSinkConnectorConfig config = getConfig(properties);
             final KafkaDebeziumSinkRecord topicEvent = factory.createRecord("public.inventoryOnhandQuantities", (byte) 1, config);
             assertThat(transform.apply(topicEvent.getOriginalKafkaRecord()).topic()).isEqualTo("public_inventory_onhand_quantities");
         }
@@ -84,7 +85,7 @@ public class CollectionNameTransformationTest {
             properties.put("collection.naming.suffix", "bb");
             transform.configure(properties);
 
-            JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+            JdbcSinkConnectorConfig config = getConfig(properties);
             final KafkaDebeziumSinkRecord topicEvent = factory.createRecord("public.inventoryOnhandQuantities", (byte) 1, config);
             assertThat(transform.apply(topicEvent.getOriginalKafkaRecord()).topic()).isEqualTo("aapublic_inventory_onhand_quantitiesbb");
         }
@@ -99,7 +100,7 @@ public class CollectionNameTransformationTest {
             properties.put("collection.naming.style", NamingStyle.CAMEL_CASE.getValue());
             transform.configure(properties);
 
-            JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+            JdbcSinkConnectorConfig config = getConfig(properties);
             final KafkaDebeziumSinkRecord topicEvent = factory.createRecord("public.inventory_onhand_quantities", (byte) 1, config);
             assertThat(transform.apply(topicEvent.getOriginalKafkaRecord()).topic()).isEqualTo("publicInventoryOnhandQuantities");
         }
@@ -116,7 +117,7 @@ public class CollectionNameTransformationTest {
             properties.put("collection.naming.suffix", "bb");
             transform.configure(properties);
 
-            JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+            JdbcSinkConnectorConfig config = getConfig(properties);
             final KafkaDebeziumSinkRecord topicEvent = factory.createRecord("public.inventory_onhand_quantities", (byte) 1, config);
             assertThat(transform.apply(topicEvent.getOriginalKafkaRecord()).topic()).isEqualTo("aapublicInventoryOnhandQuantitiesbb");
         }
@@ -131,7 +132,7 @@ public class CollectionNameTransformationTest {
             properties.put("collection.naming.style", NamingStyle.UPPER_CASE.getValue());
             transform.configure(properties);
 
-            JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+            JdbcSinkConnectorConfig config = getConfig(properties);
             final KafkaDebeziumSinkRecord topicEvent = factory.createRecord("public.inventory_onhand_quantities", (byte) 1, config);
             assertThat(transform.apply(topicEvent.getOriginalKafkaRecord()).topic()).isEqualTo("PUBLIC.INVENTORY_ONHAND_QUANTITIES");
         }
@@ -148,7 +149,7 @@ public class CollectionNameTransformationTest {
             properties.put("collection.naming.suffix", "bb");
             transform.configure(properties);
 
-            JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+            JdbcSinkConnectorConfig config = getConfig(properties);
             final KafkaDebeziumSinkRecord topicEvent = factory.createRecord("public.inventory_onhand_quantities", (byte) 1, config);
             assertThat(transform.apply(topicEvent.getOriginalKafkaRecord()).topic()).isEqualTo("aaPUBLIC.INVENTORY_ONHAND_QUANTITIESbb");
         }
@@ -163,7 +164,7 @@ public class CollectionNameTransformationTest {
             properties.put("collection.naming.style", NamingStyle.LOWER_CASE.getValue());
             transform.configure(properties);
 
-            JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+            JdbcSinkConnectorConfig config = getConfig(properties);
             final KafkaDebeziumSinkRecord topicEvent = factory.createRecord("public.INVENTORY_ONHAND_QUANTITIES", (byte) 1, config);
             assertThat(transform.apply(topicEvent.getOriginalKafkaRecord()).topic()).isEqualTo("public.inventory_onhand_quantities");
         }
@@ -180,7 +181,7 @@ public class CollectionNameTransformationTest {
             properties.put("collection.naming.suffix", "bb");
             transform.configure(properties);
 
-            JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+            JdbcSinkConnectorConfig config = getConfig(properties);
             final KafkaDebeziumSinkRecord topicEvent = factory.createRecord("public.INVENTORY_ONHAND_QUANTITIES", (byte) 1, config);
             assertThat(transform.apply(topicEvent.getOriginalKafkaRecord()).topic()).isEqualTo("aapublic.inventory_onhand_quantitiesbb");
         }

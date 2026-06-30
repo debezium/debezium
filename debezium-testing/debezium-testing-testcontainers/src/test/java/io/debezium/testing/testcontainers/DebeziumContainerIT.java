@@ -69,7 +69,6 @@ public class DebeziumContainerIT {
 
         debeziumContainer = DebeziumContainer.nightly()
                 .withKafka(kafkaCluster)
-                .withNetwork(network)
                 .withLogConsumer(new Slf4jLogConsumer(LOGGER));
 
         Startables.deepStart(Stream.of(

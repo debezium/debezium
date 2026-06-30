@@ -37,6 +37,7 @@ import io.debezium.openlineage.ConnectorContext;
 import io.debezium.openlineage.DebeziumOpenLineageEmitter;
 import io.debezium.openlineage.dataset.DatasetMetadata;
 import io.debezium.sink.DebeziumSinkRecord;
+import io.debezium.sink.batch.Batch;
 import io.debezium.sink.spi.ChangeEventSink;
 
 final class MongoDbChangeEventSink implements ChangeEventSink, AutoCloseable {
@@ -171,4 +172,17 @@ final class MongoDbChangeEventSink implements ChangeEventSink, AutoCloseable {
                 .toList();
         return new DatasetMetadata(collectionId, OUTPUT, TABLE_DATASET_TYPE, DATABASE, fieldDefinitions);
     }
+
+    @Override
+    public List<Batch> put(Collection<SinkRecord> records) {
+        // NOP for now
+        return List.of();
+    }
+
+    @Override
+    public List<Batch> forcePoll() {
+        // NOP for now
+        return List.of();
+    }
+
 }

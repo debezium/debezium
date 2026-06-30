@@ -9,6 +9,7 @@ import org.testcontainers.containers.Network;
 
 import io.debezium.testing.testcontainers.MongoDbReplicaSet;
 import io.debezium.testing.testcontainers.MongoDbShardedCluster;
+import io.debezium.testing.testcontainers.testhelper.TestInfrastructureHelper;
 import io.debezium.testing.testcontainers.util.ParsingPortResolver;
 
 public final class NetworkIsolatedMongoDbDatabaseProvider {
@@ -28,7 +29,7 @@ public final class NetworkIsolatedMongoDbDatabaseProvider {
     }
 
     public NetworkIsolatedMongoDbDatabaseProvider() {
-        this(null);
+        this(TestInfrastructureHelper.getNetwork());
     }
 
     private MongoDbReplicaSet.Builder dockerReplicaSetBuilder() {
