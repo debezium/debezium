@@ -2578,15 +2578,15 @@ Failover-enabled replication slots enable {prodname} to continue reading changes
 +
 This setting enables the connector to create failover-enabled replication slots.
 
-. On the PostgreSQL primary server, configure the `synchronized_standby_slots` parameter to include the name of the replication slot that the connector uses.
+. On the PostgreSQL primary server, configure the `synchronized_standby_slots` parameter to include the name of the physical replication slot for the standby server.
 +
-The primary server uses this parameter to synchronize the replication slot state with standby servers.
+The primary server uses this parameter to synchronize the replication slot state with the standby servers.
 +
-For example, if your replication slot is named `debezium`, add the following configuration to the `postgresql.conf` file:
+For example, if the physical replication slot for the standby server is named `standby1_slot`, add the following configuration to the `postgresql.conf` file:
 +
 [source,properties]
 ----
-synchronized_standby_slots = 'debezium'
+synchronized_standby_slots = 'standby1_slot'
 ----
 
 . Restart the PostgreSQL server to apply the configuration changes.
@@ -2604,7 +2604,7 @@ WHERE slot_name = 'debezium';
 
 .Results
 
-When the `slot.failover` property is enabled and the slot is listed in `synchronized_standby_slots`, if the primary server fails and a standby replica is promoted to primary, {prodname} continues to read changes from the specified failover slot on the new primary.
+When the `slot.failover` property is enabled and the physical replication slot for the standby server is listed in `synchronized_standby_slots`, if the primary server fails and a standby server is promoted to primary, {prodname} continues to read changes from the specified failover slot on the new primary.
 
 .Additional resources
 
