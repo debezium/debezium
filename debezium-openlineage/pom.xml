@@ -27,6 +27,7 @@
     <modules>
         <module>debezium-openlineage-api</module>
         <module>debezium-openlineage-core</module>
+        <module>debezium-openlineage-core-dist</module>
     </modules>
 
 </project>

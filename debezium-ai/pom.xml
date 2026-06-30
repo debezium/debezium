@@ -26,10 +26,15 @@
 
     <modules>
         <module>debezium-ai-docling</module>
+        <module>debezium-ai-docling-dist</module>
         <module>debezium-ai-embeddings</module>
         <module>debezium-ai-embeddings-hugging-face</module>
+        <module>debezium-ai-embeddings-hugging-face-dist</module>
         <module>debezium-ai-embeddings-minilm</module>
+        <module>debezium-ai-embeddings-minilm-dist</module>
         <module>debezium-ai-embeddings-ollama</module>
+        <module>debezium-ai-embeddings-ollama-dist</module>
         <module>debezium-ai-embeddings-voyage-ai</module>
+        <module>debezium-ai-embeddings-voyage-ai-dist</module>
     </modules>
 </project>
