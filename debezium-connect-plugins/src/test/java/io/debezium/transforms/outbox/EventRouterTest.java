@@ -31,6 +31,7 @@ import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
+import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.time.Timestamp;
 
 /**
@@ -995,6 +996,40 @@ public class EventRouterTest {
         assertThat(petObjects.size()).isEqualTo(2);
         assertThat(asStruct(petObjects.get(0)).get("type")).isEqualTo("dog");
         assertThat(asStruct(petObjects.get(1)).get("type")).isEqualTo("cat");
+    }
+
+    @Test
+    @FixFor("DBZ-9210")
+    public void shouldNotWarnOnNullPayloadWhenExpandJsonPayloadEnabled() {
+        final LogInterceptor logInterceptor = new LogInterceptor(EventRouterDelegate.class);
+
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        config.put(
+                EventRouterConfigDefinition.EXPAND_JSON_PAYLOAD.name(),
+                "true");
+        config.put(
+                EventRouterConfigDefinition.ROUTE_TOMBSTONE_ON_EMPTY_PAYLOAD.name(),
+                "true");
+        router.configure(config);
+
+        // A nullable JSON payload column set to NULL must produce a tombstone without logging a
+        // warning about the payload not being a string.
+        final SourceRecord eventRecord = createEventRecord(
+                "da8d6de6-3b77-45ff-8f44-57db55a7a06c",
+                SchemaBuilder.string(),
+                "UserCreated",
+                SchemaBuilder.string(),
+                "10711fa5",
+                "User",
+                SchemaBuilder.string().optional(),
+                null,
+                new HashMap<>(),
+                new HashMap<>());
+        final SourceRecord eventRouted = router.apply(eventRecord);
+
+        VerifyRecord.isValidTombstone(eventRouted);
+        assertThat(logInterceptor.containsWarnMessage("Expand JSON payload is turned on but payload is not a string")).isFalse();
     }
 
     @Test
