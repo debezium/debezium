@@ -11,7 +11,7 @@ Specifies how the connector represents BIGINT UNSIGNED columns in change events.
 Set one of the following options:
 
 `long`:::: Uses Java `long` data types to represent BIGINT UNSIGNED column values.
-Although the `long` type is easy to consume in most clients, it cannot represent the full range of BIGINT UNSIGNED values.
+Although the `long` type is easy for most clients to consume, it cannot represent the full range of BIGINT UNSIGNED values.
 +
 [WARNING]
 ====
