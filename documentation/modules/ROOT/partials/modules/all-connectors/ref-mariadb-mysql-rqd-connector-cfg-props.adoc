@@ -24,7 +24,7 @@ If BIGINT UNSIGNED columns in the source database hold values larger than 2^63 -
 
 `precise`:::: Uses `java.math.BigDecimal` data types to represent values.
 The connector uses the Kafka Connect `org.apache.kafka.connect.data.Decimal` data type to represent values in encoded binary format.
-Set this option if the connector can work with values larger than 2^63 - 1.
+Set this option to enable the connector to process BIGINT values larger than 2^63 - 1.
 The `long` data type cannot convey values of that size.
 
 
