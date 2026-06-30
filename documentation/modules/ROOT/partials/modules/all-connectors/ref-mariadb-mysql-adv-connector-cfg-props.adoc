@@ -135,7 +135,7 @@ For example, to mask keys the contain the strings `api.key` or `token`, set this
 +
 If you set this property for the connector, {prodname} masks any matching instances of configuration key values that it returns for display, logging, or in response to API calls.
 A string of asterisks replaces the original values, for example,  `pass:[********]`.
-
++
 [IMPORTANT]
 ====
 The pattern that you specify for the `custom.sanitize.pattern` property overrides the default {prodname} masking pattern; the specified value does not extend or augment the default pattern.
@@ -869,12 +869,12 @@ If a table is listed in the main property but its corresponding secondary proper
 Example configuration::::
 +
 The following example shows how to configure the `snapshot.select.statement.overrides` property to perform a snapshot of the `customers.orders` table that includes only records that are not soft-deleted; that is, the value of the soft-delete field, `delete_flag`, is set to `0`.
-====
++
 ----
 "snapshot.select.statement.overrides": "customer.orders",
 "snapshot.select.statement.overrides.customer.orders": "SELECT * FROM customers.orders WHERE delete_flag = 0 ORDER BY id DESC"
 ----
-====
+
 
 [id="{context}-property-snapshot-tables-order-by-row-count"]
 xref:{context}-property-snapshot-tables-order-by-row-count[`snapshot.tables.order.by.row.count`]::
@@ -915,16 +915,16 @@ Description:::
 Specifies whether the connector collects advanced statistical metrics for streaming metrics, such as quantiles.
 +
 When set to `true`, the connector collects the following statistics:
-
++
 * Minimum value
 * Maximum value
 * Average value
 * P50 (median) percentile
 * P95 percentile
 * P99 percentile
-
++
 NOTE: Currently only `MilliSecondsBehindSource` metric supports collecting quantiles.
-
++
 The statistics are computed using a probabilistic data structure (DDSketch) that provides approximate quantile values with 1% relative accuracy.
 +
 When set to `false`, the connector does not collect quantiles, and the quantile JMX metrics return `null` values.

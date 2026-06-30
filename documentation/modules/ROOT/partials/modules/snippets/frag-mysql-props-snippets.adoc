@@ -129,5 +129,5 @@ end::snapshot-fetch-size-note[]
 
 
 tag::kc-process-crash-gtid-in-change-event-msg[]
-* GTIDs, if used
+* GTIDs, if used.
 end::kc-process-crash-gtid-in-change-event-msg[]
