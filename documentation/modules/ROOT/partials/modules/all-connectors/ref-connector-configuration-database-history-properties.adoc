@@ -58,4 +58,13 @@ Specify one of the following values:
 `true`:: The connector records schema structures only for tables in the logical database and schema from which {prodname} captures change events.
 `false`:: The connector records schema structures for all logical databases.
 
+|[[{context}-property-database-history-memory-optimization]]<<{context}-property-database-history-memory-optimization, `+schema.history.internal.memory.optimization+`>>
+|`off`
+|Controls how {prodname} deduplicates identical schema objects (tables, columns, attributes) in memory using an interner. +
+Specify one of the following values:
+
+`off`:: No deduplication is performed (the default).
+`on`:: Each connector uses its own isolated intern pool. Reduces heap usage within a single connector without interfering with other connectors.
+`shared`:: All connectors configured with `shared` share a single global intern pool. Maximises deduplication when many connectors track tables with similar structures.
+
 |===
