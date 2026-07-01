@@ -3,6 +3,47 @@
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
 
+## 3.6.0.Final
+July 1st 2026 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A3.6.0.Final)
+
+### New features since 3.6.0.CR1
+
+* Integrated monitoring for Debezium Platform [debezium/dbz#1894](https://github.com/debezium/dbz/issues/1894)
+* CockroachDB connector: accept file paths for Kafka sink TLS certs and inject them into the changefeed sink URI [debezium/dbz#1974](https://github.com/debezium/dbz/issues/1974)
+* Integrate the dashboard monitoring with the API's and add Testing [debezium/dbz#2026](https://github.com/debezium/dbz/issues/2026)
+* Build Week 2: Add source and destination management commands to Debezium JBang CLI [debezium/dbz#2036](https://github.com/debezium/dbz/issues/2036)
+
+
+### Breaking changes since 3.6.0.CR1
+
+None
+
+
+### Fixes since 3.6.0.CR1
+
+* io.debezium.DebeziumException: Cannot create read only connection, read only hostname is empty [debezium/dbz#1849](https://github.com/debezium/dbz/issues/1849)
+* MySQL connector: Snapshot step 6 writes DROP+CREATE for every table to schema history topic, causing unnecessary hours-long Kafka roundtrip [debezium/dbz#2047](https://github.com/debezium/dbz/issues/2047)
+* IncrementalSnapshotIT#snapshotOnlyWithRestart takes very long time on SQL server [debezium/dbz#2122](https://github.com/debezium/dbz/issues/2122)
+* Outbox watcher engine stops processing after a consumer error, causing loop in conductor [debezium/dbz#2123](https://github.com/debezium/dbz/issues/2123)
+* add `ConcurrentMapTableMappingStorage` as class for reflection [debezium/dbz#2137](https://github.com/debezium/dbz/issues/2137)
+* SpecialTableTypesIT fails [debezium/dbz#2138](https://github.com/debezium/dbz/issues/2138)
+* Bad request on monitoring API call in Debezium Platform [debezium/dbz#2141](https://github.com/debezium/dbz/issues/2141)
+* CockroachDB: TIMETZ/TIMESTAMPTZ emitted as schema-invalid strings fail ISO_OFFSET parsing in downstream sinks [debezium/dbz#2147](https://github.com/debezium/dbz/issues/2147)
+* Some monitoring queries returns empty result in Debezium Platform [debezium/dbz#2148](https://github.com/debezium/dbz/issues/2148)
+* Deferred transaction cache low watermark should include minscncache [debezium/dbz#2151](https://github.com/debezium/dbz/issues/2151)
+* CockroachDB: connector re-emits the entire intermediate changefeed topic on every restart (consumer offset never committed) [debezium/dbz#2154](https://github.com/debezium/dbz/issues/2154)
+
+
+### Other changes since 3.6.0.CR1
+
+* Implement Week 2 transformation layer (document builder, ID strategy, and projection policy) [debezium/dbz#2018](https://github.com/debezium/dbz/issues/2018)
+* [Host Deployment ~1]  Add HostStatusEntity, HostDeploymentEntity, and Flyway migration [debezium/dbz#2086](https://github.com/debezium/dbz/issues/2086)
+* Debezium containers images are not being updated [debezium/dbz#2140](https://github.com/debezium/dbz/issues/2140)
+* Simplify Prometheus url setting in Debezium Platform [debezium/dbz#2142](https://github.com/debezium/dbz/issues/2142)
+* CockroachDB: drive the snapshot lifecycle and metrics for the changefeed initial scan [debezium/dbz#2155](https://github.com/debezium/dbz/issues/2155)
+
+
+
 ## 3.6.0.CR1
 June 23rd 2026 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A3.6.0.CR1)
 
