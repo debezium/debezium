@@ -52,25 +52,33 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
 
     @Override
     public String buildChunkQuery(IncrementalSnapshotContext<T> context, Table table, int limit, Optional<String> additionalCondition) {
+        final Optional<Object[]> upperBound = getChunkUpperBound(context);
+        final List<Column> queryColumns = getQueryColumns(context, table);
         String condition = null;
         // Add condition when this is not the first query
         if (context.isNonInitialChunk()) {
-            final Object[] maximumKey = context.maximumKey().get();
             final Object[] chunkEndPosition = context.chunkEndPosititon();
             final StringBuilder sql = new StringBuilder();
             // Window boundaries
             addLowerBound(context, table, chunkEndPosition, sql);
             // Table boundaries
-            sql.append(" AND ");
-            addUpperBound(context, table, maximumKey, sql);
+            if (upperBound.isPresent()) {
+                sql.append(" AND ");
+                addUpperBound(context, table, upperBound.get(), sql);
+            }
             condition = sql.toString();
         }
-        final List<Column> queryColumns = getQueryColumns(context, table);
+        else if (upperBound.isPresent()) {
+            final StringBuilder sql = new StringBuilder();
+            addUpperBound(context, table, upperBound.get(), sql);
+            condition = sql.toString();
+        }
+        final List<Column> orderByColumns = getOrderByColumns(context, table);
         if (jdbcConnection.nullsSortLast().isEmpty() && queryColumns.stream().anyMatch(Column::isOptional)) {
             // You need to override nullsSortLast on JdbcConnection for your connector if you want to be able to chunk based on nullable columns.
             throw new UnsupportedOperationException("The sort order of NULL values in the incremental snapshot key is unknown.");
         }
-        final String orderBy = queryColumns.stream()
+        final String orderBy = orderByColumns.stream()
                 .map(c -> jdbcConnection.quoteIdentifier(c.name()))
                 .collect(Collectors.joining(", "));
         return jdbcConnection.buildSelectWithRowLimits(table.id(),
@@ -196,14 +204,19 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
     public PreparedStatement readTableChunkStatement(IncrementalSnapshotContext<T> context, Table table, String sql) throws SQLException {
         final PreparedStatement statement = jdbcConnection.readTablePreparedStatement(connectorConfig, sql,
                 OptionalLong.empty());
+        final Optional<Object[]> upperBound = getChunkUpperBound(context);
         if (context.isNonInitialChunk()) {
-            final Object[] maximumKey = context.maximumKey().get();
             final Object[] chunkEndPosition = context.chunkEndPosititon();
             final List<Column> queryColumns = getQueryColumns(context, table);
 
-            // Fill lower-bound (chunk end) and upper-bound (maximum key) placeholders
             int pos = CascadingOrBoundaryConditions.bindTriangularParamsSkipNulls(statement, queryColumns, chunkEndPosition, 1, jdbcConnection);
-            CascadingOrBoundaryConditions.bindTriangularParamsSkipNulls(statement, queryColumns, maximumKey, pos, jdbcConnection);
+            if (upperBound.isPresent()) {
+                CascadingOrBoundaryConditions.bindTriangularParamsSkipNulls(statement, queryColumns, upperBound.get(), pos, jdbcConnection);
+            }
+        }
+        else if (upperBound.isPresent()) {
+            final List<Column> queryColumns = getQueryColumns(context, table);
+            CascadingOrBoundaryConditions.bindTriangularParamsSkipNulls(statement, queryColumns, upperBound.get(), 1, jdbcConnection);
         }
         return statement;
     }
@@ -223,8 +236,26 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
         return Optional.empty();
     }
 
-    private KeyMapper getKeyMapper() {
-        return connectorConfig.getKeyMapper() == null ? table -> table.primaryKeyColumns() : connectorConfig.getKeyMapper();
+    protected KeyMapper getKeyMapper() {
+        return connectorConfig.getKeyMapper() == null ? Table::primaryKeyColumns : connectorConfig.getKeyMapper();
+    }
+
+    /**
+     * Returns the upper bound for chunk queries.
+     * <p>
+     * Defaults to the maximum key for non-initial chunks. Subclasses may return a precomputed boundary to constrain earlier chunks.
+     */
+    protected Optional<Object[]> getChunkUpperBound(IncrementalSnapshotContext<T> context) {
+        return context.isNonInitialChunk() ? context.maximumKey() : Optional.empty();
+    }
+
+    /**
+     * Returns the columns for the ORDER BY clause of a chunk query.
+     * <p>
+     * Defaults to the chunking columns. Override when result ordering should differ from chunk boundaries.
+     */
+    protected List<Column> getOrderByColumns(IncrementalSnapshotContext<T> context, Table table) {
+        return getQueryColumns(context, table);
     }
 
     @Override
