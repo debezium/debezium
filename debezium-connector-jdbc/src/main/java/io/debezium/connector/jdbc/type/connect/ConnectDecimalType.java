@@ -63,7 +63,6 @@ public class ConnectDecimalType extends AbstractType {
         if (value instanceof Number) {
             return value.toString();
         }
-        throwUnexpectedValue(value);
-        return null;
+        throw unexpectedValue(value);
     }
 }

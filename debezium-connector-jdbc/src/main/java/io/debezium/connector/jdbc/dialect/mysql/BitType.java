@@ -58,8 +58,7 @@ class BitType extends AbstractType {
     private String toBitString(Object value, int length) {
         final byte[] bytes = ByteArrayUtils.getByteArrayFromValue(value);
         if (bytes == null) {
-            throwUnexpectedValue(value);
-            return null;
+            throw unexpectedValue(value);
         }
 
         final BitSet bits = BitSet.valueOf(bytes);
