@@ -261,6 +261,7 @@ Specify a custom `CollectionNameStrategy` implementation.
 |_empty string_
 |An optional, comma-separated list of field names that match the fully-qualified names of fields to include from the change event value.
 Fully-qualified names for fields are of the form `_fieldName_` or `_topicName_:__fieldName__`.
+
 If you include this property in the configuration, do not set the `field.exclude.list` property.
 
 |[[mongodb-sink-property-field-exclude-list]]<<mongodb-sink-property-field-exclude-list, `+field.exclude.list+`>>
