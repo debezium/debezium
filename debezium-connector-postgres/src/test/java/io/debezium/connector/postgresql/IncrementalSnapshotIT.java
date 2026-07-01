@@ -543,6 +543,50 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
         assertThat(dbChanges).contains(entry(1, 1));
     }
 
+    @Test
+    @FixFor("DBZ-2020")
+    @SkipWhenDecoderPluginNameIsNot(value = DecoderPluginName.PGOUTPUT, reason = "Only pgoutput ignores generated columns")
+    public void incrementalSnapshotWithGeneratedColumnWithoutExcludeList() throws Exception {
+
+        // Create table with generated column (no column.exclude.list configured)
+        final String setupTable = "CREATE TABLE s1.data_generated ("
+                + "pk SERIAL PRIMARY KEY, "
+                + "generated_col INT GENERATED ALWAYS AS (pk % 2) STORED, "
+                + "field1 TEXT, "
+                + "field2 TEXT);";
+        TestHelper.execute(setupTable);
+
+        // Insert test data
+        try (JdbcConnection connection = databaseConnection()) {
+            connection.setAutoCommit(false);
+            for (int i = 0; i < ROW_COUNT; i++) {
+                connection.executeWithoutCommitting(
+                        String.format("INSERT INTO s1.data_generated (field1, field2) VALUES ('%s', '%s')", i, i));
+            }
+            connection.commit();
+        }
+
+        // Start connector without column.exclude.list
+        startConnector(x -> x
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.data_generated"));
+        waitForConnectorToStart();
+
+        // Trigger incremental snapshot
+        sendAdHocSnapshotSignal("s1.data_generated");
+
+        // Verify the incremental snapshot completes successfully
+        final var topicName = "test_server.s1.data_generated";
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(
+                ROW_COUNT,
+                x -> true,
+                k -> k.getInt32("pk"),
+                record -> ((Struct) record.value()).getStruct("after").getInt32("pk"),
+                topicName,
+                null);
+
+        assertThat(dbChanges).hasSize(ROW_COUNT);
+    }
+
     protected void populate4PkTable() throws SQLException {
         try (JdbcConnection connection = databaseConnection()) {
             populate4PkTable(connection, "s1.a4");
