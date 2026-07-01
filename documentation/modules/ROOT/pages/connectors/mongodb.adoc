@@ -684,11 +684,12 @@ Every change event that captures a change to the `customers` collection has the 
 
 |2
 |`fulfillment.inventory.customers.Key`
-a|Name of the schema that defines the structure of the key's payload. This schema describes the structure of the key for the document that was changed. Key schema names have the format _connector-name_._database-name_._collection-name_.`Key`. In this example:
+a|Name of the schema that defines the structure of the key's payload. This schema describes the structure of the key for the document that was changed. Key schema names have the format _connector-name_._database-name_._collection-name_.`Key`. 
+In the preceding example, the `name` field includes the following values:
 
-* `fulfillment` is the name of the connector that generated this event.
-* `inventory` is the database that contains the collection that was changed.
-* `customers` is the collection that contains the document that was updated.
+`fulfillment`:: The name of the connector that generated the event.
+`inventory`:: The database that contains the collection that the operation changed.
+`customers`:: The collection that contains the document that the operation updated.
 
 |3
 |`optional`
@@ -1604,6 +1605,7 @@ The property is subject to removal in a future release if the default behavior c
 |[[mongodb-property-mongodb-connection-string]]<<mongodb-property-mongodb-connection-string, `+mongodb.connection.string+`>>
 |No default
 |Specifies a https://www.mongodb.com/docs/manual/reference/connection-string/[connection string] that the connector uses to connect to a MongoDB replica set.
+
 This property replaces the `mongodb.hosts` property that was available in previous versions of the MongoDB connector.
 
 |[[mongodb-property-topic-prefix]]<<mongodb-property-topic-prefix, `+topic.prefix+`>>
@@ -1611,6 +1613,7 @@ This property replaces the `mongodb.hosts` property that was available in previo
 |A unique name that identifies the connector and/or MongoDB replica set or sharded cluster that this connector monitors.
 Each server should be monitored by at most one {prodname} connector, since this server name prefixes all persisted Kafka topics emanating from the MongoDB replica set or cluster.
 Use only alphanumeric characters, hyphens, dots and underscores to form the name.
+
 The logical name should be unique across all other connectors, because the name is used as the prefix in naming the Kafka topics that receive records from this connector.
 
 [WARNING]
@@ -1664,15 +1667,16 @@ Database and collection includes/excludes are evaluated as comma-separated list 
 |[[mongodb-property-database-include-list]]<<mongodb-property-database-include-list, `+database.include.list+`>>
 |_empty string_
 |An optional comma-separated list of regular expressions or literals that match database names to be monitored.
+
 By default, all databases are monitored.
 When `database.include.list` is set, the connector monitors only the databases that the property specifies.
 Other databases are excluded from monitoring.
 
-To match the name of a database, {prodname} performs one of the following actions based on the value of xref:mongodb-property-filters-match-mode[`filters.match.mode`] property
+To match the name of a database, {prodname} performs one of the following actions based on the value of xref:mongodb-property-filters-match-mode[`filters.match.mode`] property:
 
-- applies the regular expression that you specify as an _anchored_ regular expression.
+- Applies the regular expression that you specify as an _anchored_ regular expression.
 That is, the specified expression is matched against the entire name string of the database; it does not match substrings that might be present in a database name.
-- compares the literals that you specify with the entire name string of the database
+- Compares the literals that you specify with the entire name string of the database.
 
 
 If you include this property in the configuration, do not also set the `database.exclude.list` property.
@@ -1682,11 +1686,11 @@ If you include this property in the configuration, do not also set the `database
 |An optional comma-separated list of regular expressions or literals that match database names to be excluded from monitoring.
 When `database.exclude.list` is set, the connector monitors every database except the ones that the property specifies.
 
-To match the name of a database, {prodname} performs one of the following actions based on the value of xref:mongodb-property-filters-match-mode[`filters.match.mode`] property
+To match the name of a database, {prodname} performs one of the following actions based on the value of xref:mongodb-property-filters-match-mode[`filters.match.mode`] property:
 
-- applies the regular expression that you specify as an _anchored_ regular expression.
+- Applies the regular expression that you specify as an _anchored_ regular expression.
 That is, the specified expression is matched against the entire name string of the database; it does not match substrings that might be present in a database name.
-- compares the literals that you specify with the entire name string of the database
+- Compares the literals that you specify with the entire name string of the database.
 
 If you include this property in the configuration, do not set the `database.include.list` property.
 
@@ -1698,11 +1702,11 @@ When `collection.include.list` is set, the connector monitors only the collectio
 Other collections are excluded from monitoring.
 Collection identifiers are of the form _databaseName_._collectionName_.
 
-To match the name of a namespace, {prodname} performs one of the following actions based on the value of xref:mongodb-property-filters-match-mode[`filters.match.mode`] property
+To match the name of a namespace, {prodname} performs one of the following actions based on the value of xref:mongodb-property-filters-match-mode[`filters.match.mode`] property:
 
-- applies the regular expression that you specify as an _anchored_ regular expression.
+- Applies the regular expression that you specify as an _anchored_ regular expression.
 That is, the specified expression is matched against the entire name string of the namespace; it does not match substrings in the name.
-- compares the literals that you specify with the entire name string of the namespace
+- Compares the literals that you specify with the entire name string of the namespace.
 
 
 If you include this property in the configuration, do not also set the `collection.exclude.list` property.
@@ -1713,11 +1717,11 @@ If you include this property in the configuration, do not also set the `collecti
 When `collection.exclude.list` is set, the connector monitors every collection except the ones that the property specifies.
 Collection identifiers are of the form _databaseName_._collectionName_.
 
-To match the name of a namespace, {prodname} performs one of the following actions based on the value of xref:mongodb-property-filters-match-mode[`filters.match.mode`] property
+To match the name of a namespace, {prodname} performs one of the following actions based on the value of xref:mongodb-property-filters-match-mode[`filters.match.mode`] property:
 
-- applies the regular expression that you specify as an _anchored_ regular expression.
+- Applies the regular expression that you specify as an _anchored_ regular expression.
 That is, the specified expression is matched against the entire name string of the namespace; it does not match substrings that might be present in a database name.
-- compares the literals that you specify with the entire name string of the namespace
+- Compares the literals that you specify with the entire name string of the namespace.
 
 If you include this property in the configuration, do not set the `collection.include.list` property.
 
@@ -1810,11 +1814,12 @@ Fully-qualified names for fields are of the form _databaseName_._collectionName_
 
 |[[mongodb-property-tombstones-on-delete]]<<mongodb-property-tombstones-on-delete, `+tombstones.on.delete+`>>
 |`true`
-|Controls whether a _delete_ event is followed by a tombstone event.
+|Specifies whether a _delete_ event is followed by a tombstone event.
+Set one of the following options:
 
-`true` - a delete operation is represented by a _delete_ event and a subsequent tombstone event. 
+`true`:: A delete operation is represented by a _delete_ event and a subsequent tombstone event. 
 
-`false` - only a _delete_ event is emitted.
+`false`:: After a delete operation, the connector emits only a _delete_ event.
 
 After a source record is deleted, emitting a tombstone event (the default behavior) allows Kafka to completely delete all events that pertain to the key of the deleted row in case {link-kafka-docs}/#compaction[log compaction] is enabled for the topic.
 
@@ -1828,11 +1833,14 @@ After a source record is deleted, emitting a tombstone event (the default behavi
 
 |[[mongodb-property-field-name-adjustment-mode]]<<mongodb-property-field-name-adjustment-mode,`+field.name.adjustment.mode+`>>
 |none
-|Specifies how field names should be adjusted for compatibility with the message converter used by the connector. Possible settings: 
+|Specifies how the connector adjusts field names for compatibility with the message converter used by the connector. 
+Set one of the following options: 
 
-* `none` does not apply any adjustment.
-* `avro` replaces the characters that cannot be used in the Avro type name with underscore.
-* `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java.
+`none`:: The connector does not adjust field names.
+`avro`:: The connector replaces characters that cannot are not valid in Avro type names with underscores.
+`avro_unicode`:: The connector replaces underscores and characters that are not valid in Avro type names with the equivalent unicode, such as _uxxxx. 
++
+Note: The underscore character ('`_`') represents an escape sequence similar to a backslash in Java.
 
 See {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] for more details.
 |===
@@ -1892,6 +1900,7 @@ Always set the value of `max.queue.size` to be larger than the value of xref:{co
 |A long integer value that specifies the maximum volume of the blocking queue in bytes.
 By default, volume limits are not specified for the blocking queue.
 To specify the number of bytes that the queue can consume, set this property to a positive long value.
+
 If xref:mongodb-property-max-queue-size[`max.queue.size`] is also set, writing to the queue is blocked when the size of the queue reaches the limit specified by either property.
 For example, if you set `max.queue.size=1000`, and `max.queue.size.in.bytes=5000`, writing to the queue is blocked after the queue contains 1000 records, or after the volume of the records in the queue reaches 5000 bytes.
 
@@ -1926,16 +1935,16 @@ For example, if you set `max.queue.size=1000`, and `max.queue.size.in.bytes=5000
 ifdef::community[]
 |[[mongodb-property-source-struct-version]]<<mongodb-property-source-struct-version, `+source.struct.version+`>>
 |v2
-|Schema version for the `source` block in CDC events. {prodname} 0.10 introduced a few breaking
-changes to the structure of the `source` block in order to unify the exposed structure across
-all the connectors.
-By setting this option to `v1` the structure used in earlier versions can be produced.
+|Schema version for the `source` block in CDC events. 
+{prodname} 0.10 introduced a few breaking changes to the structure of the `source` block in order to unify the exposed structure across all the connectors.
+Set this option to `v1` if you want the connector to produce events that use the source block structure from earlier versions.
 Note that this setting is not recommended and is planned for removal in a future {prodname} version.
 endif::community[]
 
 |[[mongodb-property-heartbeat-interval-ms]]<<mongodb-property-heartbeat-interval-ms, `+heartbeat.interval.ms+`>>
 |`0`
-|Controls how frequently heartbeat messages are sent.
+|Specifies how frequently the connector sends heartbeat messages.
+
 This property contains an interval in milliseconds that defines how frequently the connector sends messages into a heartbeat topic.
 This can be used to monitor whether the connector is still receiving change events from the database.
 You also should leverage heartbeat messages in cases where only records in non-captured collections are changed for a longer period of time.
@@ -1943,8 +1952,7 @@ In such situation the connector would proceed to read the oplog/change stream fr
 which in turn means that no offset updates are committed to Kafka.
 This will cause the oplog files to be rotated out but connector will not notice it so on restart some events are no longer available which leads to the need of re-execution of the initial snapshot.
 
-Set this parameter to `0` to not send heartbeat messages at all.
-Disabled by default.
+The default setting (`0`) prevents the connector from sending heartbeat messages.
 
 |[[mongodb-property-skipped-operations]]<<mongodb-property-skipped-operations, `+skipped.operations+`>>
 |`t`
@@ -1967,12 +1975,12 @@ For each collection that you specify, also specify another configuration propert
 
 |[[mongodb-property-snapshot-delay-ms]]<<mongodb-property-snapshot-delay-ms, `+snapshot.delay.ms+`>>
 |No default
-|An interval in milliseconds that the connector should wait before taking a snapshot after starting up;
-Can be used to avoid snapshot interruptions when starting multiple connectors in a cluster, which may cause re-balancing of connectors.
+|Specifies an interval, in milliseconds, that the connector waits after starting before it takes a snapshot.
+Use this setting to avoid snapshot interruptions when starting multiple connectors in a cluster, which can cause re-balancing of connectors.
 
 |[[mongodb-property-streaming-delay-ms]]<<mongodb-property-streaming-delay-ms, `+streaming.delay.ms+`>>
 |0
-|Specifies the time, in milliseconds, that the connector delays the start of the streaming process after it completes a snapshot.
+|Specifies an interval, in milliseconds, that the connector delays the start of the streaming process after it completes a snapshot.
 Setting a delay interval helps to prevent the connector from restarting snapshots in the event that a failure occurs immediately after the snapshot completes, but before the streaming process begins.
 Set a delay value that is higher than the value of the {link-kafka-docs}/#connectconfigs_offset.flush.interval.ms[`offset.flush.interval.ms`] property that is set for the Kafka Connect worker.
 
@@ -1980,13 +1988,15 @@ Set a delay value that is higher than the value of the {link-kafka-docs}/#connec
 |`0`
 |Specifies the maximum number of documents that should be read in one go from each collection while taking a snapshot.
 The connector will read the collection contents in multiple batches of this size.
-Defaults to 0, which indicates that the server chooses an appropriate fetch size.
+
+The default setting (`0`) specifies that the server sets the fetch size.
 
 |[[mongodb-property-snapshot-include-collection-list]]<<mongodb-property-snapshot-include-collection-list, `+snapshot.include.collection.list+`>>
 | All collections specified in `collection.include.list`
 |An optional, comma-separated list of regular expressions that match the fully-qualified names (`_<databaseName>_._<collectionName>_`) of the schemas that you want to include in a snapshot.
 The specified items must be named in the connectors's xref:mongodb-property-collection-include-list[`collection.include.list`] property.
 This property takes effect only if the connector's xref:mongodb-property-snapshot-mode[`snapshot.mode`] property is set to a value other than `no_data`.
+
 This property does not affect the behavior of incremental snapshots.
 
 To match the name of a schema, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
@@ -2064,6 +2074,7 @@ ifdef::community[]
 |[[mongodb-property-snapshot-mode-configuration-based-snapshot-on-data-error]]<<mongodb-property-configuration-based-snapshot-on-data-error, `+snapshot.mode.configuration.based.snapshot.on.data.error+`>>
 |false
 |If the `snapshot.mode` is set to `configuration_based`, this property specifies whether the connector attempts to snapshot table data if it does not find the last committed offset in the transaction log.
+
 Set the value to `true` to instruct the connector to perform a new snapshot.
 endif::community[]
 
@@ -2192,6 +2203,7 @@ Adjust the chunk size to a value that provides the best performance in your envi
 |[[mongodb-property-incremental-snapshot-watermarking-strategy]]<<mongodb-property-incremental-snapshot-watermarking-strategy, `+incremental.snapshot.watermarking.strategy+`>>
 |`insert_insert`
 |Specifies the watermarking mechanism that the connector uses during an incremental snapshot to deduplicate events that might be captured by an incremental snapshot and then recaptured after streaming resumes.
+
 You can specify one of the following options:
 
 `insert_insert`:: When you send a signal to initiate an incremental snapshot, for every chunk that {prodname} reads during the snapshot, it writes an entry to the signaling data collection to record the signal to open the snapshot window.
