@@ -1115,7 +1115,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     protected Long rowCountForTableChunked(TableId tableId) throws SQLException {
         // todo: snapshot select overrides?
         return jdbcConnection.queryAndMap(
-                "SELECT COUNT(1) FROM %s".formatted(jdbcConnection.getQualifiedTableName(tableId)),
+                "SELECT COUNT(1) FROM %s".formatted(jdbcConnection.quotedTableIdString(tableId)),
                 rs -> rs.next() ? rs.getLong(1) : 0L);
     }
 
