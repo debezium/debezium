@@ -968,7 +968,7 @@ public abstract class CommonConnectorConfig {
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDefault(0)
-            .withValidation(Field::isPositiveInteger)
+            .withValidation(Field::isNonNegativeInteger)
             .withDescription(
                     "The maximum number of retries after encountering an error emitting a window event (-1 = no limit, 0 = disabled, > 0 = num of retries). Defaults to 0.");
 
