@@ -6,11 +6,11 @@
 package io.debezium.connector.sqlserver;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
@@ -209,10 +209,11 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
     @Override
     public List<SourceRecord> doPoll() throws InterruptedException {
         final List<DataChangeEvent> records = queue.poll();
-
-        return records.stream()
-                .map(DataChangeEvent::getRecord)
-                .collect(Collectors.toList());
+        final List<SourceRecord> sourceRecords = new ArrayList<>(records.size());
+        for (final DataChangeEvent record : records) {
+            sourceRecords.add(record.getRecord());
+        }
+        return sourceRecords;
     }
 
     @Override

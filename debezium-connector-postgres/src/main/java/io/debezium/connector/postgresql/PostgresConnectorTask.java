@@ -9,12 +9,12 @@ package io.debezium.connector.postgresql;
 import java.nio.charset.Charset;
 import java.sql.SQLException;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.stream.Collectors;
 
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.connect.errors.ConnectException;
@@ -397,10 +397,11 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
     @Override
     public List<SourceRecord> doPoll() throws InterruptedException {
         final List<DataChangeEvent> records = queue.poll();
-
-        return records.stream()
-                .map(DataChangeEvent::getRecord)
-                .collect(Collectors.toList());
+        final List<SourceRecord> sourceRecords = new ArrayList<>(records.size());
+        for (final DataChangeEvent record : records) {
+            sourceRecords.add(record.getRecord());
+        }
+        return sourceRecords;
     }
 
     @Override
