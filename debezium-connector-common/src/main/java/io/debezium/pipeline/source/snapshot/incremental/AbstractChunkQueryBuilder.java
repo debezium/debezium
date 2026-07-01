@@ -91,15 +91,18 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
     }
 
     protected String buildProjection(Table table) {
-        String projection = "*";
-        if (connectorConfig.isColumnsFiltered()) {
-            TableId tableId = table.id();
-            projection = table.columns().stream()
-                    .filter(column -> columnFilter.matches(tableId.catalog(), tableId.schema(), tableId.table(), column.name()))
-                    .map(column -> jdbcConnection.quoteIdentifier(column.name()))
-                    .collect(Collectors.joining(", "));
-        }
-        return projection;
+        // DBZ-2020: always build an explicit column list from the in-memory Table, same pattern as
+        // the initial snapshot (getPreparedColumnNames). Generated columns that were removed from the
+        // Table by refreshFromIncrementalSnapshot are already absent; any still marked isGenerated()
+        // (e.g. connectors that mark but do not remove) are filtered here.
+        final boolean columnsFiltered = connectorConfig.isColumnsFiltered();
+        final TableId tableId = table.id();
+        return table.columns().stream()
+                .filter(column -> !column.isGenerated())
+                .filter(column -> !columnsFiltered
+                        || columnFilter.matches(tableId.catalog(), tableId.schema(), tableId.table(), column.name()))
+                .map(column -> jdbcConnection.quoteIdentifier(column.name()))
+                .collect(Collectors.joining(", "));
     }
 
     protected void addLowerBound(IncrementalSnapshotContext<T> context, Table table, Object[] boundaryKey, StringBuilder sql) {
