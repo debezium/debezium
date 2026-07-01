@@ -61,6 +61,18 @@ INSERT INTO dbz_228_int_unsigned VALUES (default, 3294967295, 3294967295, -11474
 INSERT INTO dbz_228_int_unsigned VALUES (default, 0, 0, -2147483648, 0, 0, -2147483648);
 
 
+-- Handle the INTEGER UNSIGNED synonym identically to INT UNSIGNED
+CREATE TABLE dbz_integer_unsigned (
+  id int auto_increment NOT NULL,
+  c1 INTEGER(11) UNSIGNED ZEROFILL NOT NULL,
+  c2 INTEGER(11) UNSIGNED NOT NULL,
+  c3 INTEGER(11) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+INSERT INTO dbz_integer_unsigned VALUES (default, 4294967295, 4294967295, 2147483647);
+INSERT INTO dbz_integer_unsigned VALUES (default, 3294967295, 3294967295, -1147483647);
+INSERT INTO dbz_integer_unsigned VALUES (default, 0, 0, -2147483648);
+
 -- DBZ-228 handle unsigned BIGINT UNSIGNED
 CREATE TABLE dbz_228_bigint_unsigned (
   id int auto_increment NOT NULL,

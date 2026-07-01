@@ -162,6 +162,7 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
             return SchemaBuilder.int32();
         }
         if (matches(typeName, "INT UNSIGNED") || matches(typeName, "INT UNSIGNED ZEROFILL")
+                || matches(typeName, "INTEGER UNSIGNED") || matches(typeName, "INTEGER UNSIGNED ZEROFILL")
                 || matches(typeName, "INT4 UNSIGNED") || matches(typeName, "INT4 UNSIGNED ZEROFILL")) {
             // In order to capture unsigned INT 32-bit data source, INT64 will be required to safely capture all valid values
             // Source: https://kafka.apache.org/0102/javadoc/org/apache/kafka/connect/data/Schema.Type.html
@@ -241,6 +242,7 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
             return (data) -> convertUnsignedMediumint(column, fieldDefn, data);
         }
         if (matches(typeName, "INT UNSIGNED") || matches(typeName, "INT UNSIGNED ZEROFILL")
+                || matches(typeName, "INTEGER UNSIGNED") || matches(typeName, "INTEGER UNSIGNED ZEROFILL")
                 || matches(typeName, "INT4 UNSIGNED") || matches(typeName, "INT4 UNSIGNED ZEROFILL")) {
             // Convert INT UNSIGNED internally from SIGNED to UNSIGNED based on the boundary settings
             return (data) -> convertUnsignedInt(column, fieldDefn, data);

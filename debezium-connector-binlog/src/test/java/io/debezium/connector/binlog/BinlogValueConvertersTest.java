@@ -207,6 +207,38 @@ public abstract class BinlogValueConvertersTest<C extends SourceConnector> imple
     }
 
     @Test
+    public void testIntegerUnsignedSynonymMatchesIntUnsigned() {
+        String sql = "CREATE TABLE INTEGER_UNSIGNED_TABLE (A INT UNSIGNED NOT NULL, B INTEGER UNSIGNED NOT NULL);";
+
+        final BinlogValueConverters converters = getValueConverters(
+                JdbcValueConverters.DecimalMode.PRECISE,
+                TemporalPrecisionMode.CONNECT,
+                JdbcValueConverters.BigIntUnsignedMode.LONG,
+                BinaryHandlingMode.BYTES,
+                x -> x,
+                EventConvertingFailureHandlingMode.WARN);
+
+        DdlParser parser = getDdlParser();
+        Tables tables = new Tables();
+        parser.parse(sql, tables);
+        Table table = tables.forTable(new TableId(null, null, "INTEGER_UNSIGNED_TABLE"));
+
+        // "INT UNSIGNED" and its "INTEGER UNSIGNED" synonym must produce identical schemas/conversions,
+        // otherwise streaming (DDL-parsed) and snapshot (JDBC metadata, always normalized to "INT") diverge.
+        Column colA = table.columnWithName("A");
+        Column colB = table.columnWithName("B");
+
+        Field fieldA = new Field(colA.name(), -1, converters.schemaBuilder(colA).build());
+        Field fieldB = new Field(colB.name(), -1, converters.schemaBuilder(colB).build());
+
+        assertEquals(fieldA.schema(), fieldB.schema());
+        assertEquals(org.apache.kafka.connect.data.Schema.Type.INT64, fieldB.schema().type());
+
+        long valueAboveIntMax = 4294967295L;
+        assertEquals(valueAboveIntMax, converters.converter(colB, fieldB).convert(valueAboveIntMax));
+    }
+
+    @Test
     @FixFor("DBZ-5996")
     public void testZonedDateTimeWithMicrosecondPrecision() {
         String zonedDateTimeTable = "ZONED_DATE_TIME_TABLE";
