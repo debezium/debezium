@@ -81,7 +81,6 @@ class BigIntUnsignedType extends AbstractType {
             return new BigDecimal(string);
         }
 
-        throwUnexpectedValue(value);
-        return null;
+        throw unexpectedValue(value);
     }
 }

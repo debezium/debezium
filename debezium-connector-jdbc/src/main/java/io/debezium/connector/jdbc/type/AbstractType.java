@@ -92,8 +92,8 @@ public abstract class AbstractType implements JdbcType {
         return Optional.empty();
     }
 
-    protected void throwUnexpectedValue(Object value) throws ConnectException {
-        throw new ConnectException(String.format("Unexpected %s value '%s' with type '%s'", getClass().getSimpleName(),
+    protected ConnectException unexpectedValue(Object value) {
+        return new ConnectException(String.format("Unexpected %s value '%s' with type '%s'", getClass().getSimpleName(),
                 value.toString(), value.getClass().getName()));
     }
 
@@ -102,8 +102,7 @@ public abstract class AbstractType implements JdbcType {
             return data;
         }
 
-        throwUnexpectedValue(value);
-        return null;
+        throw unexpectedValue(value);
     }
 
     @Override
