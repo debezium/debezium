@@ -8,6 +8,7 @@ package io.debezium.performance.core;
 import static io.debezium.config.CommonConnectorConfig.DEFAULT_MAX_BATCH_SIZE;
 import static io.debezium.config.CommonConnectorConfig.DEFAULT_MAX_QUEUE_SIZE;
 import static io.debezium.config.CommonConnectorConfig.DEFAULT_MAX_QUEUE_SIZE_IN_BYTES;
+import static io.debezium.config.CommonConnectorConfig.DEFAULT_POLL_DISPATCH_INTERVAL_MILLIS;
 
 import java.time.Duration;
 import java.util.Collections;
@@ -63,6 +64,7 @@ public class ChangeEventQueuePerf {
         public void setup() {
             changeEventQueue = new ChangeEventQueue.Builder<DataChangeEvent>()
                     .pollInterval(Duration.ofMillis(pollIntervalMillis))
+                    .pollDispatchInterval(Duration.ofMillis(DEFAULT_POLL_DISPATCH_INTERVAL_MILLIS))
                     .maxQueueSize(DEFAULT_MAX_QUEUE_SIZE)
                     .maxBatchSize(DEFAULT_MAX_BATCH_SIZE)
                     .queueProvider(createDefaultQueueProvider(DEFAULT_MAX_QUEUE_SIZE))
@@ -115,6 +117,7 @@ public class ChangeEventQueuePerf {
         public void setup() {
             changeEventQueue = new ChangeEventQueue.Builder<DataChangeEvent>()
                     .pollInterval(Duration.ofMillis(pollIntervalMillis))
+                    .pollDispatchInterval(Duration.ofMillis(DEFAULT_POLL_DISPATCH_INTERVAL_MILLIS))
                     .maxQueueSize(DEFAULT_MAX_QUEUE_SIZE)
                     .maxBatchSize(DEFAULT_MAX_BATCH_SIZE)
                     .queueProvider(createDefaultQueueProvider(DEFAULT_MAX_QUEUE_SIZE))
@@ -170,6 +173,7 @@ public class ChangeEventQueuePerf {
         public void setupInvocation() {
             changeEventQueue = new ChangeEventQueue.Builder<DataChangeEvent>()
                     .pollInterval(Duration.ofMillis(pollIntervalMillis))
+                    .pollDispatchInterval(Duration.ofMillis(DEFAULT_POLL_DISPATCH_INTERVAL_MILLIS))
                     .maxQueueSize(DEFAULT_MAX_QUEUE_SIZE)
                     .maxBatchSize(DEFAULT_MAX_BATCH_SIZE)
                     .queueProvider(createDefaultQueueProvider(DEFAULT_MAX_QUEUE_SIZE))
@@ -247,6 +251,7 @@ public class ChangeEventQueuePerf {
         public void setupInvocation() {
             changeEventQueue = new ChangeEventQueue.Builder<DataChangeEvent>()
                     .pollInterval(Duration.ofMillis(pollIntervalMillis))
+                    .pollDispatchInterval(Duration.ofMillis(DEFAULT_POLL_DISPATCH_INTERVAL_MILLIS))
                     .maxQueueSize(DEFAULT_MAX_QUEUE_SIZE).maxBatchSize(DEFAULT_MAX_BATCH_SIZE)
                     .queueProvider(createDefaultQueueProvider(DEFAULT_MAX_QUEUE_SIZE))
                     .loggingContextSupplier(() -> LoggingContext.forConnector("a", "b", "c"))

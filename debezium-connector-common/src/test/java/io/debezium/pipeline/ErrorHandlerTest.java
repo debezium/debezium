@@ -220,6 +220,7 @@ public class ErrorHandlerTest {
     private ChangeEventQueue<DataChangeEvent> queue() {
         return new ChangeEventQueue.Builder<DataChangeEvent>()
                 .pollInterval(Duration.ofMillis(1))
+                .pollDispatchInterval(Duration.ofMillis(0))
                 .maxBatchSize(1000)
                 .maxQueueSize(1000)
                 .queueProvider(createDefaultQueueProvider(1000))
