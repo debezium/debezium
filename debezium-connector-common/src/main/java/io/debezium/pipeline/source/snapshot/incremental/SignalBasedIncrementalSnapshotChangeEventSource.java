@@ -120,17 +120,7 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
         RetryingRunnable.<SQLException> builder()
                 .retries(connectorConfig.getSignalEmitFailureMaxRetries())
                 .delayStrategy(DelayStrategy.constant(connectorConfig.getSignalEmitFailureBackoff()))
-                .doRun(() -> {
-                    String signalWindowStatement = "INSERT INTO " + signalTableName + " VALUES (?, ?, ?)";
-                    signalMetadata = new SignalMetadata(Instant.now(), null);
-                    jdbcConnection.prepareUpdate(signalWindowStatement, x -> {
-                        LOGGER.trace("Emitting open window for chunk = '{}' to signal table '{}'", context.currentChunkId(), signalTableName);
-                        x.setString(1, context.currentChunkId() + "-open");
-                        x.setString(2, OpenIncrementalSnapshotWindow.NAME);
-                        x.setString(3, signalMetadata.metadataString());
-                    });
-                    jdbcConnection.commit();
-                })
+                .doRun(() -> insertOpenWindow(signalTableName))
                 .doAutoHeal(this::autoHealJdbcConnection)
                 .build()
                 .runWrapped(cause -> new SQLException("Interrupted", cause));
@@ -156,13 +146,26 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
                 .run();
     }
 
+    private void insertOpenWindow(String signalTableName) throws SQLException {
+        String signalWindowStatement = "INSERT INTO " + signalTableName + " VALUES (?, ?, ?)";
+        signalMetadata = new SignalMetadata(Instant.now(), null);
+        jdbcConnection.prepareUpdate(signalWindowStatement, x -> {
+            LOGGER.trace("Emitting open window for chunk = '{}' to signal table '{}'", context.currentChunkId(), signalTableName);
+            x.setString(1, context.currentChunkId() + "-open");
+            x.setString(2, OpenIncrementalSnapshotWindow.NAME);
+            x.setString(3, signalMetadata.metadataString());
+        });
+        jdbcConnection.commit();
+    }
+
     private void autoHealJdbcConnection() throws SQLException {
         LOGGER.info("Closing JDBC connection and re-connecting");
         try {
             jdbcConnection.close();
         }
         catch (Exception ignore) {
-            // Ignore
+            // Log and ignore
+            LOGGER.info("Failed to close JDBC connection during auto heal. Ignoring.", ignore);
         }
         LOGGER.trace("Reconnecting JDBC connection");
         jdbcConnection.connect();
