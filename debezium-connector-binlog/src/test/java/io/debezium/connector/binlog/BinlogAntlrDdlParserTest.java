@@ -3199,8 +3199,8 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
         assertThat(getColumnSchema(table, "medium_un_c").defaultValue()).isEqualTo(9);
         assertThat(getColumnSchema(table, "medium_un_z_c").defaultValue()).isEqualTo(10);
         assertThat(getColumnSchema(table, "int_c").defaultValue()).isEqualTo(11);
-        assertThat(getColumnSchema(table, "int_un_c").defaultValue()).isEqualTo(12);
-        assertThat(getColumnSchema(table, "int_un_z_c").defaultValue()).isEqualTo(13);
+        assertThat(getColumnSchema(table, "int_un_c").defaultValue()).isEqualTo(12L);
+        assertThat(getColumnSchema(table, "int_un_z_c").defaultValue()).isEqualTo(13L);
         assertThat(getColumnSchema(table, "int11_c").defaultValue()).isEqualTo(14);
         assertThat(getColumnSchema(table, "big_c").defaultValue()).isEqualTo(15L);
         assertThat(getColumnSchema(table, "big_un_c").defaultValue()).isEqualTo(new BigDecimal(16));
