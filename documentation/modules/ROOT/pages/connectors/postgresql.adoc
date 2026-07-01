@@ -255,6 +255,13 @@ The {prodname} connector for PostgreSQL does not support schema changes while an
 If a schema change is performed _before_ the incremental snapshot start but _after_ sending the signal then passthrough config option `database.autosave` is set to `conservative` to correctly process the schema change.
 ====
 
+[NOTE]
+====
+When a captured table has `GENERATED` columns, the connector detects them at schema discovery time from `pg_attribute.attgenerated` and omits them from the chunk `SELECT` used during an incremental snapshot.
+Values for those columns are not present in the resulting snapshot events; recompute them on the consumer side if needed.
+Tables without any generated column continue to use `SELECT *` and are unaffected.
+====
+
 // Type: procedure
 [id="postgresql-triggering-an-incremental-snapshot"]
 ==== Triggering an incremental snapshot

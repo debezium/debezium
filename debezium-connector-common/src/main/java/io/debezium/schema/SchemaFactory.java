@@ -234,6 +234,7 @@ public class SchemaFactory {
                 .field(ConnectTableChangeSerializer.OPTIONAL_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
                 .field(ConnectTableChangeSerializer.AUTO_INCREMENTED_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
                 .field(ConnectTableChangeSerializer.GENERATED_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
+                .field(ConnectTableChangeSerializer.INVISIBLE_KEY, Schema.OPTIONAL_BOOLEAN_SCHEMA)
                 .field(ConnectTableChangeSerializer.COMMENT_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(ConnectTableChangeSerializer.DEFAULT_VALUE_EXPRESSION, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(ConnectTableChangeSerializer.ENUM_VALUES, SchemaBuilder.array(Schema.STRING_SCHEMA).optional().build())

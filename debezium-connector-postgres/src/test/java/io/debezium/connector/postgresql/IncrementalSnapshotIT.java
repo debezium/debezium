@@ -511,6 +511,39 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
     }
 
     @Test
+    @FixFor("DBZ-2020")
+    public void incrementalSnapshotSkipsGeneratedColumnWithoutColumnExcludeList() throws Exception {
+        // Regression test for DBZ-2020: without any column.exclude.list workaround, the incremental
+        // snapshot chunk query must skip STORED generated columns; otherwise PostgreSQL rejects the
+        // implicit assignment when Debezium tries to select every column.
+        final String setup = "CREATE TABLE s1.gencol_isnap (pk int PRIMARY KEY, aa integer,"
+                + " gencol varchar(10) GENERATED ALWAYS AS ('aa') STORED, bb varchar(2));";
+        TestHelper.execute(setup);
+
+        try (JdbcConnection connection = databaseConnection()) {
+            connection.execute("INSERT INTO s1.gencol_isnap (pk, aa, bb) VALUES (1, 1, 'a')");
+            connection.execute("INSERT INTO s1.gencol_isnap (pk, aa, bb) VALUES (2, 2, 'b')");
+        }
+
+        startConnector(x -> x
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.gencol_isnap")
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA.getValue()));
+        waitForConnectorToStart();
+
+        sendAdHocSnapshotSignal("s1.gencol_isnap");
+
+        final String topicName = "test_server.s1.gencol_isnap";
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(
+                2,
+                x -> true,
+                k -> k.getInt32("pk"),
+                record -> ((Struct) record.value()).getStruct("after").getInt32("aa"),
+                topicName,
+                null);
+        assertThat(dbChanges).containsExactly(entry(1, 1), entry(2, 2));
+    }
+
+    @Test
     @FixFor("DBZ-1329")
     public void snapshotNewTableWithoutTableIncludeList() throws Exception {
         // Testing.Print.enable();
