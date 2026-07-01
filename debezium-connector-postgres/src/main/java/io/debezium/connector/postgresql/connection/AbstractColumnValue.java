@@ -59,6 +59,11 @@ public abstract class AbstractColumnValue<T> implements ReplicationMessage.Colum
     }
 
     @Override
+    public Object asTimeWithTimeZone() {
+        return asString();
+    }
+
+    @Override
     public OffsetDateTime asOffsetDateTimeAtUtc() {
         if ("infinity".equals(asString())) {
             return PostgresValueConverter.POSITIVE_INFINITY_OFFSET_DATE_TIME;
