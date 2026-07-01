@@ -48,7 +48,6 @@ import io.debezium.data.Envelope;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.EmbeddedEngineConfig;
-import io.debezium.embedded.KafkaConnectUtil;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.junit.SkipLongRunning;
@@ -63,6 +62,9 @@ import io.debezium.relational.history.SchemaHistory;
 import io.debezium.relational.history.SchemaHistoryMetrics;
 import io.debezium.relational.history.TableChanges;
 import io.debezium.storage.file.history.FileSchemaHistory;
+import io.debezium.storage.kafka.KafkaConnectOffsetStoreAdapter;
+import io.debezium.storage.kafka.offset.KafkaFileOffsetProvider;
+import io.debezium.storage.kafka.offset.KafkaOffsetStoreConverter;
 import io.debezium.util.Collect;
 import io.debezium.util.Strings;
 import io.debezium.util.Testing;
@@ -1209,8 +1211,8 @@ public class HybridMiningStrategyIT extends AbstractAsyncEngineConnectorTest {
             currentScn = admin.getCurrentScn();
         }
 
-        final Converter keyConverter = KafkaConnectUtil.converterForOffsetStore();
-        final Converter valueConverter = KafkaConnectUtil.converterForOffsetStore();
+        final Converter keyConverter = KafkaOffsetStoreConverter.jsonConverter();
+        final Converter valueConverter = KafkaOffsetStoreConverter.jsonConverter();
 
         final Map<String, String> embeddedConfig = TestHelper.defaultConfig().build().asMap(EmbeddedEngineConfig.ALL_FIELDS);
         embeddedConfig.put(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
@@ -1219,7 +1221,7 @@ public class HybridMiningStrategyIT extends AbstractAsyncEngineConnectorTest {
         embeddedConfig.put(WorkerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
         System.out.println(embeddedConfig);
 
-        final OffsetBackingStore store = KafkaConnectUtil.fileOffsetBackingStore();
+        final OffsetBackingStore store = ((KafkaConnectOffsetStoreAdapter) (new KafkaFileOffsetProvider()).create(null)).getDelegate();
         store.configure(new TestWorkerConfig(embeddedConfig));
         store.start();
 

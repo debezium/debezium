@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
-import io.debezium.embedded.EmbeddedWorkerConfig;
+import io.debezium.config.Configuration;
 import io.fabric8.kubeapitest.junit.EnableKubeAPIServer;
 import io.fabric8.kubeapitest.junit.KubeConfig;
 import io.fabric8.kubernetes.api.model.ConfigMapBuilder;
@@ -47,7 +47,7 @@ public class ConfigMapOffsetStoreTest {
         ConfigMapOffsetStore offsetStore = new ConfigMapOffsetStore(kubeConfigYaml);
         Map<String, String> embeddedConfig = new HashMap<>();
         embeddedConfig.put(OFFSET_STORAGE_CONFIGMAP_NAME_CONFIG, MY_OFFSETS_MAP);
-        offsetStore.configure(new EmbeddedWorkerConfig(embeddedConfig));
+        offsetStore.configure(Configuration.from(embeddedConfig));
         offsetStore.start();
 
         client = new KubernetesClientBuilder()
@@ -66,7 +66,7 @@ public class ConfigMapOffsetStoreTest {
         ConfigMapOffsetStore offsetStore = new ConfigMapOffsetStore(kubeConfigYaml);
         Map<String, String> embeddedConfig = new HashMap<>();
         embeddedConfig.put(OFFSET_STORAGE_CONFIGMAP_NAME_CONFIG, MY_OFFSETS_MAP);
-        offsetStore.configure(new EmbeddedWorkerConfig(embeddedConfig));
+        offsetStore.configure(Configuration.from(embeddedConfig));
         offsetStore.start();
 
         client = new KubernetesClientBuilder()
@@ -114,7 +114,7 @@ public class ConfigMapOffsetStoreTest {
         ConfigMapOffsetStore offsetStore = new ConfigMapOffsetStore(kubeConfigYaml);
         Map<String, String> embeddedConfig = new HashMap<>();
         embeddedConfig.put(OFFSET_STORAGE_CONFIGMAP_NAME_CONFIG, MY_OFFSETS_MAP);
-        offsetStore.configure(new EmbeddedWorkerConfig(embeddedConfig));
+        offsetStore.configure(Configuration.from(embeddedConfig));
 
         client = new KubernetesClientBuilder()
                 .withConfig(Config.fromKubeconfig(kubeConfigYaml))

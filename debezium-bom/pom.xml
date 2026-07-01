@@ -815,6 +815,11 @@
             </dependency>
             <dependency>
                 <groupId>io.debezium</groupId>
+                <artifactId>debezium-storage-common</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
                 <artifactId>debezium-storage-jdbc</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -822,6 +827,12 @@
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-storage-kafka</artifactId>
                 <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-storage-kafka</artifactId>
+                <version>${project.version}</version>
+                <type>test-jar</type>
             </dependency>
             <dependency>
                 <groupId>io.debezium</groupId>
