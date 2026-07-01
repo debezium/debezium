@@ -44,6 +44,7 @@ public class ConnectTableChangeSerializer implements TableChanges.TableChangesSe
     public static final String OPTIONAL_KEY = "optional";
     public static final String AUTO_INCREMENTED_KEY = "autoIncremented";
     public static final String GENERATED_KEY = "generated";
+    public static final String INVISIBLE_KEY = "invisible";
     public static final String COMMENT_KEY = "comment";
     public static final String DEFAULT_VALUE_EXPRESSION = "defaultValueExpression";
     public static final String ENUM_VALUES = "enumValues";
@@ -121,6 +122,7 @@ public class ConnectTableChangeSerializer implements TableChanges.TableChangesSe
         struct.put(OPTIONAL_KEY, column.isOptional());
         struct.put(AUTO_INCREMENTED_KEY, column.isAutoIncremented());
         struct.put(GENERATED_KEY, column.isGenerated());
+        struct.put(INVISIBLE_KEY, column.isInvisible());
         struct.put(COMMENT_KEY, column.comment());
 
         column.defaultValueExpression().ifPresent(d -> struct.put(DEFAULT_VALUE_EXPRESSION, d));
