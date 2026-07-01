@@ -94,17 +94,21 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
     }
 
     protected String buildProjection(Table table) {
-        String projection = "*";
-        if (connectorConfig.isColumnsFiltered()) {
-            TableId tableId = table.id();
-            final List<Column> keyColumns = getKeyMapper().getKeyColumns(table);
-            projection = table.columns().stream()
-                    .filter(column -> keyColumns.contains(column)
-                            || columnFilter.matches(tableId.catalog(), tableId.schema(), tableId.table(), column.name()))
-                    .map(column -> jdbcConnection.quoteIdentifier(column.name()))
-                    .collect(Collectors.joining(", "));
-        }
-        return projection;
+        // DBZ-2020: always build an explicit column list from the in-memory Table, same pattern as
+        // the initial snapshot (getPreparedColumnNames). Generated columns that were removed from the
+        // Table by refreshFromIncrementalSnapshot are already absent; any still marked isGenerated()
+        // (e.g. connectors that mark but do not remove) are filtered here. Key columns are always kept
+        // so chunking still works even when a column filter would otherwise exclude them.
+        final boolean columnsFiltered = connectorConfig.isColumnsFiltered();
+        final TableId tableId = table.id();
+        final List<Column> keyColumns = getKeyMapper().getKeyColumns(table);
+        return table.columns().stream()
+                .filter(column -> keyColumns.contains(column)
+                        || (!column.isGenerated()
+                                && (!columnsFiltered
+                                        || columnFilter.matches(tableId.catalog(), tableId.schema(), tableId.table(), column.name()))))
+                .map(column -> jdbcConnection.quoteIdentifier(column.name()))
+                .collect(Collectors.joining(", "));
     }
 
     public void addLowerBound(List<Column> pkColumns, Object[] boundaryKey, StringBuilder condition, boolean inclusiveFinal) {
