@@ -54,6 +54,7 @@ import io.debezium.annotation.NotThreadSafe;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Field;
+import io.debezium.data.SpecialValueDecimal;
 import io.debezium.pipeline.source.snapshot.incremental.ChunkQueryBuilder;
 import io.debezium.pipeline.source.snapshot.incremental.DefaultChunkQueryBuilder;
 import io.debezium.relational.Attribute;
@@ -1765,6 +1766,9 @@ public class JdbcConnection implements AutoCloseable {
      * Sets value on {@link PreparedStatement} and set explicit SQL type for it if necessary
      */
     public void setQueryColumnValue(PreparedStatement statement, Column column, int pos, Object value) throws SQLException {
+        if (value instanceof SpecialValueDecimal specialValueDecimal) {
+            value = specialValueDecimal.getDecimalValue().orElse(null);
+        }
         statement.setObject(pos, value);
     }
 
