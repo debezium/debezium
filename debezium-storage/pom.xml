@@ -20,13 +20,19 @@
         <module>debezium-storage-kafka</module>
         <module>debezium-storage-file</module>
         <module>debezium-storage-redis</module>
+        <module>debezium-storage-redis-dist</module>
         <module>debezium-storage-rocksdb</module>
+        <module>debezium-storage-rocksdb-dist</module>
         <module>debezium-storage-s3</module>
+        <module>debezium-storage-s3-dist</module>
         <module>debezium-storage-tests</module>
         <module>debezium-storage-rocketmq</module>
+        <module>debezium-storage-rocketmq-dist</module>
         <module>debezium-storage-azure-blob</module>
+        <module>debezium-storage-azure-blob-dist</module>
         <module>debezium-storage-jdbc</module>
         <module>debezium-storage-configmap</module>
         <module>debezium-storage-chronicle-queue</module>
+        <module>debezium-storage-chronicle-queue-dist</module>
     </modules>
 </project>
