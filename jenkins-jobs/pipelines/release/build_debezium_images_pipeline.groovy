@@ -202,7 +202,7 @@ node('Slave') {
                                 git fetch origin $IMAGES_BRANCH:$IMAGES_BRANCH
                                 git checkout $IMAGES_BRANCH build-all-multiplatform.sh build-debezium-multiplatform.sh build-postgres-multiplatform.sh script-functions/
                                 echo '========== Building UI only for linux/amd64, arm64 not working =========='
-                                DRY_RUN=$DRY_RUN PLATFORM_CONDUCTOR_PLATFORM=linux/amd64 PLATFORM_STAGE_PLATFORM=linux/amd64 RELEASE_TAG=$tag ./build-debezium-multiplatform.sh $stream $MULTIPLATFORM_PLATFORMS
+                                DRY_RUN=$DRY_RUN LATEST_STREAM=$stableStream PLATFORM_CONDUCTOR_PLATFORM=linux/amd64 PLATFORM_STAGE_PLATFORM=linux/amd64 RELEASE_TAG=$tag ./build-debezium-multiplatform.sh $stream $MULTIPLATFORM_PLATFORMS
                                 git reset --hard
                             """
                         }
