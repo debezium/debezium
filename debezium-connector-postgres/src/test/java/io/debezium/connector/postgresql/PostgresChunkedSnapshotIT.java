@@ -5,16 +5,23 @@
  */
 package io.debezium.connector.postgresql;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.List;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
+import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.AbstractChunkedSnapshotTest;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 
 /**
  * PostgreSQL-specific chunked table snapshot integration tests.
@@ -46,6 +53,47 @@ public class PostgresChunkedSnapshotIT extends AbstractChunkedSnapshotTest<Postg
             connection.close();
         }
         super.afterEach();
+    }
+
+    @Test
+    @FixFor("dbz#2173")
+    public void shouldSnapshotChunkedTableWhoseNameRequiresQuoting() throws Exception {
+        final int ROW_COUNT = 1_000;
+
+        // A primary-keyed table whose fully-qualified name requires quoting. Unquoted, the chunked
+        // snapshot row-count query would be `SELECT COUNT(1) FROM public.table_with_pk.1#2/3`, which
+        // Postgres rejects with "syntax error at or near .1".
+        final String qualifiedTableName = "public.\"table_with_pk.1#2/3\"";
+
+        connection.execute("CREATE TABLE %s (id numeric(9,0) primary key, data varchar(50))".formatted(qualifiedTableName));
+        try (PreparedStatement st = connection.connection().prepareStatement("INSERT INTO " + qualifiedTableName + " VALUES (?,?)")) {
+            for (int i = 0; i < ROW_COUNT; i++) {
+                st.setInt(1, i);
+                st.setString(2, String.valueOf(i));
+                st.addBatch();
+            }
+            st.executeBatch();
+        }
+        connection.commit();
+
+        final Configuration config = getConfig()
+                .with(CommonConnectorConfig.SNAPSHOT_MAX_THREADS, 2)
+                .with(CommonConnectorConfig.SNAPSHOT_MAX_THREADS_MULTIPLIER, 2)
+                .with(RelationalDatabaseConnectorConfig.SCHEMA_INCLUDE_LIST, "public")
+                .with(CommonConnectorConfig.MAX_BATCH_SIZE, ROW_COUNT)
+                .with(CommonConnectorConfig.MAX_QUEUE_SIZE, ROW_COUNT + 1)
+                .build();
+
+        start(getConnectorClass(), config);
+        assertConnectorIsRunning();
+
+        waitForSnapshotToBeCompleted();
+
+        final SourceRecords allRecords = consumeRecordsByTopic(ROW_COUNT);
+        assertThat(allRecords.allRecordsInOrder()).hasSize(ROW_COUNT);
+
+        // Confirm the chunked (not legacy) algorithm actually ran, i.e. the previously-failing path.
+        assertCreatedChunkSnapshotWorker(2);
     }
 
     @Override
