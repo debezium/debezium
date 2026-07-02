@@ -20,6 +20,7 @@ public class EnumSetTest {
     public void shouldCreateSchemaBuilderFromValues() {
         assertBuilder(EnumSet.builder(Arrays.asList("a", "b", "c")), "a,b,c");
         assertBuilder(EnumSet.builder(Arrays.asList("a")), "a");
+        assertBuilder(EnumSet.builder(Arrays.asList("a,b", "c")), "a\\,b,c");
         assertBuilder(EnumSet.builder(Collections.EMPTY_LIST), "");
         assertBuilder(EnumSet.builder((List<String>) null), "");
     }
@@ -28,6 +29,7 @@ public class EnumSetTest {
     public void shouldCreateSchemaFromValues() {
         assertSchema(EnumSet.schema(Arrays.asList("a", "b", "c")), "a,b,c");
         assertSchema(EnumSet.schema(Arrays.asList("a")), "a");
+        assertSchema(EnumSet.schema(Arrays.asList("a,b", "c")), "a\\,b,c");
         assertSchema(EnumSet.schema(Collections.EMPTY_LIST), "");
         assertSchema(EnumSet.schema((List<String>) null), "");
     }
