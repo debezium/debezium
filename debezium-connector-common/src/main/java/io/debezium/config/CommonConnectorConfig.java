@@ -1514,7 +1514,7 @@ public abstract class CommonConnectorConfig {
     private final Duration pollInterval;
     protected final String logicalName;
     private final String heartbeatTopicsPrefix;
-    private final Duration heartbeatInterval;
+    private Duration heartbeatInterval;
     private final Duration snapshotDelay;
     private final Duration streamingDelay;
     private final Duration retriableRestartWait;
@@ -1720,6 +1720,10 @@ public abstract class CommonConnectorConfig {
 
     public Duration getHeartbeatInterval() {
         return heartbeatInterval;
+    }
+
+    protected void setHeartbeatInterval(int heartbeatIntervalMs) {
+        this.heartbeatInterval = Duration.ofMillis(heartbeatIntervalMs);
     }
 
     public Duration getSnapshotDelay() {
