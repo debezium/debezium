@@ -138,7 +138,7 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
         final SnapshotterService snapshotterService = connectorConfig.getServiceRegistry().tryGetService(SnapshotterService.class);
         final Snapshotter snapshotter = snapshotterService.getSnapshotter();
 
-        validateBinlogConfiguration(snapshotter, connection);
+        validateBinlogConfiguration(snapshotter, connection, connectorConfig);
 
         // If the binlog position is not available it is necessary to re-execute snapshot
         if (validateSnapshotFeasibility(snapshotter, previousOffsets.getTheOnlyOffset(), connection)) {
