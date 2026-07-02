@@ -43,7 +43,8 @@ Represents the data change workload for {prodname} to process.
 
 |[[connectors-strm-metric-numberofunchangedeventsskipped_{context}]]<<connectors-strm-metric-numberofunchangedeventsskipped_{context}, `NumberOfUnchangedEventsSkipped`>>
 |`long`
-|Number of update events skipped since the last connector start or metrics reset because no monitored columns changed. Defaults to `-1` if xref:{context}-property-skip-messages-without-change[`skip.messages.without.change`] is `false`.
+|Number of update events skipped since the last connector start or metrics reset because no monitored columns changed.
+Defaults to `-1` if xref:{context}-property-skip-messages-without-change[`skip.messages.without.change`] is `false`.
 ifndef::supports-skipping-unchanged-events[]
 May remain `0` for {connector-name} and other connectors that do not support skipping unchanged events, even if the property is set to `true`.
 endif::[]
