@@ -513,6 +513,7 @@ Description:::
 Specifies whether the connector reconstructs the streaming table schema from the metadata that binlog `TABLE_MAP` events carry, instead of from a persisted schema history topic.
 +
 When set to `true`, the connector rebuilds each table's schema (column names, types, character sets, `ENUM`/`SET` values, and the primary key) from the binlog itself, and it does not create or depend on a schema history topic.
+In this mode you do not need to provide any `schema.history.internal.*` settings; the connector uses an in-memory schema history automatically, so no schema history storage or connection settings are required.
 This is an opt-in mode that requires the source server to run with `binlog_row_metadata=FULL`, which is available on MySQL 8.0 and later and on MariaDB 10.5 and later.
 If the variable is not set to `FULL`, the connector fails fast at startup.
 +

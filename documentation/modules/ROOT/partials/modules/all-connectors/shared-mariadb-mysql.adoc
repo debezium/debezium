@@ -122,6 +122,7 @@ Optionally, the connector can also xref:{context}-schema-change-topic[emit schem
 When the source server runs with `binlog_row_metadata=FULL`, every `TABLE_MAP` event in the binlog carries the full column metadata (column names, types, character sets, `ENUM`/`SET` values, and the primary key).
 In this configuration, you can set `binlog.metadata.based.schema` to `true` to have the connector reconstruct the streaming table schema directly from the binlog, similar to how the {prodname} PostgreSQL connector rebuilds schema from replication messages.
 When you enable this option, the connector does not create or depend on a schema history topic, which removes the operational overhead of managing that topic.
+In this mode you do not need to provide any `schema.history.internal.*` settings; the connector installs an in-memory schema history automatically, so no schema history storage or connection settings (such as `schema.history.internal.kafka.bootstrap.servers`) are required.
 Because the connector reads the point-in-time schema from each `TABLE_MAP` event, it also correctly resumes streaming after a restart that occurs in the middle of a multi-row `INSERT` or `UPDATE`.
 This is an opt-in mode that requires FULL binlog row metadata, which is available on MySQL 8.0 and later and on MariaDB 10.5 and later; the connector fails fast at startup if `binlog_row_metadata` is not set to `FULL`.
 ====
