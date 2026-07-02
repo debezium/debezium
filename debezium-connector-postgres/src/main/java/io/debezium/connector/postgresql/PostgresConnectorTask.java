@@ -9,11 +9,14 @@ package io.debezium.connector.postgresql;
 import java.nio.charset.Charset;
 import java.sql.SQLException;
 import java.time.Duration;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.clients.producer.RecordMetadata;
@@ -24,6 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.annotation.VisibleForTesting;
 import io.debezium.bean.StandardBeanNames;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -106,14 +110,16 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
         final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
 
         final Charset databaseCharset;
+        final Set<String> typeRegistrySchemaFilter;
         try (PostgresConnection tempConnection = new PostgresConnection(connectorConfig.getJdbcConfig(), PostgresConnection.CONNECTION_GENERAL)) {
             databaseCharset = tempConnection.getDatabaseCharset();
+            typeRegistrySchemaFilter = buildTypeRegistrySchemaFilter(connectorConfig, tempConnection);
         }
         catch (DebeziumException e) {
             throw new RetriableException("Couldn't obtain encoding for database", e);
         }
 
-        final TypeRegistry sharedTypeRegistry = PostgresConnection.createTypeRegistry(connectorConfig.getJdbcConfig());
+        final TypeRegistry sharedTypeRegistry = PostgresConnection.createTypeRegistry(connectorConfig.getJdbcConfig(), typeRegistrySchemaFilter);
 
         final PostgresValueConverterBuilder valueConverterBuilder = (typeRegistry) -> PostgresValueConverter.of(
                 connectorConfig,
@@ -525,5 +531,64 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                 LOGGER.warn("WAL_LEVEL check failed but this is ignored as CDC was not requested");
             }
         }
+    }
+
+    /**
+     * Builds the set of schema names to pre-load into {@link TypeRegistry} by querying
+     * {@code pg_catalog.pg_namespace} and applying the connector's
+     * {@code schema.include.list} / {@code schema.exclude.list} predicate.
+     * System schemas are excluded because {@link TypeRegistry} always includes them unconditionally.
+     * <p>
+     * When neither list is configured the method returns an empty set immediately, which causes
+     * {@link TypeRegistry} to use its cheaper unfiltered SQL path.
+     *
+     * @param config     the connector configuration (provides the schema filter predicate)
+     * @param connection an open {@link PostgresConnection} used to query {@code pg_catalog.pg_namespace}
+     * @return a possibly-empty set of schema names to pre-load types from; empty means "all schemas"
+     */
+    @VisibleForTesting
+    static Set<String> buildTypeRegistrySchemaFilter(PostgresConnectorConfig config, PostgresConnection connection) {
+        final String includeList = config.schemaIncludeList();
+        final String excludeList = config.schemaExcludeList();
+        if ((includeList == null || includeList.isBlank()) && (excludeList == null || excludeList.isBlank())) {
+            // No filter configured — TypeRegistry will load all schemas via the cheaper unfiltered SQL path.
+            return Collections.emptySet();
+        }
+
+        final Set<String> allSchemas = new HashSet<>();
+        try {
+            connection.query(
+                    "SELECT nspname FROM pg_catalog.pg_namespace" +
+                            " WHERE nspname NOT LIKE 'pg_%' AND nspname <> 'information_schema'",
+                    rs -> {
+                        while (rs.next()) {
+                            allSchemas.add(rs.getString(1));
+                        }
+                    });
+        }
+        catch (SQLException e) {
+            LOGGER.warn("Could not query pg_namespace to build TypeRegistry schema filter; " +
+                    "falling back to loading all schemas", e);
+            return Collections.emptySet();
+        }
+        return buildTypeRegistrySchemaFilter(config.getTableFilters().schemaFilter(), allSchemas);
+    }
+
+    /**
+     * Filters {@code candidateSchemas} through {@code schemaFilter} and returns the matching names.
+     *
+     * @param schemaFilter     predicate built from {@code schema.include.list} / {@code schema.exclude.list}
+     * @param candidateSchemas non-system schema names retrieved from {@code pg_catalog.pg_namespace}
+     * @return an unmodifiable set of schema names accepted by the predicate
+     */
+    @VisibleForTesting
+    static Set<String> buildTypeRegistrySchemaFilter(Predicate<String> schemaFilter, Set<String> candidateSchemas) {
+        final Set<String> result = candidateSchemas.stream()
+                .filter(schemaFilter)
+                .collect(Collectors.toSet());
+        if (!result.isEmpty()) {
+            LOGGER.info("TypeRegistry will pre-load types from schemas: {}", result);
+        }
+        return Collections.unmodifiableSet(result);
     }
 }
