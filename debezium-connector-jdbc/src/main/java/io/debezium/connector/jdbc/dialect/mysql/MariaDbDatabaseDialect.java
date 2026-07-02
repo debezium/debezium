@@ -49,7 +49,7 @@ public class MariaDbDatabaseDialect extends MySqlDatabaseDialect {
         }
     }
 
-    private MariaDbDatabaseDialect(JdbcSinkConnectorConfig config, SessionFactory sessionFactory) {
+    protected MariaDbDatabaseDialect(JdbcSinkConnectorConfig config, SessionFactory sessionFactory) {
         super(config, sessionFactory);
     }
 
