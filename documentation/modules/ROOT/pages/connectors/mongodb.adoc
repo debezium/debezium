@@ -81,8 +81,9 @@ Of course, MongoDB oplogs are usually capped at a maximum size, so if the connec
 In this case, after a restart the connector detects the missing oplog operations, performs a snapshot, and then proceeds to stream changes.
 
 The MongoDB connector is also quite tolerant of changes in membership and leadership of the replica sets, of additions or removals of shards within a sharded cluster, and network problems that might cause communication failures.
-The connector always uses the replica set's primary node to stream changes, so when the replica set undergoes an election and a different node becomes primary, the connector will immediately stop streaming changes, connect to the new primary, and start streaming changes using the new primary node.
-Similarly, if connector is unable to communicate with the replica set primary, it attempts to reconnect (using exponential backoff so as to not overwhelm the network or replica set).
+By default, the connector streams changes from the replica set's primary node, but you can configure it to stream from a secondary by setting the read preference in the connection string (see xref:read-preference[]).
+If the member that the connector is reading from becomes unavailable -- for example, because the replica set elects a new primary -- the connector stops streaming and automatically reconnects to another suitable member according to the configured read preference.
+Similarly, if the connector is unable to communicate with the replica set, it attempts to reconnect (using exponential backoff so as to not overwhelm the network or replica set).
 After connection is reestablished, the connector continues to stream changes from the last event that it captured.
 In this way the connector dynamically adjusts to changes in replica set membership, and automatically handles communication disruptions.
 
@@ -102,7 +103,12 @@ In this way the connector dynamically adjusts to changes in replica set membersh
 [id="read-preference"]
 === Read Preference
 
-You specify read preferences for a MongoDB connection by setting the `readPreference` parameter in the xref:mongodb-property-mongodb-connection-string[`mongodb.connection.string`].
+The connector captures changes by using MongoDB change streams, which can be served by any member of a replica set.
+You control which member the connector reads from by setting the standard MongoDB link:https://www.mongodb.com/docs/manual/core/read-preference/[`readPreference`] parameter in the xref:mongodb-property-mongodb-connection-string[`mongodb.connection.string`].
+If you do not specify a read preference, the driver default of `primary` applies, so the connector streams changes from the primary node.
+
+Reading from a secondary (for example, `readPreference=secondaryPreferred`) can reduce load on the primary.
+Be aware, however, that change streams emit only majority-committed events, and a secondary can lag behind the primary by its replication delay, so events captured from a secondary can arrive later than they would from the primary.
 
 // Type: assembly
 // ModuleID: how-debezium-mongodb-connectors-work
@@ -397,7 +403,8 @@ include::{partialsdir}/modules/all-connectors/con-connector-blocking-snapshot.ad
 [[mongodb-tailing-the-oplog]]
 
 After the connector task for a replica set records an offset, it uses the offset to determine the position in the oplog where it should start streaming changes.
-The task then (depending on the configuration) either connects to the replica set's primary node or connects to a replica-set-wide change stream and starts streaming changes from that position.
+The task then opens a MongoDB change stream -- against the deployment, a database, or a collection, depending on the xref:mongodb-property-capture-scope[`capture.scope`] setting -- and starts streaming changes from that position.
+The change stream is served by the replica set member that matches the configured read preference (the primary, by default); see xref:read-preference[].
 It processes all of create, insert, and delete operations, and converts them into {prodname} xref:mongodb-events[change events].
 Each change event includes the position in the oplog where the operation was found, and the connector periodically records this as its most recent offset.
 The interval at which the offset is recorded is governed by link:https://kafka.apache.org/documentation/#offset.flush.interval.ms[`offset.flush.interval.ms`], which is a Kafka Connect worker configuration property.
@@ -412,8 +419,9 @@ However, when things go wrong, Kafka can only guarantee that consumers receive e
 To avoid unexpected results, consumers must be able to handle duplicate messages.
 ====
 
-As mentioned earlier, the connector tasks always use the replica set's primary node to stream changes from the oplog, ensuring that the connector sees the most up-to-date operations as possible and can capture the changes with lower latency than if secondaries were to be used instead.
-When the replica set elects a new primary, the connector immediately stops streaming changes, connects to the new primary, and starts streaming changes from the new primary node at the same position.
+As described in xref:read-preference[], the connector tasks stream changes from the replica set member that matches the configured read preference.
+By default this is the primary, which lets the connector capture operations with the lowest latency; you can configure the connector to read from a secondary instead, at the cost of additional latency from replication lag.
+If the member that the connector is reading from becomes unavailable -- for example, when the replica set elects a new primary -- the connector stops streaming changes, reconnects to another suitable member, and resumes streaming from the same position.
 Likewise, if the connector experiences any problems communicating with the replica set members, it tries to reconnect, by using exponential backoff so as to not overwhelm the replica set, and once connected it continues streaming changes from where it last left off.
 In this way, the connector is able to dynamically adjust to changes in replica set membership and automatically handle communication failures.
 
@@ -2443,7 +2451,7 @@ In these cases, the error will have more details about the problem and possibly 
 [id="mongodb-becomes-unavailable-while-debezium-is-running"]
 === MongoDB becomes unavailable
 
-Once the connector is running, if the primary node of any of the MongoDB replica sets become unavailable or unreachable, the connector will repeatedly attempt to reconnect to the primary node, using exponential backoff to prevent saturating the network or servers. If the primary remains unavailable after the configurable number of connection attempts, the connector will fail.
+Once the connector is running, if the replica set member that the connector reads from (the primary, by default) becomes unavailable or unreachable, the connector repeatedly attempts to reconnect to a suitable member, using exponential backoff to prevent saturating the network or servers. If no suitable member is available after the configurable number of connection attempts, the connector fails.
 
 The attempts to reconnect are controlled by three properties:
 
