@@ -30,7 +30,9 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.schema.DatabaseSchema;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
+import io.debezium.util.DelayStrategy;
 import io.debezium.util.LoggingContext;
+import io.debezium.util.RetryingRunnable;
 
 @NotThreadSafe
 public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition, T extends DataCollectionId>
@@ -115,15 +117,13 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
             return;
         }
 
-        String signalWindowStatement = "INSERT INTO " + signalTableName + " VALUES (?, ?, ?)";
-        signalMetadata = new SignalMetadata(Instant.now(), null);
-        jdbcConnection.prepareUpdate(signalWindowStatement, x -> {
-            LOGGER.trace("Emitting open window for chunk = '{}' to signal table '{}'", context.currentChunkId(), signalTableName);
-            x.setString(1, context.currentChunkId() + "-open");
-            x.setString(2, OpenIncrementalSnapshotWindow.NAME);
-            x.setString(3, signalMetadata.metadataString());
-        });
-        jdbcConnection.commit();
+        RetryingRunnable.<SQLException> builder()
+                .retries(connectorConfig.getSignalEmitFailureMaxRetries())
+                .delayStrategy(DelayStrategy.constant(connectorConfig.getSignalEmitFailureBackoff()))
+                .doRun(() -> insertOpenWindow(signalTableName))
+                .doAutoHeal(this::autoHealJdbcConnection)
+                .build()
+                .runWrapped(cause -> new SQLException("Interrupted", cause));
     }
 
     @Override
@@ -137,7 +137,38 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
         LOGGER.trace("Emitting close window for chunk = '{}' to signal table '{}'", context.currentChunkId(), signalTableName);
         WatermarkWindowCloser watermarkWindowCloser = getWatermarkWindowCloser(connectorConfig, jdbcConnection, signalTableName);
 
-        watermarkWindowCloser.closeWindow(partition, offsetContext, context.currentChunkId());
+        RetryingRunnable.builder()
+                .retries(connectorConfig.getSignalEmitFailureMaxRetries())
+                .delayStrategy(DelayStrategy.constant(connectorConfig.getSignalEmitFailureBackoff()))
+                .doRun(() -> watermarkWindowCloser.closeWindow(partition, offsetContext, context.currentChunkId()))
+                .doAutoHeal(this::autoHealJdbcConnection)
+                .build()
+                .run();
+    }
+
+    private void insertOpenWindow(String signalTableName) throws SQLException {
+        String signalWindowStatement = "INSERT INTO " + signalTableName + " VALUES (?, ?, ?)";
+        signalMetadata = new SignalMetadata(Instant.now(), null);
+        jdbcConnection.prepareUpdate(signalWindowStatement, x -> {
+            LOGGER.trace("Emitting open window for chunk = '{}' to signal table '{}'", context.currentChunkId(), signalTableName);
+            x.setString(1, context.currentChunkId() + "-open");
+            x.setString(2, OpenIncrementalSnapshotWindow.NAME);
+            x.setString(3, signalMetadata.metadataString());
+        });
+        jdbcConnection.commit();
+    }
+
+    private void autoHealJdbcConnection() throws SQLException {
+        LOGGER.info("Closing JDBC connection and re-connecting");
+        try {
+            jdbcConnection.close();
+        }
+        catch (Exception ignore) {
+            // Log and ignore
+            LOGGER.info("Failed to close JDBC connection during auto heal. Ignoring.", ignore);
+        }
+        LOGGER.trace("Reconnecting JDBC connection");
+        jdbcConnection.connect();
     }
 
     private WatermarkWindowCloser getWatermarkWindowCloser(CommonConnectorConfig connectorConfig, JdbcConnection jdbcConnection, String signalTable) {

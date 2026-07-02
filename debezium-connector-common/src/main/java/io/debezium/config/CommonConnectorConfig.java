@@ -961,6 +961,27 @@ public abstract class CommonConnectorConfig {
             .withValidation(Field::isPositiveInteger)
             .withDescription("Interval for looking for new signals in registered channels, given in milliseconds. Defaults to 5 seconds.");
 
+    public static final Field SIGNAL_EMIT_FAILURE_MAX_RETRIES = Field.create("signal.emit.failure.max.retries")
+            .withDisplayName("Signal emit window event failure maximum retries")
+            .withType(Type.INT)
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 24))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(0)
+            .withValidation(Field::isNonNegativeInteger)
+            .withDescription(
+                    "The maximum number of retries after encountering an error emitting a window event (-1 = no limit, 0 = disabled, > 0 = num of retries). Defaults to 0.");
+
+    public static final Field SIGNAL_EMIT_FAILURE_BACKOFF_INTERVAL_MS = Field.create("signal.emit.failure.backoff.ms")
+            .withDisplayName("Signal emit window event failure backoff time in ms")
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 25))
+            .withType(Type.LONG)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(10000L)
+            .withValidation(Field::isPositiveInteger)
+            .withDescription("Duration to sleep for after encountering an error emitting a window event, given in milliseconds. Defaults to 10 seconds.");
+
     public static final Field SIGNAL_ENABLED_CHANNELS = Field.create("signal.enabled.channels")
             .withDisplayName("Enabled channels names")
             .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 22))
@@ -1532,6 +1553,8 @@ public abstract class CommonConnectorConfig {
                     Heartbeat.HEARTBEAT_TOPICS_PREFIX,
                     SIGNAL_DATA_COLLECTION,
                     SIGNAL_POLL_INTERVAL_MS,
+                    SIGNAL_EMIT_FAILURE_MAX_RETRIES,
+                    SIGNAL_EMIT_FAILURE_BACKOFF_INTERVAL_MS,
                     SIGNAL_ENABLED_CHANNELS,
                     TOPIC_NAMING_STRATEGY,
                     NOTIFICATION_ENABLED_CHANNELS,
@@ -1574,6 +1597,8 @@ public abstract class CommonConnectorConfig {
     private final List<TableId> signalingDataCollectionIds;
 
     private final Duration signalPollInterval;
+    private final Duration signalEmitFailureBackoff;
+    private final int signalEmitFailureMaxRetries;
 
     private final List<String> signalEnabledChannels;
     private final EnumSet<Operation> skippedOperations;
@@ -1623,6 +1648,8 @@ public abstract class CommonConnectorConfig {
         this.binaryHandlingMode = BinaryHandlingMode.parse(config.getString(BINARY_HANDLING_MODE));
         this.signalingDataCollections = getSignalingDataCollections(config);
         this.signalPollInterval = Duration.ofMillis(config.getLong(SIGNAL_POLL_INTERVAL_MS));
+        this.signalEmitFailureMaxRetries = config.getInteger(SIGNAL_EMIT_FAILURE_MAX_RETRIES);
+        this.signalEmitFailureBackoff = Duration.ofMillis(config.getLong(SIGNAL_EMIT_FAILURE_BACKOFF_INTERVAL_MS));
         this.signalEnabledChannels = getSignalEnabledChannels(config);
         this.skippedOperations = determineSkippedOperations(config);
         this.taskId = config.getString(ConfigurationNames.TASK_ID_PROPERTY_NAME);
@@ -2211,6 +2238,14 @@ public abstract class CommonConnectorConfig {
 
     public Duration getSignalPollInterval() {
         return signalPollInterval;
+    }
+
+    public Duration getSignalEmitFailureBackoff() {
+        return signalEmitFailureBackoff;
+    }
+
+    public int getSignalEmitFailureMaxRetries() {
+        return signalEmitFailureMaxRetries;
     }
 
     public List<String> getEnabledChannels() {
