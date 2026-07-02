@@ -193,7 +193,8 @@ After the snapshot completes, the connector continues to stream data for the spe
 If you want the connector to capture data only from specific tables you can direct the connector to capture the data for only a subset of tables or table elements by setting properties such as xref:{context}-property-table-include-list[`table.include.list`] or xref:{context}-property-table-exclude-list[`table.exclude.list`].
 
 3. Obtain a `ROW SHARE MODE` lock on each of the captured tables to prevent structural changes from occurring during creation of the snapshot.
-   {prodname} holds the locks for only a short time.
++
+ NOTE: {prodname} holds the locks for only a short time.
 
 4. Read the current system change number (SCN) position from the server's redo log.
 
@@ -4229,7 +4230,7 @@ Hashing strategy version 2 should be used to ensure fidelity if the value is bei
 
 |[[oracle-property-schema-name-adjustment-mode]]<<oracle-property-schema-name-adjustment-mode,`+schema.name.adjustment.mode+`>>
 |none
-|Specifies how schema names should be adjusted for compatibility with the message converter used by the connector. Possible settings: 
+|Specifies how schema names should be adjusted for compatibility with the message converter used by the connector. Possible settings:
 
 * `none` does not apply any adjustment.
 * `avro` replaces the characters that cannot be used in the Avro type name with underscore.
@@ -4237,7 +4238,7 @@ Hashing strategy version 2 should be used to ensure fidelity if the value is bei
 
 |[[oracle-property-field-name-adjustment-mode]]<<oracle-property-field-name-adjustment-mode,`+field.name.adjustment.mode+`>>
 |none
-|Specifies how field names should be adjusted for compatibility with the message converter used by the connector. Possible settings: 
+|Specifies how field names should be adjusted for compatibility with the message converter used by the connector. Possible settings:
 
 * `none` does not apply any adjustment.
 * `avro` replaces the characters that cannot be used in the Avro type name with underscore.
@@ -4393,7 +4394,7 @@ When this property is set, for columns with matching data types, the connector e
 These parameters propagate a column's original type name and length (for variable-width types), respectively.
 Enabling the connector to emit this extra data can assist in properly sizing specific numeric or character-based columns in sink databases.
 
-The fully-qualified name of a column observes one of the following formats: `_<tableName>_._<typeName>_`, or `_<schemaName>_._<tableName>_._<typeName>_`. 
+The fully-qualified name of a column observes one of the following formats: `_<tableName>_._<typeName>_`, or `_<schemaName>_._<tableName>_._<typeName>_`.
 To match the name of a data type, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
 That is, the specified expression is matched against the entire name string of the data type; the expression does not match substrings that might be present in a type name.
 
@@ -4402,6 +4403,7 @@ For the list of Oracle-specific data type names, see the xref:oracle-data-type-m
 |[[oracle-property-heartbeat-interval-ms]]<<oracle-property-heartbeat-interval-ms, `+heartbeat.interval.ms+`>>
 |`0`
 |Specifies, in milliseconds, how frequently the connector sends messages to a heartbeat topic.
+
 Use this property to determine whether the connector continues to receive change events from the source database.
 It can also be useful to set the property in situations where no change events occur in captured tables for an extended period.
 In such a case, although the connector continues to read the redo log, it emits no change event messages, so that the offset in the Kafka topic remains unchanged.
@@ -4910,7 +4912,7 @@ Set this option to prevent rapid growth of the signaling data collection.
 
 |[[oracle-property-topic-delimiter]]<<oracle-property-topic-delimiter, `topic.delimiter`>>
 |`.`
-|Specify the delimiter for topic name, defaults to `.`.
+|Specifies the delimiter that the connector uses in the topic name.
 
 |[[oracle-property-topic-cache-size]]<<oracle-property-topic-cache-size, `topic.cache.size`>>
 |`10000`
@@ -4970,7 +4972,7 @@ By default, no additional retries will be performed.
 |`No default`
 |Defines tags that customize MBean object names by adding metadata that provides contextual information.
 Specify a comma-separated list of key-value pairs.
-Each key represents a tag for the MBean object name, and the corresponding value represents a value for the key, for example, 
+Each key represents a tag for the MBean object name, and the corresponding value represents a value for the key, for example,
 `k1=v1,k2=v2`
 
 The connector appends the specified tags to the base MBean object name.
