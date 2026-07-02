@@ -79,6 +79,7 @@ asciidoc:
     link-spanner-plugin-snapshot: 'https://s01.oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=io.debezium&a=debezium-connector-spanner&v=LATEST&c=plugin&e=tar.gz'
     link-jdbc-plugin-snapshot: 'https://s01.oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=io.debezium&a=debezium-connector-jdbc&v=LATEST&c=plugin&e=tar.gz'
     link-informix-plugin-snapshot: 'https://s01.oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=io.debezium&a=debezium-connector-informix&v=LATEST&c=plugin&e=tar.gz'
+    link-cockroachdb-connector: 'connectors/cockroachdb.adoc'
     link-cockroachdb-plugin-snapshot: 'https://s01.oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=io.debezium&a=debezium-connector-cockroachdb&v=LATEST&c=plugin&e=tar.gz'
     link-server-snapshot: 'https://s01.oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=io.debezium&a=debezium-server-dist&v=LATEST&e=tar.gz'
     link-kafka-docs: 'https://kafka.apache.org/documentation'
