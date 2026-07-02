@@ -10,6 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.StreamSupport;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.junit.jupiter.api.Test;
@@ -76,10 +77,10 @@ public class FieldTest {
 
         ConfigDefinition configDef = ConfigDefinition.editor()
                 .name("test-connector")
-                .connector(authType, username, password, sslProtocol)
+                .group(Field.Group.CONNECTOR, authType, username, password, sslProtocol)
                 .create();
 
-        Field resolvedAuthType = configDef.connector().stream()
+        Field resolvedAuthType = StreamSupport.stream(configDef.all().spliterator(), false)
                 .filter(f -> f.name().equals("auth_type"))
                 .findFirst()
                 .orElseThrow();
@@ -110,11 +111,11 @@ public class FieldTest {
         // Create ConfigDefinition to trigger pattern resolution
         ConfigDefinition configDef = ConfigDefinition.editor()
                 .name("test-connector")
-                .connector(adapter, logMiningStrategy, logMiningBatchSize, databaseUrl, xstreamServer, olrHost, olrPort)
+                .group(Field.Group.CONNECTOR, adapter, logMiningStrategy, logMiningBatchSize, databaseUrl, xstreamServer, olrHost, olrPort)
                 .create();
 
         // Get resolved field from ConfigDefinition
-        Field resolvedAdapter = configDef.connector().stream()
+        Field resolvedAdapter = StreamSupport.stream(configDef.all().spliterator(), false)
                 .filter(f -> f.name().equals("connector_adapter"))
                 .findFirst()
                 .orElseThrow();
@@ -153,7 +154,7 @@ public class FieldTest {
         // Create ConfigDefinition to trigger pattern resolution
         ConfigDefinition configDef = ConfigDefinition.editor()
                 .name("test-connector")
-                .connector(authType, username, password, sslProtocol)
+                .group(Field.Group.CONNECTOR, authType, username, password, sslProtocol)
                 .create();
 
         // Create ConfigDef from resolved fields
@@ -181,10 +182,10 @@ public class FieldTest {
 
         ConfigDefinition configDef = ConfigDefinition.editor()
                 .name("test-connector")
-                .connector(adapter, bufferType)
+                .group(Field.Group.CONNECTOR, adapter, bufferType)
                 .create();
 
-        Field resolvedAdapter = configDef.connector().stream()
+        Field resolvedAdapter = StreamSupport.stream(configDef.all().spliterator(), false)
                 .filter(f -> f.name().equals("connection.adapter"))
                 .findFirst()
                 .orElseThrow();

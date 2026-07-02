@@ -618,7 +618,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     public static final Field PLUGIN_NAME = Field.create("plugin.name")
             .withDisplayName("Plugin")
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION, 0))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION))
             .withEnum(LogicalDecoder.class, LogicalDecoder.DECODERBUFS)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
@@ -631,7 +631,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public static final Field SLOT_NAME = Field.create("slot.name")
             .withDisplayName("Slot")
             .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION, 1))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
             .withDefault(ReplicationConnection.Builder.DEFAULT_SLOT_NAME)
@@ -642,7 +642,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public static final Field DROP_SLOT_ON_STOP = Field.create("slot.drop.on.stop")
             .withDisplayName("Drop slot on stop")
             .withType(Type.BOOLEAN)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION, 3))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION))
             .withDefault(false)
             .withImportance(Importance.MEDIUM)
             .withDescription(
@@ -652,7 +652,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public static final Field CREATE_FAIL_OVER_SLOT = Field.create("slot.failover")
             .withDisplayName("Create failover slot")
             .withType(Type.BOOLEAN)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION, 11))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION))
             .withDefault(false)
             .withImportance(Importance.MEDIUM)
             .withDescription(
@@ -666,7 +666,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public static final Field SLOT_SEEK_TO_KNOWN_OFFSET = Field.createInternal("slot.seek.to.known.offset.on.start")
             .withDisplayName("Seek to last known offset on the replication slot")
             .withType(Type.BOOLEAN)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION, 3))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION))
             .withDefault(false)
             .withImportance(Importance.LOW)
             .withInvisibleRecommender()
@@ -677,7 +677,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public static final Field OFFSET_SLOT_MISMATCH_STRATEGY = Field.create("offset.mismatch.strategy")
             .withDisplayName("Offset Slot Mismatch Strategy")
             .withEnum(OffsetSlotMismatchStrategy.class, OffsetSlotMismatchStrategy.NO_VALIDATION)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION, 4))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription(
@@ -690,7 +690,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public static final Field CREATE_SLOT_COMMAND_TIMEOUT = Field.createInternal("create.slot.command.timeout")
             .withDisplayName("Replication slot creation timeout")
             .withType(Type.LONG)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION, 4))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION))
             .withDefault(90L)
             .withImportance(Importance.LOW)
             .withDescription("The timeout in seconds for the creation of the replication slot.");
@@ -698,7 +698,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public static final Field PUBLICATION_NAME = Field.create("publication.name")
             .withDisplayName("Publication")
             .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION, 8))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
             .withDefault(ReplicationConnection.Builder.DEFAULT_PUBLICATION_NAME)
@@ -772,7 +772,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     public static final Field PUBLICATION_AUTOCREATE_MODE = Field.create("publication.autocreate.mode")
             .withDisplayName("Publication Auto Create Mode")
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION, 9))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION))
             .withEnum(AutoCreateMode.class, AutoCreateMode.ALL_TABLES)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
@@ -792,7 +792,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public static final Field REPLICA_IDENTITY_AUTOSET_VALUES = Field.create("replica.identity.autoset.values")
             .withDisplayName("Replica Identity Auto Set Values")
             .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION, 10))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION))
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
             .withValidation(PostgresConnectorConfig::validateReplicaAutoSetField)
@@ -812,7 +812,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public static final Field STREAM_PARAMS = Field.create("slot.stream.params")
             .withDisplayName("Optional parameters to pass to the logical decoder when the stream is started.")
             .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION, 2))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION))
             .withWidth(Width.LONG)
             .withImportance(Importance.LOW)
             .withDescription(
@@ -821,7 +821,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public static final Field MAX_RETRIES = Field.create("slot.max.retries")
             .withDisplayName("Retry count")
             .withType(Type.INT)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION, 4))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION))
             .withImportance(Importance.LOW)
             .withDefault(DEFAULT_MAX_RETRIES)
             .withValidation(Field::isInteger)
@@ -830,7 +830,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public static final Field RETRY_DELAY_MS = Field.create("slot.retry.delay.ms")
             .withDisplayName("Retry delay")
             .withType(Type.LONG)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION, 5))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION))
             .withImportance(Importance.LOW)
             .withDefault(Duration.ofSeconds(10).toMillis())
             .withValidation(Field::isInteger)
@@ -840,7 +840,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public static final Field ON_CONNECT_STATEMENTS = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.ON_CONNECT_STATEMENTS)
             .withDisplayName("Initial statements")
             .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 1))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED))
             .withWidth(Width.LONG)
             .withImportance(Importance.LOW)
             .withDescription("A semicolon separated list of SQL statements to be executed when a JDBC connection to the database is established. "
@@ -850,7 +850,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     public static final Field SSL_MODE = Field.create(DATABASE_CONFIG_PREFIX + "sslmode")
             .withDisplayName("SSL mode")
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_SSL, 0))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_SSL))
             .withEnum(SecureConnectionMode.class, SecureConnectionMode.PREFER)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
@@ -866,7 +866,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public static final Field SSL_CLIENT_CERT = Field.create(DATABASE_CONFIG_PREFIX + "sslcert")
             .withDisplayName("SSL Client Certificate")
             .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_SSL, 1))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_SSL))
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
             .withDescription("File containing the SSL Certificate for the client. See the Postgres SSL docs for further information");
@@ -874,7 +874,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public static final Field SSL_CLIENT_KEY = Field.create(DATABASE_CONFIG_PREFIX + "sslkey")
             .withDisplayName("SSL Client Key")
             .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_SSL, 4))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_SSL))
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
             .withDescription("File containing the SSL private key for the client. See the Postgres SSL docs for further information");
@@ -882,7 +882,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public static final Field SSL_CLIENT_KEY_PASSWORD = Field.create(DATABASE_CONFIG_PREFIX + "sslpassword")
             .withDisplayName("SSL Client Key Password")
             .withType(Type.PASSWORD)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_SSL, 2))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_SSL))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
             .withDescription("Password to access the client private key from the file specified by 'database.sslkey'. See the Postgres SSL docs for further information");
@@ -890,7 +890,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public static final Field SSL_ROOT_CERT = Field.create(DATABASE_CONFIG_PREFIX + "sslrootcert")
             .withDisplayName("SSL Root Certificate")
             .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_SSL, 3))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_SSL))
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
             .withDescription("File containing the root certificate(s) against which the server is validated. See the Postgres JDBC SSL docs for further information");
@@ -898,7 +898,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public static final Field SSL_SOCKET_FACTORY = Field.create(DATABASE_CONFIG_PREFIX + "sslfactory")
             .withDisplayName("SSL Root Certificate")
             .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_SSL, 5))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_SSL))
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
             .withDescription(
@@ -906,7 +906,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     public static final Field SNAPSHOT_MODE = Field.create("snapshot.mode")
             .withDisplayName("Snapshot mode")
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 0))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT))
             .withEnum(SnapshotMode.class, SnapshotMode.INITIAL)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
@@ -922,7 +922,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public static final Field SNAPSHOT_ISOLATION_MODE = Field.create("snapshot.isolation.mode")
             .withDisplayName("Snapshot isolation mode")
             .withEnum(SnapshotIsolationMode.class, SnapshotIsolationMode.SERIALIZABLE)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 1))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription("Controls which transaction isolation level is used. "
@@ -940,7 +940,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withEnum(SnapshotLockingMode.class, SnapshotLockingMode.NONE)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 13))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT))
             .withDescription("Controls how the connector holds locks on tables while performing the schema snapshot. The 'shared' "
                     + "which means the connector will hold a table lock that prevents exclusive table access for just the initial portion of the snapshot "
                     + "while the database schemas and other metadata are being read. The remaining work in a snapshot involves selecting all rows from "
@@ -955,7 +955,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public static final Field LOGICAL_DECODING_MESSAGE_PREFIX_EXCLUDE_LIST = Field.create("message.prefix.exclude.list")
             .withDisplayName("Exclude Logical Decoding Message Prefixes")
             .withType(Type.LIST)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 25))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR))
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
             .withValidation(Field::isListOfRegex, PostgresConnectorConfig::validateLogicalDecodingMessageExcludeList)
@@ -968,7 +968,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public static final Field LOGICAL_DECODING_MESSAGE_PREFIX_INCLUDE_LIST = Field.create("message.prefix.include.list")
             .withDisplayName("Include Logical Decoding Message Prefixes")
             .withType(Type.LIST)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 24))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR))
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
             .withValidation(Field::isListOfRegex)
@@ -977,7 +977,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     public static final Field HSTORE_HANDLING_MODE = Field.create("hstore.handling.mode")
             .withDisplayName("HStore Handling")
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 22))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR))
             .withEnum(HStoreHandlingMode.class, HStoreHandlingMode.JSON)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.LOW)
@@ -987,7 +987,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     public static final Field INTERVAL_HANDLING_MODE = Field.create("interval.handling.mode")
             .withDisplayName("Interval Handling")
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 21))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR))
             .withEnum(IntervalHandlingMode.class, IntervalHandlingMode.NUMERIC)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.LOW)
@@ -998,7 +998,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public static final Field STATUS_UPDATE_INTERVAL_MS = Field.create("status.update.interval.ms")
             .withDisplayName("Status update interval (ms)")
             .withType(Type.INT) // Postgres doesn't accept long for this value
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION, 6))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION))
             .withDefault(10_000)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
@@ -1008,7 +1008,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public static final Field LSN_FLUSH_TIMEOUT_MS = Field.create("lsn.flush.timeout.ms")
             .withDisplayName("LSN flush timeout (ms)")
             .withType(Type.LONG)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION, 12))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION))
             .withDefault(30_000)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
@@ -1084,7 +1084,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     public static final Field LSN_FLUSH_TIMEOUT_ACTION = Field.create("lsn.flush.timeout.action")
             .withDisplayName("LSN flush timeout action")
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION, 13))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION))
             .withEnum(LsnFlushTimeoutAction.class, LsnFlushTimeoutAction.FAIL)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
@@ -1096,7 +1096,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public static final Field TCP_KEEPALIVE = Field.create(DATABASE_CONFIG_PREFIX + "tcpKeepAlive")
             .withDisplayName("TCP keep-alive probe")
             .withType(Type.BOOLEAN)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 0))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED))
             .withDefault(true)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
@@ -1106,7 +1106,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public static final Field INCLUDE_UNKNOWN_DATATYPES = Field.create("include.unknown.datatypes")
             .withDisplayName("Include unknown datatypes")
             .withType(Type.BOOLEAN)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 1))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
             .withDefault(false)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
@@ -1116,7 +1116,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     public static final Field SCHEMA_REFRESH_MODE = Field.create("schema.refresh.mode")
             .withDisplayName("Schema refresh mode")
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 0))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
             .withEnum(SchemaRefreshMode.class, SchemaRefreshMode.COLUMNS_DIFF)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
@@ -1132,7 +1132,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public static final Field XMIN_FETCH_INTERVAL = Field.create("xmin.fetch.interval.ms")
             .withDisplayName("Xmin fetch interval (ms)")
             .withType(Type.LONG)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION, 7))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION))
             .withWidth(Width.SHORT)
             .withDefault(0L)
             .withImportance(Importance.MEDIUM)
@@ -1151,7 +1151,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public static final Field MONEY_FRACTION_DIGITS = Field.create("money.fraction.digits")
             .withDisplayName("Money fraction digits")
             .withType(Type.SHORT)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 1))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.LOW)
             .withDefault(2)
@@ -1160,7 +1160,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public static final Field PUBLISH_VIA_PARTITION_ROOT = Field.create("publish.via.partition.root")
             .withDisplayName("Publish via partition root")
             .withType(Type.BOOLEAN)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 23))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR))
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDescription("A boolean that determines whether the connector should publish changes via the partition root. " +
@@ -1336,7 +1336,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public static final Field SHOULD_FLUSH_LSN_IN_SOURCE_DB = Field.create("flush.lsn.source")
             .withDisplayName("Boolean to determine if Debezium should flush LSN in the source database")
             .withType(Type.BOOLEAN)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 99))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription(
@@ -1348,7 +1348,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public static final Field LSN_FLUSH_MODE = Field.create("lsn.flush.mode")
             .withDisplayName("LSN flush mode")
             .withEnum(LsnFlushMode.class)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 100))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription(
@@ -1361,7 +1361,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public static final Field READ_ONLY_CONNECTION = Field.create("read.only")
             .withDisplayName("Read only connection")
             .withType(ConfigDef.Type.BOOLEAN)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 100))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION))
             .withDefault(false)
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.LOW)
@@ -1573,59 +1573,18 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     private static final ConfigDefinition CONFIG_DEFINITION = RelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("Postgres")
             .excluding(CommonConnectorConfig.SKIPPED_OPERATIONS)
-            .type(
-                    HOSTNAME,
-                    PORT,
-                    USER,
-                    PASSWORD,
-                    DATABASE_NAME,
-                    QUERY_TIMEOUT_MS,
-                    PLUGIN_NAME,
-                    SLOT_NAME,
-                    PUBLICATION_NAME,
-                    PUBLICATION_AUTOCREATE_MODE,
-                    REPLICA_IDENTITY_AUTOSET_VALUES,
-                    DROP_SLOT_ON_STOP,
-                    CREATE_FAIL_OVER_SLOT,
-                    STREAM_PARAMS,
-                    ON_CONNECT_STATEMENTS,
-                    SSL_MODE,
-                    SSL_CLIENT_CERT,
-                    SSL_CLIENT_KEY_PASSWORD,
-                    SSL_ROOT_CERT,
-                    SSL_CLIENT_KEY,
-                    MAX_RETRIES,
-                    RETRY_DELAY_MS,
-                    SSL_SOCKET_FACTORY,
-                    STATUS_UPDATE_INTERVAL_MS,
-                    LSN_FLUSH_TIMEOUT_MS,
-                    LSN_FLUSH_TIMEOUT_ACTION,
-                    TCP_KEEPALIVE,
-                    XMIN_FETCH_INTERVAL,
-                    // Use this connector's implementation rather than common connector's flavor
-                    SKIPPED_OPERATIONS,
-                    LSN_FLUSH_MODE,
-                    SHOULD_FLUSH_LSN_IN_SOURCE_DB) // Deprecated, for backward compatibility
-            .events(
-                    INCLUDE_UNKNOWN_DATATYPES,
-                    SOURCE_INFO_STRUCT_MAKER)
-            .connector(
-                    SNAPSHOT_MODE,
-                    SNAPSHOT_ISOLATION_MODE,
-                    SNAPSHOT_QUERY_MODE,
-                    SNAPSHOT_QUERY_MODE_CUSTOM_NAME,
-                    SNAPSHOT_LOCKING_MODE_CUSTOM_NAME,
-                    SNAPSHOT_LOCKING_MODE,
-                    HSTORE_HANDLING_MODE,
-                    BINARY_HANDLING_MODE,
-                    SCHEMA_NAME_ADJUSTMENT_MODE,
-                    INTERVAL_HANDLING_MODE,
-                    SCHEMA_REFRESH_MODE,
-                    INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
-                    UNAVAILABLE_VALUE_PLACEHOLDER,
-                    LOGICAL_DECODING_MESSAGE_PREFIX_INCLUDE_LIST,
-                    LOGICAL_DECODING_MESSAGE_PREFIX_EXCLUDE_LIST,
-                    PUBLISH_VIA_PARTITION_ROOT)
+            .group(Field.Group.CONNECTION, HOSTNAME, PORT, USER, PASSWORD, DATABASE_NAME, QUERY_TIMEOUT_MS)
+            .group(Field.Group.CONNECTION_ADVANCED, ON_CONNECT_STATEMENTS, TCP_KEEPALIVE)
+            .group(Field.Group.CONNECTION_ADVANCED_SSL, SSL_MODE, SSL_CLIENT_CERT, SSL_CLIENT_KEY, SSL_CLIENT_KEY_PASSWORD, SSL_ROOT_CERT, SSL_SOCKET_FACTORY)
+            .group(Field.Group.CONNECTION_ADVANCED_REPLICATION, PLUGIN_NAME, SLOT_NAME, PUBLICATION_NAME, PUBLICATION_AUTOCREATE_MODE, REPLICA_IDENTITY_AUTOSET_VALUES,
+                    DROP_SLOT_ON_STOP, CREATE_FAIL_OVER_SLOT, STREAM_PARAMS, MAX_RETRIES, RETRY_DELAY_MS, STATUS_UPDATE_INTERVAL_MS, LSN_FLUSH_TIMEOUT_MS,
+                    LSN_FLUSH_TIMEOUT_ACTION, XMIN_FETCH_INTERVAL)
+            .group(Field.Group.CONNECTOR, HSTORE_HANDLING_MODE, BINARY_HANDLING_MODE, SCHEMA_NAME_ADJUSTMENT_MODE, INTERVAL_HANDLING_MODE,
+                    LOGICAL_DECODING_MESSAGE_PREFIX_INCLUDE_LIST, LOGICAL_DECODING_MESSAGE_PREFIX_EXCLUDE_LIST, PUBLISH_VIA_PARTITION_ROOT, LSN_FLUSH_MODE,
+                    SHOULD_FLUSH_LSN_IN_SOURCE_DB, UNAVAILABLE_VALUE_PLACEHOLDER, SKIPPED_OPERATIONS)
+            .group(Field.Group.CONNECTOR_ADVANCED, SCHEMA_REFRESH_MODE, INCLUDE_UNKNOWN_DATATYPES, SOURCE_INFO_STRUCT_MAKER)
+            .group(Field.Group.CONNECTOR_SNAPSHOT, SNAPSHOT_MODE, SNAPSHOT_ISOLATION_MODE, SNAPSHOT_QUERY_MODE, SNAPSHOT_QUERY_MODE_CUSTOM_NAME, SNAPSHOT_LOCKING_MODE,
+                    SNAPSHOT_LOCKING_MODE_CUSTOM_NAME, INCREMENTAL_SNAPSHOT_CHUNK_SIZE)
             .excluding(INCLUDE_SCHEMA_CHANGES)
             .create();
 

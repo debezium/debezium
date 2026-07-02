@@ -21,6 +21,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
+import java.util.stream.StreamSupport;
 
 import org.apache.kafka.common.config.ConfigValue;
 import org.junit.jupiter.api.BeforeEach;
@@ -450,7 +451,7 @@ public class ConfigurationTest {
 
         ConfigDefinition configDef = ConfigDefinition.editor()
                 .name("test-connector")
-                .connector(parent, dependent, sslProtocol)
+                .group(Field.Group.CONNECTOR, parent, dependent, sslProtocol)
                 .create();
 
         config = Configuration.create()
@@ -486,7 +487,7 @@ public class ConfigurationTest {
         // Create ConfigDefinition to trigger pattern resolution
         ConfigDefinition configDef = ConfigDefinition.editor()
                 .name("test-connector")
-                .connector(parent, username, password, notRequired, sslProtocol)
+                .group(Field.Group.CONNECTOR, parent, username, password, notRequired, sslProtocol)
                 .create();
 
         config = Configuration.create()
@@ -527,12 +528,12 @@ public class ConfigurationTest {
         // Create ConfigDefinition to trigger pattern resolution
         ConfigDefinition configDef = ConfigDefinition.editor()
                 .name("test-connector")
-                .connector(connectorAdapter, logMiningStrategy, logMiningBatchSize,
+                .group(Field.Group.CONNECTOR, connectorAdapter, logMiningStrategy, logMiningBatchSize,
                         logMiningBufferType, xstreamServer, otherField)
                 .create();
 
         // Get the resolved field from ConfigDefinition
-        Field resolvedAdapter = configDef.connector().stream()
+        Field resolvedAdapter = StreamSupport.stream(configDef.all().spliterator(), false)
                 .filter(f -> f.name().equals("connector.adapter"))
                 .findFirst()
                 .orElseThrow();
