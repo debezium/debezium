@@ -4542,7 +4542,7 @@ The schema, table, and username configuration include/exclude lists should not s
 `regex`:: The query is generated using Oracle's `REGEXP_LIKE` operator to filter schema and table names on the database side, along with usernames using a SQL in-clause.
 The schema and table configuration include/exclude lists can safely specify regular expressions.
 
-|[[oracle-property-log-mining-log-count-min]]<<oracle-property-log-count-min, `+log.mining.log.count.min+`>>
+|[[oracle-property-log-mining-log-count-min]]<<oracle-property-log-mining-log-count-min, `+log.mining.log.count.min+`>>
 |`2`
 |The minimum number of transaction logs to read per redo thread in each mining step.
 
