@@ -284,6 +284,8 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
         // Check snapshot metrics
         assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "TotalNumberOfEventsSeen")).isEqualTo(0L);
         assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "SnapshotCompleted")).isEqualTo(snapshotCompleted());
+        // DBZ-1479: with snapshot.mode=no_data no table is data-snapshotted, so no tables remain
+        assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "RemainingTableCount")).isEqualTo(0);
     }
 
     protected void assertStreamingMetrics(boolean checkAdvancedMetrics, long expectedEvents) throws Exception {

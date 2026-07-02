@@ -200,6 +200,12 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             else {
                 LOGGER.info("Snapshot step 7 - Skipping snapshotting of data");
                 releaseDataSnapshotLocks(ctx);
+                // DBZ-1479: no data is snapshotted (e.g. snapshot.mode=no_data/schema_only), so mark every
+                // captured table as completed with zero rows; otherwise the RemainingTableCount metric would
+                // stay at the full captured-table count forever, since only the data snapshot drains it.
+                for (TableId tableId : ctx.capturedTables) {
+                    snapshotProgressListener.dataCollectionSnapshotCompleted(ctx.partition, tableId, 0);
+                }
                 ctx.offset.preSnapshotCompletion();
                 ctx.offset.postSnapshotCompletion();
             }
