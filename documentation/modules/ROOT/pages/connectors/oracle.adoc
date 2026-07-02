@@ -194,7 +194,7 @@ If you want the connector to capture data only from specific tables you can dire
 
 3. Obtain a `ROW SHARE MODE` lock on each of the captured tables to prevent structural changes from occurring during creation of the snapshot.
 +
- NOTE: {prodname} holds the locks for only a short time.
+NOTE: {prodname} holds the locks for only a short time.
 
 4. Read the current system change number (SCN) position from the server's redo log.
 
