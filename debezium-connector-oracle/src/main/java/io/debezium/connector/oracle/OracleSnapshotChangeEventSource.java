@@ -242,6 +242,14 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     }
 
     @Override
+    protected Long rowCountForTableChunked(TableId tableId) throws SQLException {
+        // Oracle TableIds carry a CDB/PDB catalog that cannot appear in a qualified name; strip it
+        // before quoting (as getSnapshotSelect does), otherwise the shared implementation would emit
+        // an invalid "catalog"."schema"."table".
+        return jdbcConnection.getRowCount(new TableId(null, tableId.schema(), tableId.table()));
+    }
+
+    @Override
     protected List<Pattern> getSignalDataCollectionPattern(String signalingDataCollection) {
         // Oracle expects this value to be supplied using "<database>.<schema>.<table>"; however the
         // TableIdMapper used by the connector uses only "<schema>.<table>". This primarily targets
