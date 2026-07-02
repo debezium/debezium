@@ -2348,7 +2348,7 @@ The property adds following headers:
 |[[mongodb-property-skip-messages-without-change]]<<mongodb-property-skip-messages-without-change, `+skip.messages.without.change+`>>
 |`false`
 |The MongoDB connector does not support skipping unchanged events.
-Although the property is inherited from the shared connector framework, the MongoDB connector ignores this property if it is set.
+Although this property is inherited from the shared connector framework, the MongoDB connector ignores it.
 
 |[[mongodb-property-statistics-metrics-enabled]]<<mongodb-property-statistics-metrics-enabled, `+statistics.metrics.enabled+`>>
 |`true`
