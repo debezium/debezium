@@ -10,7 +10,7 @@ asciidoc:
   attributes:
     debezium-version: '3.6.0.Final'
     debezium-kafka-version: '4.3.0'
-    debezium-docker-label: '3.5'
+    debezium-docker-label: '3.6'
     DockerKafkaConnect: registry.redhat.io/amq7/amq-streams-kafka-28-rhel8:1.8.0
     groovy-version: '4.0.17'
     assemblies: '../assemblies'
