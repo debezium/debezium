@@ -10,10 +10,12 @@ import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 import com.github.shyiko.mysql.binlog.event.TableMapEventData;
 import com.github.shyiko.mysql.binlog.event.TableMapEventMetadata;
 
+import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.Table;
@@ -36,6 +38,26 @@ import io.debezium.relational.TableId;
  * comments) are intentionally not populated; those are documented limitations of this mode.
  */
 public class BinlogMetadataTableBuilder {
+
+    private final Supplier<BinlogCharsetRegistry> charsetRegistrySupplier;
+    private BinlogCharsetRegistry charsetRegistry;
+    private boolean charsetRegistryResolved;
+
+    /**
+     * Creates a builder without a charset registry; collation ids are resolved from a minimal static
+     * catalog only. Intended for tests.
+     */
+    public BinlogMetadataTableBuilder() {
+        this(null);
+    }
+
+    /**
+     * @param charsetRegistrySupplier lazily supplies the connector's charset registry used to resolve
+     *            collation ids to character set names; may be null
+     */
+    public BinlogMetadataTableBuilder(Supplier<BinlogCharsetRegistry> charsetRegistrySupplier) {
+        this.charsetRegistrySupplier = charsetRegistrySupplier;
+    }
 
     // MySQL binlog column type codes (com.github.shyiko...deserialization.ColumnType getCode()).
     private static final int TYPE_DECIMAL = 0;
@@ -135,7 +157,8 @@ public class BinlogMetadataTableBuilder {
                     column.length(columnMeta[i] & 0xFF);
                     column.scale((columnMeta[i] >> 8) & 0xFF);
                 }
-                case TYPE_BIT -> column.type("BIT").jdbcType(Types.BIT).length(columnMeta[i]);
+                // BIT metadata is encoded as (bytes << 8) | remaining_bits, so BIT(8) arrives as 0x0100.
+                case TYPE_BIT -> column.type("BIT").jdbcType(Types.BIT).length(((columnMeta[i] >> 8) * 8) + (columnMeta[i] & 0xFF));
                 case TYPE_DATE, TYPE_NEWDATE -> column.type("DATE").jdbcType(Types.DATE);
                 case TYPE_TIME, TYPE_TIME_V2 -> column.type("TIME").jdbcType(Types.TIME).length(columnMeta[i]);
                 case TYPE_DATETIME, TYPE_DATETIME_V2 -> column.type("DATETIME").jdbcType(Types.TIMESTAMP).length(columnMeta[i]);
@@ -332,22 +355,40 @@ public class BinlogMetadataTableBuilder {
     }
 
     /** Convert a byte length to a character length using the collation's maximum bytes-per-character. */
-    private static int byteToCharLength(int byteLength, int collation) {
+    private int byteToCharLength(int byteLength, int collation) {
         final int maxBytes = maxBytesPerChar(collation);
         return maxBytes <= 1 ? byteLength : byteLength / maxBytes;
     }
 
-    // Minimal collation -> max-bytes-per-char / charset-name catalog for the common collations.
-    // TODO (debezium/dbz#978): source this from the connector's full charset registry rather than a static subset.
-    private static int maxBytesPerChar(int collation) {
-        return switch (collation) {
-            case 45, 46, 224, 255 -> 4; // utf8mb4_*
-            case 33, 83, 192 -> 3; // utf8mb3_*
-            default -> 1; // latin1/ascii/binary/etc.
+    /**
+     * Maximum bytes-per-character of the character set behind the given collation, used to convert the
+     * byte length carried by the binlog metadata into the character length of the column.
+     */
+    private int maxBytesPerChar(int collation) {
+        final String charsetName = collationName(collation);
+        if (charsetName == null) {
+            return 1;
+        }
+        return switch (charsetName) {
+            case "utf8mb4", "utf16", "utf16le", "utf32", "gb18030" -> 4;
+            case "utf8", "utf8mb3", "eucjpms", "ujis" -> 3;
+            case "ucs2", "gbk", "sjis", "big5", "euckr", "cp932", "gb2312" -> 2;
+            default -> 1;
         };
     }
 
-    private static String collationName(int collation) {
+    /**
+     * Resolve the character set name for a collation id, preferring the connector's charset registry and
+     * falling back to a minimal static catalog when no registry is available (for example in unit tests).
+     */
+    private String collationName(int collation) {
+        final BinlogCharsetRegistry registry = charsetRegistry();
+        if (registry != null) {
+            final String name = registry.getCharsetNameForCollationIndex(collation);
+            if (name != null) {
+                return name;
+            }
+        }
         return switch (collation) {
             case 45, 46, 224, 255 -> "utf8mb4";
             case 33, 83, 192 -> "utf8mb3";
@@ -355,5 +396,13 @@ public class BinlogMetadataTableBuilder {
             case 8 -> "latin1";
             default -> null;
         };
+    }
+
+    private BinlogCharsetRegistry charsetRegistry() {
+        if (!charsetRegistryResolved) {
+            charsetRegistryResolved = true;
+            charsetRegistry = charsetRegistrySupplier != null ? charsetRegistrySupplier.get() : null;
+        }
+        return charsetRegistry;
     }
 }
