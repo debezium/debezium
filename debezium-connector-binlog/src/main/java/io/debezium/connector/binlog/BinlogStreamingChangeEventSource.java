@@ -119,12 +119,13 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
      * Regex to detect Create TABLE ... LIKE statements and extract both the new table and the
      * reference (template) table.
      */
-    private static final Pattern CREATE_TABLE_LIKE_PATTERN = Pattern.compile(
-            "(?i)CREATE\\s+TABLE\\s+"
-                    + "(?:IF\\s+NOT\\s+EXISTS\\s+)?"
-                    + "(?:(`[^`]+`|[^.`\\s]+)\\.)?(`[^`]+`|[^.`\\s]+)"
-                    + "\\s+LIKE\\s+"
-                    + "(?:(`[^`]+`|[^.`\\s;]+)\\.)?(`[^`]+`|[^.\\s;]+)");
+    private static final Pattern CREATE_TABLE_LIKE_PATTERN = Pattern.compile("""
+            (?i)CREATE\\s+TABLE\\s+\
+            (?:IF\\s+NOT\\s+EXISTS\\s+)?\
+            (?:(`[^`]+`|[^.`\\s]+)\\.)?(`[^`]+`|[^.`\\s]+)\
+            \\s+LIKE\\s+\
+            (?:(`[^`]+`|[^.`\\s;]+)\\.)?(`[^`]+`|[^.\\s;]+)\
+            """);
 
     private final BinaryLogClient client;
     private final BinlogStreamingChangeEventSourceMetrics<?, P> metrics;
@@ -801,7 +802,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         List<SchemaChangeEvent> schemaChangeEvents = schema.parseStreamingDdl(partition, sql,
                 command.getDatabase(), offsetContext, eventTime);
 
-        // DBZ-1496: Resolve-and-retry for CREATE TABLE ... LIKE statements.
+        // DBZ-248: Resolve-and-retry for CREATE TABLE ... LIKE statements.
         // If parsing produced no schema change events and the DDL is a LIKE statement,
         // try to resolve the reference table's schema via JDBC and try parsing.
         if (schemaChangeEvents.isEmpty() && resolveLikeTableSchema) {
@@ -874,8 +875,8 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         }
 
         final String syntheticDdl = refCreateDdl.replaceFirst(
-                "(?i)CREATE\\s+TABLE\\s+`?" + Pattern.quote(refTableId.table()) + "`?",
-                Matcher.quoteReplacement("CREATE TABLE `" + newTableId.table() + "`"));
+                "(?i)CREATE\\s+TABLE\\s+`?%s`?".formatted(Pattern.quote(refTableId.table())),
+                Matcher.quoteReplacement("CREATE TABLE `%s`".formatted(newTableId.table())));
 
         LOGGER.info("Resolved schema for {} via SHOW CREATE TABLE on {}; parsing synthetic DDL", newTableId, refTableId);
 
@@ -905,8 +906,8 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
 
     private String fetchShowCreateTable(TableId tableId) {
         String quotedRef = (tableId.catalog() != null)
-                ? "`" + tableId.catalog() + "`.`" + tableId.table() + "`"
-                : "`" + tableId.table() + "`";
+                ? "`%s`.`%s`".formatted(tableId.catalog(), tableId.table())
+                : "`%s`".formatted(tableId.table());
 
         try {
             return connection.queryAndMap(

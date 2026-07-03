@@ -65,7 +65,7 @@ public abstract class BinlogCreateTableLikeSchemaResolutionIT<C extends SourceCo
     }
 
     @Test
-    @FixFor("DBZ-1496")
+    @FixFor("DBZ-248")
     public void shouldResolveCreateTableLikeWithFilteredReferenceTable() throws Exception {
         // Configure connector to capture only shard_* tables (exclude template_table).
         config = configWithCredentials(DATABASE.defaultConfig()
@@ -104,7 +104,7 @@ public abstract class BinlogCreateTableLikeSchemaResolutionIT<C extends SourceCo
     }
 
     @Test
-    @FixFor("DBZ-1496")
+    @FixFor("DBZ-248")
     public void shouldResolveCreateTableLikeWithCrossDatabaseReference() throws Exception {
         // Test cross-database CREATE TABLE LIKE: shard_004 like <db>.template_table
         config = configWithCredentials(DATABASE.defaultConfig()
