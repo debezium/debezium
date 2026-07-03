@@ -161,9 +161,7 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
 
         // Check to expand JSON string into real JSON.
         if (expandJsonPayload) {
-            if (payload instanceof String) {
-                final String payloadString = (String) payload;
-
+            if (payload instanceof String payloadString) {
                 try {
                     // Parse and get Jackson JsonNode.
                     final JsonNode jsonPayload = parseJsonPayload(payloadString);
