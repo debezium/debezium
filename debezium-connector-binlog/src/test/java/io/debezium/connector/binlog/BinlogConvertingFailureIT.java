@@ -24,6 +24,7 @@ import org.junit.jupiter.api.Test;
 import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode;
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.BinlogConnectorConfig.SnapshotMode;
+import io.debezium.connector.binlog.junit.SkipWhenSchemaHistoryDisabled;
 import io.debezium.connector.binlog.util.BinlogTestConnection;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
@@ -67,6 +68,7 @@ public abstract class BinlogConvertingFailureIT<C extends SourceConnector> exten
 
     @Test
     @FixFor("DBZ-7143")
+    @SkipWhenSchemaHistoryDisabled(reason = "Provokes schema drift with sql_log_bin=OFF and asserts stale-schema behavior specific to the schema history mode; with binlog metadata the schema self-heals at the next TABLE_MAP event")
     public void shouldRecoverToSyncSchemaWhenFailedValueConvertByDdlWithSqlLogBinIsOff() throws Exception {
         // Use the DB configuration to define the connector's configuration to use the "replica"
         // which may be the same as the "primary" ...
@@ -185,6 +187,7 @@ public abstract class BinlogConvertingFailureIT<C extends SourceConnector> exten
 
     @Test
     @FixFor("DBZ-7143")
+    @SkipWhenSchemaHistoryDisabled(reason = "Provokes schema drift with sql_log_bin=OFF and asserts stale-schema behavior specific to the schema history mode; with binlog metadata the schema self-heals at the next TABLE_MAP event")
     public void shouldFailedConvertedValueIsNullWithSkipMode() throws Exception {
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)

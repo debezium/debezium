@@ -45,6 +45,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.jdbc.BinlogValueConverters;
 import io.debezium.connector.binlog.junit.BinlogDatabaseVersionResolver;
+import io.debezium.connector.binlog.junit.SkipWhenSchemaHistoryDisabled;
 import io.debezium.connector.binlog.util.BinlogTestConnection;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
@@ -409,6 +410,7 @@ public abstract class BinlogDefaultValueIT<C extends SourceConnector> extends Ab
 
     @Test
     @SkipWhenKafkaVersion(check = EqualityCheck.EQUAL, value = KafkaVersion.KAFKA_1XX, description = "Not compatible with Kafka 1.x")
+    @SkipWhenSchemaHistoryDisabled(reason = "Column default values are not carried by the binlog TABLE_MAP metadata")
     public void schemaHistorySaveDefaultValuesTest() throws InterruptedException, SQLException {
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.INITIAL)
@@ -574,6 +576,7 @@ public abstract class BinlogDefaultValueIT<C extends SourceConnector> extends Ab
 
     @Test
     @SkipWhenKafkaVersion(check = EqualityCheck.EQUAL, value = KafkaVersion.KAFKA_1XX, description = "Not compatible with Kafka 1.x")
+    @SkipWhenSchemaHistoryDisabled(reason = "Column default values are not carried by the binlog TABLE_MAP metadata")
     public void tinyIntBooleanTest() throws Exception {
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.INITIAL)
@@ -604,6 +607,7 @@ public abstract class BinlogDefaultValueIT<C extends SourceConnector> extends Ab
     @Test
     @FixFor("DBZ-1689")
     @SkipWhenKafkaVersion(check = EqualityCheck.EQUAL, value = KafkaVersion.KAFKA_1XX, description = "Not compatible with Kafka 1.x")
+    @SkipWhenSchemaHistoryDisabled(reason = "Column default values are not carried by the binlog TABLE_MAP metadata")
     public void intBooleanTest() throws Exception {
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.INITIAL)
@@ -882,6 +886,7 @@ public abstract class BinlogDefaultValueIT<C extends SourceConnector> extends Ab
     @Test
     @FixFor("DBZ-771")
     @SkipWhenKafkaVersion(check = EqualityCheck.EQUAL, value = KafkaVersion.KAFKA_1XX, description = "Not compatible with Kafka 1.x")
+    @SkipWhenSchemaHistoryDisabled(reason = "Column default values are not carried by the binlog TABLE_MAP metadata")
     public void columnTypeAndDefaultValueChange() throws Exception {
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.INITIAL)
@@ -964,6 +969,7 @@ public abstract class BinlogDefaultValueIT<C extends SourceConnector> extends Ab
 
     @Test
     @FixFor({ "DBZ-2267", "DBZ-6029" })
+    @SkipWhenSchemaHistoryDisabled(reason = "Column default values are not carried by the binlog TABLE_MAP metadata")
     public void alterDateAndTimeTest() throws Exception {
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.INITIAL)
@@ -1044,6 +1050,7 @@ public abstract class BinlogDefaultValueIT<C extends SourceConnector> extends Ab
 
     @Test
     @FixFor("DBZ-5241")
+    @SkipWhenSchemaHistoryDisabled(reason = "Column default values are not carried by the binlog TABLE_MAP metadata")
     public void shouldConvertDefaultWithCharacterSetIntroducer() throws Exception {
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
