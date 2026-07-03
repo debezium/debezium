@@ -7,9 +7,12 @@ package io.debezium.connector.binlog;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.BitSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
@@ -18,8 +21,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.github.shyiko.mysql.binlog.event.TableMapEventData;
+import com.github.shyiko.mysql.binlog.event.TableMapEventMetadata;
 
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
 import io.debezium.connector.binlog.metadata.BinlogMetadataTableBuilder;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.relational.CustomConverterRegistry;
@@ -65,8 +70,8 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
     private final Map<Long, TableId> tableIdsByTableNumber = new ConcurrentHashMap<>();
     private final Map<Long, TableId> excludeTableIdsByTableNumber = new ConcurrentHashMap<>();
     private final BinlogConnectorConfig connectorConfig;
-    private final BinlogMetadataTableBuilder metadataTableBuilder = new BinlogMetadataTableBuilder();
-    private final Set<TableId> tablesRegisteredFromBinlogMetadata = ConcurrentHashMap.newKeySet();
+    private final BinlogMetadataTableBuilder metadataTableBuilder;
+    private final Map<TableId, TableMapMetadataSnapshot> tablesRegisteredFromBinlogMetadata = new ConcurrentHashMap<>();
 
     /**
      * Creates a binlog-connector based relational schema based on the supplied configuration. The DDL
@@ -105,19 +110,13 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
         this.ddlParser = createDdlParser(connectorConfig, valueConverter);
         this.connectorConfig = connectorConfig;
         this.filters = connectorConfig.getTableFilters();
+        this.metadataTableBuilder = new BinlogMetadataTableBuilder(
+                () -> connectorConfig.getServiceRegistry().tryGetService(BinlogCharsetRegistry.class));
     }
 
     @Override
     protected DdlParser getDdlParser() {
         return ddlParser;
-    }
-
-    @Override
-    public boolean isHistorized() {
-        // In binlog-metadata-based schema mode the schema is rebuilt from the log itself (TABLE_MAP events),
-        // so the connector behaves like a non-historized connector (e.g. PostgreSQL): no schema snapshot,
-        // no history recovery and no persisted schema history topic.
-        return !connectorConfig.isBinlogMetadataBasedSchema();
     }
 
     @Override
@@ -234,16 +233,93 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
         // A TABLE_MAP event precedes the row events for its table within every transaction, so it is seen
         // very frequently. Rebuilding the table and its Kafka Connect schema on every event would be
         // wasteful (the PostgreSQL connector rebuilds unconditionally, but its pgoutput relation messages
-        // are rare, whereas TABLE_MAP is per-transaction). Instead, each table is populated once and only
-        // rebuilt after a DDL statement for it has been parsed from the binlog, which marks it dirty by
-        // removing it from this registry (see the invalidation in parseDdl).
-        if (tablesRegisteredFromBinlogMetadata.contains(tableId) && schemaFor(tableId) != null) {
+        // are rare, whereas TABLE_MAP is per-transaction). Instead, each table is populated once and
+        // rebuilt when either:
+        // - a DDL statement for it has been parsed from the binlog, which marks it dirty by removing it
+        // from this registry (see the invalidation in parseDdl); or
+        // - the TABLE_MAP metadata no longer structurally matches what was registered, which catches
+        // schema drift that never appears as a binlog DDL statement (for example an ALTER executed
+        // with sql_log_bin=OFF); the comparison is a cheap field-by-field check without allocations.
+        final TableMapMetadataSnapshot registered = tablesRegisteredFromBinlogMetadata.get(tableId);
+        if (registered != null && registered.matches(metadata) && schemaFor(tableId) != null) {
             return true;
         }
         final Table table = metadataTableBuilder.build(tableId, metadata);
         refresh(table);
-        tablesRegisteredFromBinlogMetadata.add(tableId);
+        tablesRegisteredFromBinlogMetadata.put(tableId, TableMapMetadataSnapshot.of(metadata));
         return true;
+    }
+
+    /**
+     * Snapshot of the {@code TABLE_MAP} fields the {@link BinlogMetadataTableBuilder} consumes, used to
+     * detect whether a newly received event still structurally matches the registered schema.
+     */
+    private static final class TableMapMetadataSnapshot {
+
+        private final byte[] columnTypes;
+        private final int[] columnMetadata;
+        private final BitSet columnNullability;
+        private final List<String> columnNames;
+        private final BitSet signedness;
+        private final List<Integer> columnCharsets;
+        private final Integer defaultCharsetCollation;
+        private final Map<Integer, Integer> defaultCharsetOverrides;
+        private final List<String[]> enumStrValues;
+        private final List<String[]> setStrValues;
+        private final List<Integer> simplePrimaryKeys;
+
+        private TableMapMetadataSnapshot(TableMapEventData data, TableMapEventMetadata meta) {
+            this.columnTypes = data.getColumnTypes() != null ? data.getColumnTypes().clone() : null;
+            this.columnMetadata = data.getColumnMetadata() != null ? data.getColumnMetadata().clone() : null;
+            this.columnNullability = data.getColumnNullability() != null ? (BitSet) data.getColumnNullability().clone() : null;
+            this.columnNames = meta.getColumnNames();
+            this.signedness = meta.getSignedness() != null ? (BitSet) meta.getSignedness().clone() : null;
+            this.columnCharsets = meta.getColumnCharsets();
+            final TableMapEventMetadata.DefaultCharset defaultCharset = meta.getDefaultCharset();
+            this.defaultCharsetCollation = defaultCharset != null ? defaultCharset.getDefaultCharsetCollation() : null;
+            this.defaultCharsetOverrides = defaultCharset != null ? defaultCharset.getCharsetCollations() : null;
+            this.enumStrValues = meta.getEnumStrValues();
+            this.setStrValues = meta.getSetStrValues();
+            this.simplePrimaryKeys = meta.getSimplePrimaryKeys();
+        }
+
+        static TableMapMetadataSnapshot of(TableMapEventData data) {
+            return new TableMapMetadataSnapshot(data, data.getEventMetadata());
+        }
+
+        boolean matches(TableMapEventData data) {
+            final TableMapEventMetadata meta = data.getEventMetadata();
+            if (meta == null) {
+                return false;
+            }
+            final TableMapEventMetadata.DefaultCharset defaultCharset = meta.getDefaultCharset();
+            return Arrays.equals(columnTypes, data.getColumnTypes())
+                    && Arrays.equals(columnMetadata, data.getColumnMetadata())
+                    && Objects.equals(columnNullability, data.getColumnNullability())
+                    && Objects.equals(columnNames, meta.getColumnNames())
+                    && Objects.equals(signedness, meta.getSignedness())
+                    && Objects.equals(columnCharsets, meta.getColumnCharsets())
+                    && Objects.equals(defaultCharsetCollation, defaultCharset != null ? defaultCharset.getDefaultCharsetCollation() : null)
+                    && Objects.equals(defaultCharsetOverrides, defaultCharset != null ? defaultCharset.getCharsetCollations() : null)
+                    && stringArrayListsEqual(enumStrValues, meta.getEnumStrValues())
+                    && stringArrayListsEqual(setStrValues, meta.getSetStrValues())
+                    && Objects.equals(simplePrimaryKeys, meta.getSimplePrimaryKeys());
+        }
+
+        private static boolean stringArrayListsEqual(List<String[]> left, List<String[]> right) {
+            if (left == null || right == null) {
+                return left == right;
+            }
+            if (left.size() != right.size()) {
+                return false;
+            }
+            for (int i = 0; i < left.size(); i++) {
+                if (!Arrays.equals(left.get(i), right.get(i))) {
+                    return false;
+                }
+            }
+            return true;
+        }
     }
 
     /**
@@ -320,25 +396,7 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
      */
     public List<SchemaChangeEvent> parseSnapshotDdl(P partition, String ddlStatements, String databaseName, O offset, Instant sourceTime) {
         LOGGER.debug("Processing snapshot DDL '{}' for database '{}'", ddlStatements, databaseName);
-        final List<SchemaChangeEvent> schemaChangeEvents = parseDdl(partition, ddlStatements, databaseName, offset, sourceTime, true);
-        if (connectorConfig.isBinlogMetadataBasedSchema()) {
-            // In binlog-metadata-based schema mode the connector is non-historized, so the Kafka TableSchema
-            // is not built via the historized applySchemaChange() dispatch path. Build and register it here for
-            // the tables discovered during the snapshot, mirroring how non-historized connectors (e.g.
-            // PostgreSQL) refresh their schema during the snapshot. During streaming the schema is (re)built
-            // from TABLE_MAP events instead.
-            for (SchemaChangeEvent event : schemaChangeEvents) {
-                if (event.getType() == SchemaChangeEvent.SchemaChangeEventType.CREATE
-                        || event.getType() == SchemaChangeEvent.SchemaChangeEventType.ALTER) {
-                    event.getTableChanges().forEach(change -> {
-                        if (change.getTable() != null) {
-                            buildAndRegisterSchema(change.getTable());
-                        }
-                    });
-                }
-            }
-        }
-        return schemaChangeEvents;
+        return parseDdl(partition, ddlStatements, databaseName, offset, sourceTime, true);
     }
 
     /**
