@@ -35,6 +35,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -82,6 +83,9 @@ import io.debezium.data.Envelope;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.VerifyRecord;
+import io.debezium.data.geometry.Circle;
+import io.debezium.data.geometry.Geometry;
+import io.debezium.data.geometry.Line;
 import io.debezium.data.geometry.Point;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.EmbeddedEngineConfig;
@@ -100,6 +104,7 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.TableFilter;
+import io.debezium.spatial.WkbWriter;
 import io.debezium.time.MicroTime;
 import io.debezium.time.MicroTimestamp;
 import io.debezium.time.ZonedTime;
@@ -477,14 +482,27 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
             assertThat(before.get("cfloat8")).isEqualTo(0.0);
             assertThat(before.get("cnumeric")).isEqualTo(new BigDecimal("0.00"));
             assertThat(before.get("cvarchar")).isEqualTo("");
-            assertThat(before.get("cbox")).isEqualTo(new byte[0]);
-            assertThat(before.get("ccircle")).isEqualTo(new byte[0]);
+            // The six geometric types now map to first-class schemas (DBZ-2135); an absent before-image
+            // value falls back to the converter's empty/zero geometry rather than an empty byte array.
+            final Schema geometrySchema = Geometry.builder().build();
+            assertThat(before.get("cbox")).isEqualTo(Geometry.createValue(geometrySchema,
+                    WkbWriter.buildPolygon(List.of(List.of(
+                            new double[]{ 0, 0 }, new double[]{ 0, 0 }, new double[]{ 0, 0 },
+                            new double[]{ 0, 0 }, new double[]{ 0, 0 }))),
+                    null, Map.of(Geometry.EXTENSION_TYPE_KEY, "box")));
+            assertThat(before.get("ccircle")).isEqualTo(Circle.createValue(Circle.builder().build(), 0, 0, 0));
             assertThat(before.get("cinterval")).isEqualTo(0L);
-            assertThat(before.get("cline")).isEqualTo(new byte[0]);
-            assertThat(before.get("clseg")).isEqualTo(new byte[0]);
-            assertThat(before.get("cpath")).isEqualTo(new byte[0]);
+            assertThat(before.get("cline")).isEqualTo(Line.createValue(Line.builder().build(), 0, 1, 0));
+            assertThat(before.get("clseg")).isEqualTo(Geometry.createValue(geometrySchema,
+                    WkbWriter.buildLineString(List.of(new double[]{ 0, 0 }, new double[]{ 0, 0 })),
+                    null, Map.of(Geometry.EXTENSION_TYPE_KEY, "lseg")));
+            assertThat(before.get("cpath")).isEqualTo(Geometry.createValue(geometrySchema,
+                    WkbWriter.buildLineString(List.of(new double[]{ 0, 0 })),
+                    null, Map.of(Geometry.EXTENSION_TYPE_KEY, "path")));
             assertThat(before.get("cpoint")).isEqualTo(Point.createValue(Point.builder().build(), 0, 0));
-            assertThat(before.get("cpolygon")).isEqualTo(new byte[0]);
+            assertThat(before.get("cpolygon")).isEqualTo(Geometry.createValue(geometrySchema,
+                    WkbWriter.buildPolygon(List.of(List.of(new double[]{ 0, 0 }))),
+                    null, Map.of(Geometry.EXTENSION_TYPE_KEY, "polygon")));
             assertThat(before.get("cchar")).isEqualTo("");
             assertThat(before.get("ctext")).isEqualTo("");
             assertThat(before.get("cjson")).isEqualTo("");
@@ -1383,7 +1401,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
         startConnector(config -> config.with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true));
 
-        assertInsert(INSERT_CIRCLE_STMT, 1, schemaAndValueForUnknownColumnBytes());
+        assertInsert(INSERT_UNKNOWN_TYPE_STMT, 1, schemaAndValueForUnknownColumnBytes());
     }
 
     @Test
@@ -1394,7 +1412,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         startConnector(config -> config.with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
                 .with(PostgresConnectorConfig.BINARY_HANDLING_MODE, BinaryHandlingMode.BASE64));
 
-        assertInsert(INSERT_CIRCLE_STMT, 1, schemaAndValueForUnknownColumnBase64());
+        assertInsert(INSERT_UNKNOWN_TYPE_STMT, 1, schemaAndValueForUnknownColumnBase64());
     }
 
     @Test
@@ -1405,7 +1423,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         startConnector(config -> config.with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
                 .with(PostgresConnectorConfig.BINARY_HANDLING_MODE, BinaryHandlingMode.BASE64_URL_SAFE));
 
-        assertInsert(INSERT_CIRCLE_STMT, 1, schemaAndValueForUnknownColumnBase64UrlSafe());
+        assertInsert(INSERT_UNKNOWN_TYPE_STMT, 1, schemaAndValueForUnknownColumnBase64UrlSafe());
     }
 
     @Test
@@ -1416,7 +1434,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         startConnector(config -> config.with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
                 .with(PostgresConnectorConfig.BINARY_HANDLING_MODE, BinaryHandlingMode.HEX));
 
-        assertInsert(INSERT_CIRCLE_STMT, 1, schemaAndValueForUnknownColumnHex());
+        assertInsert(INSERT_UNKNOWN_TYPE_STMT, 1, schemaAndValueForUnknownColumnHex());
     }
 
     @Test

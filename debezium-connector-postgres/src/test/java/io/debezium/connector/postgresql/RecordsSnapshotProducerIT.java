@@ -1264,7 +1264,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     public void shouldGenerateSnapshotForUnknownColumnAsBytes() throws Exception {
         TestHelper.dropAllSchemas();
         TestHelper.executeDDL("postgres_create_tables.ddl");
-        TestHelper.execute(INSERT_CIRCLE_STMT);
+        TestHelper.execute(INSERT_UNKNOWN_TYPE_STMT);
 
         buildNoStreamProducer(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true));
@@ -1272,7 +1272,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         TestConsumer consumer = testConsumer(1, "public");
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
 
-        final Map<String, List<SchemaAndValueField>> expectedValueByTopicName = Collect.hashMapOf("public.circle_table", schemaAndValueForUnknownColumnBytes());
+        final Map<String, List<SchemaAndValueField>> expectedValueByTopicName = Collect.hashMapOf("public.unknown_type_table", schemaAndValueForUnknownColumnBytes());
 
         consumer.process(record -> assertReadRecord(record, expectedValueByTopicName));
     }
@@ -1282,7 +1282,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     public void shouldGenerateSnapshotForUnknownColumnAsBase64() throws Exception {
         TestHelper.dropAllSchemas();
         TestHelper.executeDDL("postgres_create_tables.ddl");
-        TestHelper.execute(INSERT_CIRCLE_STMT);
+        TestHelper.execute(INSERT_UNKNOWN_TYPE_STMT);
 
         buildNoStreamProducer(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
@@ -1291,7 +1291,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         TestConsumer consumer = testConsumer(1, "public");
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
 
-        final Map<String, List<SchemaAndValueField>> expectedValueByTopicName = Collect.hashMapOf("public.circle_table", schemaAndValueForUnknownColumnBase64());
+        final Map<String, List<SchemaAndValueField>> expectedValueByTopicName = Collect.hashMapOf("public.unknown_type_table", schemaAndValueForUnknownColumnBase64());
 
         consumer.process(record -> assertReadRecord(record, expectedValueByTopicName));
     }
@@ -1301,7 +1301,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     public void shouldGenerateSnapshotForUnknownColumnAsBase64UrlSafe() throws Exception {
         TestHelper.dropAllSchemas();
         TestHelper.executeDDL("postgres_create_tables.ddl");
-        TestHelper.execute(INSERT_CIRCLE_STMT);
+        TestHelper.execute(INSERT_UNKNOWN_TYPE_STMT);
 
         buildNoStreamProducer(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
@@ -1310,7 +1310,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         TestConsumer consumer = testConsumer(1, "public");
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
 
-        final Map<String, List<SchemaAndValueField>> expectedValueByTopicName = Collect.hashMapOf("public.circle_table", schemaAndValueForUnknownColumnBase64UrlSafe());
+        final Map<String, List<SchemaAndValueField>> expectedValueByTopicName = Collect.hashMapOf("public.unknown_type_table", schemaAndValueForUnknownColumnBase64UrlSafe());
 
         consumer.process(record -> assertReadRecord(record, expectedValueByTopicName));
     }
@@ -1320,7 +1320,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     public void shouldGenerateSnapshotForUnknownColumnAsHex() throws Exception {
         TestHelper.dropAllSchemas();
         TestHelper.executeDDL("postgres_create_tables.ddl");
-        TestHelper.execute(INSERT_CIRCLE_STMT);
+        TestHelper.execute(INSERT_UNKNOWN_TYPE_STMT);
 
         buildNoStreamProducer(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
@@ -1329,7 +1329,7 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         TestConsumer consumer = testConsumer(1, "public");
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
 
-        final Map<String, List<SchemaAndValueField>> expectedValueByTopicName = Collect.hashMapOf("public.circle_table", schemaAndValueForUnknownColumnHex());
+        final Map<String, List<SchemaAndValueField>> expectedValueByTopicName = Collect.hashMapOf("public.unknown_type_table", schemaAndValueForUnknownColumnHex());
 
         consumer.process(record -> assertReadRecord(record, expectedValueByTopicName));
     }

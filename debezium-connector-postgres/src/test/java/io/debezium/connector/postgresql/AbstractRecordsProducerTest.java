@@ -129,7 +129,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractAsyncEngineCon
             +
             "'1000000000000000000000000000000000000000000000000000000000000000'::bit(64), '101', '111011010001000110000001000000001')";
     protected static final String INSERT_BYTEA_BINMODE_STMT = "INSERT INTO bytea_binmode_table (ba, bytea_array) VALUES (E'\\\\001\\\\002\\\\003'::bytea, array[E'\\\\000\\\\001\\\\002'::bytea, E'\\\\003\\\\004\\\\005'::bytea])";
-    protected static final String INSERT_CIRCLE_STMT = "INSERT INTO circle_table (ccircle) VALUES ('((10, 20),10)'::circle)";
+    protected static final String INSERT_UNKNOWN_TYPE_STMT = "INSERT INTO unknown_type_table (tsq) VALUES ('fat <-> cat'::tsquery)";
     protected static final String INSERT_GEOM_TYPES_STMT = "INSERT INTO geom_table(p) VALUES ('(1,1)'::point)";
     protected static final String INSERT_TEXT_TYPES_STMT = "INSERT INTO text_table(j, jb, x, u) " +
             "VALUES ('{\"bar\": \"baz\"}'::json, '{\"bar\": \"baz\"}'::jsonb, " +
@@ -464,19 +464,19 @@ public abstract class AbstractRecordsProducerTest extends AbstractAsyncEngineCon
     }
 
     protected List<SchemaAndValueField> schemaAndValueForUnknownColumnBytes() {
-        return Arrays.asList(new SchemaAndValueField("ccircle", Schema.OPTIONAL_BYTES_SCHEMA, ByteBuffer.wrap("<(10.0,20.0),10.0>".getBytes(StandardCharsets.UTF_8))));
+        return Arrays.asList(new SchemaAndValueField("tsq", Schema.OPTIONAL_BYTES_SCHEMA, ByteBuffer.wrap("'fat' <-> 'cat'".getBytes(StandardCharsets.UTF_8))));
     }
 
     protected List<SchemaAndValueField> schemaAndValueForUnknownColumnBase64() {
-        return Arrays.asList(new SchemaAndValueField("ccircle", Schema.OPTIONAL_STRING_SCHEMA, "PCgxMC4wLDIwLjApLDEwLjA+"));
+        return Arrays.asList(new SchemaAndValueField("tsq", Schema.OPTIONAL_STRING_SCHEMA, "J2ZhdCcgPC0+ICdjYXQn"));
     }
 
     protected List<SchemaAndValueField> schemaAndValueForUnknownColumnBase64UrlSafe() {
-        return Arrays.asList(new SchemaAndValueField("ccircle", Schema.OPTIONAL_STRING_SCHEMA, "PCgxMC4wLDIwLjApLDEwLjA-"));
+        return Arrays.asList(new SchemaAndValueField("tsq", Schema.OPTIONAL_STRING_SCHEMA, "J2ZhdCcgPC0-ICdjYXQn"));
     }
 
     protected List<SchemaAndValueField> schemaAndValueForUnknownColumnHex() {
-        return Arrays.asList(new SchemaAndValueField("ccircle", Schema.OPTIONAL_STRING_SCHEMA, "3c2831302e302c32302e30292c31302e303e"));
+        return Arrays.asList(new SchemaAndValueField("tsq", Schema.OPTIONAL_STRING_SCHEMA, "2766617427203c2d3e202763617427"));
     }
 
     protected List<SchemaAndValueField> schemasAndValuesForStringTypesWithSourceColumnTypeInfo() {
