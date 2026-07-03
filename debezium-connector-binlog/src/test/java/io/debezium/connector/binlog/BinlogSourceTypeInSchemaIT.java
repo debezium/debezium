@@ -21,6 +21,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.binlog.junit.SkipWhenSchemaHistoryDisabled;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
 import io.debezium.doc.FixFor;
@@ -30,6 +31,7 @@ import io.debezium.doc.FixFor;
  *
  * @author Gunnar Morling
  */
+@SkipWhenSchemaHistoryDisabled(reason = "Asserts propagated source column types including display width and precision, which are not carried by the binlog TABLE_MAP metadata")
 public abstract class BinlogSourceTypeInSchemaIT<C extends SourceConnector> extends AbstractBinlogConnectorIT<C> {
 
     private static final String TYPE_NAME_PARAMETER_KEY = "__debezium.source.column.type";

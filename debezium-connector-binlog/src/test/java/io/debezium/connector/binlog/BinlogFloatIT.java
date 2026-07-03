@@ -19,6 +19,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.binlog.junit.SkipWhenSchemaHistoryDisabled;
 import io.debezium.connector.binlog.util.BinlogTestConnection;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
@@ -61,6 +62,7 @@ public abstract class BinlogFloatIT<C extends SourceConnector> extends AbstractB
 
     @Test
     @FixFor("DBZ-3865")
+    @SkipWhenSchemaHistoryDisabled(reason = "The binlog TABLE_MAP metadata does not carry the FLOAT(M,D) precision")
     public void shouldHandleFloatAsFloatAndDouble() throws SQLException, InterruptedException {
         String includeTables = String.join(",",
                 Collect.arrayListOf(DATABASE.qualifiedTableName(TABLE_NAME), DATABASE.qualifiedTableName("DBZ3865_2")));
