@@ -64,16 +64,16 @@ In environments with large table counts, consider setting xref:cockroachdb-prope
 [[cockroachdb-changefeed-delivery-modes]]
 === Changefeed delivery modes
 
-By default, the CockroachDB connector uses a two-stage flow in which CockroachDB first writes changefeed events to an intermediate Kafka cluster. 
-The connector then consumes those events, converts them to the standard {prodname} envelope, and republishes them to the final Kafka topics. 
+By default, the CockroachDB connector uses a two-stage flow in which CockroachDB first writes changefeed events to an intermediate Kafka cluster.
+The connector then consumes those events, converts them to the standard {prodname} envelope, and republishes them to the final Kafka topics.
 As an alternative to this standard flow, you can set the connector's xref:cockroachdb-property-sink-type[`cockroachdb.changefeed.sink.type`] property to `sinkless` so that the connector ingests change events directly  from the database via a dedicated SQL connection.
-It then emits the change event records to the configured Kafka topics as in the default flow. 
-The following descriptions provide details about the available `cockroachdb.changefeed.sink.type` settings: 
+It then emits the change event records to the configured Kafka topics as in the default flow.
+The following descriptions provide details about the available `cockroachdb.changefeed.sink.type` settings:
 
 `kafka` (default)::
 The connector creates a changefeed with an `INTO 'kafka://...'` clause, and CockroachDB pushes change events to per-table topics on an intermediate Kafka cluster.
 The connector runs its own consumer to read the events back.
-Intermediate topics store change events independently of the connector. 
+Intermediate topics store change events independently of the connector.
 As a result, the connector can remain offline for an extended period and then resume processing from the stored events when it reconnects.
 To use this property, you must set the xref:cockroachdb-property-sink-uri[cockroachdb.changefeed.sink.uri] property.
 
@@ -170,16 +170,16 @@ For the connector to consume the existing changefeed correctly, the changefeed m
 To produce that topic layout, and to emit events in the structure that the connector expects, create the changefeed with the following options:
 
 `full_table_name`:: Required so that CockroachDB names topics in `_database_._schema_._table_` form.
-`topic_prefix='_prefix_.'`:: Required, and must equal the connector's topic prefix described in the preceding list. 
+`topic_prefix='_prefix_.'`:: Required, and must equal the connector's topic prefix described in the preceding list.
 The specified prefix must include a trailing dot (`.`).
 `envelope='enriched'`:: Required. The connector consumes the enriched envelope.
-`enriched_properties`:: Optional. The connector reads the base enriched fields (`op`, `ts_ns`, `after`, and `before` when `diff` is set), so it does not require any enriched property to consume the feed. 
+`enriched_properties`:: Optional. The connector reads the base enriched fields (`op`, `ts_ns`, `after`, and `before` when `diff` is set), so it does not require any enriched property to consume the feed.
 The default value,  `source` ensures that intermediate topics include origin and commit-time metadata.
 `format='json'`:: Required. The connector consumes JSON-encoded changefeed messages.
 `diff`, `updated`, `resolved`:: Set these to match the connector configuration so that before-images, update markers, and resolved timestamps are available.
 
 If any of these conditions is not met, the connector does not recognize the existing changefeed and creates its own.
-A changefeed created with a different `topic_prefix` or without `full_table_name` is not recognized as a match, and the connector creates its own. 
+A changefeed created with a different `topic_prefix` or without `full_table_name` is not recognized as a match, and the connector creates its own.
 If a running changefeed matches the connector's topic prefix and tables, but it was created with an envelope other than `enriched`, the connector cannot consume it.
 The connector then fails to start and returns an error stating that you must recreate that changefeed with `envelope='enriched'` or else use a different topic prefix.
 
@@ -414,7 +414,7 @@ CREATE TABLE orders (
 ----
 
 .Example change event key
-Based on the preceding definition of the `orders` table, every change event for the table uses the same key structure. 
+Based on the preceding definition of the `orders` table, every change event for the table uses the same key structure.
 The following JSON represents this key structure:
 
 [source,json,indent=0]
@@ -529,7 +529,7 @@ The source metadata includes:
 * The schema name
 * The logical cluster name
 * The resolved timestamp (for consistency tracking)
-* The Hybrid Logical Clock (HLC) timestamp. 
+* The Hybrid Logical Clock (HLC) timestamp.
 HLC is the internal timestamp format for CockroachDB.
 
 |4
@@ -546,8 +546,8 @@ Valid values are:
 |5
 |`ts_ms`, `ts_us`, `ts_ns`
 |Optional field that displays the time at which the connector processed the event.
-The time is based on the system clock in the JVM running the Kafka Connect task. 
- 
+The time is based on the system clock in the JVM running the Kafka Connect task.
+
 In the `source` object, `ts_ms` indicates the time that the change was made in the database.
 By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
 
@@ -891,7 +891,7 @@ Granting `VIEWCLUSTERSETTING` lets the connector verify that `kv.rangefeed.enabl
 [id="cockroachdb-securing-the-changefeed-sink"]
 == Securing the changefeed sink
 
-When a changefeed sink uses TLS or mutual TLS (mTLS), the connector can load PEM files from disk and automatically add their base64-encoded contents to the sink URI at startup. 
+When a changefeed sink uses TLS or mutual TLS (mTLS), the connector can load PEM files from disk and automatically add their base64-encoded contents to the sink URI at startup.
 This automatic injection removes the need to manually copy large, encoded certificate strings into the connector configuration.
 
 Set one or more of the following properties to specify the mechanism that the connector uses to encrypt sink connections:
@@ -942,7 +942,7 @@ You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and Ope
 
 .Prerequisites
 * link:http://kafka.apache.org/[Kafka] and {link-kafka-docs}.html#connect[Kafka Connect] are deployed and running.
- 
+
 .Procedure
 
 1. Download the archive file to a temporary directory.
@@ -1554,9 +1554,9 @@ curl -X PUT -H "Content-Type: application/json" \
 [[cockroachdb-limitations]]
 == Limitations
 
-Changefeed sink types:: 
+Changefeed sink types::
 The connector supports two changefeed delivery modes.
-Configure the connector to use the default `kafka` mode if you want CockroachDB to push changefeed events to an intermediate Kafka sink and have the connector consume events from that sink. 
+Configure the connector to use the default `kafka` mode if you want CockroachDB to push changefeed events to an intermediate Kafka sink and have the connector consume events from that sink.
 Or configure the `sinkless` mode if you want the database to stream change events directly to {prodname} over the connector's SQL connection.
 Support for webhook, Pub/Sub, and cloud storage sinks is planned (see link:https://github.com/debezium/dbz/issues/1632[debezium/dbz#1632]).
 
