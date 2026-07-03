@@ -135,6 +135,34 @@ public abstract class BinlogMetadataBasedSchemaIT<C extends SourceConnector> ext
     }
 
     @Test
+    public void shouldRefreshSchemaWhenTableIsAltered() throws Exception {
+        final Configuration config = metadataModeConfig().build();
+        start(getConnectorClass(), config);
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
+
+        // First write: schema before the change (no 'priority' column).
+        insertOrders(1);
+        final List<SourceRecord> before = consumeOrders(1);
+        assertThat(before).hasSize(1);
+        assertThat(afterOf(before.get(0)).schema().field("priority")).isNull();
+
+        // Schema change mid-stream: the next TABLE_MAP carries the new column, so the cached schema must be
+        // rebuilt (the metadata signature changes) rather than reused.
+        executeStatements(DATABASE.getDatabaseName(), "ALTER TABLE orders ADD COLUMN priority INT");
+        executeStatements(DATABASE.getDatabaseName(),
+                "INSERT INTO orders (quantity, status, price, code, note, created_at, priority) "
+                        + "VALUES (1, 'NEW', 1.000, 'ALT0', 'altered', NOW(3), 7)");
+
+        final List<SourceRecord> after = consumeOrders(1);
+        assertThat(after).hasSize(1);
+        final Struct struct = afterOf(after.get(0));
+        assertThat(struct.schema().field("priority")).as("schema rebuilt after ALTER").isNotNull();
+        assertThat(struct.getInt32("priority")).isEqualTo(7);
+
+        stopConnector();
+    }
+
+    @Test
     public void shouldSnapshotExistingDataThenStreamWithReconstructedSchema() throws Exception {
         // Rows that exist before the connector starts must be captured by the initial snapshot.
         insertOrders(4);

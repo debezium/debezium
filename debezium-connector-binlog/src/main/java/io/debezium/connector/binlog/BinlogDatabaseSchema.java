@@ -7,6 +7,7 @@ package io.debezium.connector.binlog;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -18,6 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.github.shyiko.mysql.binlog.event.TableMapEventData;
+import com.github.shyiko.mysql.binlog.event.TableMapEventMetadata;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.binlog.metadata.BinlogMetadataTableBuilder;
@@ -66,6 +68,7 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
     private final Map<Long, TableId> excludeTableIdsByTableNumber = new ConcurrentHashMap<>();
     private final BinlogConnectorConfig connectorConfig;
     private final BinlogMetadataTableBuilder metadataTableBuilder = new BinlogMetadataTableBuilder();
+    private final Map<TableId, String> lastMetadataSignatureByTable = new ConcurrentHashMap<>();
 
     /**
      * Creates a binlog-connector based relational schema based on the supplied configuration. The DDL
@@ -230,9 +233,58 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
         if (!filters.dataCollectionFilter().isIncluded(tableId)) {
             return false;
         }
+        // A TABLE_MAP event precedes the row events for its table within every transaction, so it is seen
+        // very frequently. Rebuilding the table and its Kafka Connect schema on every event would be
+        // wasteful (the PostgreSQL connector rebuilds unconditionally, but its pgoutput relation messages
+        // are rare, whereas TABLE_MAP is per-transaction). Skip the rebuild when the metadata is unchanged
+        // from what was last registered for this table. The signature is a deterministic serialization of
+        // every field the builder reads (not a hash), so an unnoticed change cannot leave a stale schema;
+        // in the worst case a signature bug only causes an unnecessary rebuild.
+        final String signature = metadataSignature(metadata);
+        if (signature.equals(lastMetadataSignatureByTable.get(tableId)) && schemaFor(tableId) != null) {
+            return true;
+        }
         final Table table = metadataTableBuilder.build(tableId, metadata);
         refresh(table);
+        lastMetadataSignatureByTable.put(tableId, signature);
         return true;
+    }
+
+    /**
+     * Build a deterministic signature of every {@code TABLE_MAP} field the {@link BinlogMetadataTableBuilder}
+     * uses to reconstruct a table, so that an unchanged schema can be detected without rebuilding.
+     */
+    private static String metadataSignature(TableMapEventData data) {
+        final TableMapEventMetadata meta = data.getEventMetadata();
+        final StringBuilder sb = new StringBuilder();
+        sb.append(Arrays.toString(data.getColumnTypes()));
+        sb.append('|').append(Arrays.toString(data.getColumnMetadata()));
+        sb.append('|').append(data.getColumnNullability());
+        if (meta != null) {
+            sb.append('|').append(meta.getColumnNames());
+            sb.append('|').append(meta.getSignedness());
+            sb.append('|').append(stringArrayListsToString(meta.getEnumStrValues()));
+            sb.append('|').append(stringArrayListsToString(meta.getSetStrValues()));
+            sb.append('|').append(meta.getColumnCharsets());
+            final TableMapEventMetadata.DefaultCharset defaultCharset = meta.getDefaultCharset();
+            if (defaultCharset != null) {
+                sb.append('|').append(defaultCharset.getDefaultCharsetCollation())
+                        .append(defaultCharset.getCharsetCollations());
+            }
+            sb.append('|').append(meta.getSimplePrimaryKeys());
+        }
+        return sb.toString();
+    }
+
+    private static String stringArrayListsToString(List<String[]> lists) {
+        if (lists == null) {
+            return "null";
+        }
+        final StringBuilder sb = new StringBuilder();
+        for (String[] values : lists) {
+            sb.append(Arrays.toString(values));
+        }
+        return sb.toString();
     }
 
     /**
