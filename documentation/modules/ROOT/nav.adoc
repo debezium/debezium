@@ -25,6 +25,7 @@
 ** xref:connectors/vitess.adoc[Vitess]
 ** xref:connectors/spanner.adoc[Spanner]
 ** xref:connectors/informix.adoc[Informix]
+** xref:connectors/cockroachdb.adoc[CockroachDB]
 ** xref:connectors/yashandb.adoc[YashanDB]
 * Sink Connectors
 ** xref:connectors/index-sink.adoc[Overview]
