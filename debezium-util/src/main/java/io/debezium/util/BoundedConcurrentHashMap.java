@@ -34,6 +34,7 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -422,6 +423,11 @@ public class BoundedConcurrentHashMap<K, V> extends AbstractMap<K, V>
         private static final long serialVersionUID = -7645068174197717838L;
 
         private final ConcurrentLinkedQueue<HashEntry<K, V>> accessQueue;
+        /**
+         * ConcurrentLinkedQueue.size() is O(n); the hot paths below would turn
+         * quadratic on put-heavy workloads without a constant-time counter.
+         */
+        private final AtomicInteger accessQueueSize = new AtomicInteger();
         private final Segment<K, V> segment;
         private final int maxBatchQueueSize;
         private final int trimDownSize;
@@ -446,6 +452,7 @@ public class BoundedConcurrentHashMap<K, V> extends AbstractMap<K, V>
             }
             evictedCopy.addAll(evicted);
             accessQueue.clear();
+            accessQueueSize.set(0);
             evicted.clear();
             return evictedCopy;
         }
@@ -470,7 +477,7 @@ public class BoundedConcurrentHashMap<K, V> extends AbstractMap<K, V>
         @Override
         public boolean onEntryHit(HashEntry<K, V> e) {
             accessQueue.add(e);
-            return accessQueue.size() >= maxBatchQueueSize * batchThresholdFactor;
+            return accessQueueSize.incrementAndGet() >= maxBatchQueueSize * batchThresholdFactor;
         }
 
         /*
@@ -478,7 +485,7 @@ public class BoundedConcurrentHashMap<K, V> extends AbstractMap<K, V>
          */
         @Override
         public boolean thresholdExpired() {
-            return accessQueue.size() >= maxBatchQueueSize;
+            return accessQueueSize.get() >= maxBatchQueueSize;
         }
 
         @Override
@@ -486,7 +493,7 @@ public class BoundedConcurrentHashMap<K, V> extends AbstractMap<K, V>
             remove(e);
             // we could have multiple instances of e in accessQueue; remove them all
             while (accessQueue.remove(e)) {
-                continue;
+                accessQueueSize.decrementAndGet();
             }
         }
 
@@ -494,6 +501,7 @@ public class BoundedConcurrentHashMap<K, V> extends AbstractMap<K, V>
         public void clear() {
             super.clear();
             accessQueue.clear();
+            accessQueueSize.set(0);
         }
 
         @Override
@@ -939,6 +947,12 @@ public class BoundedConcurrentHashMap<K, V> extends AbstractMap<K, V>
         private final ConcurrentLinkedQueue<LIRSHashEntry<K, V>> accessQueue;
 
         /**
+         * ConcurrentLinkedQueue.size() is O(n); the hot paths below would turn
+         * quadratic on put-heavy workloads without a constant-time counter.
+         */
+        private final AtomicInteger accessQueueSize = new AtomicInteger();
+
+        /**
          * The maxBatchQueueSize
          * <p/>
          * See "BP-Wrapper: a system framework making any replacement algorithms (almost) lock
@@ -1015,6 +1029,7 @@ public class BoundedConcurrentHashMap<K, V> extends AbstractMap<K, V>
             }
             finally {
                 accessQueue.clear();
+                accessQueueSize.set(0);
             }
             return evicted;
         }
@@ -1068,7 +1083,7 @@ public class BoundedConcurrentHashMap<K, V> extends AbstractMap<K, V>
         @Override
         public boolean onEntryHit(HashEntry<K, V> e) {
             accessQueue.add((LIRSHashEntry<K, V>) e);
-            return accessQueue.size() >= maxBatchQueueSize * batchThresholdFactor;
+            return accessQueueSize.incrementAndGet() >= maxBatchQueueSize * batchThresholdFactor;
         }
 
         /*
@@ -1076,7 +1091,7 @@ public class BoundedConcurrentHashMap<K, V> extends AbstractMap<K, V>
          */
         @Override
         public boolean thresholdExpired() {
-            return accessQueue.size() >= maxBatchQueueSize;
+            return accessQueueSize.get() >= maxBatchQueueSize;
         }
 
         @Override
@@ -1085,12 +1100,14 @@ public class BoundedConcurrentHashMap<K, V> extends AbstractMap<K, V>
             ((LIRSHashEntry<K, V>) e).remove();
             // we could have multiple instances of e in accessQueue; remove them all
             while (accessQueue.remove(e)) {
+                accessQueueSize.decrementAndGet();
             }
         }
 
         @Override
         public void clear() {
             accessQueue.clear();
+            accessQueueSize.set(0);
         }
 
         @Override
@@ -1402,7 +1419,9 @@ public class BoundedConcurrentHashMap<K, V> extends AbstractMap<K, V>
                     oldValue = e.value;
                     if (!onlyIfAbsent) {
                         e.value = value;
-                        eviction.onEntryHit(e);
+                        if (eviction.onEntryHit(e)) {
+                            evicted = attemptEviction(true);
+                        }
                     }
                 }
                 else {
