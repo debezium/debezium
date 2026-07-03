@@ -378,6 +378,11 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         NONE("none"),
 
         /**
+         * No schema evolution occurs, but statically resolvable destination tables are validated at startup.
+         */
+        NONE_VALIDATED("none-validated"),
+
+        /**
          * When an event is received, the table will be created if it does not exist, and any new fields
          * found in the event will be amended to the existing tables.  Any columns omitted from the event
          * will simply be skipped during inserts and updates.
@@ -408,6 +413,10 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         @Override
         public String getValue() {
             return mode;
+        }
+
+        public boolean isSchemaEvolutionEnabled() {
+            return this == BASIC;
         }
 
     }

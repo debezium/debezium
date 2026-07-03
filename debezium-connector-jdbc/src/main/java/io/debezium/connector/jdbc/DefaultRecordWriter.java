@@ -5,8 +5,6 @@
  */
 package io.debezium.connector.jdbc;
 
-import static io.debezium.connector.jdbc.JdbcSinkConnectorConfig.SchemaEvolutionMode.NONE;
-
 import java.sql.BatchUpdateException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -144,7 +142,7 @@ public class DefaultRecordWriter implements RecordWriter {
     private TableDescriptor createTable(CollectionId collectionId, JdbcSinkRecord record) throws SQLException {
         LOGGER.debug("Attempting to create table '{}'.", collectionId.toFullIdentiferString());
 
-        if (NONE.equals(config.getSchemaEvolutionMode())) {
+        if (!config.getSchemaEvolutionMode().isSchemaEvolutionEnabled()) {
             LOGGER.warn("Table '{}' cannot be created because schema evolution is disabled.", collectionId.toFullIdentiferString());
             throw new SQLException("Cannot create table " + collectionId.toFullIdentiferString() + " because schema evolution is disabled");
         }
@@ -199,7 +197,7 @@ public class DefaultRecordWriter implements RecordWriter {
             }
         }
 
-        if (NONE.equals(config.getSchemaEvolutionMode())) {
+        if (!config.getSchemaEvolutionMode().isSchemaEvolutionEnabled()) {
             LOGGER.warn("Table '{}' cannot be altered because schema evolution is disabled.", collectionId.toFullIdentiferString());
             throw new SQLException("Cannot alter table " + collectionId.toFullIdentiferString() + " because schema evolution is disabled");
         }

@@ -298,6 +298,9 @@ You can use the following schema evolution modes with the {prodname} JDBC sink c
 |`none`
 |The connector does not perform any DDL schema evolution.
 
+|`none-validated`
+|The connector does not perform any DDL schema evolution, but validates statically resolvable destination tables during startup.
+
 |`basic`
 |The connector automatically detects fields that are in the event payload but that do not exist in the destination table.
 The connector alters the destination table to add the new fields.
@@ -1841,6 +1844,7 @@ For more information, see xref:jdbc-schema-evolution[].
 The following options are available:
 
 `none`:: Specifies that the connector does not evolve the destination schema.
+`none-validated`:: Specifies that the connector does not evolve the destination schema, but validates statically resolvable destination tables during startup.
 `basic`:: Specifies that basic evolution occurs.
 The connector adds missing columns to the table by comparing the incoming event's record schema to the database table structure.
 

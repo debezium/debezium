@@ -5,14 +5,19 @@
  */
 package io.debezium.connector.jdbc.integration;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.sink.SinkTask;
 import org.assertj.db.api.TableAssert;
 import org.assertj.db.type.ValueType;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 
@@ -49,6 +54,32 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
 
     protected String getDatabaseSchemaName() {
         return null;
+    }
+
+    @Test
+    public void testStartShouldFailIfNoneValidatedAndTargetTableIsMissing() {
+        final String tableName = randomTableName();
+        final String topicName = topicName("server1", "schema", tableName);
+        final Map<String, String> properties = getNoneValidatedSinkConfig(topicName);
+
+        assertThatThrownBy(() -> startSinkConnector(properties))
+                .hasCauseInstanceOf(ConnectException.class)
+                .hasMessageContaining("Target table")
+                .hasMessageContaining("does not exist")
+                .hasMessageContaining(SchemaEvolutionMode.NONE_VALIDATED.getValue());
+    }
+
+    @Test
+    public void testStartShouldSucceedIfNoneValidatedAndTargetTableExists() throws Exception {
+        final String tableName = randomTableName();
+        final String topicName = topicName("server1", "schema", tableName);
+        final Map<String, String> properties = getNoneValidatedSinkConfig(topicName);
+        final String destinationTableName = destinationTableName(topicName, properties);
+
+        getSink().execute(String.format("CREATE TABLE %s (id integer not null)", destinationTableName));
+
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
     }
 
     @ParameterizedTest
@@ -485,6 +516,19 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
             getSink().assertColumnType(tableAssert, "col_bool", ValueType.BOOLEAN, true);
             getSink().assertColumnType(tableAssert, "col_bool_optional", ValueType.BOOLEAN, true);
         }
+    }
+
+    private Map<String, String> getNoneValidatedSinkConfig(String topicName) {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.NONE_VALIDATED.getValue());
+        properties.put(SinkTask.TOPICS_CONFIG, topicName);
+        return properties;
+    }
+
+    private String destinationTableName(String topicName, Map<String, String> properties) {
+        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        final String tableName = config.getCollectionNameFormat().replace("${topic}", topicName.replace(".", "_"));
+        return getSink().formatTableName(tableName);
     }
 
 }

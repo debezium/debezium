@@ -134,8 +134,10 @@ public class JdbcSinkConnectorTask extends SinkTask {
             config.validate();
 
             sessionFactory = config.getHibernateConfiguration().buildSessionFactory();
-            StatelessSession session = sessionFactory.openStatelessSession();
             DatabaseDialect dialect = DatabaseDialectResolver.resolve(config, sessionFactory);
+            StartupCollectionValidator.validate(config, sessionFactory, dialect, props);
+
+            StatelessSession session = sessionFactory.openStatelessSession();
             QueryBinderResolver queryBinderResolver = new QueryBinderResolver();
 
             metrics = new JdbcSinkConnectorMetrics(connectorName, taskId);
