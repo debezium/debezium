@@ -169,7 +169,6 @@ public abstract class BinlogMetadataBasedSchemaIT<C extends SourceConnector> ext
 
         final Configuration config = metadataModeConfig()
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
-                .with("snapshot.locking.mode", "none")
                 .build();
         start(getConnectorClass(), config);
 
@@ -267,10 +266,10 @@ public abstract class BinlogMetadataBasedSchemaIT<C extends SourceConnector> ext
     }
 
     @Test
-    public void shouldStreamFromCurrentPositionWhenSnapshotIsSkipped() throws Exception {
-        // Rows that already exist before the connector starts. With a no_data snapshot in this
-        // (non-historized) mode the snapshot is skipped, so the connector must seed the current binlog
-        // position and must NOT replay these pre-existing rows.
+    public void shouldStreamFromCurrentPositionWithNoDataSnapshot() throws Exception {
+        // Rows that already exist before the connector starts. With a no_data snapshot the connector must
+        // record the current binlog position (exactly as with a persistent schema history) and must NOT
+        // replay these pre-existing rows.
         insertOrders(3);
 
         final Configuration config = metadataModeConfig().build();
@@ -295,6 +294,9 @@ public abstract class BinlogMetadataBasedSchemaIT<C extends SourceConnector> ext
     protected Configuration.Builder metadataModeConfig() {
         return DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                // Schema change events are emitted exactly as with a persistent schema history; disabled
+                // here so that the tests can consume data change records by plain counts.
+                .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                 .with(BinlogConnectorConfig.BINLOG_METADATA_BASED_SCHEMA, true);
     }
 
