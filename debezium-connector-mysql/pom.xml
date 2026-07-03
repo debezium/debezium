@@ -1104,6 +1104,87 @@
             </build>
         </profile>
 
+        <!-- Runs the same testsuite as mysql-ci, but with the binlog-metadata-based schema mode enabled,
+             so the suite is executed without a schema history (debezium/dbz#978) -->
+        <profile>
+            <id>mysql-ci-binlog-metadata</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <properties>
+                <docker.dbs>debezium/mysql-server-test-database</docker.dbs>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-assembly-plugin</artifactId>
+                        <dependencies>
+                            <dependency>
+                                <groupId>io.debezium</groupId>
+                                <artifactId>debezium-assembly-descriptors</artifactId>
+                                <version>${project.version}</version>
+                            </dependency>
+                        </dependencies>
+                        <executions>
+                            <execution>
+                                <id>default</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>single</goal>
+                                </goals>
+                                <configuration>
+                                    <finalName>${project.artifactId}-${project.version}</finalName>
+                                    <attach>true</attach>  <!-- we want attach & deploy these to Maven -->
+                                    <descriptorRefs>
+                                        <descriptorRef>${assembly.descriptor}</descriptorRef>
+                                    </descriptorRefs>
+                                    <tarLongFileMode>posix</tarLongFileMode>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <version>${version.failsafe.plugin}</version>
+                        <configuration>
+                            <skipTests>${skipITs}</skipTests>
+                            <enableAssertions>true</enableAssertions>
+                            <systemPropertyVariables>
+                                <!-- Make these available to the tests via system properties -->
+                                <database.hostname>${docker.host.address}</database.hostname>
+                                <database.user>${mysql.user}</database.user>
+                                <database.password>${mysql.password}</database.password>
+                                <database.replica.hostname>${docker.host.address}</database.replica.hostname>
+                                <database.replica.user>${mysql.replica.user}</database.replica.user>
+                                <database.replica.password>${mysql.replica.password}</database.replica.password>
+                                <database.port>${mysql.port}</database.port>
+                                <database.replica.port>${mysql.port}</database.replica.port>
+                                <database.ssl.mode>disabled</database.ssl.mode>
+                                <!-- Specifies which driver to use for the tests -->
+                                <database.protocol>${mysql.database.protocol}</database.protocol>
+                                <database.jdbc.driver>${mysql.database.jdbc.driver}</database.jdbc.driver>
+                                <skipLongRunningTests>false</skipLongRunningTests>
+                                <isAssemblyProfileActive>true</isAssemblyProfileActive>
+                                <!-- Reconstruct the streaming schema from the binlog instead of the schema history -->
+                                <use.binlog.metadata.based.schema>true</use.binlog.metadata.based.schema>
+                            </systemPropertyVariables>
+                            <runOrder>${runOrder}</runOrder>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>integration-test-mysql-binlog-metadata</id>
+                                <goals>
+                                    <goal>integration-test</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
         <!-- Runs tests only with GTID setup -->
         <profile>
             <id>mysql-ci-gtids</id>

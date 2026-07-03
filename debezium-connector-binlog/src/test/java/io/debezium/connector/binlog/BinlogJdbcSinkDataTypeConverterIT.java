@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.converters.JdbcSinkDataTypesConverter;
+import io.debezium.connector.binlog.junit.SkipWhenSchemaHistoryDisabled;
 import io.debezium.connector.binlog.util.BinlogTestConnection;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
@@ -32,6 +33,7 @@ import io.debezium.jdbc.JdbcConnection;
  *
  * @author Chris Cranford
  */
+@SkipWhenSchemaHistoryDisabled(reason = "Asserts mappings that rely on integer display width, FLOAT precision and nationalized character source types, none of which are carried by the binlog TABLE_MAP metadata")
 public abstract class BinlogJdbcSinkDataTypeConverterIT<C extends SourceConnector> extends AbstractBinlogConnectorIT<C> {
 
     private static final Path SCHEMA_HISTORY_PATH = Files.createTestingPath("file-schema-history-jdbc-sink.text").toAbsolutePath();

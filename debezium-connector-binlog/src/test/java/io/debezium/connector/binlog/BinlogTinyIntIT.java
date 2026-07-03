@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.binlog.converters.TinyIntOneToBooleanConverter;
+import io.debezium.connector.binlog.junit.SkipWhenSchemaHistoryDisabled;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
 import io.debezium.doc.FixFor;
@@ -85,6 +86,7 @@ public abstract class BinlogTinyIntIT<C extends SourceConnector> extends Abstrac
 
     @Test
     @FixFor("DBZ-1800")
+    @SkipWhenSchemaHistoryDisabled(reason = "The binlog TABLE_MAP metadata does not carry the integer display width, so TINYINT(1) cannot be mapped to BOOLEAN")
     public void shouldHandleTinyIntOneAsBoolean() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig()
@@ -112,6 +114,7 @@ public abstract class BinlogTinyIntIT<C extends SourceConnector> extends Abstrac
 
     @Test
     @FixFor("DBZ-2085")
+    @SkipWhenSchemaHistoryDisabled(reason = "The binlog TABLE_MAP metadata does not carry the integer display width, so TINYINT(1) cannot be mapped to BOOLEAN")
     public void shouldDefaultValueForTinyIntOneAsBoolean() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig()

@@ -21,6 +21,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.binlog.junit.SkipWhenSchemaHistoryDisabled;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
 import io.debezium.data.Envelope.FieldName;
@@ -95,6 +96,7 @@ public abstract class BinlogEnumColumnIT<C extends SourceConnector> extends Abst
 
     @Test
     @FixFor("DBZ-1636")
+    @SkipWhenSchemaHistoryDisabled(reason = "Asserts the propagated source column type, whose display form is not carried by the binlog TABLE_MAP metadata")
     public void shouldPropagateColumnSourceType() throws Exception {
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
