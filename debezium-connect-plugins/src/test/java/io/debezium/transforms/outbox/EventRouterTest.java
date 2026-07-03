@@ -999,7 +999,7 @@ public class EventRouterTest {
     }
 
     @Test
-    @FixFor("DBZ-9210")
+    @FixFor("debezium/dbz#1369")
     public void shouldNotWarnOnNullPayloadWhenExpandJsonPayloadEnabled() {
         final LogInterceptor logInterceptor = new LogInterceptor(EventRouterDelegate.class);
 
