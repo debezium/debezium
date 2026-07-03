@@ -172,6 +172,11 @@
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-cockroachdb</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
             <artifactId>testcontainers-mssqlserver</artifactId>
             <scope>test</scope>
         </dependency>
