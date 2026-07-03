@@ -50,7 +50,6 @@ import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.SnapshottingTask;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
-import io.debezium.pipeline.spi.SnapshotResult;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.SnapshotTablesRowCountOrder;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.RelationalTableFilters;
@@ -112,35 +111,6 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
         this.databaseSchema = schema;
         this.lastEventProcessor = lastEventProcessor;
         this.preSnapshotAction = preSnapshotAction;
-    }
-
-    @Override
-    public SnapshotResult<O> execute(ChangeEventSourceContext context, P partition, O previousOffset, SnapshottingTask snapshottingTask)
-            throws InterruptedException {
-        // In binlog-metadata-based schema mode the connector is non-historized, so a snapshot mode that does
-        // not snapshot data (for example 'no_data' or 'schema_only') skips the snapshot entirely, including the
-        // step that records the current binlog position. Without a start offset a fresh connector would stream
-        // from the earliest available binlog. Seed the current binlog position/GTID here so that streaming
-        // begins from the current point, matching the behavior of a historized 'no_data' snapshot. This is only
-        // done for a fresh connector (no previous offset); on restart the persisted offset is used unchanged.
-        if (connectorConfig.isBinlogMetadataBasedSchema() && previousOffset == null && snapshottingTask.shouldSkipSnapshot()) {
-            final O offsetContext = getInitialOffsetContext(connectorConfig);
-            try {
-                setOffsetContextBinlogPositionAndGtidDetailsForSnapshot(offsetContext, connection, snapshotterService);
-            }
-            catch (InterruptedException e) {
-                throw e;
-            }
-            catch (Exception e) {
-                throw new DebeziumException("Failed to determine the current binlog position for the "
-                        + "binlog-metadata-based schema mode while skipping the snapshot", e);
-            }
-            LOGGER.info("Binlog-metadata-based schema mode: snapshot skipped for a fresh connector; seeded the "
-                    + "current binlog position so that streaming starts from the current point instead of the earliest binlog");
-            notificationService.initialSnapshotNotificationService().notifySkipped(partition, offsetContext);
-            return SnapshotResult.skipped(offsetContext);
-        }
-        return super.execute(context, partition, previousOffset, snapshottingTask);
     }
 
     @Override
@@ -393,19 +363,6 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
         finally {
             if (executorService != null) {
                 executorService.shutdownNow();
-            }
-        }
-
-        if (connectorConfig.isBinlogMetadataBasedSchema()) {
-            // In binlog-metadata-based schema mode the connector is non-historized, so snapshotSchema() is
-            // false and the "persist schema history" step (which normally copies the captured table
-            // definitions into the snapshot context) is skipped. Make those definitions available to the
-            // data snapshot here, mirroring how non-historized connectors expose schema during the snapshot.
-            for (TableId tableId : databaseSchema.tableIds()) {
-                final Table table = databaseSchema.tableFor(tableId);
-                if (table != null) {
-                    snapshotContext.tables.overwriteTable(table);
-                }
             }
         }
     }

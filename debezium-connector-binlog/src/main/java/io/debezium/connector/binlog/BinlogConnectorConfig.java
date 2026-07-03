@@ -21,6 +21,7 @@ import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
 import io.debezium.connector.binlog.gtid.GtidSet;
 import io.debezium.connector.binlog.gtid.GtidSetFactory;
+import io.debezium.connector.binlog.history.BinlogMetadataSchemaHistory;
 import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.ColumnFilterMode;
@@ -28,7 +29,6 @@ import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
-import io.debezium.relational.history.MemorySchemaHistory;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.relational.history.SchemaHistoryListener;
 import io.debezium.schema.DefaultTopicNamingStrategy;
@@ -810,10 +810,10 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
             return super.getSchemaHistory();
         }
         // In binlog-metadata-based schema mode the streaming schema is reconstructed from TABLE_MAP events,
-        // so no persistent schema history is used. An in-memory history satisfies the historized base class
-        // lifecycle without creating or requiring an external history topic (and without requiring any
-        // schema.history.internal.* connection settings).
-        final SchemaHistory schemaHistory = new MemorySchemaHistory();
+        // so no persistent schema history is used. The no-op history satisfies the historized lifecycle
+        // (the snapshot phase runs unchanged) without creating or requiring an external history topic, and
+        // without requiring any schema.history.internal.* connection settings.
+        final SchemaHistory schemaHistory = new BinlogMetadataSchemaHistory();
         schemaHistory.configure(Configuration.empty(), getHistoryRecordComparator(),
                 SchemaHistoryListener.NOOP, useCatalogBeforeSchema());
         return schemaHistory;
