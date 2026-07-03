@@ -17,7 +17,10 @@ import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.github.shyiko.mysql.binlog.event.TableMapEventData;
+
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.connector.binlog.metadata.BinlogMetadataTableBuilder;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.DefaultValueConverter;
@@ -62,6 +65,7 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
     private final Map<Long, TableId> tableIdsByTableNumber = new ConcurrentHashMap<>();
     private final Map<Long, TableId> excludeTableIdsByTableNumber = new ConcurrentHashMap<>();
     private final BinlogConnectorConfig connectorConfig;
+    private final BinlogMetadataTableBuilder metadataTableBuilder = new BinlogMetadataTableBuilder();
 
     /**
      * Creates a binlog-connector based relational schema based on the supplied configuration. The DDL
@@ -105,6 +109,14 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
     @Override
     protected DdlParser getDdlParser() {
         return ddlParser;
+    }
+
+    @Override
+    public boolean isHistorized() {
+        // In binlog-metadata-based schema mode the schema is rebuilt from the log itself (TABLE_MAP events),
+        // so the connector behaves like a non-historized connector (e.g. PostgreSQL): no schema snapshot,
+        // no history recovery and no persisted schema history topic.
+        return !connectorConfig.isBinlogMetadataBasedSchema();
     }
 
     @Override
@@ -202,6 +214,28 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
     }
 
     /**
+     * Reconstruct and register a table definition from the FULL metadata carried by a binlog
+     * {@code TABLE_MAP} event. This is used by the opt-in binlog-metadata-based schema mode
+     * (see {@link BinlogConnectorConfig#BINLOG_METADATA_BASED_SCHEMA}) where the
+     * streaming schema is derived from the log itself rather than from a persisted schema history
+     * topic, analogous to how the PostgreSQL connector rebuilds schema from pgoutput relation
+     * messages.
+     *
+     * @param metadata the {@code TABLE_MAP} event data, which must include FULL column metadata; never null
+     * @return true if the table is captured and was (re)registered; false if excluded by the filters
+     * @throws IllegalStateException if the event lacks FULL metadata (i.e. {@code binlog_row_metadata} is not FULL)
+     */
+    public boolean registerTableFromBinlogMetadata(TableMapEventData metadata) {
+        final TableId tableId = new TableId(metadata.getDatabase(), null, metadata.getTable());
+        if (!filters.dataCollectionFilter().isIncluded(tableId)) {
+            return false;
+        }
+        final Table table = metadataTableBuilder.build(tableId, metadata);
+        refresh(table);
+        return true;
+    }
+
+    /**
      * Return the table id associated with connector-specific table number.
      *
      * @param tableNumber the table number from binlog
@@ -245,7 +279,25 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
      */
     public List<SchemaChangeEvent> parseSnapshotDdl(P partition, String ddlStatements, String databaseName, O offset, Instant sourceTime) {
         LOGGER.debug("Processing snapshot DDL '{}' for database '{}'", ddlStatements, databaseName);
-        return parseDdl(partition, ddlStatements, databaseName, offset, sourceTime, true);
+        final List<SchemaChangeEvent> schemaChangeEvents = parseDdl(partition, ddlStatements, databaseName, offset, sourceTime, true);
+        if (connectorConfig.isBinlogMetadataBasedSchema()) {
+            // In binlog-metadata-based schema mode the connector is non-historized, so the Kafka TableSchema
+            // is not built via the historized applySchemaChange() dispatch path. Build and register it here for
+            // the tables discovered during the snapshot, mirroring how non-historized connectors (e.g.
+            // PostgreSQL) refresh their schema during the snapshot. During streaming the schema is (re)built
+            // from TABLE_MAP events instead.
+            for (SchemaChangeEvent event : schemaChangeEvents) {
+                if (event.getType() == SchemaChangeEvent.SchemaChangeEventType.CREATE
+                        || event.getType() == SchemaChangeEvent.SchemaChangeEventType.ALTER) {
+                    event.getTableChanges().forEach(change -> {
+                        if (change.getTable() != null) {
+                            buildAndRegisterSchema(change.getTable());
+                        }
+                    });
+                }
+            }
+        }
+        return schemaChangeEvents;
     }
 
     /**

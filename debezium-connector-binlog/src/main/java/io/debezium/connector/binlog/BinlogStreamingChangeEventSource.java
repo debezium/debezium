@@ -857,6 +857,14 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         String databaseName = metadata.getDatabase();
         String tableName = metadata.getTable();
         TableId tableId = new TableId(databaseName, null, tableName);
+        if (connectorConfig.isBinlogMetadataBasedSchema()) {
+            // Opt-in mode: reconstruct the table schema directly from the FULL metadata carried by this
+            // TABLE_MAP event instead of relying on a persisted schema history topic. Because a TABLE_MAP
+            // event precedes the row events for its table within every transaction (and is re-read from the
+            // transaction BEGIN when a restart resumes mid-transaction), the schema is always refreshed
+            // before the resumed row events are decoded.
+            schema.registerTableFromBinlogMetadata(metadata);
+        }
         if (schema.assignTableNumber(tableNumber, tableId)) {
             LOGGER.debug("Received update table metadata event: {}", event);
         }

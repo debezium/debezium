@@ -504,6 +504,24 @@ Specifies whether a connector writes watermarks to the signal data collection to
 Set the value to `true` to enable a connector that has a read-only connection to the database to use an incremental snapshot watermarking strategy that does not require writing to the signal data collection.
 endif::community[]
 
+[id="{context}-property-binlog-metadata-based-schema"]
+xref:{context}-property-binlog-metadata-based-schema[`binlog.metadata.based.schema`]::
+
+Default value::: `false`
+
+Description:::
+Specifies whether the connector reconstructs the streaming table schema from the metadata that binlog `TABLE_MAP` events carry, instead of from a persisted schema history topic.
++
+When set to `true`, the connector rebuilds each table's schema (column names, types, character sets, `ENUM`/`SET` values, and the primary key) from the binlog itself, and it does not create or depend on a schema history topic.
+In this mode you do not need to provide any `schema.history.internal.*` settings; the connector uses an in-memory schema history automatically, so no schema history storage or connection settings are required.
+This is an opt-in mode that requires the source server to run with `binlog_row_metadata=FULL`, which is available on MySQL 8.0 and later and on MariaDB 10.5 and later.
+If the variable is not set to `FULL`, the connector fails fast at startup.
++
+Because the schema is read from each `TABLE_MAP` event, the connector correctly resumes streaming after a restart that occurs in the middle of a multi-row `INSERT` or `UPDATE` operation.
++
+This mode works with any `snapshot.mode`.
+For modes that do not snapshot data (for example `no_data`), a fresh connector records the current binlog position before it begins streaming, so it captures only changes that occur from that point forward, rather than replaying the earliest available binlog.
+
 [id="{context}-property-signal-data-collection"]
 xref:{context}-property-signal-data-collection[`signal.data.collection`]::
 
