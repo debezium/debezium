@@ -165,7 +165,12 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         taskService = Executors.newFixedThreadPool(this.config.getInteger(ConnectorConfig.TASKS_MAX_CONFIG, () -> 1));
         final String processingThreads = this.config.getString(AsyncEmbeddedEngine.RECORD_PROCESSING_THREADS);
         if (processingThreads == null || processingThreads.isBlank()) {
-            recordService = new ThreadPoolExecutor(0, AsyncEngineConfig.AVAILABLE_CORES, 60L, TimeUnit.SECONDS, new LinkedBlockingQueue());
+            // With an unbounded work queue a ThreadPoolExecutor never grows past its core size,
+            // so the core must be the target parallelism; idle threads time out instead.
+            final ThreadPoolExecutor defaultRecordService = new ThreadPoolExecutor(AsyncEngineConfig.AVAILABLE_CORES, AsyncEngineConfig.AVAILABLE_CORES,
+                    60L, TimeUnit.SECONDS, new LinkedBlockingQueue<>());
+            defaultRecordService.allowCoreThreadTimeOut(true);
+            recordService = defaultRecordService;
         }
         else {
             recordService = Executors.newFixedThreadPool(computeRecordThreads(processingThreads));

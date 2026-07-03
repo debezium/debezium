@@ -29,8 +29,8 @@ public interface AsyncEngineConfig extends EmbeddedEngineConfig {
      */
     Field RECORD_PROCESSING_THREADS = Field.create("record.processing.threads")
             .withDescription("The number of threads to be used for processing CDC records. If you want to use all available threads, you can use "
-                    + "'AVAILABLE_CORES' placeholder. If the number of threads is not specified, the threads will be created as needed, using "
-                    + "Java 'Executors.newCachedThreadPool()' executor service.")
+                    + "'AVAILABLE_CORES' placeholder. If the number of threads is not specified, a thread pool sized to all available cores is used, "
+                    + "with idle threads terminated after 60 seconds.")
             .withDefault(""); // We need to set some non-null value to avoid Kafka config validation failures.
 
     /**
