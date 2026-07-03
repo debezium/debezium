@@ -7,7 +7,6 @@ package io.debezium.transforms;
 
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Instant;
 import java.util.HashMap;
@@ -16,7 +15,6 @@ import java.util.Map;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.Test;
 
@@ -115,7 +113,7 @@ public class GeometryFormatTransformerTest {
 
         assertFormatTransformation(4326, POINT_GEO_WKB_HEX, POINT_GEO_EWKB_HEX);
 
-        assertFormatTransformationException(null, POINT_GEO_WKB_HEX);
+        assertNullSridLeftUnchanged(POINT_GEO_WKB_HEX);
 
     }
 
@@ -137,7 +135,7 @@ public class GeometryFormatTransformerTest {
 
         assertFormatTransformation(4326, LINE_STRING_GEO_WKB_HEX, LINE_STRING_GEO_EWKB_HEX);
 
-        assertFormatTransformationException(null, LINE_STRING_GEO_WKB_HEX);
+        assertNullSridLeftUnchanged(LINE_STRING_GEO_WKB_HEX);
     }
 
     /**
@@ -158,7 +156,7 @@ public class GeometryFormatTransformerTest {
 
         assertFormatTransformation(4326, POLYGON_GEO_WKB_HEX, POLYGON_GEO_EWKB_HEX);
 
-        assertFormatTransformationException(null, POLYGON_GEO_WKB_HEX);
+        assertNullSridLeftUnchanged(POLYGON_GEO_WKB_HEX);
     }
 
     /**
@@ -179,7 +177,7 @@ public class GeometryFormatTransformerTest {
 
         assertFormatTransformation(4326, MULTI_POLYGON_GEO_WKB_HEX, MULTI_POLYGON_GEO_EWKB_HEX);
 
-        assertFormatTransformationException(null, MULTI_POLYGON_GEO_WKB_HEX);
+        assertNullSridLeftUnchanged(MULTI_POLYGON_GEO_WKB_HEX);
     }
 
     /**
@@ -200,7 +198,7 @@ public class GeometryFormatTransformerTest {
 
         assertFormatTransformation(4326, POLYGON_MULTIPLE_RINGS_GEO_WKB_HEX, POLYGON_MULTIPLE_RINGS_GEO_EWKB_HEX);
 
-        assertFormatTransformationException(null, POLYGON_MULTIPLE_RINGS_GEO_WKB_HEX);
+        assertNullSridLeftUnchanged(POLYGON_MULTIPLE_RINGS_GEO_WKB_HEX);
     }
 
     /**
@@ -221,7 +219,7 @@ public class GeometryFormatTransformerTest {
 
         assertFormatTransformation(4326, MULTI_LINE_STRING_GEO_WKB_HEX, MULTI_LINE_STRING_GEO_EWKB_HEX);
 
-        assertFormatTransformationException(null, MULTI_LINE_STRING_GEO_WKB_HEX);
+        assertNullSridLeftUnchanged(MULTI_LINE_STRING_GEO_WKB_HEX);
     }
 
     /**
@@ -242,7 +240,7 @@ public class GeometryFormatTransformerTest {
 
         assertFormatTransformation(4326, GEOMETRY_COLLECTION_WKB_HEX, GEOMETRY_COLLECTION_EWKB_HEX);
 
-        assertFormatTransformationException(null, GEOMETRY_COLLECTION_WKB_HEX);
+        assertNullSridLeftUnchanged(GEOMETRY_COLLECTION_WKB_HEX);
     }
 
     /**
@@ -263,7 +261,7 @@ public class GeometryFormatTransformerTest {
 
         assertFormatTransformation(4326, MULTI_POINT_GEO_WKB_HEX, MULTI_POINT_GEO_EWKB_HEX);
 
-        assertFormatTransformationException(null, MULTI_POINT_GEO_WKB_HEX);
+        assertNullSridLeftUnchanged(MULTI_POINT_GEO_WKB_HEX);
     }
 
     /**
@@ -284,7 +282,7 @@ public class GeometryFormatTransformerTest {
 
         assertFormatTransformation(4326, EMPTY_GEOMETRY_WKB_HEX, EMPTY_GEOMETRY_EWKB_HEX);
 
-        assertFormatTransformationException(null, EMPTY_GEOMETRY_WKB_HEX);
+        assertNullSridLeftUnchanged(EMPTY_GEOMETRY_WKB_HEX);
     }
 
     /**
@@ -310,13 +308,14 @@ public class GeometryFormatTransformerTest {
     }
 
     /**
-     * Helper method to assert that the geometry WKB to EWKB transformation throws an exception for unsupported SRIDs.
-     * @param srid spatial reference id
-     * @param wkb  well-known-binary
+     * Helper method to assert that a WKB->EWKB transformation of a geometry with no SRID leaves the value
+     * unchanged. Native (non-PostGIS) geometric types carry a null SRID, which EWKB cannot represent, so
+     * the transform is a no-op rather than a hard failure.
+     * @param wkb well-known-binary
      */
-    private void assertFormatTransformationException(Integer srid, String wkb) {
-        applyTransformEnvelopePayloadException(srid, wkb);
-        applyTransformFlattenedPayloadException(srid, wkb);
+    private void assertNullSridLeftUnchanged(String wkb) {
+        applyTransformEnvelopePayloadUnchanged(wkb);
+        applyTransformFlattenedPayloadUnchanged(wkb);
     }
 
     /**
@@ -429,37 +428,35 @@ public class GeometryFormatTransformerTest {
     }
 
     /**
-     * Applies the geometry format transformation to a SourceRecord with flattened payload and asserts that an exception is thrown.
-     * @param srid spacial reference id
+     * Applies the geometry format transformation to a flattened payload whose geometry has no SRID and
+     * asserts the WKB is returned unchanged.
      * @param wkb well-known-binary
      */
-    private void applyTransformFlattenedPayloadException(Integer srid, String wkb) {
-        SourceRecord record = getFlattenedPayload(srid, wkb);
+    private void applyTransformFlattenedPayloadUnchanged(String wkb) {
+        final SourceRecord record = getFlattenedPayload(null, wkb);
 
-        assetException(srid, record);
+        final SourceRecord transformedRecord = geometryFormatTransformer.apply(record);
+        final Struct transformedValue = requireStruct(transformedRecord.value(), "value should be a struct");
 
+        final Struct geo = transformedValue.getStruct("geo");
+        assertThat(HexConverter.convertToHexString(geo.getBytes(Geometry.WKB_FIELD))).isEqualTo(wkb);
+        assertThat(geo.get(Geometry.SRID_FIELD)).isNull();
     }
 
     /**
-     * Applies the geometry format transformation to a SourceRecord with envelope payload and asserts that an exception is thrown.
-     * @param srid spacial reference id
+     * Applies the geometry format transformation to an envelope payload whose geometry has no SRID and
+     * asserts the WKB is returned unchanged.
      * @param wkb well-known-binary
      */
-    private void applyTransformEnvelopePayloadException(Integer srid, String wkb) {
-        SourceRecord record = getEnvelopPayload(srid, wkb);
+    private void applyTransformEnvelopePayloadUnchanged(String wkb) {
+        final SourceRecord record = getEnvelopPayload(null, wkb);
 
-        assetException(srid, record);
+        final SourceRecord transformedRecord = geometryFormatTransformer.apply(record);
+        final Struct transformedValue = requireStruct(transformedRecord.value(), "value should be a struct");
+        final Struct transformedAfter = transformedValue.getStruct(Envelope.FieldName.AFTER);
 
-    }
-
-    /**
-     * Asserts that applying the geometry format transformation to the given SourceRecord throws an exception.
-     * @param srid spacial reference id
-     * @param record the SourceRecord to transform
-     */
-    private void assetException(Integer srid, SourceRecord record) {
-        assertThatThrownBy(() -> geometryFormatTransformer.apply(record))
-                .isInstanceOf(ConnectException.class)
-                .hasMessage("Cannot convert to EWKB when SRID is null");
+        final Struct geo = transformedAfter.getStruct("geo");
+        assertThat(HexConverter.convertToHexString(geo.getBytes(Geometry.WKB_FIELD))).isEqualTo(wkb);
+        assertThat(geo.get(Geometry.SRID_FIELD)).isNull();
     }
 }

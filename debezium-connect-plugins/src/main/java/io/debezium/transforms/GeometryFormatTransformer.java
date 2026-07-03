@@ -12,7 +12,6 @@ import org.apache.kafka.connect.components.Versioned;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -179,11 +178,12 @@ public class GeometryFormatTransformer<R extends ConnectRecord<R>> implements Tr
         }
         switch (geometryFormat) {
             case WKB -> {
-                // Convert to EWKB by adding SRID
+                // Convert to EWKB by adding SRID. Native (non-PostGIS) geometric types such as box, lseg,
+                // path and polygon are emitted with a null SRID, and EWKB has no way to represent a missing
+                // SRID, so there is nothing to add: leave the value untouched rather than failing the record.
                 if (srid == null) {
-                    String errorMessage = "Cannot convert to EWKB when SRID is null";
-                    LOGGER.error(errorMessage);
-                    throw new ConnectException(errorMessage);
+                    LOGGER.debug("Skipping WKB->EWKB conversion because the geometry carries no SRID");
+                    return value;
                 }
                 return value.put(Geometry.WKB_FIELD, geometry.asExtendedWkb().getBytes());
 

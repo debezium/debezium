@@ -656,6 +656,20 @@ If the database does not support time or timestamps with time zones, the mapping
 |`sdo_geometry`
 |`geometry`
 
+|io.debezium.data.geometry.Circle
+|n/a
+|n/a
+|`circle`
+|n/a
+|n/a
+
+|io.debezium.data.geometry.Line
+|n/a
+|n/a
+|`line`
+|n/a
+|n/a
+
 |===
 
 ^1^ When a logical type maps to more than one type, the {prodname} JDBC connector defaults to the first more generalized data type.
