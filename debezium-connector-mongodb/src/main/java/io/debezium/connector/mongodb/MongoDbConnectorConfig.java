@@ -607,6 +607,73 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
         }
     }
 
+    /**
+     * The set of different ways the connector serializes MongoDB Extended JSON in event payloads.
+     */
+    public enum JsonSerializationMode implements EnumeratedValue {
+        /**
+         * Serializes full documents using MongoDB Extended JSON v1 strict mode and updated fields using MongoDB Extended JSON v2 relaxed mode.
+         */
+        LEGACY("legacy"),
+        /**
+         * Serializes using MongoDB Extended JSON v1 strict mode (deprecated legacy format).
+         */
+        STRICT("strict"),
+        /**
+         * Serializes using MongoDB Extended JSON v2 canonical mode.
+         */
+        EXTENDED("extended"),
+        /**
+         * Serializes using MongoDB Extended JSON v2 relaxed mode.
+         */
+        RELAXED("relaxed");
+
+        private final String value;
+
+        JsonSerializationMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static JsonSerializationMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (JsonSerializationMode option : JsonSerializationMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static JsonSerializationMode parse(String value, String defaultValue) {
+            JsonSerializationMode mode = parse(value);
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+            return mode;
+        }
+    }
+
     protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = 0;
 
     public static final Field ALLOW_OFFSET_INVALIDATION = Field.createInternal("mongodb.allow.offset.invalidation")
@@ -889,6 +956,19 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
                     + "'lookup' (the default) use separate lookup to get the updated document; "
                     + "'post_image' use MongoDB post images (requires Mongo 6.0 or newer");
 
+    public static final Field JSON_SERIALIZATION_MODE = Field.create("json.serialization.mode")
+            .withDisplayName("JSON serialization mode")
+            .withEnum(JsonSerializationMode.class, JsonSerializationMode.LEGACY)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Controls the Extended JSON serialization mode used for MongoDB event payload fields. "
+                    + "Options include: "
+                    + "'legacy' (the default) uses MongoDB Extended JSON v1 strict mode for full document fields and MongoDB Extended JSON v2 relaxed mode for update fields. "
+                    + "'strict' uses MongoDB Extended JSON v1 strict mode. "
+                    + "'extended' uses MongoDB Extended JSON v2 canonical mode. "
+                    + "'relaxed' uses MongoDB Extended JSON v2 relaxed mode.");
+
     public static final Field CAPTURE_START_OP_TIME = Field.create("capture.start.op.time")
             .withDisplayName("Capture from operation time")
             .withType(Type.LONG)
@@ -1023,7 +1103,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
                     CURSOR_MAX_AWAIT_TIME_MS)
             .group(Field.Group.FILTERS, DATABASE_INCLUDE_LIST, DATABASE_EXCLUDE_LIST, COLLECTION_INCLUDE_LIST, COLLECTION_EXCLUDE_LIST, FIELD_EXCLUDE_LIST, FIELD_RENAMES,
                     SNAPSHOT_FILTER_QUERY_BY_COLLECTION)
-            .group(Field.Group.CONNECTOR, TOPIC_PREFIX, SNAPSHOT_MODE, CAPTURE_MODE, SCHEMA_NAME_ADJUSTMENT_MODE, SOURCE_INFO_STRUCT_MAKER)
+            .group(Field.Group.CONNECTOR, TOPIC_PREFIX, SNAPSHOT_MODE, CAPTURE_MODE, JSON_SERIALIZATION_MODE, SCHEMA_NAME_ADJUSTMENT_MODE, SOURCE_INFO_STRUCT_MAKER)
             .create();
 
     /**
@@ -1038,6 +1118,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
     private final SnapshotMode snapshotMode;
     private final Long startOperationTime;
     private final CaptureMode captureMode;
+    private final JsonSerializationMode jsonSerializationMode;
     private final FullUpdateType captureModeFullUpdateType;
     private final CaptureScope captureScope;
     private final String captureTarget;
@@ -1099,6 +1180,9 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
         this.captureMode = CaptureMode.parse(captureModeValue, MongoDbConnectorConfig.CAPTURE_MODE.defaultValueAsString());
         String fullUpdateTypeValue = config.getString(MongoDbConnectorConfig.CAPTURE_MODE_FULL_UPDATE_TYPE);
         this.captureModeFullUpdateType = FullUpdateType.parse(fullUpdateTypeValue, MongoDbConnectorConfig.CAPTURE_MODE_FULL_UPDATE_TYPE.defaultValueAsString());
+
+        String jsonSerializationModeValue = config.getString(MongoDbConnectorConfig.JSON_SERIALIZATION_MODE);
+        this.jsonSerializationMode = JsonSerializationMode.parse(jsonSerializationModeValue, MongoDbConnectorConfig.JSON_SERIALIZATION_MODE.defaultValueAsString());
 
         this.offsetInvalidationAllowed = config.getBoolean(ALLOW_OFFSET_INVALIDATION);
 
@@ -1259,6 +1343,10 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
 
     public FullUpdateType getCaptureModeFullUpdateType() {
         return captureModeFullUpdateType;
+    }
+
+    public JsonSerializationMode getJsonSerializationMode() {
+        return jsonSerializationMode;
     }
 
     public CaptureScope getCaptureScope() {

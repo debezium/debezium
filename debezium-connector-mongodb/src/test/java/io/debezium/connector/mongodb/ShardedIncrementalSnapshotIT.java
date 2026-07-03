@@ -96,7 +96,7 @@ public class ShardedIncrementalSnapshotIT extends AbstractShardedMongoConnectorI
                 this::extractFieldValue,
                 topicName(), null);
 
-        var serialization = new JsonSerialization();
+        var serialization = new JsonSerialization(MongoDbConnectorConfig.JsonSerializationMode.LEGACY);
 
         var expected = documents.values()
                 .stream()

@@ -370,7 +370,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
                 this::extractFieldValue,
                 topicName(), null);
 
-        var serialization = new JsonSerialization();
+        var serialization = new JsonSerialization(MongoDbConnectorConfig.JsonSerializationMode.LEGACY);
 
         try (var connection = connect()) {
             var codecs = connection.getDatabase(DATABASE_NAME)

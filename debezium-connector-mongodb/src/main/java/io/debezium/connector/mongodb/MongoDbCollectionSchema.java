@@ -39,17 +39,19 @@ public class MongoDbCollectionSchema implements DataCollectionSchema {
     private final Schema valueSchema;
     private final Function<BsonDocument, Object> keyGenerator;
     private final Function<BsonDocument, String> valueGenerator;
+    private final Function<BsonDocument, String> updatedFieldsGenerator;
 
     public MongoDbCollectionSchema(CollectionId id, FieldFilter fieldFilter, Schema keySchema,
                                    Function<BsonDocument, Object> keyGenerator, Envelope envelopeSchema, Schema valueSchema,
-                                   Function<BsonDocument, String> valueGenerator) {
+                                   Function<BsonDocument, String> valueGenerator, Function<BsonDocument, String> updatedFieldsGenerator) {
         this.id = id;
         this.fieldFilter = fieldFilter;
         this.keySchema = keySchema;
         this.envelopeSchema = envelopeSchema;
         this.valueSchema = valueSchema;
         this.keyGenerator = keyGenerator != null ? keyGenerator : (BsonDocument) -> null;
-        this.valueGenerator = valueGenerator != null ? valueGenerator : (Document) -> null;
+        this.valueGenerator = valueGenerator != null ? valueGenerator : (BsonDocument) -> null;
+        this.updatedFieldsGenerator = updatedFieldsGenerator != null ? updatedFieldsGenerator : (BsonDocument) -> null;
     }
 
     @Override
@@ -118,7 +120,7 @@ public class MongoDbCollectionSchema implements DataCollectionSchema {
 
                     final BsonDocument updatedFields = document.getUpdateDescription().getUpdatedFields();
                     if (updatedFields != null) {
-                        updateDescription.put(MongoDbFieldName.UPDATED_FIELDS, fieldFilter.applyChange(updatedFields).toJson());
+                        updateDescription.put(MongoDbFieldName.UPDATED_FIELDS, updatedFieldsGenerator.apply(fieldFilter.applyChange(updatedFields)));
                     }
 
                     // TODO Test filters for truncated arrays

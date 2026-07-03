@@ -54,7 +54,7 @@ public class MongoDbSchema implements DatabaseSchema<CollectionId> {
     private final Schema sourceSchema;
     private final SchemaNameAdjuster adjuster;
     private final ConcurrentMap<CollectionId, MongoDbCollectionSchema> collections = new ConcurrentHashMap<>();
-    private final JsonSerialization serialization = new JsonSerialization();
+    private final JsonSerialization serialization;
     private final MongoDbTaskContext taskContext;
 
     public MongoDbSchema(MongoDbConnectorConfig config, MongoDbTaskContext taskContext, TopicNamingStrategy<CollectionId> topicNamingStrategy, Schema sourceSchema,
@@ -64,6 +64,7 @@ public class MongoDbSchema implements DatabaseSchema<CollectionId> {
         this.topicNamingStrategy = topicNamingStrategy;
         this.sourceSchema = sourceSchema;
         this.adjuster = schemaNameAdjuster;
+        this.serialization = new JsonSerialization(config.getJsonSerializationMode());
         this.taskContext = taskContext;
     }
 
@@ -109,7 +110,8 @@ public class MongoDbSchema implements DatabaseSchema<CollectionId> {
                     serialization::getDocumentId,
                     envelope,
                     valueSchema,
-                    serialization::getDocumentValue);
+                    serialization::getDocumentValue,
+                    serialization::getUpdatedFields);
         });
     }
 
