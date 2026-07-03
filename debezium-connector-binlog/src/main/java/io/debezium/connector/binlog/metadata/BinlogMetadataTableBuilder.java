@@ -338,7 +338,7 @@ public class BinlogMetadataTableBuilder {
     }
 
     // Minimal collation -> max-bytes-per-char / charset-name catalog for the common collations.
-    // TODO(dbz#978): source this from the connector's full charset registry rather than a static subset.
+    // TODO (debezium/dbz#978): source this from the connector's full charset registry rather than a static subset.
     private static int maxBytesPerChar(int collation) {
         return switch (collation) {
             case 45, 46, 224, 255 -> 4; // utf8mb4_*
