@@ -152,6 +152,26 @@ class BinlogMetadataTableBuilderTest {
     }
 
     @Test
+    void shouldDecodeBitLengthFromPackedMetadata() {
+        // BIT metadata is (bytes << 8) | remaining_bits: BIT(2)=2, BIT(8)=0x0100, BIT(64)=0x0800.
+        final TableMapEventMetadata meta = new TableMapEventMetadata();
+        meta.setColumnNames(List.of("b2", "b8", "b64"));
+
+        final TableMapEventData data = new TableMapEventData();
+        data.setDatabase("test");
+        data.setTable("bits");
+        data.setColumnTypes(new byte[]{ 16, 16, 16 });
+        data.setColumnMetadata(new int[]{ 2, 256, 2048 });
+        data.setColumnNullability(new BitSet());
+        data.setEventMetadata(meta);
+
+        final Table table = builder.build(TableId.parse("test.bits"), data);
+        assertThat(table.columnWithName("b2").length()).isEqualTo(2);
+        assertThat(table.columnWithName("b8").length()).isEqualTo(8);
+        assertThat(table.columnWithName("b64").length()).isEqualTo(64);
+    }
+
+    @Test
     void shouldFailWhenMetadataMissing() {
         final TableMapEventData data = new TableMapEventData();
         data.setDatabase("test");
