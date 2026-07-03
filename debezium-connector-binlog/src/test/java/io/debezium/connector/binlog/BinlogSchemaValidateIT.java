@@ -22,6 +22,7 @@ import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.BinlogConnectorConfig.SnapshotMode;
+import io.debezium.connector.binlog.junit.SkipWhenSchemaHistoryDisabled;
 import io.debezium.connector.binlog.util.BinlogTestConnection;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
@@ -33,6 +34,7 @@ import io.debezium.junit.SkipWhenDatabaseVersion;
  * @author Inki Hwang
  */
 @SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 6, reason = "DDL uses fractional second data types, not supported until MySQL 5.6")
+@SkipWhenSchemaHistoryDisabled(reason = "Provokes schema drift with sql_log_bin=OFF and asserts stale-schema behavior specific to the schema history mode; with binlog metadata the schema self-heals at the next TABLE_MAP event")
 public abstract class BinlogSchemaValidateIT<C extends SourceConnector> extends AbstractBinlogConnectorIT<C> {
 
     private static final Path DB_HISTORY_PATH = Files.createTestingPath("file-db-history-connect.txt").toAbsolutePath();

@@ -17,9 +17,9 @@ jobs:
       max-parallel: ${{ inputs.max-parallel }}
       fail-fast: false
       matrix:
-        profile: [ "mysql-ci", "mysql-ci-gtids", "mysql-ci-percona", "mysql-ci-ssl" ]
+        profile: [ "mysql-ci", "mysql-ci-gtids", "mysql-ci-percona", "mysql-ci-ssl", "mysql-ci-binlog-metadata" ]
         version-mysql-server: [ "8.0", "8.4", "9.7" ]
-        # Always exclude mysql-ci-gtids and mysql-ci-ssl profiles for all versions except most recent
+        # Always exclude mysql-ci-gtids, mysql-ci-ssl and mysql-ci-binlog-metadata profiles for all versions except most recent
         exclude:
           - profile: "mysql-ci-gtids"
             version-mysql-server: "8.0"
@@ -28,6 +28,10 @@ jobs:
           - profile: "mysql-ci-ssl"
             version-mysql-server: "8.0"
           - profile: "mysql-ci-ssl"
+            version-mysql-server: "8.4"
+          - profile: "mysql-ci-binlog-metadata"
+            version-mysql-server: "8.0"
+          - profile: "mysql-ci-binlog-metadata"
             version-mysql-server: "8.4"
     name: MySQL ${{ matrix.version-mysql-server }} - ${{ matrix.profile }}
     runs-on: ubuntu-latest

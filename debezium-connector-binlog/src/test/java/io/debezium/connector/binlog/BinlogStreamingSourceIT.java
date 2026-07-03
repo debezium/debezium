@@ -39,6 +39,7 @@ import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMo
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.junit.SkipWhenDatabaseIs;
 import io.debezium.connector.binlog.junit.SkipWhenDatabaseIs.Type;
+import io.debezium.connector.binlog.junit.SkipWhenSchemaHistoryDisabled;
 import io.debezium.connector.binlog.util.BinlogTestConnection;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
@@ -513,6 +514,7 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
     }
 
     @Test
+    @SkipWhenSchemaHistoryDisabled(reason = "The schema is reconstructed from TABLE_MAP events, so the provoked schema inconsistency cannot occur")
     void shouldFailOnSchemaInconsistency() throws Exception {
         assertThrows(ConnectException.class, () -> {
             inconsistentSchema(null);
