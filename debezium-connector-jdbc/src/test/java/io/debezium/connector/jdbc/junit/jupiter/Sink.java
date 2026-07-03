@@ -199,6 +199,15 @@ public class Sink extends JdbcConnectionProvider {
                 commands.add("-c");
                 commands.add("show time zone; select * from public." + tableName);
                 break;
+            case COCKROACHDB:
+                commands.add("/cockroach/cockroach");
+                commands.add("sql");
+                commands.add("--insecure");
+                commands.add("-d");
+                commands.add("test");
+                commands.add("-e");
+                commands.add("show time zone; select * from public." + tableName);
+                break;
             case ORACLE:
                 commands.add("bash");
                 commands.add("-c");
