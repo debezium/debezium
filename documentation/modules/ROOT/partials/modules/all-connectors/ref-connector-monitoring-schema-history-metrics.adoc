@@ -38,3 +38,32 @@ The following table lists the schema history metrics that are available.
 |The string representation of the last applied change.
 
 |===
+
+=== Interner metrics
+
+The connector interns schema objects (columns, table identifiers, type names) to reduce heap usage.
+The *MBean* is `debezium.{mbean-name}:type=connector-metrics,context=interner,server=_<topic.prefix>_`.
+
+The following table lists the interner metrics that are available.
+
+[cols="45%a,25%a,30%a",options="header"]
+|===
+|Attributes |Type |Description
+
+|[[connectors-interner-metric-hitcount_{context}]]<<connectors-interner-metric-hitcount_{context}, `HitCount`>>
+|`long`
+|Number of times `intern()` returned an already-cached canonical instance.
+
+|[[connectors-interner-metric-misscount_{context}]]<<connectors-interner-metric-misscount_{context}, `MissCount`>>
+|`long`
+|Number of times `intern()` stored a new instance in the pool.
+
+|[[connectors-interner-metric-poolsize_{context}]]<<connectors-interner-metric-poolsize_{context}, `PoolSize`>>
+|`int`
+|Current number of entries held in the pool. Includes entries whose referents may have been garbage-collected but not yet expunged.
+
+|[[connectors-interner-metric-hitratiopercent_{context}]]<<connectors-interner-metric-hitratiopercent_{context}, `HitRatioPercent`>>
+|`double`
+|Hit ratio as a percentage (`hitCount / (hitCount + missCount) * 100`), or `0.0` if no calls have been recorded yet.
+
+|===
