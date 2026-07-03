@@ -146,8 +146,8 @@ public abstract class BinlogMetadataBasedSchemaIT<C extends SourceConnector> ext
         assertThat(before).hasSize(1);
         assertThat(afterOf(before.get(0)).schema().field("priority")).isNull();
 
-        // Schema change mid-stream: the next TABLE_MAP carries the new column, so the cached schema must be
-        // rebuilt (the metadata signature changes) rather than reused.
+        // Schema change mid-stream: the parsed DDL marks the table dirty, so the next TABLE_MAP (which
+        // carries the new column) must rebuild the schema rather than reuse the registered one.
         executeStatements(DATABASE.getDatabaseName(), "ALTER TABLE orders ADD COLUMN priority INT");
         executeStatements(DATABASE.getDatabaseName(),
                 "INSERT INTO orders (quantity, status, price, code, note, created_at, priority) "
