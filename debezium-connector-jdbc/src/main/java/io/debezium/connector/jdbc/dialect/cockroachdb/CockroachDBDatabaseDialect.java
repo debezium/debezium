@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.jdbc.dialect.cockroachdb;
 
+import java.sql.Types;
 import java.util.Set;
 
 import org.hibernate.SessionFactory;
@@ -69,5 +70,17 @@ public class CockroachDBDatabaseDialect extends PostgresDatabaseDialect {
         final Set<Class<? extends Exception>> exceptions = super.getCommunicationExceptions();
         exceptions.addAll(RETRIABLE_CONFLICT_EXCEPTIONS);
         return exceptions;
+    }
+
+    @Override
+    public String getJdbcTypeName(int jdbcType) {
+        // The Hibernate CockroachDialect names character types "string", a CockroachDB alias that is
+        // valid in DDL but absent from pg_type, so the PgJDBC driver cannot resolve it as an array
+        // element type in Connection#createArrayOf. Use the PostgreSQL-compatible name instead, which
+        // CockroachDB supports in both DDL and pg_type.
+        return switch (jdbcType) {
+            case Types.VARCHAR, Types.NVARCHAR, Types.LONGVARCHAR, Types.LONGNVARCHAR -> "text";
+            default -> super.getJdbcTypeName(jdbcType);
+        };
     }
 }
