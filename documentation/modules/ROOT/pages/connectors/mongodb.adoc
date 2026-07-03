@@ -726,6 +726,10 @@ This example uses a document with an integer identifier, but any valid MongoDB d
 === Change event values
 
 The value in a change event is a bit more complicated than the key. Like the key, the value has a `schema` section and a `payload` section. The `schema` section contains the schema that describes the `Envelope` structure of the `payload` section, including its nested fields. Change events for operations that create, update or delete data all have a value payload with an envelope structure.
+The `after`, `before`, and `updateDescription.updatedFields` fields contain MongoDB Extended JSON strings.
+The connector's xref:mongodb-property-json-serialization-mode[`json.serialization.mode`] property controls how the connector serializes BSON values in these fields.
+By default, the connector preserves the legacy behavior: it serializes full document fields by using MongoDB Extended JSON v1 strict representation and serializes `updateDescription.updatedFields` by using MongoDB Extended JSON v2 relaxed representation.
+To use MongoDB Extended JSON v2 canonical representation, set `json.serialization.mode` to `extended`.
 
 Consider the same sample document that was used to show an example of a change event key:
 
@@ -1057,7 +1061,9 @@ An _update_ event value does not contain an `after` field if the capture mode is
 
 |5
 |`updatedFields`
-|Contains the JSON string representation of the updated field values of the document. In this example, the update changed the `first_name` field to a new value.
+|Contains the JSON string representation of the updated field values of the document.
+The connector serializes this field using the mode specified by the xref:mongodb-property-json-serialization-mode[`json.serialization.mode`] connector property.
+In this example, the update changed the `first_name` field to a new value.
 
 |6
 |`source`
@@ -1752,6 +1758,49 @@ Set xref:mongodb-property-capture-mode-full-update-type[capture.mode.full.update
 
 `change_streams_with_pre_image`::
 `update` events do not include the full document, but include a field that represents the state of the document `before` the change.
+
+|[[mongodb-property-json-serialization-mode]]<<mongodb-property-json-serialization-mode, `+json.serialization.mode+`>>
+|`legacy`
+a|Specifies the MongoDB Extended JSON serialization mode that the connector uses for MongoDB document fields in change event values, including `after`, `before`, and `updateDescription.updatedFields`.
+Set this property to one of the following values:
+
+`legacy`:: Preserves the historical JSON behavior.
+The connector serializes full document fields, such as `after` and `before`, by using the MongoDB Extended JSON v1 strict representation, and serializes `updateDescription.updatedFields` by using the MongoDB Extended JSON v2 relaxed representation.
+
+`strict`:: Uses the MongoDB Extended JSON v1 strict representation.
+
+`extended`:: Uses the MongoDB Extended JSON v2 canonical representation.
+
+`relaxed`:: Uses the MongoDB Extended JSON v2 relaxed representation.
++
+Compared with the default `legacy` mode, the non-default settings can change how BSON values are represented inside the JSON strings in `after`, `before`, and `updateDescription.updatedFields`.
+For example, DateTime, Binary, RegExp, and Int64 values can use different Extended JSON forms.
+For the complete list of BSON type representations, see the MongoDB documentation for https://www.mongodb.com/docs/manual/reference/mongodb-extended-json-v1/[Extended JSON v1] and https://www.mongodb.com/docs/manual/reference/mongodb-extended-json/[Extended JSON v2].
+
+.Example DateTime representations for `json.serialization.mode` settings
+[cols="1,2,2",options="header"]
+!===
+!`json.serialization.mode` value !`after` and `before` representation !`updateDescription.updatedFields` representation
+
+!`legacy`
+!`{"timestamp": {"$date": 1783101585729}}`
+!`{"timestamp": {"$date": "2026-07-03T17:59:45.729Z"}}`
+
+!`strict`
+!`{"timestamp": {"$date": 1783101585729}}`
+!`{"timestamp": {"$date": 1783101585729}}`
+
+!`extended`
+!`{"timestamp": {"$date": {"$numberLong": "1783101585729"}}}`
+!`{"timestamp": {"$date": {"$numberLong": "1783101585729"}}}`
+
+!`relaxed`
+!`{"timestamp": {"$date": "2026-07-03T17:59:45.729Z"}}`
+!`{"timestamp": {"$date": "2026-07-03T17:59:45.729Z"}}`
+
+!===
+
+This setting does not affect the representation of document identifiers in change event keys.
 
 |[[mongodb-property-capture-start-op-time]]<<mongodb-property-capture-start-op-time, `+capture.start.op.time+`>>
 |No default value

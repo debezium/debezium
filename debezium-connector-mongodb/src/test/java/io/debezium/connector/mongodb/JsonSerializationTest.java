@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test;
 
 public class JsonSerializationTest {
 
-    private JsonSerialization serialization = new JsonSerialization();
+    private JsonSerialization serialization = new JsonSerialization(MongoDbConnectorConfig.JsonSerializationMode.LEGACY);
 
     @Test
     void shouldGeOnlyIdFromCompositeKey() {
@@ -38,6 +38,14 @@ public class JsonSerializationTest {
         var compositeKey = serialization.getDocumentId(composite);
 
         Assertions.assertThat(compositeKey).isEqualTo(simpleKey);
+    }
+
+    @Test
+    void shouldPreserveLegacyUpdatedFieldsFormatting() {
+        var updatedFields = new BsonDocument("name", new BsonString("Mary"))
+                .append("zipcode", new BsonString("11111"));
+
+        Assertions.assertThat(serialization.getUpdatedFields(updatedFields)).isEqualTo("{\"name\": \"Mary\", \"zipcode\": \"11111\"}");
     }
 
 }

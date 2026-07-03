@@ -46,10 +46,29 @@ class JsonSerialization {
             .newLineCharacters("")
             .build();
 
-    private final Transformer transformer;
+    private static final JsonWriterSettings EXTENDED_JSON_SETTINGS = JsonWriterSettings.builder()
+            .outputMode(JsonMode.EXTENDED)
+            .indent(true)
+            .indentCharacters("")
+            .newLineCharacters("")
+            .build();
 
-    JsonSerialization() {
-        transformer = (doc) -> doc.toJson(COMPACT_JSON_SETTINGS);
+    private final Transformer transformer;
+    private final Transformer updatedFieldsTransformer;
+
+    JsonSerialization(MongoDbConnectorConfig.JsonSerializationMode mode) {
+        final JsonWriterSettings documentJsonWriterSettings = switch (mode) {
+            case LEGACY, STRICT -> COMPACT_JSON_SETTINGS;
+            case EXTENDED -> EXTENDED_JSON_SETTINGS;
+            case RELAXED -> SIMPLE_JSON_SETTINGS;
+        };
+        this.transformer = (doc) -> doc.toJson(documentJsonWriterSettings);
+        this.updatedFieldsTransformer = switch (mode) {
+            case LEGACY -> BsonDocument::toJson;
+            case RELAXED -> (doc) -> doc.toJson(SIMPLE_JSON_SETTINGS);
+            case EXTENDED -> (doc) -> doc.toJson(EXTENDED_JSON_SETTINGS);
+            case STRICT -> (doc) -> doc.toJson(COMPACT_JSON_SETTINGS);
+        };
     }
 
     public String getDocumentId(BsonDocument document) {
@@ -72,6 +91,10 @@ class JsonSerialization {
 
     public String getDocumentValue(BsonDocument document) {
         return transformer.apply(document);
+    }
+
+    public String getUpdatedFields(BsonDocument document) {
+        return updatedFieldsTransformer.apply(document);
     }
 
     public Transformer getTransformer() {
