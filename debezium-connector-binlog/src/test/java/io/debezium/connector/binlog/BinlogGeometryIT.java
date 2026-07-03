@@ -22,6 +22,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.binlog.junit.SkipWhenSchemaHistoryDisabled;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
 import io.debezium.data.Envelope;
@@ -69,6 +70,7 @@ public abstract class BinlogGeometryIT<C extends SourceConnector> extends Abstra
     }
 
     @Test
+    @SkipWhenSchemaHistoryDisabled(reason = "The spatial subtype (e.g. POINT) is not carried by the binlog TABLE_MAP metadata, so all spatial columns surface as GEOMETRY")
     void shouldConsumeAllEventsFromDatabaseUsingStreaming() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig()
