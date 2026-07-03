@@ -13,6 +13,8 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import io.debezium.util.Interner;
+
 class TableEditorImpl implements TableEditor {
 
     private TableId id;
@@ -306,6 +308,6 @@ class TableEditorImpl implements TableEditor {
         });
         updatePrimaryKeys();
         List<Attribute> attributes = new ArrayList<>(this.attributes.values());
-        return new TableImpl(id, columns, primaryKeyColumnNames(), defaultCharsetName, comment, attributes);
+        return Interner.intern(new TableImpl(id, columns, primaryKeyColumnNames(), defaultCharsetName, comment, attributes));
     }
 }
