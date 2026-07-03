@@ -31,6 +31,7 @@ import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collections;
 import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -41,9 +42,16 @@ import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.postgresql.PGStatement;
+import org.postgresql.geometric.PGbox;
+import org.postgresql.geometric.PGcircle;
+import org.postgresql.geometric.PGline;
+import org.postgresql.geometric.PGlseg;
+import org.postgresql.geometric.PGpath;
 import org.postgresql.geometric.PGpoint;
+import org.postgresql.geometric.PGpolygon;
 import org.postgresql.jdbc.PgArray;
 import org.postgresql.util.HStoreConverter;
 import org.postgresql.util.PGInterval;
@@ -64,8 +72,10 @@ import io.debezium.data.SpecialValueDecimal;
 import io.debezium.data.TsVector;
 import io.debezium.data.Uuid;
 import io.debezium.data.VariableScaleDecimal;
+import io.debezium.data.geometry.Circle;
 import io.debezium.data.geometry.Geography;
 import io.debezium.data.geometry.Geometry;
+import io.debezium.data.geometry.Line;
 import io.debezium.data.geometry.Point;
 import io.debezium.data.vector.DoubleVector;
 import io.debezium.data.vector.FloatVector;
@@ -74,6 +84,7 @@ import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
 import io.debezium.relational.ValueConverter;
+import io.debezium.spatial.WkbWriter;
 import io.debezium.time.Conversions;
 import io.debezium.time.Interval;
 import io.debezium.time.MicroDuration;
@@ -232,6 +243,15 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 return Uuid.builder();
             case PgOid.POINT:
                 return Point.builder();
+            case PgOid.BOX:
+            case PgOid.LSEG:
+            case PgOid.PATH:
+            case PgOid.POLYGON:
+                return Geometry.builder();
+            case PgOid.CIRCLE:
+                return Circle.builder();
+            case PgOid.LINE:
+                return Line.builder();
             case PgOid.MONEY:
                 return moneySchema();
             case PgOid.NUMERIC:
@@ -465,6 +485,18 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 return data -> convertString(column, fieldDefn, data);
             case PgOid.POINT:
                 return data -> convertPoint(column, fieldDefn, data);
+            case PgOid.BOX:
+                return data -> convertBox(column, fieldDefn, data);
+            case PgOid.LSEG:
+                return data -> convertLseg(column, fieldDefn, data);
+            case PgOid.PATH:
+                return data -> convertPath(column, fieldDefn, data);
+            case PgOid.POLYGON:
+                return data -> convertPolygon(column, fieldDefn, data);
+            case PgOid.CIRCLE:
+                return data -> convertCircle(column, fieldDefn, data);
+            case PgOid.LINE:
+                return data -> convertLine(column, fieldDefn, data);
             case PgOid.MONEY:
                 return data -> convertMoney(column, fieldDefn, data, decimalMode);
             case PgOid.NUMERIC:
@@ -1131,6 +1163,186 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 r.deliver(Point.createValue(schema, ((PgProto.Point) data).getX(), ((PgProto.Point) data).getY()));
             }
         });
+    }
+
+    /**
+     * Converts a PostgreSQL {@code box} to a {@link Geometry} value. The two opposing corners are
+     * encoded as a coordinate-exact, closed 5-point polygon ring; the {@code box} label is preserved
+     * in the extensions so the sink can reconstruct the native value.
+     */
+    protected Object convertBox(Column column, Field fieldDefn, Object data) {
+        final Schema schema = fieldDefn.schema();
+        return convertValue(column, fieldDefn, data, geometryFallback(schema, "box"), (r) -> {
+            PGbox box = asGeometricValue(column, data, PGbox.class, PGbox::new);
+            if (box != null) {
+                double x1 = box.point[0].x, y1 = box.point[0].y;
+                double x2 = box.point[1].x, y2 = box.point[1].y;
+                byte[] wkb = WkbWriter.buildPolygon(List.of(List.of(
+                        new double[]{ x1, y1 },
+                        new double[]{ x1, y2 },
+                        new double[]{ x2, y2 },
+                        new double[]{ x2, y1 },
+                        new double[]{ x1, y1 })));
+                r.deliver(Geometry.createValue(schema, wkb, null, Map.of(Geometry.EXTENSION_TYPE_KEY, "box")));
+            }
+        });
+    }
+
+    /**
+     * Converts a PostgreSQL {@code lseg} (a line segment between two points) to a {@link Geometry}
+     * value encoded as a two-point line string.
+     */
+    protected Object convertLseg(Column column, Field fieldDefn, Object data) {
+        final Schema schema = fieldDefn.schema();
+        return convertValue(column, fieldDefn, data, geometryFallback(schema, "lseg"), (r) -> {
+            // ReplicationMessage#asLseg is typed as Object, so accept any PGlseg the driver/decoder returns
+            PGlseg lseg = asGeometricValue(column, data, PGlseg.class, PGlseg::new);
+            if (lseg != null) {
+                byte[] wkb = WkbWriter.buildLineString(List.of(
+                        new double[]{ lseg.point[0].x, lseg.point[0].y },
+                        new double[]{ lseg.point[1].x, lseg.point[1].y }));
+                r.deliver(Geometry.createValue(schema, wkb, null, Map.of(Geometry.EXTENSION_TYPE_KEY, "lseg")));
+            }
+        });
+    }
+
+    /**
+     * Converts a PostgreSQL {@code path} to a {@link Geometry} value encoded as a line string. A path
+     * may be open or closed; that flag has no WKB representation, so it is preserved in the extensions.
+     */
+    protected Object convertPath(Column column, Field fieldDefn, Object data) {
+        final Schema schema = fieldDefn.schema();
+        return convertValue(column, fieldDefn, data, geometryFallback(schema, "path"), (r) -> {
+            PGpath path = asGeometricValue(column, data, PGpath.class, PGpath::new);
+            if (path != null) {
+                List<double[]> points = new ArrayList<>(path.points.length);
+                for (PGpoint point : path.points) {
+                    points.add(new double[]{ point.x, point.y });
+                }
+                Map<String, String> extensions = new LinkedHashMap<>();
+                extensions.put(Geometry.EXTENSION_TYPE_KEY, "path");
+                extensions.put(Geometry.EXTENSION_CLOSED_KEY, String.valueOf(!path.open));
+                r.deliver(Geometry.createValue(schema, WkbWriter.buildLineString(points), null, extensions));
+            }
+        });
+    }
+
+    /**
+     * Converts a PostgreSQL {@code polygon} to a {@link Geometry} value encoded as a single closed
+     * polygon ring.
+     */
+    protected Object convertPolygon(Column column, Field fieldDefn, Object data) {
+        final Schema schema = fieldDefn.schema();
+        return convertValue(column, fieldDefn, data, geometryFallback(schema, "polygon"), (r) -> {
+            PGpolygon polygon = asGeometricValue(column, data, PGpolygon.class, PGpolygon::new);
+            if (polygon != null) {
+                List<double[]> ring = new ArrayList<>(polygon.points.length + 1);
+                for (PGpoint point : polygon.points) {
+                    ring.add(new double[]{ point.x, point.y });
+                }
+                closeRing(ring);
+                byte[] wkb = WkbWriter.buildPolygon(List.of(ring));
+                r.deliver(Geometry.createValue(schema, wkb, null, Map.of(Geometry.EXTENSION_TYPE_KEY, "polygon")));
+            }
+        });
+    }
+
+    /**
+     * Converts a PostgreSQL {@code circle} to a {@link Circle} value carrying its true center and
+     * radius. WKB has no curve primitive, so a circle cannot round-trip through {@link Geometry}.
+     */
+    protected Object convertCircle(Column column, Field fieldDefn, Object data) {
+        final Schema schema = fieldDefn.schema();
+        return convertValue(column, fieldDefn, data, Circle.createValue(schema, 0, 0, 0), (r) -> {
+            PGcircle circle = asGeometricValue(column, data, PGcircle.class, PGcircle::new);
+            if (circle != null) {
+                r.deliver(Circle.createValue(schema, circle.center.x, circle.center.y, circle.radius));
+            }
+        });
+    }
+
+    /**
+     * Converts a PostgreSQL {@code line} (an infinite line {@code Ax + By + C = 0}) to a {@link Line}
+     * value carrying its three coefficients.
+     */
+    protected Object convertLine(Column column, Field fieldDefn, Object data) {
+        final Schema schema = fieldDefn.schema();
+        // PostgreSQL rejects a line whose A and B coefficients are both zero, so the NOT NULL fallback
+        // uses {0,1,0} (the y = 0 axis) rather than the all-zero triple.
+        return convertValue(column, fieldDefn, data, Line.createValue(schema, 0, 1, 0), (r) -> {
+            PGline line = asGeometricValue(column, data, PGline.class, PGline::new);
+            if (line != null) {
+                r.deliver(Line.createValue(schema, line.a, line.b, line.c));
+            }
+        });
+    }
+
+    /**
+     * Coerces incoming column data to the requested {@code org.postgresql.geometric} type. Logical
+     * decoding delivers the {@code PGxxx} object directly, while snapshots via the JDBC driver may
+     * hand back the canonical text, which the given factory parses. Returns {@code null} (leaving the
+     * value unconverted) when the type is unexpected or the text cannot be parsed.
+     */
+    private <T> T asGeometricValue(Column column, Object data, Class<T> type, PGobjectFactory<T> factory) {
+        if (type.isInstance(data)) {
+            return type.cast(data);
+        }
+        if (data instanceof String) {
+            String dataString = data.toString();
+            try {
+                return factory.parse(dataString);
+            }
+            catch (SQLException e) {
+                logger.warn("Error converting the string '{}' to a {} for the column '{}'", dataString, type.getSimpleName(), column);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Builds the non-null fallback a NOT NULL geometric column falls back to when a null value is
+     * received with no column default (see {@link #convertValue}). The WKB must be shaped so the sink
+     * can reconstruct a value the target native type actually accepts: a {@code box} is rebuilt from
+     * ring vertices 0 and 2 (so it needs a full ring), an {@code lseg} is a two-point segment, while a
+     * {@code path}/{@code polygon} tolerate a single point. All coordinates are the origin.
+     */
+    private static Struct geometryFallback(Schema schema, String type) {
+        final byte[] wkb;
+        switch (type) {
+            case "box":
+                wkb = WkbWriter.buildPolygon(List.of(List.of(
+                        new double[]{ 0, 0 }, new double[]{ 0, 0 }, new double[]{ 0, 0 },
+                        new double[]{ 0, 0 }, new double[]{ 0, 0 })));
+                break;
+            case "lseg":
+                wkb = WkbWriter.buildLineString(List.of(new double[]{ 0, 0 }, new double[]{ 0, 0 }));
+                break;
+            case "polygon":
+                wkb = WkbWriter.buildPolygon(List.of(List.of(new double[]{ 0, 0 })));
+                break;
+            default: // path
+                wkb = WkbWriter.buildLineString(List.of(new double[]{ 0, 0 }));
+                break;
+        }
+        return Geometry.createValue(schema, wkb, null, Map.of(Geometry.EXTENSION_TYPE_KEY, type));
+    }
+
+    private static void closeRing(List<double[]> ring) {
+        if (ring.size() >= 2) {
+            double[] first = ring.get(0);
+            double[] last = ring.get(ring.size() - 1);
+            if (first[0] != last[0] || first[1] != last[1]) {
+                ring.add(new double[]{ first[0], first[1] });
+            }
+        }
+    }
+
+    /**
+     * Factory that parses a {@code org.postgresql.geometric} value from its canonical text form.
+     */
+    @FunctionalInterface
+    private interface PGobjectFactory<T> {
+        T parse(String value) throws SQLException;
     }
 
     protected Object convertArray(Column column, Field fieldDefn, PostgresType elementType, ValueConverter elementConverter, Object data) {

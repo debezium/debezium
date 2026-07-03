@@ -1669,6 +1669,24 @@ Contains the string representation of a PostgreSQL UUID value.
 Contains a structure with two `FLOAT64` fields, `(x,y)`.
 Each field represents the coordinates of a geometric point.
 
+|`BOX`, `LSEG`, `PATH`, `POLYGON`
+|`STRUCT`
+|`io.debezium.data.geometry.Geometry` +
+ +
+Contains a structure with a `wkb` field holding the geometry encoded as OGC Well-Known Binary (a `box` as a coordinate-exact rectangle polygon, an `lseg`/open `path` as a line string, a `polygon`/closed `path` as a polygon), a `srid` field (always null for these unreferenced planar types), and an `extensions` map. The `extensions` map carries `type` (the originating native type: `box`, `lseg`, `path`, or `polygon`) and, for `path`, `closed` (`true` or `false`). These are native (non-PostGIS) geometric types; the Debezium JDBC sink connector reads `extensions.type` to rebuild the native value and bind it without requiring PostGIS.
+
+|`CIRCLE`
+|`STRUCT`
+|`io.debezium.data.geometry.Circle` +
+ +
+Contains a structure with a `center` field of type `io.debezium.data.geometry.Point` and a `FLOAT64` `radius` field. A circle has no OGC Well-Known Binary representation, so its true center and radius are carried losslessly rather than approximated at the source.
+
+|`LINE`
+|`STRUCT`
+|`io.debezium.data.geometry.Line` +
+ +
+Contains a structure with three `FLOAT64` fields, `a`, `b`, and `c`, representing the infinite line `Ax + By + C = 0`.
+
 |`LTREE`
 |`STRING`
 |`io.debezium.data.Ltree`

@@ -31,6 +31,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -67,12 +68,15 @@ import io.debezium.data.Uuid;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.VerifyRecord;
 import io.debezium.data.Xml;
+import io.debezium.data.geometry.Circle;
 import io.debezium.data.geometry.Geography;
 import io.debezium.data.geometry.Geometry;
+import io.debezium.data.geometry.Line;
 import io.debezium.data.geometry.Point;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.relational.TableId;
+import io.debezium.spatial.WkbWriter;
 import io.debezium.time.Date;
 import io.debezium.time.Interval;
 import io.debezium.time.MicroDuration;
@@ -1005,12 +1009,42 @@ public abstract class AbstractRecordsProducerTest extends AbstractAsyncEngineCon
     }
 
     protected List<SchemaAndValueField> schemasAndValuesForDomainAliasTypes(boolean streaming) {
-        final ByteBuffer boxByteBuffer = ByteBuffer.wrap("(1.0,1.0),(0.0,0.0)".getBytes());
-        final ByteBuffer circleByteBuffer = ByteBuffer.wrap("<(10.0,4.0),10.0>".getBytes());
-        final ByteBuffer lineByteBuffer = ByteBuffer.wrap("{-1.0,0.0,0.0}".getBytes());
-        final ByteBuffer lsegByteBuffer = ByteBuffer.wrap("[(0.0,0.0),(0.0,1.0)]".getBytes());
-        final ByteBuffer pathByteBuffer = ByteBuffer.wrap("((0.0,0.0),(0.0,1.0),(0.0,2.0))".getBytes());
-        final ByteBuffer polygonByteBuffer = ByteBuffer.wrap("((0.0,0.0),(0.0,1.0),(1.0,0.0),(0.0,0.0))".getBytes());
+        // The six geometric types now map to first-class Connect schemas (DBZ-2135). The expected WKB is
+        // built with the same WkbWriter the converter uses, so only coordinate correctness (and PostgreSQL's
+        // box corner normalisation) is asserted here, not raw byte layout.
+        final Schema geometrySchema = Geometry.builder().build();
+
+        // PostgreSQL normalises a box so the upper-right corner is stored first: input '(0,0),(1,1)' becomes
+        // point[0]=(1,1), point[1]=(0,0), which the converter encodes as a closed 5-point rectangle ring.
+        final Struct boxValue = Geometry.createValue(geometrySchema,
+                WkbWriter.buildPolygon(List.of(List.of(
+                        new double[]{ 1.0, 1.0 }, new double[]{ 1.0, 0.0 }, new double[]{ 0.0, 0.0 },
+                        new double[]{ 0.0, 1.0 }, new double[]{ 1.0, 1.0 }))),
+                null, Map.of(Geometry.EXTENSION_TYPE_KEY, "box"));
+
+        final Struct lsegValue = Geometry.createValue(geometrySchema,
+                WkbWriter.buildLineString(List.of(new double[]{ 0.0, 0.0 }, new double[]{ 0.0, 1.0 })),
+                null, Map.of(Geometry.EXTENSION_TYPE_KEY, "lseg"));
+
+        final Map<String, String> pathExtensions = new LinkedHashMap<>();
+        pathExtensions.put(Geometry.EXTENSION_TYPE_KEY, "path");
+        pathExtensions.put(Geometry.EXTENSION_CLOSED_KEY, "true"); // '((...))' is a closed path
+        final Struct pathValue = Geometry.createValue(geometrySchema,
+                WkbWriter.buildLineString(List.of(
+                        new double[]{ 0.0, 0.0 }, new double[]{ 0.0, 1.0 }, new double[]{ 0.0, 2.0 })),
+                null, pathExtensions);
+
+        final Struct polygonValue = Geometry.createValue(geometrySchema,
+                WkbWriter.buildPolygon(List.of(List.of(
+                        new double[]{ 0.0, 0.0 }, new double[]{ 0.0, 1.0 }, new double[]{ 1.0, 0.0 },
+                        new double[]{ 0.0, 0.0 }))),
+                null, Map.of(Geometry.EXTENSION_TYPE_KEY, "polygon"));
+
+        final Schema circleSchema = Circle.builder().build();
+        final Struct circleValue = Circle.createValue(circleSchema, 10.0, 4.0, 10.0);
+
+        final Schema lineSchema = Line.builder().build();
+        final Struct lineValue = Line.createValue(lineSchema, -1.0, 0.0, 0.0); // PG normalises '(0,0),(0,1)' to {-1,0,0}
 
         return Arrays.asList(
                 new SchemaAndValueField(PK_FIELD, SchemaBuilder.int32().defaultValue(0).build(), 1),
@@ -1048,20 +1082,20 @@ public abstract class AbstractRecordsProducerTest extends AbstractAsyncEngineCon
                         MicroDuration.durationMicros(1, 2, 3, 4, 5, 6, MicroDuration.DAYS_PER_MONTH_AVG)),
                 new SchemaAndValueField("interval_alias", MicroDuration.builder().build(),
                         MicroDuration.durationMicros(1, 2, 3, 4, 5, 6, MicroDuration.DAYS_PER_MONTH_AVG)),
-                new SchemaAndValueField("box_base", SchemaBuilder.BYTES_SCHEMA, boxByteBuffer),
-                new SchemaAndValueField("box_alias", SchemaBuilder.BYTES_SCHEMA, boxByteBuffer),
-                new SchemaAndValueField("circle_base", SchemaBuilder.BYTES_SCHEMA, circleByteBuffer),
-                new SchemaAndValueField("circle_alias", SchemaBuilder.BYTES_SCHEMA, circleByteBuffer),
-                new SchemaAndValueField("line_base", SchemaBuilder.BYTES_SCHEMA, lineByteBuffer),
-                new SchemaAndValueField("line_alias", SchemaBuilder.BYTES_SCHEMA, lineByteBuffer),
-                new SchemaAndValueField("lseg_base", SchemaBuilder.BYTES_SCHEMA, lsegByteBuffer),
-                new SchemaAndValueField("lseg_alias", SchemaBuilder.BYTES_SCHEMA, lsegByteBuffer),
-                new SchemaAndValueField("path_base", SchemaBuilder.BYTES_SCHEMA, pathByteBuffer),
-                new SchemaAndValueField("path_alias", SchemaBuilder.BYTES_SCHEMA, pathByteBuffer),
+                new SchemaAndValueField("box_base", geometrySchema, boxValue),
+                new SchemaAndValueField("box_alias", geometrySchema, boxValue),
+                new SchemaAndValueField("circle_base", circleSchema, circleValue),
+                new SchemaAndValueField("circle_alias", circleSchema, circleValue),
+                new SchemaAndValueField("line_base", lineSchema, lineValue),
+                new SchemaAndValueField("line_alias", lineSchema, lineValue),
+                new SchemaAndValueField("lseg_base", geometrySchema, lsegValue),
+                new SchemaAndValueField("lseg_alias", geometrySchema, lsegValue),
+                new SchemaAndValueField("path_base", geometrySchema, pathValue),
+                new SchemaAndValueField("path_alias", geometrySchema, pathValue),
                 new SchemaAndValueField("point_base", Point.builder().build(), Point.createValue(Point.builder().build(), 1, 1)),
                 new SchemaAndValueField("point_alias", Point.builder().build(), Point.createValue(Point.builder().build(), 1, 1)),
-                new SchemaAndValueField("polygon_base", SchemaBuilder.BYTES_SCHEMA, polygonByteBuffer),
-                new SchemaAndValueField("polygon_alias", SchemaBuilder.BYTES_SCHEMA, polygonByteBuffer),
+                new SchemaAndValueField("polygon_base", geometrySchema, polygonValue),
+                new SchemaAndValueField("polygon_alias", geometrySchema, polygonValue),
                 new SchemaAndValueField("char_base", SchemaBuilder.STRING_SCHEMA, "a"),
                 new SchemaAndValueField("char_alias", SchemaBuilder.STRING_SCHEMA, "a"),
                 new SchemaAndValueField("text_base", SchemaBuilder.STRING_SCHEMA, "Hello World"),

@@ -5,8 +5,11 @@
  */
 package io.debezium.data.geometry;
 
+import java.util.Map;
+
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.data.Struct;
 
 /**
  * A semantic type for a Geography class.
@@ -37,5 +40,24 @@ public class Geography extends Geometry {
                 .doc("Geography")
                 .field(WKB_FIELD, Schema.BYTES_SCHEMA)
                 .field(SRID_FIELD, Schema.OPTIONAL_INT32_SCHEMA);
+    }
+
+    /**
+     * Overrides the inherited {@link Geometry#createValue(Schema, byte[], Integer, Map)}: unlike
+     * {@link Geometry}, a {@link Geography} schema carries no {@code extensions} field, so any non-empty
+     * extensions would fail with an opaque {@code DataException}. Rejecting them here makes the misuse
+     * explicit; a {@code null} or empty map delegates to the plain three-argument form.
+     *
+     * @param geomSchema a {@link Schema} instance which represents a geography; may not be null
+     * @param wkb OGC Well-Known Binary representation of the geometry; may not be null
+     * @param srid the coordinate reference system identifier; may be null if unset/unknown
+     * @param extensions must be null or empty for a Geography value
+     * @return a {@link Struct} which represents a Connect value for this schema; never null
+     */
+    public static Struct createValue(Schema geomSchema, byte[] wkb, Integer srid, Map<String, String> extensions) {
+        if (extensions != null && !extensions.isEmpty()) {
+            throw new IllegalArgumentException("Geography does not support extensions");
+        }
+        return Geometry.createValue(geomSchema, wkb, srid);
     }
 }

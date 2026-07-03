@@ -136,6 +136,14 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
         // Get first record for schema information
         JdbcSinkRecord firstRecord = records.get(0);
 
+        // The UNNEST path binds each column as a SQL array via Connection#createArrayOf, bypassing the
+        // per-value JdbcType#bind() the row-wise path uses. Types whose bind() reconstructs a different
+        // representation (e.g. the native geometric types, which turn a Struct into PostgreSQL text) would
+        // otherwise hand raw Structs to createArrayOf and fail, so fall back to the row-wise path for them.
+        if (hasUnnestUnsupportedField(firstRecord)) {
+            return Optional.empty();
+        }
+
         final SqlStatementBuilder builder = new SqlStatementBuilder();
 
         builder.append("INSERT INTO ");
@@ -167,6 +175,17 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
         builder.append(")");
 
         return Optional.of(builder.build());
+    }
+
+    /**
+     * Whether a record carries a field the UNNEST batch path cannot bind. That path passes each column's
+     * values to {@link Connection#createArrayOf}, which only accepts scalar elements; a {@code STRUCT}
+     * field (the geometric types point/box/lseg/path/polygon and circle/line) needs the per-value
+     * {@code JdbcType#bind()} the row-wise path applies, so such records are handled row-wise instead.
+     */
+    private static boolean hasUnnestUnsupportedField(JdbcSinkRecord record) {
+        return record.jdbcFields().values().stream()
+                .anyMatch(field -> field.getSchema().type() == Schema.Type.STRUCT);
     }
 
     @Override
@@ -270,6 +289,8 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
         registerType(PointType.INSTANCE);
         registerType(GeometryType.INSTANCE);
         registerType(GeographyType.INSTANCE);
+        registerType(CircleType.INSTANCE);
+        registerType(LineType.INSTANCE);
         registerType(MoneyType.INSTANCE);
         registerType(XmlType.INSTANCE);
         registerType(LtreeType.INSTANCE);
