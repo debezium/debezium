@@ -7,7 +7,6 @@ package io.debezium.connector.binlog;
 
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -19,7 +18,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.github.shyiko.mysql.binlog.event.TableMapEventData;
-import com.github.shyiko.mysql.binlog.event.TableMapEventMetadata;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.binlog.metadata.BinlogMetadataTableBuilder;
@@ -68,7 +66,7 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
     private final Map<Long, TableId> excludeTableIdsByTableNumber = new ConcurrentHashMap<>();
     private final BinlogConnectorConfig connectorConfig;
     private final BinlogMetadataTableBuilder metadataTableBuilder = new BinlogMetadataTableBuilder();
-    private final Map<TableId, String> lastMetadataSignatureByTable = new ConcurrentHashMap<>();
+    private final Set<TableId> tablesRegisteredFromBinlogMetadata = ConcurrentHashMap.newKeySet();
 
     /**
      * Creates a binlog-connector based relational schema based on the supplied configuration. The DDL
@@ -236,55 +234,46 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
         // A TABLE_MAP event precedes the row events for its table within every transaction, so it is seen
         // very frequently. Rebuilding the table and its Kafka Connect schema on every event would be
         // wasteful (the PostgreSQL connector rebuilds unconditionally, but its pgoutput relation messages
-        // are rare, whereas TABLE_MAP is per-transaction). Skip the rebuild when the metadata is unchanged
-        // from what was last registered for this table. The signature is a deterministic serialization of
-        // every field the builder reads (not a hash), so an unnoticed change cannot leave a stale schema;
-        // in the worst case a signature bug only causes an unnecessary rebuild.
-        final String signature = metadataSignature(metadata);
-        if (signature.equals(lastMetadataSignatureByTable.get(tableId)) && schemaFor(tableId) != null) {
+        // are rare, whereas TABLE_MAP is per-transaction). Instead, each table is populated once and only
+        // rebuilt after a DDL statement for it has been parsed from the binlog, which marks it dirty by
+        // removing it from this registry (see the invalidation in parseDdl).
+        if (tablesRegisteredFromBinlogMetadata.contains(tableId) && schemaFor(tableId) != null) {
             return true;
         }
         final Table table = metadataTableBuilder.build(tableId, metadata);
         refresh(table);
-        lastMetadataSignatureByTable.put(tableId, signature);
+        tablesRegisteredFromBinlogMetadata.add(tableId);
         return true;
     }
 
     /**
-     * Build a deterministic signature of every {@code TABLE_MAP} field the {@link BinlogMetadataTableBuilder}
-     * uses to reconstruct a table, so that an unchanged schema can be detected without rebuilding.
+     * Mark tables affected by parsed DDL statements as dirty so that the next {@code TABLE_MAP} event
+     * rebuilds their schema from the binlog metadata. Statements that cannot be attributed to a specific
+     * table (for example database-wide statements) conservatively clear the whole registry; the only cost
+     * of over-invalidation is a single rebuild per table on its next TABLE_MAP event.
      */
-    private static String metadataSignature(TableMapEventData data) {
-        final TableMapEventMetadata meta = data.getEventMetadata();
-        final StringBuilder sb = new StringBuilder();
-        sb.append(Arrays.toString(data.getColumnTypes()));
-        sb.append('|').append(Arrays.toString(data.getColumnMetadata()));
-        sb.append('|').append(data.getColumnNullability());
-        if (meta != null) {
-            sb.append('|').append(meta.getColumnNames());
-            sb.append('|').append(meta.getSignedness());
-            sb.append('|').append(stringArrayListsToString(meta.getEnumStrValues()));
-            sb.append('|').append(stringArrayListsToString(meta.getSetStrValues()));
-            sb.append('|').append(meta.getColumnCharsets());
-            final TableMapEventMetadata.DefaultCharset defaultCharset = meta.getDefaultCharset();
-            if (defaultCharset != null) {
-                sb.append('|').append(defaultCharset.getDefaultCharsetCollation())
-                        .append(defaultCharset.getCharsetCollations());
+    private void invalidateBinlogMetadataRegistrations(DdlChanges ddlChanges) {
+        if (tablesRegisteredFromBinlogMetadata.isEmpty() || ddlChanges.isEmpty()) {
+            return;
+        }
+        ddlChanges.getEventsByDatabase((String dbName, List<DdlParserListener.Event> events) -> events.forEach(event -> {
+            if (event instanceof DdlParserListener.SetVariableEvent) {
+                // Variable assignments do not change any table structure.
+                return;
             }
-            sb.append('|').append(meta.getSimplePrimaryKeys());
-        }
-        return sb.toString();
-    }
-
-    private static String stringArrayListsToString(List<String[]> lists) {
-        if (lists == null) {
-            return "null";
-        }
-        final StringBuilder sb = new StringBuilder();
-        for (String[] values : lists) {
-            sb.append(Arrays.toString(values));
-        }
-        return sb.toString();
+            final TableId tableId = getTableId(event);
+            if (tableId == null) {
+                tablesRegisteredFromBinlogMetadata.clear();
+                return;
+            }
+            tablesRegisteredFromBinlogMetadata.remove(tableId);
+            if (event instanceof DdlParserListener.TableAlteredEvent) {
+                final TableId previousTableId = ((DdlParserListener.TableAlteredEvent) event).previousTableId();
+                if (previousTableId != null) {
+                    tablesRegisteredFromBinlogMetadata.remove(previousTableId);
+                }
+            }
+        }));
     }
 
     /**
@@ -422,10 +411,19 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
         catch (ParsingException | MultipleParsingExceptions e) {
             if (skipUnparseableDdlStatements()) {
                 LOGGER.warn("Ignoring unparseable DDL statement '{}'", ddlStatements, e);
+                if (connectorConfig.isBinlogMetadataBasedSchema()) {
+                    // The affected tables are unknown, so conservatively mark everything dirty; each table is
+                    // rebuilt from its next TABLE_MAP event.
+                    tablesRegisteredFromBinlogMetadata.clear();
+                }
             }
             else {
                 throw e;
             }
+        }
+
+        if (connectorConfig.isBinlogMetadataBasedSchema()) {
+            invalidateBinlogMetadataRegistrations(ddlChanges);
         }
 
         // No need to send schema events or store DDL if no table has changed
