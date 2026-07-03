@@ -66,22 +66,27 @@ public class OpenLineage<R extends ConnectRecord<R>> implements Transformation<R
             return record;
         }
 
-        if (recentlySeenTopics.put(record.topic(), true) == null || recentlySeenSchemas.put(record.valueSchema(), true) == null) {
+        final boolean newTopic = recentlySeenTopics.get(record.topic()) == null;
+        final boolean newSchema = recentlySeenSchemas.get(record.valueSchema()) == null;
 
-            if (recentlySeenSchemas.put(record.valueSchema(), true) == null) {
+        if (newTopic) {
+            recentlySeenTopics.put(record.topic(), true);
+        }
+        if (newSchema) {
+            recentlySeenSchemas.put(record.valueSchema(), true);
+        }
 
-                List<DatasetMetadata.FieldDefinition> fieldDefinitions = datasetDataExtractor.extract(record);
+        if (newTopic || newSchema) {
 
-                ConnectorContext connectorContext = ConnectorContext.from(record.headers());
-                DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.RUNNING,
-                        List.of(new DatasetMetadata(record.topic(), OUTPUT, STREAM_DATASET_TYPE, KAFKA, fieldDefinitions)));
+            List<DatasetMetadata.FieldDefinition> fieldDefinitions = datasetDataExtractor.extract(record);
 
-                lastEmissionTime = ZonedDateTime.now();
-            }
+            ConnectorContext connectorContext = ConnectorContext.from(record.headers());
+            DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.RUNNING,
+                    List.of(new DatasetMetadata(record.topic(), OUTPUT, STREAM_DATASET_TYPE, KAFKA, fieldDefinitions)));
+
+            lastEmissionTime = ZonedDateTime.now();
 
             LOGGER.debug("Emitting running event for output dataset {}", record.topic());
-
-            return record;
         }
 
         return record;
