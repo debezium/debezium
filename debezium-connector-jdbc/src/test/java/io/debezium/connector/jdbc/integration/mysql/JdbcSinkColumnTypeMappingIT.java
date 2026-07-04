@@ -28,6 +28,8 @@ import io.debezium.connector.jdbc.junit.jupiter.Sink;
 import io.debezium.connector.jdbc.junit.jupiter.SinkRecordFactoryArgumentsProvider;
 import io.debezium.connector.jdbc.util.SinkRecordFactory;
 import io.debezium.data.Bits;
+import io.debezium.data.Enum;
+import io.debezium.data.EnumSet;
 import io.debezium.doc.FixFor;
 
 /**
@@ -179,6 +181,45 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
             assertThat(rs.getInt(5)).isEqualTo(341);
             assertThat(rs.getInt(6)).isEqualTo(255);
             assertThat(rs.getBigDecimal(7)).isEqualTo(UNSIGNED_64BIT_MAX_VALUE);
+            return null;
+        });
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("debezium/dbz#2102")
+    public void testShouldCreateAndWriteEnumAndSetColumnTypesWithEscapedValues(SinkRecordFactory factory) throws Exception {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server2", "schema", tableName);
+        final Schema enumSchema = Enum.schema(List.of(
+                "plain", "a,b", "it's", "back\\slash", "back\\,comma", "ends\\", ""));
+        final Schema setSchema = EnumSet.schema(List.of("plain", "it's", "back\\slash", "ends\\"));
+
+        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        final JdbcKafkaSinkRecord createRecord = factory.createRecordWithSchemaValue(
+                topicName,
+                (byte) 1,
+                List.of("enum_data", "set_data"),
+                List.of(enumSchema, setSchema),
+                List.of("a,b", "it's,back\\slash"),
+                config);
+
+        final String destinationTable = destinationTableName(createRecord);
+
+        consume(createRecord);
+
+        getSink().assertColumn(destinationTable, "enum_data", "ENUM");
+        getSink().assertColumn(destinationTable, "set_data", "SET");
+        getSink().assertRows(destinationTable, rs -> {
+            assertThat(rs.getString("enum_data")).isEqualTo("a,b");
+            assertThat(rs.getString("set_data")).isEqualTo("it's,back\\slash");
             return null;
         });
     }
