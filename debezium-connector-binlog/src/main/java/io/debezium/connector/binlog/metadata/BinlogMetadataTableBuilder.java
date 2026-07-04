@@ -118,6 +118,7 @@ public class BinlogMetadataTableBuilder {
         final BitSet signedness = meta.getSignedness();
         final List<String[]> enumValues = meta.getEnumStrValues();
         final List<String[]> setValues = meta.getSetStrValues();
+        final List<Integer> geometryTypes = meta.getGeometryTypes();
         final List<Integer> simplePk = meta.getSimplePrimaryKeys();
 
         final int columnCount = types.length;
@@ -128,6 +129,7 @@ public class BinlogMetadataTableBuilder {
         int numericIndex = 0;
         int enumIndex = 0;
         int setIndex = 0;
+        int geometryIndex = 0;
         for (int i = 0; i < columnCount; i++) {
             final int code = types[i] & 0xFF;
             final ColumnEditor column = Column.editor()
@@ -165,7 +167,7 @@ public class BinlogMetadataTableBuilder {
                 case TYPE_DATETIME, TYPE_DATETIME_V2 -> column.type("DATETIME").jdbcType(Types.TIMESTAMP).length(columnMeta[i]);
                 case TYPE_TIMESTAMP, TYPE_TIMESTAMP_V2 -> column.type("TIMESTAMP").jdbcType(Types.TIMESTAMP_WITH_TIMEZONE).length(columnMeta[i]);
                 case TYPE_JSON -> column.type("JSON").jdbcType(Types.OTHER);
-                case TYPE_GEOMETRY -> column.type("GEOMETRY").jdbcType(Types.OTHER);
+                case TYPE_GEOMETRY -> column.type(geometryTypeName(geometryTypes, geometryIndex++)).jdbcType(Types.OTHER);
                 case TYPE_VECTOR -> column.type("VECTOR").jdbcType(Types.OTHER);
                 case TYPE_VARCHAR, TYPE_VAR_STRING -> charType(column, binary ? "VARBINARY" : "VARCHAR",
                         binary ? Types.VARBINARY : Types.VARCHAR, byteToCharLength(columnMeta[i], collation), binary ? null : collation);
@@ -277,6 +279,26 @@ public class BinlogMetadataTableBuilder {
         if (collation != BINARY_COLLATION_ID) {
             column.charsetName(collationName(collation));
         }
+    }
+
+    /**
+     * Resolve the concrete spatial type name from the {@code GEOMETRY_TYPE} metadata field, which carries
+     * the real type of every geometry column ({@code Field::geometry_type} codes).
+     */
+    private static String geometryTypeName(List<Integer> geometryTypes, int geometryIndex) {
+        if (geometryTypes == null || geometryIndex >= geometryTypes.size()) {
+            return "GEOMETRY";
+        }
+        return switch (geometryTypes.get(geometryIndex)) {
+            case 1 -> "POINT";
+            case 2 -> "LINESTRING";
+            case 3 -> "POLYGON";
+            case 4 -> "MULTIPOINT";
+            case 5 -> "MULTILINESTRING";
+            case 6 -> "MULTIPOLYGON";
+            case 7 -> "GEOMETRYCOLLECTION";
+            default -> "GEOMETRY";
+        };
     }
 
     /**
