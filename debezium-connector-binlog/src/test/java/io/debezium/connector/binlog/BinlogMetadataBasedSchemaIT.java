@@ -243,6 +243,59 @@ public abstract class BinlogMetadataBasedSchemaIT<C extends SourceConnector> ext
     }
 
     @Test
+    public void shouldStreamFromRewoundOffsetAcrossDdlChange() throws Exception {
+        final Configuration config = metadataModeConfig().build();
+        start(getConnectorClass(), config);
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
+
+        // First change: consume it so that the committed offset lands right after this event. This
+        // offset is the rewind point, taken while the table still has its original schema.
+        insertMarkerOrder("RW01");
+        assertThat(consumeOrders(1)).hasSize(1);
+        stopConnector();
+        // The inherited Testing.Files interface shadows java.nio.file.Files, hence the qualified name.
+        final byte[] rewindPoint = java.nio.file.Files.readAllBytes(OFFSET_STORE_PATH);
+
+        // While the connector keeps running past the rewind point, the table goes through
+        // DML -> DDL -> DML, so the offset ends up beyond a schema change.
+        start(getConnectorClass(), config);
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
+        insertMarkerOrder("RW02");
+        executeStatements(DATABASE.getDatabaseName(), "ALTER TABLE orders ADD COLUMN rewound INT");
+        executeStatements(DATABASE.getDatabaseName(),
+                "INSERT INTO orders (quantity, status, price, code, note, created_at, rewound) "
+                        + "VALUES (1, 'NEW', 1.000, 'RW03', 'post-ddl', NOW(3), 42)");
+        assertThat(consumeOrders(2)).hasSize(2);
+        stopConnector();
+
+        // Rewind the offset behind the DDL statement. Because this mode keeps no persistent state other
+        // than the offset, this is equivalent to an operator seeding a binlog position (or GTID set) for
+        // a fresh connector, and it must work even though the current database schema no longer matches
+        // the schema at the rewind point. A schema-history connector cannot do this without a history
+        // topic that covers the target position.
+        java.nio.file.Files.write(OFFSET_STORE_PATH, rewindPoint);
+
+        start(getConnectorClass(), config);
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
+
+        final List<SourceRecord> replayed = consumeOrders(2);
+        assertThat(replayed).hasSize(2);
+
+        // The replayed pre-DDL row must decode with the point-in-time schema carried by its TABLE_MAP
+        // event, not with the current schema of the table.
+        final Struct preDdl = afterOf(replayed.get(0));
+        assertThat(preDdl.getString("code")).isEqualTo("RW02");
+        assertThat(preDdl.schema().field("rewound")).as("pre-DDL row decoded with point-in-time schema").isNull();
+
+        // The replayed post-DDL row must decode with the new schema.
+        final Struct postDdl = afterOf(replayed.get(1));
+        assertThat(postDdl.getString("code")).isEqualTo("RW03");
+        assertThat(postDdl.getInt32("rewound")).isEqualTo(42);
+
+        stopConnector();
+    }
+
+    @Test
     public void shouldFailFastWhenBinlogRowMetadataIsNotFull() throws Exception {
         setBinlogRowMetadata("MINIMAL");
 
