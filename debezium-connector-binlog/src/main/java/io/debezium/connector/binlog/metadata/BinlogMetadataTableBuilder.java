@@ -272,6 +272,9 @@ public class BinlogMetadataTableBuilder {
             expr.append(')');
             column.type(typeName, expr.toString());
             column.enumValues(List.of(values));
+            // Mirror the DDL parser convention (see ColumnDefinitionParserListener): ENUM columns get
+            // length 1 and SET columns "number of options + number of commas".
+            column.length("ENUM".equals(typeName) ? 1 : Math.max(0, values.length * 2 - 1));
         }
         else {
             column.type(typeName);
