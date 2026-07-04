@@ -264,10 +264,15 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
         private final List<Integer> columnCharsets;
         private final Integer defaultCharsetCollation;
         private final Map<Integer, Integer> defaultCharsetOverrides;
+        private final List<Integer> enumAndSetColumnCharsets;
+        private final Integer enumAndSetDefaultCharsetCollation;
+        private final Map<Integer, Integer> enumAndSetDefaultCharsetOverrides;
         private final List<String[]> enumStrValues;
         private final List<String[]> setStrValues;
         private final List<Integer> geometryTypes;
+        private final List<Integer> vectorDimensionality;
         private final List<Integer> simplePrimaryKeys;
+        private final Map<Integer, Integer> primaryKeysWithPrefix;
 
         private TableMapMetadataSnapshot(TableMapEventData data, TableMapEventMetadata meta) {
             this.columnTypes = data.getColumnTypes() != null ? data.getColumnTypes().clone() : null;
@@ -279,10 +284,16 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
             final TableMapEventMetadata.DefaultCharset defaultCharset = meta.getDefaultCharset();
             this.defaultCharsetCollation = defaultCharset != null ? defaultCharset.getDefaultCharsetCollation() : null;
             this.defaultCharsetOverrides = defaultCharset != null ? defaultCharset.getCharsetCollations() : null;
+            final TableMapEventMetadata.DefaultCharset enumAndSetDefaultCharset = meta.getEnumAndSetDefaultCharset();
+            this.enumAndSetColumnCharsets = meta.getEnumAndSetColumnCharsets();
+            this.enumAndSetDefaultCharsetCollation = enumAndSetDefaultCharset != null ? enumAndSetDefaultCharset.getDefaultCharsetCollation() : null;
+            this.enumAndSetDefaultCharsetOverrides = enumAndSetDefaultCharset != null ? enumAndSetDefaultCharset.getCharsetCollations() : null;
             this.enumStrValues = meta.getEnumStrValues();
             this.setStrValues = meta.getSetStrValues();
             this.geometryTypes = meta.getGeometryTypes();
+            this.vectorDimensionality = meta.getVectorDimensionality();
             this.simplePrimaryKeys = meta.getSimplePrimaryKeys();
+            this.primaryKeysWithPrefix = meta.getPrimaryKeysWithPrefix();
         }
 
         static TableMapMetadataSnapshot of(TableMapEventData data) {
@@ -295,6 +306,7 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
                 return false;
             }
             final TableMapEventMetadata.DefaultCharset defaultCharset = meta.getDefaultCharset();
+            final TableMapEventMetadata.DefaultCharset enumAndSetDefaultCharset = meta.getEnumAndSetDefaultCharset();
             return Arrays.equals(columnTypes, data.getColumnTypes())
                     && Arrays.equals(columnMetadata, data.getColumnMetadata())
                     && Objects.equals(columnNullability, data.getColumnNullability())
@@ -303,10 +315,15 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
                     && Objects.equals(columnCharsets, meta.getColumnCharsets())
                     && Objects.equals(defaultCharsetCollation, defaultCharset != null ? defaultCharset.getDefaultCharsetCollation() : null)
                     && Objects.equals(defaultCharsetOverrides, defaultCharset != null ? defaultCharset.getCharsetCollations() : null)
+                    && Objects.equals(enumAndSetColumnCharsets, meta.getEnumAndSetColumnCharsets())
+                    && Objects.equals(enumAndSetDefaultCharsetCollation, enumAndSetDefaultCharset != null ? enumAndSetDefaultCharset.getDefaultCharsetCollation() : null)
+                    && Objects.equals(enumAndSetDefaultCharsetOverrides, enumAndSetDefaultCharset != null ? enumAndSetDefaultCharset.getCharsetCollations() : null)
                     && stringArrayListsEqual(enumStrValues, meta.getEnumStrValues())
                     && stringArrayListsEqual(setStrValues, meta.getSetStrValues())
                     && Objects.equals(geometryTypes, meta.getGeometryTypes())
-                    && Objects.equals(simplePrimaryKeys, meta.getSimplePrimaryKeys());
+                    && Objects.equals(vectorDimensionality, meta.getVectorDimensionality())
+                    && Objects.equals(simplePrimaryKeys, meta.getSimplePrimaryKeys())
+                    && Objects.equals(primaryKeysWithPrefix, meta.getPrimaryKeysWithPrefix());
         }
 
         private static boolean stringArrayListsEqual(List<String[]> left, List<String[]> right) {

@@ -36,6 +36,16 @@ import io.debezium.relational.TableId;
  * <p>
  * Attributes that the binlog metadata does not carry (column defaults, generated-column flag,
  * comments) are intentionally not populated; those are documented limitations of this mode.
+ * <p>
+ * The authoritative list of what the server writes is {@code Table_map_log_event::init_metadata_fields()}
+ * in MySQL {@code sql/log_event.cc}: {@code MINIMAL} metadata consists of SIGNEDNESS,
+ * DEFAULT_CHARSET/COLUMN_CHARSET (string columns) and GEOMETRY_TYPE, and {@code FULL} adds COLUMN_NAME,
+ * ENUM_AND_SET_DEFAULT_CHARSET/ENUM_AND_SET_COLUMN_CHARSET, SET_STR_VALUE, ENUM_STR_VALUE, either
+ * SIMPLE_PRIMARY_KEY or PRIMARY_KEY_WITH_PREFIX, COLUMN_VISIBILITY and, on MySQL 9, VECTOR_DIMENSIONALITY.
+ * No field carries the integer display width, column DEFAULT values, the FLOAT(M,D) precision, or column
+ * comments, which is the source-level basis for the documented differences from the schema history mode.
+ * COLUMN_VISIBILITY is intentionally not consumed: invisible columns are present in every row event and
+ * the DDL-based path keeps them as ordinary columns as well.
  */
 public class BinlogMetadataTableBuilder {
 
@@ -119,10 +129,11 @@ public class BinlogMetadataTableBuilder {
         final List<String[]> enumValues = meta.getEnumStrValues();
         final List<String[]> setValues = meta.getSetStrValues();
         final List<Integer> geometryTypes = meta.getGeometryTypes();
+        final List<Integer> vectorDimensions = meta.getVectorDimensionality();
         final List<Integer> simplePk = meta.getSimplePrimaryKeys();
 
         final int columnCount = types.length;
-        final int[] collationPerColumn = resolveColumnCollations(types, meta);
+        final int[] collationPerColumn = resolveColumnCollations(types, columnMeta, meta);
 
         final TableEditor table = Table.editor().tableId(tableId);
 
@@ -130,6 +141,7 @@ public class BinlogMetadataTableBuilder {
         int enumIndex = 0;
         int setIndex = 0;
         int geometryIndex = 0;
+        int vectorIndex = 0;
         for (int i = 0; i < columnCount; i++) {
             final int code = types[i] & 0xFF;
             final ColumnEditor column = Column.editor()
@@ -168,7 +180,7 @@ public class BinlogMetadataTableBuilder {
                 case TYPE_TIMESTAMP, TYPE_TIMESTAMP_V2 -> column.type("TIMESTAMP").jdbcType(Types.TIMESTAMP_WITH_TIMEZONE).length(columnMeta[i]);
                 case TYPE_JSON -> column.type("JSON").jdbcType(Types.OTHER);
                 case TYPE_GEOMETRY -> column.type(geometryTypeName(geometryTypes, geometryIndex++)).jdbcType(Types.OTHER);
-                case TYPE_VECTOR -> column.type("VECTOR").jdbcType(Types.OTHER);
+                case TYPE_VECTOR -> vectorType(column, vectorDimensions, vectorIndex++);
                 case TYPE_VARCHAR, TYPE_VAR_STRING -> charType(column, binary ? "VARBINARY" : "VARCHAR",
                         binary ? Types.VARBINARY : Types.VARCHAR, byteToCharLength(columnMeta[i], collation), binary ? null : collation);
                 case TYPE_TINY_BLOB, TYPE_BLOB, TYPE_MEDIUM_BLOB, TYPE_LONG_BLOB -> blobType(column, code, columnMeta[i], binary, collation);
@@ -205,6 +217,21 @@ public class BinlogMetadataTableBuilder {
                 pkNames.add(names.get(idx));
             }
             table.setPrimaryKeyNames(pkNames);
+        }
+        else {
+            // When any key part uses a prefix, e.g. PRIMARY KEY (`code`(5)), the server writes
+            // PRIMARY_KEY_WITH_PREFIX instead of SIMPLE_PRIMARY_KEY (either/or; see
+            // Table_map_log_event::init_primary_key_field() in MySQL sql/log_event.cc). The map keeps
+            // the key part order and the prefix length is irrelevant here: the relational model tracks
+            // key column names only, exactly like the DDL parser does for a prefixed key.
+            final Map<Integer, Integer> prefixPk = meta.getPrimaryKeysWithPrefix();
+            if (prefixPk != null && !prefixPk.isEmpty()) {
+                final List<String> pkNames = new ArrayList<>(prefixPk.size());
+                for (Integer idx : prefixPk.keySet()) {
+                    pkNames.add(names.get(idx));
+                }
+                table.setPrimaryKeyNames(pkNames);
+            }
         }
 
         return table.create();
@@ -285,6 +312,17 @@ public class BinlogMetadataTableBuilder {
     }
 
     /**
+     * The {@code VECTOR_DIMENSIONALITY} metadata field (MySQL 9) carries the dimensionality of every
+     * vector column, which the DDL parser stores as the column length.
+     */
+    private static void vectorType(ColumnEditor column, List<Integer> vectorDimensions, int vectorIndex) {
+        column.type("VECTOR").jdbcType(Types.OTHER);
+        if (vectorDimensions != null && vectorIndex < vectorDimensions.size()) {
+            column.length(vectorDimensions.get(vectorIndex));
+        }
+    }
+
+    /**
      * Resolve the concrete spatial type name from the {@code GEOMETRY_TYPE} metadata field, which carries
      * the real type of every geometry column ({@code Field::geometry_type} codes).
      */
@@ -340,45 +378,70 @@ public class BinlogMetadataTableBuilder {
         };
     }
 
+    /**
+     * Whether the column takes part in the DEFAULT_CHARSET/COLUMN_CHARSET numbering. Mirrors
+     * {@code is_character_type()} in MySQL {@code sql/log_event.cc}: STRING, VAR_STRING, VARCHAR and the
+     * BLOB family only. ENUM and SET columns are excluded even though they are transported as STRING,
+     * because the server tests the field's real type; they are numbered separately and take their
+     * charset from the ENUM_AND_SET_* fields instead.
+     */
     private static boolean isCharacterType(int code) {
         return switch (code) {
-            case TYPE_VARCHAR, TYPE_VAR_STRING, TYPE_STRING, TYPE_ENUM, TYPE_SET,
+            case TYPE_VARCHAR, TYPE_VAR_STRING, TYPE_STRING,
                     TYPE_TINY_BLOB, TYPE_BLOB, TYPE_MEDIUM_BLOB, TYPE_LONG_BLOB ->
                 true;
             default -> false;
         };
     }
 
+    private static boolean isEnumOrSetColumn(int code, int meta) {
+        if (code == TYPE_ENUM || code == TYPE_SET) {
+            return true;
+        }
+        if (code == TYPE_STRING) {
+            final int realType = unpackStringRealType(meta);
+            return realType == TYPE_ENUM || realType == TYPE_SET;
+        }
+        return false;
+    }
+
     /**
-     * Resolve the collation id per column. MySQL encodes charset either as an explicit per-character-column
-     * list ({@code COLUMN_CHARSET}) or as a default plus sparse overrides ({@code DEFAULT_CHARSET}), both
-     * indexed over character-type columns only.
+     * Resolve the collation id per column. MySQL encodes charset either as an explicit per-column list
+     * ({@code COLUMN_CHARSET}) or as a default plus sparse overrides ({@code DEFAULT_CHARSET}). Both are
+     * indexed over character-type columns only, and ENUM/SET columns have their own pair of fields
+     * ({@code ENUM_AND_SET_COLUMN_CHARSET}/{@code ENUM_AND_SET_DEFAULT_CHARSET}) with an independent
+     * numbering (see {@code Table_map_log_event::init_charset_field()} in MySQL {@code sql/log_event.cc}).
      */
-    private int[] resolveColumnCollations(byte[] types, TableMapEventMetadata meta) {
+    private int[] resolveColumnCollations(byte[] types, int[] columnMeta, TableMapEventMetadata meta) {
         final int[] result = new int[types.length];
-        final List<Integer> explicit = meta.getColumnCharsets();
-        final TableMapEventMetadata.DefaultCharset defaultCharset = meta.getDefaultCharset();
         int charIndex = 0;
+        int enumSetIndex = 0;
         for (int i = 0; i < types.length; i++) {
-            if (!isCharacterType(types[i] & 0xFF)) {
-                result[i] = -1;
-                continue;
+            final int code = types[i] & 0xFF;
+            if (isEnumOrSetColumn(code, columnMeta[i])) {
+                result[i] = resolveCollation(meta.getEnumAndSetColumnCharsets(), meta.getEnumAndSetDefaultCharset(), enumSetIndex++);
             }
-            if (explicit != null && charIndex < explicit.size()) {
-                result[i] = explicit.get(charIndex);
-            }
-            else if (defaultCharset != null) {
-                final Map<Integer, Integer> overrides = defaultCharset.getCharsetCollations();
-                result[i] = overrides != null && overrides.containsKey(charIndex)
-                        ? overrides.get(charIndex)
-                        : defaultCharset.getDefaultCharsetCollation();
+            else if (isCharacterType(code)) {
+                result[i] = resolveCollation(meta.getColumnCharsets(), meta.getDefaultCharset(), charIndex++);
             }
             else {
                 result[i] = -1;
             }
-            charIndex++;
         }
         return result;
+    }
+
+    private static int resolveCollation(List<Integer> explicit, TableMapEventMetadata.DefaultCharset defaultCharset, int index) {
+        if (explicit != null && index < explicit.size()) {
+            return explicit.get(index);
+        }
+        if (defaultCharset != null) {
+            final Map<Integer, Integer> overrides = defaultCharset.getCharsetCollations();
+            return overrides != null && overrides.containsKey(index)
+                    ? overrides.get(index)
+                    : defaultCharset.getDefaultCharsetCollation();
+        }
+        return -1;
     }
 
     /** Convert a byte length to a character length using the collation's maximum bytes-per-character. */

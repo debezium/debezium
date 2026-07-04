@@ -10,6 +10,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.sql.Types;
 import java.util.BitSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -178,6 +179,8 @@ class BinlogMetadataTableBuilderTest {
     void shouldMapVectorColumn() {
         final TableMapEventMetadata meta = new TableMapEventMetadata();
         meta.setColumnNames(List.of("v"));
+        // VECTOR_DIMENSIONALITY carries the dimensionality of every vector column.
+        meta.setVectorDimensionality(List.of(1536));
 
         final TableMapEventData data = new TableMapEventData();
         data.setDatabase("test");
@@ -190,6 +193,71 @@ class BinlogMetadataTableBuilderTest {
         final Table table = builder.build(TableId.parse("test.vec"), data);
         assertThat(table.columnWithName("v").typeName()).isEqualTo("VECTOR");
         assertThat(table.columnWithName("v").jdbcType()).isEqualTo(Types.OTHER);
+        assertThat(table.columnWithName("v").length()).isEqualTo(1536);
+    }
+
+    @Test
+    void shouldResolveEnumAndSetCharsetsFromDedicatedFields() {
+        // ENUM and SET columns are excluded from the DEFAULT_CHARSET/COLUMN_CHARSET numbering (the
+        // server tests the real type; see is_character_type() in MySQL sql/log_event.cc) and take
+        // their charset from the ENUM_AND_SET_* fields. An ENUM in front of the string columns must
+        // therefore not shift the explicit per-column charset list.
+        final TableMapEventMetadata meta = new TableMapEventMetadata();
+        meta.setColumnNames(List.of("status", "name_latin1", "note_utf8"));
+        meta.setEnumStrValues(List.<String[]> of(new String[]{ "A", "B" }));
+        // COLUMN_CHARSET indexed over the string columns only: latin1(8), utf8mb4(255).
+        meta.setColumnCharsets(List.of(8, 255));
+        final DefaultCharset enumAndSetCharset = new DefaultCharset();
+        enumAndSetCharset.setDefaultCharsetCollation(255);
+        meta.setEnumAndSetDefaultCharset(enumAndSetCharset);
+
+        final TableMapEventData data = new TableMapEventData();
+        data.setDatabase("test");
+        data.setTable("charset_mix");
+        // status is transported as STRING(254) with the ENUM real type packed into the metadata.
+        data.setColumnTypes(new byte[]{ (byte) 254, 15, 15 });
+        data.setColumnMetadata(new int[]{ (247 << 8) | 1, 100, 200 });
+        data.setColumnNullability(new BitSet());
+        data.setEventMetadata(meta);
+
+        final Table table = builder.build(TableId.parse("test.charset_mix"), data);
+
+        final Column status = table.columnWithName("status");
+        assertThat(status.typeName()).isEqualTo("ENUM");
+        assertThat(status.charsetName()).isEqualTo("utf8mb4");
+
+        final Column nameLatin1 = table.columnWithName("name_latin1");
+        assertThat(nameLatin1.charsetName()).isEqualTo("latin1");
+        assertThat(nameLatin1.length()).isEqualTo(100);
+
+        final Column noteUtf8 = table.columnWithName("note_utf8");
+        assertThat(noteUtf8.charsetName()).isEqualTo("utf8mb4");
+        assertThat(noteUtf8.length()).isEqualTo(50); // 200 bytes / 4 (utf8mb4)
+    }
+
+    @Test
+    void shouldReconstructPrefixedPrimaryKey() {
+        // When any key part uses a prefix, the server writes PRIMARY_KEY_WITH_PREFIX instead of
+        // SIMPLE_PRIMARY_KEY (see Table_map_log_event::init_primary_key_field() in sql/log_event.cc).
+        final TableMapEventMetadata meta = new TableMapEventMetadata();
+        meta.setColumnNames(List.of("code", "qty"));
+        final Map<Integer, Integer> prefixPk = new LinkedHashMap<>();
+        prefixPk.put(0, 5);
+        meta.setPrimaryKeysWithPrefix(prefixPk);
+        final DefaultCharset defaultCharset = new DefaultCharset();
+        defaultCharset.setDefaultCharsetCollation(255);
+        meta.setDefaultCharset(defaultCharset);
+
+        final TableMapEventData data = new TableMapEventData();
+        data.setDatabase("test");
+        data.setTable("prefix_pk");
+        data.setColumnTypes(new byte[]{ 15, 3 });
+        data.setColumnMetadata(new int[]{ 256, 0 });
+        data.setColumnNullability(new BitSet());
+        data.setEventMetadata(meta);
+
+        final Table table = builder.build(TableId.parse("test.prefix_pk"), data);
+        assertThat(table.primaryKeyColumnNames()).containsExactly("code");
     }
 
     @Test
