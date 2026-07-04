@@ -13,7 +13,6 @@ import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
-import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.sink.SinkTask;
 import org.assertj.db.api.TableAssert;
 import org.assertj.db.type.ValueType;
@@ -21,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 
+import io.debezium.DebeziumException;
 import io.debezium.connector.jdbc.JdbcKafkaSinkRecord;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.SchemaEvolutionMode;
@@ -63,7 +63,7 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
         final Map<String, String> properties = getNoneValidatedSinkConfig(topicName);
 
         assertThatThrownBy(() -> startSinkConnector(properties))
-                .hasCauseInstanceOf(ConnectException.class)
+                .hasCauseInstanceOf(DebeziumException.class)
                 .hasMessageContaining("Target table")
                 .hasMessageContaining("does not exist")
                 .hasMessageContaining(SchemaEvolutionMode.NONE_VALIDATED.getValue());
