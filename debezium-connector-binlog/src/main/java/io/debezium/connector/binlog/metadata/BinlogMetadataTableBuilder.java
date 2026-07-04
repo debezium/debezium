@@ -79,6 +79,7 @@ public class BinlogMetadataTableBuilder {
     private static final int TYPE_TIMESTAMP_V2 = 17;
     private static final int TYPE_DATETIME_V2 = 18;
     private static final int TYPE_TIME_V2 = 19;
+    private static final int TYPE_VECTOR = 242;
     private static final int TYPE_JSON = 245;
     private static final int TYPE_NEWDECIMAL = 246;
     private static final int TYPE_ENUM = 247;
@@ -165,6 +166,7 @@ public class BinlogMetadataTableBuilder {
                 case TYPE_TIMESTAMP, TYPE_TIMESTAMP_V2 -> column.type("TIMESTAMP").jdbcType(Types.TIMESTAMP_WITH_TIMEZONE).length(columnMeta[i]);
                 case TYPE_JSON -> column.type("JSON").jdbcType(Types.OTHER);
                 case TYPE_GEOMETRY -> column.type("GEOMETRY").jdbcType(Types.OTHER);
+                case TYPE_VECTOR -> column.type("VECTOR").jdbcType(Types.OTHER);
                 case TYPE_VARCHAR, TYPE_VAR_STRING -> charType(column, binary ? "VARBINARY" : "VARCHAR",
                         binary ? Types.VARBINARY : Types.VARCHAR, byteToCharLength(columnMeta[i], collation), binary ? null : collation);
                 case TYPE_TINY_BLOB, TYPE_BLOB, TYPE_MEDIUM_BLOB, TYPE_LONG_BLOB -> blobType(column, code, columnMeta[i], binary, collation);
