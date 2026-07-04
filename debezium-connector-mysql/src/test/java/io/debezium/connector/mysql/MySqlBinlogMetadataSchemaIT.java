@@ -39,8 +39,10 @@ public class MySqlBinlogMetadataSchemaIT extends BinlogMetadataBasedSchemaIT<MyS
         final Struct after = afterOf(records.get(0));
         assertThat(after.schema().field("c_point")).as("c_point reconstructed").isNotNull();
         assertThat(after.schema().field("c_geometry")).as("c_geometry reconstructed").isNotNull();
-        // Spatial values decode to a Debezium geometry struct (io.debezium.data.geometry.Geometry).
-        assertThat(after.getStruct("c_point")).isNotNull();
+        // The GEOMETRY_TYPE metadata carries the spatial subtype, so a POINT column surfaces with the
+        // Point logical type including its x/y fields; plain GEOMETRY surfaces as a geometry struct.
+        assertThat(after.getStruct("c_point").getFloat64("x")).isEqualTo(1.0);
+        assertThat(after.getStruct("c_point").getFloat64("y")).isEqualTo(1.0);
         assertThat(after.getStruct("c_geometry")).isNotNull();
 
         stopConnector();
