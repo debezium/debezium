@@ -33,7 +33,9 @@ import io.debezium.jdbc.JdbcConnection;
  *
  * @author Chris Cranford
  */
-@SkipWhenSchemaHistoryDisabled(reason = "Asserts mappings that rely on integer display width, FLOAT precision and nationalized character source types, none of which are carried by the binlog TABLE_MAP metadata")
+@SkipWhenSchemaHistoryDisabled(reason = "Asserts streaming-phase propagated source types that exist only as DDL text: BOOLEAN, REAL, NCHAR and "
+        + "NVARCHAR are aliases that the server normalizes to TINYINT(1), DOUBLE and CHAR/VARCHAR, and the binlog carries only the normalized "
+        + "storage types, without the display width that is deprecated since MySQL 8.0.17")
 public abstract class BinlogJdbcSinkDataTypeConverterIT<C extends SourceConnector> extends AbstractBinlogConnectorIT<C> {
 
     private static final Path SCHEMA_HISTORY_PATH = Files.createTestingPath("file-schema-history-jdbc-sink.text").toAbsolutePath();

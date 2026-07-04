@@ -31,7 +31,9 @@ import io.debezium.doc.FixFor;
  *
  * @author Gunnar Morling
  */
-@SkipWhenSchemaHistoryDisabled(reason = "Asserts propagated source column types including display width and precision, which are not carried by the binlog TABLE_MAP metadata")
+@SkipWhenSchemaHistoryDisabled(reason = "Asserts propagated source types that include the FLOAT(M,D) precision and the NUMERIC alias, both of "
+        + "which exist only in the DDL text; the binlog TABLE_MAP metadata carries the storage type instead (the FLOAT pack length and the "
+        + "DECIMAL base type), so the propagated strings differ")
 public abstract class BinlogSourceTypeInSchemaIT<C extends SourceConnector> extends AbstractBinlogConnectorIT<C> {
 
     private static final String TYPE_NAME_PARAMETER_KEY = "__debezium.source.column.type";
