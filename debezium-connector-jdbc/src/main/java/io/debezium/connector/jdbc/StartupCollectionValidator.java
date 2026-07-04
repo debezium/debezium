@@ -30,15 +30,27 @@ final class StartupCollectionValidator {
     private static final String TOPIC_PLACEHOLDER = "${topic}";
     private static final String SOURCE_PLACEHOLDER_PREFIX = "${source.";
 
-    private StartupCollectionValidator() {
+    private final JdbcSinkConnectorConfig config;
+    private final SessionFactory sessionFactory;
+    private final DatabaseDialect dialect;
+    private final Map<String, String> props;
+
+    StartupCollectionValidator(JdbcSinkConnectorConfig config,
+                               SessionFactory sessionFactory,
+                               DatabaseDialect dialect,
+                               Map<String, String> props) {
+        this.config = config;
+        this.sessionFactory = sessionFactory;
+        this.dialect = dialect;
+        this.props = props;
     }
 
-    static void validate(JdbcSinkConnectorConfig config, SessionFactory sessionFactory, DatabaseDialect dialect, Map<String, String> props) {
+    void validate() {
         if (!config.getSchemaEvolutionMode().validateOnStartup()) {
             return;
         }
 
-        final Set<CollectionId> collectionIds = resolveCollectionIds(config, dialect, props);
+        final Set<CollectionId> collectionIds = resolveCollectionIds();
         try (StatelessSession validationSession = sessionFactory.openStatelessSession()) {
             for (CollectionId collectionId : collectionIds) {
                 final boolean exists = validationSession.doReturningWork(connection -> dialect.tableExists(connection, collectionId));
@@ -56,8 +68,8 @@ final class StartupCollectionValidator {
         }
     }
 
-    static Set<CollectionId> resolveCollectionIds(JdbcSinkConnectorConfig config, DatabaseDialect dialect, Map<String, String> props) {
-        return resolveCollectionNames(config, props)
+    Set<CollectionId> resolveCollectionIds() {
+        return resolveCollectionNames()
                 .stream()
                 .map(collectionName -> {
                     final CollectionId collectionId = dialect.getCollectionId(collectionName);
@@ -69,14 +81,14 @@ final class StartupCollectionValidator {
                 .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
-    static Set<String> resolveCollectionNames(JdbcSinkConnectorConfig config, Map<String, String> props) {
+    Set<String> resolveCollectionNames() {
         final String collectionNameFormat = config.getCollectionNameFormat();
         if (Strings.isNullOrEmpty(collectionNameFormat)) {
             throw new DebeziumException("'" + JdbcSinkConnectorConfig.SCHEMA_EVOLUTION + "=" + SchemaEvolutionMode.NONE_VALIDATED.getValue()
                     + "' requires '" + JdbcSinkConnectorConfig.COLLECTION_NAME_FORMAT + "' to be configured.");
         }
 
-        if (!usesDefaultCollectionNamingStrategy(config)) {
+        if (!usesDefaultCollectionNamingStrategy()) {
             throw new DebeziumException("'" + JdbcSinkConnectorConfig.SCHEMA_EVOLUTION + "=" + SchemaEvolutionMode.NONE_VALIDATED.getValue()
                     + "' supports startup table validation only with the default collection naming strategy.");
         }
@@ -110,7 +122,7 @@ final class StartupCollectionValidator {
     }
 
     @SuppressWarnings("unchecked")
-    private static Set<String> parseTopics(String topics) {
+    private Set<String> parseTopics(String topics) {
         final List<String> parsedTopics = (List<String>) ConfigDef.parseType(SinkTask.TOPICS_CONFIG, topics, ConfigDef.Type.LIST);
         if (parsedTopics == null) {
             return Set.of();
@@ -121,7 +133,7 @@ final class StartupCollectionValidator {
     }
 
     @SuppressWarnings("deprecation")
-    private static boolean usesDefaultCollectionNamingStrategy(JdbcSinkConnectorConfig config) {
+    private boolean usesDefaultCollectionNamingStrategy() {
         CollectionNamingStrategy strategy = config.getCollectionNamingStrategy();
         if (strategy instanceof TemporaryBackwardCompatibleCollectionNamingStrategyProxy proxy) {
             strategy = proxy.getOriginalStrategy();

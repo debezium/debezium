@@ -7,15 +7,18 @@ package io.debezium.connector.jdbc;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
 
 import java.util.HashMap;
 import java.util.Map;
 
+import org.hibernate.SessionFactory;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.SchemaEvolutionMode;
+import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 
 @Tag("UnitTests")
 public class StartupCollectionValidatorTest {
@@ -40,7 +43,7 @@ public class StartupCollectionValidatorTest {
 
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
 
-        assertThat(StartupCollectionValidator.resolveCollectionNames(config, properties))
+        assertThat(validator(config, properties).resolveCollectionNames())
                 .containsExactly("server_inventory_customers", "server_inventory_orders");
     }
 
@@ -52,7 +55,7 @@ public class StartupCollectionValidatorTest {
 
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
 
-        assertThat(StartupCollectionValidator.resolveCollectionNames(config, properties))
+        assertThat(validator(config, properties).resolveCollectionNames())
                 .containsExactly("inventory.customers");
     }
 
@@ -63,7 +66,7 @@ public class StartupCollectionValidatorTest {
 
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
 
-        assertThatThrownBy(() -> StartupCollectionValidator.resolveCollectionNames(config, properties))
+        assertThatThrownBy(() -> validator(config, properties).resolveCollectionNames())
                 .isInstanceOf(DebeziumException.class)
                 .hasMessageContaining("topics.regex");
     }
@@ -74,7 +77,7 @@ public class StartupCollectionValidatorTest {
 
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
 
-        assertThatThrownBy(() -> StartupCollectionValidator.resolveCollectionNames(config, properties))
+        assertThatThrownBy(() -> validator(config, properties).resolveCollectionNames())
                 .isInstanceOf(DebeziumException.class)
                 .hasMessageContaining("requires statically configured 'topics'");
     }
@@ -86,7 +89,7 @@ public class StartupCollectionValidatorTest {
 
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
 
-        assertThatThrownBy(() -> StartupCollectionValidator.resolveCollectionNames(config, properties))
+        assertThatThrownBy(() -> validator(config, properties).resolveCollectionNames())
                 .isInstanceOf(DebeziumException.class)
                 .hasMessageContaining("source field placeholders");
     }
@@ -95,5 +98,9 @@ public class StartupCollectionValidatorTest {
         final Map<String, String> properties = new HashMap<>();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.NONE_VALIDATED.getValue());
         return properties;
+    }
+
+    private static StartupCollectionValidator validator(JdbcSinkConnectorConfig config, Map<String, String> properties) {
+        return new StartupCollectionValidator(config, mock(SessionFactory.class), mock(DatabaseDialect.class), properties);
     }
 }
