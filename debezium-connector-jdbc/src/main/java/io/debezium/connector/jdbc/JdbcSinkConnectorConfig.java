@@ -416,7 +416,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         }
 
         public boolean isSchemaEvolutionEnabled() {
-            return this == BASIC;
+            return this != NONE && this != NONE_VALIDATED;
         }
 
     }
