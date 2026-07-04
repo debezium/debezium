@@ -25,6 +25,7 @@ public class StartupCollectionValidatorTest {
         final SchemaEvolutionMode mode = SchemaEvolutionMode.parse("none-validated");
 
         assertThat(mode).isEqualTo(SchemaEvolutionMode.NONE_VALIDATED);
+        assertThat(SchemaEvolutionMode.NONE.isSchemaEvolutionEnabled()).isFalse();
         assertThat(mode.isSchemaEvolutionEnabled()).isFalse();
         assertThat(SchemaEvolutionMode.BASIC.isSchemaEvolutionEnabled()).isTrue();
     }
