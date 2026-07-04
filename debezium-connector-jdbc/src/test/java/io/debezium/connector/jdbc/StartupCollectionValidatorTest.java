@@ -21,13 +21,16 @@ import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.SchemaEvolutionMode;
 public class StartupCollectionValidatorTest {
 
     @Test
-    public void shouldParseNoneValidatedSchemaEvolutionMode() {
+    public void shouldExposeSchemaEvolutionModeCapabilities() {
         final SchemaEvolutionMode mode = SchemaEvolutionMode.parse("none-validated");
 
         assertThat(mode).isEqualTo(SchemaEvolutionMode.NONE_VALIDATED);
-        assertThat(SchemaEvolutionMode.NONE.isSchemaEvolutionEnabled()).isFalse();
-        assertThat(mode.isSchemaEvolutionEnabled()).isFalse();
-        assertThat(SchemaEvolutionMode.BASIC.isSchemaEvolutionEnabled()).isTrue();
+        assertThat(SchemaEvolutionMode.NONE.validateOnStartup()).isFalse();
+        assertThat(SchemaEvolutionMode.NONE.schemaEvolution()).isFalse();
+        assertThat(mode.validateOnStartup()).isTrue();
+        assertThat(mode.schemaEvolution()).isFalse();
+        assertThat(SchemaEvolutionMode.BASIC.validateOnStartup()).isFalse();
+        assertThat(SchemaEvolutionMode.BASIC.schemaEvolution()).isTrue();
     }
 
     @Test
