@@ -357,30 +357,34 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         /**
          * No schema evolution occurs, assumed that the destination table's structure matches the event.
          */
-        NONE("none"),
+        NONE("none", false, false),
 
         /**
          * No schema evolution occurs, but statically resolvable destination tables are validated at startup.
          */
-        NONE_VALIDATED("none-validated"),
+        NONE_VALIDATED("none-validated", true, false),
 
         /**
          * When an event is received, the table will be created if it does not exist, and any new fields
          * found in the event will be amended to the existing tables.  Any columns omitted from the event
          * will simply be skipped during inserts and updates.
          */
-        BASIC("basic");
+        BASIC("basic", false, true);
 
         // /**
         // * When an event is received, the table will be created if it does not exist, and any new fields
         // * found in the event will be added to the existing table's schema. Any columns from the table
         // * schema not found in the event will be dropped.
         // */
-        // ADVANCED("advanced");
+        // ADVANCED("advanced", false, true);
         private final String mode;
+        private final boolean validateOnStartup;
+        private final boolean schemaEvolution;
 
-        SchemaEvolutionMode(String mode) {
+        SchemaEvolutionMode(String mode, boolean validateOnStartup, boolean schemaEvolution) {
             this.mode = mode;
+            this.validateOnStartup = validateOnStartup;
+            this.schemaEvolution = schemaEvolution;
         }
 
         public static SchemaEvolutionMode parse(String value) {
@@ -397,8 +401,12 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
             return mode;
         }
 
-        public boolean isSchemaEvolutionEnabled() {
-            return this != NONE && this != NONE_VALIDATED;
+        public boolean validateOnStartup() {
+            return validateOnStartup;
+        }
+
+        public boolean schemaEvolution() {
+            return schemaEvolution;
         }
 
     }

@@ -34,7 +34,7 @@ final class StartupCollectionValidator {
     }
 
     static void validate(JdbcSinkConnectorConfig config, SessionFactory sessionFactory, DatabaseDialect dialect, Map<String, String> props) {
-        if (config.getSchemaEvolutionMode() != SchemaEvolutionMode.NONE_VALIDATED) {
+        if (!config.getSchemaEvolutionMode().validateOnStartup()) {
             return;
         }
 
