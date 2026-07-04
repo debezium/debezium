@@ -510,35 +510,20 @@ xref:{context}-property-binlog-metadata-based-schema[`binlog.metadata.based.sche
 Default value::: `false`
 
 Description:::
-Specifies whether the connector reconstructs the streaming table schema from the metadata that binlog `TABLE_MAP` events carry, instead of from a persisted schema history topic.
+Specifies whether the connector reconstructs the table schema from the metadata that the server writes into the binlog when it runs with `binlog_row_metadata=FULL` (the `TABLE_MAP` events), instead of from a persisted schema history topic.
 +
 When set to `true`, the connector rebuilds each table's schema (column names, types, character sets, `ENUM`/`SET` values, and the primary key) from the binlog itself, and it does not create or depend on a schema history topic.
 In this mode you do not need to provide any `schema.history.internal.*` settings; the connector uses an in-memory schema history automatically, so no schema history storage or connection settings are required.
 This is an opt-in mode that requires the source server to run with `binlog_row_metadata=FULL`, which is available on MySQL 8.0 and later and on MariaDB 10.5 and later.
 If the variable is not set to `FULL`, the connector fails fast at startup.
 +
-Because the schema is read from each `TABLE_MAP` event, the connector correctly resumes streaming after a restart that occurs in the middle of a multi-row `INSERT` or `UPDATE` operation.
+Because the schema is read from the binlog itself, the connector correctly resumes streaming after a restart that occurs in the middle of a multi-row `INSERT` or `UPDATE` operation.
 +
 This mode works with any `snapshot.mode`.
 For modes that do not snapshot data (for example `no_data`), a fresh connector records the current binlog position before it begins streaming, so it captures only changes that occur from that point forward, rather than replaying the earliest available binlog.
 +
-*Differences from the schema history mode.*
-Change event values, keys, and restart behavior are identical in both modes; every row event carries the complete row (`binlog_row_image=FULL`) and the `TABLE_MAP` metadata carries everything that is needed to decode it.
-However, some schema attributes exist only in DDL statements and are not written to the binlog, so columns reconstructed from the binlog metadata differ from DDL-parsed columns in the following ways:
-
-* Integer display width is not available, so `TINYINT(1)` cannot be distinguished from `TINYINT`.
-The default mapping (`INT16`) is identical in both modes, but the optional `TinyIntOneToBooleanConverter` relies on the column length; set its `length.checker` option to `false` to convert all `TINYINT` columns instead.
-* Column default values are not part of the reconstructed schema, so the Kafka field schemas do not declare them.
-Row values are unaffected, because every change event carries the actual column values.
-As a consequence, a `NOT NULL` column with a `DEFAULT` value surfaces as a required field without a default: when such a column is added to a captured table, the Avro converter registers a schema that a schema registry rejects under the `BACKWARD` subject compatibility, and sink connectors that create or evolve tables do not receive the column default.
-Relaxing the subject compatibility, for example to `NONE`, avoids the rejection; adding the column as nullable avoids it as well.
-* `FLOAT(M,D)` columns (deprecated in MySQL 8.0.17) map to `FLOAT32` instead of `FLOAT64`, and nationalized character columns surface as plain `CHAR`/`VARCHAR`.
-* Source column types propagated with `column.propagate.source.type` reflect the reconstructed types, without display width or precision, and column comments are not available.
-* After a restart, a schema change event for a table whose structure has not been observed yet carries the DDL statement without the `tableChanges` structure; the table structure is restored by the next `TABLE_MAP` event.
-
-In exchange, this mode requires no schema history topic or settings, restarts without a history recovery phase, and recovers from schema changes that are never written to the binlog (for example an `ALTER TABLE` executed with `sql_log_bin=OFF`) by rebuilding the schema from the next `TABLE_MAP` event, whereas the schema history mode keeps using the stale schema in that situation.
-The connector offset can also be seeded or rewound to any position that the binlog still retains, even across past DDL statements, because every `TABLE_MAP` event carries the schema that was in effect at that point.
-With a schema history, the same operation requires a history topic that covers the target position; the `recovery` snapshot mode cannot substitute for one, because it rebuilds the history from the current schema and therefore cannot decode rows that were written before a schema change.
+The two modes are not fully equivalent: schema attributes that exist only in DDL statements (for example, column default values and the integer display width) are not part of the reconstructed schema.
+For the advantages and limitations of each mode, see xref:{context}-comparison-schema-history-binlog-metadata[the comparison between the schema history and the binlog metadata mode].
 
 [id="{context}-property-signal-data-collection"]
 xref:{context}-property-signal-data-collection[`signal.data.collection`]::
