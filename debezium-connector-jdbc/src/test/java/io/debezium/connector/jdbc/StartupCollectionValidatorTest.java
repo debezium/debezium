@@ -11,10 +11,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.kafka.connect.errors.ConnectException;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
+import io.debezium.DebeziumException;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.SchemaEvolutionMode;
 
 @Tag("UnitTests")
@@ -61,7 +61,7 @@ public class StartupCollectionValidatorTest {
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
 
         assertThatThrownBy(() -> StartupCollectionValidator.resolveCollectionNames(config, properties))
-                .isInstanceOf(ConnectException.class)
+                .isInstanceOf(DebeziumException.class)
                 .hasMessageContaining("topics.regex");
     }
 
@@ -72,7 +72,7 @@ public class StartupCollectionValidatorTest {
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
 
         assertThatThrownBy(() -> StartupCollectionValidator.resolveCollectionNames(config, properties))
-                .isInstanceOf(ConnectException.class)
+                .isInstanceOf(DebeziumException.class)
                 .hasMessageContaining("requires statically configured 'topics'");
     }
 
@@ -84,7 +84,7 @@ public class StartupCollectionValidatorTest {
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
 
         assertThatThrownBy(() -> StartupCollectionValidator.resolveCollectionNames(config, properties))
-                .isInstanceOf(ConnectException.class)
+                .isInstanceOf(DebeziumException.class)
                 .hasMessageContaining("source field placeholders");
     }
 

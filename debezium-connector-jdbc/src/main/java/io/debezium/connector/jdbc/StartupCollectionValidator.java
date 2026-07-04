@@ -12,7 +12,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef;
-import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.sink.SinkTask;
 import org.hibernate.SessionFactory;
 import org.hibernate.StatelessSession;
@@ -73,17 +72,17 @@ final class StartupCollectionValidator {
     static Set<String> resolveCollectionNames(JdbcSinkConnectorConfig config, Map<String, String> props) {
         final String collectionNameFormat = config.getCollectionNameFormat();
         if (Strings.isNullOrEmpty(collectionNameFormat)) {
-            throw new ConnectException("'" + JdbcSinkConnectorConfig.SCHEMA_EVOLUTION + "=" + SchemaEvolutionMode.NONE_VALIDATED.getValue()
+            throw new DebeziumException("'" + JdbcSinkConnectorConfig.SCHEMA_EVOLUTION + "=" + SchemaEvolutionMode.NONE_VALIDATED.getValue()
                     + "' requires '" + JdbcSinkConnectorConfig.COLLECTION_NAME_FORMAT + "' to be configured.");
         }
 
         if (!usesDefaultCollectionNamingStrategy(config)) {
-            throw new ConnectException("'" + JdbcSinkConnectorConfig.SCHEMA_EVOLUTION + "=" + SchemaEvolutionMode.NONE_VALIDATED.getValue()
+            throw new DebeziumException("'" + JdbcSinkConnectorConfig.SCHEMA_EVOLUTION + "=" + SchemaEvolutionMode.NONE_VALIDATED.getValue()
                     + "' supports startup table validation only with the default collection naming strategy.");
         }
 
         if (collectionNameFormat.contains(SOURCE_PLACEHOLDER_PREFIX)) {
-            throw new ConnectException("'" + JdbcSinkConnectorConfig.SCHEMA_EVOLUTION + "=" + SchemaEvolutionMode.NONE_VALIDATED.getValue()
+            throw new DebeziumException("'" + JdbcSinkConnectorConfig.SCHEMA_EVOLUTION + "=" + SchemaEvolutionMode.NONE_VALIDATED.getValue()
                     + "' cannot validate target tables at startup when '" + JdbcSinkConnectorConfig.COLLECTION_NAME_FORMAT
                     + "' contains source field placeholders.");
         }
@@ -93,13 +92,13 @@ final class StartupCollectionValidator {
         }
 
         if (!Strings.isNullOrEmpty(props.get(SinkTask.TOPICS_REGEX_CONFIG))) {
-            throw new ConnectException("'" + JdbcSinkConnectorConfig.SCHEMA_EVOLUTION + "=" + SchemaEvolutionMode.NONE_VALIDATED.getValue()
+            throw new DebeziumException("'" + JdbcSinkConnectorConfig.SCHEMA_EVOLUTION + "=" + SchemaEvolutionMode.NONE_VALIDATED.getValue()
                     + "' cannot validate target tables at startup when '" + SinkTask.TOPICS_REGEX_CONFIG + "' is used.");
         }
 
         final Set<String> topics = parseTopics(props.get(SinkTask.TOPICS_CONFIG));
         if (topics.isEmpty()) {
-            throw new ConnectException("'" + JdbcSinkConnectorConfig.SCHEMA_EVOLUTION + "=" + SchemaEvolutionMode.NONE_VALIDATED.getValue()
+            throw new DebeziumException("'" + JdbcSinkConnectorConfig.SCHEMA_EVOLUTION + "=" + SchemaEvolutionMode.NONE_VALIDATED.getValue()
                     + "' requires statically configured '" + SinkTask.TOPICS_CONFIG + "' when '" + JdbcSinkConnectorConfig.COLLECTION_NAME_FORMAT
                     + "' contains '${topic}'.");
         }
