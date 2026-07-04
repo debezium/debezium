@@ -514,7 +514,9 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
     }
 
     @Test
-    @SkipWhenSchemaHistoryDisabled(reason = "The schema is reconstructed from TABLE_MAP events, so the provoked schema inconsistency cannot occur")
+    @SkipWhenSchemaHistoryDisabled(reason = "Expects the connector to fail when the row layout no longer matches the recovered schema; the binlog "
+            + "metadata mode rebuilds the schema from the TABLE_MAP event that precedes every row event, so the provoked inconsistency cannot "
+            + "occur")
     void shouldFailOnSchemaInconsistency() throws Exception {
         assertThrows(ConnectException.class, () -> {
             inconsistentSchema(null);

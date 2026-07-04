@@ -62,7 +62,9 @@ public abstract class BinlogFloatIT<C extends SourceConnector> extends AbstractB
 
     @Test
     @FixFor("DBZ-3865")
-    @SkipWhenSchemaHistoryDisabled(reason = "The binlog TABLE_MAP metadata does not carry the FLOAT(M,D) precision")
+    @SkipWhenSchemaHistoryDisabled(reason = "A FLOAT(M,D) column (a syntax deprecated in MySQL 8.0.17) is promoted to FLOAT64 based on the "
+            + "precision declared in the DDL; the binlog TABLE_MAP metadata carries only the 4-byte or 8-byte storage size, so the "
+            + "reconstructed column stays FLOAT32")
     public void shouldHandleFloatAsFloatAndDouble() throws SQLException, InterruptedException {
         String includeTables = String.join(",",
                 Collect.arrayListOf(DATABASE.qualifiedTableName(TABLE_NAME), DATABASE.qualifiedTableName("DBZ3865_2")));
