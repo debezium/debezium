@@ -125,6 +125,7 @@ When you enable this option, the connector does not create or depend on a schema
 In this mode you do not need to provide any `schema.history.internal.*` settings; the connector installs an in-memory schema history automatically, so no schema history storage or connection settings (such as `schema.history.internal.kafka.bootstrap.servers`) are required.
 Because the connector reads the point-in-time schema from each `TABLE_MAP` event, it also correctly resumes streaming after a restart that occurs in the middle of a multi-row `INSERT` or `UPDATE`.
 This is an opt-in mode that requires FULL binlog row metadata, which is available on MySQL 8.0 and later and on MariaDB 10.5 and later; the connector fails fast at startup if `binlog_row_metadata` is not set to `FULL`.
+Change event values and keys are identical in both modes, but schema attributes that exist only in DDL statements (column default values, integer display width, column comments) are not part of the reconstructed schema; see the `binlog.metadata.based.schema` property description for the complete list of differences.
 ====
 
 When the {connector-name} connector captures changes in a table to which a schema change tool such as `gh-ost` or `pt-online-schema-change` is applied, there are helper tables created during the migration process.
