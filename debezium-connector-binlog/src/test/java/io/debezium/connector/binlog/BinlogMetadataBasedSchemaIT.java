@@ -243,6 +243,48 @@ public abstract class BinlogMetadataBasedSchemaIT<C extends SourceConnector> ext
     }
 
     @Test
+    public void shouldResolveMixedCharsetsWhenEnumPrecedesStringColumns() throws Exception {
+        final Configuration config = metadataModeConfig().build();
+        start(getConnectorClass(), config);
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
+
+        // These values round-trip only when each column is decoded with its own charset: the 'é' in
+        // the latin1 column is the single byte 0xE9, which is not valid UTF-8. An ENUM column in
+        // front of the string columns must not shift the per-column charset numbering.
+        executeStatements(DATABASE.getDatabaseName(),
+                "INSERT INTO charset_mix (status, name_latin1, note_utf8) VALUES ('DONE', 'café', 'メモ')");
+
+        final List<SourceRecord> records = consumeTable("charset_mix", 1);
+        assertThat(records).hasSize(1);
+        final Struct after = afterOf(records.get(0));
+        assertThat(after.getString("status")).isEqualTo("DONE");
+        assertThat(after.getString("name_latin1")).isEqualTo("café");
+        assertThat(after.getString("note_utf8")).isEqualTo("メモ");
+
+        stopConnector();
+    }
+
+    @Test
+    public void shouldReconstructPrimaryKeyDefinedWithColumnPrefix() throws Exception {
+        final Configuration config = metadataModeConfig().build();
+        start(getConnectorClass(), config);
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
+
+        executeStatements(DATABASE.getDatabaseName(), "INSERT INTO prefix_pk (code, qty) VALUES ('ABCDEFGH', 7)");
+
+        final List<SourceRecord> records = consumeTable("prefix_pk", 1);
+        assertThat(records).hasSize(1);
+        final SourceRecord record = records.get(0);
+        // A prefixed key is written as PRIMARY_KEY_WITH_PREFIX metadata and must still yield a keyed
+        // record with the full column value.
+        assertThat(record.key()).isNotNull();
+        assertThat(((Struct) record.key()).getString("code")).isEqualTo("ABCDEFGH");
+        assertThat(afterOf(record).getInt32("qty")).isEqualTo(7);
+
+        stopConnector();
+    }
+
+    @Test
     public void shouldStreamFromRewoundOffsetAcrossDdlChange() throws Exception {
         final Configuration config = metadataModeConfig().build();
         start(getConnectorClass(), config);

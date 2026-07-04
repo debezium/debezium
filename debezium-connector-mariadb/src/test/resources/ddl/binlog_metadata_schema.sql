@@ -53,3 +53,22 @@ CREATE TABLE all_types (
   c_json        JSON,
   PRIMARY KEY (id)
 ) DEFAULT CHARSET=utf8mb4;
+
+-- Mixed-charset table with the ENUM in front of the string columns: the ENUM takes its charset from
+-- the ENUM_AND_SET_* metadata fields and must not shift the per-column charset numbering of the
+-- string columns that follow it.
+CREATE TABLE charset_mix (
+  id INT NOT NULL AUTO_INCREMENT,
+  status ENUM('NEW','DONE') NOT NULL,
+  name_latin1 VARCHAR(80) CHARACTER SET latin1,
+  note_utf8 VARCHAR(40) CHARACTER SET utf8mb4,
+  PRIMARY KEY (id)
+) DEFAULT CHARSET=utf8mb4;
+
+-- The primary key uses a column prefix, so the server writes PRIMARY_KEY_WITH_PREFIX instead of
+-- SIMPLE_PRIMARY_KEY into the TABLE_MAP metadata.
+CREATE TABLE prefix_pk (
+  code VARCHAR(64) NOT NULL,
+  qty INT,
+  PRIMARY KEY (code(5))
+) DEFAULT CHARSET=utf8mb4;
