@@ -7,6 +7,7 @@ package io.debezium.connector.jdbc.integration.postgres;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -15,6 +16,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.junit.jupiter.api.Tag;
@@ -576,6 +578,52 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
         getSink().assertRows(destinationTable, rs -> {
             assertThat(rs.getInt(1)).isEqualTo(1);
             assertThat(rs.getString(2)).isEqualTo("08:00:2b:01:02:03:04:05");
+            return null;
+        });
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
+    @FixFor("debezium/dbz#2100")
+    public void testShouldWorkWithNumericArrayWithPrecisionAndScale(SinkRecordFactory factory, PostgresInsertMode insertMode) throws Exception {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.NONE.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, String.valueOf(insertMode.isUnnestEnabled()));
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server2", "schema", tableName);
+
+        // A numeric(10,2)[] element schema carries the precision/scale, so the element type name is
+        // decimal(10,2). createArrayOf only accepts the base type name (numeric/decimal), so the
+        // precision/scale must be stripped before binding the array.
+        final Schema numericElementSchema = Decimal.builder(2)
+                .optional()
+                .parameter("connect.decimal.precision", "10")
+                .build();
+
+        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        final JdbcKafkaSinkRecord createRecord = factory.createRecordWithSchemaValue(
+                topicName,
+                (byte) 1,
+                "data",
+                SchemaBuilder.array(numericElementSchema).optional().build(),
+                Arrays.asList(new BigDecimal("1.25"), new BigDecimal("2.50"), new BigDecimal("-9999999.99")),
+                config);
+
+        final String destinationTable = destinationTableName(createRecord);
+        final String sql = "CREATE TABLE %s (id int not null, data numeric(10,2)[], primary key(id))";
+        getSink().execute(String.format(sql, destinationTable));
+
+        consume(createRecord);
+
+        getSink().assertRows(destinationTable, rs -> {
+            assertThat(rs.getInt(1)).isEqualTo(1);
+            assertThat(rs.getArray(2).getArray()).isEqualTo(new BigDecimal[]{
+                    new BigDecimal("1.25"), new BigDecimal("2.50"), new BigDecimal("-9999999.99") });
             return null;
         });
     }
