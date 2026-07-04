@@ -285,6 +285,33 @@ public abstract class BinlogMetadataBasedSchemaIT<C extends SourceConnector> ext
     }
 
     @Test
+    public void shouldCarryMaterializedDefaultValuesWithoutDeclaringSchemaDefaults() throws Exception {
+        final Configuration config = metadataModeConfig().build();
+        start(getConnectorClass(), config);
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
+
+        // The status column is declared NOT NULL DEFAULT 'NEW' and omitted here, so the server
+        // materializes the default into the written row.
+        executeStatements(DATABASE.getDatabaseName(),
+                "INSERT INTO orders (quantity, price, code, note, created_at) VALUES (1, 1.000, 'DF01', 'default', NOW(3))");
+
+        final List<SourceRecord> records = consumeOrders(1);
+        assertThat(records).hasSize(1);
+        final Struct after = afterOf(records.get(0));
+
+        // Row values are complete: the change event carries the materialized default value.
+        assertThat(after.getString("status")).isEqualTo("NEW");
+
+        // The reconstructed schema declares no field default, because column DEFAULT values are not
+        // part of the TABLE_MAP metadata. This pins the documented boundary of the mode: the column
+        // stays a required field without a default, while the row data is unaffected.
+        assertThat(after.schema().field("status").schema().defaultValue()).isNull();
+        assertThat(after.schema().field("status").schema().isOptional()).isFalse();
+
+        stopConnector();
+    }
+
+    @Test
     public void shouldStreamFromRewoundOffsetAcrossDdlChange() throws Exception {
         final Configuration config = metadataModeConfig().build();
         start(getConnectorClass(), config);
