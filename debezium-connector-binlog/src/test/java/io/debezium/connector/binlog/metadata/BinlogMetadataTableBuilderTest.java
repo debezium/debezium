@@ -172,6 +172,24 @@ class BinlogMetadataTableBuilderTest {
     }
 
     @Test
+    void shouldMapVectorColumn() {
+        final TableMapEventMetadata meta = new TableMapEventMetadata();
+        meta.setColumnNames(List.of("v"));
+
+        final TableMapEventData data = new TableMapEventData();
+        data.setDatabase("test");
+        data.setTable("vec");
+        data.setColumnTypes(new byte[]{ (byte) 242 });
+        data.setColumnMetadata(new int[]{ 4 });
+        data.setColumnNullability(new BitSet());
+        data.setEventMetadata(meta);
+
+        final Table table = builder.build(TableId.parse("test.vec"), data);
+        assertThat(table.columnWithName("v").typeName()).isEqualTo("VECTOR");
+        assertThat(table.columnWithName("v").jdbcType()).isEqualTo(Types.OTHER);
+    }
+
+    @Test
     void shouldFailWhenMetadataMissing() {
         final TableMapEventData data = new TableMapEventData();
         data.setDatabase("test");
