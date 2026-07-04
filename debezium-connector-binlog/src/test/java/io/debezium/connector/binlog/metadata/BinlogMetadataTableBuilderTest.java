@@ -127,10 +127,13 @@ class BinlogMetadataTableBuilderTest {
         assertThat(status.typeName()).isEqualTo("ENUM");
         assertThat(status.jdbcType()).isEqualTo(Types.CHAR);
         assertThat(status.enumValues()).containsExactly("NEW", "OK", "ERR");
+        // The DDL parser assigns ENUM columns length 1 and SET columns options + commas.
+        assertThat(status.length()).isEqualTo(1);
 
         final Column tags = table.columnWithName("tags");
         assertThat(tags.typeName()).isEqualTo("SET");
         assertThat(tags.enumValues()).containsExactly("a", "b", "c");
+        assertThat(tags.length()).isEqualTo(5);
 
         final Column flags = table.columnWithName("flags");
         assertThat(flags.typeName()).isEqualTo("BIT");
