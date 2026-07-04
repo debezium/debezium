@@ -17,6 +17,7 @@ import org.apache.kafka.connect.sink.SinkTask;
 import org.hibernate.SessionFactory;
 import org.hibernate.StatelessSession;
 
+import io.debezium.DebeziumException;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.SchemaEvolutionMode;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.naming.TemporaryBackwardCompatibleCollectionNamingStrategyProxy;
@@ -43,7 +44,7 @@ final class StartupCollectionValidator {
             for (CollectionId collectionId : collectionIds) {
                 final boolean exists = validationSession.doReturningWork(connection -> dialect.tableExists(connection, collectionId));
                 if (!exists) {
-                    throw new ConnectException(String.format(
+                    throw new DebeziumException(String.format(
                             "Target table '%s' does not exist, but '%s' is set to '%s'. "
                                     + "Create the target table before starting the connector or use '%s=%s'.",
                             collectionId.toFullIdentiferString(),
