@@ -63,7 +63,7 @@ final class StartupCollectionValidator {
                 .map(collectionName -> {
                     final CollectionId collectionId = dialect.getCollectionId(collectionName);
                     if (collectionId == null) {
-                        throw new ConnectException("Unable to resolve target table name '" + collectionName + "' for startup validation.");
+                        throw new DebeziumException("Unable to resolve target table name '" + collectionName + "' for startup validation.");
                     }
                     return collectionId;
                 })
