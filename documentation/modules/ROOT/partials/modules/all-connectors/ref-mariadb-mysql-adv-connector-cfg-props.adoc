@@ -530,6 +530,8 @@ However, some schema attributes exist only in DDL statements and are not written
 The default mapping (`INT16`) is identical in both modes, but the optional `TinyIntOneToBooleanConverter` relies on the column length; set its `length.checker` option to `false` to convert all `TINYINT` columns instead.
 * Column default values are not part of the reconstructed schema, so the Kafka field schemas do not declare them.
 Row values are unaffected, because every change event carries the actual column values.
+As a consequence, a `NOT NULL` column with a `DEFAULT` value surfaces as a required field without a default: when such a column is added to a captured table, the Avro converter registers a schema that a schema registry rejects under the `BACKWARD` subject compatibility, and sink connectors that create or evolve tables do not receive the column default.
+Relaxing the subject compatibility, for example to `NONE`, avoids the rejection; adding the column as nullable avoids it as well.
 * `FLOAT(M,D)` columns (deprecated in MySQL 8.0.17) map to `FLOAT32` instead of `FLOAT64`, and nationalized character columns surface as plain `CHAR`/`VARCHAR`.
 * Source column types propagated with `column.propagate.source.type` reflect the reconstructed types, without display width or precision, and column comments are not available.
 
