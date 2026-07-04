@@ -50,11 +50,28 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
      */
     private AntlrDdlParserListener antlrDdlParserListener;
 
+    /**
+     * Whether an ALTER TABLE statement for a table that is included in the capture filter but not
+     * present in the in-memory model emits a change event without being applied. Used by the
+     * binlog-metadata-based schema mode, where a table only enters the model with its first
+     * {@code TABLE_MAP} event, so a statement read before that must still reach the schema change
+     * topic. Disabled by default: with a schema history, a missing table means it is not captured.
+     */
+    private boolean emitChangesForMissingAlteredTables = false;
+
     protected Tables databaseTables;
 
     public AntlrDdlParser(boolean throwErrorsFromTreeWalk, boolean includeViews, boolean includeComments) {
         super(includeViews, includeComments);
         this.throwErrorsFromTreeWalk = throwErrorsFromTreeWalk;
+    }
+
+    public void setEmitChangesForMissingAlteredTables(boolean emitChangesForMissingAlteredTables) {
+        this.emitChangesForMissingAlteredTables = emitChangesForMissingAlteredTables;
+    }
+
+    public boolean isEmitChangesForMissingAlteredTables() {
+        return emitChangesForMissingAlteredTables;
     }
 
     @Override
