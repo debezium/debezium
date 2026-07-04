@@ -285,6 +285,55 @@ public abstract class BinlogMetadataBasedSchemaIT<C extends SourceConnector> ext
     }
 
     @Test
+    public void shouldEmitSchemaChangeEventForTableNotYetRegisteredAfterRestart() throws Exception {
+        final Configuration config = metadataModeConfig()
+                .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                .build();
+        start(getConnectorClass(), config);
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
+
+        // Commit an offset past the initial schema snapshot, so that the restart below skips the
+        // snapshot and streaming starts with an empty in-memory model.
+        insertMarkerOrder("RS01");
+        assertThat(consumeOrders(1)).hasSize(1);
+        stopConnector();
+
+        // While the connector is stopped, alter a table that will have produced no row event after
+        // the restart: the DDL statement is then read before any TABLE_MAP event has registered the
+        // table. It must neither kill the task nor be dropped from the schema change topic.
+        executeStatements(DATABASE.getDatabaseName(), "ALTER TABLE all_types ADD COLUMN extra_after_restart INT");
+
+        start(getConnectorClass(), config);
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
+
+        // The schema change event carries the DDL statement; the table structure at that point is
+        // unknown (it only arrives with the next TABLE_MAP event), so tableChanges stays empty.
+        SourceRecord schemaChange = null;
+        final long deadline = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(30);
+        while (schemaChange == null && System.currentTimeMillis() < deadline) {
+            final List<SourceRecord> changes = consumeRecordsByTopic(1).recordsForTopic(DATABASE.getServerName());
+            if (changes != null && !changes.isEmpty()) {
+                schemaChange = changes.get(0);
+            }
+        }
+        assertThat(schemaChange).as("schema change event emitted for a not-yet-registered table").isNotNull();
+        final Struct changeValue = (Struct) schemaChange.value();
+        assertThat(changeValue.getString("ddl")).contains("extra_after_restart");
+        assertThat(changeValue.getArray("tableChanges")).isEmpty();
+
+        // The next TABLE_MAP event carries the post-DDL schema, so the row must decode with the new
+        // column present.
+        insertAllTypesRow();
+        final List<SourceRecord> records = consumeTable("all_types", 1);
+        assertThat(records).hasSize(1);
+        final Struct after = afterOf(records.get(0));
+        assertThat(after.schema().field("extra_after_restart")).as("column added while stopped").isNotNull();
+        assertThat(after.getInt32("c_int")).isEqualTo(42);
+
+        stopConnector();
+    }
+
+    @Test
     public void shouldCarryMaterializedDefaultValuesWithoutDeclaringSchemaDefaults() throws Exception {
         final Configuration config = metadataModeConfig().build();
         start(getConnectorClass(), config);
