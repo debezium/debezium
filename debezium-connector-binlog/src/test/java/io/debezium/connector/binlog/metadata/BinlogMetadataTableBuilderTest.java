@@ -190,6 +190,27 @@ class BinlogMetadataTableBuilderTest {
     }
 
     @Test
+    void shouldResolveSpatialSubtypesFromGeometryTypeMetadata() {
+        // GEOMETRY_TYPE metadata carries the real spatial type of every geometry column.
+        final TableMapEventMetadata meta = new TableMapEventMetadata();
+        meta.setColumnNames(List.of("g_point", "g_geom", "g_poly"));
+        meta.setGeometryTypes(List.of(1, 0, 3));
+
+        final TableMapEventData data = new TableMapEventData();
+        data.setDatabase("test");
+        data.setTable("spatial");
+        data.setColumnTypes(new byte[]{ (byte) 255, (byte) 255, (byte) 255 });
+        data.setColumnMetadata(new int[]{ 4, 4, 4 });
+        data.setColumnNullability(new BitSet());
+        data.setEventMetadata(meta);
+
+        final Table table = builder.build(TableId.parse("test.spatial"), data);
+        assertThat(table.columnWithName("g_point").typeName()).isEqualTo("POINT");
+        assertThat(table.columnWithName("g_geom").typeName()).isEqualTo("GEOMETRY");
+        assertThat(table.columnWithName("g_poly").typeName()).isEqualTo("POLYGON");
+    }
+
+    @Test
     void shouldFailWhenMetadataMissing() {
         final TableMapEventData data = new TableMapEventData();
         data.setDatabase("test");

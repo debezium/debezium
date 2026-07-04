@@ -266,6 +266,7 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
         private final Map<Integer, Integer> defaultCharsetOverrides;
         private final List<String[]> enumStrValues;
         private final List<String[]> setStrValues;
+        private final List<Integer> geometryTypes;
         private final List<Integer> simplePrimaryKeys;
 
         private TableMapMetadataSnapshot(TableMapEventData data, TableMapEventMetadata meta) {
@@ -280,6 +281,7 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
             this.defaultCharsetOverrides = defaultCharset != null ? defaultCharset.getCharsetCollations() : null;
             this.enumStrValues = meta.getEnumStrValues();
             this.setStrValues = meta.getSetStrValues();
+            this.geometryTypes = meta.getGeometryTypes();
             this.simplePrimaryKeys = meta.getSimplePrimaryKeys();
         }
 
@@ -303,6 +305,7 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
                     && Objects.equals(defaultCharsetOverrides, defaultCharset != null ? defaultCharset.getCharsetCollations() : null)
                     && stringArrayListsEqual(enumStrValues, meta.getEnumStrValues())
                     && stringArrayListsEqual(setStrValues, meta.getSetStrValues())
+                    && Objects.equals(geometryTypes, meta.getGeometryTypes())
                     && Objects.equals(simplePrimaryKeys, meta.getSimplePrimaryKeys());
         }
 
