@@ -534,6 +534,7 @@ As a consequence, a `NOT NULL` column with a `DEFAULT` value surfaces as a requi
 Relaxing the subject compatibility, for example to `NONE`, avoids the rejection; adding the column as nullable avoids it as well.
 * `FLOAT(M,D)` columns (deprecated in MySQL 8.0.17) map to `FLOAT32` instead of `FLOAT64`, and nationalized character columns surface as plain `CHAR`/`VARCHAR`.
 * Source column types propagated with `column.propagate.source.type` reflect the reconstructed types, without display width or precision, and column comments are not available.
+* After a restart, a schema change event for a table whose structure has not been observed yet carries the DDL statement without the `tableChanges` structure; the table structure is restored by the next `TABLE_MAP` event.
 
 In exchange, this mode requires no schema history topic or settings, restarts without a history recovery phase, and recovers from schema changes that are never written to the binlog (for example an `ALTER TABLE` executed with `sql_log_bin=OFF`) by rebuilding the schema from the next `TABLE_MAP` event, whereas the schema history mode keeps using the stale schema in that situation.
 The connector offset can also be seeded or rewound to any position that the binlog still retains, even across past DDL statements, because every `TABLE_MAP` event carries the schema that was in effect at that point.
