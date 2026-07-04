@@ -259,13 +259,23 @@ You can use the following schema evolution modes with the {prodname} JDBC sink c
 |The connector does not perform any DDL schema evolution.
 
 |`none-validated`
-|The connector does not perform any DDL schema evolution, but validates statically resolvable destination tables during startup.
+|The connector does not perform any DDL schema evolution.
+During startup, the connector validates that statically resolvable destination tables exist.
+The connector does not validate the table structure against incoming events.
 
 |`basic`
 |The connector automatically detects fields that are in the event payload but that do not exist in the destination table.
 The connector alters the destination table to add the new fields.
 
 |===
+
+When `schema.evolution` is set to `none-validated`, startup validation only checks whether the destination table exists.
+It does not validate columns, column types, primary keys, nullability, default values, or other structural compatibility, because that information depends on the schema of an incoming event.
+
+The connector can perform startup validation only for table names that it can resolve from static connector configuration.
+For example, it can validate a literal xref:jdbc-property-collection-name-format[`collection.name.format`] value, or a `collection.name.format` value that uses `+${topic}+` together with a statically configured `topics` list and the default collection naming strategy.
+The connector cannot perform startup validation when `topics.regex` is used with `+${topic}+`, when `collection.name.format` uses `+${source.*}+` placeholders, or when a non-default collection naming strategy is configured.
+In those cases, the connector fails during startup.
 
 When `schema.evolution` is set to `basic`, the connector automatically creates or alters the destination database table according to the structure of the incoming event.
 
@@ -1773,7 +1783,9 @@ For more information, see xref:jdbc-schema-evolution[].
 The following options are available:
 
 `none`:: Specifies that the connector does not evolve the destination schema.
-`none-validated`:: Specifies that the connector does not evolve the destination schema, but validates statically resolvable destination tables during startup.
+`none-validated`:: Specifies that the connector does not evolve the destination schema.
+During startup, the connector validates that statically resolvable destination tables exist.
+The connector does not validate the table structure against incoming events.
 `basic`:: Specifies that basic evolution occurs.
 The connector adds missing columns to the table by comparing the incoming event's record schema to the database table structure.
 
