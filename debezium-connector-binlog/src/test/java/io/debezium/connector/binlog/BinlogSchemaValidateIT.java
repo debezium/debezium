@@ -34,7 +34,9 @@ import io.debezium.junit.SkipWhenDatabaseVersion;
  * @author Inki Hwang
  */
 @SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 6, reason = "DDL uses fractional second data types, not supported until MySQL 5.6")
-@SkipWhenSchemaHistoryDisabled(reason = "Provokes schema drift with sql_log_bin=OFF and asserts stale-schema behavior specific to the schema history mode; with binlog metadata the schema self-heals at the next TABLE_MAP event")
+@SkipWhenSchemaHistoryDisabled(reason = "Provokes schema drift with sql_log_bin=OFF and asserts that the connector fails on the drifted rows "
+        + "and is then repaired with the recovery snapshot mode (DBZ-7093). With the binlog metadata mode the schema self-heals at the next "
+        + "TABLE_MAP event, so the expected failure never happens and there is no history to recover")
 public abstract class BinlogSchemaValidateIT<C extends SourceConnector> extends AbstractBinlogConnectorIT<C> {
 
     private static final Path DB_HISTORY_PATH = Files.createTestingPath("file-db-history-connect.txt").toAbsolutePath();
