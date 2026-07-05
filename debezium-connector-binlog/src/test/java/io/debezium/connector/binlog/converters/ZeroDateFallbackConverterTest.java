@@ -16,6 +16,7 @@ import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.util.OptionalInt;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -201,6 +202,58 @@ class ZeroDateFallbackConverterTest {
         assertThat(reg.converter.convert("garbage")).isEqualTo(expected);
     }
 
+    // -- DATETIME(4-6) branch: MicroTimestamp precision ----------------------------------------
+
+    @Test
+    void datetimeLambda_precision4_schemaIsMicroTimestamp() {
+        final Registration reg = registerOn(newConfigured(new Properties()), datetimeColumn("dt", false, 4));
+        assertThat(reg.schema.name()).isEqualTo(io.debezium.time.MicroTimestamp.SCHEMA_NAME);
+    }
+
+    @Test
+    void datetimeLambda_precision6_schemaIsMicroTimestamp() {
+        final Registration reg = registerOn(newConfigured(new Properties()), datetimeColumn("dt", false, 6));
+        assertThat(reg.schema.name()).isEqualTo(io.debezium.time.MicroTimestamp.SCHEMA_NAME);
+    }
+
+    @Test
+    void datetimeLambda_precision3_schemaIsTimestamp() {
+        final Registration reg = registerOn(newConfigured(new Properties()), datetimeColumn("dt", false, 3));
+        assertThat(reg.schema.name()).isEqualTo(io.debezium.time.Timestamp.SCHEMA_NAME);
+    }
+
+    @Test
+    void datetimeLambda_noPrecision_schemaIsTimestamp() {
+        final Registration reg = registerOn(newConfigured(new Properties()), datetimeColumn("dt", false));
+        assertThat(reg.schema.name()).isEqualTo(io.debezium.time.Timestamp.SCHEMA_NAME);
+    }
+
+    @Test
+    void datetimeLambda_precision5_inputNull_returnsFallbackInMicros() {
+        final Registration reg = registerOn(
+                newConfigured(propsWith("fallback.datetime", "2000-01-01 00:00:00")),
+                datetimeColumn("dt", false, 5));
+        final long expected = io.debezium.time.Conversions
+                .toEpochMicros(LocalDateTime.parse("2000-01-01T00:00:00").toInstant(ZoneOffset.UTC));
+        assertThat(reg.converter.convert(null)).isEqualTo(expected);
+    }
+
+    @Test
+    void datetimeLambda_precision6_javaSqlTimestamp_returnsEpochMicros() {
+        final Registration reg = registerOn(newConfigured(new Properties()), datetimeColumn("dt", false, 6));
+        final Timestamp ts = Timestamp.valueOf("2024-06-15 12:34:56.123456");
+        final long expected = io.debezium.time.Conversions.toEpochMicros(ts.toInstant());
+        assertThat(reg.converter.convert(ts)).isEqualTo(expected);
+    }
+
+    @Test
+    void datetimeLambda_precision4_localDateTime_returnsEpochMicros() {
+        final Registration reg = registerOn(newConfigured(new Properties()), datetimeColumn("dt", false, 4));
+        final LocalDateTime ldt = LocalDateTime.parse("2024-06-15T12:34:56.1234");
+        final long expected = io.debezium.time.Conversions.toEpochMicros(ldt.toInstant(ZoneOffset.UTC));
+        assertThat(reg.converter.convert(ldt)).isEqualTo(expected);
+    }
+
     // -- TIMESTAMP branch ----------------------------------------------------------------------
 
     @Test
@@ -363,24 +416,29 @@ class ZeroDateFallbackConverterTest {
     }
 
     private static RelationalColumn dateColumn(String name, boolean hasDefault) {
-        return mockColumn(name, Types.DATE, "DATE", hasDefault);
+        return mockColumn(name, Types.DATE, "DATE", hasDefault, OptionalInt.empty());
     }
 
     private static RelationalColumn datetimeColumn(String name, boolean hasDefault) {
-        return mockColumn(name, Types.TIMESTAMP, "DATETIME", hasDefault);
+        return mockColumn(name, Types.TIMESTAMP, "DATETIME", hasDefault, OptionalInt.empty());
+    }
+
+    private static RelationalColumn datetimeColumn(String name, boolean hasDefault, int precision) {
+        return mockColumn(name, Types.TIMESTAMP, "DATETIME", hasDefault, OptionalInt.of(precision));
     }
 
     private static RelationalColumn timestampColumn(String name, boolean hasDefault) {
-        return mockColumn(name, Types.TIMESTAMP_WITH_TIMEZONE, "TIMESTAMP", hasDefault);
+        return mockColumn(name, Types.TIMESTAMP_WITH_TIMEZONE, "TIMESTAMP", hasDefault, OptionalInt.empty());
     }
 
-    private static RelationalColumn mockColumn(String name, int jdbcType, String typeName, boolean hasDefault) {
+    private static RelationalColumn mockColumn(String name, int jdbcType, String typeName, boolean hasDefault, OptionalInt length) {
         final RelationalColumn col = Mockito.mock(RelationalColumn.class);
         Mockito.when(col.name()).thenReturn(name);
         Mockito.when(col.dataCollection()).thenReturn(DATA_COLLECTION);
         Mockito.when(col.jdbcType()).thenReturn(jdbcType);
         Mockito.when(col.typeName()).thenReturn(typeName);
         Mockito.when(col.hasDefaultValue()).thenReturn(hasDefault);
+        Mockito.when(col.length()).thenReturn(length);
         return col;
     }
 
