@@ -37,9 +37,15 @@ import io.debezium.util.Strings;
  * <h2>Supported types</h2>
  * <ul>
  *   <li>{@code DATE} &rarr; {@code io.debezium.time.Date} (INT32 epoch days)</li>
- *   <li>{@code DATETIME} &rarr; {@code io.debezium.time.Timestamp} (INT64 epoch millis)</li>
+ *   <li>{@code DATETIME(0-3)} &rarr; {@code io.debezium.time.Timestamp} (INT64 epoch millis)</li>
+ *   <li>{@code DATETIME(4-6)} &rarr; {@code io.debezium.time.MicroTimestamp} (INT64 epoch micros)</li>
  *   <li>{@code TIMESTAMP} &rarr; {@code io.debezium.time.ZonedTimestamp} (STRING ISO-8601)</li>
  * </ul>
+ *
+ * The {@code DATETIME} semantic type follows the column's fractional-second precision
+ * ({@link RelationalColumn#length()}): {@code 0-3} maps to {@code Timestamp} (millis) and
+ * {@code 4-6} to {@code MicroTimestamp} (micros). The converter does not consult
+ * {@code time.precision.mode}.
  *
  * <h2>Two policies, selectable per type</h2>
  * <ul>
@@ -219,10 +225,18 @@ public class ZeroDateFallbackConverter
     private void registerDatetime(RelationalColumn field, ConverterRegistration<SchemaBuilder> registration) {
         final String columnRaw = lookupColumnFallback(field);
         final LocalDateTime effective = (columnRaw != null) ? parseDatetimeFallback(columnRaw) : fallbackDatetime;
-        final Long fallback = effective == null ? null : effective.toInstant(ZoneOffset.UTC).toEpochMilli();
         final boolean hasDefault = field.hasDefaultValue();
+        final boolean isMicro = field.length().isPresent() && field.length().getAsInt() >= 4;
 
-        SchemaBuilder schema = SchemaBuilder.int64().name(io.debezium.time.Timestamp.SCHEMA_NAME).version(SCHEMA_VERSION);
+        final String schemaName = isMicro
+                ? io.debezium.time.MicroTimestamp.SCHEMA_NAME
+                : io.debezium.time.Timestamp.SCHEMA_NAME;
+        final Long fallback = effective == null ? null
+                : isMicro
+                        ? io.debezium.time.Conversions.toEpochMicros(effective.toInstant(ZoneOffset.UTC))
+                        : effective.toInstant(ZoneOffset.UTC).toEpochMilli();
+
+        SchemaBuilder schema = SchemaBuilder.int64().name(schemaName).version(SCHEMA_VERSION);
         if (fallback == null) {
             schema = schema.optional();
         }
@@ -236,11 +250,21 @@ public class ZeroDateFallbackConverter
             if (input == null) {
                 return fallback;
             }
-            if (input instanceof Timestamp ts) {
-                return ts.getTime();
+            if (isMicro) {
+                if (input instanceof Timestamp ts) {
+                    return io.debezium.time.Conversions.toEpochMicros(ts.toInstant());
+                }
+                if (input instanceof LocalDateTime ldt) {
+                    return io.debezium.time.Conversions.toEpochMicros(ldt.toInstant(ZoneOffset.UTC));
+                }
             }
-            if (input instanceof LocalDateTime ldt) {
-                return ldt.toInstant(ZoneOffset.UTC).toEpochMilli();
+            else {
+                if (input instanceof Timestamp ts) {
+                    return ts.getTime();
+                }
+                if (input instanceof LocalDateTime ldt) {
+                    return ldt.toInstant(ZoneOffset.UTC).toEpochMilli();
+                }
             }
             if (input instanceof Long l) {
                 return l;
