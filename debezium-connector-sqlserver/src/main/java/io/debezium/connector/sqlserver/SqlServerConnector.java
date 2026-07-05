@@ -138,24 +138,53 @@ public class SqlServerConnector extends RelationalBaseSourceConnector implements
                     connection.execute("SELECT @@VERSION");
                     LOGGER.debug("Successfully tested connection for {} with user '{}'", connection.connectionString(),
                             connection.username());
-                    LOGGER.info("Checking if user has access to CDC table");
+                    LOGGER.info("Validating CDC prerequisites");
+                    final SqlServerCdcValidator cdcValidator = new SqlServerCdcValidator(sqlServerConfig, connection);
                     final List<String> noAccessDatabaseNames = new ArrayList<>();
+                    final List<String> cdcValidationErrors = new ArrayList<>();
+                    final List<String> cdcValidationWarnings = new ArrayList<>();
+
                     for (String databaseName : sqlServerConfig.getDatabaseNames()) {
                         if (sqlServerConfig.getSnapshotMode() == SqlServerConnectorConfig.SnapshotMode.INITIAL_ONLY) {
+                            LOGGER.debug("Skipping CDC validation for database '{}' (snapshot mode: INITIAL_ONLY)", databaseName);
                             connection.retrieveRealDatabaseName(databaseName);
                         }
                         else {
+                            // Check CDC access
                             if (!connection.checkIfConnectedUserHasAccessToCDCTable(databaseName)) {
                                 noAccessDatabaseNames.add(databaseName);
                             }
+                            // Validate CDC setup (enabled on DB, tables, agent running, etc.)
+                            else {
+                                final SqlServerCdcValidator.CdcValidationResult result = cdcValidator.validateCdcSetup(databaseName);
+                                cdcValidationErrors.addAll(result.getErrors());
+                                cdcValidationWarnings.addAll(result.getWarnings());
+                            }
                         }
                     }
+
+                    // Report CDC access errors
                     if (!noAccessDatabaseNames.isEmpty()) {
                         String errorMessage = String.format(
                                 "User %s does not have access to CDC schema in the following databases: %s. This user can only be used in initial_only snapshot mode",
                                 config.getString(RelationalDatabaseConnectorConfig.USER), String.join(", ", noAccessDatabaseNames));
                         LOGGER.error(errorMessage);
                         userValue.addErrorMessage(errorMessage);
+                    }
+
+                    // Report CDC validation errors (prevents connector startup)
+                    if (!cdcValidationErrors.isEmpty()) {
+                        for (String error : cdcValidationErrors) {
+                            LOGGER.error("CDC validation error: {}", error);
+                            userValue.addErrorMessage(error);
+                        }
+                    }
+
+                    // Report CDC validation warnings (informational only)
+                    if (!cdcValidationWarnings.isEmpty()) {
+                        for (String warning : cdcValidationWarnings) {
+                            LOGGER.warn("CDC validation warning: {}", warning);
+                        }
                     }
                 }
                 catch (Exception e) {
