@@ -81,7 +81,7 @@ public class RocketMqConfig {
                 ", groupId='" + groupId + '\'' +
                 ", aclEnable=" + aclEnable +
                 ", accessKey='" + accessKey + '\'' +
-                ", secretKey='" + secretKey + '\'' +
+                ", secretKey='" + (secretKey == null ? null : "********") + '\'' +
                 '}';
     }
 
