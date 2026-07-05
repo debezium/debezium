@@ -559,7 +559,7 @@ public class TransactionCommitConsumer implements AutoCloseable {
     }
 
     private boolean hasRowId(DmlEvent event) {
-        return event.getRowId() != null && event.getRowId() != RowIdCodec.EMPTY_ROW_ID;
+        return event.getRowId() != null && !event.getRowId().equals(RowIdCodec.EMPTY_ROW_ID);
     }
 
     static class ConstructionDetails {
