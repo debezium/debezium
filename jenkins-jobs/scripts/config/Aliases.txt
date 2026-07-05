@@ -385,3 +385,4 @@ Paul_Kim,Sundong Kim
 TimurRakhmatullin86,Timur Rakhmatullin
 lekhrocks,Lekhraj Kumar
 zach-all,Zach All
+regi-c,Regi Çallmori
