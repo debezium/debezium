@@ -33,6 +33,7 @@ import io.debezium.openlineage.DebeziumOpenLineageEmitter;
 import io.debezium.openlineage.dataset.DatasetMetadata;
 import io.debezium.sink.DebeziumSinkRecord;
 import io.debezium.sink.spi.ChangeEventSink;
+import io.debezium.sink.spi.SinkProgressListener;
 import io.debezium.util.Stopwatch;
 
 /**
@@ -52,14 +53,16 @@ public class JdbcChangeEventSink implements ChangeEventSink {
 
     private final RecordWriter recordWriter;
     private final ConnectorContext connectorContext;
+    private final SinkProgressListener progressListener;
 
     public JdbcChangeEventSink(JdbcSinkConnectorConfig config, StatelessSession session, DatabaseDialect dialect, RecordWriter recordWriter,
-                               ConnectorContext connectorContext) {
+                               ConnectorContext connectorContext, SinkProgressListener progressListener) {
         this.config = config;
         this.dialect = dialect;
         this.session = session;
         this.recordWriter = recordWriter;
         this.connectorContext = connectorContext;
+        this.progressListener = progressListener;
 
         final DatabaseVersion version = this.dialect.getVersion();
         LOGGER.info("Database version {}.{}.{}", version.getMajor(), version.getMinor(), version.getMicro());
@@ -75,6 +78,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
 
             if (record.isSchemaChange()) {
                 SCHEMA_CHANGE_LOGGER.warn("Ignored schema change event for topic '{}'. " + FOUND_SCHEMA_CHANGE_RECORD_MSG, record.topicName());
+                progressListener.filtered();
                 continue;
             }
 
@@ -82,12 +86,14 @@ public class JdbcChangeEventSink implements ChangeEventSink {
             if (null == collectionId) {
                 LOGGER.warn("Ignored to write record from topic '{}' partition '{}' offset '{}'. No resolvable table name", record.topicName(), record.partition(),
                         record.offset());
+                progressListener.filtered();
                 continue;
             }
 
             if (record.isTruncate()) {
                 if (!config.isTruncateEnabled()) {
                     LOGGER.debug("Truncates are not enabled, skipping truncate for topic '{}'", record.topicName());
+                    progressListener.filtered();
                     continue;
                 }
 
@@ -98,6 +104,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                 try {
                     final TableDescriptor table = recordWriter.checkAndApplyTableChangesIfNeeded(collectionId, record);
                     recordWriter.writeTruncate(table.getId());
+                    progressListener.truncated();
                     continue;
                 }
                 catch (SQLException | JDBCException e) {
@@ -108,6 +115,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
             if (record.isDelete() || record.isTombstone()) {
                 if (!config.isDeleteEnabled()) {
                     LOGGER.debug("Deletes are not enabled, skipping delete for topic '{}'", record.topicName());
+                    progressListener.filtered();
                     continue;
                 }
 
@@ -124,6 +132,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                 }
 
                 flushBufferRecordsWithRetries(collectionId, getRecordsToFlush(deleteBufferByTable, collectionId, record));
+                progressListener.deleted();
             }
             else {
                 final Buffer deleteBufferToFlush = deleteBufferByTable.get(collectionId);
@@ -139,11 +148,20 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                 }
 
                 flushBufferRecordsWithRetries(collectionId, getRecordsToFlush(upsertBufferByTable, collectionId, record));
+                recordWriteOperation();
             }
         }
 
         flushBuffers(upsertBufferByTable);
         flushBuffers(deleteBufferByTable);
+    }
+
+    private void recordWriteOperation() {
+        switch (config.getInsertMode()) {
+            case INSERT -> progressListener.inserted();
+            case UPDATE -> progressListener.updated();
+            case UPSERT -> progressListener.upserted();
+        }
     }
 
     private BufferFlushRecords getRecordsToFlush(Map<CollectionId, Buffer> bufferMap, CollectionId collectionId, JdbcSinkRecord record) {
