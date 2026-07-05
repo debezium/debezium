@@ -155,12 +155,12 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
 
     @Override
     public boolean rollbackTransactionEventWithRowId(EhcacheTransaction transaction, String rowId) {
-        final long encodedRowId = RowIdCodec.encode(rowId);
+        final RowIdCodec.Packed encodedRowId = RowIdCodec.encode(rowId);
         final TreeSet<Integer> eventIds = eventIdsByTransactionId.get(transaction.getTransactionId());
         for (Integer eventId : eventIds.descendingSet()) {
             final String eventKey = transaction.getEventId(eventId);
             final LogMinerEvent event = eventCache.get(eventKey);
-            if (event != null && event.getRowId() == encodedRowId && !rollbackCache.containsKey(eventKey)) {
+            if (event != null && event.getRowId().equals(encodedRowId) && !rollbackCache.containsKey(eventKey)) {
                 rollbackCache.put(eventKey, Boolean.TRUE);
                 return true;
             }

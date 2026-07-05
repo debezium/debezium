@@ -21,7 +21,7 @@ public class LogMinerEvent {
     private final EventType eventType;
     private final Scn scn;
     private final TableId tableId;
-    private final long rowId;
+    private final RowIdCodec.Packed rowId;
     private final String rsId;
     private final long changeTime;
 
@@ -50,7 +50,7 @@ public class LogMinerEvent {
         return tableId;
     }
 
-    public Long getRowId() {
+    public RowIdCodec.Packed getRowId() {
         return rowId;
     }
 
