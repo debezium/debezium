@@ -4968,6 +4968,12 @@ After the snapshot completes, the connector is unable to close the connection, r
 If you experience this problem, revert the value of `snapshot.max.threads` to `1`, and retry the snapshot.
 ====
 
+|[[oracle-property-legacy-snapshot-max-threads]]<<oracle-property-legacy-snapshot-max-threads, `+legacy.snapshot.max.threads+`>>
+|`false`
+|Specifies whether the parallel initial snapshot uses the legacy table-per-thread algorithm.
+When set to `false` (the default), the connector will chunk the contents of the source table across all parallel initial snapshot threads for maximum performance.
+When set to `true`, the connector will process each table per thread.
+
 |[[oracle-property-snapshot-database-errors-max-retries]]<<oracle-property-snapshot-database-errors-max-retries, `snapshot.database.errors.max.retries`>>
 |`0`
 |Specifies the number of retry attempts to snapshot a table when a database error occurs.

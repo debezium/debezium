@@ -2843,6 +2843,12 @@ After the snapshot completes, the connector is unable to close the connection, r
 If you experience this problem, revert the value of `snapshot.max.threads` to `1`, and retry the snapshot.
 ====
 
+|[[informix-property-legacy-snapshot-max-threads]]<<informix-property-legacy-snapshot-max-threads, `+legacy.snapshot.max.threads+`>>
+|`false`
+|Specifies whether the parallel initial snapshot uses the legacy table-per-thread algorithm.
+When set to `false` (the default), the connector will chunk the contents of the source table across all parallel initial snapshot threads for maximum performance.
+When set to `true`, the connector will process each table per thread.
+
 |[[informix-property-custom-metric-tags]]<<informix-property-custom-metric-tags, `custom.metric.tags`>>
 |`No default`
 |Defines tags that customize MBean object names by adding metadata that provides contextual information.
