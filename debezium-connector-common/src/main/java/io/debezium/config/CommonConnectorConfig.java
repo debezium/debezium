@@ -652,7 +652,7 @@ public abstract class CommonConnectorConfig {
     public static final Field TOPIC_PREFIX = Field.create(ConfigurationNames.TOPIC_PREFIX_PROPERTY_NAME)
             .withDisplayName("Topic prefix")
             .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.HIGH)
             .withValidation(CommonConnectorConfig::validateTopicName)
@@ -1504,9 +1504,9 @@ public abstract class CommonConnectorConfig {
                     "By default collecting statistics is enabled.");
 
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
-            .group(Field.Group.CONNECTION, TOPIC_PREFIX)
+            .group(Field.Group.CONNECTION)
             .group(Field.Group.CONNECTION_ADVANCED, SKIP_MESSAGES_WITHOUT_CHANGE)
-            .group(Field.Group.CONNECTOR, TOMBSTONES_ON_DELETE, BINARY_HANDLING_MODE, SCHEMA_NAME_ADJUSTMENT_MODE, FIELD_NAME_ADJUSTMENT_MODE,
+            .group(Field.Group.CONNECTOR, TOPIC_PREFIX, TOMBSTONES_ON_DELETE, BINARY_HANDLING_MODE, SCHEMA_NAME_ADJUSTMENT_MODE, FIELD_NAME_ADJUSTMENT_MODE,
                     EVENT_CONVERTING_FAILURE_HANDLING_MODE)
             .group(Field.Group.CONNECTOR_ADVANCED, PROVIDE_TRANSACTION_METADATA, CUSTOM_CONVERTERS, CUSTOM_POST_PROCESSORS,
                     INCREMENTAL_SNAPSHOT_CHUNK_SIZE, INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES,
