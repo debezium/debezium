@@ -104,6 +104,13 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractAsyncEngine
             "  primary key (id)" +
             ")";
 
+    private static final String DDL_UUID = "create table type_uuid (" +
+            "  id int not null, " +
+            "  val_uuid uniqueidentifier, " +
+            "  val_uuid_default uniqueidentifier default NEWID(), " +
+            "  primary key (id)" +
+            ")";
+
     private static final List<SchemaAndValueField> EXPECTED_INT = Arrays.asList(
             new SchemaAndValueField("val_bit", Schema.OPTIONAL_BOOLEAN_SCHEMA, true),
             new SchemaAndValueField("val_tinyint", Schema.OPTIONAL_INT16_SCHEMA, (short) 22),
@@ -171,12 +178,17 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractAsyncEngine
     private static final List<SchemaAndValueField> EXPECTED_XML = Arrays.asList(
             new SchemaAndValueField("val_xml", Schema.OPTIONAL_STRING_SCHEMA, "<a>b</a>"));
 
+    private static final List<SchemaAndValueField> EXPECTED_UUID = Arrays.asList(
+            new SchemaAndValueField("val_uuid", Schema.OPTIONAL_STRING_SCHEMA, "6F9619FF-8B86-D011-B42D-00C04FC964FF"),
+            new SchemaAndValueField("val_uuid_default", Schema.OPTIONAL_STRING_SCHEMA, null));
+
     private static final String[] ALL_TABLES = {
             "type_int",
             "type_fp",
             "type_string",
             "type_time",
-            "type_xml"
+            "type_xml",
+            "type_uuid"
     };
 
     private static final String[] ALL_DDLS = {
@@ -184,7 +196,8 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractAsyncEngine
             DDL_FP,
             DDL_STRING,
             DDL_TIME,
-            DDL_XML
+            DDL_XML,
+            DDL_UUID
     };
 
     private boolean useSnapshot = true;
@@ -316,6 +329,24 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractAsyncEngine
         assertRecord(after, EXPECTED_XML);
     }
 
+    @Test
+    void uniqueIdentifierTypes() throws Exception {
+        Testing.debug("Inserted");
+
+        if (!useSnapshot) {
+            insertUniqueIdentifierTypes();
+        }
+
+        final SourceRecords records = consumeRecordsByTopic(getExpectedRecordCount());
+
+        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.testDB1.dbo.type_uuid");
+        assertThat(testTableRecords).hasSize(1);
+
+        validateRecord(testTableRecords.get(0));
+        Struct after = (Struct) ((Struct) testTableRecords.get(0).value()).get("after");
+        assertRecord(after, EXPECTED_UUID);
+    }
+
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {
         expected.forEach(schemaAndValueField -> schemaAndValueField.assertFor(record));
     }
@@ -380,6 +411,13 @@ public abstract class AbstractSqlServerDatatypesTest extends AbstractAsyncEngine
         try (SqlServerConnection connection = TestHelper.testConnection()) {
             connection.execute("INSERT INTO type_xml VALUES (0, '<a>b</a>')");
             TestHelper.waitForCdcRecord(connection, "type_xml", rs -> rs.getInt("id") == 0);
+        }
+    }
+
+    protected static void insertUniqueIdentifierTypes() throws SQLException {
+        try (SqlServerConnection connection = TestHelper.testConnection()) {
+            connection.execute("INSERT INTO type_uuid VALUES (0, '6F9619FF-8B86-D011-B42D-00C04FC964FF', NULL)");
+            TestHelper.waitForCdcRecord(connection, "type_uuid", rs -> rs.getInt("id") == 0);
         }
     }
 
