@@ -35,7 +35,7 @@ public class LogicalDecodingMessage implements ReplicationMessage {
 
     @Override
     public boolean isLastEventForLsn() {
-        return !isTransactional;
+        return true;
     }
 
     @Override
@@ -74,5 +74,9 @@ public class LogicalDecodingMessage implements ReplicationMessage {
 
     public byte[] getContent() {
         return content;
+    }
+
+    public boolean isTransactional() {
+        return isTransactional;
     }
 }
