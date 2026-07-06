@@ -4179,8 +4179,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
 
     @Test
     @FixFor("debezium/dbz#2004")
-    @Disabled // Disabled until debezium/dbz#2004 is fixed
-    // @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Publication configuration only valid for PGOUTPUT decoder")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Publication configuration only valid for PGOUTPUT decoder")
     public void shouldNotReemitConsumedLogicalMessageAfterRestart() throws Exception {
         // The issue only occurred for transactional logical messages, where the first
         // parameter of pg_logical_emit_message() is set to true.
