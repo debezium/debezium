@@ -10,7 +10,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -257,7 +257,7 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
             }
         }
 
-        final List<String> requiredColumnSelections = getRequiredColumnSelections(tableId, after);
+        final Set<String> requiredColumnSelections = getRequiredColumnSelections(tableId, after);
 
         // Resolve the row-scoped cache view once, keyed by the event's message key struct, so the row
         // identity is resolved a single time and reused for every column of this row. Using the key struct
@@ -364,14 +364,13 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
      * @param requiredColumnSelections columns being re-selected this event, which are skipped here since
      *                                 they will be cached after re-selection below.
      */
-    private void cacheModifiedColumns(ReselectColumnCache.RowCache rowCache, TableId tableId, Struct after, List<String> requiredColumnSelections) {
+    private void cacheModifiedColumns(ReselectColumnCache.RowCache rowCache, TableId tableId, Struct after, Set<String> requiredColumnSelections) {
         if (rowCache == null) {
             return;
         }
-        final Set<String> requiredColumnSelectionsSet = new HashSet<>(requiredColumnSelections);
         for (org.apache.kafka.connect.data.Field field : after.schema().fields()) {
             final String columnName = field.name();
-            if (requiredColumnSelectionsSet.contains(columnName)) {
+            if (requiredColumnSelections.contains(columnName)) {
                 continue;
             }
             final String fullyQualifiedName = jdbcConnection.getQualifiedTableName(tableId) + ":" + columnName;
@@ -418,8 +417,8 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
         return key.get(field);
     }
 
-    private List<String> getRequiredColumnSelections(TableId tableId, Struct after) {
-        final List<String> columnSelections = new ArrayList<>();
+    private Set<String> getRequiredColumnSelections(TableId tableId, Struct after) {
+        final Set<String> columnSelections = new LinkedHashSet<>();
         for (org.apache.kafka.connect.data.Field field : after.schema().fields()) {
             final Object value = after.get(field);
             if (reselectUnavailableValues && isUnavailableValueHolder(field, value)) {
