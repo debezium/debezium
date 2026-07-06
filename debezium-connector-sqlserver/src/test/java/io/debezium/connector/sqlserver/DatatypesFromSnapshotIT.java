@@ -23,14 +23,13 @@ public class DatatypesFromSnapshotIT extends AbstractSqlServerDatatypesTest {
     @BeforeAll
     static void beforeClass() throws SQLException {
         AbstractSqlServerDatatypesTest.beforeClass();
-
         createTables();
-
         insertIntTypes();
         insertFpTypes();
         insertStringTypes();
         insertTimeTypes();
         insertXmlTypes();
+        insertUniqueIdentifierTypes();
     }
 
     @BeforeEach
