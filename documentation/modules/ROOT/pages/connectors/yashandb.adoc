@@ -1808,6 +1808,12 @@ In a parallel initial snapshot, the connector processes multiple tables simultan
 
 This feature is incubating and is subject to change.
 
+|[[yashandb-property-legacy-snapshot-max-threads]]<<yashandb-property-legacy-snapshot-max-threads, `+legacy.snapshot.max.threads+`>>
+|`false`
+|Specifies whether the parallel initial snapshot uses the legacy table-per-thread algorithm.
+When set to `false` (the default), the connector will chunk the contents of the source table across all parallel initial snapshot threads for maximum performance.
+When set to `true`, the connector will process each table per thread.
+
 |[[yashandb-property-snapshot-locking-mode]]<<yashandb-property-snapshot-locking-mode, `+snapshot.locking.mode+`>>
 |No default
 |Specifies whether the connector uses locking mode to prevent DDL changes before synchronizing snapshot data.

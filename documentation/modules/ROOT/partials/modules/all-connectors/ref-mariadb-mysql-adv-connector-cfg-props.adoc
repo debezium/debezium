@@ -681,7 +681,33 @@ For more information about the support scope of Red{nbsp}Hat Developer Preview s
 ====
 endif::product[]
 
+[id="{context}-property-legacy-snapshot-max-threads"]
+xref:{context}-property-legacy-snapshot-max-threads[`legacy.snapshot.max.threads`]::
 
+Default value::: `false`
+
+Description:::
+Specifies whether the parallel initial snapshot uses the legacy table-per-thread algorithm.
+When set to `false` (the default), the connector will chunk the contents of the source table across all parallel initial snapshot threads for maximum performance.
+When set to `true`, the connector will process each table per thread.
++
+ifdef::community[]
+NOTE: Parallel initial snapshots is an incubating feature.
+endif::community[]
+ifdef::product[]
+[IMPORTANT]
+====
+Parallel initial snapshots is a Developer Preview feature only.
+Developer Preview software is not supported by Red{nbsp}Hat in any way and is not functionally complete or production-ready.
+Do not use Developer Preview software for production or business-critical workloads.
+Developer Preview software provides early access to upcoming product software in advance of its possible inclusion in a Red{nbsp}Hat product offering.
+Customers can use this software to test functionality and provide feedback during the development process.
+This software is subject to change or removal at any time, and has received limited testing.
+Red{nbsp}Hat might provide ways to submit feedback on Developer Preview software without an associated SLA.
+
+For more information about the support scope of Red{nbsp}Hat Developer Preview software, see link:https://access.redhat.com/support/offerings/devpreview/[Developer Preview Support Scope].
+====
+endif::product[]
 
 [id="{context}-property-snapshot-mode"]
 xref:{context}-property-snapshot-mode[`snapshot.mode`]::
