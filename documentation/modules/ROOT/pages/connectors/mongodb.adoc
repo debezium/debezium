@@ -105,7 +105,7 @@ In this way the connector dynamically adjusts to changes in replica set membersh
 
 The connector captures changes by using MongoDB change streams, which can be served by any member of a replica set.
 You specify the replica member that the connector reads from by configuring the MongoDB link:https://www.mongodb.com/docs/manual/core/read-preference/[`readPreference`] parameter in the xref:mongodb-property-mongodb-connection-string[`mongodb.connection.string`].
-If you do not specify a read preference, the driver default of `primary` applies, so the connector streams changes from the primary node.
+If you do not specify a read preference, the driver default of `primary` applies, and the connector streams changes from the primary node.
 
 Reading from a secondary (for example, `readPreference=secondaryPreferred`) can reduce load on the primary.
 However, because change streams emit only majority-committed events, be aware that replication delay results in secondary nodes lagging behind the primary.
