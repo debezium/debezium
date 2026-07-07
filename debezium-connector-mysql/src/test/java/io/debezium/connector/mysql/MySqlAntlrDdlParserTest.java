@@ -137,6 +137,33 @@ public class MySqlAntlrDdlParserTest
     }
 
     @Test
+    @FixFor("DBZ-9704")
+    public void shouldParseMultipleAddColumnsWithRepeatedInstantAlgorithm() {
+        final String ddl = "CREATE TABLE `test_lot` ("
+                + "`lot_id` bigint unsigned NOT NULL,"
+                + "`trade_date` date NOT NULL,"
+                + "PRIMARY KEY (`lot_id`,`trade_date`)"
+                + ") ENGINE=InnoDB;"
+                + "ALTER TABLE test_lot ADD COLUMN event_ref_type_id INTEGER, algorithm=instant, "
+                + "ADD COLUMN event_ref_id BIGINT, algorithm=instant;";
+
+        parser.parse(ddl, tables);
+        assertThat(parser.getParsingExceptionsFromWalker()).isEmpty();
+
+        final Table table = tables.forTable(null, null, "test_lot");
+        assertThat(table).isNotNull();
+        assertThat(table.columns()).hasSize(4);
+
+        final Column eventRefTypeId = table.columnWithName("event_ref_type_id");
+        final Column eventRefId = table.columnWithName("event_ref_id");
+
+        assertThat(eventRefTypeId).isNotNull();
+        assertThat(eventRefTypeId.typeName()).isEqualTo("INTEGER");
+        assertThat(eventRefId).isNotNull();
+        assertThat(eventRefId.typeName()).isEqualTo("BIGINT");
+    }
+
+    @Test
     public void testCharsetIntroducerInDefault() {
         String ddl = "CREATE TABLE test_charset ("
                 + "id INT PRIMARY KEY, "
