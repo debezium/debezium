@@ -1,5 +1,3 @@
-// Category: debezium-using
-// Type: assembly
 [id="debezium-connector-for-ingres"]
 = {prodname} connector for Ingres
 
@@ -23,9 +21,8 @@ ifdef::community[]
 
 toc::[]
 
-endif::community[]
 
-{prodname}'s Ingres connector captures row-level changes in the tables of an Actian Analytics database.
+The {prodname} Ingres connector captures row-level changes in the tables of an Actian Analytics database.
 
 [CAUTION]
 ====
@@ -34,18 +31,22 @@ This means that the connector is not yet considered production ready, and is not
 The connector is available for testing and feedback, and is expected to evolve significantly before it reaches the production ready stage.
 ====
 
-ifdef::community[]
 For information about the Actian Database versions that are compatible with this connector, see the link:https://debezium.io/releases/[{prodname} release overview].
 endif::community[]
 
-This connector is strongly inspired by the {prodname} implementation of Ingres, which in turn was inspired by the {prodname} implementation of IBM Db2, and uses the Ingres Change Streams Java client to capture transactional data.
+This connector is strongly inspired by the {prodname} connector implementation for IBM Db2.
+The connector use the Ingres Change Streams Java client to capture transactional data from the database.
 
-The Change Data Capture API captures data from databases that have logging enabled and captures transactions from the current logical log. The API processes all transactions sequentially.
+The Change Data Capture API captures data from databases that have logging enabled and captures transactions from the current logical log. 
+The API processes all transactions sequentially.
 
-The first time that a {prodname} Ingres connector connects to an Ingres database, the connector reads a consistent snapshot of the tables for which the connector is configured to capture changes. By default, the connector captures changes from all non-system tables. To customize snapshot behavior, you can set configuration properties to specify the tables to include or exclude in the snapshot.
+The first time that a {prodname} Ingres connector connects to an Ingres database, the connector reads a consistent snapshot of the tables for which the connector is configured to capture changes. 
+By default, the connector captures changes from all non-system tables. 
+To customize snapshot behavior, you can set configuration properties to specify the tables to include or exclude in the snapshot.
 
 After the snapshot completes, the connector begins to emit change events for changes that are committed to tables that are in capture mode.
-By default, change events for a particular table go to a Kafka topic that has the same name as the table. Applications and services can then consume change event records from these topics.
+By default, change events for a particular table go to a Kafka topic that has the same name as the table. 
+Applications and services can then consume change event records from the resulting topics.
 
 [NOTE]
 ====
@@ -53,17 +54,16 @@ The connector requires the use of the Ingres Change Streams API for Java, which 
 ====
 
 
-// Type: concept
-// Title: Overview of {prodname} Ingres connector
-// ModuleID: overview-of-debezium-ingres-connector
 [[ingres-overview]]
 == Overview
 
-The {prodname} Ingres connector is based on the link:https://docs.actian.com/actianingres/12.1/index.html#page/DatabaseAdmin/Change_Data_Capture.htm[Ingres Change Data Capture API] that enables Change Data Capture in Ingres. This feature was introduced in Ingres 12.1, and is available in later versions of Ingres.
+The {prodname} Ingres connector is based on the link:https://docs.actian.com/actianingres/12.1/index.html#page/DatabaseAdmin/Change_Data_Capture.htm[Ingres Change Data Capture API] that enables Change Data Capture in Ingres. 
+The API was introduced in Ingres 12.1, and is available in all subsequent versions of the database.
 
 The database administrator must enable journaling on the Ingres database to capture changes. 
 
-Users connecting to the server to utilize CDC must have `DB_ADMIN` privileges or be the database or instance owner.  See link:https://docs.actian.com/actianingres/12.1/index.html#page/DatabaseAdmin/Prerequisites_for_Server_Configuration.htm[Prerequisites for server configuration] for more information about setting up for CDC with Ingres.
+To enables CDC on the database, you must have `DB_ADMIN` privileges or be the database or instance owner. 
+For more information about how to configure CDC on Ingres, see link:https://docs.actian.com/actianingres/12.1/index.html#page/DatabaseAdmin/Prerequisites_for_Server_Configuration.htm[Prerequisites for server configuration].
 
 {prodname} connectors are tolerant of failures.
 As the connector reads and produces change events, it records the log header record from the change stream.
@@ -71,9 +71,6 @@ The header record is the position of the change event in the database log.
 If the connector stops for any reason, including communication failures, network problems, or crash, upon restarting it continues reading the change stream where it left off.
 For snapshots, if a snapshot was not complete when the connector stopped or restarted, the connector begins a new snapshot.
 
-// Type: assembly
-// ModuleID: how-debezium-ingres-connectors-work
-// Title: How {prodname} Ingres connectors work
 [[how-the-ingres-connector-works]]
 == How the connector works
 
@@ -91,7 +88,7 @@ To enable the connector to establish a baseline for the current state of the dat
 For each change that the snapshot captures, the connector emits a `read` event to the Kafka topic for the captured table.
 
 [[default-workflow-for-performing-an-initial-snapshot]]
-.Default workflow that the {prodname} Ingres connector uses to perform an initial snapshot
+=== Default workflow that the {prodname} Ingres connector uses to perform an initial snapshot
 
 The following workflow lists the steps that {prodname} takes to create a snapshot.
 These steps describe the process for a snapshot when the xref:ingres-property-snapshot-mode[`snapshot.mode`] configuration property is set to its default value, which is `initial`.
@@ -109,7 +106,10 @@ If you configure a different snapshot mode, the connector completes the snapshot
   This lock ensures that no schema changes can occur in those tables until the snapshot completes.
   The level of the lock is determined by the value of the xref:ingres-property-snapshot-isolation-mode[`snapshot.isolation.mode`] connector configuration property.
 
-4. Generate a single trasaction on a generated database table. Ingres does not support querying the latest tranasction record position. Therefore the Debezium connector creates a table in the database, inserts one row then drops the table to generate a "latest" log record that is captured and stored. This is the log position where data streaming will start from after the snapshot is complete. 
+4. Generate a single trasaction on a generated database table. Ingres does not support querying the latest tranasction record position. 
+5. 
+Therefore the Debezium connector creates a table in the database, inserts one row then drops the table to generate a "latest" log record that is captured and stored. 
+This is the log position where data streaming will start from after the snapshot is complete. 
 
 5. Capture the schema of all tables or all tables that are designated for capture.
 The connector persists schema information in its internal database schema history topic.
@@ -129,7 +129,8 @@ For more information about why snapshots persist schema information for tables t
 
 [CAUTION]
 ====
-The current Ingres connector does not have table locking implemented. Consistency on table snapshots is not guarenteed if other database activity is occuring.
+The current version of the Ingres connector does not implement table locking.
+If the connector runs a snapshot on a table while other client operations are active in the database, snapshot consistency is not guaranteed.
 ====
 
 
@@ -189,16 +190,20 @@ Or when {prodname} connects to the database instance through a user account that
 // Title: Descriptions of {prodname} Ingres connector data change events
 [[ingres-events]]
 == Data change events
-The {prodname} Ingres connector generates a data change event for each row-level `INSERT`, `UPDATE`, `DELETE`, and `TRUNCATE` operation. Each event contains a key and a value. The structure depends on the table that was changed.
+
+The {prodname} Ingres connector generates a data change event record for each row-level `INSERT`, `UPDATE`, `DELETE`, and `TRUNCATE` operation. 
+Each event contains a key and a value. 
+The event structure depends on the table that was changed.
 
 // Type: reference
 // ModuleID: how-debezium-ingres-connectors-map-data-types
 // Title: How {prodname} Ingres connectors map data types
 [[ingres-data-types]]
 == Data type mappings
-The Ingres connector represents changes to rows with events that are structured like the table. The event contains a field for each column value. How that value is represented in the event depends on the Ingres data type of the column. The following sections describe how the connector maps Ingres data types to a literal type and a semantic type in event fields.
 
-* xref:ingres-basic-types[Basic types]
+The Ingres connector represents changes to rows with events that are structured like the table. 
+The event contains a field for each column value. How that value is represented in the event depends on the Ingres data type of the column. 
+For information about how the connector maps Ingres data types in event fields to literal and semantic types, see xref:ingres-basic-types[Basic types].
 
 
 If the default data type conversions do not meet your needs, you can {link-prefix}:{link-custom-converters}#custom-converters[create a custom converter] for the connector.
@@ -361,7 +366,7 @@ A timestamp without timezone information
 [[setting-up-ingres]]
 == Setting up Ingres
 
-To set up an Ingres database to run a {prodname} connector, you must enable journaling on the database and ensure that the user account that the connector uses to connect to the database has the necessary permissions.
+To prepare an Ingres database to work with {prodname}, ensure that the user account that the connector uses to connect to the database has the necessary permissions, and enable journaling on the database.
 
 // Type: procedure
 // ModuleID: setting-up-ingres-permissions-required-by-debezium-connectors
@@ -418,46 +423,6 @@ To mitigate risk in production deployments, deploy only containers that are acti
 
 endif::community[]
 
-ifdef::product[]
-// Type: concept
-[id="openshift-streams-ingres-connector-deployment"]
-=== {prodname} Ingres connector deployment using {StreamsName}
-
-You deploy a {prodname} connector by using {StreamsName} to build a Kafka Connect container image that includes the connector plug-in.
-
-[IMPORTANT]
-====
-Due to licensing requirements, the {prodname} Ingres connector does not include the JDBC driver or the Ingres Change Stream client that it requires to connect to an Ingres database.
-To enable the connector to access the database, you must add the driver to your connector environment.
-You can add a command to the Kafka Connect custom resource to enable Streams to retrieve the driver automatically from Maven Central.
-====
-
-.Additional resources
-
-* xref:descriptions-of-debezium-ingres-connector-configuration-properties[Ingres connector configuration properties]
-
-// Type: procedure
-[id="obtaining-the-ingres-jdbc-driver"]
-=== Obtaining the Ingres JDBC driver
-
-Due to licensing requirements, the Ingres JDBC driver file that {prodname} requires to connect to an Ingres database is not included in the {prodname} Ingres connector archive.
-The driver is available for download from Maven Central.
-To retrieve the driver, add the Maven Central location for the driver to `builds.plugins.artifact.url` in the `KafkaConnect` custom resource as shown in xref:using-streams-to-deploy-debezium-ingres-connectors[].
-
-
-// Type: procedure
-[id="using-streams-to-deploy-debezium-ingres-connectors"]
-=== Using {StreamsName} to deploy a {prodname} Ingres connector
-
-include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-db2-ifx-ora-pg-connector.adoc[leveloffset=+1]
-
-// Type: procedure
-[id="verifying-that-the-debezium-ingres-connector-is-running"]
-=== Verifying that the {prodname} Ingres connector is running
-
-include::{partialsdir}/modules/all-connectors/proc-verifying-the-connector-deployment.adoc[leveloffset=+1]
-
-endif::product[]
 
 ifdef::community[]
 [[ingres-example-configuration]]
