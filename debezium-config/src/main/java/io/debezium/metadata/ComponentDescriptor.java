@@ -35,7 +35,7 @@ public class ComponentDescriptor {
             "org.apache.kafka.connect.transforms.predicates.Predicate", PREDICATE_TYPE,
             "org.apache.kafka.connect.storage.Converter", CONVERTER_TYPE,
             "org.apache.kafka.connect.storage.HeaderConverter", CONVERTER_TYPE,
-            "io.debezium.engine.DebeziumEngine$ChangeConsumer", SERVER_SINK_TYPE,
+            "io.debezium.server.api.DebeziumServerConsumer", SERVER_SINK_TYPE,
             "io.debezium.spi.converter.CustomConverter", CUSTOM_CONVERTER_TYPE);
 
     private final String id;
