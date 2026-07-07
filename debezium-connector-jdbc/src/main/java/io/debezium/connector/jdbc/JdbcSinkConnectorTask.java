@@ -47,6 +47,7 @@ import io.debezium.openlineage.ConnectorContext;
 import io.debezium.openlineage.DebeziumOpenLineageEmitter;
 import io.debezium.openlineage.dataset.DatasetDataExtractor;
 import io.debezium.openlineage.dataset.DatasetMetadata;
+import io.debezium.sink.spi.SinkProgressListener;
 import io.debezium.util.Stopwatch;
 import io.debezium.util.Strings;
 
@@ -132,12 +133,12 @@ public class JdbcSinkConnectorTask extends SinkTask {
             DatabaseDialect dialect = DatabaseDialectResolver.resolve(config, sessionFactory);
             QueryBinderResolver queryBinderResolver = new QueryBinderResolver();
 
-            // Instantiate the appropriate RecordWriter based on dialect and configuration
-            RecordWriter recordWriter = createRecordWriter(session, queryBinderResolver, config, dialect);
-
             metrics = new JdbcSinkConnectorMetrics(connectorName, taskId);
             metrics.register();
             metrics.connected(true);
+
+            // Instantiate the appropriate RecordWriter based on dialect and configuration
+            RecordWriter recordWriter = createRecordWriter(session, queryBinderResolver, config, dialect, metrics);
 
             changeEventSink = new JdbcChangeEventSink(config, session, dialect, recordWriter, connectorContext, metrics);
             DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.RUNNING);
@@ -196,16 +197,16 @@ public class JdbcSinkConnectorTask extends SinkTask {
      * otherwise returns StandardRecordWriter.
      */
     private RecordWriter createRecordWriter(StatelessSession session, QueryBinderResolver queryBinderResolver,
-                                            JdbcSinkConnectorConfig config, DatabaseDialect databaseDialect) {
+                                            JdbcSinkConnectorConfig config, DatabaseDialect databaseDialect, SinkProgressListener progressListener) {
         // Use UNNEST writer when explicitly enabled (opt-in)
         // This allows any PostgreSQL-compatible dialect to use UNNEST without code changes
         if (config.isPostgresUnnestInsertEnabled()) {
             LOGGER.info("Using UnnestRecordWriter for UNNEST optimization");
-            return new UnnestRecordWriter(session, queryBinderResolver, config, databaseDialect);
+            return new UnnestRecordWriter(session, queryBinderResolver, config, databaseDialect, progressListener);
         }
 
         LOGGER.info("Using DefaultRecordWriter for standard JDBC batching");
-        return new DefaultRecordWriter(session, queryBinderResolver, config, databaseDialect);
+        return new DefaultRecordWriter(session, queryBinderResolver, config, databaseDialect, progressListener);
     }
 
     @Override

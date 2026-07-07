@@ -53,6 +53,18 @@ public interface JdbcSinkConnectorMetricsMXBean {
     long getNumberOfFilteredEvents();
 
     /**
+     * @return the total number of tables the sink created in the target database; only increases
+     *         when {@code schema.evolution} is enabled
+     */
+    long getTotalNumberOfTablesCreated();
+
+    /**
+     * @return the total number of tables the sink altered in the target database; only increases
+     *         when {@code schema.evolution} is enabled
+     */
+    long getTotalNumberOfTablesAltered();
+
+    /**
      * @return {@code true} if the connection to the target database is currently established
      */
     boolean isConnected();

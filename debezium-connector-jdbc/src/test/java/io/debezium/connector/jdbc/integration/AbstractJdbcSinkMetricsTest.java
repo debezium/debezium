@@ -13,6 +13,7 @@ import java.util.Map;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
+import org.apache.kafka.connect.data.Schema;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 
@@ -74,6 +75,39 @@ public abstract class AbstractJdbcSinkMetricsTest extends AbstractJdbcSinkTest {
         assertThat(MBEAN_SERVER.getAttribute(objectName, "TotalNumberOfUpsertEventsSeen")).isEqualTo(2L);
         assertThat(MBEAN_SERVER.getAttribute(objectName, "TotalNumberOfDeleteEventsSeen")).isEqualTo(1L);
         assertThat(MBEAN_SERVER.getAttribute(objectName, "TotalNumberOfTruncateEventsSeen")).isEqualTo(0L);
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("DBZ-7261")
+    public void testSinkMetricsCountSchemaChanges(SinkRecordFactory factory) throws Exception {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(ConfigurationNames.CONNECTOR_NAME_PROPERTY, CONNECTOR_NAME);
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_KEY.getValue());
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, InsertMode.UPSERT.getValue());
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final ObjectName objectName = sinkMetricsObjectName();
+        final String tableName = randomTableName();
+        final String topicName = topicName("server1", "schema", tableName);
+        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+
+        // First record for a table that does not exist yet: the sink creates it
+        consume(factory.createRecord(topicName, (byte) 1, config));
+        assertThat(MBEAN_SERVER.getAttribute(objectName, "TotalNumberOfTablesCreated")).isEqualTo(1L);
+        assertThat(MBEAN_SERVER.getAttribute(objectName, "TotalNumberOfTablesAltered")).isEqualTo(0L);
+
+        // Record carrying a new optional field: the sink alters the table to add the column
+        consume(factory.updateRecordWithSchemaValue(topicName, (byte) 1, "extra", Schema.OPTIONAL_STRING_SCHEMA, "v1", config));
+        assertThat(MBEAN_SERVER.getAttribute(objectName, "TotalNumberOfTablesCreated")).isEqualTo(1L);
+        assertThat(MBEAN_SERVER.getAttribute(objectName, "TotalNumberOfTablesAltered")).isEqualTo(1L);
+
+        // Record whose columns already exist: no schema change is applied and the counters stay put
+        consume(factory.createRecord(topicName, (byte) 2, config));
+        assertThat(MBEAN_SERVER.getAttribute(objectName, "TotalNumberOfTablesCreated")).isEqualTo(1L);
+        assertThat(MBEAN_SERVER.getAttribute(objectName, "TotalNumberOfTablesAltered")).isEqualTo(1L);
     }
 
     @ParameterizedTest

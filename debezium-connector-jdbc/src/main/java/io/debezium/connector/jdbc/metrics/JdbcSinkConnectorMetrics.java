@@ -41,6 +41,8 @@ public class JdbcSinkConnectorMetrics implements JdbcSinkConnectorMetricsMXBean,
     private final AtomicLong totalNumberOfDeleteEventsSeen = new AtomicLong();
     private final AtomicLong totalNumberOfTruncateEventsSeen = new AtomicLong();
     private final AtomicLong numberOfFilteredEvents = new AtomicLong();
+    private final AtomicLong totalNumberOfTablesCreated = new AtomicLong();
+    private final AtomicLong totalNumberOfTablesAltered = new AtomicLong();
     private final AtomicBoolean connected = new AtomicBoolean();
 
     public JdbcSinkConnectorMetrics(String connectorName, String taskId) {
@@ -92,6 +94,16 @@ public class JdbcSinkConnectorMetrics implements JdbcSinkConnectorMetricsMXBean,
     }
 
     @Override
+    public void tableCreated() {
+        totalNumberOfTablesCreated.incrementAndGet();
+    }
+
+    @Override
+    public void tableAltered() {
+        totalNumberOfTablesAltered.incrementAndGet();
+    }
+
+    @Override
     public void connected(boolean connected) {
         this.connected.set(connected);
     }
@@ -124,6 +136,16 @@ public class JdbcSinkConnectorMetrics implements JdbcSinkConnectorMetricsMXBean,
     @Override
     public long getNumberOfFilteredEvents() {
         return numberOfFilteredEvents.get();
+    }
+
+    @Override
+    public long getTotalNumberOfTablesCreated() {
+        return totalNumberOfTablesCreated.get();
+    }
+
+    @Override
+    public long getTotalNumberOfTablesAltered() {
+        return totalNumberOfTablesAltered.get();
     }
 
     @Override

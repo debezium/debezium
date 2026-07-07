@@ -24,6 +24,10 @@ public interface SinkProgressListener {
 
     void filtered();
 
+    void tableCreated();
+
+    void tableAltered();
+
     static SinkProgressListener NO_OP() {
         return new SinkProgressListener() {
 
@@ -53,6 +57,14 @@ public interface SinkProgressListener {
 
             @Override
             public void filtered() {
+            }
+
+            @Override
+            public void tableCreated() {
+            }
+
+            @Override
+            public void tableAltered() {
             }
         };
     }

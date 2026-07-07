@@ -42,6 +42,18 @@ class JdbcSinkConnectorMetricsTest {
     }
 
     @Test
+    void shouldCountCreatedAndAlteredTables() {
+        final JdbcSinkConnectorMetrics metrics = new JdbcSinkConnectorMetrics("my-sink", "0");
+
+        metrics.tableCreated();
+        metrics.tableAltered();
+        metrics.tableAltered();
+
+        assertThat(metrics.getTotalNumberOfTablesCreated()).isEqualTo(1);
+        assertThat(metrics.getTotalNumberOfTablesAltered()).isEqualTo(2);
+    }
+
+    @Test
     void shouldCountFilteredEvents() {
         final JdbcSinkConnectorMetrics metrics = new JdbcSinkConnectorMetrics("my-sink", "0");
 
