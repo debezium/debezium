@@ -27,6 +27,7 @@ import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.field.JdbcFieldDescriptor;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
 import io.debezium.connector.jdbc.type.JdbcType;
+import io.debezium.sink.spi.SinkProgressListener;
 import io.debezium.util.Stopwatch;
 
 /**
@@ -46,8 +47,8 @@ public class UnnestRecordWriter extends DefaultRecordWriter {
     private static final Logger LOGGER = LoggerFactory.getLogger(UnnestRecordWriter.class);
 
     public UnnestRecordWriter(SharedSessionContract session, QueryBinderResolver queryBinderResolver,
-                              JdbcSinkConnectorConfig config, DatabaseDialect dialect) {
-        super(session, queryBinderResolver, config, dialect);
+                              JdbcSinkConnectorConfig config, DatabaseDialect dialect, SinkProgressListener progressListener) {
+        super(session, queryBinderResolver, config, dialect, progressListener);
     }
 
     @Override

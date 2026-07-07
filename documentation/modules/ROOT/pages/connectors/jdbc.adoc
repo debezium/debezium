@@ -1540,6 +1540,14 @@ The following table describes the available metrics.
 |`long`
 |The number of records that the connector skipped without applying them, for example because the table name could not be resolved, deletes or truncates are disabled, or the record is a schema-change event.
 
+|`TotalNumberOfTablesCreated`
+|`long`
+|The total number of tables that the connector created in the target database. This metric increases only when xref:jdbc-property-schema-evolution[`schema.evolution`] is set to `basic`.
+
+|`TotalNumberOfTablesAltered`
+|`long`
+|The total number of tables that the connector altered in the target database, for example to add a column for a newly appearing field. This metric increases only when xref:jdbc-property-schema-evolution[`schema.evolution`] is set to `basic`.
+
 |`Connected`
 |`boolean`
 |Indicates whether the connector currently has a connection to the target database.

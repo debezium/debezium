@@ -35,6 +35,7 @@ import io.debezium.connector.jdbc.field.JdbcFieldDescriptor;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
 import io.debezium.metadata.CollectionId;
 import io.debezium.sink.field.FieldDescriptor;
+import io.debezium.sink.spi.SinkProgressListener;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
@@ -57,15 +58,17 @@ public class DefaultRecordWriter implements RecordWriter {
     private final DatabaseDialect dialect;
     private final int flushMaxRetries;
     private final Duration flushRetryDelay;
+    private final SinkProgressListener progressListener;
 
     protected DefaultRecordWriter(SharedSessionContract session, QueryBinderResolver queryBinderResolver,
-                                  JdbcSinkConnectorConfig config, DatabaseDialect dialect) {
+                                  JdbcSinkConnectorConfig config, DatabaseDialect dialect, SinkProgressListener progressListener) {
         this.session = session;
         this.queryBinderResolver = queryBinderResolver;
         this.config = config;
         this.dialect = dialect;
         this.flushMaxRetries = config.getFlushMaxRetries();
         this.flushRetryDelay = Duration.of(config.getFlushRetryDelayMs(), ChronoUnit.MILLIS);
+        this.progressListener = progressListener;
     }
 
     protected SharedSessionContract getSession() {
@@ -147,6 +150,7 @@ public class DefaultRecordWriter implements RecordWriter {
             transaction.rollback();
             throw e;
         }
+        progressListener.tableCreated();
 
         return readTable(collectionId);
     }
@@ -201,6 +205,7 @@ public class DefaultRecordWriter implements RecordWriter {
             transaction.rollback();
             throw e;
         }
+        progressListener.tableAltered();
 
         return readTable(collectionId);
     }
