@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.sql.Types;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
@@ -41,7 +42,7 @@ class StructuredTemporalTypeTest {
         assertThat(StructuredTimeType.INSTANCE.getQueryBinding(null, schema, value)).isEqualTo("cast(? as time(7))");
         assertThat(bindings).hasSize(1);
         assertThat(bindings.get(0).getValue()).isInstanceOf(LocalDateTime.class);
-        assertThat(((LocalDateTime) bindings.get(0).getValue()).toLocalTime()).isEqualTo(LocalTime.of(12, 13, 14, 123_456_789));
+        assertThat(bindings.get(0).getValue()).isEqualTo(LocalDateTime.of(LocalDate.EPOCH, LocalTime.of(12, 13, 14, 123_456_789)));
     }
 
     @Test
@@ -71,6 +72,7 @@ class StructuredTemporalTypeTest {
         assertThat(StructuredZonedTimeType.INSTANCE.getQueryBinding(null, schema, value)).isEqualTo("cast(? as datetimeoffset(7))");
         assertThat(bindings).hasSize(1);
         assertThat(bindings.get(0).getValue()).isInstanceOf(OffsetDateTime.class);
+        assertThat(((OffsetDateTime) bindings.get(0).getValue()).toLocalDate()).isEqualTo(LocalDate.EPOCH);
         assertThat(((OffsetDateTime) bindings.get(0).getValue()).toOffsetTime())
                 .isEqualTo(OffsetTime.of(12, 13, 14, 123_456_789, ZoneOffset.ofHours(9)));
         assertThat(bindings.get(0).getTargetSqlType()).isEqualTo(Types.TIMESTAMP_WITH_TIMEZONE);

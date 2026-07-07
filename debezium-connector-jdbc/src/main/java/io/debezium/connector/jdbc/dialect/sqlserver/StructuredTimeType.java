@@ -32,7 +32,7 @@ public class StructuredTimeType extends io.debezium.connector.jdbc.type.debezium
         if (value == null) {
             return List.of(new ValueBindDescriptor(index, null));
         }
-        final LocalDateTime localDateTime = StructuredTemporalSupport.toLocalTime(requireStruct(value)).atDate(LocalDate.now());
+        final LocalDateTime localDateTime = StructuredTemporalSupport.toLocalTime(requireStruct(value)).atDate(LocalDate.EPOCH);
         return List.of(new ValueBindDescriptor(index, localDateTime));
     }
 }
