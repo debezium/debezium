@@ -263,6 +263,10 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
         return pollDispatchTimer;
     }
 
+    private boolean isQueueFull() {
+        return queue.size() >= maxQueueSize || (maxQueueSizeInBytes > 0 && currentQueueSizeInBytes >= maxQueueSizeInBytes);
+    }
+
     protected void doEnqueue(T record) throws InterruptedException {
         if (LOGGER.isTraceEnabled()) {
             LOGGER.trace("Enqueuing source record '{}'", maybeRedactSensitiveData(record));
@@ -271,7 +275,7 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
         try {
             this.lock.lock();
 
-            while (queue.size() >= maxQueueSize || (maxQueueSizeInBytes > 0 && currentQueueSizeInBytes >= maxQueueSizeInBytes)) {
+            while (isQueueFull()) {
                 // signal poll() to drain queue
                 this.isFull.signalAll();
                 // queue size or queue sizeInBytes threshold reached, so wait a bit
@@ -315,10 +319,8 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
                 this.lock.lock();
                 List<T> records = new ArrayList<>(Math.min(maxBatchSize, queue.size()));
                 throwProducerExceptionIfPresent();
-                boolean isQueueFull = queue.size() >= maxQueueSize
-                        || (maxQueueSizeInBytes > 0 && currentQueueSizeInBytes >= maxQueueSizeInBytes);
                 boolean pollDispatchTimerElapsed = getPollDispatchTimer().hasElapsed();
-                if (!pollDispatchTimerElapsed && !isQueueFull) {
+                if (!pollDispatchTimerElapsed && !isQueueFull()) {
                     // should leave records to accumulate in the queue for now
                     // wait for poll.interval.ms or until the queue is full and needs to be drained.
                     this.isFull.await(timeout.remaining().toMillis(), TimeUnit.MILLISECONDS);
@@ -328,7 +330,7 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
                         LOGGER.warn("draining records before poll dispatch interval elapses, because the queue is full.");
                     }
                     while (drainRecords(records, maxBatchSize - records.size()) < maxBatchSize
-                            && !isQueueFull
+                            && !isQueueFull()
                             && !timeout.expired()) {
                         throwProducerExceptionIfPresent();
 
@@ -341,8 +343,7 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
                             this.isFull.await(remainingTimeoutMills, TimeUnit.MILLISECONDS);
                         }
                         LOGGER.debug("checking for more records...");
-                        isQueueFull = queue.size() >= maxQueueSize
-                                || (maxQueueSizeInBytes > 0 && currentQueueSizeInBytes >= maxQueueSizeInBytes);
+
                     }
                     // signal doEnqueue() to add more records
                     this.isNotFull.signalAll();
