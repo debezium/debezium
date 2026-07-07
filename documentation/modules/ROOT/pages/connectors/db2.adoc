@@ -1787,7 +1787,7 @@ endif::community[]
 [[db2-temporal-types]]
 === Temporal types
 
-Except for the `DATETIMEOFFSET` data type, which contains time zone information, Db2 maps temporal types based on the value of the `time.precision.mode` connector configuration property.
+Except for the `TIMESTAMP WITH TIME ZONE` data type, which contains time zone information, Db2 maps temporal types based on the value of the `time.precision.mode` connector configuration property.
 The following sections describe these mappings:
 
 * xref:db2-time-precision-mode-adaptive[`time.precision.mode=adaptive`]
@@ -1829,7 +1829,7 @@ Represents the number of microseconds past midnight, and does not include timezo
 
 Represents the number of nanoseconds past midnight, and does not include timezone information.
 
-|`DATETIME`
+|`TIMESTAMP`
 |`INT64`
 |`io.debezium.time.Timestamp`
 
@@ -1861,7 +1861,7 @@ Represents the number of days since the epoch.
 Represents the number of milliseconds since midnight, and does not include timezone information.
 Db2 allows `P` to be in the range 0-7 to store up to tenth of a microsecond precision, though this mode results in a loss of precision when `P` is greater than 3.
 
-|`DATETIME`
+|`TIMESTAMP`
 |`INT64`
 |`org.apache.kafka.connect.data.Timestamp`
 
@@ -1892,7 +1892,7 @@ Represents date values in UTC format, according to the ISO 8601 standard, for ex
 
 Represents time values in UTC format, according to the ISO 8601 standard, for example, `04:05:11.789Z`.
 
-|`DATETIME`
+|`TIMESTAMP`
 |`STRING`
 |`io.debezium.time.IsoTimestamp`
 
@@ -1924,13 +1924,13 @@ Contains `year`, `month`, and `day` fields.
  +
 Contains `hour`, `minute`, `second`, `nanos`, and optional `precision` fields.
 
-|`DATETIME`
+|`TIMESTAMP`
 |`STRUCT`
 |`io.debezium.time.StructuredTimestamp` +
  +
 Contains `year`, `month`, `day`, `hour`, `minute`, `second`, `nanos`, and optional `precision` fields.
 
-|`DATETIMEOFFSET`
+|`TIMESTAMP WITH TIME ZONE`
 |`STRUCT`
 |`io.debezium.time.StructuredZonedTimestamp` +
  +
@@ -1941,9 +1941,9 @@ Contains calendar and clock component fields, `offsetSeconds`, optional `zoneId`
 [[db2-timestamp-types]]
 === Timestamp types
 
-The `DATETIME` type represents a timestamp without time zone information.
+The `TIMESTAMP` type represents a timestamp without time zone information.
 Such columns are converted into an equivalent Kafka Connect value based on UTC.
-For example, the `DATETIME` value "2018-06-20 15:13:16.945104" is represented by an `io.debezium.time.Timestamp` with the value "1529507596000".
+For example, the `TIMESTAMP` value "2018-06-20 15:13:16.945104" is represented by an `io.debezium.time.Timestamp` with the value "1529507596000".
 
 The timezone of the JVM running Kafka Connect and {prodname} does not affect this conversion.
 
