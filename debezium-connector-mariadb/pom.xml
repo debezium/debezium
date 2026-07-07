@@ -214,6 +214,10 @@
         <docker.skip>false</docker.skip>
         <docker.initimage>rm -f /etc/localtime; ln -s /usr/share/zoneinfo/Pacific/Samoa /etc/localtime</docker.initimage>
 
+        <!-- Toggled to true by the mariadb-feature-binlog-metadata profile to run the testsuite with the
+             binlog-metadata-based schema mode, i.e. without a schema history (debezium/dbz#978) -->
+        <use.binlog.metadata.based.schema>false</use.binlog.metadata.based.schema>
+
         <mockito.argLine>-javaagent:${org.mockito:mockito-core:jar}</mockito.argLine>
     </properties>
     <build>
@@ -529,6 +533,7 @@
                         <!-- Specifies which driver to use for the tests -->
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
                         <database.ssl.mode>disable</database.ssl.mode>
+                        <use.binlog.metadata.based.schema>${use.binlog.metadata.based.schema}</use.binlog.metadata.based.schema>
                     </systemPropertyVariables>
                     <argLine>-javaagent:"${settings.localRepository}/@{opentelemetry.agent.for.testing.artifact.relative.path}" -Dio.opentelemetry.javaagent.slf4j.simpleLogger.defaultLogLevel=off</argLine>
                     <runOrder>${runOrder}</runOrder>
@@ -956,83 +961,17 @@
             </build>
         </profile>
 
-        <!-- Runs the same testsuite as mariadb-ci, but with the binlog-metadata-based schema mode enabled,
-             so the suite is executed without a schema history (debezium/dbz#978) -->
+        <!-- Feature toggle meant to be combined with a mariadb-ci* profile: enables the binlog-metadata-based
+             schema mode so the same testsuite runs without a schema history (debezium/dbz#978),
+             e.g. -P mariadb-ci,mariadb-feature-binlog-metadata -->
         <profile>
-            <id>mariadb-ci-binlog-metadata</id>
+            <id>mariadb-feature-binlog-metadata</id>
             <activation>
                 <activeByDefault>false</activeByDefault>
             </activation>
             <properties>
-                <docker.dbs>debezium/mariadb-server-test-database</docker.dbs>
+                <use.binlog.metadata.based.schema>true</use.binlog.metadata.based.schema>
             </properties>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-assembly-plugin</artifactId>
-                        <dependencies>
-                            <dependency>
-                                <groupId>io.debezium</groupId>
-                                <artifactId>debezium-assembly-descriptors</artifactId>
-                                <version>${project.version}</version>
-                            </dependency>
-                        </dependencies>
-                        <executions>
-                            <execution>
-                                <id>default</id>
-                                <phase>package</phase>
-                                <goals>
-                                    <goal>single</goal>
-                                </goals>
-                                <configuration>
-                                    <finalName>${project.artifactId}-${project.version}</finalName>
-                                    <attach>true</attach>  <!-- we want attach & deploy these to Maven -->
-                                    <descriptorRefs>
-                                        <descriptorRef>${assembly.descriptor}</descriptorRef>
-                                    </descriptorRefs>
-                                    <tarLongFileMode>posix</tarLongFileMode>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-failsafe-plugin</artifactId>
-                        <version>${version.failsafe.plugin}</version>
-                        <configuration>
-                            <skipTests>${skipITs}</skipTests>
-                            <enableAssertions>true</enableAssertions>
-                            <systemPropertyVariables>
-                                <!-- Make these available to the tests via system properties -->
-                                <database.hostname>${docker.host.address}</database.hostname>
-                                <database.user>${mariadb.user}</database.user>
-                                <database.password>${mariadb.password}</database.password>
-                                <database.replica.hostname>${docker.host.address}</database.replica.hostname>
-                                <database.replica.user>${mariadb.replica.user}</database.replica.user>
-                                <database.replica.password>${mariadb.replica.password}</database.replica.password>
-                                <database.port>${mariadb.port}</database.port>
-                                <database.replica.port>${mariadb.port}</database.replica.port>
-                                <database.ssl.mode>disable</database.ssl.mode>
-                                <!-- Specifies which driver to use for the tests -->
-                                <skipLongRunningTests>false</skipLongRunningTests>
-                                <isAssemblyProfileActive>true</isAssemblyProfileActive>
-                                <!-- Reconstruct the streaming schema from the binlog instead of the schema history -->
-                                <use.binlog.metadata.based.schema>true</use.binlog.metadata.based.schema>
-                            </systemPropertyVariables>
-                            <runOrder>${runOrder}</runOrder>
-                        </configuration>
-                        <executions>
-                            <execution>
-                                <id>integration-test-mariadb-binlog-metadata</id>
-                                <goals>
-                                    <goal>integration-test</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
         </profile>
 
         <!-- Runs tests only with GTID setup -->
