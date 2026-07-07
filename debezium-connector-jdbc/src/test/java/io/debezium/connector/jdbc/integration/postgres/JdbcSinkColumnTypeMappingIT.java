@@ -537,4 +537,47 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
         });
     }
 
+    @ParameterizedTest
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
+    @FixFor("debezium/dbz#2100")
+    public void testShouldCoerceStringTypeToMacaddr8ColumnType(SinkRecordFactory factory, PostgresInsertMode insertMode) throws Exception {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, String.valueOf(insertMode.isUnnestEnabled()));
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server2", "schema", tableName);
+
+        // The source column type parameter drives the sink to map the plain STRING schema to a native
+        // macaddr8 column (schema evolution) and to bind the value with cast(? as macaddr8).
+        final Schema macaddr8Schema = SchemaBuilder.string()
+                .optional()
+                .parameter("__debezium.source.column.type", "MACADDR8")
+                .build();
+
+        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        final JdbcKafkaSinkRecord createRecord = factory.createRecordWithSchemaValue(
+                topicName,
+                (byte) 1,
+                "data",
+                macaddr8Schema,
+                "08:00:2b:01:02:03:04:05",
+                config);
+
+        final String destinationTable = destinationTableName(createRecord);
+
+        consume(createRecord);
+
+        getSink().assertColumn(destinationTable, "data", "MACADDR8");
+        getSink().assertRows(destinationTable, rs -> {
+            assertThat(rs.getInt(1)).isEqualTo(1);
+            assertThat(rs.getString(2)).isEqualTo("08:00:2b:01:02:03:04:05");
+            return null;
+        });
+    }
+
 }

@@ -12,7 +12,7 @@ import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.sink.column.ColumnDescriptor;
 
 /**
- * An implementation of {@link JdbcType} for {@code MACADDR} column types.
+ * An implementation of {@link JdbcType} for {@code MACADDR} and {@code MACADDR8} column types.
  *
  * @author Chris Cranford
  */
@@ -22,17 +22,17 @@ class MacAddressType extends AbstractType {
 
     @Override
     public String[] getRegistrationKeys() {
-        return new String[]{ "MACADDR" };
+        return new String[]{ "MACADDR", "MACADDR8" };
     }
 
     @Override
     public String getQueryBinding(ColumnDescriptor column, Schema schema, Object value) {
-        return "cast(? as macaddr)";
+        return "cast(? as " + getSourceColumnType(schema).orElseThrow() + ")";
     }
 
     @Override
     public String getTypeName(Schema schema, boolean isKey) {
-        return "macaddr";
+        return getSourceColumnType(schema).orElseThrow();
     }
 
 }
