@@ -99,6 +99,8 @@ spec:
         enabled: boolean
         collector:
           endpoint: String
+          jmxIntervalMs: int  # defaults to 10000
+          metricExportIntervalMs: int  # defaults to 60000
     templates:
       container:
         resources: ResourceRequirements
@@ -636,6 +638,8 @@ When OpenTelemetry is enabled, the operator automatically configures the {prodna
 * `OTEL_SERVICE_NAME` -- Set to the name of the DebeziumServer resource.
 * `OTEL_RESOURCE_ATTRIBUTES` -- Includes `service.name` and `debezium.connector.type` attributes.
 * `OTEL_JMX_CONFIG` -- Points to the built-in JMX-to-OpenTelemetry metrics mapping configuration.
+* `OTEL_JMX_INTERVAL_MILLISECONDS` -- JMX metrics scrape interval in milliseconds (defaults to `10000`).
+* `OTEL_METRIC_EXPORT_INTERVAL` -- Metrics export interval in milliseconds (defaults to `60000`).
 
 You can override any of these environment variables by specifying them in `spec.runtime.environment.vars`.
 User-provided environment variables take precedence over operator-managed defaults.
@@ -670,6 +674,16 @@ Used in: <<debezium-operator-schema-reference-opentelemetry, `+OpenTelemetry+`>>
 | String
 | http://localhost:4318
 | OTLP collector endpoint
+
+| [[debezium-operator-schema-reference-otelcollector-jmxintervalms]]<<debezium-operator-schema-reference-otelcollector-jmxintervalms, `+jmxIntervalMs+`>>
+| int
+| 10000
+| JMX metrics scrape interval in milliseconds
+
+| [[debezium-operator-schema-reference-otelcollector-metricexportintervalms]]<<debezium-operator-schema-reference-otelcollector-metricexportintervalms, `+metricExportIntervalMs+`>>
+| int
+| 60000
+| Metrics export interval in milliseconds
 |===
 
 
@@ -1533,10 +1547,12 @@ spec:
     metrics:
       jmxExporter:
         enabled: true
-      openTelemetry:
+      openTelemetr5y:
         enabled: true
         collector:
           endpoint: http://otel-collector:4318
+          jmxIntervalMs: 5000
+          metricExportIntervalMs: 30000
   transforms:
     - type: io.debezium.transforms.UnwrapFromEnvelope
       config:
