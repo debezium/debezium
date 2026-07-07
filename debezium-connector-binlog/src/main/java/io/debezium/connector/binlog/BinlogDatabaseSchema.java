@@ -363,8 +363,8 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
                 return;
             }
             tablesRegisteredFromBinlogMetadata.remove(tableId);
-            if (event instanceof DdlParserListener.TableAlteredEvent) {
-                final TableId previousTableId = ((DdlParserListener.TableAlteredEvent) event).previousTableId();
+            if (event instanceof DdlParserListener.TableAlteredEvent alteredEvent) {
+                final TableId previousTableId = alteredEvent.previousTableId();
                 if (previousTableId != null) {
                     tablesRegisteredFromBinlogMetadata.remove(previousTableId);
                 }
