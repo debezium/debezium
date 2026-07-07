@@ -5,19 +5,29 @@
  */
 package io.debezium.connector.mysql;
 
+import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.common.config.Config;
+import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.Test;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
+import io.debezium.connector.binlog.BinlogConnectorConfig;
 import io.debezium.connector.binlog.BinlogConnectorIT;
+import io.debezium.connector.binlog.util.BinlogTestConnection;
 import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotLockingMode;
+import io.debezium.doc.FixFor;
+import io.debezium.jdbc.JdbcConnection;
+import io.debezium.junit.SkipWhenDatabaseVersion;
 
 /**
  * @author Randall Hauch
@@ -58,6 +68,51 @@ public class MySqlConnectorIT extends BinlogConnectorIT<MySqlConnector, MySqlPar
         assertThat(successResult.get()).isEqualTo(false);
         assertThat(message.get()).contains("Unable to obtain a JDBC connection");
         assertConnectorNotRunning();
+    }
+
+    @Test
+    @FixFor("DBZ-9704")
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 8, reason = "Instant ADD COLUMN requires MySQL 8.0+")
+    void shouldStreamMultipleAddColumnsWithRepeatedInstantAlgorithm() throws Exception {
+        final String tableName = "test_lot";
+
+        try (BinlogTestConnection db = getTestDatabaseConnection(getDatabase().getDatabaseName());
+                JdbcConnection connection = db.connect()) {
+            connection.execute("CREATE TABLE `test_lot` ("
+                    + "`lot_id` bigint unsigned NOT NULL,"
+                    + "`trade_date` date NOT NULL,"
+                    + "PRIMARY KEY (`lot_id`,`trade_date`)"
+                    + ") ENGINE=InnoDB");
+        }
+
+        final Configuration config = getDatabase().defaultConfig()
+                .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)
+                .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, getDatabase().qualifiedTableName(tableName))
+                .build();
+
+        start(getConnectorClass(), config);
+        waitForStreamingRunning(getConnectorName(), getDatabase().getServerName(), getStreamingNamespace());
+
+        try (BinlogTestConnection db = getTestDatabaseConnection(getDatabase().getDatabaseName());
+                JdbcConnection connection = db.connect()) {
+            connection.execute("ALTER TABLE test_lot ADD COLUMN event_ref_type_id INTEGER, algorithm=instant, "
+                    + "ADD COLUMN event_ref_id BIGINT, algorithm=instant");
+            connection.execute("INSERT INTO test_lot VALUES (1, '2026-07-07', 2, 3)");
+        }
+
+        final SourceRecords records = consumeRecordsByTopic(1);
+        final List<SourceRecord> tableRecords = records.recordsForTopic(getDatabase().topicForTable(tableName));
+        assertThat(tableRecords).hasSize(1);
+
+        final SourceRecord record = tableRecords.get(0);
+        validate(record);
+
+        final Struct after = ((Struct) record.value()).getStruct("after");
+        assertThat(after.schema().field("event_ref_type_id")).isNotNull();
+        assertThat(after.schema().field("event_ref_id")).isNotNull();
+        assertThat(after.getInt32("event_ref_type_id")).isEqualTo(2);
+        assertThat(after.getInt64("event_ref_id")).isEqualTo(3L);
     }
 
     @Override
