@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -485,6 +486,53 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
             assertThat(rs.getInt(1)).isEqualTo(1);
             assertThat(rs.getArray(2).getArray()).isEqualTo(new String[]{ "a", "b" });
             assertThat(rs.getArray(3).getArray()).isEqualTo(uuids.toArray());
+            return null;
+        });
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
+    @FixFor("debezium/dbz#2100")
+    public void testShouldWorkWithHstoreContainingQuotesBackslashesAndNulls(SinkRecordFactory factory, PostgresInsertMode insertMode) throws Exception {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.NONE.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, String.valueOf(insertMode.isUnnestEnabled()));
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server2", "schema", tableName);
+
+        // A MAP whose keys/values contain the HSTORE special characters (double quote, backslash) as
+        // well as a null value, all of which must be escaped or rendered as the NULL keyword.
+        final Map<String, String> data = new LinkedHashMap<>();
+        data.put("quote", "a \" b");
+        data.put("back\\slash", "c:\\tmp");
+        data.put("nullkey", null);
+
+        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        final JdbcKafkaSinkRecord createRecord = factory.createRecordWithSchemaValue(
+                topicName,
+                (byte) 1,
+                "data",
+                SchemaBuilder.map(Schema.STRING_SCHEMA, Schema.OPTIONAL_STRING_SCHEMA).optional().build(),
+                data,
+                config);
+
+        final String destinationTable = destinationTableName(createRecord);
+        getSink().execute("CREATE EXTENSION IF NOT EXISTS hstore");
+        final String sql = "CREATE TABLE %s (id int not null, data hstore, primary key(id))";
+        getSink().execute(String.format(sql, destinationTable));
+
+        consume(createRecord);
+
+        getSink().assertRows(destinationTable, rs -> {
+            assertThat(rs.getInt(1)).isEqualTo(1);
+            assertThat(rs.getString(2)).contains("\"quote\"=>\"a \\\" b\"");
+            assertThat(rs.getString(2)).contains("\"back\\\\slash\"=>\"c:\\\\tmp\"");
+            assertThat(rs.getString(2)).contains("\"nullkey\"=>NULL");
             return null;
         });
     }
