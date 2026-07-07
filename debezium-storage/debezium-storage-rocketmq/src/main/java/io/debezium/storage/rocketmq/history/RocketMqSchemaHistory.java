@@ -188,6 +188,19 @@ public class RocketMqSchemaHistory extends AbstractSchemaHistory {
     }
 
     @Override
+    public synchronized void stop() {
+        try {
+            if (this.producer != null) {
+                this.producer.shutdown();
+            }
+        }
+        finally {
+            this.producer = null;
+            super.stop();
+        }
+    }
+
+    @Override
     protected void storeRecord(HistoryRecord record) throws SchemaHistoryException {
         if (this.producer == null) {
             throw new IllegalStateException("No producer is available. Ensure that 'initializeStorage()'"
