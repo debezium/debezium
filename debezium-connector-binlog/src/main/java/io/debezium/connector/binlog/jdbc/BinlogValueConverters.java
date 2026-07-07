@@ -870,6 +870,8 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
                 }
             }
             catch (IllegalArgumentException | ArithmeticException e) {
+                LOGGER.warn("Unexpected duration value for field {} with schema {}: class={}, value={}", fieldDefn.name(),
+                        fieldDefn.schema(), data.getClass(), data, e);
             }
         });
     }
