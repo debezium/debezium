@@ -68,7 +68,22 @@ public class HstoreConverter {
     }
 
     private static String formatHstoreEntry(Map.Entry<String, String> entry) {
-        return String.format("\"%s\" => \"%s\"", entry.getKey(), entry.getValue());
+        final String value = entry.getValue();
+        // A null value is rendered as the unquoted NULL keyword, which PostgreSQL interprets as a
+        // SQL null rather than the literal string "NULL".
+        final String renderedValue = value == null ? "NULL" : quote(value);
+        return quote(entry.getKey()) + " => " + renderedValue;
+    }
+
+    /**
+     * Quotes a HSTORE key or value, escaping the backslash and double-quote characters as required
+     * by the PostgreSQL HSTORE text input syntax.
+     *
+     * @param value the key or value to quote, should not be {@code null}.
+     * @return the escaped, double-quoted representation
+     */
+    private static String quote(String value) {
+        return "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
     }
 
 }
