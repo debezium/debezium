@@ -6,6 +6,7 @@
 package io.debezium.relational;
 
 import java.util.function.Predicate;
+import java.util.regex.Pattern;
 
 import io.debezium.annotation.Immutable;
 import io.debezium.function.Predicates;
@@ -41,6 +42,14 @@ public class Selectors {
         return value == null || value.trim().isEmpty();
     }
 
+    private static String unescapeAndQuoteIfNeeded(String value) {
+        String unescaped = value.replaceAll("\\\\([$\\.\\[\\]()\\?*+|\\^\\\\{}\\-])", "$1");
+        if (!unescaped.equals(value)) {
+            return Pattern.quote(unescaped);
+        }
+        return unescaped;
+    }
+
     /**
      * Implementations convert given {@link TableId}s to strings, so regular expressions can be applied to them for the
      * purpose of table filtering.
@@ -69,7 +78,7 @@ public class Selectors {
                 dbInclusions = null;
             }
             else {
-                dbInclusions = Predicates.includes(databaseNames);
+                dbInclusions = Predicates.includesLiteralsOrPatterns(databaseNames, value -> false, Selectors::unescapeAndQuoteIfNeeded);
             }
             return this;
         }
@@ -87,7 +96,7 @@ public class Selectors {
                 dbExclusions = null;
             }
             else {
-                dbExclusions = Predicates.excludes(databaseNames);
+                dbExclusions = Predicates.excludesLiteralsOrPatterns(databaseNames, value -> false, Selectors::unescapeAndQuoteIfNeeded);
             }
             return this;
         }
@@ -137,7 +146,7 @@ public class Selectors {
                 dbInclusions = null;
             }
             else {
-                dbInclusions = Predicates.includes(databaseNames);
+                dbInclusions = Predicates.includesLiteralsOrPatterns(databaseNames, value -> false, Selectors::unescapeAndQuoteIfNeeded);
             }
             return this;
         }
@@ -155,7 +164,7 @@ public class Selectors {
                 dbExclusions = null;
             }
             else {
-                dbExclusions = Predicates.excludes(databaseNames);
+                dbExclusions = Predicates.excludesLiteralsOrPatterns(databaseNames, value -> false, Selectors::unescapeAndQuoteIfNeeded);
             }
             return this;
         }
@@ -172,7 +181,7 @@ public class Selectors {
                 schemaInclusions = null;
             }
             else {
-                schemaInclusions = Predicates.includes(schemaNames);
+                schemaInclusions = Predicates.includesLiteralsOrPatterns(schemaNames, value -> false, Selectors::unescapeAndQuoteIfNeeded);
             }
             return this;
         }
@@ -190,7 +199,7 @@ public class Selectors {
                 schemaExclusions = null;
             }
             else {
-                schemaExclusions = Predicates.excludes(schemaNames);
+                schemaExclusions = Predicates.excludesLiteralsOrPatterns(schemaNames, value -> false, Selectors::unescapeAndQuoteIfNeeded);
             }
             return this;
         }

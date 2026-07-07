@@ -221,6 +221,149 @@ public class SelectorsTest {
         assertNotAllowed(filter, "db2", "sc4", "B");
     }
 
+    @Test
+    public void shouldCreateFilterWithEscapedDatabaseNamesContainingSpecialCharacters() {
+        // Test escaped literals: users must escape special regex chars to match literals
+        filter = Selectors.tableSelector()
+                .includeDatabases("Test\\$user,db\\[1\\],db\\.2")
+                .build();
+
+        assertAllowed(filter, "Test$user", "A");
+        assertAllowed(filter, "db[1]", "A");
+        assertAllowed(filter, "db.2", "A");
+        assertNotAllowed(filter, "other_db", "A");
+    }
+
+    @Test
+    public void shouldCreateFilterWithDatabaseRegexPatterns() {
+        // Test unescaped patterns: users don't escape to use patterns
+        filter = Selectors.tableSelector()
+                .includeDatabases("db.*,prod_.*,test.*,db[0-9]")
+                .build();
+
+        assertAllowed(filter, "db", "A");
+        assertAllowed(filter, "db1", "A");
+        assertAllowed(filter, "dbtest", "A");
+        assertAllowed(filter, "prod_main", "A");
+        assertAllowed(filter, "prod_backup", "A");
+        assertAllowed(filter, "test1", "A");
+        assertAllowed(filter, "db0", "A");
+        assertAllowed(filter, "db5", "A");
+        assertNotAllowed(filter, "other_db", "A");
+    }
+
+    @Test
+    public void shouldCreateFilterWithMixedEscapedLiteralsAndPatterns() {
+        // Mix of escaped literals and unescaped patterns
+        filter = Selectors.tableSelector()
+                .includeDatabases("Test\\$user,db.*,prod_main,prod[0-9]+")
+                .build();
+
+        // Escaped literal matches exactly
+        assertAllowed(filter, "Test$user", "A");
+
+        // Unescaped patterns work as regex
+        assertAllowed(filter, "db1", "A");
+        assertAllowed(filter, "db_test", "A");
+        assertAllowed(filter, "dbany", "A");
+
+        // Literal string matches
+        assertAllowed(filter, "prod_main", "A");
+
+        // Pattern [0-9]+ matches one or more digits
+        assertAllowed(filter, "prod1", "A");
+        assertAllowed(filter, "prod123", "A");
+
+        // These don't match
+        assertNotAllowed(filter, "prod", "A");
+        assertNotAllowed(filter, "prod_backup", "A");
+        assertNotAllowed(filter, "other_db", "A");
+    }
+
+    @Test
+    public void shouldEscapeAllMetacharactersInDatabaseNames() {
+        // Test that all regex metacharacters can be escaped to match literals
+        filter = Selectors.tableSelector()
+                .includeDatabases("test\\$,test\\.,test\\[1\\],test\\(inner\\),test\\{v1\\},test\\|,test\\^,test\\-,multi\\{v1\\}\\.db\\$prod")
+                .build();
+
+        // Individual escaped metacharacters
+        assertAllowed(filter, "test$", "A");
+        assertAllowed(filter, "test.", "A");
+        assertAllowed(filter, "test[1]", "A");
+        assertAllowed(filter, "test(inner)", "A");
+        assertAllowed(filter, "test{v1}", "A");
+        assertAllowed(filter, "test|", "A");
+        assertAllowed(filter, "test^", "A");
+        assertAllowed(filter, "test-", "A");
+
+        // Multiple escapes in one value
+        assertAllowed(filter, "multi{v1}.db$prod", "A");
+
+        assertNotAllowed(filter, "testX", "A");
+    }
+
+    @Test
+    public void shouldHandleEscapingForSchemasAndExclusions() {
+        // Test escaping works for schemas and exclude filters
+        filter = Selectors.tableSelector()
+                .includeSchemas("pub\\$lic,sys\\[core\\]")
+                .build();
+
+        // Schema filtering with escapes
+        assertAllowed(filter, "mydb", "pub$lic", "tbl");
+        assertAllowed(filter, "mydb", "sys[core]", "tbl");
+        assertNotAllowed(filter, "mydb", "public", "tbl");
+
+        // Database exclusion with escapes
+        filter = Selectors.tableSelector()
+                .includeDatabases("test,sys,other")
+                .excludeDatabases("test\\$backup,sys\\[temp\\]")
+                .build();
+
+        assertNotAllowed(filter, "test$backup", "tbl");
+        assertNotAllowed(filter, "sys[temp]", "tbl");
+        assertAllowed(filter, "test", "tbl");
+    }
+
+    @Test
+    public void shouldPreserveUnescapedRegexPatterns() {
+        // Test that unescaped patterns still work as regex
+        filter = Selectors.tableSelector()
+                .includeDatabases("db.*,test[0-9],prod_.*")
+                .build();
+
+        // Regex patterns without escapes
+        assertAllowed(filter, "db", "tbl");
+        assertAllowed(filter, "db_main", "tbl");
+        assertAllowed(filter, "test0", "tbl");
+        assertAllowed(filter, "test9", "tbl");
+        assertAllowed(filter, "prod_backup", "tbl");
+
+        assertNotAllowed(filter, "testX", "tbl");
+    }
+
+    @Test
+    public void shouldMixEscapedLiteralsAndPatterns() {
+        // Test configuration with both escaped literals and regex patterns
+        filter = Selectors.tableSelector()
+                .includeDatabases("user\\$db,app_[a-z]+,sys\\[internal\\],prod.*")
+                .build();
+
+        // Escaped literals
+        assertAllowed(filter, "user$db", "A");
+        assertAllowed(filter, "sys[internal]", "A");
+
+        // Regex patterns
+        assertAllowed(filter, "app_main", "A");
+        assertAllowed(filter, "app_service", "A");
+        assertAllowed(filter, "prod", "A");
+        assertAllowed(filter, "prod_backup", "A");
+
+        assertNotAllowed(filter, "user", "A");
+        assertNotAllowed(filter, "app_1", "A");
+    }
+
     protected void assertAllowed(Predicate<TableId> filter, String dbName, String tableName) {
         TableId id = new TableId(dbName, null, tableName);
         assertThat(filter.test(id)).isTrue();
