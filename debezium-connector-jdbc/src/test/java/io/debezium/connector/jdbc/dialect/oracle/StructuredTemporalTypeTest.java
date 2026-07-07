@@ -55,6 +55,7 @@ class StructuredTemporalTypeTest {
 
         assertThat(bindings).hasSize(1);
         assertThat(bindings.get(0).getValue()).isInstanceOf(ZonedDateTime.class);
+        assertThat(((ZonedDateTime) bindings.get(0).getValue()).toLocalDate()).isEqualTo(LocalDate.EPOCH);
         assertThat(((ZonedDateTime) bindings.get(0).getValue()).toOffsetDateTime().toOffsetTime())
                 .isEqualTo(OffsetTime.of(12, 13, 14, 123_456_789, ZoneOffset.ofHours(9)));
         assertThat(bindings.get(0).getTargetSqlType()).isEqualTo(Types.TIME_WITH_TIMEZONE);

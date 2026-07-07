@@ -53,7 +53,7 @@ public class StructuredZonedTimeType extends io.debezium.connector.jdbc.type.deb
         final OffsetTime offsetTime = OffsetTime.of(
                 StructuredTemporalSupport.toLocalTime(struct),
                 ZoneOffset.ofTotalSeconds(struct.getInt32(StructuredTemporal.OFFSET_SECONDS_FIELD)));
-        final OffsetDateTime offsetDateTime = offsetTime.atDate(LocalDate.now());
+        final OffsetDateTime offsetDateTime = offsetTime.atDate(LocalDate.EPOCH);
         return List.of(new ValueBindDescriptor(index, offsetDateTime, Types.TIMESTAMP_WITH_TIMEZONE));
     }
 }
