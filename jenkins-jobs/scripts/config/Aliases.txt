@@ -380,3 +380,4 @@ vincadrn,Vincentius Adrian
 Roshr2211,Roshni R
 sagnghos,Sagnik Ghosh
 leosanqing,刘镕通
+sundongkim-dev,Sundong Kim
