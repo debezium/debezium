@@ -16,9 +16,12 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.hibernate.cfg.AgroalSettings;
 import org.hibernate.cfg.AvailableSettings;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -141,6 +144,61 @@ public class JdbcSinkConnectorConfigTest extends AbstractBaseJdbcSinkTest {
         assertThat(ormProperties.get(AvailableSettings.JAKARTA_JDBC_URL)).isEqualTo("jdbc://url");
         assertThat(ormProperties.get(AvailableSettings.JAKARTA_JDBC_USER)).isEqualTo("user");
         assertThat(ormProperties.get(AvailableSettings.JAKARTA_JDBC_PASSWORD)).isEqualTo("pass");
+    }
+
+    @Test
+    public void testStarRocksDialectResolverIsRegistered() {
+        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(connectionProperties());
+        final Properties ormProperties = config.getHibernateConfiguration().getProperties();
+        assertThat(ormProperties.get(AvailableSettings.DIALECT_RESOLVERS))
+                .isEqualTo("io.debezium.connector.jdbc.dialect.starrocks.StarRocksDialectResolver");
+    }
+
+    @Test
+    public void testStarRocksCatalogNameConfiguresInitialSql() {
+        final Map<String, String> properties = connectionProperties();
+        properties.put(JdbcSinkConnectorConfig.STARROCKS_CATALOG_NAME, "external_catalog");
+
+        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        final Properties ormProperties = config.getHibernateConfiguration().getProperties();
+        assertThat(ormProperties.get(AgroalSettings.AGROAL_CONFIG_PREFIX + ".initialSQL")).isEqualTo("SET CATALOG external_catalog");
+
+        final Properties defaultProperties = new JdbcSinkConnectorConfig(connectionProperties()).getHibernateConfiguration().getProperties();
+        assertThat(defaultProperties.get(AgroalSettings.AGROAL_CONFIG_PREFIX + ".initialSQL")).isNull();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "external_catalog", "_catalog", "Catalog1", "iceberg" })
+    public void testValidStarRocksCatalogNameIsAccepted(String catalogName) {
+        final Map<String, String> properties = connectionProperties();
+        properties.put(JdbcSinkConnectorConfig.STARROCKS_CATALOG_NAME, catalogName);
+
+        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        assertThat(config.validateAndRecord(List.of(JdbcSinkConnectorConfig.STARROCKS_CATALOG_NAME_FIELD), LOGGER::error)).isTrue();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "cat; DROP DATABASE important",
+            "cat`; DROP DATABASE important",
+            "1catalog",
+            "my-catalog",
+            "my catalog",
+            "cat.alog" })
+    public void testInvalidStarRocksCatalogNameIsRejected(String catalogName) {
+        final Map<String, String> properties = connectionProperties();
+        properties.put(JdbcSinkConnectorConfig.STARROCKS_CATALOG_NAME, catalogName);
+
+        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        assertThat(config.validateAndRecord(List.of(JdbcSinkConnectorConfig.STARROCKS_CATALOG_NAME_FIELD), LOGGER::error)).isFalse();
+    }
+
+    private static Map<String, String> connectionProperties() {
+        final Map<String, String> properties = new HashMap<>();
+        properties.put(JdbcSinkConnectorConfig.CONNECTION_URL, "jdbc://url");
+        properties.put(JdbcSinkConnectorConfig.CONNECTION_USER, "user");
+        properties.put(JdbcSinkConnectorConfig.CONNECTION_PASSWORD, "pass");
+        return properties;
     }
 
     @Test

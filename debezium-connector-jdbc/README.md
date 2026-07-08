@@ -115,11 +115,11 @@ There are three types of types in the test suite:
 By default, all unit tests are executed as a part of the build.
 The sink-based integration tests are only executed for MySQL, PostgreSQL, and SQL Server by default, while none of the end-to-end matrix-based tests are executed.
 
-In order to execute the sink-based integration tests for Oracle, DB2, and SingleStore, the `-Dtest.tags` argument must be provided to include these in the build.
+In order to execute the sink-based integration tests for Oracle, DB2, SingleStore, and StarRocks, the `-Dtest.tags` argument must be provided to include these in the build.
 
 In order to do this, add all the integration tests to be executed, as shown below for all databases:
 
-    $ ./mvnw clean install -Dtest.tags=it-mysql,it-postgresql,it-sqlserver,it-oracle,it-db2,it-singlestore
+    $ ./mvnw clean install -Dtest.tags=it-mysql,it-postgresql,it-sqlserver,it-oracle,it-db2,it-singlestore,it-starrocks
 
 In order to run all sink-based integration tests for all databases, a short-cut tag is provided:
 
@@ -127,7 +127,7 @@ In order to run all sink-based integration tests for all databases, a short-cut 
 
 Similarly, in order to enable specific end-to-end tests, the `-Dtest.tags` argument can also be supplied with the necessary tags for each sink database type:
 
-    $ ./mvnw clean install -Dtest.tags=e2e-mysql,e2e-postgresql,e2e-sqlserver,e2e-oracle,e2e-db2,e2e-singlestore
+    $ ./mvnw clean install -Dtest.tags=e2e-mysql,e2e-postgresql,e2e-sqlserver,e2e-oracle,e2e-db2,e2e-singlestore,e2e-starrocks
 
 In order to run all end to end integration tests, a short-cut tag is provided as well:
 

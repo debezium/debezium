@@ -22,7 +22,7 @@ toc::[]
 endif::community[]
 
 The {prodname} JDBC connector is a Kafka Connect sink connector implementation that can consume events from multiple source topics, and then write those events to a relational database by using a JDBC driver.
-This connector supports a wide variety of database dialects, including CockroachDB, Db2, MySQL, Oracle, PostgreSQL, SingleStore, and SQL Server.
+This connector supports a wide variety of database dialects, including CockroachDB, Db2, MySQL, Oracle, PostgreSQL, SingleStore, SQL Server, and StarRocks.
 
 // Type: assembly
 // ModuleID: debezium-jdbc-connector-how-the-debezium-connector-works
@@ -45,6 +45,7 @@ The {prodname} JDBC connector provides the following features:
 * xref:jdbc-idempotent-writes[Idempotent writes]
 * xref:jdbc-schema-evolution[Schema evolution]
 * xref:jdbc-singlestore-targets[SingleStore sink targets]
+* xref:jdbc-starrocks-targets[StarRocks sink targets]
 * xref:jdbc-quoting-case-sensitivity[JDBC quoting and case-sensitivity]
 * xref:jdbc-connection-idle-timeouts[Connection idle timeouts]
 
@@ -68,6 +69,42 @@ For SingleStore targets, {prodname} maps {prodname} `io.debezium.data.Json` logi
 The connector maps {prodname} `io.debezium.data.geometry.Geometry` and `io.debezium.data.geometry.Geography` logical values to the SingleStore `GEOGRAPHY` column type, and `io.debezium.data.geometry.Point` logical values to the SingleStore `GEOGRAPHYPOINT` column type.
 SingleStore supports a subset of WKT geospatial values.
 The connector writes `POINT`, `LINESTRING`, and `POLYGON` WKB values to SingleStore as WKT strings.
+
+// Type: concept
+// Title: Using StarRocks as a sink target
+// ModuleID: debezium-jdbc-connector-using-starrocks-as-a-sink-target
+[[jdbc-starrocks-targets]]
+=== StarRocks sink targets
+
+To write to StarRocks, configure xref:jdbc-property-connection-url[`connection.url`] with a StarRocks JDBC URL, for example, `jdbc:starrocks://<_host_>:9030/<_database_>`.
+The StarRocks JDBC driver is included in the {prodname} JDBC connector archive, so Kafka Connect deployments that use the connector archive do not require an additional StarRocks driver JAR.
+The connector automatically detects a StarRocks target from the driver, so no dialect configuration is required.
+To write to a database in a catalog other than `default_catalog`, specify a fully qualified `<_catalog_>.<_database_>` path in the connection URL, or set the xref:jdbc-property-dialect-starrocks-catalog-name[`dialect.starrocks.catalog.name`] property.
+
+StarRocks targets support idempotent writes through the same xref:jdbc-property-insert-mode[`insert.mode=upsert`] setting that the connector uses for other databases.
+StarRocks executes `INSERT` statements against PRIMARY KEY tables as upserts, so the connector generates plain `INSERT` statements; `INSERT ... ON DUPLICATE KEY UPDATE ...` is not supported by StarRocks.
+Upsert and delete operations require the destination table to be a StarRocks PRIMARY KEY table.
+Tables that the connector creates automatically from events with key fields are always PRIMARY KEY tables.
+
+If xref:jdbc-property-schema-evolution[`schema.evolution`] is set to `basic`, the connector can create or alter destination tables from event schemas.
+Tables that the connector creates use `PRIMARY KEY (...) DISTRIBUTED BY HASH (...)` clauses based on the record key fields.
+StarRocks limits the encoded size of all primary key column values of a PRIMARY KEY table to 128 bytes and does not permit `FLOAT`, `DOUBLE`, or `DECIMAL` key columns.
+Automatic table creation does not expose StarRocks-specific distribution, partitioning, or other table option settings.
+If the target table requires explicit table options, create the destination table in StarRocks before the connector writes to it.
+StarRocks applies `ALTER TABLE` schema changes asynchronously; writes that arrive while a schema change is still running can fail transiently and are retried by the connector.
+
+StarRocks has no `TIME` data type.
+The connector writes {prodname} `io.debezium.time.Time`, `io.debezium.time.MicroTime`, and `io.debezium.time.NanoTime` logical values, and Kafka Connect `Time` values, to `VARCHAR` columns as `HH:mm:ss.ffffff` formatted strings.
+MySQL `TIME` values outside of the 24-hour clock range retain the MySQL `[-]HHH:mm:ss.ffffff` notation, and `io.debezium.time.ZonedTime` values are stored verbatim with their original offset.
+`io.debezium.time.ZonedTimestamp` values are normalized to the database time zone and written to `DATETIME` columns; the original offset is not preserved.
+StarRocks `DATETIME` columns do not accept a precision argument; StarRocks retains fractional seconds up to microsecond precision.
+Note that the StarRocks JDBC driver reports `DATETIME` columns without fractional second precision, so although values are stored with microsecond precision, reading them through the JDBC driver truncates the fraction unless the value is explicitly cast, for example, to `VARCHAR`.
+StarRocks `VARCHAR` lengths are byte lengths rather than character lengths, so the connector multiplies propagated character lengths by four, up to the maximum length of 1048576; `CHAR` columns whose scaled length exceeds the 255 byte `CHAR` maximum are promoted to `VARCHAR`.
+`BYTES` values are written to `VARBINARY` columns, which are limited to the same 1048576 byte maximum.
+`DECIMAL` columns support a maximum precision of 38; the connector caps larger propagated precisions at 38, and values that exceed the capped precision fail on write.
+When column type propagation is enabled, `BIGINT UNSIGNED` source columns map to `LARGEINT` columns, preserving the full unsigned 64-bit range.
+{prodname} `io.debezium.data.Json` logical values and Kafka Connect `MAP` schema values map to the StarRocks `JSON` column type, `ENUM` and `SET` values map to `STRING` columns, and `YEAR` values map to `INT` columns.
+The StarRocks dialect does not support geospatial or vector logical types, and Kafka Connect `ARRAY` and `STRUCT` schema types are not mapped to the StarRocks `ARRAY` and `STRUCT` column types.
 
 // Type: concept
 // Title: Description of how the {prodname} JDBC connector consumes complex change events
@@ -242,6 +279,9 @@ The following table shows the `upsert` DML syntax for the database dialects that
 |SQL Server
 |`MERGE ...`
 
+|StarRocks
+|`INSERT ...` (PRIMARY KEY tables execute inserts as upserts)
+
 |===
 
 // Type: reference
@@ -280,6 +320,9 @@ To adjust nullability settings or default values, you can introduce a custom sin
 
 For SingleStore targets, automatic table creation does not configure SingleStore-specific shard keys, sort keys, or other table options.
 For more information, see xref:jdbc-singlestore-targets[].
+
+For StarRocks targets, automatic table creation creates PRIMARY KEY tables from the record key fields, and does not configure StarRocks-specific distribution, partitioning, or other table options.
+For more information, see xref:jdbc-starrocks-targets[].
 
 A field's data type is resolved based on a predefined set of mappings.
 For more information, see xref:jdbc-field-types[JDBC field types].
@@ -709,6 +752,8 @@ SingleStore maps {prodname} `io.debezium.data.Json` logical values to `json`.
 Kafka Connect `MAP` schema values are also written to SingleStore `json` columns.
 {prodname} `io.debezium.data.geometry.Geometry` and `io.debezium.data.geometry.Geography` logical values are written to SingleStore `geography` columns, and `io.debezium.data.geometry.Point` logical values are written to SingleStore `geographypoint` columns.
 The SingleStore dialect writes supported `POINT`, `LINESTRING`, and `POLYGON` WKB values as WKT strings.
+
+For StarRocks targets, see xref:jdbc-starrocks-targets[] for the dialect-specific type mappings, including the string-based representation that the dialect uses for time types.
 
 // Type: reference
 // Title: Mappings between {prodname} vector data types and RDBMS column types
@@ -1830,6 +1875,13 @@ For information about the performance benefits of enabling the UNNEST function, 
 |`false`
 |Specifies whether the connector automatically sets an `IDENTITY_INSERT` before an `INSERT` or `UPSERT` operation into the identity column of SQL Server tables, and then unsets it immediately after the operation.
 When the default setting (`false`) is in effect, an `INSERT` or `UPSERT` operation into the `IDENTITY` column of a table results in a SQL exception.
+
+|[[jdbc-property-dialect-starrocks-catalog-name]]<<jdbc-property-dialect-starrocks-catalog-name, `+dialect.starrocks.catalog.name+`>>
+|No default
+|Specifies the name of the StarRocks catalog that the connector writes into.
+When this property is set, the connector executes `SET CATALOG <_name_>` on every new connection before any session work.
+The value must be a valid StarRocks catalog name, that is, it may contain only letters, digits, and underscores, and must not start with a digit; other values are rejected during configuration validation.
+The StarRocks JDBC driver also supports specifying the catalog directly in the connection URL, for example, `jdbc:starrocks://<_host_>:9030/<_catalog_>.<_database_>`.
 
 |[[jdbc-property-batch-size]]<<jdbc-property-batch-size, `+batch.size+`>>
 |`500`

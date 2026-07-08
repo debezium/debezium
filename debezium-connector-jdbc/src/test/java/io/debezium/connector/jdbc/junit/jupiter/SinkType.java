@@ -14,6 +14,7 @@ public enum SinkType {
 
     MYSQL("mysql"),
     SINGLESTORE("singlestore"),
+    STARROCKS("starrocks"),
     POSTGRES("postgres"),
     COCKROACHDB("cockroachdb"),
     SQLSERVER("sqlserver"),
