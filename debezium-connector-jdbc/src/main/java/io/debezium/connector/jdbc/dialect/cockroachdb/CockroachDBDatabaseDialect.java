@@ -73,6 +73,26 @@ public class CockroachDBDatabaseDialect extends PostgresDatabaseDialect {
     }
 
     @Override
+    protected void registerTypes() {
+        super.registerTypes();
+        // Override inherited PostgreSQL type mappings that CockroachDB does not support, verified
+        // against CockroachDB v25.4 and v26.3: xml, ranges, macaddr, and cidr are stored as text;
+        // MAP is stored as jsonb rather than hstore; money as a fixed-scale decimal; the spatial
+        // types use CockroachDB's built-in geometry/geography without a PostGIS schema; float
+        // vectors use the native vector type since halfvec does not exist; sparse vectors are
+        // unsupported.
+        registerType(TextFallbackType.INSTANCE);
+        registerType(JsonType.INSTANCE);
+        registerType(MapToJsonbType.INSTANCE);
+        registerType(MoneyType.INSTANCE);
+        registerType(GeometryType.INSTANCE);
+        registerType(GeographyType.INSTANCE);
+        registerType(PointType.INSTANCE);
+        registerType(FloatVectorType.INSTANCE);
+        registerType(SparseDoubleVectorType.INSTANCE);
+    }
+
+    @Override
     public String getJdbcTypeName(int jdbcType) {
         // The Hibernate CockroachDialect names character types "string", a CockroachDB alias that is
         // valid in DDL but absent from pg_type, so the PgJDBC driver cannot resolve it as an array
