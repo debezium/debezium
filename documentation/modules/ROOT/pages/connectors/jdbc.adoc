@@ -22,7 +22,7 @@ toc::[]
 endif::community[]
 
 The {prodname} JDBC connector is a Kafka Connect sink connector implementation that can consume events from multiple source topics, and then write those events to a relational database by using a JDBC driver.
-This connector supports a wide variety of database dialects, including Db2, MySQL, Oracle, PostgreSQL, SingleStore, and SQL Server.
+This connector supports a wide variety of database dialects, including CockroachDB, Db2, MySQL, Oracle, PostgreSQL, SingleStore, and SQL Server.
 
 // Type: assembly
 // ModuleID: debezium-jdbc-connector-how-the-debezium-connector-works
@@ -220,6 +220,9 @@ The following table shows the `upsert` DML syntax for the database dialects that
 
 |===
 |Dialect |Upsert Syntax
+
+|CockroachDB
+|`INSERT ... ON CONFLICT ... DO UPDATE SET ...`
 
 |Db2
 |`MERGE ...`
