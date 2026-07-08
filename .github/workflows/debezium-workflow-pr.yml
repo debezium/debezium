@@ -611,7 +611,7 @@ jobs:
     name: "Debezium Server"
     needs: [ check_style, file_changes, build_core ]
     runs-on: ubuntu-latest
-    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' || needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' }}
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' || needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' || needs.file_changes.outputs.jdbc-changed == 'true' }}
     steps:
       - name: Checkout Action (Core)
         uses: actions/checkout@v7
