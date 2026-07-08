@@ -444,11 +444,11 @@ public class MariaDbAntlrDdlParser extends AntlrDdlParser<MariaDBLexer, MariaDBP
     public static List<String> extractEnumAndSetOptions(List<String> enumValues) {
         return enumValues.stream()
                 .map(MariaDbAntlrDdlParser::withoutQuotes)
-                .map(MariaDbAntlrDdlParser::escapeOption)
+                .map(MariaDbAntlrDdlParser::unescapeOption)
                 .collect(Collectors.toList());
     }
 
-    public static String escapeOption(String option) {
+    public static String unescapeOption(String option) {
         // Replace backslash+single-quote to a single-quote.
         // Replace double single-quote to a single-quote.
         return option.replace("\\'", "'").replace("''", "'");
