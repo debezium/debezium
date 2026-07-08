@@ -122,7 +122,14 @@ public class TransactionMonitor {
         if (!connectorConfig.shouldProvideTransactionMetadata()) {
             return;
         }
-        offset.getTransactionContext().beginTransaction(transactionInfo);
+        final TransactionContext transactionContext = offset.getTransactionContext();
+        if (transactionContext.isTransactionInProgress() && Objects.equals(transactionContext.getTransactionId(), transactionInfo.getTransactionId())) {
+            // A start event for the transaction restored from offsets is a replay of the transaction start
+            // after a restart, so the restored event counters must be kept and no duplicate BEGIN is emitted
+            LOGGER.debug("Event counters of transaction {} restored from offsets are continued after restart", transactionInfo.getTransactionId());
+            return;
+        }
+        transactionContext.beginTransaction(transactionInfo);
         beginTransaction(partition, offset, timestamp);
     }
 
