@@ -40,6 +40,8 @@ public class IncrementalSnapshotCaseSensitiveIT extends AbstractIncrementalSnaps
         connection.execute("CREATE TABLE a (\"Pk\" numeric(9,0) primary key, aa numeric(9,0))");
         connection.execute("CREATE TABLE b (\"Pk\" numeric(9,0) primary key, aa numeric(9,0))");
         connection.execute("CREATE TABLE a42 (pk1 numeric(9,0), pk2 numeric(9,0), pk3 numeric(9,0), pk4 numeric(9,0), aa numeric(9,0))");
+        TestHelper.streamTable(connection, "a");
+        TestHelper.streamTable(connection, "b");
         TestHelper.streamTable(connection, "a42");
 
         // todo: creates signal table in the PDB, do we want it to be in the CDB?
