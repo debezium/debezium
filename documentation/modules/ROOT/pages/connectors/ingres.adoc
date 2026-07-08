@@ -214,9 +214,9 @@ If the default data type conversions do not meet your needs, you can {link-prefi
 
 The following table describes how the connector maps each Ingres data type to a _literal type_ and a _semantic type_ in event fields.
 
-* _literal type_ describes how the value is literally represented using Kafka Connect schema types: `INT8`, `INT16`, `INT32`, `INT64`, `FLOAT32`, `FLOAT64`, `BOOLEAN`, `STRING`, `BYTES`, `ARRAY`, `MAP`, and `STRUCT`.
+literal type:: Describes how the value is literally represented using the following Kafka Connect schema types: `INT8`, `INT16`, `INT32`, `INT64`, `FLOAT32`, `FLOAT64`, `BOOLEAN`, `STRING`, `BYTES`, `ARRAY`, `MAP`, and `STRUCT`.
 
-* _semantic type_ describes how the Kafka Connect schema captures the _meaning_ of the field using the name of the Kafka Connect schema for the field.
+semantic type:: Describes how the Kafka Connect schema captures the meaning of the source field by assigning the name of the corresponding Kafka Connect schema to the field.
 
 
 .Mappings for Ingres basic data types
