@@ -46,6 +46,7 @@ ifdef::community[]
 * {link-prefix}:{link-vitess-connector}#vitess-monitoring[Vitess connector metrics]
 * {link-prefix}:{link-spanner-connector}#spanner-monitoring[Spanner connector metrics]
 * {link-prefix}:{link-informix-connector}#informix-monitoring[Informix connector metrics]
+* {link-prefix}:{link-cockroachdb-connector}#cockroachdb-monitoring[CockroachDB connector metrics]
 endif::community[]
 
 
