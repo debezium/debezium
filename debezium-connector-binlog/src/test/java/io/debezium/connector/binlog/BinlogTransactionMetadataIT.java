@@ -14,6 +14,7 @@ import java.nio.file.Path;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.apache.kafka.connect.data.Struct;
@@ -23,12 +24,14 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.util.BinlogTestConnection;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.pipeline.txmetadata.TransactionStatus;
 import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.util.Collect;
 import io.debezium.util.Testing;
@@ -172,6 +175,118 @@ public abstract class BinlogTransactionMetadataIT<C extends SourceConnector> ext
         SourceRecords records = consumeRecordsByTopic(1 + 4 + 1);
         List<SourceRecord> txnEvents = records.recordsForTopic(DATABASE.getServerName() + ".mytransactions");
         assertThat(txnEvents).hasSize(2);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#633")
+    public void shouldContinueTransactionEventCountersAfterRestartInMiddleOfTransaction() throws Exception {
+        config = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
+                .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with(BinlogConnectorConfig.PROVIDE_TRANSACTION_METADATA, true)
+                // Keep the engine batches small so that stopping the connector cannot deliver records
+                // past the middle of the transaction before the stop takes effect
+                .with(CommonConnectorConfig.MAX_BATCH_SIZE, 32)
+                .build();
+
+        start(getConnectorClass(), config);
+        assertConnectorIsRunning();
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
+
+        // Write a single transaction interleaving two tables that is much larger than the record queue
+        // of the test framework, so the connector is stopped before the whole transaction is delivered
+        final int insertsPerTable = 150;
+        try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
+            try (JdbcConnection connection = db.connect()) {
+                final String[] inserts = new String[2 * insertsPerTable];
+                for (int i = 0; i < insertsPerTable; i++) {
+                    inserts[2 * i] = "INSERT INTO customers (first_name, last_name, email) VALUES ('first" + i + "', 'last" + i + "', 'customer" + i + "@test.com');";
+                    inserts[2 * i + 1] = "INSERT INTO products (name, description, weight) VALUES ('product" + i + "', 'description " + i + "', 1.5);";
+                }
+                connection.setAutoCommit(false);
+                connection.execute(inserts);
+                connection.commit();
+            }
+        }
+
+        // Consume the beginning of the transaction, then stop the connector while the rest of the
+        // transaction is still being delivered
+        final List<SourceRecord> records = new ArrayList<>(consumeRecordsByTopic(51).allRecordsInOrder());
+        final String txId = findTransactionId(records);
+        assertNotNull(txId, "Failed to find the transaction id");
+        stopConnector();
+
+        final Map<String, Object> committedOffset = readLastCommittedOffset(config, records.get(0).sourcePartition());
+        assertThat(committedOffset)
+                .as("Connector has to stop in the middle of the transaction")
+                .containsKey(BinlogOffsetContext.EVENTS_TO_SKIP_OFFSET_KEY);
+
+        start(getConnectorClass(), config);
+        assertConnectorIsRunning();
+
+        // Consume the rest of the transaction including its END event
+        for (int i = 0; findTransactionStatusRecords(records, txId, TransactionStatus.END).isEmpty() && i < 15; i++) {
+            records.addAll(consumeRecordsByTopic(100).allRecordsInOrder());
+        }
+
+        // Only a single BEGIN must be emitted for the transaction, the transaction start replayed
+        // after the restart must not be propagated
+        final List<SourceRecord> beginRecords = findTransactionStatusRecords(records, txId, TransactionStatus.BEGIN);
+        assertEquals(1, beginRecords.size(), "Duplicate BEGIN event emitted after restart");
+        assertBeginTransaction(beginRecords.get(0));
+
+        // Event counters must continue after the restart instead of being reset
+        assertDataCollectionOrderContinues(records, DATABASE.topicForTable("customers"), txId, insertsPerTable);
+        assertDataCollectionOrderContinues(records, DATABASE.topicForTable("products"), txId, insertsPerTable);
+
+        final List<SourceRecord> endRecords = findTransactionStatusRecords(records, txId, TransactionStatus.END);
+        assertFalse(endRecords.isEmpty(), "Failed to find the transaction END event");
+        final String databaseName = DATABASE.getDatabaseName();
+        assertEndTransaction(endRecords.get(0), txId, 2 * insertsPerTable, Collect.hashMapOf(
+                databaseName + ".customers", insertsPerTable,
+                databaseName + ".products", insertsPerTable));
+    }
+
+    private String findTransactionId(List<SourceRecord> records) {
+        return records.stream()
+                .filter(record -> record.topic().equals(DATABASE.topicForTable("customers"))
+                        || record.topic().equals(DATABASE.topicForTable("products")))
+                .map(record -> ((Struct) record.value()).getStruct("transaction").getString("id"))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private List<SourceRecord> findTransactionStatusRecords(List<SourceRecord> records, String txId, TransactionStatus status) {
+        final String transactionTopic = DATABASE.getServerName() + ".transaction";
+        final List<SourceRecord> statusRecords = new ArrayList<>();
+        for (SourceRecord record : records) {
+            if (transactionTopic.equals(record.topic())) {
+                final Struct value = (Struct) record.value();
+                if (status.name().equals(value.getString("status")) && txId.equals(value.getString("id"))) {
+                    statusRecords.add(record);
+                }
+            }
+        }
+        return statusRecords;
+    }
+
+    private void assertDataCollectionOrderContinues(List<SourceRecord> records, String topic, String txId, int expectedLastOrder) {
+        long previousOrder = 0;
+        long lastOrder = 0;
+        for (SourceRecord record : records) {
+            if (!topic.equals(record.topic())) {
+                continue;
+            }
+            final Struct transaction = ((Struct) record.value()).getStruct("transaction");
+            assertEquals(txId, transaction.getString("id"));
+            final long order = transaction.getInt64("data_collection_order");
+            assertThat(order)
+                    .as("data_collection_order was reset within transaction %s on topic %s", txId, topic)
+                    .isGreaterThanOrEqualTo(previousOrder);
+            previousOrder = order;
+            lastOrder = order;
+        }
+        assertEquals(expectedLastOrder, lastOrder, "Unexpected last data_collection_order for " + topic);
     }
 
     private String getTxId(List<SourceRecord> records) {
