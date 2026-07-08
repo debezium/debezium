@@ -11,6 +11,7 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.regex.Pattern;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Type;
@@ -28,6 +29,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
+import io.debezium.connector.jdbc.dialect.starrocks.StarRocksDialectResolver;
 import io.debezium.connector.jdbc.naming.ColumnNamingStrategy;
 import io.debezium.connector.jdbc.naming.DefaultColumnNamingStrategy;
 import io.debezium.connector.jdbc.naming.TemporaryBackwardCompatibleCollectionNamingStrategyProxy;
@@ -64,6 +66,10 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
     public static final String POSTGRES_POSTGIS_SCHEMA = "dialect.postgres.postgis.schema";
     public static final String POSTGRES_UNNEST_INSERT = "dialect.postgres.unnest.insert.enabled";
     public static final String SQLSERVER_IDENTITY_INSERT = "dialect.sqlserver.identity.insert";
+    public static final String STARROCKS_CATALOG_NAME = "dialect.starrocks.catalog.name";
+    // StarRocks identifiers may contain only letters, digits, and underscores, and must not start with a digit.
+    // The catalog name is concatenated into a 'SET CATALOG' statement, so it is validated to avoid SQL injection.
+    private static final Pattern STARROCKS_CATALOG_NAME_PATTERN = Pattern.compile("[a-zA-Z_][a-zA-Z0-9_]*");
     public static final String USE_REDUCTION_BUFFER = "use.reduction.buffer";
     public static final String FLUSH_MAX_RETRIES = "flush.max.retries";
     public static final String FLUSH_RETRY_DELAY_MS = "flush.retry.delay.ms";
@@ -220,6 +226,17 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
             .withDefault(false)
             .withDescription("Allowing to insert explicit value for identity column in table for SQLSERVER.");
 
+    public static final Field STARROCKS_CATALOG_NAME_FIELD = Field.create(STARROCKS_CATALOG_NAME)
+            .withDisplayName("Name of the StarRocks catalog the connector writes into")
+            .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
+            .withWidth(ConfigDef.Width.LONG)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withValidation(JdbcSinkConnectorConfig::validateStarRocksCatalogName)
+            .withDescription("Name of the StarRocks catalog the connector writes into. When set, 'SET CATALOG <name>' " +
+                    "is executed on every new connection before any session work. The StarRocks JDBC driver also " +
+                    "supports specifying the catalog directly in the connection URL.");
+
     public static final Field FLUSH_MAX_RETRIES_FIELD = Field.create(FLUSH_MAX_RETRIES)
             .withDisplayName("Max retry count")
             .withType(Type.INT)
@@ -294,6 +311,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
                     POSTGRES_POSTGIS_SCHEMA_FIELD,
                     POSTGRES_UNNEST_INSERT_FIELD,
                     SQLSERVER_IDENTITY_INSERT_FIELD,
+                    STARROCKS_CATALOG_NAME_FIELD,
                     BATCH_SIZE_FIELD,
                     KEYED_MESSAGE_BATCH_MODE_FIELD,
                     FIELD_INCLUDE_LIST_FIELD,
@@ -408,6 +426,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
     private final String postgresPostgisSchema;
     private final boolean postgresUnnestInsert;
     private final boolean sqlServerIdentityInsert;
+    private final String starRocksCatalogName;
     private final int flushMaxRetries;
     private final long flushRetryDelayMs;
     private final int batchSize;
@@ -432,6 +451,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         this.postgresPostgisSchema = config.getString(POSTGRES_POSTGIS_SCHEMA_FIELD);
         this.postgresUnnestInsert = config.getBoolean(POSTGRES_UNNEST_INSERT_FIELD);
         this.sqlServerIdentityInsert = config.getBoolean(SQLSERVER_IDENTITY_INSERT_FIELD);
+        this.starRocksCatalogName = config.getString(STARROCKS_CATALOG_NAME_FIELD);
         this.batchSize = config.getInteger(BATCH_SIZE_FIELD);
         this.useReductionBuffer = config.getBoolean(USE_REDUCTION_BUFFER_FIELD);
         this.keyedMessageBatchMode = KeyedMessageBatchMode.parse(config.getString(KEYED_MESSAGE_BATCH_MODE_FIELD));
@@ -559,6 +579,10 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         return postgresUnnestInsert;
     }
 
+    public String getStarRocksCatalogName() {
+        return starRocksCatalogName;
+    }
+
     public int getFlushMaxRetries() {
         return flushMaxRetries;
     }
@@ -618,6 +642,17 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
             hibernateConfig.setProperty(AvailableSettings.SHOW_SQL, Boolean.toString(true));
         }
 
+        if (!Strings.isNullOrBlank(starRocksCatalogName)) {
+            // The MySQL wire protocol has no notion of StarRocks catalogs, so the catalog is selected
+            // through an initial statement executed on every new pooled connection.
+            hibernateConfig.setProperty(AgroalSettings.AGROAL_CONFIG_PREFIX + ".initialSQL", "SET CATALOG " + starRocksCatalogName);
+        }
+
+        // The resolver is registered through configuration rather than META-INF/services so that the
+        // registration stays scoped to this session factory; a global service registration fails with
+        // a ServiceConfigurationError in runtimes that isolate classloaders, such as Quarkus.
+        hibernateConfig.setProperty(AvailableSettings.DIALECT_RESOLVERS, StarRocksDialectResolver.class.getName());
+
         // Allows users to pass additional configuration options to the sink connector using the "hibernate.*" namespace
         config.subset(HIBERNATE_PREFIX, false).forEach(hibernateConfig::setProperty);
 
@@ -658,6 +693,18 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
                 LOGGER.error("When using UPSERT, please define '{}'.", PRIMARY_KEY_MODE);
                 return 1;
             }
+        }
+        return 0;
+    }
+
+    private static int validateStarRocksCatalogName(Configuration config, Field field, ValidationOutput problems) {
+        final String catalogName = config.getString(field);
+        if (!Strings.isNullOrBlank(catalogName) && !STARROCKS_CATALOG_NAME_PATTERN.matcher(catalogName).matches()) {
+            LOGGER.error("The '{}' value '{}' is invalid: a StarRocks catalog name may contain only letters, digits, and "
+                    + "underscores, and must not start with a digit.", field.name(), catalogName);
+            problems.accept(field, catalogName, "A StarRocks catalog name may contain only letters, digits, and "
+                    + "underscores, and must not start with a digit");
+            return 1;
         }
         return 0;
     }

@@ -20,10 +20,11 @@
         <version.assertjdb>3.0.0</version.assertjdb>
         <!--
         By default only run the integration tests for MySQL, PostgreSQL, and SQL Server.
-        Other tags include it-db2, it-oracle, and it-singlestore for the DB2, Oracle, and SingleStore integration tests.
+        Other tags include it-db2, it-oracle, it-singlestore, and it-starrocks for the DB2, Oracle, SingleStore,
+        and StarRocks integration tests.
 
         Additionally, there are also end to end test tags that can be specified:
-        e2e-mysql, e2e-postgresql, e2e-sqlserver, e2e-db2, e2e-oracle, and e2e-singlestore
+        e2e-mysql, e2e-postgresql, e2e-sqlserver, e2e-db2, e2e-oracle, e2e-singlestore, and e2e-starrocks
 
         Finally, there are 3 all-inclusive tags that can be specified:
             it - runs all integration tests
@@ -236,6 +237,10 @@
         <dependency>
             <groupId>com.singlestore</groupId>
             <artifactId>singlestore-jdbc-client</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.starrocks</groupId>
+            <artifactId>starrocks-connector-j</artifactId>
         </dependency>
         <dependency>
             <groupId>mil.nga</groupId>

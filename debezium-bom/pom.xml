@@ -265,6 +265,11 @@
                 <artifactId>singlestore-jdbc-client</artifactId>
                 <version>${version.singlestore.driver}</version>
             </dependency>
+            <dependency>
+                <groupId>com.starrocks</groupId>
+                <artifactId>starrocks-connector-j</artifactId>
+                <version>${version.starrocks.driver}</version>
+            </dependency>
 
             <!-- MongoDB Java driver -->
             <dependency>

@@ -200,6 +200,7 @@ public abstract class AbstractOpenLineageJdbcSinkTest extends AbstractJdbcSinkTe
         return switch (getSink().getType()) {
             case MYSQL -> List.of("id;TINYINT", "name;LONGTEXT", "nick_name$;VARCHAR");
             case SINGLESTORE -> List.of("id;BIT", "name;LONGTEXT", "nick_name$;VARCHAR");
+            case STARROCKS -> List.of("id;TINYINT", "name;VARCHAR", "nick_name$;VARCHAR");
             case POSTGRES -> List.of("id;int2", "name;text", "nick_name$;varchar");
             case COCKROACHDB -> List.of("id;int2", "name;text", "nick_name$;varchar");
             case SQLSERVER -> List.of("id;smallint", "name;varchar", "nick_name$;varchar");

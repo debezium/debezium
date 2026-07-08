@@ -15,6 +15,10 @@ public final class ImageNames {
 
     private static final String SINGLESTORE_IMAGE = "ghcr.io/singlestore-labs/singlestoredb-dev:0.2.77";
 
+    // The explicit registry prevents the image name from being rewritten by the
+    // hub.image.name.prefix substitution; the image is only published on Docker Hub.
+    private static final String STARROCKS_IMAGE = "docker.io/starrocks/allin1-ubuntu:4.1.1";
+
     public static final String OFFICIAL_MONGODB_IMAGE = "quay.io/debezium/official-mongo:8.0";
 
     public static final DockerImageName POSTGRES_DOCKER_IMAGE_NAME = DockerImageName.parse(POSTGRES_IMAGE)
@@ -24,6 +28,8 @@ public final class ImageNames {
             .asCompatibleSubstituteFor("postgres");
 
     public static final DockerImageName SINGLESTORE_DOCKER_IMAGE_NAME = DockerImageName.parse(SINGLESTORE_IMAGE);
+
+    public static final DockerImageName STARROCKS_DOCKER_IMAGE_NAME = DockerImageName.parse(STARROCKS_IMAGE);
 
     public static final DockerImageName OFFICIAL_DOCKER_IMAGE_NAME = DockerImageName.parse(OFFICIAL_MONGODB_IMAGE)
             .asCompatibleSubstituteFor("mongodb");
