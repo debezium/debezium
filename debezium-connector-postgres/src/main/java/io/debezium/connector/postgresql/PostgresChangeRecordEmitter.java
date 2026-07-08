@@ -26,7 +26,6 @@ import org.slf4j.LoggerFactory;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationMessage;
 import io.debezium.data.Envelope.Operation;
-import io.debezium.function.Predicates;
 import io.debezium.pipeline.spi.ChangeRecordEmitter;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
@@ -166,11 +165,15 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter<P
 
         // based on the schema columns, create the values on the same position as the columns
         List<Column> schemaColumns = table.columns();
-        // based on the replication message without toasted columns for now
-        List<ReplicationMessage.Column> columnsWithoutToasted = columns.stream().filter(Predicates.not(ReplicationMessage.Column::isToastedColumn))
-                .collect(Collectors.toList());
+        // count the replication message columns without toasted columns for now
+        int columnsWithoutToasted = 0;
+        for (ReplicationMessage.Column column : columns) {
+            if (!column.isToastedColumn()) {
+                columnsWithoutToasted++;
+            }
+        }
         // JSON does not deliver a list of all columns for REPLICA IDENTITY DEFAULT
-        Object[] values = new Object[columnsWithoutToasted.size() < schemaColumns.size() ? schemaColumns.size() : columnsWithoutToasted.size()];
+        Object[] values = new Object[Math.max(schemaColumns.size(), columnsWithoutToasted)];
 
         final Set<String> undeliveredToastableColumns = new HashSet<>(schema.getToastableColumnsForTableId(table.id()));
         for (ReplicationMessage.Column column : columns) {
