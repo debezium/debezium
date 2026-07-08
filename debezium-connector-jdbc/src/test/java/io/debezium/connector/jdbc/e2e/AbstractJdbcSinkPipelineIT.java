@@ -118,6 +118,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                             assertColumn(sink, record, "data", getBooleanType(), 1);
                             break;
                         case POSTGRES:
+                        case COCKROACHDB:
                             assertColumn(sink, record, "id", getBooleanType());
                             assertColumn(sink, record, "data", options.isColumnTypePropagated() ? "BIT" : getBooleanType());
                             break;
@@ -146,6 +147,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 (rs, index) -> {
                     switch (sink.getType()) {
                         case POSTGRES:
+                        case COCKROACHDB:
                             return Integer.parseInt(rs.getString(index), 2);
                         case SQLSERVER:
                             return new BigInteger(rs.getBytes(index)).intValue();
@@ -157,7 +159,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
 
     @TestTemplate
     @SkipWhenSource(value = { SourceType.ORACLE, SourceType.SQLSERVER }, reason = "No BIT(n) data type support")
-    @SkipWhenSink(value = { SinkType.MYSQL, SinkType.POSTGRES, SinkType.SQLSERVER }, reason = "BIT(n) is only applicable to non-key columns")
+    @SkipWhenSink(value = { SinkType.MYSQL, SinkType.POSTGRES, SinkType.SQLSERVER, SinkType.COCKROACHDB }, reason = "BIT(n) is only applicable to non-key columns")
     public void testBitWithSizeDataTypeNotInKey(Source source, Sink sink) throws Exception {
         final String tableName = source.randomTableName();
         registerSourceConnector(source, tableName);
@@ -195,7 +197,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 (record) -> {
                     final SourceConnectorOptions options = source.getOptions();
                     assertColumn(sink, record, "id", getBitsDataType(), 2);
-                    if (options.isColumnTypePropagated() && sink.getType() == SinkType.POSTGRES) {
+                    if (options.isColumnTypePropagated() && sink.getType().is(SinkType.POSTGRES, SinkType.COCKROACHDB)) {
                         assertColumn(sink, record, "data", "VARBIT", 2);
                     }
                     else {
@@ -205,6 +207,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 (rs, index) -> {
                     switch (sink.getType()) {
                         case POSTGRES:
+                        case COCKROACHDB:
                             return Integer.parseInt(rs.getString(index), 2);
                         case SQLSERVER:
                             return new BigInteger(rs.getBytes(index)).intValue();
@@ -216,7 +219,8 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
 
     @TestTemplate
     @SkipWhenSource(value = { SourceType.MYSQL, SourceType.ORACLE, SourceType.SQLSERVER }, reason = "No BIT VARYING(n) data type support")
-    @SkipWhenSink(value = { SinkType.MYSQL, SinkType.POSTGRES, SinkType.SQLSERVER }, reason = "BIT VARYING(n) is only applicable to non-key columns")
+    @SkipWhenSink(value = { SinkType.MYSQL, SinkType.POSTGRES, SinkType.SQLSERVER,
+            SinkType.COCKROACHDB }, reason = "BIT VARYING(n) is only applicable to non-key columns")
     public void testBitVaryingDataTypeNotInKey(Source source, Sink sink) throws Exception {
         final String tableName = source.randomTableName();
         registerSourceConnector(source, tableName);
@@ -270,6 +274,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 (rs, index) -> {
                     switch (sink.getType()) {
                         case POSTGRES:
+                        case COCKROACHDB:
                         case DB2:
                             return rs.getBoolean(index) ? 1 : 0;
                         case DB2I:
@@ -365,6 +370,10 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                     if (sink.getType().is(SinkType.POSTGRES) && options.isColumnTypePropagated()) {
                         assertColumn(sink, record, "data", "SMALLSERIAL");
                     }
+                    else if (sink.getType().is(SinkType.COCKROACHDB) && options.isColumnTypePropagated()) {
+                        // CockroachDB serial columns are INT8 backed by unique_rowid()
+                        assertColumn(sink, record, "data", getInt64Type());
+                    }
                     else {
                         assertColumn(sink, record, "data", getInt16Type());
                     }
@@ -384,6 +393,10 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                     assertColumn(sink, record, "id", getInt32Type());
                     if (sink.getType().is(SinkType.POSTGRES) && options.isColumnTypePropagated()) {
                         assertColumn(sink, record, "data", "SERIAL");
+                    }
+                    else if (sink.getType().is(SinkType.COCKROACHDB) && options.isColumnTypePropagated()) {
+                        // CockroachDB serial columns are INT8 backed by unique_rowid()
+                        assertColumn(sink, record, "data", getInt64Type());
                     }
                     else {
                         assertColumn(sink, record, "data", getInt32Type());
@@ -406,6 +419,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                         assertColumn(sink, record, "data", "BIGSERIAL");
                     }
                     else {
+                        // CockroachDB serial columns are also INT8 backed by unique_rowid()
                         assertColumn(sink, record, "data", getInt64Type());
                     }
                 },
@@ -1160,6 +1174,11 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                             break;
                         case POSTGRES:
                             assertColumn(sink, record, "id", "TEXT");
+                            assertColumn(sink, record, "data", "TEXT");
+                            break;
+                        case COCKROACHDB:
+                            // Key strings are created as sized varchar columns on CockroachDB
+                            assertColumn(sink, record, "id", "VARCHAR");
                             assertColumn(sink, record, "data", "TEXT");
                             break;
                     }
@@ -2388,7 +2407,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
     @TestTemplate
     @SkipWhenSource(value = { SourceType.MYSQL, SourceType.ORACLE, SourceType.SQLSERVER }, reason = "No INTERVAL data type support")
     public void testIntervalDataTypeIntervalHandlingModeNumeric(Source source, Sink sink) throws Exception {
-        if (sink.getType().is(SinkType.POSTGRES)) {
+        if (sink.getType().is(SinkType.POSTGRES, SinkType.COCKROACHDB)) {
             assertDataTypeNonKeyOnly(source,
                     sink,
                     "interval",
@@ -2427,7 +2446,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
     @SkipWhenSource(value = { SourceType.MYSQL, SourceType.POSTGRES, SourceType.SQLSERVER }, reason = "No INTERVAL DAY(m) TO SECOND data type support")
     public void testIntervalDayToSecondDataTypeIntervalHandlingModeNumeric(Source source, Sink sink) throws Exception {
         // todo: Should we attempt to map this to the proper data type for Oracle sinks?
-        if (sink.getType().is(SinkType.POSTGRES)) {
+        if (sink.getType().is(SinkType.POSTGRES, SinkType.COCKROACHDB)) {
             assertDataTypeNonKeyOnly(source,
                     sink,
                     "interval day to second",
@@ -2467,7 +2486,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
     @SkipWhenSource(value = { SourceType.MYSQL, SourceType.POSTGRES, SourceType.SQLSERVER }, reason = "No INTERVAL YEAR(m) TO MONTH data type support")
     public void testIntervalYearToMonthDataTypeIntervalHandlingModeNumeric(Source source, Sink sink) throws Exception {
         // todo: Should we attempt to map this to the proper data type for Oracle sinks?
-        if (sink.getType().is(SinkType.POSTGRES)) {
+        if (sink.getType().is(SinkType.POSTGRES, SinkType.COCKROACHDB)) {
             assertDataTypeNonKeyOnly(source,
                     sink,
                     "interval year to month",
@@ -2528,7 +2547,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 List.of(3802),
                 (record) -> {
                     assertColumn(sink, record, "id", getInt64Type());
-                    if (source.getOptions().isColumnTypePropagated() && sink.getType().is(SinkType.POSTGRES)) {
+                    if (source.getOptions().isColumnTypePropagated() && sink.getType().is(SinkType.POSTGRES, SinkType.COCKROACHDB)) {
                         assertColumn(sink, record, "data", "OID");
                     }
                     else {
@@ -2549,7 +2568,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 List.of("abc.xyz"),
                 (config) -> config.with("include.unknown.datatypes", true),
                 (record) -> {
-                    if (sink.getType().is(SinkType.POSTGRES)) {
+                    if (sink.getType().is(SinkType.POSTGRES, SinkType.COCKROACHDB)) {
                         assertColumn(sink, record, "id", "LTREE");
                         assertColumn(sink, record, "data", "LTREE");
                     }
@@ -2573,7 +2592,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 (config) -> config.with("include.unknown.datatypes", true),
                 (record) -> {
                     assertColumn(sink, record, "id", getStringType(source, true, false));
-                    if (sink.getType().is(SinkType.POSTGRES) && source.getOptions().isColumnTypePropagated()) {
+                    if (sink.getType().is(SinkType.POSTGRES, SinkType.COCKROACHDB) && source.getOptions().isColumnTypePropagated()) {
                         assertColumn(sink, record, "data", "CITEXT");
                     }
                     else {
@@ -2594,7 +2613,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 (config) -> config.with("include.unknown.datatypes", true),
                 (record) -> {
                     assertColumn(sink, record, "id", getStringType(source, true, false));
-                    if (sink.getType().is(SinkType.POSTGRES) && source.getOptions().isColumnTypePropagated()) {
+                    if (sink.getType().is(SinkType.POSTGRES, SinkType.COCKROACHDB) && source.getOptions().isColumnTypePropagated()) {
                         assertColumn(sink, record, "data", "INET");
                     }
                     else {
@@ -2739,7 +2758,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
             // when sinking to PostgreSQL, it will be returned in HSTORE format rather than JSON
             expectedValue = "\"key\"=>\"val\"";
         }
-        else if (sink.getType().is(SinkType.MYSQL)) {
+        else if (sink.getType().is(SinkType.MYSQL, SinkType.COCKROACHDB)) {
             expectedValue = "{\"key\": \"val\"}";
         }
 
@@ -2788,7 +2807,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
             // when sinking to PostgreSQL, it will be returned in HSTORE format rather than JSON
             expectedValue = "\"key\"=>\"val\"";
         }
-        else if (sink.getType().is(SinkType.MYSQL)) {
+        else if (sink.getType().is(SinkType.MYSQL, SinkType.COCKROACHDB)) {
             // when sinking to MySQL, it will be returned in JSON format
             expectedValue = "{\"key\": \"val\"}";
         }
@@ -2810,6 +2829,10 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                     else if (sink.getType().is(SinkType.MYSQL)) {
                         // MySQL will map the MAP schema types to JSON
                         assertColumn(sink, record, "data", getJsonType(source));
+                    }
+                    else if (sink.getType().is(SinkType.COCKROACHDB)) {
+                        // CockroachDB maps the MAP schema types to JSONB
+                        assertColumn(sink, record, "data", getJsonbType(source));
                     }
                     else {
                         // Other sink connectors will serialize the MAP as JSON into TEXT types
@@ -2863,7 +2886,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
 
     @TestTemplate
     @ForSource(value = SourceType.POSTGRES, reason = "The HALFVEC data type only applies to PostgreSQL")
-    @SkipWhenSink(value = { SinkType.POSTGRES, SinkType.MYSQL }, reason = "This mapping is not designed to fail for these sinks")
+    @SkipWhenSink(value = { SinkType.POSTGRES, SinkType.MYSQL, SinkType.COCKROACHDB }, reason = "This mapping is not designed to fail for these sinks")
     @WithPostgresExtension("vector")
     public void testHalfVectorDataTypeFails(Source source, Sink sink) throws Exception {
         // This mapping fails unless the user supplies the VectorToJsonConverter transform
@@ -2883,7 +2906,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
 
     @TestTemplate
     @ForSource(value = { SourceType.POSTGRES, SourceType.MYSQL }, reason = "The VECTOR data type only applies to PostgreSQL and MySQL")
-    @SkipWhenSink(value = { SinkType.POSTGRES, SinkType.MYSQL }, reason = "This mapping is not designed to fail for these sinks")
+    @SkipWhenSink(value = { SinkType.POSTGRES, SinkType.MYSQL, SinkType.COCKROACHDB }, reason = "This mapping is not designed to fail for these sinks")
     @WithPostgresExtension("vector")
     public void testVectorDataTypeFails(Source source, Sink sink) throws Exception {
         // This mapping fails unless the user supplies the VectorToJsonConverter transform
@@ -2955,7 +2978,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 List.of("to_tsvector('english', 'This is a test for direct tsvector insert')"),
                 List.of("'direct':6 'insert':8 'test':4 'tsvector':7"),
                 (record) -> {
-                    if (sink.getType().is(SinkType.POSTGRES)) {
+                    if (sink.getType().is(SinkType.POSTGRES, SinkType.COCKROACHDB)) {
                         assertColumn(sink, record, "data", "tsvector");
                     }
                     else {
@@ -2974,7 +2997,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 List.of("'full:3 postgre:1 search:5 support:2 text:4'"),
                 List.of("'full':3 'postgre':1 'search':5 'support':2 'text':4"),
                 (record) -> {
-                    if (sink.getType().is(SinkType.POSTGRES)) {
+                    if (sink.getType().is(SinkType.POSTGRES, SinkType.COCKROACHDB)) {
                         assertColumn(sink, record, "data", "tsvector");
                     }
                     else {
@@ -3443,8 +3466,8 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
         final String sinkTableName = collectionNamingStrategy.resolveCollectionName(
                 new KafkaDebeziumSinkRecord(record, getCurrentSinkConfig().cloudEventsSchemaNamePattern()),
                 getCurrentSinkConfig().getCollectionNameFormat());
-        // When quoted identifiers is not enabled, PostgreSQL saves table names as lower-case
-        return sink.getType().is(SinkType.POSTGRES) ? sinkTableName.toLowerCase() : sinkTableName;
+        // When quoted identifiers is not enabled, PostgreSQL and CockroachDB save table names as lower-case
+        return sink.getType().is(SinkType.POSTGRES, SinkType.COCKROACHDB) ? sinkTableName.toLowerCase() : sinkTableName;
     }
 
     protected Properties getDefaultSinkConfig(Sink sink) {
