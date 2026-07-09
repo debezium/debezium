@@ -11,6 +11,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.TestTemplate;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -359,6 +360,31 @@ public class JdbcSinkPipelineToPostgresIT extends AbstractJdbcSinkPipelineIT {
                 List.of("to_tsvector('english', 'This is a test for direct tsvector insert')"),
                 List.of("'direct':6 'insert':8 'test':4 'tsvector':7"),
                 (record) -> assertColumn(sink, record, "data", "tsvector"),
+                ResultSet::getString);
+    }
+
+    @TestTemplate
+    @ForSource(value = SourceType.POSTGRES, reason = "STRUCTURED-mode TIMETZ raw fidelity (offset + 24:00 boundary) is PostgreSQL specific")
+    @WithTemporalPrecisionMode(include = TemporalPrecisionMode.STRUCTURED)
+    @Disabled("Requires a source connector runtime with STRUCTURED temporal support. The e2e source pipeline runs on "
+            + "the Debezium nightly Connect image, whose PostgreSQL connector does not yet accept "
+            + "time.precision.mode=structured; enable once structured temporal support ships in the nightly image. "
+            + "Source-side fidelity is covered meanwhile by PostgresTemporalPrecisionHandlingIT and the sink literal by "
+            + "StructuredTemporalTypeTest#shouldBindStructuredZonedTimeBoundaryHour24.")
+    public void testTimeWithTimeZonePreservesOffsetAndBoundaryInStructuredMode(Source source, Sink sink) throws Exception {
+        // PostgreSQL TIMETZ keeps the offset as stored (no session-TZ adjustment) and allows the end-of-day
+        // boundary 24:00:00. In STRUCTURED mode both must round-trip to the sink unchanged, which the UTC-normalizing
+        // OffsetTime path cannot do (OffsetTime/LocalTime cannot even represent hour 24). Read the sink column as
+        // text since hour 24 is not representable by java.time types.
+        assertDataTypesNonKeyOnly(source,
+                sink,
+                List.of("time(6) with time zone", "time(6) with time zone"),
+                List.of("'24:00:00+05:30'", "'13:51:30.123789-04:30'"),
+                List.of("24:00:00+05:30", "13:51:30.123789-04:30"),
+                (record) -> {
+                    assertColumn(sink, record, "data0", getTimeWithTimezoneType(source, false, 6));
+                    assertColumn(sink, record, "data1", getTimeWithTimezoneType(source, false, 6));
+                },
                 ResultSet::getString);
     }
 

@@ -36,6 +36,47 @@ public final class StructuredTemporalSupport {
                 value.getInt32(StructuredTemporal.NANOS_FIELD));
     }
 
+    /**
+     * Formats a {@code StructuredZonedTime} struct into a PostgreSQL {@code timetz} literal directly from its
+     * raw components, so the original offset and the end-of-day boundary hour {@code 24} are preserved. This
+     * intentionally avoids {@link LocalTime}/{@link java.time.OffsetTime}, which cannot represent hour 24.
+     */
+    public static String toTimetzLiteral(Struct value) {
+        requireFinite(value);
+        final int hour = value.getInt8(StructuredTemporal.HOUR_FIELD);
+        final int minute = value.getInt8(StructuredTemporal.MINUTE_FIELD);
+        final int second = value.getInt8(StructuredTemporal.SECOND_FIELD);
+        final Integer nanos = value.getInt32(StructuredTemporal.NANOS_FIELD);
+        final Integer offsetSeconds = value.getInt32(StructuredTemporal.OFFSET_SECONDS_FIELD);
+
+        final StringBuilder builder = new StringBuilder(String.format("%02d:%02d:%02d", hour, minute, second));
+        if (nanos != null && nanos > 0) {
+            // Match java.time fractional-second formatting: emit 3, 6 or 9 digits, trimming trailing zero-triples.
+            final String digits = String.format("%09d", nanos);
+            int length = 9;
+            while (length > 3 && digits.charAt(length - 1) == '0' && digits.charAt(length - 2) == '0'
+                    && digits.charAt(length - 3) == '0') {
+                length -= 3;
+            }
+            builder.append('.').append(digits, 0, length);
+        }
+        builder.append(formatOffset(offsetSeconds == null ? 0 : offsetSeconds));
+        return builder.toString();
+    }
+
+    private static String formatOffset(int offsetSeconds) {
+        final char sign = offsetSeconds < 0 ? '-' : '+';
+        final int abs = Math.abs(offsetSeconds);
+        final StringBuilder builder = new StringBuilder()
+                .append(sign)
+                .append(String.format("%02d:%02d", abs / 3600, (abs % 3600) / 60));
+        final int seconds = abs % 60;
+        if (seconds != 0) {
+            builder.append(String.format(":%02d", seconds));
+        }
+        return builder.toString();
+    }
+
     public static LocalDateTime toLocalDateTime(Struct value) {
         return LocalDateTime.of(toLocalDate(value), toLocalTime(value));
     }

@@ -69,6 +69,21 @@ class StructuredTemporalTest {
     }
 
     @Test
+    void shouldPreserveZonedTimeBoundaryHourAndRawOffset() {
+        final Schema schema = StructuredZonedTime.schema();
+
+        // OffsetTime/LocalTime cannot hold hour 24; the raw factory must accept it and keep the offset as-is.
+        final Struct value = StructuredZonedTime.from(schema, 24, 0, 0, 0, 5 * 3600 + 30 * 60, -1);
+
+        assertThat(value.getInt8(StructuredTemporal.HOUR_FIELD)).isEqualTo((byte) 24);
+        assertThat(value.getInt8(StructuredTemporal.MINUTE_FIELD)).isEqualTo((byte) 0);
+        assertThat(value.getInt8(StructuredTemporal.SECOND_FIELD)).isEqualTo((byte) 0);
+        assertThat(value.getInt32(StructuredTemporal.NANOS_FIELD)).isZero();
+        assertThat(value.getInt32(StructuredTemporal.OFFSET_SECONDS_FIELD)).isEqualTo(19_800);
+        assertThat(StructuredTemporal.isFinite(value)).isTrue();
+    }
+
+    @Test
     void shouldPreserveSignedDurationComponents() {
         final Schema schema = StructuredDuration.schema();
 

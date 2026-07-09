@@ -117,6 +117,8 @@ public class ReplicationMessageColumnValueResolver {
 
             case "time with time zone":
             case "timetz":
+                // For pgoutput this returns the raw TIMETZ text, which STRUCTURED mode relies on to preserve the
+                // original offset and the 24:00 boundary; decoderbufs handles the UTC boundary/offset internally.
                 return value.asTimeWithTimeZone();
 
             case "bytea":

@@ -90,6 +90,21 @@ class StructuredTemporalTypeTest {
         assertThat(type.getQueryBinding(null, schema, value)).isEqualTo("cast(? as timetz)");
     }
 
+    @Test
+    @DisplayName("Should bind the end-of-day boundary 24:00:00 with its original offset as a PostgreSQL timetz literal")
+    void shouldBindStructuredZonedTimeBoundaryHour24() {
+        // OffsetTime/LocalTime cannot represent hour 24, so build the struct from raw components.
+        final var schema = StructuredZonedTime.schema();
+        final int offsetPlus0530 = 5 * 3600 + 30 * 60;
+        final var value = StructuredZonedTime.from(schema, 24, 0, 0, 0, offsetPlus0530, -1);
+        final var type = new StructuredZonedTimeType();
+
+        final var bindings = type.bind(6, schema, value);
+
+        assertThat(bindings).hasSize(1);
+        assertThat(bindings.get(0).getValue()).isEqualTo("24:00:00+05:30");
+    }
+
     private void assertInfinityBinding(ValueBindDescriptor binding, String expectedValue) {
         assertThat(binding.getValue()).isEqualTo(expectedValue);
         assertThat(binding.getTargetSqlType()).isEqualTo(Types.VARCHAR);

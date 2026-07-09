@@ -14,6 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.sql.SQLException;
+import java.util.List;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -470,10 +471,11 @@ public class PostgresTemporalPrecisionHandlingIT extends AbstractAsyncEngineConn
 
         assertEquals(StructuredZonedTime.SCHEMA_NAME, after.schema().field("c_time").schema().name());
         Struct zonedTime = after.getStruct("c_time");
-        assertEquals((byte) 12, zonedTime.getInt8(StructuredTemporal.HOUR_FIELD));
+        // '04:05:11 PST' (-08): STRUCTURED mode preserves the raw clock and the original offset (no UTC shift).
+        assertEquals((byte) 4, zonedTime.getInt8(StructuredTemporal.HOUR_FIELD));
         assertEquals((byte) 5, zonedTime.getInt8(StructuredTemporal.MINUTE_FIELD));
         assertEquals((byte) 11, zonedTime.getInt8(StructuredTemporal.SECOND_FIELD));
-        assertEquals(0, zonedTime.getInt32(StructuredTemporal.OFFSET_SECONDS_FIELD));
+        assertEquals(-8 * 3600, zonedTime.getInt32(StructuredTemporal.OFFSET_SECONDS_FIELD));
 
         assertEquals(StructuredTime.SCHEMA_NAME, after.schema().field("c_time_whtz").schema().name());
         Struct time = after.getStruct("c_time_whtz");
@@ -587,10 +589,11 @@ public class PostgresTemporalPrecisionHandlingIT extends AbstractAsyncEngineConn
 
         assertEquals(StructuredZonedTime.SCHEMA_NAME, after.schema().field("c_time").schema().name());
         final Struct zonedTime = after.getStruct("c_time");
-        assertEquals((byte) 12, zonedTime.getInt8(StructuredTemporal.HOUR_FIELD));
+        // '04:05:11 PST' (-08): STRUCTURED mode preserves the raw clock and the original offset (no UTC shift).
+        assertEquals((byte) 4, zonedTime.getInt8(StructuredTemporal.HOUR_FIELD));
         assertEquals((byte) 5, zonedTime.getInt8(StructuredTemporal.MINUTE_FIELD));
         assertEquals((byte) 11, zonedTime.getInt8(StructuredTemporal.SECOND_FIELD));
-        assertEquals(0, zonedTime.getInt32(StructuredTemporal.OFFSET_SECONDS_FIELD));
+        assertEquals(-8 * 3600, zonedTime.getInt32(StructuredTemporal.OFFSET_SECONDS_FIELD));
 
         assertEquals(StructuredTime.SCHEMA_NAME, after.schema().field("c_time_whtz").schema().name());
         final Struct time = after.getStruct("c_time_whtz");
@@ -608,6 +611,54 @@ public class PostgresTemporalPrecisionHandlingIT extends AbstractAsyncEngineConn
         assertEquals(5, interval.getInt32(StructuredTemporal.MINUTES_FIELD));
         assertEquals(6L, interval.getInt64(StructuredTemporal.SECONDS_FIELD));
         assertEquals(789_000_000, interval.getInt32(StructuredTemporal.NANOS_FIELD));
+
+        stopConnector();
+    }
+
+    @Test
+    void shouldPreserveTimetzOffsetAndBoundaryInStructuredMode() throws Exception {
+        Testing.Print.disable();
+        // PostgreSQL TIMETZ records the offset as stored (no session-TZ adjustment) and allows the end-of-day
+        // boundary 24:00:00. STRUCTURED mode must preserve both, which OffsetTime/LocalTime cannot represent.
+        TestHelper.execute(
+                """
+                        INSERT INTO temporaltype.test_data_types (c_id, c_time)
+                        VALUES (31, '24:00:00+05:30'), (32, '13:51:30.123789+02:00');
+                        """);
+
+        final PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
+                .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "temporaltype")
+                .with(PostgresConnectorConfig.PLUGIN_NAME, PostgresConnectorConfig.LogicalDecoder.PGOUTPUT)
+                .with(PostgresConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.STRUCTURED)
+                .build());
+        start(PostgresConnector.class, config.getConfig());
+        assertConnectorIsRunning();
+
+        final SourceRecords records = consumeRecordsByTopic(2);
+        final List<SourceRecord> read = records.recordsForTopic(TOPIC_NAME);
+        assertEquals(2, read.size());
+
+        // 24:00:00+05:30 -> raw clock preserved (hour 24) with the original +05:30 offset.
+        final Struct boundary = getAfter(read.get(0));
+        assertEquals(31, boundary.get("c_id"));
+        assertEquals(StructuredZonedTime.SCHEMA_NAME, boundary.schema().field("c_time").schema().name());
+        final Struct boundaryTime = boundary.getStruct("c_time");
+        assertEquals((byte) 24, boundaryTime.getInt8(StructuredTemporal.HOUR_FIELD));
+        assertEquals((byte) 0, boundaryTime.getInt8(StructuredTemporal.MINUTE_FIELD));
+        assertEquals((byte) 0, boundaryTime.getInt8(StructuredTemporal.SECOND_FIELD));
+        assertEquals(0, boundaryTime.getInt32(StructuredTemporal.NANOS_FIELD));
+        assertEquals(5 * 3600 + 30 * 60, boundaryTime.getInt32(StructuredTemporal.OFFSET_SECONDS_FIELD));
+
+        // 13:51:30.123789+02:00 -> sub-second precision and the positive offset are both preserved.
+        final Struct fractional = getAfter(read.get(1));
+        assertEquals(32, fractional.get("c_id"));
+        final Struct fractionalTime = fractional.getStruct("c_time");
+        assertEquals((byte) 13, fractionalTime.getInt8(StructuredTemporal.HOUR_FIELD));
+        assertEquals((byte) 51, fractionalTime.getInt8(StructuredTemporal.MINUTE_FIELD));
+        assertEquals((byte) 30, fractionalTime.getInt8(StructuredTemporal.SECOND_FIELD));
+        assertEquals(123_789_000, fractionalTime.getInt32(StructuredTemporal.NANOS_FIELD));
+        assertEquals(2 * 3600, fractionalTime.getInt32(StructuredTemporal.OFFSET_SECONDS_FIELD));
 
         stopConnector();
     }

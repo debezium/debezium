@@ -35,6 +35,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Decimal;
@@ -147,6 +149,11 @@ public class PostgresValueConverter extends JdbcValueConverters {
             .appendFraction(ChronoField.MICRO_OF_SECOND, 0, 6, true)
             .appendPattern("[XXX][XX][X]")
             .toFormatter();
+
+    // Parses a PostgreSQL TIMETZ text value into raw components, allowing the end-of-day boundary hour 24
+    // and preserving the original offset. Offset may be given as +HH, +HH:MM or +HH:MM:SS.
+    private static final Pattern TIMETZ_PATTERN = Pattern.compile(
+            "^(\\d{1,2}):(\\d{2}):(\\d{2})(?:\\.(\\d{1,6}))?([+-]\\d{2}(?::\\d{2}(?::\\d{2})?)?)$");
 
     /**
      * {@code true} if fields of data type not know should be handle as opaque binary;
@@ -1068,6 +1075,12 @@ public class PostgresValueConverter extends JdbcValueConverters {
     protected Object convertTimeWithZone(Column column, Field fieldDefn, Object data) {
         // during snapshotting; already receiving OffsetTime @ UTC during streaming
         if (data instanceof String value) {
+            // In STRUCTURED mode we preserve the raw clock components and the original offset (no UTC
+            // normalization) and allow the PostgreSQL end-of-day boundary hour 24, which OffsetTime/LocalTime
+            // cannot represent. The raw TIMETZ text is available both during snapshot and pgoutput streaming.
+            if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
+                return convertTimeWithZoneToStructuredPreservingOffset(column, fieldDefn, value);
+            }
             if (PostgresTimeBoundary.isTimeWithTimeZoneBoundaryAtUtc(value)) {
                 return PostgresTimeBoundary.TIME_WITH_TIMEZONE_BOUNDARY_AT_UTC;
             }
@@ -1079,6 +1092,55 @@ public class PostgresValueConverter extends JdbcValueConverters {
         }
 
         return super.convertTimeWithZone(column, fieldDefn, data);
+    }
+
+    /**
+     * STRUCTURED-mode TIMETZ conversion that preserves the raw hour (including the boundary 24), minute,
+     * second, fractional seconds and the original offset from the PostgreSQL text value, without any UTC
+     * normalization. This is the source-side half of full PG-to-PG TIMETZ fidelity (see debezium/dbz#2100).
+     */
+    private Object convertTimeWithZoneToStructuredPreservingOffset(Column column, Field fieldDefn, String data) {
+        final int precision = getTimePrecision(column);
+        final Schema schema = fieldDefn.schema();
+        final Object fallback = StructuredZonedTime.from(schema, 0, 0, 0, 0, defaultOffset.getTotalSeconds(), precision);
+        return convertValue(column, fieldDefn, data, fallback, (r) -> {
+            try {
+                final Matcher matcher = TIMETZ_PATTERN.matcher(data.trim());
+                if (!matcher.matches()) {
+                    logger.warn("Unexpected TIMETZ value for field {} with schema {}: value={}", fieldDefn.name(), schema, data);
+                    return;
+                }
+                final int hour = Integer.parseInt(matcher.group(1));
+                final int minute = Integer.parseInt(matcher.group(2));
+                final int second = Integer.parseInt(matcher.group(3));
+                final int nanos = parseFractionToNanos(matcher.group(4));
+                final int offsetSeconds = parseOffsetSeconds(matcher.group(5));
+                r.deliver(StructuredZonedTime.from(schema, hour, minute, second, nanos, offsetSeconds, precision));
+            }
+            catch (RuntimeException e) {
+                logger.warn("Failed to convert TIMETZ value for field {} with schema {}: value={}", fieldDefn.name(), schema, data, e);
+            }
+        });
+    }
+
+    private static int parseFractionToNanos(String fraction) {
+        if (fraction == null || fraction.isEmpty()) {
+            return 0;
+        }
+        return Integer.parseInt((fraction + "000000000").substring(0, 9));
+    }
+
+    private static int parseOffsetSeconds(String offset) {
+        final int sign = offset.charAt(0) == '-' ? -1 : 1;
+        final String[] parts = offset.substring(1).split(":");
+        int seconds = Integer.parseInt(parts[0]) * 3600;
+        if (parts.length > 1) {
+            seconds += Integer.parseInt(parts[1]) * 60;
+        }
+        if (parts.length > 2) {
+            seconds += Integer.parseInt(parts[2]);
+        }
+        return sign * seconds;
     }
 
     protected Object convertPostgresTimestampWithZoneToStructured(Column column, Field fieldDefn, Object data) {
