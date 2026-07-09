@@ -47,12 +47,22 @@ public final class StructuredZonedTime {
     }
 
     public static Struct from(Schema schema, OffsetTime value, int precision) {
+        return from(schema, value.getHour(), value.getMinute(), value.getSecond(), value.getNano(),
+                value.getOffset().getTotalSeconds(), precision);
+    }
+
+    /**
+     * Builds the struct directly from raw clock components and a UTC offset, bypassing {@link OffsetTime}.
+     * This preserves the source offset as-is (no UTC normalization) and allows the PostgreSQL end-of-day
+     * boundary hour {@code 24}, which {@link OffsetTime}/{@link LocalTime} cannot represent.
+     */
+    public static Struct from(Schema schema, int hour, int minute, int second, int nanos, int offsetSeconds, int precision) {
         return StructuredTemporal.withPrecision(new Struct(schema)
-                .put(StructuredTemporal.HOUR_FIELD, (byte) value.getHour())
-                .put(StructuredTemporal.MINUTE_FIELD, (byte) value.getMinute())
-                .put(StructuredTemporal.SECOND_FIELD, (byte) value.getSecond())
-                .put(StructuredTemporal.NANOS_FIELD, value.getNano())
-                .put(StructuredTemporal.OFFSET_SECONDS_FIELD, value.getOffset().getTotalSeconds()), precision);
+                .put(StructuredTemporal.HOUR_FIELD, (byte) hour)
+                .put(StructuredTemporal.MINUTE_FIELD, (byte) minute)
+                .put(StructuredTemporal.SECOND_FIELD, (byte) second)
+                .put(StructuredTemporal.NANOS_FIELD, nanos)
+                .put(StructuredTemporal.OFFSET_SECONDS_FIELD, offsetSeconds), precision);
     }
 
     public static Struct toStructuredZonedTime(Schema schema, Object value, ZoneOffset defaultOffset, TemporalAdjuster adjuster) {
