@@ -66,6 +66,7 @@ import io.debezium.connector.jdbc.junit.jupiter.e2e.source.SourcePipelineInvocat
 import io.debezium.connector.jdbc.junit.jupiter.e2e.source.SourceType;
 import io.debezium.connector.jdbc.junit.jupiter.e2e.source.ValueBinder;
 import io.debezium.data.vector.FloatVector;
+import io.debezium.doc.FixFor;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
 import io.debezium.sink.SinkConnectorConfig.PrimaryKeyMode;
@@ -2970,6 +2971,26 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 "tsvector",
                 List.of("'full:3 postgre:1 search:5 support:2 text:4'"),
                 List.of("'full':3 'postgre':1 'search':5 'support':2 'text':4"),
+                (record) -> {
+                    if (sink.getType().is(SinkType.POSTGRES)) {
+                        assertColumn(sink, record, "data", "tsvector");
+                    }
+                    else {
+                        assertColumn(sink, record, "data", getTextType(false));
+                    }
+                },
+                ResultSet::getString);
+    }
+
+    @TestTemplate
+    @FixFor("debezium/dbz#2199")
+    @ForSource(value = SourceType.POSTGRES, reason = "The tsvector data type only applies to PostgreSQL")
+    public void testTsvectorDataTypePreservesQuotedLexemes(Source source, Sink sink) throws Exception {
+        assertDataTypeNonKeyOnly(source,
+                sink,
+                "tsvector",
+                List.of("array_to_tsvector(array['new york', 'it''s', 'plain'])"),
+                List.of("'it''s' 'new york' 'plain'"),
                 (record) -> {
                     if (sink.getType().is(SinkType.POSTGRES)) {
                         assertColumn(sink, record, "data", "tsvector");
