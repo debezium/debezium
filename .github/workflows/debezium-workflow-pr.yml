@@ -43,6 +43,7 @@ jobs:
       oracle-changed: ${{ steps.changed-files-oracle.outputs.any_changed }}
       sqlserver-changed: ${{ steps.changed-files-sqlserver.outputs.any_changed }}
       jdbc-changed: ${{ steps.changed-files-jdbc.outputs.any_changed }}
+      tidb-changed: ${{ steps.changed-files-tidb.outputs.any_changed }}
       schema-generator-changed: ${{ steps.changed-files-schema-generator.outputs.any_changed }}
       debezium-testing-changed: ${{ steps.changed-files-debezium-testing.outputs.any_changed }}
       debezium-testing-mongodb-changed: ${{ steps.changed-files-debezium-testing-mongodb.outputs.any_changed }}
@@ -134,6 +135,13 @@ jobs:
           files: |
             debezium-sink/**
             debezium-connector-jdbc/**
+
+      - name: Get modified files (TiDB)
+        id: changed-files-tidb
+        uses: tj-actions/changed-files@v47.0.6
+        with:
+          files: |
+            debezium-connector-tidb/**
 
       - name: Get modified files (Schema Generator)
         id: changed-files-schema-generator
@@ -520,6 +528,18 @@ jobs:
         with:
           path-core: core
           path-spanner: spanner
+
+  build_tidb:
+    name: TiDB
+    needs: [ check_style, file_changes, build_core ]
+    runs-on: ubuntu-latest
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.tidb-changed == 'true' }}
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v7
+      - uses: ./.github/actions/build-debezium-tidb
+        with:
+          maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
 
   build_vitess:
     name: Vitess

@@ -347,6 +347,18 @@ jobs:
           path-core: core
           path-ingres: ingres
 
+  build_tidb:
+    name: "TiDB"
+    needs: [ check_style, build_core ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v7
+
+      - uses: ./.github/actions/build-debezium-tidb
+        with:
+          maven-cache-key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
+
   # Approx 20m
   build_vitess:
     name: "Vitess"
