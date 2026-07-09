@@ -25,6 +25,7 @@ import io.debezium.connector.jdbc.junit.jupiter.Sink;
 import io.debezium.connector.jdbc.junit.jupiter.SinkRecordFactoryArgumentsProvider;
 import io.debezium.connector.jdbc.util.SinkRecordFactory;
 import io.debezium.doc.FixFor;
+import io.debezium.sink.SinkConnectorConfig;
 import io.debezium.sink.SinkConnectorConfig.PrimaryKeyMode;
 
 /**
@@ -54,6 +55,9 @@ public abstract class AbstractJdbcSinkMetricsTest extends AbstractJdbcSinkTest {
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_KEY.getValue());
         properties.put(JdbcSinkConnectorConfig.INSERT_MODE, InsertMode.UPSERT.getValue());
         properties.put(JdbcSinkConnectorConfig.DELETE_ENABLED, "true");
+        if ("true".equals(properties.get(JdbcSinkConnectorConfig.ENABLE_SHARED_CHANGE_EVENT_SINK_FIELD.name()))) {
+            properties.put(JdbcSinkConnectorConfig.KEYED_MESSAGE_BATCH_MODE, SinkConnectorConfig.KeyedMessageBatchMode.PASSTHROUGH.getValue());
+        }
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();
 

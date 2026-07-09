@@ -245,13 +245,10 @@ public class JdbcSinkConnectorTask extends SinkTask {
                         partition -> partition,
                         partition -> offsets.getOrDefault(partition, currentOffsets.get(partition))));
 
-        if (changeEventSink != null) {
-            changeEventSink.forceFlush();
-        }
+        flush(flushedOffsets);
 
         // Flush offsets
         LOGGER.debug("Flushing offsets: {}", flushedOffsets);
-        flush(flushedOffsets);
         return flushedOffsets;
     }
 
@@ -396,6 +393,13 @@ public class JdbcSinkConnectorTask extends SinkTask {
         catch (NoSuchMethodError e) {
             // Fallback to old method for Kafka 3.5 or earlier
             return record.kafkaOffset();
+        }
+    }
+
+    @Override
+    public void flush(Map<TopicPartition, OffsetAndMetadata> currentOffsets) {
+        if (changeEventSink != null) {
+            changeEventSink.forceFlush();
         }
     }
 }

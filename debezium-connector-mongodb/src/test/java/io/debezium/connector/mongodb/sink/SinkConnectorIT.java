@@ -54,7 +54,7 @@ public interface SinkConnectorIT {
     }
 
     static void sendSourceData() {
-        try (var debeziumContainer = TestInfrastructureHelper.defaultDebeziumContainer(Module.version())) {
+        try (var debeziumContainer = TestInfrastructureHelper.defaultDebeziumContainer(null)) {
             TestInfrastructureHelper.startContainers(DATABASE.MYSQL);
             final Configuration config = mySqlSourceConfig().build();
             debeziumContainer.registerConnector(SOURCE_CONNECTOR_NAME, ConnectorConfiguration.from(config.asMap()));
