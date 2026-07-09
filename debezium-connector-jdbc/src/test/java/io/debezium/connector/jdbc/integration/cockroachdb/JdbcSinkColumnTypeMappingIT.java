@@ -47,14 +47,14 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
 
     @ParameterizedTest
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
-    @FixFor("DBZ-1639")
+    @FixFor("debezium/dbz#1639")
     public void testShouldCoerceStringTypeToUuidColumnType(SinkRecordFactory factory) throws Exception {
         shouldCoerceStringTypeToColumnType(factory, "uuid", "9bc6a215-84b5-4865-a058-9156427c887a", "f54c2926-076a-4db0-846f-14cad99a8307");
     }
 
     @ParameterizedTest
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
-    @FixFor("DBZ-1639")
+    @FixFor("debezium/dbz#1639")
     public void testShouldCoerceStringTypeToJsonbColumnType(SinkRecordFactory factory) throws Exception {
         shouldCoerceStringTypeToColumnType(factory, "jsonb", "{\"id\": 12345}", "{\"id\": 67890}");
     }
@@ -101,7 +101,7 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
 
     @ParameterizedTest
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
-    @FixFor("DBZ-1639")
+    @FixFor("debezium/dbz#1639")
     public void testShouldCoerceNioByteBufferTypeToByteArrayColumnType(SinkRecordFactory factory) throws Exception {
         final Map<String, String> properties = getDefaultSinkConfig();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.NONE.getValue());
@@ -142,7 +142,7 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
 
     @ParameterizedTest
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
-    @FixFor("DBZ-1639")
+    @FixFor("debezium/dbz#1639")
     public void testShouldWorkWithTextArray(SinkRecordFactory factory) throws Exception {
         final Map<String, String> properties = getDefaultSinkConfig();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.NONE.getValue());
@@ -178,7 +178,7 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
 
     @ParameterizedTest
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
-    @FixFor("DBZ-1639")
+    @FixFor("debezium/dbz#1639")
     public void testShouldWorkWithIntArray(SinkRecordFactory factory) throws Exception {
         final Map<String, String> properties = getDefaultSinkConfig();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.NONE.getValue());
@@ -214,14 +214,14 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
 
     @ParameterizedTest
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
-    @FixFor("DBZ-2197")
+    @FixFor("debezium/dbz#2197")
     public void testShouldWorkWithDoubleVector(SinkRecordFactory factory) throws Exception {
         shouldWorkWithVectorType(factory, DoubleVector.schema(), Arrays.asList(1.0, 2.0, 3.0));
     }
 
     @ParameterizedTest
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
-    @FixFor("DBZ-2197")
+    @FixFor("debezium/dbz#2197")
     public void testShouldWorkWithFloatVector(SinkRecordFactory factory) throws Exception {
         // CockroachDB has no halfvec type; float vectors are stored in the native vector type
         shouldWorkWithVectorType(factory, FloatVector.schema(), Arrays.asList(1.0f, 2.0f, 3.0f));
@@ -261,7 +261,7 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
 
     @ParameterizedTest
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
-    @FixFor("DBZ-1639")
+    @FixFor("debezium/dbz#1639")
     public void testShouldWorkWithBoolArray(SinkRecordFactory factory) throws Exception {
         final Map<String, String> properties = getDefaultSinkConfig();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.NONE.getValue());
