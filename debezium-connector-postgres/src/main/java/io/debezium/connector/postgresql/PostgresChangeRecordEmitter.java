@@ -8,13 +8,11 @@ package io.debezium.connector.postgresql;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Struct;
@@ -175,11 +173,9 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter<P
         // JSON does not deliver a list of all columns for REPLICA IDENTITY DEFAULT
         Object[] values = new Object[Math.max(schemaColumns.size(), columnsWithoutToasted)];
 
-        final Set<String> undeliveredToastableColumns = new HashSet<>(schema.getToastableColumnsForTableId(table.id()));
         for (ReplicationMessage.Column column : columns) {
             // DBZ-298 Quoted column names will be sent like that in messages, but stored unquoted in the column names
             final String columnName = Strings.unquoteIdentifierPart(column.getName());
-            undeliveredToastableColumns.remove(columnName);
 
             int position = getPosition(columnName, table, values);
             if (position != -1) {
