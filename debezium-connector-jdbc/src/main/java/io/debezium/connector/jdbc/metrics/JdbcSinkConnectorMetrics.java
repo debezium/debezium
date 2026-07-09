@@ -64,23 +64,23 @@ public class JdbcSinkConnectorMetrics implements JdbcSinkConnectorMetricsMXBean,
     }
 
     @Override
-    public void inserted() {
-        totalNumberOfInsertEventsSeen.incrementAndGet();
+    public void inserted(long count) {
+        totalNumberOfInsertEventsSeen.addAndGet(count);
     }
 
     @Override
-    public void updated() {
-        totalNumberOfUpdateEventsSeen.incrementAndGet();
+    public void updated(long count) {
+        totalNumberOfUpdateEventsSeen.addAndGet(count);
     }
 
     @Override
-    public void upserted() {
-        totalNumberOfUpsertEventsSeen.incrementAndGet();
+    public void upserted(long count) {
+        totalNumberOfUpsertEventsSeen.addAndGet(count);
     }
 
     @Override
-    public void deleted() {
-        totalNumberOfDeleteEventsSeen.incrementAndGet();
+    public void deleted(long count) {
+        totalNumberOfDeleteEventsSeen.addAndGet(count);
     }
 
     @Override

@@ -24,12 +24,10 @@ class JdbcSinkConnectorMetricsTest {
     void shouldCountInsertUpdateUpsertDeleteAndTruncateOperations() {
         final JdbcSinkConnectorMetrics metrics = new JdbcSinkConnectorMetrics("my-sink", "0");
 
-        metrics.inserted();
-        metrics.updated();
-        metrics.updated();
-        metrics.upserted();
-        metrics.upserted();
-        metrics.deleted();
+        metrics.inserted(1);
+        metrics.updated(2);
+        metrics.upserted(2);
+        metrics.deleted(1);
         metrics.truncated();
         metrics.truncated();
         metrics.truncated();
@@ -85,9 +83,9 @@ class JdbcSinkConnectorMetricsTest {
             metrics.register();
             assertThat(server.isRegistered(objectName)).isTrue();
 
-            metrics.inserted();
-            metrics.updated();
-            metrics.upserted();
+            metrics.inserted(1);
+            metrics.updated(1);
+            metrics.upserted(1);
             assertThat(server.getAttribute(objectName, "TotalNumberOfInsertEventsSeen")).isEqualTo(1L);
             assertThat(server.getAttribute(objectName, "TotalNumberOfUpdateEventsSeen")).isEqualTo(1L);
             assertThat(server.getAttribute(objectName, "TotalNumberOfUpsertEventsSeen")).isEqualTo(1L);

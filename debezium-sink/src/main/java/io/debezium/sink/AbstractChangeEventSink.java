@@ -110,7 +110,7 @@ public abstract class AbstractChangeEventSink implements ChangeEventSink {
         return List.of();
     }
 
-    public void flush() {
+    protected void forceFlush() {
         for (Batch batch : forcePoll()) {
             writeBatch(batch);
         }

@@ -12,13 +12,13 @@ public interface SinkProgressListener {
 
     void connected(boolean connected);
 
-    void inserted();
+    void inserted(long count);
 
-    void updated();
+    void updated(long count);
 
-    void upserted();
+    void upserted(long count);
 
-    void deleted();
+    void deleted(long count);
 
     void truncated();
 
@@ -36,19 +36,19 @@ public interface SinkProgressListener {
             }
 
             @Override
-            public void inserted() {
+            public void inserted(long count) {
             }
 
             @Override
-            public void updated() {
+            public void updated(long count) {
             }
 
             @Override
-            public void upserted() {
+            public void upserted(long count) {
             }
 
             @Override
-            public void deleted() {
+            public void deleted(long count) {
             }
 
             @Override
