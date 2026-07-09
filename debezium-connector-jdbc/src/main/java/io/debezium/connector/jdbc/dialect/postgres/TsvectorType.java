@@ -5,13 +5,10 @@
  */
 package io.debezium.connector.jdbc.dialect.postgres;
 
-import java.util.List;
-
 import org.apache.kafka.connect.data.Schema;
 
 import io.debezium.connector.jdbc.type.AbstractType;
 import io.debezium.sink.column.ColumnDescriptor;
-import io.debezium.sink.valuebinding.ValueBindDescriptor;
 
 /**
  * An implementation of {@link AbstractType} for the PostgreSQL {@code tsvector} data type.
@@ -58,12 +55,5 @@ public class TsvectorType extends AbstractType {
     @Override
     public String getQueryBinding(ColumnDescriptor column, Schema schema, Object value) {
         return "cast(? as tsvector)";
-    }
-
-    @Override
-    public List<ValueBindDescriptor> bind(int index, Schema schema, Object value) {
-
-        Object finalValue = value == null ? null : ((String) value).replaceAll("'", "");
-        return List.of(new ValueBindDescriptor(index, finalValue));
     }
 }
