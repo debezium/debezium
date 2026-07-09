@@ -301,6 +301,10 @@ public class DefaultRecordWriter implements RecordWriter {
         Map<TableDescriptor, List<JdbcSinkRecord>> insertsByTable = new LinkedHashMap<>();
         Map<TableDescriptor, List<JdbcSinkRecord>> deletesByTable = new LinkedHashMap<>();
 
+        JdbcSinkConnectorConfig.InsertMode insertMode = getConfig().getInsertMode();
+        SinkProgressListener progressedListener = progressListener();
+        List<Callable<?>> processMetrics = new ArrayList<>();
+
         for (BatchRecord batchRecord : records) {
             var record = (JdbcKafkaSinkRecord) batchRecord.record();
             var collectionId = batchRecord.collectionId();
@@ -321,11 +325,31 @@ public class DefaultRecordWriter implements RecordWriter {
                     throw new ConnectException("Failed to truncate collection '" + collectionId + "'", e);
                 }
             }
-            else if (record.isDelete()) {
-                deletesByTable.computeIfAbsent(table, k -> new ArrayList<>()).add(record);
-            }
             else {
-                insertsByTable.computeIfAbsent(table, k -> new ArrayList<>()).add(record);
+                if (record.isDelete()) {
+                    deletesByTable.computeIfAbsent(table, k -> new ArrayList<>()).add(record);
+                    processMetrics.add(() -> {
+                        progressedListener.deleted(1);
+                        return null;
+                    });
+                }
+                else {
+                    insertsByTable.computeIfAbsent(table, k -> new ArrayList<>()).add(record);
+                    switch (insertMode) {
+                        case INSERT -> processMetrics.add(() -> {
+                            progressedListener.inserted(1);
+                            return null;
+                        });
+                        case UPDATE -> processMetrics.add(() -> {
+                            progressedListener.updated(1);
+                            return null;
+                        });
+                        case UPSERT -> processMetrics.add(() -> {
+                            progressedListener.upserted(1);
+                            return null;
+                        });
+                    }
+                }
             }
         }
 
@@ -355,6 +379,11 @@ public class DefaultRecordWriter implements RecordWriter {
                             }
                         });
                         transaction.commit();
+                        if (!processMetrics.isEmpty()) {
+                            for (Callable<?> processMetric : processMetrics) {
+                                processMetric.call();
+                            }
+                        }
                     }
                     catch (Exception e) {
                         transaction.rollback();
@@ -422,7 +451,6 @@ public class DefaultRecordWriter implements RecordWriter {
 
     private void performWrite(Connection conn, SqlStatementInfo statementInfo, List<JdbcSinkRecord> records) throws SQLException {
         try (PreparedStatement prepareStatement = conn.prepareStatement(statementInfo.statement())) {
-
             QueryBinder queryBinder = getQueryBinderResolver().resolve(prepareStatement);
             Stopwatch allbindStopwatch = Stopwatch.reusable();
             allbindStopwatch.start();
@@ -519,7 +547,7 @@ public class DefaultRecordWriter implements RecordWriter {
         }
         else {
             // DELETE doesn't have batch optimization yet
-            return new SqlStatementInfo(dialect.getDeleteStatement(table, firstRecord), false, false);
+            return new SqlStatementInfo(dialect.getDeleteStatement(table, firstRecord), false, true);
         }
         throw new DataException(String.format("Unable to get SQL statement for %s", firstRecord));
     }
