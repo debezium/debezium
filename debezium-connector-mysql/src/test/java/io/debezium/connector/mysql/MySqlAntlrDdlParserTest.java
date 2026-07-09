@@ -137,7 +137,7 @@ public class MySqlAntlrDdlParserTest
     }
 
     @Test
-    @FixFor("DBZ-9704")
+    @FixFor("debezium/dbz#1439")
     public void shouldParseMultipleAddColumnsWithRepeatedInstantAlgorithm() {
         final String ddl = "CREATE TABLE `test_lot` ("
                 + "`lot_id` bigint unsigned NOT NULL,"

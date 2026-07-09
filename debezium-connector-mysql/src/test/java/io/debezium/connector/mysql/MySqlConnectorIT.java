@@ -71,7 +71,7 @@ public class MySqlConnectorIT extends BinlogConnectorIT<MySqlConnector, MySqlPar
     }
 
     @Test
-    @FixFor("DBZ-9704")
+    @FixFor("debezium/dbz#1439")
     @SkipWhenDatabaseVersion(check = LESS_THAN, major = 8, reason = "Instant ADD COLUMN requires MySQL 8.0+")
     void shouldStreamMultipleAddColumnsWithRepeatedInstantAlgorithm() throws Exception {
         final String tableName = "test_lot";
