@@ -58,7 +58,7 @@ However, the broker cannot create topics with unique settings for different conn
 All topics that a broker creates have the same retention period, compaction settings, partition count, replication factors and so forth.
 If you have multiple connectors and each requires its own topic configuration, use xref:enabling-automatic-topic-creation[Kafka Connect automatic topic creation].
 
-If Kafka Connect topic creation is unavailable, as in deployments that use Kafka 2.6 or earlier, the only way to guarantee custom topic properties is to pre-create the topics yourself.
+If Kafka Connect topic creation is unavailable, as in deployments that use Kafka 2.6 or earlier, the only way to guarantee custom topic properties is to pre-create the topics yourself, either manually, or through a custom deployment process.
 
 As noted earlier, broker topic creation and Kafka Connect topic creation are independent, so to use the Kafka Connect mechanism, it's not strictly necessary to disable topic creation at the broker.
 That said, preventing the broker from creating topics provides the following advantages:
