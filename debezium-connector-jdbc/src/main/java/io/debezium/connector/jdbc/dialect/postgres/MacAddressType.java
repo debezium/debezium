@@ -27,12 +27,12 @@ class MacAddressType extends AbstractType {
 
     @Override
     public String getQueryBinding(ColumnDescriptor column, Schema schema, Object value) {
-        return "cast(? as " + getSourceColumnType(schema).orElseThrow() + ")";
+        return "cast(? as " + getSourceColumnType(schema).orElse("macaddr") + ")";
     }
 
     @Override
     public String getTypeName(Schema schema, boolean isKey) {
-        return getSourceColumnType(schema).orElseThrow();
+        return getSourceColumnType(schema).orElse("macaddr");
     }
 
 }

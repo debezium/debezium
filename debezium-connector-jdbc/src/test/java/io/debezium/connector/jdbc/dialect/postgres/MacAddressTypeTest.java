@@ -54,4 +54,14 @@ class MacAddressTypeTest {
         assertThat(type.getQueryBinding(null, schema, "08:00:2b:01:02:03:04:05")).isEqualTo("cast(? as MACADDR8)");
     }
 
+    @Test
+    @FixFor("debezium/dbz#2100")
+    @DisplayName("Should fall back to macaddr when the source column type is not propagated")
+    void shouldFallBackToMacaddrWithoutSourceColumnType() {
+        final Schema schema = SchemaBuilder.string().build();
+
+        assertThat(type.getTypeName(schema, false)).isEqualTo("macaddr");
+        assertThat(type.getQueryBinding(null, schema, "08:00:2b:01:02:03")).isEqualTo("cast(? as macaddr)");
+    }
+
 }
