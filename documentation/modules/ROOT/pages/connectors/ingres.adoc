@@ -1,4 +1,4 @@
-[id="debezium-connector-for-ingres"]
+﻿[id="debezium-connector-for-ingres"]
 = {prodname} connector for Ingres
 
 :context: ingres
@@ -10,8 +10,6 @@
 :connector-name: Ingres
 :include-list-example: public.inventory
 :collection-container:  database.schema
-
-ifdef::community[]
 
 :toc:
 :toc-placement: macro
@@ -32,7 +30,6 @@ The connector is available for testing and feedback, and is expected to evolve s
 ====
 
 For information about the Actian Database versions that are compatible with this connector, see the link:https://debezium.io/releases/[{prodname} release overview].
-endif::community[]
 
 This connector is strongly inspired by the {prodname} connector implementation for IBM Db2.
 The connector use the Ingres Change Streams Java client to capture transactional data from the database.
@@ -76,9 +73,6 @@ For snapshots, if a snapshot was not complete when the connector stopped or rest
 
 To optimally configure and run a {prodname} Ingres connector, it is helpful to understand how the connector performs snapshots, streams change events, determines Kafka topic names, and handles schema changes.
 
-// Type: concept
-// ModuleID: how-debezium-ingres-connectors-perform-database-snapshots
-// Title: How {prodname} Ingres connectors perform database snapshots
 [[ingres-snapshots]]
 === Snapshots
 
@@ -106,14 +100,14 @@ If you configure a different snapshot mode, the connector completes the snapshot
   This lock ensures that no schema changes can occur in those tables until the snapshot completes.
   The level of the lock is determined by the value of the xref:ingres-property-snapshot-isolation-mode[`snapshot.isolation.mode`] connector configuration property.
 
-4. Generate a single trasaction on a generated database table. Ingres does not support querying the latest tranasction record position. 
-5. 
-Therefore the Debezium connector creates a table in the database, inserts one row then drops the table to generate a "latest" log record that is captured and stored. 
-This is the log position where data streaming will start from after the snapshot is complete. 
+4. Generate a single transaction on a generated database table.
+  Ingres does not support querying the latest transaction record position.
+  Therefore the Debezium connector creates a table in the database, inserts one row then drops the table to generate a "latest" log record that is captured and stored. 
+  This is the log position where data streaming will start from after the snapshot is complete. 
 
 5. Capture the schema of all tables or all tables that are designated for capture.
-The connector persists schema information in its internal database schema history topic.
-The schema history provides information about the structure that is in effect when a change event occurs. +
+  The connector persists schema information in its internal database schema history topic.
+  The schema history provides information about the structure that is in effect when a change event occurs. +
 +
 [NOTE]
 ====
@@ -159,9 +153,6 @@ After the connector completes the initial snapshot, it starts streaming from the
 
 If the connector stops again for any reason, after it restarts, it resumes streaming changes from where it previously left off.
 
-// ModuleID: ingres-description-of-why-initial-snapshots-capture-the-schema-history-for-all-tables
-// Title: Description of why initial snapshots capture the schema history for all tables
-// Type: concept
 [id="understanding-why-initial-snapshots-capture-the-schema-history-for-all-tables"]
 ==== Understanding why initial snapshots capture the schema history for all tables
 
@@ -183,11 +174,6 @@ In some cases, you might want to limit schema capture in the initial snapshot.
 This can be useful when you want to reduce the time required to complete a snapshot.
 Or when {prodname} connects to the database instance through a user account that has access to multiple logical databases, but you want the connector to capture changes only from tables in a specific logic database.
 
-
-
-// Type: assembly
-// ModuleID: descriptions-of-debezium-ingres-connector-data-change-events
-// Title: Descriptions of {prodname} Ingres connector data change events
 [[ingres-events]]
 == Data change events
 
@@ -195,14 +181,12 @@ The {prodname} Ingres connector generates a data change event record for each ro
 Each event contains a key and a value. 
 The event structure depends on the table that was changed.
 
-// Type: reference
-// ModuleID: how-debezium-ingres-connectors-map-data-types
-// Title: How {prodname} Ingres connectors map data types
 [[ingres-data-types]]
 == Data type mappings
 
 The Ingres connector represents changes to rows with events that are structured like the table. 
-The event contains a field for each column value. How that value is represented in the event depends on the Ingres data type of the column. 
+The event contains a field for each column value.
+How that value is represented in the event depends on the Ingres data type of the column.
 For information about how the connector maps Ingres data types in event fields to literal and semantic types, see xref:ingres-basic-types[Basic types].
 
 
@@ -279,8 +263,9 @@ A timestamp without timezone information
 |n/a
 
 |`INGRESDATE`
-|`INT64`
-|n/a
+|`STRING`
+|INGRESDATE can represent a date/time or an interval.
+Users must handle the conversion of the string to a date/time or interval value in their application.
 
 |`INTEGER`
 |`INT32`
@@ -360,43 +345,33 @@ A timestamp without timezone information
 
 |===
 
-// Type: assembly
-// ModuleID: setting-up-ingres-to-run-a-debezium-connector
-// Title: Setting up Ingres to run a {prodname} connector
 [[setting-up-ingres]]
 == Setting up Ingres
 
 To prepare an Ingres database to work with {prodname}, ensure that the user account that the connector uses to connect to the database has the necessary permissions, and enable journaling on the database.
 
-// Type: procedure
-// ModuleID: setting-up-ingres-permissions-required-by-debezium-connectors
-// Title: Setting up Ingres permissions for the {prodname} connector
 [[ingres-permissions]]
 === Setting up permissions
 
-Users connecting to the server to utilize CDC must have `DB_ADMIN` privileges or be the database or instance owner.  See link:https://docs.actian.com/actianingres/12.1/index.html#page/DatabaseAdmin/Prerequisites_for_Server_Configuration.htm[Prerequisites for server configuration] for more information about setting up for CDC with Ingres.
+Users connecting to the server to utilize CDC must have `DB_ADMIN` privileges or be the database or instance owner.
+See link:https://docs.actian.com/actianingres/12.1/index.html#page/DatabaseAdmin/Prerequisites_for_Server_Configuration.htm[Prerequisites for server configuration] for more information about setting up for CDC with Ingres.
 
 
-// Type: procedure
-// ModuleID: setting-up-ingres-journaling-required-by-debezium-connectors
-// Title: Setting up Ingres journaling for the {prodname} connector
 [[ingres-journaling]]
 === Setting up journaling
 
-Each database that the connector captures data from must have journaling enabled to capture changes. To enable journaling on an Ingres database, use the `ckpdb` utility to set the `journaling` option to `on` for the database. For example, to enable journaling for a database, run the following command:
+Each database that the connector captures data from must have journaling enabled to capture changes.
+To enable journaling on an Ingres database, use the `ckpdb` utility to set the `journaling` option to `on` for the database.
+For example, to enable journaling for a database, run the following command:
 
 [source,shell,subs="+quotes"]
 ----
-> ckpdb +j __<name>
+> ckpdb +j <database name>
 ----
 
-// Type: assembly
-// ModuleID: deployment-of-debezium-ingres-connectors
-// Title: Deployment of {prodname} Ingres connectors
 [[ingres-deploying-a-connector]]
 == Deployment
 
-ifdef::community[]
 To deploy a {prodname} Ingres connector, you install the {prodname} Ingres connector archive, configure the connector, and start the connector by adding its configuration to Kafka Connect.
 
 .Prerequisites
@@ -421,10 +396,6 @@ To mitigate risk in production deployments, deploy only containers that are acti
 ====
 
 
-endif::community[]
-
-
-ifdef::community[]
 [[ingres-example-configuration]]
 === Ingres connector configuration example
 
@@ -490,11 +461,6 @@ Specifies the list of Kafka brokers that this connector uses to write and recove
 Specifies the name of the database schema history topic where the connector writes and recovers DDL statements.
 This topic is for internal use only and is not intended for direct use by consumers.
 
-endif::community[]
-
-// Type: reference
-// Title: Descriptions of {prodname} Ingres connector configuration properties
-// ModuleID: descriptions-of-debezium-ingres-connector-configuration-properties
 [[ingres-connector-properties]]
 === Connector properties
 
@@ -785,9 +751,6 @@ Note: `_` is an escape sequence, equivalent to a backslash in Java.
 For more information about Avro compatibility, see {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] .
 |===
 
-// Title: Advanced {prodname} Ingres connector configuration properties
-// Type: reference
-// ModuleID: debezium-ingres-connector-advanced-configuration-properties
 [id="ingres-advanced-configuration-properties"]
 ==== Advanced connector configuration properties
 
@@ -847,58 +810,41 @@ WARNING: Do not use the `recovery` mode to perform a snapshot if schema changes 
 * It cannot detect any topic offsets.
 * A previously recorded offset specifies a log position that is not available on the server.
 
-ifdef::community[]
 `configuration_based`:: With this option, you control snapshot behavior through a set of connector properties that have the prefix 'snapshot.mode.configuration.based'.
 
-endif::community[]
-
-ifdef::community[]
 `custom`:: The `custom` snapshot mode lets you inject your own implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
 Set the xref:ingres-property-snapshot-mode-custom-name[`snapshot.mode.custom.name`] configuration property to the name provided by the `name()` method of your implementation.
 
 For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
-endif::community[]
 
-ifdef::community[]
 |[[ingres-property-snapshot-mode-configuration-based-snapshot-data]]<<ingres-property-configuration-based-snapshot-data, `+snapshot.mode.configuration.based.snapshot.data+`>>
 |false
 |If the `snapshot.mode` is set to `configuration_based`, set this property to specify whether the connector includes table data when it performs a snapshot.
-endif::community[]
 
-ifdef::community[]
 |[[ingres-property-snapshot-mode-configuration-based-snapshot-schema]]<<ingres-property-configuration-based-snapshot-schema, `+snapshot.mode.configuration.based.snapshot.schema+`>>
 |false
 |If the `snapshot.mode` is set to `configuration_based`, set this property to specify whether the connector includes the table schema when it performs a snapshot.
-endif::community[]
 
-ifdef::community[]
 |[[ingres-property-snapshot-mode-configuration-based-start-stream]]<<ingres-property-configuration-based-start-stream, `+snapshot.mode.configuration.based.start.stream+`>>
 |false
 |If the `snapshot.mode` is set to `configuration_based`, set this property to specify whether the connector begins to stream change events after a snapshot completes.
-endif::community[]
 
-ifdef::community[]
 |[[ingres-property-snapshot-mode-configuration-based-snapshot-on-schema-error]]<<ingres-property-configuration-based-snapshot-on-schema-error, `+snapshot.mode.configuration.based.snapshot.on.schema.error+`>>
 |false
 |If the `snapshot.mode` is set to `configuration_based`, set this property to specify whether the connector includes table schema in a snapshot if the schema history topic is not available.
-endif::community[]
 
-ifdef::community[]
 |[[ingres-property-snapshot-mode-configuration-based-snapshot-on-data-error]]<<ingres-property-configuration-based-snapshot-on-data-error, `+snapshot.mode.configuration.based.snapshot.on.data.error+`>>
 |false
 |If the `snapshot.mode` is set to `configuration_based`, this property specifies whether the connector attempts to snapshot table data if it does not find the last committed offset in the transaction log.
 
 Set the value to `true` to instruct the connector to perform a new snapshot.
-endif::community[]
 
-ifdef::community[]
 |[[ingres-property-snapshot-mode-custom-name]]<<ingres-property-snapshot-mode-custom-name, `+snapshot.mode.custom.name+`>>
 |No default
 |If `snapshot.mode` is set to `custom`, use this setting to specify the name of the custom implementation that is provided in the `name()` method that is defined in the `io.debezium.spi.snapshot.Snapshotter` interface.
 After a connector restart, {prodname} calls the specified custom implementation to determine whether to perform a snapshot.
 
 For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
-endif::community[]
 
 |[[ingres-property-snapshot-locking-mode]]<<ingres-property-snapshot-locking-mode, `+snapshot.locking.mode+`>>
 |_exclusive_
@@ -918,17 +864,13 @@ If you prefer snapshots to run without setting any locks, set the following opti
 `none`:: Prevents the connector from acquiring any table locks during the snapshot.
 Use this setting only if no schema changes might occur during the creation of the snapshot.
 
-ifdef::community[]
 `custom`:: The connector performs a snapshot according to the implementation specified by the xref:ingres-property-snapshot-locking-mode-custom-name[`snapshot.locking.mode.custom.name`] property, which is a custom implementation of the `io.debezium.spi.snapshot.SnapshotLock` interface.
-endif::community[]
 
-ifdef::community[]
 |[[ingres-property-snapshot-locking-mode-custom-name]]<<ingres-property-snapshot-locking-mode-custom-name, `+snapshot.locking.mode.custom.name+`>>
 |No default
 | When `snapshot.locking.mode` is set to `custom`, use this setting to specify the name of the custom locking implementation provided in the `name()` method that is defined by the `io.debezium.spi.snapshot.SnapshotLock` interface.
 
 For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
-endif::community[]
 
 |[[ingres-property-snapshot-query-mode]]<<ingres-property-snapshot-query-mode, `+snapshot.query.mode+`>>
 |`select_all`
@@ -937,19 +879,15 @@ Set one of the following options:
 
 `select_all`:: The connector performs a `select all` query by default, optionally adjusting the columns selected based on the column include and exclude list configurations.
 
-ifdef::community[]
 `custom`:: The connector performs a snapshot query according to the implementation specified by the xref:ingres-property-snapshot-snapshot-query-mode-custom-name[`snapshot.query.mode.custom.name`] property, which defines a custom implementation of the `io.debezium.spi.snapshot.SnapshotQuery` interface.
-endif::community[]
 
 This setting enables you to manage snapshot content in a more flexible manner compared to using the xref:ingres-property-snapshot-select-statement-overrides[`snapshot.select.statement.overrides`] property.
 
-ifdef::community[]
 |[[ingres-property-snapshot-snapshot-query-mode-custom-name]]<<ingres-property-snapshot-query-mode-custom-name, `+snapshot.query.mode.custom.name+`>>
 |No default
 | When xref:ingres-property-snapshot-query-mode[`snapshot.query.mode`] is set to `custom`, use this setting to specify the name of the custom query implementation provided in the `name()` method that is defined by the `io.debezium.spi.snapshot.SnapshotQuery` interface.
 
 For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
-endif::community[]
 
 |[[ingres-property-snapshot-isolation-mode]]<<ingres-property-snapshot-isolation-mode, `+snapshot.isolation.mode+`>>
 |`repeatable_read`
@@ -987,7 +925,8 @@ Specify one of the following values:
 `>=1`:: Specifies the number of seconds that the connector waits for data before it times out.
 |[[ingres-property-cdc-marker-table]]<<ingres-property-cdc-marker-table, `+cdc.marker.table+`>>
 |`cdc_header_marker`
-| The name of the table that the connector creates to store metadata about the current log position. This is used to start data streaming after a snapshot is taken.
+| The name of the table that the connector creates to store metadata about the current log position.
+This is used to start data streaming after a snapshot is taken.
 |[[ingres-property-event-processing-failure-handling-mode]]<<ingres-property-event-processing-failure-handling-mode, `+event.processing.failure.handling.mode+`>>
 |`fail`
 |Specifies how the connector handles exceptions during processing of events.
@@ -1172,10 +1111,7 @@ By default, the following channels are available:
 * `file`
 * `jmx`
 
-ifdef::community[]
-
 Optionally, you can also implement a {link-prefix}:{link-signalling}#debezium-signaling-enabling-custom-signaling-channel[custom signaling channel].
-endif::community[]
 
 |[[ingres-property-notification-enabled-channels]]<<ingres-property-notification-enabled-channels, `+notification.enabled.channels+`>>
 |No default
@@ -1186,9 +1122,7 @@ By default, the following channels are available:
 * `log`
 * `jmx`
 
-ifdef::community[]
 Optionally, you can also implement a {link-prefix}:{link-notification}#debezium-notification-custom-channel[custom notification channel].
-endif::community[]
 |[[ingres-property-incremental-snapshot-chunk-size]]<<ingres-property-incremental-snapshot-chunk-size, `+incremental.snapshot.chunk.size+`>>
 |`1024`
 |The maximum number of rows that the connector fetches and reads into memory during an incremental snapshot chunk.
@@ -1236,7 +1170,8 @@ This property is ignored if `topic.heartbeat.name` is set.
 |_empty_
 |Specifies an explicit, full name for the topic to which the connector sends heartbeat messages, overriding the prefix-based naming derived from `topic.heartbeat.prefix` and `topic.prefix`. +
  +
-When set, all heartbeat messages are routed to this exact topic name, regardless of the connector's `topic.prefix`. This is useful when running multiple connectors and you want to consolidate heartbeat events into a single shared topic, avoiding the creation of a large number of single-partition heartbeat topics. +
+When set, all heartbeat messages are routed to this exact topic name, regardless of the connector's `topic.prefix`. +
+This is useful when running multiple connectors and you want to consolidate heartbeat events into a single shared topic, avoiding the creation of a large number of single-partition heartbeat topics. +
  +
 For example, setting this to `debezium-heartbeat` routes all heartbeat messages to a topic named `debezium-heartbeat`. +
  +
@@ -1307,7 +1242,8 @@ The pattern that you specify for the `custom.sanitize.pattern` property override
 Set one of the following values:
 [horizontal]
 `-1`:: No limit.
-`0`:: Disabled. No retries permitted.
+`0`:: Disabled.
+No retries permitted.
 `> 0`:: Maxiumum number of retries.
 
 |[[ingres-property-database-query-timeout-ms]]<<ingres-property-database-query-timeout-ms, `database.query.timeout.ms`>>
