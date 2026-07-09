@@ -79,7 +79,7 @@ public class CdcSourceTaskContext<T extends CommonConnectorConfig> {
      * @throws IllegalArgumentException if any of the parameters are null
      */
     public void temporaryLoggingContext(CommonConnectorConfig connectorConfig, String contextName, Runnable operation) {
-        LoggingContext.temporarilyForConnector("MySQL", connectorConfig.getLogicalName(), contextName, operation);
+        LoggingContext.temporarilyForConnector(connectorType, connectorConfig.getLogicalName(), contextName, operation);
     }
 
     /**
