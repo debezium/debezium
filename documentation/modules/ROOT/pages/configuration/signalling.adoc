@@ -121,12 +121,11 @@ The structure of the signaling table must conform to the following standard form
 .Required structure of a signaling data collection
 [cols="1,1,9",options="header"]
 |===
+
 |Field | Type | Description
 
-|`id`
-(required)
+|`id` (required)
 |`string`
-
 |An arbitrary unique string that identifies a signal instance.
 You assign an `id` to each signal that you submit to the signaling table.
 Typically, the ID is a UUID string.
@@ -134,17 +133,13 @@ You can use signal instances for logging, debugging, or de-duplication.
 When a signal triggers {prodname} to perform an incremental snapshot, it generates a signal message with an arbitrary `id` string.
 The `id` string that the generated message contains is unrelated to the `id` string in the submitted signal.
 
-|`type`
-(required)
+|`type` (required)
 |`string`
-
 |Specifies the type of signal to send.
 You can use some signal types with any connector for which signaling is available, while other signal types are available for specific connectors only.
 
-|`data`
-(optional)
+|`data` (optional)
 |`string`
-
 |Specifies JSON-formatted parameters to pass to a signal action.
 Each signal type requires a specific set of data.
 
@@ -494,7 +489,7 @@ Optionally, you can configure the signal so that the resulting message includes 
 
 [id="debezium-signaling-example-of-a-logging-record"]
 .Example of a signaling record for adding a log message
-[cols="1,9,9",options="header"]
+[cols="3,9,9",options="header"]
 |===
 |Column | Value | Description
 
