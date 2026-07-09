@@ -54,9 +54,19 @@ endif::product[]
 == Disabling automatic topic creation for the Kafka broker
 
 By default, the Kafka broker configuration enables the broker to create topics at runtime if the topics do not already exist.
-Topics created by the broker cannot be configured with custom properties.
-If you use a Kafka version earlier than 2.6.0, and you want to create topics with specific configurations, you must to disable automatic topic creation at the broker,
-and then explicitly create the topics, either manually, or through a custom deployment process.
+However, the broker cannot create topics with unique settings for different connectors.
+All topics that a broker creates have the same retention period, compaction settings, partition count, replication factors and so forth.
+If you have multiple connectors and each requires its own topic configuration, use xref:enabling-automatic-topic-creation[Kafka Connect automatic topic creation].
+
+If Kafka Connect topic creation is unavailable, as in deployments that use Kafka 2.6 or earlier, the only way to guarantee custom topic properties is to pre-create the topics yourself.
+
+As noted earlier, broker topic creation and Kafka Connect topic creation are independent, so to use the Kafka Connect mechanism, it's not strictly necessary to disable topic creation at the broker.
+That said, preventing the broker from creating topics provides the following advantages:
+
+* Prevents accidental topic creation.
+* Ensures all connector topics are created through the Connect configuration.
+* Makes topic configuration more predictable and auditable.
+
 
 .Procedure
 
@@ -92,8 +102,8 @@ ifdef::community[]
 [NOTE]
 ====
 If you don't want to allow automatic topic creation by Kafka Connect, set the value of `topic.creation.enable` to `false`
-in the Kafka Connect configuration (_connect-distributed.properties_ file or via environment variable
-_CONNECT_TOPIC_CREATION_ENABLE_ when using https://quay.io/repository/debezium/connect[{prodname}'s container image for Kafka Connect]).
+in the Kafka Connect configuration (_connect-distributed.properties_ file, or via the environment variable
+_CONNECT_TOPIC_CREATION_ENABLE_ when using the https://quay.io/repository/debezium/connect[{prodname} container image for Kafka Connect]).
 ====
 endif::community[]
 
