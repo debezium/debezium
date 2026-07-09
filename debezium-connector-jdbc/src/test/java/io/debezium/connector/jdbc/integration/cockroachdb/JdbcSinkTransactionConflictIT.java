@@ -62,7 +62,7 @@ public class JdbcSinkTransactionConflictIT extends AbstractJdbcSinkTest {
 
     @ParameterizedTest
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
-    @FixFor("DBZ-2180")
+    @FixFor("debezium/dbz#2180")
     public void testConflictingFlushRecoversWithRetriesEnabled(SinkRecordFactory factory) throws SQLException {
         final String tableName = randomTableName();
         final Connection connection = getSink().getConnection();
@@ -131,7 +131,7 @@ public class JdbcSinkTransactionConflictIT extends AbstractJdbcSinkTest {
 
     @ParameterizedTest
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
-    @FixFor("DBZ-2180")
+    @FixFor("debezium/dbz#2180")
     public void testConflictingFlushFailsFastWithRetriesDisabled(SinkRecordFactory factory) throws SQLException {
         final String tableName = randomTableName();
         final Connection connection = getSink().getConnection();
