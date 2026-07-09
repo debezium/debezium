@@ -249,7 +249,7 @@ spec:
 endif::product[]
 +
 You can include any {link-kafka-docs}/#topicconfigs[Kafka topic-level configuration property] in the configuration for the `default` group.
-
++
 .Connector configuration for the `default` topic creation group
 [cols="1,9",options="header"]
 |===
@@ -360,7 +360,7 @@ spec:
 ...
 ----
 endif::product[]
-
++
 .Connector configuration for custom `inventory` and `applicationlogs` topic creation groups
 [cols="1,9",options="header"]
 |===
