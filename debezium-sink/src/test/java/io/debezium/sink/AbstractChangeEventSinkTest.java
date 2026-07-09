@@ -44,9 +44,9 @@ class AbstractChangeEventSinkTest {
 
     @FixFor("debezium/dbz#1185")
     @Test
-    void flushShouldDrainBufferedRecords() {
+    void forceFlushShouldDrainBufferedRecords() {
         sink.put(List.of(createFlatSinkRecord((byte) 1, "John")));
-        sink.flush();
+        sink.forceFlush();
 
         assertThat(sink.writtenBatches).hasSize(1);
         assertThat(sink.writtenBatches.get(0)).hasSize(1);
@@ -54,8 +54,8 @@ class AbstractChangeEventSinkTest {
 
     @FixFor("debezium/dbz#1185")
     @Test
-    void flushOnEmptyBufferShouldNotCallWriteBatch() {
-        sink.flush();
+    void forceFlushOnEmptyBufferShouldNotCallWriteBatch() {
+        sink.forceFlush();
 
         assertThat(sink.writtenBatches).isEmpty();
     }
@@ -71,7 +71,7 @@ class AbstractChangeEventSinkTest {
         SinkRecord schemaChange = new SinkRecord("topic", 0, null, null, valueSchema, value, 0);
 
         sink.put(List.of(schemaChange));
-        sink.flush();
+        sink.forceFlush();
 
         assertThat(sink.writtenBatches).isEmpty();
     }
@@ -87,7 +87,7 @@ class AbstractChangeEventSinkTest {
                 0);
 
         sink.put(List.of(deleteRecord));
-        sink.flush();
+        sink.forceFlush();
 
         assertThat(sink.writtenBatches).isEmpty();
     }
@@ -103,7 +103,7 @@ class AbstractChangeEventSinkTest {
                 0);
 
         sink.put(List.of(deleteRecord));
-        sink.flush();
+        sink.forceFlush();
 
         assertThat(sink.writtenBatches).hasSize(1);
         assertThat(sink.writtenBatches.get(0).get(0).record().isDelete()).isTrue();
@@ -115,7 +115,7 @@ class AbstractChangeEventSinkTest {
         sink = new TestChangeEventSink(config.withTruncateEnabled(false));
 
         sink.put(List.of(createTruncateSinkRecord()));
-        sink.flush();
+        sink.forceFlush();
 
         assertThat(sink.writtenBatches).isEmpty();
     }
@@ -126,7 +126,7 @@ class AbstractChangeEventSinkTest {
         sink = new TestChangeEventSink(config.withTruncateEnabled(true));
 
         sink.put(List.of(createTruncateSinkRecord()));
-        sink.flush();
+        sink.forceFlush();
 
         assertThat(sink.writtenBatches).hasSize(1);
         assertThat(sink.writtenBatches.get(0).get(0).record().isTruncate()).isTrue();
@@ -138,7 +138,7 @@ class AbstractChangeEventSinkTest {
         sink.put(List.of(
                 createFlatSinkRecord((byte) 1, "John"),
                 createFlatSinkRecord((byte) 2, "Jane")));
-        sink.flush();
+        sink.forceFlush();
 
         assertThat(sink.writtenBatches).hasSize(1);
         assertThat(sink.writtenBatches.get(0)).hasSize(2);
@@ -258,7 +258,7 @@ class AbstractChangeEventSinkTest {
     void getCollectionIdFromRecordShouldResolveViaConfig() {
         SinkRecord kafkaRecord = createFlatSinkRecord((byte) 1, "John");
         sink.put(List.of(kafkaRecord));
-        sink.flush();
+        sink.forceFlush();
 
         assertThat(sink.writtenBatches.get(0).get(0).collectionId().name()).contains("topic");
     }
@@ -267,7 +267,7 @@ class AbstractChangeEventSinkTest {
         for (Batch batch : sink.put(records)) {
             sink.writeBatch(batch);
         }
-        sink.flush();
+        sink.forceFlush();
     }
 
     // --- Concrete test implementation ---

@@ -57,7 +57,7 @@ public class UnnestRecordWriter extends DefaultRecordWriter {
         // Otherwise delegate to parent's standard row-wise binding
         SqlStatementInfo sqlStatementInfo = getSqlStatementInfo(tableDescriptor, records);
         if (sqlStatementInfo.isBatchStatement()) {
-            writeUnnestBatch(sqlStatementInfo.statement(), records);
+            writeUnnestBatch(sqlStatementInfo, records);
         }
         else {
             super.write(tableDescriptor, records);
@@ -67,14 +67,14 @@ public class UnnestRecordWriter extends DefaultRecordWriter {
     /**
      * Write records using UNNEST approach with column-wise binding.
      */
-    private void writeUnnestBatch(String sqlStatement, List<JdbcSinkRecord> records) {
+    private void writeUnnestBatch(SqlStatementInfo statementInfo, List<JdbcSinkRecord> records) {
         Stopwatch writeStopwatch = Stopwatch.reusable();
         writeStopwatch.start();
         final Transaction transaction = getSession().beginTransaction();
-
         try {
-            getSession().doWork(processUnnestBatch(sqlStatement, records));
+            getSession().doWork(processUnnestBatch(statementInfo.statement(), records));
             transaction.commit();
+            processMetrics(records, statementInfo);
         }
         catch (Exception e) {
             transaction.rollback();
@@ -138,7 +138,7 @@ public class UnnestRecordWriter extends DefaultRecordWriter {
         int parameterIndex = 1;
 
         if (firstRecord.isDelete()) {
-            parameterIndex = bindKeyFieldArrays(records, conn, ps, parameterIndex);
+            bindKeyFieldArrays(records, conn, ps, parameterIndex);
         }
         else {
             switch (getConfig().getInsertMode()) {
@@ -146,12 +146,12 @@ public class UnnestRecordWriter extends DefaultRecordWriter {
                 case UPSERT:
                     // For INSERT/UPSERT: key fields first, then non-key fields
                     parameterIndex = bindKeyFieldArrays(records, conn, ps, parameterIndex);
-                    parameterIndex = bindNonKeyFieldArrays(records, conn, ps, parameterIndex);
+                    bindNonKeyFieldArrays(records, conn, ps, parameterIndex);
                     break;
                 case UPDATE:
                     // For UPDATE: non-key fields first, then key fields
                     parameterIndex = bindNonKeyFieldArrays(records, conn, ps, parameterIndex);
-                    parameterIndex = bindKeyFieldArrays(records, conn, ps, parameterIndex);
+                    bindKeyFieldArrays(records, conn, ps, parameterIndex);
                     break;
             }
         }

@@ -246,7 +246,7 @@ public class JdbcSinkConnectorTask extends SinkTask {
                         partition -> offsets.getOrDefault(partition, currentOffsets.get(partition))));
 
         if (changeEventSink != null) {
-            changeEventSink.flush();
+            changeEventSink.forceFlush();
         }
 
         // Flush offsets

@@ -57,6 +57,9 @@ public class JdbcChangeEventSink extends AbstractChangeEventSink implements Chan
     private final ConnectorContext connectorContext;
     private final SinkProgressListener progressListener;
 
+    final Map<CollectionId, Buffer> upsertBufferByTable = new LinkedHashMap<>();
+    final Map<CollectionId, Buffer> deleteBufferByTable = new LinkedHashMap<>();
+
     public JdbcChangeEventSink(JdbcSinkConnectorConfig config, StatelessSession session, DatabaseDialect dialect, RecordWriter recordWriter,
                                ConnectorContext connectorContext, SinkProgressListener progressListener) {
         super(config);
@@ -83,9 +86,6 @@ public class JdbcChangeEventSink extends AbstractChangeEventSink implements Chan
             }
             return;
         }
-
-        final Map<CollectionId, Buffer> upsertBufferByTable = new LinkedHashMap<>();
-        final Map<CollectionId, Buffer> deleteBufferByTable = new LinkedHashMap<>();
 
         for (SinkRecord kafkaSinkRecord : records) {
             JdbcSinkRecord record = new JdbcKafkaSinkRecord(kafkaSinkRecord, config);
@@ -119,7 +119,6 @@ public class JdbcChangeEventSink extends AbstractChangeEventSink implements Chan
                 try {
                     final TableDescriptor table = recordWriter.checkAndApplyTableChangesIfNeeded(collectionId, record);
                     recordWriter.writeTruncate(table.getId());
-                    progressListener.truncated();
                     continue;
                 }
                 catch (SQLException | JDBCException e) {
@@ -147,7 +146,6 @@ public class JdbcChangeEventSink extends AbstractChangeEventSink implements Chan
                 }
 
                 flushBufferRecordsWithRetries(collectionId, getRecordsToFlush(deleteBufferByTable, collectionId, record));
-                progressListener.deleted();
             }
             else {
                 final Buffer deleteBufferToFlush = deleteBufferByTable.get(collectionId);
@@ -163,20 +161,11 @@ public class JdbcChangeEventSink extends AbstractChangeEventSink implements Chan
                 }
 
                 flushBufferRecordsWithRetries(collectionId, getRecordsToFlush(upsertBufferByTable, collectionId, record));
-                recordWriteOperation();
             }
         }
 
         flushBuffers(upsertBufferByTable);
         flushBuffers(deleteBufferByTable);
-    }
-
-    private void recordWriteOperation() {
-        switch (config.getInsertMode()) {
-            case INSERT -> progressListener.inserted();
-            case UPDATE -> progressListener.updated();
-            case UPSERT -> progressListener.upserted();
-        }
     }
 
     private BufferFlushRecords getRecordsToFlush(Map<CollectionId, Buffer> bufferMap, CollectionId collectionId, JdbcSinkRecord record) {
@@ -306,10 +295,18 @@ public class JdbcChangeEventSink extends AbstractChangeEventSink implements Chan
     }
 
     @Override
-    public void close() {
+    public void forceFlush() {
         if (config.isSharedChangeEventSinkEnabled()) {
-            flush();
+            super.forceFlush();
         }
+        else {
+            flushBuffers(upsertBufferByTable);
+            flushBuffers(deleteBufferByTable);
+        }
+    }
+
+    @Override
+    public void close() {
         if (session != null && session.isOpen()) {
             LOGGER.info("Closing session.");
             session.close();

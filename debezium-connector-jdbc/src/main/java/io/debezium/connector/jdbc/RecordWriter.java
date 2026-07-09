@@ -72,6 +72,6 @@ public interface RecordWriter {
      * @param statement The SQL statement
      * @param isBatchStatement Whether the statement is a batch statement
      */
-    record SqlStatementInfo(String statement, boolean isBatchStatement) {
+    record SqlStatementInfo(String statement, boolean isBatchStatement, boolean isDelete) {
     }
 }

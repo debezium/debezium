@@ -94,6 +94,10 @@ public class DefaultRecordWriter implements RecordWriter {
         return dialect;
     }
 
+    protected SinkProgressListener progressListener() {
+        return progressListener;
+    }
+
     /**
      * Bind key field values to the query for a single record.
      */
@@ -157,7 +161,7 @@ public class DefaultRecordWriter implements RecordWriter {
             transaction.rollback();
             throw e;
         }
-        progressListener.tableCreated();
+        progressListener().tableCreated();
 
         return readTable(collectionId);
     }
@@ -212,7 +216,7 @@ public class DefaultRecordWriter implements RecordWriter {
             transaction.rollback();
             throw e;
         }
-        progressListener.tableAltered();
+        progressListener().tableAltered();
 
         return readTable(collectionId);
     }
@@ -372,6 +376,7 @@ public class DefaultRecordWriter implements RecordWriter {
         try {
             getSession().doWork(processBatch(statementInfo, records));
             transaction.commit();
+            processMetrics(records, statementInfo);
         }
         catch (Exception e) {
             transaction.rollback();
@@ -379,6 +384,19 @@ public class DefaultRecordWriter implements RecordWriter {
         }
         writeStopwatch.stop();
         LOGGER.trace("[PERF] Total write execution time {}", writeStopwatch.durations());
+    }
+
+    protected void processMetrics(List<JdbcSinkRecord> records, SqlStatementInfo statementInfo) {
+        if (statementInfo.isDelete()) {
+            progressListener().deleted(records.size());
+        }
+        else {
+            switch (getConfig().getInsertMode()) {
+                case INSERT -> progressListener().inserted(records.size());
+                case UPDATE -> progressListener().updated(records.size());
+                case UPSERT -> progressListener().upserted(records.size());
+            }
+        }
     }
 
     public void writeTruncate(CollectionId collectionId) throws SQLException {
@@ -390,6 +408,7 @@ public class DefaultRecordWriter implements RecordWriter {
 
             query.executeUpdate();
             transaction.commit();
+            progressListener().truncated();
         }
         catch (Exception e) {
             transaction.rollback();
@@ -408,7 +427,6 @@ public class DefaultRecordWriter implements RecordWriter {
             Stopwatch allbindStopwatch = Stopwatch.reusable();
             allbindStopwatch.start();
             for (JdbcSinkRecord record : records) {
-
                 Stopwatch singlebindStopwatch = Stopwatch.reusable();
                 singlebindStopwatch.start();
                 bindValues(record, queryBinder);
@@ -472,15 +490,15 @@ public class DefaultRecordWriter implements RecordWriter {
         JdbcSinkRecord firstRecord = records.get(0);
 
         if (!firstRecord.isDelete()) {
-            switch (config.getInsertMode()) {
+            switch (getConfig().getInsertMode()) {
                 case INSERT:
                     // Try batch insert first (e.g., UNNEST for PostgreSQL)
                     Optional<String> batchInsert = dialect.getBatchInsertStatement(table, records);
                     if (batchInsert.isPresent()) {
                         LOGGER.debug("Using batch INSERT statement with {} records", records.size());
-                        return new SqlStatementInfo(batchInsert.get(), true);
+                        return new SqlStatementInfo(batchInsert.get(), true, false);
                     }
-                    return new SqlStatementInfo(dialect.getInsertStatement(table, firstRecord), false);
+                    return new SqlStatementInfo(dialect.getInsertStatement(table, firstRecord), false, false);
 
                 case UPSERT:
                     if (firstRecord.keyFieldNames().isEmpty()) {
@@ -490,18 +508,18 @@ public class DefaultRecordWriter implements RecordWriter {
                     Optional<String> batchUpsert = dialect.getBatchUpsertStatement(table, records);
                     if (batchUpsert.isPresent()) {
                         LOGGER.debug("Using batch UPSERT statement with {} records", records.size());
-                        return new SqlStatementInfo(batchUpsert.get(), true);
+                        return new SqlStatementInfo(batchUpsert.get(), true, false);
                     }
-                    return new SqlStatementInfo(dialect.getUpsertStatement(table, firstRecord), false);
+                    return new SqlStatementInfo(dialect.getUpsertStatement(table, firstRecord), false, false);
 
                 case UPDATE:
                     // UPDATE doesn't have batch optimization yet
-                    return new SqlStatementInfo(dialect.getUpdateStatement(table, firstRecord), false);
+                    return new SqlStatementInfo(dialect.getUpdateStatement(table, firstRecord), false, false);
             }
         }
         else {
             // DELETE doesn't have batch optimization yet
-            return new SqlStatementInfo(dialect.getDeleteStatement(table, firstRecord), false);
+            return new SqlStatementInfo(dialect.getDeleteStatement(table, firstRecord), false, false);
         }
         throw new DataException(String.format("Unable to get SQL statement for %s", firstRecord));
     }

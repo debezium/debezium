@@ -7,6 +7,8 @@ package io.debezium.connector.jdbc;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -42,21 +44,18 @@ class JdbcChangeEventSinkTest {
     @EnumSource(InsertMode.class)
     void shouldReportWriteOperationUsingConfiguredInsertMode(InsertMode insertMode) throws Exception {
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(Map.of(
-                JdbcSinkConnectorConfig.BATCH_SIZE, "1",
                 JdbcSinkConnectorConfig.INSERT_MODE, insertMode.getValue()));
         final CollectionId collectionId = new CollectionId(null, null, "database_schema_table");
         final TableDescriptor table = TableDescriptor.builder()
                 .tableName("database_schema_table")
                 .build();
         final DatabaseDialect dialect = mock(DatabaseDialect.class);
-        final DatabaseVersion databaseVersion = mock(DatabaseVersion.class);
-        final RecordWriter recordWriter = mock(RecordWriter.class);
+        final DatabaseVersion databaseVersion = DatabaseVersion.make(1);
+        final StatelessSession session = mock(StatelessSession.class);
         final SinkProgressListener progressListener = mock(SinkProgressListener.class);
+        final DefaultRecordWriter recordWriter = mock(DefaultRecordWriter.class);
         final ConnectorContext connectorContext = new ConnectorContext("jdbc-sink", "jdbc", "0", "test", UUID.randomUUID(), Map.of());
 
-        when(databaseVersion.getMajor()).thenReturn(1);
-        when(databaseVersion.getMinor()).thenReturn(0);
-        when(databaseVersion.getMicro()).thenReturn(0);
         when(dialect.getVersion()).thenReturn(databaseVersion);
         when(dialect.getCollectionId("database_schema_table")).thenReturn(collectionId);
         when(dialect.resolveMissingFields(any(), any())).thenReturn(Set.of());
@@ -65,18 +64,28 @@ class JdbcChangeEventSinkTest {
             final Callable<?> callable = invocation.getArgument(1);
             return callable.call();
         });
+        when(recordWriter.getConfig()).thenReturn(config);
+        when(recordWriter.progressListener()).thenReturn(progressListener);
+        doCallRealMethod().when(recordWriter).processMetrics(any(), any(RecordWriter.SqlStatementInfo.class));
 
-        final JdbcChangeEventSink sink = new JdbcChangeEventSink(config, mock(StatelessSession.class), dialect, recordWriter, connectorContext, progressListener);
+        doAnswer(invocation -> {
+            List<JdbcSinkRecord> records = invocation.getArgument(1);
+            recordWriter.processMetrics(records, new RecordWriter.SqlStatementInfo("UPDATE;", true, false));
+            return null;
+        }).when(recordWriter).write(any(TableDescriptor.class), any());
+
+        final JdbcChangeEventSink sink = new JdbcChangeEventSink(config, session, dialect, recordWriter, connectorContext, progressListener);
         sink.execute(List.of(RECORD_FACTORY.createRecord("database.schema.table", config).getOriginalKafkaRecord()));
+        sink.forceFlush();
 
         verifyWriteOperationReported(insertMode, progressListener);
     }
 
     private static void verifyWriteOperationReported(InsertMode insertMode, SinkProgressListener progressListener) {
         switch (insertMode) {
-            case INSERT -> verify(progressListener).inserted();
-            case UPDATE -> verify(progressListener).updated();
-            case UPSERT -> verify(progressListener).upserted();
+            case INSERT -> verify(progressListener).inserted(1);
+            case UPDATE -> verify(progressListener).updated(1);
+            case UPSERT -> verify(progressListener).upserted(1);
         }
         verifyNoMoreInteractions(progressListener);
     }
