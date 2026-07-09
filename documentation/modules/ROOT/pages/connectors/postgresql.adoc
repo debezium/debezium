@@ -2431,7 +2431,7 @@ Familiarity with the mechanics and link:https://www.postgresql.org/docs/current/
 
 // Type: concept
 [id="postgresql-automatic-replication-slot-creation"]
-===== Automatic replication slot creation
+==== Automatic replication slot creation
 
 By default, when the {prodname} PostgreSQL connector starts, if the configured replication slot does not exist, the connector creates it automatically.
 For automatic slot creation to succeed, the following prerequisites must be met:
