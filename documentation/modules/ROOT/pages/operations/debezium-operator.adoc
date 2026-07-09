@@ -1547,7 +1547,7 @@ spec:
     metrics:
       jmxExporter:
         enabled: true
-      openTelemetr5y:
+      openTelemetry:
         enabled: true
         collector:
           endpoint: http://otel-collector:4318
