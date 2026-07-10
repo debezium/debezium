@@ -19,7 +19,7 @@ public interface Buffer {
 
     /**
      * Add a {@link DebeziumSinkRecord} to the internal buffer.
-     * @param record the Sink record descriptor
+     * @param record the sink record
      */
     void enqueue(CollectionId collectionId, DebeziumSinkRecord record);
 
@@ -30,6 +30,14 @@ public interface Buffer {
      */
     int size();
 
+    /**
+     * Records a truncate event in the buffer.
+     *
+     * TODO: truncate specific code should eventually be moved into #enqueue()
+     *
+     * @param collectionId the collection id
+     * @param record the truncate record
+     */
     void truncate(CollectionId collectionId, DebeziumSinkRecord record);
 
     /**

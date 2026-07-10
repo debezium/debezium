@@ -498,12 +498,12 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
 
     @Override
     public PrimaryKeyMode getPrimaryKeyMode() {
-        return this.primaryKeyMode;
+        return primaryKeyMode;
     }
 
     @Override
     public Set<String> getPrimaryKeyFields() {
-        return this.primaryKeyFields;
+        return primaryKeyFields;
     }
 
     public SchemaEvolutionMode getSchemaEvolutionMode() {
@@ -539,7 +539,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
 
     @Override
     public FieldNameFilter fieldFilter() {
-        return this.fieldsFilter;
+        return fieldsFilter;
     }
 
     public ColumnNamingStrategy getColumnNamingStrategy() {
