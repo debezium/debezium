@@ -517,7 +517,15 @@ public class TestHelper {
      */
     public static void streamTable(OracleConnection connection, String table) throws SQLException {
         connection.execute(String.format("GRANT SELECT ON %s TO %s", table, getConnectorUserName()));
-        connection.execute(String.format("ALTER TABLE %s ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS", table));
+        try {
+            connection.execute(String.format("ALTER TABLE %s ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS", table));
+        }
+        catch (SQLException e) {
+            // Supplemental logging already exists, we can ignore
+            if (e.getErrorCode() != 32588) {
+                throw e;
+            }
+        }
     }
 
     /**
