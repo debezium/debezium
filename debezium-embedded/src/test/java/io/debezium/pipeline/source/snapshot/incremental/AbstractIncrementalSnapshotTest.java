@@ -616,6 +616,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         // round trip to the database
         populateTable();
         startConnector(additionalConfiguration());
+        waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task());
 
         // Send ad-hoc start incremental snapshot signal and wait for incremental snapshots to start
         sendAdHocSnapshotSignalAndWait();
