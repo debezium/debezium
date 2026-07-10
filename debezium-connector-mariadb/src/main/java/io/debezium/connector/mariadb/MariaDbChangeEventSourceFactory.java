@@ -13,6 +13,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import com.github.shyiko.mysql.binlog.BinaryLogClient;
 
 import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.connector.binlog.BinlogSignalBasedIncrementalSnapshotChangeEventSource;
 import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
 import io.debezium.connector.mariadb.metrics.MariaDbSnapshotChangeEventSourceMetrics;
 import io.debezium.connector.mariadb.metrics.MariaDbStreamingChangeEventSourceMetrics;
@@ -22,7 +23,6 @@ import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
-import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.ChangeEventSourceFactory;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
@@ -138,7 +138,7 @@ public class MariaDbChangeEventSourceFactory implements ChangeEventSourceFactory
             return Optional.empty();
         }
 
-        return Optional.of(new SignalBasedIncrementalSnapshotChangeEventSource<>(
+        return Optional.of(new BinlogSignalBasedIncrementalSnapshotChangeEventSource<>(
                 configuration,
                 connectionFactory.mainConnection(),
                 dispatcher,
