@@ -59,13 +59,13 @@ The API was introduced in Ingres 12.1, and is available in all subsequent versio
 
 The database administrator must enable journaling on the Ingres database to capture changes. 
 
-To enables CDC on the database, you must have `DB_ADMIN` privileges or be the database or instance owner. 
+To enable CDC on the database, you must have `DB_ADMIN` privileges or be the database or instance owner. 
 For more information about how to configure CDC on Ingres, see link:https://docs.actian.com/actianingres/12.1/index.html#page/DatabaseAdmin/Prerequisites_for_Server_Configuration.htm[Prerequisites for server configuration].
 
 {prodname} connectors are tolerant of failures.
 As the connector reads and produces change events, it records the log header record from the change stream.
 The header record is the position of the change event in the database log.
-If the connector stops for any reason, including communication failures, network problems, or crash, upon restarting it continues reading the change stream where it left off.
+If the connector stops for any reason, including communication failures, network problems, or crashes, after restarting it continues reading the change stream where it left off.
 For snapshots, if a snapshot was not complete when the connector stopped or restarted, the connector begins a new snapshot.
 
 [[how-the-ingres-connector-works]]
@@ -102,12 +102,12 @@ If you configure a different snapshot mode, the connector completes the snapshot
 
 4. Generate a single transaction on a generated database table.
   Ingres does not support querying the latest transaction record position.
-  Therefore the Debezium connector creates a table in the database, inserts one row then drops the table to generate a "latest" log record that is captured and stored. 
+  Therefore the {prodname} connector creates a table in the database, inserts one row then drops the table to generate a "latest" log record that is captured and stored. 
   This is the log position where data streaming will start from after the snapshot is complete. 
 
 5. Capture the schema of all tables or all tables that are designated for capture.
   The connector persists schema information in its internal database schema history topic.
-  The schema history provides information about the structure that is in effect when a change event occurs. +
+  The schema history provides information about the structure that is in effect when a change event occurs. 
 +
 [NOTE]
 ====
@@ -118,9 +118,8 @@ For more information about why snapshots persist schema information for tables t
 ====
 
 6. Release any locks obtained in Step 3.
-  Other database clients can now write to any previously locked tables.+
+  Other database clients can now write to any previously locked tables.
 +
-
 [CAUTION]
 ====
 The current version of the Ingres connector does not implement table locking.
@@ -142,7 +141,7 @@ If the connector runs a snapshot on a table while other client operations are ac
 
 .. Releases data table locks, if applicable.
 
-8. Record the successful completion of the snapshot in the connector offsets.
+8. Records the successful completion of the snapshot in the connector offsets.
 
 The resulting initial snapshot captures the current state of each row in the captured tables.
 From this baseline state, the connector captures subsequent changes as they occur.
@@ -240,14 +239,14 @@ semantic type:: Describes how the Kafka Connect schema captures the meaning of t
 
 |`DATE`
 |`INT32`
-|`io.debezium.time.Date` +
- +
+|`io.debezium.time.Date` 
+ 
 A date without timezone information
 
 |`DATETIME`
 |`INT64`
-|`io.debezium.time.Timestamp` +
- +
+|`io.debezium.time.Timestamp` 
+ 
 A timestamp without timezone information
 
 |`DECIMAL`
@@ -354,7 +353,7 @@ To prepare an Ingres database to work with {prodname}, ensure that the user acco
 === Setting up permissions
 
 Users connecting to the server to utilize CDC must have `DB_ADMIN` privileges or be the database or instance owner.
-See link:https://docs.actian.com/actianingres/12.1/index.html#page/DatabaseAdmin/Prerequisites_for_Server_Configuration.htm[Prerequisites for server configuration] for more information about setting up for CDC with Ingres.
+For more information about setting up for CDC with Ingres, see link:https://docs.actian.com/actianingres/12.1/index.html#page/DatabaseAdmin/Prerequisites_for_Server_Configuration.htm[Prerequisites for server configuration].
 
 
 [[ingres-journaling]]
@@ -449,7 +448,7 @@ Specifies the name of the database to capture changes from.
 
 `topic.prefix`::
 Specifies the logical name of the Ingres instance or cluster.
-This name forms a namespace that is used in the names of all Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the {link-prefix}:{link-avro-serialization}[Avro Connector] is used.
+This name forms a namespace that is used in the names of all Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the {link-prefix}:{link-avro-serialization}#avro-serialization[Avro Connector] is used.
 
 `table.include.list`::
 Specifies a list of all tables whose changes {prodname} should capture.
@@ -1123,6 +1122,7 @@ By default, the following channels are available:
 * `jmx`
 
 Optionally, you can also implement a {link-prefix}:{link-notification}#debezium-notification-custom-channel[custom notification channel].
+
 |[[ingres-property-incremental-snapshot-chunk-size]]<<ingres-property-incremental-snapshot-chunk-size, `+incremental.snapshot.chunk.size+`>>
 |`1024`
 |The maximum number of rows that the connector fetches and reads into memory during an incremental snapshot chunk.
@@ -1162,19 +1162,20 @@ The resulting topic name has the following pattern:
 
 `_topic.heartbeat.prefix_._topic.prefix_`
 
-For example, if the topic prefix is `fulfillment`, based on the default value of the prefix, the connector assigns the following name to the heartbeat topic : `__debezium-heartbeat.fulfillment`. +
- +
+For example, if the topic prefix is `fulfillment`, based on the default value of the prefix, the connector assigns the following name to the heartbeat topic : `__debezium-heartbeat.fulfillment`. 
+
 This property is ignored if `topic.heartbeat.name` is set.
 
 |[[ingres-property-topic-heartbeat-name]]<<ingres-property-topic-heartbeat-name, `+topic.heartbeat.name+`>>
 |_empty_
-|Specifies an explicit, full name for the topic to which the connector sends heartbeat messages, overriding the prefix-based naming derived from `topic.heartbeat.prefix` and `topic.prefix`. +
- +
-When set, all heartbeat messages are routed to this exact topic name, regardless of the connector's `topic.prefix`. +
-This is useful when running multiple connectors and you want to consolidate heartbeat events into a single shared topic, avoiding the creation of a large number of single-partition heartbeat topics. +
- +
-For example, setting this to `debezium-heartbeat` routes all heartbeat messages to a topic named `debezium-heartbeat`. +
- +
+|Specifies an explicit, full name for the topic to which the connector sends heartbeat messages, overriding the prefix-based naming derived from `topic.heartbeat.prefix` and `topic.prefix`. 
+
+When set, all heartbeat messages are routed to this exact topic name, regardless of the connector's `topic.prefix`.
+
+This is useful when running multiple connectors and you want to consolidate heartbeat events into a single shared topic, avoiding the creation of a large number of single-partition heartbeat topics. 
+
+For example, setting this to `debezium-heartbeat` routes all heartbeat messages to a topic named `debezium-heartbeat`. 
+
 If this property is empty or unset, the connector falls back to the default behavior: _topic.heartbeat.prefix_._topic.prefix_.
 
 |[[ingres-property-topic-transaction]]<<ingres-property-topic-transaction, `topic.transaction`>>
