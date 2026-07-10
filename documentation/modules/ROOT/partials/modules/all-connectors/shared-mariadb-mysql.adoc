@@ -1806,7 +1806,7 @@ a|`io.debezium.data.Bits` +
 The `length` schema parameter contains an integer that represents the number of bits. The `byte[]` contains the bits in _little-endian_ form and is sized to contain the specified number of bits. For example, where `n` is bits: +
 `numBytes = n/8 + (n%8== 0 ? 0 : 1)`
 
-|`TINYINT`
+|`TINYINT[(M)]`
 |`INT16`
 a|_n/a_
 
@@ -1818,7 +1818,7 @@ a|_n/a_
 |`INT32`
 a|_n/a_
 
-|`INT, INTEGER[(M)]`
+|`INT[(M)], INTEGER[(M)]`
 |`INT32`
 a|_n/a_
 
@@ -1872,7 +1872,7 @@ Either the raw bytes (the default), a base64-encoded String, or a base64-url-saf
 |`STRING`
 a|_n/a_
 
-|`BLOB`
+|`BLOB[(M)]`
 |`BYTES` or `STRING`
 a|_n/a_ +
  +
@@ -1880,7 +1880,7 @@ Either the raw bytes (the default), a base64-encoded String, or a base64-url-saf
  +
 Only values with a size of up to 2GB are supported. It is recommended to externalize large column values, using the claim check pattern.
 
-|`TEXT`
+|`TEXT[(M)]`
 |`STRING`
 a|_n/a_ +
  +
@@ -1928,16 +1928,16 @@ a|`io.debezium.data.EnumSet` +
  +
 The `allowed` schema parameter contains the comma-separated list of allowed values.
 
-|`YEAR[(2\|4)]`
+|`YEAR[(4)]`
 |`INT32`
 |`io.debezium.time.Year`
 
-|`TIMESTAMP[(M)]`
+|`TIMESTAMP[(fsp)]`
 |`STRING`
 a|`io.debezium.time.ZonedTimestamp` +
  +
 In link:https://www.iso.org/iso-8601-date-and-time-format.html[ISO 8601] format with microsecond precision.
-{connector-name} allows `M` to be in the range of `0-6`.
+{connector-name} allows the fractional seconds precision `fsp` to be in the range of `0-6`.
 
 |===
 end::basic-data-types[]
@@ -1984,11 +1984,11 @@ The {connector-name} connector determines the literal type and semantic type bas
 a|`io.debezium.time.Date` +
 Represents the number of days since the epoch.
 
-|`TIME[(M)]`
+|`TIME[(fsp)]`
 |`INT64`
 a|`io.debezium.time.MicroTime` +
 Represents the time value in microseconds and does not include time zone information.
-{connector-name} allows `M` to be in the range of `0-6`.
+{connector-name} allows the fractional seconds precision `fsp` to be in the range of `0-6`.
 
 |`DATETIME, DATETIME(0), DATETIME(1), DATETIME(2), DATETIME(3)`
 |`INT64`
@@ -2019,12 +2019,12 @@ The `connect` setting is expected to be removed in a future version of {prodname
 a|`org.apache.kafka.connect.data.Date` +
 Represents the number of days since the epoch.
 
-|`TIME[(M)]`
+|`TIME[(fsp)]`
 |`INT64`
 a|`org.apache.kafka.connect.data.Time` +
 Represents the time value in microseconds since midnight and does not include time zone information.
 
-|`DATETIME[(M)]`
+|`DATETIME[(fsp)]`
 |`INT64`
 a|`org.apache.kafka.connect.data.Timestamp` +
 Represents the number of milliseconds since the epoch, and does not include time zone information.
@@ -2046,13 +2046,13 @@ a|`io.debezium.time.IsoDate`
 
 Represents the date value in UTC format, according to the ISO 8601 standard, for example, `2017-09-15Z`.
 
-|`TIME[(M)]`
+|`TIME[(fsp)]`
 |`STRING`
 a|`io.debezium.time.IsoTime`
 
 Represents the time value in UTC format, according to the ISO 8601 standard, for example, `04:05:11.789Z`.
 
-|`DATETIME[(M)]`
+|`DATETIME[(fsp)]`
 |`STRING`
 a|`io.debezium.time.IsoTimestamp`
 
