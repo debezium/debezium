@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Extractor helper that fetches the first entries from the @see LinkedHashMap inside a @see io.debezium.sink.batch.Buffer .x
+ * Extractor helper that fetches the first entries from the @see LinkedHashMap inside a @see io.debezium.sink.batch.Buffer .
  */
 public class BufferExtractor {
 

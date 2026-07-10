@@ -7,6 +7,7 @@ package io.debezium.connector.jdbc.integration.mysql;
 
 import static org.junit.jupiter.api.Assertions.fail;
 
+import java.sql.BatchUpdateException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -16,6 +17,7 @@ import java.util.Collections;
 import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -105,9 +107,9 @@ public class JdbcSinkRetryIT extends AbstractJdbcSinkTest {
             fail();
         }
         catch (Exception e) {
-            assertExceptionCauseMessage(e,
+            assertExceptionCausedBy(e, ConnectException.class,
                     "Exceeded max retries [0-9]* times, failed to flush records for table.*'" + tableName + "'");
-            assertExceptionCauseMessage(e, "Lock wait timeout exceeded; try restarting transaction");
+            assertExceptionCausedBy(e, BatchUpdateException.class, "Lock wait timeout exceeded; try restarting transaction");
         }
         finally {
             connection.close();

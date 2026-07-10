@@ -29,7 +29,18 @@ public interface ChangeEventSink extends AutoCloseable {
      */
     List<Batch> put(Collection<SinkRecord> records);
 
+    /**
+     * Returns the CollectionId instance for the given collection name.
+     *
+     * @param collectionName the collection name
+     * @return the collection id
+     */
     CollectionId getCollectionId(String collectionName);
 
+    /**
+     * Polls all remaining {@link io.debezium.sink.DebeziumSinkRecord}s from the buffer as {@link Batch}.
+     *
+     * @return a list of {@link Batch}es of {@link io.debezium.sink.DebeziumSinkRecord}
+     */
     List<Batch> forcePoll();
 }

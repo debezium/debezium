@@ -74,6 +74,17 @@ public abstract class AbstractBaseJdbcSinkTest {
         assertThat(cause).as("No exception in cause chain matches pattern: " + messagePattern).isNotNull();
     }
 
+    protected void assertExceptionCausedBy(Throwable t, Class<? extends Throwable> causedBy, String messagePattern) {
+        Throwable cause = t;
+        while (cause != null) {
+            if (cause.getMessage() != null && cause.getMessage().matches(messagePattern) && cause.getClass() == causedBy) {
+                return;
+            }
+            cause = cause.getCause();
+        }
+        assertThat(cause).as("No exception in cause chain matches pattern: " + messagePattern).isNotNull();
+    }
+
     protected void assertNoExceptionCauseMessage(Throwable t, String substring) {
         Throwable cause = t;
         while (cause != null) {
