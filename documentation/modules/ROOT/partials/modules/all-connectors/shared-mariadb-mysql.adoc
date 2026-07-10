@@ -1827,8 +1827,10 @@ a|_n/a_
 a|_n/a_
 
 |`REAL[(M,D)]`
-|`FLOAT32`
+|`FLOAT64`
 a|_n/a_
+
+By default, `REAL` is a synonym for `DOUBLE`: the server stores and replicates such columns as 8-byte double-precision values. Only when the `REAL_AS_FLOAT` SQL mode is enabled is `REAL` a synonym for `FLOAT` instead.
 
 |`FLOAT[(P)]`
 |`FLOAT32` or `FLOAT64`
