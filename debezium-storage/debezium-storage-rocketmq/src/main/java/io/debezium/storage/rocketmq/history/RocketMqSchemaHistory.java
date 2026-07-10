@@ -44,6 +44,7 @@ import io.debezium.relational.history.SchemaHistoryListener;
 import io.debezium.storage.rocketmq.RocketMqAdminUtil;
 import io.debezium.storage.rocketmq.RocketMqConfig;
 import io.debezium.storage.rocketmq.ZeroMessageQueueSelector;
+import io.debezium.util.Loggings;
 
 @NotThreadSafe
 public class RocketMqSchemaHistory extends AbstractSchemaHistory {
@@ -252,16 +253,37 @@ public class RocketMqSchemaHistory extends AbstractSchemaHistory {
 
                 for (MessageExt message : recoveredRecords) {
                     if (message.getQueueOffset() > lastProcessedOffset) {
-                        HistoryRecord recordObj = new HistoryRecord(reader.read(message.getBody()));
-                        LOGGER.trace("Recovering database history: {}", recordObj);
-                        if (recordObj == null || !recordObj.isValid()) {
-                            LOGGER.warn("Skipping invalid database history record '{}'. " +
-                                    "This is often not an issue, but if it happens repeatedly please check the '{}' topic.",
-                                    recordObj, topicName);
+                        try {
+                            if (message.getBody() == null) {
+                                LOGGER.warn("Skipping null database history record. " +
+                                        "This is often not an issue, but if it happens repeatedly please check the '{}' topic.",
+                                        topicName);
+                            }
+                            else {
+                                HistoryRecord recordObj = new HistoryRecord(reader.read(message.getBody()));
+                                LOGGER.trace("Recovering database history: {}", recordObj);
+                                if (!recordObj.isValid()) {
+                                    LOGGER.warn("Skipping invalid database history record '{}'. " +
+                                            "This is often not an issue, but if it happens repeatedly please check the '{}' topic.",
+                                            recordObj, topicName);
+                                }
+                                else {
+                                    records.accept(recordObj);
+                                    LOGGER.trace("Recovered database history: {}", recordObj);
+                                }
+                            }
                         }
-                        else {
-                            records.accept(recordObj);
-                            LOGGER.trace("Recovered database history: {}", recordObj);
+                        catch (IOException e) {
+                            Loggings.logErrorAndTraceRecord(
+                                    LOGGER,
+                                    message,
+                                    "Error while deserializing database history record, skipping it. " +
+                                            "If this happens repeatedly please check the '%s' topic.".formatted(topicName),
+                                    e);
+                        }
+                        catch (Exception e) {
+                            Loggings.logErrorAndTraceRecord(LOGGER, message, "Unexpected exception while processing record", e);
+                            throw e;
                         }
                         lastProcessedOffset = message.getQueueOffset();
                         ++numRecordsProcessed;
@@ -273,13 +295,18 @@ public class RocketMqSchemaHistory extends AbstractSchemaHistory {
                 }
                 else {
                     LOGGER.debug("Processed {} records from database schema history", numRecordsProcessed);
+                    recoveryAttempts = 0;
                 }
 
             } while (lastProcessedOffset < maxOffset - 1);
 
         }
-        catch (MQClientException | MQBrokerException | IOException | RemotingException | InterruptedException ce) {
-            throw new SchemaHistoryException(ce);
+        catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new SchemaHistoryException(e);
+        }
+        catch (MQClientException | MQBrokerException | RemotingException e) {
+            throw new SchemaHistoryException(e);
         }
         finally {
             if (consumer != null) {
