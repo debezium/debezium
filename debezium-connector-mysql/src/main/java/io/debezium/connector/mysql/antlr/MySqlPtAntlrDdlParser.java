@@ -163,7 +163,10 @@ public class MySqlPtAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParse
                         .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
                 new DataTypeEntry(Types.BIGINT, MySqlParser.INT8)
                         .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
-                new DataTypeEntry(Types.REAL, MySqlParser.REAL)
+                // REAL is by default a synonym for DOUBLE: the server stores and replicates such columns
+                // as 8-byte doubles. Only when the REAL_AS_FLOAT sql_mode is enabled is REAL a synonym
+                // for FLOAT instead (debezium/dbz#2217)
+                new DataTypeEntry(Types.DOUBLE, MySqlParser.REAL)
                         .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
                 new DataTypeEntry(Types.DOUBLE, MySqlParser.DOUBLE)
                         .setSuffixTokens(MySqlParser.PRECISION, MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
