@@ -147,6 +147,9 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                 default:
                     // call super.shouldMessageBeSkipped for rest of the types
             }
+            if (type == MessageType.LOGICAL_DECODING_MESSAGE && walPosition.skipProcessedLogicalMessage(lastReceivedLsn)) {
+                return true;
+            }
             final boolean candidateForSkipping = super.shouldMessageBeSkipped(buffer, lastReceivedLsn, startLsn, walPosition);
             switch (type) {
                 case COMMIT:
