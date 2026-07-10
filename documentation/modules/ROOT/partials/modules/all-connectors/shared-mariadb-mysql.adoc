@@ -1842,21 +1842,21 @@ include::{snippetsdir}/frag-{context}-props-snippets.adoc[leveloffset=+1,tags=ba
 |`FLOAT64`
 a|_n/a_
 
-|`CHAR(M)]`
+|`CHAR[(M)]`
 |`STRING`
 a|_n/a_
 
-|`VARCHAR(M)]`
+|`VARCHAR(M)`
 |`STRING`
 a|_n/a_
 
-|`BINARY(M)]`
+|`BINARY[(M)]`
 |`BYTES` or `STRING`
 a|_n/a_
 
 Either the raw bytes (the default), a base64-encoded String, or a base64-url-safe-encoded String, or a hex-encoded String, based on the xref:{context}-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting.
 
-|`VARBINARY(M)]`
+|`VARBINARY(M)`
 |`BYTES` or `STRING`
 a|_n/a_
 
