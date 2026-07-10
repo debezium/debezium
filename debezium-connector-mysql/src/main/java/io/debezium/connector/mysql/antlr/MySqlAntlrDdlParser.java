@@ -190,7 +190,10 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
                 new DataTypeEntry(Types.BIGINT, MySqlParser.BIGINT_SYMBOL)
                         .setSuffixTokens(MySqlParser.SIGNED_SYMBOL, MySqlParser.UNSIGNED_SYMBOL, MySqlParser.ZEROFILL_SYMBOL),
                 // Floating point types
-                new DataTypeEntry(Types.REAL, MySqlParser.REAL_SYMBOL)
+                // REAL is by default a synonym for DOUBLE: the server stores and replicates such columns
+                // as 8-byte doubles. Only when the REAL_AS_FLOAT sql_mode is enabled is REAL a synonym
+                // for FLOAT instead (debezium/dbz#2217)
+                new DataTypeEntry(Types.DOUBLE, MySqlParser.REAL_SYMBOL)
                         .setSuffixTokens(MySqlParser.SIGNED_SYMBOL, MySqlParser.UNSIGNED_SYMBOL, MySqlParser.ZEROFILL_SYMBOL),
                 new DataTypeEntry(Types.DOUBLE, MySqlParser.DOUBLE_SYMBOL)
                         .setSuffixTokens(MySqlParser.PRECISION_SYMBOL, MySqlParser.SIGNED_SYMBOL, MySqlParser.UNSIGNED_SYMBOL, MySqlParser.ZEROFILL_SYMBOL),

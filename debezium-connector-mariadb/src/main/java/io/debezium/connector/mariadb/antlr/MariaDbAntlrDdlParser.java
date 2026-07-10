@@ -163,7 +163,10 @@ public class MariaDbAntlrDdlParser extends AntlrDdlParser<MariaDBLexer, MariaDBP
                         .setSuffixTokens(MariaDBParser.SIGNED, MariaDBParser.UNSIGNED, MariaDBParser.ZEROFILL),
                 new DataTypeResolver.DataTypeEntry(Types.BIGINT, MariaDBParser.INT8)
                         .setSuffixTokens(MariaDBParser.SIGNED, MariaDBParser.UNSIGNED, MariaDBParser.ZEROFILL),
-                new DataTypeResolver.DataTypeEntry(Types.REAL, MariaDBParser.REAL)
+                // REAL is by default a synonym for DOUBLE: the server stores and replicates such columns
+                // as 8-byte doubles. Only when the REAL_AS_FLOAT sql_mode is enabled is REAL a synonym
+                // for FLOAT instead (debezium/dbz#2217)
+                new DataTypeResolver.DataTypeEntry(Types.DOUBLE, MariaDBParser.REAL)
                         .setSuffixTokens(MariaDBParser.SIGNED, MariaDBParser.UNSIGNED, MariaDBParser.ZEROFILL),
                 new DataTypeResolver.DataTypeEntry(Types.DOUBLE, MariaDBParser.DOUBLE)
                         .setSuffixTokens(MariaDBParser.PRECISION, MariaDBParser.SIGNED, MariaDBParser.UNSIGNED, MariaDBParser.ZEROFILL),
