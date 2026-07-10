@@ -213,6 +213,21 @@ public class ConfigurationTest {
         assertThat(config.getString("column.password")).isEqualTo("warning");
     }
 
+    @Test
+    @FixFor("debezium/dbz#27")
+    public void shouldMaskConnectionString() {
+        config = Configuration.create()
+                .with("eventhubs.connectionstring",
+                        "Endpoint=sb://eh-namespace.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123secret")
+                .with("mongodb.connection.string", "mongodb://user:secretpass@host:27017/")
+                .build();
+        assertThat(config.withMaskedPasswords().getString("eventhubs.connectionstring")).isEqualTo("********");
+        assertThat(config.withMaskedPasswords().getString("mongodb.connection.string")).isEqualTo("********");
+        assertThat(config.withMaskedPasswords().toString().contains("SharedAccessKey")).isFalse();
+        assertThat(config.withMaskedPasswords().toString().contains("secretpass")).isFalse();
+        assertThat(config.getString("eventhubs.connectionstring")).contains("SharedAccessKey=abc123secret");
+    }
+
     /**
      * On Amazon RDS we'll see INSERT (sic!) statements for a heartbeat table in the DDL even stream, they should
      * be filtered out by default (the reason being that those statements are sent using STATEMENT binlog format,
