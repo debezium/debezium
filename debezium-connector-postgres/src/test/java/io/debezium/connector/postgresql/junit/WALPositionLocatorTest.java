@@ -8,12 +8,14 @@ package io.debezium.connector.postgresql.junit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 
 import io.debezium.DebeziumException;
+import io.debezium.connector.postgresql.connection.LogicalDecodingMessage;
 import io.debezium.connector.postgresql.connection.Lsn;
 import io.debezium.connector.postgresql.connection.ReplicationMessage;
 import io.debezium.connector.postgresql.connection.TransactionMessage;
@@ -346,6 +348,35 @@ public class WALPositionLocatorTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2058")
+    void whenTransactionalLogicalMessageOffsetWasStoredShouldSkipOnlyThatMessage() {
+        final Lsn lastCommitStoredLsn = Lsn.valueOf(100L);
+        final Lsn lastEventStoredLsn = Lsn.valueOf(120L);
+        final var locator = new WalPositionLocator(lastCommitStoredLsn, lastEventStoredLsn, ReplicationMessage.Operation.MESSAGE);
+
+        // PostgreSQL reports a logical MESSAGE at the next WAL position rather than
+        // at the MESSAGE operation start, so the following DML can share that LSN.
+        final Lsn messageLsn = lastEventStoredLsn;
+        final Lsn insertLsn = lastEventStoredLsn;
+
+        final var beginMessage = createBeginMessage(1L);
+        final var logicalMessage = createLogicalMessage(1L);
+
+        assertThat(locator.resumeFromLsn(messageLsn, beginMessage)).isEmpty();
+
+        final Optional<Lsn> result = locator.resumeFromLsn(messageLsn, logicalMessage);
+        assertThat(result).isPresent();
+        assertThat(result.get()).isEqualTo(messageLsn);
+
+        locator.enableFiltering();
+
+        // The already-processed MESSAGE is skipped.
+        assertThat(locator.skipProcessedLogicalMessage(messageLsn)).isTrue();
+        // The following INSERT at the same LSN is emitted.
+        assertThat(locator.skipMessage(insertLsn)).isFalse();
+    }
+
+    @Test
     @FixFor("debezium/dbz#1554")
     void whenMultipleEventsShareSameLsnShouldResumeAfterProcessedCount() {
         // Simulate: 5 events all at LSN 140, we processed 3 before crash
@@ -582,6 +613,11 @@ public class WALPositionLocatorTest {
 
     private ReplicationMessage createCommitMessage(long txId) {
         return new TransactionMessage(ReplicationMessage.Operation.COMMIT, txId, Instant.now());
+    }
+
+    private ReplicationMessage createLogicalMessage(long txId) {
+        return new LogicalDecodingMessage(ReplicationMessage.Operation.MESSAGE, Instant.now(), txId, true, "foo",
+                "msg".getBytes(StandardCharsets.UTF_8));
     }
 
     private ReplicationMessage createInsertMessage(long txId) {
