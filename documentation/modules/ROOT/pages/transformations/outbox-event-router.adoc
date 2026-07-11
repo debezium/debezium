@@ -451,6 +451,15 @@ a|When enable JSON expansion property `table.expand.json.payload`, determines th
 * `ignore` - Ignore the null value.
 * `optional_bytes` - Keep the null value, and treat null as optional bytes of connect.
 
+|[[outbox-event-router-property-table-json-payload-empty-array-behavior]]<<outbox-event-router-property-table-json-payload-empty-array-behavior, `table.json.payload.empty.array.behavior`>>
+|`ignore`
+|Table
+a|When the JSON expansion property `table.expand.json.payload` is enabled, it determines how a JSON payload containing an empty array value is handled in the outbox table. 
+Possible settings are:
+
+* `ignore` - Drop the empty array field.
+* `optional_string` - Keep the field as an optional array with an optional string element type.
+
 |[[outbox-event-router-property-table-fields-additional-placement]]<<outbox-event-router-property-table-fields-additional-placement, `table.fields.additional.placement`>>
 |
 |Table, Envelope

@@ -29,20 +29,28 @@ import com.fasterxml.jackson.databind.node.NullNode;
 import io.debezium.schema.FieldNameSelector;
 import io.debezium.schema.FieldNameSelector.FieldNamer;
 import io.debezium.schema.SchemaNameAdjuster;
+import io.debezium.transforms.outbox.EventRouterConfigDefinition.JsonPayloadEmptyArrayBehavior;
 import io.debezium.transforms.outbox.EventRouterConfigDefinition.JsonPayloadNullFieldBehavior;
 import io.debezium.util.Strings;
 
 public class JsonSchemaData {
     private final JsonPayloadNullFieldBehavior jsonPayloadNullFieldBehavior;
+    private final JsonPayloadEmptyArrayBehavior jsonPayloadEmptyArrayBehavior;
     private final FieldNamer<String> fieldNamer;
 
     public JsonSchemaData() {
-        this.jsonPayloadNullFieldBehavior = JsonPayloadNullFieldBehavior.IGNORE;
-        this.fieldNamer = FieldNameSelector.defaultNonRelationalSelector(SchemaNameAdjuster.NO_OP);
+        this(JsonPayloadNullFieldBehavior.IGNORE, JsonPayloadEmptyArrayBehavior.IGNORE,
+                FieldNameSelector.defaultNonRelationalSelector(SchemaNameAdjuster.NO_OP));
     }
 
     public JsonSchemaData(JsonPayloadNullFieldBehavior jsonPayloadNullFieldBehavior, FieldNamer<String> fieldNamer) {
+        this(jsonPayloadNullFieldBehavior, JsonPayloadEmptyArrayBehavior.IGNORE, fieldNamer);
+    }
+
+    public JsonSchemaData(JsonPayloadNullFieldBehavior jsonPayloadNullFieldBehavior,
+                          JsonPayloadEmptyArrayBehavior jsonPayloadEmptyArrayBehavior, FieldNamer<String> fieldNamer) {
         this.jsonPayloadNullFieldBehavior = jsonPayloadNullFieldBehavior;
+        this.jsonPayloadEmptyArrayBehavior = jsonPayloadEmptyArrayBehavior;
         this.fieldNamer = fieldNamer;
     }
 
@@ -65,7 +73,13 @@ public class JsonSchemaData {
                 return Schema.OPTIONAL_FLOAT64_SCHEMA;
             case ARRAY:
                 ArrayNode arrayNode = (ArrayNode) node;
-                return arrayNode.isEmpty() ? null : SchemaBuilder.array(toConnectSchemaWithCycles(key, arrayNode)).optional().build();
+                if (arrayNode.isEmpty()) {
+                    if (jsonPayloadEmptyArrayBehavior.equals(JsonPayloadEmptyArrayBehavior.OPTIONAL_STRING)) {
+                        return SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build();
+                    }
+                    return null;
+                }
+                return SchemaBuilder.array(toConnectSchemaWithCycles(key, arrayNode)).optional().build();
             case OBJECT:
                 final SchemaBuilder schemaBuilder = SchemaBuilder.struct().name(key).optional();
                 node.fields().forEachRemaining(entry -> {
