@@ -52,10 +52,11 @@ public class ExecuteSnapshot<P extends Partition> extends AbstractSnapshotSignal
     @Override
     public boolean arrived(SignalPayload<P> signalPayload) throws InterruptedException {
 
-        final List<String> dataCollections = getDataCollections(signalPayload.data);
-        if (dataCollections == null) {
+        final DataCollections dataCollectionsResult = getDataCollections(signalPayload.data);
+        if (!dataCollectionsResult.valid()) {
             return false;
         }
+        final List<String> dataCollections = dataCollectionsResult.collections();
         SnapshotType type = getSnapshotType(signalPayload.data);
 
         List<AdditionalCondition> additionalConditions = getAdditionalConditions(signalPayload.data, type);
@@ -100,18 +101,24 @@ public class ExecuteSnapshot<P extends Partition> extends AbstractSnapshotSignal
                 .build();
     }
 
-    public static List<String> getDataCollections(Document data) {
+    public static DataCollections getDataCollections(Document data) {
 
         final Array dataCollectionsArray = data.getArray(FIELD_DATA_COLLECTIONS);
         if (dataCollectionsArray == null || dataCollectionsArray.isEmpty()) {
             LOGGER.warn(
                     "Execute snapshot signal '{}' has arrived but the requested field '{}' is missing from data or is empty",
                     data, FIELD_DATA_COLLECTIONS);
-            return null;
+            return new DataCollections(false, null);
         }
-        return dataCollectionsArray.streamValues()
+        if (dataCollectionsArray.streamValues().anyMatch(v -> !v.isString())) {
+            LOGGER.warn(
+                    "Execute snapshot signal '{}' has arrived but the requested field '{}' contains a non-string data collection",
+                    data, FIELD_DATA_COLLECTIONS);
+            return new DataCollections(false, null);
+        }
+        return new DataCollections(true, dataCollectionsArray.streamValues()
                 .map(v -> v.asString().trim())
-                .collect(Collectors.toList());
+                .collect(Collectors.toList()));
     }
 
     public static Optional<String> getSurrogateKey(Document data) {

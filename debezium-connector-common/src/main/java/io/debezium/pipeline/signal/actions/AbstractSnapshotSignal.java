@@ -5,6 +5,7 @@
  */
 package io.debezium.pipeline.signal.actions;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.slf4j.Logger;
@@ -31,6 +32,16 @@ public abstract class AbstractSnapshotSignal<P extends Partition> implements Sig
     public enum SnapshotType {
         INCREMENTAL,
         BLOCKING
+    }
+
+    /**
+     * Result of parsing the {@code data-collections} field of a snapshot signal.
+     *
+     * @param valid whether the signal can be acted upon; {@code false} when the field is present but malformed
+     *            (for example a non-string element), so the signal must be skipped
+     * @param collections the parsed collections, or {@code null} when the field is missing or empty
+     */
+    public record DataCollections(boolean valid, List<String> collections) {
     }
 
     public static SnapshotType getSnapshotType(Document data) {
