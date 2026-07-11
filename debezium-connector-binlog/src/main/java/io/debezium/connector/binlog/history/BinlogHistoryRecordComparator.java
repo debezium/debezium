@@ -109,6 +109,14 @@ public abstract class BinlogHistoryRecordComparator extends HistoryRecordCompara
         // Compare binlog file names
         final BinlogFileName recordedFileName = getBinlogFileName(recorded);
         final BinlogFileName desiredFileName = getBinlogFileName(desired);
+        if (!recordedFileName.baseName.equals(desiredFileName.baseName)) {
+            // The binlog base name changed (e.g. after a restore, failover, or a log_bin_basename change),
+            // so the numeric extensions belong to unrelated coordinate spaces and cannot be compared. Rather
+            // than failing schema history recovery, treat the recorded position as at-or-before the desired
+            // one so its DDL is applied and the in-memory schema is rebuilt completely. Skipping the DDL is
+            // the unsafe direction: it would leave the schema incomplete and break parsing of later events.
+            return true;
+        }
         final int fileNameCheck = recordedFileName.compareTo(desiredFileName);
         if (fileNameCheck != 0) {
             return fileNameCheck < 0;
