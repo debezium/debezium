@@ -1009,7 +1009,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractAsyncEngineCon
     }
 
     protected List<SchemaAndValueField> schemasAndValuesForDomainAliasTypes(boolean streaming) {
-        // The six geometric types now map to first-class Connect schemas (DBZ-2135). The expected WKB is
+        // The six geometric types now map to first-class Connect schemas (dbz#2135). The expected WKB is
         // built with the same WkbWriter the converter uses, so only coordinate correctness (and PostgreSQL's
         // box corner normalisation) is asserted here, not raw byte layout.
         final Schema geometrySchema = Geometry.builder().build();

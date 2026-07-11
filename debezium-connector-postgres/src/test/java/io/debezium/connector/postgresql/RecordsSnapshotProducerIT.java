@@ -1310,7 +1310,8 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         TestConsumer consumer = testConsumer(1, "public");
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
 
-        final Map<String, List<SchemaAndValueField>> expectedValueByTopicName = Collect.hashMapOf("public.unknown_type_table", schemaAndValueForUnknownColumnBase64UrlSafe());
+        final Map<String, List<SchemaAndValueField>> expectedValueByTopicName = Collect.hashMapOf("public.unknown_type_table",
+                schemaAndValueForUnknownColumnBase64UrlSafe());
 
         consumer.process(record -> assertReadRecord(record, expectedValueByTopicName));
     }

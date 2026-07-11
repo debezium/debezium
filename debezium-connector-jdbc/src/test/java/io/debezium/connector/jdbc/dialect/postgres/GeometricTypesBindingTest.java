@@ -26,7 +26,7 @@ import io.debezium.sink.valuebinding.ValueBindDescriptor;
 import io.debezium.spatial.WkbWriter;
 
 /**
- * Unit tests for the PostgreSQL sink binding of the geometric types added in DBZ-2135:
+ * Unit tests for the PostgreSQL sink binding of the geometric types added in dbz#2135:
  * {@link GeometryType} native reconstruction (box/lseg/path/polygon), and the standalone
  * {@link CircleType}/{@link LineType}.
  *
@@ -135,7 +135,7 @@ class GeometricTypesBindingTest {
         // The source emits these origin-only shapes as the NOT NULL fallback for a null geometric value
         // (PostgresValueConverter#geometryFallback). A box reconstructs from ring vertices 0 and 2, so its
         // fallback must carry a full ring; an lseg needs two points. This guards against the previous
-        // one-point fallback that threw IndexOutOfBounds / produced invalid native text (DBZ-2135).
+        // one-point fallback that threw IndexOutOfBounds / produced invalid native text (dbz#2135).
         final Schema boxSchema = geometrySchemaFor("box");
         final Struct box = Geometry.createValue(boxSchema,
                 WkbWriter.buildPolygon(List.of(List.of(
