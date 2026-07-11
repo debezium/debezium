@@ -728,6 +728,16 @@ public class PostgresConnection extends JdbcConnection {
             column.nativeType(nativeType.getRootType().getOid());
             column.jdbcType(nativeType.getRootType().getJdbcId());
 
+            // The JDBC driver reports a user-defined type with a schema-qualified name (for example
+            // "schema"."type") when the type's schema is not on the search_path, whereas the streaming
+            // path always uses the unqualified type name via PostgresType#getName(). Strip the schema
+            // qualifier so the column type name is consistent between snapshot and streaming
+            // (see debezium/dbz#683). Only the qualified form is normalized; type names the driver
+            // already reports unqualified (including built-in aliases such as serial) are left untouched.
+            if (typeName.contains(".")) {
+                column.type(nativeType.getName());
+            }
+
             // For domain types, the postgres driver is unable to traverse a nested unbounded
             // hierarchy of types and report the right length/scale of a given type. We use
             // the TypeRegistry to accomplish this since it is capable of traversing the type
