@@ -133,6 +133,41 @@ public class EventRouterConfigDefinition {
         }
     }
 
+    public enum JsonPayloadEmptyArrayBehavior implements EnumeratedValue {
+        IGNORE("ignore"),
+        OPTIONAL_STRING("optional_string");
+
+        private final String value;
+
+        JsonPayloadEmptyArrayBehavior(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static JsonPayloadEmptyArrayBehavior parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (JsonPayloadEmptyArrayBehavior option : JsonPayloadEmptyArrayBehavior.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+    }
+
     public enum AdditionalFieldMissingBehavior implements EnumeratedValue {
         ERROR("error"),
         IGNORE("ignore");
@@ -322,6 +357,15 @@ public class EventRouterConfigDefinition {
             .withDescription("Behavior when json payload including null value, the default will ignore null, optional_bytes" +
                     " will keep the null value, and treat null as optional bytes of connect.");
 
+    public static final Field TABLE_JSON_PAYLOAD_EMPTY_ARRAY_BEHAVIOR = Field.create("table.json.payload.empty.array.behavior")
+            .withDisplayName("Behavior when json payload including empty array value")
+            .withEnum(JsonPayloadEmptyArrayBehavior.class, JsonPayloadEmptyArrayBehavior.IGNORE)
+            .withWidth(ConfigDef.Width.MEDIUM)
+            .withImportance(ConfigDef.Importance.MEDIUM)
+            .withDescription("Behavior when json payload including an empty array value, the default ignore will drop the" +
+                    " empty array field, optional_string will keep the field as an optional array with an optional string" +
+                    " element type.");
+
     static final Field[] CONFIG_FIELDS = {
             FIELD_EVENT_ID,
             FIELD_EVENT_KEY,
@@ -337,7 +381,8 @@ public class EventRouterConfigDefinition {
             ROUTE_TOMBSTONE_ON_EMPTY_PAYLOAD,
             OPERATION_INVALID_BEHAVIOR,
             EXPAND_JSON_PAYLOAD,
-            TABLE_JSON_PAYLOAD_NULL_BEHAVIOR
+            TABLE_JSON_PAYLOAD_NULL_BEHAVIOR,
+            TABLE_JSON_PAYLOAD_EMPTY_ARRAY_BEHAVIOR
     };
 
     /**
@@ -354,7 +399,8 @@ public class EventRouterConfigDefinition {
                 config,
                 "Table",
                 FIELD_EVENT_ID, FIELD_EVENT_KEY, FIELD_EVENT_TYPE, FIELD_PAYLOAD, FIELD_EVENT_TIMESTAMP, FIELDS_ADDITIONAL_PLACEMENT,
-                FIELDS_ADDITIONAL_MISSING, FIELD_SCHEMA_VERSION, OPERATION_INVALID_BEHAVIOR, EXPAND_JSON_PAYLOAD, TABLE_JSON_PAYLOAD_NULL_BEHAVIOR);
+                FIELDS_ADDITIONAL_MISSING, FIELD_SCHEMA_VERSION, OPERATION_INVALID_BEHAVIOR, EXPAND_JSON_PAYLOAD, TABLE_JSON_PAYLOAD_NULL_BEHAVIOR,
+                TABLE_JSON_PAYLOAD_EMPTY_ARRAY_BEHAVIOR);
         Field.group(
                 config,
                 "Router",

@@ -13,10 +13,12 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.List;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,6 +30,7 @@ import io.debezium.config.CommonConnectorConfig.FieldNameAdjustmentMode;
 import io.debezium.doc.FixFor;
 import io.debezium.schema.FieldNameSelector;
 import io.debezium.schema.FieldNameSelector.FieldNamer;
+import io.debezium.transforms.outbox.EventRouterConfigDefinition.JsonPayloadEmptyArrayBehavior;
 import io.debezium.transforms.outbox.EventRouterConfigDefinition.JsonPayloadNullFieldBehavior;
 
 /**
@@ -156,5 +159,57 @@ public class JsonSchemaDataTest {
         Field emailField = payloadSchema.field("email");
         assertThat(emailField).isNotNull();
         assertThat(emailField.schema().type()).isEqualTo(Schema.OPTIONAL_BYTES_SCHEMA.schema().type());
+    }
+
+    @Test
+    @FixFor("debezium/dbz#921")
+    public void shouldDropEmptyArrayFieldByDefault() throws Exception {
+        String json = "{\"heartbeat\": 1, \"tags\": []}";
+        JsonNode testNode = mapper.readTree(json);
+        Schema payloadSchema = jsonSchemaData.toConnectSchema("payload", testNode);
+        assertThat(payloadSchema.field("heartbeat")).isNotNull();
+        assertThat(payloadSchema.field("tags")).isNull();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#921")
+    public void shouldKeepEmptyArrayFieldAsOptionalStringArray() throws Exception {
+        jsonSchemaData = new JsonSchemaData(JsonPayloadNullFieldBehavior.IGNORE,
+                JsonPayloadEmptyArrayBehavior.OPTIONAL_STRING, avroFieldNamer);
+        String json = "{\"heartbeat\": 1, \"tags\": []}";
+        JsonNode testNode = mapper.readTree(json);
+        Schema payloadSchema = jsonSchemaData.toConnectSchema("payload", testNode);
+        assertThat(payloadSchema.field("heartbeat")).isNotNull();
+        Field tagsField = payloadSchema.field("tags");
+        assertThat(tagsField).isNotNull();
+        assertThat(tagsField.schema().type()).isEqualTo(Schema.Type.ARRAY);
+        assertThat(tagsField.schema().valueSchema().type()).isEqualTo(Schema.Type.STRING);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#921")
+    public void shouldKeepNestedEmptyArrayFieldAsOptionalStringArray() throws Exception {
+        jsonSchemaData = new JsonSchemaData(JsonPayloadNullFieldBehavior.IGNORE,
+                JsonPayloadEmptyArrayBehavior.OPTIONAL_STRING, avroFieldNamer);
+        String json = "{\"nested\": {\"tags\": []}}";
+        JsonNode testNode = mapper.readTree(json);
+        Schema payloadSchema = jsonSchemaData.toConnectSchema("payload", testNode);
+        Schema nestedSchema = payloadSchema.field("nested").schema();
+        Field tagsField = nestedSchema.field("tags");
+        assertThat(tagsField).isNotNull();
+        assertThat(tagsField.schema().type()).isEqualTo(Schema.Type.ARRAY);
+        assertThat(tagsField.schema().valueSchema().type()).isEqualTo(Schema.Type.STRING);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#921")
+    public void shouldConvertEmptyArrayFieldToEmptyList() throws Exception {
+        jsonSchemaData = new JsonSchemaData(JsonPayloadNullFieldBehavior.IGNORE,
+                JsonPayloadEmptyArrayBehavior.OPTIONAL_STRING, avroFieldNamer);
+        String json = "{\"heartbeat\": 1, \"tags\": []}";
+        JsonNode testNode = mapper.readTree(json);
+        Schema payloadSchema = jsonSchemaData.toConnectSchema("payload", testNode);
+        Struct payload = (Struct) jsonSchemaData.toConnectData(testNode, payloadSchema);
+        assertThat(payload.get("tags")).isEqualTo(List.of());
     }
 }

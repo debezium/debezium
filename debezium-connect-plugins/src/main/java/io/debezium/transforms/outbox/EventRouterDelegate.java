@@ -46,6 +46,7 @@ import io.debezium.transforms.outbox.EventRouterConfigDefinition.AdditionalField
 import io.debezium.transforms.outbox.EventRouterConfigDefinition.AdditionalFieldMissingBehavior;
 import io.debezium.transforms.outbox.EventRouterConfigDefinition.AdditionalFieldPlacement;
 import io.debezium.transforms.outbox.EventRouterConfigDefinition.InvalidOperationBehavior;
+import io.debezium.transforms.outbox.EventRouterConfigDefinition.JsonPayloadEmptyArrayBehavior;
 import io.debezium.transforms.outbox.EventRouterConfigDefinition.JsonPayloadNullFieldBehavior;
 import io.debezium.transforms.tracing.ActivateTracingSpan;
 import io.debezium.util.BoundedConcurrentHashMap;
@@ -349,12 +350,14 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
 
         JsonPayloadNullFieldBehavior jsonPayloadNullFieldBehavior = JsonPayloadNullFieldBehavior.parse(
                 config.getString(EventRouterConfigDefinition.TABLE_JSON_PAYLOAD_NULL_BEHAVIOR));
+        JsonPayloadEmptyArrayBehavior jsonPayloadEmptyArrayBehavior = JsonPayloadEmptyArrayBehavior.parse(
+                config.getString(EventRouterConfigDefinition.TABLE_JSON_PAYLOAD_EMPTY_ARRAY_BEHAVIOR));
         expandJsonPayload = config.getBoolean(EventRouterConfigDefinition.EXPAND_JSON_PAYLOAD);
         if (expandJsonPayload) {
             objectMapper = new ObjectMapper();
             FieldNameAdjustmentMode fieldNameAdjustmentMode = FieldNameAdjustmentMode.parse(
                     config.getString(CommonConnectorConfig.FIELD_NAME_ADJUSTMENT_MODE));
-            jsonSchemaData = new JsonSchemaData(jsonPayloadNullFieldBehavior,
+            jsonSchemaData = new JsonSchemaData(jsonPayloadNullFieldBehavior, jsonPayloadEmptyArrayBehavior,
                     FieldNameSelector.defaultNonRelationalSelector(fieldNameAdjustmentMode.createAdjuster()));
         }
 
