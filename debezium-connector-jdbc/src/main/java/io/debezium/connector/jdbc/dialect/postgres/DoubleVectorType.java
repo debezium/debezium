@@ -28,7 +28,12 @@ public class DoubleVectorType extends AbstractDoubleVectorType {
 
     @Override
     public String getTypeName(Schema schema, boolean isKey) {
-        final Optional<String> size = getSourceColumnSize(schema);
+        // pgvector types get dynamically assigned OIDs, so the PostgreSQL driver cannot resolve their
+        // dimension and the propagated column length arrives as Integer.MAX_VALUE. Emit an unqualified
+        // vector in that case rather than an invalid vector(2147483647). This mirrors BitType, which
+        // falls back to "bit varying" for the same Integer.MAX_VALUE sentinel.
+        final Optional<String> size = getSourceColumnSize(schema)
+                .filter(s -> Integer.parseInt(s) != Integer.MAX_VALUE);
         return size.map(s -> String.format("vector(%s)", s)).orElse("vector");
     }
 
