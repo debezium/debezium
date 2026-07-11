@@ -32,14 +32,21 @@ public class OpenLineageJobCreator {
                 .map(pair -> context.getOpenLineage().newOwnershipJobFacetOwners(pair.getKey(), pair.getValue()))
                 .toList();
 
-        OpenLineage.JobFacets jobFacets = context.getOpenLineage().newJobFacetsBuilder()
+        OpenLineage.JobFacetsBuilder jobFacetsBuilder = context.getOpenLineage().newJobFacetsBuilder()
                 .documentation(
                         context.getOpenLineage().newDocumentationJobFacet(
                                 context.getConfiguration().job().description()))
-                .ownership(context.getOpenLineage().newOwnershipJobFacet(owners))
-                .tags(context.getOpenLineage().newTagsJobFacet(tags))
-                .jobType(context.getOpenLineage().newJobTypeJobFacet(PROCESSING_TYPE, INTEGRATION, JOB_TYPE))
-                .build();
+                .jobType(context.getOpenLineage().newJobTypeJobFacet(PROCESSING_TYPE, INTEGRATION, JOB_TYPE));
+
+        if (!owners.isEmpty()) {
+            jobFacetsBuilder.ownership(context.getOpenLineage().newOwnershipJobFacet(owners));
+        }
+
+        if (!tags.isEmpty()) {
+            jobFacetsBuilder.tags(context.getOpenLineage().newTagsJobFacet(tags));
+        }
+
+        OpenLineage.JobFacets jobFacets = jobFacetsBuilder.build();
 
         return context.getOpenLineage().newJobBuilder()
                 .namespace(context.getJobIdentifier().namespace())
