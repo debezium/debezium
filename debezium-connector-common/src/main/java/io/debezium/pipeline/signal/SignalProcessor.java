@@ -267,6 +267,10 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
 
         // Extract database name from first data collection
         for (Array.Entry entry : dataCollectionsArray) {
+            if (!entry.getValue().isString()) {
+                LOGGER.debug("Skipping non-string data-collections element while resolving the signal partition");
+                continue;
+            }
             String dataCollection = entry.getValue().asString().trim();
 
             String[] parts = dataCollection.split(POINT_REGEX);

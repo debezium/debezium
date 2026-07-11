@@ -42,7 +42,11 @@ public class StopSnapshot<P extends Partition> extends AbstractSnapshotSignal<P>
 
     @Override
     public boolean arrived(SignalPayload<P> signalPayload) throws InterruptedException {
-        final List<String> dataCollections = getDataCollections(signalPayload.data);
+        final DataCollections dataCollectionsResult = getDataCollections(signalPayload.data);
+        if (!dataCollectionsResult.valid()) {
+            return false;
+        }
+        final List<String> dataCollections = dataCollectionsResult.collections();
         final SnapshotType type = getSnapshotType(signalPayload.data);
 
         LOGGER.info("Requested stop of snapshot '{}' for data collections '{}'", type, dataCollections);
@@ -56,13 +60,20 @@ public class StopSnapshot<P extends Partition> extends AbstractSnapshotSignal<P>
         return true;
     }
 
-    public static List<String> getDataCollections(Document data) {
+    public static DataCollections getDataCollections(Document data) {
         final Array dataCollectionsArray = data.getArray(FIELD_DATA_COLLECTIONS);
         if (dataCollectionsArray == null || dataCollectionsArray.isEmpty()) {
-            return null;
+            // A missing or empty data-collections means the entire in-progress snapshot is stopped.
+            return new DataCollections(true, null);
         }
-        return dataCollectionsArray.streamValues()
+        if (dataCollectionsArray.streamValues().anyMatch(v -> !v.isString())) {
+            LOGGER.warn(
+                    "Stop snapshot signal '{}' has arrived but the requested field '{}' contains a non-string data collection",
+                    data, FIELD_DATA_COLLECTIONS);
+            return new DataCollections(false, null);
+        }
+        return new DataCollections(true, dataCollectionsArray.streamValues()
                 .map(v -> v.asString().trim())
-                .collect(Collectors.toList());
+                .collect(Collectors.toList()));
     }
 }
