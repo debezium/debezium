@@ -1301,27 +1301,32 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
     /**
      * Builds the non-null fallback a NOT NULL geometric column falls back to when a null value is
-     * received with no column default (see {@link #convertValue}). The WKB must be shaped so the sink
-     * can reconstruct a value the target native type actually accepts: a {@code box} is rebuilt from
-     * ring vertices 0 and 2 (so it needs a full ring), an {@code lseg} is a two-point segment, while a
-     * {@code path}/{@code polygon} tolerate a single point. All coordinates are the origin.
+     * received with no column default (see {@link #convertValue}). When {@code column.propagate.source.type}
+     * is unset the sink binds these through PostGIS {@code ST_GeomFromWKB}, which enforces the OGC
+     * minimum-vertex rules (a ring needs at least four points, a line string at least two) and rejects
+     * degenerate geometry. So each fallback is a small but genuinely valid shape rather than a repeated
+     * origin point: a {@code box}/{@code polygon} is a unit square/triangle ring (the box is rebuilt from
+     * ring vertices 0 and 2, which the square places on opposite corners), and an {@code lseg}/{@code path}
+     * is a two distinct-point segment.
      */
-    private static Struct geometryFallback(Schema schema, String type) {
+    // package-private for direct unit testing of the OGC minimum-vertex invariant
+    static Struct geometryFallback(Schema schema, String type) {
         final byte[] wkb;
         switch (type) {
             case "box":
                 wkb = WkbWriter.buildPolygon(List.of(List.of(
-                        new double[]{ 0, 0 }, new double[]{ 0, 0 }, new double[]{ 0, 0 },
-                        new double[]{ 0, 0 }, new double[]{ 0, 0 })));
+                        new double[]{ 0, 0 }, new double[]{ 0, 1 }, new double[]{ 1, 1 },
+                        new double[]{ 1, 0 }, new double[]{ 0, 0 })));
                 break;
             case "lseg":
-                wkb = WkbWriter.buildLineString(List.of(new double[]{ 0, 0 }, new double[]{ 0, 0 }));
+                wkb = WkbWriter.buildLineString(List.of(new double[]{ 0, 0 }, new double[]{ 1, 0 }));
                 break;
             case "polygon":
-                wkb = WkbWriter.buildPolygon(List.of(List.of(new double[]{ 0, 0 })));
+                wkb = WkbWriter.buildPolygon(List.of(List.of(
+                        new double[]{ 0, 0 }, new double[]{ 1, 0 }, new double[]{ 0, 1 }, new double[]{ 0, 0 })));
                 break;
             default: // path
-                wkb = WkbWriter.buildLineString(List.of(new double[]{ 0, 0 }));
+                wkb = WkbWriter.buildLineString(List.of(new double[]{ 0, 0 }, new double[]{ 1, 0 }));
                 break;
         }
         return Geometry.createValue(schema, wkb, null, Map.of(Geometry.EXTENSION_TYPE_KEY, type));

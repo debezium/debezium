@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Unit tests for the {@link Circle} and {@link Line} semantic types and the {@link Geometry}
- * extensions field added for DBZ-2135.
+ * extensions field added for dbz#2135.
  *
  * @author Debezium Authors
  */

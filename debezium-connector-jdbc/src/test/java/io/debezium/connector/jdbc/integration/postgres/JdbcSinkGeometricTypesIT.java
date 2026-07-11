@@ -37,7 +37,7 @@ import io.debezium.doc.FixFor;
 import io.debezium.spatial.WkbWriter;
 
 /**
- * Round-trip tests that the six PostgreSQL geometric types added in DBZ-2135 bind to their native
+ * Round-trip tests that the six PostgreSQL geometric types added in dbz#2135 bind to their native
  * column types on a plain (non-PostGIS) PostgreSQL sink. The target table is pre-created with native
  * column types, and the connector runs with source-type propagation so the sink can reconstruct the
  * native values for box/lseg/path/polygon.
@@ -56,7 +56,7 @@ public class JdbcSinkGeometricTypesIT extends AbstractJdbcSinkTest {
 
     @ParameterizedTest
     @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
-    @FixFor("DBZ-2135")
+    @FixFor("debezium/dbz#2135")
     public void testBoxRoundTrip(SinkRecordFactory factory, PostgresInsertMode insertMode) throws Exception {
         final Schema schema = geometrySchema("box");
         final Struct value = Geometry.createValue(schema,
@@ -70,7 +70,7 @@ public class JdbcSinkGeometricTypesIT extends AbstractJdbcSinkTest {
 
     @ParameterizedTest
     @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
-    @FixFor("DBZ-2135")
+    @FixFor("debezium/dbz#2135")
     public void testLsegRoundTrip(SinkRecordFactory factory, PostgresInsertMode insertMode) throws Exception {
         final Schema schema = geometrySchema("lseg");
         final Struct value = Geometry.createValue(schema,
@@ -82,7 +82,7 @@ public class JdbcSinkGeometricTypesIT extends AbstractJdbcSinkTest {
 
     @ParameterizedTest
     @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
-    @FixFor("DBZ-2135")
+    @FixFor("debezium/dbz#2135")
     public void testClosedPathRoundTrip(SinkRecordFactory factory, PostgresInsertMode insertMode) throws Exception {
         final Schema schema = geometrySchema("path");
         final Map<String, String> extensions = new LinkedHashMap<>();
@@ -98,7 +98,7 @@ public class JdbcSinkGeometricTypesIT extends AbstractJdbcSinkTest {
 
     @ParameterizedTest
     @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
-    @FixFor("DBZ-2135")
+    @FixFor("debezium/dbz#2135")
     public void testPolygonRoundTrip(SinkRecordFactory factory, PostgresInsertMode insertMode) throws Exception {
         final Schema schema = geometrySchema("polygon");
         final Struct value = Geometry.createValue(schema,
@@ -112,7 +112,7 @@ public class JdbcSinkGeometricTypesIT extends AbstractJdbcSinkTest {
 
     @ParameterizedTest
     @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
-    @FixFor("DBZ-2135")
+    @FixFor("debezium/dbz#2135")
     public void testCircleRoundTrip(SinkRecordFactory factory, PostgresInsertMode insertMode) throws Exception {
         final Schema schema = Circle.schema();
         final Struct value = Circle.createValue(schema, 10.0, 4.0, 10.0);
@@ -122,7 +122,7 @@ public class JdbcSinkGeometricTypesIT extends AbstractJdbcSinkTest {
 
     @ParameterizedTest
     @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
-    @FixFor("DBZ-2135")
+    @FixFor("debezium/dbz#2135")
     public void testLineRoundTrip(SinkRecordFactory factory, PostgresInsertMode insertMode) throws Exception {
         final Schema schema = Line.schema();
         final Struct value = Line.createValue(schema, -1.0, 0.0, 0.0);
@@ -134,11 +134,11 @@ public class JdbcSinkGeometricTypesIT extends AbstractJdbcSinkTest {
      * A batch of more than one record is what triggers PostgreSQL's UNNEST path (a single record
      * short-circuits to a row-wise INSERT). Since the native geometric types reconstruct their value in
      * {@code JdbcType#bind()}, which the UNNEST array-binding bypasses, this asserts the sink still routes
-     * box values through the row-wise path and reconstructs each of them correctly. Guards DBZ-2135.
+     * box values through the row-wise path and reconstructs each of them correctly. Guards dbz#2135.
      */
     @ParameterizedTest
     @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
-    @FixFor("DBZ-2135")
+    @FixFor("debezium/dbz#2135")
     public void testBoxBatchRoundTrip(SinkRecordFactory factory, PostgresInsertMode insertMode) throws Exception {
         final Schema schema = geometrySchema("box");
         final List<String> expected = List.of("(1,1),(0,0)", "(3,3),(2,2)");

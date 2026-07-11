@@ -482,7 +482,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
             assertThat(before.get("cfloat8")).isEqualTo(0.0);
             assertThat(before.get("cnumeric")).isEqualTo(new BigDecimal("0.00"));
             assertThat(before.get("cvarchar")).isEqualTo("");
-            // The six geometric types now map to first-class schemas (DBZ-2135); an absent before-image
+            // The six geometric types now map to first-class schemas (dbz#2135); an absent before-image
             // value falls back to the converter's empty/zero geometry rather than an empty byte array.
             final Schema geometrySchema = Geometry.builder().build();
             assertThat(before.get("cbox")).isEqualTo(Geometry.createValue(geometrySchema,
