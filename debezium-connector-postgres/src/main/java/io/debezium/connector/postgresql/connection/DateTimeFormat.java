@@ -19,6 +19,7 @@ import java.time.format.SignStyle;
 import java.time.format.TextStyle;
 import java.time.temporal.ChronoField;
 import java.time.temporal.TemporalAccessor;
+import java.util.Locale;
 import java.util.function.Supplier;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -73,7 +74,7 @@ public interface DateTimeFormat {
                 .appendLiteral(" ")
                 .appendText(ChronoField.ERA, TextStyle.SHORT)
                 .optionalEnd()
-                .toFormatter();
+                .toFormatter(Locale.ENGLISH);
 
         private static final String TS_TZ_FORMAT_PATTERN_HINT = "y..y-MM-dd HH:mm:ss[.S]X";
         private static final DateTimeFormatter TS_TZ_FORMAT = new DateTimeFormatterBuilder()
@@ -85,7 +86,7 @@ public interface DateTimeFormat {
                 .appendLiteral(" ")
                 .appendText(ChronoField.ERA, TextStyle.SHORT)
                 .optionalEnd()
-                .toFormatter();
+                .toFormatter(Locale.ENGLISH);
         private static final DateTimeFormatter TS_TZ_WITH_SECONDS_FORMAT = new DateTimeFormatterBuilder()
                 .append(NON_ISO_LOCAL_DATE)
                 .appendLiteral(' ')
@@ -95,7 +96,7 @@ public interface DateTimeFormat {
                 .appendLiteral(" ")
                 .appendText(ChronoField.ERA, TextStyle.SHORT)
                 .optionalEnd()
-                .toFormatter();
+                .toFormatter(Locale.ENGLISH);
 
         private static final String SYSTEM_TS_FORMAT_PATTERN_HINT = "y..y-MM-dd HH:mm:ss.SSSSSSX";
         private static final DateTimeFormatter SYSTEM_TS_FORMAT = new DateTimeFormatterBuilder()
@@ -107,7 +108,7 @@ public interface DateTimeFormat {
                 .appendLiteral(" ")
                 .appendText(ChronoField.ERA, TextStyle.SHORT)
                 .optionalEnd()
-                .toFormatter();
+                .toFormatter(Locale.ENGLISH);
 
         private static final String DATE_FORMAT_OPT_ERA_PATTERN_HINT = "y..y-MM-dd[ GG]";
         private static final DateTimeFormatter DATE_FORMAT_OPT_ERA = new DateTimeFormatterBuilder()
@@ -116,7 +117,7 @@ public interface DateTimeFormat {
                 .appendLiteral(' ')
                 .appendText(ChronoField.ERA, TextStyle.SHORT)
                 .optionalEnd()
-                .toFormatter();
+                .toFormatter(Locale.ENGLISH);
 
         private static final String TIME_FORMAT_PATTERN = "HH:mm:ss[.S]";
         private static final DateTimeFormatter TIME_FORMAT = new DateTimeFormatterBuilder()
