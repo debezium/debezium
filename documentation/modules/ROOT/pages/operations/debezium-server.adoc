@@ -1533,8 +1533,8 @@ It then uses the private key to cryptographically sign the nonce challenge that 
 
 |[[nats-jetstream-auth-user]]<<nats-jetstream-auth-user, `debezium.sink.nats-jetstream.auth.user`>>
 |No default value
-|Specifies the username of the authorized NAT user. +
-When this property is present in the configuration, password authentication with NATS is enabled. +
+|Specifies the username of the authorized NAT user.
+When this property is present in the configuration, password authentication with NATS is enabled.
 To use password authentication with NATS, specify a xref:nats-jetstream-auth-password[`debezium.sink.nats-jetstream.auth.password`].
 Do not enable password authentication if xref:nats-jetstream-auth-jwt[JWT authentication] is enabled.
 
@@ -2096,7 +2096,7 @@ You must explicitly set the value to `qdrant`.
 
 |[[qdrant-vector-field-names]]<<qdrant-vector-field-names, `debezium.sink.qdrant.vector.field.names`>>
 |No default value.
-|(Optional) Comma-separated list of `collection-name:field-name` pairs that explicitly define the vector fields to use for each collection. +
+|(Optional) Comma-separated list of `collection-name:field-name` pairs that explicitly define the vector fields to use for each collection.
 This field is mandatory for source tables and collections that contain multiple vector fields.
 
 |[[qdrant-field-include-list]]<<qdrant-field-include-list, `debezium.sink.qdrant.field.include.list.<collection-name>`>>
