@@ -13,16 +13,39 @@ import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.time.ZoneOffset;
-import java.time.chrono.IsoEra;
-import java.time.format.TextStyle;
 import java.util.Locale;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import io.debezium.doc.FixFor;
+
 public class ISODateTimeFormatTest {
-    private static final String BCE_DISPLAY_NAME = IsoEra.BCE.getDisplayName(TextStyle.SHORT, Locale.getDefault());
+    // PostgreSQL always emits the era in English ("BC"/"AD") regardless of the JVM locale.
+    private static final String BCE_DISPLAY_NAME = "BC";
+
+    private Locale defaultLocale;
+
+    @BeforeEach
+    void setUp() {
+        // Force a non-English locale to guard against locale-dependent era parsing (dbz#1340).
+        // NOTE: the formatters under test are static final fields, so this only exercises the
+        // regression when ISODateTimeFormat is first loaded here (currently the only unit test
+        // that touches it). If a future unit test loads the class under an English default
+        // locale first, the formatters would be initialized before this runs and the regression
+        // would no longer be caught -- in that case pin the locale via a surefire fork instead.
+        defaultLocale = Locale.getDefault();
+        Locale.setDefault(Locale.KOREAN);
+    }
+
+    @AfterEach
+    void tearDown() {
+        Locale.setDefault(defaultLocale);
+    }
 
     @Test
+    @FixFor("debezium/dbz#1340")
     void testTimestampToInstant() {
         ZoneOffset offset = ZoneOffset.UTC;
         assertThat(DateTimeFormat.get().timestampToInstant("2016-11-04 13:51:30"))
@@ -42,6 +65,7 @@ public class ISODateTimeFormatTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#1340")
     void testTimestampWithTimeZoneToOffsetTime() {
         assertThat(DateTimeFormat.get().timestampWithTimeZoneToOffsetDateTime("2016-11-04 13:51:30+02"))
                 .isEqualTo(OffsetDateTime.of(2016, 11, 4, 13, 51, 30, 0, ZoneOffset.ofHours(2)));
@@ -60,6 +84,7 @@ public class ISODateTimeFormatTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#1340")
     void testDate() {
         assertThat(DateTimeFormat.get().date("2016-11-04")).isEqualTo(LocalDate.of(2016, 11, 4));
         assertThat(DateTimeFormat.get().date("2016-11-04 " + BCE_DISPLAY_NAME)).isEqualTo(LocalDate.of(-2015, 11, 4));
@@ -79,6 +104,7 @@ public class ISODateTimeFormatTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#1340")
     void testSystemTimestampToInstant() {
         assertThat(DateTimeFormat.get().systemTimestampToInstant("2017-10-17 13:51:30Z"))
                 .isEqualTo(OffsetDateTime.of(2017, 10, 17, 13, 51, 30, 0, ZoneOffset.UTC).toInstant());
@@ -94,5 +120,7 @@ public class ISODateTimeFormatTest {
                 .isEqualTo(OffsetDateTime.of(2018, 3, 22, 12, 30, 56, 824_452_000, ZoneOffset.ofHours(5)).toInstant());
         assertThat(DateTimeFormat.get().systemTimestampToInstant("20180-03-22 12:30:56.824452+05"))
                 .isEqualTo(OffsetDateTime.of(20180, 3, 22, 12, 30, 56, 824_452_000, ZoneOffset.ofHours(5)).toInstant());
+        assertThat(DateTimeFormat.get().systemTimestampToInstant("0002-12-01 17:00:00Z " + BCE_DISPLAY_NAME))
+                .isEqualTo(OffsetDateTime.of(-1, 12, 1, 17, 0, 0, 0, ZoneOffset.UTC).toInstant());
     }
 }
