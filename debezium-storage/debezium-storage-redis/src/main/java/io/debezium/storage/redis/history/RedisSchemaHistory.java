@@ -18,6 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.Configuration;
 import io.debezium.document.DocumentReader;
 import io.debezium.document.DocumentWriter;
@@ -58,6 +59,11 @@ public class RedisSchemaHistory extends AbstractSchemaHistory {
         RedisConnection redisConnection = RedisConnection.getInstance(config);
         client = redisConnection.getRedisClient(RedisConnection.DEBEZIUM_SCHEMA_HISTORY, config.isWaitEnabled(), config.getWaitTimeout(),
                 config.isWaitRetryEnabled(), config.getWaitRetryDelay());
+    }
+
+    @VisibleForTesting
+    void setRedisClient(RedisClient client) {
+        this.client = client;
     }
 
     @Override
@@ -111,15 +117,16 @@ public class RedisSchemaHistory extends AbstractSchemaHistory {
     protected synchronized void recoverRecords(Consumer<HistoryRecord> records) {
         // read the entries from Redis
         final List<Map<String, String>> entries = doWithRetry(() -> client.xrange(config.getRedisKeyName()),
-                "Writing to database schema history stream");
+                "Reading from database schema history stream");
 
         for (Map<String, String> item : entries) {
             try {
                 records.accept(new HistoryRecord(reader.read(item.get("schema"))));
             }
             catch (IOException e) {
-                LOGGER.error("Failed to convert record to string: {}", item, e);
-                return;
+                // Skip the corrupted record and continue recovering the rest of the history instead of
+                // silently dropping every remaining record, which would leave the schema history incomplete.
+                Loggings.logErrorAndTraceRecord(LOGGER, item, "Failed to read database schema history record, skipping it", e);
             }
         }
     }
