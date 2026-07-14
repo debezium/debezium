@@ -172,6 +172,8 @@ public class OracleValueConverters extends JdbcValueConverters {
 
     @Override
     protected int getTimePrecision(Column column) {
+        // INTERVALDS stores its fractional-second precision in scale; TIMESTAMP precision is normalized to length
+        // in OracleConnection#overrideColumn.
         return column.scale().orElse(column.length());
     }
 
