@@ -141,6 +141,7 @@ To obtain the unique ID of the event from a different outbox collection field, s
 The default behavior is that this value replaces the default `pass:[${routedByValue}]` variable in the xref:mongodb-outbox-event-router-property-route-topic-replacement[`route.topic.replacement`] SMT option.
 
 For example, in a default configuration, the xref:mongodb-outbox-event-router-property-route-by-field[`route.by.field`] SMT option is set to `aggregatetype` and the xref:mongodb-outbox-event-router-property-route-topic-replacement[`route.topic.replacement`] SMT option is set to `outbox.event.pass:[${routedByValue}]`.
+
 Suppose that your application adds two documents to the outbox collection.
 In the first document, the value in the `aggregatetype` field is `customers`.
 In the second document, the value in the `aggregatetype` field is `orders`.
