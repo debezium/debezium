@@ -333,7 +333,7 @@ The connector completes the type of snapshot specified by the `snapshot.mode`.
 The connector runs the snapshot while it continues to stream real-time changes from the tables.
 Running an incremental snapshot captures the following data changes:
 +
-* For tables that the connector previously captured, the incremental snapsot captures changes that occur while the connector was down, that is, in the interval between the time that the connector was stopped, and the current restart.
+* For tables that the connector previously captured, the incremental snapshot captures changes that occur while the connector was down, that is, in the interval between the time that the connector was stopped, and the current restart.
 * For newly added tables, the incremental snapshot captures all existing table rows.
 
 // Type: procedure
