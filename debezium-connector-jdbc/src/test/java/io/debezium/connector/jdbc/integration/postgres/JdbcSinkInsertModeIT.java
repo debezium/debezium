@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.jdbc.integration.postgres;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -30,11 +32,13 @@ import org.junit.jupiter.params.provider.ArgumentsSource;
 import org.postgresql.PGStatement;
 import org.postgresql.geometric.PGpoint;
 import org.postgresql.util.PGobject;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.jdbc.JdbcKafkaSinkRecord;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.InsertMode;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.SchemaEvolutionMode;
+import io.debezium.connector.jdbc.UnnestRecordWriter;
 import io.debezium.connector.jdbc.integration.AbstractJdbcSinkInsertModeTest;
 import io.debezium.connector.jdbc.junit.TestHelper;
 import io.debezium.connector.jdbc.junit.jupiter.PostgresInsertModeArgumentsProvider;
@@ -48,6 +52,11 @@ import io.debezium.data.SchemaAndValueField;
 import io.debezium.data.geometry.Geometry;
 import io.debezium.doc.FixFor;
 import io.debezium.sink.SinkConnectorConfig.PrimaryKeyMode;
+
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 
 /**
  * Insert Mode tests for PostgreSQL.
@@ -408,6 +417,84 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
                         new Timestamp(PGStatement.DATE_NEGATIVE_INFINITY),
                         new Timestamp(PGStatement.DATE_POSITIVE_INFINITY),
                         Timestamp.from(Instant.parse("2024-01-15T10:30:00Z")));
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
+    @FixFor("DBZ-7996")
+    public void testInsertModeInsertBatchWithDebeziumTemporalTypes(SinkRecordFactory factory, PostgresInsertMode insertMode) throws SQLException {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_VALUE.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_FIELDS, "id");
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, InsertMode.INSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, String.valueOf(insertMode.isUnnestEnabled()));
+
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server1", "schema", tableName);
+
+        final Schema timestampSchema = io.debezium.time.Timestamp.schema();
+        final Schema dateSchema = io.debezium.time.Date.schema();
+
+        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+
+        // 2024-01-15T10:30:00Z in epoch millis
+        final long epochMillis = Instant.parse("2024-01-15T10:30:00Z").toEpochMilli();
+        // 2024-06-20 in epoch days
+        final int epochDays = (int) java.time.LocalDate.of(2024, 6, 20).toEpochDay();
+
+        final JdbcKafkaSinkRecord record1 = factory.createRecordWithSchemaValue(topicName, (byte) 1,
+                List.of("timestamp_col", "date_col"),
+                List.of(timestampSchema, dateSchema),
+                Arrays.asList(new Object[]{ epochMillis, epochDays }), config);
+
+        // second record with a different timestamp
+        final long epochMillis2 = Instant.parse("2025-03-01T08:15:30Z").toEpochMilli();
+        final int epochDays2 = (int) java.time.LocalDate.of(2025, 3, 1).toEpochDay();
+
+        final JdbcKafkaSinkRecord record2 = factory.createRecordWithSchemaValue(topicName, (byte) 2,
+                List.of("timestamp_col", "date_col"),
+                List.of(timestampSchema, dateSchema),
+                Arrays.asList(new Object[]{ epochMillis2, epochDays2 }), config);
+
+        Logger unnestLogger = (Logger) LoggerFactory.getLogger(UnnestRecordWriter.class);
+        Level previousLevel = unnestLogger.getLevel();
+        unnestLogger.setLevel(Level.DEBUG);
+        ListAppender<ILoggingEvent> logAppender = new ListAppender<>();
+        logAppender.start();
+        unnestLogger.addAppender(logAppender);
+
+        try {
+            consume(List.of(record1, record2));
+
+            final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(record1));
+            tableAssert.exists().hasNumberOfRows(2).hasNumberOfColumns(3);
+
+            getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1, (byte) 2);
+            tableAssert.column("timestamp_col").isOfClass(Timestamp.class, false)
+                    .hasValues(
+                            Timestamp.from(Instant.parse("2024-01-15T10:30:00Z")),
+                            Timestamp.from(Instant.parse("2025-03-01T08:15:30Z")));
+            tableAssert.column("date_col").isOfClass(java.sql.Date.class, false)
+                    .hasValues(
+                            java.sql.Date.valueOf(java.time.LocalDate.of(2024, 6, 20)),
+                            java.sql.Date.valueOf(java.time.LocalDate.of(2025, 3, 1)));
+
+            if (insertMode.isUnnestEnabled()) {
+                assertThat(logAppender.list)
+                        .as("UNNEST batch path should have been used")
+                        .extracting(ILoggingEvent::getFormattedMessage)
+                        .anyMatch(msg -> msg.startsWith("UNNEST batch insert affected"));
+            }
+        }
+        finally {
+            unnestLogger.detachAppender(logAppender);
+            logAppender.stop();
+            unnestLogger.setLevel(previousLevel);
+        }
     }
 
     private static Schema buildGeoTypeSchema(String type) {

@@ -7,10 +7,12 @@ package io.debezium.connector.jdbc.junit.jupiter;
 
 import java.util.stream.Stream;
 
+import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Named;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.ArgumentsProvider;
+import org.junit.jupiter.params.support.ParameterDeclarations;
 
 import io.debezium.connector.jdbc.util.DebeziumSinkRecordFactory;
 import io.debezium.connector.jdbc.util.FlatSinkRecordFactory;
@@ -56,7 +58,7 @@ public class PostgresInsertModeArgumentsProvider implements ArgumentsProvider {
     }
 
     @Override
-    public Stream<? extends Arguments> provideArguments(ExtensionContext context) throws Exception {
+    public @NonNull Stream<? extends Arguments> provideArguments(@NonNull ParameterDeclarations parameters, @NonNull ExtensionContext context) throws Exception {
         PostgresInsertMode standardMode = new PostgresInsertMode("Standard INSERT", false);
         PostgresInsertMode unnestMode = new PostgresInsertMode("UNNEST Optimization", true);
 
