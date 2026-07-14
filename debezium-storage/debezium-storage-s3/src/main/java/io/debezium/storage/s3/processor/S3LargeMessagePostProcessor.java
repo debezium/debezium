@@ -160,6 +160,15 @@ public class S3LargeMessagePostProcessor implements PostProcessor {
             final Object fieldValue = recordStruct.get(field);
             if (fieldsToReplace.contains(field.name())) {
                 final String objectKey = buildObjectKey(source, field.name(), qualifier);
+                if (objectKey == null) {
+                    LOGGER.warn("Unable to resolve a unique S3 object key for field '{}' in '{}' struct; " +
+                            "the source info block is missing or empty. The field value will be passed through as-is " +
+                            "(not offloaded to S3) to avoid potential data loss from object-key collisions. " +
+                            "Please ensure the connector provides a source info block with fields that uniquely " +
+                            "identify each event.",
+                            field.name(), qualifier);
+                    continue;
+                }
                 final byte[] bytes = toBytes(field.schema(), fieldValue);
 
                 uploadToS3(objectKey, bytes, field.schema().type());
@@ -225,41 +234,52 @@ public class S3LargeMessagePostProcessor implements PostProcessor {
         throw new DebeziumException("Unsupported field type for S3 offloading: BYTES");
     }
 
+    /**
+     * Builds a unique S3 object key for a large field value by iterating over the
+     * fields present in the source information block schema.
+     * <p>
+     * The source information block is connector-specific, so rather than hardcoding
+     * field names, this method dynamically iterates all fields defined in the source
+     * schema and incorporates their names and values into the object key.
+     * <p>
+     * <b>Uniqueness requirement:</b> Connector implementations must ensure that the
+     * source information block contains a set of fields whose values uniquely identify
+     * each change event. If two events from the same source produce identical source
+     * block values, their object keys will collide, causing one event's offloaded value
+     * to overwrite the other — leading to data loss. The core Debezium connectors
+     * satisfy this requirement, but non-core connectors may not; users of this post
+     * processor should verify their connector's source block is unique per event.
+     * <p>
+     * If the source information block is {@code null} or contains no fields, a unique
+     * object key cannot be resolved and this method returns {@code null}. In that case
+     * the caller should leave the original field value in place (pass it through as-is)
+     * rather than risk a collision-based data loss scenario.
+     *
+     * @param source the source information block struct, may be {@code null}
+     * @param fieldName the name of the field being offloaded
+     * @param qualifier the struct qualifier (e.g., {@code "before"} or {@code "after"})
+     * @return a unique S3 object key, or {@code null} if a unique key cannot be resolved
+     */
     String buildObjectKey(Struct source, String fieldName, String qualifier) {
         final StringBuilder sb = new StringBuilder();
 
         if (source != null) {
-            appendSourceField(sb, source, "db");
-            appendSourceField(sb, source, "table");
-            appendSourceField(sb, source, "schema");
-            appendSourceField(sb, source, "file");
-            appendSourceField(sb, source, "pos");
-            appendSourceField(sb, source, "row");
-            appendSourceField(sb, source, "lsn");
-            appendSourceField(sb, source, "scn");
-            appendSourceField(sb, source, "commit_scn");
-            appendSourceField(sb, source, "ts_ms");
-            appendSourceField(sb, source, "gtid");
-            appendSourceField(sb, source, "event");
+            for (org.apache.kafka.connect.data.Field field : source.schema().fields()) {
+                final Object val = source.get(field);
+                if (val != null) {
+                    sb.append('/').append(field.name()).append('=').append(val);
+                }
+            }
         }
-        else {
-            sb.append("unknown-source");
+
+        if (sb.isEmpty()) {
+            return null;
         }
 
         sb.append('/').append(fieldName)
                 .append('/').append(qualifier);
 
         return sb.toString();
-    }
-
-    private void appendSourceField(StringBuilder sb, Struct source, String fieldName) {
-        final org.apache.kafka.connect.data.Field field = source.schema().field(fieldName);
-        if (field != null) {
-            final Object val = source.get(field);
-            if (val != null) {
-                sb.append('/').append(fieldName).append('=').append(val);
-            }
-        }
     }
 
     private void uploadToS3(String objectKey, byte[] bytes, Schema.Type originalType) {
