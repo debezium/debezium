@@ -6,7 +6,7 @@ After {prodname} detects the change in the signaling {data-collection}, it reads
 The query that you submit specifies the {data-collection}s to include in the snapshot, and, optionally, specifies the type of snapshot operation.
 {prodname} currently supports the `incremental` and `blocking` snapshot types.
 
-To specify the {data-collection}s to include in the snapshot, provide a `data-collections` array that lists the {data-collection}s, or an array of regular expressions used to match {data-collection}s, for example, +
+To specify the {data-collection}s to include in the snapshot, provide a `data-collections` array that lists the {data-collection}s, or an array of regular expressions used to match {data-collection}s, for example,
 
 `{"data-collections": ["public.MyFirstTable", "public.MySecondTable"]}`
 

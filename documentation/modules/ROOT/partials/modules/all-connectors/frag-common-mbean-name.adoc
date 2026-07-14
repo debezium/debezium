@@ -67,7 +67,7 @@ The following example illustrates how tags modify the default MBean name.
 .How custom tags modify the connector MBean name
 =======
 By default, the {connector-name} connector uses the following MBean name for streaming metrics:
- +
+
 [source,subs="attributes+,quotes"]
 ----
 debezium.{context}:type=connector-metrics,context=streaming,server=_<topic.prefix>_
