@@ -140,7 +140,6 @@ public class JdbcSinkConnectorTask extends SinkTask {
 
             metrics = new JdbcSinkConnectorMetrics(connectorName, taskId);
             metrics.register();
-            metrics.connected(true);
 
             // Instantiate the appropriate RecordWriter based on dialect and configuration
             RecordWriter recordWriter = createRecordWriter(session, queryBinderResolver, config, dialect, metrics);
@@ -257,7 +256,6 @@ public class JdbcSinkConnectorTask extends SinkTask {
         stateLock.lock();
         try {
             if (metrics != null) {
-                metrics.connected(false);
                 metrics.unregister();
             }
             if (changeEventSink != null) {

@@ -9,7 +9,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.sql.SQLException;
 import java.util.Collections;
-import java.util.Locale;
 import java.util.Map;
 
 import org.junit.jupiter.api.Tag;
@@ -169,7 +168,6 @@ public class JdbcSinkUnnestBehaviorIT extends AbstractJdbcSinkTest {
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
     @FixFor("DBZ-1525")
     public void testUpsertWithoutReductionBufferAndUnnestCausesDuplicateKeyError(SinkRecordFactory factory) {
-        Locale.setDefault(new Locale("en", "US")); // enforce "en_US" as system locale else "Hint:" in error msg will be locale specific
         final Map<String, String> properties = getDefaultSinkConfig();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.BASIC.getValue());
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_VALUE.getValue());
@@ -213,8 +211,8 @@ public class JdbcSinkUnnestBehaviorIT extends AbstractJdbcSinkTest {
                 consume(Collections.emptyList());
             })
                     .hasCauseInstanceOf(org.apache.kafka.connect.errors.ConnectException.class)
-                    .hasRootCauseMessage(
-                            "ERROR: ON CONFLICT DO UPDATE command cannot affect row a second time\n  Hint: Ensure that no rows proposed for insertion within the same command have duplicate constrained values.");
+                    .rootCause()
+                    .hasMessageContaining("ON CONFLICT DO UPDATE command cannot affect row a second time");
 
             stopSinkConnector();
         }

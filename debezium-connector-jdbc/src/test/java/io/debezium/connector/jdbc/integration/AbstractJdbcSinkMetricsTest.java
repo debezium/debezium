@@ -23,6 +23,7 @@ import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.InsertMode;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.SchemaEvolutionMode;
 import io.debezium.connector.jdbc.junit.jupiter.Sink;
 import io.debezium.connector.jdbc.junit.jupiter.SinkRecordFactoryArgumentsProvider;
+import io.debezium.connector.jdbc.metrics.JdbcSinkConnectorMetricsMXBean;
 import io.debezium.connector.jdbc.util.SinkRecordFactory;
 import io.debezium.doc.FixFor;
 import io.debezium.sink.SinkConnectorConfig;
@@ -63,7 +64,6 @@ public abstract class AbstractJdbcSinkMetricsTest extends AbstractJdbcSinkTest {
 
         final ObjectName objectName = sinkMetricsObjectName();
         assertThat(MBEAN_SERVER.isRegistered(objectName)).isTrue();
-        assertThat(MBEAN_SERVER.getAttribute(objectName, "Connected")).isEqualTo(true);
 
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
@@ -74,11 +74,9 @@ public abstract class AbstractJdbcSinkMetricsTest extends AbstractJdbcSinkTest {
         consume(factory.updateRecord(topicName, config));
         consume(factory.deleteRecord(topicName, config));
 
-        assertThat(MBEAN_SERVER.getAttribute(objectName, "TotalNumberOfInsertEventsSeen")).isEqualTo(0L);
-        assertThat(MBEAN_SERVER.getAttribute(objectName, "TotalNumberOfUpdateEventsSeen")).isEqualTo(0L);
-        assertThat(MBEAN_SERVER.getAttribute(objectName, "TotalNumberOfUpsertEventsSeen")).isEqualTo(2L);
-        assertThat(MBEAN_SERVER.getAttribute(objectName, "TotalNumberOfDeleteEventsSeen")).isEqualTo(1L);
-        assertThat(MBEAN_SERVER.getAttribute(objectName, "TotalNumberOfTruncateEventsSeen")).isEqualTo(0L);
+        assertThat(MBEAN_SERVER.getAttribute(objectName, JdbcSinkConnectorMetricsMXBean.METRIC_TOTAL_NUMBER_OF_WRITES)).isEqualTo(2L);
+        assertThat(MBEAN_SERVER.getAttribute(objectName, JdbcSinkConnectorMetricsMXBean.METRIC_TOTAL_NUMBER_OF_DELETES)).isEqualTo(1L);
+        assertThat(MBEAN_SERVER.getAttribute(objectName, JdbcSinkConnectorMetricsMXBean.METRIC_TOTAL_NUMBER_OF_TRUNCATES)).isEqualTo(0L);
     }
 
     @ParameterizedTest
@@ -100,18 +98,18 @@ public abstract class AbstractJdbcSinkMetricsTest extends AbstractJdbcSinkTest {
 
         // First record for a table that does not exist yet: the sink creates it
         consume(factory.createRecord(topicName, (byte) 1, config));
-        assertThat(MBEAN_SERVER.getAttribute(objectName, "TotalNumberOfTablesCreated")).isEqualTo(1L);
-        assertThat(MBEAN_SERVER.getAttribute(objectName, "TotalNumberOfTablesAltered")).isEqualTo(0L);
+        assertThat(MBEAN_SERVER.getAttribute(objectName, JdbcSinkConnectorMetricsMXBean.METRIC_TOTAL_NUMBER_OF_TABLES_CREATED)).isEqualTo(1L);
+        assertThat(MBEAN_SERVER.getAttribute(objectName, JdbcSinkConnectorMetricsMXBean.METRIC_TOTAL_NUMBER_OF_TABLES_ALTERED)).isEqualTo(0L);
 
         // Record carrying a new optional field: the sink alters the table to add the column
         consume(factory.updateRecordWithSchemaValue(topicName, (byte) 1, "extra", Schema.OPTIONAL_STRING_SCHEMA, "v1", config));
-        assertThat(MBEAN_SERVER.getAttribute(objectName, "TotalNumberOfTablesCreated")).isEqualTo(1L);
-        assertThat(MBEAN_SERVER.getAttribute(objectName, "TotalNumberOfTablesAltered")).isEqualTo(1L);
+        assertThat(MBEAN_SERVER.getAttribute(objectName, JdbcSinkConnectorMetricsMXBean.METRIC_TOTAL_NUMBER_OF_TABLES_CREATED)).isEqualTo(1L);
+        assertThat(MBEAN_SERVER.getAttribute(objectName, JdbcSinkConnectorMetricsMXBean.METRIC_TOTAL_NUMBER_OF_TABLES_ALTERED)).isEqualTo(1L);
 
         // Record whose columns already exist: no schema change is applied and the counters stay put
         consume(factory.createRecord(topicName, (byte) 2, config));
-        assertThat(MBEAN_SERVER.getAttribute(objectName, "TotalNumberOfTablesCreated")).isEqualTo(1L);
-        assertThat(MBEAN_SERVER.getAttribute(objectName, "TotalNumberOfTablesAltered")).isEqualTo(1L);
+        assertThat(MBEAN_SERVER.getAttribute(objectName, JdbcSinkConnectorMetricsMXBean.METRIC_TOTAL_NUMBER_OF_TABLES_CREATED)).isEqualTo(1L);
+        assertThat(MBEAN_SERVER.getAttribute(objectName, JdbcSinkConnectorMetricsMXBean.METRIC_TOTAL_NUMBER_OF_TABLES_ALTERED)).isEqualTo(1L);
     }
 
     @ParameterizedTest

@@ -24,19 +24,15 @@ class JdbcSinkConnectorMetricsTest {
     void shouldCountInsertUpdateUpsertDeleteAndTruncateOperations() {
         final JdbcSinkConnectorMetrics metrics = new JdbcSinkConnectorMetrics("my-sink", "0");
 
-        metrics.inserted(1);
-        metrics.updated(2);
-        metrics.upserted(2);
+        metrics.written(1);
         metrics.deleted(1);
         metrics.truncated();
         metrics.truncated();
         metrics.truncated();
 
-        assertThat(metrics.getTotalNumberOfInsertEventsSeen()).isEqualTo(1);
-        assertThat(metrics.getTotalNumberOfUpdateEventsSeen()).isEqualTo(2);
-        assertThat(metrics.getTotalNumberOfUpsertEventsSeen()).isEqualTo(2);
-        assertThat(metrics.getTotalNumberOfDeleteEventsSeen()).isEqualTo(1);
-        assertThat(metrics.getTotalNumberOfTruncateEventsSeen()).isEqualTo(3);
+        assertThat(metrics.getTotalNumberOfWrites()).isEqualTo(1);
+        assertThat(metrics.getTotalNumberOfDeletes()).isEqualTo(1);
+        assertThat(metrics.getTotalNumberOfTruncates()).isEqualTo(3);
     }
 
     @Test
@@ -58,19 +54,7 @@ class JdbcSinkConnectorMetricsTest {
         metrics.filtered();
         metrics.filtered();
 
-        assertThat(metrics.getNumberOfFilteredEvents()).isEqualTo(2);
-    }
-
-    @Test
-    void shouldToggleConnectedState() {
-        final JdbcSinkConnectorMetrics metrics = new JdbcSinkConnectorMetrics("my-sink", "0");
-        assertThat(metrics.isConnected()).isFalse();
-
-        metrics.connected(true);
-        assertThat(metrics.isConnected()).isTrue();
-
-        metrics.connected(false);
-        assertThat(metrics.isConnected()).isFalse();
+        assertThat(metrics.getTotalNumberOfFilteredEvents()).isEqualTo(2);
     }
 
     @Test
@@ -83,12 +67,8 @@ class JdbcSinkConnectorMetricsTest {
             metrics.register();
             assertThat(server.isRegistered(objectName)).isTrue();
 
-            metrics.inserted(1);
-            metrics.updated(1);
-            metrics.upserted(1);
-            assertThat(server.getAttribute(objectName, "TotalNumberOfInsertEventsSeen")).isEqualTo(1L);
-            assertThat(server.getAttribute(objectName, "TotalNumberOfUpdateEventsSeen")).isEqualTo(1L);
-            assertThat(server.getAttribute(objectName, "TotalNumberOfUpsertEventsSeen")).isEqualTo(1L);
+            metrics.written(1);
+            assertThat(server.getAttribute(objectName, "TotalNumberOfWrites")).isEqualTo(1L);
         }
         finally {
             metrics.unregister();

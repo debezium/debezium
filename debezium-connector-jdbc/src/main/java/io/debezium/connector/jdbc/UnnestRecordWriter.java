@@ -17,6 +17,7 @@ import java.util.Set;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.hibernate.SharedSessionContract;
 import org.hibernate.Transaction;
 import org.hibernate.jdbc.Work;
@@ -28,6 +29,7 @@ import io.debezium.connector.jdbc.field.JdbcFieldDescriptor;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
 import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.sink.spi.SinkProgressListener;
+import io.debezium.sink.valuebinding.ValueBindDescriptor;
 import io.debezium.util.Stopwatch;
 
 /**
@@ -61,6 +63,17 @@ public class UnnestRecordWriter extends DefaultRecordWriter {
         }
         else {
             super.write(tableDescriptor, records);
+        }
+    }
+
+    @Override
+    protected void performTableWrite(Connection conn, TableDescriptor table, List<JdbcSinkRecord> records) throws SQLException {
+        SqlStatementInfo statementInfo = getSqlStatementInfo(table, records);
+        if (statementInfo.isBatchStatement()) {
+            performUnnestBatch(conn, statementInfo.statement(), records);
+        }
+        else {
+            super.performTableWrite(conn, table, records);
         }
     }
 
@@ -101,7 +114,6 @@ public class UnnestRecordWriter extends DefaultRecordWriter {
             int updateCount = prepareStatement.executeUpdate();
             executeStopwatch.stop();
 
-            // Check for execution failure
             if (updateCount == Statement.EXECUTE_FAILED) {
                 throw new BatchUpdateException("Execution failed for UNNEST batch", new int[]{ updateCount });
             }
@@ -184,7 +196,7 @@ public class UnnestRecordWriter extends DefaultRecordWriter {
                     }
                 }
 
-                columnValues.add(value);
+                columnValues.add(transformValue(field, value));
             }
 
             // Convert to array and bind using setArray()
@@ -221,7 +233,7 @@ public class UnnestRecordWriter extends DefaultRecordWriter {
                     value = payload.get(fieldName);
                 }
 
-                columnValues.add(value);
+                columnValues.add(transformValue(field, value));
             }
 
             // Convert to array and bind using setArray()
@@ -231,6 +243,17 @@ public class UnnestRecordWriter extends DefaultRecordWriter {
         }
 
         return parameterIndex;
+    }
+
+    private Object transformValue(JdbcFieldDescriptor field, Object value) {
+        List<ValueBindDescriptor> boundValues = getDialect().bindValue(field, 1, value);
+        if (boundValues.size() != 1) {
+            throw new ConnectException(
+                    String.format("UNNEST does not support types that expand to multiple bind parameters (field: '%s', type: '%s'). "
+                            + "Disable postgres.unnest.insert for this connector.", field.getName(),
+                            getDialect().getSchemaType(field.getSchema()).getClass().getSimpleName()));
+        }
+        return boundValues.get(0).getValue();
     }
 
     /**
@@ -258,4 +281,5 @@ public class UnnestRecordWriter extends DefaultRecordWriter {
 
         return typeName.toLowerCase();
     }
+
 }

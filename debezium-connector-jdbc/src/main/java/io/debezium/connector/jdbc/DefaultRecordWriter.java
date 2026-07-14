@@ -22,7 +22,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
@@ -296,16 +295,18 @@ public class DefaultRecordWriter implements RecordWriter {
         throw new ConnectException("Exceeded max retries " + flushMaxRetries + " times, failed to " + description, lastException);
     }
 
-    public void write(Batch records) {
-        // resolve tables outside of doWork (DDL needs session access that conflicts with active doWork connection)
-        Map<TableDescriptor, List<JdbcSinkRecord>> insertsByTable = new LinkedHashMap<>();
-        Map<TableDescriptor, List<JdbcSinkRecord>> deletesByTable = new LinkedHashMap<>();
+    protected record ResolvedTableRecords(TableDescriptor table, List<JdbcSinkRecord> inserts, List<JdbcSinkRecord> deletes) {
+        boolean isEmpty() {
+            return inserts.isEmpty() && deletes.isEmpty();
+        }
+    }
 
-        JdbcSinkConnectorConfig.InsertMode insertMode = getConfig().getInsertMode();
-        SinkProgressListener progressedListener = progressListener();
-        List<Callable<?>> processMetrics = new ArrayList<>();
+    protected Map<CollectionId, ResolvedTableRecords> resolveBatchByTable(Batch batch) {
+        Map<CollectionId, TableDescriptor> tables = new LinkedHashMap<>();
+        Map<CollectionId, List<JdbcSinkRecord>> inserts = new LinkedHashMap<>();
+        Map<CollectionId, List<JdbcSinkRecord>> deletes = new LinkedHashMap<>();
 
-        for (BatchRecord batchRecord : records) {
+        for (BatchRecord batchRecord : batch) {
             var record = (JdbcKafkaSinkRecord) batchRecord.record();
             var collectionId = batchRecord.collectionId();
 
@@ -316,6 +317,7 @@ public class DefaultRecordWriter implements RecordWriter {
             catch (SQLException | JDBCException e) {
                 throw new ConnectException("Error while checking and applying table changes for collection '" + collectionId + "'", e);
             }
+            tables.put(collectionId, table);
 
             if (record.isTruncate()) {
                 try {
@@ -325,43 +327,36 @@ public class DefaultRecordWriter implements RecordWriter {
                     throw new ConnectException("Failed to truncate collection '" + collectionId + "'", e);
                 }
             }
+            else if (record.isDelete()) {
+                deletes.computeIfAbsent(collectionId, k -> new ArrayList<>()).add(record);
+            }
             else {
-                if (record.isDelete()) {
-                    deletesByTable.computeIfAbsent(table, k -> new ArrayList<>()).add(record);
-                    processMetrics.add(() -> {
-                        progressedListener.deleted(1);
-                        return null;
-                    });
-                }
-                else {
-                    insertsByTable.computeIfAbsent(table, k -> new ArrayList<>()).add(record);
-                    switch (insertMode) {
-                        case INSERT -> processMetrics.add(() -> {
-                            progressedListener.inserted(1);
-                            return null;
-                        });
-                        case UPDATE -> processMetrics.add(() -> {
-                            progressedListener.updated(1);
-                            return null;
-                        });
-                        case UPSERT -> processMetrics.add(() -> {
-                            progressedListener.upserted(1);
-                            return null;
-                        });
-                    }
-                }
+                inserts.computeIfAbsent(collectionId, k -> new ArrayList<>()).add(record);
             }
         }
 
-        if (insertsByTable.isEmpty() && deletesByTable.isEmpty()) {
+        Map<CollectionId, ResolvedTableRecords> result = new LinkedHashMap<>();
+        for (var entry : tables.entrySet()) {
+            CollectionId id = entry.getKey();
+            result.put(id, new ResolvedTableRecords(
+                    entry.getValue(),
+                    inserts.getOrDefault(id, List.of()),
+                    deletes.getOrDefault(id, List.of())));
+        }
+        return result;
+    }
+
+    public void write(Batch records) {
+        Map<CollectionId, ResolvedTableRecords> resolved = resolveBatchByTable(records);
+
+        if (resolved.values().stream().allMatch(ResolvedTableRecords::isEmpty)) {
             return;
         }
 
-        // write records inside doWork/transaction with retry support
-        String tableNames = Stream.concat(
-                insertsByTable.keySet().stream(),
-                deletesByTable.keySet().stream())
-                .map(t -> t.getId().name())
+        SinkProgressListener progressedListener = progressListener();
+
+        String tableNames = resolved.values().stream()
+                .map(r -> r.table().getId().name())
                 .distinct()
                 .collect(Collectors.joining(", "));
         executeWithRetries("flush records for table(s) '" + tableNames + "'",
@@ -371,17 +366,22 @@ public class DefaultRecordWriter implements RecordWriter {
                     final Transaction transaction = session.beginTransaction();
                     try {
                         session.doWork(conn -> {
-                            for (var entry : insertsByTable.entrySet()) {
-                                performWrite(conn, getSqlStatementInfo(entry.getKey(), entry.getValue()), entry.getValue());
-                            }
-                            for (var entry : deletesByTable.entrySet()) {
-                                performWrite(conn, getSqlStatementInfo(entry.getKey(), entry.getValue()), entry.getValue());
+                            for (var entry : resolved.values()) {
+                                if (!entry.inserts().isEmpty()) {
+                                    performTableWrite(conn, entry.table(), entry.inserts());
+                                }
+                                if (!entry.deletes().isEmpty()) {
+                                    performTableWrite(conn, entry.table(), entry.deletes());
+                                }
                             }
                         });
                         transaction.commit();
-                        if (!processMetrics.isEmpty()) {
-                            for (Callable<?> processMetric : processMetrics) {
-                                processMetric.call();
+                        for (var entry : resolved.values()) {
+                            if (!entry.inserts().isEmpty()) {
+                                progressedListener.written(entry.inserts().size());
+                            }
+                            if (!entry.deletes().isEmpty()) {
+                                progressedListener.deleted(entry.deletes().size());
                             }
                         }
                     }
@@ -420,11 +420,7 @@ public class DefaultRecordWriter implements RecordWriter {
             progressListener().deleted(records.size());
         }
         else {
-            switch (getConfig().getInsertMode()) {
-                case INSERT -> progressListener().inserted(records.size());
-                case UPDATE -> progressListener().updated(records.size());
-                case UPSERT -> progressListener().upserted(records.size());
-            }
+            progressListener().written(records.size());
         }
     }
 
@@ -445,11 +441,20 @@ public class DefaultRecordWriter implements RecordWriter {
         }
     }
 
+    /**
+     * Write records for a single table to the connection.
+     * Resolves the SQL statement and delegates to {@link #performWrite}.
+     * Subclasses can override to change the write strategy (e.g., UNNEST).
+     */
+    protected void performTableWrite(Connection conn, TableDescriptor table, List<JdbcSinkRecord> records) throws SQLException {
+        performWrite(conn, getSqlStatementInfo(table, records), records);
+    }
+
     private Work processBatch(SqlStatementInfo statementInfo, List<JdbcSinkRecord> records) {
         return conn -> performWrite(conn, statementInfo, records);
     }
 
-    private void performWrite(Connection conn, SqlStatementInfo statementInfo, List<JdbcSinkRecord> records) throws SQLException {
+    protected void performWrite(Connection conn, SqlStatementInfo statementInfo, List<JdbcSinkRecord> records) throws SQLException {
         try (PreparedStatement prepareStatement = conn.prepareStatement(statementInfo.statement())) {
             QueryBinder queryBinder = getQueryBinderResolver().resolve(prepareStatement);
             Stopwatch allbindStopwatch = Stopwatch.reusable();

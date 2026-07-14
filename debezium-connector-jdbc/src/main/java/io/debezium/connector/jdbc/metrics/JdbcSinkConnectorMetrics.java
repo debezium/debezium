@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.jdbc.metrics;
 
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 import javax.management.MalformedObjectNameException;
@@ -35,15 +34,12 @@ public class JdbcSinkConnectorMetrics implements JdbcSinkConnectorMetricsMXBean,
 
     private final ObjectName objectName;
 
-    private final AtomicLong totalNumberOfInsertEventsSeen = new AtomicLong();
-    private final AtomicLong totalNumberOfUpdateEventsSeen = new AtomicLong();
-    private final AtomicLong totalNumberOfUpsertEventsSeen = new AtomicLong();
-    private final AtomicLong totalNumberOfDeleteEventsSeen = new AtomicLong();
-    private final AtomicLong totalNumberOfTruncateEventsSeen = new AtomicLong();
-    private final AtomicLong numberOfFilteredEvents = new AtomicLong();
+    private final AtomicLong totalNumberOfWrites = new AtomicLong();
+    private final AtomicLong totalNumberOfDeletes = new AtomicLong();
+    private final AtomicLong totalNumberOfTruncates = new AtomicLong();
+    private final AtomicLong totalNumberOfFilteredEvents = new AtomicLong();
     private final AtomicLong totalNumberOfTablesCreated = new AtomicLong();
     private final AtomicLong totalNumberOfTablesAltered = new AtomicLong();
-    private final AtomicBoolean connected = new AtomicBoolean();
 
     public JdbcSinkConnectorMetrics(String connectorName, String taskId) {
         final String name = String.format(JMX_OBJECT_NAME_FORMAT, Sanitizer.jmxSanitize(connectorName), Sanitizer.jmxSanitize(taskId));
@@ -64,33 +60,23 @@ public class JdbcSinkConnectorMetrics implements JdbcSinkConnectorMetricsMXBean,
     }
 
     @Override
-    public void inserted(long count) {
-        totalNumberOfInsertEventsSeen.addAndGet(count);
-    }
-
-    @Override
-    public void updated(long count) {
-        totalNumberOfUpdateEventsSeen.addAndGet(count);
-    }
-
-    @Override
-    public void upserted(long count) {
-        totalNumberOfUpsertEventsSeen.addAndGet(count);
+    public void written(long count) {
+        totalNumberOfWrites.addAndGet(count);
     }
 
     @Override
     public void deleted(long count) {
-        totalNumberOfDeleteEventsSeen.addAndGet(count);
+        totalNumberOfDeletes.addAndGet(count);
     }
 
     @Override
     public void truncated() {
-        totalNumberOfTruncateEventsSeen.incrementAndGet();
+        totalNumberOfTruncates.incrementAndGet();
     }
 
     @Override
     public void filtered() {
-        numberOfFilteredEvents.incrementAndGet();
+        totalNumberOfFilteredEvents.incrementAndGet();
     }
 
     @Override
@@ -104,38 +90,23 @@ public class JdbcSinkConnectorMetrics implements JdbcSinkConnectorMetricsMXBean,
     }
 
     @Override
-    public void connected(boolean connected) {
-        this.connected.set(connected);
+    public long getTotalNumberOfWrites() {
+        return totalNumberOfWrites.get();
     }
 
     @Override
-    public long getTotalNumberOfInsertEventsSeen() {
-        return totalNumberOfInsertEventsSeen.get();
+    public long getTotalNumberOfDeletes() {
+        return totalNumberOfDeletes.get();
     }
 
     @Override
-    public long getTotalNumberOfUpdateEventsSeen() {
-        return totalNumberOfUpdateEventsSeen.get();
+    public long getTotalNumberOfTruncates() {
+        return totalNumberOfTruncates.get();
     }
 
     @Override
-    public long getTotalNumberOfUpsertEventsSeen() {
-        return totalNumberOfUpsertEventsSeen.get();
-    }
-
-    @Override
-    public long getTotalNumberOfDeleteEventsSeen() {
-        return totalNumberOfDeleteEventsSeen.get();
-    }
-
-    @Override
-    public long getTotalNumberOfTruncateEventsSeen() {
-        return totalNumberOfTruncateEventsSeen.get();
-    }
-
-    @Override
-    public long getNumberOfFilteredEvents() {
-        return numberOfFilteredEvents.get();
+    public long getTotalNumberOfFilteredEvents() {
+        return totalNumberOfFilteredEvents.get();
     }
 
     @Override
@@ -148,8 +119,4 @@ public class JdbcSinkConnectorMetrics implements JdbcSinkConnectorMetricsMXBean,
         return totalNumberOfTablesAltered.get();
     }
 
-    @Override
-    public boolean isConnected() {
-        return connected.get();
-    }
 }

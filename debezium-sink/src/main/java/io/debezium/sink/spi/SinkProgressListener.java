@@ -10,13 +10,7 @@ package io.debezium.sink.spi;
  */
 public interface SinkProgressListener {
 
-    void connected(boolean connected);
-
-    void inserted(long count);
-
-    void updated(long count);
-
-    void upserted(long count);
+    void written(long count);
 
     void deleted(long count);
 
@@ -32,19 +26,7 @@ public interface SinkProgressListener {
         return new SinkProgressListener() {
 
             @Override
-            public void connected(boolean connected) {
-            }
-
-            @Override
-            public void inserted(long count) {
-            }
-
-            @Override
-            public void updated(long count) {
-            }
-
-            @Override
-            public void upserted(long count) {
+            public void written(long count) {
             }
 
             @Override

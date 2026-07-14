@@ -21,36 +21,33 @@ package io.debezium.connector.jdbc.metrics;
  */
 public interface JdbcSinkConnectorMetricsMXBean {
 
-    /**
-     * @return the total number of insert operations applied to the target database
-     */
-    long getTotalNumberOfInsertEventsSeen();
+    String METRIC_TOTAL_NUMBER_OF_WRITES = "TotalNumberOfWrites";
+    String METRIC_TOTAL_NUMBER_OF_DELETES = "TotalNumberOfDeletes";
+    String METRIC_TOTAL_NUMBER_OF_TRUNCATES = "TotalNumberOfTruncates";
+    String METRIC_NUMBER_OF_FILTERED_EVENTS = "TotalNumberOfFilteredEvents";
+    String METRIC_TOTAL_NUMBER_OF_TABLES_CREATED = "TotalNumberOfTablesCreated";
+    String METRIC_TOTAL_NUMBER_OF_TABLES_ALTERED = "TotalNumberOfTablesAltered";
 
     /**
-     * @return the total number of update operations applied to the target database
+     * @return the total number of processed events applied to the target database
      */
-    long getTotalNumberOfUpdateEventsSeen();
-
-    /**
-     * @return the total number of upsert operations applied to the target database
-     */
-    long getTotalNumberOfUpsertEventsSeen();
+    long getTotalNumberOfWrites();
 
     /**
      * @return the total number of delete operations applied to the target database
      */
-    long getTotalNumberOfDeleteEventsSeen();
+    long getTotalNumberOfDeletes();
 
     /**
      * @return the total number of truncate operations applied to the target database
      */
-    long getTotalNumberOfTruncateEventsSeen();
+    long getTotalNumberOfTruncates();
 
     /**
      * @return the number of records that were skipped without being applied (e.g. unresolvable
      *         table, deletes/truncates disabled, schema-change events)
      */
-    long getNumberOfFilteredEvents();
+    long getTotalNumberOfFilteredEvents();
 
     /**
      * @return the total number of tables the sink created in the target database; only increases
@@ -64,8 +61,4 @@ public interface JdbcSinkConnectorMetricsMXBean {
      */
     long getTotalNumberOfTablesAltered();
 
-    /**
-     * @return {@code true} if the connection to the target database is currently established
-     */
-    boolean isConnected();
 }

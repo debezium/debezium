@@ -78,15 +78,8 @@ class JdbcChangeEventSinkTest {
         sink.execute(List.of(RECORD_FACTORY.createRecord("database.schema.table", config).getOriginalKafkaRecord()));
         sink.forceFlush();
 
-        verifyWriteOperationReported(insertMode, progressListener);
-    }
-
-    private static void verifyWriteOperationReported(InsertMode insertMode, SinkProgressListener progressListener) {
-        switch (insertMode) {
-            case INSERT -> verify(progressListener).inserted(1);
-            case UPDATE -> verify(progressListener).updated(1);
-            case UPSERT -> verify(progressListener).upserted(1);
-        }
+        verify(progressListener).written(1);
         verifyNoMoreInteractions(progressListener);
     }
+
 }
