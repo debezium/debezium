@@ -5,6 +5,7 @@
  */
 package io.debezium.storage.s3.processor;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -224,7 +225,7 @@ public class S3LargeMessagePostProcessorTest {
     }
 
     @Test
-    void testNullSourceDoesNotThrow() {
+    void testNullSourcePassesValueThroughAsIs() {
 
         processor.configure(baseConfig());
 
@@ -239,12 +240,47 @@ public class S3LargeMessagePostProcessorTest {
 
         processor.apply(null, envelope);
 
+        verify(mockS3Client, never()).putObject(any(PutObjectRequest.class), any(RequestBody.class));
+
+        Object resultValue = envelope.getStruct(Envelope.FieldName.AFTER).get("payload");
+        assertInstanceOf(String.class, resultValue);
+        assertEquals(largeString, resultValue);
+    }
+
+    @Test
+    void testObjectKeyUsesDynamicSourceSchemaFields() {
+
+        processor.configure(baseConfig());
+
+        String largeString = "Z".repeat(SMALL_THRESHOLD + 1);
+        Schema schema = SchemaBuilder.struct()
+                .field("content", Schema.STRING_SCHEMA)
+                .build();
+        Struct after = new Struct(schema);
+        after.put("content", largeString);
+
+        Schema sourceSchema = SchemaBuilder.struct()
+                .name("io.debezium.connector.fake.Source")
+                .field("custom_source_id", Schema.STRING_SCHEMA)
+                .field("custom_position", Schema.INT64_SCHEMA)
+                .build();
+        Struct source = new Struct(sourceSchema);
+        source.put("custom_source_id", "node-1");
+        source.put("custom_position", 9999L);
+
+        Struct envelope = buildSimpleEnvelope(source, after);
+
+        processor.apply(null, envelope);
+
         verify(mockS3Client, times(1)).putObject(any(PutObjectRequest.class), any(RequestBody.class));
 
-        String inlineReference = (String) envelope.getStruct(Envelope.FieldName.AFTER).get("payload");
+        String inlineReference = (String) envelope.getStruct(Envelope.FieldName.AFTER).get("content");
         String objectId = extractObjectId(inlineReference);
         assertNotNull(objectId);
-        assertTrue(objectId.startsWith("unknown-source/"));
+        assertTrue(objectId.contains("custom_source_id=node-1"));
+        assertTrue(objectId.contains("custom_position=9999"));
+        assertTrue(objectId.contains("content"));
+        assertTrue(objectId.endsWith("/after"));
     }
 
     @Test
