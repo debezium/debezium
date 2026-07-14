@@ -114,15 +114,16 @@ public abstract class ZZZBinlogGtidSetIT<C extends SourceConnector> extends Abst
         // Check that all records are valid, can be serialized and deserialized ...
         records.forEach(this::validate);
 
-        // Check that records have GTID that does not contain purged interval
+        // Records carry the purged GTID set as the offset's starting floor.
         records.recordsForTopic(ro_database.topicForTable("customers")).forEach(record -> {
             final String gtids = (String) record.sourceOffset().get("gtids");
 
-            // the format is <uuid:<start-tx>-<end-tx>; we don't expect any offsets with start tx = 1 due to the flush
+            // format is <uuid>:<start-tx>-<end-tx>; the offset now starts at tx 1 because the connector records
+            // the purged set as its floor (those GTIDs were intentionally skipped, not lost).
             final Pattern p = Pattern.compile(".*:(.*)-.*");
             final Matcher m = p.matcher(gtids);
             m.matches();
-            assertThat(m.group(1)).isNotEqualTo("1");
+            assertThat(m.group(1)).isEqualTo("1");
         });
 
         stopConnector();
