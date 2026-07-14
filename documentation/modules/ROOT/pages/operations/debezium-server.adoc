@@ -2215,7 +2215,11 @@ Use this option when you want to map the value of a specific static constant to 
 ==== JDBC
 
 The JDBC sink writes change events directly to a relational database using JDBC.
-It leverages the xref:connectors/jdbc.adoc[{prodname} JDBC connector] under the hood, supporting a wide variety of database dialects, including CockroachDB, Db2, MySQL, Oracle, PostgreSQL, SingleStore, SQL Server, and StarRocks.
+It uses the xref:connectors/jdbc.adoc[{prodname} JDBC connector] to support a wide variety of database dialects, including
+ifdef::community[]
+CockroachDB,
+endif::community[]
+ Db2, MySQL, Oracle, PostgreSQL, SingleStore, SQL Server, and StarRocks.
 
 The sink supports idempotent writes by using upsert semantics, basic schema evolution to automatically create or alter destination tables, and delete propagation.
 
