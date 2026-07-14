@@ -248,7 +248,7 @@ endif::community[]
 The following table describes the options that you can specify to configure the event flattening SMT.
 
 .Descriptions of event flattening SMT configuration options
-[cols="30%a,25%a,45%a",subs="+attributes",options="header"]
+[cols="30%a,25%a,45%a",options="header"]
 |===
 |Option
 |Default
@@ -291,12 +291,18 @@ If the topic name is not correct for your use case, you can configure `route.by.
 |Set this optional string to prefix a field.
 
 |[[extract-new-record-state-add-fields]]xref:extract-new-record-state-add-fields[`add.fields`]
-|
+|No default value.
 |Set this option to a comma-separated list, with no spaces, of metadata fields to add to the simplified Kafka record's value.
 When there are duplicate field names, to add metadata for one of those fields, specify the struct as well as the field, for example `source.ts_ms`.
 
-Optionally, you can override the field name via `<field name>:<new field name>`, e.g. like so: new field name like `version:VERSION, connector:CONNECTOR, source.ts_ms:EVENT_TIMESTAMP`.
-Please note that the `new field name` is case-sensitive.
+Optionally, you can use the following syntax to specify a case-sensitive replacement label for an existing field name: `__<field name>__:__<new field name>__`
+
+For example:
+
+ version:VERSION, connector:CONNECTOR, source.ts_ms:EVENT_TIMESTAMP
+
+The replacement label that you specify overrides the original field name.
+
 
 When the SMT adds metadata fields to the simplified record's value, it prefixes each metadata field name with a double underscore.
 For a struct specification, the SMT also inserts an underscore between the struct name and the field name.
@@ -305,23 +311,29 @@ If you specify a field that is not in the change event record, the SMT still add
 
 |[[extract-new-record-state-add-headers-prefix]]xref:extract-new-record-state-add-headers-prefix[`add.headers.prefix`]
 | __ (double-underscore)
-|Set this optional string to prefix a header.
+|Specifies an optional string to prefix a header.
 
 |[[extract-new-record-state-add-headers]]xref:extract-new-record-state-add-headers[`add.headers`]
-|
+|No default value.
 |Set this option to a comma-separated list, with no spaces, of metadata fields to add to the header of the simplified Kafka record.
 When there are duplicate field names, to add metadata for one of those fields, specify the struct as well as the field, for example `source.ts_ms`.
 
-Optionally, you can override the field name via `<field name>:<new field name>`, e.g. like so: new field name like `version:VERSION, connector:CONNECTOR, source.ts_ms:EVENT_TIMESTAMP`.
-Please note that the `new field name` is case-sensitive.
+Optionally, you can use the following syntax to specify a case-sensitive replacement label for an existing field: `__<field name>__:__<new field name>__`
+
+For example:
+
+ version:VERSION, connector:CONNECTOR, source.ts_ms:EVENT_TIMESTAMP
+
+The replacement label that you specify overrides the original field name.
+
 
 When the SMT adds metadata fields to the simplified record's header, it prefixes each metadata field name with a double underscore.
 For a struct specification, the SMT also inserts an underscore between the struct name and the field name.
 
-If you specify a field that is not in the change event record, the SMT does not add the field to the header.
+If you specify a field that is not in the change event header, the SMT does not add the field to the header.
 
 |[[extract-new-record-state-drop-fields-header-name]]xref:extract-new-record-state-drop-fields-header-name[`drop.fields.header.name`]
-|
+|No default value.
 |The Kafka message header name to use for listing field names in the source message that you want to drop from the output message.
 
 |[[extract-new-record-state-drop-fields-from-key]]xref:extract-new-record-state-drop-fields-from-key[`drop.fields.from.key`]
