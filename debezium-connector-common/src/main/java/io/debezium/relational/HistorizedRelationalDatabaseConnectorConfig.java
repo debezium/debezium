@@ -54,7 +54,9 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
      */
     public static final Field SCHEMA_HISTORY = Field.create("schema.history.internal")
             .withDisplayName("Database schema history class")
-            .withType(Type.CLASS)
+            // STRING rather than CLASS so the default class is not eagerly loaded when the config definition is
+            // built; the default lives in an optional module that may be absent (e.g. the embedded engine).
+            .withType(Type.STRING)
             .withWidth(Width.LONG)
             .withImportance(Importance.LOW)
             .withInvisibleRecommender()
