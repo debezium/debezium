@@ -147,6 +147,7 @@ To obtain the unique ID of the event from a different outbox table column, set t
 The default behavior is that this value replaces the default `pass:[${routedByValue}]` variable in the xref:outbox-event-router-property-route-topic-replacement[`route.topic.replacement`] SMT option.
 
 For example, in a default configuration, the xref:outbox-event-router-property-route-by-field[`route.by.field`] SMT option is set to `aggregatetype` and the xref:outbox-event-router-property-route-topic-replacement[`route.topic.replacement`] SMT option is set to `outbox.event.pass:[${routedByValue}]`.
+
 Suppose that your application adds two records to the outbox table.
 In the first record, the value in the `aggregatetype` column is `customers`.
 In the second record, the value in the `aggregatetype` column is `orders`.
