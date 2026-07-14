@@ -510,14 +510,14 @@ This setting provides another way to indicate that the record has been deleted.
 
 |[[mongodb-extract-new-record-state-add-headers-prefix]]<<mongodb-extract-new-record-state-add-headers-prefix, `add.headers.prefix`>>
 |__ (double-underscore)
-|Set this optional string to prefix a header.
+|Specifies an optional string to prefix a header.
 
 |[[mongodb-extract-new-record-state-add-headers]]<<mongodb-extract-new-record-state-add-headers, `add.headers`>>
 |No default
-|Specifies a comma-separated list, with no spaces, of metadata fields that you want the SMT to add to the header of simplified messages.
-When the original message contains duplicate field names, you can identify the specific field to modify by providing the name of the struct together with the name of the field, for example, `source.ts_ms`.
+|Specifies a comma-separated list, with no spaces, of metadata fields that you want the SMT to add to the header of the simplified Kafka message.
+If the original message contains duplicate field names, you can specify the field to modify by providing the name of the struct together with the name of the field, for example, `source.ts_ms`.
 
-Optionally, you can override the original name of a field and assign it a new name by adding an entry in the following format to the list:
+Optionally, you can override the original name of a field and assign it a case-sensitive new name by adding an entry in the following format to the list:
 
 `__<field_name>__:__<new_field_name>__`.
 
@@ -528,12 +528,10 @@ For example:
 version:VERSION, connector:CONNECTOR, source.ts_ms:EVENT_TIMESTAMP
 ----
 
-The new name values that you specify are case-sensitive.
-
 When the SMT adds metadata fields to the header of the simplified message, it prefixes each metadata field name with a double underscore.
 For a struct specification, the SMT also inserts an underscore between the struct name and the field name.
 
-If you specify a field that is not in the change event original message, the SMT does not add the field to the header.
+If you specify a field that is not present in the header of the original change event message, the SMT does not add the field to the header.
 
 |[[mongodb-extract-new-record-state-add-fields-prefix]]<<mongodb-extract-new-record-state-add-fields-prefix, `add.fields.prefix`>>
 |__ (double-underscore)
@@ -541,10 +539,10 @@ If you specify a field that is not in the change event original message, the SMT
 
 |[[mongodb-extract-new-record-state-add-fields]]<<mongodb-extract-new-record-state-add-fields, `add.fields`>>
 |No default
-|Set this option to a comma-separated list, with no spaces, of metadata fields to add to the `value` element of the simplified Kafka message.
-When the original message contains duplicate field names, you can identify the specific field to modify by providing the name of the struct together with the name of the field, for example, `source.ts_ms`.
+|Specifies a comma-separated list, with no spaces, of metadata fields that you want the SMT to add to the `value` element of the simplified Kafka message.
+If the original message contains duplicate field names, you can specify the field to modify by providing the name of the struct together with the name of the field, for example, `source.ts_ms`.
 
-Optionally, you can override the original name of a field and assign it a new name by adding an entry in the following format to the list:
+Optionally, you can override the original name of a field and assign it a case-sensitive new name by adding an entry in the following format to the list:
 
 `__<field_name>__:__<new_field_name>__`.
 
@@ -554,8 +552,6 @@ For example:
 ----
 version:VERSION, connector:CONNECTOR, source.ts_ms:EVENT_TIMESTAMP
 ----
-
-The new name values that you specify are case-sensitive.
 
 When the SMT adds metadata fields to the `value` element of the simplified message, it prefixes each metadata field name with a double underscore.
 For a struct specification, the SMT also inserts an underscore between the struct name and the field name.
