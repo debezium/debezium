@@ -24,6 +24,7 @@ In turn, this access enhances efficiency when performing tasks that rely on such
 
 [IMPORTANT]
 ====
-Post processors are designed to modify change event records emitted by {prodname} source connectors only. +
+Post processors are designed to modify change event records emitted by {prodname} source connectors only.
+
 You cannot configure the {prodname} JDBC sink connector to use a post processor.
 ====
