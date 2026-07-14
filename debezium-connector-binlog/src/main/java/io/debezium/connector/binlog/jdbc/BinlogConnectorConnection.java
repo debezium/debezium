@@ -465,7 +465,7 @@ public abstract class BinlogConnectorConnection extends JdbcConnection {
 
             // Get the GTID set that is available on the server
             if (gtidSet.isContainedWithin(availableGtidSet)) {
-                LOGGER.info("The current GTID set '{}' does not contain the GTID set '{}' required by the connector",
+                LOGGER.info("The server's GTID set '{}' contains the connector's stored GTID set '{}'; checking whether any still-needed GTIDs have been purged",
                         availableGtidSet, gtidSet);
 
                 final GtidSet knownServerSet = availableGtidSet.retainAll(config.getGtidSourceFilter());
