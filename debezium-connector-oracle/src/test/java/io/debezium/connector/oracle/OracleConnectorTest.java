@@ -75,8 +75,11 @@ public class OracleConnectorTest {
             assertThat(key.importance).isEqualTo(expected.importance());
             assertThat(key.documentation).isEqualTo(expected.description());
             assertThat(key.type).isEqualTo(expected.type());
-            if (expected.equals(OracleConnectorConfig.SCHEMA_HISTORY) || expected.equals(CommonConnectorConfig.TOPIC_NAMING_STRATEGY)) {
+            if (expected.equals(CommonConnectorConfig.TOPIC_NAMING_STRATEGY)) {
                 assertThat(((Class<?>) key.defaultValue).getName()).isEqualTo((String) expected.defaultValue());
+            }
+            else if (expected.equals(OracleConnectorConfig.SCHEMA_HISTORY)) {
+                assertThat(key.defaultValue).isEqualTo(expected.defaultValue());
             }
             assertThat(key.dependents).isEqualTo(expected.dependents());
             assertThat(key.width).isNotNull();
