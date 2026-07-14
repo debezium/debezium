@@ -389,7 +389,7 @@ This ID will be stored in the emitted event's headers under the `id` key.
 |[[mongodb-outbox-event-router-property-collection-expand-json-payload]]<<mongodb-outbox-event-router-property-collection-expand-json-payload, `collection.expand.json.payload`>>
 |`false`
 |Collection
-a|Specifies whether the JSON expansion of a String payload should be done.
+a|Specifies whether the SMT performs JSON expansion of a String payload.
 If no content found or in case of parsing error, the content is kept "as is".
 
 For more details, please see the xref:mongodb-outbox-expanding-escaped-json-string-as-json[expanding escaped json] section.
