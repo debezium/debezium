@@ -276,11 +276,15 @@ This setting provides another way to indicate that the record has been deleted.
 
 |[[extract-new-record-state-route-by-field]]xref:extract-new-record-state-route-by-field[`route.by.field`]
 |
-|To use row data to determine the topic to route the record to, set this option to an `after` field attribute. The SMT routes the record to the topic whose name matches the value of the specified `after` field attribute. For a `DELETE` operation, set this option to a `before` field attribute. +
- +
-For example, configuration of `route.by.field=destination` routes records to the topic whose name is the value of `after.destination`. The default behavior is that a {prodname} connector sends each change event record to a topic whose name is formed from the name of the database and the name of the table in which the change was made. +
- +
-If you are configuring the event flattening SMT on a sink connector, setting this option might be useful when the destination topic name dictates the name of the database table that will be updated with the simplified change event record. If the topic name is not correct for your use case, you can configure `route.by.field` to re-route the event.
+|To use row data to determine the topic to route the record to, set this option to an `after` field attribute.
+The SMT routes the record to the topic whose name matches the value of the specified `after` field attribute.
+For a `DELETE` operation, set this option to a `before` field attribute.
+
+For example, configuration of `route.by.field=destination` routes records to the topic whose name is the value of `after.destination`.
+The default behavior is that a {prodname} connector sends each change event record to a topic whose name is formed from the name of the database and the name of the table in which the change was made.
+
+If you are configuring the event flattening SMT on a sink connector, setting this option might be useful when the destination topic name dictates the name of the database table that will be updated with the simplified change event record.
+If the topic name is not correct for your use case, you can configure `route.by.field` to re-route the event.
 
 |[[extract-new-record-state-add-fields-prefix]]xref:extract-new-record-state-add-fields-prefix[`add.fields.prefix`]
 | __ (double-underscore)
@@ -288,12 +292,15 @@ If you are configuring the event flattening SMT on a sink connector, setting thi
 
 |[[extract-new-record-state-add-fields]]xref:extract-new-record-state-add-fields[`add.fields`]
 |
-|Set this option to a comma-separated list, with no spaces, of metadata fields to add to the simplified Kafka record's value. When there are duplicate field names, to add metadata for one of those fields, specify the struct as well as the field, for example `source.ts_ms`. +
- +
-Optionally, you can override the field name via `<field name>:<new field name>`, e.g. like so: new field name like `version:VERSION, connector:CONNECTOR, source.ts_ms:EVENT_TIMESTAMP`. Please note that the `new field name` is case-sensitive. +
- +
-When the SMT adds metadata fields to the simplified record's value, it prefixes each metadata field name with a double underscore. For a struct specification, the SMT also inserts an underscore between the struct name and the field name. +
- +
+|Set this option to a comma-separated list, with no spaces, of metadata fields to add to the simplified Kafka record's value.
+When there are duplicate field names, to add metadata for one of those fields, specify the struct as well as the field, for example `source.ts_ms`.
+
+Optionally, you can override the field name via `<field name>:<new field name>`, e.g. like so: new field name like `version:VERSION, connector:CONNECTOR, source.ts_ms:EVENT_TIMESTAMP`.
+Please note that the `new field name` is case-sensitive.
+
+When the SMT adds metadata fields to the simplified record's value, it prefixes each metadata field name with a double underscore.
+For a struct specification, the SMT also inserts an underscore between the struct name and the field name.
+
 If you specify a field that is not in the change event record, the SMT still adds the field to the record's value.
 
 |[[extract-new-record-state-add-headers-prefix]]xref:extract-new-record-state-add-headers-prefix[`add.headers.prefix`]
@@ -302,12 +309,15 @@ If you specify a field that is not in the change event record, the SMT still add
 
 |[[extract-new-record-state-add-headers]]xref:extract-new-record-state-add-headers[`add.headers`]
 |
-|Set this option to a comma-separated list, with no spaces, of metadata fields to add to the header of the simplified Kafka record. When there are duplicate field names, to add metadata for one of those fields, specify the struct as well as the field, for example `source.ts_ms`. +
- +
-Optionally, you can override the field name via `<field name>:<new field name>`, e.g. like so: new field name like `version:VERSION, connector:CONNECTOR, source.ts_ms:EVENT_TIMESTAMP`. Please note that the `new field name` is case-sensitive. +
- +
-When the SMT adds metadata fields to the simplified record's header, it prefixes each metadata field name with a double underscore. For a struct specification, the SMT also inserts an underscore between the struct name and the field name. +
- +
+|Set this option to a comma-separated list, with no spaces, of metadata fields to add to the header of the simplified Kafka record.
+When there are duplicate field names, to add metadata for one of those fields, specify the struct as well as the field, for example `source.ts_ms`.
+
+Optionally, you can override the field name via `<field name>:<new field name>`, e.g. like so: new field name like `version:VERSION, connector:CONNECTOR, source.ts_ms:EVENT_TIMESTAMP`.
+Please note that the `new field name` is case-sensitive.
+
+When the SMT adds metadata fields to the simplified record's header, it prefixes each metadata field name with a double underscore.
+For a struct specification, the SMT also inserts an underscore between the struct name and the field name.
+
 If you specify a field that is not in the change event record, the SMT does not add the field to the header.
 
 |[[extract-new-record-state-drop-fields-header-name]]xref:extract-new-record-state-drop-fields-header-name[`drop.fields.header.name`]
@@ -321,8 +331,8 @@ If you specify a field that is not in the change event record, the SMT does not 
 
 |[[extract-new-record-state-drop-fields-keep-schema-compatible]]xref:extract-new-record-state-drop-fields-keep-schema-compatible[`drop.fields.keep.schema.compatible`]
 |`true`
-|Specifies whether you want the SMT to remove non-optional fields that are included in the xref:extract-new-record-state-drop-fields-header-name[`drop.fields.header.name`] configuration property. +
- +
+|Specifies whether you want the SMT to remove non-optional fields that are included in the xref:extract-new-record-state-drop-fields-header-name[`drop.fields.header.name`] configuration property.
+
 By default, the SMT only removes fields that are marked `optional`.
 
 |[[replace-null-with-default]]xref:replace-null-with-default[`replace.null.with.default`]
