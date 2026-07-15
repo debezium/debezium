@@ -48,7 +48,7 @@ Use this string to identify logging messages to entries in the signaling {data-c
 
 |3
 |`stop-snapshot`
-a| Specifies `type` parameter specifies the operation that the signal is intended to trigger.
+a| The `type` parameter, which identifies the operation that the signal is intended to trigger.
 
 |4
 |`data-collections`
