@@ -23,6 +23,7 @@ import io.debezium.connector.jdbc.junit.jupiter.Sink;
 import io.debezium.connector.jdbc.junit.jupiter.SinkRecordFactoryArgumentsProvider;
 import io.debezium.connector.jdbc.junit.jupiter.SqlServerSinkDatabaseContextProvider;
 import io.debezium.connector.jdbc.util.SinkRecordFactory;
+import io.debezium.data.Uuid;
 import io.debezium.doc.FixFor;
 
 /**
@@ -78,6 +79,53 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
         getSink().assertRows(destinationTable, rs -> {
             assertThat(rs.getInt(1)).isEqualTo(1);
             assertThat(rs.getBytes(2)).isEqualTo(new byte[]{ 1, 2, 3 });
+            return null;
+        });
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("DBZ-2226")
+    public void testShouldCoerceStringTypeToUuidColumnType(SinkRecordFactory factory) throws Exception {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server1", "schema", tableName);
+
+        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        final JdbcKafkaSinkRecord createRecord = factory.createRecordWithSchemaValue(
+                topicName,
+                (byte) 1,
+                "data",
+                Uuid.schema(),
+                "9bc6a215-84b5-4865-a058-9156427c887a",
+                config);
+
+        final String destinationTable = destinationTableName(createRecord);
+        final String sql = "CREATE TABLE %s (id int not null, data uniqueidentifier null, primary key(id))";
+        getSink().execute(String.format(sql, destinationTable));
+
+        consume(createRecord);
+
+        final JdbcKafkaSinkRecord updateRecord = factory.updateRecordWithSchemaValue(
+                topicName,
+                (byte) 1,
+                "data",
+                Uuid.schema(),
+                "f54c2926-076a-4db0-846f-14cad99a8307",
+                config);
+
+        consume(updateRecord);
+
+        getSink().assertColumn(destinationTable, "data", "uniqueidentifier");
+        getSink().assertRows(destinationTable, rs -> {
+            assertThat(rs.getInt(1)).isEqualTo(1);
+            assertThat(rs.getString(2).toLowerCase()).isEqualTo("f54c2926-076a-4db0-846f-14cad99a8307");
             return null;
         });
     }

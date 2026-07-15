@@ -1509,7 +1509,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
     }
 
     @TestTemplate
-    @SkipWhenSource(value = { SourceType.MYSQL, SourceType.ORACLE, SourceType.SQLSERVER }, reason = "No UUID data type support")
+    @SkipWhenSource(value = { SourceType.MYSQL, SourceType.ORACLE }, reason = "No UUID data type support")
     public void testUuidDataType(Source source, Sink sink) throws Exception {
         assertDataType(source,
                 sink,

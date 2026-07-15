@@ -90,6 +90,7 @@ public class SqlServerDatabaseDialect extends GeneralDatabaseDialect {
 
         registerType(BitType.INSTANCE);
         registerType(BytesType.INSTANCE);
+        registerType(UuidType.INSTANCE);
         registerType(XmlType.INSTANCE);
         registerType(ZonedTimeType.INSTANCE);
         registerType(ConnectTimeType.INSTANCE);
