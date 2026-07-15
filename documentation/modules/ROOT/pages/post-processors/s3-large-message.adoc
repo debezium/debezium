@@ -1,0 +1,165 @@
+// Category: debezium-using
+// Type: assembly
+// ModuleID: using-the-s3-large-message-post-processor-to-offload-large-field-values
+// Title: Using the S3 large message post processor to offload large field values
+[id="s3-large-message-post-processor"]
+= S3 large message
+
+ifdef::community[]
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+
+== Overview
+endif::community[]
+
+When a change event record contains fields with large values, such as `STRING` or `BYTES` fields that exceed a configured size threshold, storing these values directly in the Kafka message can increase broker memory pressure, network I/O, and storage costs.
+The {prodname} S3 large message post processor (`S3LargeMessagePostProcessor`) offloads large field values to Amazon S3 and replaces the in-message value with a compact inline reference.
+Downstream consumers can use the inline reference to fetch the original value from S3.
+
+The post processor operates on the `before` and `after` structs of a change event record.
+For each field whose value meets the configured byte-size threshold, the post processor uploads the value to S3 and replaces the field value with an inline reference string of the following format:
+
+----
+__debezium:s3:ref:v1:<bucket-name>|<object-key>
+----
+
+For `STRING` fields, the inline reference is stored as a string.
+For `BYTES` fields, the inline reference is stored as a UTF-8 encoded byte array.
+
+NOTE: You can use the `S3LargeMessagePostProcessor` post processor only with {prodname} source connectors. +
+The post processor is not designed to work with the {prodname} JDBC sink connector.
+
+[id="s3-large-message-object-keys"]
+== Object key generation
+
+The post processor generates a unique S3 object key for each offloaded field by incorporating the values from the change event's source information block.
+Because the source information block is connector-specific, the post processor dynamically iterates all fields defined in the source schema and incorporates their names and values into the object key.
+
+The object key uses the following format:
+
+----
+<source-field-name>=<encoded-value>/<source-field-name>=<encoded-value>/.../<field-name>/<qualifier>
+----
+
+The object key does not begin with a leading `/`, and source field values are URL-encoded so that characters such as `/` and `=` in the values do not interfere with the key structure.
+The `<qualifier>` segment is either `before` or `after`, identifying which part of the change event the field belongs to.
+
+[IMPORTANT]
+====
+Connector implementations must ensure that the source information block contains a set of fields whose values uniquely identify each change event.
+If two events from the same source produce identical source block values, their object keys collide, causing one event's offloaded value to overwrite the other, leading to data loss.
+The core {prodname} connectors satisfy this requirement, but non-core connectors might not.
+If the source information block is `null` or contains no fields, a unique object key cannot be resolved and the field value is passed through as-is.
+====
+[id="s3-large-message-column-filtering"]
+== Column filtering
+
+By default, the post processor offloads all `STRING` and `BYTES` fields that meet the size threshold.
+You can restrict which fields are eligible for offloading by using the `large.message.s3.columns.include.list` and `large.message.s3.columns.exclude.list` configuration properties.
+
+These properties accept comma-separated lists of regular expressions that match field names.
+If an include list is specified, only fields whose names match are eligible for offloading.
+If an exclude list is specified, fields whose names match are excluded.
+Do not set both properties at the same time; if both are set, the include list takes precedence.
+
+[id="s3-large-message-error-handling"]
+== Error handling
+
+If an S3 upload fails, the post processor reacts according to the configured `large.message.s3.error.handling.mode`:
+
+ * `warn` (default): The post processor logs a warning and passes the field value through as-is (not offloaded to S3).
+ Processing continues without interruption.
+ * `fail`: The post processor throws a `DebeziumException`, which stops the connector.
+
+[id="s3-large-message-configuration-example"]
+== Configuration example
+
+The following example shows a connector configuration that enables the S3 large message post processor:
+
+[source,json]
+----
+{
+  "post.processors": "s3offloader",
+  "post.processors.s3offloader.type": "io.debezium.storage.s3.processor.S3LargeMessagePostProcessor",
+  "post.processors.s3offloader.large.message.s3.bucket.name": "my-debezium-bucket",
+  "post.processors.s3offloader.large.message.s3.region.name": "us-east-1",
+  "post.processors.s3offloader.large.message.s3.threshold.bytes": "102400",
+  "post.processors.s3offloader.large.message.s3.error.handling.mode": "warn"
+}
+----
+
+When using static AWS credentials, you can also provide the `large.message.s3.access.key.id` and `large.message.s3.secret.access.key` properties.
+If static credentials are not provided, the post processor uses the AWS `DefaultCredentialsProvider` chain.
+
+To use a custom S3-compatible endpoint (for example, MinIO or LocalStack), set the `large.message.s3.endpoint` property.
+When set, the S3 client uses path-style addressing.
+
+[id="s3-large-message-configuration-options"]
+== Configuration options
+
+The following table lists the configuration options that you can set for the S3 large message post processor.
+
+.S3 large message post processor configuration options
+[cols="30%a,15%a,55%a"]
+|===
+|Property
+|Default
+|Description
+
+|[[s3-large-message-post-processor-property-bucket-name]]<<s3-large-message-post-processor-property-bucket-name, `+large.message.s3.bucket.name+`>>
+|No default
+|The name of the S3 bucket to which large field values are uploaded.
+This property is required.
+
+|[[s3-large-message-post-processor-property-region-name]]<<s3-large-message-post-processor-property-region-name, `+large.message.s3.region.name+`>>
+|No default
+|The AWS region in which the S3 bucket resides.
+This property is required.
+
+|[[s3-large-message-post-processor-property-threshold-bytes]]<<s3-large-message-post-processor-property-threshold-bytes, `+large.message.s3.threshold.bytes+`>>
+|`102400`
+|The minimum size, in bytes, that a `STRING` or `BYTES` field value must reach before it is offloaded to S3.
+The default value is 100 KB.
+
+|[[s3-large-message-post-processor-property-access-key-id]]<<s3-large-message-post-processor-property-access-key-id, `+large.message.s3.access.key.id+`>>
+|No default
+|The AWS access key ID to use for S3 authentication.
+If not set, the post processor uses the AWS `DefaultCredentialsProvider` chain.
+
+|[[s3-large-message-post-processor-property-secret-access-key]]<<s3-large-message-post-processor-property-secret-access-key, `+large.message.s3.secret.access.key+`>>
+|No default
+|The AWS secret access key to use for S3 authentication.
+If not set, the post processor uses the AWS `DefaultCredentialsProvider` chain.
+
+|[[s3-large-message-post-processor-property-endpoint]]<<s3-large-message-post-processor-property-endpoint, `+large.message.s3.endpoint+`>>
+|No default
+|A custom S3 endpoint URL, useful for S3-compatible storage such as MinIO or LocalStack.
+When set, the S3 client uses path-style addressing.
+
+|[[s3-large-message-post-processor-property-columns-include-list]]<<s3-large-message-post-processor-property-columns-include-list, `+large.message.s3.columns.include.list+`>>
+|No default
+|A comma-separated list of regular expressions matching field names to include for offloading.
+Only fields whose names match are eligible for offloading.
+Do not set this property if you set the `large.message.s3.columns.exclude.list` property.
+
+|[[s3-large-message-post-processor-property-columns-exclude-list]]<<s3-large-message-post-processor-property-columns-exclude-list, `+large.message.s3.columns.exclude.list+`>>
+|No default
+|A comma-separated list of regular expressions matching field names to exclude from offloading.
+Fields whose names match are not offloaded.
+Do not set this property if you set the `large.message.s3.columns.include.list` property.
+
+|[[s3-large-message-post-processor-property-error-handling-mode]]<<s3-large-message-post-processor-property-error-handling-mode, `+large.message.s3.error.handling.mode+`>>
+|`warn`
+|Specifies how the post processor reacts to S3 upload failures. +
+ +
+When set to `warn`, the post processor logs a warning and passes the field value through as-is (not offloaded to S3). +
+ +
+When set to `fail`, the post processor throws a `DebeziumException`, which stops the connector.
+
+|===
+

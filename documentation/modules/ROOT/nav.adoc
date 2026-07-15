@@ -55,6 +55,7 @@
 * Post Processors
 ** xref:post-processors/index.adoc[Overview]
 ** xref:post-processors/reselect-columns.adoc[Reselect Columns]
+** xref:post-processors/s3-large-message.adoc[S3 Large Message]
 * API and SPI
 ** xref:development/engine.adoc[Debezium Engine]
 ** xref:development/converters.adoc[Custom Converters]

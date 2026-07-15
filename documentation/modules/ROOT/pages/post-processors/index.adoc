@@ -20,6 +20,9 @@ In turn, this access enhances efficiency when performing tasks that rely on such
 |xref:post-processors/reselect-columns.adoc[Reselect columns]
 |Re-selects specific columns that may not have been provided by the change event, such as TOASTed columns or Oracle LOB columns that were not modified by the current event's change.
 
+|xref:post-processors/s3-large-message.adoc[S3 large message]
+|Offloads large `STRING` and `BYTES` field values from change event records to Amazon S3, replacing the in-message value with a compact inline reference.
+
 |===
 
 [IMPORTANT]
