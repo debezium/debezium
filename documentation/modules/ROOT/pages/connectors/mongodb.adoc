@@ -82,7 +82,7 @@ In this case, after a restart the connector detects the missing oplog operations
 
 The MongoDB connector is also quite tolerant of changes in membership and leadership of the replica sets, of additions or removals of shards within a sharded cluster, and network problems that might cause communication failures.
 By default, the connector streams changes from the replica set's primary node, but you can configure it to stream from a secondary by setting the xref:read-preference[read preference] in the connection string.
-If the member that the connector reads from becomes unavailable -- for example, because the replica set elects a new primary -- the connector stops streaming and automatically reconnects to another suitable member based on the configured read preference.
+If the replica set member that the connector reads from becomes unavailable -- for example, because the replica set elects a new primary -- the connector stops streaming and automatically reconnects to another suitable member based on the configured read preference.
 Similarly, if the connector is unable to communicate with the replica set, it attempts to reconnect by using exponential backoff so as to not overwhelm the network or replica set.
 After connection is reestablished, the connector continues to stream changes from the last event that it captured.
 In this way the connector dynamically adjusts to changes in replica set membership, and automatically handles communication disruptions.
