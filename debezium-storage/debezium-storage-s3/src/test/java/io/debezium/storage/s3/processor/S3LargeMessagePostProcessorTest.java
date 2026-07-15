@@ -6,6 +6,7 @@
 package io.debezium.storage.s3.processor;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -307,6 +308,159 @@ public class S3LargeMessagePostProcessorTest {
         String objectId = extractObjectId(inlineReference);
         assertTrue(objectId.contains("data"));
         assertTrue(objectId.endsWith("/after"));
+    }
+
+    @Test
+    void testObjectKeyDoesNotStartWithLeadingSlash() {
+        processor.configure(baseConfig());
+
+        String largeString = "x".repeat(SMALL_THRESHOLD + 1);
+        Schema schema = SchemaBuilder.struct()
+                .field("content", Schema.STRING_SCHEMA)
+                .build();
+        Struct after = new Struct(schema);
+        after.put("content", largeString);
+        Struct envelope = buildSimpleEnvelope(buildSourceStruct(), after);
+
+        processor.apply(null, envelope);
+
+        String inlineReference = (String) envelope.getStruct(Envelope.FieldName.AFTER).get("content");
+        String objectId = extractObjectId(inlineReference);
+        assertFalse(objectId.startsWith("/"), "Object key must not start with a leading '/'");
+    }
+
+    @Test
+    void testObjectKeyEncodesSpecialCharactersInValues() {
+        processor.configure(baseConfig());
+
+        String largeString = "x".repeat(SMALL_THRESHOLD + 1);
+        Schema schema = SchemaBuilder.struct()
+                .field("content", Schema.STRING_SCHEMA)
+                .build();
+        Struct after = new Struct(schema);
+        after.put("content", largeString);
+
+        Schema sourceSchema = SchemaBuilder.struct()
+                .name("io.debezium.connector.fake.Source")
+                .field("db", Schema.STRING_SCHEMA)
+                .field("table", Schema.STRING_SCHEMA)
+                .build();
+        Struct source = new Struct(sourceSchema);
+        source.put("db", "my/db=test");
+        source.put("table", "order=details/sub");
+
+        Struct envelope = buildSimpleEnvelope(source, after);
+
+        processor.apply(null, envelope);
+
+        verify(mockS3Client, times(1)).putObject(any(PutObjectRequest.class), any(RequestBody.class));
+
+        String inlineReference = (String) envelope.getStruct(Envelope.FieldName.AFTER).get("content");
+        String objectId = extractObjectId(inlineReference);
+
+        // The raw values contain '/' and '=' which must be URL-encoded so they don't
+        // interfere with the key structure's delimiters.
+        assertTrue(objectId.contains("db=my%2Fdb%3Dtest"));
+        assertTrue(objectId.contains("table=order%3Ddetails%2Fsub"));
+    }
+
+    @Test
+    void testColumnsIncludeListOnlyOffloadsMatchingFields() {
+        Map<String, Object> config = baseConfig();
+        config.put(S3LargeMessagePostProcessor.COLUMNS_INCLUDE_LIST_CONFIG, "content");
+
+        processor.configure(config);
+
+        String largeString = "x".repeat(SMALL_THRESHOLD + 1);
+        Schema schema = SchemaBuilder.struct()
+                .field("content", Schema.STRING_SCHEMA)
+                .field("notes", Schema.STRING_SCHEMA)
+                .build();
+        Struct after = new Struct(schema);
+        after.put("content", largeString);
+        after.put("notes", largeString);
+
+        Struct envelope = buildSimpleEnvelope(buildSourceStruct(), after);
+        processor.apply(null, envelope);
+
+        // Only "content" should be offloaded; "notes" is not in the include list
+        verify(mockS3Client, times(1)).putObject(any(PutObjectRequest.class), any(RequestBody.class));
+
+        assertInstanceOf(String.class, envelope.getStruct(Envelope.FieldName.AFTER).get("content"));
+        assertEquals(largeString, envelope.getStruct(Envelope.FieldName.AFTER).get("notes"));
+    }
+
+    @Test
+    void testColumnsExcludeListSkipsExcludedFields() {
+        Map<String, Object> config = baseConfig();
+        config.put(S3LargeMessagePostProcessor.COLUMNS_EXCLUDE_LIST_CONFIG, "notes");
+
+        processor.configure(config);
+
+        String largeString = "x".repeat(SMALL_THRESHOLD + 1);
+        Schema schema = SchemaBuilder.struct()
+                .field("content", Schema.STRING_SCHEMA)
+                .field("notes", Schema.STRING_SCHEMA)
+                .build();
+        Struct after = new Struct(schema);
+        after.put("content", largeString);
+        after.put("notes", largeString);
+
+        Struct envelope = buildSimpleEnvelope(buildSourceStruct(), after);
+        processor.apply(null, envelope);
+
+        // "notes" should be excluded; only "content" should be offloaded
+        verify(mockS3Client, times(1)).putObject(any(PutObjectRequest.class), any(RequestBody.class));
+
+        assertInstanceOf(String.class, envelope.getStruct(Envelope.FieldName.AFTER).get("content"));
+        assertEquals(largeString, envelope.getStruct(Envelope.FieldName.AFTER).get("notes"));
+    }
+
+    @Test
+    void testErrorHandlingModeWarnPassesValueThroughOnUploadFailure() {
+        Map<String, Object> config = baseConfig();
+        config.put(S3LargeMessagePostProcessor.ERROR_HANDLING_MODE_CONFIG, "warn");
+        processor.configure(config);
+
+        // Override the mock to throw on upload
+        when(mockS3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class)))
+                .thenThrow(new RuntimeException("S3 upload failed"));
+
+        String largeString = "x".repeat(SMALL_THRESHOLD + 1);
+        Schema schema = SchemaBuilder.struct()
+                .field("content", Schema.STRING_SCHEMA)
+                .build();
+        Struct after = new Struct(schema);
+        after.put("content", largeString);
+        Struct envelope = buildSimpleEnvelope(buildSourceStruct(), after);
+
+        processor.apply(null, envelope);
+
+        // In WARN mode, the field value should pass through as-is
+        Object resultValue = envelope.getStruct(Envelope.FieldName.AFTER).get("content");
+        assertInstanceOf(String.class, resultValue);
+        assertEquals(largeString, resultValue);
+    }
+
+    @Test
+    void testErrorHandlingModeFailThrowsExceptionOnUploadFailure() {
+        Map<String, Object> config = baseConfig();
+        config.put(S3LargeMessagePostProcessor.ERROR_HANDLING_MODE_CONFIG, "fail");
+        processor.configure(config);
+
+        // Override the mock to throw on upload
+        when(mockS3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class)))
+                .thenThrow(new RuntimeException("S3 upload failed"));
+
+        String largeString = "x".repeat(SMALL_THRESHOLD + 1);
+        Schema schema = SchemaBuilder.struct()
+                .field("content", Schema.STRING_SCHEMA)
+                .build();
+        Struct after = new Struct(schema);
+        after.put("content", largeString);
+        Struct envelope = buildSimpleEnvelope(buildSourceStruct(), after);
+
+        assertThrows(DebeziumException.class, () -> processor.apply(null, envelope));
     }
 
     private String extractObjectId(String inlineReference) {
