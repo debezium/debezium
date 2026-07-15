@@ -109,8 +109,11 @@ You specify the replica member that the connector reads from by configuring the 
 If you do not specify a read preference, the driver default of `primary` applies, and the connector streams changes from the primary node.
 
 To reduce the load on the primary, it's possible to configure the connector to read from a secondary node, by setting `readPreference=secondaryPreferred`.
-However, because change streams emit only majority-committed events, be aware that replication delay results in secondary nodes lagging behind the primary.
-As a result, events captured from a secondary can arrive later than they would from the primary.
+Under normal operating conditions, configuring the connector to read from a secondary node does not significantly increase data-capture latency. 
+However, events captured from a secondary can arrive later than they would from the primary due to resource contention or network latency.
+Additional latency can also occur because change streams emit events only after changes are majority committed. 
+A change is majority committed when a majority of voting replica set members confirm that they have written the change to their journals. 
+As a result, a secondary node can emit an event only after it receives confirmation that the change has been majority committed.
 
 // Type: assembly
 // ModuleID: how-debezium-mongodb-connectors-work
