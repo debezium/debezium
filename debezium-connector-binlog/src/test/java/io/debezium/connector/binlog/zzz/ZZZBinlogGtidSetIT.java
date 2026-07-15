@@ -129,6 +129,50 @@ public abstract class ZZZBinlogGtidSetIT<C extends SourceConnector> extends Abst
         stopConnector();
     }
 
+    @Test
+    @FixFor("debezium/dbz#2227")
+    public void shouldResumeStreamingAfterRestartWithPurgedGtidSet() throws SQLException, InterruptedException {
+        Files.delete(SCHEMA_HISTORY_PATH);
+
+        purgeDatabaseLogs();
+        final UniqueDatabase database = TestHelper.getUniqueDatabase("myServer1", "connector_test")
+                .withDbHistoryPath(SCHEMA_HISTORY_PATH);
+        database.createAndInitialize();
+
+        // Stream-only start (no snapshot) against a server with a non-empty purged GTID set.
+        config = database.defaultConfig()
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.CONFIGURATION_BASED)
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_DATA, Boolean.FALSE)
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_SCHEMA, Boolean.FALSE)
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE_CONFIGURATION_BASED_START_STREAM, Boolean.TRUE)
+                .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, database.qualifiedTableName("customers"))
+                .build();
+
+        // Consume the initial customers rows streamed from the (unpurged) binlog.
+        start(getConnectorClass(), config);
+        SourceRecords records = consumeRecordsByTopic(4);
+        assertThat(records.recordsForTopic(database.topicForTable("customers")).size()).isEqualTo(4);
+
+        stopConnector();
+
+        // Insert more rows while the connector is down.
+        try (BinlogTestConnection db = getTestDatabaseConnection(database.getDatabaseName())) {
+            db.execute(
+                    "INSERT INTO customers VALUES(default,1001,1001,1001)",
+                    "INSERT INTO customers VALUES(default,1002,1002,1002)");
+        }
+
+        // Restart: the committed offset carries the purged GTID set as its floor, so the connector must
+        // resume from it rather than fail with "... is no longer available on the server".
+        start(getConnectorClass(), config);
+        records = consumeRecordsByTopic(2);
+        assertThat(records.recordsForTopic(database.topicForTable("customers")).size()).isEqualTo(2);
+        records.forEach(this::validate);
+
+        stopConnector();
+    }
+
     private void purgeDatabaseLogs() throws SQLException {
         try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName());) {
             try (JdbcConnection connection = db.connect()) {
