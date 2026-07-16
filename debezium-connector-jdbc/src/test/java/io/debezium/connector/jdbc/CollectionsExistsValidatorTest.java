@@ -21,7 +21,7 @@ import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.SchemaEvolutionMode;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 
 @Tag("UnitTests")
-public class StartupCollectionValidatorTest {
+public class CollectionsExistsValidatorTest {
 
     @Test
     public void shouldExposeSchemaEvolutionModeCapabilities() {
@@ -100,7 +100,7 @@ public class StartupCollectionValidatorTest {
         return properties;
     }
 
-    private static StartupCollectionValidator validator(JdbcSinkConnectorConfig config, Map<String, String> properties) {
-        return new StartupCollectionValidator(config, mock(SessionFactory.class), mock(DatabaseDialect.class), properties);
+    private static CollectionsExistsValidator validator(JdbcSinkConnectorConfig config, Map<String, String> properties) {
+        return new CollectionsExistsValidator(config, mock(SessionFactory.class), mock(DatabaseDialect.class), properties);
     }
 }
