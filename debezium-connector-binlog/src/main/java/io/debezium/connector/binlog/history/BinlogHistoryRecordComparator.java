@@ -5,7 +5,12 @@
  */
 package io.debezium.connector.binlog.history;
 
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.VisibleForTesting;
 import io.debezium.connector.binlog.BinlogOffsetContext;
@@ -22,8 +27,15 @@ import io.debezium.relational.history.HistoryRecordComparator;
  */
 public abstract class BinlogHistoryRecordComparator extends HistoryRecordComparator {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(BinlogHistoryRecordComparator.class);
+
     private final Predicate<String> gtidSourceFilter;
     private final GtidSetFactory gtidSetFactory;
+
+    // isPositionAtOrBefore() is invoked once per recorded history entry during recovery, so a base-name
+    // change would otherwise log for every differing record. Track the transitions already reported to
+    // keep the warning to one line per distinct base-name change.
+    private final Set<String> warnedBaseNameChanges = ConcurrentHashMap.newKeySet();
 
     public BinlogHistoryRecordComparator(Predicate<String> gtidSourceFilter, GtidSetFactory gtidSetFactory) {
         this.gtidSourceFilter = gtidSourceFilter;
@@ -115,6 +127,13 @@ public abstract class BinlogHistoryRecordComparator extends HistoryRecordCompara
             // than failing schema history recovery, treat the recorded position as at-or-before the desired
             // one so its DDL is applied and the in-memory schema is rebuilt completely. Skipping the DDL is
             // the unsafe direction: it would leave the schema incomplete and break parsing of later events.
+            final String change = recordedFileName.baseName + " -> " + desiredFileName.baseName;
+            if (warnedBaseNameChanges.add(change)) {
+                LOGGER.warn("Binlog base name changed during schema history recovery ({}); the recorded DDL is "
+                        + "applied because the numeric extensions are no longer comparable. This is expected after a "
+                        + "restore or log_bin_basename change, but if it results from switching back and forth between "
+                        + "primary and failover the recovered schema history may be incomplete.", change);
+            }
             return true;
         }
         final int fileNameCheck = recordedFileName.compareTo(desiredFileName);
