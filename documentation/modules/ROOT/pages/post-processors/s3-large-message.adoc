@@ -34,6 +34,9 @@ For `BYTES` fields, the inline reference is stored as a UTF-8 encoded byte array
 NOTE: You can use the `S3LargeMessagePostProcessor` post processor only with {prodname} source connectors. +
 The post processor is not designed to work with the {prodname} JDBC sink connector.
 
+NOTE: To use this post processor, add the `debezium-storage-s3` module to your application. +
+This feature is not included in the common post processor framework by default.
+
 [id="s3-large-message-object-keys"]
 == Object key generation
 
