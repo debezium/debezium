@@ -10,6 +10,7 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
 
+import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.spi.schema.DataCollectionId;
@@ -28,6 +29,21 @@ public interface ChunkQueryBuilder<T extends DataCollectionId> {
      * Builds a query for reading the next incremental snapshot chunk from a table using the specified limit.
      */
     String buildChunkQuery(IncrementalSnapshotContext<T> context, Table table, int limit, Optional<String> additionalCondition);
+
+    /**
+     * Appends an optimized inclusive/exclusive lower bound condition for the given columns. It uses boundaryValues to check for NULLs if needed.
+     */
+    void addLowerBound(List<Column> pkColumns, Object[] boundaryValues, StringBuilder condition, boolean inclusiveFinal);
+
+    /**
+     * Appends an optimized inclusive/exclusive upper bound condition for the given columns. It uses boundaryValues to check for NULLs if needed.
+     */
+    void addUpperBound(List<Column> pkColumns, Object[] boundaryValues, StringBuilder condition, boolean inclusiveFinal);
+
+    /**
+     * Binds Query Params starting at position startIndex for given columns to the given values.
+     */
+    int bindBoundaryParams(PreparedStatement statement, List<Column> columns, Object[] values, int startIndex, JdbcConnection connection) throws SQLException;
 
     /**
      * Prepares a statement for reading the next incremental snapshot chunk from a table using the SQL statement returned by buildChunkQuery.

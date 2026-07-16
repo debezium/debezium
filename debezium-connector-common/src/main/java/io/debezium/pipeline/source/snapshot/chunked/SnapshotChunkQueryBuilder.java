@@ -10,8 +10,10 @@ import java.sql.SQLException;
 import java.util.List;
 
 import io.debezium.jdbc.JdbcConnection;
-import io.debezium.pipeline.source.snapshot.CascadingOrBoundaryConditions;
+import io.debezium.pipeline.source.snapshot.incremental.ChunkQueryBuilder;
 import io.debezium.relational.Column;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.spi.schema.DataCollectionId;
 
 /**
  * Builds SQL queries for snapshot chunks with boundary conditions.
@@ -21,9 +23,12 @@ import io.debezium.relational.Column;
 public class SnapshotChunkQueryBuilder {
 
     private final JdbcConnection jdbcConnection;
+    private final ChunkQueryBuilder<DataCollectionId> connectionChunkQueryBuilder;
 
-    public SnapshotChunkQueryBuilder(JdbcConnection jdbcConnection) {
+    public SnapshotChunkQueryBuilder(JdbcConnection jdbcConnection, RelationalDatabaseConnectorConfig config) {
         this.jdbcConnection = jdbcConnection;
+        this.connectionChunkQueryBuilder = jdbcConnection.chunkQueryBuilder(config);
+
     }
 
     /**
@@ -44,7 +49,7 @@ public class SnapshotChunkQueryBuilder {
 
         // Add lower bound: key >= lowerBound
         if (chunk.hasLowerBound()) {
-            addLowerBound(keyColumns, whereClause);
+            connectionChunkQueryBuilder.addLowerBound(keyColumns, chunk.getLowerBounds(), whereClause, true);
         }
 
         // Add upper bound: key < upperBound (or key <= upperBound for last chunk)
@@ -52,31 +57,10 @@ public class SnapshotChunkQueryBuilder {
             if (!whereClause.isEmpty()) {
                 whereClause.append(" AND ");
             }
-            addUpperBound(keyColumns, whereClause, chunk.isLastChunk());
+            connectionChunkQueryBuilder.addUpperBound(keyColumns, chunk.getUpperBounds(), whereClause, chunk.isLastChunk());
         }
 
         return injectWhereClause(baseSelect, whereClause.toString(), keyColumns);
-    }
-
-    /**
-     * Add lower bound condition: (k1, k2, ...) >= (?, ?, ...)
-     * For composite keys, uses cascading OR conditions.
-     */
-    protected void addLowerBound(List<Column> keyColumns, StringBuilder sql) {
-        final List<String> quotedCols = keyColumns.stream()
-                .map(c -> jdbcConnection.quoteIdentifier(c.name()))
-                .toList();
-        CascadingOrBoundaryConditions.buildLowerBound(quotedCols, sql, true);
-    }
-
-    /**
-     * Add upper bound condition: (k1, k2, ...) < (?, ?, ...)
-     */
-    protected void addUpperBound(List<Column> keyColumns, StringBuilder sql, boolean inclusive) {
-        final List<String> quotedCols = keyColumns.stream()
-                .map(c -> jdbcConnection.quoteIdentifier(c.name()))
-                .toList();
-        CascadingOrBoundaryConditions.buildUpperBound(quotedCols, sql, inclusive);
     }
 
     /**
@@ -128,22 +112,20 @@ public class SnapshotChunkQueryBuilder {
      */
     public PreparedStatement prepareChunkStatement(SnapshotChunk chunk, List<Column> keyColumns, String sql) throws SQLException {
         final PreparedStatement statement = jdbcConnection.connection().prepareStatement(sql);
-
         if (!chunk.hasLowerBound() && !chunk.hasUpperBound()) {
             return statement;
         }
-
         int paramIndex = 1;
 
         // Bind lower bound parameters
         if (chunk.hasLowerBound()) {
-            paramIndex = CascadingOrBoundaryConditions.bindTriangularParams(
+            paramIndex = connectionChunkQueryBuilder.bindBoundaryParams(
                     statement, keyColumns, chunk.getLowerBounds(), paramIndex, jdbcConnection);
         }
 
         // Bind upper bound parameters
         if (chunk.hasUpperBound()) {
-            CascadingOrBoundaryConditions.bindTriangularParams(
+            connectionChunkQueryBuilder.bindBoundaryParams(
                     statement, keyColumns, chunk.getUpperBounds(), paramIndex, jdbcConnection);
         }
 

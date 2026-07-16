@@ -102,6 +102,124 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
         return projection;
     }
 
+    public void addLowerBound(List<Column> pkColumns, Object[] boundaryKey, StringBuilder condition, boolean inclusiveFinal) {
+        // To make window boundaries working for more than one column it is necessary to calculate
+        // with independently increasing values in each column independently.
+        // To include the boundary using inclusiveFinal, we can add an equality condition at the end.
+        // For one column with inclusiveFinal = false the condition will be (? will always be the last value seen for the given column)
+        // (k1 > ?)
+        // For two columns with inclusiveFinal = true
+        // (k1 > ?) OR (k1 = ? AND k2 > ?) OR (k1 = ? AND k2 = ?)
+        // For four columns with inclusiveFinal = false
+        // (k1 > ?) OR (k1 = ? AND k2 > ?) OR (k1 = ? AND k2 = ? AND k3 > ?) OR (k1 = ? AND k2 = ? AND k3 = ? AND k4 > ?)
+        // etc.
+        //
+        // Special considerations are needed when a column is nullable. First, the ORDER BY clause will return NULL values
+        // in different sort orders depending on the database, so jdbcConnection.nullsSortLast() helps us figure that out.
+        // Next, each individual comparison as shown in the simple non-NULLABLE example above is translated as follows:
+        //
+        // Databases where NULL sorts last (e.g. PostgreSQL):
+        // (k1 > ?) where ? is non-NULL: (k1 > ? OR k1 IS NULL): find bigger values; NULL is considered bigger & not seen yet
+        // (k1 > ?) where ? is NULL: (FALSE): by definition, NULL is the last value and no value can possibly be higher
+        // (k1 = ?) where ? is non-NULL: (k1 = ?): no translation needed for non-NULL values
+        // (k1 = ?) where ? is NULL: (k1 IS NULL): need to use IS NULL instead of equality comparison
+        //
+        // Databases where NULL sorts first (e.g. MySQL):
+        // (k1 > ?) where ? is non-NULL: (k1 > ? AND k1 IS NOT NULL): find bigger values; NULL is smaller & already seen
+        // (k1 > ?) where ? is NULL: (k1 IS NOT NULL): by definition, NULL is the first value and every value is always higher
+        // (k1 = ?) where ? is non-NULL: (k1 = ?): no translation needed for non-NULL values
+        // (k1 = ?) where ? is NULL: (k1 IS NULL): need to use IS NULL instead of equality comparison
+
+        final Optional<Boolean> nullsSortLast = jdbcConnection.nullsSortLast();
+        if (pkColumns.size() > 1 || inclusiveFinal) {
+            condition.append('(');
+        }
+        for (int i = 0; i < pkColumns.size(); i++) {
+            final boolean isLastIterationForI = (i == pkColumns.size() - 1);
+            condition.append('(');
+            for (int j = 0; j < i + 1; j++) {
+                final boolean isLastIterationForJ = (i == j);
+                final String pkColumnName = jdbcConnection.quoteIdentifier(pkColumns.get(j).name());
+                if (pkColumns.get(j).isRequired()) {
+                    condition.append(pkColumnName);
+                    condition.append(isLastIterationForJ ? " > ?" : " = ?");
+                }
+                else if (boundaryKey[j] != null) {
+                    if (isLastIterationForJ) {
+                        condition.append('(');
+                        condition.append(pkColumnName);
+                        condition.append(" > ?");
+                        if (nullsSortLast.get()) {
+                            condition.append(" OR ");
+                            condition.append(pkColumnName);
+                            condition.append(" IS NULL)");
+                        }
+                        else {
+                            condition.append(" AND ");
+                            condition.append(pkColumnName);
+                            condition.append(" IS NOT NULL)");
+                        }
+                    }
+                    else {
+                        condition.append(pkColumnName);
+                        condition.append(" = ?");
+                    }
+                }
+                else {
+                    if (isLastIterationForJ) {
+                        // Identifies values greater than NULL based on the database sorting behavior
+                        if (nullsSortLast.get()) {
+                            // Basically a FALSE literal: works around lack of FALSE literal in some databases, like Oracle
+                            condition.append("1 = 0"); // nothing is greater than NULL
+                        }
+                        else {
+                            condition.append(pkColumnName);
+                            condition.append(" IS NOT NULL"); // everything is greater than NULL
+                        }
+                    }
+                    else {
+                        condition.append(pkColumnName);
+                        condition.append(" IS NULL");
+                    }
+                }
+                if (!isLastIterationForJ) {
+                    condition.append(" AND ");
+                }
+            }
+            condition.append(")");
+            if (!isLastIterationForI) {
+                condition.append(" OR ");
+            }
+            if(isLastIterationForI && inclusiveFinal){
+                condition.append(" OR ");
+                condition.append('(');
+                for (int j = 0; j <=i ; j++) {
+                    final String pkColumnName = jdbcConnection.quoteIdentifier(pkColumns.get(j).name());
+                    if (boundaryKey[j] != null) {
+                        condition.append(pkColumnName);
+                        condition.append(" = ?");
+                    }
+                    else{
+                        condition.append(pkColumnName);
+                        condition.append(" IS NULL");
+                    }
+                    if(j < i){
+                        condition.append(" AND ");
+                    }
+                }
+                condition.append(')');
+            }
+        }
+        if (pkColumns.size() > 1 || inclusiveFinal) {
+            condition.append(')');
+        }
+    }
+
+    public void addUpperBound(List<Column> pkColumns, Object[] boundaryKey, StringBuilder sql, boolean inclusiveFinal) {
+        sql.append("NOT ");
+        addLowerBound(pkColumns, boundaryKey, sql, !inclusiveFinal);
+    }
+
     protected void addLowerBound(IncrementalSnapshotContext<T> context, Table table, Object[] boundaryKey, StringBuilder sql) {
         // To make window boundaries working for more than one column it is necessary to calculate
         // with independently increasing values in each column independently.
@@ -219,6 +337,19 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
             CascadingOrBoundaryConditions.bindTriangularParamsSkipNulls(statement, queryColumns, upperBound.get(), 1, jdbcConnection);
         }
         return statement;
+    }
+
+    public int bindBoundaryParams(PreparedStatement statement, List<Column> columns, Object[] values, int startIndex, JdbcConnection connection)
+            throws SQLException {
+        int paramIndex = startIndex;
+        for (int i = 0; i < values.length; i++) {
+            for (int j = 0; j <= i; j++) {
+                if (values[j] != null) {
+                    connection.setQueryColumnValue(statement, columns.get(j), paramIndex++, values[j]);
+                }
+            }
+        }
+        return paramIndex;
     }
 
     @Override
