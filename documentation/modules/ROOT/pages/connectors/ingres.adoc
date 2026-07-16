@@ -173,6 +173,9 @@ In some cases, you might want to limit schema capture in the initial snapshot.
 This can be useful when you want to reduce the time required to complete a snapshot.
 Or when {prodname} connects to the database instance through a user account that has access to multiple logical databases, but you want the connector to capture changes only from tables in a specific logic database.
 
+[id="debezium-ingres-incremental-snapshots"]
+=== Incremental snapshots
+
 include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+1]
 
 [WARNING]
