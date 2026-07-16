@@ -379,12 +379,12 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         // ADVANCED("advanced", false, true);
         private final String mode;
         private final boolean validateOnStartup;
-        private final boolean schemaEvolution;
+        private final boolean schemaEvolutionEnabled;
 
-        SchemaEvolutionMode(String mode, boolean validateOnStartup, boolean schemaEvolution) {
+        SchemaEvolutionMode(String mode, boolean validateOnStartup, boolean schemaEvolutionEnabled) {
             this.mode = mode;
             this.validateOnStartup = validateOnStartup;
-            this.schemaEvolution = schemaEvolution;
+            this.schemaEvolutionEnabled = schemaEvolutionEnabled;
         }
 
         public static SchemaEvolutionMode parse(String value) {
@@ -405,8 +405,8 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
             return validateOnStartup;
         }
 
-        public boolean schemaEvolution() {
-            return schemaEvolution;
+        public boolean isSchemaEvolutionEnabled() {
+            return schemaEvolutionEnabled;
         }
 
     }

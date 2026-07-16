@@ -29,11 +29,11 @@ public class CollectionsExistsValidatorTest {
 
         assertThat(mode).isEqualTo(SchemaEvolutionMode.NONE_VALIDATED);
         assertThat(SchemaEvolutionMode.NONE.validateOnStartup()).isFalse();
-        assertThat(SchemaEvolutionMode.NONE.schemaEvolution()).isFalse();
+        assertThat(SchemaEvolutionMode.NONE.isSchemaEvolutionEnabled()).isFalse();
         assertThat(mode.validateOnStartup()).isTrue();
-        assertThat(mode.schemaEvolution()).isFalse();
+        assertThat(mode.isSchemaEvolutionEnabled()).isFalse();
         assertThat(SchemaEvolutionMode.BASIC.validateOnStartup()).isFalse();
-        assertThat(SchemaEvolutionMode.BASIC.schemaEvolution()).isTrue();
+        assertThat(SchemaEvolutionMode.BASIC.isSchemaEvolutionEnabled()).isTrue();
     }
 
     @Test
