@@ -32,12 +32,23 @@ public class DefaultCollectionNamingStrategy implements CollectionNamingStrategy
 
     @Override
     public String resolveCollectionName(DebeziumSinkRecord record, String collectionNameFormat) {
-        // Default behavior is to replace dots with underscores
-        final String topicName = record.topicName().replace(".", "_");
-        String collection = collectionNameFormat.replace("${topic}", topicName);
+        String collection = resolveCollectionName(record.topicName(), collectionNameFormat);
 
         collection = resolveCollectionNameBySource(record, collection, collectionNameFormat);
         return collection;
+    }
+
+    /**
+     * Resolves a collection name using a topic name without requiring a sink record.
+     * Source field placeholders remain unresolved because they require the record value.
+     *
+     * @param topicName the Kafka topic name, should not be {@code null}
+     * @param collectionNameFormat the format string for the collection name, should not be {@code null}
+     * @return the collection name with the topic placeholder resolved
+     */
+    public String resolveCollectionName(String topicName, String collectionNameFormat) {
+        // Default behavior is to replace dots with underscores
+        return collectionNameFormat.replace("${topic}", topicName.replace(".", "_"));
     }
 
     private String resolveCollectionNameBySource(DebeziumSinkRecord record, String collectionName, String collectionNameFormat) {

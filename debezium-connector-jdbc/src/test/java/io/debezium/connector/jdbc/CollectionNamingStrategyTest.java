@@ -40,6 +40,13 @@ public class CollectionNamingStrategyTest extends AbstractBaseJdbcSinkTest {
     }
 
     @Test
+    public void testDefaultTableNamingStrategyWithoutRecord() {
+        final DefaultCollectionNamingStrategy strategy = new DefaultCollectionNamingStrategy();
+        assertThat(strategy.resolveCollectionName("database.schema.table", "kafka_${topic}"))
+                .isEqualTo("kafka_database_schema_table");
+    }
+
+    @Test
     public void testCollectionNamingStrategyWithTableNameFormat() {
         final JdbcSinkConnectorConfig config = getConfig(Map.of(JdbcSinkConnectorConfig.COLLECTION_NAME_FORMAT, "kafka_${topic}"));
         final DefaultCollectionNamingStrategy strategy = new DefaultCollectionNamingStrategy();
