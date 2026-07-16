@@ -6,11 +6,14 @@
 package io.debezium.connector.jdbc;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.hibernate.SessionFactory;
 import org.junit.jupiter.api.Tag;
@@ -38,37 +41,36 @@ public class CollectionsExistsValidatorTest {
 
     @Test
     public void shouldResolveTopicBasedCollectionNames() {
-        final Map<String, String> properties = defaultProperties();
-        properties.put("topics", "server.inventory.customers, server.inventory.orders");
+        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(defaultProperties());
 
-        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
-
-        assertThat(validator(config, properties.get("topics"), false).resolveCollectionNames())
+        assertThat(validator(config, null, false).resolveCollectionNames(List.of("server.inventory.customers", "server.inventory.orders")))
                 .containsExactly("server_inventory_customers", "server_inventory_orders");
     }
 
     @Test
     public void shouldResolveLiteralCollectionName() {
         final Map<String, String> properties = defaultProperties();
-        properties.put("topics.regex", "server\\.inventory\\..*");
         properties.put(JdbcSinkConnectorConfig.COLLECTION_NAME_FORMAT, "inventory.customers");
 
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
 
-        assertThat(validator(config, null, true).resolveCollectionNames())
+        assertThat(validator(config, null, true).resolveCollectionNames(Set.of()))
                 .containsExactly("inventory.customers");
     }
 
     @Test
-    public void shouldRejectTopicPlaceholderWithTopicsRegex() {
-        final Map<String, String> properties = defaultProperties();
-        properties.put("topics.regex", "server\\.inventory\\..*");
+    public void shouldDeferTopicPlaceholderValidationWithTopicsRegex() {
+        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(defaultProperties());
 
-        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        assertThatCode(() -> validator(config, null, true).validate()).doesNotThrowAnyException();
+    }
 
-        assertThatThrownBy(() -> validator(config, null, true).resolveCollectionNames())
-                .isInstanceOf(DebeziumException.class)
-                .hasMessageContaining("topics.regex");
+    @Test
+    public void shouldResolveAssignedTopicBasedCollectionNames() {
+        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(defaultProperties());
+
+        assertThat(validator(config, null, true).resolveCollectionNames(Set.of("server.inventory.customers")))
+                .containsExactly("server_inventory_customers");
     }
 
     @Test
@@ -77,9 +79,9 @@ public class CollectionsExistsValidatorTest {
 
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
 
-        assertThatThrownBy(() -> validator(config, null, false).resolveCollectionNames())
+        assertThatThrownBy(() -> validator(config, null, false).validate())
                 .isInstanceOf(DebeziumException.class)
-                .hasMessageContaining("requires statically configured 'topics'");
+                .hasMessageContaining("requires 'topics' or 'topics.regex'");
     }
 
     @Test
@@ -89,7 +91,7 @@ public class CollectionsExistsValidatorTest {
 
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
 
-        assertThatThrownBy(() -> validator(config, null, false).resolveCollectionNames())
+        assertThatThrownBy(() -> validator(config, null, false).resolveCollectionNames(Set.of()))
                 .isInstanceOf(DebeziumException.class)
                 .hasMessageContaining("source field placeholders");
     }

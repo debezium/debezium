@@ -14,6 +14,7 @@ import java.util.Map;
 
 import javax.sql.DataSource;
 
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.sink.SinkTask;
 import org.assertj.db.type.AssertDbConnection;
@@ -181,6 +182,15 @@ public abstract class AbstractJdbcSinkTest extends AbstractBaseJdbcSinkTest {
         if (record != null) {
             consume(Collections.singletonList(record));
         }
+    }
+
+    /**
+     * Opens a topic partition for the JDBC sink connector task.
+     *
+     * @param topicName the topic name to assign
+     */
+    protected void openSinkConnector(String topicName) {
+        sinkTask.open(List.of(new TopicPartition(topicName, 0)));
     }
 
     /**
