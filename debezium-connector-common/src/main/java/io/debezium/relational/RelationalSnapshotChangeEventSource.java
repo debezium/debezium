@@ -838,7 +838,8 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                                                               SnapshotReceiver<P> snapshotReceiver, Table table, boolean firstTable, boolean lastTable, int tableOrder,
                                                               int tableCount, String selectStatement, OptionalLong rowCount, Set<TableId> rowCountTablesKeySet,
                                                               Queue<JdbcConnection> connectionPool, Queue<O> offsets) {
-        return createPooledResourceCallable(connectionPool, offsets,
+        int maxSnapshotRetriesOnError = connectorConfig.getMaxSnapshotRetriesOnError();
+        return createPooledResourceCallable(connectionPool, maxSnapshotRetriesOnError, offsets,
                 (connection, offset) -> {
                     LoggingContext.PreviousContext previousLoggingContext = LoggingContext.forConnector(
                             connectorConfig.getContextName(), connectorConfig.getLogicalName(), null, "snapshot", snapshotContext.partition);
@@ -863,7 +864,8 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                                                                      SnapshotReceiver<P> snapshotReceiver, SnapshotChunk chunk,
                                                                      Map<TableId, TableChunkProgress> progressMap, SnapshotProgress snapshotProgress,
                                                                      Queue<JdbcConnection> connectionPool, Queue<O> offsets) {
-        return createPooledResourceCallable(connectionPool, offsets,
+        int maxSnapshotRetriesOnError = connectorConfig.getMaxSnapshotRetriesOnError();
+        return createPooledResourceCallable(connectionPool, maxSnapshotRetriesOnError, offsets,
                 (connection, offset) -> {
                     LoggingContext.PreviousContext previousLoggingContext = LoggingContext.forConnector(
                             connectorConfig.getContextName(), connectorConfig.getLogicalName(), null, "snapshot", snapshotContext.partition);
@@ -1409,26 +1411,42 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
      * @return a Callable wrapping the resource management
      */
     @SuppressWarnings("SameParameterValue")
-    private Callable<Void> createPooledResourceCallable(Queue<JdbcConnection> connectionPool,
-                                                        Queue<O> offsetPool,
-                                                        PooledWork<O> work,
-                                                        Runnable errorHandler) {
+    Callable<Void> createPooledResourceCallable(Queue<JdbcConnection> connectionPool,
+                                                int maxSnapshotRetriesOnError,
+                                                Queue<O> offsetPool,
+                                                PooledWork<O> work,
+                                                Runnable errorHandler) {
         return () -> {
             final JdbcConnection connection = connectionPool.poll();
             final O offset = offsetPool.poll();
-            if (!connection.isValid()) {
-                LOGGER.warn("Snapshot pool connection is no longer valid, attempting reconnect. Snapshot consistency for subsequent tables may be affected.");
-                connection.reconnect();
-                initializePooledConnection(connection);
-            }
+            int retry = 0;
             try {
-                work.execute(connection, offset);
-            }
-            catch (Exception e) {
-                if (errorHandler != null) {
-                    errorHandler.run();
+                while (true) {
+                    try {
+                        if (!connection.isValid()) {
+                            LOGGER.warn(
+                                    "Snapshot pool connection is no longer valid, attempting reconnect. Snapshot consistency for subsequent queries may be affected.");
+                            connection.reconnect();
+                            initializePooledConnection(connection);
+                        }
+                        work.execute(connection, offset);
+                        break;
+                    }
+                    catch (Exception e) {
+                        if (errorHandler != null) {
+                            errorHandler.run();
+                        }
+                        if (retry < maxSnapshotRetriesOnError) {
+                            retry++;
+                            LOGGER.warn("Snapshot query failed with error!", e);
+                            LOGGER.warn("Retrying with retry #{}/{}.", retry, maxSnapshotRetriesOnError);
+                        }
+                        else {
+                            LOGGER.error("Snapshot query failed with error!", e);
+                            throw e;
+                        }
+                    }
                 }
-                throw e;
             }
             finally {
                 offsetPool.add(offset);
