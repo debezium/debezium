@@ -1,0 +1,99 @@
+// Category: debezium-using
+// Type: assembly
+// ModuleID: filtering-debezium-records-by-gtid-watermark
+// Title: Filtering {prodname} records that have already been published past a GTID watermark
+[id="gtid-watermark-filter"]
+= GtidWatermarkFilter
+ifdef::community[]
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+endif::community[]
+
+The `GtidWatermarkFilter` single message transformation (SMT) drops MySQL change events whose source GTID falls within a configured watermark GTID set, but only for an explicit list of tables.
+It is intended for the narrow case in which a connector's offset is intentionally rewound past a previously-emitted point, for example after restoring a database backup to seed a newly added table.
+Without this SMT the rewind would re-emit binlog events for already-streamed tables, producing duplicates downstream.
+
+This SMT is MySQL-specific because it depends on the `gtid` field of the source struct.
+
+// Type: concept
+[[gtid-watermark-filter-use-case]]
+== When to use this SMT
+
+A typical workflow:
+
+1. Tables `A`, `B`, and `C` are already streaming. The connector's last published GTID set is `G_now` (read from the Kafka Connect offset topic).
+2. A new table `D` must join the pipeline. It is seeded externally (for example, `mysqldump` followed by a Spark load) at backup point `G_backup`, where `G_backup < G_now`.
+3. The source connector is reconfigured to add `D` to `table.include.list`, and its offset is rewound to `G_backup` so that the connector's binlog reader can catch `D` up.
+4. As the connector replays from `G_backup` to `G_now`, every event for `A`, `B`, `C` in that span is a duplicate of what was already streamed — but `D`'s events in that span are new and must flow through.
+
+`GtidWatermarkFilter` solves step 4 by dropping records whose source GTID is contained in `G_now` *and* whose table is `A`, `B`, or `C`.
+Records for `D` pass through unchanged, as do all records emitted past `G_now`.
+
+[CAUTION]
+====
+* The watermark must come from the connector's Kafka Connect offset topic — *not* from `SHOW MASTER STATUS` on the database. Asynchronous replication lag and broker acknowledgement timing can cause the two to diverge; only the Connect offset reflects what was actually published.
+* Once the connector advances past `G_now`, remove the SMT (or empty the `tables` property) so that ordinary new events are not accidentally filtered if a later rewind reuses the same GTID range.
+====
+
+// Type: concept
+[[gtid-watermark-filter-configuration]]
+== Configuration
+
+[source]
+----
+transforms=gtidWatermark
+transforms.gtidWatermark.type=io.debezium.transforms.GtidWatermarkFilter
+transforms.gtidWatermark.watermark.gtid.set=11111111-1111-1111-1111-111111111111:1-12345,22222222-2222-2222-2222-222222222222:1-678
+transforms.gtidWatermark.tables=db1.tableA,db1.tableB,db1.tableC
+transforms.gtidWatermark.apply.to.schema.changes=true
+----
+
+The transformation evaluates each record as follows:
+
+* If the record value is `null` (a tombstone), it passes through.
+* If the record is neither a Debezium envelope nor a schema change record, it passes through.
+* If the record's source struct does not contain `gtid`, `db`, and `table` fields (for example, a snapshot row), it passes through.
+* If `db.table` is not in the configured `tables` list, the record passes through. New tables that need full catch-up are intentionally excluded from this list.
+* If the record's source GTID is *not* contained in `watermark.gtid.set`, it passes through. This is the steady-state path once the connector has advanced past `G_now`.
+* Otherwise the record is dropped (the SMT returns `null` and Connect does not publish it).
+
+// Type: reference
+[[gtid-watermark-filter-configuration-options]]
+== Configuration options
+
+.GtidWatermarkFilter SMT configuration options
+[cols="14%a,40%a,10%a, 16%a, 16%a"]
+|===
+|Property
+|Description
+|Type
+|Default
+|Valid values
+
+|[[watermark-gtid-set]]<<watermark-gtid-set, `watermark.gtid.set`>>
+|The MySQL GTID set previously published before the offset rewind.
+Format: `uuid1:start-end[:start2-end2][,uuid2:start-end]`. Single transactions like `uuid:5` are also accepted.
+Source the value from the connector's Kafka Connect offset topic, not from `SHOW MASTER STATUS`.
+|String
+|No default value
+|Non-empty MySQL GTID set string
+
+|[[gtid-watermark-tables]]<<gtid-watermark-tables, `tables`>>
+|Comma-separated list of fully-qualified `db.table` identifiers the watermark applies to.
+Records for any other table pass through. Newly-added tables that need full catch-up MUST NOT be listed here.
+|String
+|No default value
+|Non-empty list
+
+|[[apply-to-schema-changes]]<<apply-to-schema-changes, `apply.to.schema.changes`>>
+|When `true`, schema-change topic records (DDL) are evaluated against the same watermark and table list.
+When `false`, all schema-change records pass through.
+|Boolean
+|`true`
+|`true`, `false`
+|===

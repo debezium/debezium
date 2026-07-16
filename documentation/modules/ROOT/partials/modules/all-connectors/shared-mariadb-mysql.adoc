@@ -1807,6 +1807,10 @@ The `length` schema parameter contains an integer that represents the number of 
 `numBytes = n/8 + (n%8== 0 ? 0 : 1)`
 
 |`TINYINT[(M)]`
+|`INT8`
+a|_n/a_
+
+|`TINYINT[(M)] UNSIGNED`
 |`INT16`
 a|_n/a_
 
