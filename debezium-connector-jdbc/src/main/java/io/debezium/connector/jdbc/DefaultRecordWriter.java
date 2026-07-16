@@ -142,7 +142,7 @@ public class DefaultRecordWriter implements RecordWriter {
     private TableDescriptor createTable(CollectionId collectionId, JdbcSinkRecord record) throws SQLException {
         LOGGER.debug("Attempting to create table '{}'.", collectionId.toFullIdentiferString());
 
-        if (!config.getSchemaEvolutionMode().schemaEvolution()) {
+        if (!config.getSchemaEvolutionMode().isSchemaEvolutionEnabled()) {
             LOGGER.warn("Table '{}' cannot be created because schema evolution is disabled.", collectionId.toFullIdentiferString());
             throw new SQLException("Cannot create table " + collectionId.toFullIdentiferString() + " because schema evolution is disabled");
         }
@@ -197,7 +197,7 @@ public class DefaultRecordWriter implements RecordWriter {
             }
         }
 
-        if (!config.getSchemaEvolutionMode().schemaEvolution()) {
+        if (!config.getSchemaEvolutionMode().isSchemaEvolutionEnabled()) {
             LOGGER.warn("Table '{}' cannot be altered because schema evolution is disabled.", collectionId.toFullIdentiferString());
             throw new SQLException("Cannot alter table " + collectionId.toFullIdentiferString() + " because schema evolution is disabled");
         }
