@@ -13,8 +13,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import org.antlr.v4.runtime.tree.ParseTreeListener;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.mariadb.antlr.MariaDbAntlrDdlParser;
 import io.debezium.ddl.parser.mariadb.generated.MariaDBParser;
@@ -32,8 +30,6 @@ public class AlterTableParserListener extends TableCommonParserListener {
 
     private static final int STARTING_INDEX = 1;
 
-    private final static Logger LOG = LoggerFactory.getLogger(AlterTableParserListener.class);
-
     private ColumnEditor defaultValueColumnEditor;
     private DefaultValueParserListener defaultValueListener;
 
@@ -47,18 +43,7 @@ public class AlterTableParserListener extends TableCommonParserListener {
     @Override
     public void enterAlterTable(MariaDBParser.AlterTableContext ctx) {
         final TableId tableId = parser.parseQualifiedTableId(ctx.tableName().fullId());
-        if (parser.databaseTables().forTable(tableId) == null) {
-            if (parser.isEmitChangesForMissingAlteredTables() && parser.getTableFilter() != null && parser.getTableFilter().isIncluded(tableId)) {
-                // The table is captured but not yet part of the in-memory model, e.g. when the schema
-                // is reconstructed from binlog TABLE_MAP metadata and no row event has been seen for
-                // the table since the restart. Signal the event without applying the statement, so
-                // that the schema change is still emitted; the schema itself is restored by the next
-                // TABLE_MAP event.
-                parser.signalAlterTable(tableId, null, ctx);
-            }
-            else {
-                LOG.debug("Ignoring ALTER TABLE statement for non-captured table {}", tableId);
-            }
+        if (parser.handleAlterTableIfTableIsMissing(tableId, ctx, parser.getTableFilter())) {
             return;
         }
         tableEditor = parser.databaseTables().editTable(tableId);
