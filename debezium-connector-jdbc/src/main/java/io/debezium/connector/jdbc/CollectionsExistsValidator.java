@@ -148,6 +148,8 @@ final class CollectionsExistsValidator {
     @SuppressWarnings("deprecation")
     private DefaultCollectionNamingStrategy getDefaultCollectionNamingStrategy() {
         CollectionNamingStrategy strategy = config.getCollectionNamingStrategy();
+        // The connector configuration wraps even the default naming strategy in this proxy.
+        // Unwrap it so that validation can recognize and reuse the underlying default strategy.
         if (strategy instanceof TemporaryBackwardCompatibleCollectionNamingStrategyProxy proxy) {
             strategy = proxy.getOriginalStrategy();
         }
