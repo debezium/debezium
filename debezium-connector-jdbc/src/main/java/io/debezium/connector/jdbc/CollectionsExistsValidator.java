@@ -25,7 +25,7 @@ import io.debezium.sink.naming.CollectionNamingStrategy;
 import io.debezium.sink.naming.DefaultCollectionNamingStrategy;
 import io.debezium.util.Strings;
 
-final class StartupCollectionValidator {
+final class CollectionsExistsValidator {
 
     private static final String TOPIC_PLACEHOLDER = "${topic}";
     private static final String SOURCE_PLACEHOLDER_PREFIX = "${source.";
@@ -35,7 +35,7 @@ final class StartupCollectionValidator {
     private final DatabaseDialect dialect;
     private final Map<String, String> props;
 
-    StartupCollectionValidator(JdbcSinkConnectorConfig config,
+    CollectionsExistsValidator(JdbcSinkConnectorConfig config,
                                SessionFactory sessionFactory,
                                DatabaseDialect dialect,
                                Map<String, String> props) {
