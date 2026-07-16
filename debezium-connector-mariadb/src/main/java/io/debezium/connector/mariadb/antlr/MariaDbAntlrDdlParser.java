@@ -139,9 +139,9 @@ public class MariaDbAntlrDdlParser extends AntlrDdlParser<MariaDBLexer, MariaDBP
                 new DataTypeResolver.DataTypeEntry(Types.NVARCHAR, MariaDBParser.NATIONAL, MariaDBParser.CHARACTER, MariaDBParser.VARYING)));
 
         dataTypeResolverBuilder.registerDataTypes(MariaDBParser.DimensionDataTypeContext.class.getCanonicalName(), Arrays.asList(
-                new DataTypeResolver.DataTypeEntry(Types.SMALLINT, MariaDBParser.TINYINT)
+                new DataTypeResolver.DataTypeEntry(Types.TINYINT, MariaDBParser.TINYINT)
                         .setSuffixTokens(MariaDBParser.SIGNED, MariaDBParser.UNSIGNED, MariaDBParser.ZEROFILL),
-                new DataTypeResolver.DataTypeEntry(Types.SMALLINT, MariaDBParser.INT1)
+                new DataTypeResolver.DataTypeEntry(Types.TINYINT, MariaDBParser.INT1)
                         .setSuffixTokens(MariaDBParser.SIGNED, MariaDBParser.UNSIGNED, MariaDBParser.ZEROFILL),
                 new DataTypeResolver.DataTypeEntry(Types.SMALLINT, MariaDBParser.SMALLINT)
                         .setSuffixTokens(MariaDBParser.SIGNED, MariaDBParser.UNSIGNED, MariaDBParser.ZEROFILL),

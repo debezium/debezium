@@ -67,7 +67,7 @@ public abstract class BinlogNonUtfDatabaseCharsetIT<C extends SourceConnector> e
         final SourceRecord record = records.recordsForTopic(DATABASE.topicForTable("DATA")).get(0);
 
         assertThat(((Struct) record.value()).getStruct("after").getString("MESSAGE")).isEqualTo("Žluťoučký");
-        assertThat(((Struct) record.value()).getStruct("after").getInt16("FLAG")).isEqualTo((short) 1);
+        assertThat(((Struct) record.value()).getStruct("after").getInt8("FLAG")).isEqualTo((byte) 1);
 
         try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName());) {
             try (JdbcConnection connection = db.connect()) {
@@ -80,7 +80,7 @@ public abstract class BinlogNonUtfDatabaseCharsetIT<C extends SourceConnector> e
         final SourceRecord recordStream = records.recordsForTopic(DATABASE.topicForTable("DATASTREAM")).get(0);
 
         assertThat(((Struct) recordStream.value()).getStruct("after").getString("MESSAGE")).isEqualTo("Žluťoučký");
-        assertThat(((Struct) record.value()).getStruct("after").getInt16("FLAG")).isEqualTo((short) 1);
+        assertThat(((Struct) record.value()).getStruct("after").getInt8("FLAG")).isEqualTo((byte) 1);
     }
 
     @Test

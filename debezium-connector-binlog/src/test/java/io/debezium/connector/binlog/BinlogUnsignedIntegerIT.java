@@ -253,27 +253,27 @@ public abstract class BinlogUnsignedIntegerIT<C extends SourceConnector> extends
         assertThat(after.schema().field("c1").schema()).isEqualTo(Schema.INT16_SCHEMA);
         assertThat(after.schema().field("c2").schema()).isEqualTo(Schema.INT16_SCHEMA);
 
-        // Validate the schema first, we are expecting int-16 since we are dealing with signed-tinyint.
-        // Note: the recommended mapping of Signed TINYINT is Short which is 16-bit. http://docs.oracle.com/javase/1.5.0/docs/guide/jdbc/getstart/mapping.html
-        // So Signed TINYINT would be an INT16 type
-        assertThat(after.schema().field("c3").schema()).isEqualTo(Schema.INT16_SCHEMA);
+        // Validate the schema first, we are expecting int-8 since we are dealing with signed-tinyint,
+        // the smallest signed type that holds the full -128..127 range.
+        // So Signed TINYINT would be an INT8 type
+        assertThat(after.schema().field("c3").schema()).isEqualTo(Schema.INT8_SCHEMA);
 
         // Validate candidates values
         switch (i) {
             case 1:
                 assertThat(after.getInt16("c1")).isEqualTo((short) 255);
                 assertThat(after.getInt16("c2")).isEqualTo((short) (255));
-                assertThat(after.getInt16("c3")).isEqualTo((short) 127);
+                assertThat(after.getInt8("c3")).isEqualTo((byte) 127);
                 break;
             case 2:
                 assertThat(after.getInt16("c1")).isEqualTo((short) 155);
                 assertThat(after.getInt16("c2")).isEqualTo((short) 155);
-                assertThat(after.getInt16("c3")).isEqualTo((short) -100);
+                assertThat(after.getInt8("c3")).isEqualTo((byte) -100);
                 break;
             case 3:
                 assertThat(after.getInt16("c1")).isEqualTo((short) 0);
                 assertThat(after.getInt16("c2")).isEqualTo((short) 0);
-                assertThat(after.getInt16("c3")).isEqualTo((short) -128);
+                assertThat(after.getInt8("c3")).isEqualTo((byte) -128);
         }
     }
 
