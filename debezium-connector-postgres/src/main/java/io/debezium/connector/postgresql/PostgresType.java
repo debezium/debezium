@@ -5,8 +5,10 @@
  */
 package io.debezium.connector.postgresql;
 
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 import org.postgresql.core.Oid;
 import org.postgresql.core.TypeInfo;
@@ -29,13 +31,13 @@ public class PostgresType {
     private final PostgresType elementType;
     private final TypeInfo typeInfo;
     private final int modifiers;
-    private final List<String> enumValues;
+    private final Set<String> enumValues;
 
-    private PostgresType(String name, int oid, int jdbcId, TypeInfo typeInfo, List<String> enumValues, PostgresType parentType, PostgresType elementType) {
+    private PostgresType(String name, int oid, int jdbcId, TypeInfo typeInfo, Set<String> enumValues, PostgresType parentType, PostgresType elementType) {
         this(name, oid, jdbcId, TypeRegistry.NO_TYPE_MODIFIER, typeInfo, enumValues, parentType, elementType);
     }
 
-    private PostgresType(String name, int oid, int jdbcId, int modifiers, TypeInfo typeInfo, List<String> enumValues, PostgresType parentType, PostgresType elementType) {
+    private PostgresType(String name, int oid, int jdbcId, int modifiers, TypeInfo typeInfo, Set<String> enumValues, PostgresType parentType, PostgresType elementType) {
         Objects.requireNonNull(name);
         this.name = name;
         this.oid = oid;
@@ -124,7 +126,7 @@ public class PostgresType {
         return rootType;
     }
 
-    public List<String> getEnumValues() {
+    public Set<String> getEnumValues() {
         return enumValues;
     }
 
@@ -308,7 +310,11 @@ public class PostgresType {
                 elementType = typeRegistry.get(elementTypeOid);
             }
 
-            return new PostgresType(name, oid, jdbcId, modifiers, typeInfo, enumValues, parentType, elementType);
+            // PostgreSQL enforces uniqueness of enum labels, so a LinkedHashSet preserves their
+            // sort order while giving O(1) membership checks on the streaming hot path.
+            Set<String> enumValueSet = enumValues == null ? null : new LinkedHashSet<>(enumValues);
+
+            return new PostgresType(name, oid, jdbcId, modifiers, typeInfo, enumValueSet, parentType, elementType);
         }
     }
 }

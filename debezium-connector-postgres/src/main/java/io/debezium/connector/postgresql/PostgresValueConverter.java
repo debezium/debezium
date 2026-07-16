@@ -36,6 +36,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -395,7 +396,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 }
                 else if (resolvedType.isArrayType()) {
                     if (resolvedType.getElementType().isEnumType()) {
-                        List<String> enumValues = resolvedType.getElementType().getEnumValues();
+                        Set<String> enumValues = resolvedType.getElementType().getEnumValues();
                         return SchemaBuilder.array(io.debezium.data.Enum.builder(Strings.join(",", enumValues)));
                     }
                     else {
