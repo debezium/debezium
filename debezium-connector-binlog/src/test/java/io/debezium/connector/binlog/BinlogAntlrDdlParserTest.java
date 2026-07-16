@@ -681,7 +681,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
         assertThat(table.columnWithName("mi").jdbcType()).isEqualTo(Types.INTEGER);
         assertThat(table.columnWithName("f4").jdbcType()).isEqualTo(Types.FLOAT);
         assertThat(table.columnWithName("f8").jdbcType()).isEqualTo(Types.DOUBLE);
-        assertThat(table.columnWithName("i1").jdbcType()).isEqualTo(Types.SMALLINT);
+        assertThat(table.columnWithName("i1").jdbcType()).isEqualTo(Types.TINYINT);
         assertThat(table.columnWithName("i2").jdbcType()).isEqualTo(Types.SMALLINT);
         assertThat(table.columnWithName("i3").jdbcType()).isEqualTo(Types.INTEGER);
         assertThat(table.columnWithName("i4").jdbcType()).isEqualTo(Types.INTEGER);
@@ -2208,7 +2208,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
         assertThat(t).isNotNull();
         assertThat(t.retrieveColumnNames()).containsExactly("action", "revision", "changed_on", "id", "name");
         assertThat(t.primaryKeyColumnNames()).containsExactly("id", "revision");
-        assertColumn(t, "action", "TINYINT UNSIGNED", Types.SMALLINT, 3, -1, false, false, false);
+        assertColumn(t, "action", "TINYINT UNSIGNED", Types.TINYINT, 3, -1, false, false, false);
         assertColumn(t, "revision", "INT UNSIGNED", Types.INTEGER, 10, -1, false, false, false);
         assertColumn(t, "changed_on", "DATETIME", Types.TIMESTAMP, -1, -1, false, false, false);
         assertColumn(t, "id", "VARCHAR", Types.VARCHAR, 36, -1, false, false, false);
@@ -3192,7 +3192,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
         assertThat(table.columnWithName("id").isOptional()).isEqualTo(false);
         assertThat(getColumnSchema(table, "boolean_c").defaultValue()).isEqualTo(false);
         assertThat(getColumnSchema(table, "bit_c").defaultValue()).isEqualTo(true);
-        assertThat(getColumnSchema(table, "tiny_c").defaultValue()).isEqualTo((short) 2);
+        assertThat(getColumnSchema(table, "tiny_c").defaultValue()).isEqualTo((byte) 2);
         assertThat(getColumnSchema(table, "tiny_un_c").defaultValue()).isEqualTo((short) 3);
         assertThat(getColumnSchema(table, "tiny_un_z_c").defaultValue()).isEqualTo((short) 4);
         assertThat(getColumnSchema(table, "small_c").defaultValue()).isEqualTo((short) 5);

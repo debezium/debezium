@@ -7,6 +7,7 @@ package io.debezium.jdbc;
 
 import static io.debezium.util.Loggings.maybeRedactSensitiveData;
 import static io.debezium.util.NumberConversions.BYTE_BUFFER_ZERO;
+import static io.debezium.util.NumberConversions.BYTE_FALSE;
 import static io.debezium.util.NumberConversions.BYTE_ZERO;
 import static io.debezium.util.NumberConversions.SHORT_FALSE;
 
@@ -178,7 +179,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
             // Numeric integers
             case Types.TINYINT:
-                // values are an 8-bit unsigned integer value between 0 and 255
+                // values are an 8-bit signed integer value between -128 and 127
                 return SchemaBuilder.int8();
             case Types.SMALLINT:
                 // values are a 16-bit signed integer value between -32768 and 32767
@@ -970,7 +971,21 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertTinyInt(Column column, Field fieldDefn, Object data) {
-        return convertSmallInt(column, fieldDefn, data);
+        return convertValue(column, fieldDefn, data, BYTE_FALSE, (r) -> {
+            if (data instanceof Byte) {
+                r.deliver(data);
+            }
+            else if (data instanceof Number) {
+                Number value = (Number) data;
+                r.deliver(Byte.valueOf(value.byteValue()));
+            }
+            else if (data instanceof Boolean) {
+                r.deliver(NumberConversions.getByte((Boolean) data));
+            }
+            else if (data instanceof String) {
+                r.deliver(Byte.valueOf((String) data));
+            }
+        });
     }
 
     /**

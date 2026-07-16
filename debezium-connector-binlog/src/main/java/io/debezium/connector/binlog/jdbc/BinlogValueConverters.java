@@ -156,9 +156,22 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
             String commaSeparatedOptions = extractEnumAndSetOptionsAsString(column);
             return io.debezium.data.EnumSet.builder(commaSeparatedOptions);
         }
+        if (matches(typeName, "TINYINT UNSIGNED") || matches(typeName, "TINYINT UNSIGNED ZEROFILL")
+                || matches(typeName, "INT1 UNSIGNED") || matches(typeName, "INT1 UNSIGNED ZEROFILL")) {
+            // In order to capture unsigned TINYINT 8-bit data source, INT16 will be required to safely capture all valid values
+            // Source: https://kafka.apache.org/0102/javadoc/org/apache/kafka/connect/data/Schema.Type.html
+            return SchemaBuilder.int16();
+        }
         if (matches(typeName, "SMALLINT UNSIGNED") || matches(typeName, "SMALLINT UNSIGNED ZEROFILL")
                 || matches(typeName, "INT2 UNSIGNED") || matches(typeName, "INT2 UNSIGNED ZEROFILL")) {
             // In order to capture unsigned SMALLINT 16-bit data source, INT32 will be required to safely capture all valid values
+            // Source: https://kafka.apache.org/0102/javadoc/org/apache/kafka/connect/data/Schema.Type.html
+            return SchemaBuilder.int32();
+        }
+        if (matches(typeName, "MEDIUMINT UNSIGNED") || matches(typeName, "MEDIUMINT UNSIGNED ZEROFILL")
+                || matches(typeName, "INT3 UNSIGNED") || matches(typeName, "INT3 UNSIGNED ZEROFILL")
+                || matches(typeName, "MIDDLEINT UNSIGNED") || matches(typeName, "MIDDLEINT UNSIGNED ZEROFILL")) {
+            // The unsigned MEDIUMINT 24-bit data source fits into INT32, same as its signed counterpart
             // Source: https://kafka.apache.org/0102/javadoc/org/apache/kafka/connect/data/Schema.Type.html
             return SchemaBuilder.int32();
         }
@@ -298,6 +311,15 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
     @Override
     protected ByteOrder byteOrderOfBitType() {
         return ByteOrder.BIG_ENDIAN;
+    }
+
+    @Override
+    protected Object convertTinyInt(Column column, Field fieldDefn, Object data) {
+        // Allows decimal default values for tinyint columns
+        if (data instanceof String) {
+            data = Math.round(Double.parseDouble((String) data));
+        }
+        return super.convertTinyInt(column, fieldDefn, data);
     }
 
     @Override
