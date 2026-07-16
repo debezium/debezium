@@ -256,6 +256,27 @@ public class TypeRegistry {
     }
 
     /**
+     * Re-reads the type with the given OID from the database and replaces the cached entry. This
+     * is needed to pick up in-place type changes such as {@code ALTER TYPE ... ADD VALUE} on an
+     * enum, which keep the same OID and are therefore invisible to the regular schema-change
+     * detection.
+     *
+     * @param oid the PostgreSQL type OID to refresh
+     * @return the refreshed type, or {@link PostgresType#UNKNOWN} if it can no longer be resolved
+     */
+    public PostgresType refresh(int oid) {
+        // Evict the cached entries first: addType() keeps the first mapping for a given name, so
+        // without this the name-keyed lookups (used by the pgoutput decoder) would keep returning
+        // the stale type even though the oid-keyed entry is overwritten.
+        final PostgresType stale = oidToType.remove(oid);
+        if (stale != null) {
+            nameToType.values().removeIf(type -> type.getOid() == oid);
+        }
+        final PostgresType refreshed = resolveUnknownType(oid);
+        return refreshed != null ? refreshed : PostgresType.UNKNOWN;
+    }
+
+    /**
      *
      * @param schemaName - PostgreSQL schema name
      * @param typeName - PostgreSQL type name

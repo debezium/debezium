@@ -136,20 +136,60 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter<P
     }
 
     private DataCollectionSchema synchronizeTableSchema(DataCollectionSchema tableSchema) {
-        if (getOperation() == Operation.DELETE || !message.shouldSchemaBeSynchronized()) {
+        if (getOperation() == Operation.DELETE) {
             return tableSchema;
         }
         final TableId tableId = (TableId) tableSchema.id();
-        final Table table = schema.tableFor(tableId);
         final List<ReplicationMessage.Column> columns = message.getNewTupleList();
+        // dbz#304 ALTER TYPE ... ADD VALUE keeps the column's type OID, so the added value is invisible
+        // both to schemaChanged() and to the pgoutput RELATION messages. Refresh the stale enum metadata
+        // regardless of the decoder's shouldSchemaBeSynchronized() so the rebuilt schema exposes it.
+        final boolean enumRefreshed = refreshStaleEnumTypes(columns);
+        if (!message.shouldSchemaBeSynchronized()) {
+            if (enumRefreshed) {
+                refreshTableFromDatabase(tableId);
+                return schema.schemaFor(tableId);
+            }
+            return tableSchema;
+        }
+        final Table table = schema.tableFor(tableId);
         // check if we need to refresh our local schema due to DB schema changes for this table
-        if (schemaChanged(columns, table)) {
+        if (enumRefreshed || schemaChanged(columns, table)) {
             // Refresh the schema so we get information about primary keys
             refreshTableFromDatabase(tableId);
             // Update the schema with metadata coming from decoder message
             schema.refresh(tableFromFromMessage(columns, schema.tableFor(tableId)));
         }
         return schema.schemaFor(tableId);
+    }
+
+    /**
+     * Detects enum columns whose incoming value is missing from the cached enum type metadata
+     * (the result of an {@code ALTER TYPE ... ADD VALUE}) and refreshes those types from the
+     * database so the rebuilt schema exposes the up-to-date list of allowed values.
+     *
+     * @param columns the columns of the current replication message
+     * @return {@code true} if at least one enum type was refreshed
+     */
+    private boolean refreshStaleEnumTypes(List<ReplicationMessage.Column> columns) {
+        if (columns == null) {
+            return false;
+        }
+        boolean refreshed = false;
+        for (ReplicationMessage.Column column : columns) {
+            final PostgresType type = column.getType();
+            if (!type.isEnumType()) {
+                continue;
+            }
+            final Object value = column.getValue(() -> connection.connection().unwrap(BaseConnection.class),
+                    connectorConfig.includeUnknownDatatypes());
+            if (value instanceof String && !type.getEnumValues().contains(value)) {
+                LOGGER.info("Detected new value '{}' for enum type '{}'; refreshing type metadata", value, type.getName());
+                connection.getTypeRegistry().refresh(type.getOid());
+                refreshed = true;
+            }
+        }
+        return refreshed;
     }
 
     private Object[] columnValues(List<ReplicationMessage.Column> columns, TableId tableId, boolean refreshSchemaIfChanged,

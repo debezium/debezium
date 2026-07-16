@@ -3355,6 +3355,45 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#304")
+    public void shouldRefreshSchemaWhenEnumValueAddedViaAlterType() throws Exception {
+        // The enum type and column already exist before streaming starts, so the column's
+        // type OID never changes. Adding a value with ALTER TYPE ... ADD VALUE must still
+        // refresh the cached enum metadata; otherwise the emitted schema keeps the stale
+        // allowed-values list and omits the new value.
+        TestHelper.execute("CREATE TYPE test_type AS ENUM ('V1');");
+        TestHelper.execute("CREATE TABLE enum_table (pk SERIAL, value test_type NOT NULL, PRIMARY KEY (pk));");
+        startConnector(config -> config
+                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                .with("column.propagate.source.type", "public.enum_table.value")
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.enum_table"), false);
+
+        waitForStreamingToStart();
+
+        // Add a new enum value after streaming started to simulate a future schema change.
+        TestHelper.execute("ALTER TYPE test_type ADD VALUE 'V2'");
+
+        consumer = testConsumer(1);
+        executeAndWait("INSERT INTO enum_table (value) VALUES ('V2');");
+
+        SourceRecord rec = assertRecordInserted("public.enum_table", PK_FIELD, 1);
+        assertSourceInfo(rec, "postgres", "public", "enum_table");
+
+        List<SchemaAndValueField> expected = Arrays.asList(
+                new SchemaAndValueField(PK_FIELD, SchemaBuilder.int32().defaultValue(0).build(), 1),
+                new SchemaAndValueField("value", Enum.builder("V1,V2")
+                        .parameter(TestHelper.TYPE_NAME_PARAMETER_KEY, "TEST_TYPE")
+                        .parameter(TestHelper.TYPE_LENGTH_PARAMETER_KEY, String.valueOf(Integer.MAX_VALUE))
+                        .parameter(TestHelper.TYPE_SCALE_PARAMETER_KEY, "0")
+                        .parameter(TestHelper.COLUMN_NAME_PARAMETER_KEY, "value")
+                        .build(), "V2"));
+
+        assertRecordSchemaAndValues(expected, rec, Envelope.FieldName.AFTER);
+        assertThat(consumer.isEmpty()).isTrue();
+    }
+
+    @Test
     @FixFor("DBZ-5038")
     public void shouldEmitEnumColumnDefaultValuesInSchema() throws Exception {
         // Specifically enable `column.propagate.source.type` here to validate later that the actual
