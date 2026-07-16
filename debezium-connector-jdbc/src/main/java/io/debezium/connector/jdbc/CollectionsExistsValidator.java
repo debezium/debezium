@@ -90,7 +90,8 @@ final class CollectionsExistsValidator {
                     + "' requires '" + JdbcSinkConnectorConfig.COLLECTION_NAME_FORMAT + "' to be configured.");
         }
 
-        if (!usesDefaultCollectionNamingStrategy()) {
+        final DefaultCollectionNamingStrategy namingStrategy = getDefaultCollectionNamingStrategy();
+        if (namingStrategy == null) {
             throw new DebeziumException("'" + JdbcSinkConnectorConfig.SCHEMA_EVOLUTION + "=" + SchemaEvolutionMode.NONE_VALIDATED.getValue()
                     + "' supports startup table validation only with the default collection naming strategy.");
         }
@@ -118,7 +119,7 @@ final class CollectionsExistsValidator {
 
         return staticallyConfiguredTopics
                 .stream()
-                .map(topic -> collectionNameFormat.replace(TOPIC_PLACEHOLDER, topic.replace(".", "_")))
+                .map(topic -> namingStrategy.resolveCollectionName(topic, collectionNameFormat))
                 .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
@@ -134,11 +135,11 @@ final class CollectionsExistsValidator {
     }
 
     @SuppressWarnings("deprecation")
-    private boolean usesDefaultCollectionNamingStrategy() {
+    private DefaultCollectionNamingStrategy getDefaultCollectionNamingStrategy() {
         CollectionNamingStrategy strategy = config.getCollectionNamingStrategy();
         if (strategy instanceof TemporaryBackwardCompatibleCollectionNamingStrategyProxy proxy) {
             strategy = proxy.getOriginalStrategy();
         }
-        return strategy instanceof DefaultCollectionNamingStrategy;
+        return strategy instanceof DefaultCollectionNamingStrategy defaultStrategy ? defaultStrategy : null;
     }
 }
