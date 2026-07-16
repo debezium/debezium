@@ -7,7 +7,6 @@ package io.debezium.connector.jdbc;
 
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -33,16 +32,19 @@ final class CollectionsExistsValidator {
     private final JdbcSinkConnectorConfig config;
     private final SessionFactory sessionFactory;
     private final DatabaseDialect dialect;
-    private final Map<String, String> props;
+    private final Set<String> staticallyConfiguredTopics;
+    private final boolean topicsRegexConfigured;
 
     CollectionsExistsValidator(JdbcSinkConnectorConfig config,
                                SessionFactory sessionFactory,
                                DatabaseDialect dialect,
-                               Map<String, String> props) {
+                               String topics,
+                               boolean topicsRegexConfigured) {
         this.config = config;
         this.sessionFactory = sessionFactory;
         this.dialect = dialect;
-        this.props = props;
+        this.staticallyConfiguredTopics = parseTopics(topics);
+        this.topicsRegexConfigured = topicsRegexConfigured;
     }
 
     void validate() {
@@ -103,19 +105,18 @@ final class CollectionsExistsValidator {
             return Set.of(collectionNameFormat);
         }
 
-        if (!Strings.isNullOrEmpty(props.get(SinkTask.TOPICS_REGEX_CONFIG))) {
+        if (topicsRegexConfigured) {
             throw new DebeziumException("'" + JdbcSinkConnectorConfig.SCHEMA_EVOLUTION + "=" + SchemaEvolutionMode.NONE_VALIDATED.getValue()
                     + "' cannot validate target tables at startup when '" + SinkTask.TOPICS_REGEX_CONFIG + "' is used.");
         }
 
-        final Set<String> topics = parseTopics(props.get(SinkTask.TOPICS_CONFIG));
-        if (topics.isEmpty()) {
+        if (staticallyConfiguredTopics.isEmpty()) {
             throw new DebeziumException("'" + JdbcSinkConnectorConfig.SCHEMA_EVOLUTION + "=" + SchemaEvolutionMode.NONE_VALIDATED.getValue()
                     + "' requires statically configured '" + SinkTask.TOPICS_CONFIG + "' when '" + JdbcSinkConnectorConfig.COLLECTION_NAME_FORMAT
                     + "' contains '${topic}'.");
         }
 
-        return topics
+        return staticallyConfiguredTopics
                 .stream()
                 .map(topic -> collectionNameFormat.replace(TOPIC_PLACEHOLDER, topic.replace(".", "_")))
                 .collect(Collectors.toCollection(LinkedHashSet::new));

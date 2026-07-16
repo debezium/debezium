@@ -43,7 +43,7 @@ public class CollectionsExistsValidatorTest {
 
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
 
-        assertThat(validator(config, properties).resolveCollectionNames())
+        assertThat(validator(config, properties.get("topics"), false).resolveCollectionNames())
                 .containsExactly("server_inventory_customers", "server_inventory_orders");
     }
 
@@ -55,7 +55,7 @@ public class CollectionsExistsValidatorTest {
 
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
 
-        assertThat(validator(config, properties).resolveCollectionNames())
+        assertThat(validator(config, null, true).resolveCollectionNames())
                 .containsExactly("inventory.customers");
     }
 
@@ -66,7 +66,7 @@ public class CollectionsExistsValidatorTest {
 
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
 
-        assertThatThrownBy(() -> validator(config, properties).resolveCollectionNames())
+        assertThatThrownBy(() -> validator(config, null, true).resolveCollectionNames())
                 .isInstanceOf(DebeziumException.class)
                 .hasMessageContaining("topics.regex");
     }
@@ -77,7 +77,7 @@ public class CollectionsExistsValidatorTest {
 
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
 
-        assertThatThrownBy(() -> validator(config, properties).resolveCollectionNames())
+        assertThatThrownBy(() -> validator(config, null, false).resolveCollectionNames())
                 .isInstanceOf(DebeziumException.class)
                 .hasMessageContaining("requires statically configured 'topics'");
     }
@@ -89,7 +89,7 @@ public class CollectionsExistsValidatorTest {
 
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
 
-        assertThatThrownBy(() -> validator(config, properties).resolveCollectionNames())
+        assertThatThrownBy(() -> validator(config, null, false).resolveCollectionNames())
                 .isInstanceOf(DebeziumException.class)
                 .hasMessageContaining("source field placeholders");
     }
@@ -100,7 +100,7 @@ public class CollectionsExistsValidatorTest {
         return properties;
     }
 
-    private static CollectionsExistsValidator validator(JdbcSinkConnectorConfig config, Map<String, String> properties) {
-        return new CollectionsExistsValidator(config, mock(SessionFactory.class), mock(DatabaseDialect.class), properties);
+    private static CollectionsExistsValidator validator(JdbcSinkConnectorConfig config, String topics, boolean topicsRegexConfigured) {
+        return new CollectionsExistsValidator(config, mock(SessionFactory.class), mock(DatabaseDialect.class), topics, topicsRegexConfigured);
     }
 }
