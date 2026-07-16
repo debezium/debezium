@@ -595,7 +595,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         final Map<TableId, TableChunkProgress> progressMap = new ConcurrentHashMap<>();
         final List<SnapshotChunk> allChunks = new ArrayList<>();
 
-        final ChunkBoundaryCalculator boundaryCalculator = new ChunkBoundaryCalculator(jdbcConnection);
+        final ChunkBoundaryCalculator boundaryCalculator = new ChunkBoundaryCalculator(jdbcConnection, connectorConfig);
 
         int tableOrder = 1;
         final int tableCount = prepared.rowCountTables.size();
@@ -992,7 +992,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         final List<Column> keyColumns = getKeyColumnsForChunking(table);
 
         // Build chunk query using standalone SnapshotChunkQueryBuilder
-        final SnapshotChunkQueryBuilder queryBuilder = new SnapshotChunkQueryBuilder(jdbcConnection);
+        final SnapshotChunkQueryBuilder queryBuilder = new SnapshotChunkQueryBuilder(jdbcConnection, connectorConfig);
         final String chunkQuery = queryBuilder.buildChunkQuery(chunk, keyColumns, chunk.getBaseSelectStatement());
         final Instant sourceTableSnapshotTimestamp = getSnapshotSourceTimestamp(jdbcConnection, offset, tableId);
 

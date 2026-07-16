@@ -112,6 +112,38 @@ public class RowValueConstructorChunkQueryBuilder<T extends DataCollectionId> ex
     }
 
     @Override
+    public void addLowerBound(List<Column> pkColumns, Object[] boundaryKey, StringBuilder condition, boolean inclusiveFinal) {
+        // Use ROW() syntax to compare multiple columns at once. This helps query planners use an index.
+        //
+        // Example: ROW(k1, k2, k3) > ROW(?, ?, ?)
+        if (fallbackToSuper(pkColumns)) {
+            // Fall back to slower base class implementation that is correct for NULL values.
+            super.addLowerBound(pkColumns, boundaryKey, condition, inclusiveFinal);
+            return;
+        }
+        String operator = inclusiveFinal ? ">=" : ">";
+        rowValueComparison(pkColumns, operator, condition);
+    }
+
+    @Override
+    public void addUpperBound(List<Column> pkColumns, Object[] boundaryKey, StringBuilder sql, boolean inclusiveFinal) {
+        // Use ROW() syntax to set an upper bound.
+        //
+        // Example: ROW(k1, k2, k3) <= ROW(?, ?, ?)
+        //
+        // NOTE: PostgreSQL 13 is known to create a bad query plan if we fall back to "NOT addLowerBound()". That is:
+        // NOT ROW(k1, k2, k3) > ROW(?, ?, ?)
+        // will create a bad query plan.
+        if (fallbackToSuper(pkColumns)) {
+            // Fall back to slower base class implementation that is correct for NULL values.
+            super.addUpperBound(pkColumns, boundaryKey, sql, inclusiveFinal);
+            return;
+        }
+        String operator = inclusiveFinal ? "<=" : "<";
+        rowValueComparison(pkColumns, operator, sql);
+    }
+
+    @Override
     public PreparedStatement readTableChunkStatement(IncrementalSnapshotContext<T> context, Table table, String sql) throws SQLException {
         final List<Column> queryColumns = getQueryColumns(context, table);
         if (fallbackToSuper(queryColumns)) {
@@ -136,4 +168,15 @@ public class RowValueConstructorChunkQueryBuilder<T extends DataCollectionId> ex
         }
         return statement;
     }
+
+    @Override
+    public int bindBoundaryParams(PreparedStatement statement, List<Column> columns, Object[] values, int startIndex, JdbcConnection connection)
+            throws SQLException {
+        int paramIndex = startIndex;
+        for (int i = 0; i < values.length; i++) {
+            connection.setQueryColumnValue(statement, columns.get(i), paramIndex++, values[i]);
+        }
+        return paramIndex;
+    }
+
 }
