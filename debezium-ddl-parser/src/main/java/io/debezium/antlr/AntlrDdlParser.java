@@ -70,10 +70,6 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
         this.emitChangesForMissingAlteredTables = emitChangesForMissingAlteredTables;
     }
 
-    public boolean isEmitChangesForMissingAlteredTables() {
-        return emitChangesForMissingAlteredTables;
-    }
-
     @Override
     public DdlChanges parse(String ddlContent, Tables databaseTables) {
         this.databaseTables = databaseTables;
@@ -257,6 +253,34 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
      */
     public void signalAlterTable(TableId id, TableId previousId, ParserRuleContext ctx) {
         signalAlterTable(id, previousId, getText(ctx));
+    }
+
+    /**
+     * Handle an alter table statement if the table is missing from the in-memory model.
+     * <p>
+     * In binlog-metadata-based schema mode, a captured table enters the model only after its first
+     * {@code TABLE_MAP} event. If an alter statement is read before that event, signal the schema
+     * change without applying it to the model. The next {@code TABLE_MAP} event restores the table
+     * structure. In other modes, or for a table that is not captured, ignore the statement as usual.
+     *
+     * @param id          the table identifier; may not be null
+     * @param ctx         the start of the statement; may not be null
+     * @param tableFilter the table capture filter; may be null
+     * @return {@code true} if the table is missing and the caller should stop processing the statement,
+     *         or {@code false} if the table exists and the caller should process it normally
+     */
+    public boolean handleAlterTableIfTableIsMissing(TableId id, ParserRuleContext ctx, Tables.TableFilter tableFilter) {
+        if (databaseTables.forTable(id) != null) {
+            return false;
+        }
+
+        if (emitChangesForMissingAlteredTables && tableFilter != null && tableFilter.isIncluded(id)) {
+            signalAlterTable(id, null, ctx);
+        }
+        else {
+            logger.debug("Ignoring ALTER TABLE statement for non-captured table {}", id);
+        }
+        return true;
     }
 
     @Override
