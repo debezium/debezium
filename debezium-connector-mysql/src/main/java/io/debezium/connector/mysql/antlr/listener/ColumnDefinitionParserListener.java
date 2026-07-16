@@ -299,7 +299,9 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
         boolean hasBinaryModifier = false;
 
         // Check for BINARY modifier in dataType context (for NCHAR/NVARCHAR)
-        if (dataTypeContext.BINARY_SYMBOL() != null) {
+        // Exclude the case where BINARY_SYMBOL is the actual data type
+        if (dataTypeContext.BINARY_SYMBOL() != null
+                && (dataTypeContext.type == null || MySqlParser.BINARY_SYMBOL != dataTypeContext.type.getType())) {
             hasBinaryModifier = true;
         }
 
