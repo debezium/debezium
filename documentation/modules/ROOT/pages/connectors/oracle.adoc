@@ -2569,7 +2569,7 @@ The {prodname} connector for Oracle does not support the Oracle VECTOR data type
 === JSON types
 
 A {prodname} Oracle connector that uses the LogMiner adapter can capture changes from tables that include `JSON` column types.
-To enable capture of JSON types, the database initialization parameter `ENABLE_GOLDENGATE_REPLICATION` must be  set to `TRUE` to permit GoldenGate services to capture and apply changes across the entire instance.
+To permit {prodname} to capture JSON types, set the Oracle database initialization parameter https://docs.oracle.com/en/database/oracle/oracle-database/26/refrn/ENABLE_GOLDENGATE_REPLICATION.html[`ENABLE_GOLDENGATE_REPLICATION`] to `TRUE` so that the GoldenGate services can capture changes and apply them across the entire instance.
 
 ifdef::community[]
 [NOTE]
