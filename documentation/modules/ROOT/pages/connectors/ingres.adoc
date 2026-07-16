@@ -173,6 +173,52 @@ In some cases, you might want to limit schema capture in the initial snapshot.
 This can be useful when you want to reduce the time required to complete a snapshot.
 Or when {prodname} connects to the database instance through a user account that has access to multiple logical databases, but you want the connector to capture changes only from tables in a specific logic database.
 
+include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+1]
+
+[WARNING]
+====
+The {prodname} connector for Ingres does not support schema changes while an incremental snapshot is running.
+====
+
+[id="ingres-triggering-an-incremental-snapshot"]
+==== Triggering an incremental snapshot
+
+include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-sql.adoc[leveloffset=+1]
+
+[id="ingres-incremental-snapshots-additional-conditions"]
+==== Running an ad hoc incremental snapshots with `additional-conditions`
+
+include::{partialsdir}/modules/all-connectors/proc-running-an-ad-hoc-snapshot-with-additional-conditions.adoc[leveloffset=+1]
+
+
+// Type: procedure
+[id="ingres-triggering-an-incremental-snapshot-kafka"]
+==== Using the Kafka signaling channel to trigger an incremental snapshot
+
+include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-kafka.adoc[leveloffset=+1]
+
+// Type: procedure
+[id="ingres-stopping-an-incremental-snapshot"]
+==== Stopping an incremental snapshot
+
+include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot-sql.adoc[leveloffset=+1]
+
+// Type: procedure
+[id="ingres-stopping-an-incremental-snapshot-kafka"]
+==== Using the Kafka signaling channel to stop an incremental snapshot
+
+include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot-kafka.adoc[leveloffset=+1]
+
+[[connector-custom-snapshot]]
+=== Custom snapshotter SPI
+include::{partialsdir}/modules/all-connectors/custom-snapshotter-spi.adoc[leveloffset=+3]
+
+[id="ingres-blocking-snapshots"]
+=== Blocking snapshots
+
+include::{partialsdir}/modules/all-connectors/con-connector-blocking-snapshot.adoc[leveloffset=+3]
+
+
 [[ingres-events]]
 == Data change events
 
