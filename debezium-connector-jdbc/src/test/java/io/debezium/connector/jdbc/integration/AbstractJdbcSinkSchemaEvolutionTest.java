@@ -82,6 +82,36 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
         assertSinkConnectorIsRunning();
     }
 
+    @Test
+    public void testOpenShouldFailIfNoneValidatedWithTopicsRegexAndTargetTableIsMissing() {
+        final String tableName = randomTableName();
+        final String topicName = topicName("server1", "schema", tableName);
+        final Map<String, String> properties = getNoneValidatedRegexSinkConfig();
+
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        assertThatThrownBy(() -> openSinkConnector(topicName))
+                .isInstanceOf(DebeziumException.class)
+                .hasMessageContaining("Target table")
+                .hasMessageContaining("does not exist")
+                .hasMessageContaining(SchemaEvolutionMode.NONE_VALIDATED.getValue());
+    }
+
+    @Test
+    public void testOpenShouldSucceedIfNoneValidatedWithTopicsRegexAndTargetTableExists() throws Exception {
+        final String tableName = randomTableName();
+        final String topicName = topicName("server1", "schema", tableName);
+        final Map<String, String> properties = getNoneValidatedRegexSinkConfig();
+        final String destinationTableName = destinationTableName(topicName, properties);
+
+        getSink().execute(String.format("CREATE TABLE %s (id integer not null)", destinationTableName));
+
+        startSinkConnector(properties);
+        openSinkConnector(topicName);
+        assertSinkConnectorIsRunning();
+    }
+
     @ParameterizedTest
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
     public void testCreateShouldFailIfSchemaEvolutionIsDisabled(SinkRecordFactory factory) {
@@ -522,6 +552,13 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
         final Map<String, String> properties = getDefaultSinkConfig();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.NONE_VALIDATED.getValue());
         properties.put(SinkTask.TOPICS_CONFIG, topicName);
+        return properties;
+    }
+
+    private Map<String, String> getNoneValidatedRegexSinkConfig() {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.NONE_VALIDATED.getValue());
+        properties.put(SinkTask.TOPICS_REGEX_CONFIG, "server1\\.schema\\..*");
         return properties;
     }
 

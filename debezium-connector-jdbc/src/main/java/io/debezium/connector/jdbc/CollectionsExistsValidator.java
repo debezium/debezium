@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.jdbc;
 
+import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -48,18 +49,39 @@ final class CollectionsExistsValidator {
     }
 
     void validate() {
-        if (!config.getSchemaEvolutionMode().validateOnStartup()) {
+        final Set<String> collectionNames = resolveCollectionNames(staticallyConfiguredTopics);
+        if (collectionNames.isEmpty() && topicsRegexConfigured) {
+            return;
+        }
+        if (collectionNames.isEmpty()) {
+            throw new DebeziumException("'" + JdbcSinkConnectorConfig.SCHEMA_EVOLUTION + "=" + SchemaEvolutionMode.NONE_VALIDATED.getValue()
+                    + "' requires '" + SinkTask.TOPICS_CONFIG + "' or '" + SinkTask.TOPICS_REGEX_CONFIG + "' when '"
+                    + JdbcSinkConnectorConfig.COLLECTION_NAME_FORMAT + "' contains '${topic}'.");
+        }
+
+        validateCollectionNames(collectionNames);
+    }
+
+    void validateAssignedTopics(Collection<String> topics) {
+        if (!topicsRegexConfigured || !config.getCollectionNameFormat().contains(TOPIC_PLACEHOLDER)) {
             return;
         }
 
-        final Set<CollectionId> collectionIds = resolveCollectionIds();
+        validateCollectionNames(resolveCollectionNames(topics));
+    }
+
+    private void validateCollectionNames(Collection<String> collectionNames) {
+        final Set<CollectionId> collectionIds = resolveCollectionIds(collectionNames);
+        if (collectionIds.isEmpty()) {
+            return;
+        }
         try (StatelessSession validationSession = sessionFactory.openStatelessSession()) {
             for (CollectionId collectionId : collectionIds) {
                 final boolean exists = validationSession.doReturningWork(connection -> dialect.tableExists(connection, collectionId));
                 if (!exists) {
                     throw new DebeziumException(String.format(
                             "Target table '%s' does not exist, but '%s' is set to '%s'. "
-                                    + "Create the target table before starting the connector or use '%s=%s'.",
+                                    + "Create the target table before the connector processes records or use '%s=%s'.",
                             collectionId.toFullIdentiferString(),
                             JdbcSinkConnectorConfig.SCHEMA_EVOLUTION,
                             SchemaEvolutionMode.NONE_VALIDATED.getValue(),
@@ -70,20 +92,20 @@ final class CollectionsExistsValidator {
         }
     }
 
-    Set<CollectionId> resolveCollectionIds() {
-        return resolveCollectionNames()
+    Set<CollectionId> resolveCollectionIds(Collection<String> collectionNames) {
+        return collectionNames
                 .stream()
                 .map(collectionName -> {
                     final CollectionId collectionId = dialect.getCollectionId(collectionName);
                     if (collectionId == null) {
-                        throw new DebeziumException("Unable to resolve target table name '" + collectionName + "' for startup validation.");
+                        throw new DebeziumException("Unable to resolve target table name '" + collectionName + "' for table existence validation.");
                     }
                     return collectionId;
                 })
                 .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
-    Set<String> resolveCollectionNames() {
+    Set<String> resolveCollectionNames(Collection<String> topics) {
         final String collectionNameFormat = config.getCollectionNameFormat();
         if (Strings.isNullOrEmpty(collectionNameFormat)) {
             throw new DebeziumException("'" + JdbcSinkConnectorConfig.SCHEMA_EVOLUTION + "=" + SchemaEvolutionMode.NONE_VALIDATED.getValue()
@@ -93,12 +115,12 @@ final class CollectionsExistsValidator {
         final DefaultCollectionNamingStrategy namingStrategy = getDefaultCollectionNamingStrategy();
         if (namingStrategy == null) {
             throw new DebeziumException("'" + JdbcSinkConnectorConfig.SCHEMA_EVOLUTION + "=" + SchemaEvolutionMode.NONE_VALIDATED.getValue()
-                    + "' supports startup table validation only with the default collection naming strategy.");
+                    + "' supports table existence validation only with the default collection naming strategy.");
         }
 
         if (collectionNameFormat.contains(SOURCE_PLACEHOLDER_PREFIX)) {
             throw new DebeziumException("'" + JdbcSinkConnectorConfig.SCHEMA_EVOLUTION + "=" + SchemaEvolutionMode.NONE_VALIDATED.getValue()
-                    + "' cannot validate target tables at startup when '" + JdbcSinkConnectorConfig.COLLECTION_NAME_FORMAT
+                    + "' cannot validate target tables when '" + JdbcSinkConnectorConfig.COLLECTION_NAME_FORMAT
                     + "' contains source field placeholders.");
         }
 
@@ -106,18 +128,7 @@ final class CollectionsExistsValidator {
             return Set.of(collectionNameFormat);
         }
 
-        if (topicsRegexConfigured) {
-            throw new DebeziumException("'" + JdbcSinkConnectorConfig.SCHEMA_EVOLUTION + "=" + SchemaEvolutionMode.NONE_VALIDATED.getValue()
-                    + "' cannot validate target tables at startup when '" + SinkTask.TOPICS_REGEX_CONFIG + "' is used.");
-        }
-
-        if (staticallyConfiguredTopics.isEmpty()) {
-            throw new DebeziumException("'" + JdbcSinkConnectorConfig.SCHEMA_EVOLUTION + "=" + SchemaEvolutionMode.NONE_VALIDATED.getValue()
-                    + "' requires statically configured '" + SinkTask.TOPICS_CONFIG + "' when '" + JdbcSinkConnectorConfig.COLLECTION_NAME_FORMAT
-                    + "' contains '${topic}'.");
-        }
-
-        return staticallyConfiguredTopics
+        return topics
                 .stream()
                 .map(topic -> namingStrategy.resolveCollectionName(topic, collectionNameFormat))
                 .collect(Collectors.toCollection(LinkedHashSet::new));

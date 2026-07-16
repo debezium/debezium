@@ -76,6 +76,7 @@ public class JdbcSinkConnectorTask extends SinkTask {
     private final ReentrantLock stateLock = new ReentrantLock();
 
     private JdbcChangeEventSink changeEventSink;
+    private CollectionsExistsValidator collectionsExistsValidator;
     private JdbcSinkConnectorMetrics metrics;
     private final Set<TopicPartition> assignedPartitions = new HashSet<>();
 
@@ -135,12 +136,15 @@ public class JdbcSinkConnectorTask extends SinkTask {
 
             sessionFactory = config.getHibernateConfiguration().buildSessionFactory();
             DatabaseDialect dialect = DatabaseDialectResolver.resolve(config, sessionFactory);
-            new CollectionsExistsValidator(
-                    config,
-                    sessionFactory,
-                    dialect,
-                    props.get(SinkTask.TOPICS_CONFIG),
-                    !Strings.isNullOrEmpty(props.get(SinkTask.TOPICS_REGEX_CONFIG))).validate();
+            if (config.getSchemaEvolutionMode().validateOnStartup()) {
+                collectionsExistsValidator = new CollectionsExistsValidator(
+                        config,
+                        sessionFactory,
+                        dialect,
+                        props.get(SinkTask.TOPICS_CONFIG),
+                        !Strings.isNullOrEmpty(props.get(SinkTask.TOPICS_REGEX_CONFIG)));
+                collectionsExistsValidator.validate();
+            }
 
             StatelessSession session = sessionFactory.openStatelessSession();
             QueryBinderResolver queryBinderResolver = new QueryBinderResolver();
@@ -222,6 +226,10 @@ public class JdbcSinkConnectorTask extends SinkTask {
 
     @Override
     public void open(Collection<TopicPartition> partitions) {
+        if (collectionsExistsValidator != null) {
+            collectionsExistsValidator.validateAssignedTopics(partitions.stream().map(TopicPartition::topic).collect(Collectors.toSet()));
+        }
+
         for (TopicPartition partition : partitions) {
             LOGGER.trace("Requested open TopicPartition request for '{}'", partition);
             assignedPartitions.add(partition);
