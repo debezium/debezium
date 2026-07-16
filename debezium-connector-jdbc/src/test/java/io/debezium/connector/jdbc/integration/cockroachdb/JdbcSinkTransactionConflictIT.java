@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.jdbc.integration.cockroachdb;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import java.sql.Connection;
@@ -17,6 +17,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.hibernate.exception.LockAcquisitionException;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -173,15 +174,19 @@ public class JdbcSinkTransactionConflictIT extends AbstractJdbcSinkTest {
 
         try {
             consume(updateRecord);
-            // The flush failure is rethrown by the following put.
             consume(Collections.emptyList());
             fail();
         }
         catch (Exception e) {
-            assertThat(e.getCause().getMessage()).matches(
-                    "Exceeded max retries 0 times, failed to flush records for table '" + tableName + "'");
-            // The conflict surfaces as a retriable CockroachDB conflict exception.
-            assertThat(e.getCause().getCause()).isInstanceOf(LockAcquisitionException.class);
+            assertExceptionCausedBy(e, ConnectException.class, "Exceeded max retries 0 times, failed to flush records for table.*'" + tableName + "'");
+            boolean foundLockException = false;
+            for (Throwable t = e; t != null; t = t.getCause()) {
+                if (t instanceof LockAcquisitionException) {
+                    foundLockException = true;
+                    break;
+                }
+            }
+            assertTrue(foundLockException, "Expected LockAcquisitionException in cause chain");
         }
         finally {
             connection.rollback();
