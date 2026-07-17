@@ -70,6 +70,10 @@ The connector maps {prodname} `io.debezium.data.geometry.Geometry` and `io.debez
 SingleStore supports a subset of WKT geospatial values.
 The connector writes `POINT`, `LINESTRING`, and `POLYGON` WKB values to SingleStore as WKT strings.
 
+For structured temporal values, SingleStore `DATE` and `DATETIME(6)` columns accept years from 1000 through 9999, while `TIMESTAMP(6)` columns use the narrower range from `1970-01-01 00:00:01.000000` through `2038-01-19 03:14:07.999999`.
+The connector applies xref:jdbc-property-temporal-range-loss-handling-mode[`temporal.range.loss.handling.mode`] before writing values outside these ranges.
+Because the default SingleStore data conversion compatibility level rejects zero dates, the connector also treats structured zero dates as out of range; use `saturate` to map them to the minimum finite target value.
+
 // Type: concept
 // Title: Using StarRocks as a sink target
 // ModuleID: debezium-jdbc-connector-using-starrocks-as-a-sink-target
@@ -96,6 +100,8 @@ StarRocks applies `ALTER TABLE` schema changes asynchronously; writes that arriv
 StarRocks has no `TIME` data type.
 The connector writes {prodname} `io.debezium.time.Time`, `io.debezium.time.MicroTime`, and `io.debezium.time.NanoTime` logical values, and Kafka Connect `Time` values, to `VARCHAR` columns as `HH:mm:ss.ffffff` formatted strings.
 MySQL `TIME` values outside of the 24-hour clock range retain the MySQL `[-]HHH:mm:ss.ffffff` notation, and `io.debezium.time.ZonedTime` values are stored verbatim with their original offset.
+Structured `io.debezium.time.StructuredTime` values map to `VARCHAR(21)`, and `io.debezium.time.StructuredZonedTime` values map to `VARCHAR(32)`.
+These string mappings preserve up to 12 fractional-second digits, and the zoned mapping also preserves the original UTC offset.
 `io.debezium.time.ZonedTimestamp` values are normalized to the database time zone and written to `DATETIME` columns; the original offset is not preserved.
 StarRocks `DATETIME` columns do not accept a precision argument; StarRocks retains fractional seconds up to microsecond precision.
 Note that the StarRocks JDBC driver reports `DATETIME` columns without fractional second precision, so although values are stored with microsecond precision, reading them through the JDBC driver truncates the fraction unless the value is explicitly cast, for example, to `VARCHAR`.
@@ -632,6 +638,8 @@ By default, the connector rejects an out-of-range value.
 You can use xref:jdbc-property-temporal-range-loss-handling-mode[`temporal.range.loss.handling.mode`] to map it to the nearest target boundary instead.
 When both precision and range reduction are necessary, the connector applies the precision policy first and then checks the resulting value against the target range.
 PostgreSQL positive and negative infinity values remain unchanged because PostgreSQL can represent them directly.
+CockroachDB preserves `DATE` infinity, but its timestamp types convert infinity to a finite boundary.
+The connector therefore treats structured timestamp infinity as a range loss for CockroachDB: `fail` rejects it, while `saturate` maps it to `-4714-11-24 00:00:00` or `294276-12-31 23:59:59.999999`.
 
 Db2 and Db2 iSeries timestamp targets support fractional-second precision up to 12 digits.
 For structured timestamp values, the connector binds the picosecond value as text and applies a server-side `TIMESTAMP(p)` cast, avoiding the nine-digit precision limit of standard JDBC temporal values.
