@@ -46,6 +46,11 @@ public class MariaDbAntlrDdlParserTest extends BinlogAntlrDdlParserTest<MariaDbV
     }
 
     @Override
+    protected MariaDbAntlrDdlParser getParser(SimpleDdlParserListener listener, BinlogConnectorConfig.RealHandlingMode realHandlingMode) {
+        return new MariaDbDdlParserWithSimpleTestListener(listener, realHandlingMode);
+    }
+
+    @Override
     protected MariaDbValueConverters getValueConverters() {
         return new MariaDbValueConvertersFactory().create(
                 RelationalDatabaseConnectorConfig.DecimalHandlingMode.DOUBLE,
@@ -82,8 +87,17 @@ public class MariaDbAntlrDdlParserTest extends BinlogAntlrDdlParserTest<MariaDbV
             this(listener, includeViews, includeComments, Tables.TableFilter.includeAll());
         }
 
+        public MariaDbDdlParserWithSimpleTestListener(DdlChanges listener, BinlogConnectorConfig.RealHandlingMode realHandlingMode) {
+            this(listener, false, false, Tables.TableFilter.includeAll(), realHandlingMode);
+        }
+
         public MariaDbDdlParserWithSimpleTestListener(DdlChanges listener, boolean includeViews, boolean includeComments, Tables.TableFilter tableFilter) {
-            super(false, includeViews, includeComments, tableFilter, new MariaDbCharsetRegistry());
+            this(listener, includeViews, includeComments, tableFilter, BinlogConnectorConfig.RealHandlingMode.DOUBLE);
+        }
+
+        public MariaDbDdlParserWithSimpleTestListener(DdlChanges listener, boolean includeViews, boolean includeComments, Tables.TableFilter tableFilter,
+                                                      BinlogConnectorConfig.RealHandlingMode realHandlingMode) {
+            super(false, includeViews, includeComments, tableFilter, new MariaDbCharsetRegistry(), realHandlingMode);
             this.ddlChanges = listener;
         }
     }
