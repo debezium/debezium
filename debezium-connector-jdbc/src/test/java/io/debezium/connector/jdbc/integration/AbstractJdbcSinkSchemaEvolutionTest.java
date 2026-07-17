@@ -57,23 +57,23 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
     }
 
     @Test
-    public void testStartShouldFailIfNoneValidatedAndTargetTableIsMissing() {
+    public void testStartShouldFailIfValidateOnlyAndTargetTableIsMissing() {
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
-        final Map<String, String> properties = getNoneValidatedSinkConfig(topicName);
+        final Map<String, String> properties = getValidateOnlySinkConfig(topicName);
 
         assertThatThrownBy(() -> startSinkConnector(properties))
                 .hasCauseInstanceOf(DebeziumException.class)
                 .hasMessageContaining("Target table")
                 .hasMessageContaining("does not exist")
-                .hasMessageContaining(SchemaEvolutionMode.NONE_VALIDATED.getValue());
+                .hasMessageContaining(SchemaEvolutionMode.VALIDATE_ONLY.getValue());
     }
 
     @Test
-    public void testStartShouldSucceedIfNoneValidatedAndTargetTableExists() throws Exception {
+    public void testStartShouldSucceedIfValidateOnlyAndTargetTableExists() throws Exception {
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
-        final Map<String, String> properties = getNoneValidatedSinkConfig(topicName);
+        final Map<String, String> properties = getValidateOnlySinkConfig(topicName);
         final String destinationTableName = destinationTableName(topicName, properties);
 
         getSink().execute(String.format("CREATE TABLE %s (id integer not null)", destinationTableName));
@@ -83,10 +83,10 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
     }
 
     @Test
-    public void testOpenShouldFailIfNoneValidatedWithTopicsRegexAndTargetTableIsMissing() {
+    public void testOpenShouldFailIfValidateOnlyWithTopicsRegexAndTargetTableIsMissing() {
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
-        final Map<String, String> properties = getNoneValidatedRegexSinkConfig();
+        final Map<String, String> properties = getValidateOnlyRegexSinkConfig();
 
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();
@@ -95,14 +95,14 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
                 .isInstanceOf(DebeziumException.class)
                 .hasMessageContaining("Target table")
                 .hasMessageContaining("does not exist")
-                .hasMessageContaining(SchemaEvolutionMode.NONE_VALIDATED.getValue());
+                .hasMessageContaining(SchemaEvolutionMode.VALIDATE_ONLY.getValue());
     }
 
     @Test
-    public void testOpenShouldSucceedIfNoneValidatedWithTopicsRegexAndTargetTableExists() throws Exception {
+    public void testOpenShouldSucceedIfValidateOnlyWithTopicsRegexAndTargetTableExists() throws Exception {
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
-        final Map<String, String> properties = getNoneValidatedRegexSinkConfig();
+        final Map<String, String> properties = getValidateOnlyRegexSinkConfig();
         final String destinationTableName = destinationTableName(topicName, properties);
 
         getSink().execute(String.format("CREATE TABLE %s (id integer not null)", destinationTableName));
@@ -548,16 +548,16 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
         }
     }
 
-    private Map<String, String> getNoneValidatedSinkConfig(String topicName) {
+    private Map<String, String> getValidateOnlySinkConfig(String topicName) {
         final Map<String, String> properties = getDefaultSinkConfig();
-        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.NONE_VALIDATED.getValue());
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.VALIDATE_ONLY.getValue());
         properties.put(SinkTask.TOPICS_CONFIG, topicName);
         return properties;
     }
 
-    private Map<String, String> getNoneValidatedRegexSinkConfig() {
+    private Map<String, String> getValidateOnlyRegexSinkConfig() {
         final Map<String, String> properties = getDefaultSinkConfig();
-        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.NONE_VALIDATED.getValue());
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.VALIDATE_ONLY.getValue());
         properties.put(SinkTask.TOPICS_REGEX_CONFIG, "server1\\.schema\\..*");
         return properties;
     }

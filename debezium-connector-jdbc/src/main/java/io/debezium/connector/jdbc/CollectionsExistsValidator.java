@@ -54,7 +54,7 @@ final class CollectionsExistsValidator {
             return;
         }
         if (collectionNames.isEmpty()) {
-            throw new DebeziumException("'" + JdbcSinkConnectorConfig.SCHEMA_EVOLUTION + "=" + SchemaEvolutionMode.NONE_VALIDATED.getValue()
+            throw new DebeziumException("'" + JdbcSinkConnectorConfig.SCHEMA_EVOLUTION + "=" + SchemaEvolutionMode.VALIDATE_ONLY.getValue()
                     + "' requires '" + SinkTask.TOPICS_CONFIG + "' or '" + SinkTask.TOPICS_REGEX_CONFIG + "' when '"
                     + JdbcSinkConnectorConfig.COLLECTION_NAME_FORMAT + "' contains '${topic}'.");
         }
@@ -84,7 +84,7 @@ final class CollectionsExistsValidator {
                                     + "Create the target table before the connector processes records or use '%s=%s'.",
                             collectionId.toFullIdentiferString(),
                             JdbcSinkConnectorConfig.SCHEMA_EVOLUTION,
-                            SchemaEvolutionMode.NONE_VALIDATED.getValue(),
+                            SchemaEvolutionMode.VALIDATE_ONLY.getValue(),
                             JdbcSinkConnectorConfig.SCHEMA_EVOLUTION,
                             SchemaEvolutionMode.BASIC.getValue()));
                 }
@@ -108,18 +108,18 @@ final class CollectionsExistsValidator {
     Set<String> resolveCollectionNames(Collection<String> topics) {
         final String collectionNameFormat = config.getCollectionNameFormat();
         if (Strings.isNullOrEmpty(collectionNameFormat)) {
-            throw new DebeziumException("'" + JdbcSinkConnectorConfig.SCHEMA_EVOLUTION + "=" + SchemaEvolutionMode.NONE_VALIDATED.getValue()
+            throw new DebeziumException("'" + JdbcSinkConnectorConfig.SCHEMA_EVOLUTION + "=" + SchemaEvolutionMode.VALIDATE_ONLY.getValue()
                     + "' requires '" + JdbcSinkConnectorConfig.COLLECTION_NAME_FORMAT + "' to be configured.");
         }
 
         final DefaultCollectionNamingStrategy namingStrategy = getDefaultCollectionNamingStrategy();
         if (namingStrategy == null) {
-            throw new DebeziumException("'" + JdbcSinkConnectorConfig.SCHEMA_EVOLUTION + "=" + SchemaEvolutionMode.NONE_VALIDATED.getValue()
+            throw new DebeziumException("'" + JdbcSinkConnectorConfig.SCHEMA_EVOLUTION + "=" + SchemaEvolutionMode.VALIDATE_ONLY.getValue()
                     + "' supports table existence validation only with the default collection naming strategy.");
         }
 
         if (collectionNameFormat.contains(SOURCE_PLACEHOLDER_PREFIX)) {
-            throw new DebeziumException("'" + JdbcSinkConnectorConfig.SCHEMA_EVOLUTION + "=" + SchemaEvolutionMode.NONE_VALIDATED.getValue()
+            throw new DebeziumException("'" + JdbcSinkConnectorConfig.SCHEMA_EVOLUTION + "=" + SchemaEvolutionMode.VALIDATE_ONLY.getValue()
                     + "' cannot validate target tables when '" + JdbcSinkConnectorConfig.COLLECTION_NAME_FORMAT
                     + "' contains source field placeholders.");
         }

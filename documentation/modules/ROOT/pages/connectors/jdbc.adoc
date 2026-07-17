@@ -258,7 +258,7 @@ You can use the following schema evolution modes with the {prodname} JDBC sink c
 |`none`
 |The connector does not perform any DDL schema evolution.
 
-|`none-validated`
+|`validate-only`
 |The connector does not perform any DDL schema evolution.
 During startup, the connector validates that statically resolvable destination tables exist.
 The connector does not validate the table structure against incoming events.
@@ -269,7 +269,7 @@ The connector alters the destination table to add the new fields.
 
 |===
 
-When `schema.evolution` is set to `none-validated`, validation only checks whether the destination table exists.
+When `schema.evolution` is set to `validate-only`, validation only checks whether the destination table exists.
 It does not validate columns, column types, primary keys, nullability, default values, or other structural compatibility, because that information depends on the schema of an incoming event.
 
 During startup, the connector can validate a literal xref:jdbc-property-collection-name-format[`collection.name.format`] value, or a `collection.name.format` value that uses `+${topic}+` together with a statically configured `topics` list and the default collection naming strategy.
@@ -1784,7 +1784,7 @@ For more information, see xref:jdbc-schema-evolution[].
 The following options are available:
 
 `none`:: Specifies that the connector does not evolve the destination schema.
-`none-validated`:: Specifies that the connector does not evolve the destination schema.
+`validate-only`:: Specifies that the connector does not evolve the destination schema.
 During startup or topic partition assignment, the connector validates that resolvable destination tables exist.
 The connector does not validate the table structure against incoming events.
 `basic`:: Specifies that basic evolution occurs.
