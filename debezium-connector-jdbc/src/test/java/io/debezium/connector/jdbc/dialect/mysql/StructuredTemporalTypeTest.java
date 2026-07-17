@@ -52,13 +52,14 @@ class StructuredTemporalTypeTest {
     void shouldBindInvalidTimestampComponents() {
         final var schema = StructuredTimestamp.schema();
         final var value = StructuredTimestamp.from(schema, 2026, 2, 31, 12, 13, 14, 123_456_000);
+        final var type = configuredTimestampType(TemporalPrecisionLossHandlingMode.FAIL);
 
-        final var bindings = StructuredTimestampType.INSTANCE.bind(2, schema, value);
+        final var bindings = type.bind(2, schema, value);
 
         assertThat(bindings).hasSize(1);
         assertThat(bindings.get(0).getValue()).isEqualTo("2026-02-31 12:13:14.123456");
         assertThat(bindings.get(0).getTargetSqlType()).isEqualTo(Types.VARCHAR);
-        assertThat(StructuredTimestampType.INSTANCE.getDefaultValueBinding(schema, value)).isEqualTo("'2026-02-31 12:13:14.123456'");
+        assertThat(type.getDefaultValueBinding(schema, value)).isEqualTo("'2026-02-31 12:13:14.123456'");
     }
 
     @Test
@@ -66,13 +67,14 @@ class StructuredTemporalTypeTest {
     void shouldBindStructuredDuration() {
         final var schema = StructuredDuration.schema();
         final var value = StructuredDuration.from(schema, 0, 0, 0, -838, -59, -58, -999_999_000);
+        final var type = configuredDurationType(TemporalPrecisionLossHandlingMode.FAIL);
 
-        final var bindings = StructuredDurationType.INSTANCE.bind(3, schema, value);
+        final var bindings = type.bind(3, schema, value);
 
         assertThat(bindings).hasSize(1);
         assertThat(bindings.get(0).getValue()).isEqualTo("-838:59:58.999999");
         assertThat(bindings.get(0).getTargetSqlType()).isEqualTo(Types.VARCHAR);
-        assertThat(StructuredDurationType.INSTANCE.getDefaultValueBinding(schema, value)).isEqualTo("'-838:59:58.999999'");
+        assertThat(type.getDefaultValueBinding(schema, value)).isEqualTo("'-838:59:58.999999'");
     }
 
     @Test
@@ -131,6 +133,40 @@ class StructuredTemporalTypeTest {
                 .isEqualTo("001:02:03.123456");
         assertThat(roundType.bind(1, timeColumn(6), schema, value).get(0).getValue())
                 .isEqualTo("001:02:03.123457");
+    }
+
+    @Test
+    @DisplayName("Should apply round mode to MySQL structured temporal defaults")
+    void shouldRoundMySqlStructuredTemporalDefaults() {
+        final var timestampSchema = StructuredTimestamp.builder(9).build();
+        final var timestamp = StructuredTimestamp.from(
+                timestampSchema, 2026, 7, 17, 12, 13, 14, 123_456_789, 9);
+        final var durationSchema = StructuredDuration.builder(9, StructuredDuration.Kind.ELAPSED_TIME).build();
+        final var duration = StructuredDuration.from(durationSchema, 0, 0, 0, 1, 2, 3, 123_456_789, 9);
+
+        assertThat(configuredTimestampType(TemporalPrecisionLossHandlingMode.ROUND)
+                .getDefaultValueBinding(timestampSchema, timestamp))
+                .isEqualTo("'2026-07-17 12:13:14.123457'");
+        assertThat(configuredDurationType(TemporalPrecisionLossHandlingMode.ROUND)
+                .getDefaultValueBinding(durationSchema, duration))
+                .isEqualTo("'001:02:03.123457'");
+        assertThatThrownBy(() -> configuredDurationType(TemporalPrecisionLossHandlingMode.FAIL)
+                .getDefaultValueBinding(durationSchema, duration))
+                .isInstanceOf(ConnectException.class)
+                .hasMessageContaining("precision 6");
+    }
+
+    private StructuredTimestampType configuredTimestampType(TemporalPrecisionLossHandlingMode mode) {
+        final var type = new StructuredTimestampType();
+        final JdbcSinkConnectorConfig config = mock(JdbcSinkConnectorConfig.class);
+        final DatabaseDialect dialect = mock(DatabaseDialect.class);
+        when(config.useTimeZone()).thenReturn("UTC");
+        when(config.getTemporalPrecisionLossHandlingMode()).thenReturn(mode);
+        when(dialect.getMaxTimestampPrecision()).thenReturn(6);
+        when(dialect.getDefaultTimestampPrecision()).thenReturn(6);
+        when(dialect.getTargetTemporalCapabilities()).thenReturn(mysqlCapabilities());
+        type.configure(config, dialect);
+        return type;
     }
 
     private StructuredDurationType configuredDurationType(TemporalPrecisionLossHandlingMode mode) {

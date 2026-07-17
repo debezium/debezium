@@ -27,14 +27,20 @@ public abstract class AbstractTimeType extends AbstractTemporalType {
         // the time column's precision but instead uses the __debezium.source.column.length key
         // which differs from all other connector implementations.
         //
+        final int precision = getSchemaTimePrecision(schema);
+        final DatabaseDialect dialect = getDialect();
+        return dialect.getJdbcTypeName(Types.TIME, Size.precision(precision));
+    }
+
+    protected int getSchemaTimePrecision(Schema schema) {
         final int precision = getTimePrecision(schema);
-        DatabaseDialect dialect = getDialect();
-        // We use TIMESTAMP here even for source TIME types as Oracle will use DATE types for
-        // such columns, and it only supports second-based precision.
+        final DatabaseDialect dialect = getDialect();
+        // Use the timestamp precision bound for source TIME types because Oracle maps them to
+        // timestamp-based target columns.
         if (shouldUseSourcePrecision(precision, dialect.getDefaultTimestampPrecision())) {
-            return dialect.getJdbcTypeName(Types.TIME, Size.precision(precision));
+            return precision;
         }
-        return dialect.getJdbcTypeName(Types.TIME, Size.precision(dialect.getDefaultTimePrecision()));
+        return dialect.getDefaultTimePrecision();
     }
 
     protected int getTimePrecision(Schema schema) {
