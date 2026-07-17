@@ -625,6 +625,14 @@ By default, the connector rejects fractional-second values only if the target pr
 You can use xref:jdbc-property-temporal-precision-loss-handling-mode[`temporal.precision.loss.handling.mode`] to explicitly truncate or round such values instead.
 The same policy applies when the connector renders structured temporal schema default values in generated DDL.
 
+The connector also verifies that structured date and timestamp values are within the range of the target data type.
+The supported range depends on the target dialect and, for an existing column, its actual data type.
+For example, MySQL `TIMESTAMP` and SQL Server `datetime` have narrower ranges than the default timestamp types that those dialects create.
+By default, the connector rejects an out-of-range value.
+You can use xref:jdbc-property-temporal-range-loss-handling-mode[`temporal.range.loss.handling.mode`] to map it to the nearest target boundary instead.
+When both precision and range reduction are necessary, the connector applies the precision policy first and then checks the resulting value against the target range.
+PostgreSQL positive and negative infinity values remain unchanged because PostgreSQL can represent them directly.
+
 Db2 and Db2 iSeries timestamp targets support fractional-second precision up to 12 digits.
 For structured timestamp values, the connector binds the picosecond value as text and applies a server-side `TIMESTAMP(p)` cast, avoiding the nine-digit precision limit of standard JDBC temporal values.
 
@@ -1793,6 +1801,14 @@ The following options are available:
 `fail`:: Rejects the value if reducing its precision would discard non-zero fractional digits.
 `truncate`:: Discards fractional digits that exceed the target column precision.
 `round`:: Rounds the value to the target column precision.
+
+|[[jdbc-property-temporal-range-loss-handling-mode]]<<jdbc-property-temporal-range-loss-handling-mode, `+temporal.range.loss.handling.mode+`>>
+|`fail`
+|Specifies how the connector handles a structured date or timestamp value that is outside the range of the target column.
+The following options are available:
+
+`fail`:: Rejects the value.
+`saturate`:: Maps a value below or above the supported range to the nearest target boundary. Different source values can therefore be stored as the same target value.
 
 |[[jdbc-property-delete-enabled]]<<jdbc-property-delete-enabled, `+delete.enabled+`>>
 |`false`
