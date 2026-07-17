@@ -24,6 +24,8 @@ import io.debezium.connector.jdbc.dialect.DatabaseDialectProvider;
 import io.debezium.connector.jdbc.dialect.GeneralDatabaseDialect;
 import io.debezium.connector.jdbc.dialect.SqlStatementBuilder;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
+import io.debezium.connector.jdbc.type.debezium.TargetTemporalCapabilities;
+import io.debezium.connector.jdbc.type.debezium.TargetTemporalCapabilities.ZonedTimestampSupport;
 
 /**
  * A {@link DatabaseDialect} implementation for Oracle.
@@ -31,6 +33,12 @@ import io.debezium.connector.jdbc.relational.TableDescriptor;
  * @author Chris Cranford
  */
 public class OracleDatabaseDialect extends GeneralDatabaseDialect {
+
+    @Override
+    public TargetTemporalCapabilities getTargetTemporalCapabilities() {
+        return TargetTemporalCapabilities.defaults(getMaxTimePrecision(), getMaxTimestampPrecision())
+                .withZonedTimestampSupport(ZonedTimestampSupport.OFFSET);
+    }
 
     private static final String TO_DATE = "TO_DATE(%s, 'YYYY-MM-DD')";
     private static final String TO_TIMESTAMP_FF9 = "TO_TIMESTAMP('%s', 'YYYY-MM-DD\"T\"HH24:MI:SS.FF9 TZH:TZM')";

@@ -50,4 +50,12 @@ public class StructuredDurationType extends AbstractType {
         }
         return List.of(new ValueBindDescriptor(index, StructuredTemporalSupport.toDurationString(requireStruct(value)), Types.VARCHAR));
     }
+
+    @Override
+    public void validate(ColumnDescriptor column, Schema schema, Object value) {
+        if (value != null) {
+            StructuredTemporalPreflightValidator.validateDuration(
+                    schema, requireStruct(value), getDialect().getTargetTemporalCapabilities());
+        }
+    }
 }

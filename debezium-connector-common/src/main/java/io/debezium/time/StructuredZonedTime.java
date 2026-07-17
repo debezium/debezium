@@ -23,15 +23,19 @@ public final class StructuredZonedTime {
     public static final String SCHEMA_NAME = "io.debezium.time.StructuredZonedTime";
 
     public static SchemaBuilder builder() {
-        return SchemaBuilder.struct()
+        return builder(-1);
+    }
+
+    public static SchemaBuilder builder(int precision) {
+        return StructuredTemporal.withPrecision(SchemaBuilder.struct()
                 .name(SCHEMA_NAME)
                 .version(1)
                 .field(StructuredTemporal.HOUR_FIELD, StructuredTemporal.optionalInt8())
                 .field(StructuredTemporal.MINUTE_FIELD, StructuredTemporal.optionalInt8())
                 .field(StructuredTemporal.SECOND_FIELD, StructuredTemporal.optionalInt8())
-                .field(StructuredTemporal.NANOS_FIELD, StructuredTemporal.optionalInt32())
+                .field(StructuredTemporal.PICOSECONDS_FIELD, StructuredTemporal.optionalInt64())
                 .field(StructuredTemporal.OFFSET_SECONDS_FIELD, StructuredTemporal.optionalInt32())
-                .field(StructuredTemporal.PRECISION_FIELD, StructuredTemporal.optionalInt32());
+                .field(StructuredTemporal.PRECISION_FIELD, StructuredTemporal.optionalInt32()), precision);
     }
 
     public static Schema schema() {
@@ -57,11 +61,15 @@ public final class StructuredZonedTime {
      * boundary hour {@code 24}, which {@link OffsetTime}/{@link LocalTime} cannot represent.
      */
     public static Struct from(Schema schema, int hour, int minute, int second, int nanos, int offsetSeconds, int precision) {
+        return fromPicoseconds(schema, hour, minute, second, StructuredTemporal.picosecondsFromNanoseconds(nanos), offsetSeconds, precision);
+    }
+
+    public static Struct fromPicoseconds(Schema schema, int hour, int minute, int second, long picoseconds, int offsetSeconds, int precision) {
         return StructuredTemporal.withPrecision(new Struct(schema)
                 .put(StructuredTemporal.HOUR_FIELD, (byte) hour)
                 .put(StructuredTemporal.MINUTE_FIELD, (byte) minute)
                 .put(StructuredTemporal.SECOND_FIELD, (byte) second)
-                .put(StructuredTemporal.NANOS_FIELD, nanos)
+                .put(StructuredTemporal.PICOSECONDS_FIELD, picoseconds)
                 .put(StructuredTemporal.OFFSET_SECONDS_FIELD, offsetSeconds), precision);
     }
 

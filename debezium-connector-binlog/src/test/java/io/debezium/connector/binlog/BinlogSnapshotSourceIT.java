@@ -920,6 +920,6 @@ public abstract class BinlogSnapshotSourceIT<C extends SourceConnector> extends 
         assertThat(value.getInt8(StructuredTemporal.HOUR_FIELD)).isEqualTo((byte) hour);
         assertThat(value.getInt8(StructuredTemporal.MINUTE_FIELD)).isEqualTo((byte) minute);
         assertThat(value.getInt8(StructuredTemporal.SECOND_FIELD)).isEqualTo((byte) second);
-        assertThat(value.getInt32(StructuredTemporal.NANOS_FIELD)).isEqualTo(nanos);
+        assertThat(value.getInt64(StructuredTemporal.PICOSECONDS_FIELD)).isEqualTo(nanos * StructuredTemporal.PICOSECONDS_PER_NANOSECOND);
     }
 }

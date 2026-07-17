@@ -20,7 +20,11 @@ public final class StructuredTimestamp {
     public static final String SCHEMA_NAME = "io.debezium.time.StructuredTimestamp";
 
     public static SchemaBuilder builder() {
-        return SchemaBuilder.struct()
+        return builder(-1);
+    }
+
+    public static SchemaBuilder builder(int precision) {
+        return StructuredTemporal.withPrecision(SchemaBuilder.struct()
                 .name(SCHEMA_NAME)
                 .version(1)
                 .field(StructuredTemporal.YEAR_FIELD, StructuredTemporal.optionalInt32())
@@ -29,9 +33,9 @@ public final class StructuredTimestamp {
                 .field(StructuredTemporal.HOUR_FIELD, StructuredTemporal.optionalInt8())
                 .field(StructuredTemporal.MINUTE_FIELD, StructuredTemporal.optionalInt8())
                 .field(StructuredTemporal.SECOND_FIELD, StructuredTemporal.optionalInt8())
-                .field(StructuredTemporal.NANOS_FIELD, StructuredTemporal.optionalInt32())
+                .field(StructuredTemporal.PICOSECONDS_FIELD, StructuredTemporal.optionalInt64())
                 .field(StructuredTemporal.SPECIAL_VALUE_FIELD, StructuredTemporal.optionalString())
-                .field(StructuredTemporal.PRECISION_FIELD, StructuredTemporal.optionalInt32());
+                .field(StructuredTemporal.PRECISION_FIELD, StructuredTemporal.optionalInt32()), precision);
     }
 
     public static Schema schema() {
@@ -56,6 +60,16 @@ public final class StructuredTimestamp {
     }
 
     public static Struct from(Schema schema, int year, int month, int day, int hour, int minute, int second, int nanos, int precision) {
+        return fromPicoseconds(schema, year, month, day, hour, minute, second,
+                StructuredTemporal.picosecondsFromNanoseconds(nanos), precision);
+    }
+
+    public static Struct fromPicoseconds(Schema schema, LocalDateTime value, long picoseconds, int precision) {
+        return fromPicoseconds(schema, value.getYear(), value.getMonthValue(), value.getDayOfMonth(), value.getHour(), value.getMinute(), value.getSecond(),
+                picoseconds, precision);
+    }
+
+    public static Struct fromPicoseconds(Schema schema, int year, int month, int day, int hour, int minute, int second, long picoseconds, int precision) {
         return StructuredTemporal.withPrecision(new Struct(schema)
                 .put(StructuredTemporal.YEAR_FIELD, year)
                 .put(StructuredTemporal.MONTH_FIELD, (byte) month)
@@ -63,7 +77,7 @@ public final class StructuredTimestamp {
                 .put(StructuredTemporal.HOUR_FIELD, (byte) hour)
                 .put(StructuredTemporal.MINUTE_FIELD, (byte) minute)
                 .put(StructuredTemporal.SECOND_FIELD, (byte) second)
-                .put(StructuredTemporal.NANOS_FIELD, nanos), precision);
+                .put(StructuredTemporal.PICOSECONDS_FIELD, picoseconds), precision);
     }
 
     public static Struct toStructuredTimestamp(Schema schema, Object value, TemporalAdjuster adjuster) {
