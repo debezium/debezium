@@ -40,6 +40,10 @@ public class JdbcFieldDescriptor extends FieldDescriptor {
         return jdbcType.bind(startIndex, schema, value);
     }
 
+    public List<ValueBindDescriptor> bind(int startIndex, ColumnDescriptor column, Object value, JdbcType jdbcType) {
+        return jdbcType.bind(startIndex, column, schema, value);
+    }
+
     @Override
     public String toString() {
         return "JdbcFieldDescriptor{" +

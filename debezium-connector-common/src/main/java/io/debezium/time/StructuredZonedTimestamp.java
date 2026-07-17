@@ -25,7 +25,11 @@ public final class StructuredZonedTimestamp {
     public static final String SCHEMA_NAME = "io.debezium.time.StructuredZonedTimestamp";
 
     public static SchemaBuilder builder() {
-        return SchemaBuilder.struct()
+        return builder(-1);
+    }
+
+    public static SchemaBuilder builder(int precision) {
+        return StructuredTemporal.withPrecision(SchemaBuilder.struct()
                 .name(SCHEMA_NAME)
                 .version(1)
                 .field(StructuredTemporal.YEAR_FIELD, StructuredTemporal.optionalInt32())
@@ -34,11 +38,11 @@ public final class StructuredZonedTimestamp {
                 .field(StructuredTemporal.HOUR_FIELD, StructuredTemporal.optionalInt8())
                 .field(StructuredTemporal.MINUTE_FIELD, StructuredTemporal.optionalInt8())
                 .field(StructuredTemporal.SECOND_FIELD, StructuredTemporal.optionalInt8())
-                .field(StructuredTemporal.NANOS_FIELD, StructuredTemporal.optionalInt32())
+                .field(StructuredTemporal.PICOSECONDS_FIELD, StructuredTemporal.optionalInt64())
                 .field(StructuredTemporal.OFFSET_SECONDS_FIELD, StructuredTemporal.optionalInt32())
                 .field(StructuredTemporal.ZONE_ID_FIELD, StructuredTemporal.optionalString())
                 .field(StructuredTemporal.SPECIAL_VALUE_FIELD, StructuredTemporal.optionalString())
-                .field(StructuredTemporal.PRECISION_FIELD, StructuredTemporal.optionalInt32());
+                .field(StructuredTemporal.PRECISION_FIELD, StructuredTemporal.optionalInt32()), precision);
     }
 
     public static Schema schema() {
@@ -64,6 +68,17 @@ public final class StructuredZonedTimestamp {
 
     public static Struct from(Schema schema, int year, int month, int day, int hour, int minute, int second, int nanos, int offsetSeconds, String zoneId,
                               int precision) {
+        return fromPicoseconds(schema, year, month, day, hour, minute, second, StructuredTemporal.picosecondsFromNanoseconds(nanos), offsetSeconds, zoneId,
+                precision);
+    }
+
+    public static Struct fromPicoseconds(Schema schema, OffsetDateTime value, long picoseconds, String zoneId, int precision) {
+        return fromPicoseconds(schema, value.getYear(), value.getMonthValue(), value.getDayOfMonth(), value.getHour(), value.getMinute(), value.getSecond(),
+                picoseconds, value.getOffset().getTotalSeconds(), zoneId, precision);
+    }
+
+    public static Struct fromPicoseconds(Schema schema, int year, int month, int day, int hour, int minute, int second, long picoseconds, int offsetSeconds,
+                                         String zoneId, int precision) {
         final Struct struct = new Struct(schema)
                 .put(StructuredTemporal.YEAR_FIELD, year)
                 .put(StructuredTemporal.MONTH_FIELD, (byte) month)
@@ -71,7 +86,7 @@ public final class StructuredZonedTimestamp {
                 .put(StructuredTemporal.HOUR_FIELD, (byte) hour)
                 .put(StructuredTemporal.MINUTE_FIELD, (byte) minute)
                 .put(StructuredTemporal.SECOND_FIELD, (byte) second)
-                .put(StructuredTemporal.NANOS_FIELD, nanos)
+                .put(StructuredTemporal.PICOSECONDS_FIELD, picoseconds)
                 .put(StructuredTemporal.OFFSET_SECONDS_FIELD, offsetSeconds);
         if (zoneId != null) {
             struct.put(StructuredTemporal.ZONE_ID_FIELD, zoneId);

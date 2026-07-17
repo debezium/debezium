@@ -14,6 +14,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.connector.jdbc.type.debezium.StructuredTemporalSupport;
+import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
 import io.debezium.time.StructuredTemporal;
 
@@ -60,5 +61,16 @@ public class StructuredTimestampType extends io.debezium.connector.jdbc.type.deb
         }
         final LocalDateTime clamped = clampIfOutOfRange(localDateTime);
         return clamped.equals(localDateTime) ? null : clamped;
+    }
+
+    @Override
+    public List<ValueBindDescriptor> bind(int index, ColumnDescriptor column, Schema schema, Object value) {
+        if (value == null) {
+            return List.of(new ValueBindDescriptor(index, null));
+        }
+        validate(column, schema, value);
+        final int precision = getDialect().getTargetTemporalCapabilities().targetTimestampPrecision(column);
+        return List.of(new ValueBindDescriptor(index,
+                StructuredTemporalLiteral.timestamp(requireStruct(value), precision, getPrecisionLossHandlingMode()), Types.VARCHAR));
     }
 }

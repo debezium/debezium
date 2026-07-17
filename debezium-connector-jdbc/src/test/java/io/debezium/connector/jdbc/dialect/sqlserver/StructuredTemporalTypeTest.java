@@ -7,6 +7,8 @@ package io.debezium.connector.jdbc.dialect.sqlserver;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.sql.Types;
 import java.time.LocalDate;
@@ -21,7 +23,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
+import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
+import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.TemporalPrecisionLossHandlingMode;
+import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.debezium.StructuredDurationType;
+import io.debezium.connector.jdbc.type.debezium.TargetTemporalCapabilities;
+import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.time.StructuredDuration;
 import io.debezium.time.StructuredTime;
 import io.debezium.time.StructuredTimestamp;
@@ -43,6 +50,25 @@ class StructuredTemporalTypeTest {
         assertThat(bindings).hasSize(1);
         assertThat(bindings.get(0).getValue()).isInstanceOf(LocalDateTime.class);
         assertThat(bindings.get(0).getValue()).isEqualTo(LocalDateTime.of(LocalDate.EPOCH, LocalTime.of(12, 13, 14, 123_456_789)));
+    }
+
+    @Test
+    @DisplayName("Should preserve SQL Server binding shape after precision reduction")
+    void shouldReduceStructuredTimeAsTimestampValue() {
+        final var schema = StructuredTime.builder(9).build();
+        final var value = StructuredTime.from(schema, LocalTime.of(12, 13, 14, 123_456_789), 9);
+        final var type = new StructuredTimeType();
+        final JdbcSinkConnectorConfig config = mock(JdbcSinkConnectorConfig.class);
+        final DatabaseDialect dialect = mock(DatabaseDialect.class);
+        when(config.useTimeZone()).thenReturn("UTC");
+        when(config.getTemporalPrecisionLossHandlingMode()).thenReturn(TemporalPrecisionLossHandlingMode.TRUNCATE);
+        when(dialect.getTargetTemporalCapabilities()).thenReturn(TargetTemporalCapabilities.defaults(7, 7));
+        type.configure(config, dialect);
+
+        final var binding = type.bind(1, timeColumn(3), schema, value).get(0);
+
+        assertThat(binding.getValue())
+                .isEqualTo(LocalDateTime.of(LocalDate.EPOCH, LocalTime.of(12, 13, 14, 123_000_000)));
     }
 
     @Test
@@ -102,5 +128,14 @@ class StructuredTemporalTypeTest {
         assertThatThrownBy(() -> StructuredZonedTimestampType.INSTANCE.bind(3, schema, StructuredZonedTimestamp.positiveInfinity(schema)))
                 .isInstanceOf(ConnectException.class)
                 .hasMessageContaining("Non-finite structured temporal values require dialect-specific handling");
+    }
+
+    private ColumnDescriptor timeColumn(int precision) {
+        return ColumnDescriptor.builder()
+                .columnName("time_value")
+                .jdbcType(Types.TIME)
+                .typeName("time")
+                .scale(precision)
+                .build();
     }
 }

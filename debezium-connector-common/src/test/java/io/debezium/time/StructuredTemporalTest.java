@@ -63,7 +63,7 @@ class StructuredTemporalTest {
         assertThat(value.getInt8(StructuredTemporal.HOUR_FIELD)).isEqualTo((byte) 23);
         assertThat(value.getInt8(StructuredTemporal.MINUTE_FIELD)).isEqualTo((byte) 59);
         assertThat(value.getInt8(StructuredTemporal.SECOND_FIELD)).isEqualTo((byte) 59);
-        assertThat(value.getInt32(StructuredTemporal.NANOS_FIELD)).isEqualTo(999_999_000);
+        assertThat(value.getInt64(StructuredTemporal.PICOSECONDS_FIELD)).isEqualTo(999_999_000_000L);
         assertThat(value.getInt32(StructuredTemporal.OFFSET_SECONDS_FIELD)).isEqualTo(32_400);
         assertThat(value.getString(StructuredTemporal.ZONE_ID_FIELD)).isEqualTo("Asia/Seoul");
     }
@@ -78,7 +78,7 @@ class StructuredTemporalTest {
         assertThat(value.getInt8(StructuredTemporal.HOUR_FIELD)).isEqualTo((byte) 24);
         assertThat(value.getInt8(StructuredTemporal.MINUTE_FIELD)).isEqualTo((byte) 0);
         assertThat(value.getInt8(StructuredTemporal.SECOND_FIELD)).isEqualTo((byte) 0);
-        assertThat(value.getInt32(StructuredTemporal.NANOS_FIELD)).isZero();
+        assertThat(value.getInt64(StructuredTemporal.PICOSECONDS_FIELD)).isZero();
         assertThat(value.getInt32(StructuredTemporal.OFFSET_SECONDS_FIELD)).isEqualTo(19_800);
         assertThat(StructuredTemporal.isFinite(value)).isTrue();
     }
@@ -95,7 +95,7 @@ class StructuredTemporalTest {
         assertThat(value.getInt32(StructuredTemporal.HOURS_FIELD)).isEqualTo(-4);
         assertThat(value.getInt32(StructuredTemporal.MINUTES_FIELD)).isEqualTo(-5);
         assertThat(value.getInt64(StructuredTemporal.SECONDS_FIELD)).isEqualTo(-6L);
-        assertThat(value.getInt32(StructuredTemporal.NANOS_FIELD)).isEqualTo(-7);
+        assertThat(value.getInt64(StructuredTemporal.PICOSECONDS_FIELD)).isEqualTo(-7_000L);
     }
 
     @Test
@@ -112,6 +112,28 @@ class StructuredTemporalTest {
         assertThat(durationSchema.parameters()).isNullOrEmpty();
         assertThat(duration.getInt32(StructuredTemporal.PRECISION_FIELD)).isEqualTo(6);
         assertThat(StructuredTimestamp.schema().parameters()).isNullOrEmpty();
+    }
+
+    @Test
+    void shouldDescribeStructuredPrecisionAndDurationKindInSchemaParameters() {
+        final Schema timestampSchema = StructuredTimestamp.builder(7).build();
+        final Schema durationSchema = StructuredDuration.builder(9, StructuredDuration.Kind.DAY_TIME).build();
+
+        assertThat(timestampSchema.parameters())
+                .containsEntry(StructuredTemporal.PRECISION_PARAMETER_KEY, "7");
+        assertThat(durationSchema.parameters())
+                .containsEntry(StructuredTemporal.PRECISION_PARAMETER_KEY, "9")
+                .containsEntry(StructuredTemporal.DURATION_KIND_PARAMETER_KEY, StructuredDuration.Kind.DAY_TIME.getValue());
+    }
+
+    @Test
+    void shouldPreservePicosecondTimestampPrecisionInVersionOneSchema() {
+        final Schema schema = StructuredTimestamp.builder(12).build();
+        final Struct value = StructuredTimestamp.fromPicoseconds(schema, 2026, 7, 17, 12, 13, 14, 123_456_789_012L, 12);
+
+        assertThat(schema.version()).isEqualTo(1);
+        assertThat(value.getInt64(StructuredTemporal.PICOSECONDS_FIELD)).isEqualTo(123_456_789_012L);
+        assertThat(value.getInt32(StructuredTemporal.PRECISION_FIELD)).isEqualTo(12);
     }
 
     @Test

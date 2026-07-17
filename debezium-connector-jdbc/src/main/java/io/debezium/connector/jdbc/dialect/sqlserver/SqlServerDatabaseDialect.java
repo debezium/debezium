@@ -21,6 +21,8 @@ import io.debezium.connector.jdbc.dialect.SqlStatementBuilder;
 import io.debezium.connector.jdbc.dialect.sqlserver.connect.ConnectTimeType;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
 import io.debezium.connector.jdbc.type.JdbcType;
+import io.debezium.connector.jdbc.type.debezium.TargetTemporalCapabilities;
+import io.debezium.connector.jdbc.type.debezium.TargetTemporalCapabilities.ZonedTimestampSupport;
 import io.debezium.sink.column.ColumnDescriptor;
 
 /**
@@ -29,6 +31,12 @@ import io.debezium.sink.column.ColumnDescriptor;
  * @author Chris Cranford
  */
 public class SqlServerDatabaseDialect extends GeneralDatabaseDialect {
+
+    @Override
+    public TargetTemporalCapabilities getTargetTemporalCapabilities() {
+        return TargetTemporalCapabilities.defaults(getMaxTimePrecision(), getMaxTimestampPrecision())
+                .withZonedTimestampSupport(ZonedTimestampSupport.OFFSET);
+    }
 
     public static class SqlServerDatabaseDialectProvider implements DatabaseDialectProvider {
         @Override

@@ -456,11 +456,13 @@ public abstract class BinlogValueConvertersTest<C extends SourceConnector> imple
         Column datetimeColumn = table.columnWithName("DT");
         Field datetimeField = new Field(datetimeColumn.name(), -1, converters.schemaBuilder(datetimeColumn).build());
         assertThat(datetimeField.schema().name()).isEqualTo(StructuredTimestamp.SCHEMA_NAME);
+        assertThat(datetimeField.schema().parameters())
+                .containsEntry(StructuredTemporal.PRECISION_PARAMETER_KEY, "6");
         Struct datetime = (Struct) converters.converter(datetimeColumn, datetimeField).convert(new BinlogDateTimeValue(2026, 2, 31, 12, 13, 14, 123_456_000));
         assertThat(datetime.getInt32(StructuredTemporal.YEAR_FIELD)).isEqualTo(2026);
         assertThat(datetime.getInt8(StructuredTemporal.MONTH_FIELD)).isEqualTo((byte) 2);
         assertThat(datetime.getInt8(StructuredTemporal.DAY_FIELD)).isEqualTo((byte) 31);
-        assertThat(datetime.getInt32(StructuredTemporal.NANOS_FIELD)).isEqualTo(123_456_000);
+        assertThat(datetime.getInt64(StructuredTemporal.PICOSECONDS_FIELD)).isEqualTo(123_456_000_000L);
         datetime = (Struct) converters.converter(datetimeColumn, datetimeField).convert(new BinlogDateTimeValue(9999, 12, 31, 23, 59, 59, 999_999_000));
         assertThat(datetime.getInt32(StructuredTemporal.YEAR_FIELD)).isEqualTo(9999);
         assertThat(datetime.getInt8(StructuredTemporal.MONTH_FIELD)).isEqualTo((byte) 12);
@@ -468,11 +470,13 @@ public abstract class BinlogValueConvertersTest<C extends SourceConnector> imple
         assertThat(datetime.getInt8(StructuredTemporal.HOUR_FIELD)).isEqualTo((byte) 23);
         assertThat(datetime.getInt8(StructuredTemporal.MINUTE_FIELD)).isEqualTo((byte) 59);
         assertThat(datetime.getInt8(StructuredTemporal.SECOND_FIELD)).isEqualTo((byte) 59);
-        assertThat(datetime.getInt32(StructuredTemporal.NANOS_FIELD)).isEqualTo(999_999_000);
+        assertThat(datetime.getInt64(StructuredTemporal.PICOSECONDS_FIELD)).isEqualTo(999_999_000_000L);
 
         Column timestampColumn = table.columnWithName("TS");
         Field timestampField = new Field(timestampColumn.name(), -1, converters.schemaBuilder(timestampColumn).build());
         assertThat(timestampField.schema().name()).isEqualTo(StructuredZonedTimestamp.SCHEMA_NAME);
+        assertThat(timestampField.schema().parameters())
+                .containsEntry(StructuredTemporal.PRECISION_PARAMETER_KEY, "6");
         Struct timestamp = (Struct) converters.converter(timestampColumn, timestampField).convert(new BinlogDateTimeValue(0, 0, 0, 0, 0, 0, 0));
         assertThat(timestamp.getInt32(StructuredTemporal.YEAR_FIELD)).isZero();
         assertThat(timestamp.getInt8(StructuredTemporal.MONTH_FIELD)).isEqualTo((byte) 0);
@@ -482,21 +486,24 @@ public abstract class BinlogValueConvertersTest<C extends SourceConnector> imple
         Column timeColumn = table.columnWithName("T");
         Field timeField = new Field(timeColumn.name(), -1, converters.schemaBuilder(timeColumn).build());
         assertThat(timeField.schema().name()).isEqualTo(StructuredDuration.SCHEMA_NAME);
+        assertThat(timeField.schema().parameters())
+                .containsEntry(StructuredTemporal.PRECISION_PARAMETER_KEY, "6")
+                .containsEntry(StructuredTemporal.DURATION_KIND_PARAMETER_KEY, StructuredDuration.Kind.ELAPSED_TIME.getValue());
         Struct duration = (Struct) converters.converter(timeColumn, timeField).convert(Duration.ofHours(-13).minusMinutes(14).minusSeconds(15).minusNanos(123_456_000));
         assertThat(duration.getInt32(StructuredTemporal.HOURS_FIELD)).isEqualTo(-13);
         assertThat(duration.getInt32(StructuredTemporal.MINUTES_FIELD)).isEqualTo(-14);
         assertThat(duration.getInt64(StructuredTemporal.SECONDS_FIELD)).isEqualTo(-15L);
-        assertThat(duration.getInt32(StructuredTemporal.NANOS_FIELD)).isEqualTo(-123_456_000);
+        assertThat(duration.getInt64(StructuredTemporal.PICOSECONDS_FIELD)).isEqualTo(-123_456_000_000L);
         duration = (Struct) converters.converter(timeColumn, timeField).convert(Duration.ofHours(838).plusMinutes(59).plusSeconds(59).plusNanos(999_999_000));
         assertThat(duration.getInt32(StructuredTemporal.HOURS_FIELD)).isEqualTo(838);
         assertThat(duration.getInt32(StructuredTemporal.MINUTES_FIELD)).isEqualTo(59);
         assertThat(duration.getInt64(StructuredTemporal.SECONDS_FIELD)).isEqualTo(59L);
-        assertThat(duration.getInt32(StructuredTemporal.NANOS_FIELD)).isEqualTo(999_999_000);
+        assertThat(duration.getInt64(StructuredTemporal.PICOSECONDS_FIELD)).isEqualTo(999_999_000_000L);
         duration = (Struct) converters.converter(timeColumn, timeField).convert(Duration.ofHours(-838).minusMinutes(59).minusSeconds(59).minusNanos(999_999_000));
         assertThat(duration.getInt32(StructuredTemporal.HOURS_FIELD)).isEqualTo(-838);
         assertThat(duration.getInt32(StructuredTemporal.MINUTES_FIELD)).isEqualTo(-59);
         assertThat(duration.getInt64(StructuredTemporal.SECONDS_FIELD)).isEqualTo(-59L);
-        assertThat(duration.getInt32(StructuredTemporal.NANOS_FIELD)).isEqualTo(-999_999_000);
+        assertThat(duration.getInt64(StructuredTemporal.PICOSECONDS_FIELD)).isEqualTo(-999_999_000_000L);
     }
 
     protected LocalDate localDateWithYear(int year) {
