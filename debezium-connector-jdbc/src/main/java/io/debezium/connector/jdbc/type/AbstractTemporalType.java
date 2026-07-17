@@ -12,13 +12,16 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.TimeZone;
 
+import org.apache.kafka.connect.data.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.TemporalPrecisionLossHandlingMode;
+import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.TemporalRangeLossHandlingMode;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.sink.SinkConnectorConfig;
+import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.time.ZonedTimestamp;
 
 /**
@@ -36,6 +39,7 @@ public abstract class AbstractTemporalType extends AbstractType {
     private ZonedDateTime minimumTimestampValue;
     private ZonedDateTime maximumTimestampValue;
     private TemporalPrecisionLossHandlingMode precisionLossHandlingMode = TemporalPrecisionLossHandlingMode.FAIL;
+    private TemporalRangeLossHandlingMode rangeLossHandlingMode = TemporalRangeLossHandlingMode.FAIL;
 
     @Override
     public void configure(SinkConnectorConfig config, DatabaseDialect dialect) {
@@ -56,6 +60,9 @@ public abstract class AbstractTemporalType extends AbstractType {
 
         if (config instanceof JdbcSinkConnectorConfig jdbcConfig && jdbcConfig.getTemporalPrecisionLossHandlingMode() != null) {
             precisionLossHandlingMode = jdbcConfig.getTemporalPrecisionLossHandlingMode();
+        }
+        if (config instanceof JdbcSinkConnectorConfig jdbcConfig && jdbcConfig.getTemporalRangeLossHandlingMode() != null) {
+            rangeLossHandlingMode = jdbcConfig.getTemporalRangeLossHandlingMode();
         }
     }
 
@@ -133,6 +140,18 @@ public abstract class AbstractTemporalType extends AbstractType {
 
     protected TemporalPrecisionLossHandlingMode getPrecisionLossHandlingMode() {
         return precisionLossHandlingMode;
+    }
+
+    protected TemporalRangeLossHandlingMode getRangeLossHandlingMode() {
+        return rangeLossHandlingMode;
+    }
+
+    protected String targetDescription(Schema schema) {
+        return String.format("target type '%s'", getTypeName(schema, false));
+    }
+
+    protected String targetDescription(ColumnDescriptor column) {
+        return String.format("target column '%s' (%s)", column.getColumnName(), column.getTypeName());
     }
 
 }
