@@ -11,6 +11,8 @@ import java.util.TimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
+import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.TemporalPrecisionLossHandlingMode;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.sink.SinkConnectorConfig;
 
@@ -24,6 +26,7 @@ public abstract class AbstractTemporalType extends AbstractType {
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractTemporalType.class);
 
     private TimeZone databaseTimeZone;
+    private TemporalPrecisionLossHandlingMode precisionLossHandlingMode = TemporalPrecisionLossHandlingMode.FAIL;
 
     @Override
     public void configure(SinkConnectorConfig config, DatabaseDialect dialect) {
@@ -37,10 +40,18 @@ public abstract class AbstractTemporalType extends AbstractType {
             LOGGER.error("Failed to resolve time zone '{}', please specify a correct time zone value", databaseTimeZone, e);
             throw e;
         }
+
+        if (config instanceof JdbcSinkConnectorConfig jdbcConfig && jdbcConfig.getTemporalPrecisionLossHandlingMode() != null) {
+            precisionLossHandlingMode = jdbcConfig.getTemporalPrecisionLossHandlingMode();
+        }
     }
 
     protected TimeZone getDatabaseTimeZone() {
         return databaseTimeZone;
+    }
+
+    protected TemporalPrecisionLossHandlingMode getPrecisionLossHandlingMode() {
+        return precisionLossHandlingMode;
     }
 
 }

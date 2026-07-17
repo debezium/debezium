@@ -119,6 +119,29 @@ public class JdbcSinkConnectorConfigTest extends AbstractBaseJdbcSinkTest {
     }
 
     @Test
+    public void testTemporalPrecisionLossHandlingMode() {
+        final JdbcSinkConnectorConfig defaultConfig = getConfig(Collections.emptyMap());
+        assertThat(defaultConfig.getTemporalPrecisionLossHandlingMode())
+                .isEqualTo(JdbcSinkConnectorConfig.TemporalPrecisionLossHandlingMode.FAIL);
+
+        final JdbcSinkConnectorConfig roundConfig = getConfig(Map.of(
+                JdbcSinkConnectorConfig.TEMPORAL_PRECISION_LOSS_HANDLING_MODE, "round"));
+        assertThat(roundConfig.validateAndRecord(
+                List.of(JdbcSinkConnectorConfig.TEMPORAL_PRECISION_LOSS_HANDLING_MODE_FIELD), LOGGER::error)).isTrue();
+        assertThat(roundConfig.getTemporalPrecisionLossHandlingMode())
+                .isEqualTo(JdbcSinkConnectorConfig.TemporalPrecisionLossHandlingMode.ROUND);
+    }
+
+    @Test
+    public void testInvalidTemporalPrecisionLossHandlingMode() {
+        final JdbcSinkConnectorConfig config = getConfig(Map.of(
+                JdbcSinkConnectorConfig.TEMPORAL_PRECISION_LOSS_HANDLING_MODE, "silent"));
+
+        assertThat(config.validateAndRecord(
+                List.of(JdbcSinkConnectorConfig.TEMPORAL_PRECISION_LOSS_HANDLING_MODE_FIELD), LOGGER::error)).isFalse();
+    }
+
+    @Test
     public void testNonDefaultSqlSelverIdentityTableNamesProperty() {
         final Map<String, String> properties = new HashMap<>();
         properties.put(JdbcSinkConnectorConfig.SQLSERVER_IDENTITY_INSERT, "true");

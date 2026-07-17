@@ -6,6 +6,8 @@
 package io.debezium.connector.jdbc.dialect.postgres;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.sql.Types;
 import java.time.OffsetTime;
@@ -15,6 +17,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
+import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
+import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.TemporalPrecisionLossHandlingMode;
+import io.debezium.connector.jdbc.dialect.DatabaseDialect;
+import io.debezium.connector.jdbc.type.debezium.TargetTemporalCapabilities;
+import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
 import io.debezium.time.StructuredDate;
 import io.debezium.time.StructuredDuration;
@@ -76,6 +83,25 @@ class StructuredTemporalTypeTest {
     }
 
     @Test
+    @DisplayName("Should explicitly reduce PostgreSQL interval fractional precision")
+    void shouldReduceStructuredDurationPrecision() {
+        final var schema = StructuredDuration.builder(9, StructuredDuration.Kind.MIXED).build();
+        final var value = StructuredDuration.from(schema, 1, 2, 3, 4, 5, 6, 789_123_456, 9);
+
+        final var truncateType = configuredDurationType(TemporalPrecisionLossHandlingMode.TRUNCATE);
+        final var roundType = configuredDurationType(TemporalPrecisionLossHandlingMode.ROUND);
+
+        assertThat(truncateType.bind(1, intervalColumn(6), schema, value).get(0).getValue())
+                .isEqualTo("1 years 2 months 3 days 4 hours 5 minutes 6.789123 seconds");
+        assertThat(roundType.bind(1, intervalColumn(6), schema, value).get(0).getValue())
+                .isEqualTo("1 years 2 months 3 days 4 hours 5 minutes 6.789123 seconds");
+
+        final var roundedValue = StructuredDuration.from(schema, 0, 0, 0, 0, 0, 6, 789_123_556, 9);
+        assertThat(roundType.bind(1, intervalColumn(6), schema, roundedValue).get(0).getValue())
+                .isEqualTo("6.789124 seconds");
+    }
+
+    @Test
     @DisplayName("Should bind structured zoned time as a PostgreSQL timetz literal")
     void shouldBindStructuredZonedTimeAsString() {
         final var schema = StructuredZonedTime.schema();
@@ -108,6 +134,26 @@ class StructuredTemporalTypeTest {
     private void assertInfinityBinding(ValueBindDescriptor binding, String expectedValue) {
         assertThat(binding.getValue()).isEqualTo(expectedValue);
         assertThat(binding.getTargetSqlType()).isEqualTo(Types.VARCHAR);
+    }
+
+    private StructuredDurationType configuredDurationType(TemporalPrecisionLossHandlingMode mode) {
+        final var type = new StructuredDurationType();
+        final JdbcSinkConnectorConfig config = mock(JdbcSinkConnectorConfig.class);
+        final DatabaseDialect dialect = mock(DatabaseDialect.class);
+        when(config.useTimeZone()).thenReturn("UTC");
+        when(config.getTemporalPrecisionLossHandlingMode()).thenReturn(mode);
+        when(dialect.getTargetTemporalCapabilities()).thenReturn(TargetTemporalCapabilities.defaults(6, 6));
+        type.configure(config, dialect);
+        return type;
+    }
+
+    private ColumnDescriptor intervalColumn(int precision) {
+        return ColumnDescriptor.builder()
+                .columnName("interval_value")
+                .jdbcType(Types.OTHER)
+                .typeName("interval")
+                .scale(precision)
+                .build();
     }
 
 }

@@ -10,6 +10,7 @@ import java.util.List;
 
 import org.apache.kafka.connect.data.Schema;
 
+import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
 
 /**
@@ -30,5 +31,16 @@ public class StructuredTimestampType extends io.debezium.connector.jdbc.type.deb
             return List.of(new ValueBindDescriptor(index, null));
         }
         return List.of(new ValueBindDescriptor(index, StructuredTemporalLiteral.timestamp(requireStruct(value)), Types.VARCHAR));
+    }
+
+    @Override
+    public List<ValueBindDescriptor> bind(int index, ColumnDescriptor column, Schema schema, Object value) {
+        if (value == null) {
+            return List.of(new ValueBindDescriptor(index, null));
+        }
+        validate(column, schema, value);
+        final int precision = getDialect().getTargetTemporalCapabilities().targetTimestampPrecision(column);
+        return List.of(new ValueBindDescriptor(index,
+                StructuredTemporalLiteral.timestamp(requireStruct(value), precision, getPrecisionLossHandlingMode()), Types.VARCHAR));
     }
 }

@@ -7,6 +7,8 @@ package io.debezium.connector.jdbc.dialect.oracle;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.sql.Types;
 import java.time.LocalDate;
@@ -21,8 +23,13 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
+import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
+import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.TemporalPrecisionLossHandlingMode;
+import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.debezium.StructuredTimestampType;
 import io.debezium.connector.jdbc.type.debezium.StructuredZonedTimestampType;
+import io.debezium.connector.jdbc.type.debezium.TargetTemporalCapabilities;
+import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.time.StructuredDuration;
 import io.debezium.time.StructuredTime;
 import io.debezium.time.StructuredTimestamp;
@@ -43,6 +50,26 @@ class StructuredTemporalTypeTest {
         assertThat(bindings).hasSize(1);
         assertThat(bindings.get(0).getValue()).isEqualTo(LocalDateTime.of(LocalDate.EPOCH, LocalTime.of(12, 13, 14, 123_456_789)));
         assertThat(bindings.get(0).getTargetSqlType()).isEqualTo(Types.TIMESTAMP);
+    }
+
+    @Test
+    @DisplayName("Should preserve Oracle binding shape after precision reduction")
+    void shouldReduceStructuredTimeAsTimestampValue() {
+        final var schema = StructuredTime.builder(9).build();
+        final var value = StructuredTime.from(schema, LocalTime.of(12, 13, 14, 123_456_789), 9);
+        final var type = new io.debezium.connector.jdbc.dialect.oracle.StructuredTimeType();
+        final JdbcSinkConnectorConfig config = mock(JdbcSinkConnectorConfig.class);
+        final DatabaseDialect dialect = mock(DatabaseDialect.class);
+        when(config.useTimeZone()).thenReturn("UTC");
+        when(config.getTemporalPrecisionLossHandlingMode()).thenReturn(TemporalPrecisionLossHandlingMode.TRUNCATE);
+        when(dialect.getTargetTemporalCapabilities()).thenReturn(TargetTemporalCapabilities.defaults(9, 9));
+        type.configure(config, dialect);
+
+        final var binding = type.bind(1, timeColumn(3), schema, value).get(0);
+
+        assertThat(binding.getValue())
+                .isEqualTo(LocalDateTime.of(LocalDate.EPOCH, LocalTime.of(12, 13, 14, 123_000_000)));
+        assertThat(binding.getTargetSqlType()).isEqualTo(Types.TIMESTAMP);
     }
 
     @Test
@@ -100,6 +127,20 @@ class StructuredTemporalTypeTest {
     }
 
     @Test
+    @DisplayName("Should map structured elapsed duration to Oracle day-second interval")
+    void shouldBindStructuredElapsedDuration() {
+        final var schema = StructuredDuration.builder(6, StructuredDuration.Kind.ELAPSED_TIME).build();
+        final var value = StructuredDuration.from(schema, 0, 0, 0, 34, 5, 6, 789_000_000, 6);
+
+        assertThat(StructuredDurationType.INSTANCE.getTypeName(schema, false))
+                .isEqualTo("INTERVAL DAY TO SECOND(6)");
+        assertThat(StructuredDurationType.INSTANCE.getQueryBinding(null, schema, value))
+                .isEqualTo("TO_DSINTERVAL(?)");
+        assertThat(StructuredDurationType.INSTANCE.bind(1, schema, value).get(0).getValue())
+                .isEqualTo("1 10:05:06.789000");
+    }
+
+    @Test
     @DisplayName("Should fail structured timestamp infinity for Oracle")
     void shouldFailStructuredTimestampInfinity() {
         final var schema = StructuredTimestamp.schema();
@@ -117,5 +158,14 @@ class StructuredTemporalTypeTest {
         assertThatThrownBy(() -> StructuredZonedTimestampType.INSTANCE.bind(4, schema, StructuredZonedTimestamp.negativeInfinity(schema)))
                 .isInstanceOf(ConnectException.class)
                 .hasMessageContaining("Non-finite structured temporal values require dialect-specific handling");
+    }
+
+    private ColumnDescriptor timeColumn(int precision) {
+        return ColumnDescriptor.builder()
+                .columnName("time_value")
+                .jdbcType(Types.TIMESTAMP)
+                .typeName("timestamp")
+                .scale(precision)
+                .build();
     }
 }

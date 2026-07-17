@@ -59,7 +59,7 @@ public class UnnestRecordWriter extends DefaultRecordWriter {
         // Otherwise delegate to parent's standard row-wise binding
         SqlStatementInfo sqlStatementInfo = getSqlStatementInfo(tableDescriptor, records);
         if (sqlStatementInfo.isBatchStatement()) {
-            writeUnnestBatch(sqlStatementInfo, records);
+            writeUnnestBatch(tableDescriptor, sqlStatementInfo, records);
         }
         else {
             super.write(tableDescriptor, records);
@@ -70,7 +70,7 @@ public class UnnestRecordWriter extends DefaultRecordWriter {
     protected void performTableWrite(Connection conn, TableDescriptor table, List<JdbcSinkRecord> records) throws SQLException {
         SqlStatementInfo statementInfo = getSqlStatementInfo(table, records);
         if (statementInfo.isBatchStatement()) {
-            performUnnestBatch(conn, statementInfo.statement(), records);
+            performUnnestBatch(conn, table, statementInfo.statement(), records);
         }
         else {
             super.performTableWrite(conn, table, records);
@@ -80,12 +80,12 @@ public class UnnestRecordWriter extends DefaultRecordWriter {
     /**
      * Write records using UNNEST approach with column-wise binding.
      */
-    private void writeUnnestBatch(SqlStatementInfo statementInfo, List<JdbcSinkRecord> records) {
+    private void writeUnnestBatch(TableDescriptor table, SqlStatementInfo statementInfo, List<JdbcSinkRecord> records) {
         Stopwatch writeStopwatch = Stopwatch.reusable();
         writeStopwatch.start();
         final Transaction transaction = getSession().beginTransaction();
         try {
-            getSession().doWork(processUnnestBatch(statementInfo.statement(), records));
+            getSession().doWork(processUnnestBatch(table, statementInfo.statement(), records));
             transaction.commit();
             processMetrics(records, statementInfo);
         }
@@ -97,14 +97,14 @@ public class UnnestRecordWriter extends DefaultRecordWriter {
         LOGGER.trace("[PERF] Total UNNEST write execution time {}", writeStopwatch.durations());
     }
 
-    void performUnnestBatch(Connection conn, String sqlStatement, List<JdbcSinkRecord> records) throws SQLException {
+    void performUnnestBatch(Connection conn, TableDescriptor table, String sqlStatement, List<JdbcSinkRecord> records) throws SQLException {
         try (PreparedStatement prepareStatement = conn.prepareStatement(sqlStatement)) {
 
             Stopwatch allbindStopwatch = Stopwatch.reusable();
             allbindStopwatch.start();
 
             // Bind column arrays for UNNEST using setArray()
-            bindArraysForUnnest(records, conn, prepareStatement);
+            bindArraysForUnnest(table, records, conn, prepareStatement);
 
             allbindStopwatch.stop();
             LOGGER.trace("[PERF] All records bind execution time for UNNEST {}", allbindStopwatch.durations());
@@ -127,9 +127,9 @@ public class UnnestRecordWriter extends DefaultRecordWriter {
      * Process a batch using UNNEST approach where each column's values are passed as a SQL array.
      * Uses PreparedStatement.setArray() for optimal performance and query plan caching.
      */
-    private Work processUnnestBatch(String sqlStatement, List<JdbcSinkRecord> records) {
+    private Work processUnnestBatch(TableDescriptor table, String sqlStatement, List<JdbcSinkRecord> records) {
         return conn -> {
-            performUnnestBatch(conn, sqlStatement, records);
+            performUnnestBatch(conn, table, sqlStatement, records);
         };
     }
 
@@ -141,7 +141,7 @@ public class UnnestRecordWriter extends DefaultRecordWriter {
      * For UPDATE: bind non-key fields first, then key fields
      * For DELETE: bind only key fields
      */
-    private void bindArraysForUnnest(List<JdbcSinkRecord> records, Connection conn, PreparedStatement ps) throws SQLException {
+    private void bindArraysForUnnest(TableDescriptor table, List<JdbcSinkRecord> records, Connection conn, PreparedStatement ps) throws SQLException {
         if (records.isEmpty()) {
             return;
         }
@@ -150,20 +150,20 @@ public class UnnestRecordWriter extends DefaultRecordWriter {
         int parameterIndex = 1;
 
         if (firstRecord.isDelete()) {
-            bindKeyFieldArrays(records, conn, ps, parameterIndex);
+            bindKeyFieldArrays(table, records, conn, ps, parameterIndex);
         }
         else {
             switch (getConfig().getInsertMode()) {
                 case INSERT:
                 case UPSERT:
                     // For INSERT/UPSERT: key fields first, then non-key fields
-                    parameterIndex = bindKeyFieldArrays(records, conn, ps, parameterIndex);
-                    bindNonKeyFieldArrays(records, conn, ps, parameterIndex);
+                    parameterIndex = bindKeyFieldArrays(table, records, conn, ps, parameterIndex);
+                    bindNonKeyFieldArrays(table, records, conn, ps, parameterIndex);
                     break;
                 case UPDATE:
                     // For UPDATE: non-key fields first, then key fields
-                    parameterIndex = bindNonKeyFieldArrays(records, conn, ps, parameterIndex);
-                    bindKeyFieldArrays(records, conn, ps, parameterIndex);
+                    parameterIndex = bindNonKeyFieldArrays(table, records, conn, ps, parameterIndex);
+                    bindKeyFieldArrays(table, records, conn, ps, parameterIndex);
                     break;
             }
         }
@@ -173,7 +173,7 @@ public class UnnestRecordWriter extends DefaultRecordWriter {
      * Bind key field arrays using setArray().
      * Each column's values across all records are collected into an array and bound as a single parameter.
      */
-    private int bindKeyFieldArrays(List<JdbcSinkRecord> records, Connection conn, PreparedStatement ps, int startIndex) throws SQLException {
+    private int bindKeyFieldArrays(TableDescriptor table, List<JdbcSinkRecord> records, Connection conn, PreparedStatement ps, int startIndex) throws SQLException {
         JdbcSinkRecord firstRecord = records.get(0);
         Set<String> keyFieldNames = firstRecord.keyFieldNames();
 
@@ -196,7 +196,7 @@ public class UnnestRecordWriter extends DefaultRecordWriter {
                     }
                 }
 
-                columnValues.add(transformValue(field, value));
+                columnValues.add(transformValue(table, field, value));
             }
 
             // Convert to array and bind using setArray()
@@ -212,7 +212,7 @@ public class UnnestRecordWriter extends DefaultRecordWriter {
      * Bind non-key field arrays using setArray().
      * Each column's values across all records are collected into an array and bound as a single parameter.
      */
-    private int bindNonKeyFieldArrays(List<JdbcSinkRecord> records, Connection conn, PreparedStatement ps, int startIndex) throws SQLException {
+    private int bindNonKeyFieldArrays(TableDescriptor table, List<JdbcSinkRecord> records, Connection conn, PreparedStatement ps, int startIndex) throws SQLException {
         JdbcSinkRecord firstRecord = records.get(0);
         Set<String> nonKeyFieldNames = firstRecord.nonKeyFieldNames();
 
@@ -233,7 +233,7 @@ public class UnnestRecordWriter extends DefaultRecordWriter {
                     value = payload.get(fieldName);
                 }
 
-                columnValues.add(transformValue(field, value));
+                columnValues.add(transformValue(table, field, value));
             }
 
             // Convert to array and bind using setArray()
@@ -245,8 +245,9 @@ public class UnnestRecordWriter extends DefaultRecordWriter {
         return parameterIndex;
     }
 
-    private Object transformValue(JdbcFieldDescriptor field, Object value) {
-        List<ValueBindDescriptor> boundValues = getDialect().bindValue(field, 1, value);
+    private Object transformValue(TableDescriptor table, JdbcFieldDescriptor field, Object value) {
+        final var column = getDialect().resolveColumn(table, field);
+        List<ValueBindDescriptor> boundValues = getDialect().bindValue(field, column, 1, value);
         if (boundValues.size() != 1) {
             throw new ConnectException(
                     String.format("UNNEST does not support types that expand to multiple bind parameters (field: '%s', type: '%s'). "

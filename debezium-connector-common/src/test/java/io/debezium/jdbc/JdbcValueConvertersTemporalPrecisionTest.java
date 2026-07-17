@@ -22,6 +22,9 @@ import org.junit.jupiter.api.Test;
 
 import io.debezium.relational.Column;
 import io.debezium.relational.ValueConverter;
+import io.debezium.time.StructuredTemporal;
+import io.debezium.time.StructuredZonedTime;
+import io.debezium.time.StructuredZonedTimestamp;
 
 /**
  * Test to test temporal to ISO 8601 String conversions.
@@ -140,5 +143,26 @@ public class JdbcValueConvertersTemporalPrecisionTest {
         Duration valDuration = Duration.ofHours(2).plusMinutes(30).plusMillis(4).plusNanos(5);
         assertThat(timeMicroValConverter.convert(valDuration)).isEqualTo(9000004000L);
         assertThat(timeNanoValConverter.convert(valDuration)).isEqualTo(9000004000005L);
+    }
+
+    @Test
+    public void shouldDescribeStructuredZonedTemporalPrecision() {
+        final JdbcValueConverters structuredConverters = new JdbcValueConverters(
+                null, TemporalPrecisionMode.STRUCTURED, ZoneOffset.UTC, null, null, null);
+        final Column zonedTime = Column.editor().name("zt").type("TIME WITH TIME ZONE").length(7)
+                .jdbcType(Types.TIME_WITH_TIMEZONE).create();
+        final Column zonedTimestamp = Column.editor().name("zts").type("TIMESTAMP WITH TIME ZONE").length(7)
+                .jdbcType(Types.TIMESTAMP_WITH_TIMEZONE).create();
+
+        assertThat(structuredConverters.schemaBuilder(zonedTime).build())
+                .satisfies(schema -> {
+                    assertThat(schema.name()).isEqualTo(StructuredZonedTime.SCHEMA_NAME);
+                    assertThat(schema.parameters()).containsEntry(StructuredTemporal.PRECISION_PARAMETER_KEY, "7");
+                });
+        assertThat(structuredConverters.schemaBuilder(zonedTimestamp).build())
+                .satisfies(schema -> {
+                    assertThat(schema.name()).isEqualTo(StructuredZonedTimestamp.SCHEMA_NAME);
+                    assertThat(schema.parameters()).containsEntry(StructuredTemporal.PRECISION_PARAMETER_KEY, "7");
+                });
     }
 }

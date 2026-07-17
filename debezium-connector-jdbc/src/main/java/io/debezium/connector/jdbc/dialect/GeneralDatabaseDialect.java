@@ -243,6 +243,11 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         return missingFields;
     }
 
+    @Override
+    public ColumnDescriptor resolveColumn(TableDescriptor table, JdbcFieldDescriptor field) {
+        return table.getColumnByName(resolveColumnName(field));
+    }
+
     protected String resolveColumnName(FieldDescriptor field) {
         String columnName = columnNamingStrategy.resolveColumnName(field.getColumnName());
         if (!getConfig().isQuoteIdentifiers()) {
@@ -424,6 +429,13 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         var schemaType = getSchemaType(field.getSchema());
         LOGGER.trace("Bind field '{}' at position {} with type {}: {}", field.getName(), startIndex, schemaType.getClass().getName(), value);
         return field.bind(startIndex, value, schemaType);
+    }
+
+    @Override
+    public List<ValueBindDescriptor> bindValue(JdbcFieldDescriptor field, ColumnDescriptor column, int startIndex, Object value) {
+        var schemaType = getSchemaType(field.getSchema());
+        LOGGER.trace("Bind field '{}' at position {} with type {}: {}", field.getName(), startIndex, schemaType.getClass().getName(), value);
+        return field.bind(startIndex, column, value, schemaType);
     }
 
     @Override

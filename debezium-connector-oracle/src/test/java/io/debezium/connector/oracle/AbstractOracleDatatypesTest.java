@@ -710,7 +710,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractAsyncEngineCon
         assertThat(timestamp.getInt8(StructuredTemporal.HOUR_FIELD)).isEqualTo((byte) 12);
         assertThat(timestamp.getInt8(StructuredTemporal.MINUTE_FIELD)).isEqualTo((byte) 34);
         assertThat(timestamp.getInt8(StructuredTemporal.SECOND_FIELD)).isEqualTo((byte) 56);
-        assertThat(timestamp.getInt32(StructuredTemporal.NANOS_FIELD)).isEqualTo(125_456_789);
+        assertThat(timestamp.getInt64(StructuredTemporal.PICOSECONDS_FIELD)).isEqualTo(125_456_789_000L);
 
         assertThat(after.schema().field("VAL_TSTZ").schema().name()).isEqualTo(StructuredZonedTimestamp.SCHEMA_NAME);
         Struct zonedTimestamp = after.getStruct("VAL_TSTZ");
@@ -721,7 +721,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractAsyncEngineCon
         assertThat(zonedTimestamp.getInt8(StructuredTemporal.HOUR_FIELD)).isEqualTo((byte) 1);
         assertThat(zonedTimestamp.getInt8(StructuredTemporal.MINUTE_FIELD)).isEqualTo((byte) 34);
         assertThat(zonedTimestamp.getInt8(StructuredTemporal.SECOND_FIELD)).isEqualTo((byte) 56);
-        assertThat(zonedTimestamp.getInt32(StructuredTemporal.NANOS_FIELD)).isEqualTo(7_891_000);
+        assertThat(zonedTimestamp.getInt64(StructuredTemporal.PICOSECONDS_FIELD)).isEqualTo(7_891_000_000L);
         assertThat(zonedTimestamp.getInt32(StructuredTemporal.OFFSET_SECONDS_FIELD)).isEqualTo(-39_600);
 
         assertThat(after.schema().field("VAL_INT_YTM").schema().name()).isEqualTo(StructuredDuration.SCHEMA_NAME);
@@ -735,7 +735,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractAsyncEngineCon
         assertThat(daySecond.getInt32(StructuredTemporal.HOURS_FIELD)).isEqualTo(-2);
         assertThat(daySecond.getInt32(StructuredTemporal.MINUTES_FIELD)).isEqualTo(-3);
         assertThat(daySecond.getInt64(StructuredTemporal.SECONDS_FIELD)).isEqualTo(-4L);
-        assertThat(daySecond.getInt32(StructuredTemporal.NANOS_FIELD)).isEqualTo(-560_000_000);
+        assertThat(daySecond.getInt64(StructuredTemporal.PICOSECONDS_FIELD)).isEqualTo(-560_000_000_000L);
     }
 
     @Test
@@ -777,7 +777,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractAsyncEngineCon
             assertThat(timestamp.getInt8(StructuredTemporal.HOUR_FIELD)).isEqualTo((byte) 23);
             assertThat(timestamp.getInt8(StructuredTemporal.MINUTE_FIELD)).isEqualTo((byte) 59);
             assertThat(timestamp.getInt8(StructuredTemporal.SECOND_FIELD)).isEqualTo((byte) 59);
-            assertThat(timestamp.getInt32(StructuredTemporal.NANOS_FIELD)).isEqualTo(999_999_999);
+            assertThat(timestamp.getInt64(StructuredTemporal.PICOSECONDS_FIELD)).isEqualTo(999_999_999_000L);
 
             assertThat(after.schema().field("VAL_TSTZ_EDGE").schema().name()).isEqualTo(StructuredZonedTimestamp.SCHEMA_NAME);
             final Struct zonedTimestamp = after.getStruct("VAL_TSTZ_EDGE");
@@ -788,7 +788,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractAsyncEngineCon
             assertThat(zonedTimestamp.getInt8(StructuredTemporal.HOUR_FIELD)).isEqualTo((byte) 23);
             assertThat(zonedTimestamp.getInt8(StructuredTemporal.MINUTE_FIELD)).isEqualTo((byte) 59);
             assertThat(zonedTimestamp.getInt8(StructuredTemporal.SECOND_FIELD)).isEqualTo((byte) 59);
-            assertThat(zonedTimestamp.getInt32(StructuredTemporal.NANOS_FIELD)).isEqualTo(999_999_999);
+            assertThat(zonedTimestamp.getInt64(StructuredTemporal.PICOSECONDS_FIELD)).isEqualTo(999_999_999_000L);
             assertThat(zonedTimestamp.getInt32(StructuredTemporal.OFFSET_SECONDS_FIELD)).isEqualTo(50_400);
 
             assertThat(after.schema().field("VAL_INT_YTM_EDGE").schema().name()).isEqualTo(StructuredDuration.SCHEMA_NAME);
@@ -802,7 +802,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractAsyncEngineCon
             assertThat(daySecond.getInt32(StructuredTemporal.HOURS_FIELD)).isEqualTo(-23);
             assertThat(daySecond.getInt32(StructuredTemporal.MINUTES_FIELD)).isEqualTo(-59);
             assertThat(daySecond.getInt64(StructuredTemporal.SECONDS_FIELD)).isEqualTo(-59L);
-            assertThat(daySecond.getInt32(StructuredTemporal.NANOS_FIELD)).isEqualTo(-999_999_999);
+            assertThat(daySecond.getInt64(StructuredTemporal.PICOSECONDS_FIELD)).isEqualTo(-999_999_999_000L);
         }
         finally {
             stopConnector();
