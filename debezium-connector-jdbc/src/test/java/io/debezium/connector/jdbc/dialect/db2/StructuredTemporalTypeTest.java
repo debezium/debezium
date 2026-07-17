@@ -58,7 +58,7 @@ class StructuredTemporalTypeTest {
         final var schema = StructuredTimestamp.builder(12).build();
         final var value = StructuredTimestamp.fromPicoseconds(schema, 2026, 7, 17, 12, 13, 14, 123_456_789_012L, 12);
         final var type = new StructuredTimestampType();
-        type.configure(jdbcConfig(), db2TimestampDialect());
+        type.configure(jdbcConfig(TemporalPrecisionLossHandlingMode.FAIL), db2TimestampDialect());
         final var column = timestampColumn(12);
 
         assertThat(type.getTypeName(schema, false)).isEqualTo("timestamp(12)");
@@ -74,11 +74,24 @@ class StructuredTemporalTypeTest {
         final var schema = StructuredTimestamp.builder(12).build();
         final var value = StructuredTimestamp.fromPicoseconds(schema, 2026, 7, 17, 12, 13, 14, 123_456_789_012L, 12);
         final var type = new StructuredTimestampType();
-        type.configure(jdbcConfig(), db2TimestampDialect());
+        type.configure(jdbcConfig(TemporalPrecisionLossHandlingMode.FAIL), db2TimestampDialect());
 
         assertThatThrownBy(() -> type.bind(1, timestampColumn(9), schema, value))
                 .isInstanceOf(ConnectException.class)
                 .hasMessageContaining("precision 9");
+    }
+
+    @Test
+    @DisplayName("Should apply round mode to Db2 timestamp defaults")
+    void shouldRoundDb2TimestampDefault() {
+        final var schema = StructuredTimestamp.builder(6).build();
+        final var value = StructuredTimestamp.fromPicoseconds(
+                schema, 2026, 7, 17, 12, 13, 14, 123_456_789_012L, 12);
+        final var type = new StructuredTimestampType();
+        type.configure(jdbcConfig(TemporalPrecisionLossHandlingMode.ROUND), db2TimestampDialect());
+
+        assertThat(type.getDefaultValueBinding(schema, value))
+                .isEqualTo("'2026-07-17 12:13:14.123457'");
     }
 
     private DatabaseDialect db2Dialect() {
@@ -87,10 +100,10 @@ class StructuredTemporalTypeTest {
         return dialect;
     }
 
-    private JdbcSinkConnectorConfig jdbcConfig() {
+    private JdbcSinkConnectorConfig jdbcConfig(TemporalPrecisionLossHandlingMode mode) {
         final JdbcSinkConnectorConfig config = mock(JdbcSinkConnectorConfig.class);
         when(config.useTimeZone()).thenReturn("UTC");
-        when(config.getTemporalPrecisionLossHandlingMode()).thenReturn(TemporalPrecisionLossHandlingMode.FAIL);
+        when(config.getTemporalPrecisionLossHandlingMode()).thenReturn(mode);
         return config;
     }
 

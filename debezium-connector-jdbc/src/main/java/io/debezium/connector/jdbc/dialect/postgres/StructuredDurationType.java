@@ -45,7 +45,8 @@ public class StructuredDurationType extends AbstractTemporalType {
 
     @Override
     public String getDefaultValueBinding(Schema schema, Object value) {
-        return String.format("'%s'", toIntervalLiteral(requireStruct(value)));
+        return String.format("'%s'", toIntervalLiteral(
+                requireStruct(value), getDialect().getTargetTemporalCapabilities().maxTimePrecision(), getPrecisionLossHandlingMode()));
     }
 
     @Override
@@ -80,7 +81,7 @@ public class StructuredDurationType extends AbstractTemporalType {
     }
 
     private String toIntervalLiteral(Struct value) {
-        return toIntervalLiteral(value, null, TemporalPrecisionLossHandlingMode.FAIL);
+        return toIntervalLiteral(value, null, getPrecisionLossHandlingMode());
     }
 
     private String toIntervalLiteral(Struct value, Integer precision, TemporalPrecisionLossHandlingMode handlingMode) {
@@ -96,6 +97,7 @@ public class StructuredDurationType extends AbstractTemporalType {
         BigDecimal fractionalSeconds = BigDecimal.valueOf(seconds == null ? 0 : seconds)
                 .add(BigDecimal.valueOf(picoseconds == null ? 0 : picoseconds, 12));
         if (precision != null) {
+            StructuredTemporalPreflightValidator.reduceFraction(picoseconds == null ? 0 : picoseconds, precision, handlingMode);
             final RoundingMode roundingMode = handlingMode == TemporalPrecisionLossHandlingMode.ROUND ? RoundingMode.HALF_UP : RoundingMode.DOWN;
             fractionalSeconds = fractionalSeconds.setScale(precision, roundingMode);
         }

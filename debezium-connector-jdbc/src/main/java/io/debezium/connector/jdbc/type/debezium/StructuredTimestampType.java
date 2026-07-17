@@ -44,7 +44,8 @@ public class StructuredTimestampType extends AbstractTimestampType {
 
     @Override
     public String getDefaultValueBinding(Schema schema, Object value) {
-        return getDialect().getFormattedDateTime(StructuredTemporalSupport.toLocalDateTime(requireStruct(value)));
+        return getDialect().getFormattedDateTime(StructuredTemporalSupport.toLocalDateTime(
+                requireStruct(value), getSchemaTimestampPrecision(schema), getPrecisionLossHandlingMode()));
     }
 
     @Override

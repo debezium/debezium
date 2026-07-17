@@ -66,7 +66,7 @@ public class StructuredDurationType extends AbstractTemporalType {
         return switch (resolveIntervalKind(schema)) {
             case YEAR_MONTH -> "TO_YMINTERVAL('" + toYearMonthLiteral(struct) + "')";
             case DAY_SECOND -> "TO_DSINTERVAL('" + toDaySecondLiteral(
-                    struct, getDaySecondPrecision(schema), TemporalPrecisionLossHandlingMode.FAIL) + "')";
+                    struct, getDaySecondPrecision(schema), getPrecisionLossHandlingMode()) + "')";
             case TEXT -> "'" + StructuredTemporalSupport.toDurationString(struct) + "'";
         };
     }
@@ -119,7 +119,7 @@ public class StructuredDurationType extends AbstractTemporalType {
     private String toBindingValue(Schema schema, Struct value) {
         return switch (resolveIntervalKind(schema)) {
             case YEAR_MONTH -> toYearMonthLiteral(value);
-            case DAY_SECOND -> toDaySecondLiteral(value, getDaySecondPrecision(schema), TemporalPrecisionLossHandlingMode.FAIL);
+            case DAY_SECOND -> toDaySecondLiteral(value, getDaySecondPrecision(schema), getPrecisionLossHandlingMode());
             case TEXT -> StructuredTemporalSupport.toDurationString(value);
         };
     }
@@ -176,6 +176,7 @@ public class StructuredDurationType extends AbstractTemporalType {
                 || intValue(value, StructuredTemporal.MINUTES_FIELD) < 0
                 || seconds < 0
                 || picoseconds < 0;
+        StructuredTemporalPreflightValidator.reduceFraction(picoseconds, precision, handlingMode);
 
         BigDecimal adjustedSeconds = BigDecimal.valueOf(Math.abs(seconds))
                 .add(BigDecimal.valueOf(Math.abs(picoseconds), 12));

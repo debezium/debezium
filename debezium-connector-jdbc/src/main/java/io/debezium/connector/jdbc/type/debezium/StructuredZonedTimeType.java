@@ -7,6 +7,7 @@ package io.debezium.connector.jdbc.type.debezium;
 
 import java.sql.Types;
 import java.time.OffsetTime;
+import java.time.ZoneOffset;
 import java.util.List;
 
 import org.apache.kafka.connect.data.Schema;
@@ -46,6 +47,15 @@ public class StructuredZonedTimeType extends AbstractTimeType {
     }
 
     @Override
+    public String getDefaultValueBinding(Schema schema, Object value) {
+        final Struct struct = requireStruct(value);
+        final OffsetTime offsetTime = OffsetTime.of(
+                StructuredTemporalSupport.toLocalTime(struct, getSchemaTimePrecision(schema), getPrecisionLossHandlingMode()),
+                ZoneOffset.ofTotalSeconds(struct.getInt32(StructuredTemporal.OFFSET_SECONDS_FIELD)));
+        return getDialect().getFormattedTimeWithTimeZone(offsetTime.toString());
+    }
+
+    @Override
     public List<ValueBindDescriptor> bind(int index, Schema schema, Object value) {
         if (value == null) {
             return List.of(new ValueBindDescriptor(index, null));
@@ -53,7 +63,7 @@ public class StructuredZonedTimeType extends AbstractTimeType {
         final Struct struct = requireStruct(value);
         final OffsetTime offsetTime = OffsetTime.of(
                 StructuredTemporalSupport.toLocalTime(struct),
-                java.time.ZoneOffset.ofTotalSeconds(struct.getInt32(StructuredTemporal.OFFSET_SECONDS_FIELD)));
+                ZoneOffset.ofTotalSeconds(struct.getInt32(StructuredTemporal.OFFSET_SECONDS_FIELD)));
         return List.of(new ValueBindDescriptor(index, offsetTime, Types.TIME_WITH_TIMEZONE));
     }
 
@@ -76,7 +86,7 @@ public class StructuredZonedTimeType extends AbstractTimeType {
         final int precision = getDialect().getTargetTemporalCapabilities().targetTimePrecision(column);
         final OffsetTime offsetTime = OffsetTime.of(
                 StructuredTemporalSupport.toLocalTime(struct, precision, getPrecisionLossHandlingMode()),
-                java.time.ZoneOffset.ofTotalSeconds(struct.getInt32(StructuredTemporal.OFFSET_SECONDS_FIELD)));
+                ZoneOffset.ofTotalSeconds(struct.getInt32(StructuredTemporal.OFFSET_SECONDS_FIELD)));
         return List.of(new ValueBindDescriptor(index, offsetTime, Types.TIME_WITH_TIMEZONE));
     }
 }

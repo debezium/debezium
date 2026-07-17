@@ -44,7 +44,8 @@ public class StructuredTimeType extends AbstractTimeType {
 
     @Override
     public String getDefaultValueBinding(Schema schema, Object value) {
-        return getDialect().getFormattedTime(StructuredTemporalSupport.toLocalTime(requireStruct(value)));
+        return getDialect().getFormattedTime(StructuredTemporalSupport.toLocalTime(
+                requireStruct(value), getSchemaTimePrecision(schema), getPrecisionLossHandlingMode()));
     }
 
     @Override
