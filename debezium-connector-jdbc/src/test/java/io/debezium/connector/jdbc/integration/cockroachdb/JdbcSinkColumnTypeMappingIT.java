@@ -29,6 +29,7 @@ import io.debezium.connector.jdbc.util.SinkRecordFactory;
 import io.debezium.data.vector.DoubleVector;
 import io.debezium.data.vector.FloatVector;
 import io.debezium.doc.FixFor;
+import io.debezium.time.StructuredTimestamp;
 
 /**
  * Column type mapping tests for CockroachDB.
@@ -57,6 +58,39 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
     @FixFor("debezium/dbz#1639")
     public void testShouldCoerceStringTypeToJsonbColumnType(SinkRecordFactory factory) throws Exception {
         shouldCoerceStringTypeToColumnType(factory, "jsonb", "{\"id\": 12345}", "{\"id\": 67890}");
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("debezium/dbz#2119")
+    public void testShouldSaturateStructuredTimestampInfinity(SinkRecordFactory factory) throws Exception {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.TEMPORAL_RANGE_LOSS_HANDLING_MODE, "saturate");
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server1", "schema", tableName);
+        final Schema schema = StructuredTimestamp.builder(6).optional().build();
+        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        final JdbcKafkaSinkRecord createRecord = factory.createRecordWithSchemaValue(
+                topicName,
+                (byte) 1,
+                "data",
+                schema,
+                StructuredTimestamp.positiveInfinity(schema),
+                config);
+
+        final String destinationTable = destinationTableName(createRecord);
+        consume(createRecord);
+
+        getSink().assertRows(destinationTable, rs -> {
+            assertThat(rs.getString("data")).startsWith("294276-12-31 23:59:59.999999");
+            return null;
+        });
     }
 
     private void shouldCoerceStringTypeToColumnType(SinkRecordFactory factory, String columnType, String insertValue, String updateValue) throws Exception {

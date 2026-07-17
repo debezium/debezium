@@ -18,6 +18,9 @@ import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.dialect.DatabaseDialectProvider;
 import io.debezium.connector.jdbc.dialect.postgres.PostgresDatabaseDialect;
+import io.debezium.connector.jdbc.type.debezium.TargetTemporalCapabilities;
+import io.debezium.connector.jdbc.type.debezium.TemporalRange;
+import io.debezium.connector.jdbc.type.debezium.TemporalRange.Boundary;
 
 /**
  * A {@link DatabaseDialect} implementation for CockroachDB.
@@ -30,6 +33,17 @@ import io.debezium.connector.jdbc.dialect.postgres.PostgresDatabaseDialect;
  * @author Virag Tripathi
  */
 public class CockroachDBDatabaseDialect extends PostgresDatabaseDialect {
+
+    private static final TemporalRange TIMESTAMP_RANGE = new TemporalRange(
+            Boundary.timestamp(-4714, 11, 24, 0, 0, 0, 0),
+            Boundary.timestamp(294_276, 12, 31, 23, 59, 59, 999_999_000_000L));
+
+    @Override
+    public TargetTemporalCapabilities getTargetTemporalCapabilities() {
+        return super.getTargetTemporalCapabilities()
+                .withTimestampRange(TIMESTAMP_RANGE)
+                .withTimestampInfinitySupported(false);
+    }
 
     public static class CockroachDBDatabaseDialectProvider implements DatabaseDialectProvider {
         @Override
