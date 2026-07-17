@@ -49,4 +49,42 @@ class ArrayTypeTest {
         assertThat(ArrayType.baseElementTypeName("NUMERIC(10,2)")).isEqualTo("numeric");
         assertThat(ArrayType.baseElementTypeName("VARCHAR(255)[]")).isEqualTo("varchar");
     }
+
+    @Test
+    @DisplayName("Should resolve native array element types from the array source column type")
+    void testResolvesNativeElementType() {
+        // dbz#2100 case 11: the source emits inet[]/cidr[]/macaddr[]/range[]/jsonb[] with a generic
+        // STRING (or Json) element schema, so the element type is recovered from the "_"-prefixed
+        // array type propagated on the array field, e.g. "_INET" -> "inet".
+        assertThat(ArrayType.nativeElementTypeName("_INET")).isEqualTo("inet");
+        assertThat(ArrayType.nativeElementTypeName("_CIDR")).isEqualTo("cidr");
+        assertThat(ArrayType.nativeElementTypeName("_MACADDR")).isEqualTo("macaddr");
+        assertThat(ArrayType.nativeElementTypeName("_MACADDR8")).isEqualTo("macaddr8");
+        assertThat(ArrayType.nativeElementTypeName("_TSRANGE")).isEqualTo("tsrange");
+        assertThat(ArrayType.nativeElementTypeName("_TSTZRANGE")).isEqualTo("tstzrange");
+        assertThat(ArrayType.nativeElementTypeName("_DATERANGE")).isEqualTo("daterange");
+        assertThat(ArrayType.nativeElementTypeName("_INT4RANGE")).isEqualTo("int4range");
+        assertThat(ArrayType.nativeElementTypeName("_INT8RANGE")).isEqualTo("int8range");
+        assertThat(ArrayType.nativeElementTypeName("_NUMRANGE")).isEqualTo("numrange");
+        assertThat(ArrayType.nativeElementTypeName("_JSONB")).isEqualTo("jsonb");
+    }
+
+    @Test
+    @DisplayName("Should not override numeric or other precision-bearing arrays")
+    void testDoesNotOverrideNumericArray() {
+        // numeric[] must keep resolving through the element schema so numeric(10,2) precision survives.
+        assertThat(ArrayType.nativeElementTypeName("_NUMERIC")).isNull();
+        assertThat(ArrayType.nativeElementTypeName("_TEXT")).isNull();
+        assertThat(ArrayType.nativeElementTypeName("_INT4")).isNull();
+        assertThat(ArrayType.nativeElementTypeName("_UUID")).isNull();
+    }
+
+    @Test
+    @DisplayName("Should return null when no array source column type is available")
+    void testNullWhenNoArraySourceType() {
+        // Column type propagation disabled, or a non-array (no leading underscore) type.
+        assertThat(ArrayType.nativeElementTypeName(null)).isNull();
+        assertThat(ArrayType.nativeElementTypeName("INET")).isNull();
+        assertThat(ArrayType.nativeElementTypeName("")).isNull();
+    }
 }

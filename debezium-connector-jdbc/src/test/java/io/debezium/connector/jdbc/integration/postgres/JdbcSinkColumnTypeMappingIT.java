@@ -32,6 +32,7 @@ import io.debezium.connector.jdbc.junit.jupiter.PostgresInsertModeArgumentsProvi
 import io.debezium.connector.jdbc.junit.jupiter.PostgresSinkDatabaseContextProvider;
 import io.debezium.connector.jdbc.junit.jupiter.Sink;
 import io.debezium.connector.jdbc.util.SinkRecordFactory;
+import io.debezium.data.Json;
 import io.debezium.data.Uuid;
 import io.debezium.doc.FixFor;
 import io.debezium.time.StructuredDate;
@@ -697,6 +698,134 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
             assertThat(rs.getInt(1)).isEqualTo(1);
             assertThat(rs.getArray(2).getArray()).isEqualTo(new BigDecimal[]{
                     new BigDecimal("1.25"), new BigDecimal("2.50"), new BigDecimal("-9999999.99") });
+            return null;
+        });
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
+    @FixFor("debezium/dbz#2100")
+    public void testShouldWorkWithInetArray(SinkRecordFactory factory, PostgresInsertMode insertMode) throws Exception {
+        assertNativeArrayRoundTrip(factory, insertMode, "_INET", Schema.OPTIONAL_STRING_SCHEMA, "inet[]",
+                Arrays.asList("192.168.1.1", "10.0.0.5"),
+                new String[]{ "192.168.1.1", "10.0.0.5" });
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
+    @FixFor("debezium/dbz#2100")
+    public void testShouldWorkWithCidrArray(SinkRecordFactory factory, PostgresInsertMode insertMode) throws Exception {
+        assertNativeArrayRoundTrip(factory, insertMode, "_CIDR", Schema.OPTIONAL_STRING_SCHEMA, "cidr[]",
+                Arrays.asList("192.168.100.128/25", "10.0.0.0/8"),
+                new String[]{ "192.168.100.128/25", "10.0.0.0/8" });
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
+    @FixFor("debezium/dbz#2100")
+    public void testShouldWorkWithMacaddrArray(SinkRecordFactory factory, PostgresInsertMode insertMode) throws Exception {
+        assertNativeArrayRoundTrip(factory, insertMode, "_MACADDR", Schema.OPTIONAL_STRING_SCHEMA, "macaddr[]",
+                Arrays.asList("08:00:2b:01:02:03", "08:00:2b:01:02:04"),
+                new String[]{ "08:00:2b:01:02:03", "08:00:2b:01:02:04" });
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
+    @FixFor("debezium/dbz#2100")
+    public void testShouldWorkWithTsrangeArray(SinkRecordFactory factory, PostgresInsertMode insertMode) throws Exception {
+        assertNativeArrayRoundTrip(factory, insertMode, "_TSRANGE", Schema.OPTIONAL_STRING_SCHEMA, "tsrange[]",
+                Arrays.asList("[\"2010-01-01 14:30:00\",\"2010-01-01 15:30:00\")"),
+                new String[]{ "[\"2010-01-01 14:30:00\",\"2010-01-01 15:30:00\")" });
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
+    @FixFor("debezium/dbz#2100")
+    public void testShouldWorkWithJsonbArray(SinkRecordFactory factory, PostgresInsertMode insertMode) throws Exception {
+        assertNativeArrayRoundTrip(factory, insertMode, "_JSONB", Json.builder().optional().build(), "jsonb[]",
+                Arrays.asList("{\"a\": 1}", "[1, 2, 3]"),
+                new String[]{ "{\"a\": 1}", "[1, 2, 3]" });
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
+    @FixFor("debezium/dbz#2100")
+    public void testShouldEvolveNativeArrayColumnToNativeType(SinkRecordFactory factory, PostgresInsertMode insertMode) throws Exception {
+        // With schema evolution on, the sink auto-creates the column: _inet (inet[]) after the fix, _text before.
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, String.valueOf(insertMode.isUnnestEnabled()));
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server2", "schema", tableName);
+
+        final Schema arraySchema = SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA)
+                .optional()
+                .parameter("__debezium.source.column.type", "_INET")
+                .build();
+
+        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        final JdbcKafkaSinkRecord createRecord = factory.createRecordWithSchemaValue(
+                topicName, (byte) 1, "data", arraySchema, Arrays.asList("192.168.1.1", "10.0.0.5"), config);
+
+        final String destinationTable = destinationTableName(createRecord);
+
+        consume(createRecord);
+
+        getSink().assertColumn(destinationTable, "data", "_inet");
+        getSink().assertRows(destinationTable, rs -> {
+            assertThat(rs.getInt(1)).isEqualTo(1);
+            final Object[] actual = (Object[]) rs.getArray(2).getArray();
+            assertThat(Arrays.stream(actual).map(String::valueOf).toArray(String[]::new))
+                    .isEqualTo(new String[]{ "192.168.1.1", "10.0.0.5" });
+            return null;
+        });
+    }
+
+    /**
+     * Round-trips a record into a pre-created native array column ({@code schema.evolution=none}), with the
+     * array type carried on the field's {@code __debezium.source.column.type} as the source emits it (e.g. {@code _INET}).
+     */
+    private void assertNativeArrayRoundTrip(SinkRecordFactory factory, PostgresInsertMode insertMode,
+                                            String sourceColumnType, Schema elementSchema, String columnType,
+                                            List<?> values, String[] expected)
+            throws Exception {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.NONE.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, String.valueOf(insertMode.isUnnestEnabled()));
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server2", "schema", tableName);
+
+        final Schema arraySchema = SchemaBuilder.array(elementSchema)
+                .optional()
+                .parameter("__debezium.source.column.type", sourceColumnType)
+                .build();
+
+        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        final JdbcKafkaSinkRecord createRecord = factory.createRecordWithSchemaValue(
+                topicName, (byte) 1, "data", arraySchema, values, config);
+
+        final String destinationTable = destinationTableName(createRecord);
+        getSink().execute(String.format("CREATE TABLE %s (id int not null, data %s, primary key(id))",
+                destinationTable, columnType));
+
+        consume(createRecord);
+
+        getSink().assertRows(destinationTable, rs -> {
+            assertThat(rs.getInt(1)).isEqualTo(1);
+            // Native types such as inet/macaddr come back as driver-specific objects (PGobject) rather
+            // than String, so compare on their textual form which is stable across both representations.
+            final Object[] actual = (Object[]) rs.getArray(2).getArray();
+            assertThat(Arrays.stream(actual).map(String::valueOf).toArray(String[]::new)).isEqualTo(expected);
             return null;
         });
     }

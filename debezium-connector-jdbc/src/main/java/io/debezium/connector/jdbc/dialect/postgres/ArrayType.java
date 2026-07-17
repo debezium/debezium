@@ -6,6 +6,8 @@
 package io.debezium.connector.jdbc.dialect.postgres;
 
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
 import org.apache.kafka.connect.data.Schema;
 
@@ -24,6 +26,19 @@ public class ArrayType extends AbstractType {
 
     public static final ArrayType INSTANCE = new ArrayType();
 
+    /**
+     * PostgreSQL native array types whose element the source emits with a generic {@code STRING} or
+     * {@link io.debezium.data.Json} element schema, so the real element type cannot be recovered from
+     * the element schema alone. For these the element type is taken from the array field's propagated
+     * source column type instead. Numeric arrays are deliberately excluded: their element schema
+     * carries the precision/scale (e.g. {@code numeric(10,2)}) that must be preserved. {@code json} is
+     * excluded too: unlike {@code jsonb} it already resolves correctly from the element schema.
+     */
+    private static final Set<String> NATIVE_ELEMENT_TYPES = Set.of(
+            "inet", "cidr", "macaddr", "macaddr8",
+            "int4range", "int8range", "numrange", "tsrange", "tstzrange", "daterange",
+            "jsonb");
+
     @Override
     public String[] getRegistrationKeys() {
         return new String[]{ "ARRAY" };
@@ -35,8 +50,25 @@ public class ArrayType extends AbstractType {
     }
 
     private String getElementTypeName(DatabaseDialect dialect, Schema schema, boolean isKey) {
+        final String nativeElementType = nativeElementTypeName(getSourceColumnType(schema).orElse(null));
+        if (nativeElementType != null) {
+            return nativeElementType;
+        }
         JdbcType elementJdbcType = dialect.getSchemaType(schema.valueSchema());
         return elementJdbcType.getTypeName(schema.valueSchema(), isKey);
+    }
+
+    /**
+     * Maps an array source column type to its element type name, e.g. {@code _INET} to {@code inet}
+     * (PostgreSQL names an array type after its element with a {@code _} prefix). Returns {@code null}
+     * for anything not in {@link #NATIVE_ELEMENT_TYPES} so other arrays keep resolving via the element schema.
+     */
+    static String nativeElementTypeName(String arraySourceColumnType) {
+        if (arraySourceColumnType == null || !arraySourceColumnType.startsWith("_")) {
+            return null;
+        }
+        final String elementType = arraySourceColumnType.substring(1).toLowerCase(Locale.ROOT);
+        return NATIVE_ELEMENT_TYPES.contains(elementType) ? elementType : null;
     }
 
     @Override
