@@ -30,6 +30,7 @@ import io.debezium.data.geometry.Point;
 import io.debezium.data.vector.DoubleVector;
 import io.debezium.data.vector.FloatVector;
 import io.debezium.doc.FixFor;
+import io.debezium.time.StructuredTimestamp;
 
 /**
  * Column type mappings for SingleStore.
@@ -42,6 +43,38 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
 
     public JdbcSinkColumnTypeMappingIT(Sink sink) {
         super(sink);
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("debezium/dbz#2119")
+    public void testShouldWriteStructuredDatetimeUpperBoundary(SinkRecordFactory factory) throws Exception {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server2", "schema", tableName);
+        final Schema schema = StructuredTimestamp.builder(6).optional().build();
+        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        final JdbcKafkaSinkRecord createRecord = factory.createRecordWithSchemaValue(
+                topicName,
+                (byte) 1,
+                "data",
+                schema,
+                StructuredTimestamp.from(schema, 9999, 12, 31, 23, 59, 59, 999_999_000, 6),
+                config);
+
+        final String destinationTable = destinationTableName(createRecord);
+        consume(createRecord);
+
+        getSink().assertRows(destinationTable, rs -> {
+            assertThat(rs.getString("data")).isEqualTo("9999-12-31 23:59:59.999999");
+            return null;
+        });
     }
 
     @ParameterizedTest
