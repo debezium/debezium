@@ -27,7 +27,10 @@ public record TargetTemporalCapabilities(
         TemporalRange dateRange,
         TemporalRange timestampRange,
         Map<String, TemporalRange> timestampRangesByType,
-        ZonedTimestampRangeBasis zonedTimestampRangeBasis) {
+        ZonedTimestampRangeBasis zonedTimestampRangeBasis,
+        boolean dateInfinitySupported,
+        boolean timestampInfinitySupported,
+        boolean zeroDateSupported) {
 
     public TargetTemporalCapabilities {
         durationKinds = Set.copyOf(durationKinds);
@@ -45,37 +48,44 @@ public record TargetTemporalCapabilities(
                 TemporalRange.unbounded(),
                 TemporalRange.unbounded(),
                 Map.of(),
-                ZonedTimestampRangeBasis.LOCAL);
+                ZonedTimestampRangeBasis.LOCAL,
+                false,
+                false,
+                false);
     }
 
     public TargetTemporalCapabilities withZonedTimestampSupport(ZonedTimestampSupport support) {
         return new TargetTemporalCapabilities(maxTimePrecision, maxTimestampPrecision, support, durationKinds,
                 timeColumnPrecisionReliable, timestampColumnPrecisionReliable, dateRange, timestampRange,
-                timestampRangesByType, zonedTimestampRangeBasis);
+                timestampRangesByType, zonedTimestampRangeBasis, dateInfinitySupported, timestampInfinitySupported,
+                zeroDateSupported);
     }
 
     public TargetTemporalCapabilities withDurationKinds(Set<StructuredDuration.Kind> kinds) {
         return new TargetTemporalCapabilities(maxTimePrecision, maxTimestampPrecision, zonedTimestampSupport, kinds,
                 timeColumnPrecisionReliable, timestampColumnPrecisionReliable, dateRange, timestampRange,
-                timestampRangesByType, zonedTimestampRangeBasis);
+                timestampRangesByType, zonedTimestampRangeBasis, dateInfinitySupported, timestampInfinitySupported,
+                zeroDateSupported);
     }
 
     public TargetTemporalCapabilities withTimestampColumnPrecisionReliable(boolean reliable) {
         return new TargetTemporalCapabilities(maxTimePrecision, maxTimestampPrecision, zonedTimestampSupport, durationKinds,
                 timeColumnPrecisionReliable, reliable, dateRange, timestampRange, timestampRangesByType,
-                zonedTimestampRangeBasis);
+                zonedTimestampRangeBasis, dateInfinitySupported, timestampInfinitySupported, zeroDateSupported);
     }
 
     public TargetTemporalCapabilities withDateRange(TemporalRange range) {
         return new TargetTemporalCapabilities(maxTimePrecision, maxTimestampPrecision, zonedTimestampSupport, durationKinds,
                 timeColumnPrecisionReliable, timestampColumnPrecisionReliable, range, timestampRange,
-                timestampRangesByType, zonedTimestampRangeBasis);
+                timestampRangesByType, zonedTimestampRangeBasis, dateInfinitySupported, timestampInfinitySupported,
+                zeroDateSupported);
     }
 
     public TargetTemporalCapabilities withTimestampRange(TemporalRange range) {
         return new TargetTemporalCapabilities(maxTimePrecision, maxTimestampPrecision, zonedTimestampSupport, durationKinds,
                 timeColumnPrecisionReliable, timestampColumnPrecisionReliable, dateRange, range,
-                timestampRangesByType, zonedTimestampRangeBasis);
+                timestampRangesByType, zonedTimestampRangeBasis, dateInfinitySupported, timestampInfinitySupported,
+                zeroDateSupported);
     }
 
     public TargetTemporalCapabilities withTimestampRangeForType(TemporalRange range, String... typeNames) {
@@ -85,13 +95,31 @@ public record TargetTemporalCapabilities(
         }
         return new TargetTemporalCapabilities(maxTimePrecision, maxTimestampPrecision, zonedTimestampSupport, durationKinds,
                 timeColumnPrecisionReliable, timestampColumnPrecisionReliable, dateRange, timestampRange, ranges,
-                zonedTimestampRangeBasis);
+                zonedTimestampRangeBasis, dateInfinitySupported, timestampInfinitySupported, zeroDateSupported);
     }
 
     public TargetTemporalCapabilities withZonedTimestampRangeBasis(ZonedTimestampRangeBasis basis) {
         return new TargetTemporalCapabilities(maxTimePrecision, maxTimestampPrecision, zonedTimestampSupport, durationKinds,
                 timeColumnPrecisionReliable, timestampColumnPrecisionReliable, dateRange, timestampRange,
-                timestampRangesByType, basis);
+                timestampRangesByType, basis, dateInfinitySupported, timestampInfinitySupported, zeroDateSupported);
+    }
+
+    public TargetTemporalCapabilities withDateInfinitySupported(boolean supported) {
+        return new TargetTemporalCapabilities(maxTimePrecision, maxTimestampPrecision, zonedTimestampSupport, durationKinds,
+                timeColumnPrecisionReliable, timestampColumnPrecisionReliable, dateRange, timestampRange,
+                timestampRangesByType, zonedTimestampRangeBasis, supported, timestampInfinitySupported, zeroDateSupported);
+    }
+
+    public TargetTemporalCapabilities withTimestampInfinitySupported(boolean supported) {
+        return new TargetTemporalCapabilities(maxTimePrecision, maxTimestampPrecision, zonedTimestampSupport, durationKinds,
+                timeColumnPrecisionReliable, timestampColumnPrecisionReliable, dateRange, timestampRange,
+                timestampRangesByType, zonedTimestampRangeBasis, dateInfinitySupported, supported, zeroDateSupported);
+    }
+
+    public TargetTemporalCapabilities withZeroDateSupported(boolean supported) {
+        return new TargetTemporalCapabilities(maxTimePrecision, maxTimestampPrecision, zonedTimestampSupport, durationKinds,
+                timeColumnPrecisionReliable, timestampColumnPrecisionReliable, dateRange, timestampRange,
+                timestampRangesByType, zonedTimestampRangeBasis, dateInfinitySupported, timestampInfinitySupported, supported);
     }
 
     public int targetTimePrecision(ColumnDescriptor column) {
