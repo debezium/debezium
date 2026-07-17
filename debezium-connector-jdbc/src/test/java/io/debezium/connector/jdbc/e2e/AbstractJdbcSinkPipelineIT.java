@@ -3011,13 +3011,19 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
     @FixFor("debezium/dbz#2199")
     @ForSource(value = SourceType.POSTGRES, reason = "The tsvector data type only applies to PostgreSQL")
     public void testTsvectorDataTypePreservesQuotedLexemes(Source source, Sink sink) throws Exception {
+        // CockroachDB's tsvector parser splits apostrophe-containing lexemes differently;
+        // 'it''s' becomes two lexemes: 'it' and 's'.
+        final List<String> expectedValues = sink.getType().is(SinkType.COCKROACHDB)
+                ? List.of("'it' 'new york' 'plain' 's'")
+                : List.of("'it''s' 'new york' 'plain'");
+
         assertDataTypeNonKeyOnly(source,
                 sink,
                 "tsvector",
                 List.of("array_to_tsvector(array['new york', 'it''s', 'plain'])"),
-                List.of("'it''s' 'new york' 'plain'"),
+                expectedValues,
                 (record) -> {
-                    if (sink.getType().is(SinkType.POSTGRES)) {
+                    if (sink.getType().is(SinkType.POSTGRES, SinkType.COCKROACHDB)) {
                         assertColumn(sink, record, "data", "tsvector");
                     }
                     else {
