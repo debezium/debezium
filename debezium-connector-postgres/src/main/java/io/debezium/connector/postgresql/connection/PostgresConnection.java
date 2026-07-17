@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
@@ -701,7 +702,8 @@ public class PostgresConnection extends JdbcConnection {
 
             // first source the length/scale from the column metadata provided by the driver
             // this may be overridden below if the column type is a user-defined domain type
-            column.length(columnMetadata.getInt(7));
+            final int driverLength = columnMetadata.getInt(7);
+            column.length(driverLength);
             if (columnMetadata.getObject(9) != null) {
                 column.scale(columnMetadata.getInt(9));
             }
@@ -735,6 +737,17 @@ public class PostgresConnection extends JdbcConnection {
                 column.scale(nativeType.getDefaultScale());
             }
 
+            // The driver reports COLUMN_SIZE as MAX_VALUE for vectors (see PostgresType#isVector);
+            // recover the real dimension from the catalog instead.
+            if (nativeType.isVector() && driverLength == Integer.MAX_VALUE) {
+                final OptionalInt dimension = readVectorDimension(tableId, columnName);
+                // Real dimension, or clear the bogus MAX_VALUE for a bare vector so no length is propagated.
+                column.length(dimension.orElse(Column.UNSET_INT_VALUE));
+                if (dimension.isPresent()) {
+                    column.scale(0);
+                }
+            }
+
             final String defaultValueExpression = columnMetadata.getString(13);
             if (defaultValueExpression != null && getDefaultValueConverter().supportConversion(nativeType.getName())) {
                 column.defaultValueExpression(defaultValueExpression);
@@ -744,6 +757,35 @@ public class PostgresConnection extends JdbcConnection {
         }
 
         return Optional.empty();
+    }
+
+    /**
+     * Reads a pgvector column's dimension from {@code pg_attribute.atttypmod}, which the JDBC driver
+     * cannot expose for these extension types (see {@link PostgresType#isVector()}).
+     *
+     * @return the dimension, or empty when the column has no dimension modifier
+     */
+    private OptionalInt readVectorDimension(TableId tableId, String columnName) throws SQLException {
+        final String schema = tableId.schema() != null && !tableId.schema().isEmpty() ? tableId.schema() : "public";
+        return prepareQueryAndMap(
+                "SELECT a.atttypmod FROM pg_attribute a "
+                        + "JOIN pg_class c ON a.attrelid = c.oid "
+                        + "JOIN pg_namespace n ON c.relnamespace = n.oid "
+                        + "WHERE n.nspname = ? AND c.relname = ? AND a.attname = ? AND a.attnum > 0 AND NOT a.attisdropped",
+                statement -> {
+                    statement.setString(1, schema);
+                    statement.setString(2, tableId.table());
+                    statement.setString(3, columnName);
+                },
+                rs -> {
+                    if (rs.next()) {
+                        final int typmod = rs.getInt(1);
+                        if (typmod > 0) {
+                            return OptionalInt.of(typmod);
+                        }
+                    }
+                    return OptionalInt.empty();
+                });
     }
 
     public PostgresDefaultValueConverter getDefaultValueConverter() {

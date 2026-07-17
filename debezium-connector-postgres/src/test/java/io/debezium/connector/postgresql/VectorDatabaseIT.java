@@ -11,6 +11,7 @@ import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,7 +20,9 @@ import org.junit.jupiter.api.Test;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
+import io.debezium.doc.FixFor;
 import io.debezium.junit.SkipWhenDatabaseVersion;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 
 /**
  * Integration test to verify PgVector types.
@@ -38,8 +41,8 @@ public class VectorDatabaseIT extends AbstractRecordsProducerTest {
         TestHelper.dropAllSchemas();
         TestHelper.executeDDL("init_pgvector.ddl");
         TestHelper.execute(
-                "CREATE TABLE pgvector.table_vector (pk SERIAL, f_vector pgvector.vector(3), f_halfvec pgvector.halfvec(3), f_sparsevec pgvector.sparsevec(3000), PRIMARY KEY(pk));",
-                "INSERT INTO pgvector.table_vector (f_vector, f_halfvec, f_sparsevec) VALUES ('[1,2,3]', '[101,102,103]', '{1: 201, 9: 209}/3000');");
+                "CREATE TABLE pgvector.table_vector (pk SERIAL, f_vector pgvector.vector(3), f_halfvec pgvector.halfvec(3), f_sparsevec pgvector.sparsevec(3000), f_vector_raw pgvector.vector, PRIMARY KEY(pk));",
+                "INSERT INTO pgvector.table_vector (f_vector, f_halfvec, f_sparsevec, f_vector_raw) VALUES ('[1,2,3]', '[101,102,103]', '{1: 201, 9: 209}/3000', '[7,8,9]');");
 
         // Re-initialize the connector framework AFTER database cleanup to ensure clean state
         initializeConnectorTestFramework();
@@ -79,6 +82,56 @@ public class VectorDatabaseIT extends AbstractRecordsProducerTest {
         Assertions.assertThat(rec.getStruct("after").getArray("f_halfvec")).isEqualTo(List.of(110.0f, 120.0f, 130.0f));
         Assertions.assertThat(rec.getStruct("after").getStruct("f_sparsevec").getInt16("dimensions")).isEqualTo((short) 3000);
         Assertions.assertThat(rec.getStruct("after").getStruct("f_sparsevec").getMap("vector")).isEqualTo(Map.of((short) 1, 301.0, (short) 9, 309.0));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2220")
+    void shouldPropagateVectorDimensions() throws Exception {
+        start(PostgresConnector.class, TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(RelationalDatabaseConnectorConfig.PROPAGATE_COLUMN_SOURCE_TYPE, ".*")
+                .build());
+        assertConnectorIsRunning();
+
+        waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
+
+        TestHelper.execute("INSERT INTO pgvector.table_vector (f_vector, f_halfvec, f_sparsevec) VALUES ('[10,20,30]', '[110,120,130]', '{1: 301, 9: 309}/3000');");
+
+        var actualRecords = consumeRecordsByTopic(2);
+        var recs = actualRecords.recordsForTopic("test_server.pgvector.table_vector");
+        Assertions.assertThat(recs).hasSize(2);
+
+        // The first record is the snapshot read, the second is the streamed insert. Both paths must
+        // propagate the real pgvector dimension instead of Integer.MAX_VALUE (dbz#2220).
+        for (var record : recs) {
+            var after = ((Struct) record.value()).schema().field("after").schema();
+            assertPropagatedLength(after, "f_vector", "3");
+            assertPropagatedLength(after, "f_halfvec", "3");
+            assertPropagatedLength(after, "f_sparsevec", "3000");
+            // A bare vector has no declared dimension, so no length must be propagated (rather than
+            // the bogus Integer.MAX_VALUE).
+            assertNoPropagatedLength(after, "f_vector_raw");
+        }
+    }
+
+    private static void assertPropagatedLength(Schema afterSchema, String field, String expectedLength) {
+        var parameters = afterSchema.field(field).schema().parameters();
+        Assertions.assertThat(parameters).as("propagated parameters for %s", field).isNotNull();
+        Assertions.assertThat(parameters.get("__debezium.source.column.length"))
+                .as("propagated dimension for %s", field)
+                .isEqualTo(expectedLength);
+        Assertions.assertThat(parameters.get("__debezium.source.column.scale"))
+                .as("propagated scale for %s", field)
+                .isEqualTo("0");
+    }
+
+    private static void assertNoPropagatedLength(Schema afterSchema, String field) {
+        var parameters = afterSchema.field(field).schema().parameters();
+        if (parameters != null) {
+            Assertions.assertThat(parameters.get("__debezium.source.column.length"))
+                    .as("no dimension should be propagated for a bare vector column %s", field)
+                    .isNull();
+        }
     }
 
     @Test

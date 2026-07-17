@@ -8,6 +8,7 @@ package io.debezium.connector.postgresql.connection.pgoutput;
 import io.debezium.annotation.Immutable;
 import io.debezium.connector.postgresql.PostgresType;
 import io.debezium.connector.postgresql.TypeRegistry;
+import io.debezium.relational.Column;
 
 /**
  * Defines the relational column mapping for a table.
@@ -52,7 +53,13 @@ public class ColumnMetaData {
         // for specific types and ideally for PgOutput, we should always delegate if a modifier
         // is provided. For now, I've allowed PostgresType to expose the TypeInfo object where
         // I will use it here for now until further research can be done.
-        if (TypeRegistry.NO_TYPE_MODIFIER != typeModifier && postgresType.getTypeInfo() != null) {
+        if (postgresType.isVector()) {
+            // Take the dimension straight from atttypmod: getPrecision() would yield MAX_VALUE (see
+            // PostgresType#isVector). A bare vector without a declared dimension has none.
+            length = TypeRegistry.NO_TYPE_MODIFIER != typeModifier ? typeModifier : Column.UNSET_INT_VALUE;
+            scale = 0;
+        }
+        else if (TypeRegistry.NO_TYPE_MODIFIER != typeModifier && postgresType.getTypeInfo() != null) {
             length = postgresType.getTypeInfo().getPrecision(postgresType.getOid(), typeModifier);
             scale = postgresType.getTypeInfo().getScale(postgresType.getOid(), typeModifier);
         }
@@ -63,7 +70,13 @@ public class ColumnMetaData {
 
         // Constructs a fully qualified type name, including dimensions if applicable
         String type = postgresType.getName();
-        if (!(length == postgresType.getDefaultLength() && scale == 0)) {
+        if (postgresType.isVector()) {
+            // pgvector uses a single dimension modifier, e.g. vector(3) rather than vector(3,0)
+            if (length != Column.UNSET_INT_VALUE) {
+                type += "(" + length + ")";
+            }
+        }
+        else if (!(length == postgresType.getDefaultLength() && scale == 0)) {
             type += "(" + length + "," + scale + ")";
         }
         this.typeName = type;
