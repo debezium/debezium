@@ -92,6 +92,13 @@ public class Db2DatabaseDialect extends GeneralDatabaseDialect {
         registerType(TimeType.INSTANCE);
         registerType(NanoTimeType.INSTANCE);
         registerType(MicroTimeType.INSTANCE);
+        registerType(new StructuredTimestampType());
+        registerType(new StructuredZonedTimestampType());
+    }
+
+    @Override
+    public int getMaxTimestampPrecision() {
+        return 12;
     }
 
     @Override
