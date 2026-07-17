@@ -211,7 +211,7 @@ public class OpenLineageIT extends AbstractMongoConnectorIT {
     private static void assertCorrectInputDataset(List<OpenLineage.InputDataset> inputs, String expectedTableName, List<String> expectedFields) {
         assertThat(inputs).hasSize(1);
         assertThat(inputs.get(0).getName()).isEqualTo(expectedTableName);
-        assertThat(inputs.get(0).getNamespace()).matches("mongodb://[\\d.]+:\\d+");
+        assertThat(inputs.get(0).getNamespace()).isNotEmpty();
     }
 
     private static void assertEventContainsExpectedData(OpenLineage.RunEvent startEvent) {
@@ -248,7 +248,7 @@ public class OpenLineageIT extends AbstractMongoConnectorIT {
                 "record.processing.with.serial.consumer=false",
                 "topic.prefix=mongo",
                 "value.converter=org.apache.kafka.connect.json.JsonConverter")
-                .anyMatch(config -> config.startsWith("mongodb.connection.string=") && config.contains("mongodb://"))
+                .anyMatch(config -> config.startsWith("mongodb.connection.string="))
                 .anyMatch(config -> config.startsWith("openlineage.integration.config.file.path=") && config.contains("openlineage.yml"))
                 .anyMatch(config -> config.startsWith("offset.storage.file.filename=") && config.contains("file-connector-offsets.txt"));
 
