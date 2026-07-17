@@ -59,7 +59,7 @@ public class StarRocksDatabaseDialect extends GeneralDatabaseDialect {
 
     @Override
     public TargetTemporalCapabilities getTargetTemporalCapabilities() {
-        return TargetTemporalCapabilities.defaults(getMaxTimePrecision(), getMaxTimestampPrecision())
+        return TargetTemporalCapabilities.defaults(12, getMaxTimestampPrecision())
                 .withDateRange(TemporalRange.dateYears(0, 9999))
                 .withTimestampRange(TemporalRange.timestampYears(0, 9999))
                 .withTimestampColumnPrecisionReliable(false);
@@ -176,6 +176,8 @@ public class StarRocksDatabaseDialect extends GeneralDatabaseDialect {
         registerType(ConnectTimeType.INSTANCE);
         registerType(ZonedTimeType.INSTANCE);
         registerType(ZonedTimestampType.INSTANCE);
+        registerType(StructuredTimeType.INSTANCE);
+        registerType(StructuredZonedTimeType.INSTANCE);
     }
 
     @Override
