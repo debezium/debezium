@@ -90,6 +90,14 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
 
     private boolean schemaVerificationPassed;
 
+    /**
+     * The id of the signal that most recently added data collections to this context. When a further
+     * signal arrives while a snapshot is running, this field is overwritten although collections queued
+     * by earlier signals are still pending — so it only identifies the latest request (that is what the
+     * notifications report). For per-chunk attribution the canonical value is the requesting signal's id
+     * carried by each collection, {@link DataCollection#getCorrelationId()}, which is what the watermark
+     * metadata uses.
+     */
     private String correlationId;
 
     /**
@@ -217,7 +225,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
 
         LOGGER.trace("Adding data collections names {} to snapshot", dataCollectionIds);
         final List<DataCollection<T>> newDataCollectionIds = dataCollectionIds.stream()
-                .map(buildDataCollection(additionalCondition, surrogateKey))
+                .map(buildDataCollection(additionalCondition, surrogateKey, correlationId))
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .collect(Collectors.toList());
@@ -226,7 +234,8 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         return newDataCollectionIds;
     }
 
-    private Function<String, Optional<DataCollection<T>>> buildDataCollection(List<AdditionalCondition> additionalCondition, String surrogateKey) {
+    private Function<String, Optional<DataCollection<T>>> buildDataCollection(List<AdditionalCondition> additionalCondition, String surrogateKey,
+                                                                              String correlationId) {
         return expandedCollectionName -> {
             String filter = additionalCondition.stream()
                     .filter(condition -> condition.getDataCollection().matcher(expandedCollectionName).matches())
@@ -235,7 +244,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
                     .orElse("");
             try {
                 TableId parsedTable = TableId.parse(expandedCollectionName, useCatalogBeforeSchema);
-                return Optional.of(new DataCollection<T>((T) parsedTable, filter, surrogateKey));
+                return Optional.of(new DataCollection<T>((T) parsedTable, filter, surrogateKey, correlationId));
             }
             catch (Exception e) {
                 LOGGER.warn("Unable to parse table identifier from {}. Skipping it.", expandedCollectionName);
@@ -395,6 +404,10 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
 
         public static final String DATA_COLLECTIONS_TO_SNAPSHOT_KEY_SURROGATE_KEY = DATA_COLLECTIONS_TO_SNAPSHOT_KEY
                 + "_surrogate_key";
+
+        public static final String DATA_COLLECTIONS_TO_SNAPSHOT_KEY_CORRELATION_ID = DATA_COLLECTIONS_TO_SNAPSHOT_KEY
+                + "_correlation_id";
+
         private final ObjectMapper mapper = new ObjectMapper();
         private final TypeReference<List<LinkedHashMap<String, String>>> mapperTypeRef = new TypeReference<>() {
         };
@@ -465,6 +478,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
                             map.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ID, context.getPredicateBasedTableIdForId((TableId) x.getId()).toString());
                             map.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ADDITIONAL_CONDITION, x.getAdditionalCondition().orElse(null));
                             map.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_SURROGATE_KEY, x.getSurrogateKey().orElse(null));
+                            map.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_CORRELATION_ID, x.getCorrelationId().orElse(null));
                             return map;
                         })
                         .collect(Collectors.toList());
@@ -482,7 +496,8 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
                 return dataCollections.stream()
                         .map(x -> new DataCollection<>((T) context.getPredicateBasedTableIdForString(x.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ID)),
                                 Optional.ofNullable(x.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ADDITIONAL_CONDITION)).orElse(""),
-                                Optional.ofNullable(x.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_SURROGATE_KEY)).orElse("")))
+                                Optional.ofNullable(x.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_SURROGATE_KEY)).orElse(""),
+                                x.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_CORRELATION_ID)))
                         .collect(Collectors.toList());
             }
             catch (JsonProcessingException e) {

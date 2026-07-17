@@ -148,7 +148,16 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
 
     private void insertOpenWindow(String signalTableName) throws SQLException {
         String signalWindowStatement = "INSERT INTO " + signalTableName + " VALUES (?, ?, ?)";
-        signalMetadata = new SignalMetadata(Instant.now(), null);
+        // Attribution is captured here and reused for the close, because the data collection queue
+        // may already have advanced to the next collection by the time the close is emitted.
+        final DataCollection<T> currentDataCollection = context.currentDataCollectionId();
+        String correlationId = null;
+        String dataCollectionId = null;
+        if (currentDataCollection != null) {
+            correlationId = currentDataCollection.getCorrelationId().orElse(null);
+            dataCollectionId = currentDataCollection.getId().identifier();
+        }
+        signalMetadata = new SignalMetadata(Instant.now(), null, correlationId, dataCollectionId);
         jdbcConnection.prepareUpdate(signalWindowStatement, x -> {
             LOGGER.trace("Emitting open window for chunk = '{}' to signal table '{}'", context.currentChunkId(), signalTableName);
             x.setString(1, context.currentChunkId() + "-open");
@@ -177,6 +186,6 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
             return new DeleteWindowCloser<>(jdbcConnection, signalTable, this);
         }
 
-        return new InsertWindowCloser(jdbcConnection, signalTable, new SignalMetadata(signalMetadata.getOpenWindowTimestamp(), Instant.now()));
+        return new InsertWindowCloser(jdbcConnection, signalTable, signalMetadata.withCloseWindowTimestamp(Instant.now()));
     }
 }
