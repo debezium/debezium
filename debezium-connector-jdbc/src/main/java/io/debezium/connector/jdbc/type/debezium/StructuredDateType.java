@@ -12,6 +12,7 @@ import org.apache.kafka.connect.data.Schema;
 
 import io.debezium.connector.jdbc.type.AbstractDateType;
 import io.debezium.connector.jdbc.type.JdbcType;
+import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
 import io.debezium.time.StructuredDate;
 
@@ -29,7 +30,9 @@ public class StructuredDateType extends AbstractDateType {
 
     @Override
     public String getDefaultValueBinding(Schema schema, Object value) {
-        return getDialect().getFormattedDate(StructuredTemporalSupport.toLocalDate(requireStruct(value)));
+        final var capabilities = getDialect().getTargetTemporalCapabilities();
+        return getDialect().getFormattedDate(StructuredTemporalSupport.toLocalDate(
+                requireStruct(value), capabilities.targetDateRange(null), getRangeLossHandlingMode(), targetDescription(schema)));
     }
 
     @Override
@@ -37,7 +40,33 @@ public class StructuredDateType extends AbstractDateType {
         if (value == null) {
             return List.of(new ValueBindDescriptor(index, null));
         }
-        final LocalDate localDate = StructuredTemporalSupport.toLocalDate(requireStruct(value));
+        if (getDialect() == null) {
+            return List.of(new ValueBindDescriptor(index, StructuredTemporalSupport.toLocalDate(requireStruct(value))));
+        }
+        final var capabilities = getDialect().getTargetTemporalCapabilities();
+        final LocalDate localDate = StructuredTemporalSupport.toLocalDate(
+                requireStruct(value), capabilities.targetDateRange(null), getRangeLossHandlingMode(), targetDescription(schema));
         return List.of(new ValueBindDescriptor(index, localDate));
     }
+
+    @Override
+    public void validate(ColumnDescriptor column, Schema schema, Object value) {
+        if (value != null) {
+            final var range = getDialect().getTargetTemporalCapabilities().targetDateRange(column);
+            StructuredTemporalSupport.adjustDate(
+                    requireStruct(value), range, getRangeLossHandlingMode(), targetDescription(column));
+        }
+    }
+
+    @Override
+    public List<ValueBindDescriptor> bind(int index, ColumnDescriptor column, Schema schema, Object value) {
+        if (value == null) {
+            return List.of(new ValueBindDescriptor(index, null));
+        }
+        final var range = getDialect().getTargetTemporalCapabilities().targetDateRange(column);
+        final LocalDate localDate = StructuredTemporalSupport.toLocalDate(
+                requireStruct(value), range, getRangeLossHandlingMode(), targetDescription(column));
+        return List.of(new ValueBindDescriptor(index, localDate));
+    }
+
 }
