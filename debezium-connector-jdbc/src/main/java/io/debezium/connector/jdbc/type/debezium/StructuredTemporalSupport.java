@@ -46,6 +46,27 @@ public final class StructuredTemporalSupport {
                 toNanoseconds(getPicoseconds(value)));
     }
 
+    public static String toTimeLiteral(Struct value, int targetPrecision, TemporalPrecisionLossHandlingMode handlingMode) {
+        requireFinite(value);
+        final int hour = value.getInt8(StructuredTemporal.HOUR_FIELD);
+        final int minute = value.getInt8(StructuredTemporal.MINUTE_FIELD);
+        final int second = value.getInt8(StructuredTemporal.SECOND_FIELD);
+        final var fraction = StructuredTemporalPreflightValidator.reduceFraction(
+                getPicoseconds(value), targetPrecision, handlingMode);
+
+        final int totalSeconds = hour * 3_600 + minute * 60 + second + fraction.carrySeconds();
+        if (totalSeconds < 0 || totalSeconds > 24 * 3_600) {
+            throw new ConnectException("Structured time is outside the 24-hour clock range after precision reduction");
+        }
+
+        final int adjustedHour = totalSeconds / 3_600;
+        final int adjustedMinute = totalSeconds % 3_600 / 60;
+        final int adjustedSecond = totalSeconds % 60;
+        final StringBuilder builder = new StringBuilder(String.format("%02d:%02d:%02d", adjustedHour, adjustedMinute, adjustedSecond));
+        appendFraction(builder, fraction.picoseconds(), targetPrecision);
+        return builder.toString();
+    }
+
     /**
      * Formats a {@code StructuredZonedTime} struct into a PostgreSQL {@code timetz} literal directly from its
      * raw components, so the original offset and the end-of-day boundary hour {@code 24} are preserved. This
@@ -66,25 +87,8 @@ public final class StructuredTemporalSupport {
     }
 
     public static String toTimetzLiteral(Struct value, int targetPrecision, TemporalPrecisionLossHandlingMode handlingMode) {
-        requireFinite(value);
-        final int hour = value.getInt8(StructuredTemporal.HOUR_FIELD);
-        final int minute = value.getInt8(StructuredTemporal.MINUTE_FIELD);
-        final int second = value.getInt8(StructuredTemporal.SECOND_FIELD);
-        final long picoseconds = getPicoseconds(value);
         final Integer offsetSeconds = value.getInt32(StructuredTemporal.OFFSET_SECONDS_FIELD);
-        final var fraction = StructuredTemporalPreflightValidator.reduceFraction(
-                picoseconds, targetPrecision, handlingMode);
-
-        final int totalSeconds = hour * 3_600 + minute * 60 + second + fraction.carrySeconds();
-        if (totalSeconds < 0 || totalSeconds > 24 * 3_600) {
-            throw new ConnectException("Structured zoned time is outside the PostgreSQL timetz range after precision reduction");
-        }
-
-        final int adjustedHour = totalSeconds / 3_600;
-        final int adjustedMinute = totalSeconds % 3_600 / 60;
-        final int adjustedSecond = totalSeconds % 60;
-        final StringBuilder builder = new StringBuilder(String.format("%02d:%02d:%02d", adjustedHour, adjustedMinute, adjustedSecond));
-        appendFraction(builder, fraction.picoseconds(), targetPrecision);
+        final StringBuilder builder = new StringBuilder(toTimeLiteral(value, targetPrecision, handlingMode));
         builder.append(formatOffset(offsetSeconds == null ? 0 : offsetSeconds));
         return builder.toString();
     }
@@ -212,6 +216,9 @@ public final class StructuredTemporalSupport {
                 value.getInt8(StructuredTemporal.MINUTE_FIELD),
                 value.getInt8(StructuredTemporal.SECOND_FIELD),
                 fraction.picoseconds());
+        if (fraction.carrySeconds() != 0 && !range.contains(timestamp)) {
+            return applyRange(timestamp, range, rangeHandlingMode, targetPrecision, targetDescription);
+        }
         timestamp = timestamp.plusSeconds(fraction.carrySeconds());
         return applyRange(timestamp, range, rangeHandlingMode, targetPrecision, targetDescription);
     }
