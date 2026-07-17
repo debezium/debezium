@@ -57,6 +57,16 @@ public class PostgresType {
     }
 
     /**
+     * @return true if this is a pgvector type ({@code vector}, {@code halfvec} or {@code sparsevec}),
+     *         whose dimension is carried verbatim in {@code atttypmod}
+     */
+    public boolean isVector() {
+        return TypeRegistry.TYPE_NAME_VECTOR.equals(name)
+                || TypeRegistry.TYPE_NAME_HALF_VECTOR.equals(name)
+                || TypeRegistry.TYPE_NAME_SPARSE_VECTOR.equals(name);
+    }
+
+    /**
      * The type system allows for the creation of user defined types (UDTs) which can be based
      * on any existing type.  When a type does not extend another type, it is considered to be
      * a base or root type in the type hierarchy.

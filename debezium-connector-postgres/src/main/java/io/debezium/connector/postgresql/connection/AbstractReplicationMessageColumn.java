@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.postgresql.PostgresType;
+import io.debezium.relational.Column;
 import io.debezium.util.LRUCacheMap;
 
 /**
@@ -59,6 +60,12 @@ public abstract class AbstractReplicationMessageColumn implements ReplicationMes
             // TODO: make this more elegant/type-specific
             length = type.getDefaultLength();
             scale = type.getDefaultScale();
+            if (type.isVector() && typeModifiers.length == 0) {
+                // A dimensionless vector has no length; getDefaultLength() would yield MAX_VALUE. A
+                // declared dimension is applied from the modifier below.
+                length = Column.UNSET_INT_VALUE;
+                scale = 0;
+            }
             if (typeModifiers.length > 0) {
                 try {
                     final String typMod = typeModifiers[0];
