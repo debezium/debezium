@@ -560,11 +560,15 @@ public class SqlServerConnection extends JdbcConnection {
         final ResultSetMapper<List<SqlServerChangeTable>> mapper = rs -> {
             final List<SqlServerChangeTable> changeTables = new ArrayList<>();
             while (rs.next()) {
+                final String captureInstance = rs.getString(3);
+                if (!config.getCaptureInstanceFilter().test(captureInstance)) {
+                    continue;
+                }
                 int changeTableObjectId = rs.getInt(4);
                 changeTables.add(
                         new SqlServerChangeTable(
                                 new TableId(databaseName, rs.getString(1), rs.getString(2)),
-                                rs.getString(3),
+                                captureInstance,
                                 changeTableObjectId,
                                 Lsn.valueOf(rs.getBytes(5)),
                                 columns.get(changeTableObjectId)));
@@ -604,8 +608,12 @@ public class SqlServerConnection extends JdbcConnection {
                 rs -> {
                     final List<SqlServerChangeTable> changeTables = new ArrayList<>();
                     while (rs.next()) {
+                        final String captureInstance = rs.getString(4);
+                        if (!config.getCaptureInstanceFilter().test(captureInstance)) {
+                            continue;
+                        }
                         changeTables.add(new SqlServerChangeTable(
-                                rs.getString(4),
+                                captureInstance,
                                 rs.getInt(1),
                                 Lsn.valueOf(rs.getBytes(5))));
                     }
