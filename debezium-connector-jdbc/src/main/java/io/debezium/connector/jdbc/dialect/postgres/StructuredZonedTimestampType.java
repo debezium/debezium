@@ -29,7 +29,7 @@ public class StructuredZonedTimestampType extends io.debezium.connector.jdbc.typ
 
     @Override
     public String getDefaultValueBinding(Schema schema, Object value) {
-        if (value instanceof Struct struct) {
+        if (supportsInfinity() && value instanceof Struct struct) {
             if (StructuredTemporal.isPositiveInfinity(struct)) {
                 return "'infinity'";
             }
@@ -42,7 +42,7 @@ public class StructuredZonedTimestampType extends io.debezium.connector.jdbc.typ
 
     @Override
     public List<ValueBindDescriptor> bind(int index, Schema schema, Object value) {
-        if (value instanceof Struct struct) {
+        if (supportsInfinity() && value instanceof Struct struct) {
             if (StructuredTemporal.isPositiveInfinity(struct)) {
                 return List.of(new ValueBindDescriptor(index, "infinity", Types.VARCHAR));
             }
@@ -55,7 +55,7 @@ public class StructuredZonedTimestampType extends io.debezium.connector.jdbc.typ
 
     @Override
     public void validate(ColumnDescriptor column, Schema schema, Object value) {
-        if (value instanceof Struct struct && !StructuredTemporal.isFinite(struct)) {
+        if (supportsInfinity() && value instanceof Struct struct && !StructuredTemporal.isFinite(struct)) {
             return;
         }
         super.validate(column, schema, value);
@@ -63,7 +63,7 @@ public class StructuredZonedTimestampType extends io.debezium.connector.jdbc.typ
 
     @Override
     public List<ValueBindDescriptor> bind(int index, ColumnDescriptor column, Schema schema, Object value) {
-        if (value instanceof Struct struct) {
+        if (supportsInfinity() && value instanceof Struct struct) {
             if (StructuredTemporal.isPositiveInfinity(struct)) {
                 return List.of(new ValueBindDescriptor(index, "infinity", Types.VARCHAR));
             }
@@ -72,5 +72,9 @@ public class StructuredZonedTimestampType extends io.debezium.connector.jdbc.typ
             }
         }
         return super.bind(index, column, schema, value);
+    }
+
+    private boolean supportsInfinity() {
+        return getDialect() == null || getDialect().getTargetTemporalCapabilities().timestampInfinitySupported();
     }
 }

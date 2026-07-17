@@ -26,7 +26,8 @@ public class StructuredTimestampType extends io.debezium.connector.jdbc.type.deb
         final var capabilities = getDialect().getTargetTemporalCapabilities();
         return "'" + StructuredTemporalLiteral.timestamp(
                 requireStruct(value), getSchemaTimestampPrecision(schema), getPrecisionLossHandlingMode(),
-                capabilities.targetTimestampRange(null), getRangeLossHandlingMode(), targetDescription(schema)) + "'";
+                capabilities.targetTimestampRange(null), getRangeLossHandlingMode(), capabilities.zeroDateSupported(),
+                targetDescription(schema)) + "'";
     }
 
     @Override
@@ -37,7 +38,8 @@ public class StructuredTimestampType extends io.debezium.connector.jdbc.type.deb
         final var capabilities = getDialect().getTargetTemporalCapabilities();
         return List.of(new ValueBindDescriptor(index, StructuredTemporalLiteral.timestamp(
                 requireStruct(value), getSchemaTimestampPrecision(schema), getPrecisionLossHandlingMode(),
-                capabilities.targetTimestampRange(null), getRangeLossHandlingMode(), targetDescription(schema)), Types.VARCHAR));
+                capabilities.targetTimestampRange(null), getRangeLossHandlingMode(), capabilities.zeroDateSupported(),
+                targetDescription(schema)), Types.VARCHAR));
     }
 
     @Override
@@ -49,7 +51,8 @@ public class StructuredTimestampType extends io.debezium.connector.jdbc.type.deb
                     column, requireStruct(value), precision, getPrecisionLossHandlingMode());
             StructuredTemporalLiteral.timestamp(
                     requireStruct(value), precision, getPrecisionLossHandlingMode(),
-                    capabilities.targetTimestampRange(column), getRangeLossHandlingMode(), targetDescription(column));
+                    capabilities.targetTimestampRange(column), getRangeLossHandlingMode(), capabilities.zeroDateSupported(),
+                    targetDescription(column));
         }
     }
 
@@ -59,11 +62,12 @@ public class StructuredTimestampType extends io.debezium.connector.jdbc.type.deb
             return List.of(new ValueBindDescriptor(index, null));
         }
         validate(column, schema, value);
-        final int precision = getDialect().getTargetTemporalCapabilities().targetTimestampPrecision(column);
+        final var capabilities = getDialect().getTargetTemporalCapabilities();
+        final int precision = capabilities.targetTimestampPrecision(column);
         return List.of(new ValueBindDescriptor(index,
                 StructuredTemporalLiteral.timestamp(
                         requireStruct(value), precision, getPrecisionLossHandlingMode(),
-                        getDialect().getTargetTemporalCapabilities().targetTimestampRange(column), getRangeLossHandlingMode(),
+                        capabilities.targetTimestampRange(column), getRangeLossHandlingMode(), capabilities.zeroDateSupported(),
                         targetDescription(column)),
                 Types.VARCHAR));
     }

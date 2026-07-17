@@ -240,7 +240,8 @@ class StructuredTemporalTypeTest {
         return TargetTemporalCapabilities.defaults(6, 6)
                 .withDateRange(TemporalRange.dateYears(1000, 9999))
                 .withTimestampRange(datetimeRange)
-                .withDurationKinds(java.util.EnumSet.of(StructuredDuration.Kind.ELAPSED_TIME));
+                .withDurationKinds(java.util.EnumSet.of(StructuredDuration.Kind.ELAPSED_TIME))
+                .withZeroDateSupported(true);
     }
 
     private ColumnDescriptor timeColumn(int precision) {

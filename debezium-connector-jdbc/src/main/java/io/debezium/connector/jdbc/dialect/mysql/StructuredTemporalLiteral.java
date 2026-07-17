@@ -22,12 +22,12 @@ import io.debezium.time.StructuredTemporal;
 final class StructuredTemporalLiteral {
 
     static String date(Struct value) {
-        return date(value, TemporalRange.unbounded(), TemporalRangeLossHandlingMode.FAIL, "target temporal type");
+        return date(value, TemporalRange.unbounded(), TemporalRangeLossHandlingMode.FAIL, true, "target temporal type");
     }
 
     static String date(Struct value, TemporalRange range, TemporalRangeLossHandlingMode handlingMode,
-                       String targetDescription) {
-        if (StructuredTemporal.isFinite(value) && hasZeroDate(value)) {
+                       boolean zeroDateSupported, String targetDescription) {
+        if (zeroDateSupported && StructuredTemporal.isFinite(value) && hasZeroDate(value)) {
             return formatDate(
                     value.getInt32(StructuredTemporal.YEAR_FIELD),
                     value.getInt8(StructuredTemporal.MONTH_FIELD),
@@ -44,13 +44,13 @@ final class StructuredTemporalLiteral {
 
     static String timestamp(Struct value, int precision, TemporalPrecisionLossHandlingMode handlingMode) {
         return timestamp(value, precision, handlingMode, TemporalRange.unbounded(),
-                TemporalRangeLossHandlingMode.FAIL, "target temporal type");
+                TemporalRangeLossHandlingMode.FAIL, true, "target temporal type");
     }
 
     static String timestamp(Struct value, int precision, TemporalPrecisionLossHandlingMode precisionHandlingMode,
                             TemporalRange range, TemporalRangeLossHandlingMode rangeHandlingMode,
-                            String targetDescription) {
-        if (StructuredTemporal.isFinite(value) && hasZeroDate(value)) {
+                            boolean zeroDateSupported, String targetDescription) {
+        if (zeroDateSupported && StructuredTemporal.isFinite(value) && hasZeroDate(value)) {
             final var fraction = StructuredTemporalPreflightValidator.reduceFraction(
                     StructuredTemporalSupport.getPicoseconds(value), precision, precisionHandlingMode);
             if (fraction.carrySeconds() == 0) {
