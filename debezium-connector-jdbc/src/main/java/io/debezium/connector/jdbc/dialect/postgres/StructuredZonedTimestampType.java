@@ -28,6 +28,19 @@ public class StructuredZonedTimestampType extends io.debezium.connector.jdbc.typ
     }
 
     @Override
+    public String getDefaultValueBinding(Schema schema, Object value) {
+        if (value instanceof Struct struct) {
+            if (StructuredTemporal.isPositiveInfinity(struct)) {
+                return "'infinity'";
+            }
+            if (StructuredTemporal.isNegativeInfinity(struct)) {
+                return "'-infinity'";
+            }
+        }
+        return super.getDefaultValueBinding(schema, value);
+    }
+
+    @Override
     public List<ValueBindDescriptor> bind(int index, Schema schema, Object value) {
         if (value instanceof Struct struct) {
             if (StructuredTemporal.isPositiveInfinity(struct)) {
@@ -38,6 +51,14 @@ public class StructuredZonedTimestampType extends io.debezium.connector.jdbc.typ
             }
         }
         return super.bind(index, schema, value);
+    }
+
+    @Override
+    public void validate(ColumnDescriptor column, Schema schema, Object value) {
+        if (value instanceof Struct struct && !StructuredTemporal.isFinite(struct)) {
+            return;
+        }
+        super.validate(column, schema, value);
     }
 
     @Override

@@ -15,6 +15,7 @@ import io.debezium.connector.jdbc.type.AbstractTimestampType;
 import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
+import io.debezium.time.StructuredTemporal;
 import io.debezium.time.StructuredZonedTimestamp;
 
 /**
@@ -53,8 +54,11 @@ public class StructuredZonedTimestampType extends AbstractTimestampType {
         final var struct = requireStruct(value);
         StructuredTemporalPreflightValidator.validateZonedTimestamp(
                 struct, getDialect().getTargetTemporalCapabilities());
+        final var capabilities = getDialect().getTargetTemporalCapabilities();
+        final int offsetSeconds = offsetSeconds(struct);
         return getDialect().getFormattedDateTime(StructuredTemporalSupport.toOffsetDateTime(
-                struct, getSchemaTimestampPrecision(schema), getPrecisionLossHandlingMode()));
+                struct, getSchemaTimestampPrecision(schema), getPrecisionLossHandlingMode(),
+                capabilities.targetZonedTimestampRange(null, offsetSeconds), getRangeLossHandlingMode(), targetDescription(schema)));
     }
 
     @Override
@@ -62,7 +66,15 @@ public class StructuredZonedTimestampType extends AbstractTimestampType {
         if (value == null) {
             return List.of(new ValueBindDescriptor(index, null));
         }
-        final OffsetDateTime offsetDateTime = StructuredTemporalSupport.toOffsetDateTime(requireStruct(value));
+        if (getDialect() == null) {
+            return List.of(new ValueBindDescriptor(index, StructuredTemporalSupport.toOffsetDateTime(requireStruct(value)), getJdbcType()));
+        }
+        final var struct = requireStruct(value);
+        final var capabilities = getDialect().getTargetTemporalCapabilities();
+        StructuredTemporalPreflightValidator.validateZonedTimestamp(struct, capabilities);
+        final OffsetDateTime offsetDateTime = StructuredTemporalSupport.toOffsetDateTime(
+                struct, getSchemaTimestampPrecision(schema), getPrecisionLossHandlingMode(),
+                capabilities.targetZonedTimestampRange(null, offsetSeconds(struct)), getRangeLossHandlingMode(), targetDescription(schema));
         return List.of(new ValueBindDescriptor(index, offsetDateTime, getJdbcType()));
     }
 
@@ -74,6 +86,10 @@ public class StructuredZonedTimestampType extends AbstractTimestampType {
             StructuredTemporalPreflightValidator.validateZonedTimestamp(struct, capabilities);
             StructuredTemporalPreflightValidator.validatePrecision(
                     column, struct, capabilities.targetTimestampPrecision(column), getPrecisionLossHandlingMode());
+            StructuredTemporalSupport.adjustTimestamp(
+                    struct, capabilities.targetTimestampPrecision(column), getPrecisionLossHandlingMode(),
+                    capabilities.targetZonedTimestampRange(column, offsetSeconds(struct)), getRangeLossHandlingMode(),
+                    targetDescription(column));
         }
     }
 
@@ -84,8 +100,16 @@ public class StructuredZonedTimestampType extends AbstractTimestampType {
         }
         validate(column, schema, value);
         final int precision = getDialect().getTargetTemporalCapabilities().targetTimestampPrecision(column);
+        final var struct = requireStruct(value);
         final OffsetDateTime offsetDateTime = StructuredTemporalSupport.toOffsetDateTime(
-                requireStruct(value), precision, getPrecisionLossHandlingMode());
+                struct, precision, getPrecisionLossHandlingMode(),
+                getDialect().getTargetTemporalCapabilities().targetZonedTimestampRange(column, offsetSeconds(struct)),
+                getRangeLossHandlingMode(), targetDescription(column));
         return List.of(new ValueBindDescriptor(index, offsetDateTime, getJdbcType()));
+    }
+
+    private static int offsetSeconds(org.apache.kafka.connect.data.Struct value) {
+        final Integer offsetSeconds = value.getInt32(StructuredTemporal.OFFSET_SECONDS_FIELD);
+        return offsetSeconds == null ? 0 : offsetSeconds;
     }
 }

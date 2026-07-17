@@ -60,6 +60,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
     public static final String TRUNCATE_ENABLED = "truncate.enabled";
     public static final String SCHEMA_EVOLUTION = "schema.evolution";
     public static final String TEMPORAL_PRECISION_LOSS_HANDLING_MODE = "temporal.precision.loss.handling.mode";
+    public static final String TEMPORAL_RANGE_LOSS_HANDLING_MODE = "temporal.range.loss.handling.mode";
     public static final String QUOTE_IDENTIFIERS = "quote.identifiers";
     public static final String COLUMN_NAMING_STRATEGY = "column.naming.strategy";
     public static final String COLLECTION_TABLE_FORMAT = "collection.table.format";
@@ -171,6 +172,15 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
             .withImportance(ConfigDef.Importance.MEDIUM)
             .withDescription("Controls how the connector handles structured temporal values whose fractional-second precision exceeds the target column precision. "
                     + "The default 'fail' mode rejects values with non-zero discarded digits. The 'truncate' and 'round' modes explicitly reduce the value to the target precision.");
+
+    public static final Field TEMPORAL_RANGE_LOSS_HANDLING_MODE_FIELD = Field.create(TEMPORAL_RANGE_LOSS_HANDLING_MODE)
+            .withDisplayName("Controls how structured temporal range loss is handled")
+            .withEnum(TemporalRangeLossHandlingMode.class, TemporalRangeLossHandlingMode.FAIL)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.MEDIUM)
+            .withDescription("Controls how the connector handles structured date and timestamp values outside the target column range. "
+                    + "The default 'fail' mode rejects the value. The 'saturate' mode maps it to the nearest target boundary.");
 
     public static final Field QUOTE_IDENTIFIERS_FIELD = Field.create(QUOTE_IDENTIFIERS)
             .withDisplayName("Controls whether table, column, or other identifiers are quoted")
@@ -314,6 +324,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
                     PRIMARY_KEY_FIELDS_FIELD,
                     SCHEMA_EVOLUTION_FIELD,
                     TEMPORAL_PRECISION_LOSS_HANDLING_MODE_FIELD,
+                    TEMPORAL_RANGE_LOSS_HANDLING_MODE_FIELD,
                     QUOTE_IDENTIFIERS_FIELD,
                     COLLECTION_NAMING_STRATEGY_FIELD,
                     COLUMN_NAMING_STRATEGY_FIELD,
@@ -449,6 +460,31 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         }
     }
 
+    public enum TemporalRangeLossHandlingMode implements EnumeratedValue {
+        FAIL("fail"),
+        SATURATE("saturate");
+
+        private final String mode;
+
+        TemporalRangeLossHandlingMode(String mode) {
+            this.mode = mode;
+        }
+
+        public static TemporalRangeLossHandlingMode parse(String value) {
+            for (TemporalRangeLossHandlingMode option : values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return FAIL;
+        }
+
+        @Override
+        public String getValue() {
+            return mode;
+        }
+    }
+
     private final Configuration config;
 
     private final InsertMode insertMode;
@@ -457,6 +493,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
     private final String collectionNameFormat;
     private final SchemaEvolutionMode schemaEvolutionMode;
     private final TemporalPrecisionLossHandlingMode temporalPrecisionLossHandlingMode;
+    private final TemporalRangeLossHandlingMode temporalRangeLossHandlingMode;
     private final boolean quoteIdentifiers;
     private final CollectionNamingStrategy collectionNamingStrategy;
     private final ColumnNamingStrategy columnNamingStrategy;
@@ -485,6 +522,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         this.collectionNameFormat = config.getString(COLLECTION_NAME_FORMAT_FIELD);
         this.schemaEvolutionMode = SchemaEvolutionMode.parse(config.getString(SCHEMA_EVOLUTION));
         this.temporalPrecisionLossHandlingMode = TemporalPrecisionLossHandlingMode.parse(config.getString(TEMPORAL_PRECISION_LOSS_HANDLING_MODE));
+        this.temporalRangeLossHandlingMode = TemporalRangeLossHandlingMode.parse(config.getString(TEMPORAL_RANGE_LOSS_HANDLING_MODE));
         this.quoteIdentifiers = config.getBoolean(QUOTE_IDENTIFIERS_FIELD);
         this.databaseTimezone = config.getString(USE_TIME_ZONE_FIELD);
         this.postgresPostgisSchema = config.getString(POSTGRES_POSTGIS_SCHEMA_FIELD);
@@ -571,6 +609,10 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
 
     public TemporalPrecisionLossHandlingMode getTemporalPrecisionLossHandlingMode() {
         return temporalPrecisionLossHandlingMode;
+    }
+
+    public TemporalRangeLossHandlingMode getTemporalRangeLossHandlingMode() {
+        return temporalRangeLossHandlingMode;
     }
 
     public boolean isQuoteIdentifiers() {

@@ -18,6 +18,8 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.TemporalPrecisionLossHandlingMode;
+import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.TemporalRangeLossHandlingMode;
+import io.debezium.connector.jdbc.type.debezium.TemporalRange.Boundary;
 import io.debezium.time.StructuredTemporal;
 
 public final class StructuredTemporalSupport {
@@ -28,6 +30,11 @@ public final class StructuredTemporalSupport {
                 value.getInt32(StructuredTemporal.YEAR_FIELD),
                 value.getInt8(StructuredTemporal.MONTH_FIELD),
                 value.getInt8(StructuredTemporal.DAY_FIELD));
+    }
+
+    public static LocalDate toLocalDate(Struct value, TemporalRange range, TemporalRangeLossHandlingMode handlingMode,
+                                        String targetDescription) {
+        return adjustDate(value, range, handlingMode, targetDescription).toLocalDate();
     }
 
     public static LocalTime toLocalTime(Struct value) {
@@ -120,9 +127,15 @@ public final class StructuredTemporalSupport {
     }
 
     public static LocalDateTime toLocalDateTime(Struct value, int targetPrecision, TemporalPrecisionLossHandlingMode handlingMode) {
-        final LocalDateTime dateTime = toLocalDateTimeWithoutFraction(value);
-        final var fraction = StructuredTemporalPreflightValidator.reduceFraction(getPicoseconds(value), targetPrecision, handlingMode);
-        return dateTime.withNano(fraction.nanoseconds()).plusSeconds(fraction.carrySeconds());
+        return adjustTimestamp(value, targetPrecision, handlingMode, TemporalRange.unbounded(),
+                TemporalRangeLossHandlingMode.FAIL, "target dialect").toLocalDateTime();
+    }
+
+    public static LocalDateTime toLocalDateTime(Struct value, int targetPrecision, TemporalPrecisionLossHandlingMode precisionHandlingMode,
+                                                TemporalRange range, TemporalRangeLossHandlingMode rangeHandlingMode,
+                                                String targetDescription) {
+        return adjustTimestamp(value, targetPrecision, precisionHandlingMode, range, rangeHandlingMode,
+                targetDescription).toLocalDateTime();
     }
 
     public static LocalTime toLocalTime(Struct value, int targetPrecision, TemporalPrecisionLossHandlingMode handlingMode) {
@@ -136,21 +149,71 @@ public final class StructuredTemporalSupport {
     }
 
     public static OffsetDateTime toOffsetDateTime(Struct value, int targetPrecision, TemporalPrecisionLossHandlingMode handlingMode) {
+        return toOffsetDateTime(value, targetPrecision, handlingMode, TemporalRange.unbounded(),
+                TemporalRangeLossHandlingMode.FAIL, "target dialect");
+    }
+
+    public static OffsetDateTime toOffsetDateTime(Struct value, int targetPrecision, TemporalPrecisionLossHandlingMode precisionHandlingMode,
+                                                  TemporalRange range, TemporalRangeLossHandlingMode rangeHandlingMode,
+                                                  String targetDescription) {
         final Integer offsetSeconds = value.getInt32(StructuredTemporal.OFFSET_SECONDS_FIELD);
-        final OffsetDateTime dateTime = OffsetDateTime.of(
-                toLocalDateTimeWithoutFraction(value), offsetSeconds == null ? ZoneOffset.UTC : ZoneOffset.ofTotalSeconds(offsetSeconds));
-        final var fraction = StructuredTemporalPreflightValidator.reduceFraction(getPicoseconds(value), targetPrecision, handlingMode);
-        return dateTime.withNano(fraction.nanoseconds()).plusSeconds(fraction.carrySeconds());
+        final Boundary adjusted = adjustTimestamp(value, targetPrecision, precisionHandlingMode, range, rangeHandlingMode,
+                targetDescription);
+        return OffsetDateTime.of(adjusted.toLocalDateTime(),
+                offsetSeconds == null ? ZoneOffset.UTC : ZoneOffset.ofTotalSeconds(offsetSeconds));
     }
 
     public static String toLocalDateTimeLiteral(Struct value, int targetPrecision, TemporalPrecisionLossHandlingMode handlingMode) {
-        final LocalDateTime dateTime = toLocalDateTimeWithoutFraction(value);
-        final var fraction = StructuredTemporalPreflightValidator.reduceFraction(getPicoseconds(value), targetPrecision, handlingMode);
-        final LocalDateTime adjusted = dateTime.plusSeconds(fraction.carrySeconds());
+        return toLocalDateTimeLiteral(value, targetPrecision, handlingMode, TemporalRange.unbounded(),
+                TemporalRangeLossHandlingMode.FAIL, "target dialect");
+    }
+
+    public static String toLocalDateTimeLiteral(Struct value, int targetPrecision, TemporalPrecisionLossHandlingMode precisionHandlingMode,
+                                                TemporalRange range, TemporalRangeLossHandlingMode rangeHandlingMode,
+                                                String targetDescription) {
+        final Boundary adjusted = adjustTimestamp(value, targetPrecision, precisionHandlingMode, range, rangeHandlingMode,
+                targetDescription);
         final StringBuilder builder = new StringBuilder(String.format("%04d-%02d-%02d %02d:%02d:%02d",
-                adjusted.getYear(), adjusted.getMonthValue(), adjusted.getDayOfMonth(), adjusted.getHour(), adjusted.getMinute(), adjusted.getSecond()));
-        appendFraction(builder, fraction.picoseconds(), targetPrecision);
+                adjusted.year(), adjusted.month(), adjusted.day(), adjusted.hour(), adjusted.minute(), adjusted.second()));
+        appendFraction(builder, adjusted.picoseconds(), targetPrecision);
         return builder.toString();
+    }
+
+    public static Boundary adjustDate(Struct value, TemporalRange range, TemporalRangeLossHandlingMode handlingMode,
+                                      String targetDescription) {
+        if (!StructuredTemporal.isFinite(value)) {
+            return saturateSpecialValue(value, range, handlingMode, 0, targetDescription);
+        }
+        final Boundary date = Boundary.date(
+                value.getInt32(StructuredTemporal.YEAR_FIELD),
+                value.getInt8(StructuredTemporal.MONTH_FIELD),
+                value.getInt8(StructuredTemporal.DAY_FIELD));
+        return applyRange(date, range, handlingMode, 0, targetDescription);
+    }
+
+    public static Boundary adjustTimestamp(Struct value, int targetPrecision,
+                                           TemporalPrecisionLossHandlingMode precisionHandlingMode,
+                                           TemporalRange range, TemporalRangeLossHandlingMode rangeHandlingMode,
+                                           String targetDescription) {
+        if (!StructuredTemporal.isFinite(value)) {
+            return saturateSpecialValue(value, range, rangeHandlingMode, targetPrecision, targetDescription);
+        }
+
+        final var fraction = StructuredTemporalPreflightValidator.reduceFraction(
+                getPicoseconds(value), targetPrecision, precisionHandlingMode);
+        if (fraction.picoseconds() < 0) {
+            throw new ConnectException("Structured timestamp picoseconds must not be negative");
+        }
+        Boundary timestamp = Boundary.timestamp(
+                value.getInt32(StructuredTemporal.YEAR_FIELD),
+                value.getInt8(StructuredTemporal.MONTH_FIELD),
+                value.getInt8(StructuredTemporal.DAY_FIELD),
+                value.getInt8(StructuredTemporal.HOUR_FIELD),
+                value.getInt8(StructuredTemporal.MINUTE_FIELD),
+                value.getInt8(StructuredTemporal.SECOND_FIELD),
+                fraction.picoseconds());
+        timestamp = timestamp.plusSeconds(fraction.carrySeconds());
+        return applyRange(timestamp, range, rangeHandlingMode, targetPrecision, targetDescription);
     }
 
     public static long getPicoseconds(Struct value) {
@@ -186,6 +249,41 @@ public final class StructuredTemporalSupport {
         if (!StructuredTemporal.isFinite(value)) {
             throw new ConnectException("Non-finite structured temporal values require dialect-specific handling");
         }
+    }
+
+    private static Boundary applyRange(Boundary value, TemporalRange range, TemporalRangeLossHandlingMode handlingMode,
+                                       int targetPrecision, String targetDescription) {
+        if (range.contains(value)) {
+            return value;
+        }
+        if (handlingMode == TemporalRangeLossHandlingMode.SATURATE) {
+            return range.saturate(value).withPrecision(targetPrecision);
+        }
+        throw rangeException(value, range, targetDescription);
+    }
+
+    private static Boundary saturateSpecialValue(Struct value, TemporalRange range,
+                                                 TemporalRangeLossHandlingMode handlingMode, int targetPrecision,
+                                                 String targetDescription) {
+        if (handlingMode == TemporalRangeLossHandlingMode.SATURATE) {
+            if (StructuredTemporal.isPositiveInfinity(value) && range.maximum() != null) {
+                return range.maximum().withPrecision(targetPrecision);
+            }
+            if (StructuredTemporal.isNegativeInfinity(value) && range.minimum() != null) {
+                return range.minimum().withPrecision(targetPrecision);
+            }
+        }
+        throw new ConnectException(String.format(
+                "Non-finite structured temporal value cannot be represented by %s", targetDescription));
+    }
+
+    private static ConnectException rangeException(Boundary value, TemporalRange range, String targetDescription) {
+        final String minimum = range.minimum() == null ? "unbounded" : range.minimum().toString();
+        final String maximum = range.maximum() == null ? "unbounded" : range.maximum().toString();
+        return new ConnectException(String.format(
+                "Structured temporal value '%s' is outside the range [%s, %s] supported by %s; "
+                        + "set 'temporal.range.loss.handling.mode' to 'saturate' to map it to the nearest boundary",
+                value, minimum, maximum, targetDescription));
     }
 
     public static String toDurationString(Struct value) {
