@@ -28,9 +28,9 @@ public class CollectionsExistsValidatorTest {
 
     @Test
     public void shouldExposeSchemaEvolutionModeCapabilities() {
-        final SchemaEvolutionMode mode = SchemaEvolutionMode.parse("none-validated");
+        final SchemaEvolutionMode mode = SchemaEvolutionMode.parse("validate-only");
 
-        assertThat(mode).isEqualTo(SchemaEvolutionMode.NONE_VALIDATED);
+        assertThat(mode).isEqualTo(SchemaEvolutionMode.VALIDATE_ONLY);
         assertThat(SchemaEvolutionMode.NONE.validateOnStartup()).isFalse();
         assertThat(SchemaEvolutionMode.NONE.isSchemaEvolutionEnabled()).isFalse();
         assertThat(mode.validateOnStartup()).isTrue();
@@ -98,7 +98,7 @@ public class CollectionsExistsValidatorTest {
 
     private static Map<String, String> defaultProperties() {
         final Map<String, String> properties = new HashMap<>();
-        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.NONE_VALIDATED.getValue());
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.VALIDATE_ONLY.getValue());
         return properties;
     }
 

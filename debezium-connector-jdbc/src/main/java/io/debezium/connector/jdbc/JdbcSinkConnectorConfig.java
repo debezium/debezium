@@ -380,7 +380,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         /**
          * No schema evolution occurs, but statically resolvable destination tables are validated at startup.
          */
-        NONE_VALIDATED("none-validated", true, false),
+        VALIDATE_ONLY("validate-only", true, false),
 
         /**
          * When an event is received, the table will be created if it does not exist, and any new fields
