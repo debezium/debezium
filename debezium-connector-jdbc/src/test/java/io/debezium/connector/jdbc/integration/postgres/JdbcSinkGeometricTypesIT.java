@@ -33,14 +33,16 @@ import io.debezium.connector.jdbc.util.SinkRecordFactory;
 import io.debezium.data.geometry.Circle;
 import io.debezium.data.geometry.Geometry;
 import io.debezium.data.geometry.Line;
+import io.debezium.data.geometry.Point;
 import io.debezium.doc.FixFor;
 import io.debezium.spatial.WkbWriter;
 
 /**
- * Round-trip tests that the six PostgreSQL geometric types added in dbz#2135 bind to their native
- * column types on a plain (non-PostGIS) PostgreSQL sink. The target table is pre-created with native
- * column types, and the connector runs with source-type propagation so the sink can reconstruct the
- * native values for box/lseg/path/polygon.
+ * Round-trip tests that PostgreSQL geometric types bind to their native column types on a plain
+ * (non-PostGIS) PostgreSQL sink: the six types added in dbz#2135 (box/circle/line/lseg/path/polygon)
+ * and the built-in point (dbz#2100, case 9). The target table is pre-created with native column types,
+ * and the connector runs with source-type propagation so the sink can reconstruct the native values
+ * for box/lseg/path/polygon.
  *
  * @author Debezium Authors
  */
@@ -130,6 +132,16 @@ public class JdbcSinkGeometricTypesIT extends AbstractJdbcSinkTest {
         assertRoundTrip(factory, insertMode, "line", schema, value, rs -> assertThat(rs.getString(2)).isEqualTo("{-1,0,0}"));
     }
 
+    @ParameterizedTest
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
+    @FixFor("debezium/dbz#2100")
+    public void testPointRoundTrip(SinkRecordFactory factory, PostgresInsertMode insertMode) throws Exception {
+        final Schema schema = Point.builder().build();
+        final Struct value = Point.createValue(schema, 1.5, -2.0);
+
+        assertRoundTrip(factory, insertMode, "point", schema, value, rs -> assertThat(rs.getString(2)).isEqualTo("(1.5,-2)"));
+    }
+
     /**
      * A batch of more than one record is what triggers PostgreSQL's UNNEST path (a single record
      * short-circuits to a row-wise INSERT). Since the native geometric types reconstruct their value in
@@ -156,6 +168,25 @@ public class JdbcSinkGeometricTypesIT extends AbstractJdbcSinkTest {
                         null, Map.of(Geometry.EXTENSION_TYPE_KEY, "box")));
 
         assertBatchRoundTrip(factory, insertMode, "box", schema, values, expected);
+    }
+
+    /**
+     * The point counterpart to {@link #testBoxBatchRoundTrip}: a batch of more than one record is what
+     * triggers PostgreSQL's UNNEST path, and since {@code point} is a {@code STRUCT} schema the sink must
+     * fall back to the row-wise path (which reconstructs the {@code (x,y)} literal in {@code bind()})
+     * rather than hand raw Structs to {@code createArrayOf}. Guards dbz#2100, case 9.
+     */
+    @ParameterizedTest
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
+    @FixFor("debezium/dbz#2100")
+    public void testPointBatchRoundTrip(SinkRecordFactory factory, PostgresInsertMode insertMode) throws Exception {
+        final Schema schema = Point.builder().build();
+        final List<Struct> values = List.of(
+                Point.createValue(schema, 1.5, -2.0),
+                Point.createValue(schema, 3.0, 4.0));
+        final List<String> expected = List.of("(1.5,-2)", "(3,4)");
+
+        assertBatchRoundTrip(factory, insertMode, "point", schema, values, expected);
     }
 
     private void assertRoundTrip(SinkRecordFactory factory, PostgresInsertMode insertMode, String columnType,

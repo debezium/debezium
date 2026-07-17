@@ -22,13 +22,14 @@ import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.data.geometry.Circle;
 import io.debezium.data.geometry.Geometry;
 import io.debezium.data.geometry.Line;
+import io.debezium.data.geometry.Point;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
 import io.debezium.spatial.WkbWriter;
 
 /**
- * Unit tests for the PostgreSQL sink binding of the geometric types added in dbz#2135:
- * {@link GeometryType} native reconstruction (box/lseg/path/polygon), and the standalone
- * {@link CircleType}/{@link LineType}.
+ * Unit tests for the PostgreSQL sink binding of the geometric types: {@link GeometryType} native
+ * reconstruction (box/lseg/path/polygon) and the standalone {@link CircleType}/{@link LineType} added
+ * in dbz#2135, plus {@link PointType} for the built-in point (dbz#2100, case 9).
  *
  * @author Debezium Authors
  */
@@ -174,6 +175,22 @@ class GeometricTypesBindingTest {
 
         assertThat(LineType.INSTANCE.getQueryBinding(null, schema, value)).isEqualTo("cast(? as line)");
         assertThat(bindValue(LineType.INSTANCE, schema, value)).isEqualTo("{-1.0,0.0,0.0}");
+    }
+
+    @Test
+    void pointShouldBindAsNativeText() {
+        final Schema schema = Point.builder().build();
+        final Struct value = Point.createValue(schema, 1.5, -2.0);
+
+        assertThat(PointType.INSTANCE.getQueryBinding(null, schema, value)).isEqualTo("cast(? as point)");
+        assertThat(bindValue(PointType.INSTANCE, schema, value)).isEqualTo("(1.5,-2.0)");
+    }
+
+    @Test
+    void nullPointShouldBindAsNull() {
+        final Schema schema = Point.builder().build();
+
+        assertThat(bindValue(PointType.INSTANCE, schema, null)).isNull();
     }
 
     private static Object bindValue(JdbcType type, Schema schema, Object value) {
