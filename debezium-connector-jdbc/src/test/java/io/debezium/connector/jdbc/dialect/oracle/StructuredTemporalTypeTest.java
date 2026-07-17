@@ -141,6 +141,26 @@ class StructuredTemporalTypeTest {
     }
 
     @Test
+    @DisplayName("Should apply round mode to Oracle day-second defaults")
+    void shouldRoundOracleDaySecondDefault() {
+        final var schema = StructuredDuration.builder()
+                .parameter("__debezium.source.column.type", "INTERVAL DAY TO SECOND")
+                .parameter("__debezium.source.column.scale", "6")
+                .build();
+        final var value = StructuredDuration.from(schema, 0, 0, 1, 2, 3, 4, 567_890_600, 9);
+        final var type = configuredDurationType(TemporalPrecisionLossHandlingMode.ROUND);
+
+        assertThat(type.getDefaultValueBinding(schema, value))
+                .isEqualTo("TO_DSINTERVAL('1 02:03:04.567891')");
+        assertThat(type.bind(1, schema, value).get(0).getValue())
+                .isEqualTo("1 02:03:04.567891");
+        assertThatThrownBy(() -> configuredDurationType(TemporalPrecisionLossHandlingMode.FAIL)
+                .getDefaultValueBinding(schema, value))
+                .isInstanceOf(ConnectException.class)
+                .hasMessageContaining("precision 6");
+    }
+
+    @Test
     @DisplayName("Should fail structured timestamp infinity for Oracle")
     void shouldFailStructuredTimestampInfinity() {
         final var schema = StructuredTimestamp.schema();
@@ -167,5 +187,16 @@ class StructuredTemporalTypeTest {
                 .typeName("timestamp")
                 .scale(precision)
                 .build();
+    }
+
+    private StructuredDurationType configuredDurationType(TemporalPrecisionLossHandlingMode mode) {
+        final var type = new StructuredDurationType();
+        final JdbcSinkConnectorConfig config = mock(JdbcSinkConnectorConfig.class);
+        final DatabaseDialect dialect = mock(DatabaseDialect.class);
+        when(config.useTimeZone()).thenReturn("UTC");
+        when(config.getTemporalPrecisionLossHandlingMode()).thenReturn(mode);
+        when(dialect.getTargetTemporalCapabilities()).thenReturn(TargetTemporalCapabilities.defaults(9, 9));
+        type.configure(config, dialect);
+        return type;
     }
 }

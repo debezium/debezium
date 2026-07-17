@@ -51,8 +51,7 @@ public class StructuredTimestampType extends io.debezium.connector.jdbc.type.deb
     }
 
     protected String toLiteral(Schema schema, org.apache.kafka.connect.data.Struct value) {
-        final int sourcePrecision = getTimePrecision(schema);
-        final int precision = sourcePrecision < 0 ? getDialect().getDefaultTimestampPrecision() : sourcePrecision;
-        return StructuredTemporalSupport.toLocalDateTimeLiteral(value, precision, getPrecisionLossHandlingMode());
+        return StructuredTemporalSupport.toLocalDateTimeLiteral(
+                value, getSchemaTimestampPrecision(schema), getPrecisionLossHandlingMode());
     }
 }
