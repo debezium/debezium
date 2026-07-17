@@ -66,7 +66,8 @@ public class MySqlDatabaseDialect extends GeneralDatabaseDialect {
                 .withDateRange(TemporalRange.dateYears(1000, 9999))
                 .withTimestampRange(DATETIME_RANGE)
                 .withTimestampRangeForType(TIMESTAMP_RANGE, "timestamp")
-                .withDurationKinds(EnumSet.of(StructuredDuration.Kind.ELAPSED_TIME));
+                .withDurationKinds(EnumSet.of(StructuredDuration.Kind.ELAPSED_TIME))
+                .withZeroDateSupported(true);
     }
 
     private static final List<String> NO_DEFAULT_VALUE_TYPES = Arrays.asList(

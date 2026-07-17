@@ -49,7 +49,9 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
                 .withDateRange(TemporalRange.dateYears(-4712, 5_874_897))
                 .withTimestampRange(TemporalRange.timestampYears(-4712, 294_276))
                 .withZonedTimestampRangeBasis(ZonedTimestampRangeBasis.INSTANT)
-                .withZonedTimestampSupport(ZonedTimestampSupport.INSTANT);
+                .withZonedTimestampSupport(ZonedTimestampSupport.INSTANT)
+                .withDateInfinitySupported(true)
+                .withTimestampInfinitySupported(true);
     }
 
     public static class PostgresDatabaseDialectProvider implements DatabaseDialectProvider {

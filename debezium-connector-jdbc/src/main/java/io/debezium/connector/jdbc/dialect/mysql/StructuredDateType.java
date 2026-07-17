@@ -27,7 +27,8 @@ public class StructuredDateType extends io.debezium.connector.jdbc.type.debezium
         }
         final var capabilities = getDialect().getTargetTemporalCapabilities();
         return "'" + StructuredTemporalLiteral.date(
-                requireStruct(value), capabilities.targetDateRange(null), getRangeLossHandlingMode(), targetDescription(schema)) + "'";
+                requireStruct(value), capabilities.targetDateRange(null), getRangeLossHandlingMode(),
+                capabilities.zeroDateSupported(), targetDescription(schema)) + "'";
     }
 
     @Override
@@ -40,15 +41,17 @@ public class StructuredDateType extends io.debezium.connector.jdbc.type.debezium
         }
         final var capabilities = getDialect().getTargetTemporalCapabilities();
         return List.of(new ValueBindDescriptor(index, StructuredTemporalLiteral.date(
-                requireStruct(value), capabilities.targetDateRange(null), getRangeLossHandlingMode(), targetDescription(schema)), Types.VARCHAR));
+                requireStruct(value), capabilities.targetDateRange(null), getRangeLossHandlingMode(),
+                capabilities.zeroDateSupported(), targetDescription(schema)), Types.VARCHAR));
     }
 
     @Override
     public void validate(ColumnDescriptor column, Schema schema, Object value) {
         if (value != null) {
+            final var capabilities = getDialect().getTargetTemporalCapabilities();
             StructuredTemporalLiteral.date(
-                    requireStruct(value), getDialect().getTargetTemporalCapabilities().targetDateRange(column),
-                    getRangeLossHandlingMode(), targetDescription(column));
+                    requireStruct(value), capabilities.targetDateRange(column), getRangeLossHandlingMode(),
+                    capabilities.zeroDateSupported(), targetDescription(column));
         }
     }
 
@@ -57,8 +60,9 @@ public class StructuredDateType extends io.debezium.connector.jdbc.type.debezium
         if (value == null) {
             return List.of(new ValueBindDescriptor(index, null));
         }
+        final var capabilities = getDialect().getTargetTemporalCapabilities();
         return List.of(new ValueBindDescriptor(index, StructuredTemporalLiteral.date(
-                requireStruct(value), getDialect().getTargetTemporalCapabilities().targetDateRange(column),
-                getRangeLossHandlingMode(), targetDescription(column)), Types.VARCHAR));
+                requireStruct(value), capabilities.targetDateRange(column), getRangeLossHandlingMode(),
+                capabilities.zeroDateSupported(), targetDescription(column)), Types.VARCHAR));
     }
 }
