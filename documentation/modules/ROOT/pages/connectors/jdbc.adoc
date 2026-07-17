@@ -607,8 +607,25 @@ As a workaround, if you need a BOOLEAN data type for an Oracle 23 sink, add the 
 
 [IMPORTANT]
 ====
-If the database does not support time or timestamps with time zones, the mapping resolves to its equivalent without timezones.
+If the database does not support time with time zones, the mapping resolves to its equivalent without a time zone.
+For `io.debezium.time.StructuredZonedTimestamp`, the connector rejects a value if its non-zero offset or named region would be lost by the target database.
 ====
+
+When a source connector uses `temporal.precision.mode=structured`, the `io.debezium.time.precision` schema parameter describes the source fractional-second precision.
+Structured temporal values store the fractional second in the `picoseconds` `INT64` field as a fixed picosecond value whose absolute magnitude is less than one second; duration values can be signed.
+This representation preserves source precisions up to 12 digits without relying on the nanosecond limit of Java temporal types.
+For `io.debezium.time.StructuredDuration`, the `io.debezium.time.duration.kind` schema parameter also identifies whether the source value represents elapsed time, a year-month interval, a day-time interval, or a mixed interval.
+The JDBC sink uses this metadata before the `__debezium.source.column.*` propagation parameters when it creates a target column and validates values against an existing target column.
+
+Before the connector generates or executes a DML statement, it verifies that the target column can represent each structured temporal value without an implicit loss of meaning.
+For example, a MySQL `TIME` target accepts only elapsed-time durations, so the connector rejects structured durations that include year, month, or day semantics.
+The connector also rejects a structured zoned timestamp if the target cannot preserve its non-zero offset or region identifier.
+
+By default, the connector rejects fractional-second values only if the target precision would discard non-zero digits.
+You can use xref:jdbc-property-temporal-precision-loss-handling-mode[`temporal.precision.loss.handling.mode`] to explicitly truncate or round such values instead.
+
+Db2 and Db2 iSeries timestamp targets support fractional-second precision up to 12 digits.
+For structured timestamp values, the connector binds the picosecond value as text and applies a server-side `TIMESTAMP(p)` cast, avoiding the nine-digit precision limit of standard JDBC temporal values.
 
 
 
@@ -1766,6 +1783,15 @@ Use with caution where strong data consistency is required.
 |[[jdbc-property-use-time-zone]]<<jdbc-property-use-time-zone, `+use.time.zone+`>>
 |`UTC`
 |Specifies the timezone used when inserting JDBC temporal values.
+
+|[[jdbc-property-temporal-precision-loss-handling-mode]]<<jdbc-property-temporal-precision-loss-handling-mode, `+temporal.precision.loss.handling.mode+`>>
+|`fail`
+|Specifies how the connector handles a structured temporal value when its fractional-second precision exceeds the precision of the target column.
+The following options are available:
+
+`fail`:: Rejects the value if reducing its precision would discard non-zero fractional digits.
+`truncate`:: Discards fractional digits that exceed the target column precision.
+`round`:: Rounds the value to the target column precision.
 
 |[[jdbc-property-delete-enabled]]<<jdbc-property-delete-enabled, `+delete.enabled+`>>
 |`false`
