@@ -47,11 +47,17 @@ public class StructuredTimestampType extends io.debezium.connector.jdbc.type.deb
         validate(column, schema, value);
         final int precision = getDialect().getTargetTemporalCapabilities().targetTimestampPrecision(column);
         return List.of(new ValueBindDescriptor(index,
-                StructuredTemporalSupport.toLocalDateTimeLiteral(requireStruct(value), precision, getPrecisionLossHandlingMode()), Types.VARCHAR));
+                StructuredTemporalSupport.toLocalDateTimeLiteral(
+                        requireStruct(value), precision, getPrecisionLossHandlingMode(),
+                        getDialect().getTargetTemporalCapabilities().targetTimestampRange(column), getRangeLossHandlingMode(),
+                        targetDescription(column)),
+                Types.VARCHAR));
     }
 
     protected String toLiteral(Schema schema, org.apache.kafka.connect.data.Struct value) {
+        final var capabilities = getDialect().getTargetTemporalCapabilities();
         return StructuredTemporalSupport.toLocalDateTimeLiteral(
-                value, getSchemaTimestampPrecision(schema), getPrecisionLossHandlingMode());
+                value, getSchemaTimestampPrecision(schema), getPrecisionLossHandlingMode(),
+                capabilities.targetTimestampRange(null), getRangeLossHandlingMode(), targetDescription(schema));
     }
 }

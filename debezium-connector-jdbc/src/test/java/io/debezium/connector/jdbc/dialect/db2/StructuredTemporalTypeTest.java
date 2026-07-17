@@ -22,9 +22,11 @@ import org.junit.jupiter.api.Test;
 
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.TemporalPrecisionLossHandlingMode;
+import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.TemporalRangeLossHandlingMode;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.debezium.StructuredDurationType;
 import io.debezium.connector.jdbc.type.debezium.TargetTemporalCapabilities;
+import io.debezium.connector.jdbc.type.debezium.TemporalRange;
 import io.debezium.sink.SinkConnectorConfig;
 import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.time.StructuredDuration;
@@ -94,6 +96,20 @@ class StructuredTemporalTypeTest {
                 .isEqualTo("'2026-07-17 12:13:14.123457'");
     }
 
+    @Test
+    @DisplayName("Should saturate Db2 timestamps without losing picosecond target precision")
+    void shouldSaturateDb2TimestampRange() {
+        final var schema = StructuredTimestamp.builder(12).build();
+        final var value = StructuredTimestamp.fromPicoseconds(
+                schema, 12_000, 7, 17, 12, 13, 14, 123_456_789_012L, 12);
+        final var type = new StructuredTimestampType();
+        type.configure(jdbcConfig(
+                TemporalPrecisionLossHandlingMode.FAIL, TemporalRangeLossHandlingMode.SATURATE), db2TimestampDialect());
+
+        assertThat(type.bind(1, timestampColumn(12), schema, value).get(0).getValue())
+                .isEqualTo("9999-12-31 23:59:59.999999999999");
+    }
+
     private DatabaseDialect db2Dialect() {
         final DatabaseDialect dialect = mock(DatabaseDialect.class);
         when(dialect.getJdbcTypeName(eq(Types.VARCHAR), any(Size.class))).thenReturn("varchar(128)");
@@ -101,9 +117,15 @@ class StructuredTemporalTypeTest {
     }
 
     private JdbcSinkConnectorConfig jdbcConfig(TemporalPrecisionLossHandlingMode mode) {
+        return jdbcConfig(mode, TemporalRangeLossHandlingMode.FAIL);
+    }
+
+    private JdbcSinkConnectorConfig jdbcConfig(TemporalPrecisionLossHandlingMode precisionMode,
+                                               TemporalRangeLossHandlingMode rangeMode) {
         final JdbcSinkConnectorConfig config = mock(JdbcSinkConnectorConfig.class);
         when(config.useTimeZone()).thenReturn("UTC");
-        when(config.getTemporalPrecisionLossHandlingMode()).thenReturn(mode);
+        when(config.getTemporalPrecisionLossHandlingMode()).thenReturn(precisionMode);
+        when(config.getTemporalRangeLossHandlingMode()).thenReturn(rangeMode);
         return config;
     }
 
@@ -111,7 +133,9 @@ class StructuredTemporalTypeTest {
         final DatabaseDialect dialect = mock(DatabaseDialect.class);
         when(dialect.getMaxTimestampPrecision()).thenReturn(12);
         when(dialect.getDefaultTimestampPrecision()).thenReturn(6);
-        when(dialect.getTargetTemporalCapabilities()).thenReturn(TargetTemporalCapabilities.defaults(6, 12));
+        when(dialect.getTargetTemporalCapabilities()).thenReturn(TargetTemporalCapabilities.defaults(6, 12)
+                .withDateRange(TemporalRange.dateYears(1, 9999))
+                .withTimestampRange(TemporalRange.timestampYears(1, 9999)));
         when(dialect.getJdbcTypeName(eq(Types.TIMESTAMP), any(Size.class))).thenReturn("timestamp(12)");
         return dialect;
     }
