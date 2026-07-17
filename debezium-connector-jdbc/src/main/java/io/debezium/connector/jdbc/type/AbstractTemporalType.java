@@ -16,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
+import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.TemporalPrecisionLossHandlingMode;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.sink.SinkConnectorConfig;
 import io.debezium.time.ZonedTimestamp;
@@ -34,6 +35,7 @@ public abstract class AbstractTemporalType extends AbstractType {
     private boolean timestampBoundsResolved;
     private ZonedDateTime minimumTimestampValue;
     private ZonedDateTime maximumTimestampValue;
+    private TemporalPrecisionLossHandlingMode precisionLossHandlingMode = TemporalPrecisionLossHandlingMode.FAIL;
 
     @Override
     public void configure(SinkConnectorConfig config, DatabaseDialect dialect) {
@@ -50,6 +52,10 @@ public abstract class AbstractTemporalType extends AbstractType {
         catch (Exception e) {
             LOGGER.error("Failed to resolve time zone '{}', please specify a correct time zone value", databaseTimeZone, e);
             throw e;
+        }
+
+        if (config instanceof JdbcSinkConnectorConfig jdbcConfig && jdbcConfig.getTemporalPrecisionLossHandlingMode() != null) {
+            precisionLossHandlingMode = jdbcConfig.getTemporalPrecisionLossHandlingMode();
         }
     }
 
@@ -123,6 +129,10 @@ public abstract class AbstractTemporalType extends AbstractType {
             // natively rather than a finite timestamp; such dialects have no bound to clamp against.
             return null;
         }
+    }
+
+    protected TemporalPrecisionLossHandlingMode getPrecisionLossHandlingMode() {
+        return precisionLossHandlingMode;
     }
 
 }

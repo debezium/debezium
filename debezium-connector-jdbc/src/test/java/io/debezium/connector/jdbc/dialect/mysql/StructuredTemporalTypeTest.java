@@ -6,6 +6,7 @@
 package io.debezium.connector.jdbc.dialect.mysql;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -13,13 +14,18 @@ import static org.mockito.Mockito.when;
 
 import java.sql.Types;
 
+import org.apache.kafka.connect.errors.ConnectException;
 import org.hibernate.engine.jdbc.Size;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
+import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
+import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.TemporalPrecisionLossHandlingMode;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
+import io.debezium.connector.jdbc.type.debezium.TargetTemporalCapabilities;
 import io.debezium.sink.SinkConnectorConfig;
+import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.time.StructuredDate;
 import io.debezium.time.StructuredDuration;
 import io.debezium.time.StructuredTimestamp;
@@ -76,12 +82,79 @@ class StructuredTemporalTypeTest {
         final DatabaseDialect dialect = mock(DatabaseDialect.class);
         when(dialect.getJdbcTypeName(eq(Types.TIME), any(Size.class)))
                 .thenAnswer(invocation -> "time(" + ((Size) invocation.getArgument(1)).getPrecision() + ")");
-        type.configure(mock(SinkConnectorConfig.class), dialect);
+        when(dialect.getTargetTemporalCapabilities()).thenReturn(mysqlCapabilities());
+        final SinkConnectorConfig config = mock(SinkConnectorConfig.class);
+        when(config.useTimeZone()).thenReturn("UTC");
+        type.configure(config, dialect);
 
         final var schema = StructuredDuration.builder()
                 .parameter("__debezium.source.column.length", "6")
                 .build();
 
         assertThat(type.getTypeName(schema, false)).isEqualTo("time(6)");
+    }
+
+    @Test
+    @DisplayName("Should reject calendar duration kinds for MySQL time")
+    void shouldRejectCalendarDurationKinds() {
+        final var type = configuredDurationType(TemporalPrecisionLossHandlingMode.FAIL);
+        final var yearMonthSchema = StructuredDuration.builder(0, StructuredDuration.Kind.YEAR_MONTH).build();
+
+        assertThatThrownBy(() -> type.getTypeName(yearMonthSchema, false))
+                .isInstanceOf(ConnectException.class)
+                .hasMessageContaining("year-month")
+                .hasMessageContaining("MySQL TIME");
+
+        final var legacySchema = StructuredDuration.schema();
+        final var valueWithDays = StructuredDuration.from(legacySchema, 0, 0, 1, 2, 3, 4, 0);
+        assertThatThrownBy(() -> type.validate(timeColumn(6), legacySchema, valueWithDays))
+                .isInstanceOf(ConnectException.class)
+                .hasMessageContaining("day-time");
+
+        final var elapsedSchema = StructuredDuration.builder(6, StructuredDuration.Kind.ELAPSED_TIME).build();
+        final var inconsistentValue = StructuredDuration.from(elapsedSchema, 0, 0, 1, 2, 3, 4, 0, 6);
+        assertThatThrownBy(() -> type.validate(timeColumn(6), elapsedSchema, inconsistentValue))
+                .isInstanceOf(ConnectException.class)
+                .hasMessageContaining("do not match schema kind 'elapsed-time'");
+    }
+
+    @Test
+    @DisplayName("Should explicitly truncate and round MySQL duration fractions")
+    void shouldReduceMySqlDurationPrecision() {
+        final var schema = StructuredDuration.builder(9, StructuredDuration.Kind.ELAPSED_TIME).build();
+        final var value = StructuredDuration.from(schema, 0, 0, 0, 1, 2, 3, 123_456_789, 9);
+
+        final var truncateType = configuredDurationType(TemporalPrecisionLossHandlingMode.TRUNCATE);
+        final var roundType = configuredDurationType(TemporalPrecisionLossHandlingMode.ROUND);
+
+        assertThat(truncateType.bind(1, timeColumn(6), schema, value).get(0).getValue())
+                .isEqualTo("001:02:03.123456");
+        assertThat(roundType.bind(1, timeColumn(6), schema, value).get(0).getValue())
+                .isEqualTo("001:02:03.123457");
+    }
+
+    private StructuredDurationType configuredDurationType(TemporalPrecisionLossHandlingMode mode) {
+        final var type = new StructuredDurationType();
+        final JdbcSinkConnectorConfig config = mock(JdbcSinkConnectorConfig.class);
+        final DatabaseDialect dialect = mock(DatabaseDialect.class);
+        when(config.useTimeZone()).thenReturn("UTC");
+        when(config.getTemporalPrecisionLossHandlingMode()).thenReturn(mode);
+        when(dialect.getTargetTemporalCapabilities()).thenReturn(mysqlCapabilities());
+        type.configure(config, dialect);
+        return type;
+    }
+
+    private TargetTemporalCapabilities mysqlCapabilities() {
+        return TargetTemporalCapabilities.defaults(6, 6)
+                .withDurationKinds(java.util.EnumSet.of(StructuredDuration.Kind.ELAPSED_TIME));
+    }
+
+    private ColumnDescriptor timeColumn(int precision) {
+        return ColumnDescriptor.builder()
+                .columnName("duration")
+                .jdbcType(Types.TIME)
+                .typeName("time")
+                .scale(precision)
+                .build();
     }
 }

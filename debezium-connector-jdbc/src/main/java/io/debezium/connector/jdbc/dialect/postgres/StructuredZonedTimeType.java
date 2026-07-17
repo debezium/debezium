@@ -39,6 +39,17 @@ public class StructuredZonedTimeType extends io.debezium.connector.jdbc.type.deb
     }
 
     @Override
+    public List<ValueBindDescriptor> bind(int index, ColumnDescriptor column, Schema schema, Object value) {
+        if (value == null) {
+            return List.of(new ValueBindDescriptor(index, null));
+        }
+        validate(column, schema, value);
+        final int precision = getDialect().getTargetTemporalCapabilities().targetTimePrecision(column);
+        return List.of(new ValueBindDescriptor(index, StructuredTemporalSupport.toTimetzLiteral(
+                requireStruct(value), precision, getPrecisionLossHandlingMode())));
+    }
+
+    @Override
     public String getTypeName(Schema schema, boolean isKey) {
         return "timetz";
     }
