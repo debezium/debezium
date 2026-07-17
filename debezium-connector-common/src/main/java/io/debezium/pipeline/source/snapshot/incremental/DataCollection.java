@@ -24,17 +24,29 @@ public class DataCollection<T> {
 
     private final String surrogateKey;
 
+    /**
+     * The id of the signal that requested snapshotting of this data collection, if any.
+     * Kept per data collection because collections requested by different signals can be
+     * queued in the same incremental snapshot context.
+     */
+    private final String correlationId;
+
     public DataCollection(T id) {
-        this(id, "", "");
+        this(id, "", "", null);
     }
 
     public DataCollection(T id, String additionalCondition, String surrogateKey) {
+        this(id, additionalCondition, surrogateKey, null);
+    }
+
+    public DataCollection(T id, String additionalCondition, String surrogateKey, String correlationId) {
         Objects.requireNonNull(additionalCondition);
         Objects.requireNonNull(surrogateKey);
 
         this.id = id;
         this.additionalCondition = additionalCondition;
         this.surrogateKey = surrogateKey;
+        this.correlationId = correlationId;
     }
 
     public T getId() {
@@ -49,6 +61,10 @@ public class DataCollection<T> {
 
     public Optional<String> getSurrogateKey() {
         return Strings.isNullOrEmpty(surrogateKey) ? Optional.empty() : Optional.of(surrogateKey);
+    }
+
+    public Optional<String> getCorrelationId() {
+        return Strings.isNullOrEmpty(correlationId) ? Optional.empty() : Optional.of(correlationId);
     }
 
     @Override
@@ -74,6 +90,7 @@ public class DataCollection<T> {
                 "id=" + id +
                 ", additionalCondition=" + additionalCondition +
                 ", surrogateKey=" + surrogateKey +
+                ", correlationId=" + correlationId +
                 '}';
     }
 }

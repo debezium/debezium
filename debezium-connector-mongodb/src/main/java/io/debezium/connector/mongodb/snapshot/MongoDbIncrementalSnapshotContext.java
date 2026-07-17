@@ -58,6 +58,10 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
 
     public static final String DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ADDITIONAL_CONDITION = DATA_COLLECTIONS_TO_SNAPSHOT_KEY
             + "_additional_condition";
+
+    public static final String DATA_COLLECTIONS_TO_SNAPSHOT_KEY_CORRELATION_ID = DATA_COLLECTIONS_TO_SNAPSHOT_KEY
+            + "_correlation_id";
+
     public static final String EVENT_PRIMARY_KEY = INCREMENTAL_SNAPSHOT_KEY + "_primary_key";
     public static final String TABLE_MAXIMUM_KEY = INCREMENTAL_SNAPSHOT_KEY + "_maximum_key";
 
@@ -95,6 +99,13 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
 
     private boolean schemaVerificationPassed;
 
+    /**
+     * The id of the signal that most recently added data collections to this context. When a further
+     * signal arrives while a snapshot is running, this field is overwritten although collections queued
+     * by earlier signals are still pending — so it only identifies the latest request (that is what the
+     * notifications report). For per-chunk attribution the canonical value is the requesting signal's id
+     * carried by each collection, {@link DataCollection#getCorrelationId()}.
+     */
     private String correlationId;
 
     /**
@@ -197,6 +208,7 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
                         map.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ID, x.getId().toString());
                         map.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ADDITIONAL_CONDITION,
                                 x.getAdditionalCondition().isEmpty() ? null : x.getAdditionalCondition().orElse(null));
+                        map.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_CORRELATION_ID, x.getCorrelationId().orElse(null));
                         return map;
                     })
                     .collect(Collectors.toList());
@@ -214,7 +226,8 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
                     .map(x -> new DataCollection<T>(
                             (T) CollectionId.parse(x.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ID)),
                             stripWrappingParentheses(x.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ADDITIONAL_CONDITION)),
-                            ""))
+                            "",
+                            x.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_CORRELATION_ID)))
                     .filter(x -> x.getId() != null)
                     .collect(Collectors.toList());
             return dataCollectionsList;
@@ -265,7 +278,7 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
                                                                     String surrogateKey) {
         LOGGER.trace("Adding data collections names {} to snapshot", dataCollectionIds);
         final List<DataCollection<T>> newDataCollectionIds = dataCollectionIds.stream()
-                .map(buildDataCollection(additionalCondition, surrogateKey))
+                .map(buildDataCollection(additionalCondition, surrogateKey, correlationId))
                 .filter(x -> x.getId() != null) // Remove collections with incorrectly formatted name
                 .collect(Collectors.toList());
         addTablesIdsToSnapshot(newDataCollectionIds);
@@ -273,14 +286,14 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
         return newDataCollectionIds;
     }
 
-    private Function<String, DataCollection<T>> buildDataCollection(List<AdditionalCondition> additionalCondition, String surrogateKey) {
+    private Function<String, DataCollection<T>> buildDataCollection(List<AdditionalCondition> additionalCondition, String surrogateKey, String correlationId) {
         return expandedCollectionName -> {
             String filter = additionalCondition.stream()
                     .filter(condition -> condition.getDataCollection().matcher(expandedCollectionName).matches())
                     .map(AdditionalCondition::getFilter)
                     .findFirst()
                     .orElse("");
-            return new DataCollection<T>((T) CollectionId.parse(expandedCollectionName), filter, surrogateKey);
+            return new DataCollection<T>((T) CollectionId.parse(expandedCollectionName), filter, surrogateKey, correlationId);
         };
     }
 
