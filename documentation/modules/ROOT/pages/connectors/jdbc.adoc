@@ -85,6 +85,9 @@ StarRocks targets support idempotent writes through the same xref:jdbc-property-
 StarRocks executes `INSERT` statements against PRIMARY KEY tables as upserts, so the connector generates plain `INSERT` statements; `INSERT ... ON DUPLICATE KEY UPDATE ...` is not supported by StarRocks.
 Upsert and delete operations require the destination table to be a StarRocks PRIMARY KEY table.
 Tables that the connector creates automatically from events with key fields are always PRIMARY KEY tables.
+For events without key fields, the connector omits the `PRIMARY KEY` clause, and StarRocks creates its default DUPLICATE KEY table.
+DUPLICATE KEY tables retain rows with duplicate values and support append-only writes, but do not support modifying existing rows.
+As a result, xref:jdbc-property-insert-mode[`insert.mode=update`] cannot be used with xref:jdbc-property-primary-key-mode[`primary.key.mode=none`] when the connector creates the destination table.
 
 If xref:jdbc-property-schema-evolution[`schema.evolution`] is set to `basic`, the connector can create or alter destination tables from event schemas.
 Tables that the connector creates use `PRIMARY KEY (...) DISTRIBUTED BY HASH (...)` clauses based on the record key fields.
@@ -321,7 +324,9 @@ To adjust nullability settings or default values, you can introduce a custom sin
 For SingleStore targets, automatic table creation does not configure SingleStore-specific shard keys, sort keys, or other table options.
 For more information, see xref:jdbc-singlestore-targets[].
 
-For StarRocks targets, automatic table creation creates PRIMARY KEY tables from the record key fields, and does not configure StarRocks-specific distribution, partitioning, or other table options.
+For StarRocks targets, automatic table creation creates PRIMARY KEY tables from record key fields.
+For records without key fields, StarRocks creates its default append-only DUPLICATE KEY table.
+Automatic table creation does not configure StarRocks-specific distribution, partitioning, or other table options.
 For more information, see xref:jdbc-starrocks-targets[].
 
 A field's data type is resolved based on a predefined set of mappings.
