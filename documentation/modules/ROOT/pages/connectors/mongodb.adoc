@@ -429,7 +429,7 @@ To avoid unexpected results, consumers must be able to handle duplicate messages
 As described in xref:read-preference[read preferences], the connector streams changes from the replica set member that is specified by the `readPreference` parameter in the MongoDB connection string.
 By default, the connector captures from the primary node, which result in capture operations with the lowest latency.
 Optionally, you can configure the connector to read from a secondary, but capturing from a secondary can introduce additional latency due to replication lag.
-If the member that the connector is reading from becomes unavailable -- for example, when the replica set elects a new primary -- the connector stops streaming changes, reconnects to another suitable member, and resumes streaming from the same position.
+If the replica set member that the connector reads from becomes unavailable, the connector stops streaming changes, reconnects to another suitable member, and resumes streaming from the same position.
 Likewise, if the connector experiences any problems communicating with the replica set members, it tries to reconnect, by using exponential backoff so as to not overwhelm the replica set, and once connected it continues streaming changes from where it last left off.
 In this way, the connector is able to dynamically adjust to changes in replica set membership and automatically handle communication failures.
 
