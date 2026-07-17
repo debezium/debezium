@@ -44,8 +44,10 @@ public class StructuredTimestampType extends AbstractTimestampType {
 
     @Override
     public String getDefaultValueBinding(Schema schema, Object value) {
+        final var capabilities = getDialect().getTargetTemporalCapabilities();
         return getDialect().getFormattedDateTime(StructuredTemporalSupport.toLocalDateTime(
-                requireStruct(value), getSchemaTimestampPrecision(schema), getPrecisionLossHandlingMode()));
+                requireStruct(value), getSchemaTimestampPrecision(schema), getPrecisionLossHandlingMode(),
+                capabilities.targetTimestampRange(null), getRangeLossHandlingMode(), targetDescription(schema)));
     }
 
     @Override
@@ -53,7 +55,14 @@ public class StructuredTimestampType extends AbstractTimestampType {
         if (value == null) {
             return List.of(new ValueBindDescriptor(index, null));
         }
-        final LocalDateTime localDateTime = StructuredTemporalSupport.toLocalDateTime(requireStruct(value));
+        if (getDialect() == null) {
+            return List.of(new ValueBindDescriptor(index, StructuredTemporalSupport.toLocalDateTime(requireStruct(value)), getJdbcType()));
+        }
+        final var capabilities = getDialect().getTargetTemporalCapabilities();
+        final int precision = getSchemaTimestampPrecision(schema);
+        final LocalDateTime localDateTime = StructuredTemporalSupport.toLocalDateTime(
+                requireStruct(value), precision, getPrecisionLossHandlingMode(), capabilities.targetTimestampRange(null),
+                getRangeLossHandlingMode(), targetDescription(schema));
         return List.of(new ValueBindDescriptor(index, localDateTime, getJdbcType()));
     }
 
@@ -63,6 +72,9 @@ public class StructuredTimestampType extends AbstractTimestampType {
             final var capabilities = getDialect().getTargetTemporalCapabilities();
             StructuredTemporalPreflightValidator.validatePrecision(
                     column, requireStruct(value), capabilities.targetTimestampPrecision(column), getPrecisionLossHandlingMode());
+            StructuredTemporalSupport.adjustTimestamp(
+                    requireStruct(value), capabilities.targetTimestampPrecision(column), getPrecisionLossHandlingMode(),
+                    capabilities.targetTimestampRange(column), getRangeLossHandlingMode(), targetDescription(column));
         }
     }
 
@@ -74,7 +86,10 @@ public class StructuredTimestampType extends AbstractTimestampType {
         validate(column, schema, value);
         final int precision = getDialect().getTargetTemporalCapabilities().targetTimestampPrecision(column);
         final LocalDateTime localDateTime = StructuredTemporalSupport.toLocalDateTime(
-                requireStruct(value), precision, getPrecisionLossHandlingMode());
+                requireStruct(value), precision, getPrecisionLossHandlingMode(),
+                getDialect().getTargetTemporalCapabilities().targetTimestampRange(column), getRangeLossHandlingMode(),
+                targetDescription(column));
         return List.of(new ValueBindDescriptor(index, localDateTime, getJdbcType()));
     }
+
 }

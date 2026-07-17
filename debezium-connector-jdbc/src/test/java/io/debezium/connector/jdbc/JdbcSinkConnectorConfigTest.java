@@ -142,6 +142,29 @@ public class JdbcSinkConnectorConfigTest extends AbstractBaseJdbcSinkTest {
     }
 
     @Test
+    public void testTemporalRangeLossHandlingMode() {
+        final JdbcSinkConnectorConfig defaultConfig = getConfig(Collections.emptyMap());
+        assertThat(defaultConfig.getTemporalRangeLossHandlingMode())
+                .isEqualTo(JdbcSinkConnectorConfig.TemporalRangeLossHandlingMode.FAIL);
+
+        final JdbcSinkConnectorConfig saturateConfig = getConfig(Map.of(
+                JdbcSinkConnectorConfig.TEMPORAL_RANGE_LOSS_HANDLING_MODE, "saturate"));
+        assertThat(saturateConfig.validateAndRecord(
+                List.of(JdbcSinkConnectorConfig.TEMPORAL_RANGE_LOSS_HANDLING_MODE_FIELD), LOGGER::error)).isTrue();
+        assertThat(saturateConfig.getTemporalRangeLossHandlingMode())
+                .isEqualTo(JdbcSinkConnectorConfig.TemporalRangeLossHandlingMode.SATURATE);
+    }
+
+    @Test
+    public void testInvalidTemporalRangeLossHandlingMode() {
+        final JdbcSinkConnectorConfig config = getConfig(Map.of(
+                JdbcSinkConnectorConfig.TEMPORAL_RANGE_LOSS_HANDLING_MODE, "clip"));
+
+        assertThat(config.validateAndRecord(
+                List.of(JdbcSinkConnectorConfig.TEMPORAL_RANGE_LOSS_HANDLING_MODE_FIELD), LOGGER::error)).isFalse();
+    }
+
+    @Test
     public void testNonDefaultSqlSelverIdentityTableNamesProperty() {
         final Map<String, String> properties = new HashMap<>();
         properties.put(JdbcSinkConnectorConfig.SQLSERVER_IDENTITY_INSERT, "true");

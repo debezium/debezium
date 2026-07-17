@@ -71,6 +71,22 @@ class StructuredTemporalTypeTest {
     }
 
     @Test
+    @DisplayName("Should preserve structured temporal infinity during actual column validation")
+    void shouldPreserveStructuredTemporalInfinityDuringValidation() {
+        final var timestampSchema = StructuredTimestamp.schema();
+        final var zonedTimestampSchema = StructuredZonedTimestamp.schema();
+        final var dateSchema = StructuredDate.schema();
+
+        StructuredTimestampType.INSTANCE.validate(
+                temporalColumn(Types.TIMESTAMP, "timestamp"), timestampSchema, StructuredTimestamp.positiveInfinity(timestampSchema));
+        StructuredZonedTimestampType.INSTANCE.validate(
+                temporalColumn(Types.TIMESTAMP_WITH_TIMEZONE, "timestamptz"), zonedTimestampSchema,
+                StructuredZonedTimestamp.negativeInfinity(zonedTimestampSchema));
+        StructuredDateType.INSTANCE.validate(
+                temporalColumn(Types.DATE, "date"), dateSchema, StructuredDate.positiveInfinity(dateSchema));
+    }
+
+    @Test
     @DisplayName("Should bind structured duration as PostgreSQL interval literal")
     void shouldBindStructuredDuration() {
         final var schema = StructuredDuration.schema();
@@ -182,6 +198,15 @@ class StructuredTemporalTypeTest {
                 .jdbcType(Types.OTHER)
                 .typeName("interval")
                 .scale(precision)
+                .build();
+    }
+
+    private ColumnDescriptor temporalColumn(int jdbcType, String typeName) {
+        return ColumnDescriptor.builder()
+                .columnName("temporal_value")
+                .jdbcType(jdbcType)
+                .typeName(typeName)
+                .scale(6)
                 .build();
     }
 
