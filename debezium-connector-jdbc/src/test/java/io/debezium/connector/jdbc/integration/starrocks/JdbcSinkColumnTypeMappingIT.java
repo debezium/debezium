@@ -30,6 +30,8 @@ import io.debezium.connector.jdbc.util.SinkRecordFactory;
 import io.debezium.doc.FixFor;
 import io.debezium.time.MicroTime;
 import io.debezium.time.MicroTimestamp;
+import io.debezium.time.StructuredTime;
+import io.debezium.time.StructuredZonedTime;
 
 /**
  * Column type mappings for StarRocks, including boundary cases for byte-length string
@@ -44,6 +46,44 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
 
     public JdbcSinkColumnTypeMappingIT(Sink sink) {
         super(sink);
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("debezium/dbz#2119")
+    public void testShouldWriteStructuredTimesAsPicosecondStrings(SinkRecordFactory factory) throws Exception {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server2", "schema", tableName);
+        final Schema timeSchema = StructuredTime.builder(12).optional().build();
+        final Schema zonedTimeSchema = StructuredZonedTime.builder(12).optional().build();
+        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        final JdbcKafkaSinkRecord createRecord = factory.createRecordWithSchemaValue(
+                topicName,
+                (byte) 1,
+                List.of("time_data", "zoned_time_data"),
+                List.of(timeSchema, zonedTimeSchema),
+                List.of(
+                        StructuredTime.fromPicoseconds(timeSchema, 12, 13, 14, 123_456_789_012L, 12),
+                        StructuredZonedTime.fromPicoseconds(zonedTimeSchema, 12, 13, 14, 123_456_789_012L, 9 * 3_600, 12)),
+                config);
+
+        final String destinationTable = destinationTableName(createRecord);
+        consume(createRecord);
+
+        getSink().assertColumn(destinationTable, "time_data", "VARCHAR", 21);
+        getSink().assertColumn(destinationTable, "zoned_time_data", "VARCHAR", 32);
+        getSink().assertRows(destinationTable, rs -> {
+            assertThat(rs.getString("time_data")).isEqualTo("12:13:14.123456789012");
+            assertThat(rs.getString("zoned_time_data")).isEqualTo("12:13:14.123456789012+09:00");
+            return null;
+        });
     }
 
     @ParameterizedTest
