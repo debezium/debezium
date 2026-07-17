@@ -21,6 +21,8 @@ import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.dialect.DatabaseDialectProvider;
 import io.debezium.connector.jdbc.dialect.GeneralDatabaseDialect;
 import io.debezium.connector.jdbc.dialect.SqlStatementBuilder;
+import io.debezium.connector.jdbc.dialect.db2.StructuredTimestampType;
+import io.debezium.connector.jdbc.dialect.db2.StructuredZonedTimestampType;
 import io.debezium.connector.jdbc.dialect.db2i.connect.ConnectDateType;
 import io.debezium.connector.jdbc.dialect.db2i.connect.ConnectTimeType;
 import io.debezium.connector.jdbc.dialect.db2i.connect.ConnectTimestampType;
@@ -127,6 +129,13 @@ public class Db2iDatabaseDialect extends GeneralDatabaseDialect {
         registerType(TimeType.INSTANCE);
         registerType(NanoTimeType.INSTANCE);
         registerType(MicroTimeType.INSTANCE);
+        registerType(new StructuredTimestampType());
+        registerType(new StructuredZonedTimestampType());
+    }
+
+    @Override
+    public int getMaxTimestampPrecision() {
+        return 12;
     }
 
     @Override
