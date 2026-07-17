@@ -1827,10 +1827,11 @@ a|_n/a_
 a|_n/a_
 
 |`REAL[(M,D)]`
-|`FLOAT64`
-a|_n/a_
+|`FLOAT32` or `FLOAT64`
+a|The mapping is controlled by the xref:{context}-property-real-handling-mode[`real.handling.mode`] connector configuration property.
 
-By default, `REAL` is a synonym for `DOUBLE`: the server stores and replicates such columns as 8-byte double-precision values. Only when the `REAL_AS_FLOAT` SQL mode is enabled is `REAL` a synonym for `FLOAT` instead.
+By default, `REAL` is a synonym for `DOUBLE`, and the connector maps it to `FLOAT64`.
+Set `real.handling.mode` to `float` to map `REAL` to `FLOAT32`, for example, when the server uses the `REAL_AS_FLOAT` SQL mode.
 
 |`FLOAT[(P)]`
 |`FLOAT32` or `FLOAT64`
@@ -2288,6 +2289,8 @@ jdbc-sink.treat.real.as.double=true
 ----
 
 In the preceding example, the `selector.*` and `treat.real.as.double` configuration properties are optional.
+
+If `selector.real` matches a column, the `treat.real.as.double` converter setting determines the emitted schema for that column and takes precedence over the connector-level `real.handling.mode` setting.
 
 The `selector.*` properties specify comma-separated lists of regular expressions that specify which tables and columns that the converter applies to.
 By default, the converter applies the following rules apply to all Boolean, real, and string-based column data types, across all tables:

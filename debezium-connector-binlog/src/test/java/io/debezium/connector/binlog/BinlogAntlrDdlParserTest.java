@@ -81,6 +81,8 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
 
     protected abstract P getParser(SimpleDdlParserListener listener, boolean includeViews, boolean includeComments);
 
+    protected abstract P getParser(SimpleDdlParserListener listener, BinlogConnectorConfig.RealHandlingMode realHandlingMode);
+
     protected abstract V getValueConverters();
 
     protected abstract D getDefaultValueConverters(V valueConverters);
@@ -696,7 +698,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
 
     @Test
     @FixFor("debezium/dbz#2217")
-    public void shouldTreatRealDataTypeAsDouble() {
+    public void shouldTreatRealDataTypeAsDoubleByDefault() {
         // MySQL/MariaDB treat REAL as a synonym for DOUBLE unless the REAL_AS_FLOAT sql_mode is
         // enabled; values are stored and replicated as 8-byte doubles. Mapping REAL to Types.REAL
         // produced a FLOAT32 schema and narrowed values, diverging from the snapshot path where
@@ -718,6 +720,32 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
         Column r1 = table.columnWithName("r1");
         ValueConverter converter = converters.converter(r1, new Field(r1.name(), -1, r1Schema));
         assertThat(converter.convert(3.141592653589793d)).isEqualTo(3.141592653589793d);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2217")
+    public void shouldTreatRealDataTypeAsFloatWhenConfigured() {
+        final P floatParser = getParser(new SimpleDdlParserListener(), BinlogConnectorConfig.RealHandlingMode.FLOAT);
+        final Tables floatTables = new Tables();
+        final String ddl = "CREATE TABLE realtable (id INT PRIMARY KEY, r1 REAL DEFAULT 3.14, "
+                + "r2 REAL(8,2), r3 REAL UNSIGNED, f FLOAT, d DOUBLE);";
+        floatParser.parse(ddl, floatTables);
+        assertThat(floatParser.getParsingExceptionsFromWalker()).isEmpty();
+
+        final Table table = floatTables.forTable(null, null, "realtable");
+        assertThat(table.columnWithName("r1").jdbcType()).isEqualTo(Types.REAL);
+        assertThat(table.columnWithName("r2").jdbcType()).isEqualTo(Types.REAL);
+        assertThat(table.columnWithName("r3").jdbcType()).isEqualTo(Types.REAL);
+        assertThat(table.columnWithName("f").jdbcType()).isEqualTo(Types.FLOAT);
+        assertThat(table.columnWithName("d").jdbcType()).isEqualTo(Types.DOUBLE);
+
+        final Schema r1Schema = getColumnSchema(table, "r1");
+        assertThat(r1Schema.type()).isEqualTo(Schema.Type.FLOAT32);
+        assertThat(r1Schema.defaultValue()).isEqualTo(3.14f);
+
+        final Column r1 = table.columnWithName("r1");
+        final ValueConverter converter = converters.converter(r1, new Field(r1.name(), -1, r1Schema));
+        assertThat(converter.convert(3.141592653589793d)).isEqualTo(3.1415927f);
     }
 
     @Test

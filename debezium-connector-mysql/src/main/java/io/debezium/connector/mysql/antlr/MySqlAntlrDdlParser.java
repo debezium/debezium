@@ -25,6 +25,7 @@ import io.debezium.antlr.AntlrDdlParser;
 import io.debezium.antlr.AntlrDdlParserListener;
 import io.debezium.antlr.DataTypeResolver;
 import io.debezium.antlr.DataTypeResolver.DataTypeEntry;
+import io.debezium.connector.binlog.BinlogConnectorConfig.RealHandlingMode;
 import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
 import io.debezium.connector.binlog.jdbc.BinlogSystemVariables;
 import io.debezium.connector.mysql.antlr.listener.MySqlAntlrDdlParserListener;
@@ -76,7 +77,7 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
     private final ConcurrentMap<String, String> charsetNameForDatabase = new ConcurrentHashMap<>();
     private final TableFilter tableFilter;
     private final BinlogCharsetRegistry charsetRegistry;
-    private final DataTypeResolver dataTypeResolver = initializeDataTypeResolver();
+    private final DataTypeResolver dataTypeResolver;
 
     @VisibleForTesting
     public MySqlAntlrDdlParser() {
@@ -90,10 +91,16 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
 
     public MySqlAntlrDdlParser(boolean throwErrorsFromTreeWalk, boolean includeViews, boolean includeComments,
                                TableFilter tableFilter, BinlogCharsetRegistry charsetRegistry) {
+        this(throwErrorsFromTreeWalk, includeViews, includeComments, tableFilter, charsetRegistry, RealHandlingMode.DOUBLE);
+    }
+
+    public MySqlAntlrDdlParser(boolean throwErrorsFromTreeWalk, boolean includeViews, boolean includeComments,
+                               TableFilter tableFilter, BinlogCharsetRegistry charsetRegistry, RealHandlingMode realHandlingMode) {
         super(throwErrorsFromTreeWalk, includeViews, includeComments);
         systemVariables = new BinlogSystemVariables();
         this.tableFilter = tableFilter;
         this.charsetRegistry = charsetRegistry;
+        this.dataTypeResolver = initializeDataTypeResolver(realHandlingMode);
     }
 
     @Override
@@ -146,7 +153,7 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
         return dataTypeResolver;
     }
 
-    private DataTypeResolver initializeDataTypeResolver() {
+    private DataTypeResolver initializeDataTypeResolver(RealHandlingMode realHandlingMode) {
         DataTypeResolver.Builder dataTypeResolverBuilder = new DataTypeResolver.Builder();
 
         // In the new Oracle grammar, all data types are unified in DataTypeContext
@@ -190,10 +197,8 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
                 new DataTypeEntry(Types.BIGINT, MySqlParser.BIGINT_SYMBOL)
                         .setSuffixTokens(MySqlParser.SIGNED_SYMBOL, MySqlParser.UNSIGNED_SYMBOL, MySqlParser.ZEROFILL_SYMBOL),
                 // Floating point types
-                // REAL is by default a synonym for DOUBLE: the server stores and replicates such columns
-                // as 8-byte doubles. Only when the REAL_AS_FLOAT sql_mode is enabled is REAL a synonym
-                // for FLOAT instead (debezium/dbz#2217)
-                new DataTypeEntry(Types.DOUBLE, MySqlParser.REAL_SYMBOL)
+                // REAL defaults to DOUBLE, but can be mapped to FLOAT for REAL_AS_FLOAT compatibility.
+                new DataTypeEntry(realHandlingMode.asJdbcType(), MySqlParser.REAL_SYMBOL)
                         .setSuffixTokens(MySqlParser.SIGNED_SYMBOL, MySqlParser.UNSIGNED_SYMBOL, MySqlParser.ZEROFILL_SYMBOL),
                 new DataTypeEntry(Types.DOUBLE, MySqlParser.DOUBLE_SYMBOL)
                         .setSuffixTokens(MySqlParser.PRECISION_SYMBOL, MySqlParser.SIGNED_SYMBOL, MySqlParser.UNSIGNED_SYMBOL, MySqlParser.ZEROFILL_SYMBOL),

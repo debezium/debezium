@@ -14,9 +14,29 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.binlog.BinlogConnectorConfig;
 import io.debezium.connector.binlog.BinlogOffsetContext;
 
 public class MySqlConnectorConfigTest {
+
+    @Test
+    void shouldConfigureRealHandlingMode() {
+        final Configuration config = Configuration.create()
+                .with(MySqlConnectorConfig.HOSTNAME, "localhost")
+                .with(MySqlConnectorConfig.PORT, 3306)
+                .with(MySqlConnectorConfig.USER, "mysqluser")
+                .with(MySqlConnectorConfig.PASSWORD, "mysqlpw")
+                .with(MySqlConnectorConfig.SERVER_ID, 18765)
+                .with(MySqlConnectorConfig.TOPIC_PREFIX, "mysql-server")
+                .build();
+
+        assertThat(new MySqlConnectorConfig(config).getRealHandlingMode()).isEqualTo(BinlogConnectorConfig.RealHandlingMode.DOUBLE);
+
+        final Configuration floatConfig = config.edit()
+                .with(MySqlConnectorConfig.REAL_HANDLING_MODE, BinlogConnectorConfig.RealHandlingMode.FLOAT)
+                .build();
+        assertThat(new MySqlConnectorConfig(floatConfig).getRealHandlingMode()).isEqualTo(BinlogConnectorConfig.RealHandlingMode.FLOAT);
+    }
 
     @Test
     void shouldDefaultToUsingGtidOnRecovery() {
