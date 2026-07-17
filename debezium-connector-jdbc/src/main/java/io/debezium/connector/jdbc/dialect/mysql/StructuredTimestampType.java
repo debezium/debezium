@@ -13,6 +13,7 @@ import java.util.List;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 
+import io.debezium.connector.jdbc.type.debezium.StructuredTemporalPreflightValidator;
 import io.debezium.connector.jdbc.type.debezium.StructuredTemporalSupport;
 import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
@@ -27,8 +28,10 @@ public class StructuredTimestampType extends io.debezium.connector.jdbc.type.deb
 
     @Override
     public String getDefaultValueBinding(Schema schema, Object value) {
+        final var capabilities = getDialect().getTargetTemporalCapabilities();
         return "'" + StructuredTemporalLiteral.timestamp(
-                requireStruct(value), getSchemaTimestampPrecision(schema), getPrecisionLossHandlingMode()) + "'";
+                requireStruct(value), getSchemaTimestampPrecision(schema), getPrecisionLossHandlingMode(),
+                capabilities.targetTimestampRange(null), getRangeLossHandlingMode(), targetDescription(schema)) + "'";
     }
 
     @Override
@@ -41,8 +44,10 @@ public class StructuredTimestampType extends io.debezium.connector.jdbc.type.deb
         if (clamped != null) {
             return List.of(new ValueBindDescriptor(index, StructuredTemporalLiteral.timestamp(clamped), Types.VARCHAR));
         }
+        final var capabilities = getDialect().getTargetTemporalCapabilities();
         return List.of(new ValueBindDescriptor(index, StructuredTemporalLiteral.timestamp(
-                struct, getSchemaTimestampPrecision(schema), getPrecisionLossHandlingMode()), Types.VARCHAR));
+                struct, getSchemaTimestampPrecision(schema), getPrecisionLossHandlingMode(),
+                capabilities.targetTimestampRange(null), getRangeLossHandlingMode(), targetDescription(schema)), Types.VARCHAR));
     }
 
     /**
@@ -66,6 +71,19 @@ public class StructuredTimestampType extends io.debezium.connector.jdbc.type.deb
     }
 
     @Override
+    public void validate(ColumnDescriptor column, Schema schema, Object value) {
+        if (value != null) {
+            final var capabilities = getDialect().getTargetTemporalCapabilities();
+            final int precision = capabilities.targetTimestampPrecision(column);
+            StructuredTemporalPreflightValidator.validatePrecision(
+                    column, requireStruct(value), precision, getPrecisionLossHandlingMode());
+            StructuredTemporalLiteral.timestamp(
+                    requireStruct(value), precision, getPrecisionLossHandlingMode(),
+                    capabilities.targetTimestampRange(column), getRangeLossHandlingMode(), targetDescription(column));
+        }
+    }
+
+    @Override
     public List<ValueBindDescriptor> bind(int index, ColumnDescriptor column, Schema schema, Object value) {
         if (value == null) {
             return List.of(new ValueBindDescriptor(index, null));
@@ -73,6 +91,10 @@ public class StructuredTimestampType extends io.debezium.connector.jdbc.type.deb
         validate(column, schema, value);
         final int precision = getDialect().getTargetTemporalCapabilities().targetTimestampPrecision(column);
         return List.of(new ValueBindDescriptor(index,
-                StructuredTemporalLiteral.timestamp(requireStruct(value), precision, getPrecisionLossHandlingMode()), Types.VARCHAR));
+                StructuredTemporalLiteral.timestamp(
+                        requireStruct(value), precision, getPrecisionLossHandlingMode(),
+                        getDialect().getTargetTemporalCapabilities().targetTimestampRange(column), getRangeLossHandlingMode(),
+                        targetDescription(column)),
+                Types.VARCHAR));
     }
 }

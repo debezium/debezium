@@ -26,6 +26,7 @@ import io.debezium.connector.jdbc.dialect.SqlStatementBuilder;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
 import io.debezium.connector.jdbc.type.debezium.TargetTemporalCapabilities;
 import io.debezium.connector.jdbc.type.debezium.TargetTemporalCapabilities.ZonedTimestampSupport;
+import io.debezium.connector.jdbc.type.debezium.TemporalRange;
 
 /**
  * A {@link DatabaseDialect} implementation for Oracle.
@@ -37,6 +38,8 @@ public class OracleDatabaseDialect extends GeneralDatabaseDialect {
     @Override
     public TargetTemporalCapabilities getTargetTemporalCapabilities() {
         return TargetTemporalCapabilities.defaults(getMaxTimePrecision(), getMaxTimestampPrecision())
+                .withDateRange(TemporalRange.dateYears(-4711, 9999))
+                .withTimestampRange(TemporalRange.timestampYears(-4711, 9999))
                 .withZonedTimestampSupport(ZonedTimestampSupport.OFFSET);
     }
 
