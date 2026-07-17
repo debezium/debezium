@@ -7,45 +7,67 @@ package io.debezium.connector.jdbc.dialect.mysql;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.LocalDateTime;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.TemporalPrecisionLossHandlingMode;
+import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.TemporalRangeLossHandlingMode;
 import io.debezium.connector.jdbc.type.debezium.StructuredTemporalPreflightValidator;
 import io.debezium.connector.jdbc.type.debezium.StructuredTemporalSupport;
+import io.debezium.connector.jdbc.type.debezium.TemporalRange;
+import io.debezium.connector.jdbc.type.debezium.TemporalRange.Boundary;
 import io.debezium.time.StructuredTemporal;
 
 final class StructuredTemporalLiteral {
 
     static String date(Struct value) {
-        requireFinite(value);
+        return date(value, TemporalRange.unbounded(), TemporalRangeLossHandlingMode.FAIL, "target temporal type");
+    }
+
+    static String date(Struct value, TemporalRange range, TemporalRangeLossHandlingMode handlingMode,
+                       String targetDescription) {
+        if (StructuredTemporal.isFinite(value) && hasZeroDate(value)) {
+            return formatDate(
+                    value.getInt32(StructuredTemporal.YEAR_FIELD),
+                    value.getInt8(StructuredTemporal.MONTH_FIELD),
+                    value.getInt8(StructuredTemporal.DAY_FIELD));
+        }
+        final Boundary adjusted = StructuredTemporalSupport.adjustDate(value, range, handlingMode, targetDescription);
+        return formatDate(adjusted.year(), adjusted.month(), adjusted.day());
+    }
+
+    private static String formatDate(int year, int month, int day) {
         return String.format("%04d-%02d-%02d",
-                value.getInt32(StructuredTemporal.YEAR_FIELD),
-                value.getInt8(StructuredTemporal.MONTH_FIELD),
-                value.getInt8(StructuredTemporal.DAY_FIELD));
+                year, month, day);
     }
 
     static String timestamp(Struct value, int precision, TemporalPrecisionLossHandlingMode handlingMode) {
-        requireFinite(value);
-        final var fraction = StructuredTemporalPreflightValidator.reduceFraction(
-                StructuredTemporalSupport.getPicoseconds(value), precision, handlingMode);
-        if (fraction.carrySeconds() != 0) {
-            final LocalDateTime dateTime = StructuredTemporalSupport.toLocalDateTime(value)
-                    .withNano(fraction.nanoseconds())
-                    .plusSeconds(fraction.carrySeconds());
-            return formatTimestamp(dateTime.getYear(), dateTime.getMonthValue(), dateTime.getDayOfMonth(),
-                    dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(), fraction.picoseconds(), precision);
+        return timestamp(value, precision, handlingMode, TemporalRange.unbounded(),
+                TemporalRangeLossHandlingMode.FAIL, "target temporal type");
+    }
+
+    static String timestamp(Struct value, int precision, TemporalPrecisionLossHandlingMode precisionHandlingMode,
+                            TemporalRange range, TemporalRangeLossHandlingMode rangeHandlingMode,
+                            String targetDescription) {
+        if (StructuredTemporal.isFinite(value) && hasZeroDate(value)) {
+            final var fraction = StructuredTemporalPreflightValidator.reduceFraction(
+                    StructuredTemporalSupport.getPicoseconds(value), precision, precisionHandlingMode);
+            if (fraction.carrySeconds() == 0) {
+                return formatTimestamp(
+                        value.getInt32(StructuredTemporal.YEAR_FIELD),
+                        value.getInt8(StructuredTemporal.MONTH_FIELD),
+                        value.getInt8(StructuredTemporal.DAY_FIELD),
+                        value.getInt8(StructuredTemporal.HOUR_FIELD),
+                        value.getInt8(StructuredTemporal.MINUTE_FIELD),
+                        value.getInt8(StructuredTemporal.SECOND_FIELD),
+                        fraction.picoseconds(), precision);
+            }
         }
-        return formatTimestamp(
-                value.getInt32(StructuredTemporal.YEAR_FIELD),
-                value.getInt8(StructuredTemporal.MONTH_FIELD),
-                value.getInt8(StructuredTemporal.DAY_FIELD),
-                value.getInt8(StructuredTemporal.HOUR_FIELD),
-                value.getInt8(StructuredTemporal.MINUTE_FIELD),
-                value.getInt8(StructuredTemporal.SECOND_FIELD),
-                fraction.picoseconds(), precision);
+        final Boundary adjusted = StructuredTemporalSupport.adjustTimestamp(
+                value, precision, precisionHandlingMode, range, rangeHandlingMode, targetDescription);
+        return formatTimestamp(adjusted.year(), adjusted.month(), adjusted.day(), adjusted.hour(), adjusted.minute(),
+                adjusted.second(), adjusted.picoseconds(), precision);
     }
 
     static String duration(Struct value, int precision, TemporalPrecisionLossHandlingMode handlingMode) {
@@ -92,6 +114,15 @@ final class StructuredTemporalLiteral {
             throw new ConnectException(String.format(
                     "MySQL TIME cannot represent structured duration field '%s' without semantic loss", fieldName));
         }
+    }
+
+    private static boolean hasZeroDate(Struct value) {
+        final Integer year = value.getInt32(StructuredTemporal.YEAR_FIELD);
+        final Byte month = value.getInt8(StructuredTemporal.MONTH_FIELD);
+        final Byte day = value.getInt8(StructuredTemporal.DAY_FIELD);
+        return (year == null || year == 0)
+                && (month == null || month == 0)
+                && (day == null || day == 0);
     }
 
     private static int intValue(Struct value, String fieldName) {

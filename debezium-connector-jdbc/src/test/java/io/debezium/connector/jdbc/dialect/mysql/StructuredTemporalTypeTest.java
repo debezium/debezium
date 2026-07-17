@@ -22,8 +22,11 @@ import org.junit.jupiter.api.Test;
 
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.TemporalPrecisionLossHandlingMode;
+import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.TemporalRangeLossHandlingMode;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.debezium.TargetTemporalCapabilities;
+import io.debezium.connector.jdbc.type.debezium.TemporalRange;
+import io.debezium.connector.jdbc.type.debezium.TemporalRange.Boundary;
 import io.debezium.sink.SinkConnectorConfig;
 import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.time.StructuredDate;
@@ -156,12 +159,62 @@ class StructuredTemporalTypeTest {
                 .hasMessageContaining("precision 6");
     }
 
+    @Test
+    @DisplayName("Should saturate PostgreSQL-sized timestamps to the MySQL datetime range")
+    void shouldSaturateTimestampRange() {
+        final var schema = StructuredTimestamp.builder(6).build();
+        final var value = StructuredTimestamp.from(schema, 12_000, 1, 2, 3, 4, 5, 123_456_000, 6);
+        final var type = configuredTimestampType(
+                TemporalPrecisionLossHandlingMode.FAIL, TemporalRangeLossHandlingMode.SATURATE);
+
+        assertThat(type.bind(1, timestampColumn("datetime", 6), schema, value).get(0).getValue())
+                .isEqualTo("9999-12-31 23:59:59.499999");
+        assertThat(type.getDefaultValueBinding(schema, value))
+                .isEqualTo("'9999-12-31 23:59:59.499999'");
+    }
+
+    @Test
+    @DisplayName("Should reject out-of-range MySQL timestamps in fail mode")
+    void shouldRejectTimestampRangeLoss() {
+        final var schema = StructuredTimestamp.builder(6).build();
+        final var value = StructuredTimestamp.from(schema, 12_000, 1, 2, 3, 4, 5, 0, 6);
+        final var type = configuredTimestampType(
+                TemporalPrecisionLossHandlingMode.FAIL, TemporalRangeLossHandlingMode.FAIL);
+
+        assertThatThrownBy(() -> type.bind(1, timestampColumn("datetime", 6), schema, value))
+                .isInstanceOf(ConnectException.class)
+                .hasMessageContaining("12000-01-02")
+                .hasMessageContaining("saturate");
+    }
+
+    @Test
+    @DisplayName("Should retain MySQL zero dates when range handling is enabled")
+    void shouldRetainZeroDateWithRangeHandling() {
+        final var schema = StructuredDate.schema();
+        final var value = StructuredDate.from(schema, 0, 0, 0);
+        final var type = new StructuredDateType();
+        final JdbcSinkConnectorConfig config = mock(JdbcSinkConnectorConfig.class);
+        final DatabaseDialect dialect = mock(DatabaseDialect.class);
+        when(config.useTimeZone()).thenReturn("UTC");
+        when(config.getTemporalRangeLossHandlingMode()).thenReturn(TemporalRangeLossHandlingMode.SATURATE);
+        when(dialect.getTargetTemporalCapabilities()).thenReturn(mysqlCapabilities());
+        type.configure(config, dialect);
+
+        assertThat(type.bind(1, dateColumn(), schema, value).get(0).getValue()).isEqualTo("0000-00-00");
+    }
+
     private StructuredTimestampType configuredTimestampType(TemporalPrecisionLossHandlingMode mode) {
+        return configuredTimestampType(mode, TemporalRangeLossHandlingMode.FAIL);
+    }
+
+    private StructuredTimestampType configuredTimestampType(TemporalPrecisionLossHandlingMode precisionMode,
+                                                            TemporalRangeLossHandlingMode rangeMode) {
         final var type = new StructuredTimestampType();
         final JdbcSinkConnectorConfig config = mock(JdbcSinkConnectorConfig.class);
         final DatabaseDialect dialect = mock(DatabaseDialect.class);
         when(config.useTimeZone()).thenReturn("UTC");
-        when(config.getTemporalPrecisionLossHandlingMode()).thenReturn(mode);
+        when(config.getTemporalPrecisionLossHandlingMode()).thenReturn(precisionMode);
+        when(config.getTemporalRangeLossHandlingMode()).thenReturn(rangeMode);
         when(dialect.getMaxTimestampPrecision()).thenReturn(6);
         when(dialect.getDefaultTimestampPrecision()).thenReturn(6);
         when(dialect.getTargetTemporalCapabilities()).thenReturn(mysqlCapabilities());
@@ -181,7 +234,12 @@ class StructuredTemporalTypeTest {
     }
 
     private TargetTemporalCapabilities mysqlCapabilities() {
+        final TemporalRange datetimeRange = new TemporalRange(
+                Boundary.timestamp(1000, 1, 1, 0, 0, 0, 0),
+                Boundary.timestamp(9999, 12, 31, 23, 59, 59, 499_999_999_999L));
         return TargetTemporalCapabilities.defaults(6, 6)
+                .withDateRange(TemporalRange.dateYears(1000, 9999))
+                .withTimestampRange(datetimeRange)
                 .withDurationKinds(java.util.EnumSet.of(StructuredDuration.Kind.ELAPSED_TIME));
     }
 
@@ -191,6 +249,23 @@ class StructuredTemporalTypeTest {
                 .jdbcType(Types.TIME)
                 .typeName("time")
                 .scale(precision)
+                .build();
+    }
+
+    private ColumnDescriptor timestampColumn(String typeName, int precision) {
+        return ColumnDescriptor.builder()
+                .columnName("ts")
+                .jdbcType(Types.TIMESTAMP)
+                .typeName(typeName)
+                .scale(precision)
+                .build();
+    }
+
+    private ColumnDescriptor dateColumn() {
+        return ColumnDescriptor.builder()
+                .columnName("d")
+                .jdbcType(Types.DATE)
+                .typeName("date")
                 .build();
     }
 }

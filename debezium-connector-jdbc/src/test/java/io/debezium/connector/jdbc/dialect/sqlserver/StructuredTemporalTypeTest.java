@@ -25,9 +25,12 @@ import org.junit.jupiter.api.Test;
 
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.TemporalPrecisionLossHandlingMode;
+import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.TemporalRangeLossHandlingMode;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.debezium.StructuredDurationType;
 import io.debezium.connector.jdbc.type.debezium.TargetTemporalCapabilities;
+import io.debezium.connector.jdbc.type.debezium.TemporalRange;
+import io.debezium.connector.jdbc.type.debezium.TemporalRange.Boundary;
 import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.time.StructuredDuration;
 import io.debezium.time.StructuredTime;
@@ -77,6 +80,30 @@ class StructuredTemporalTypeTest {
         final var schema = StructuredTimestamp.schema();
 
         assertThat(StructuredTimestampType.INSTANCE.getQueryBinding(null, schema, null)).isEqualTo("cast(? as datetime2(7))");
+    }
+
+    @Test
+    @DisplayName("Should use the actual SQL Server timestamp type range when saturating")
+    void shouldSaturateActualTimestampTypeRange() {
+        final var schema = StructuredTimestamp.builder(7).build();
+        final var value = StructuredTimestamp.from(schema, 1600, 1, 1, 12, 13, 14, 0, 7);
+        final var datetimeRange = new TemporalRange(
+                Boundary.timestamp(1753, 1, 1, 0, 0, 0, 0),
+                Boundary.timestamp(9999, 12, 31, 23, 59, 59, 997_000_000_000L));
+        final var capabilities = TargetTemporalCapabilities.defaults(7, 7)
+                .withTimestampRange(TemporalRange.timestampYears(1, 9999))
+                .withTimestampRangeForType(datetimeRange, "datetime");
+        final JdbcSinkConnectorConfig config = mock(JdbcSinkConnectorConfig.class);
+        final DatabaseDialect dialect = mock(DatabaseDialect.class);
+        when(config.useTimeZone()).thenReturn("UTC");
+        when(config.getTemporalPrecisionLossHandlingMode()).thenReturn(TemporalPrecisionLossHandlingMode.FAIL);
+        when(config.getTemporalRangeLossHandlingMode()).thenReturn(TemporalRangeLossHandlingMode.SATURATE);
+        when(dialect.getTargetTemporalCapabilities()).thenReturn(capabilities);
+        final var type = new StructuredTimestampType();
+        type.configure(config, dialect);
+
+        assertThat(type.bind(1, timestampColumn("datetime", 3), schema, value).get(0).getValue())
+                .isEqualTo(LocalDateTime.of(1753, 1, 1, 0, 0));
     }
 
     @Test
@@ -135,6 +162,15 @@ class StructuredTemporalTypeTest {
                 .columnName("time_value")
                 .jdbcType(Types.TIME)
                 .typeName("time")
+                .scale(precision)
+                .build();
+    }
+
+    private ColumnDescriptor timestampColumn(String typeName, int precision) {
+        return ColumnDescriptor.builder()
+                .columnName("timestamp_value")
+                .jdbcType(Types.TIMESTAMP)
+                .typeName(typeName)
                 .scale(precision)
                 .build();
     }
