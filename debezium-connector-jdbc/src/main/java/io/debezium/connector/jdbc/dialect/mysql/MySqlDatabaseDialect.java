@@ -52,6 +52,8 @@ import io.debezium.util.Strings;
  */
 public class MySqlDatabaseDialect extends GeneralDatabaseDialect {
 
+    // MySQL defines .499999, rather than .999999, as the fractional upper boundary
+    // for both DATETIME(6) and TIMESTAMP(6).
     private static final TemporalRange DATETIME_RANGE = new TemporalRange(
             Boundary.timestamp(1000, 1, 1, 0, 0, 0, 0),
             Boundary.timestamp(9999, 12, 31, 23, 59, 59, 499_999_999_999L));
