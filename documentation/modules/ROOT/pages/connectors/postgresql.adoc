@@ -2004,7 +2004,9 @@ If the source schema may contain values outside the representable range, use `ti
 Set the `time.precision.mode` property to `structured` to configure the connector to represent temporal values as Kafka Connect structs with separate calendar and clock components.
 This mode avoids flattening high-precision temporal values into a single epoch-based integer.
 PostgreSQL `infinity` and `-infinity` values are represented by the `specialValue` field instead of by finite sentinel timestamps.
-Structured temporal values that have fractional seconds include an optional `precision` field that records the source column's fractional second precision.
+Structured temporal values store fractional seconds in an optional `picoseconds` `INT64` field.
+The optional `precision` value field and the `io.debezium.time.precision` schema parameter record the source column's fractional-second precision.
+For an `INTERVAL` column, the `io.debezium.time.duration.kind` schema parameter is `mixed` because PostgreSQL intervals can combine year-month and day-time components.
 The {prodname} JDBC sink connector can consume these structured temporal schemas directly and maps them according to the target database dialect.
 
 [NOTE]
@@ -2032,31 +2034,31 @@ Contains `year`, `month`, and `day` fields. PostgreSQL `infinity` and `-infinity
 |`STRUCT`
 |`io.debezium.time.StructuredTime` +
  +
-Contains `hour`, `minute`, `second`, `nanos`, and optional `precision` fields.
+Contains `hour`, `minute`, `second`, `picoseconds`, and optional `precision` fields.
 
 |`TIMESTAMP([P])`
 |`STRUCT`
 |`io.debezium.time.StructuredTimestamp` +
  +
-Contains `year`, `month`, `day`, `hour`, `minute`, `second`, `nanos`, and optional `precision` fields. PostgreSQL `infinity` and `-infinity` values are represented as `specialValue`.
+Contains `year`, `month`, `day`, `hour`, `minute`, `second`, `picoseconds`, and optional `precision` fields. PostgreSQL `infinity` and `-infinity` values are represented as `specialValue`.
 
 |`TIMETZ`
 |`STRUCT`
 |`io.debezium.time.StructuredZonedTime` +
  +
-Contains clock component fields, an `offsetSeconds` field, and an optional `precision` field.
+Contains clock component fields, `picoseconds`, `offsetSeconds`, and optional `precision` fields.
 
 |`TIMESTAMPTZ`
 |`STRUCT`
 |`io.debezium.time.StructuredZonedTimestamp` +
  +
-Contains calendar and clock component fields, `offsetSeconds`, optional `zoneId`, and optional `precision`. PostgreSQL `infinity` and `-infinity` values are represented as `specialValue`.
+Contains calendar and clock component fields, `picoseconds`, `offsetSeconds`, optional `zoneId`, and optional `precision`. PostgreSQL `infinity` and `-infinity` values are represented as `specialValue`.
 
 |`INTERVAL`
 |`STRUCT`
 |`io.debezium.time.StructuredDuration` +
  +
-Contains signed `years`, `months`, `days`, `hours`, `minutes`, `seconds`, `nanos`, and optional `precision` fields.
+Contains signed `years`, `months`, `days`, `hours`, `minutes`, `seconds`, `picoseconds`, and optional `precision` fields. The duration kind is `mixed`.
 
 |===
 

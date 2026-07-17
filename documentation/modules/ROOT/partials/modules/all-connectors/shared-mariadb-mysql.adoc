@@ -2074,7 +2074,9 @@ Use `time.precision.mode=microseconds` (or `isostring`) to avoid the limitation.
 time.precision.mode=structured::
 The {connector-name} connector represents temporal values as Kafka Connect structs with separate calendar and clock components.
 This mode can preserve zero and invalid temporal components without converting them to epoch-based numeric values.
-Structured temporal values that have fractional seconds include an optional `precision` field that records the source column's fractional second precision.
+Structured temporal values store fractional seconds in an optional `picoseconds` `INT64` field.
+The optional `precision` value field and the `io.debezium.time.precision` schema parameter record the source column's fractional-second precision.
+For a `TIME` column, the `io.debezium.time.duration.kind` schema parameter is `elapsed-time`.
 The {prodname} JDBC sink connector can consume these structured temporal schemas directly and maps them according to the target database dialect.
 +
 .Mappings when `time.precision.mode=structured`
@@ -2090,17 +2092,17 @@ Contains `year`, `month`, and `day` fields.
 |`TIME[(M)]`
 |`STRUCT`
 a|`io.debezium.time.StructuredDuration` +
-Contains signed `years`, `months`, `days`, `hours`, `minutes`, `seconds`, `nanos`, and optional `precision` fields.
+Contains signed `years`, `months`, `days`, `hours`, `minutes`, `seconds`, `picoseconds`, and optional `precision` fields. The duration kind is `elapsed-time`.
 
 |`DATETIME[(M)]`
 |`STRUCT`
 a|`io.debezium.time.StructuredTimestamp` +
-Contains `year`, `month`, `day`, `hour`, `minute`, `second`, `nanos`, and optional `precision` fields.
+Contains `year`, `month`, `day`, `hour`, `minute`, `second`, `picoseconds`, and optional `precision` fields.
 
 |`TIMESTAMP[(M)]`
 |`STRUCT`
 a|`io.debezium.time.StructuredZonedTimestamp` +
-Contains calendar and clock component fields, `offsetSeconds`, optional `zoneId`, and optional `precision`.
+Contains calendar and clock component fields, `picoseconds`, `offsetSeconds`, optional `zoneId`, and optional `precision`.
 
 |===
 end::temporal-data-types[]
