@@ -38,6 +38,8 @@ import io.debezium.connector.jdbc.dialect.SqlStatementBuilder;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
 import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.connector.jdbc.type.debezium.TargetTemporalCapabilities;
+import io.debezium.connector.jdbc.type.debezium.TemporalRange;
+import io.debezium.connector.jdbc.type.debezium.TemporalRange.Boundary;
 import io.debezium.sink.field.FieldDescriptor;
 import io.debezium.time.StructuredDuration;
 import io.debezium.time.ZonedTimestamp;
@@ -50,9 +52,20 @@ import io.debezium.util.Strings;
  */
 public class MySqlDatabaseDialect extends GeneralDatabaseDialect {
 
+    private static final TemporalRange DATETIME_RANGE = new TemporalRange(
+            Boundary.timestamp(1000, 1, 1, 0, 0, 0, 0),
+            Boundary.timestamp(9999, 12, 31, 23, 59, 59, 499_999_999_999L));
+
+    private static final TemporalRange TIMESTAMP_RANGE = new TemporalRange(
+            Boundary.timestamp(1970, 1, 1, 0, 0, 1, 0),
+            Boundary.timestamp(2038, 1, 19, 3, 14, 7, 499_999_999_999L));
+
     @Override
     public TargetTemporalCapabilities getTargetTemporalCapabilities() {
         return TargetTemporalCapabilities.defaults(getMaxTimePrecision(), getMaxTimestampPrecision())
+                .withDateRange(TemporalRange.dateYears(1000, 9999))
+                .withTimestampRange(DATETIME_RANGE)
+                .withTimestampRangeForType(TIMESTAMP_RANGE, "timestamp")
                 .withDurationKinds(EnumSet.of(StructuredDuration.Kind.ELAPSED_TIME));
     }
 
