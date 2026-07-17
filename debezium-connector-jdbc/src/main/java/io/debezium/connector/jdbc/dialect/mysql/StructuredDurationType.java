@@ -38,14 +38,13 @@ public class StructuredDurationType extends AbstractTemporalType {
             throw new org.apache.kafka.connect.errors.ConnectException(String.format(
                     "Structured duration kind '%s' cannot be mapped to MySQL TIME without semantic loss", kind.getValue()));
         }
-        final int maxPrecision = getDialect().getTargetTemporalCapabilities().maxTimePrecision();
-        final int precision = StructuredTemporalSupport.getPrecision(schema).orElse(Math.min(6, maxPrecision));
-        return getDialect().getJdbcTypeName(Types.TIME, Size.precision(Math.min(precision, maxPrecision)));
+        return getDialect().getJdbcTypeName(Types.TIME, Size.precision(getSchemaTimePrecision(schema)));
     }
 
     @Override
     public String getDefaultValueBinding(Schema schema, Object value) {
-        return "'" + StructuredTemporalLiteral.duration(requireStruct(value)) + "'";
+        return "'" + StructuredTemporalLiteral.duration(
+                requireStruct(value), getSchemaTimePrecision(schema), getPrecisionLossHandlingMode()) + "'";
     }
 
     @Override
@@ -53,7 +52,8 @@ public class StructuredDurationType extends AbstractTemporalType {
         if (value == null) {
             return List.of(new ValueBindDescriptor(index, null));
         }
-        return List.of(new ValueBindDescriptor(index, StructuredTemporalLiteral.duration(requireStruct(value)), Types.VARCHAR));
+        return List.of(new ValueBindDescriptor(index, StructuredTemporalLiteral.duration(
+                requireStruct(value), getSchemaTimePrecision(schema), getPrecisionLossHandlingMode()), Types.VARCHAR));
     }
 
     @Override
@@ -78,5 +78,11 @@ public class StructuredDurationType extends AbstractTemporalType {
         final int precision = getDialect().getTargetTemporalCapabilities().targetTimePrecision(column);
         return List.of(new ValueBindDescriptor(index,
                 StructuredTemporalLiteral.duration(requireStruct(value), precision, getPrecisionLossHandlingMode()), Types.VARCHAR));
+    }
+
+    private int getSchemaTimePrecision(Schema schema) {
+        final int maxPrecision = getDialect().getTargetTemporalCapabilities().maxTimePrecision();
+        final int precision = StructuredTemporalSupport.getPrecision(schema).orElse(Math.min(6, maxPrecision));
+        return Math.min(precision, maxPrecision);
     }
 }

@@ -22,12 +22,18 @@ public abstract class AbstractTimestampType extends AbstractTemporalType {
 
     @Override
     public String getTypeName(Schema schema, boolean isKey) {
+        final int precision = getSchemaTimestampPrecision(schema);
+        final DatabaseDialect dialect = getDialect();
+        return dialect.getJdbcTypeName(getJdbcType(), Size.precision(precision));
+    }
+
+    protected int getSchemaTimestampPrecision(Schema schema) {
         final int precision = getTimePrecision(schema);
-        DatabaseDialect dialect = getDialect();
+        final DatabaseDialect dialect = getDialect();
         if (shouldUseSourcePrecision(precision, dialect.getMaxTimestampPrecision())) {
-            return dialect.getJdbcTypeName(getJdbcType(), Size.precision(precision));
+            return precision;
         }
-        return dialect.getJdbcTypeName(getJdbcType(), Size.precision(dialect.getDefaultTimestampPrecision()));
+        return dialect.getDefaultTimestampPrecision();
     }
 
     protected int getTimePrecision(Schema schema) {

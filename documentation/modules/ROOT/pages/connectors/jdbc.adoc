@@ -623,6 +623,7 @@ The connector also rejects a structured zoned timestamp if the target cannot pre
 
 By default, the connector rejects fractional-second values only if the target precision would discard non-zero digits.
 You can use xref:jdbc-property-temporal-precision-loss-handling-mode[`temporal.precision.loss.handling.mode`] to explicitly truncate or round such values instead.
+The same policy applies when the connector renders structured temporal schema default values in generated DDL.
 
 Db2 and Db2 iSeries timestamp targets support fractional-second precision up to 12 digits.
 For structured timestamp values, the connector binds the picosecond value as text and applies a server-side `TIMESTAMP(p)` cast, avoiding the nine-digit precision limit of standard JDBC temporal values.

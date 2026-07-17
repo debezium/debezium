@@ -27,10 +27,6 @@ final class StructuredTemporalLiteral {
                 value.getInt8(StructuredTemporal.DAY_FIELD));
     }
 
-    static String timestamp(Struct value) {
-        return timestamp(value, 6, TemporalPrecisionLossHandlingMode.TRUNCATE);
-    }
-
     static String timestamp(Struct value, int precision, TemporalPrecisionLossHandlingMode handlingMode) {
         requireFinite(value);
         final var fraction = StructuredTemporalPreflightValidator.reduceFraction(
@@ -52,14 +48,12 @@ final class StructuredTemporalLiteral {
                 fraction.picoseconds(), precision);
     }
 
-    static String duration(Struct value) {
-        return duration(value, 6, TemporalPrecisionLossHandlingMode.TRUNCATE);
-    }
-
     static String duration(Struct value, int precision, TemporalPrecisionLossHandlingMode handlingMode) {
         requireZero(value, StructuredTemporal.YEARS_FIELD);
         requireZero(value, StructuredTemporal.MONTHS_FIELD);
         requireZero(value, StructuredTemporal.DAYS_FIELD);
+        StructuredTemporalPreflightValidator.reduceFraction(
+                longValue(value, StructuredTemporal.PICOSECONDS_FIELD), precision, handlingMode);
 
         BigDecimal totalSeconds = BigDecimal.valueOf(intValue(value, StructuredTemporal.HOURS_FIELD)).multiply(BigDecimal.valueOf(3_600))
                 .add(BigDecimal.valueOf(intValue(value, StructuredTemporal.MINUTES_FIELD)).multiply(BigDecimal.valueOf(60)))

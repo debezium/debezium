@@ -13,7 +13,6 @@ import java.util.List;
 import org.apache.kafka.connect.data.Schema;
 import org.hibernate.engine.jdbc.Size;
 
-import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.debezium.StructuredTemporalSupport;
 import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
@@ -27,12 +26,7 @@ public class StructuredTimeType extends io.debezium.connector.jdbc.type.debezium
 
     @Override
     public String getTypeName(Schema schema, boolean isKey) {
-        final int precision = getTimePrecision(schema);
-        final DatabaseDialect dialect = getDialect();
-        if (precision >= 0) {
-            return dialect.getJdbcTypeName(Types.TIMESTAMP, Size.precision(precision));
-        }
-        return dialect.getJdbcTypeName(Types.TIMESTAMP, Size.precision(dialect.getMaxTimePrecision()));
+        return getDialect().getJdbcTypeName(Types.TIMESTAMP, Size.precision(getSchemaTimePrecision(schema)));
     }
 
     @Override
@@ -55,5 +49,11 @@ public class StructuredTimeType extends io.debezium.connector.jdbc.type.debezium
                 .toLocalTime(requireStruct(value), precision, getPrecisionLossHandlingMode())
                 .atDate(LocalDate.EPOCH);
         return List.of(new ValueBindDescriptor(index, localDateTime, Types.TIMESTAMP));
+    }
+
+    @Override
+    protected int getSchemaTimePrecision(Schema schema) {
+        final int precision = getTimePrecision(schema);
+        return precision >= 0 ? precision : getDialect().getMaxTimePrecision();
     }
 }

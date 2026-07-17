@@ -50,7 +50,11 @@ public class StructuredZonedTimestampType extends AbstractTimestampType {
 
     @Override
     public String getDefaultValueBinding(Schema schema, Object value) {
-        return getDialect().getFormattedDateTime(StructuredTemporalSupport.toOffsetDateTime(requireStruct(value)));
+        final var struct = requireStruct(value);
+        StructuredTemporalPreflightValidator.validateZonedTimestamp(
+                struct, getDialect().getTargetTemporalCapabilities());
+        return getDialect().getFormattedDateTime(StructuredTemporalSupport.toOffsetDateTime(
+                struct, getSchemaTimestampPrecision(schema), getPrecisionLossHandlingMode()));
     }
 
     @Override

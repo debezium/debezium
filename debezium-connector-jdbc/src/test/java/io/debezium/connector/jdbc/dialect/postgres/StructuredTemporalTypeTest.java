@@ -6,6 +6,8 @@
 package io.debezium.connector.jdbc.dialect.postgres;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -13,6 +15,7 @@ import java.sql.Types;
 import java.time.OffsetTime;
 import java.time.ZoneOffset;
 
+import org.apache.kafka.connect.errors.ConnectException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -99,6 +102,12 @@ class StructuredTemporalTypeTest {
         final var roundedValue = StructuredDuration.from(schema, 0, 0, 0, 0, 0, 6, 789_123_556, 9);
         assertThat(roundType.bind(1, intervalColumn(6), schema, roundedValue).get(0).getValue())
                 .isEqualTo("6.789124 seconds");
+        assertThat(roundType.getDefaultValueBinding(schema, roundedValue))
+                .isEqualTo("'6.789124 seconds'");
+        assertThatThrownBy(() -> configuredDurationType(TemporalPrecisionLossHandlingMode.FAIL)
+                .getDefaultValueBinding(schema, roundedValue))
+                .isInstanceOf(ConnectException.class)
+                .hasMessageContaining("precision 6");
     }
 
     @Test
@@ -129,6 +138,26 @@ class StructuredTemporalTypeTest {
 
         assertThat(bindings).hasSize(1);
         assertThat(bindings.get(0).getValue()).isEqualTo("24:00:00+05:30");
+    }
+
+    @Test
+    @DisplayName("Should apply round mode to PostgreSQL timetz defaults")
+    void shouldRoundStructuredZonedTimeDefault() {
+        final var schema = StructuredZonedTime.builder(9).build();
+        final var value = StructuredZonedTime.from(
+                schema, OffsetTime.of(12, 13, 14, 123_456_789, ZoneOffset.ofHours(9)), 9);
+        final var type = new StructuredZonedTimeType();
+        final JdbcSinkConnectorConfig config = mock(JdbcSinkConnectorConfig.class);
+        final DatabaseDialect dialect = mock(DatabaseDialect.class);
+        when(config.useTimeZone()).thenReturn("UTC");
+        when(config.getTemporalPrecisionLossHandlingMode()).thenReturn(TemporalPrecisionLossHandlingMode.ROUND);
+        when(dialect.getDefaultTimePrecision()).thenReturn(6);
+        when(dialect.getTargetTemporalCapabilities()).thenReturn(TargetTemporalCapabilities.defaults(6, 6));
+        when(dialect.getFormattedTimeWithTimeZone(anyString())).thenAnswer(invocation -> "'" + invocation.getArgument(0) + "'");
+        type.configure(config, dialect);
+
+        assertThat(type.getDefaultValueBinding(schema, value))
+                .isEqualTo("'12:13:14.123457+09:00'");
     }
 
     private void assertInfinityBinding(ValueBindDescriptor binding, String expectedValue) {

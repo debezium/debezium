@@ -27,6 +27,12 @@ public class StructuredZonedTimeType extends io.debezium.connector.jdbc.type.deb
     }
 
     @Override
+    public String getDefaultValueBinding(Schema schema, Object value) {
+        return getDialect().getFormattedTimeWithTimeZone(StructuredTemporalSupport.toTimetzLiteral(
+                requireStruct(value), getSchemaTimePrecision(schema), getPrecisionLossHandlingMode()));
+    }
+
+    @Override
     public List<ValueBindDescriptor> bind(int index, Schema schema, Object value) {
         if (value == null) {
             return List.of(new ValueBindDescriptor(index, null));
@@ -52,5 +58,10 @@ public class StructuredZonedTimeType extends io.debezium.connector.jdbc.type.deb
     @Override
     public String getTypeName(Schema schema, boolean isKey) {
         return "timetz";
+    }
+
+    @Override
+    protected int getSchemaTimePrecision(Schema schema) {
+        return getDialect().getDefaultTimePrecision();
     }
 }

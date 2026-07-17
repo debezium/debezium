@@ -22,7 +22,8 @@ public class StructuredTimestampType extends io.debezium.connector.jdbc.type.deb
 
     @Override
     public String getDefaultValueBinding(Schema schema, Object value) {
-        return "'" + StructuredTemporalLiteral.timestamp(requireStruct(value)) + "'";
+        return "'" + StructuredTemporalLiteral.timestamp(
+                requireStruct(value), getSchemaTimestampPrecision(schema), getPrecisionLossHandlingMode()) + "'";
     }
 
     @Override
@@ -30,7 +31,8 @@ public class StructuredTimestampType extends io.debezium.connector.jdbc.type.deb
         if (value == null) {
             return List.of(new ValueBindDescriptor(index, null));
         }
-        return List.of(new ValueBindDescriptor(index, StructuredTemporalLiteral.timestamp(requireStruct(value)), Types.VARCHAR));
+        return List.of(new ValueBindDescriptor(index, StructuredTemporalLiteral.timestamp(
+                requireStruct(value), getSchemaTimestampPrecision(schema), getPrecisionLossHandlingMode()), Types.VARCHAR));
     }
 
     @Override
