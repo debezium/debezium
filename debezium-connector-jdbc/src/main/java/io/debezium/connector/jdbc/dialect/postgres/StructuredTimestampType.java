@@ -39,4 +39,17 @@ public class StructuredTimestampType extends io.debezium.connector.jdbc.type.deb
         }
         return super.bind(index, schema, value);
     }
+
+    @Override
+    public List<ValueBindDescriptor> bind(int index, ColumnDescriptor column, Schema schema, Object value) {
+        if (value instanceof Struct struct) {
+            if (StructuredTemporal.isPositiveInfinity(struct)) {
+                return List.of(new ValueBindDescriptor(index, "infinity", Types.VARCHAR));
+            }
+            if (StructuredTemporal.isNegativeInfinity(struct)) {
+                return List.of(new ValueBindDescriptor(index, "-infinity", Types.VARCHAR));
+            }
+        }
+        return super.bind(index, column, schema, value);
+    }
 }

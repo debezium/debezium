@@ -14,6 +14,7 @@ import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.TemporalAccessor;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -36,7 +37,9 @@ import io.debezium.connector.jdbc.dialect.GeneralDatabaseDialect;
 import io.debezium.connector.jdbc.dialect.SqlStatementBuilder;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
 import io.debezium.connector.jdbc.type.JdbcType;
+import io.debezium.connector.jdbc.type.debezium.TargetTemporalCapabilities;
 import io.debezium.sink.field.FieldDescriptor;
+import io.debezium.time.StructuredDuration;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.Strings;
 
@@ -46,6 +49,12 @@ import io.debezium.util.Strings;
  * @author Chris Cranford
  */
 public class MySqlDatabaseDialect extends GeneralDatabaseDialect {
+
+    @Override
+    public TargetTemporalCapabilities getTargetTemporalCapabilities() {
+        return TargetTemporalCapabilities.defaults(getMaxTimePrecision(), getMaxTimestampPrecision())
+                .withDurationKinds(EnumSet.of(StructuredDuration.Kind.ELAPSED_TIME));
+    }
 
     private static final List<String> NO_DEFAULT_VALUE_TYPES = Arrays.asList(
             "tinytext", "mediumtext", "longtext", "text", "tinyblob", "mediumblob", "longblob");

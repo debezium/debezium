@@ -14,6 +14,7 @@ import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.connector.jdbc.type.AbstractTimeType;
 import io.debezium.connector.jdbc.type.JdbcType;
+import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
 import io.debezium.time.StructuredTemporal;
 import io.debezium.time.StructuredZonedTime;
@@ -32,8 +33,11 @@ public class StructuredZonedTimeType extends AbstractTimeType {
 
     @Override
     protected int getTimePrecision(Schema schema) {
-        final String length = getSourceColumnSize(schema).orElse("-1");
-        return getSourceColumnPrecision(schema).map(Integer::parseInt).orElseGet(() -> Integer.parseInt(length));
+        return StructuredTemporalSupport.getPrecision(schema)
+                .stream()
+                .map(precision -> Math.min(precision, getDialect().getMaxTimePrecision()))
+                .findFirst()
+                .orElse(-1);
     }
 
     @Override
@@ -49,6 +53,29 @@ public class StructuredZonedTimeType extends AbstractTimeType {
         final Struct struct = requireStruct(value);
         final OffsetTime offsetTime = OffsetTime.of(
                 StructuredTemporalSupport.toLocalTime(struct),
+                java.time.ZoneOffset.ofTotalSeconds(struct.getInt32(StructuredTemporal.OFFSET_SECONDS_FIELD)));
+        return List.of(new ValueBindDescriptor(index, offsetTime, Types.TIME_WITH_TIMEZONE));
+    }
+
+    @Override
+    public void validate(ColumnDescriptor column, Schema schema, Object value) {
+        if (value != null) {
+            final var capabilities = getDialect().getTargetTemporalCapabilities();
+            StructuredTemporalPreflightValidator.validatePrecision(
+                    column, requireStruct(value), capabilities.targetTimePrecision(column), getPrecisionLossHandlingMode());
+        }
+    }
+
+    @Override
+    public List<ValueBindDescriptor> bind(int index, ColumnDescriptor column, Schema schema, Object value) {
+        if (value == null) {
+            return List.of(new ValueBindDescriptor(index, null));
+        }
+        validate(column, schema, value);
+        final Struct struct = requireStruct(value);
+        final int precision = getDialect().getTargetTemporalCapabilities().targetTimePrecision(column);
+        final OffsetTime offsetTime = OffsetTime.of(
+                StructuredTemporalSupport.toLocalTime(struct, precision, getPrecisionLossHandlingMode()),
                 java.time.ZoneOffset.ofTotalSeconds(struct.getInt32(StructuredTemporal.OFFSET_SECONDS_FIELD)));
         return List.of(new ValueBindDescriptor(index, offsetTime, Types.TIME_WITH_TIMEZONE));
     }
