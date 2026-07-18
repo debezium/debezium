@@ -16,6 +16,7 @@ import java.util.List;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -106,11 +107,11 @@ public class MySqlConnectorNoBlobIT extends AbstractAsyncEngineConnectorTest {
     }
 
     /**
-     * Test that both before and after sections exclude BLOB/TEXT columns in UPDATE operations
-     * when binlog_row_image=NOBLOB mode is enabled.
+     * Test that both before and after sections carry the unavailable-value placeholder for
+     * BLOB/TEXT columns in UPDATE operations when binlog_row_image=NOBLOB mode is enabled.
      */
     @Test
-    public void textAndBlobColumnShouldNotBeContainedInBeforeAndAfterSectionsDuringUpdate() throws InterruptedException, SQLException {
+    public void textAndBlobColumnShouldBeUnavailableValuePlaceholderInBeforeAndAfterSectionsDuringUpdate() throws InterruptedException, SQLException {
         // Use the DB configuration to define the connector's configuration.
         config = simpleConfig()
                 .build();
@@ -160,26 +161,17 @@ public class MySqlConnectorNoBlobIT extends AbstractAsyncEngineConnectorTest {
         assertThat(beforeImages).hasSize(updateExpected);
         assertThat(afterImages).hasSize(updateExpected);
 
-        // Check that before images do not contain BLOB/TEXT columns
+        // The value schema is fixed to the full table width, so the BLOB/TEXT column is always
+        // present; unchanged BLOB/TEXT columns are omitted from the NOBLOB row image and must
+        // surface as the unavailable-value placeholder instead.
         beforeImages.forEach(beforeImage -> {
-            final Schema schema = beforeImage.schema();
-            final List<Field> fields = schema.fields();
-            assertThat(fields).hasSize(2); // Should only have 'id' and 'name' fields
-            fields.forEach(field -> {
-                assertThat(field.name()).isNotEqualTo("description");
-                assertThat(field.name()).isIn("id", "name");
-            });
+            assertThat(beforeImage.schema().fields()).hasSize(3);
+            assertThat(new String(beforeImage.getBytes("description"))).isEqualTo("__debezium_unavailable_value");
         });
 
-        // Check that after images do not contain BLOB/TEXT columns
         afterImages.forEach(afterImage -> {
-            final Schema schema = afterImage.schema();
-            final List<Field> fields = schema.fields();
-            assertThat(fields).hasSize(2); // Should only have 'id' and 'name' fields
-            fields.forEach(field -> {
-                assertThat(field.name()).isNotEqualTo("description");
-                assertThat(field.name()).isIn("id", "name");
-            });
+            assertThat(afterImage.schema().fields()).hasSize(3);
+            assertThat(new String(afterImage.getBytes("description"))).isEqualTo("__debezium_unavailable_value");
         });
 
         // Verify that the updates were captured correctly (name field should be updated)
@@ -187,6 +179,41 @@ public class MySqlConnectorNoBlobIT extends AbstractAsyncEngineConnectorTest {
             final String name = afterImage.getString("name");
             assertThat(name).startsWith("updated-");
         });
+    }
+
+    /**
+     * Test that the before section carries the unavailable-value placeholder for BLOB/TEXT
+     * columns in DELETE operations when binlog_row_image=NOBLOB mode is enabled.
+     */
+    @Test
+    public void textAndBlobColumnShouldBeUnavailableValuePlaceholderInBeforeSectionDuringDelete() throws InterruptedException, SQLException {
+        // Use the DB configuration to define the connector's configuration.
+        config = simpleConfig()
+                .build();
+
+        // Start the connector.
+        start(MySqlConnector.class, config);
+
+        // Wait for snapshot to complete
+        final int snapshotExpected = 15;
+        consumeAtLeast(snapshotExpected);
+
+        // Delete a row so that the binlog contains a delete event with a NOBLOB before image
+        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+            db.execute("DELETE FROM Products WHERE id = 1");
+        }
+
+        final SourceRecords records = consumeRecordsByTopic(1);
+        final List<SourceRecord> deleteRecords = records.recordsForTopic(DATABASE.topicForTable(productsTableName()));
+        assertThat(deleteRecords).hasSize(1);
+
+        final Struct value = (Struct) deleteRecords.get(0).value();
+        final Struct beforeImage = value.getStruct("before");
+        assertThat(beforeImage).isNotNull();
+        assertThat(beforeImage.schema().fields()).hasSize(3);
+        assertThat(beforeImage.getInt32("id")).isEqualTo(1);
+        assertThat(beforeImage.getString("name")).isEqualTo("scooter");
+        assertThat(new String(beforeImage.getBytes("description"))).isEqualTo("__debezium_unavailable_value");
     }
 
     private int consumeAtLeast(int minNumber) throws InterruptedException {

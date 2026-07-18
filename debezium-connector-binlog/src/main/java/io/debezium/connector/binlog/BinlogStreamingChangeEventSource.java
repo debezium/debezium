@@ -8,6 +8,7 @@ package io.debezium.connector.binlog;
 import static io.debezium.util.Strings.isNullOrEmpty;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
@@ -18,6 +19,9 @@ import java.security.cert.X509Certificate;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.AbstractMap;
+import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
@@ -79,6 +83,7 @@ import io.debezium.connector.binlog.event.TransactionPayloadDeserializer;
 import io.debezium.connector.binlog.gtid.GtidSet;
 import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
 import io.debezium.connector.binlog.metrics.BinlogStreamingChangeEventSourceMetrics;
+import io.debezium.connector.binlog.util.RowImageUtils;
 import io.debezium.data.Envelope;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.pipeline.ErrorHandler;
@@ -894,7 +899,14 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
     protected void handleInsert(P partition, O offsetContext, Event event) throws InterruptedException {
         handleChange(partition, offsetContext, event, Envelope.Operation.CREATE, WriteRowsEventData.class,
                 x -> schema.getTableId(x.getTableId()),
-                WriteRowsEventData::getRows,
+                x -> {
+                    final Table table = tableForEvent(x.getTableId());
+                    final List<Serializable[]> rows = new ArrayList<>(x.getRows().size());
+                    for (Serializable[] row : x.getRows()) {
+                        rows.add(alignRowToTable(table, x.getIncludedColumns(), row));
+                    }
+                    return rows;
+                },
                 (tableId, row) -> eventDispatcher.dispatchDataChangeEvent(partition, tableId,
                         new BinlogChangeRecordEmitter<>(partition, offsetContext, clock, Envelope.Operation.CREATE, null, row, connectorConfig)),
                 (tableId, row) -> validateChangeEventWithTable(schema.tableFor(tableId), null, row));
@@ -910,7 +922,16 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
     protected void handleUpdate(P partition, O offsetContext, Event event) throws InterruptedException {
         handleChange(partition, offsetContext, event, Envelope.Operation.UPDATE, UpdateRowsEventData.class,
                 x -> schema.getTableId(x.getTableId()),
-                UpdateRowsEventData::getRows,
+                x -> {
+                    final Table table = tableForEvent(x.getTableId());
+                    final List<Map.Entry<Serializable[], Serializable[]>> rows = new ArrayList<>(x.getRows().size());
+                    for (Map.Entry<Serializable[], Serializable[]> row : x.getRows()) {
+                        rows.add(new AbstractMap.SimpleEntry<>(
+                                alignRowToTable(table, x.getIncludedColumnsBeforeUpdate(), row.getKey()),
+                                alignRowToTable(table, x.getIncludedColumns(), row.getValue())));
+                    }
+                    return rows;
+                },
                 (tableId, row) -> eventDispatcher.dispatchDataChangeEvent(partition, tableId,
                         new BinlogChangeRecordEmitter<>(partition, offsetContext, clock, Envelope.Operation.UPDATE, row.getKey(), row.getValue(),
                                 connectorConfig)),
@@ -927,7 +948,14 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
     protected void handleDelete(P partition, O offsetContext, Event event) throws InterruptedException {
         handleChange(partition, offsetContext, event, Envelope.Operation.DELETE, DeleteRowsEventData.class,
                 x -> schema.getTableId(x.getTableId()),
-                DeleteRowsEventData::getRows,
+                x -> {
+                    final Table table = tableForEvent(x.getTableId());
+                    final List<Serializable[]> rows = new ArrayList<>(x.getRows().size());
+                    for (Serializable[] row : x.getRows()) {
+                        rows.add(alignRowToTable(table, x.getIncludedColumns(), row));
+                    }
+                    return rows;
+                },
                 (tableId, row) -> eventDispatcher.dispatchDataChangeEvent(partition, tableId,
                         new BinlogChangeRecordEmitter<>(partition, offsetContext, clock, Envelope.Operation.DELETE, row, null, connectorConfig)),
                 (tableId, row) -> validateChangeEventWithTable(schema.tableFor(tableId), row, null));
@@ -1109,6 +1137,47 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
     private void informAboutUnknownTableIfRequired(P partition, O offsetContext, Event event, TableId tableId)
             throws InterruptedException {
         informAboutUnknownTableIfRequired(partition, offsetContext, event, tableId, null);
+    }
+
+    /**
+     * Resolves the relational table for a binlog table number, or {@code null} when the table is
+     * unknown or filtered.
+     *
+     * @param tableNumber the binlog table number from the row event
+     * @return the table, or {@code null} if not known
+     */
+    private Table tableForEvent(long tableNumber) {
+        final TableId tableId = schema.getTableId(tableNumber);
+        return tableId != null ? schema.tableFor(tableId) : null;
+    }
+
+    /**
+     * Expands a row image that omits columns, e.g. when the database runs with
+     * {@code binlog_row_image=NOBLOB}, to the full table width using the event's included-columns
+     * bitmap. Missing BLOB/TEXT columns are filled with the configured unavailable-value
+     * placeholder so that downstream consumers receive a consistent record shape; other missing
+     * columns are left null. Rows that already match the table width are returned unchanged.
+     *
+     * @param table the table the row belongs to; may be null
+     * @param includedColumns the bitmap of columns present in the row image; may be null
+     * @param row the row image values, containing only the included columns; may be null
+     * @return the row expanded to the full table width, or the original row if no expansion applies
+     */
+    private Serializable[] alignRowToTable(Table table, BitSet includedColumns, Serializable[] row) {
+        if (table == null || row == null || includedColumns == null || row.length == table.columns().size()) {
+            return row;
+        }
+        final Serializable[] aligned = new Serializable[table.columns().size()];
+        int sourceIndex = 0;
+        for (int i = 0; i < aligned.length; i++) {
+            if (includedColumns.get(i) && sourceIndex < row.length) {
+                aligned[i] = row[sourceIndex++];
+            }
+            else if (RowImageUtils.isBlobOrTextColumn(table.columns().get(i))) {
+                aligned[i] = connectorConfig.getUnavailableValuePlaceholder();
+            }
+        }
+        return aligned;
     }
 
     private void validateChangeEventWithTable(Table table, Object[] before, Object[] after) {
