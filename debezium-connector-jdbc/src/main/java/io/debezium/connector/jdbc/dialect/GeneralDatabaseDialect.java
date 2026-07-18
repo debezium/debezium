@@ -487,6 +487,14 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
             return type;
         }
 
+        if (schema.name() == null) {
+            throw new ConnectException(
+                    String.format(
+                            "Failed to resolve column type for schema: %s (%s)",
+                            schema.type(),
+                            schema.name()));
+        }
+
         switch (schema.name()) {
             case SparseDoubleVector.LOGICAL_NAME, FloatVector.LOGICAL_NAME, DoubleVector.LOGICAL_NAME ->
                 throw new ConnectException(

@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.jdbc.e2e;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.sql.ResultSet;
@@ -15,13 +17,24 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Collections;
+import java.util.Properties;
 
 import org.hibernate.cfg.AvailableSettings;
 import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.TestTemplate;
 import org.junit.jupiter.api.extension.ExtendWith;
 
+import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
+import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.InsertMode;
+import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.SchemaEvolutionMode;
 import io.debezium.connector.jdbc.junit.jupiter.MySqlSinkDatabaseContextProvider;
+import io.debezium.connector.jdbc.junit.jupiter.Sink;
+import io.debezium.connector.jdbc.junit.jupiter.e2e.ForSourceNoMatrix;
 import io.debezium.connector.jdbc.junit.jupiter.e2e.source.Source;
+import io.debezium.connector.jdbc.junit.jupiter.e2e.source.SourceType;
+import io.debezium.doc.FixFor;
+import io.debezium.sink.SinkConnectorConfig.PrimaryKeyMode;
 import io.debezium.spatial.GeometryBytes;
 
 /**
@@ -250,5 +263,26 @@ public class JdbcSinkPipelineToMySqlIT extends AbstractJdbcSinkPipelineIT {
         return getCurrentSinkConfig().getHibernateConfiguration()
                 .getProperty(AvailableSettings.JAKARTA_JDBC_URL)
                 .contains("connectionTimeZone=");
+    }
+
+    @TestTemplate
+    @FixFor("debezium/dbz#2238")
+    @ForSourceNoMatrix(value = SourceType.POSTGRES, reason = "PostgreSQL array columns are not supported by MySQL sink")
+    public void testArrayDataTypeThrowsClearError(Source source, Sink sink) throws Exception {
+        final String tableName = source.randomTableName();
+        final String createSql = String.format("CREATE TABLE %s (id int primary key, tags text[])", tableName);
+        final String insertSql = String.format("INSERT INTO %s VALUES (1, '{\"a\",\"b\",\"c\"}')", tableName);
+
+        registerSourceConnector(source, Collections.singletonList("text[]"), tableName, null, createSql, insertSql);
+
+        Properties sinkProperties = getDefaultSinkConfig(sink);
+        sinkProperties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
+        sinkProperties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_KEY.getValue());
+        sinkProperties.put(JdbcSinkConnectorConfig.INSERT_MODE, InsertMode.UPSERT.getValue());
+        startSink(source, sinkProperties, tableName);
+
+        assertThatThrownBy(this::consumeSinkRecord)
+                .isInstanceOf(RuntimeException.class)
+                .hasStackTraceContaining("Failed to resolve column type");
     }
 }
