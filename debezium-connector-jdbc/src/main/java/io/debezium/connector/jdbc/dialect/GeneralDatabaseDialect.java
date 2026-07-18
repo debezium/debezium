@@ -487,19 +487,21 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
             return type;
         }
 
-        switch (schema.name()) {
-            case SparseDoubleVector.LOGICAL_NAME, FloatVector.LOGICAL_NAME, DoubleVector.LOGICAL_NAME ->
-                throw new ConnectException(
-                        String.format(
-                                "Dialect does not support schema type %s. Please use the VectorToJsonConverter transform in " +
-                                        "your connector configuration to ingest data of this type.",
-                                schema.name()));
-            default -> throw new ConnectException(
-                    String.format(
-                            "Failed to resolve column type for schema: %s (%s)",
-                            schema.type(),
-                            schema.name()));
+        if (!Objects.isNull(schema.name())) {
+            switch (schema.name()) {
+                case SparseDoubleVector.LOGICAL_NAME, FloatVector.LOGICAL_NAME, DoubleVector.LOGICAL_NAME ->
+                    throw new ConnectException(
+                            String.format(
+                                    "Dialect does not support schema type %s. Please use the VectorToJsonConverter transform in " +
+                                            "your connector configuration to ingest data of this type.",
+                                    schema.name()));
+            }
         }
+        throw new ConnectException(
+                String.format(
+                        "Failed to resolve column type for schema: %s (%s)",
+                        schema.type(),
+                        schema.name()));
     }
 
     @Override

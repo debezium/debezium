@@ -6,9 +6,11 @@
 package io.debezium.connector.jdbc.integration.mysql;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -275,5 +277,40 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
             assertThat(rs.getString(4)).isEqualTo("-838:59:58.999999");
             return null;
         });
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("debezium/dbz#2238")
+    public void testShouldFailWithClearErrorForUnsupportedArrayColumnType(SinkRecordFactory factory) throws Exception {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server2", "schema", tableName);
+        final Schema arraySchema = SchemaBuilder.array(Schema.OPTIONAL_INT32_SCHEMA).optional().build();
+
+        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        final JdbcKafkaSinkRecord createRecord = factory.createRecordWithSchemaValue(
+                topicName,
+                (byte) 1,
+                "data",
+                arraySchema,
+                List.of(1, 2, 3),
+                config);
+
+        // MySQL has no native array type. An array schema carries no logical name, which previously
+        // tripped the String switch in GeneralDatabaseDialect#getSchemaType with a NullPointerException;
+        // the sink must instead surface the intended, actionable resolution error.
+        assertThatThrownBy(() -> {
+            consume(createRecord);
+            consume(Collections.emptyList());
+        })
+                .rootCause()
+                .hasMessageContaining("Failed to resolve column type for schema: ARRAY");
     }
 }
