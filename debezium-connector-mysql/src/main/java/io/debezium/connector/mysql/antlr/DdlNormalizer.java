@@ -21,19 +21,21 @@ import java.util.regex.Pattern;
 public class DdlNormalizer {
 
     // Regex group indices for clarity
-    private static final int SINGLE_QUOTED_STRING_GROUP = 1;
-    private static final int DOUBLE_QUOTED_STRING_GROUP = 2;
-    private static final int BACKTICK_IDENTIFIER_GROUP = 3;
+    private static final int COMMENT_GROUP = 1;
+    private static final int SINGLE_QUOTED_STRING_GROUP = 2;
+    private static final int DOUBLE_QUOTED_STRING_GROUP = 3;
+    private static final int BACKTICK_IDENTIFIER_GROUP = 4;
 
     /**
      * Pattern matches either:
-     * - Group 1: Single-quoted strings  {@code '(content)'} (preserved as-is)
-     * - Group 2: Double-quoted strings  {@code "(content)"}
-     * - Group 3: Backtick identifiers   {@code `identifier`}
+     * - Group 1: SQL comments: {@code -- ...}, {@code # ...}, {@code /* ... * /} (but not {@code /*! ... * /})
+     * - Group 2: Single-quoted strings  {@code '(content)'} (preserved as-is)
+     * - Group 3: Double-quoted strings  {@code "(content)"}
+     * - Group 4: Backtick identifiers   {@code `identifier`}
      *
      */
     private static final Pattern QUOTED_LITERAL_PATTERN = Pattern.compile(
-            "('(?:''|[^'\\\\]|\\\\.)*')|\"((?:[^\"\\\\]|\\\\.|\"\")*)\"|(`(?:``|[^`])*`)",
+            "(--[^\\n]*|#[^\\n]*|/\\*(?!!).*?\\*/)|(\'(?:\'\'|[^\'\\\\]|\\\\.)*\')|\"((?:[^\"\\\\]|\\\\.|\"\")*)\"|(`(?:``|[^`])*`)",
             Pattern.DOTALL);
 
     /**
@@ -61,7 +63,7 @@ public class DdlNormalizer {
         StringBuilder normalized = new StringBuilder(ddlContent.length());
 
         while (matcher.find()) {
-            if (isSingleQuotedString(matcher) || isBacktickIdentifier(matcher)) {
+            if (isComment(matcher) || isSingleQuotedString(matcher) || isBacktickIdentifier(matcher)) {
                 preserveOriginal(matcher, normalized);
             }
             else {
@@ -74,6 +76,10 @@ public class DdlNormalizer {
         result = addBackticksToReservedKeywords(result);
 
         return result;
+    }
+
+    private static boolean isComment(Matcher matcher) {
+        return matcher.group(COMMENT_GROUP) != null;
     }
 
     private static boolean isSingleQuotedString(Matcher matcher) {
