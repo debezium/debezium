@@ -10,6 +10,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import io.debezium.doc.FixFor;
+
 /**
  * Unit tests for {@link DdlNormalizer}.
  */
@@ -144,6 +146,7 @@ public class DdlNormalizerTest {
 
     @DisplayName("Given comment with double quotes inside single-quoted string When normalize Then single-quoted string is preserved")
     @Test
+    @FixFor("debezium/dbz#2237")
     public void testDoubleQuotesInsideSingleQuotedString() {
         String input = "ALTER TABLE t MODIFY COLUMN col VARCHAR(200) NOT NULL COMMENT 'Other rights text for \"other\" option'";
         assertThat(DdlNormalizer.normalize(input)).isEqualTo(input);
@@ -151,6 +154,7 @@ public class DdlNormalizerTest {
 
     @DisplayName("Given double quotes inside single-quoted default value When normalize Then single-quoted string is preserved")
     @Test
+    @FixFor("debezium/dbz#2237")
     public void testDoubleQuotesInsideSingleQuotedDefault() {
         String input = "CREATE TABLE t (col VARCHAR(50) DEFAULT 'say \"hello\"')";
         assertThat(DdlNormalizer.normalize(input)).isEqualTo(input);
@@ -158,9 +162,79 @@ public class DdlNormalizerTest {
 
     @DisplayName("Given mixed single and double-quoted strings When normalize Then single-quoted preserved and double-quoted converted")
     @Test
+    @FixFor("debezium/dbz#2237")
     public void testMixedSingleAndDoubleQuotedStrings() {
         String input = "CREATE TABLE t (col1 ENUM(\"a\", \"b\") COMMENT 'text with \"quotes\" inside')";
         String expected = "CREATE TABLE t (col1 ENUM('a', 'b') COMMENT 'text with \"quotes\" inside')";
+        assertThat(DdlNormalizer.normalize(input)).isEqualTo(expected);
+    }
+
+    @DisplayName("Given double-dash comment containing apostrophe When normalize Then comment is preserved")
+    @Test
+    @FixFor("debezium/dbz#2237")
+    public void testDoubleDashCommentWithApostrophe() {
+        String input = "-- we'll grant privileges\nCREATE TABLE t (col ENUM(\"a\", \"b\"))";
+        String expected = "-- we'll grant privileges\nCREATE TABLE t (col ENUM('a', 'b'))";
+        assertThat(DdlNormalizer.normalize(input)).isEqualTo(expected);
+    }
+
+    @DisplayName("Given double-dash comment containing double quotes When normalize Then comment is preserved")
+    @Test
+    @FixFor("debezium/dbz#2237")
+    public void testDoubleDashCommentWithDoubleQuotes() {
+        String input = "-- comment with \"quoted\" text\nCREATE TABLE t (col INT)";
+        assertThat(DdlNormalizer.normalize(input)).isEqualTo(input);
+    }
+
+    @DisplayName("Given hash comment containing apostrophe When normalize Then comment is preserved")
+    @Test
+    @FixFor("debezium/dbz#2237")
+    public void testHashCommentWithApostrophe() {
+        String input = "# it's a comment\nCREATE TABLE t (col ENUM(\"a\"))";
+        String expected = "# it's a comment\nCREATE TABLE t (col ENUM('a'))";
+        assertThat(DdlNormalizer.normalize(input)).isEqualTo(expected);
+    }
+
+    @DisplayName("Given hash comment containing double quotes When normalize Then comment is preserved")
+    @Test
+    @FixFor("debezium/dbz#2237")
+    public void testHashCommentWithDoubleQuotes() {
+        String input = "# comment with \"quoted\" text\nCREATE TABLE t (col INT)";
+        assertThat(DdlNormalizer.normalize(input)).isEqualTo(input);
+    }
+
+    @DisplayName("Given block comment containing apostrophe When normalize Then comment is preserved")
+    @Test
+    @FixFor("debezium/dbz#2237")
+    public void testBlockCommentWithApostrophe() {
+        String input = "/* it's a comment */ CREATE TABLE t (col ENUM(\"a\"))";
+        String expected = "/* it's a comment */ CREATE TABLE t (col ENUM('a'))";
+        assertThat(DdlNormalizer.normalize(input)).isEqualTo(expected);
+    }
+
+    @DisplayName("Given block comment containing double quotes When normalize Then comment is preserved")
+    @Test
+    @FixFor("debezium/dbz#2237")
+    public void testBlockCommentWithDoubleQuotes() {
+        String input = "/* comment with \"quoted\" text */ CREATE TABLE t (col INT)";
+        assertThat(DdlNormalizer.normalize(input)).isEqualTo(input);
+    }
+
+    @DisplayName("Given MySQL version comment When normalize Then body is still normalized")
+    @Test
+    @FixFor("debezium/dbz#2237")
+    public void testVersionCommentIsNormalized() {
+        String input = "/*!50003 CREATE TABLE t (col ENUM(\"a\", \"b\")) */";
+        String expected = "/*!50003 CREATE TABLE t (col ENUM('a', 'b')) */";
+        assertThat(DdlNormalizer.normalize(input)).isEqualTo(expected);
+    }
+
+    @DisplayName("Given inline comment between DDL statements When normalize Then both statements parse correctly")
+    @Test
+    @FixFor("debezium/dbz#2237")
+    public void testInlineCommentBetweenStatements() {
+        String input = "CREATE TABLE t1 (col ENUM(\"a\")); -- don't touch\nCREATE TABLE t2 (col ENUM(\"b\"))";
+        String expected = "CREATE TABLE t1 (col ENUM('a')); -- don't touch\nCREATE TABLE t2 (col ENUM('b'))";
         assertThat(DdlNormalizer.normalize(input)).isEqualTo(expected);
     }
 
