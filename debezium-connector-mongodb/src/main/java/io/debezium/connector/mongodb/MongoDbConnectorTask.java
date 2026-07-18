@@ -7,6 +7,7 @@ package io.debezium.connector.mongodb;
 
 import static java.util.Comparator.comparing;
 
+import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -16,9 +17,12 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.errors.RetriableException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.mongodb.MongoException;
 
 import io.debezium.DebeziumException;
 import io.debezium.annotation.ThreadSafe;
@@ -306,8 +310,9 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
         return super.withMaskedSensitiveOptions(config).withMasked(MongoDbConnectorConfig.CONNECTION_STRING.name());
     }
 
-    private void validate(MongoDbConnectorConfig connectorConfig, MongoDbConnection mongoDbConnection, Offsets<MongoDbPartition, MongoDbOffsetContext> previousOffsets,
-                          Snapshotter snapshotter) {
+    // Package-private for testing.
+    void validate(MongoDbConnectorConfig connectorConfig, MongoDbConnection mongoDbConnection, Offsets<MongoDbPartition, MongoDbOffsetContext> previousOffsets,
+                  Snapshotter snapshotter) {
 
         for (Map.Entry<MongoDbPartition, MongoDbOffsetContext> previousOffset : previousOffsets) {
 
@@ -332,7 +337,18 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
             }
 
             if (connectorConfig.isLogPositionCheckEnabled()) {
-                boolean logPositionAvailable = mongoDbConnection.validateLogPosition(offset, taskContext);
+                boolean logPositionAvailable;
+                try {
+                    logPositionAvailable = mongoDbConnection.validateLogPosition(offset, taskContext);
+                }
+                catch (DebeziumException e) {
+                    // A communication failure (an invalid resume token instead returns false) must be retriable so
+                    // the task restarts and reconnects, consistent with the streaming path, rather than failing.
+                    if (isCommunicationFailure(e)) {
+                        throw new RetriableException("Failed to validate the resume token because of a connection failure; will retry", e);
+                    }
+                    throw e;
+                }
 
                 if (!logPositionAvailable) {
                     LOGGER.warn("Last recorded offset is no longer available on the server.");
@@ -354,6 +370,16 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
                 }
             }
         }
+    }
+
+    // Uses the same exception types the streaming MongoDbErrorHandler treats as retriable.
+    private static boolean isCommunicationFailure(Throwable throwable) {
+        for (Throwable cause = throwable; cause != null; cause = cause.getCause()) {
+            if (cause instanceof IOException || cause instanceof MongoException) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void validateGuardrailLimits(MongoDbConnectorConfig connectorConfig, MongoDbConnection connection) {
