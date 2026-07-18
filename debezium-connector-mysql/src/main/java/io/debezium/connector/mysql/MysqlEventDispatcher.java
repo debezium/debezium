@@ -23,6 +23,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.connector.binlog.util.RowImageUtils;
 import io.debezium.connector.common.DebeziumHeaderProducer;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
@@ -222,7 +223,7 @@ public class MysqlEventDispatcher<P extends Partition> extends EventDispatcher<P
 
         final Set<String> blobOrTextColumns = new HashSet<>();
         for (Column column : table.columns()) {
-            if (isBlobOrTextColumn(column)) {
+            if (RowImageUtils.isBlobOrTextColumn(column)) {
                 blobOrTextColumns.add(column.name());
             }
         }
@@ -269,20 +270,5 @@ public class MysqlEventDispatcher<P extends Partition> extends EventDispatcher<P
             }
         }
         return updated;
-    }
-
-    /**
-     * Determines whether a column is a BLOB or TEXT family column. This covers all MySQL size
-     * variants such as {@code TINYBLOB}, {@code MEDIUMBLOB}, {@code LONGBLOB}, {@code TINYTEXT},
-     * {@code MEDIUMTEXT} and {@code LONGTEXT}, all of which are excluded from the binlog row image
-     * when {@code binlog_row_image=NOBLOB}.
-     */
-    private static boolean isBlobOrTextColumn(Column column) {
-        final String typeName = column.typeName();
-        if (typeName == null) {
-            return false;
-        }
-        final String upperCaseTypeName = typeName.toUpperCase();
-        return upperCaseTypeName.contains("BLOB") || upperCaseTypeName.contains("TEXT");
     }
 }
