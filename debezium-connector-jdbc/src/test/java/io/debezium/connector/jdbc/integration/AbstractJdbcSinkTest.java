@@ -190,6 +190,9 @@ public abstract class AbstractJdbcSinkTest extends AbstractBaseJdbcSinkTest {
         List<SinkRecord> kafkaRecords = records.stream().map(JdbcKafkaSinkRecord::getOriginalKafkaRecord).toList();
         sinkTask.put(kafkaRecords);
         sinkTask.preCommit(Map.of());
+        if (sinkTask instanceof JdbcSinkConnectorTask jdbcTask && jdbcTask.getLastProcessingException() != null) {
+            throw new RuntimeException("JDBC sink threw an exception processing the data", jdbcTask.getLastProcessingException());
+        }
     }
 
     protected String destinationTableName(JdbcKafkaSinkRecord record) {
