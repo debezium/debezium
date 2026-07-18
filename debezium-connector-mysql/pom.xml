@@ -653,6 +653,14 @@
                 <configuration>
                     <skipTests>${skipITs}</skipTests>
                     <enableAssertions>true</enableAssertions>
+                    <!--
+                    MySqlConnectorNoBlobIT asserts behaviour that only holds against a server running with
+                    binlog_row_image=NOBLOB. It is therefore excluded from the default run and executed only
+                    via the 'mysql-binlog-row-image' profile against the dedicated Docker image.
+                    -->
+                    <excludes>
+                        <exclude>**/MySqlConnectorNoBlobIT.java</exclude>
+                    </excludes>
                     <systemPropertyVariables>
                         <!-- Make these available to the tests via system properties -->
                         <database.hostname>${docker.host.address}</database.hostname>
@@ -1046,6 +1054,42 @@
                                 <database.ssl.keystore>${project.basedir}/src/test/resources/ssl/keystore</database.ssl.keystore>
                                 <database.ssl.keystore.password>debezium</database.ssl.keystore.password>
                             </systemPropertyVariables>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+              Use the Docker image configured with binlog_row_image=NOBLOB and run only the
+              MySqlConnectorNoBlobIT integration test against it. This test is excluded from
+              all other runs because its assertions only hold for a NOBLOB server.
+              To use, specify "-Dmysql-binlog-row-image" or -Pmysql-binlog-row-image on the Maven command line.
+              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+        <profile>
+            <id>mysql-binlog-row-image</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+                <property>
+                    <name>mysql-binlog-row-image</name>
+                </property>
+            </activation>
+            <properties>
+                <!-- Docker properties: start the server image built with binlog_row_image=NOBLOB -->
+                <docker.dbs>debezium/mysql-server-test-binlog-row-image-database</docker.dbs>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <!-- Override the default exclusion so this test runs here, and only here. -->
+                            <excludes combine.self="override">
+                                <exclude>none</exclude>
+                            </excludes>
+                            <includes>
+                                <include>**/MySqlConnectorNoBlobIT.java</include>
+                            </includes>
                         </configuration>
                     </plugin>
                 </plugins>

@@ -10,11 +10,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.file.Path;
 import java.sql.SQLException;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.TimeZone;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
@@ -24,12 +21,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
 import io.debezium.data.KeyValueStore;
 import io.debezium.data.SchemaChangeHistory;
 import io.debezium.data.VerifyRecord;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
-import io.debezium.jdbc.JdbcConnection;
 import io.debezium.util.Testing.Files;
 
 /**
@@ -39,20 +36,8 @@ import io.debezium.util.Testing.Files;
  */
 public class MySqlConnectorNoBlobIT extends AbstractAsyncEngineConnectorTest {
 
-    private static final Path SCHEMA_HISTORY_PATH = Files.createTestingPath("file-schema-history-snapshot.txt").toAbsolutePath();
-    protected static final UniqueDatabase DATABASE = new UniqueDatabase(
-            "logical_server_name",
-            "connector_noblob_mode_test") {
-        @Override
-        public ZoneId getTimezone() {
-            return TimeZone.getDefault().toZoneId();
-        }
-
-        @Override
-        protected JdbcConnection forTestDatabase(String databaseName, Map<String, Object> urlProperties) {
-            return MySqlTestConnection.forTestDatabase(databaseName, urlProperties);
-        }
-    }
+    private static final Path SCHEMA_HISTORY_PATH = Files.createTestingPath("file-schema-history-noblob.txt").toAbsolutePath();
+    private final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase("logical_server_name", "connector_noblob_mode_test")
             .withDbHistoryPath(SCHEMA_HISTORY_PATH);
     protected Configuration config;
     private KeyValueStore store;
@@ -215,7 +200,7 @@ public class MySqlConnectorNoBlobIT extends AbstractAsyncEngineConnectorTest {
         return count;
     }
 
-    private static String productsTableName() throws SQLException {
+    private String productsTableName() throws SQLException {
         try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
             return db.isTableIdCaseSensitive() ? "products" : "Products";
         }
