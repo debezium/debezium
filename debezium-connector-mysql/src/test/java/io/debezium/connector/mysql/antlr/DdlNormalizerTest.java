@@ -142,6 +142,28 @@ public class DdlNormalizerTest {
         assertThat(DdlNormalizer.normalize(input)).isEqualTo(expected);
     }
 
+    @DisplayName("Given comment with double quotes inside single-quoted string When normalize Then single-quoted string is preserved")
+    @Test
+    public void testDoubleQuotesInsideSingleQuotedString() {
+        String input = "ALTER TABLE t MODIFY COLUMN col VARCHAR(200) NOT NULL COMMENT 'Other rights text for \"other\" option'";
+        assertThat(DdlNormalizer.normalize(input)).isEqualTo(input);
+    }
+
+    @DisplayName("Given double quotes inside single-quoted default value When normalize Then single-quoted string is preserved")
+    @Test
+    public void testDoubleQuotesInsideSingleQuotedDefault() {
+        String input = "CREATE TABLE t (col VARCHAR(50) DEFAULT 'say \"hello\"')";
+        assertThat(DdlNormalizer.normalize(input)).isEqualTo(input);
+    }
+
+    @DisplayName("Given mixed single and double-quoted strings When normalize Then single-quoted preserved and double-quoted converted")
+    @Test
+    public void testMixedSingleAndDoubleQuotedStrings() {
+        String input = "CREATE TABLE t (col1 ENUM(\"a\", \"b\") COMMENT 'text with \"quotes\" inside')";
+        String expected = "CREATE TABLE t (col1 ENUM('a', 'b') COMMENT 'text with \"quotes\" inside')";
+        assertThat(DdlNormalizer.normalize(input)).isEqualTo(expected);
+    }
+
     @DisplayName("Given reserved keyword JSON_TABLE as table name When normalize Then add backticks")
     @Test
     public void testReservedKeywordAsTableName() {

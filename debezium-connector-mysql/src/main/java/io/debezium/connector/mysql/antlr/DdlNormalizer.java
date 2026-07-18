@@ -21,17 +21,19 @@ import java.util.regex.Pattern;
 public class DdlNormalizer {
 
     // Regex group indices for clarity
-    private static final int DOUBLE_QUOTED_STRING_GROUP = 1;
-    private static final int BACKTICK_IDENTIFIER_GROUP = 2;
+    private static final int SINGLE_QUOTED_STRING_GROUP = 1;
+    private static final int DOUBLE_QUOTED_STRING_GROUP = 2;
+    private static final int BACKTICK_IDENTIFIER_GROUP = 3;
 
     /**
      * Pattern matches either:
-     * - Group 1: Double-quoted strings  {@code "(content)"}
-     * - Group 2: Backtick identifiers   {@code `identifier`}
+     * - Group 1: Single-quoted strings  {@code '(content)'} (preserved as-is)
+     * - Group 2: Double-quoted strings  {@code "(content)"}
+     * - Group 3: Backtick identifiers   {@code `identifier`}
      *
      */
     private static final Pattern QUOTED_LITERAL_PATTERN = Pattern.compile(
-            "\"((?:[^\"\\\\]|\\\\.|\"\")*)\"|(`(?:``|[^`])*`)",
+            "('(?:''|[^'\\\\]|\\\\.)*')|\"((?:[^\"\\\\]|\\\\.|\"\")*)\"|(`(?:``|[^`])*`)",
             Pattern.DOTALL);
 
     /**
@@ -59,7 +61,7 @@ public class DdlNormalizer {
         StringBuilder normalized = new StringBuilder(ddlContent.length());
 
         while (matcher.find()) {
-            if (isBacktickIdentifier(matcher)) {
+            if (isSingleQuotedString(matcher) || isBacktickIdentifier(matcher)) {
                 preserveOriginal(matcher, normalized);
             }
             else {
@@ -72,6 +74,10 @@ public class DdlNormalizer {
         result = addBackticksToReservedKeywords(result);
 
         return result;
+    }
+
+    private static boolean isSingleQuotedString(Matcher matcher) {
+        return matcher.group(SINGLE_QUOTED_STRING_GROUP) != null;
     }
 
     private static boolean isBacktickIdentifier(Matcher matcher) {
