@@ -80,7 +80,7 @@ public abstract class ZZZBinlogGtidSetIT<C extends SourceConnector> extends Abst
     }
 
     @Test
-    @FixFor("DBZ-1184")
+    @FixFor({ "DBZ-1184", "debezium/dbz#2227" })
     public void shouldProcessPurgedGtidSet() throws SQLException, InterruptedException {
         Files.delete(SCHEMA_HISTORY_PATH);
 
