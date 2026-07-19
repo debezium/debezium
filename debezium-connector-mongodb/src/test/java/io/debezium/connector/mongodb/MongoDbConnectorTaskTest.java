@@ -14,9 +14,16 @@ import static org.mockito.Mockito.when;
 import java.io.IOException;
 
 import org.apache.kafka.connect.errors.RetriableException;
+import org.bson.BsonDocument;
+import org.bson.BsonInt32;
+import org.bson.BsonString;
 import org.junit.jupiter.api.Test;
 
+import com.mongodb.MongoCommandException;
+import com.mongodb.MongoCredential;
 import com.mongodb.MongoException;
+import com.mongodb.MongoSecurityException;
+import com.mongodb.ServerAddress;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
@@ -93,6 +100,65 @@ class MongoDbConnectorTaskTest {
         assertThatThrownBy(() -> new MongoDbConnectorTask().validate(
                 configWithLogPositionCheckEnabled(), connection, offsetsWithExistingResumeToken(), mock(Snapshotter.class)))
                 .isSameAs(nonRetriable);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#67")
+    void shouldNotRetryWhenResumeTokenValidationFailsWithAuthenticationError() {
+        // MongoSecurityException is a MongoException subtype, so the auth exclusion, not the blanket rule, must win.
+        MongoSecurityException authFailure = new MongoSecurityException(
+                MongoCredential.createCredential("user", "admin", "secret".toCharArray()), "Exception authenticating");
+        MongoDbConnection connection = connectionFailingWith(
+                new DebeziumException("Error while attempting to Checking change stream", authFailure));
+
+        assertThatThrownBy(() -> new MongoDbConnectorTask().validate(
+                configWithLogPositionCheckEnabled(), connection, offsetsWithExistingResumeToken(), mock(Snapshotter.class)))
+                .isInstanceOf(DebeziumException.class)
+                .isNotInstanceOf(RetriableException.class)
+                .hasCause(authFailure);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#67")
+    void shouldNotRetryWhenResumeTokenValidationFailsWithUnauthorizedError() {
+        MongoCommandException unauthorized = new MongoCommandException(
+                new BsonDocument("code", new BsonInt32(13)).append("errmsg", new BsonString("not authorized")),
+                new ServerAddress());
+        MongoDbConnection connection = connectionFailingWith(
+                new DebeziumException("Error while attempting to Checking change stream", unauthorized));
+
+        assertThatThrownBy(() -> new MongoDbConnectorTask().validate(
+                configWithLogPositionCheckEnabled(), connection, offsetsWithExistingResumeToken(), mock(Snapshotter.class)))
+                .isNotInstanceOf(RetriableException.class);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#67")
+    void shouldNotRetryWhenResumeTokenValidationFailsWithAuthenticationFailedCode() {
+        MongoCommandException authenticationFailed = new MongoCommandException(
+                new BsonDocument("code", new BsonInt32(18)).append("errmsg", new BsonString("Authentication failed")),
+                new ServerAddress());
+        MongoDbConnection connection = connectionFailingWith(
+                new DebeziumException("Error while attempting to Checking change stream", authenticationFailed));
+
+        assertThatThrownBy(() -> new MongoDbConnectorTask().validate(
+                configWithLogPositionCheckEnabled(), connection, offsetsWithExistingResumeToken(), mock(Snapshotter.class)))
+                .isNotInstanceOf(RetriableException.class);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#67")
+    void shouldNotRetryWhenAuthenticationFailureIsWrappedBehindCommunicationError() {
+        // An auth failure deeper in the cause chain must veto the retry even behind a retriable wrapper.
+        MongoSecurityException authFailure = new MongoSecurityException(
+                MongoCredential.createCredential("user", "admin", "secret".toCharArray()), "Exception authenticating");
+        MongoDbConnection connection = connectionFailingWith(
+                new DebeziumException("Error while attempting to Checking change stream",
+                        new MongoException("connection reset", authFailure)));
+
+        assertThatThrownBy(() -> new MongoDbConnectorTask().validate(
+                configWithLogPositionCheckEnabled(), connection, offsetsWithExistingResumeToken(), mock(Snapshotter.class)))
+                .isNotInstanceOf(RetriableException.class);
     }
 
     @Test

@@ -22,7 +22,9 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.mongodb.MongoCommandException;
 import com.mongodb.MongoException;
+import com.mongodb.MongoSecurityException;
 
 import io.debezium.DebeziumException;
 import io.debezium.annotation.ThreadSafe;
@@ -372,14 +374,29 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
         }
     }
 
-    // Uses the same exception types the streaming MongoDbErrorHandler treats as retriable.
+    // Mirrors the exception types the streaming MongoDbErrorHandler treats as retriable, but excludes
+    // authentication/authorization failures: those are permanent misconfigurations that would otherwise spin on
+    // every restart until retries are exhausted (cf. debezium/dbz#2139).
     private static boolean isCommunicationFailure(Throwable throwable) {
+        boolean communicationFailure = false;
         for (Throwable cause = throwable; cause != null; cause = cause.getCause()) {
+            if (isAuthenticationFailure(cause)) {
+                return false;
+            }
             if (cause instanceof IOException || cause instanceof MongoException) {
-                return true;
+                communicationFailure = true;
             }
         }
-        return false;
+        return communicationFailure;
+    }
+
+    private static boolean isAuthenticationFailure(Throwable throwable) {
+        if (throwable instanceof MongoSecurityException) {
+            return true;
+        }
+        // 18 = AuthenticationFailed, 13 = Unauthorized
+        return throwable instanceof MongoCommandException commandException
+                && (commandException.getErrorCode() == 18 || commandException.getErrorCode() == 13);
     }
 
     private void validateGuardrailLimits(MongoDbConnectorConfig connectorConfig, MongoDbConnection connection) {
