@@ -967,7 +967,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         final Table table = chunk.getTable();
         final TableChunkProgress progress = progressMap.get(tableId);
 
-        final Stopwatch exportTimer = Stopwatch.accumulating();
+        final Stopwatch exportTimer = Stopwatch.accumulating().start();
         LOGGER.info("Exporting chunk {}/{} from table '{}' ({}/{} tables)",
                 chunk.getChunkIndex() + 1, chunk.getTotalChunks(),
                 tableId, chunk.getTableOrder(), chunk.getTableCount());
