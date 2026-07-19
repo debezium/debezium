@@ -18,7 +18,6 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.jdbc.JdbcConnection;
-import io.debezium.pipeline.source.snapshot.CascadingOrBoundaryConditions;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
@@ -219,7 +218,7 @@ public class PhysicalRowIdentifierChunkQueryBuilder<T extends DataCollectionId> 
 
         try (PreparedStatement stmt = jdbcConnection.connection().prepareStatement(sql)) {
             if (context.isNonInitialChunk()) {
-                CascadingOrBoundaryConditions.bindTriangularParamsSkipNulls(stmt, getQueryColumns(context, table), context.chunkEndPosititon(), 1, jdbcConnection);
+                bindBoundaryParams(stmt, getQueryColumns(context, table), context.chunkEndPosititon(), 1, jdbcConnection);
             }
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
@@ -243,7 +242,8 @@ public class PhysicalRowIdentifierChunkQueryBuilder<T extends DataCollectionId> 
         boolean hasWhere = false;
         if (context.isNonInitialChunk()) {
             sql.append(" WHERE ");
-            addLowerBound(context, table, context.chunkEndPosititon(), sql);
+            final List<Column> pkColumns = getQueryColumns(context, table);
+            addLowerBound(pkColumns, context.chunkEndPosititon(), sql, false);
             hasWhere = true;
         }
         if (additionalCondition.isPresent()) {
