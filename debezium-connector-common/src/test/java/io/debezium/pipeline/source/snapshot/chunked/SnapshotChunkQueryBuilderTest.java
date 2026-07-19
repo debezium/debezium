@@ -195,8 +195,10 @@ public class SnapshotChunkQueryBuilderTest {
         final SnapshotChunk middleChunk = chunk(table, new Object[]{ 1, 5, 3 }, new Object[]{ 10, 50, 30 }, 1, 3);
         assertThat(new SnapshotChunkQueryBuilder(defaultConnection(), config()).buildChunkQuery(middleChunk, table.primaryKeyColumns(), BASE_SELECT))
                 .isEqualTo("SELECT * FROM \"s1\".\"table1\" WHERE " +
-                        "((\"pk1\" > ?) OR (\"pk1\" = ? AND \"pk2\" > ?) OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" > ?) OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" = ?)) " +
-                        "AND NOT ((\"pk1\" > ?) OR (\"pk1\" = ? AND \"pk2\" > ?) OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" > ?) OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" = ?)) " +
+                        "((\"pk1\" > ?) OR (\"pk1\" = ? AND \"pk2\" > ?) OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" > ?) OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" = ?)) "
+                        +
+                        "AND NOT ((\"pk1\" > ?) OR (\"pk1\" = ? AND \"pk2\" > ?) OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" > ?) OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" = ?)) "
+                        +
                         "ORDER BY \"pk1\", \"pk2\", \"pk3\"");
     }
 
@@ -217,7 +219,8 @@ public class SnapshotChunkQueryBuilderTest {
         // The boundary condition is wrapped in parentheses and AND-ed with the existing WHERE clause.
         assertThat(new SnapshotChunkQueryBuilder(defaultConnection(), config())
                 .buildChunkQuery(middleChunk, table.primaryKeyColumns(), "SELECT * FROM \"s1\".\"table1\" WHERE \"val1\" = 5"))
-                .isEqualTo("SELECT * FROM \"s1\".\"table1\" WHERE (((\"pk1\" > ?) OR (\"pk1\" = ?)) AND NOT ((\"pk1\" > ?) OR (\"pk1\" = ?))) AND \"val1\" = 5 ORDER BY \"pk1\"");
+                .isEqualTo(
+                        "SELECT * FROM \"s1\".\"table1\" WHERE (((\"pk1\" > ?) OR (\"pk1\" = ?)) AND NOT ((\"pk1\" > ?) OR (\"pk1\" = ?))) AND \"val1\" = 5 ORDER BY \"pk1\"");
     }
 
     @Test

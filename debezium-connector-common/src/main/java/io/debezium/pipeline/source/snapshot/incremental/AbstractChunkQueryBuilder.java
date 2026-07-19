@@ -191,20 +191,20 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
             if (!isLastIterationForI) {
                 condition.append(" OR ");
             }
-            if(isLastIterationForI && inclusiveFinal){
+            if (isLastIterationForI && inclusiveFinal) {
                 condition.append(" OR ");
                 condition.append('(');
-                for (int j = 0; j <=i ; j++) {
+                for (int j = 0; j <= i; j++) {
                     final String pkColumnName = jdbcConnection.quoteIdentifier(pkColumns.get(j).name());
                     if (boundaryKey[j] != null) {
                         condition.append(pkColumnName);
                         condition.append(" = ?");
                     }
-                    else{
+                    else {
                         condition.append(pkColumnName);
                         condition.append(" IS NULL");
                     }
-                    if(j < i){
+                    if (j < i) {
                         condition.append(" AND ");
                     }
                 }
