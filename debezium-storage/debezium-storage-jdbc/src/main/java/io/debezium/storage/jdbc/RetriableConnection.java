@@ -153,6 +153,18 @@ public class RetriableConnection implements AutoCloseable {
                     }
                 }
                 close();
+                // The connection may be healthy while the operation itself keeps failing (e.g. a
+                // constraint violation or a value that does not fit the target column). Without
+                // bounding the retries here the loop would reconnect and re-run the same failing
+                // operation forever, so honor maxRetryCount and the retry delay as the reconnect
+                // branch above does.
+                if (attempt >= maxRetryCount) {
+                    throw e;
+                }
+                attempt++;
+                LOGGER.debug("Waiting for retry for {} ms.", waitRetryDelay);
+                DelayStrategy delayStrategy = DelayStrategy.constant(waitRetryDelay);
+                delayStrategy.sleepWhen(true);
             }
         }
     }
