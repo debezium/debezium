@@ -415,6 +415,9 @@ The connection catalog lists the source databases that {prodname} can read from,
 . Click **Verify** to validate the configuration and ensure that {prodname} can establish a connections with the database source or sink.
 . After you verify the connection, click **Create connection** .
 
+[.responsive]
+video::pRWXV0eeYtI[youtube, title="Create, edit and remove a destination"]
+
 ==== Deleting a connection
 
 .Prerequisites
@@ -461,7 +464,7 @@ From the toolbar on the *Source catalog* page, select *Create using smart editor
 ====
 
 [.responsive]
-video::CVY4Y4kAs_E[youtube, title="Create, edit and remove a source"]
+video::Id9jdQO3rV4[youtube, title="Create, edit and remove a source"]
 
 
 ==== Configuring a source with the Smart Editor
@@ -588,7 +591,7 @@ All {prodname} Server sinks are available as destination.
 When you create a destination, it can be shared between different pipelines, which means that every change to a destination will be reflected in every pipeline that uses it.
 
 [.responsive]
-video::vijxIYwOR4k[youtube, title="Create, edit and remove a destination"]
+video::7Rqz3r4KiLw[youtube, title="Create, edit and remove a destination"]
 
 ==== Creating a destination
 
