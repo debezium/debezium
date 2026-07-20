@@ -167,27 +167,20 @@ public class ChunkBoundaryCalculator {
     }
 
     private Object[] queryColumnValues(List<Column> columns, String sql, Object[] lowerBoundBoundary) throws SQLException {
-
-        try (PreparedStatement statement = prepareBoundStatement(columns, sql, lowerBoundBoundary);
-                ResultSet rs = statement.executeQuery()) {
-            if (rs.next()) {
-                final Object[] values = new Object[columns.size()];
-                for (int i = 0; i < columns.size(); i++) {
-                    values[i] = rs.getObject(i + 1);
-                }
-                return values;
+        try (PreparedStatement statement = jdbcConnection.connection().prepareStatement(sql)) {
+            if (lowerBoundBoundary != null) {
+                connectionChunkQueryBuilder.bindBoundaryParams(statement, columns, lowerBoundBoundary, 1, jdbcConnection);
             }
-            return null;
-
+            try (ResultSet rs = statement.executeQuery()) {
+                if (rs.next()) {
+                    final Object[] values = new Object[columns.size()];
+                    for (int i = 0; i < columns.size(); i++) {
+                        values[i] = rs.getObject(i + 1);
+                    }
+                    return values;
+                }
+                return null;
+            }
         }
     }
-
-    private PreparedStatement prepareBoundStatement(List<Column> columns, String sql, Object[] lowerBoundBoundary) throws SQLException {
-        final PreparedStatement statement = jdbcConnection.connection().prepareStatement(sql);
-        if (lowerBoundBoundary != null) {
-            connectionChunkQueryBuilder.bindBoundaryParams(statement, columns, lowerBoundBoundary, 1, jdbcConnection);
-        }
-        return statement;
-    }
-
 }
