@@ -1236,7 +1236,8 @@ public abstract class AbstractConnectorTest implements Testing {
         // TODO Keep WorkerConfig for now, but it should be removed in the future and directly providing Debezium config should be enough.
         WorkerConfig workerConfig = new EmbeddedWorkerConfig(config.asMap());
 
-        OffsetStore offsetStore = new KafkaFileOffsetProvider().create(Configuration.from(workerConfig.originalsStrings()));
+        OffsetStore offsetStore = new KafkaFileOffsetProvider().create();
+        offsetStore.configure(Configuration.from(workerConfig.originalsStrings()));
         offsetStore.start();
         try {
             final OffsetStorageReader offsetReader = new KafkaConnectOffsetStorageReaderAdapter((KafkaConnectStorageAdapter.OffsetBackingStore) offsetStore, engineName,
@@ -1265,7 +1266,8 @@ public abstract class AbstractConnectorTest implements Testing {
         // TODO Keep WorkerConfig for now, but it should be removed in the future and directly providing Debezium config should be enough.
         WorkerConfig workerConfig = new EmbeddedWorkerConfig(config.asMap());
 
-        OffsetStore offsetStore = new KafkaFileOffsetProvider().create(Configuration.from(workerConfig.originalsStrings()));
+        OffsetStore offsetStore = new KafkaFileOffsetProvider().create();
+        offsetStore.configure(Configuration.from(workerConfig.originalsStrings()));
         offsetStore.start();
 
         var latch = new CountDownLatch(1);
