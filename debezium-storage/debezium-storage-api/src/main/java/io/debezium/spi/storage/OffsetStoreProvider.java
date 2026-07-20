@@ -35,6 +35,15 @@ public interface OffsetStoreProvider {
 
     /**
      * Creates and configures an {@link OffsetStore} instance.
+     *
+     * @see OffsetStoreProvider#create(Configuration) for more details
+     */
+    default OffsetStore create() {
+        return create(null);
+    }
+
+    /**
+     * Creates and configures an {@link OffsetStore} instance.
      * <p>
      * The provider is responsible for any special initialization required by the backing store,
      * such as creating converters or setting up connection pools.
@@ -42,7 +51,7 @@ public interface OffsetStoreProvider {
      * Note: The caller is responsible for calling {@link OffsetStore#configure(Configuration)}
      * and {@link OffsetStore#start()} on the returned instance.
      *
-     * @param config the configuration
+     * @param config the configuration which eventually needs to be passed to implementing class
      * @return a configured offset backing store instance, never null
      */
     OffsetStore create(Configuration config);

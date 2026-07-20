@@ -13,7 +13,6 @@ import org.apache.kafka.connect.json.JsonConverterConfig;
 import org.apache.kafka.connect.storage.FileOffsetBackingStore;
 
 import io.debezium.config.Configuration;
-import io.debezium.config.EmbeddedWorkerConfig;
 import io.debezium.spi.storage.OffsetStore;
 import io.debezium.spi.storage.OffsetStoreProvider;
 import io.debezium.storage.kafka.KafkaConnectOffsetStoreAdapter;
@@ -38,10 +37,6 @@ public class KafkaFailureEmulatingOffsetStoreProvider implements OffsetStoreProv
                 Collections.singletonMap(JsonConverterConfig.SCHEMAS_ENABLE_CONFIG, "false"), true);
 
         FileOffsetBackingStore kafkaStore = new FileOffsetBackingStore(converter);
-        if (config != null && !config.isEmpty()) {
-            kafkaStore.configure(new EmbeddedWorkerConfig(config.asMap()));
-        }
-
         FailureEmulatingOffsetBackingStore failureStore = new FailureEmulatingOffsetBackingStore(kafkaStore);
 
         return new KafkaConnectOffsetStoreAdapter(failureStore,

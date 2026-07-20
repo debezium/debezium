@@ -32,7 +32,7 @@ public class KafkaConnectOffsetUtil {
 
         // Kafka 3.5 no longer provides offset stores with non-parametric constructors
         if (offsetStoreClassName.equals(MemoryOffsetBackingStore.class.getName())) {
-            return (new KafkaMemoryOffsetProvider()).create(null);
+            return (new KafkaMemoryOffsetProvider()).create();
         }
         else if (offsetStoreClassName.equals(FileOffsetBackingStore.class.getName())) {
             return (new KafkaFileOffsetProvider()).create(Configuration.from(connectorConfig));
