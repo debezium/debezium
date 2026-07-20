@@ -134,6 +134,9 @@ public class RowValueConstructorChunkQueryBuilder<T extends DataCollectionId> ex
     @Override
     public int bindBoundaryParams(PreparedStatement statement, List<Column> columns, Object[] values, int startIndex, JdbcConnection connection)
             throws SQLException {
+        if (fallbackToSuper(columns)) {
+            return super.bindBoundaryParams(statement, columns, values, startIndex, connection);
+        }
         int paramIndex = startIndex;
         for (int i = 0; i < values.length; i++) {
             connection.setQueryColumnValue(statement, columns.get(i), paramIndex++, values[i]);
