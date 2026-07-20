@@ -92,7 +92,14 @@ public class DefaultOffsetStorageReader implements OffsetStorageReader {
                     continue;
                 }
 
-                byte[] valueBytes = rawEntry.getValue().array();
+                byte[] valueBytes;
+                if (rawEntry.getValue().hasArray()) {
+                    valueBytes = rawEntry.getValue().array();
+                }
+                else {
+                    valueBytes = new byte[rawEntry.getValue().remaining()];
+                    rawEntry.getValue().get(valueBytes);
+                }
                 Map<String, Object> deserializedValue = MAPPER.readValue(valueBytes, MAP_TYPE_REF);
                 result.put(origKey, deserializedValue);
             }
