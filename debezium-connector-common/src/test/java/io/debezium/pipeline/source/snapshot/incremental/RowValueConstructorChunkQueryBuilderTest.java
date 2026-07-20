@@ -253,4 +253,185 @@ public class RowValueConstructorChunkQueryBuilderTest {
                         "OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" > ?)) " +
                         "ORDER BY \"pk1\", \"pk2\", \"pk3\" LIMIT 1024");
     }
+
+    // Builds a lower/upper bound condition in isolation so both the inclusive and exclusive forms can be asserted directly.
+    private static String addBound(ChunkQueryBuilder<TableId> builder, boolean upper, List<Column> pkColumns, Object[] boundaryKey, boolean inclusiveFinal) {
+        final StringBuilder sql = new StringBuilder();
+        if (upper) {
+            builder.addUpperBound(pkColumns, boundaryKey, sql, inclusiveFinal);
+        }
+        else {
+            builder.addLowerBound(pkColumns, boundaryKey, sql, inclusiveFinal);
+        }
+        return sql.toString();
+    }
+
+    @Test
+    public void testAddBoundsSingleNullableColumnWithoutNullValues() {
+        // A single nullable key column forces the builder to fall back to the NULL-aware base class implementation
+        // (rather than ROW() syntax), even though the boundary value itself is not NULL.
+        final ChunkQueryBuilder<TableId> chunkQueryBuilder = new RowValueConstructorChunkQueryBuilder<>(
+                config(), new NullHandlingJdbcConnection(config().getJdbcConfig(), c -> null, "\"", "\"", false));
+        final Column pk1 = Column.editor().name("pk1").optional(true).create();
+        final List<Column> pkColumns = List.of(pk1);
+        final Object[] boundary = new Object[]{ 5 };
+
+        assertThat(addBound(chunkQueryBuilder, false, pkColumns, boundary, false))
+                .isEqualTo("((\"pk1\" > ? AND \"pk1\" IS NOT NULL))");
+        assertThat(addBound(chunkQueryBuilder, false, pkColumns, boundary, true))
+                .isEqualTo("((\"pk1\" >= ? AND \"pk1\" IS NOT NULL))");
+        assertThat(addBound(chunkQueryBuilder, true, pkColumns, boundary, false))
+                .isEqualTo("NOT ((\"pk1\" >= ? AND \"pk1\" IS NOT NULL))");
+        assertThat(addBound(chunkQueryBuilder, true, pkColumns, boundary, true))
+                .isEqualTo("NOT ((\"pk1\" > ? AND \"pk1\" IS NOT NULL))");
+    }
+
+    @Test
+    public void testAddBoundsSingleNullableColumnWithNullValues() {
+        // A single nullable key column whose boundary value is NULL: the base class produces IS NULL / literal
+        // conditions depending on the sort order and inclusiveness of the bound.
+        final ChunkQueryBuilder<TableId> chunkQueryBuilder = new RowValueConstructorChunkQueryBuilder<>(
+                config(), new NullHandlingJdbcConnection(config().getJdbcConfig(), c -> null, "\"", "\"", false));
+        final Column pk1 = Column.editor().name("pk1").optional(true).create();
+        final List<Column> pkColumns = List.of(pk1);
+        final Object[] boundary = new Object[]{ null };
+
+        // NULL sorts first: nothing is strictly greater than NULL except non-NULL values, and everything is >= NULL.
+        assertThat(addBound(chunkQueryBuilder, false, pkColumns, boundary, false))
+                .isEqualTo("(\"pk1\" IS NOT NULL)");
+        assertThat(addBound(chunkQueryBuilder, false, pkColumns, boundary, true))
+                .isEqualTo("(1 = 1)");
+        assertThat(addBound(chunkQueryBuilder, true, pkColumns, boundary, false))
+                .isEqualTo("NOT (1 = 1)");
+        assertThat(addBound(chunkQueryBuilder, true, pkColumns, boundary, true))
+                .isEqualTo("NOT (\"pk1\" IS NOT NULL)");
+    }
+
+    @Test
+    public void testAddBoundsMultipleNullableColumnsWithoutNullValues() {
+        // Multiple nullable key columns force the fallback to the NULL-aware base class implementation. With no NULL
+        // boundary values, every column comparison is guarded by an IS NOT NULL clause (NULL sorts first).
+        final ChunkQueryBuilder<TableId> chunkQueryBuilder = new RowValueConstructorChunkQueryBuilder<>(
+                config(), new NullHandlingJdbcConnection(config().getJdbcConfig(), c -> null, "\"", "\"", false));
+        final Column pk1 = Column.editor().name("pk1").optional(true).create();
+        final Column pk2 = Column.editor().name("pk2").optional(true).create();
+        final Column pk3 = Column.editor().name("pk3").optional(true).create();
+        final List<Column> pkColumns = List.of(pk1, pk2, pk3);
+        final Object[] boundary = new Object[]{ 1, 5, 3 };
+
+        final String lowerExclusive = "((\"pk1\" > ? AND \"pk1\" IS NOT NULL)) " +
+                "OR (\"pk1\" = ? AND (\"pk2\" > ? AND \"pk2\" IS NOT NULL)) " +
+                "OR (\"pk1\" = ? AND \"pk2\" = ? AND (\"pk3\" > ? AND \"pk3\" IS NOT NULL))";
+        final String lowerInclusive = "((\"pk1\" > ? AND \"pk1\" IS NOT NULL)) " +
+                "OR (\"pk1\" = ? AND (\"pk2\" > ? AND \"pk2\" IS NOT NULL)) " +
+                "OR (\"pk1\" = ? AND \"pk2\" = ? AND (\"pk3\" >= ? AND \"pk3\" IS NOT NULL))";
+
+        assertThat(addBound(chunkQueryBuilder, false, pkColumns, boundary, false)).isEqualTo("(" + lowerExclusive + ")");
+        assertThat(addBound(chunkQueryBuilder, false, pkColumns, boundary, true)).isEqualTo("(" + lowerInclusive + ")");
+        assertThat(addBound(chunkQueryBuilder, true, pkColumns, boundary, false)).isEqualTo("NOT (" + lowerInclusive + ")");
+        assertThat(addBound(chunkQueryBuilder, true, pkColumns, boundary, true)).isEqualTo("NOT (" + lowerExclusive + ")");
+    }
+
+    @Test
+    public void testAddBoundsMultipleNullableColumnsWithNullValues() {
+        // Multiple nullable key columns with NULL boundary values. Equality comparisons against a NULL value become
+        // IS NULL, and the greater-than comparison on a NULL column collapses per the NULL-sorts-first rules.
+        final ChunkQueryBuilder<TableId> chunkQueryBuilder = new RowValueConstructorChunkQueryBuilder<>(
+                config(), new NullHandlingJdbcConnection(config().getJdbcConfig(), c -> null, "\"", "\"", false));
+        final Column pk1 = Column.editor().name("pk1").optional(true).create();
+        final Column pk2 = Column.editor().name("pk2").optional(true).create();
+        final Column pk3 = Column.editor().name("pk3").optional(true).create();
+        final List<Column> pkColumns = List.of(pk1, pk2, pk3);
+
+        // NULL in a middle column (pk2).
+        final Object[] middleNull = new Object[]{ 1, null, 3 };
+        final String middleLowerExclusive = "((\"pk1\" > ? AND \"pk1\" IS NOT NULL)) " +
+                "OR (\"pk1\" = ? AND \"pk2\" IS NOT NULL) " +
+                "OR (\"pk1\" = ? AND \"pk2\" IS NULL AND (\"pk3\" > ? AND \"pk3\" IS NOT NULL))";
+        final String middleLowerInclusive = "((\"pk1\" > ? AND \"pk1\" IS NOT NULL)) " +
+                "OR (\"pk1\" = ? AND \"pk2\" IS NOT NULL) " +
+                "OR (\"pk1\" = ? AND \"pk2\" IS NULL AND (\"pk3\" >= ? AND \"pk3\" IS NOT NULL))";
+        assertThat(addBound(chunkQueryBuilder, false, pkColumns, middleNull, false)).isEqualTo("(" + middleLowerExclusive + ")");
+        assertThat(addBound(chunkQueryBuilder, false, pkColumns, middleNull, true)).isEqualTo("(" + middleLowerInclusive + ")");
+        assertThat(addBound(chunkQueryBuilder, true, pkColumns, middleNull, false)).isEqualTo("NOT (" + middleLowerInclusive + ")");
+        assertThat(addBound(chunkQueryBuilder, true, pkColumns, middleNull, true)).isEqualTo("NOT (" + middleLowerExclusive + ")");
+
+        // NULL in the leading column (pk1).
+        final Object[] leadingNull = new Object[]{ null, 50, 30 };
+        final String leadingLowerExclusive = "(\"pk1\" IS NOT NULL) " +
+                "OR (\"pk1\" IS NULL AND (\"pk2\" > ? AND \"pk2\" IS NOT NULL)) " +
+                "OR (\"pk1\" IS NULL AND \"pk2\" = ? AND (\"pk3\" > ? AND \"pk3\" IS NOT NULL))";
+        final String leadingLowerInclusive = "(\"pk1\" IS NOT NULL) " +
+                "OR (\"pk1\" IS NULL AND (\"pk2\" > ? AND \"pk2\" IS NOT NULL)) " +
+                "OR (\"pk1\" IS NULL AND \"pk2\" = ? AND (\"pk3\" >= ? AND \"pk3\" IS NOT NULL))";
+        assertThat(addBound(chunkQueryBuilder, false, pkColumns, leadingNull, false)).isEqualTo("(" + leadingLowerExclusive + ")");
+        assertThat(addBound(chunkQueryBuilder, false, pkColumns, leadingNull, true)).isEqualTo("(" + leadingLowerInclusive + ")");
+        assertThat(addBound(chunkQueryBuilder, true, pkColumns, leadingNull, false)).isEqualTo("NOT (" + leadingLowerInclusive + ")");
+        assertThat(addBound(chunkQueryBuilder, true, pkColumns, leadingNull, true)).isEqualTo("NOT (" + leadingLowerExclusive + ")");
+
+        // NULL in the last column (pk3).
+        final Object[] lastNull = new Object[]{ 30, 50, null };
+        final String lastLowerExclusive = "((\"pk1\" > ? AND \"pk1\" IS NOT NULL)) " +
+                "OR (\"pk1\" = ? AND (\"pk2\" > ? AND \"pk2\" IS NOT NULL)) " +
+                "OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" IS NOT NULL)";
+        final String lastLowerInclusive = "((\"pk1\" > ? AND \"pk1\" IS NOT NULL)) " +
+                "OR (\"pk1\" = ? AND (\"pk2\" > ? AND \"pk2\" IS NOT NULL)) " +
+                "OR (\"pk1\" = ? AND \"pk2\" = ? AND 1 = 1)";
+        assertThat(addBound(chunkQueryBuilder, false, pkColumns, lastNull, false)).isEqualTo("(" + lastLowerExclusive + ")");
+        assertThat(addBound(chunkQueryBuilder, false, pkColumns, lastNull, true)).isEqualTo("(" + lastLowerInclusive + ")");
+        assertThat(addBound(chunkQueryBuilder, true, pkColumns, lastNull, false)).isEqualTo("NOT (" + lastLowerInclusive + ")");
+        assertThat(addBound(chunkQueryBuilder, true, pkColumns, lastNull, true)).isEqualTo("NOT (" + lastLowerExclusive + ")");
+    }
+
+    @Test
+    public void testAddBoundsMultipleNullableColumnsWithNullValuesNullsSortLast() {
+        // Multiple nullable key columns with NULL boundary values. Equality comparisons against a NULL value become
+        // IS NULL, and the greater-than comparison on a NULL column collapses per the NULL-sorts-first rules.
+        final ChunkQueryBuilder<TableId> chunkQueryBuilder = new RowValueConstructorChunkQueryBuilder<>(
+                config(), new NullHandlingJdbcConnection(config().getJdbcConfig(), c -> null, "\"", "\"", true));
+        final Column pk1 = Column.editor().name("pk1").optional(true).create();
+        final Column pk2 = Column.editor().name("pk2").optional(true).create();
+        final Column pk3 = Column.editor().name("pk3").optional(true).create();
+        final List<Column> pkColumns = List.of(pk1, pk2, pk3);
+
+        // NULL in a middle column (pk2).
+        final Object[] middleNull = new Object[]{ 1, null, 3 };
+        final String middleLowerExclusive = "((\"pk1\" > ? OR \"pk1\" IS NULL)) " +
+                "OR (\"pk1\" = ? AND 1 = 0) " +
+                "OR (\"pk1\" = ? AND \"pk2\" IS NULL AND (\"pk3\" > ? OR \"pk3\" IS NULL))";
+        final String middleLowerInclusive = "((\"pk1\" > ? OR \"pk1\" IS NULL)) " +
+                "OR (\"pk1\" = ? AND 1 = 0) " +
+                "OR (\"pk1\" = ? AND \"pk2\" IS NULL AND (\"pk3\" >= ? OR \"pk3\" IS NULL))";
+        assertThat(addBound(chunkQueryBuilder, false, pkColumns, middleNull, false)).isEqualTo("(" + middleLowerExclusive + ")");
+        assertThat(addBound(chunkQueryBuilder, false, pkColumns, middleNull, true)).isEqualTo("(" + middleLowerInclusive + ")");
+        assertThat(addBound(chunkQueryBuilder, true, pkColumns, middleNull, false)).isEqualTo("NOT (" + middleLowerInclusive + ")");
+        assertThat(addBound(chunkQueryBuilder, true, pkColumns, middleNull, true)).isEqualTo("NOT (" + middleLowerExclusive + ")");
+
+        // NULL in the leading column (pk1).
+        final Object[] leadingNull = new Object[]{ null, 50, 30 };
+        final String leadingLowerExclusive = "(1 = 0) " +
+                "OR (\"pk1\" IS NULL AND (\"pk2\" > ? OR \"pk2\" IS NULL)) " +
+                "OR (\"pk1\" IS NULL AND \"pk2\" = ? AND (\"pk3\" > ? OR \"pk3\" IS NULL))";
+        final String leadingLowerInclusive = "(1 = 0) " +
+                "OR (\"pk1\" IS NULL AND (\"pk2\" > ? OR \"pk2\" IS NULL)) " +
+                "OR (\"pk1\" IS NULL AND \"pk2\" = ? AND (\"pk3\" >= ? OR \"pk3\" IS NULL))";
+        assertThat(addBound(chunkQueryBuilder, false, pkColumns, leadingNull, false)).isEqualTo("(" + leadingLowerExclusive + ")");
+        assertThat(addBound(chunkQueryBuilder, false, pkColumns, leadingNull, true)).isEqualTo("(" + leadingLowerInclusive + ")");
+        assertThat(addBound(chunkQueryBuilder, true, pkColumns, leadingNull, false)).isEqualTo("NOT (" + leadingLowerInclusive + ")");
+        assertThat(addBound(chunkQueryBuilder, true, pkColumns, leadingNull, true)).isEqualTo("NOT (" + leadingLowerExclusive + ")");
+
+        // NULL in the last column (pk3).
+        final Object[] lastNull = new Object[]{ 30, 50, null };
+        final String lastLowerExclusive = "((\"pk1\" > ? OR \"pk1\" IS NULL)) " +
+                "OR (\"pk1\" = ? AND (\"pk2\" > ? OR \"pk2\" IS NULL)) " +
+                "OR (\"pk1\" = ? AND \"pk2\" = ? AND 1 = 0)";
+        final String lastLowerInclusive = "((\"pk1\" > ? OR \"pk1\" IS NULL)) " +
+                "OR (\"pk1\" = ? AND (\"pk2\" > ? OR \"pk2\" IS NULL)) " +
+                "OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" IS NULL)";
+
+        assertThat(addBound(chunkQueryBuilder, false, pkColumns, lastNull, false)).isEqualTo("(" + lastLowerExclusive + ")");
+        assertThat(addBound(chunkQueryBuilder, false, pkColumns, lastNull, true)).isEqualTo("(" + lastLowerInclusive + ")");
+        assertThat(addBound(chunkQueryBuilder, true, pkColumns, lastNull, false)).isEqualTo("NOT (" + lastLowerInclusive + ")");
+        assertThat(addBound(chunkQueryBuilder, true, pkColumns, lastNull, true)).isEqualTo("NOT (" + lastLowerExclusive + ")");
+    }
 }
