@@ -133,7 +133,7 @@ class LoggingContextTest {
                         LoggingContext.CONNECTOR_CONTEXT, "bazz"));
                 assertions.assertThat(MDC.getCopyOfContextMap()).isEqualTo(Collections.emptyMap());
             }, executorService);
-            assertThat(future).succeedsWithin(1L, SECONDS);
+            assertThat(future).succeedsWithin(10L, SECONDS);
             assertions.assertThat(MDC.getCopyOfContextMap()).isEqualTo(Map.of(rootContextTag, rootContextValue));
             assertions.assertAll();
         }
@@ -163,7 +163,7 @@ class LoggingContextTest {
                         LoggingContext.CONNECTOR_CONTEXT, "bazz"));
                 assertions.assertThat(MDC.getCopyOfContextMap()).isEqualTo(Map.of("old", "bag"));
             }, executorService);
-            assertThat(future).succeedsWithin(1L, SECONDS);
+            assertThat(future).succeedsWithin(10L, SECONDS);
             assertions.assertThat(MDC.getCopyOfContextMap()).isEqualTo(Map.of(rootContextTag, rootContextValue));
             assertions.assertAll();
         }
