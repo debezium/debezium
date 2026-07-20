@@ -113,6 +113,7 @@ public class RetriableConnection implements AutoCloseable {
     private synchronized <T> T executeWithRetry(ConnectionFunction<T> func, ConnectionConsumer consumer, String name, boolean rollback)
             throws SQLException {
         int attempt = 1;
+        DelayStrategy delayStrategy = DelayStrategy.constant(waitRetryDelay);
         while (true) {
             if (!isOpen()) {
                 LOGGER.debug("Trying to reconnect (attempt {}).", attempt);
@@ -127,7 +128,6 @@ public class RetriableConnection implements AutoCloseable {
                     }
                     attempt++;
                     LOGGER.debug("Waiting for reconnect for {} ms.", waitRetryDelay);
-                    DelayStrategy delayStrategy = DelayStrategy.constant(waitRetryDelay);
                     delayStrategy.sleepWhen(true);
                     continue;
                 }
@@ -163,7 +163,6 @@ public class RetriableConnection implements AutoCloseable {
                 }
                 attempt++;
                 LOGGER.debug("Waiting for retry for {} ms.", waitRetryDelay);
-                DelayStrategy delayStrategy = DelayStrategy.constant(waitRetryDelay);
                 delayStrategy.sleepWhen(true);
             }
         }
