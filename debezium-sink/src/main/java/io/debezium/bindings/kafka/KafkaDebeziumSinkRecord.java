@@ -345,6 +345,10 @@ public class KafkaDebeziumSinkRecord implements DebeziumSinkRecord {
             }
             case RECORD_VALUE -> {
                 final Struct payload = getPayload();
+                if (payload == null) {
+                    throw new ConnectException("Cannot extract primary key from a null record value");
+                }
+
                 final Schema valueSchema = payload.schema();
                 if (valueSchema != null && Schema.Type.STRUCT.equals(valueSchema.type())) {
                     return filterFields(payload, topicName(), allowedPrimaryKeyFields, fieldsFilter);
