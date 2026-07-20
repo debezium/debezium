@@ -25,17 +25,16 @@ import io.debezium.doc.FixFor;
 import io.debezium.relational.history.HistoryRecord.Fields;
 
 /**
- * Tests for the now deprecated {@link ByLogicalTableRouter} transform.
+ * Tests for the {@link ToLogicalTopicRouter} transform.
  *
  * @author Mario Mueller
  */
-@Deprecated
-public class ByLogicalTableRouterTest {
+public class ToLogicalTopicRouterTest {
 
     @Test
     void testBrokenKeyReplacementConfigurationNullValue() {
         assertThrows(ConnectException.class, () -> {
-            final ByLogicalTableRouter<SourceRecord> subject = new ByLogicalTableRouter<>();
+            final ToLogicalTopicRouter<SourceRecord> subject = new ToLogicalTopicRouter<>();
             final Map<String, String> props = new HashMap<>();
 
             props.put("topic.regex", "someValidRegex(.*)");
@@ -48,7 +47,7 @@ public class ByLogicalTableRouterTest {
     @Test
     void testBrokenKeyReplacementConfigurationEmptyValue() {
         assertThrows(ConnectException.class, () -> {
-            final ByLogicalTableRouter<SourceRecord> subject = new ByLogicalTableRouter<>();
+            final ToLogicalTopicRouter<SourceRecord> subject = new ToLogicalTopicRouter<>();
             final Map<String, String> props = new HashMap<>();
 
             props.put("topic.regex", "someValidRegex(.*)");
@@ -73,7 +72,7 @@ public class ByLogicalTableRouterTest {
     }
 
     private void testKeyReplacementWorkingConfiguration(String schemaNameAdjustmentMode, String expectedKeySchemaName) {
-        final ByLogicalTableRouter<SourceRecord> router = new ByLogicalTableRouter<>();
+        final ToLogicalTopicRouter<SourceRecord> router = new ToLogicalTopicRouter<>();
         final Map<String, String> props = new HashMap<>();
 
         props.put("topic.regex", "(.*)customers_shard(.*)");
@@ -143,7 +142,7 @@ public class ByLogicalTableRouterTest {
 
     @Test
     public void testHeartbeatMessageTopicReplacementTopic() {
-        final ByLogicalTableRouter<SourceRecord> router = new ByLogicalTableRouter<>();
+        final ToLogicalTopicRouter<SourceRecord> router = new ToLogicalTopicRouter<>();
         final Map<String, String> props = new HashMap<>();
         final String keyFieldName = "serverName";
         final String keyOriginalKeyTopic = "originalTopic";
@@ -199,7 +198,7 @@ public class ByLogicalTableRouterTest {
     @Test
     void testBrokenTopicReplacementConfigurationNullValue() {
         assertThrows(ConnectException.class, () -> {
-            final ByLogicalTableRouter<SourceRecord> subject = new ByLogicalTableRouter<>();
+            final ToLogicalTopicRouter<SourceRecord> subject = new ToLogicalTopicRouter<>();
             final Map<String, String> props = new HashMap<>();
 
             // topic.replacement is not set, therefore null. Must crash.
@@ -211,7 +210,7 @@ public class ByLogicalTableRouterTest {
     @Test
     void testBrokenTopicReplacementConfigurationEmptyValue() {
         assertThrows(ConnectException.class, () -> {
-            final ByLogicalTableRouter<SourceRecord> subject = new ByLogicalTableRouter<>();
+            final ToLogicalTopicRouter<SourceRecord> subject = new ToLogicalTopicRouter<>();
             final Map<String, String> props = new HashMap<>();
 
             // topic.replacement is set to empty string. Must crash.
@@ -224,7 +223,7 @@ public class ByLogicalTableRouterTest {
     @Test
     @FixFor("DBZ-1086")
     public void testKeyNullValue() {
-        final ByLogicalTableRouter<SourceRecord> router = new ByLogicalTableRouter<>();
+        final ToLogicalTopicRouter<SourceRecord> router = new ToLogicalTopicRouter<>();
         final Map<String, String> props = new HashMap<>();
 
         props.put("topic.regex", "(.*)customers_shard(.*)");
@@ -248,7 +247,7 @@ public class ByLogicalTableRouterTest {
     @Test
     @FixFor("DBZ-2034")
     public void testNamespaceReplacementWithoutKeyChange() {
-        final ByLogicalTableRouter<SourceRecord> router = new ByLogicalTableRouter<>();
+        final ToLogicalTopicRouter<SourceRecord> router = new ToLogicalTopicRouter<>();
         final Map<String, String> props = new HashMap<>();
 
         props.put("topic.regex", "(.*).dbz_shard_\\d+.(.*)");
@@ -300,7 +299,7 @@ public class ByLogicalTableRouterTest {
     @Test
     @FixFor("DBZ-2412")
     public void shouldHandleSchemaChangeEvent() throws Exception {
-        final ByLogicalTableRouter<SourceRecord> router = new ByLogicalTableRouter<>();
+        final ToLogicalTopicRouter<SourceRecord> router = new ToLogicalTopicRouter<>();
 
         final Map<String, String> props = new HashMap<>();
 
@@ -331,7 +330,7 @@ public class ByLogicalTableRouterTest {
     @Test
     @FixFor("dbz#1848")
     public void shouldPreserveNullForNullableFieldWithNonNullDefault() {
-        final ByLogicalTableRouter<SourceRecord> router = new ByLogicalTableRouter<>();
+        final ToLogicalTopicRouter<SourceRecord> router = new ToLogicalTopicRouter<>();
         final Map<String, String> props = new HashMap<>();
         props.put("topic.regex", "(.+)\\.(.+)\\.(.+)");
         props.put("topic.replacement", "$1.$3");
@@ -384,13 +383,10 @@ public class ByLogicalTableRouterTest {
         assertThat(transformedAfter.getWithoutDefault("flag")).isNull();
     }
 
-    // FIXME: This SMT can use more tests for more detailed coverage.
-    // The creation of a DBZ-ish SourceRecord is required for each test
-
     @Test
     @FixFor("debezium/dbz#197")
     public void shouldUseDefaultKeyFieldNameWhenNotExplicitlySet() {
-        final ByLogicalTableRouter<SourceRecord> router = new ByLogicalTableRouter<>();
+        final ToLogicalTopicRouter<SourceRecord> router = new ToLogicalTopicRouter<>();
         final Map<String, String> props = new HashMap<>();
 
         props.put("topic.regex", "(.*)customers_shard(.*)");
@@ -409,15 +405,15 @@ public class ByLogicalTableRouterTest {
 
         SourceRecord transformed = router.apply(record);
         assertThat(transformed.keySchema().fields()).hasSize(2);
-        assertThat(transformed.keySchema().fields().get(1).name()).isEqualTo("__dbz__physicalTableIdentifier");
-        assertThat(((Struct) transformed.key()).get("__dbz__physicalTableIdentifier"))
+        assertThat(transformed.keySchema().fields().get(1).name()).isEqualTo("__dbz__sourceIdentifier");
+        assertThat(((Struct) transformed.key()).get("__dbz__sourceIdentifier"))
                 .isEqualTo("server1.inventory.customers_shard_1");
     }
 
     @Test
     @FixFor("debezium/dbz#197")
     public void shouldUseExplicitKeyFieldNameWhenSet() {
-        final ByLogicalTableRouter<SourceRecord> router = new ByLogicalTableRouter<>();
+        final ToLogicalTopicRouter<SourceRecord> router = new ToLogicalTopicRouter<>();
         final Map<String, String> props = new HashMap<>();
 
         props.put("topic.regex", "(.*)customers_shard(.*)");
@@ -445,7 +441,7 @@ public class ByLogicalTableRouterTest {
     @Test
     @FixFor("DBZ-1075")
     public void shouldHandleMongoDbEnvelopeWithoutBeforeField() {
-        final ByLogicalTableRouter<SourceRecord> router = new ByLogicalTableRouter<>();
+        final ToLogicalTopicRouter<SourceRecord> router = new ToLogicalTopicRouter<>();
         final Map<String, String> props = new HashMap<>();
 
         props.put("topic.regex", "(.*)shard(.*)");

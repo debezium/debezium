@@ -7,6 +7,7 @@ package io.debezium.config;
 
 import io.debezium.transforms.ByLogicalTableRouter;
 import io.debezium.transforms.ExtractNewRecordState;
+import io.debezium.transforms.ToLogicalTopicRouter;
 import io.debezium.transforms.outbox.EventRouter;
 import io.debezium.transforms.tracing.ActivateTracingSpan;
 
@@ -18,6 +19,7 @@ public class CoreTransformationConfigDefinitionMetadataTest extends Transformati
     public CoreTransformationConfigDefinitionMetadataTest() {
         super(
                 new ByLogicalTableRouter<>(),
+                new ToLogicalTopicRouter<>(),
                 new ExtractNewRecordState<>(),
                 new EventRouter<>(),
                 new ActivateTracingSpan<>());
