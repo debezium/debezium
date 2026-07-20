@@ -166,7 +166,7 @@ public class Predicates {
      * Same as {@link #excludesLiterals(String, Function, boolean)} without trimming
      */
     public static <T> Predicate<T> excludesLiterals(String literals, Function<T, String> conversion) {
-        return excludesLiterals(literals, conversion, false).negate();
+        return excludesLiterals(literals, conversion, false);
     }
 
     /**
