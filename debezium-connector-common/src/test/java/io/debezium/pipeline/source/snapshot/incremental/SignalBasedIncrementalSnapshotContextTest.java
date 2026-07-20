@@ -50,6 +50,29 @@ public class SignalBasedIncrementalSnapshotContextTest {
     }
 
     @Test
+    public void shouldLoadOffsetsWrittenWithPerCollectionCorrelationId() {
+        final Map<String, Object> offsets = Map.of(
+                "incremental_snapshot_collections",
+                "[{\"incremental_snapshot_collections_id\":\"public.a\","
+                        + "\"incremental_snapshot_collections_additional_condition\":null,"
+                        + "\"incremental_snapshot_collections_surrogate_key\":null,"
+                        + "\"incremental_snapshot_collections_correlation_id\":\"signal-1\"},"
+                        + "{\"incremental_snapshot_collections_id\":\"public.b\","
+                        + "\"incremental_snapshot_collections_additional_condition\":null,"
+                        + "\"incremental_snapshot_collections_surrogate_key\":null,"
+                        + "\"incremental_snapshot_collections_correlation_id\":\"signal-2\"}]");
+
+        final IncrementalSnapshotContext<TableId> restored = SignalBasedIncrementalSnapshotContext.load(offsets);
+
+        assertThat(restored.getDataCollections())
+                .extracting(DataCollection::getCorrelationId)
+                .containsExactly(Optional.of("signal-1"), Optional.of("signal-2"));
+        assertThat(restored.getDataCollections())
+                .extracting(dataCollection -> dataCollection.getId().identifier())
+                .containsExactly("public.a", "public.b");
+    }
+
+    @Test
     public void shouldLoadOffsetsWrittenWithoutPerCollectionCorrelationId() {
         final Map<String, Object> offsets = Map.of(
                 "incremental_snapshot_collections",
