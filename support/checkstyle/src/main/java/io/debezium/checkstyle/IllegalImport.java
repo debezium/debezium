@@ -5,13 +5,12 @@
  */
 package io.debezium.checkstyle;
 
-import java.util.HashSet;
-
 import com.puppycrawl.tools.checkstyle.api.AbstractCheck;
 import com.puppycrawl.tools.checkstyle.api.DetailAST;
 import com.puppycrawl.tools.checkstyle.api.FullIdent;
 import com.puppycrawl.tools.checkstyle.api.TokenTypes;
 import com.puppycrawl.tools.checkstyle.utils.CommonUtil;
+import java.util.HashSet;
 
 /**
  * A simple CheckStyle checker to verify specific import statements are not being used.
@@ -26,7 +25,8 @@ public class IllegalImport extends AbstractCheck {
     /**
      * Set the list of illegal import statements.
      *
-     * @param importStatements array of illegal packages
+     * @param importStatements
+     *            array of illegal packages
      */
     public void setIllegalClassnames(String[] importStatements) {
         for (String impo : importStatements) {
@@ -42,7 +42,7 @@ public class IllegalImport extends AbstractCheck {
 
     @Override
     public int[] getDefaultTokens() {
-        return new int[]{ TokenTypes.IMPORT, TokenTypes.STATIC_IMPORT };
+        return new int[] { TokenTypes.IMPORT, TokenTypes.STATIC_IMPORT };
     }
 
     @Override
@@ -63,8 +63,7 @@ public class IllegalImport extends AbstractCheck {
         final FullIdent imp;
         if (aAST.getType() == TokenTypes.IMPORT) {
             imp = FullIdent.createFullIdentBelow(aAST);
-        }
-        else {
+        } else {
             // handle case of static imports of method names
             imp = FullIdent.createFullIdent(aAST.getFirstChild().getNextSibling());
         }

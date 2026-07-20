@@ -5,6 +5,7 @@
  */
 package io.debezium.checkstyle;
 
+import com.puppycrawl.tools.checkstyle.api.FileText;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -13,8 +14,6 @@ import java.io.LineNumberReader;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Pattern;
-
-import com.puppycrawl.tools.checkstyle.api.FileText;
 
 public class Header extends com.puppycrawl.tools.checkstyle.checks.header.HeaderCheck {
 
@@ -62,8 +61,7 @@ public class Header extends com.puppycrawl.tools.checkstyle.checks.header.Header
                 sb.append(l).append("\\n");
             }
             super.setHeader(sb.toString());
-        }
-        catch (IOException e) {
+        } catch (IOException e) {
             throw new RuntimeException("problem reading header file (using classloader) " + aFileName, e);
         }
     }
