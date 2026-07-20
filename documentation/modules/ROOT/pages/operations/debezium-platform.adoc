@@ -416,7 +416,7 @@ The connection catalog lists the source databases that {prodname} can read from,
 . After you verify the connection, click **Create connection** .
 
 [.responsive]
-video::pRWXV0eeYtI[youtube, title="Create, edit and remove a destination"]
+video::pRWXV0eeYtI[youtube, title="Create, edit and use a connection"]
 
 ==== Deleting a connection
 
