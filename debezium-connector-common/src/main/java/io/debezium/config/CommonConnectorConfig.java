@@ -24,6 +24,9 @@ import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import javax.management.MalformedObjectNameException;
+import javax.management.ObjectName;
+
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
@@ -1059,10 +1062,10 @@ public abstract class CommonConnectorConfig {
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.LOW)
-            .withValidation(Field::isListOfMap)
-            .withDescription("The custom metric tags will accept key-value pairs to customize the MBean object name "
-                    + "which should be appended the end of regular name, each key would represent a tag for the MBean object name, "
-                    + "and the corresponding value would be the value of that tag the key is. For example: k1=v1,k2=v2");
+            .withValidation(Field::isListOfMap, CommonConnectorConfig::validateCustomMetricTags)
+            .withDescription("A comma-separated list of key-value pairs that are appended to the MBean object name. "
+                    + "Keys must be valid JMX ObjectName property keys. "
+                    + "For example: k1=v1,k2=v2");
 
     public static final Field INCREMENTAL_SNAPSHOT_WATERMARKING_STRATEGY = Field.create("incremental.snapshot.watermarking.strategy")
             .withDisplayName("Incremental snapshot watermarking strategy")
@@ -1991,6 +1994,38 @@ public abstract class CommonConnectorConfig {
         }
 
         return result;
+    }
+
+    /**
+     * Validates that every {@code custom.metric.tags} entry can be turned into a legal JMX
+     * {@link ObjectName} property. Values do not need JMX syntax validation because they are sanitized before MBean
+     * registration. Without this check an invalid key passes {@link Field#isListOfMap} but crashes the connector at
+     * startup with a {@link MalformedObjectNameException}.
+     */
+    private static int validateCustomMetricTags(Configuration config, Field field, ValidationOutput problems) {
+        String rawValue = config.getString(field);
+        if (Strings.isNullOrBlank(rawValue)) {
+            return 0;
+        }
+
+        int errors = 0;
+        List<String> entries = Strings.listOf(rawValue, x -> x.split(","), String::trim);
+        for (String entry : entries) {
+            List<String> keyValue = Strings.listOf(entry, x -> x.split("="), String::trim);
+            if (keyValue.size() == 2) {
+                String key = keyValue.get(0);
+                try {
+                    // Values are sanitized before MBean registration, so only the key needs JMX syntax validation.
+                    new ObjectName("debezium:" + key + "=value");
+                }
+                catch (MalformedObjectNameException e) {
+                    problems.accept(field, rawValue, "The custom metric tag key '" + key
+                            + "' is not a valid JMX ObjectName property key");
+                    ++errors;
+                }
+            }
+        }
+        return errors;
     }
 
     public WatermarkStrategy getIncrementalSnapshotWatermarkingStrategy() {

@@ -55,6 +55,9 @@ To prevent monitoring disruptions that result from MBean name changes, you can c
 You configure custom metrics by adding the `custom.metric.tags` property to the connector configuration.
 The property accepts key-value pairs in which each key represents a tag for the MBean object name, and the corresponding value represents the value of that tag.
 For example: `k1=v1,k2=v2`.
+Tag keys must be valid JMX `ObjectName` property keys.
+The comma separates entries, and the equals sign separates each key from its value; therefore, neither can occur in a key.
+Keys also cannot contain JMX-reserved characters such as `:`, `*`, or `?`.
 {prodname} appends the specified tags to the MBean name of the connector.
 
 After you configure the `custom.metric.tags` property for a connector, you can configure the observability stack to retrieve metrics associated with the specified tags.
