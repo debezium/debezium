@@ -33,7 +33,18 @@ public class MySqlConnection extends BinlogConnectorConnection {
     public MySqlConnection(MySqlConnectionConfiguration connectionConfig, BinlogFieldReader fieldReader) {
         super(connectionConfig, fieldReader);
 
-        this.binaryLogStatusStatement = resolveBinaryLogStatusStatement();
+        try {
+            this.binaryLogStatusStatement = resolveBinaryLogStatusStatement();
+        }
+        catch (RuntimeException initializationException) {
+            try {
+                close();
+            }
+            catch (Exception resourceReleasingException) {
+                initializationException.addSuppressed(resourceReleasingException);
+            }
+            throw initializationException;
+        }
     }
 
     public static boolean isNetworkError(SQLException e) {
