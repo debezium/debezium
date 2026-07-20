@@ -5,6 +5,7 @@
  */
 package io.debezium.transforms;
 
+import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.kafka.connect.connector.ConnectRecord;
@@ -32,6 +33,29 @@ public class ByLogicalTableRouter<R extends ConnectRecord<R>> extends ToLogicalT
         LOGGER.warn("{} is deprecated and will be removed in a future release. Please adjust the connector configuration to use {} instead.",
                 ByLogicalTableRouter.class.getName(),
                 ToLogicalTopicRouter.class.getName());
-        super.configure(props);
+        super.configure(applyLegacyConfigurationIfApplicable(props));
+    }
+
+    /**
+     * This allows older configurations to remain usable as long as the configuration continues to reference
+     * this class rather than the new {@link ToLogicalTopicRouter} class name.
+     * <ul>
+     *     <li>The {@code key.field.name} defaults to {@code __dbz__physicalTableIdentifier}.</li>
+     *     <li>The {@code logical.table.cache.size} property is recognized and mapped to {@code logical.destination.cache.size} if absent.</li>
+     * </ul>
+     *
+     * @param props the supplied configuration, should not be {@code null}
+     * @return the adjusted configuration, if applicable, never {@code null}
+     */
+    private Map<String, ?> applyLegacyConfigurationIfApplicable(Map<String, ?> props) {
+        // Handles legacy setups when using the deprecated implementation
+        final Map<String, Object> adjustedProps = new HashMap<>(props);
+        adjustedProps.putIfAbsent("key.field.name", "__dbz__physicalTableIdentifier");
+
+        if (adjustedProps.containsKey("logical.table.cache.size") && !adjustedProps.containsKey("logical.destination.cache.size")) {
+            adjustedProps.put("logical.destination.cache.size", adjustedProps.get("logical.table.cache.size"));
+        }
+
+        return adjustedProps;
     }
 }
