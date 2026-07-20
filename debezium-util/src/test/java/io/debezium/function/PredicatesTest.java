@@ -12,6 +12,8 @@ import java.util.function.Predicate;
 
 import org.junit.jupiter.api.Test;
 
+import io.debezium.doc.FixFor;
+
 /**
  * @author Randall Hauch
  */
@@ -87,6 +89,17 @@ public class PredicatesTest {
         assertThat(p.test(uuid3)).isTrue();
         assertThat(p.test(uuid4)).isFalse();
 
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2246")
+    public void shouldExcludeMatchingLiteralsWithConversion() {
+        Predicate<Integer> p = Predicates.excludesLiterals("1,2,3", (i) -> i.toString());
+        assertThat(p.test(1)).isFalse();
+        assertThat(p.test(2)).isFalse();
+        assertThat(p.test(3)).isFalse();
+        assertThat(p.test(0)).isTrue();
+        assertThat(p.test(4)).isTrue();
     }
 
 }
