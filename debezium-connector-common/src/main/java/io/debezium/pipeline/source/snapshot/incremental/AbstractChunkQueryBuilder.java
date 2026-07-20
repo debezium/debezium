@@ -141,14 +141,14 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
             for (int j = 0; j < i + 1; j++) {
                 final boolean isLastIterationForJ = (i == j);
                 final String operator =
-                        //not the last item in this iteration
+                        // not the last item in this iteration
                         !isLastIterationForJ ? " = ?" :
                         // the last item in this iteration
                         // and in all iterations
                         // and the last condition should be inclusive
-                        (isLastIterationForI && inclusiveFinal) ? " >= ?"
-                        //the last item in this iteration but we don't need an inclusive condition
-                        : " > ?";
+                                (isLastIterationForI && inclusiveFinal) ? " >= ?"
+                                        // the last item in this iteration but we don't need an inclusive condition
+                                        : " > ?";
                 final String pkColumnName = jdbcConnection.quoteIdentifier(pkColumns.get(j).name());
                 if (pkColumns.get(j).isRequired()) {
                     condition.append(pkColumnName);
@@ -179,8 +179,8 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
                     if (isLastIterationForJ) {
                         // Identifies values greater than NULL based on the database sorting behavior
                         if (nullsSortLast.get()) {
-                            if (isLastIterationForI && inclusiveFinal){
-                                //solving for x >= NULL in case nulls sort last, x can only be NULL
+                            if (isLastIterationForI && inclusiveFinal) {
+                                // solving for x >= NULL in case nulls sort last, x can only be NULL
                                 condition.append(pkColumnName);
                                 condition.append(" IS NULL");
                             }
@@ -190,8 +190,8 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
                             }
                         }
                         else {
-                            if (isLastIterationForI && inclusiveFinal){
-                                //solving for x >= NULL in case nulls DON'T sort last, x can be anything. So, anything is >= NULL.
+                            if (isLastIterationForI && inclusiveFinal) {
+                                // solving for x >= NULL in case nulls DON'T sort last, x can be anything. So, anything is >= NULL.
                                 condition.append("1 = 1");
                             }
                             else {
@@ -214,7 +214,7 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
                 condition.append(" OR ");
             }
         }
-        if (pkColumns.size() > 1 ) {
+        if (pkColumns.size() > 1) {
             condition.append(')');
         }
     }
