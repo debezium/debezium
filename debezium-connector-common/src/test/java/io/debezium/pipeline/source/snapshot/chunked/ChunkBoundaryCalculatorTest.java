@@ -156,7 +156,7 @@ public class ChunkBoundaryCalculatorTest {
         final Table table = singlePkTable();
         assertThat(new ChunkBoundaryCalculator(defaultConnection(), config())
                 .buildNextBoundaryQuery(table.id(), table.primaryKeyColumns(), 1000L, new Object[]{ 1 }))
-                .isEqualTo("SELECT \"pk1\" FROM \"s1\".\"table1\" WHERE ((\"pk1\" > ?) OR (\"pk1\" = ?)) " +
+                .isEqualTo("SELECT \"pk1\" FROM \"s1\".\"table1\" WHERE (\"pk1\" >= ?) " +
                         "ORDER BY \"pk1\" OFFSET 1000 ROWS FETCH NEXT 1 ROWS ONLY");
     }
 
@@ -175,7 +175,7 @@ public class ChunkBoundaryCalculatorTest {
         assertThat(new ChunkBoundaryCalculator(defaultConnection(), config())
                 .buildNextBoundaryQuery(table.id(), table.primaryKeyColumns(), 1000L, new Object[]{ 1, 5, 3 }))
                 .isEqualTo("SELECT \"pk1\", \"pk2\", \"pk3\" FROM \"s1\".\"table1\" WHERE " +
-                        "((\"pk1\" > ?) OR (\"pk1\" = ? AND \"pk2\" > ?) OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" > ?) OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" = ?)) "
+                        "((\"pk1\" > ?) OR (\"pk1\" = ? AND \"pk2\" > ?) OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" >= ?)) "
                         +
                         "ORDER BY \"pk1\", \"pk2\", \"pk3\" OFFSET 1000 ROWS FETCH NEXT 1 ROWS ONLY");
     }

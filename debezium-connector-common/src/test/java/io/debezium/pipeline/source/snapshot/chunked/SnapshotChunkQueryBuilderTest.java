@@ -153,7 +153,7 @@ public class SnapshotChunkQueryBuilderTest {
         // First chunk of three: no lower bound, exclusive upper bound.
         final SnapshotChunk firstChunk = chunk(table, null, new Object[]{ 10 }, 0, 3);
         assertThat(new SnapshotChunkQueryBuilder(defaultConnection(), config()).buildChunkQuery(firstChunk, table.primaryKeyColumns(), BASE_SELECT))
-                .isEqualTo("SELECT * FROM \"s1\".\"table1\" WHERE NOT ((\"pk1\" > ?) OR (\"pk1\" = ?)) ORDER BY \"pk1\"");
+                .isEqualTo("SELECT * FROM \"s1\".\"table1\" WHERE NOT (\"pk1\" >= ?) ORDER BY \"pk1\"");
     }
 
     @Test
@@ -161,7 +161,7 @@ public class SnapshotChunkQueryBuilderTest {
         final Table table = singlePkTable();
         final SnapshotChunk middleChunk = chunk(table, new Object[]{ 1 }, new Object[]{ 10 }, 1, 3);
         assertThat(new SnapshotChunkQueryBuilder(defaultConnection(), config()).buildChunkQuery(middleChunk, table.primaryKeyColumns(), BASE_SELECT))
-                .isEqualTo("SELECT * FROM \"s1\".\"table1\" WHERE ((\"pk1\" > ?) OR (\"pk1\" = ?)) AND NOT ((\"pk1\" > ?) OR (\"pk1\" = ?)) ORDER BY \"pk1\"");
+                .isEqualTo("SELECT * FROM \"s1\".\"table1\" WHERE (\"pk1\" >= ?) AND NOT (\"pk1\" >= ?) ORDER BY \"pk1\"");
     }
 
     @Test
@@ -170,7 +170,7 @@ public class SnapshotChunkQueryBuilderTest {
         // Last chunk of three -> upper bound is inclusive.
         final SnapshotChunk lastChunk = chunk(table, new Object[]{ 1 }, new Object[]{ 10 }, 2, 3);
         assertThat(new SnapshotChunkQueryBuilder(defaultConnection(), config()).buildChunkQuery(lastChunk, table.primaryKeyColumns(), BASE_SELECT))
-                .isEqualTo("SELECT * FROM \"s1\".\"table1\" WHERE ((\"pk1\" > ?) OR (\"pk1\" = ?)) AND NOT (\"pk1\" > ?) ORDER BY \"pk1\"");
+                .isEqualTo("SELECT * FROM \"s1\".\"table1\" WHERE (\"pk1\" >= ?) AND NOT (\"pk1\" > ?) ORDER BY \"pk1\"");
     }
 
     @Test
@@ -195,9 +195,9 @@ public class SnapshotChunkQueryBuilderTest {
         final SnapshotChunk middleChunk = chunk(table, new Object[]{ 1, 5, 3 }, new Object[]{ 10, 50, 30 }, 1, 3);
         assertThat(new SnapshotChunkQueryBuilder(defaultConnection(), config()).buildChunkQuery(middleChunk, table.primaryKeyColumns(), BASE_SELECT))
                 .isEqualTo("SELECT * FROM \"s1\".\"table1\" WHERE " +
-                        "((\"pk1\" > ?) OR (\"pk1\" = ? AND \"pk2\" > ?) OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" > ?) OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" = ?)) "
+                        "((\"pk1\" > ?) OR (\"pk1\" = ? AND \"pk2\" > ?) OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" >= ?)) "
                         +
-                        "AND NOT ((\"pk1\" > ?) OR (\"pk1\" = ? AND \"pk2\" > ?) OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" > ?) OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" = ?)) "
+                        "AND NOT ((\"pk1\" > ?) OR (\"pk1\" = ? AND \"pk2\" > ?) OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" >= ?)) "
                         +
                         "ORDER BY \"pk1\", \"pk2\", \"pk3\"");
     }
@@ -220,7 +220,7 @@ public class SnapshotChunkQueryBuilderTest {
         assertThat(new SnapshotChunkQueryBuilder(defaultConnection(), config())
                 .buildChunkQuery(middleChunk, table.primaryKeyColumns(), "SELECT * FROM \"s1\".\"table1\" WHERE \"val1\" = 5"))
                 .isEqualTo(
-                        "SELECT * FROM \"s1\".\"table1\" WHERE (((\"pk1\" > ?) OR (\"pk1\" = ?)) AND NOT ((\"pk1\" > ?) OR (\"pk1\" = ?))) AND \"val1\" = 5 ORDER BY \"pk1\"");
+                        "SELECT * FROM \"s1\".\"table1\" WHERE ((\"pk1\" >= ?) AND NOT (\"pk1\" >= ?)) AND \"val1\" = 5 ORDER BY \"pk1\"");
     }
 
     @Test
@@ -230,6 +230,6 @@ public class SnapshotChunkQueryBuilderTest {
         // The existing ORDER BY is replaced by an ORDER BY over the key columns.
         assertThat(new SnapshotChunkQueryBuilder(defaultConnection(), config())
                 .buildChunkQuery(middleChunk, table.primaryKeyColumns(), "SELECT * FROM \"s1\".\"table1\" ORDER BY \"x\""))
-                .isEqualTo("SELECT * FROM \"s1\".\"table1\" WHERE ((\"pk1\" > ?) OR (\"pk1\" = ?)) AND NOT ((\"pk1\" > ?) OR (\"pk1\" = ?)) ORDER BY \"pk1\"");
+                .isEqualTo("SELECT * FROM \"s1\".\"table1\" WHERE (\"pk1\" >= ?) AND NOT (\"pk1\" >= ?) ORDER BY \"pk1\"");
     }
 }

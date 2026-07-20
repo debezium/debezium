@@ -132,7 +132,7 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
         // (k1 = ?) where ? is NULL: (k1 IS NULL): need to use IS NULL instead of equality comparison
 
         final Optional<Boolean> nullsSortLast = jdbcConnection.nullsSortLast();
-        if (pkColumns.size() > 1 || inclusiveFinal) {
+        if (pkColumns.size() > 1) {
             condition.append('(');
         }
         for (int i = 0; i < pkColumns.size(); i++) {
@@ -140,16 +140,25 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
             condition.append('(');
             for (int j = 0; j < i + 1; j++) {
                 final boolean isLastIterationForJ = (i == j);
+                final String operator =
+                        //not the last item in this iteration
+                        !isLastIterationForJ ? " = ?" :
+                        // the last item in this iteration
+                        // and in all iterations
+                        // and the last condition should be inclusive
+                        (isLastIterationForI && inclusiveFinal) ? " >= ?"
+                        //the last item in this iteration but we don't need an inclusive condition
+                        : " > ?";
                 final String pkColumnName = jdbcConnection.quoteIdentifier(pkColumns.get(j).name());
                 if (pkColumns.get(j).isRequired()) {
                     condition.append(pkColumnName);
-                    condition.append(isLastIterationForJ ? " > ?" : " = ?");
+                    condition.append(operator);
                 }
                 else if (boundaryKey[j] != null) {
                     if (isLastIterationForJ) {
                         condition.append('(');
                         condition.append(pkColumnName);
-                        condition.append(" > ?");
+                        condition.append(operator);
                         if (nullsSortLast.get()) {
                             condition.append(" OR ");
                             condition.append(pkColumnName);
@@ -163,19 +172,32 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
                     }
                     else {
                         condition.append(pkColumnName);
-                        condition.append(" = ?");
+                        condition.append(operator);
                     }
                 }
                 else {
                     if (isLastIterationForJ) {
                         // Identifies values greater than NULL based on the database sorting behavior
                         if (nullsSortLast.get()) {
-                            // Basically a FALSE literal: works around lack of FALSE literal in some databases, like Oracle
-                            condition.append("1 = 0"); // nothing is greater than NULL
+                            if (isLastIterationForI && inclusiveFinal){
+                                //solving for x >= NULL in case nulls sort last, x can only be NULL
+                                condition.append(pkColumnName);
+                                condition.append(" IS NULL");
+                            }
+                            else {
+                                // Basically a FALSE literal: works around lack of FALSE literal in some databases, like Oracle
+                                condition.append("1 = 0"); // nothing is greater than NULL
+                            }
                         }
                         else {
-                            condition.append(pkColumnName);
-                            condition.append(" IS NOT NULL"); // everything is greater than NULL
+                            if (isLastIterationForI && inclusiveFinal){
+                                //solving for x >= NULL in case nulls DON'T sort last, x can be anything. So, anything is >= NULL.
+                                condition.append("1 = 1");
+                            }
+                            else {
+                                condition.append(pkColumnName);
+                                condition.append(" IS NOT NULL"); // everything is greater than NULL
+                            }
                         }
                     }
                     else {
@@ -191,27 +213,8 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
             if (!isLastIterationForI) {
                 condition.append(" OR ");
             }
-            if (isLastIterationForI && inclusiveFinal) {
-                condition.append(" OR ");
-                condition.append('(');
-                for (int j = 0; j <= i; j++) {
-                    final String pkColumnName = jdbcConnection.quoteIdentifier(pkColumns.get(j).name());
-                    if (boundaryKey[j] != null) {
-                        condition.append(pkColumnName);
-                        condition.append(" = ?");
-                    }
-                    else {
-                        condition.append(pkColumnName);
-                        condition.append(" IS NULL");
-                    }
-                    if (j < i) {
-                        condition.append(" AND ");
-                    }
-                }
-                condition.append(')');
-            }
         }
-        if (pkColumns.size() > 1 || inclusiveFinal) {
+        if (pkColumns.size() > 1 ) {
             condition.append(')');
         }
     }
