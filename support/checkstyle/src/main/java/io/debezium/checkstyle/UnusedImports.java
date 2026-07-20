@@ -5,13 +5,6 @@
  */
 package io.debezium.checkstyle;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import com.puppycrawl.tools.checkstyle.api.DetailAST;
 import com.puppycrawl.tools.checkstyle.api.FileContents;
 import com.puppycrawl.tools.checkstyle.api.FullIdent;
@@ -23,13 +16,20 @@ import com.puppycrawl.tools.checkstyle.checks.javadoc.JavadocTag;
 import com.puppycrawl.tools.checkstyle.checks.javadoc.JavadocTags;
 import com.puppycrawl.tools.checkstyle.utils.CommonUtil;
 import com.puppycrawl.tools.checkstyle.utils.JavadocUtil.JavadocTagType;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
- * This is a specialization of the {@link UnusedImportsCheck} that fixes a couple of problems, including correctly processing
- * {@code @link} expressions that are not properly terminated on the same line, correctly processing JavaDoc {@code @param} lines,
- * and correctly processing method parameters contained with {@code @link} expressions.
+ * This is a specialization of the {@link UnusedImportsCheck} that fixes a couple of problems, including correctly
+ * processing {@code @link} expressions that are not properly terminated on the same line, correctly processing JavaDoc
+ * {@code @param} lines, and correctly processing method parameters contained with {@code @link} expressions.
  * <p>
- * Unfortunately, the base class is not easily overwritten, and thus a fair amount of the logic has to be incorporated here.
+ * Unfortunately, the base class is not easily overwritten, and thus a fair amount of the logic has to be incorporated
+ * here.
  * </p>
  */
 public class UnusedImports extends UnusedImportsCheck {
@@ -46,15 +46,15 @@ public class UnusedImports extends UnusedImportsCheck {
      */
     private static final Pattern LINK_VALUE_IN_TEXT_PATTERN = CommonUtil.createPattern("(.*?)(?:\\s+|#|\\$)(.*)");
     /**
-     * A regular expression for finding the class name (group 1) and the method parameters (group 2) within a JavaDoc "@link"
-     * reference.
+     * A regular expression for finding the class name (group 1) and the method parameters (group 2) within a JavaDoc
+     * "@link" reference.
      *
      * <pre>
      * ([\w.]+)(?:\#?\w+)?(?:\(([^\)]+)\))?.*
      * </pre>
      */
-    private static final Pattern PARTS_OF_CLASS_OR_REFERENCE_PATTERN = CommonUtil.createPattern(
-            "([\\w.]+)(?:\\#?\\w+)?(?:\\(([^\\)]+)\\))?.*");
+    private static final Pattern PARTS_OF_CLASS_OR_REFERENCE_PATTERN = CommonUtil
+            .createPattern("([\\w.]+)(?:\\#?\\w+)?(?:\\(([^\\)]+)\\))?.*");
     /**
      * A regular expression for finding the first classname referenced in a "@link" reference.
      *
@@ -98,16 +98,13 @@ public class UnusedImports extends UnusedImportsCheck {
             if (collect) {
                 processIdent(aAST);
             }
-        }
-        else if (aAST.getType() == TokenTypes.IMPORT) {
+        } else if (aAST.getType() == TokenTypes.IMPORT) {
             super.visitToken(aAST);
             processImport(aAST);
-        }
-        else if (aAST.getType() == TokenTypes.STATIC_IMPORT) {
+        } else if (aAST.getType() == TokenTypes.STATIC_IMPORT) {
             super.visitToken(aAST);
             processStaticImport(aAST);
-        }
-        else {
+        } else {
             collect = true;
             if (processJavaDoc) {
                 processJavaDocLinkParameters(aAST);
@@ -119,7 +116,8 @@ public class UnusedImports extends UnusedImportsCheck {
     /**
      * Collects references made by IDENT.
      *
-     * @param aAST the IDENT node to process {@link ArrayList stuff}
+     * @param aAST
+     *            the IDENT node to process {@link ArrayList stuff}
      */
     protected void processIdent(DetailAST aAST) {
         final int parentType = aAST.getParent().getType();
@@ -162,8 +160,7 @@ public class UnusedImports extends UnusedImportsCheck {
                 String methodCall = matcher.group(2);
                 processClassOrMethodReference(methodCall);
             }
-        }
-        else if (tag.isParamTag()) {
+        } else if (tag.isParamTag()) {
             String paramText = tag.getFirstArg();
             print("Found parameter text: ", paramText);
             // Find the links to classe
@@ -173,8 +170,7 @@ public class UnusedImports extends UnusedImportsCheck {
                 String linkValue = paramsMatcher.group(1);
                 processClassOrMethodReference(linkValue);
             }
-        }
-        else if (tag.isReturnTag()) {
+        } else if (tag.isReturnTag()) {
             String returnText = tag.getFirstArg();
             print("Found return text: ", returnText);
             // Find the links to classe
@@ -217,7 +213,8 @@ public class UnusedImports extends UnusedImportsCheck {
     /**
      * Collects the details of imports.
      *
-     * @param aAST node containing the import details
+     * @param aAST
+     *            node containing the import details
      */
     private void processImport(DetailAST aAST) {
         final FullIdent name = FullIdent.createFullIdentBelow(aAST);
@@ -229,7 +226,8 @@ public class UnusedImports extends UnusedImportsCheck {
     /**
      * Collects the details of static imports.
      *
-     * @param aAST node containing the static import details
+     * @param aAST
+     *            node containing the static import details
      */
     private void processStaticImport(DetailAST aAST) {
         final FullIdent name = FullIdent.createFullIdent(aAST.getFirstChild().getNextSibling());

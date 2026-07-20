@@ -5,10 +5,6 @@
  */
 package io.debezium.checkstyle;
 
-import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import com.google.common.collect.Lists;
 import com.puppycrawl.tools.checkstyle.api.TextBlock;
 import com.puppycrawl.tools.checkstyle.checks.javadoc.InvalidJavadocTag;
@@ -17,6 +13,9 @@ import com.puppycrawl.tools.checkstyle.checks.javadoc.JavadocTagInfo;
 import com.puppycrawl.tools.checkstyle.checks.javadoc.JavadocTags;
 import com.puppycrawl.tools.checkstyle.utils.CommonUtil;
 import com.puppycrawl.tools.checkstyle.utils.JavadocUtil.JavadocTagType;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public final class JavaDocUtil {
 
@@ -26,8 +25,11 @@ public final class JavaDocUtil {
     /**
      * Gets validTags from a given piece of Javadoc.
      *
-     * @param aCmt the Javadoc comment to process.
-     * @param aTagType the type of validTags we're interested in
+     * @param aCmt
+     *            the Javadoc comment to process.
+     * @param aTagType
+     *            the type of validTags we're interested in
+     *
      * @return all standalone validTags from the given javadoc.
      */
     public static JavadocTags getJavadocTags(TextBlock aCmt, JavadocTagType aTagType) {
@@ -38,7 +40,8 @@ public final class JavaDocUtil {
         for (int i = 0; i < text.length; i++) {
             final String s = text[i];
             final Matcher blockTagMatcher = blockTagPattern.matcher(s);
-            if ((aTagType.equals(JavadocTagType.ALL) || aTagType.equals(JavadocTagType.BLOCK)) && blockTagMatcher.find()) {
+            if ((aTagType.equals(JavadocTagType.ALL) || aTagType.equals(JavadocTagType.BLOCK))
+                    && blockTagMatcher.find()) {
                 final String tagName = blockTagMatcher.group(1);
                 String content = s.substring(blockTagMatcher.end(1));
                 if (content.endsWith("*/")) {
@@ -51,8 +54,7 @@ public final class JavaDocUtil {
                 }
                 if (JavadocTagInfo.isValidName(tagName)) {
                     tags.add(new JavadocTag(line, col, tagName, content.trim()));
-                }
-                else {
+                } else {
                     invalidTags.add(new InvalidJavadocTag(line, col, tagName));
                 }
             }
@@ -66,12 +68,12 @@ public final class JavaDocUtil {
                 if (!commentMatcher.find()) {
                     commentContents = s; // No leading asterisks, still valid
                     commentOffset = 0;
-                }
-                else {
+                } else {
                     commentContents = commentMatcher.group(1);
                     commentOffset = commentMatcher.start(1) - 1;
                 }
-                final Pattern tagPattern = CommonUtil.createPattern(".*?\\{@(\\p{Alpha}+)\\s+([^\\}]*)"); // The last '}' may
+                final Pattern tagPattern = CommonUtil.createPattern(".*?\\{@(\\p{Alpha}+)\\s+([^\\}]*)"); // The last
+                                                                                                          // '}' may
                 // appear on the next
                 // line ...
                 final Matcher tagMatcher = tagPattern.matcher(commentContents);
@@ -86,8 +88,7 @@ public final class JavaDocUtil {
                         }
                         if (JavadocTagInfo.isValidName(tagName)) {
                             tags.add(new JavadocTag(line, col, tagName, tagValue));
-                        }
-                        else {
+                        } else {
                             invalidTags.add(new InvalidJavadocTag(line, col, tagName));
                         }
                     }

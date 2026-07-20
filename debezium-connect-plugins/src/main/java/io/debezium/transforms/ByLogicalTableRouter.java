@@ -12,7 +12,6 @@ import org.apache.kafka.connect.connector.ConnectRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
 /**
  * @deprecated Use {@link ToLogicalTopicRouter} instead.
  * This class is deprecated and maintained only for backward compatibility.
