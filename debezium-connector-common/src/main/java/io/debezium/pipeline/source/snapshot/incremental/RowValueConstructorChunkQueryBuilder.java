@@ -7,6 +7,7 @@ package io.debezium.pipeline.source.snapshot.incremental;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.OptionalLong;
 
@@ -132,16 +133,15 @@ public class RowValueConstructorChunkQueryBuilder<T extends DataCollectionId> ex
     }
 
     @Override
-    public int bindBoundaryParams(PreparedStatement statement, List<Column> columns, Object[] values, int startIndex, JdbcConnection connection)
-            throws SQLException {
+    public List<QueryParam> generateBoundaryParams(List<Column> columns, Object[] values) {
         if (fallbackToSuper(columns)) {
-            return super.bindBoundaryParams(statement, columns, values, startIndex, connection);
+            return super.generateBoundaryParams(columns, values);
         }
-        int paramIndex = startIndex;
+        List<QueryParam> params = new ArrayList<>();
         for (int i = 0; i < values.length; i++) {
-            connection.setQueryColumnValue(statement, columns.get(i), paramIndex++, values[i]);
+            params.add(new QueryParam(columns.get(i), values[i]));
         }
-        return paramIndex;
+        return params;
     }
 
 }
