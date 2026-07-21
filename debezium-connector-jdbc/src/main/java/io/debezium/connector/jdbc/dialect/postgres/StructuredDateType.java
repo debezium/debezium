@@ -75,6 +75,6 @@ public class StructuredDateType extends io.debezium.connector.jdbc.type.debezium
     }
 
     private boolean supportsInfinity() {
-        return getDialect() == null || getDialect().getTargetTemporalCapabilities().dateInfinitySupported();
+        return getDialect() != null && getDialect().getTargetTemporalCapabilities().dateInfinitySupported();
     }
 }

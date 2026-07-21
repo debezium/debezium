@@ -75,6 +75,6 @@ public class StructuredTimestampType extends io.debezium.connector.jdbc.type.deb
     }
 
     private boolean supportsInfinity() {
-        return getDialect() == null || getDialect().getTargetTemporalCapabilities().timestampInfinitySupported();
+        return getDialect() != null && getDialect().getTargetTemporalCapabilities().timestampInfinitySupported();
     }
 }
