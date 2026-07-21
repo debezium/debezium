@@ -41,6 +41,17 @@ public interface ChunkQueryBuilder<T extends DataCollectionId> {
     void addUpperBound(List<Column> pkColumns, Object[] boundaryValues, StringBuilder condition, boolean inclusiveFinal);
 
     /**
+     * A single boundary parameter: the column it binds to and the value bound to it.
+     */
+    record QueryParam(Column column, Object value) {
+    }
+
+    /**
+     * Generates the ordered list of boundary parameters to bind for the given columns and boundary values.
+     */
+    List<QueryParam> generateBoundaryParams(List<Column> columns, Object[] values);
+
+    /**
      * Binds Query Params starting at position startIndex for given columns to the given values.
      */
     int bindBoundaryParams(PreparedStatement statement, List<Column> columns, Object[] values, int startIndex, JdbcConnection connection) throws SQLException;

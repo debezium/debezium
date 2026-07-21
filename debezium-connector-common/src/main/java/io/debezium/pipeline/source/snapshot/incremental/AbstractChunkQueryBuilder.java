@@ -7,6 +7,7 @@ package io.debezium.pipeline.source.snapshot.incremental;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -245,14 +246,24 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
         return statement;
     }
 
-    public int bindBoundaryParams(PreparedStatement statement, List<Column> columns, Object[] values, int startIndex, JdbcConnection connection)
-            throws SQLException {
-        int paramIndex = startIndex;
+    @Override
+    public List<QueryParam> generateBoundaryParams(List<Column> columns, Object[] values) {
+        List<QueryParam> params = new ArrayList<>();
         for (int i = 0; i < values.length; i++) {
             for (int j = 0; j <= i; j++) {
-                if (values[j] != null) {
-                    connection.setQueryColumnValue(statement, columns.get(j), paramIndex++, values[j]);
-                }
+                params.add(new QueryParam(columns.get(j), values[j]));
+            }
+        }
+        return params;
+    }
+
+    public int bindBoundaryParams(PreparedStatement statement, List<Column> columns, Object[] values, int startIndex, JdbcConnection connection)
+            throws SQLException {
+        List<QueryParam> queryParams = generateBoundaryParams(columns, values);
+        int paramIndex = startIndex;
+        for (QueryParam queryParam : queryParams) {
+            if (queryParam.value() != null) {
+                connection.setQueryColumnValue(statement, queryParam.column(), paramIndex++, queryParam.value());
             }
         }
         return paramIndex;
