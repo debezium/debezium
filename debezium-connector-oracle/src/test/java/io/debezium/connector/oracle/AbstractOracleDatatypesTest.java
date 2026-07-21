@@ -701,7 +701,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractAsyncEngineCon
 
         Struct after = (Struct) ((Struct) record.value()).get("after");
 
-        assertThat(after.schema().field("VAL_TS_PRECISION9").schema().name()).isEqualTo(StructuredTimestamp.SCHEMA_NAME);
+        assertThat(after.schema().field("VAL_TS_PRECISION9").schema().name()).isEqualTo(StructuredTimestamp.schemaName(9));
         Struct timestamp = after.getStruct("VAL_TS_PRECISION9");
         assertThat(timestamp.getString(StructuredTemporal.SPECIAL_VALUE_FIELD)).isNull();
         assertThat(timestamp.getInt32(StructuredTemporal.YEAR_FIELD)).isEqualTo(2018);
@@ -712,7 +712,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractAsyncEngineCon
         assertThat(timestamp.getInt8(StructuredTemporal.SECOND_FIELD)).isEqualTo((byte) 56);
         assertThat(timestamp.getInt64(StructuredTemporal.PICOSECONDS_FIELD)).isEqualTo(125_456_789_000L);
 
-        assertThat(after.schema().field("VAL_TSTZ").schema().name()).isEqualTo(StructuredZonedTimestamp.SCHEMA_NAME);
+        assertThat(after.schema().field("VAL_TSTZ").schema().name()).isEqualTo(StructuredZonedTimestamp.schemaName(6));
         Struct zonedTimestamp = after.getStruct("VAL_TSTZ");
         assertThat(zonedTimestamp.getString(StructuredTemporal.SPECIAL_VALUE_FIELD)).isNull();
         assertThat(zonedTimestamp.getInt32(StructuredTemporal.YEAR_FIELD)).isEqualTo(2018);
@@ -724,12 +724,14 @@ public abstract class AbstractOracleDatatypesTest extends AbstractAsyncEngineCon
         assertThat(zonedTimestamp.getInt64(StructuredTemporal.PICOSECONDS_FIELD)).isEqualTo(7_891_000_000L);
         assertThat(zonedTimestamp.getInt32(StructuredTemporal.OFFSET_SECONDS_FIELD)).isEqualTo(-39_600);
 
-        assertThat(after.schema().field("VAL_INT_YTM").schema().name()).isEqualTo(StructuredDuration.SCHEMA_NAME);
+        assertThat(after.schema().field("VAL_INT_YTM").schema().name())
+                .isEqualTo(StructuredDuration.schemaName(0, StructuredDuration.Kind.YEAR_MONTH));
         Struct yearMonth = after.getStruct("VAL_INT_YTM");
         assertThat(yearMonth.getInt32(StructuredTemporal.YEARS_FIELD)).isEqualTo(-3);
         assertThat(yearMonth.getInt32(StructuredTemporal.MONTHS_FIELD)).isEqualTo(-6);
 
-        assertThat(after.schema().field("VAL_INT_DTS").schema().name()).isEqualTo(StructuredDuration.SCHEMA_NAME);
+        assertThat(after.schema().field("VAL_INT_DTS").schema().name())
+                .isEqualTo(StructuredDuration.schemaName(2, StructuredDuration.Kind.DAY_TIME));
         Struct daySecond = after.getStruct("VAL_INT_DTS");
         assertThat(daySecond.getInt32(StructuredTemporal.DAYS_FIELD)).isEqualTo(-1);
         assertThat(daySecond.getInt32(StructuredTemporal.HOURS_FIELD)).isEqualTo(-2);
@@ -768,7 +770,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractAsyncEngineCon
 
             final Struct after = (Struct) ((Struct) record.value()).get("after");
 
-            assertThat(after.schema().field("VAL_TS_PRECISION9_EDGE").schema().name()).isEqualTo(StructuredTimestamp.SCHEMA_NAME);
+            assertThat(after.schema().field("VAL_TS_PRECISION9_EDGE").schema().name()).isEqualTo(StructuredTimestamp.schemaName(9));
             final Struct timestamp = after.getStruct("VAL_TS_PRECISION9_EDGE");
             assertThat(timestamp.getString(StructuredTemporal.SPECIAL_VALUE_FIELD)).isNull();
             assertThat(timestamp.getInt32(StructuredTemporal.YEAR_FIELD)).isEqualTo(9999);
@@ -779,7 +781,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractAsyncEngineCon
             assertThat(timestamp.getInt8(StructuredTemporal.SECOND_FIELD)).isEqualTo((byte) 59);
             assertThat(timestamp.getInt64(StructuredTemporal.PICOSECONDS_FIELD)).isEqualTo(999_999_999_000L);
 
-            assertThat(after.schema().field("VAL_TSTZ_EDGE").schema().name()).isEqualTo(StructuredZonedTimestamp.SCHEMA_NAME);
+            assertThat(after.schema().field("VAL_TSTZ_EDGE").schema().name()).isEqualTo(StructuredZonedTimestamp.schemaName(6));
             final Struct zonedTimestamp = after.getStruct("VAL_TSTZ_EDGE");
             assertThat(zonedTimestamp.getString(StructuredTemporal.SPECIAL_VALUE_FIELD)).isNull();
             assertThat(zonedTimestamp.getInt32(StructuredTemporal.YEAR_FIELD)).isEqualTo(9999);
@@ -791,12 +793,14 @@ public abstract class AbstractOracleDatatypesTest extends AbstractAsyncEngineCon
             assertThat(zonedTimestamp.getInt64(StructuredTemporal.PICOSECONDS_FIELD)).isEqualTo(999_999_999_000L);
             assertThat(zonedTimestamp.getInt32(StructuredTemporal.OFFSET_SECONDS_FIELD)).isEqualTo(50_400);
 
-            assertThat(after.schema().field("VAL_INT_YTM_EDGE").schema().name()).isEqualTo(StructuredDuration.SCHEMA_NAME);
+            assertThat(after.schema().field("VAL_INT_YTM_EDGE").schema().name())
+                    .isEqualTo(StructuredDuration.schemaName(0, StructuredDuration.Kind.YEAR_MONTH));
             final Struct yearMonth = after.getStruct("VAL_INT_YTM_EDGE");
             assertThat(yearMonth.getInt32(StructuredTemporal.YEARS_FIELD)).isEqualTo(-123);
             assertThat(yearMonth.getInt32(StructuredTemporal.MONTHS_FIELD)).isEqualTo(-11);
 
-            assertThat(after.schema().field("VAL_INT_DTS_EDGE").schema().name()).isEqualTo(StructuredDuration.SCHEMA_NAME);
+            assertThat(after.schema().field("VAL_INT_DTS_EDGE").schema().name())
+                    .isEqualTo(StructuredDuration.schemaName(9, StructuredDuration.Kind.DAY_TIME));
             final Struct daySecond = after.getStruct("VAL_INT_DTS_EDGE");
             assertThat(daySecond.getInt32(StructuredTemporal.DAYS_FIELD)).isEqualTo(-999);
             assertThat(daySecond.getInt32(StructuredTemporal.HOURS_FIELD)).isEqualTo(-23);

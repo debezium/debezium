@@ -25,7 +25,7 @@ public class StructuredTimeType extends AbstractTimeType {
 
     @Override
     public String[] getRegistrationKeys() {
-        return new String[]{ StructuredTime.SCHEMA_NAME };
+        return StructuredTime.schemaNames();
     }
 
     @Override

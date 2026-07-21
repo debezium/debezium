@@ -25,7 +25,7 @@ public class StructuredTimestampType extends AbstractTimestampType {
 
     @Override
     public String[] getRegistrationKeys() {
-        return new String[]{ StructuredTimestamp.SCHEMA_NAME };
+        return StructuredTimestamp.schemaNames();
     }
 
     @Override

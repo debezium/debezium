@@ -19,7 +19,7 @@ public class StructuredZonedTimestampType extends StructuredTimestampType {
 
     @Override
     public String[] getRegistrationKeys() {
-        return new String[]{ io.debezium.time.StructuredZonedTimestamp.SCHEMA_NAME };
+        return io.debezium.time.StructuredZonedTimestamp.schemaNames();
     }
 
     @Override

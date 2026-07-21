@@ -20,7 +20,7 @@ public class StructuredZonedTimestampType extends StructuredTimestampType {
 
     @Override
     public String[] getRegistrationKeys() {
-        return new String[]{ StructuredZonedTimestamp.SCHEMA_NAME };
+        return StructuredZonedTimestamp.schemaNames();
     }
 
     @Override
