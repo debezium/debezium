@@ -40,6 +40,7 @@ import java.util.Set;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.stream.Collectors;
 
@@ -364,6 +365,29 @@ public class JdbcConnection implements AutoCloseable {
         this.conn = null;
         this.queryTimeout = (int) config.getQueryTimeout().toSeconds();
         this.likeWildcardCharacters = getLikeWildcardCharacters();
+    }
+
+    /**
+     * Executes initialization that may establish a JDBC connection and closes the connection if initialization fails.
+     * Any exception raised while closing the connection is added to the initialization failure as a suppressed exception.
+     *
+     * @param initializer the initialization to execute
+     * @return the value produced by the initializer
+     * @param <T> the type of value produced by the initializer
+     */
+    protected final <T> T initializeAndCloseOnFailure(Supplier<T> initializer) {
+        try {
+            return initializer.get();
+        }
+        catch (RuntimeException | Error initializationException) {
+            try {
+                close();
+            }
+            catch (Exception resourceReleasingException) {
+                initializationException.addSuppressed(resourceReleasingException);
+            }
+            throw initializationException;
+        }
     }
 
     /**
