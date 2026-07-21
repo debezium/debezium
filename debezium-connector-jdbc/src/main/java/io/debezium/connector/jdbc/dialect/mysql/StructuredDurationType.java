@@ -64,9 +64,9 @@ public class StructuredDurationType extends AbstractTemporalType {
         final Struct struct = requireStruct(value);
         final var capabilities = getDialect().getTargetTemporalCapabilities();
         StructuredTemporalPreflightValidator.validateDuration(schema, struct, capabilities);
-        StructuredTemporalPreflightValidator.validatePrecision(column, struct, capabilities.targetTimePrecision(column), getPrecisionLossHandlingMode());
+        StructuredTemporalPreflightValidator.validatePrecision(column, struct, targetTimePrecision(column), getPrecisionLossHandlingMode());
         StructuredTemporalLiteral.duration(struct,
-                capabilities.targetTimePrecision(column), getPrecisionLossHandlingMode());
+                targetTimePrecision(column), getPrecisionLossHandlingMode());
     }
 
     @Override
@@ -75,7 +75,7 @@ public class StructuredDurationType extends AbstractTemporalType {
             return List.of(new ValueBindDescriptor(index, null));
         }
         validate(column, schema, value);
-        final int precision = getDialect().getTargetTemporalCapabilities().targetTimePrecision(column);
+        final int precision = targetTimePrecision(column);
         return List.of(new ValueBindDescriptor(index,
                 StructuredTemporalLiteral.duration(requireStruct(value), precision, getPrecisionLossHandlingMode()), Types.VARCHAR));
     }
@@ -84,5 +84,21 @@ public class StructuredDurationType extends AbstractTemporalType {
         final int maxPrecision = getDialect().getTargetTemporalCapabilities().maxTimePrecision();
         final int precision = StructuredTemporalSupport.getPrecision(schema).orElse(Math.min(6, maxPrecision));
         return Math.min(precision, maxPrecision);
+    }
+
+    private int targetTimePrecision(ColumnDescriptor column) {
+        final var capabilities = getDialect().getTargetTemporalCapabilities();
+        final int precision = capabilities.targetTimePrecision(column);
+        final int columnSizeWithoutFraction = getTimeColumnSizeWithoutFraction();
+        if (precision == 0 && column.getPrecision() > columnSizeWithoutFraction && "time".equalsIgnoreCase(column.getTypeName())) {
+            // MySQL Connector/J reports fractional-second precision in COLUMN_SIZE for temporal columns,
+            // while DECIMAL_DIGITS is always zero. The fractional representation adds a decimal separator.
+            return Math.min(column.getPrecision() - columnSizeWithoutFraction - 1, capabilities.maxTimePrecision());
+        }
+        return precision;
+    }
+
+    protected int getTimeColumnSizeWithoutFraction() {
+        return 8;
     }
 }

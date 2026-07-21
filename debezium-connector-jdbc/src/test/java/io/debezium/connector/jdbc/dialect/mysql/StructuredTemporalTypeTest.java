@@ -81,6 +81,19 @@ class StructuredTemporalTypeTest {
     }
 
     @Test
+    @DisplayName("Should include the structured duration value in MySQL range errors")
+    void shouldIncludeStructuredDurationValueInRangeError() {
+        final var schema = StructuredDuration.builder(6, StructuredDuration.Kind.ELAPSED_TIME).build();
+        final var value = StructuredDuration.from(schema, 0, 0, 0, 839, 0, 0, 0, 6);
+        final var type = configuredDurationType(TemporalPrecisionLossHandlingMode.FAIL);
+
+        assertThatThrownBy(() -> type.bind(1, schema, value))
+                .isInstanceOf(ConnectException.class)
+                .hasMessageContaining("839 hours")
+                .hasMessageContaining("MySQL TIME range");
+    }
+
+    @Test
     @DisplayName("Should use propagated source column length for structured duration precision")
     void shouldUseSourceColumnLengthForStructuredDurationPrecision() {
         final var type = new StructuredDurationType();
@@ -135,6 +148,29 @@ class StructuredTemporalTypeTest {
         assertThat(truncateType.bind(1, timeColumn(6), schema, value).get(0).getValue())
                 .isEqualTo("001:02:03.123456");
         assertThat(roundType.bind(1, timeColumn(6), schema, value).get(0).getValue())
+                .isEqualTo("001:02:03.123457");
+    }
+
+    @Test
+    @DisplayName("Should derive MySQL timestamp precision from Connector/J column size metadata")
+    void shouldDeriveTimestampPrecisionFromConnectorJColumnSize() {
+        final var schema = StructuredTimestamp.builder(9).build();
+        final var value = StructuredTimestamp.from(
+                schema, 2026, 7, 21, 12, 13, 14, 123_456_789, 9);
+        final var type = configuredTimestampType(TemporalPrecisionLossHandlingMode.ROUND);
+
+        assertThat(type.bind(1, timestampColumn("DATETIME", 26, 0), schema, value).get(0).getValue())
+                .isEqualTo("2026-07-21 12:13:14.123457");
+    }
+
+    @Test
+    @DisplayName("Should derive MySQL time precision from Connector/J column size metadata")
+    void shouldDeriveTimePrecisionFromConnectorJColumnSize() {
+        final var schema = StructuredDuration.builder(9, StructuredDuration.Kind.ELAPSED_TIME).build();
+        final var value = StructuredDuration.from(schema, 0, 0, 0, 1, 2, 3, 123_456_789, 9);
+        final var type = configuredDurationType(TemporalPrecisionLossHandlingMode.ROUND);
+
+        assertThat(type.bind(1, timeColumn(15, 0), schema, value).get(0).getValue())
                 .isEqualTo("001:02:03.123457");
     }
 
@@ -245,20 +281,30 @@ class StructuredTemporalTypeTest {
     }
 
     private ColumnDescriptor timeColumn(int precision) {
+        return timeColumn(0, precision);
+    }
+
+    private ColumnDescriptor timeColumn(int columnSize, int scale) {
         return ColumnDescriptor.builder()
                 .columnName("duration")
                 .jdbcType(Types.TIME)
                 .typeName("time")
-                .scale(precision)
+                .precision(columnSize)
+                .scale(scale)
                 .build();
     }
 
     private ColumnDescriptor timestampColumn(String typeName, int precision) {
+        return timestampColumn(typeName, 0, precision);
+    }
+
+    private ColumnDescriptor timestampColumn(String typeName, int columnSize, int scale) {
         return ColumnDescriptor.builder()
                 .columnName("ts")
                 .jdbcType(Types.TIMESTAMP)
                 .typeName(typeName)
-                .scale(precision)
+                .precision(columnSize)
+                .scale(scale)
                 .build();
     }
 
