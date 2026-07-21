@@ -118,9 +118,10 @@ public class PostgresConnection extends JdbcConnection {
         }
         else {
             this.typeRegistry = typeRegistry;
-
-            final PostgresValueConverter valueConverter = valueConverterBuilder.build(this.typeRegistry);
-            this.defaultValueConverter = new PostgresDefaultValueConverter(valueConverter, this.getTimestampUtils(), typeRegistry);
+            this.defaultValueConverter = initializeAndCloseOnFailure(() -> {
+                final PostgresValueConverter valueConverter = valueConverterBuilder.build(this.typeRegistry);
+                return new PostgresDefaultValueConverter(valueConverter, this.getTimestampUtils(), typeRegistry);
+            });
         }
     }
 
@@ -163,8 +164,10 @@ public class PostgresConnection extends JdbcConnection {
         }
         else {
             this.typeRegistry = typeRegistry;
-            final PostgresValueConverter valueConverter = PostgresValueConverter.of(config, this.getDatabaseCharset(), typeRegistry);
-            this.defaultValueConverter = new PostgresDefaultValueConverter(valueConverter, this.getTimestampUtils(), typeRegistry);
+            this.defaultValueConverter = initializeAndCloseOnFailure(() -> {
+                final PostgresValueConverter valueConverter = PostgresValueConverter.of(config, this.getDatabaseCharset(), typeRegistry);
+                return new PostgresDefaultValueConverter(valueConverter, this.getTimestampUtils(), typeRegistry);
+            });
         }
     }
 
