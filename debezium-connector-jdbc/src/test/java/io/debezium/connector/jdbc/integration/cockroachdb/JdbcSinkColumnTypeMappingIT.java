@@ -6,6 +6,7 @@
 package io.debezium.connector.jdbc.integration.cockroachdb;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -91,6 +92,32 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
             assertThat(rs.getString("data")).startsWith("294276-12-31 23:59:59.999999");
             return null;
         });
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("debezium/dbz#2119")
+    public void testShouldRejectStructuredTimestampRangeLoss(SinkRecordFactory factory) {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server1", "schema", tableName);
+        final Schema schema = StructuredTimestamp.builder(6).optional().build();
+        final JdbcKafkaSinkRecord record = factory.createRecordWithSchemaValue(
+                topicName,
+                (byte) 1,
+                "data",
+                schema,
+                StructuredTimestamp.from(schema, 300_000, 1, 1, 0, 0, 0, 0, 6),
+                getConfig(properties));
+
+        final RuntimeException exception = assertThrows(RuntimeException.class, () -> consume(record));
+        assertExceptionCauseMessage(exception, ".*outside the range.*");
     }
 
     private void shouldCoerceStringTypeToColumnType(SinkRecordFactory factory, String columnType, String insertValue, String updateValue) throws Exception {

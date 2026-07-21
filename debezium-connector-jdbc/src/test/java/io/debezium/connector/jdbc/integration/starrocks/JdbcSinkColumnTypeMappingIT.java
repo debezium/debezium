@@ -6,6 +6,7 @@
 package io.debezium.connector.jdbc.integration.starrocks;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
@@ -31,6 +32,7 @@ import io.debezium.doc.FixFor;
 import io.debezium.time.MicroTime;
 import io.debezium.time.MicroTimestamp;
 import io.debezium.time.StructuredTime;
+import io.debezium.time.StructuredTimestamp;
 import io.debezium.time.StructuredZonedTime;
 
 /**
@@ -84,6 +86,32 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
             assertThat(rs.getString("zoned_time_data")).isEqualTo("12:13:14.123456789012+09:00");
             return null;
         });
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("debezium/dbz#2119")
+    public void testShouldRejectStructuredTimestampRangeLoss(SinkRecordFactory factory) {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server2", "schema", tableName);
+        final Schema schema = StructuredTimestamp.builder(6).optional().build();
+        final JdbcKafkaSinkRecord record = factory.createRecordWithSchemaValue(
+                topicName,
+                (byte) 1,
+                "data",
+                schema,
+                StructuredTimestamp.from(schema, 10_000, 1, 1, 0, 0, 0, 0, 6),
+                getConfig(properties));
+
+        final RuntimeException exception = assertThrows(RuntimeException.class, () -> consume(record));
+        assertExceptionCauseMessage(exception, ".*outside the range.*");
     }
 
     @ParameterizedTest
