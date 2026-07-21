@@ -80,5 +80,6 @@ public class SingleStoreDatabaseDialect extends MariaDbDatabaseDialect {
         registerType(PointType.INSTANCE);
         registerType(FloatVectorType.INSTANCE);
         registerType(DoubleVectorType.INSTANCE);
+        registerType(SingleStoreStructuredDurationType.INSTANCE);
     }
 }
