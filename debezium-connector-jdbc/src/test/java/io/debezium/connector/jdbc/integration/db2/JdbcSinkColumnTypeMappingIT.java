@@ -6,6 +6,7 @@
 package io.debezium.connector.jdbc.integration.db2;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.sql.ResultSet;
 import java.sql.Statement;
@@ -63,5 +64,26 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
             assertThat(resultSet.next()).isTrue();
             assertThat(resultSet.getString(1)).endsWith("123456789012");
         }
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("debezium/dbz#2119")
+    public void shouldRejectStructuredTimestampRangeLoss(SinkRecordFactory factory) {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server1", "schema", tableName);
+        final var schema = StructuredTimestamp.builder(6).build();
+        final var value = StructuredTimestamp.from(schema, 10_000, 1, 1, 0, 0, 0, 0, 6);
+        final JdbcKafkaSinkRecord record = factory.createRecordWithSchemaValue(
+                topicName, (byte) 1, "captured_at", schema, value, getConfig(properties));
+
+        final RuntimeException exception = assertThrows(RuntimeException.class, () -> consume(record));
+        assertExceptionCauseMessage(exception, ".*outside the range.*");
     }
 }
