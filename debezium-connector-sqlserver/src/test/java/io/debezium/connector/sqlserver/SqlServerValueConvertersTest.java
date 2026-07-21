@@ -66,7 +66,7 @@ class SqlServerValueConvertersTest {
         final Struct value = (Struct) converters.converter(column, field)
                 .convert(LocalTime.of(23, 59, 59, 999_999_900));
 
-        assertThat(field.schema().name()).isEqualTo(StructuredTime.SCHEMA_NAME);
+        assertThat(field.schema().name()).isEqualTo(StructuredTime.schemaName(7));
         assertThat(field.schema().parameters())
                 .containsEntry(StructuredTemporal.PRECISION_PARAMETER_KEY, "7");
         assertThat(value.getInt8(StructuredTemporal.HOUR_FIELD)).isEqualTo((byte) 23);
@@ -83,7 +83,7 @@ class SqlServerValueConvertersTest {
         final Struct value = (Struct) converters.converter(column, field)
                 .convert(LocalDateTime.of(9999, 12, 31, 23, 59, 59, 999_999_900));
 
-        assertThat(field.schema().name()).isEqualTo(StructuredTimestamp.SCHEMA_NAME);
+        assertThat(field.schema().name()).isEqualTo(StructuredTimestamp.schemaName(7));
         assertThat(field.schema().parameters())
                 .containsEntry(StructuredTemporal.PRECISION_PARAMETER_KEY, "7");
         assertThat(value.getString(StructuredTemporal.SPECIAL_VALUE_FIELD)).isNull();
@@ -105,7 +105,7 @@ class SqlServerValueConvertersTest {
         final Struct value = (Struct) converters.converter(column, field)
                 .convert(DateTimeOffset.valueOf(Timestamp.from(timestamp.toInstant()), 14 * 60));
 
-        assertThat(field.schema().name()).isEqualTo(StructuredZonedTimestamp.SCHEMA_NAME);
+        assertThat(field.schema().name()).isEqualTo(StructuredZonedTimestamp.schemaName(7));
         assertThat(field.schema().parameters())
                 .containsEntry(StructuredTemporal.PRECISION_PARAMETER_KEY, "7");
         assertThat(value.getString(StructuredTemporal.SPECIAL_VALUE_FIELD)).isNull();

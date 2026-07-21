@@ -2495,6 +2495,7 @@ This mode avoids flattening high-precision temporal values into a single epoch-b
 Structured temporal values store fractional seconds in an optional `picoseconds` `INT64` field.
 The optional `precision` value field and the `io.debezium.time.precision` schema parameter record the source column's fractional-second precision.
 For an interval, the `io.debezium.time.duration.kind` schema parameter is `day-time` for `INTERVAL DAY TO SECOND` and `year-month` for `INTERVAL YEAR TO MONTH`.
+To keep Avro named-record definitions with different metadata distinct, structured temporal schema names include their precision and, for durations, their duration kind.
 The {prodname} JDBC sink connector can consume these structured temporal schemas directly and maps them according to the target database dialect.
 
 [cols="25%a,20%a,55%a",options="header"]

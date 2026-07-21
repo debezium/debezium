@@ -1906,6 +1906,7 @@ Set the `time.precision.mode` property to `structured` to configure the connecto
 This mode avoids flattening high-precision temporal values into a single epoch-based integer.
 Structured temporal values store fractional seconds in an optional `picoseconds` `INT64` field.
 The optional `precision` value field and the `io.debezium.time.precision` schema parameter record the source column's fractional-second precision.
+To keep Avro named-record definitions with different metadata distinct, structured temporal schema names include their precision.
 The {prodname} JDBC sink connector can consume these structured temporal schemas directly and maps them according to the target database dialect.
 
 .Mappings when `time.precision.mode` is `structured`

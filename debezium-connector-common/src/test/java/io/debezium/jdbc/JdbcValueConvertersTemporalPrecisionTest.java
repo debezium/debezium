@@ -156,12 +156,12 @@ public class JdbcValueConvertersTemporalPrecisionTest {
 
         assertThat(structuredConverters.schemaBuilder(zonedTime).build())
                 .satisfies(schema -> {
-                    assertThat(schema.name()).isEqualTo(StructuredZonedTime.SCHEMA_NAME);
+                    assertThat(schema.name()).isEqualTo(StructuredZonedTime.schemaName(7));
                     assertThat(schema.parameters()).containsEntry(StructuredTemporal.PRECISION_PARAMETER_KEY, "7");
                 });
         assertThat(structuredConverters.schemaBuilder(zonedTimestamp).build())
                 .satisfies(schema -> {
-                    assertThat(schema.name()).isEqualTo(StructuredZonedTimestamp.SCHEMA_NAME);
+                    assertThat(schema.name()).isEqualTo(StructuredZonedTimestamp.schemaName(7));
                     assertThat(schema.parameters()).containsEntry(StructuredTemporal.PRECISION_PARAMETER_KEY, "7");
                 });
     }

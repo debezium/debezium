@@ -455,7 +455,7 @@ public class PostgresTemporalPrecisionHandlingIT extends AbstractAsyncEngineConn
         assertEquals(StructuredDate.SCHEMA_NAME, after.schema().field("c_date").schema().name());
         assertStructuredSpecialValue(after.getStruct("c_date"), StructuredTemporal.POSITIVE_INFINITY);
 
-        assertEquals(StructuredTimestamp.SCHEMA_NAME, after.schema().field("c_timestamp6").schema().name());
+        assertEquals(StructuredTimestamp.schemaName(6), after.schema().field("c_timestamp6").schema().name());
         assertEquals("6", after.schema().field("c_timestamp6").schema().parameters().get(StructuredTemporal.PRECISION_PARAMETER_KEY));
         Struct timestamp = after.getStruct("c_timestamp6");
         assertNull(timestamp.getString(StructuredTemporal.SPECIAL_VALUE_FIELD));
@@ -467,11 +467,11 @@ public class PostgresTemporalPrecisionHandlingIT extends AbstractAsyncEngineConn
         assertEquals((byte) 59, timestamp.getInt8(StructuredTemporal.SECOND_FIELD));
         assertEquals(999_999_000_000L, timestamp.getInt64(StructuredTemporal.PICOSECONDS_FIELD));
 
-        assertEquals(StructuredZonedTimestamp.SCHEMA_NAME, after.schema().field("c_timestamptz").schema().name());
+        assertEquals(StructuredZonedTimestamp.schemaName(6), after.schema().field("c_timestamptz").schema().name());
         assertEquals("6", after.schema().field("c_timestamptz").schema().parameters().get(StructuredTemporal.PRECISION_PARAMETER_KEY));
         assertStructuredSpecialValue(after.getStruct("c_timestamptz"), StructuredTemporal.POSITIVE_INFINITY);
 
-        assertEquals(StructuredZonedTime.SCHEMA_NAME, after.schema().field("c_time").schema().name());
+        assertEquals(StructuredZonedTime.schemaName(6), after.schema().field("c_time").schema().name());
         assertEquals("6", after.schema().field("c_time").schema().parameters().get(StructuredTemporal.PRECISION_PARAMETER_KEY));
         Struct zonedTime = after.getStruct("c_time");
         // '04:05:11 PST' (-08): STRUCTURED mode preserves the raw clock and the original offset (no UTC shift).
@@ -480,14 +480,14 @@ public class PostgresTemporalPrecisionHandlingIT extends AbstractAsyncEngineConn
         assertEquals((byte) 11, zonedTime.getInt8(StructuredTemporal.SECOND_FIELD));
         assertEquals(-8 * 3600, zonedTime.getInt32(StructuredTemporal.OFFSET_SECONDS_FIELD));
 
-        assertEquals(StructuredTime.SCHEMA_NAME, after.schema().field("c_time_whtz").schema().name());
+        assertEquals(StructuredTime.schemaName(6), after.schema().field("c_time_whtz").schema().name());
         Struct time = after.getStruct("c_time_whtz");
         assertEquals((byte) 4, time.getInt8(StructuredTemporal.HOUR_FIELD));
         assertEquals((byte) 5, time.getInt8(StructuredTemporal.MINUTE_FIELD));
         assertEquals((byte) 11, time.getInt8(StructuredTemporal.SECOND_FIELD));
         assertEquals(789_000_000_000L, time.getInt64(StructuredTemporal.PICOSECONDS_FIELD));
 
-        assertEquals(StructuredDuration.SCHEMA_NAME, after.schema().field("c_interval").schema().name());
+        assertEquals(StructuredDuration.schemaName(6, StructuredDuration.Kind.MIXED), after.schema().field("c_interval").schema().name());
         assertEquals("6", after.schema().field("c_interval").schema().parameters().get(StructuredTemporal.PRECISION_PARAMETER_KEY));
         assertEquals(StructuredDuration.Kind.MIXED.getValue(),
                 after.schema().field("c_interval").schema().parameters().get(StructuredTemporal.DURATION_KIND_PARAMETER_KEY));
@@ -579,7 +579,8 @@ public class PostgresTemporalPrecisionHandlingIT extends AbstractAsyncEngineConn
         assertEquals(StructuredDate.SCHEMA_NAME, after.schema().field("c_date").schema().name());
         assertStructuredSpecialValue(after.getStruct("c_date"), StructuredTemporal.POSITIVE_INFINITY);
 
-        assertEquals(StructuredTimestamp.SCHEMA_NAME, after.schema().field("c_timestamp6").schema().name());
+        assertEquals(StructuredTimestamp.schemaName(6), after.schema().field("c_timestamp6").schema().name());
+        assertEquals("6", after.schema().field("c_timestamp6").schema().parameters().get(StructuredTemporal.PRECISION_PARAMETER_KEY));
         final Struct timestamp = after.getStruct("c_timestamp6");
         assertNull(timestamp.getString(StructuredTemporal.SPECIAL_VALUE_FIELD));
         assertEquals(294276, timestamp.getInt32(StructuredTemporal.YEAR_FIELD));
@@ -590,10 +591,12 @@ public class PostgresTemporalPrecisionHandlingIT extends AbstractAsyncEngineConn
         assertEquals((byte) 59, timestamp.getInt8(StructuredTemporal.SECOND_FIELD));
         assertEquals(999_999_000_000L, timestamp.getInt64(StructuredTemporal.PICOSECONDS_FIELD));
 
-        assertEquals(StructuredZonedTimestamp.SCHEMA_NAME, after.schema().field("c_timestamptz").schema().name());
+        assertEquals(StructuredZonedTimestamp.schemaName(6), after.schema().field("c_timestamptz").schema().name());
+        assertEquals("6", after.schema().field("c_timestamptz").schema().parameters().get(StructuredTemporal.PRECISION_PARAMETER_KEY));
         assertStructuredSpecialValue(after.getStruct("c_timestamptz"), StructuredTemporal.POSITIVE_INFINITY);
 
-        assertEquals(StructuredZonedTime.SCHEMA_NAME, after.schema().field("c_time").schema().name());
+        assertEquals(StructuredZonedTime.schemaName(6), after.schema().field("c_time").schema().name());
+        assertEquals("6", after.schema().field("c_time").schema().parameters().get(StructuredTemporal.PRECISION_PARAMETER_KEY));
         final Struct zonedTime = after.getStruct("c_time");
         // '04:05:11 PST' (-08): STRUCTURED mode preserves the raw clock and the original offset (no UTC shift).
         assertEquals((byte) 4, zonedTime.getInt8(StructuredTemporal.HOUR_FIELD));
@@ -601,14 +604,17 @@ public class PostgresTemporalPrecisionHandlingIT extends AbstractAsyncEngineConn
         assertEquals((byte) 11, zonedTime.getInt8(StructuredTemporal.SECOND_FIELD));
         assertEquals(-8 * 3600, zonedTime.getInt32(StructuredTemporal.OFFSET_SECONDS_FIELD));
 
-        assertEquals(StructuredTime.SCHEMA_NAME, after.schema().field("c_time_whtz").schema().name());
+        assertEquals(StructuredTime.schemaName(6), after.schema().field("c_time_whtz").schema().name());
         final Struct time = after.getStruct("c_time_whtz");
         assertEquals((byte) 4, time.getInt8(StructuredTemporal.HOUR_FIELD));
         assertEquals((byte) 5, time.getInt8(StructuredTemporal.MINUTE_FIELD));
         assertEquals((byte) 11, time.getInt8(StructuredTemporal.SECOND_FIELD));
         assertEquals(789_000_000_000L, time.getInt64(StructuredTemporal.PICOSECONDS_FIELD));
 
-        assertEquals(StructuredDuration.SCHEMA_NAME, after.schema().field("c_interval").schema().name());
+        assertEquals(StructuredDuration.schemaName(6, StructuredDuration.Kind.MIXED), after.schema().field("c_interval").schema().name());
+        assertEquals("6", after.schema().field("c_interval").schema().parameters().get(StructuredTemporal.PRECISION_PARAMETER_KEY));
+        assertEquals(StructuredDuration.Kind.MIXED.getValue(),
+                after.schema().field("c_interval").schema().parameters().get(StructuredTemporal.DURATION_KIND_PARAMETER_KEY));
         final Struct interval = after.getStruct("c_interval");
         assertEquals(1, interval.getInt32(StructuredTemporal.YEARS_FIELD));
         assertEquals(2, interval.getInt32(StructuredTemporal.MONTHS_FIELD));
@@ -648,7 +654,7 @@ public class PostgresTemporalPrecisionHandlingIT extends AbstractAsyncEngineConn
         // 24:00:00+05:30 -> raw clock preserved (hour 24) with the original +05:30 offset.
         final Struct boundary = getAfter(read.get(0));
         assertEquals(31, boundary.get("c_id"));
-        assertEquals(StructuredZonedTime.SCHEMA_NAME, boundary.schema().field("c_time").schema().name());
+        assertEquals(StructuredZonedTime.schemaName(6), boundary.schema().field("c_time").schema().name());
         final Struct boundaryTime = boundary.getStruct("c_time");
         assertEquals((byte) 24, boundaryTime.getInt8(StructuredTemporal.HOUR_FIELD));
         assertEquals((byte) 0, boundaryTime.getInt8(StructuredTemporal.MINUTE_FIELD));
