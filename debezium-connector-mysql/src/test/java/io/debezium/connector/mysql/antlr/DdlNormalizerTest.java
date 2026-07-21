@@ -285,4 +285,54 @@ public class DdlNormalizerTest {
         String expected = "CREATE TABLE `RANK` (id INT, `DENSE_RANK` VARCHAR(10))";
         assertThat(DdlNormalizer.normalize(input)).isEqualTo(expected);
     }
+
+    @DisplayName("Given reserved keyword pattern inside single-quoted default value When normalize Then string content is preserved")
+    @Test
+    @FixFor("debezium/dbz#2254")
+    public void testReservedKeywordInsideSingleQuotedDefault() {
+        String input = "CREATE TABLE t (c VARCHAR(20) DEFAULT 'FROM RANK')";
+        assertThat(DdlNormalizer.normalize(input)).isEqualTo(input);
+    }
+
+    @DisplayName("Given reserved keyword pattern inside single-quoted comment When normalize Then string content is preserved")
+    @Test
+    @FixFor("debezium/dbz#2254")
+    public void testReservedKeywordInsideSingleQuotedComment() {
+        String input = "CREATE TABLE t (c INT COMMENT 'RANK INT is a reserved word')";
+        assertThat(DdlNormalizer.normalize(input)).isEqualTo(input);
+    }
+
+    @DisplayName("Given reserved keyword label pattern inside single-quoted comment When normalize Then string content is preserved")
+    @Test
+    @FixFor("debezium/dbz#2254")
+    public void testReservedKeywordLabelInsideSingleQuotedComment() {
+        String input = "CREATE TABLE t (c INT COMMENT 'RANK: top 10')";
+        assertThat(DdlNormalizer.normalize(input)).isEqualTo(input);
+    }
+
+    @DisplayName("Given reserved keyword pattern inside double-quoted string When normalize Then converted content is preserved")
+    @Test
+    @FixFor("debezium/dbz#2254")
+    public void testReservedKeywordInsideDoubleQuotedString() {
+        String input = "CREATE TABLE t (c VARCHAR(20) DEFAULT \"FROM RANK\")";
+        String expected = "CREATE TABLE t (c VARCHAR(20) DEFAULT 'FROM RANK')";
+        assertThat(DdlNormalizer.normalize(input)).isEqualTo(expected);
+    }
+
+    @DisplayName("Given reserved keyword pattern inside SQL comment When normalize Then comment content is preserved")
+    @Test
+    @FixFor("debezium/dbz#2254")
+    public void testReservedKeywordInsideSqlComment() {
+        String input = "-- example: CREATE TABLE RANK ...\nCREATE TABLE t (c INT)";
+        assertThat(DdlNormalizer.normalize(input)).isEqualTo(input);
+    }
+
+    @DisplayName("Given reserved keyword identifier next to string literals When normalize Then only the identifier gets backticks")
+    @Test
+    @FixFor("debezium/dbz#2254")
+    public void testReservedKeywordIdentifierNextToStrings() {
+        String input = "CREATE TABLE RANK (c VARCHAR(20) DEFAULT 'FROM RANK', RANK INT COMMENT 'RANK: n')";
+        String expected = "CREATE TABLE `RANK` (c VARCHAR(20) DEFAULT 'FROM RANK', `RANK` INT COMMENT 'RANK: n')";
+        assertThat(DdlNormalizer.normalize(input)).isEqualTo(expected);
+    }
 }
