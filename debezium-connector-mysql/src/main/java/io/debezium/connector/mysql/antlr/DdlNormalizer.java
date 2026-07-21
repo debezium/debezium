@@ -61,21 +61,21 @@ public class DdlNormalizer {
 
         Matcher matcher = QUOTED_LITERAL_PATTERN.matcher(ddlContent);
         StringBuilder normalized = new StringBuilder(ddlContent.length());
+        int lastEnd = 0;
 
         while (matcher.find()) {
+            normalized.append(addBackticksToReservedKeywords(ddlContent.substring(lastEnd, matcher.start())));
             if (isComment(matcher) || isSingleQuotedString(matcher) || isBacktickIdentifier(matcher)) {
                 preserveOriginal(matcher, normalized);
             }
             else {
                 convertToSingleQuoted(matcher, normalized);
             }
+            lastEnd = matcher.end();
         }
-        matcher.appendTail(normalized);
+        normalized.append(addBackticksToReservedKeywords(ddlContent.substring(lastEnd)));
 
-        String result = normalized.toString();
-        result = addBackticksToReservedKeywords(result);
-
-        return result;
+        return normalized.toString();
     }
 
     private static boolean isComment(Matcher matcher) {
@@ -91,7 +91,7 @@ public class DdlNormalizer {
     }
 
     private static void preserveOriginal(Matcher matcher, StringBuilder result) {
-        matcher.appendReplacement(result, Matcher.quoteReplacement(matcher.group(0)));
+        result.append(matcher.group(0));
     }
 
     /**
@@ -99,12 +99,14 @@ public class DdlNormalizer {
      */
     private static void convertToSingleQuoted(Matcher matcher, StringBuilder result) {
         String escapedContent = matcher.group(DOUBLE_QUOTED_STRING_GROUP).replace("'", "''");
-        matcher.appendReplacement(result, "'" + Matcher.quoteReplacement(escapedContent) + "'");
+        result.append("'").append(escapedContent).append("'");
     }
 
     /**
      * Adds backticks around reserved keywords when used as identifiers (not as keywords).
      * Targets specific contexts: table names, column names, aliases, labels.
+     * Only ever invoked on the plain SQL segments between comments, string literals and
+     * quoted identifiers, so their content is never rewritten.
      */
     private static String addBackticksToReservedKeywords(String ddl) {
         String result = ddl;
