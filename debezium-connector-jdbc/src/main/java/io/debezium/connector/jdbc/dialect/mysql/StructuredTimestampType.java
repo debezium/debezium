@@ -46,7 +46,7 @@ public class StructuredTimestampType extends io.debezium.connector.jdbc.type.deb
     public void validate(ColumnDescriptor column, Schema schema, Object value) {
         if (value != null) {
             final var capabilities = getDialect().getTargetTemporalCapabilities();
-            final int precision = capabilities.targetTimestampPrecision(column);
+            final int precision = targetTimestampPrecision(column);
             StructuredTemporalPreflightValidator.validatePrecision(
                     column, requireStruct(value), precision, getPrecisionLossHandlingMode());
             StructuredTemporalLiteral.timestamp(
@@ -63,12 +63,25 @@ public class StructuredTimestampType extends io.debezium.connector.jdbc.type.deb
         }
         validate(column, schema, value);
         final var capabilities = getDialect().getTargetTemporalCapabilities();
-        final int precision = capabilities.targetTimestampPrecision(column);
+        final int precision = targetTimestampPrecision(column);
         return List.of(new ValueBindDescriptor(index,
                 StructuredTemporalLiteral.timestamp(
                         requireStruct(value), precision, getPrecisionLossHandlingMode(),
                         capabilities.targetTimestampRange(column), getRangeLossHandlingMode(), capabilities.zeroDateSupported(),
                         targetDescription(column)),
                 Types.VARCHAR));
+    }
+
+    private int targetTimestampPrecision(ColumnDescriptor column) {
+        final var capabilities = getDialect().getTargetTemporalCapabilities();
+        final int precision = capabilities.targetTimestampPrecision(column);
+        if (precision == 0 && column.getPrecision() > 19
+                && ("datetime".equalsIgnoreCase(column.getTypeName()) || "timestamp".equalsIgnoreCase(column.getTypeName()))) {
+            // MySQL Connector/J reports fractional-second precision in COLUMN_SIZE for temporal columns,
+            // while DECIMAL_DIGITS is always zero. DATETIME/TIMESTAMP use 19 characters without a fraction
+            // and one additional character for the decimal separator.
+            return Math.min(column.getPrecision() - 20, capabilities.maxTimestampPrecision());
+        }
+        return precision;
     }
 }

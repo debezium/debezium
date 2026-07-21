@@ -29,6 +29,7 @@ import io.debezium.connector.jdbc.type.debezium.TargetTemporalCapabilities;
 import io.debezium.connector.jdbc.type.debezium.TemporalRange.Boundary;
 import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.time.StructuredDate;
+import io.debezium.time.StructuredDuration;
 import io.debezium.time.StructuredTimestamp;
 
 @Tag("UnitTests")
@@ -81,6 +82,21 @@ class StructuredTemporalTypeTest {
                 .isEqualTo("9999-12-31 23:59:59.999999");
     }
 
+    @Test
+    @DisplayName("Should derive SingleStore time precision from column size metadata")
+    void shouldDeriveTimePrecisionFromColumnSize() {
+        final var schema = StructuredDuration.builder(6, StructuredDuration.Kind.ELAPSED_TIME).build();
+        final var value = StructuredDuration.from(schema, 0, 0, 0, 1, 2, 3, 123_456_000, 6);
+        final var type = new SingleStoreStructuredDurationType();
+        type.configure(config(TemporalRangeLossHandlingMode.FAIL), dialect());
+
+        assertThat(type.bind(1, timeColumn(17), schema, value).get(0).getValue())
+                .isEqualTo("001:02:03.123456");
+        assertThatThrownBy(() -> type.bind(1, timeColumn(10), schema, value))
+                .isInstanceOf(ConnectException.class)
+                .hasMessageContaining("precision 0");
+    }
+
     private StructuredDateType configuredDateType(TemporalRangeLossHandlingMode rangeMode) {
         final var type = new StructuredDateType();
         type.configure(config(rangeMode), dialect());
@@ -122,7 +138,18 @@ class StructuredTemporalTypeTest {
                 .columnName("ts")
                 .jdbcType(Types.TIMESTAMP)
                 .typeName(typeName)
-                .scale(6)
+                .precision(26)
+                .scale(0)
+                .build();
+    }
+
+    private ColumnDescriptor timeColumn(int columnSize) {
+        return ColumnDescriptor.builder()
+                .columnName("t")
+                .jdbcType(Types.TIME)
+                .typeName("time")
+                .precision(columnSize)
+                .scale(0)
                 .build();
     }
 

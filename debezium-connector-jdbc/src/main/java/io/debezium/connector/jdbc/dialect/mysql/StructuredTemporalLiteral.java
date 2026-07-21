@@ -87,7 +87,9 @@ final class StructuredTemporalLiteral {
         final BigDecimal maxSeconds = BigDecimal.valueOf(838L * 3_600 + 59L * 60 + 59L)
                 .add(BigDecimal.ONE.subtract(BigDecimal.ONE.movePointLeft(precision)));
         if (totalSeconds.abs().compareTo(maxSeconds) > 0) {
-            throw new ConnectException("Structured duration is outside the MySQL TIME range");
+            throw new ConnectException(String.format(
+                    "Structured duration value '%s' is outside the MySQL TIME range",
+                    StructuredTemporalSupport.toDurationString(value)));
         }
 
         final boolean negative = totalSeconds.signum() < 0;
