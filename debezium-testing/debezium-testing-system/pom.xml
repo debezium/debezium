@@ -16,10 +16,10 @@
     <version.fabric8.client>6.10.0</version.fabric8.client>
     <version.commons.codec>1.14</version.commons.codec>
     <version.commons.compress>1.26.0</version.commons.compress>
-    <version.strimzi>0.40.0</version.strimzi>
+    <version.strimzi>0.51.0</version.strimzi>
     <version.strimzi.kafka>${version.kafka}</version.strimzi.kafka>
     <version.assertj>3.27.7</version.assertj>
-    <version.apicurio>3.2.5</version.apicurio>
+    <version.apicurio>${version.apicurio}</version.apicurio>
     <version.apicurio.model>1.1.0</version.apicurio.model>
     <version.fixture5>0.1.0</version.fixture5>
     <version.debezium.jdbc.tests>2.6.0.Beta1</version.debezium.jdbc.tests>
