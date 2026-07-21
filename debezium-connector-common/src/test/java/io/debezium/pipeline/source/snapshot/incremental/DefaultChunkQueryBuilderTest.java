@@ -82,7 +82,7 @@ public class DefaultChunkQueryBuilderTest {
         }
     }
 
-    // Returns the boundary QueryParam list the builder would bind for the given values (the base builder uses a triangular expansion).
+    // Returns the boundary QueryParam list for the given columns and corresponding values (the base builder uses a triangular expansion).
     private static List<ChunkQueryBuilder.QueryParam> boundaryParams(ChunkQueryBuilder<TableId> builder, List<Column> columns, Object[] values) {
         return builder.generateBoundaryParams(columns, values);
     }
@@ -204,7 +204,7 @@ public class DefaultChunkQueryBuilderTest {
         context.maximumKey(maximumKey);
         assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.empty())).isEqualTo(
                 "SELECT * FROM \"s1\".\"table1\" WHERE ((\"pk1\" > ?) OR (\"pk1\" = ? AND \"pk2\" > ?) OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" > ?)) AND NOT ((\"pk1\" > ?) OR (\"pk1\" = ? AND \"pk2\" > ?) OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" > ?)) ORDER BY \"pk1\", \"pk2\", \"pk3\" LIMIT 1024");
-        // Base builder binds a triangular expansion of the boundary values for each bound.
+        // Base builder uses a triangular expansion of the boundary params
         assertThat(boundaryParams(chunkQueryBuilder, pkColumns, chunkEndPosition))
                 .containsExactly(qp(pk1, 1), qp(pk1, 1), qp(pk2, 5), qp(pk1, 1), qp(pk2, 5), qp(pk3, 3));
         assertThat(boundaryParams(chunkQueryBuilder, pkColumns, maximumKey))
@@ -237,7 +237,7 @@ public class DefaultChunkQueryBuilderTest {
         context.maximumKey(maximumKey);
         assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.of("\"val1\"=foo"))).isEqualTo(
                 "SELECT * FROM \"s1\".\"table1\" WHERE ((\"pk1\" > ?) OR (\"pk1\" = ? AND \"pk2\" > ?) OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" > ?)) AND NOT ((\"pk1\" > ?) OR (\"pk1\" = ? AND \"pk2\" > ?) OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" > ?)) AND \"val1\"=foo ORDER BY \"pk1\", \"pk2\", \"pk3\" LIMIT 1024");
-        // Base builder binds a triangular expansion of the boundary values for each bound.
+        // Base builder uses a triangular expansion of the boundary params
         assertThat(boundaryParams(chunkQueryBuilder, pkColumns, chunkEndPosition))
                 .containsExactly(qp(pk1, 1), qp(pk1, 1), qp(pk2, 5), qp(pk1, 1), qp(pk2, 5), qp(pk3, 3));
         assertThat(boundaryParams(chunkQueryBuilder, pkColumns, maximumKey))

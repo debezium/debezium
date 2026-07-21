@@ -47,12 +47,13 @@ public interface ChunkQueryBuilder<T extends DataCollectionId> {
     }
 
     /**
-     * Generates the ordered list of boundary parameters to bind for the given columns and boundary values.
+     * Generates the ordered list of boundary parameters for the given columns and the corresponding values.
      */
     List<QueryParam> generateBoundaryParams(List<Column> columns, Object[] values);
 
     /**
-     * Binds Query Params starting at position startIndex for given columns to the given values.
+     * Generates Boundary Params (typically using {@link #generateBoundaryParams(List, Object[])}) for given columns and the corresponding values.
+     * Then, binds generated Boundary Params to {@code statement} starting at position {@code startIndex}.
      */
     int bindBoundaryParams(PreparedStatement statement, List<Column> columns, Object[] values, int startIndex, JdbcConnection connection) throws SQLException;
 

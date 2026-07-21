@@ -111,7 +111,7 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
         // For one column with inclusiveFinal = false the condition will be (? will always be the last value seen for the given column)
         // (k1 > ?)
         // For two columns with inclusiveFinal = true
-        // (k1 > ?) OR (k1 = ? AND k2 > ?) OR (k1 = ? AND k2 = ?)
+        // (k1 > ?) OR (k1 = ? AND k2 >= ?)
         // For four columns with inclusiveFinal = false
         // (k1 > ?) OR (k1 = ? AND k2 > ?) OR (k1 = ? AND k2 = ? AND k3 > ?) OR (k1 = ? AND k2 = ? AND k3 = ? AND k4 > ?)
         // etc.
