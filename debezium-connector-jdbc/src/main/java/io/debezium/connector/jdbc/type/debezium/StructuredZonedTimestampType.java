@@ -27,7 +27,7 @@ public class StructuredZonedTimestampType extends AbstractTimestampType {
 
     @Override
     public String[] getRegistrationKeys() {
-        return new String[]{ StructuredZonedTimestamp.SCHEMA_NAME };
+        return StructuredZonedTimestamp.schemaNames();
     }
 
     @Override

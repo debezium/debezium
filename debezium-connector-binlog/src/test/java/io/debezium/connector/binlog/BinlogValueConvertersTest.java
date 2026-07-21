@@ -455,7 +455,7 @@ public abstract class BinlogValueConvertersTest<C extends SourceConnector> imple
 
         Column datetimeColumn = table.columnWithName("DT");
         Field datetimeField = new Field(datetimeColumn.name(), -1, converters.schemaBuilder(datetimeColumn).build());
-        assertThat(datetimeField.schema().name()).isEqualTo(StructuredTimestamp.SCHEMA_NAME);
+        assertThat(datetimeField.schema().name()).isEqualTo(StructuredTimestamp.schemaName(6));
         assertThat(datetimeField.schema().parameters())
                 .containsEntry(StructuredTemporal.PRECISION_PARAMETER_KEY, "6");
         Struct datetime = (Struct) converters.converter(datetimeColumn, datetimeField).convert(new BinlogDateTimeValue(2026, 2, 31, 12, 13, 14, 123_456_000));
@@ -474,7 +474,7 @@ public abstract class BinlogValueConvertersTest<C extends SourceConnector> imple
 
         Column timestampColumn = table.columnWithName("TS");
         Field timestampField = new Field(timestampColumn.name(), -1, converters.schemaBuilder(timestampColumn).build());
-        assertThat(timestampField.schema().name()).isEqualTo(StructuredZonedTimestamp.SCHEMA_NAME);
+        assertThat(timestampField.schema().name()).isEqualTo(StructuredZonedTimestamp.schemaName(6));
         assertThat(timestampField.schema().parameters())
                 .containsEntry(StructuredTemporal.PRECISION_PARAMETER_KEY, "6");
         Struct timestamp = (Struct) converters.converter(timestampColumn, timestampField).convert(new BinlogDateTimeValue(0, 0, 0, 0, 0, 0, 0));
@@ -485,7 +485,7 @@ public abstract class BinlogValueConvertersTest<C extends SourceConnector> imple
 
         Column timeColumn = table.columnWithName("T");
         Field timeField = new Field(timeColumn.name(), -1, converters.schemaBuilder(timeColumn).build());
-        assertThat(timeField.schema().name()).isEqualTo(StructuredDuration.SCHEMA_NAME);
+        assertThat(timeField.schema().name()).isEqualTo(StructuredDuration.schemaName(6, StructuredDuration.Kind.ELAPSED_TIME));
         assertThat(timeField.schema().parameters())
                 .containsEntry(StructuredTemporal.PRECISION_PARAMETER_KEY, "6")
                 .containsEntry(StructuredTemporal.DURATION_KIND_PARAMETER_KEY, StructuredDuration.Kind.ELAPSED_TIME.getValue());

@@ -28,7 +28,7 @@ public class StructuredDurationType extends AbstractTemporalType {
 
     @Override
     public String[] getRegistrationKeys() {
-        return new String[]{ StructuredDuration.SCHEMA_NAME };
+        return StructuredDuration.schemaNames();
     }
 
     @Override
