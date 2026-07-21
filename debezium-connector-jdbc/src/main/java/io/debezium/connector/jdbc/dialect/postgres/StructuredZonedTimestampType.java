@@ -75,6 +75,6 @@ public class StructuredZonedTimestampType extends io.debezium.connector.jdbc.typ
     }
 
     private boolean supportsInfinity() {
-        return getDialect() == null || getDialect().getTargetTemporalCapabilities().timestampInfinitySupported();
+        return getDialect() != null && getDialect().getTargetTemporalCapabilities().timestampInfinitySupported();
     }
 }
