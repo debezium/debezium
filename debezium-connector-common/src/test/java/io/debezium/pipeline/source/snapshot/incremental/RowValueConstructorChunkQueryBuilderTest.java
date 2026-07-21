@@ -194,7 +194,7 @@ public class RowValueConstructorChunkQueryBuilderTest {
         context.maximumKey(maximumKey);
         assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.empty())).isEqualTo(
                 "SELECT * FROM \"s1\".\"table1\" WHERE ROW(\"pk1\", \"pk2\", \"pk3\") > ROW(?, ?, ?) AND ROW(\"pk1\", \"pk2\", \"pk3\") <= ROW(?, ?, ?) ORDER BY \"pk1\", \"pk2\", \"pk3\" LIMIT 1024");
-        // Row value constructor path (all-required keys): one param per column for each bound.
+        // Row value constructor path (all-required keys): one param per column.
         assertThat(boundaryParams(chunkQueryBuilder, pkColumns, chunkEndPosition))
                 .containsExactly(qp(pk1, 1), qp(pk2, 5), qp(pk3, 3));
         assertThat(boundaryParams(chunkQueryBuilder, pkColumns, maximumKey))
@@ -227,7 +227,7 @@ public class RowValueConstructorChunkQueryBuilderTest {
         context.maximumKey(maximumKey);
         assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.of("\"val1\"=foo"))).isEqualTo(
                 "SELECT * FROM \"s1\".\"table1\" WHERE ROW(\"pk1\", \"pk2\", \"pk3\") > ROW(?, ?, ?) AND ROW(\"pk1\", \"pk2\", \"pk3\") <= ROW(?, ?, ?) AND \"val1\"=foo ORDER BY \"pk1\", \"pk2\", \"pk3\" LIMIT 1024");
-        // Row value constructor path (all-required keys): one param per column for each bound.
+        // Row value constructor path (all-required keys): one param per column.
         assertThat(boundaryParams(chunkQueryBuilder, pkColumns, chunkEndPosition))
                 .containsExactly(qp(pk1, 1), qp(pk2, 5), qp(pk3, 3));
         assertThat(boundaryParams(chunkQueryBuilder, pkColumns, maximumKey))
@@ -300,7 +300,7 @@ public class RowValueConstructorChunkQueryBuilderTest {
                 .containsExactly(qp(pk1, 10), qp(pk1, 10), qp(pk2, 50), qp(pk1, 10), qp(pk2, 50), qp(pk3, 30));
     }
 
-    // Builds a lower/upper bound condition in isolation so both the inclusive and exclusive forms can be asserted directly.
+    // Builds a lower or upper bound condition in inclusive or exclusive forms.
     private static String addBound(ChunkQueryBuilder<TableId> builder, boolean upper, List<Column> pkColumns, Object[] boundaryKey, boolean inclusiveFinal) {
         final StringBuilder sql = new StringBuilder();
         if (upper) {
@@ -312,7 +312,7 @@ public class RowValueConstructorChunkQueryBuilderTest {
         return sql.toString();
     }
 
-    // Returns the boundary QueryParam list the builder would bind for the given values: the RowValueConstructor builder
+    // Returns the boundary QueryParam list for the given columns and corresponding values: the RowValueConstructor builder
     // emits one param per column for all-required keys, and falls back to the base class's triangular expansion otherwise.
     private static List<ChunkQueryBuilder.QueryParam> boundaryParams(ChunkQueryBuilder<TableId> builder, List<Column> columns, Object[] values) {
         return builder.generateBoundaryParams(columns, values);
@@ -456,7 +456,7 @@ public class RowValueConstructorChunkQueryBuilderTest {
     @Test
     public void testAddBoundsMultipleNullableColumnsWithNullValuesNullsSortLast() {
         // Multiple nullable key columns with NULL boundary values. Equality comparisons against a NULL value become
-        // IS NULL, and the greater-than comparison on a NULL column collapses per the NULL-sorts-first rules.
+        // IS NULL, and the greater-than comparison on a NULL column is always false per the NULL-sorts-last rules.
         final ChunkQueryBuilder<TableId> chunkQueryBuilder = new RowValueConstructorChunkQueryBuilder<>(
                 config(), new NullHandlingJdbcConnection(config().getJdbcConfig(), c -> null, "\"", "\"", true));
         final Column pk1 = Column.editor().name("pk1").optional(true).create();
