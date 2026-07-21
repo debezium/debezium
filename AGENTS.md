@@ -189,6 +189,7 @@ Debezium connectors follow a consistent architecture pattern. Each connector has
 - Prefer `var` in declaring a variable but use interface types with Java collections
 - Use `final` for local variables where possible
 - follow always the guideline in the `checkstyle.xml`
+- Prefer real instances over mocks in new or modified tests. Only use mocks when there is no practical way to test the behavior otherwise (e.g. complex instance creation, unaccessible private code sections). Before introducing a mock, explore alternatives with real instances first. If a mock is still needed, explain why and ask the user for confirmation before proceeding.
 
 ---
 
