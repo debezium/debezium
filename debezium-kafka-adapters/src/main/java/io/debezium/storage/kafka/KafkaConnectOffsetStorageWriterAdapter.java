@@ -45,7 +45,11 @@ public class KafkaConnectOffsetStorageWriterAdapter implements OffsetStorageWrit
         try {
             return delegate.beginFlush(timeout, timeUnit);
         }
-        catch (InterruptedException | TimeoutException e) {
+        catch (TimeoutException e) {
+            return false;
+        }
+        catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             return false;
         }
     }
