@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.TemporalPrecisionLossHandlingMode;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
+import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.connector.jdbc.type.debezium.TargetTemporalCapabilities;
 import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
@@ -39,35 +40,38 @@ class StructuredTemporalTypeTest {
     @DisplayName("Should bind structured timestamp infinity as PostgreSQL timestamp literal")
     void shouldBindStructuredTimestampInfinity() {
         final var schema = StructuredTimestamp.schema();
+        final var type = configuredWithInfinitySupport(new StructuredTimestampType());
 
-        final var bindings = StructuredTimestampType.INSTANCE.bind(1, schema, StructuredTimestamp.positiveInfinity(schema));
+        final var bindings = type.bind(1, schema, StructuredTimestamp.positiveInfinity(schema));
 
         assertInfinityBinding(bindings.get(0), "infinity");
-        assertThat(StructuredTimestampType.INSTANCE.getQueryBinding(null, schema, null)).isEqualTo("cast(? as timestamp)");
+        assertThat(type.getQueryBinding(null, schema, null)).isEqualTo("cast(? as timestamp)");
     }
 
     @Test
     @DisplayName("Should bind structured zoned timestamp infinity as PostgreSQL timestamptz literal")
     void shouldBindStructuredZonedTimestampInfinity() {
         final var schema = StructuredZonedTimestamp.schema();
+        final var type = configuredWithInfinitySupport(new StructuredZonedTimestampType());
 
-        final var bindings = StructuredZonedTimestampType.INSTANCE.bind(2, schema, StructuredZonedTimestamp.negativeInfinity(schema));
+        final var bindings = type.bind(2, schema, StructuredZonedTimestamp.negativeInfinity(schema));
 
         assertThat(bindings).hasSize(1);
         assertInfinityBinding(bindings.get(0), "-infinity");
-        assertThat(StructuredZonedTimestampType.INSTANCE.getQueryBinding(null, schema, null)).isEqualTo("cast(? as timestamptz)");
+        assertThat(type.getQueryBinding(null, schema, null)).isEqualTo("cast(? as timestamptz)");
     }
 
     @Test
     @DisplayName("Should bind structured date infinity as PostgreSQL date literal")
     void shouldBindStructuredDateInfinity() {
         final var schema = StructuredDate.schema();
+        final var type = configuredWithInfinitySupport(new StructuredDateType());
 
-        final var bindings = StructuredDateType.INSTANCE.bind(3, schema, StructuredDate.positiveInfinity(schema));
+        final var bindings = type.bind(3, schema, StructuredDate.positiveInfinity(schema));
 
         assertThat(bindings).hasSize(1);
         assertInfinityBinding(bindings.get(0), "infinity");
-        assertThat(StructuredDateType.INSTANCE.getQueryBinding(null, schema, null)).isEqualTo("cast(? as date)");
+        assertThat(type.getQueryBinding(null, schema, null)).isEqualTo("cast(? as date)");
     }
 
     @Test
@@ -76,14 +80,38 @@ class StructuredTemporalTypeTest {
         final var timestampSchema = StructuredTimestamp.schema();
         final var zonedTimestampSchema = StructuredZonedTimestamp.schema();
         final var dateSchema = StructuredDate.schema();
+        final var timestampType = configuredWithInfinitySupport(new StructuredTimestampType());
+        final var zonedTimestampType = configuredWithInfinitySupport(new StructuredZonedTimestampType());
+        final var dateType = configuredWithInfinitySupport(new StructuredDateType());
 
-        StructuredTimestampType.INSTANCE.validate(
+        timestampType.validate(
                 temporalColumn(Types.TIMESTAMP, "timestamp"), timestampSchema, StructuredTimestamp.positiveInfinity(timestampSchema));
-        StructuredZonedTimestampType.INSTANCE.validate(
+        zonedTimestampType.validate(
                 temporalColumn(Types.TIMESTAMP_WITH_TIMEZONE, "timestamptz"), zonedTimestampSchema,
                 StructuredZonedTimestamp.negativeInfinity(zonedTimestampSchema));
-        StructuredDateType.INSTANCE.validate(
+        dateType.validate(
                 temporalColumn(Types.DATE, "date"), dateSchema, StructuredDate.positiveInfinity(dateSchema));
+    }
+
+    @Test
+    @DisplayName("Should reject structured temporal infinity without a configured dialect")
+    void shouldRejectStructuredTemporalInfinityWithoutConfiguredDialect() {
+        final var timestampSchema = StructuredTimestamp.schema();
+        final var zonedTimestampSchema = StructuredZonedTimestamp.schema();
+        final var dateSchema = StructuredDate.schema();
+
+        assertThatThrownBy(() -> new StructuredTimestampType().bind(
+                1, timestampSchema, StructuredTimestamp.positiveInfinity(timestampSchema)))
+                .isInstanceOf(ConnectException.class)
+                .hasMessageContaining("Non-finite");
+        assertThatThrownBy(() -> new StructuredZonedTimestampType().bind(
+                1, zonedTimestampSchema, StructuredZonedTimestamp.positiveInfinity(zonedTimestampSchema)))
+                .isInstanceOf(ConnectException.class)
+                .hasMessageContaining("Non-finite");
+        assertThatThrownBy(() -> new StructuredDateType().bind(
+                1, dateSchema, StructuredDate.positiveInfinity(dateSchema)))
+                .isInstanceOf(ConnectException.class)
+                .hasMessageContaining("Non-finite");
     }
 
     @Test
@@ -188,6 +216,17 @@ class StructuredTemporalTypeTest {
         when(config.useTimeZone()).thenReturn("UTC");
         when(config.getTemporalPrecisionLossHandlingMode()).thenReturn(mode);
         when(dialect.getTargetTemporalCapabilities()).thenReturn(TargetTemporalCapabilities.defaults(6, 6));
+        type.configure(config, dialect);
+        return type;
+    }
+
+    private <T extends JdbcType> T configuredWithInfinitySupport(T type) {
+        final JdbcSinkConnectorConfig config = mock(JdbcSinkConnectorConfig.class);
+        final DatabaseDialect dialect = mock(DatabaseDialect.class);
+        when(config.useTimeZone()).thenReturn("UTC");
+        when(dialect.getTargetTemporalCapabilities()).thenReturn(TargetTemporalCapabilities.defaults(6, 6)
+                .withDateInfinitySupported(true)
+                .withTimestampInfinitySupported(true));
         type.configure(config, dialect);
         return type;
     }
