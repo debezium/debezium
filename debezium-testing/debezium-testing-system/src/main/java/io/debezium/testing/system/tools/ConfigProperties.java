@@ -60,15 +60,19 @@ public final class ConfigProperties {
 
     // Strimzi configuration
     public static final String STRIMZI_OPERATOR_CHANNEL = System.getProperty("test.strimzi.operator.channel", "stable");
-    public static final String STRIMZI_OPERATOR_VERSION = System.getProperty("test.strimzi.operator.version", "0.45.0");
+    public static final String STRIMZI_OPERATOR_VERSION = System.getProperty("test.strimzi.operator.version", "0.51.0");
     public static final boolean STRIMZI_OPERATOR_CONNECTORS = booleanProperty("test.strimzi.operator.connectors", true);
-    public static final String STRIMZI_VERSION_KAFKA = System.getProperty("test.strimzi.version.kafka", "3.1.0");
-    public static final boolean FORCE_KRAFT = booleanProperty("test.force.kraft", false);
+    public static final String STRIMZI_VERSION_KAFKA = System.getProperty("test.strimzi.version.kafka", "4.1.0");
+    public static final boolean FORCE_KRAFT = booleanProperty("test.force.kraft", true);
 
     // Apicurio Registry configuration
+    public static final String VERSION_APICURIO = System.getProperty("version.apicurio", "3.2.5");
     public static final String APICURIO_LOG_LEVEL = System.getProperty("test.apicurio.log.level", "INFO");
-    public static final String APICURIO_OPERATOR_CHANNEL = System.getProperty("test.apicurio.operator.channel", "2.x");
-    public static final String APICURIO_OPERATOR_VERSION = System.getProperty("test.apicurio.operator.version", "1.1.3-v2.6.4.final");
+    public static final String APICURIO_OPERATOR_NAME = System.getProperty("test.apicurio.operator.name", "apicurio-registry-3");
+    public static final String APICURIO_OPERATOR_CHANNEL = System.getProperty("test.apicurio.operator.channel", "3.x");
+    public static final String APICURIO_OPERATOR_VERSION = System.getProperty("test.apicurio.operator.version", VERSION_APICURIO);
+    public static final String APICURIO_STARTING_CSV = System.getProperty("test.apicurio.operator.starting.csv.prefix",
+            "apicurio-registry-3.v" + APICURIO_OPERATOR_VERSION);
     public static final boolean APICURIO_TLS_ENABLED = booleanProperty("test.apicurio.tls.enabled", false);
 
     // MySql Configuration
