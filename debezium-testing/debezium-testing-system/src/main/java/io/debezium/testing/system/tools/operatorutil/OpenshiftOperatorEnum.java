@@ -17,7 +17,7 @@ public enum OpenshiftOperatorEnum {
             "apicurio-registry-operator",
             ConfigProperties.APICURIO_OPERATOR_CHANNEL,
             ConfigProperties.OCP_PROJECT_REGISTRY + "-opgroup",
-            "apicurio-registry-operator.v" + ConfigProperties.APICURIO_OPERATOR_VERSION),
+            ConfigProperties.APICURIO_STARTING_CSV_PREFIX + ConfigProperties.APICURIO_OPERATOR_VERSION),
     STRIMZI(PRODUCT_BUILD ? "AMQ Streams" : "Strimzi",
             PRODUCT_BUILD ? "amq-streams" : "strimzi",
             ConfigProperties.STRIMZI_OPERATOR_CHANNEL,

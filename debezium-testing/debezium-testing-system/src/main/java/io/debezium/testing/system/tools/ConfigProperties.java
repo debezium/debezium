@@ -66,9 +66,11 @@ public final class ConfigProperties {
     public static final boolean FORCE_KRAFT = booleanProperty("test.force.kraft", false);
 
     // Apicurio Registry configuration
+    public static final String VERSION_APICURIO = System.getProperty("version.apicurio");
     public static final String APICURIO_LOG_LEVEL = System.getProperty("test.apicurio.log.level", "INFO");
-    public static final String APICURIO_OPERATOR_CHANNEL = System.getProperty("test.apicurio.operator.channel", "2.x");
-    public static final String APICURIO_OPERATOR_VERSION = System.getProperty("test.apicurio.operator.version", "1.1.3-v2.6.4.final");
+    public static final String APICURIO_OPERATOR_CHANNEL = System.getProperty("test.apicurio.operator.channel", "3.2.x");
+    public static final String APICURIO_STARTING_CSV_PREFIX = System.getProperty("test.apicurio.operator.starting.csv.prefix", "apicurio-registry-3.v");
+    public static final String APICURIO_OPERATOR_VERSION = System.getProperty("test.apicurio.operator.version", VERSION_APICURIO);
     public static final boolean APICURIO_TLS_ENABLED = booleanProperty("test.apicurio.tls.enabled", false);
 
     // MySql Configuration
