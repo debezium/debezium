@@ -114,7 +114,7 @@ ifdef::community[]
 === CockroachDB sink targets
 
 To enable the JDBC connector to write to CockroachDB, you must specify a PostgreSQL JDBC URL in the connector's xref:jdbc-property-connection-url[`connection.url`] property, for example, `jdbc:postgresql://<_host_>:26257/<_database_>`.
-CockroachDB is wire compatible with PostgreSQL and uses the PostgreSQL JDBC driver that is included in the {prodname} JDBC connector archive.
+Because CockroachDB supports the PostgreSQL communication protocol, it works with the PostgreSQL JDBC driver that is included in the {prodname} JDBC connector archive.
 
 As a sink target, CockroachDB supports idempotent writes through the same xref:jdbc-property-insert-mode[`insert.mode=upsert`] setting that the connector uses for other databases.
 For CockroachDB, the connector generates `INSERT ... ON CONFLICT ... DO UPDATE SET ...` statements.
@@ -124,7 +124,7 @@ As a result, if CockroachDB detects a conflict between concurrent transactions, 
 The connector treats these conflicts as retriable and retries the flush according to the xref:jdbc-property-flush-max-retries[`flush.max.retries`] and xref:jdbc-property-flush-retry-delay-ms[`flush.retry.delay.ms`] settings.
 Setting `flush.max.retries` to `0` disables the retries so that a conflicting flush fails immediately.
 
-For CockroachDB targets, {prodname} uses PostgreSQL-compatible mappings for most data types, with the following differences:
+For CockroachDB targets, {prodname} uses PostgreSQL-compatible mappings for most data types, with the following exceptions:
 
 * `io.debezium.data.Json` logical values and Kafka Connect `MAP` schema values are written to the CockroachDB `jsonb` column type.
 * `io.debezium.data.Xml` logical values and propagated range, `macaddr`, and `cidr` column types are written as `text`, because CockroachDB does not provide those types.
