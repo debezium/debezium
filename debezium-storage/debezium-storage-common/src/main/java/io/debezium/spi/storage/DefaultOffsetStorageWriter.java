@@ -83,7 +83,11 @@ public class DefaultOffsetStorageWriter implements OffsetStorageWriter {
                 throw new TimeoutException("Timed out waiting for previous flush to finish");
             }
         }
-        catch (InterruptedException | TimeoutException e) {
+        catch (TimeoutException e) {
+            return false;
+        }
+        catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             return false;
         }
     }
