@@ -29,7 +29,7 @@ public class StructuredZonedTimeType extends AbstractTimeType {
 
     @Override
     public String[] getRegistrationKeys() {
-        return new String[]{ StructuredZonedTime.SCHEMA_NAME };
+        return StructuredZonedTime.schemaNames();
     }
 
     @Override

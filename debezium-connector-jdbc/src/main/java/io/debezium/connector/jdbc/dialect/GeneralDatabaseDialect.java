@@ -92,6 +92,7 @@ import io.debezium.metadata.CollectionId;
 import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.sink.field.FieldDescriptor;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
+import io.debezium.time.StructuredTemporal;
 import io.debezium.util.Strings;
 
 /**
@@ -483,7 +484,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         }
 
         if (!Objects.isNull(schema.name())) {
-            final JdbcType type = typeRegistry.get(schema.name());
+            final JdbcType type = typeRegistry.get(StructuredTemporal.schemaNameWithoutSourceColumn(schema.name()));
             if (!Objects.isNull(type)) {
                 LOGGER.trace("Schema '{}' resolved by name from registry to type '{}'", schema.name(), type);
                 return type;

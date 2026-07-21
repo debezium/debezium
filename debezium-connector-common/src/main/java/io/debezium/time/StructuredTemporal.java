@@ -5,6 +5,9 @@
  */
 package io.debezium.time;
 
+import java.nio.charset.StandardCharsets;
+
+import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -13,6 +16,10 @@ import org.apache.kafka.connect.data.Struct;
  * Shared constants and helpers for structured temporal semantic types.
  */
 public final class StructuredTemporal {
+
+    static final int MAX_FRACTIONAL_SECOND_PRECISION = 12;
+
+    private static final String SOURCE_COLUMN_SCHEMA_NAME_MARKER = "SourceColumn";
 
     public static final String YEAR_FIELD = "year";
     public static final String MONTH_FIELD = "month";
@@ -89,6 +96,91 @@ public final class StructuredTemporal {
             builder.parameter(PRECISION_PARAMETER_KEY, Integer.toString(precision));
         }
         return builder;
+    }
+
+    static String schemaName(String baseName, int precision) {
+        return precision < 0 ? baseName : baseName + "Precision" + precision;
+    }
+
+    static String[] schemaNames(String baseName) {
+        final String[] names = new String[MAX_FRACTIONAL_SECOND_PRECISION + 2];
+        names[0] = baseName;
+        for (int precision = 0; precision <= MAX_FRACTIONAL_SECOND_PRECISION; ++precision) {
+            names[precision + 1] = schemaName(baseName, precision);
+        }
+        return names;
+    }
+
+    /**
+     * Qualifies a structured temporal schema name with the source column name. This keeps Avro named records distinct when
+     * otherwise identical structured temporal schemas carry column-specific metadata.
+     *
+     * @param builder the field schema builder
+     * @param columnName the source column name
+     */
+    public static SchemaBuilder qualifySchemaBuilderWithSourceColumn(SchemaBuilder builder, String columnName) {
+        final String schemaName = schemaNameWithoutSourceColumn(builder.name());
+        if (!isStructuredTemporalSchemaName(schemaName)) {
+            return builder;
+        }
+
+        final SchemaBuilder qualifiedBuilder = SchemaBuilder.struct()
+                .name(schemaName + SOURCE_COLUMN_SCHEMA_NAME_MARKER + encodeSchemaNameComponent(columnName));
+        if (builder.version() != null) {
+            qualifiedBuilder.version(builder.version());
+        }
+        if (builder.doc() != null) {
+            qualifiedBuilder.doc(builder.doc());
+        }
+        if (builder.parameters() != null) {
+            qualifiedBuilder.parameters(builder.parameters());
+        }
+        if (builder.isOptional()) {
+            qualifiedBuilder.optional();
+        }
+        for (Field field : builder.fields()) {
+            qualifiedBuilder.field(field.name(), field.schema());
+        }
+        return qualifiedBuilder;
+    }
+
+    /**
+     * Returns the structured temporal schema name without its source-column qualifier.
+     *
+     * @param schemaName the schema name
+     * @return the canonical schema name
+     */
+    public static String schemaNameWithoutSourceColumn(String schemaName) {
+        if (schemaName == null) {
+            return null;
+        }
+        final int markerIndex = schemaName.indexOf(SOURCE_COLUMN_SCHEMA_NAME_MARKER);
+        if (markerIndex > 0) {
+            final String candidate = schemaName.substring(0, markerIndex);
+            if (isStructuredTemporalSchemaName(candidate)) {
+                return candidate;
+            }
+        }
+        return schemaName;
+    }
+
+    private static boolean isStructuredTemporalSchemaName(String schemaName) {
+        return schemaName != null && (StructuredDate.SCHEMA_NAME.equals(schemaName)
+                || schemaName.startsWith(StructuredDuration.SCHEMA_NAME)
+                || schemaName.startsWith(StructuredZonedTimestamp.SCHEMA_NAME)
+                || schemaName.startsWith(StructuredZonedTime.SCHEMA_NAME)
+                || schemaName.startsWith(StructuredTimestamp.SCHEMA_NAME)
+                || schemaName.startsWith(StructuredTime.SCHEMA_NAME));
+    }
+
+    private static String encodeSchemaNameComponent(String value) {
+        final byte[] bytes = value.getBytes(StandardCharsets.UTF_8);
+        final StringBuilder encoded = new StringBuilder(bytes.length * 2);
+        for (byte current : bytes) {
+            encoded.append(Character.forDigit((current >>> 4) & 0x0f, 16));
+            encoded.append(Character.forDigit(current & 0x0f, 16));
+        }
+        return encoded.toString();
     }
 
     static long picosecondsFromNanoseconds(int nanoseconds) {

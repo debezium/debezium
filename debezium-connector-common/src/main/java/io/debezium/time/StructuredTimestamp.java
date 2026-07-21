@@ -25,7 +25,7 @@ public final class StructuredTimestamp {
 
     public static SchemaBuilder builder(int precision) {
         return StructuredTemporal.withPrecision(SchemaBuilder.struct()
-                .name(SCHEMA_NAME)
+                .name(schemaName(precision))
                 .version(1)
                 .field(StructuredTemporal.YEAR_FIELD, StructuredTemporal.optionalInt32())
                 .field(StructuredTemporal.MONTH_FIELD, StructuredTemporal.optionalInt8())
@@ -36,6 +36,14 @@ public final class StructuredTimestamp {
                 .field(StructuredTemporal.PICOSECONDS_FIELD, StructuredTemporal.optionalInt64())
                 .field(StructuredTemporal.SPECIAL_VALUE_FIELD, StructuredTemporal.optionalString())
                 .field(StructuredTemporal.PRECISION_FIELD, StructuredTemporal.optionalInt32()), precision);
+    }
+
+    public static String schemaName(int precision) {
+        return StructuredTemporal.schemaName(SCHEMA_NAME, precision);
+    }
+
+    public static String[] schemaNames() {
+        return StructuredTemporal.schemaNames(SCHEMA_NAME);
     }
 
     public static Schema schema() {

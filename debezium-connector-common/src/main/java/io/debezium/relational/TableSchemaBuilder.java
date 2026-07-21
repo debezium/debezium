@@ -36,6 +36,7 @@ import io.debezium.schema.FieldNameSelector.FieldNamer;
 import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.topic.TopicNamingStrategy;
+import io.debezium.time.StructuredTemporal;
 import io.debezium.util.Loggings;
 
 /**
@@ -411,10 +412,13 @@ public class TableSchemaBuilder {
     protected void addField(SchemaBuilder builder, Table table, Column column, ColumnMapper mapper) {
         final Object defaultValue = parseDefaultValue(table.id(), column);
 
-        final SchemaBuilder fieldBuilder = customConverterRegistry.registerConverterFor(table.id(), column, defaultValue)
+        SchemaBuilder fieldBuilder = customConverterRegistry.registerConverterFor(table.id(), column, defaultValue)
                 .orElse(valueConverterProvider.schemaBuilder(column));
 
         if (fieldBuilder != null) {
+            if (mapper != null || column.comment() != null) {
+                fieldBuilder = StructuredTemporal.qualifySchemaBuilderWithSourceColumn(fieldBuilder, column.name());
+            }
             if (mapper != null) {
                 // Let the mapper add properties to the schema ...
                 mapper.alterFieldSchema(column, fieldBuilder);

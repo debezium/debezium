@@ -5,6 +5,8 @@
  */
 package io.debezium.time;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 import org.apache.kafka.connect.data.Schema;
@@ -54,7 +56,7 @@ public final class StructuredDuration {
 
     public static SchemaBuilder builder(int precision, Kind kind) {
         final SchemaBuilder builder = StructuredTemporal.withPrecision(SchemaBuilder.struct()
-                .name(SCHEMA_NAME)
+                .name(schemaName(precision, kind))
                 .version(1)
                 .field(StructuredTemporal.YEARS_FIELD, StructuredTemporal.optionalInt32())
                 .field(StructuredTemporal.MONTHS_FIELD, StructuredTemporal.optionalInt32())
@@ -68,6 +70,30 @@ public final class StructuredDuration {
             builder.parameter(StructuredTemporal.DURATION_KIND_PARAMETER_KEY, kind.getValue());
         }
         return builder;
+    }
+
+    public static String schemaName(int precision, Kind kind) {
+        final String baseName = StructuredTemporal.schemaName(SCHEMA_NAME, precision);
+        return kind == null ? baseName : baseName + kind.name();
+    }
+
+    public static String[] schemaNames() {
+        final List<String> names = new ArrayList<>();
+        names.add(SCHEMA_NAME);
+        addSchemaNames(names, -1);
+        for (int precision = 0; precision <= StructuredTemporal.MAX_FRACTIONAL_SECOND_PRECISION; ++precision) {
+            addSchemaNames(names, precision);
+        }
+        return names.toArray(String[]::new);
+    }
+
+    private static void addSchemaNames(List<String> names, int precision) {
+        if (precision >= 0) {
+            names.add(schemaName(precision, null));
+        }
+        for (Kind kind : Kind.values()) {
+            names.add(schemaName(precision, kind));
+        }
     }
 
     public static Schema schema() {
