@@ -5,6 +5,7 @@
  */
 package io.debezium.testing.system.tools.registry.builders;
 
+import io.debezium.testing.system.tools.ConfigProperties;
 import io.debezium.testing.system.tools.fabric8.FabricBuilderWrapper;
 import io.debezium.testing.system.tools.fabric8.OperatorSubscriptionBuilder;
 import io.debezium.testing.system.tools.operatorutil.OpenshiftOperatorEnum;
@@ -20,9 +21,6 @@ import io.fabric8.openshift.api.model.operatorhub.v1alpha1.SubscriptionSpecBuild
  */
 public class ApicurioSubscriptionBuilder extends FabricBuilderWrapper<ApicurioSubscriptionBuilder, SubscriptionBuilder, Subscription>
         implements OperatorSubscriptionBuilder {
-
-    private static final String APICURIO_OPERATOR_NAME = "apicurio-registry";
-    private static final String SERVICE_REGISTRY_OPERATOR_NAME = "service-registry-operator";
 
     protected ApicurioSubscriptionBuilder(SubscriptionBuilder builder) {
         super(builder);
@@ -48,7 +46,7 @@ public class ApicurioSubscriptionBuilder extends FabricBuilderWrapper<ApicurioSu
                 .withName(OpenshiftOperatorEnum.APICURIO.getDeploymentNamePrefix())
                 .build())
                 .withSpec(new SubscriptionSpecBuilder()
-                        .withName(SERVICE_REGISTRY_OPERATOR_NAME)
+                        .withName(ConfigProperties.APICURIO_OPERATOR_NAME)
                         .withSource(SubscriptionConstants.REDHAT_OPERATORS_SOURCE)
                         .withSourceNamespace(SubscriptionConstants.OPENSHIFT_MARKETPLACE_SOURCE_NAMESPACE)
                         .withInstallPlanApproval(SubscriptionConstants.INSTALL_PLAN_APPROVAL)
@@ -66,7 +64,7 @@ public class ApicurioSubscriptionBuilder extends FabricBuilderWrapper<ApicurioSu
                 .withName(OpenshiftOperatorEnum.APICURIO.getDeploymentNamePrefix())
                 .build())
                 .withSpec(new SubscriptionSpecBuilder()
-                        .withName(APICURIO_OPERATOR_NAME)
+                        .withName(ConfigProperties.APICURIO_OPERATOR_NAME)
                         .withSource(SubscriptionConstants.COMMUNITY_OPERATORS_SOURCE)
                         .withSourceNamespace(SubscriptionConstants.OPENSHIFT_MARKETPLACE_SOURCE_NAMESPACE)
                         .withInstallPlanApproval(SubscriptionConstants.INSTALL_PLAN_APPROVAL)
