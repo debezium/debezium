@@ -3539,23 +3539,6 @@ Set the value to `0` (zero) to remove the timeout limit.
 |Specifies the maximum number of rows that should be read in one go from each table while streaming.
 The connector will read the table contents in multiple batches of this size. Defaults to `0` which means no limit.
 
-|[[sqlserver-property-capture-instance-include-list]]<<sqlserver-property-capture-instance-include-list, `+capture.instance.include.list+`>>
-|No default
-|An optional, comma-separated list of regular expressions that match the names of the CDC capture instances to stream from.
-The connector uses only capture instances whose names match one of the expressions, and ignores all others.
-Matching is by capture instance name across the connector, not per table.
-Each expression is matched, case-insensitively, against the entire capture instance name.
-Cannot be used with `capture.instance.exclude.list`.
-
-|[[sqlserver-property-capture-instance-exclude-list]]<<sqlserver-property-capture-instance-exclude-list, `+capture.instance.exclude.list+`>>
-|No default
-|An optional, comma-separated list of regular expressions that match the names of the CDC capture instances to ignore.
-The connector streams from every capture instance except those whose names match; an excluded instance is never queried.
-Useful when a table has more than one capture instance and you want to skip one, for example one that the connector's database user cannot read.
-Matching is by capture instance name across the connector, not per table.
-Each expression is matched, case-insensitively, against the entire capture instance name.
-Cannot be used with `capture.instance.include.list`.
-
 |[[sqlserver-property-guardrail-collections-max]]<<sqlserver-property-guardrail-collections-max, `+guardrail.collections.max+`>>
 |`0`
 |Specifies the maximum number of tables that the connector can capture.
