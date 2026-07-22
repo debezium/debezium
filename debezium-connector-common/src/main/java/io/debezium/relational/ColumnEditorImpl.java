@@ -262,7 +262,7 @@ final class ColumnEditorImpl implements ColumnEditor {
                 Interner.intern(typeName), Interner.intern(typeExpression),
                 Interner.intern(charsetName), Interner.intern(tableCharsetName),
                 length, scale, enumValues == null ? null : Interner.intern(Collections.unmodifiableList(enumValues)),
-                optional, autoIncremented, generated,
+                optional, autoIncremented, generated, invisible,
                 Interner.intern(defaultValueExpression), hasDefaultValue,
                 Interner.intern(comment));
         return Interner.intern(column);
