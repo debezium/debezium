@@ -3231,6 +3231,7 @@ This reduces the load on the primary by offloading LogMiner operations to the st
 * Add the following properties to the connector configuration:
 +
 ```
+capture.mode=physical_standby
 log.mining.strategy=dictionary_from_file
 log.mining.path.dictionary=/path/to/dictionary.ora
 log.mining.read.only=true
