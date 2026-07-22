@@ -135,6 +135,12 @@ public class TypeRegistry {
     private int ltreeArrayOid = Integer.MIN_VALUE;
     private int tsVectorOid = Integer.MIN_VALUE;
 
+    /**
+     * Tracks whether the one-time summary WARN about schema-qualified type name re-mapping has already
+     * been emitted for this registry instance. See dbz#1876.
+     */
+    private boolean typeCollisionWarned = false;
+
     public TypeRegistry(PostgresConnection connection) {
         this(connection, Collections.emptySet());
     }
@@ -180,7 +186,13 @@ public class TypeRegistry {
             }
             PostgresType currentType = nameToType.get(qualifiedName);
             if (!currentType.equals(type)) {
-                LOGGER.warn("Type [oid:{}, name:{}] is already mapped", type.getOid(), qualifiedName);
+                LOGGER.debug("Type [oid:{}, name:{}] is already mapped", type.getOid(), qualifiedName);
+                if (!typeCollisionWarned) {
+                    typeCollisionWarned = true;
+                    LOGGER.warn(
+                            "Type name re-mapped: Type [oid:{}, name:{}] is already mapped (existing oid:{}); further occurrences for this registry instance will be logged at DEBUG level.",
+                            type.getOid(), qualifiedName, currentType.getOid());
+                }
             }
         }
 
@@ -248,7 +260,7 @@ public class TypeRegistry {
         if (r == null) {
             r = resolveUnknownType(oid);
             if (r == null) {
-                LOGGER.warn("Unknown OID {} requested", oid);
+                LOGGER.debug("Unknown OID {} requested", oid);
                 r = PostgresType.UNKNOWN;
             }
         }
@@ -356,7 +368,7 @@ public class TypeRegistry {
                 : cleanParts[0];
         r = resolveUnknownType(cleanName);
         if (r == null) {
-            LOGGER.warn("Unknown type named {} requested", name);
+            LOGGER.debug("Unknown type named {} requested", name);
             r = PostgresType.UNKNOWN;
         }
         return r;
@@ -711,7 +723,7 @@ public class TypeRegistry {
                     return getTypeInfo(connection).getSQLType(typeName);
                 }
                 catch (Exception e) {
-                    LOGGER.warn("Failed to obtain SQL type information for type {} via custom statement, falling back to TypeInfo#getSQLType()", typeName, e);
+                    LOGGER.debug("Failed to obtain SQL type information for type {} via custom statement, falling back to TypeInfo#getSQLType()", typeName, e);
                     return getTypeInfo(connection).getSQLType(typeName);
                 }
             }
