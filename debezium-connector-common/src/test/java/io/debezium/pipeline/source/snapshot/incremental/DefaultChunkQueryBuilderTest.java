@@ -547,4 +547,42 @@ public class DefaultChunkQueryBuilderTest {
         assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.empty()))
                 .isEqualTo("SELECT \"pk1\", \"val1\" FROM \"s1\".\"table1\" ORDER BY \"pk1\" LIMIT 1024");
     }
+
+    @Test
+    @FixFor("DBZ-2020")
+    public void testBuildProjectionKeepsAutoIncrementedGeneratedColumnsAsStar() {
+        // MySQL/MariaDB set both autoIncremented and generated for AUTO_INCREMENT; that alone must
+        // not force an explicit projection (keeps the SELECT * race-safe path).
+        final ChunkQueryBuilder<TableId> chunkQueryBuilder = new DefaultChunkQueryBuilder<>(
+                config(), new JdbcConnection(config().getJdbcConfig(), c -> null, "\"", "\""));
+        final IncrementalSnapshotContext<TableId> context = new SignalBasedIncrementalSnapshotContext<>();
+        final Column pk1 = Column.editor().name("pk1").optional(false).autoIncremented(true).generated(true).create();
+        final Column val1 = Column.editor().name("val1").create();
+        final Table table = Table.editor().tableId(new TableId(null, "s1", "table1"))
+                .addColumn(pk1)
+                .addColumn(val1)
+                .setPrimaryKeyNames("pk1").create();
+
+        assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.empty()))
+                .isEqualTo("SELECT * FROM \"s1\".\"table1\" ORDER BY \"pk1\" LIMIT 1024");
+    }
+
+    @Test
+    @FixFor("DBZ-2020")
+    public void testBuildProjectionKeepsAutoIncrementWhenExcludingTrueGeneratedColumns() {
+        final ChunkQueryBuilder<TableId> chunkQueryBuilder = new DefaultChunkQueryBuilder<>(
+                config(), new JdbcConnection(config().getJdbcConfig(), c -> null, "\"", "\""));
+        final IncrementalSnapshotContext<TableId> context = new SignalBasedIncrementalSnapshotContext<>();
+        final Column pk1 = Column.editor().name("pk1").optional(false).autoIncremented(true).generated(true).create();
+        final Column val1 = Column.editor().name("val1").create();
+        final Column gen1 = Column.editor().name("gen1").generated(true).create();
+        final Table table = Table.editor().tableId(new TableId(null, "s1", "table1"))
+                .addColumn(pk1)
+                .addColumn(val1)
+                .addColumn(gen1)
+                .setPrimaryKeyNames("pk1").create();
+
+        assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.empty()))
+                .isEqualTo("SELECT \"pk1\", \"val1\" FROM \"s1\".\"table1\" ORDER BY \"pk1\" LIMIT 1024");
+    }
 }
