@@ -125,7 +125,8 @@ public interface OracleJdbcConfiguration extends JdbcConfiguration {
     }
 
     default int getSecondaryPort() {
-        return getInteger(SECONDARY_PORT);
+        // When set to 0, will fall back to using PORT
+        return hasKey(SECONDARY_PORT) ? getInteger(SECONDARY_PORT) : 0;
     }
 
     default String getSecondaryDatabaseName() {
