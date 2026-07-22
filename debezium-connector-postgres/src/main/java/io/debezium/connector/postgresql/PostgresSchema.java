@@ -50,6 +50,7 @@ public class PostgresSchema extends RelationalDatabaseSchema {
     private final static Logger LOGGER = LoggerFactory.getLogger(PostgresSchema.class);
 
     private final Map<TableId, List<String>> tableIdToToastableColumns;
+    private final Map<TableId, List<String>> tableIdToGeneratedColumns;
     private final Map<Integer, TableId> relationIdToTableId;
     private final boolean readToastableColumns;
     private final PostgresConnectorConfig connectorConfig;
@@ -69,6 +70,7 @@ public class PostgresSchema extends RelationalDatabaseSchema {
 
         this.connectorConfig = cdcSourceTaskContext.getConfig();
         this.tableIdToToastableColumns = new HashMap<>();
+        this.tableIdToGeneratedColumns = new HashMap<>();
         this.relationIdToTableId = new HashMap<>();
         this.readToastableColumns = connectorConfig.skipRefreshSchemaOnMissingToastableData();
     }
@@ -140,7 +142,11 @@ public class PostgresSchema extends RelationalDatabaseSchema {
         var updatedTable = temp.forTable(tableId);
         // The Postgres JDBC driver does not surface IS_GENERATEDCOLUMN, so populate it here before
         // any consumer (including the removeGeneratedColumns branch below) inspects isGenerated().
-        updatedTable = applyGeneratedColumnFlags(connection, updatedTable);
+        // Also refresh the side map used by incremental-snapshot projection: refreshFromIncrementalSnapshot
+        // may prune generated columns from the Table, but buildProjection still needs to know they exist.
+        final List<String> generatedColumnNames = readGeneratedColumnNames(connection, tableId);
+        tableIdToGeneratedColumns.put(tableId, Collections.unmodifiableList(generatedColumnNames));
+        updatedTable = applyGeneratedColumnFlags(updatedTable, generatedColumnNames);
         if (removeGeneratedColumns) {
             var editor = updatedTable.edit();
             final var notGeneratedColumns = updatedTable.filterColumns(x -> !x.isGenerated());
@@ -257,13 +263,19 @@ public class PostgresSchema extends RelationalDatabaseSchema {
      * <p>{@code attgenerated} is a single character: {@code ''} for regular columns, {@code 's'} for
      * {@code STORED} generated columns (PostgreSQL 12+) and {@code 'v'} for {@code VIRTUAL} generated
      * columns (PostgreSQL 18+). Any non-empty value is treated as generated.</p>
+     *
+     * <p>Also stores the names in {@link #tableIdToGeneratedColumns} so incremental-snapshot projection
+     * can still detect generated columns after {@link #refreshFromIncrementalSnapshot} has pruned them
+     * from the Table for pgoutput.</p>
      */
     private void refreshGeneratedColumnsMap(PostgresConnection connection, TableId tableId) {
         final Table current = tables().forTable(tableId);
         if (current == null) {
             return;
         }
-        final Table updated = applyGeneratedColumnFlags(connection, current);
+        final List<String> generatedColumnNames = readGeneratedColumnNames(connection, tableId);
+        tableIdToGeneratedColumns.put(tableId, Collections.unmodifiableList(generatedColumnNames));
+        final Table updated = applyGeneratedColumnFlags(current, generatedColumnNames);
         if (updated != current) {
             tables().overwriteTable(updated);
         }
@@ -271,11 +283,10 @@ public class PostgresSchema extends RelationalDatabaseSchema {
 
     /**
      * Returns a {@link Table} whose columns carry the correct {@link Column#isGenerated()} value based
-     * on a {@code pg_attribute.attgenerated} lookup. Returns the input unchanged when no generated
-     * columns are present, so callers can cheaply detect the common case.
+     * on the provided generated-column names. Returns the input unchanged when no generated columns
+     * are present, so callers can cheaply detect the common case.
      */
-    private Table applyGeneratedColumnFlags(PostgresConnection connection, Table table) {
-        final List<String> generatedColumnNames = readGeneratedColumnNames(connection, table.id());
+    private Table applyGeneratedColumnFlags(Table table, List<String> generatedColumnNames) {
         if (generatedColumnNames.isEmpty()) {
             return table;
         }
@@ -338,6 +349,14 @@ public class PostgresSchema extends RelationalDatabaseSchema {
 
     public List<String> getToastableColumnsForTableId(TableId tableId) {
         return tableIdToToastableColumns.getOrDefault(tableId, Collections.emptyList());
+    }
+
+    /**
+     * Generated column names for {@code tableId}, including those that may have been pruned from the
+     * in-memory {@link Table} by {@link #refreshFromIncrementalSnapshot} for pgoutput.
+     */
+    public List<String> getGeneratedColumnsForTableId(TableId tableId) {
+        return tableIdToGeneratedColumns.getOrDefault(tableId, Collections.emptyList());
     }
 
     /**
