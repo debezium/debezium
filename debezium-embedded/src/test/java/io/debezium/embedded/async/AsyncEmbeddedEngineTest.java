@@ -1410,13 +1410,13 @@ public class AsyncEmbeddedEngineTest {
         props.setProperty(CommonConnectorConfig.TASKS_MAX.name(), "1");
         props.setProperty(ConnectorConfig.CONNECTOR_CLASS_CONFIG, FileStreamSourceConnector.class.getName());
         props.setProperty(EmbeddedEngineConfig.OFFSET_STORAGE.name(), KafkaFailureEmulatingOffsetStoreProvider.NAME);
-        props.setProperty(EmbeddedEngineConfig.OFFSET_FLUSH_INTERVAL_MS.name(), "4000");
+        props.setProperty(EmbeddedEngineConfig.OFFSET_FLUSH_INTERVAL_MS.name(), "500");
         props.setProperty(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
         props.setProperty(WorkerConfig.OFFSET_COMMIT_INTERVAL_MS_CONFIG, "0");
         props.setProperty(FileStreamSourceConnector.FILE_CONFIG, TEST_FILE_PATH.toAbsolutePath().toString());
         props.setProperty(FileStreamSourceConnector.TOPIC_CONFIG, "testTopic");
 
-        CountDownLatch latch = new CountDownLatch(1);
+        CountDownLatch latch = new CountDownLatch(2);
         DebeziumEngine.Builder<SourceRecord> builder = new AsyncEmbeddedEngine.AsyncEngineBuilder<>();
         engine = builder
                 .using(props)
@@ -1438,10 +1438,12 @@ public class AsyncEmbeddedEngineTest {
 
         appendLinesToSource(1);
         latch.await(AbstractConnectorTest.waitTimeForEngine(), TimeUnit.SECONDS);
-        assertThat(latch.getCount()).isEqualTo(0);
+        assertThat(latch.getCount()).isEqualTo(1);
 
         appendLinesToSource(1);
-        Awaitility.await().atMost(AbstractConnectorTest.waitTimeForEngine(), TimeUnit.SECONDS).until(() -> FailureEmulatingOffsetBackingStore.counter.get() == 2);
+        latch.await(AbstractConnectorTest.waitTimeForEngine(), TimeUnit.SECONDS);
+        assertThat(latch.getCount()).isEqualTo(0);
+        Awaitility.await().atMost(AbstractConnectorTest.waitTimeForEngine(), TimeUnit.SECONDS).until(() -> FailureEmulatingOffsetBackingStore.counter.get() >= 2);
     }
 
     private void runEngineBasicLifecycleWithConsumer(final Properties props) throws IOException, InterruptedException {
