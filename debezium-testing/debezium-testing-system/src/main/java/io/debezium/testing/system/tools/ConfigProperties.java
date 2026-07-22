@@ -66,7 +66,7 @@ public final class ConfigProperties {
     public static final boolean FORCE_KRAFT = booleanProperty("test.force.kraft", true);
 
     // Apicurio Registry configuration
-    public static final String VERSION_APICURIO = System.getProperty("version.apicurio");
+    public static final String VERSION_APICURIO = System.getProperty("version.apicurio", "3.2.5");
     public static final String APICURIO_LOG_LEVEL = System.getProperty("test.apicurio.log.level", "INFO");
     public static final String APICURIO_OPERATOR_NAME = System.getProperty("test.apicurio.operator.name", "apicurio-registry-3");
     public static final String APICURIO_OPERATOR_CHANNEL = System.getProperty("test.apicurio.operator.channel", "3.x");
