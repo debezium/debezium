@@ -278,7 +278,7 @@ If a schema change is performed _before_ the incremental snapshot start but _aft
 ====
 When a captured table has `GENERATED` columns, the connector detects them at schema discovery time from `pg_attribute.attgenerated` and omits them from the chunk `SELECT` used during an incremental snapshot.
 Values for those columns are not present in the resulting snapshot events; recompute them on the consumer side if needed.
-Tables without any generated columns are unaffected; all known columns are selected explicitly.
+Tables without any generated columns continue to use `SELECT *` and are unaffected.
 ====
 
 // Type: procedure

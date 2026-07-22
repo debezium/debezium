@@ -91,18 +91,40 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
     }
 
     protected String buildProjection(Table table) {
-        // DBZ-2020: always build an explicit column list from the in-memory Table, same pattern as
-        // the initial snapshot (getPreparedColumnNames). Generated columns that were removed from the
-        // Table by refreshFromIncrementalSnapshot are already absent; any still marked isGenerated()
-        // (e.g. connectors that mark but do not remove) are filtered here.
+        // DBZ-2020: only fall back to an explicit column list when we actually need to drop
+        // columns from the projection (generated columns, or column include/exclude filters).
+        // In the common case where neither applies, keep emitting SELECT * so we do not widen
+        // the schemaChanges race window observed in DBZ-6000 / DBZ-7532.
         final boolean columnsFiltered = connectorConfig.isColumnsFiltered();
+        final boolean hasGeneratedColumns = table.columns().stream().anyMatch(Column::isGenerated)
+                || hasAdditionalGeneratedColumns(table);
+        if (!columnsFiltered && !hasGeneratedColumns) {
+            return "*";
+        }
         final TableId tableId = table.id();
         return table.columns().stream()
                 .filter(column -> !column.isGenerated())
+                .filter(column -> !isAdditionalGeneratedColumn(table, column.name()))
                 .filter(column -> !columnsFiltered
                         || columnFilter.matches(tableId.catalog(), tableId.schema(), tableId.table(), column.name()))
                 .map(column -> jdbcConnection.quoteIdentifier(column.name()))
                 .collect(Collectors.joining(", "));
+    }
+
+    /**
+     * Hook for connectors that track generated columns outside the in-memory {@link Table}
+     * (for example after {@code refreshFromIncrementalSnapshot} has pruned them). Default is none.
+     */
+    protected boolean hasAdditionalGeneratedColumns(Table table) {
+        return false;
+    }
+
+    /**
+     * Hook for connectors that track generated columns outside the in-memory {@link Table}.
+     * Default is never generated.
+     */
+    protected boolean isAdditionalGeneratedColumn(Table table, String columnName) {
+        return false;
     }
 
     protected void addLowerBound(IncrementalSnapshotContext<T> context, Table table, Object[] boundaryKey, StringBuilder sql) {
