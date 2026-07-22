@@ -2,6 +2,7 @@
 ** xref:tutorials.adoc[Tutorials]
 *** xref:kc-tutorial.adoc[Kafka Connect]
 ** xref:install.adoc[Installation]
+*** xref:install-kafka-connect.adoc[Kafka Connect]
 *** xref:postgres-plugins.adoc[PostgreSQL Decoding Plugins]
 ** xref:architecture.adoc[Architecture]
 ** xref:features.adoc[Features]
