@@ -99,7 +99,9 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
         // In the common case where neither applies, keep emitting SELECT * so we do not widen
         // the schemaChanges race window observed in DBZ-6000 / DBZ-7532.
         final boolean columnsFiltered = connectorConfig.isColumnsFiltered();
-        final boolean hasGeneratedColumns = table.columns().stream().anyMatch(Column::isGenerated)
+        // MySQL/MariaDB mark AUTO_INCREMENT (and SERIAL / ON UPDATE) as both autoIncremented and
+        // generated. Only treat "true" generated columns as ones we must omit from the projection.
+        final boolean hasGeneratedColumns = table.columns().stream().anyMatch(this::isGeneratedNonAutoIncrementColumn)
                 || hasAdditionalGeneratedColumns(table);
         if (!columnsFiltered && !hasGeneratedColumns) {
             return "*";
@@ -108,12 +110,20 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
         final List<Column> keyColumns = getKeyMapper().getKeyColumns(table);
         return table.columns().stream()
                 .filter(column -> keyColumns.contains(column)
-                        || (!column.isGenerated()
+                        || (!isGeneratedNonAutoIncrementColumn(column)
                                 && !isAdditionalGeneratedColumn(table, column.name())
                                 && (!columnsFiltered
                                         || columnFilter.matches(tableId.catalog(), tableId.schema(), tableId.table(), column.name()))))
                 .map(column -> jdbcConnection.quoteIdentifier(column.name()))
                 .collect(Collectors.joining(", "));
+    }
+
+    /**
+     * True when the column is generated and not auto-incremented. MySQL/MariaDB set both flags for
+     * {@code AUTO_INCREMENT}, so those columns must remain in the chunk projection.
+     */
+    private boolean isGeneratedNonAutoIncrementColumn(Column column) {
+        return column.isGenerated() && !column.isAutoIncremented();
     }
 
     /**
