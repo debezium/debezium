@@ -500,16 +500,16 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .withDescription("Specifies the maximum number of rows that should be read in one go from each table while streaming. "
                     + "The connector will read the table contents in multiple batches of this size. Defaults to 0 which means no limit.");
 
-    public static final Field CAPTURE_INSTANCE_INCLUDE_LIST = Field.create("capture.instance.include.list")
+    public static final Field CAPTURE_INSTANCE_INCLUDE_LIST = Field.createInternal("capture.instance.include.list")
             .withDisplayName("Include capture instances")
             .withType(Type.LIST)
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
             .withValidation(Field::isListOfRegex)
             .withDescription("A comma-separated list of regular expressions that match the names of the CDC capture instances to include for streaming. "
-                    + "When set, only matching capture instances are used. May not be used with '" + "capture.instance.exclude.list" + "'.");
+                    + "When set, only matching capture instances are used. May not be used with '" + Field.INTERNAL_PREFIX + "capture.instance.exclude.list" + "'.");
 
-    public static final Field CAPTURE_INSTANCE_EXCLUDE_LIST = Field.create("capture.instance.exclude.list")
+    public static final Field CAPTURE_INSTANCE_EXCLUDE_LIST = Field.createInternal("capture.instance.exclude.list")
             .withDisplayName("Exclude capture instances")
             .withType(Type.LIST)
             .withWidth(Width.LONG)
@@ -518,7 +518,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .withDescription("A comma-separated list of regular expressions that match the names of the CDC capture instances to exclude from streaming. "
                     + "Any capture instance whose name matches is ignored, so the connector never enumerates it or queries its cdc.fn_cdc_get_all_changes_# function. "
                     + "Useful when several capture instances exist for the same source table (for example one the connector's account is not granted to read). "
-                    + "May not be used with '" + "capture.instance.include.list" + "'.");
+                    + "May not be used with '" + CAPTURE_INSTANCE_INCLUDE_LIST.name() + "'.");
 
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("SQL Server")
