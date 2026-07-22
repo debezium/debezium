@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.AfterAll;
@@ -40,6 +41,7 @@ import io.debezium.kafka.KafkaClusterUtils;
 import io.debezium.pipeline.signal.channels.KafkaSignalChannel;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotTest;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.relational.mapping.PropagateSourceMetadataToSchemaParameter;
 import io.strimzi.test.container.StrimziKafkaCluster;
 
 public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<PostgresConnector> {
@@ -223,6 +225,39 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
             assertThat(((Struct) record.key()).getString("pk")).isEqualTo(enumValues.get(i));
             assertThat(((Struct) record.value()).getStruct("after").getInt32("aa")).isEqualTo(i);
         }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#683")
+    public void incrementalSnapshotReportsUnqualifiedUserDefinedTypeNames() throws Exception {
+        // Testing.Print.enable();
+
+        // The JDBC driver reports a UDT whose schema is off the search_path with a schema-qualified
+        // type name (e.g. "s1"."mood") during snapshot, whereas streaming uses the unqualified name.
+        // Incremental snapshot must match streaming so converters keyed on the type name work for both.
+        try (JdbcConnection connection = databaseConnection()) {
+            connection.execute(
+                    "CREATE TYPE s1.mood AS ENUM ('happy', 'sad')",
+                    "CREATE DOMAIN s1.positive_int AS integer CHECK (VALUE > 0)",
+                    "CREATE TABLE s1.udt (pk SERIAL, mood s1.mood, amount s1.positive_int, PRIMARY KEY(pk))",
+                    "INSERT INTO s1.udt (mood, amount) VALUES ('happy', 5)");
+        }
+
+        startConnector(x -> x.with(RelationalDatabaseConnectorConfig.PROPAGATE_COLUMN_SOURCE_TYPE, ".*"));
+
+        sendAdHocSnapshotSignal("s1.udt");
+
+        // SNAPSHOT signal, OPEN WINDOW signal, the read record, CLOSE WINDOW signal
+        final SourceRecord record = consumeRecordsByTopic(4).recordsForTopic("test_server.s1.udt").get(0);
+        final Schema afterSchema = record.valueSchema().field("after").schema();
+
+        assertThat(sourceColumnType(afterSchema, "mood")).isEqualTo("MOOD");
+        assertThat(sourceColumnType(afterSchema, "amount")).isEqualTo("POSITIVE_INT");
+    }
+
+    private static String sourceColumnType(Schema afterSchema, String columnName) {
+        return afterSchema.field(columnName).schema().parameters()
+                .get(PropagateSourceMetadataToSchemaParameter.TYPE_NAME_PARAMETER_KEY);
     }
 
     @Test
