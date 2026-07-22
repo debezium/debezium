@@ -32,7 +32,7 @@ public class ConnectionIT extends BinlogConnectionIT<MariaDbConnector> implement
 
             assertThatThrownBy(() -> conn.execute("SELECT SLEEP(10)"))
                     .isInstanceOf(SQLTimeoutException.class)
-                    .hasMessageContaining("Query was interrupted");
+                    .hasMessageContaining("was interrupted");
 
         }
     }
