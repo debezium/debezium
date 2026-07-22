@@ -79,11 +79,12 @@ public class TinyIntOneToBooleanConverter implements CustomConverter<SchemaBuild
                 return x;
             }
             else if (x instanceof Number) {
-                return ((Number) x).intValue() > 0;
+                // MySQL considers any nonzero value true, e.g. "SELECT -1 IS TRUE" returns 1
+                return ((Number) x).intValue() != 0;
             }
             else if (x instanceof String) {
                 try {
-                    return Integer.parseInt((String) x);
+                    return Integer.parseInt((String) x) != 0;
                 }
                 catch (NumberFormatException e) {
                     return Boolean.parseBoolean((String) x);
