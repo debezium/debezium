@@ -12,7 +12,7 @@ inputs:
   version-mariadb-server:
     description: "The MariaDB server version to use"
     required: false
-    default: "11.4.3"
+    default: "11.4"
   profile:
     description: "The MariaDB build profile to use"
     required: false
