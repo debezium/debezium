@@ -260,13 +260,14 @@ public final class StructuredTemporalSupport {
 
     private static Boundary applyRange(Boundary value, TemporalRange range, TemporalRangeLossHandlingMode handlingMode,
                                        int targetPrecision, String targetDescription) {
-        if (range.contains(value)) {
+        final TemporalRange effectiveRange = range.atPrecision(targetPrecision);
+        if (effectiveRange.contains(value)) {
             return value;
         }
         if (handlingMode == TemporalRangeLossHandlingMode.SATURATE) {
-            return range.saturate(value).withPrecision(targetPrecision);
+            return effectiveRange.saturate(value).withPrecision(targetPrecision);
         }
-        throw rangeException(value, range, targetDescription);
+        throw rangeException(value, effectiveRange, targetDescription);
     }
 
     private static Boundary saturateSpecialValue(Struct value, TemporalRange range,

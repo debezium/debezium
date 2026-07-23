@@ -204,9 +204,9 @@ class StructuredTemporalTypeTest {
                 TemporalPrecisionLossHandlingMode.FAIL, TemporalRangeLossHandlingMode.SATURATE);
 
         assertThat(type.bind(1, timestampColumn("datetime", 6), schema, value).get(0).getValue())
-                .isEqualTo("9999-12-31 23:59:59.499999");
+                .isEqualTo("9999-12-31 23:59:59.999999");
         assertThat(type.getDefaultValueBinding(schema, value))
-                .isEqualTo("'9999-12-31 23:59:59.499999'");
+                .isEqualTo("'9999-12-31 23:59:59.999999'");
     }
 
     @Test
@@ -272,7 +272,7 @@ class StructuredTemporalTypeTest {
     private TargetTemporalCapabilities mysqlCapabilities() {
         final TemporalRange datetimeRange = new TemporalRange(
                 Boundary.timestamp(1000, 1, 1, 0, 0, 0, 0),
-                Boundary.timestamp(9999, 12, 31, 23, 59, 59, 499_999_999_999L));
+                Boundary.timestamp(9999, 12, 31, 23, 59, 59, 999_999_999_999L));
         return TargetTemporalCapabilities.defaults(6, 6)
                 .withDateRange(TemporalRange.dateYears(1000, 9999))
                 .withTimestampRange(datetimeRange)

@@ -58,6 +58,17 @@ public record TemporalRange(Boundary minimum, Boundary maximum) {
         return value;
     }
 
+    public TemporalRange atPrecision(int precision) {
+        if (maximum == null) {
+            return this;
+        }
+        // Only the maximum is truncated: a fractional second beyond the target precision cannot be
+        // stored, so the effective upper bound is the maximum truncated to that precision. Truncating
+        // the minimum would move it downward and wrongly widen the range.
+        final Boundary truncatedMaximum = maximum.withPrecision(precision);
+        return truncatedMaximum.equals(maximum) ? this : new TemporalRange(minimum, truncatedMaximum);
+    }
+
     public TemporalRange shiftSeconds(int seconds) {
         return new TemporalRange(
                 minimum == null ? null : minimum.plusSeconds(seconds),
