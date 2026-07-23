@@ -4217,6 +4217,46 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
         assertThat(recordsAfterRestart.allRecordsInOrder().size()).isEqualTo(0);
     }
 
+    @Test
+    @FixFor("debezium/dbz#2004")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Publication configuration only valid for PGOUTPUT decoder")
+    public void shouldEmitRecordsOnlyOnceForTransactionContainingLogicalMessage() throws Exception {
+        TestHelper.dropPublication("cdc");
+        TestHelper.execute(CREATE_TABLES_STMT);
+
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.PUBLICATION_NAME, "cdc")
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, "false");
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted();
+
+        TestHelper.execute("BEGIN;" +
+                "INSERT INTO s1.a (aa) VALUES (1);" +
+                "SELECT pg_logical_emit_message(true, 'txn_foo', 'txn_bar');" +
+                "INSERT INTO s1.a (aa) VALUES (2);" +
+                "COMMIT;");
+        SourceRecords records = consumeRecordsByTopic(3);
+
+        assertThat(records.allRecordsInOrder().size()).isEqualTo(3);
+        assertThat(records.recordsForTopic(topicName("s1.a"))).hasSize(2);
+        assertThat(records.recordsForTopic(topicName("message"))).hasSize(1);
+
+        stopConnector();
+        assertConnectorNotRunning();
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+
+        // Since all records have been already consumed before restart, verify that no records can
+        // be consumed after restart.
+        // Note consumeRecordsByTopic(1) is expected to return due to consumer timeout rather
+        // than receiving a record.
+        SourceRecords recordsAfterRestart = consumeRecordsByTopic(1);
+        assertThat(recordsAfterRestart.allRecordsInOrder().size()).isEqualTo(0);
+    }
+
     /**
      * Postgres override for getting TX ID, as due to DBZ-5329 Postgres TX ID is in form of {@code txId:LSN}.
      */
