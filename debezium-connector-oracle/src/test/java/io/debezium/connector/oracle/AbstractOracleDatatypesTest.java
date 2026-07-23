@@ -126,8 +126,8 @@ public abstract class AbstractOracleDatatypesTest extends AbstractAsyncEngineCon
             "  val_int_dts interval day(3) to second(2), " +
             "  val_max_date date, " +
             "  val_ts_precision9_edge timestamp(9), " +
-            "  val_tstz_edge timestamp with time zone, " +
-            "  val_int_ytm_edge interval year to month, " +
+            "  val_tstz_edge timestamp(9) with time zone, " +
+            "  val_int_ytm_edge interval year(3) to month, " +
             "  val_int_dts_edge interval day(3) to second(9), " +
             "  primary key (id)" +
             ")";
@@ -946,7 +946,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractAsyncEngineCon
                 + ", null"
                 + ", TO_TIMESTAMP('9999-12-31 23:59:59.999999999', 'yyyy-mm-dd HH24:MI:SS.FF9')"
                 + ", TO_TIMESTAMP_TZ('9999-12-31 23:59:59.999999999 +14:00', 'yyyy-mm-dd HH24:MI:SS.FF9 TZH:TZM')"
-                + ", INTERVAL '-123-11' YEAR TO MONTH"
+                + ", INTERVAL '-123-11' YEAR(3) TO MONTH"
                 + ", INTERVAL '-999 23:59:59.999999999' DAY(3) TO SECOND(9)"
                 + ")");
         connection.execute("COMMIT");
