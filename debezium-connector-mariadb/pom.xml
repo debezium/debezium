@@ -103,7 +103,7 @@
             <artifactId>junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
-        
+
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
@@ -376,7 +376,7 @@
                                 </wait>
                             </run>
                             <build>
-                                <from>mariadb:12.3</from>
+                                <from>${mariadb.server.image.source}:${version.mariadb.server.innodb}</from>
                                 <runCmds>
                                     <run>${docker.initimage}</run>
                                 </runCmds>
