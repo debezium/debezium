@@ -52,15 +52,17 @@ import io.debezium.util.Strings;
  */
 public class MySqlDatabaseDialect extends GeneralDatabaseDialect {
 
-    // MySQL defines .499999, rather than .999999, as the fractional upper boundary
-    // for both DATETIME(6) and TIMESTAMP(6).
+    // Boundaries carry the storage maximum; range checks truncate them to the
+    // target column precision after rounding. The MySQL manual documents .499999
+    // as the upper bound, but that is only the round-up-safe input limit for
+    // lower-precision conversions, not what a column can store.
     private static final TemporalRange DATETIME_RANGE = new TemporalRange(
             Boundary.timestamp(1000, 1, 1, 0, 0, 0, 0),
-            Boundary.timestamp(9999, 12, 31, 23, 59, 59, 499_999_999_999L));
+            Boundary.timestamp(9999, 12, 31, 23, 59, 59, 999_999_999_999L));
 
     private static final TemporalRange TIMESTAMP_RANGE = new TemporalRange(
             Boundary.timestamp(1970, 1, 1, 0, 0, 1, 0),
-            Boundary.timestamp(2038, 1, 19, 3, 14, 7, 499_999_999_999L));
+            Boundary.timestamp(2038, 1, 19, 3, 14, 7, 999_999_999_999L));
 
     @Override
     public TargetTemporalCapabilities getTargetTemporalCapabilities() {
