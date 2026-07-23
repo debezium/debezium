@@ -18,16 +18,16 @@ jobs:
       fail-fast: false
       matrix:
         profile: [ 'mariadb-ci', 'mariadb-ci-gtids', 'mariadb-ci-ssl' ]
-        version-mariadb-server: [ "11.4.3", "11.8.8", "12.3.2" ]
+        version-mariadb-server: [ "11.4", "11.8", "12.3" ]
         exclude:
           - profile: "mariadb-ci-gtids"
-            version-mariadb-server: "11.8.8"
+            version-mariadb-server: "11.8"
           - profile: "mariadb-ci-ssl"
-            version-mariadb-server: "11.8.8"
+            version-mariadb-server: "11.8"
           - profile: "mariadb-ci-gtids"
-            version-mariadb-server: "12.3.2"
+            version-mariadb-server: "12.3"
           - profile: "mariadb-ci-ssl"
-            version-mariadb-server: "12.3.2"
+            version-mariadb-server: "12.3"
     name: MariaDB ${{ matrix.version-mariadb-server }} - ${{ matrix.profile }}
     runs-on: ubuntu-latest
 
