@@ -16,9 +16,9 @@
         <version.confluent.platform>7.0.16</version.confluent.platform>
 
         <!-- Connectors -->
-        <version.dropwizard>4.0.1</version.dropwizard>
+        <version.dropwizard>4.2.39</version.dropwizard>
         <version.jaxb>2.3.1</version.jaxb>
-        <version.jetty>9.4.12.v20180830</version.jetty>
+        <version.jetty>12.1.11</version.jetty>
 
         <!-- Vitess dependencies -->
         <version.vitess.grpc>23.0.0-rc1</version.vitess.grpc>
@@ -523,12 +523,12 @@
             </dependency>
             <dependency>
                 <groupId>io.dropwizard.metrics</groupId>
-                <artifactId>metrics-servlets</artifactId>
+                <artifactId>metrics-jakarta-servlets</artifactId>
                 <version>${version.dropwizard}</version>
             </dependency>
             <dependency>
-                <groupId>org.eclipse.jetty</groupId>
-                <artifactId>jetty-servlet</artifactId>
+                <groupId>org.eclipse.jetty.ee10</groupId>
+                <artifactId>jetty-ee10-servlet</artifactId>
                 <version>${version.jetty}</version>
             </dependency>
             <dependency>
