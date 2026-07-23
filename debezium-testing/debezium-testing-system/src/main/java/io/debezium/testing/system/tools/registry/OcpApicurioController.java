@@ -16,8 +16,8 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.apicurio.registry.operator.api.v1.model.ApicurioRegistry;
-import io.apicurio.registry.operator.api.v1.model.ApicurioRegistryList;
+import io.apicurio.registry.operator.api.v1.ApicurioRegistry3;
+import io.apicurio.registry.operator.api.v1.ApicurioRegistry3List;
 import io.debezium.testing.system.tools.OpenShiftUtils;
 import io.debezium.testing.system.tools.WaitConditions;
 import io.fabric8.kubernetes.api.model.Service;
@@ -44,9 +44,9 @@ public class OcpApicurioController implements RegistryController {
     protected final String project;
     protected final String name;
     protected final OpenShiftUtils ocpUtils;
-    protected ApicurioRegistry registry;
+    protected ApicurioRegistry3 registry;
 
-    public OcpApicurioController(ApicurioRegistry registry, OpenShiftClient ocp, OkHttpClient http) {
+    public OcpApicurioController(ApicurioRegistry3 registry, OpenShiftClient ocp, OkHttpClient http) {
         this.registry = registry;
         this.ocp = ocp;
         this.http = http;
@@ -55,8 +55,8 @@ public class OcpApicurioController implements RegistryController {
         this.ocpUtils = new OpenShiftUtils(ocp);
     }
 
-    protected NonNamespaceOperation<ApicurioRegistry, ApicurioRegistryList, Resource<ApicurioRegistry>> registryOperation() {
-        return ocp.resources(ApicurioRegistry.class, ApicurioRegistryList.class).inNamespace(project);
+    protected NonNamespaceOperation<ApicurioRegistry3, ApicurioRegistry3List, Resource<ApicurioRegistry3>> registryOperation() {
+        return ocp.resources(ApicurioRegistry3.class, ApicurioRegistry3List.class).inNamespace(project);
     }
 
     protected String getPublicRegistryAddress() {
