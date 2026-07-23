@@ -37,7 +37,9 @@ import okhttp3.OkHttpClient;
 public class OcpApicurioController implements RegistryController {
     private static final Logger LOGGER = LoggerFactory.getLogger(OcpApicurioController.class);
 
-    public static final String APICURIO_NAME_LBL = "apicur.io/name";
+    public static final String APICURIO_INSTANCE_LBL = "app.kubernetes.io/instance";
+    public static final String APICURIO_COMPONENT_LBL = "app.kubernetes.io/component";
+    public static final String APICURIO_COMPONENT_APP = "app";
 
     protected final OpenShiftClient ocp;
     protected final OkHttpClient http;
@@ -69,11 +71,17 @@ public class OcpApicurioController implements RegistryController {
     }
 
     private List<Route> getRoutes() {
-        return ocp.routes().inNamespace(project).withLabel(APICURIO_NAME_LBL, name).list().getItems();
+        return ocp.routes().inNamespace(project)
+                .withLabel(APICURIO_INSTANCE_LBL, name)
+                .withLabel(APICURIO_COMPONENT_LBL, APICURIO_COMPONENT_APP)
+                .list().getItems();
     }
 
     protected Service getRegistryService() {
-        List<Service> items = ocp.services().inNamespace(project).withLabel(APICURIO_NAME_LBL, name).list().getItems();
+        List<Service> items = ocp.services().inNamespace(project)
+                .withLabel(APICURIO_INSTANCE_LBL, name)
+                .withLabel(APICURIO_COMPONENT_LBL, APICURIO_COMPONENT_APP)
+                .list().getItems();
         if (items.isEmpty()) {
             throw new IllegalStateException("No service for registry '" + registry.getMetadata().getName() + "'");
         }
@@ -88,12 +96,12 @@ public class OcpApicurioController implements RegistryController {
 
     @Override
     public String getRegistryApiAddress() {
-        return getRegistryAddress() + "/apis/registry/v2";
+        return getRegistryAddress() + "/apis/registry/v3";
     }
 
     @Override
     public String getPublicRegistryApiAddress() {
-        return "http://" + getPublicRegistryAddress() + "/apis/registry/v2";
+        return "http://" + getPublicRegistryAddress() + "/apis/registry/v3";
     }
 
     @Override
@@ -114,7 +122,10 @@ public class OcpApicurioController implements RegistryController {
     }
 
     private List<Deployment> getRegistryDeployments(String name) {
-        return ocp.apps().deployments().inNamespace(project).withLabel("app", name).list().getItems();
+        return ocp.apps().deployments().inNamespace(project)
+                .withLabel(APICURIO_INSTANCE_LBL, name)
+                .withLabel(APICURIO_COMPONENT_LBL, APICURIO_COMPONENT_APP)
+                .list().getItems();
     }
 
     @Override
