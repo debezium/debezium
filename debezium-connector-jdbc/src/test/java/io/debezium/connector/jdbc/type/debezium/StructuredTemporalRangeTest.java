@@ -59,6 +59,32 @@ class StructuredTemporalRangeTest {
     }
 
     @Test
+    @DisplayName("Should apply range boundaries truncated to the target precision")
+    void shouldApplyRangeAtTargetPrecision() {
+        final var schema = StructuredTimestamp.builder(6).build();
+        final var maxAtMicros = StructuredTimestamp.from(schema, 9999, 12, 31, 23, 59, 59, 999_999_000, 6);
+
+        assertThat(StructuredTemporalSupport.adjustTimestamp(
+                maxAtMicros, 6, TemporalPrecisionLossHandlingMode.FAIL, STANDARD_TIMESTAMP_RANGE,
+                TemporalRangeLossHandlingMode.FAIL, "target type 'datetime(6)'"))
+                .isEqualTo(Boundary.timestamp(9999, 12, 31, 23, 59, 59, 999_999_000_000L));
+
+        assertThat(StructuredTemporalSupport.adjustTimestamp(
+                StructuredTimestamp.from(schema, 9999, 12, 31, 23, 59, 59, 0, 6), 0,
+                TemporalPrecisionLossHandlingMode.ROUND, STANDARD_TIMESTAMP_RANGE,
+                TemporalRangeLossHandlingMode.FAIL, "target type 'datetime'"))
+                .isEqualTo(Boundary.timestamp(9999, 12, 31, 23, 59, 59, 0));
+
+        // rounding the fraction up at precision 0 overflows past the truncated maximum
+        assertThatThrownBy(() -> StructuredTemporalSupport.adjustTimestamp(
+                maxAtMicros, 0, TemporalPrecisionLossHandlingMode.ROUND, STANDARD_TIMESTAMP_RANGE,
+                TemporalRangeLossHandlingMode.FAIL, "target type 'datetime'"))
+                .isInstanceOf(ConnectException.class)
+                .hasMessageContaining("10000-01-01 00:00:00")
+                .hasMessageContaining("23:59:59]");
+    }
+
+    @Test
     @DisplayName("Should saturate finite dates and infinity to the nearest boundary")
     void shouldSaturateDateAndInfinity() {
         final TemporalRange dateRange = TemporalRange.dateYears(1, 9999);
