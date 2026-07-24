@@ -49,6 +49,7 @@ public class WalPositionLocator {
     private Set<Lsn> lsnSeen = new HashSet<>(1_000);
     private long currentLsnEventCount = 0;
     private long startStreamingEventsToSkip = 0;
+    private boolean skipProcessedLogicalMessage = false;
 
     public WalPositionLocator(Lsn lastCommitStoredLsn, Lsn lastEventStoredLsn, Operation lastProcessedMessageType) {
         this(lastCommitStoredLsn, lastEventStoredLsn, lastProcessedMessageType, 0);
@@ -120,6 +121,19 @@ public class WalPositionLocator {
                     LOGGER.info("Will restart from LSN '{}' corresponding to the event following the BEGIN event", txStartLsn);
                     startStreamingLsn = txStartLsn;
                     return Optional.of(startStreamingLsn);
+                }
+
+                // PostgreSQL currently reports the end LSN of the MESSAGE rather than its start
+                // LSN. Since this LSN can also identify the next decoded operation, resume from
+                // that LSN and skip the already processed MESSAGE operation.
+                //
+                // This PostgreSQL behavior is under discussion and may change in a future version:
+                // https://www.postgresql.org/message-id/flat/d99c688994ab3a998afe26e61fe4f69f%40oss.nttdata.com
+                if (lastProcessedMessageType == Operation.MESSAGE) {
+                    startStreamingLsn = currentLsn;
+                    skipProcessedLogicalMessage = true;
+                    LOGGER.info("Last processed event was MESSAGE operation; will restart from LSN '{}' and skip that MESSAGE operation", currentLsn);
+                    return Optional.of(currentLsn);
                 }
                 return Optional.empty();
             }
@@ -228,6 +242,17 @@ public class WalPositionLocator {
         }
         LOGGER.debug("Message with LSN '{}' filtered", lsn);
         return true;
+    }
+
+    public boolean skipProcessedLogicalMessage(Lsn lsn) {
+        if (skipProcessedLogicalMessage && startStreamingLsn != null && startStreamingLsn.equals(lsn)) {
+            skipProcessedLogicalMessage = false;
+            passMessages = true;
+            lsnSeen = new HashSet<>();
+            LOGGER.info("Processed MESSAGE operation with LSN '{}' skipped, switching off the filtering", lsn);
+            return true;
+        }
+        return false;
     }
 
     /**
