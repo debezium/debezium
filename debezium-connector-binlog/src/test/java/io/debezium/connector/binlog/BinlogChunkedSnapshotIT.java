@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.binlog;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.nio.file.Path;
 import java.sql.SQLException;
 import java.util.List;
@@ -12,13 +14,17 @@ import java.util.List;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.util.BinlogTestConnection;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
+import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.AbstractChunkedSnapshotTest;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 
 /**
  * Abstract binlog chunked table snapshot integration tests.
@@ -124,5 +130,45 @@ public abstract class BinlogChunkedSnapshotIT<T extends SourceConnector>
     @Override
     protected String getFullyQualifiedTableName(String tableName) {
         return DATABASE.qualifiedTableName(tableName);
+    }
+
+    /**
+     * Regression test for DBZ-1988: rowCountForTableChunked uses getQualifiedTableName (unquoted)
+     * instead of quotedTableIdString, causing a SQL syntax error when the database name contains
+     * hyphens (e.g. "my-db" becomes the expression `my - db` in MySQL).
+     */
+    @FixFor("debezium/dbz#1988")
+    @Test
+    public void shouldSnapshotTableInDatabaseWithHyphenatedName() throws Exception {
+        final String hyphenDb = "debezium-hyphen-test";
+        final int rowCount = 10;
+
+        try {
+            connection.execute(
+                    "CREATE DATABASE IF NOT EXISTS `" + hyphenDb + "`",
+                    "CREATE TABLE `" + hyphenDb + "`.`items` (id INT PRIMARY KEY, name VARCHAR(50))",
+                    "INSERT INTO `" + hyphenDb + "`.`items` VALUES " +
+                            "(1,'a'),(2,'b'),(3,'c'),(4,'d'),(5,'e'),(6,'f'),(7,'g'),(8,'h'),(9,'i'),(10,'j')");
+
+            final Configuration config = DATABASE.defaultConfig()
+                    .with(BinlogConnectorConfig.DATABASE_INCLUDE_LIST, hyphenDb)
+                    .with(RelationalDatabaseConnectorConfig.TABLE_INCLUDE_LIST, hyphenDb + ".items")
+                    .with(CommonConnectorConfig.SNAPSHOT_MAX_THREADS, 2)
+                    .build();
+
+            start(getConnectorClass(), config);
+            assertConnectorIsRunning();
+            waitForSnapshotToBeCompleted();
+
+            // Hyphenated database names produce schema names like "ps_test.debezium-hyphen-test.items.Key"
+            // which are invalid Avro identifiers; skip that validation since this test targets the SQL fix.
+            skipAvroValidation();
+            final var records = consumeRecordsByTopic(rowCount);
+            assertThat(records.allRecordsInOrder()).hasSize(rowCount);
+        }
+        finally {
+            connection.execute("DROP DATABASE IF EXISTS `" + hyphenDb + "`");
+            stopConnector();
+        }
     }
 }
