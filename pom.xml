@@ -238,6 +238,7 @@
         <module>debezium-ai</module>
         <module>debezium-openlineage</module>
         <module>debezium-common</module>
+        <module>debezium-connector-archetype</module>
     </modules>
 
     <distributionManagement>
