@@ -422,4 +422,24 @@ public interface DatabaseDialect {
      */
     Set<Class<? extends Exception>> getCommunicationExceptions();
 
+    /**
+     * Returns whether the given failure, or any failure in its cause chain, is one of the
+     * dialect's {@link #getCommunicationExceptions() communication exceptions} and is therefore
+     * considered transient and retriable.
+     *
+     * @param throwable the failure to inspect; may be null
+     * @return true if the failure is a communication problem with the database
+     */
+    default boolean isCommunicationException(Throwable throwable) {
+        if (throwable == null) {
+            return false;
+        }
+        for (Class<? extends Exception> communicationException : getCommunicationExceptions()) {
+            if (communicationException.isAssignableFrom(throwable.getClass())) {
+                return true;
+            }
+        }
+        return isCommunicationException(throwable.getCause());
+    }
+
 }

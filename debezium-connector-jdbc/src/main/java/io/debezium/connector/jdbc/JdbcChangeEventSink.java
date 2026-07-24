@@ -302,19 +302,7 @@ public class JdbcChangeEventSink extends AbstractChangeEventSink implements Chan
 
     @Override
     protected boolean isRetriableWriteException(RuntimeException exception) {
-        return isCommunicationException(exception);
-    }
-
-    private boolean isCommunicationException(Throwable throwable) {
-        if (throwable == null) {
-            return false;
-        }
-        for (Class<? extends Exception> communicationException : dialect.getCommunicationExceptions()) {
-            if (communicationException.isAssignableFrom(throwable.getClass())) {
-                return true;
-            }
-        }
-        return isCommunicationException(throwable.getCause());
+        return dialect.isCommunicationException(exception);
     }
 
     @Override
