@@ -8,8 +8,8 @@ package io.debezium.testing.system.tools.registry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.apicurio.registry.operator.api.v1.model.ApicurioRegistry;
-import io.apicurio.registry.operator.api.v1.model.ApicurioRegistryList;
+import io.apicurio.registry.operator.api.v1.ApicurioRegistry3;
+import io.apicurio.registry.operator.api.v1.ApicurioRegistry3List;
 import io.debezium.testing.system.tools.AbstractOcpDeployer;
 import io.debezium.testing.system.tools.registry.builders.FabricApicurioBuilder;
 import io.fabric8.kubernetes.client.dsl.NonNamespaceOperation;
@@ -38,7 +38,7 @@ public class OcpApicurioDeployer extends AbstractOcpDeployer<OcpApicurioControll
     public OcpApicurioController deploy() throws InterruptedException {
         LOGGER.info("Deploying Apicurio Registry to '" + project + "'");
 
-        ApicurioRegistry registry = fabricBuilder.build();
+        ApicurioRegistry3 registry = fabricBuilder.build();
         registry = registryOperation().createOrReplace(registry);
 
         OcpApicurioController controller = getController(registry);
@@ -47,11 +47,11 @@ public class OcpApicurioDeployer extends AbstractOcpDeployer<OcpApicurioControll
         return controller;
     }
 
-    protected OcpApicurioController getController(ApicurioRegistry registry) {
+    protected OcpApicurioController getController(ApicurioRegistry3 registry) {
         return new OcpApicurioController(registry, ocp, http);
     }
 
-    protected NonNamespaceOperation<ApicurioRegistry, ApicurioRegistryList, Resource<ApicurioRegistry>> registryOperation() {
-        return ocp.resources(ApicurioRegistry.class, ApicurioRegistryList.class).inNamespace(project);
+    protected NonNamespaceOperation<ApicurioRegistry3, ApicurioRegistry3List, Resource<ApicurioRegistry3>> registryOperation() {
+        return ocp.resources(ApicurioRegistry3.class, ApicurioRegistry3List.class).inNamespace(project);
     }
 }
