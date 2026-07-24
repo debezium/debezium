@@ -27,6 +27,8 @@ import org.slf4j.LoggerFactory;
 import io.debezium.connector.common.DebeziumTaskState;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
+import io.debezium.dlq.ErrorReporter;
+import io.debezium.dlq.ErrorReporters;
 import io.debezium.metadata.CollectionId;
 import io.debezium.openlineage.ConnectorContext;
 import io.debezium.openlineage.DebeziumOpenLineageEmitter;
@@ -62,7 +64,12 @@ public class JdbcChangeEventSink extends AbstractChangeEventSink implements Chan
 
     public JdbcChangeEventSink(JdbcSinkConnectorConfig config, StatelessSession session, DatabaseDialect dialect, RecordWriter recordWriter,
                                ConnectorContext connectorContext, SinkProgressListener progressListener) {
-        super(config);
+        this(config, session, dialect, recordWriter, connectorContext, progressListener, ErrorReporters.nop());
+    }
+
+    public JdbcChangeEventSink(JdbcSinkConnectorConfig config, StatelessSession session, DatabaseDialect dialect, RecordWriter recordWriter,
+                               ConnectorContext connectorContext, SinkProgressListener progressListener, ErrorReporter errorReporter) {
+        super(config, errorReporter);
         this.config = config;
         this.dialect = dialect;
         this.session = session;
@@ -292,6 +299,16 @@ public class JdbcChangeEventSink extends AbstractChangeEventSink implements Chan
                         LOGGER.debug("Could not emit OpenLineage event for collection '{}'", collectionId, e);
                     }
                 });
+    }
+
+    @Override
+    protected void recordReported(DebeziumSinkRecord record, RuntimeException cause) {
+        progressListener.errantRecordsReported(1);
+    }
+
+    @Override
+    protected boolean isRetriableWriteException(RuntimeException exception) {
+        return dialect.isCommunicationException(exception);
     }
 
     @Override

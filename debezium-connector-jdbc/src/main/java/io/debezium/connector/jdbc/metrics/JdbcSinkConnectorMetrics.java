@@ -38,6 +38,7 @@ public class JdbcSinkConnectorMetrics implements JdbcSinkConnectorMetricsMXBean,
     private final AtomicLong totalNumberOfDeletes = new AtomicLong();
     private final AtomicLong totalNumberOfTruncates = new AtomicLong();
     private final AtomicLong totalNumberOfFilteredEvents = new AtomicLong();
+    private final AtomicLong totalNumberOfErrantRecords = new AtomicLong();
     private final AtomicLong totalNumberOfTablesCreated = new AtomicLong();
     private final AtomicLong totalNumberOfTablesAltered = new AtomicLong();
 
@@ -80,6 +81,11 @@ public class JdbcSinkConnectorMetrics implements JdbcSinkConnectorMetricsMXBean,
     }
 
     @Override
+    public void errantRecordsReported(long count) {
+        totalNumberOfErrantRecords.addAndGet(count);
+    }
+
+    @Override
     public void tableCreated() {
         totalNumberOfTablesCreated.incrementAndGet();
     }
@@ -107,6 +113,11 @@ public class JdbcSinkConnectorMetrics implements JdbcSinkConnectorMetricsMXBean,
     @Override
     public long getTotalNumberOfFilteredEvents() {
         return totalNumberOfFilteredEvents.get();
+    }
+
+    @Override
+    public long getTotalNumberOfErrantRecords() {
+        return totalNumberOfErrantRecords.get();
     }
 
     @Override

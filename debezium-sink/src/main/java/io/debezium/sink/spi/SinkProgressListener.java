@@ -18,6 +18,13 @@ public interface SinkProgressListener {
 
     void filtered();
 
+    /**
+     * Invoked when records are routed to the errant record reporter (dead letter queue)
+     * instead of being written to the target system.
+     */
+    default void errantRecordsReported(long count) {
+    }
+
     void tableCreated();
 
     void tableAltered();

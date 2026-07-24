@@ -43,6 +43,8 @@ import io.debezium.connector.common.UUIDUtils;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.dialect.DatabaseDialectResolver;
 import io.debezium.connector.jdbc.metrics.JdbcSinkConnectorMetrics;
+import io.debezium.dlq.ErrorReporter;
+import io.debezium.dlq.ErrorReporters;
 import io.debezium.openlineage.ConnectorContext;
 import io.debezium.openlineage.DebeziumOpenLineageEmitter;
 import io.debezium.openlineage.dataset.DatasetDataExtractor;
@@ -155,7 +157,9 @@ public class JdbcSinkConnectorTask extends SinkTask {
             // Instantiate the appropriate RecordWriter based on dialect and configuration
             RecordWriter recordWriter = createRecordWriter(session, queryBinderResolver, config, dialect, metrics);
 
-            changeEventSink = new JdbcChangeEventSink(config, session, dialect, recordWriter, connectorContext, metrics);
+            final ErrorReporter errorReporter = ErrorReporters.fromContext(context);
+            ErrorReporters.validateConfiguration(errorReporter, props);
+            changeEventSink = new JdbcChangeEventSink(config, session, dialect, recordWriter, connectorContext, metrics, errorReporter);
             DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.RUNNING);
         }
         finally {
