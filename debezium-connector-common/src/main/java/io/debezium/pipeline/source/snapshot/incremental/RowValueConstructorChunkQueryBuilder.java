@@ -112,14 +112,14 @@ public class RowValueConstructorChunkQueryBuilder<T extends DataCollectionId> ex
     }
 
     @Override
-    public PreparedStatement readTableChunkStatement(IncrementalSnapshotContext<T> context, Table table, String sql) throws SQLException {
+    public PreparedStatement readTableChunkStatement(IncrementalSnapshotContext<T> context, Table table, String sql, JdbcConnection connection) throws SQLException {
         final List<Column> queryColumns = getQueryColumns(context, table);
         if (fallbackToSuper(queryColumns)) {
             // Fall back to slower base class implementation that is correct for NULL values.
-            return super.readTableChunkStatement(context, table, sql);
+            return super.readTableChunkStatement(context, table, sql, connection);
         }
 
-        final PreparedStatement statement = jdbcConnection.readTablePreparedStatement(connectorConfig, sql,
+        final PreparedStatement statement = connection.readTablePreparedStatement(connectorConfig, sql,
                 OptionalLong.empty());
         if (context.isNonInitialChunk()) {
             final Object[] maximumKey = context.maximumKey().get();
@@ -127,11 +127,11 @@ public class RowValueConstructorChunkQueryBuilder<T extends DataCollectionId> ex
             // Fill boundaries placeholders
             int pos = 0;
             for (int i = 0; i < chunkEndPosition.length; i++) {
-                jdbcConnection.setQueryColumnValue(statement, queryColumns.get(i), ++pos, chunkEndPosition[i]);
+                connection.setQueryColumnValue(statement, queryColumns.get(i), ++pos, chunkEndPosition[i]);
             }
             // Fill maximum key placeholders
             for (int i = 0; i < maximumKey.length; i++) {
-                jdbcConnection.setQueryColumnValue(statement, queryColumns.get(i), ++pos, maximumKey[i]);
+                connection.setQueryColumnValue(statement, queryColumns.get(i), ++pos, maximumKey[i]);
             }
         }
         return statement;

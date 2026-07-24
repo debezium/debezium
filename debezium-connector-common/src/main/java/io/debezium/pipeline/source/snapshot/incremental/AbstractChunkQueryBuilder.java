@@ -201,22 +201,22 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
     }
 
     @Override
-    public PreparedStatement readTableChunkStatement(IncrementalSnapshotContext<T> context, Table table, String sql) throws SQLException {
-        final PreparedStatement statement = jdbcConnection.readTablePreparedStatement(connectorConfig, sql,
+    public PreparedStatement readTableChunkStatement(IncrementalSnapshotContext<T> context, Table table, String sql, JdbcConnection connection) throws SQLException {
+        final PreparedStatement statement = connection.readTablePreparedStatement(connectorConfig, sql,
                 OptionalLong.empty());
         final Optional<Object[]> upperBound = getChunkUpperBound(context);
         if (context.isNonInitialChunk()) {
             final Object[] chunkEndPosition = context.chunkEndPosititon();
             final List<Column> queryColumns = getQueryColumns(context, table);
 
-            int pos = CascadingOrBoundaryConditions.bindTriangularParamsSkipNulls(statement, queryColumns, chunkEndPosition, 1, jdbcConnection);
+            int pos = CascadingOrBoundaryConditions.bindTriangularParamsSkipNulls(statement, queryColumns, chunkEndPosition, 1, connection);
             if (upperBound.isPresent()) {
-                CascadingOrBoundaryConditions.bindTriangularParamsSkipNulls(statement, queryColumns, upperBound.get(), pos, jdbcConnection);
+                CascadingOrBoundaryConditions.bindTriangularParamsSkipNulls(statement, queryColumns, upperBound.get(), pos, connection);
             }
         }
         else if (upperBound.isPresent()) {
             final List<Column> queryColumns = getQueryColumns(context, table);
-            CascadingOrBoundaryConditions.bindTriangularParamsSkipNulls(statement, queryColumns, upperBound.get(), 1, jdbcConnection);
+            CascadingOrBoundaryConditions.bindTriangularParamsSkipNulls(statement, queryColumns, upperBound.get(), 1, connection);
         }
         return statement;
     }
