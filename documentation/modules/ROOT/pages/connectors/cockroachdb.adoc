@@ -1222,6 +1222,12 @@ Set `kafka` to have CockroachDB push changefeed events to an intermediate Kafka 
 Set `sinkless` to have the connector stream changefeed events directly over a dedicated SQL connection, with no intermediate Kafka cluster.
 For more information, see xref:cockroachdb-changefeed-delivery-modes[Changefeed delivery modes].
 
+|[[cockroachdb-property-kafka-sink-config]]<<cockroachdb-property-kafka-sink-config, `+cockroachdb.changefeed.kafka.sink.config+`>>
+|No default
+|A JSON value for the CockroachDB `kafka_sink_config` changefeed option, which tunes how the changefeed batches and flushes writes to the intermediate Kafka sink.
+For example, `{"Flush": {"Messages": 100, "Frequency": "500ms"}}` bounds delivery latency to 500 milliseconds.
+The connector validates the value as JSON and applies it only when `cockroachdb.changefeed.sink.type` is set to `kafka`.
+
 |[[cockroachdb-property-sink-topic-prefix]]<<cockroachdb-property-sink-topic-prefix, `+cockroachdb.changefeed.sink.topic.prefix+`>>
 |_empty_
 |String that the connector prefixes to intermediate changefeed topic names.
