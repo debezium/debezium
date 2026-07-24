@@ -18,7 +18,6 @@ import java.util.Map;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.connect.errors.ConnectException;
-import org.apache.kafka.connect.sink.ErrantRecordReporter;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.sink.SinkTask;
 import org.apache.kafka.connect.sink.SinkTaskContext;
@@ -28,17 +27,16 @@ import org.slf4j.LoggerFactory;
 import com.mongodb.client.MongoClient;
 import com.mongodb.internal.VisibleForTesting;
 
-import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.DebeziumTaskState;
 import io.debezium.connector.common.UUIDUtils;
 import io.debezium.connector.mongodb.connection.MongoDbConnectionContext;
 import io.debezium.dlq.ErrorReporter;
+import io.debezium.dlq.ErrorReporters;
 import io.debezium.openlineage.ConnectorContext;
 import io.debezium.openlineage.DebeziumOpenLineageEmitter;
 import io.debezium.openlineage.dataset.DatasetDataExtractor;
 import io.debezium.openlineage.dataset.DatasetMetadata;
-import io.debezium.sink.DebeziumSinkRecord;
 
 public class MongoDbSinkConnectorTask extends SinkTask {
     static final Logger LOGGER = LoggerFactory.getLogger(MongoDbSinkConnectorTask.class);
@@ -75,7 +73,7 @@ public class MongoDbSinkConnectorTask extends SinkTask {
                     getMaskedConfigurationMap(props));
 
             DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.INITIAL);
-            mongoSink = new MongoDbChangeEventSink(sinkConfig, client, createErrorReporter(), connectorContext);
+            mongoSink = new MongoDbChangeEventSink(sinkConfig, client, ErrorReporters.fromContext(context), connectorContext);
         }
         catch (RuntimeException taskStartingException) {
             // noinspection EmptyTryBlock
@@ -147,37 +145,12 @@ public class MongoDbSinkConnectorTask extends SinkTask {
         }
     }
 
-    private ErrorReporter createErrorReporter() {
-        ErrorReporter result = nopErrorReporter();
-        if (context != null) {
-            try {
-                ErrantRecordReporter errantRecordReporter = context.errantRecordReporter();
-                if (errantRecordReporter != null) {
-                    result = (DebeziumSinkRecord record, Exception e) -> {
-                        if (record instanceof KafkaDebeziumSinkRecord kafkaRecord) {
-                            errantRecordReporter.report(kafkaRecord.getOriginalKafkaRecord(), e);
-                        }
-                    };
-                }
-                else {
-                    LOGGER.info("Errant record reporter not configured.");
-                }
-            }
-            catch (NoClassDefFoundError | NoSuchMethodError e) {
-                // Will occur in Connect runtimes earlier than 2.6
-                LOGGER.info("Kafka versions prior to 2.6 do not support the errant record reporter.");
-            }
-        }
-        return result;
-    }
-
     private Map<String, String> getMaskedConfigurationMap(Map<String, String> props) {
         return Configuration.from(props).withMaskedPasswords().asMap();
     }
 
     @VisibleForTesting(otherwise = VisibleForTesting.AccessModifier.PRIVATE)
     static ErrorReporter nopErrorReporter() {
-        return (record, e) -> {
-            /* do nothing */ };
+        return ErrorReporters.nop();
     }
 }
