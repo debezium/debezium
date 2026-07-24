@@ -108,6 +108,7 @@ public class JdbcSinkDlqIT extends AbstractJdbcSinkTest {
             return null;
         });
         assertThat(reportedRecords).hasSize(1);
+        assertThat(getTotalRecordsReported()).isEqualTo(1);
     }
 
     @ParameterizedTest
@@ -154,6 +155,7 @@ public class JdbcSinkDlqIT extends AbstractJdbcSinkTest {
             }).isInstanceOf(RuntimeException.class);
 
             assertThat(reportedRecords).isEmpty();
+            assertThat(getTotalRecordsReported()).isZero();
         }
         finally {
             connection.close();
