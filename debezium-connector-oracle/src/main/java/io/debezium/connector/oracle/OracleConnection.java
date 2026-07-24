@@ -485,12 +485,17 @@ public class OracleConnection extends JdbcConnection {
     }
 
     @Override
-    public String buildSelectPrimaryKeyBoundaries(TableId tableId, long size, String projection, String orderBy) {
+    public String buildSelectPrimaryKeyBoundaries(TableId tableId, long size, String projection, String orderBy, String condition) {
         final TableId truncatedTableId = new TableId(null, tableId.schema(), tableId.table());
-        return new StringBuilder("SELECT ")
+        StringBuilder sql = new StringBuilder("SELECT ")
                 .append(projection)
                 .append(" FROM ")
-                .append(quotedTableIdString(truncatedTableId))
+                .append(quotedTableIdString(truncatedTableId));
+        if (condition != null) {
+            sql.append(" WHERE ")
+                    .append(condition);
+        }
+        return sql
                 .append(" ORDER BY ")
                 .append(orderBy)
                 .append(" OFFSET ").append(size)

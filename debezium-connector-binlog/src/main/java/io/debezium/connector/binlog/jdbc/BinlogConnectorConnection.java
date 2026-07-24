@@ -87,14 +87,19 @@ public abstract class BinlogConnectorConnection extends JdbcConnection {
     }
 
     @Override
-    public String buildSelectPrimaryKeyBoundaries(TableId tableId, long size, String projection, String orderBy) {
-        return new StringBuilder("SELECT ")
+    public String buildSelectPrimaryKeyBoundaries(TableId tableId, long size, String projection, String orderBy, String condition) {
+        StringBuilder sql = new StringBuilder("SELECT ")
                 .append(projection)
                 .append(" FROM ")
-                .append(quotedTableIdString(tableId))
-                .append(" ORDER BY ")
+                .append(quotedTableIdString(tableId));
+        if (condition != null) {
+            sql.append(" WHERE ")
+                    .append(condition);
+        }
+        sql.append(" ORDER BY ")
                 .append(orderBy)
-                .append(" LIMIT 1 OFFSET ").append(size)
+                .append(" LIMIT 1 OFFSET ").append(size);
+        return sql
                 .toString();
     }
 

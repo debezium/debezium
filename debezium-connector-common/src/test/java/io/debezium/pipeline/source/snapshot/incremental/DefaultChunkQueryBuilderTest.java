@@ -82,6 +82,15 @@ public class DefaultChunkQueryBuilderTest {
         }
     }
 
+    // Returns the boundary QueryParam list for the given columns and corresponding values (the base builder uses a triangular expansion).
+    private static List<ChunkQueryBuilder.QueryParam> boundaryParams(ChunkQueryBuilder<TableId> builder, List<Column> columns, Object[] values) {
+        return builder.generateBoundaryParams(columns, values);
+    }
+
+    private static ChunkQueryBuilder.QueryParam qp(Column column, Object value) {
+        return new ChunkQueryBuilder.QueryParam(column, value);
+    }
+
     @Test
     public void testBuildQueryOnePkColumn() {
         final ChunkQueryBuilder<TableId> chunkQueryBuilder = new DefaultChunkQueryBuilder<>(
@@ -95,11 +104,18 @@ public class DefaultChunkQueryBuilderTest {
                 .addColumn(val1)
                 .addColumn(val2)
                 .setPrimaryKeyNames("pk1").create();
+        final List<Column> pkColumns = List.of(pk1);
+        final Object[] chunkEndPosition = new Object[]{ 1 };
+        final Object[] maximumKey = new Object[]{ 10 };
         assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.empty())).isEqualTo("SELECT * FROM \"s1\".\"table1\" ORDER BY \"pk1\" LIMIT 1024");
-        context.nextChunkPosition(new Object[]{ 1 });
-        context.maximumKey(new Object[]{ 10 });
+        context.nextChunkPosition(chunkEndPosition);
+        context.maximumKey(maximumKey);
         assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.empty())).isEqualTo(
                 "SELECT * FROM \"s1\".\"table1\" WHERE (\"pk1\" > ?) AND NOT (\"pk1\" > ?) ORDER BY \"pk1\" LIMIT 1024");
+        assertThat(boundaryParams(chunkQueryBuilder, pkColumns, chunkEndPosition))
+                .containsExactly(qp(pk1, 1));
+        assertThat(boundaryParams(chunkQueryBuilder, pkColumns, maximumKey))
+                .containsExactly(qp(pk1, 10));
     }
 
     @Test
@@ -115,12 +131,19 @@ public class DefaultChunkQueryBuilderTest {
                 .addColumn(val1)
                 .addColumn(val2)
                 .setPrimaryKeyNames("pk1").create();
+        final List<Column> pkColumns = List.of(pk1);
+        final Object[] chunkEndPosition = new Object[]{ 1 };
+        final Object[] maximumKey = new Object[]{ 10 };
         assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.of("\"val1\"=foo")))
                 .isEqualTo("SELECT * FROM \"s1\".\"table1\" WHERE \"val1\"=foo ORDER BY \"pk1\" LIMIT 1024");
-        context.nextChunkPosition(new Object[]{ 1 });
-        context.maximumKey(new Object[]{ 10 });
+        context.nextChunkPosition(chunkEndPosition);
+        context.maximumKey(maximumKey);
         assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.of("\"val1\"=foo"))).isEqualTo(
                 "SELECT * FROM \"s1\".\"table1\" WHERE (\"pk1\" > ?) AND NOT (\"pk1\" > ?) AND \"val1\"=foo ORDER BY \"pk1\" LIMIT 1024");
+        assertThat(boundaryParams(chunkQueryBuilder, pkColumns, chunkEndPosition))
+                .containsExactly(qp(pk1, 1));
+        assertThat(boundaryParams(chunkQueryBuilder, pkColumns, maximumKey))
+                .containsExactly(qp(pk1, 10));
     }
 
     @Test
@@ -139,12 +162,20 @@ public class DefaultChunkQueryBuilderTest {
                 .addColumn(val2)
                 .setPrimaryKeyNames("pk1", "pk2").create();
         context.addDataCollectionNamesToSnapshot("12345", List.of(table.id().toString()), List.of(), "pk2");
+        final List<Column> pkColumns = List.of(pk2);
+        final Object[] chunkEndPosition = new Object[]{ 1 };
+        final Object[] maximumKey = new Object[]{ 10 };
         assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.of("\"val1\"=foo")))
                 .isEqualTo("SELECT * FROM \"s1\".\"table1\" WHERE \"val1\"=foo ORDER BY \"pk2\" LIMIT 1024");
-        context.nextChunkPosition(new Object[]{ 1 });
-        context.maximumKey(new Object[]{ 10 });
+        context.nextChunkPosition(chunkEndPosition);
+        context.maximumKey(maximumKey);
         assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.of("\"val1\"=foo"))).isEqualTo(
                 "SELECT * FROM \"s1\".\"table1\" WHERE (\"pk2\" > ?) AND NOT (\"pk2\" > ?) AND \"val1\"=foo ORDER BY \"pk2\" LIMIT 1024");
+        // Surrogate key: only the surrogate column (pk2) is bound.
+        assertThat(boundaryParams(chunkQueryBuilder, pkColumns, chunkEndPosition))
+                .containsExactly(qp(pk2, 1));
+        assertThat(boundaryParams(chunkQueryBuilder, pkColumns, maximumKey))
+                .containsExactly(qp(pk2, 10));
     }
 
     @Test
@@ -164,12 +195,20 @@ public class DefaultChunkQueryBuilderTest {
                 .addColumn(val1)
                 .addColumn(val2)
                 .setPrimaryKeyNames("pk1", "pk2", "pk3").create();
+        final List<Column> pkColumns = List.of(pk1, pk2, pk3);
+        final Object[] chunkEndPosition = new Object[]{ 1, 5, 3 };
+        final Object[] maximumKey = new Object[]{ 10, 50, 30 };
         assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.empty())).isEqualTo(
                 "SELECT * FROM \"s1\".\"table1\" ORDER BY \"pk1\", \"pk2\", \"pk3\" LIMIT 1024");
-        context.nextChunkPosition(new Object[]{ 1, 5, 3 });
-        context.maximumKey(new Object[]{ 10, 50, 30 });
+        context.nextChunkPosition(chunkEndPosition);
+        context.maximumKey(maximumKey);
         assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.empty())).isEqualTo(
                 "SELECT * FROM \"s1\".\"table1\" WHERE ((\"pk1\" > ?) OR (\"pk1\" = ? AND \"pk2\" > ?) OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" > ?)) AND NOT ((\"pk1\" > ?) OR (\"pk1\" = ? AND \"pk2\" > ?) OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" > ?)) ORDER BY \"pk1\", \"pk2\", \"pk3\" LIMIT 1024");
+        // Base builder uses a triangular expansion of the boundary params
+        assertThat(boundaryParams(chunkQueryBuilder, pkColumns, chunkEndPosition))
+                .containsExactly(qp(pk1, 1), qp(pk1, 1), qp(pk2, 5), qp(pk1, 1), qp(pk2, 5), qp(pk3, 3));
+        assertThat(boundaryParams(chunkQueryBuilder, pkColumns, maximumKey))
+                .containsExactly(qp(pk1, 10), qp(pk1, 10), qp(pk2, 50), qp(pk1, 10), qp(pk2, 50), qp(pk3, 30));
     }
 
     @Test
@@ -189,12 +228,20 @@ public class DefaultChunkQueryBuilderTest {
                 .addColumn(val1)
                 .addColumn(val2)
                 .setPrimaryKeyNames("pk1", "pk2", "pk3").create();
+        final List<Column> pkColumns = List.of(pk1, pk2, pk3);
+        final Object[] chunkEndPosition = new Object[]{ 1, 5, 3 };
+        final Object[] maximumKey = new Object[]{ 10, 50, 30 };
         assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.of("\"val1\"=foo")))
                 .isEqualTo("SELECT * FROM \"s1\".\"table1\" WHERE \"val1\"=foo ORDER BY \"pk1\", \"pk2\", \"pk3\" LIMIT 1024");
-        context.nextChunkPosition(new Object[]{ 1, 5, 3 });
-        context.maximumKey(new Object[]{ 10, 50, 30 });
+        context.nextChunkPosition(chunkEndPosition);
+        context.maximumKey(maximumKey);
         assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.of("\"val1\"=foo"))).isEqualTo(
                 "SELECT * FROM \"s1\".\"table1\" WHERE ((\"pk1\" > ?) OR (\"pk1\" = ? AND \"pk2\" > ?) OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" > ?)) AND NOT ((\"pk1\" > ?) OR (\"pk1\" = ? AND \"pk2\" > ?) OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" > ?)) AND \"val1\"=foo ORDER BY \"pk1\", \"pk2\", \"pk3\" LIMIT 1024");
+        // Base builder uses a triangular expansion of the boundary params
+        assertThat(boundaryParams(chunkQueryBuilder, pkColumns, chunkEndPosition))
+                .containsExactly(qp(pk1, 1), qp(pk1, 1), qp(pk2, 5), qp(pk1, 1), qp(pk2, 5), qp(pk3, 3));
+        assertThat(boundaryParams(chunkQueryBuilder, pkColumns, maximumKey))
+                .containsExactly(qp(pk1, 10), qp(pk1, 10), qp(pk2, 50), qp(pk1, 10), qp(pk2, 50), qp(pk3, 30));
     }
 
     @Test
@@ -326,12 +373,18 @@ public class DefaultChunkQueryBuilderTest {
                 .addColumn(val1)
                 .create();
 
+        final List<Column> pkColumns = List.of(pk1, pk2, pk3);
+        final Object[] chunkEndPosition = new Object[]{ 1, 5, 3 };
+        final Object[] maximumKey = new Object[]{ 10, 50, 30 };
+        final Object[] chunkEndPositionWithNulls = new Object[]{ 1, null, 3 };
+        final Object[] maximumKeyWithNulls = new Object[]{ null, 50, 30 };
+
         assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.empty())).isEqualTo(
                 "SELECT * FROM \"s1\".\"table1\" ORDER BY \"pk1\", \"pk2\", \"pk3\" LIMIT 1024");
 
         // Next chunk position and maximum key are both completely NOT NULL
-        context.nextChunkPosition(new Object[]{ 1, 5, 3 });
-        context.maximumKey(new Object[]{ 10, 50, 30 });
+        context.nextChunkPosition(chunkEndPosition);
+        context.maximumKey(maximumKey);
         assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.empty())).isEqualTo(
                 // chunk end
                 "SELECT * FROM \"s1\".\"table1\" WHERE " +
@@ -345,8 +398,8 @@ public class DefaultChunkQueryBuilderTest {
                         "ORDER BY \"pk1\", \"pk2\", \"pk3\" LIMIT 1024");
 
         // NULL values present
-        context.nextChunkPosition(new Object[]{ 1, null, 3 });
-        context.maximumKey(new Object[]{ null, 50, 30 });
+        context.nextChunkPosition(chunkEndPositionWithNulls);
+        context.maximumKey(maximumKeyWithNulls);
         assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.empty())).isEqualTo(
                 // chunk end
                 "SELECT * FROM \"s1\".\"table1\" WHERE " +
@@ -358,6 +411,16 @@ public class DefaultChunkQueryBuilderTest {
                         "OR (\"pk1\" IS NULL AND (\"pk2\" > ? AND \"pk2\" IS NOT NULL)) " +
                         "OR (\"pk1\" IS NULL AND \"pk2\" = ? AND \"pk3\" > ?)) " +
                         "ORDER BY \"pk1\", \"pk2\", \"pk3\" LIMIT 1024");
+
+        // Params are the triangular expansion of each boundary and are independent of the NULL sort order.
+        assertThat(boundaryParams(chunkQueryBuilder, pkColumns, chunkEndPosition))
+                .containsExactly(qp(pk1, 1), qp(pk1, 1), qp(pk2, 5), qp(pk1, 1), qp(pk2, 5), qp(pk3, 3));
+        assertThat(boundaryParams(chunkQueryBuilder, pkColumns, maximumKey))
+                .containsExactly(qp(pk1, 10), qp(pk1, 10), qp(pk2, 50), qp(pk1, 10), qp(pk2, 50), qp(pk3, 30));
+        assertThat(boundaryParams(chunkQueryBuilder, pkColumns, chunkEndPositionWithNulls))
+                .containsExactly(qp(pk1, 1), qp(pk1, 1), qp(pk2, null), qp(pk1, 1), qp(pk2, null), qp(pk3, 3));
+        assertThat(boundaryParams(chunkQueryBuilder, pkColumns, maximumKeyWithNulls))
+                .containsExactly(qp(pk1, null), qp(pk1, null), qp(pk2, 50), qp(pk1, null), qp(pk2, 50), qp(pk3, 30));
     }
 
     @Test
@@ -378,12 +441,18 @@ public class DefaultChunkQueryBuilderTest {
                 .addColumn(val1)
                 .create();
 
+        final List<Column> pkColumns = List.of(pk1, pk2, pk3);
+        final Object[] chunkEndPosition = new Object[]{ 1, 5, 3 };
+        final Object[] maximumKey = new Object[]{ 10, 50, 30 };
+        final Object[] chunkEndPositionWithNulls = new Object[]{ 1, null, 3 };
+        final Object[] maximumKeyWithNulls = new Object[]{ null, 50, 30 };
+
         assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.empty())).isEqualTo(
                 "SELECT * FROM \"s1\".\"table1\" ORDER BY \"pk1\", \"pk2\", \"pk3\" LIMIT 1024");
 
         // Next chunk position and maximum key are both completely NOT NULL
-        context.nextChunkPosition(new Object[]{ 1, 5, 3 });
-        context.maximumKey(new Object[]{ 10, 50, 30 });
+        context.nextChunkPosition(chunkEndPosition);
+        context.maximumKey(maximumKey);
         assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.empty())).isEqualTo(
                 // chunk end
                 "SELECT * FROM \"s1\".\"table1\" WHERE " +
@@ -397,8 +466,8 @@ public class DefaultChunkQueryBuilderTest {
                         "ORDER BY \"pk1\", \"pk2\", \"pk3\" LIMIT 1024");
 
         // NULL values present
-        context.nextChunkPosition(new Object[]{ 1, null, 3 });
-        context.maximumKey(new Object[]{ null, 50, 30 });
+        context.nextChunkPosition(chunkEndPositionWithNulls);
+        context.maximumKey(maximumKeyWithNulls);
         assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.empty())).isEqualTo(
                 // chunk end
                 "SELECT * FROM \"s1\".\"table1\" WHERE " +
@@ -410,6 +479,16 @@ public class DefaultChunkQueryBuilderTest {
                         "OR (\"pk1\" IS NULL AND (\"pk2\" > ? OR \"pk2\" IS NULL)) " +
                         "OR (\"pk1\" IS NULL AND \"pk2\" = ? AND \"pk3\" > ?)) " +
                         "ORDER BY \"pk1\", \"pk2\", \"pk3\" LIMIT 1024");
+
+        // Params are the triangular expansion of each boundary and are independent of the NULL sort order.
+        assertThat(boundaryParams(chunkQueryBuilder, pkColumns, chunkEndPosition))
+                .containsExactly(qp(pk1, 1), qp(pk1, 1), qp(pk2, 5), qp(pk1, 1), qp(pk2, 5), qp(pk3, 3));
+        assertThat(boundaryParams(chunkQueryBuilder, pkColumns, maximumKey))
+                .containsExactly(qp(pk1, 10), qp(pk1, 10), qp(pk2, 50), qp(pk1, 10), qp(pk2, 50), qp(pk3, 30));
+        assertThat(boundaryParams(chunkQueryBuilder, pkColumns, chunkEndPositionWithNulls))
+                .containsExactly(qp(pk1, 1), qp(pk1, 1), qp(pk2, null), qp(pk1, 1), qp(pk2, null), qp(pk3, 3));
+        assertThat(boundaryParams(chunkQueryBuilder, pkColumns, maximumKeyWithNulls))
+                .containsExactly(qp(pk1, null), qp(pk1, null), qp(pk2, 50), qp(pk1, null), qp(pk2, 50), qp(pk3, 30));
     }
 
     @Test
@@ -437,15 +516,23 @@ public class DefaultChunkQueryBuilderTest {
                 .addColumn(val1)
                 .addColumn(val2)
                 .setPrimaryKeyNames("pk1", "pk2", "pk3").create();
+        final List<Column> pkColumns = List.of(pk2, pk1, pk3);
+        final Object[] chunkEndPosition = new Object[]{ 1, 5, 3 };
+        final Object[] maximumKey = new Object[]{ 10, 50, 30 };
 
         assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.empty())).isEqualTo(
                 "SELECT * FROM \"s1\".\"table1\" ORDER BY \"pk2\", \"pk1\", \"pk3\" LIMIT 1024");
 
-        context.nextChunkPosition(new Object[]{ 1, 5, 3 });
-        context.maximumKey(new Object[]{ 10, 50, 30 });
+        context.nextChunkPosition(chunkEndPosition);
+        context.maximumKey(maximumKey);
 
         assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.empty())).isEqualTo(
                 "SELECT * FROM \"s1\".\"table1\" WHERE ((\"pk2\" > ?) OR (\"pk2\" = ? AND \"pk1\" > ?) OR (\"pk2\" = ? AND \"pk1\" = ? AND \"pk3\" > ?)) AND NOT ((\"pk2\" > ?) OR (\"pk2\" = ? AND \"pk1\" > ?) OR (\"pk2\" = ? AND \"pk1\" = ? AND \"pk3\" > ?)) ORDER BY \"pk2\", \"pk1\", \"pk3\" LIMIT 1024");
+        // Params follow the message-key column order (pk2, pk1, pk3), triangularly expanded per bound.
+        assertThat(boundaryParams(chunkQueryBuilder, pkColumns, chunkEndPosition))
+                .containsExactly(qp(pk2, 1), qp(pk2, 1), qp(pk1, 5), qp(pk2, 1), qp(pk1, 5), qp(pk3, 3));
+        assertThat(boundaryParams(chunkQueryBuilder, pkColumns, maximumKey))
+                .containsExactly(qp(pk2, 10), qp(pk2, 10), qp(pk1, 50), qp(pk2, 10), qp(pk1, 50), qp(pk3, 30));
     }
 
     @Test

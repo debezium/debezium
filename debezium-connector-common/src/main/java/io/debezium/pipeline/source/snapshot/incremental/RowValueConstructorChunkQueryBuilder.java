@@ -7,6 +7,7 @@ package io.debezium.pipeline.source.snapshot.incremental;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.OptionalLong;
 
@@ -78,22 +79,21 @@ public class RowValueConstructorChunkQueryBuilder<T extends DataCollectionId> ex
     }
 
     @Override
-    protected void addLowerBound(IncrementalSnapshotContext<T> context, Table table, Object[] boundaryKey, StringBuilder sql) {
+    public void addLowerBound(List<Column> pkColumns, Object[] boundaryKey, StringBuilder condition, boolean inclusiveFinal) {
         // Use ROW() syntax to compare multiple columns at once. This helps query planners use an index.
         //
         // Example: ROW(k1, k2, k3) > ROW(?, ?, ?)
-        final List<Column> pkColumns = getQueryColumns(context, table);
         if (fallbackToSuper(pkColumns)) {
             // Fall back to slower base class implementation that is correct for NULL values.
-            super.addLowerBound(context, table, boundaryKey, sql);
+            super.addLowerBound(pkColumns, boundaryKey, condition, inclusiveFinal);
             return;
         }
-
-        rowValueComparison(pkColumns, ">", sql);
+        String operator = inclusiveFinal ? ">=" : ">";
+        rowValueComparison(pkColumns, operator, condition);
     }
 
     @Override
-    protected void addUpperBound(IncrementalSnapshotContext<T> context, Table table, Object[] boundaryKey, StringBuilder sql) {
+    public void addUpperBound(List<Column> pkColumns, Object[] boundaryKey, StringBuilder sql, boolean inclusiveFinal) {
         // Use ROW() syntax to set an upper bound.
         //
         // Example: ROW(k1, k2, k3) <= ROW(?, ?, ?)
@@ -101,14 +101,13 @@ public class RowValueConstructorChunkQueryBuilder<T extends DataCollectionId> ex
         // NOTE: PostgreSQL 13 is known to create a bad query plan if we fall back to "NOT addLowerBound()". That is:
         // NOT ROW(k1, k2, k3) > ROW(?, ?, ?)
         // will create a bad query plan.
-        final List<Column> pkColumns = getQueryColumns(context, table);
         if (fallbackToSuper(pkColumns)) {
             // Fall back to slower base class implementation that is correct for NULL values.
-            super.addUpperBound(context, table, boundaryKey, sql);
+            super.addUpperBound(pkColumns, boundaryKey, sql, inclusiveFinal);
             return;
         }
-
-        rowValueComparison(pkColumns, "<=", sql);
+        String operator = inclusiveFinal ? "<=" : "<";
+        rowValueComparison(pkColumns, operator, sql);
     }
 
     @Override
@@ -125,15 +124,24 @@ public class RowValueConstructorChunkQueryBuilder<T extends DataCollectionId> ex
             final Object[] maximumKey = context.maximumKey().get();
             final Object[] chunkEndPosition = context.chunkEndPosititon();
             // Fill boundaries placeholders
-            int pos = 0;
-            for (int i = 0; i < chunkEndPosition.length; i++) {
-                jdbcConnection.setQueryColumnValue(statement, queryColumns.get(i), ++pos, chunkEndPosition[i]);
-            }
+            int pos = 1;
+            pos = bindBoundaryParams(statement, queryColumns, chunkEndPosition, pos, jdbcConnection);
             // Fill maximum key placeholders
-            for (int i = 0; i < maximumKey.length; i++) {
-                jdbcConnection.setQueryColumnValue(statement, queryColumns.get(i), ++pos, maximumKey[i]);
-            }
+            bindBoundaryParams(statement, queryColumns, maximumKey, pos, jdbcConnection);
         }
         return statement;
     }
+
+    @Override
+    public List<QueryParam> generateBoundaryParams(List<Column> columns, Object[] values) {
+        if (fallbackToSuper(columns)) {
+            return super.generateBoundaryParams(columns, values);
+        }
+        List<QueryParam> params = new ArrayList<>();
+        for (int i = 0; i < values.length; i++) {
+            params.add(new QueryParam(columns.get(i), values[i]));
+        }
+        return params;
+    }
+
 }

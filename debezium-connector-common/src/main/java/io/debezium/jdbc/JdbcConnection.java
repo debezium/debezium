@@ -1707,12 +1707,17 @@ public class JdbcConnection implements AutoCloseable {
         return sql.toString();
     }
 
-    public String buildSelectPrimaryKeyBoundaries(TableId tableId, long size, String projection, String orderBy) {
-        return new StringBuilder("SELECT ")
+    public String buildSelectPrimaryKeyBoundaries(TableId tableId, long size, String projection, String orderBy, String condition) {
+        StringBuilder sql = new StringBuilder("SELECT ")
                 .append(projection)
                 .append(" FROM ")
-                .append(quotedTableIdString(tableId))
-                .append(" ORDER BY ")
+                .append(quotedTableIdString(tableId));
+        if (condition != null) {
+            sql.append(" WHERE ")
+                    .append(condition);
+        }
+
+        return sql.append(" ORDER BY ")
                 .append(orderBy)
                 .append(" OFFSET ").append(size)
                 .append(" ROWS FETCH NEXT 1 ROWS ONLY")
