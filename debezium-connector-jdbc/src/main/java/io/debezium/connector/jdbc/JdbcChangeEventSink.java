@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.connector.common.DebeziumTaskState;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
+import io.debezium.dlq.ErrorReporter;
 import io.debezium.metadata.CollectionId;
 import io.debezium.openlineage.ConnectorContext;
 import io.debezium.openlineage.DebeziumOpenLineageEmitter;
@@ -61,8 +62,8 @@ public class JdbcChangeEventSink extends AbstractChangeEventSink implements Chan
     final Map<CollectionId, Buffer> deleteBufferByTable = new LinkedHashMap<>();
 
     public JdbcChangeEventSink(JdbcSinkConnectorConfig config, StatelessSession session, DatabaseDialect dialect, RecordWriter recordWriter,
-                               ConnectorContext connectorContext, SinkProgressListener progressListener) {
-        super(config);
+                               ConnectorContext connectorContext, SinkProgressListener progressListener, ErrorReporter errorReporter) {
+        super(config, errorReporter);
         this.config = config;
         this.dialect = dialect;
         this.session = session;
@@ -292,6 +293,23 @@ public class JdbcChangeEventSink extends AbstractChangeEventSink implements Chan
                         LOGGER.debug("Could not emit OpenLineage event for collection '{}'", collectionId, e);
                     }
                 });
+    }
+
+    @Override
+    protected boolean isRetriableWriteException(RuntimeException exception) {
+        return isCommunicationException(exception);
+    }
+
+    private boolean isCommunicationException(Throwable throwable) {
+        if (throwable == null) {
+            return false;
+        }
+        for (Class<? extends Exception> communicationException : dialect.getCommunicationExceptions()) {
+            if (communicationException.isAssignableFrom(throwable.getClass())) {
+                return true;
+            }
+        }
+        return isCommunicationException(throwable.getCause());
     }
 
     @Override
