@@ -179,7 +179,7 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
                 new DataTypeEntry(Types.NVARCHAR, MySqlParser.NCHAR_SYMBOL, MySqlParser.VARCHAR_SYMBOL).setSuffixTokens(MySqlParser.BINARY_SYMBOL),
                 new DataTypeEntry(Types.NVARCHAR, MySqlParser.NCHAR_SYMBOL, MySqlParser.VARYING_SYMBOL),
                 // Integer types
-                new DataTypeEntry(Types.SMALLINT, MySqlParser.TINYINT_SYMBOL)
+                new DataTypeEntry(Types.TINYINT, MySqlParser.TINYINT_SYMBOL)
                         .setSuffixTokens(MySqlParser.SIGNED_SYMBOL, MySqlParser.UNSIGNED_SYMBOL, MySqlParser.ZEROFILL_SYMBOL),
                 new DataTypeEntry(Types.SMALLINT, MySqlParser.SMALLINT_SYMBOL)
                         .setSuffixTokens(MySqlParser.SIGNED_SYMBOL, MySqlParser.UNSIGNED_SYMBOL, MySqlParser.ZEROFILL_SYMBOL),

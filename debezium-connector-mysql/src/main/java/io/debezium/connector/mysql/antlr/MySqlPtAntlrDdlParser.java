@@ -139,9 +139,9 @@ public class MySqlPtAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParse
                 new DataTypeEntry(Types.NVARCHAR, MySqlParser.NATIONAL, MySqlParser.CHAR, MySqlParser.VARYING),
                 new DataTypeEntry(Types.NVARCHAR, MySqlParser.NATIONAL, MySqlParser.CHARACTER, MySqlParser.VARYING)));
         dataTypeResolverBuilder.registerDataTypes(MySqlParser.DimensionDataTypeContext.class.getCanonicalName(), Arrays.asList(
-                new DataTypeEntry(Types.SMALLINT, MySqlParser.TINYINT)
+                new DataTypeEntry(Types.TINYINT, MySqlParser.TINYINT)
                         .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
-                new DataTypeEntry(Types.SMALLINT, MySqlParser.INT1)
+                new DataTypeEntry(Types.TINYINT, MySqlParser.INT1)
                         .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),
                 new DataTypeEntry(Types.SMALLINT, MySqlParser.SMALLINT)
                         .setSuffixTokens(MySqlParser.SIGNED, MySqlParser.UNSIGNED, MySqlParser.ZEROFILL),

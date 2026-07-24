@@ -461,10 +461,10 @@ public abstract class BinlogDefaultValueIT<C extends SourceConnector> extends Ab
         Schema schemaC = record.valueSchema().fields().get(1).schema().fields().get(2).schema();
         Schema schemaD = record.valueSchema().fields().get(1).schema().fields().get(3).schema();
         Schema schemaE = record.valueSchema().fields().get(1).schema().fields().get(4).schema();
-        assertThat(schemaA.defaultValue()).isEqualTo((short) 0);
-        assertThat(schemaB.defaultValue()).isEqualTo((short) 1);
-        assertThat(schemaC.defaultValue()).isEqualTo((short) 1);
-        assertThat(schemaD.defaultValue()).isEqualTo((short) 1);
+        assertThat(schemaA.defaultValue()).isEqualTo((byte) 0);
+        assertThat(schemaB.defaultValue()).isEqualTo((byte) 1);
+        assertThat(schemaC.defaultValue()).isEqualTo((byte) 1);
+        assertThat(schemaD.defaultValue()).isEqualTo((byte) 1);
         assertThat(schemaE.defaultValue()).isEqualTo(null);
     }
 
@@ -490,13 +490,13 @@ public abstract class BinlogDefaultValueIT<C extends SourceConnector> extends Ab
         Schema schemaG = record.valueSchema().fields().get(1).schema().fields().get(6).schema();
         Schema schemaH = record.valueSchema().fields().get(1).schema().fields().get(7).schema();
 
-        assertThat(schemaA.defaultValue()).isEqualTo((short) 10);
+        assertThat(schemaA.defaultValue()).isEqualTo((byte) 10);
         assertThat(schemaB.defaultValue()).isEqualTo((short) 5);
         assertThat(schemaC.defaultValue()).isEqualTo(0);
         assertThat(schemaD.defaultValue()).isEqualTo(20L);
         assertThat(schemaE.defaultValue()).isEqualTo(null);
         assertEmptyFieldValue(record, "F");
-        assertThat(schemaG.defaultValue()).isEqualTo((short) 1);
+        assertThat(schemaG.defaultValue()).isEqualTo((byte) 1);
         assertThat(schemaH.defaultValue()).isEqualTo((int) 1);
     }
 
@@ -525,8 +525,8 @@ public abstract class BinlogDefaultValueIT<C extends SourceConnector> extends Ab
 
         Schema schemaA = record.valueSchema().fields().get(1).schema().fields().get(0).schema();
         Schema schemaB = record.valueSchema().fields().get(1).schema().fields().get(1).schema();
-        assertThat(schemaA.defaultValue()).isEqualTo((short) 1);
-        assertThat(schemaB.defaultValue()).isEqualTo((short) 0);
+        assertThat(schemaA.defaultValue()).isEqualTo((byte) 1);
+        assertThat(schemaB.defaultValue()).isEqualTo((byte) 0);
     }
 
     @Test
@@ -1023,7 +1023,7 @@ public abstract class BinlogDefaultValueIT<C extends SourceConnector> extends Ab
         Struct change = ((Struct) record.value()).getStruct("after");
         assertFieldDefaultValue(change, "C1", (short) 0);
         assertFieldDefaultValue(change, "C2", (short) 0);
-        assertFieldDefaultValue(change, "C3", (short) 0);
+        assertFieldDefaultValue(change, "C3", (byte) 0);
         assertFieldDefaultValue(change, "C4", "abc");
         assertFieldDefaultValue(change, "C5", "abc");
         assertFieldDefaultValue(change, "C6", "abc");
