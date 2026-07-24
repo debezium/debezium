@@ -13,8 +13,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
+import io.debezium.dlq.ErrorReporter;
+import io.debezium.dlq.ErrorReporters;
 import io.debezium.metadata.CollectionId;
 import io.debezium.sink.batch.Batch;
+import io.debezium.sink.batch.BatchRecord;
 import io.debezium.sink.batch.Buffer;
 import io.debezium.sink.batch.DeduplicatingBuffer;
 import io.debezium.sink.batch.PassthroughBuffer;
@@ -34,12 +37,18 @@ public abstract class AbstractChangeEventSink implements ChangeEventSink {
     private static final String DETECT_SCHEMA_CHANGE_RECORD_MSG = "Schema change records are not supported by Debezium sink connectors. Please adjust `topics` or `topics.regex` to exclude schema change topic.";
 
     protected final SinkConnectorConfig config;
+    private final ErrorReporter errorReporter;
     private final Buffer buffer;
     private int batchCount;
     private int totalRecordsWritten;
 
     protected AbstractChangeEventSink(SinkConnectorConfig config) {
+        this(config, ErrorReporters.nop());
+    }
+
+    protected AbstractChangeEventSink(SinkConnectorConfig config, ErrorReporter errorReporter) {
         this.config = config;
+        this.errorReporter = errorReporter != null ? errorReporter : ErrorReporters.nop();
         boolean keyed = !SinkConnectorConfig.PrimaryKeyMode.NONE.equals(config.getPrimaryKeyMode());
         if (SinkConnectorConfig.KeyedMessageBatchMode.PASSTHROUGH.equals(config.getKeyedMessageBatchMode())) {
             buffer = new PassthroughBuffer(config, keyed);
@@ -127,7 +136,58 @@ public abstract class AbstractChangeEventSink implements ChangeEventSink {
     protected void writeBatch(Batch batch) {
         batchCount++;
         totalRecordsWritten += batch.size();
-        doWriteBatch(batch);
+        try {
+            doWriteBatch(batch);
+        }
+        catch (RuntimeException e) {
+            if (!ErrorReporters.isEnabled(errorReporter) || isRetriableWriteException(e)) {
+                throw e;
+            }
+            reportFailedRecords(batch, e);
+        }
+    }
+
+    /**
+     * Retries the records of a failed batch one at a time to isolate the failing ones and routes
+     * only those to the errant record reporter, so a single bad record does not fail the task and
+     * does not discard the healthy records written alongside it.
+     */
+    private void reportFailedRecords(Batch batch, RuntimeException cause) {
+        if (batch.size() == 1) {
+            reportRecord(batch.get(0), cause);
+            return;
+        }
+        LOGGER.warn("Batch of {} records failed to be written; retrying records individually to isolate the failing ones",
+                batch.size(), cause);
+        for (BatchRecord batchRecord : batch) {
+            try {
+                doWriteBatch(new Batch(List.of(batchRecord)));
+            }
+            catch (RuntimeException e) {
+                if (isRetriableWriteException(e)) {
+                    throw e;
+                }
+                reportRecord(batchRecord, e);
+            }
+        }
+    }
+
+    private void reportRecord(BatchRecord batchRecord, RuntimeException cause) {
+        DebeziumSinkRecord record = batchRecord.record();
+        LOGGER.warn("Reporting failed record from topic '{}' partition '{}' offset '{}' to the errant record reporter",
+                record.topicName(), record.partition(), record.offset(), cause);
+        totalRecordsWritten--;
+        errorReporter.report(record, cause);
+    }
+
+    /**
+     * Returns whether the given write failure is transient (e.g. caused by a communication problem
+     * with the target system) and should be propagated so existing retry mechanisms apply, instead
+     * of being routed to the errant record reporter. Defaults to {@code false}; subclasses should
+     * override this based on the failure semantics of their target system.
+     */
+    protected boolean isRetriableWriteException(RuntimeException exception) {
+        return false;
     }
 
     protected abstract void doWriteBatch(Batch batch);
