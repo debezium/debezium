@@ -58,8 +58,9 @@ public abstract class BinlogSourceTask<P extends Partition, O extends OffsetCont
      *
      * @param snapshotter the snapshotter, should ont be null
      * @param connection the database connection, should not be null
+     * @param connectorConfig the connector configuration, should not be null
      */
-    protected void validateBinlogConfiguration(Snapshotter snapshotter, BinlogConnectorConnection connection) {
+    protected void validateBinlogConfiguration(Snapshotter snapshotter, BinlogConnectorConnection connection, BinlogConnectorConfig connectorConfig) {
         if (snapshotter.shouldStream()) {
             // Check whether the row-level binlog is enabled ...
             if (!connection.isBinlogFormatRow()) {
@@ -71,6 +72,13 @@ public abstract class BinlogSourceTask<P extends Partition, O extends OffsetCont
                 throw new DebeziumException("The database server is not configured to use a FULL binlog_row_image, which is "
                         + "required for this connector to work properly. Change the database configuration to use a "
                         + "binlog_row_image=FULL and restart the connector.");
+            }
+            if (connectorConfig.isBinlogMetadataBasedSchema() && !connection.isBinlogRowMetadataFull()) {
+                throw new DebeziumException("The '" + BinlogConnectorConfig.BINLOG_METADATA_BASED_SCHEMA.name()
+                        + "' mode is enabled but the database server is not configured to use a FULL binlog_row_metadata, "
+                        + "which is required for this mode so that TABLE_MAP events carry the column names, types and keys "
+                        + "needed to reconstruct the schema. Change the database configuration to use "
+                        + "binlog_row_metadata=FULL and restart the connector, or disable the mode.");
             }
         }
     }

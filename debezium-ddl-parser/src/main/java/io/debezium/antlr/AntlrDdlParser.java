@@ -50,11 +50,24 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
      */
     private AntlrDdlParserListener antlrDdlParserListener;
 
+    /**
+     * Whether an ALTER TABLE statement for a table that is included in the capture filter but not
+     * present in the in-memory model emits a change event without being applied. Used by the
+     * binlog-metadata-based schema mode, where a table only enters the model with its first
+     * {@code TABLE_MAP} event, so a statement read before that must still reach the schema change
+     * topic. Disabled by default: with a schema history, a missing table means it is not captured.
+     */
+    private boolean emitChangesForMissingAlteredTables = false;
+
     protected Tables databaseTables;
 
     public AntlrDdlParser(boolean throwErrorsFromTreeWalk, boolean includeViews, boolean includeComments) {
         super(includeViews, includeComments);
         this.throwErrorsFromTreeWalk = throwErrorsFromTreeWalk;
+    }
+
+    public void setEmitChangesForMissingAlteredTables(boolean emitChangesForMissingAlteredTables) {
+        this.emitChangesForMissingAlteredTables = emitChangesForMissingAlteredTables;
     }
 
     @Override
@@ -240,6 +253,34 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
      */
     public void signalAlterTable(TableId id, TableId previousId, ParserRuleContext ctx) {
         signalAlterTable(id, previousId, getText(ctx));
+    }
+
+    /**
+     * Handle an alter table statement if the table is missing from the in-memory model.
+     * <p>
+     * In binlog-metadata-based schema mode, a captured table enters the model only after its first
+     * {@code TABLE_MAP} event. If an alter statement is read before that event, signal the schema
+     * change without applying it to the model. The next {@code TABLE_MAP} event restores the table
+     * structure. In other modes, or for a table that is not captured, ignore the statement as usual.
+     *
+     * @param id          the table identifier; may not be null
+     * @param ctx         the start of the statement; may not be null
+     * @param tableFilter the table capture filter; may be null
+     * @return {@code true} if the table is missing and the caller should stop processing the statement,
+     *         or {@code false} if the table exists and the caller should process it normally
+     */
+    public boolean handleAlterTableIfTableIsMissing(TableId id, ParserRuleContext ctx, Tables.TableFilter tableFilter) {
+        if (databaseTables.forTable(id) != null) {
+            return false;
+        }
+
+        if (emitChangesForMissingAlteredTables && tableFilter != null && tableFilter.isIncluded(id)) {
+            signalAlterTable(id, null, ctx);
+        }
+        else {
+            logger.debug("Ignoring ALTER TABLE statement for non-captured table {}", id);
+        }
+        return true;
     }
 
     @Override

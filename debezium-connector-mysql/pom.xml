@@ -246,6 +246,10 @@
         <docker.platform>linux/amd64</docker.platform>
         <docker.initimage>rm -f /etc/localtime; ln -s /usr/share/zoneinfo/US/Samoa /etc/localtime</docker.initimage>
 
+        <!-- Toggled to true by the mysql-feature-binlog-metadata profile to run the testsuite with the
+             binlog-metadata-based schema mode, i.e. without a schema history (debezium/dbz#978) -->
+        <use.binlog.metadata.based.schema>false</use.binlog.metadata.based.schema>
+
         <mockito.argLine>-javaagent:${org.mockito:mockito-core:jar}</mockito.argLine>
     </properties>
     <build>
@@ -613,6 +617,7 @@
                         <database.jdbc.driver>${mysql.database.jdbc.driver}</database.jdbc.driver>
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
                         <database.ssl.mode>disabled</database.ssl.mode>
+                        <use.binlog.metadata.based.schema>${use.binlog.metadata.based.schema}</use.binlog.metadata.based.schema>
                     </systemPropertyVariables>
                     <argLine>-javaagent:"${settings.localRepository}/@{opentelemetry.agent.for.testing.artifact.relative.path}" -Dio.opentelemetry.javaagent.slf4j.simpleLogger.defaultLogLevel=off</argLine>
                     <runOrder>${runOrder}</runOrder>
@@ -1102,6 +1107,19 @@
                     </plugin>
                 </plugins>
             </build>
+        </profile>
+
+        <!-- Feature toggle meant to be combined with a mysql-ci* profile: enables the binlog-metadata-based
+             schema mode so the same testsuite runs without a schema history (debezium/dbz#978),
+             e.g. -P mysql-ci,mysql-feature-binlog-metadata -->
+        <profile>
+            <id>mysql-feature-binlog-metadata</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <properties>
+                <use.binlog.metadata.based.schema>true</use.binlog.metadata.based.schema>
+            </properties>
         </profile>
 
         <!-- Runs tests only with GTID setup -->

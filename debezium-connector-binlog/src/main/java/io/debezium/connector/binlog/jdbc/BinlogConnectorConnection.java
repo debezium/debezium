@@ -303,6 +303,32 @@ public abstract class BinlogConnectorConnection extends JdbcConnection {
     }
 
     /**
+     * Determines whether the binlog carries FULL table metadata, i.e. {@code binlog_row_metadata='FULL'}.
+     * When enabled, every {@code TABLE_MAP} event includes column names, types, charsets, enum/set values
+     * and the primary key, which is required by the binlog-metadata-based schema mode.
+     *
+     * @return {@code true} if {@code binlog_row_metadata} is set to {@code FULL}, {@code false} otherwise
+     *         (including on servers that do not expose the variable, e.g. MySQL 5.7, where it defaults to MINIMAL)
+     */
+    public boolean isBinlogRowMetadataFull() {
+        try {
+            final String rowMetadata = queryAndMap("SHOW GLOBAL VARIABLES LIKE 'binlog_row_metadata'", rs -> {
+                if (rs.next()) {
+                    return rs.getString(2);
+                }
+                // The variable was introduced in MySQL 8.0 with a default of 'MINIMAL'.
+                // On servers that do not expose it (e.g. MySQL 5.7) FULL metadata is not available.
+                return "MINIMAL";
+            });
+            LOGGER.debug("binlog_row_metadata={}", rowMetadata);
+            return "FULL".equalsIgnoreCase(rowMetadata);
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Unexpected error while connecting to the database and looking at BINLOG_ROW_METADATA mode: ", e);
+        }
+    }
+
+    /**
      * Determine whether the database server has the row-level binlog enabled.
      *
      * @return {@code true} if the server's {@code binlog_format} is set to {@code ROW}, {@code false} otherwise

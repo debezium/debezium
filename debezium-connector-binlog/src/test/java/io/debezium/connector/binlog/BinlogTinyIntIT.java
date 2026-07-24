@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.binlog.converters.TinyIntOneToBooleanConverter;
+import io.debezium.connector.binlog.junit.SkipWhenSchemaHistoryDisabled;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
 import io.debezium.doc.FixFor;
@@ -85,6 +86,11 @@ public abstract class BinlogTinyIntIT<C extends SourceConnector> extends Abstrac
 
     @Test
     @FixFor("DBZ-1800")
+    @SkipWhenSchemaHistoryDisabled(reason = "TinyIntOneToBooleanConverter detects boolean columns through the TINYINT(1) display width, which "
+            + "exists only in the table definition: integer TABLE_MAP metadata is empty, and MySQL deprecated integer display widths in "
+            + "8.0.17, retaining only TINYINT(1) as a boolean marker. The converter still works with length.checker=false and an explicit "
+            + "selector, the setup already recommended for MySQL 8, where even SHOW CREATE TABLE drops the width of TINYINT(1) UNSIGNED "
+            + "(DBZ-5343)")
     public void shouldHandleTinyIntOneAsBoolean() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig()
@@ -112,6 +118,11 @@ public abstract class BinlogTinyIntIT<C extends SourceConnector> extends Abstrac
 
     @Test
     @FixFor("DBZ-2085")
+    @SkipWhenSchemaHistoryDisabled(reason = "TinyIntOneToBooleanConverter detects boolean columns through the TINYINT(1) display width, which "
+            + "exists only in the table definition: integer TABLE_MAP metadata is empty, and MySQL deprecated integer display widths in "
+            + "8.0.17, retaining only TINYINT(1) as a boolean marker. The converter still works with length.checker=false and an explicit "
+            + "selector, the setup already recommended for MySQL 8, where even SHOW CREATE TABLE drops the width of TINYINT(1) UNSIGNED "
+            + "(DBZ-5343)")
     public void shouldDefaultValueForTinyIntOneAsBoolean() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig()
