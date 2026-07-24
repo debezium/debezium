@@ -53,7 +53,9 @@ The enriched format includes both schema metadata and the full before and after 
 2. **Intermediate Kafka to {prodname} to Output Kafka**: The connector subscribes to all per-table Kafka topics in a single KafkaConsumer; routes each event to the correct table based on the topic name; transforms the enriched changefeed events into the standard {prodname} envelope format (with `before`, `after`, `source`, and `op` fields); and produces them to the final output Kafka topics.
 
 By using this architecture the connector can use the native, highly-available changefeed infrastructure of CockroachDB to reliably capture data and provide it to downstream consumers in the standard {prodname} event format.
-The two-stage architecture describes the default `kafka` delivery mode; for an alternative that streams the changefeed over the connector's SQL connection, see xref:cockroachdb-changefeed-delivery-modes[Changefeed delivery modes].
+The two-stage architecture that is described in the preceding paragraphs applies to the default `kafka` delivery mode.
+As an alternative, you can configure the connector to stream the changefeed over the connector's SQL connection.
+For more information, see xref:cockroachdb-changefeed-delivery-modes[Changefeed delivery modes].
 By default, the connector consolidates all configured tables into a single changefeed.
 By consolidating data in a single changefeed job, the connector conforms to the link:https://www.cockroachlabs.com/docs/stable/create-and-configure-changefeeds#recommendations[recommended limit] on the number of changefeeds per CockroachDB cluster (approximately 80 at the time of writing).
 To improve throughput and prevent performance coupling, CockroachDB link:https://www.cockroachlabs.com/docs/stable/changefeed-best-practices[best practices] advise against using a single changefeed to monitor a large number of tables.
@@ -62,19 +64,24 @@ In environments with large table counts, consider setting xref:cockroachdb-prope
 [[cockroachdb-changefeed-delivery-modes]]
 === Changefeed delivery modes
 
-The xref:cockroachdb-property-sink-type[`cockroachdb.changefeed.sink.type`] property determines how the connector receives changefeed events:
+By default, the CockroachDB connector uses a two-stage flow in which CockroachDB first writes changefeed events to an intermediate Kafka cluster. 
+The connector then consumes those events, converts them to the standard {prodname} envelope, and republishes them to the final Kafka topics. 
+As an alternative to this standard flow, you can set the connector's xref:cockroachdb-property-sink-type[`cockroachdb.changefeed.sink.type`] property to `sinkless` so that the connector ingests change events directly  from the database via a dedicated SQL connection.
+It then emits the change event records to the configured Kafka topics as in the default flow. 
+The following descriptions provide details about the available `cockroachdb.changefeed.sink.type` settings: 
 
 `kafka` (default)::
 The connector creates a changefeed with an `INTO 'kafka://...'` clause, and CockroachDB pushes change events to per-table topics on an intermediate Kafka cluster.
 The connector runs its own consumer to read the events back.
-The intermediate topics durably buffer change events independently of the connector, so the connector can be offline for an extended period and resume from the buffered events.
-The xref:cockroachdb-property-sink-uri[`cockroachdb.changefeed.sink.uri`] property is required.
+Intermediate topics store change events independently of the connector. 
+As a result, the connector can remain offline for an extended period and then resume processing from the stored events when it reconnects.
+To use this property, you must set the xref:cockroachdb-property-sink-uri[cockroachdb.changefeed.sink.uri] property.
 
 `sinkless`::
-The connector creates a link:https://www.cockroachlabs.com/docs/stable/changefeed-examples#create-a-sinkless-changefeed[sinkless changefeed] with no `INTO` clause, and streams change events directly over a dedicated SQL connection.
+The connector creates a https://www.cockroachlabs.com/docs/stable/changefeed-examples#create-a-sinkless-changefeed[sinkless changefeed] with no `INTO` clause, and streams change events directly from the database over a dedicated SQL connection.
 There is no intermediate Kafka cluster, no changefeed job, and no separate changefeed consumer to secure.
 The `cockroachdb.changefeed.sink.uri` property is not used.
-Because there is no intermediate buffer, resuming after connector downtime depends on the CockroachDB link:https://www.cockroachlabs.com/docs/stable/configure-replication-zones#gc-ttlseconds[garbage collection window] (`gc.ttlseconds`).
+Because there is no intermediate buffer, resuming after connector downtime depends on the CockroachDB https://www.cockroachlabs.com/docs/stable/configure-replication-zones#gc-ttlseconds[garbage collection window (`gc.ttlseconds`)].
 If the connector is offline for longer than the garbage collection window, a new snapshot is required.
 
 The change events that the connector produces are identical in both modes; only the ingestion path differs.
@@ -1218,8 +1225,10 @@ When the connector restarts from a stored offset, it uses the stored resolved ti
 |[[cockroachdb-property-sink-type]]<<cockroachdb-property-sink-type, `+cockroachdb.changefeed.sink.type+`>>
 |`kafka`
 |The changefeed delivery mode.
-Set `kafka` to have CockroachDB push changefeed events to an intermediate Kafka cluster that the connector consumes.
-Set `sinkless` to have the connector stream changefeed events directly over a dedicated SQL connection, with no intermediate Kafka cluster.
+Set one of the following options:
+`kafka`:: CockroachDB pushes changefeed events to an intermediate Kafka cluster that the connector consumes.
+`sinkless`:: The connector streams changefeed events directly from the database over a dedicated SQL connection, with no intermediate Kafka cluster.
+
 For more information, see xref:cockroachdb-changefeed-delivery-modes[Changefeed delivery modes].
 
 |[[cockroachdb-property-kafka-sink-config]]<<cockroachdb-property-kafka-sink-config, `+cockroachdb.changefeed.kafka.sink.config+`>>
@@ -1508,7 +1517,10 @@ curl -X PUT -H "Content-Type: application/json" \
 [[cockroachdb-limitations]]
 == Limitations
 
-Changefeed sink types:: The connector supports two changefeed delivery modes: the default `kafka` mode, which uses an intermediate Kafka sink, and the `sinkless` mode, which streams change events over the connector's SQL connection.
+Changefeed sink types:: 
+The connector supports two changefeed delivery modes.
+Configure the connector to use the default `kafka` mode if you want CockroachDB to push changefeed events to an intermediate Kafka sink and have the connector consume events from that sink. 
+Or configure the `sinkless` mode if you want the database to stream change events directly to {prodname} over the connector's SQL connection.
 Support for webhook, Pub/Sub, and cloud storage sinks is planned (see link:https://github.com/debezium/dbz/issues/1632[debezium/dbz#1632]).
 
 Before state in updates:: By default, CockroachDB changefeeds do not include the previous row state.
