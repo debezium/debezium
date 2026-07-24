@@ -174,7 +174,7 @@ public abstract class BinlogHistoryRecordComparator extends HistoryRecordCompara
      * @return the timestamp value
      */
     protected long getTimestamp(Document document) {
-        return document.getLong(BinlogSourceInfo.TIMESTAMP_KEY, 0);
+        return document.getLong(BinlogOffsetContext.TIMESTAMP_KEY, 0);
     }
 
     /**
