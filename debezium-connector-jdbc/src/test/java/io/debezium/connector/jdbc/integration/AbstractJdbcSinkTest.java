@@ -151,7 +151,7 @@ public abstract class AbstractJdbcSinkTest extends AbstractBaseJdbcSinkTest {
         try {
             sinkTask = (SinkTask) sinkConnector.taskClass().getConstructor().newInstance();
             // Initialize sink task with a mock context
-            sinkTask.initialize(new JdbcSinkTaskTestContext(properties));
+            sinkTask.initialize(createTaskContext(properties));
             sinkTask.start(properties);
         }
         catch (Exception e) {
@@ -159,6 +159,14 @@ public abstract class AbstractJdbcSinkTest extends AbstractBaseJdbcSinkTest {
             sinkConnector = null;
             throw new RuntimeException(e);
         }
+    }
+
+    /**
+     * Creates the mock sink task context used to initialize the sink task; subclasses may override
+     * to customize the context, e.g. to provide an errant record reporter.
+     */
+    protected JdbcSinkTaskTestContext createTaskContext(Map<String, String> properties) {
+        return new JdbcSinkTaskTestContext(properties);
     }
 
     /**
