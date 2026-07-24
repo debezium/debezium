@@ -421,6 +421,16 @@ Whether a failing record stops the task or is routed to a dead letter queue is c
 
 When `errors.tolerance` is set to `none` (the default), or when no dead letter queue topic is configured, failing records stop the connector task, and the behavior of the connector is unchanged.
 
+[NOTE]
+====
+When `errors.tolerance` is set to `all`, every non-transient write failure is routed to the reporter, including failures that are caused by the environment rather than by the record itself, for example, a schema evolution statement that fails because the connector lacks the required database privileges.
+Monitor the dead letter queue so that systemic failures do not silently divert large numbers of records.
+
+Because the connector provides at-least-once delivery, records that were already written can be delivered again after a restart.
+In `insert` mode, redelivered records fail with constraint violations, and the connector routes them to the dead letter queue.
+To avoid this, prefer the idempotent `upsert` mode when you enable a dead letter queue.
+====
+
 [[jdbc-changing-how-table-names-are-resolved]]
 === Changing how table names are resolved
 

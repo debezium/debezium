@@ -8,11 +8,15 @@ package io.debezium.connector.jdbc.integration.mysql;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.sink.ErrantRecordReporter;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.junit.jupiter.api.BeforeEach;
@@ -104,6 +108,57 @@ public class JdbcSinkDlqIT extends AbstractJdbcSinkTest {
             return null;
         });
         assertThat(reportedRecords).hasSize(1);
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("debezium/dbz#984")
+    public void testShouldNotReportTransientFailuresAfterRetriesAreExhausted(SinkRecordFactory factory) throws SQLException {
+        final String tableName = randomTableName();
+        final Connection connection = getSink().getConnection();
+
+        try (Statement st = connection.createStatement()) {
+            st.execute("CREATE TABLE `" + tableName + "` (`id` bigint(20) NOT NULL, `content` varchar(200) DEFAULT NULL, PRIMARY KEY (`id`))");
+            st.execute("INSERT INTO " + tableName + " (`id`, `content`) VALUES (1, 'c1')");
+        }
+
+        connection.setAutoCommit(false);
+        try (Statement st = connection.createStatement()) {
+            st.execute("START TRANSACTION");
+            // Acquire a shared lock on id=1 so that the sink update hits the lock wait timeout.
+            st.execute("SELECT * FROM " + tableName + " WHERE id=1 LOCK IN SHARE MODE;");
+
+            final Map<String, String> properties = getDefaultSinkConfig();
+            properties.put(JdbcSinkConnectorConfig.ENABLE_SHARED_CHANGE_EVENT_SINK_FIELD.name(), "true");
+            properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.BASIC.getValue());
+            properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_VALUE.getValue());
+            properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_FIELDS, "id");
+            properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
+            properties.put(JdbcSinkConnectorConfig.CONNECTION_URL, getSink().getJdbcUrl(Map.of("sessionVariables", "innodb_lock_wait_timeout=5")));
+            properties.put(JdbcSinkConnectorConfig.COLLECTION_NAME_FORMAT, tableName);
+            properties.put(JdbcSinkConnectorConfig.FLUSH_MAX_RETRIES, "1");
+            properties.put(JdbcSinkConnectorConfig.FLUSH_RETRY_DELAY_MS, "1000");
+            startSinkConnector(properties);
+            assertSinkConnectorIsRunning();
+
+            final String topicName = topicName("server1", "schema", tableName);
+            final JdbcSinkConnectorConfig config = getConfig(properties);
+            final JdbcKafkaSinkRecord updateRecord = factory.updateRecordWithSchemaValue(
+                    topicName, (byte) 1, "content", Schema.OPTIONAL_STRING_SCHEMA, "c11", config);
+
+            // A transient (lock wait timeout) failure must fail the task after retries are
+            // exhausted; it must never be routed to the errant record reporter.
+            assertThatThrownBy(() -> {
+                consume(updateRecord);
+                consume(List.of());
+            }).isInstanceOf(RuntimeException.class);
+
+            assertThat(reportedRecords).isEmpty();
+        }
+        finally {
+            connection.close();
+            stopSinkConnector();
+        }
     }
 
     @ParameterizedTest

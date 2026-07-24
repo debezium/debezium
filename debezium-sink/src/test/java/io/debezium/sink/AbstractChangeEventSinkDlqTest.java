@@ -86,6 +86,22 @@ class AbstractChangeEventSinkDlqTest {
 
     @FixFor("debezium/dbz#984")
     @Test
+    void throwingReporterShouldPropagateAndStopUnroll() {
+        // When errors.tolerance=none the Kafka Connect errant record reporter throws on report();
+        // the failure must propagate so the task fails as it would without a reporter.
+        ErrorReporter throwingReporter = (record, e) -> {
+            throw new RuntimeException("tolerance is none");
+        };
+        FailingChangeEventSink sink = new FailingChangeEventSink(throwingReporter, named("b"), false);
+
+        assertThatThrownBy(() -> sink.writeBatch(batchOf("a", "b", "c")))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("tolerance is none");
+        assertThat(sink.writtenRecordNames).containsExactly("a");
+    }
+
+    @FixFor("debezium/dbz#984")
+    @Test
     void writeBatchWithReporterShouldNotInterceptSuccessfulBatches() {
         FailingChangeEventSink sink = new FailingChangeEventSink(recordingReporter, record -> false, false);
 
