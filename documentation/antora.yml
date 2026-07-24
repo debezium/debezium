@@ -82,6 +82,7 @@ asciidoc:
     link-cockroachdb-connector: 'connectors/cockroachdb.adoc'
     link-cockroachdb-plugin-snapshot: 'https://s01.oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=io.debezium&a=debezium-connector-cockroachdb&v=LATEST&c=plugin&e=tar.gz'
     link-yashandb-plugin-snapshot: 'https://s01.oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=io.debezium&a=debezium-connector-yashandb&v=LATEST&c=plugin&e=tar.gz'
+    link-ingres-plugin-snapshot: 'https://s01.oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=io.debezium&a=debezium-connector-ingres&v=LATEST&c=plugin&e=tar.gz'
     link-server-snapshot: 'https://s01.oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=io.debezium&a=debezium-server-dist&v=LATEST&e=tar.gz'
     link-kafka-docs: 'https://kafka.apache.org/documentation'
     link-java7-standard-names: 'https://docs.oracle.com/javase/7/docs/technotes/guides/security/StandardNames.html#MessageDigest'
