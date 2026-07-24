@@ -296,6 +296,11 @@ public class JdbcChangeEventSink extends AbstractChangeEventSink implements Chan
     }
 
     @Override
+    protected void recordReported(DebeziumSinkRecord record, RuntimeException cause) {
+        progressListener.errantRecordsReported(1);
+    }
+
+    @Override
     protected boolean isRetriableWriteException(RuntimeException exception) {
         return isCommunicationException(exception);
     }

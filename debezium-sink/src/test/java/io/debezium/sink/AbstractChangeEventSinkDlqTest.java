@@ -48,6 +48,7 @@ class AbstractChangeEventSinkDlqTest {
         assertThat(name(reported.get(0))).isEqualTo("b");
         assertThat(sink.writtenRecordNames).containsExactly("a", "c");
         assertThat(sink.getTotalRecordsWritten()).isEqualTo(2);
+        assertThat(sink.getTotalRecordsReported()).isEqualTo(1);
     }
 
     @FixFor("debezium/dbz#984")

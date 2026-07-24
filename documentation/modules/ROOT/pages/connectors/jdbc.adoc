@@ -1675,6 +1675,11 @@ The following table describes the available metrics.
 |`long`
 |The number of records that the connector skipped without applying them, for example because the table name could not be resolved, deletes or truncates are disabled, or the record is a schema-change event.
 
+|`TotalNumberOfErrantRecords`
+|`long`
+|The total number of records that the connector routed to the errant record reporter (dead letter queue) instead of writing them to the target database.
+For more information, see xref:jdbc-error-handling-and-dead-letter-queues[Error handling and dead letter queues].
+
 |`TotalNumberOfTablesCreated`
 |`long`
 |The total number of tables that the connector created in the target database. This metric increases only when xref:jdbc-property-schema-evolution[`schema.evolution`] is set to `basic`.

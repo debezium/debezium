@@ -41,6 +41,7 @@ public abstract class AbstractChangeEventSink implements ChangeEventSink {
     private final Buffer buffer;
     private int batchCount;
     private int totalRecordsWritten;
+    private int totalRecordsReported;
 
     protected AbstractChangeEventSink(SinkConnectorConfig config) {
         this(config, ErrorReporters.nop());
@@ -133,6 +134,10 @@ public abstract class AbstractChangeEventSink implements ChangeEventSink {
         return totalRecordsWritten;
     }
 
+    public int getTotalRecordsReported() {
+        return totalRecordsReported;
+    }
+
     protected void writeBatch(Batch batch) {
         batchCount++;
         totalRecordsWritten += batch.size();
@@ -177,7 +182,16 @@ public abstract class AbstractChangeEventSink implements ChangeEventSink {
         LOGGER.warn("Reporting failed record from topic '{}' partition '{}' offset '{}' to the errant record reporter",
                 record.topicName(), record.partition(), record.offset(), cause);
         totalRecordsWritten--;
+        totalRecordsReported++;
         errorReporter.report(record, cause);
+        recordReported(record, cause);
+    }
+
+    /**
+     * Invoked after a record has been routed to the errant record reporter; subclasses may
+     * override this method, for example, to update connector metrics.
+     */
+    protected void recordReported(DebeziumSinkRecord record, RuntimeException cause) {
     }
 
     /**
