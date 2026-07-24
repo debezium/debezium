@@ -46,6 +46,9 @@ The {prodname} JDBC connector provides the following features:
 * xref:jdbc-schema-evolution[Schema evolution]
 * xref:jdbc-singlestore-targets[SingleStore sink targets]
 * xref:jdbc-starrocks-targets[StarRocks sink targets]
+ifdef::community[]
+* xref:jdbc-cockroachdb-targets[CockroachDB sink targets]
+endif::community[]
 * xref:jdbc-quoting-case-sensitivity[JDBC quoting and case-sensitivity]
 * xref:jdbc-connection-idle-timeouts[Connection idle timeouts]
 
@@ -105,6 +108,31 @@ StarRocks `VARCHAR` lengths are byte lengths rather than character lengths, so t
 When column type propagation is enabled, `BIGINT UNSIGNED` source columns map to `LARGEINT` columns, preserving the full unsigned 64-bit range.
 {prodname} `io.debezium.data.Json` logical values and Kafka Connect `MAP` schema values map to the StarRocks `JSON` column type, `ENUM` and `SET` values map to `STRING` columns, and `YEAR` values map to `INT` columns.
 The StarRocks dialect does not support geospatial or vector logical types, and Kafka Connect `ARRAY` and `STRUCT` schema types are not mapped to the StarRocks `ARRAY` and `STRUCT` column types.
+
+ifdef::community[]
+[[jdbc-cockroachdb-targets]]
+=== CockroachDB sink targets
+
+To enable the JDBC connector to write to CockroachDB, you must specify a PostgreSQL JDBC URL in the connector's xref:jdbc-property-connection-url[`connection.url`] property, for example, `jdbc:postgresql://<_host_>:26257/<_database_>`.
+Because CockroachDB supports the PostgreSQL communication protocol, it works with the PostgreSQL JDBC driver that is included in the {prodname} JDBC connector archive.
+
+As a sink target, CockroachDB supports idempotent writes through the same xref:jdbc-property-insert-mode[`insert.mode=upsert`] setting that the connector uses for other databases.
+For CockroachDB, the connector generates `INSERT ... ON CONFLICT ... DO UPDATE SET ...` statements.
+
+CockroachDB uses the `SERIALIZABLE` transaction isolation level.
+As a result, if CockroachDB detects a conflict between concurrent transactions, it might temporarily abort one of the transactions and return SQLSTATE `40001`.
+The connector treats these conflicts as retriable and retries the flush according to the xref:jdbc-property-flush-max-retries[`flush.max.retries`] and xref:jdbc-property-flush-retry-delay-ms[`flush.retry.delay.ms`] settings.
+Setting `flush.max.retries` to `0` disables the retries so that a conflicting flush fails immediately.
+
+For CockroachDB targets, {prodname} uses PostgreSQL-compatible mappings for most data types, with the following exceptions:
+
+* `io.debezium.data.Json` logical values and Kafka Connect `MAP` schema values are written to the CockroachDB `jsonb` column type.
+* `io.debezium.data.Xml` logical values and propagated range, `macaddr`, and `cidr` column types are written as `text`, because CockroachDB does not provide those types.
+* Propagated `money` column types are written as `decimal(19,2)` types.
+* `io.debezium.data.geometry.Geometry`, `io.debezium.data.geometry.Geography`, and `io.debezium.data.geometry.Point` logical values are written to the built-in CockroachDB `geometry` and `geography` types; no PostGIS extension schema is required.
+* `io.debezium.data.FloatVector` logical values are written to the CockroachDB `vector` column type, because CockroachDB has no `halfvec` type.
+* `io.debezium.data.SparseDoubleVector` is not supported.
+endif::community[]
 
 // Type: concept
 // Title: Description of how the {prodname} JDBC connector consumes complex change events
@@ -765,6 +793,14 @@ For SingleStore targets, {prodname} uses MySQL/MariaDB-compatible mappings for m
 SingleStore maps {prodname} `io.debezium.data.Json` logical values to `json`.
 Kafka Connect `MAP` schema values are also written to SingleStore `json` columns.
 {prodname} `io.debezium.data.geometry.Geometry` and `io.debezium.data.geometry.Geography` logical values are written to SingleStore `geography` columns, and `io.debezium.data.geometry.Point` logical values are written to SingleStore `geographypoint` columns.
+
+When you configure the JDBC connector to use CockroachDB as a sink target, {prodname} uses the PostgreSQL-compatible mappings for most dialect-specific logical types.
+For example, the connector uses the following mappings:
+
+* `io.debezium.data.Json` logical values and Kafka Connect `MAP` schema values are written to CockroachDB `jsonb` columns.
+* `io.debezium.data.Xml` logical values are written to `text` columns because CockroachDB has no XML type.
+* Geometry, geography, and point values are written to the built-in CockroachDB `geometry` and `geography` types without a PostGIS extension schema.
+* `io.debezium.data.FloatVector` logical values are written to `vector` columns; sparse double vectors are not supported.
 The SingleStore dialect writes supported `POINT`, `LINESTRING`, and `POLYGON` WKB values as WKT strings.
 
 For StarRocks targets, see xref:jdbc-starrocks-targets[] for the dialect-specific type mappings, including the string-based representation that the dialect uses for time types.
