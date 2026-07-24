@@ -158,6 +158,11 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Oracl
     }
 
     @Override
+    protected String signalExcludingColumnIncludeList() {
+        return "DEBEZIUM.A.PK,DEBEZIUM.A.AA";
+    }
+
+    @Override
     protected Configuration.Builder config() {
         return TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.SNAPSHOT_MODE, OracleConnectorConfig.SnapshotMode.NO_DATA)
