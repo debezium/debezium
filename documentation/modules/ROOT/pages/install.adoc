@@ -37,10 +37,11 @@ ifeval::['{page-version}' == 'master']
 * {link-cassandra-3-plugin-snapshot}[Cassandra 3.x plugin archive]
 * {link-cassandra-4-plugin-snapshot}[Cassandra 4.x plugin archive]
 * {link-cassandra-5-plugin-snapshot}[Cassandra 5.x plugin archive]
-* {link-vitess-plugin-snapshot}[Vitess plugin archive] (incubating)
-* {link-spanner-plugin-snapshot}[Spanner plugin archive]
 * {link-jdbc-plugin-snapshot}[JDBC sink plugin archive]
+* {link-spanner-plugin-snapshot}[Spanner plugin archive]
+* {link-vitess-plugin-snapshot}[Vitess plugin archive] (incubating)
 * {link-informix-plugin-snapshot}[Informix plugin archive] (incubating)
+* {link-ingres-plugin-snapshot}[Ingres plugin archive] (incubating)
 * {link-cockroachdb-plugin-snapshot}[CockroachDB plugin archive] (incubating)
 * {link-yashandb-plugin-snapshot}[YashanDB plugin archive] (incubating)
 
