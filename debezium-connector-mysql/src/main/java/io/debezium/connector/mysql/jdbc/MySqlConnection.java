@@ -33,7 +33,7 @@ public class MySqlConnection extends BinlogConnectorConnection {
     public MySqlConnection(MySqlConnectionConfiguration connectionConfig, BinlogFieldReader fieldReader) {
         super(connectionConfig, fieldReader);
 
-        this.binaryLogStatusStatement = resolveBinaryLogStatusStatement();
+        this.binaryLogStatusStatement = initializeAndCloseOnFailure(this::resolveBinaryLogStatusStatement);
     }
 
     public static boolean isNetworkError(SQLException e) {

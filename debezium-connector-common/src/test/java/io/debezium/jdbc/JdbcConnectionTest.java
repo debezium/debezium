@@ -5,6 +5,8 @@
  */
 package io.debezium.jdbc;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -30,6 +32,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
@@ -88,6 +91,52 @@ class JdbcConnectionTest {
             driverManager.verify(() -> DriverManager.getConnection(
                     eq("jdbc:driver://db-host$01.example.com:5432;databaseName=db$name-dev_01#test@mock+v1!"),
                     eq(new Properties())));
+        }
+    }
+
+    @Test
+    public void shouldCloseConnectionWhenInitializationFails() throws SQLException {
+        final Connection jdbcConnection = Mockito.mock(Connection.class);
+        final TestJdbcConnection connection = new TestJdbcConnection(config -> jdbcConnection);
+        final RuntimeException initializationException = new RuntimeException("Initialization failed");
+        connection.connect();
+
+        final RuntimeException thrown = assertThrows(RuntimeException.class,
+                () -> connection.initialize(() -> {
+                    throw initializationException;
+                }));
+
+        assertSame(initializationException, thrown);
+        Mockito.verify(jdbcConnection).close();
+    }
+
+    @Test
+    public void shouldSuppressCloseFailureWhenInitializationFails() throws SQLException {
+        final Connection jdbcConnection = Mockito.mock(Connection.class);
+        final TestJdbcConnection connection = new TestJdbcConnection(config -> jdbcConnection);
+        final RuntimeException initializationException = new RuntimeException("Initialization failed");
+        final SQLException resourceReleasingException = new SQLException("Close failed");
+        Mockito.doThrow(resourceReleasingException).when(jdbcConnection).close();
+        connection.connect();
+
+        final RuntimeException thrown = assertThrows(RuntimeException.class,
+                () -> connection.initialize(() -> {
+                    throw initializationException;
+                }));
+
+        assertSame(initializationException, thrown);
+        assertEquals(1, thrown.getSuppressed().length);
+        assertSame(resourceReleasingException, thrown.getSuppressed()[0]);
+    }
+
+    private static class TestJdbcConnection extends JdbcConnection {
+
+        private TestJdbcConnection(ConnectionFactory connectionFactory) {
+            super(JdbcConfiguration.empty(), connectionFactory, "\"", "\"");
+        }
+
+        private <T> T initialize(Supplier<T> initializer) {
+            return initializeAndCloseOnFailure(initializer);
         }
     }
 

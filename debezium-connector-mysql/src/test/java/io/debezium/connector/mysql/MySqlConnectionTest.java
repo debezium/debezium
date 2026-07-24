@@ -6,12 +6,23 @@
 package io.debezium.connector.mysql;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 
 import org.junit.jupiter.api.Test;
 
+import io.debezium.DebeziumException;
+import io.debezium.connector.binlog.jdbc.BinlogFieldReader;
 import io.debezium.connector.mysql.jdbc.MySqlConnection;
+import io.debezium.connector.mysql.jdbc.MySqlConnectionConfiguration;
+import io.debezium.jdbc.JdbcConfiguration;
 
 /**
  * Unit test for MySqlConnection network error detection.
@@ -47,5 +58,30 @@ public class MySqlConnectionTest {
     @Test
     public void shouldHandleEmptySQLStateGracefully() {
         assertThat(MySqlConnection.isNetworkError(new SQLException("Error with empty SQLState", ""))).isFalse();
+    }
+
+    @Test
+    public void shouldCloseJdbcConnectionWhenConstructionFails() throws SQLException {
+        final MySqlConnectionConfiguration connectionConfig = mock(MySqlConnectionConfiguration.class);
+        final Connection jdbcConnection = mock(Connection.class);
+        final Statement statement = mock(Statement.class);
+        final ResultSet resultSet = mock(ResultSet.class);
+        final SQLException permissionError = new SQLException("Access denied", "42000");
+
+        when(connectionConfig.config()).thenReturn(JdbcConfiguration.empty());
+        when(connectionConfig.factory()).thenReturn(config -> jdbcConnection);
+        when(jdbcConnection.createStatement()).thenReturn(statement);
+        when(jdbcConnection.isClosed()).thenReturn(false);
+        when(statement.getConnection()).thenReturn(jdbcConnection);
+        when(statement.executeQuery(MySqlConnection.BINARY_LOG_STATUS_STATEMENT)).thenThrow(permissionError);
+        when(statement.executeQuery("SELECT VERSION()")).thenReturn(resultSet);
+        when(resultSet.next()).thenReturn(true);
+        when(resultSet.getString(1)).thenReturn("8.4.0");
+
+        assertThatThrownBy(() -> new MySqlConnection(connectionConfig, mock(BinlogFieldReader.class)))
+                .isInstanceOf(DebeziumException.class)
+                .hasCause(permissionError);
+
+        verify(jdbcConnection).close();
     }
 }
