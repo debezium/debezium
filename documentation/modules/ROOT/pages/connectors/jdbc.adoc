@@ -421,6 +421,8 @@ Whether a failing record stops the task or is routed to a dead letter queue is c
 
 When `errors.tolerance` is set to `none` (the default), or when no dead letter queue topic is configured, failing records stop the connector task, and the behavior of the connector is unchanged.
 
+Because a dead letter queue topic can never receive records while `errors.tolerance` is set to `none`, the connector rejects that combination and fails to start with a message that describes how to correct the configuration.
+
 [NOTE]
 ====
 When `errors.tolerance` is set to `all`, every non-transient write failure is routed to the reporter, including failures that are caused by the environment rather than by the record itself, for example, a schema evolution statement that fails because the connector lacks the required database privileges.
