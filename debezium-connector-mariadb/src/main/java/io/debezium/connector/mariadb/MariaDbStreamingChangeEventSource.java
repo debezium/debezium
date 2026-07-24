@@ -109,6 +109,14 @@ public class MariaDbStreamingChangeEventSource extends BinlogStreamingChangeEven
         }
         setGtidChanged(gtid);
 
+        // Ensure eventTimestamp is populated from this event before calling handleTransactionBegin.
+        // With the new InnoDB-based binlog (MariaDB 12.3+), there may be no prior FORMAT_DESCRIPTION
+        // or ROTATE events to have set eventTimestamp via onEvent(), since event listeners are called
+        // in registration order and handleEvent runs before onEvent.
+        if (eventTimestamp == null) {
+            setEventTimestamp(event, event.getHeader().getTimestamp());
+        }
+
         // With compatibility mode 4, this event equates to a new transaction.
         handleTransactionBegin(partition, offsetContext, event, null);
     }
