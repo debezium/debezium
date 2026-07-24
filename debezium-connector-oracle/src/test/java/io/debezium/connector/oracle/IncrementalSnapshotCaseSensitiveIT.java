@@ -152,6 +152,11 @@ public class IncrementalSnapshotCaseSensitiveIT extends AbstractIncrementalSnaps
     }
 
     @Override
+    protected String signalExcludingColumnIncludeList() {
+        return "DEBEZIUM.A.Pk,DEBEZIUM.A.AA";
+    }
+
+    @Override
     protected String signalTableName() {
         return "DEBEZIUM.DEBEZIUM_SIGNAL";
     }
