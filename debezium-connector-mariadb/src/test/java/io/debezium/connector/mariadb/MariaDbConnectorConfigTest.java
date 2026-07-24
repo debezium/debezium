@@ -14,9 +14,29 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.binlog.BinlogConnectorConfig;
 import io.debezium.connector.binlog.BinlogOffsetContext;
 
 public class MariaDbConnectorConfigTest {
+
+    @Test
+    void shouldConfigureRealHandlingMode() {
+        final Configuration config = Configuration.create()
+                .with(MariaDbConnectorConfig.HOSTNAME, "localhost")
+                .with(MariaDbConnectorConfig.PORT, 3306)
+                .with(MariaDbConnectorConfig.USER, "mariadbuser")
+                .with(MariaDbConnectorConfig.PASSWORD, "mariadbpw")
+                .with(MariaDbConnectorConfig.SERVER_ID, 18765)
+                .with(MariaDbConnectorConfig.TOPIC_PREFIX, "mariadb-server")
+                .build();
+
+        assertThat(new MariaDbConnectorConfig(config).getRealHandlingMode()).isEqualTo(BinlogConnectorConfig.RealHandlingMode.DOUBLE);
+
+        final Configuration floatConfig = config.edit()
+                .with(MariaDbConnectorConfig.REAL_HANDLING_MODE, BinlogConnectorConfig.RealHandlingMode.FLOAT)
+                .build();
+        assertThat(new MariaDbConnectorConfig(floatConfig).getRealHandlingMode()).isEqualTo(BinlogConnectorConfig.RealHandlingMode.FLOAT);
+    }
 
     @Test
     void shouldDefaultToUsingGtidOnRecovery() {

@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.binlog;
 
+import java.sql.Types;
 import java.time.Duration;
 import java.util.Set;
 import java.util.function.Predicate;
@@ -117,6 +118,59 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
                 default:
                     return BigIntUnsignedMode.PRECISE;
             }
+        }
+    }
+
+    /**
+     * Set of predefined modes for handling {@code REAL} values.
+     */
+    public enum RealHandlingMode implements EnumeratedValue {
+        /**
+         * Represents {@code REAL} values as single-precision floating-point values.
+         */
+        FLOAT("float", Types.REAL),
+        /**
+         * Represents {@code REAL} values as double-precision floating-point values.
+         */
+        DOUBLE("double", Types.DOUBLE);
+
+        private final String value;
+        private final int jdbcType;
+
+        RealHandlingMode(String value, int jdbcType) {
+            this.value = value;
+            this.jdbcType = jdbcType;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static RealHandlingMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (RealHandlingMode option : RealHandlingMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * @return the JDBC type used to represent {@code REAL} values
+         */
+        public int asJdbcType() {
+            return jdbcType;
         }
     }
 
@@ -513,6 +567,16 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
                     + "'precise' uses java.math.BigDecimal to represent values, which are encoded in the change events using a binary representation and Kafka Connect's 'org.apache.kafka.connect.data.Decimal' type; "
                     + "'long' (the default) represents values using Java's 'long', which may not offer the precision but will be far easier to use in consumers.");
 
+    public static final Field REAL_HANDLING_MODE = Field.create("real.handling.mode")
+            .withDisplayName("The mode for handling REAL values")
+            .withEnum(RealHandlingMode.class, RealHandlingMode.DOUBLE)
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.MEDIUM)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR))
+            .withDescription("Specify how REAL columns should be represented in change events, including: "
+                    + "'float' represents values using single-precision (32-bit) floating-point values; "
+                    + "'double' (the default) represents values using double-precision (64-bit) floating-point values.");
+
     /**
      * @deprecated Use {@link #EVENT_PROCESSING_FAILURE_HANDLING_MODE} instead, will be removed in Debezium 3.0.
      */
@@ -645,7 +709,8 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
             .group(Field.Group.CONNECTION_ADVANCED, ON_CONNECT_STATEMENTS, SERVER_ID_OFFSET, CONNECTION_TIMEOUT_MS, KEEP_ALIVE, KEEP_ALIVE_INTERVAL_MS,
                     USE_NONGRACEFUL_DISCONNECT, BINLOG_NET_WRITE_TIMEOUT, BINLOG_NET_READ_TIMEOUT)
             .group(Field.Group.CONNECTION_ADVANCED_SSL, SSL_KEYSTORE, SSL_KEYSTORE_PASSWORD, SSL_TRUSTSTORE, SSL_TRUSTSTORE_PASSWORD)
-            .group(Field.Group.CONNECTOR, BIGINT_UNSIGNED_HANDLING_MODE, TIME_PRECISION_MODE, ENABLE_TIME_ADJUSTER, SCHEMA_NAME_ADJUSTMENT_MODE, GTID_SOURCE_INCLUDES,
+            .group(Field.Group.CONNECTOR, BIGINT_UNSIGNED_HANDLING_MODE, REAL_HANDLING_MODE, TIME_PRECISION_MODE, ENABLE_TIME_ADJUSTER, SCHEMA_NAME_ADJUSTMENT_MODE,
+                    GTID_SOURCE_INCLUDES,
                     GTID_SOURCE_EXCLUDES, GTID_SOURCE_FILTER_DML_EVENTS)
             .group(Field.Group.CONNECTOR_ADVANCED, ROW_COUNT_FOR_STREAMING_RESULT_SETS, BUFFER_SIZE_FOR_BINLOG_READER, INCLUDE_SQL_QUERY, IGNORE_GTID_ON_RECOVERY)
             .group(Field.Group.CONNECTOR_SNAPSHOT, SNAPSHOT_MODE, SNAPSHOT_QUERY_MODE, SNAPSHOT_QUERY_MODE_CUSTOM_NAME, INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
@@ -660,6 +725,7 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
     private final Duration connectionTimeout;
     private final EventProcessingFailureHandlingMode inconsistentSchemaFailureHandlingMode;
     private final BigIntUnsignedHandlingMode bigIntUnsignedHandlingMode;
+    private final RealHandlingMode realHandlingMode;
     private final boolean readOnlyConnection;
     private final boolean ignoreGtidOnRecovery;
     private final boolean resolveLikeTableSchema;
@@ -688,6 +754,7 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
         this.connectionTimeout = Duration.ofMillis(config.getLong(CONNECTION_TIMEOUT_MS));
         this.inconsistentSchemaFailureHandlingMode = EventProcessingFailureHandlingMode.parse(config.getString(INCONSISTENT_SCHEMA_HANDLING_MODE));
         this.bigIntUnsignedHandlingMode = BigIntUnsignedHandlingMode.parse(config.getString(BIGINT_UNSIGNED_HANDLING_MODE));
+        this.realHandlingMode = RealHandlingMode.parse(config.getString(REAL_HANDLING_MODE));
         this.ignoreGtidOnRecovery = config.getBoolean(IGNORE_GTID_ON_RECOVERY);
         this.resolveLikeTableSchema = config.getBoolean(RESOLVE_LIKE_TABLE_SCHEMA);
     }
@@ -740,6 +807,13 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
      */
     public BigIntUnsignedHandlingMode getBigIntUnsignedHandlingMode() {
         return bigIntUnsignedHandlingMode;
+    }
+
+    /**
+     * @return the {@code REAL} handling mode
+     */
+    public RealHandlingMode getRealHandlingMode() {
+        return realHandlingMode;
     }
 
     /**
