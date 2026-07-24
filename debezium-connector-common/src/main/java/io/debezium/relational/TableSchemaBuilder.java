@@ -26,7 +26,9 @@ import io.debezium.DebeziumException;
 import io.debezium.annotation.Immutable;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode;
+import io.debezium.data.DefaultEnvelopeSchemaFactory;
 import io.debezium.data.Envelope;
+import io.debezium.data.EnvelopeSchemaFactory;
 import io.debezium.data.SchemaUtil;
 import io.debezium.relational.Key.KeyMapper;
 import io.debezium.relational.Tables.ColumnNameFilter;
@@ -66,6 +68,7 @@ public class TableSchemaBuilder {
     private final CustomConverterRegistry customConverterRegistry;
     private final boolean multiPartitionMode;
     private final EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode;
+    private final EnvelopeSchemaFactory envelopeSchemaFactory;
 
     /**
      * Create a new instance of the builder.
@@ -84,7 +87,7 @@ public class TableSchemaBuilder {
                               EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode) {
         this(valueConverterProvider, null, schemaNameAdjuster,
                 customConverterRegistry, sourceInfoSchema, transactionSchema, fieldNamer,
-                multiPartitionMode, eventConvertingFailureHandlingMode);
+                multiPartitionMode, eventConvertingFailureHandlingMode, new DefaultEnvelopeSchemaFactory());
     }
 
     /**
@@ -104,7 +107,7 @@ public class TableSchemaBuilder {
                               EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode) {
         this(valueConverterProvider, defaultValueConverter, schemaNameAdjuster,
                 customConverterRegistry, sourceInfoSchema, SchemaFactory.get().transactionBlockSchema(),
-                fieldNamer, multiPartitionMode, eventConvertingFailureHandlingMode);
+                fieldNamer, multiPartitionMode, eventConvertingFailureHandlingMode, new DefaultEnvelopeSchemaFactory());
     }
 
     /**
@@ -125,6 +128,24 @@ public class TableSchemaBuilder {
                               FieldNamer<Column> fieldNamer,
                               boolean multiPartitionMode,
                               EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode) {
+        this(valueConverterProvider, defaultValueConverter, schemaNameAdjuster,
+                customConverterRegistry, sourceInfoSchema, transactionSchema, fieldNamer,
+                multiPartitionMode, eventConvertingFailureHandlingMode, new DefaultEnvelopeSchemaFactory());
+    }
+
+    /**
+     * Create a new instance of the builder with a custom {@link EnvelopeSchemaFactory}.
+     */
+    public TableSchemaBuilder(ValueConverterProvider valueConverterProvider,
+                              DefaultValueConverter defaultValueConverter,
+                              SchemaNameAdjuster schemaNameAdjuster,
+                              CustomConverterRegistry customConverterRegistry,
+                              Schema sourceInfoSchema,
+                              Schema transactionSchema,
+                              FieldNamer<Column> fieldNamer,
+                              boolean multiPartitionMode,
+                              EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode,
+                              EnvelopeSchemaFactory envelopeSchemaFactory) {
         this.schemaNameAdjuster = schemaNameAdjuster;
         this.valueConverterProvider = valueConverterProvider;
         this.defaultValueConverter = Optional.ofNullable(defaultValueConverter)
@@ -135,6 +156,7 @@ public class TableSchemaBuilder {
         this.customConverterRegistry = customConverterRegistry;
         this.multiPartitionMode = multiPartitionMode;
         this.eventConvertingFailureHandlingMode = eventConvertingFailureHandlingMode;
+        this.envelopeSchemaFactory = envelopeSchemaFactory;
     }
 
     /**
@@ -188,7 +210,7 @@ public class TableSchemaBuilder {
             LOGGER.debug("Mapped columns for table '{}' to schema: {}", tableId, SchemaUtil.asDetailedString(valSchema));
         }
 
-        Envelope envelope = Envelope.defineSchema()
+        Envelope envelope = Envelope.defineSchema(envelopeSchemaFactory)
                 .withName(schemaNameAdjuster.adjust(envelopSchemaName))
                 .withRecord(valSchema)
                 .withSource(sourceInfoSchema)
