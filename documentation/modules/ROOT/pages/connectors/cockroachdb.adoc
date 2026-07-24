@@ -1426,12 +1426,12 @@ If the entire cluster becomes unavailable, the changefeed stops producing events
 After the cluster recovers, the connector resumes processing from the last stored offset.
 
 The connector automatically retries transient connection failures.
-The xref:cockroachdb-property-connection-max-retries[`connection.max.retries`] and xref:cockroachdb-property-connection-retry-delay[`connection.retry.delay.ms`] properties control the number of attempts and the delay between them.
-The connector treats the following SQL states as transient:
+The xref:cockroachdb-property-connection-max-retries[`connection.max.retries`] and xref:cockroachdb-property-connection-retry-delay[`connection.retry.delay.ms`] properties control the number of retry attempts and the delay interval between attempts.
+The connector treats the following SQL states as transient, retriable errors:
 
-* The entire connection exception class (SQL state `08xxx`), which includes the `08001` errors that the driver reports when a connection is refused or a host is unreachable.
-* Node shutdown (SQL state `57P01`), which CockroachDB reports while a node drains during a rolling restart.
-* The retryable transaction states `40001` (serialization failure), `40003` (statement completion unknown), and `40P01` (deadlock detected).
+* Connection exceptions (SQL state class `08xxx`), including `08001` errors that occur when a connection is refused or a host is unreachable.
+* Node shutdown conditions (SQL state `57P01`) that occur while CockroachDB drains a node during a rolling restart.
+* Retriable transaction conditions, including serialization failures (`40001`), statement completion unknown conditions (`40003`), and deadlocks (`40P01`).
 
 [id="cockroachdb-kafka-connect-process-stops-gracefully"]
 === Kafka Connect process stops gracefully
