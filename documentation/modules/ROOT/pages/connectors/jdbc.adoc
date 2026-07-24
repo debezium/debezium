@@ -398,6 +398,29 @@ You can customize the Agroal connection pool by setting properties in the `hiber
 In the preceding example, the setting of the hibernate.agroal.idleValidation property configures the connection pool to perform idle timeout tests every 300 seconds.
 After you apply the configuration, the connection pool begins to assess unused connections every five minutes.
 
+[[jdbc-error-handling-and-dead-letter-queues]]
+=== Error handling and dead letter queues
+
+When the connector fails to write a record to the target database for a reason that is not transient, for example, because the record violates a constraint, by default the failure stops the connector task.
+
+When the shared change event sink framework is enabled (`internal.enable.sces` is set to `true`), the connector can instead route the failing records to the errant record reporter that the Kafka Connect runtime provides (link:https://cwiki.apache.org/confluence/display/KAFKA/KIP-610%3A+Error+Reporting+in+Sink+Connectors[KIP-610]).
+When a batch fails with a non-transient error, the connector retries the records in the batch one at a time to isolate the failing records, routes only those records to the reporter, and continues to process the remaining records.
+Transient failures, such as failures that result from communication problems with the database, are not routed to the reporter; the connector retries them, based on the values of the xref:jdbc-property-flush-max-retries[`flush.max.retries`] and xref:jdbc-property-flush-retry-delay-ms[`flush.retry.delay.ms`] properties.
+
+Whether a failing record stops the task or is routed to a dead letter queue is controlled entirely by the standard Kafka Connect error handling options of the sink connector configuration:
+
+.Example dead letter queue configuration
+[source,json]
+----
+{
+  "errors.tolerance": "all",
+  "errors.deadletterqueue.topic.name": "dlq-topic",
+  "errors.deadletterqueue.context.headers.enable": "true"
+}
+----
+
+When `errors.tolerance` is set to `none` (the default), or when no dead letter queue topic is configured, failing records stop the connector task, and the behavior of the connector is unchanged.
+
 [[jdbc-changing-how-table-names-are-resolved]]
 === Changing how table names are resolved
 
