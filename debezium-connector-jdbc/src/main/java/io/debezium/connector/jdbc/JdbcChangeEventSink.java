@@ -28,6 +28,7 @@ import io.debezium.connector.common.DebeziumTaskState;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
 import io.debezium.dlq.ErrorReporter;
+import io.debezium.dlq.ErrorReporters;
 import io.debezium.metadata.CollectionId;
 import io.debezium.openlineage.ConnectorContext;
 import io.debezium.openlineage.DebeziumOpenLineageEmitter;
@@ -60,6 +61,11 @@ public class JdbcChangeEventSink extends AbstractChangeEventSink implements Chan
 
     final Map<CollectionId, Buffer> upsertBufferByTable = new LinkedHashMap<>();
     final Map<CollectionId, Buffer> deleteBufferByTable = new LinkedHashMap<>();
+
+    public JdbcChangeEventSink(JdbcSinkConnectorConfig config, StatelessSession session, DatabaseDialect dialect, RecordWriter recordWriter,
+                               ConnectorContext connectorContext, SinkProgressListener progressListener) {
+        this(config, session, dialect, recordWriter, connectorContext, progressListener, ErrorReporters.nop());
+    }
 
     public JdbcChangeEventSink(JdbcSinkConnectorConfig config, StatelessSession session, DatabaseDialect dialect, RecordWriter recordWriter,
                                ConnectorContext connectorContext, SinkProgressListener progressListener, ErrorReporter errorReporter) {
