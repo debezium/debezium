@@ -17,7 +17,6 @@ import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
-import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotChangeEventSource;
@@ -26,7 +25,6 @@ import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
-import io.debezium.relational.TableId;
 import io.debezium.snapshot.SnapshotterService;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
@@ -36,7 +34,7 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
     private final MySqlConnectorConfig configuration;
     private final MainConnectionProvidingConnectionFactory<BinlogConnectorConnection> connectionFactory;
     private final ErrorHandler errorHandler;
-    private final EventDispatcher<MySqlPartition, TableId> dispatcher;
+    private final MysqlEventDispatcher<MySqlPartition> dispatcher;
     private final Clock clock;
     private final MySqlTaskContext taskContext;
     private final MySqlStreamingChangeEventSourceMetrics streamingMetrics;
@@ -51,7 +49,7 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
     private final BinaryLogClient binaryLogClient;
 
     public MySqlChangeEventSourceFactory(MySqlConnectorConfig configuration, MainConnectionProvidingConnectionFactory<BinlogConnectorConnection> connectionFactory,
-                                         ErrorHandler errorHandler, EventDispatcher<MySqlPartition, TableId> dispatcher, Clock clock, MySqlDatabaseSchema schema,
+                                         ErrorHandler errorHandler, MysqlEventDispatcher<MySqlPartition> dispatcher, Clock clock, MySqlDatabaseSchema schema,
                                          MySqlTaskContext taskContext, MySqlStreamingChangeEventSourceMetrics streamingMetrics,
                                          ChangeEventQueue<DataChangeEvent> queue, SnapshotterService snapshotterService, BinaryLogClient binaryLogClient) {
         this.configuration = configuration;

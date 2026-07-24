@@ -40,7 +40,6 @@ import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
-import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.GuardrailValidator;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalProcessor;
@@ -219,8 +218,9 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
                 previousOffsets);
 
         final Configuration heartbeatConfig = config;
-
-        final EventDispatcher<MySqlPartition, TableId> dispatcher = new EventDispatcher<>(
+        final DebeziumHeaderProducer debeziumHeaderProducer = connectorConfig.getServiceRegistry().tryGetService(
+                DebeziumHeaderProducer.class);
+        final MysqlEventDispatcher<MySqlPartition> dispatcher = new MysqlEventDispatcher<>(
                 connectorConfig,
                 topicNamingStrategy,
                 schema,
@@ -236,7 +236,9 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
                                 MySqlFieldReaderResolver.resolve(connectorConfig)),
                         new BinlogHeartbeatErrorHandler(),
                         queue),
-                schemaNameAdjuster, signalProcessor, connectorConfig.getServiceRegistry().tryGetService(DebeziumHeaderProducer.class));
+                schemaNameAdjuster,
+                signalProcessor,
+                debeziumHeaderProducer);
 
         // Create the binary log client that will be used for streaming change events
         final BinaryLogClient binaryLogClient = new BinaryLogClient(
