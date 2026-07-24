@@ -2492,7 +2492,10 @@ Represents the timestamp value in UTC format, according to the ISO 8601 standard
 
 When the `time.precision.mode` configuration property is set to `structured`, the connector maps temporal values to Kafka Connect structs with separate calendar and clock components.
 This mode avoids flattening high-precision temporal values into a single epoch-based integer.
-Structured temporal values that have fractional seconds include an optional `precision` field that records the source column's fractional second precision.
+Structured temporal values store fractional seconds in an optional `picoseconds` `INT64` field.
+The optional `precision` value field and the `io.debezium.time.precision` schema parameter record the source column's fractional-second precision.
+For an interval, the `io.debezium.time.duration.kind` schema parameter is `day-time` for `INTERVAL DAY TO SECOND` and `year-month` for `INTERVAL YEAR TO MONTH`.
+To keep Avro named-record definitions with different metadata distinct, structured temporal schema names include their precision and, for durations, their duration kind.
 The {prodname} JDBC sink connector can consume these structured temporal schemas directly and maps them according to the target database dialect.
 
 [cols="25%a,20%a,55%a",options="header"]
@@ -2503,37 +2506,37 @@ The {prodname} JDBC sink connector can consume these structured temporal schemas
 |`STRUCT`
 |`io.debezium.time.StructuredTimestamp` +
  +
-Contains `year`, `month`, `day`, `hour`, `minute`, `second`, `nanos`, and optional `precision` fields.
+Contains `year`, `month`, `day`, `hour`, `minute`, `second`, `picoseconds`, and optional `precision` fields.
 
 |`INTERVAL DAY[(M)] TO SECOND`
 |`STRUCT`
 |`io.debezium.time.StructuredDuration` +
  +
-Contains signed `years`, `months`, `days`, `hours`, `minutes`, `seconds`, `nanos`, and optional `precision` fields.
+Contains signed `years`, `months`, `days`, `hours`, `minutes`, `seconds`, `picoseconds`, and optional `precision` fields. The duration kind is `day-time`.
 
 |`INTERVAL YEAR[(M)] TO MONTH`
 |`STRUCT`
 |`io.debezium.time.StructuredDuration` +
  +
-Contains signed `years`, `months`, `days`, `hours`, `minutes`, `seconds`, `nanos`, and optional `precision` fields.
+Contains signed `years`, `months`, `days`, `hours`, `minutes`, `seconds`, `picoseconds`, and optional `precision` fields. The duration kind is `year-month`.
 
 |`TIMESTAMP(0 - 9)`
 |`STRUCT`
 |`io.debezium.time.StructuredTimestamp` +
  +
-Contains calendar and clock component fields with nanosecond precision and optional `precision`.
+Contains calendar and clock component fields, including `picoseconds`, with source precision up to 9 digits and optional `precision`.
 
 |`TIMESTAMP WITH TIME ZONE`
 |`STRUCT`
 |`io.debezium.time.StructuredZonedTimestamp` +
  +
-Contains calendar and clock component fields, `offsetSeconds`, optional `zoneId`, and optional `precision`.
+Contains calendar and clock component fields, `picoseconds`, `offsetSeconds`, optional `zoneId`, and optional `precision`.
 
 |`TIMESTAMP WITH LOCAL TIME ZONE`
 |`STRUCT`
 |`io.debezium.time.StructuredZonedTimestamp` +
  +
-Contains calendar and clock component fields, `offsetSeconds`, optional `zoneId`, and optional `precision`.
+Contains calendar and clock component fields, `picoseconds`, `offsetSeconds`, optional `zoneId`, and optional `precision`.
 
 |===
 

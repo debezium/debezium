@@ -20,6 +20,7 @@ import io.debezium.connector.jdbc.JdbcSinkRecord;
 import io.debezium.connector.jdbc.field.JdbcFieldDescriptor;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
 import io.debezium.connector.jdbc.type.JdbcType;
+import io.debezium.connector.jdbc.type.debezium.TargetTemporalCapabilities;
 import io.debezium.metadata.CollectionId;
 import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
@@ -76,6 +77,17 @@ public interface DatabaseDialect {
      * @return a collection of field names that are missing from the database table, can be {@code empty}.
      */
     Set<String> resolveMissingFields(JdbcSinkRecord record, TableDescriptor table);
+
+    /**
+     * Resolves the target column for an incoming field using the configured naming rules.
+     *
+     * @param table target table descriptor, never {@code null}
+     * @param field incoming field descriptor, never {@code null}
+     * @return the resolved target column, never {@code null}
+     */
+    default ColumnDescriptor resolveColumn(TableDescriptor table, JdbcFieldDescriptor field) {
+        return table.getColumnByName(field.getColumnName());
+    }
 
     /**
      * Construct a {@code CREATE TABLE} statement specific for this dialect based on the provided record.
@@ -265,6 +277,15 @@ public interface DatabaseDialect {
     }
 
     /**
+     * Gets the structured temporal values that this target dialect can preserve.
+     *
+     * @return the target temporal capabilities
+     */
+    default TargetTemporalCapabilities getTargetTemporalCapabilities() {
+        return TargetTemporalCapabilities.defaults(getMaxTimePrecision(), getMaxTimestampPrecision());
+    }
+
+    /**
      * Get the default decimal data type precision for the dialect.
      *
      * @return default decimal precision
@@ -414,6 +435,30 @@ public interface DatabaseDialect {
      * @return the list of bounded values
      */
     List<ValueBindDescriptor> bindValue(JdbcFieldDescriptor field, int startIndex, Object value);
+
+    /**
+     * Bind the specified value with access to the actual target column definition.
+     *
+     * @param field the field being bound, should never be {@code null}
+     * @param column the target column, should never be {@code null}
+     * @param startIndex the starting index of the parameter binding
+     * @param value the value to be bound, may be {@code null}
+     * @return the list of bounded values
+     */
+    default List<ValueBindDescriptor> bindValue(JdbcFieldDescriptor field, ColumnDescriptor column, int startIndex, Object value) {
+        return bindValue(field, startIndex, value);
+    }
+
+    /**
+     * Validates a value against the actual target column before statement execution.
+     *
+     * @param field the field being validated, should never be {@code null}
+     * @param column the target column, should never be {@code null}
+     * @param value the value to validate, may be {@code null}
+     */
+    default void validateValue(JdbcFieldDescriptor field, ColumnDescriptor column, Object value) {
+        getSchemaType(field.getSchema()).validate(column, field.getSchema(), value);
+    }
 
     /**
      * Set of retriable exceptions if flush fails.

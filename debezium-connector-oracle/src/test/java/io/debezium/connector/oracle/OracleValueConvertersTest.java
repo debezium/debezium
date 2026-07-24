@@ -180,8 +180,9 @@ public class OracleValueConvertersTest {
         final Struct result = (Struct) convertersStructured.converter(column, field)
                 .convert(new TIMESTAMP(LocalDateTime.of(9999, 12, 31, 23, 59, 59, 999_999_999)));
 
-        assertThat(field.schema().name()).isEqualTo(StructuredTimestamp.SCHEMA_NAME);
-        assertThat(field.schema().parameters()).isNullOrEmpty();
+        assertThat(field.schema().name()).isEqualTo(StructuredTimestamp.schemaName(9));
+        assertThat(field.schema().parameters())
+                .containsEntry(StructuredTemporal.PRECISION_PARAMETER_KEY, "9");
         assertThat(result.getInt32(StructuredTemporal.PRECISION_FIELD)).isEqualTo(9);
         assertThat(result.getString(StructuredTemporal.SPECIAL_VALUE_FIELD)).isNull();
         assertThat(result.getInt32(StructuredTemporal.YEAR_FIELD)).isEqualTo(9999);
@@ -190,7 +191,7 @@ public class OracleValueConvertersTest {
         assertThat(result.getInt8(StructuredTemporal.HOUR_FIELD)).isEqualTo((byte) 23);
         assertThat(result.getInt8(StructuredTemporal.MINUTE_FIELD)).isEqualTo((byte) 59);
         assertThat(result.getInt8(StructuredTemporal.SECOND_FIELD)).isEqualTo((byte) 59);
-        assertThat(result.getInt32(StructuredTemporal.NANOS_FIELD)).isEqualTo(999_999_999);
+        assertThat(result.getInt64(StructuredTemporal.PICOSECONDS_FIELD)).isEqualTo(999_999_999_000L);
     }
 
     @Test
@@ -207,8 +208,9 @@ public class OracleValueConvertersTest {
         final Struct result = (Struct) convertersStructured.converter(column, field)
                 .convert(new TIMESTAMPTZ(OffsetDateTime.of(9999, 12, 31, 23, 59, 59, 999_999_999, ZoneOffset.ofHours(14))));
 
-        assertThat(field.schema().name()).isEqualTo(StructuredZonedTimestamp.SCHEMA_NAME);
-        assertThat(field.schema().parameters()).isNullOrEmpty();
+        assertThat(field.schema().name()).isEqualTo(StructuredZonedTimestamp.schemaName(9));
+        assertThat(field.schema().parameters())
+                .containsEntry(StructuredTemporal.PRECISION_PARAMETER_KEY, "9");
         assertThat(result.getInt32(StructuredTemporal.PRECISION_FIELD)).isEqualTo(9);
         assertThat(result.getString(StructuredTemporal.SPECIAL_VALUE_FIELD)).isNull();
         assertThat(result.getInt32(StructuredTemporal.YEAR_FIELD)).isEqualTo(9999);
@@ -217,7 +219,7 @@ public class OracleValueConvertersTest {
         assertThat(result.getInt8(StructuredTemporal.HOUR_FIELD)).isEqualTo((byte) 23);
         assertThat(result.getInt8(StructuredTemporal.MINUTE_FIELD)).isEqualTo((byte) 59);
         assertThat(result.getInt8(StructuredTemporal.SECOND_FIELD)).isEqualTo((byte) 59);
-        assertThat(result.getInt32(StructuredTemporal.NANOS_FIELD)).isEqualTo(999_999_999);
+        assertThat(result.getInt64(StructuredTemporal.PICOSECONDS_FIELD)).isEqualTo(999_999_999_000L);
         assertThat(result.getInt32(StructuredTemporal.OFFSET_SECONDS_FIELD)).isEqualTo(50_400);
     }
 
@@ -234,8 +236,10 @@ public class OracleValueConvertersTest {
         final Struct yearMonth = (Struct) convertersStructured.converter(yearMonthColumn, yearMonthField)
                 .convert(new INTERVALYM("-123-11"));
 
-        assertThat(yearMonthField.schema().name()).isEqualTo(StructuredDuration.SCHEMA_NAME);
-        assertThat(yearMonthField.schema().parameters()).isNullOrEmpty();
+        assertThat(yearMonthField.schema().name()).isEqualTo(StructuredDuration.schemaName(0, StructuredDuration.Kind.YEAR_MONTH));
+        assertThat(yearMonthField.schema().parameters())
+                .containsEntry(StructuredTemporal.PRECISION_PARAMETER_KEY, "0")
+                .containsEntry(StructuredTemporal.DURATION_KIND_PARAMETER_KEY, StructuredDuration.Kind.YEAR_MONTH.getValue());
         assertThat(yearMonth.getInt32(StructuredTemporal.YEARS_FIELD)).isEqualTo(-123);
         assertThat(yearMonth.getInt32(StructuredTemporal.MONTHS_FIELD)).isEqualTo(-11);
         assertThat(yearMonth.getInt32(StructuredTemporal.DAYS_FIELD)).isZero();
@@ -252,14 +256,16 @@ public class OracleValueConvertersTest {
         final Struct daySecond = (Struct) convertersStructured.converter(daySecondColumn, daySecondField)
                 .convert(new INTERVALDS("-999 23:59:59.999999999"));
 
-        assertThat(daySecondField.schema().name()).isEqualTo(StructuredDuration.SCHEMA_NAME);
-        assertThat(daySecondField.schema().parameters()).isNullOrEmpty();
+        assertThat(daySecondField.schema().name()).isEqualTo(StructuredDuration.schemaName(9, StructuredDuration.Kind.DAY_TIME));
+        assertThat(daySecondField.schema().parameters())
+                .containsEntry(StructuredTemporal.PRECISION_PARAMETER_KEY, "9")
+                .containsEntry(StructuredTemporal.DURATION_KIND_PARAMETER_KEY, StructuredDuration.Kind.DAY_TIME.getValue());
         assertThat(daySecond.getInt32(StructuredTemporal.PRECISION_FIELD)).isEqualTo(9);
         assertThat(daySecond.getInt32(StructuredTemporal.DAYS_FIELD)).isEqualTo(-999);
         assertThat(daySecond.getInt32(StructuredTemporal.HOURS_FIELD)).isEqualTo(-23);
         assertThat(daySecond.getInt32(StructuredTemporal.MINUTES_FIELD)).isEqualTo(-59);
         assertThat(daySecond.getInt64(StructuredTemporal.SECONDS_FIELD)).isEqualTo(-59L);
-        assertThat(daySecond.getInt32(StructuredTemporal.NANOS_FIELD)).isEqualTo(-999_999_999);
+        assertThat(daySecond.getInt64(StructuredTemporal.PICOSECONDS_FIELD)).isEqualTo(-999_999_999_000L);
     }
 
     private Field fieldFor(Column column) {

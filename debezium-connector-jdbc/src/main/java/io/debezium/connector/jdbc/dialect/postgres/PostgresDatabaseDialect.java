@@ -29,6 +29,10 @@ import io.debezium.connector.jdbc.dialect.GeneralDatabaseDialect;
 import io.debezium.connector.jdbc.dialect.SqlStatementBuilder;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
 import io.debezium.connector.jdbc.type.JdbcType;
+import io.debezium.connector.jdbc.type.debezium.TargetTemporalCapabilities;
+import io.debezium.connector.jdbc.type.debezium.TargetTemporalCapabilities.ZonedTimestampRangeBasis;
+import io.debezium.connector.jdbc.type.debezium.TargetTemporalCapabilities.ZonedTimestampSupport;
+import io.debezium.connector.jdbc.type.debezium.TemporalRange;
 import io.debezium.metadata.CollectionId;
 import io.debezium.sink.column.ColumnDescriptor;
 
@@ -38,6 +42,17 @@ import io.debezium.sink.column.ColumnDescriptor;
  * @author Chris Cranford
  */
 public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
+
+    @Override
+    public TargetTemporalCapabilities getTargetTemporalCapabilities() {
+        return TargetTemporalCapabilities.defaults(getMaxTimePrecision(), getMaxTimestampPrecision())
+                .withDateRange(TemporalRange.dateYears(-4712, 5_874_897))
+                .withTimestampRange(TemporalRange.timestampYears(-4712, 294_276))
+                .withZonedTimestampRangeBasis(ZonedTimestampRangeBasis.INSTANT)
+                .withZonedTimestampSupport(ZonedTimestampSupport.INSTANT)
+                .withDateInfinitySupported(true)
+                .withTimestampInfinitySupported(true);
+    }
 
     public static class PostgresDatabaseDialectProvider implements DatabaseDialectProvider {
         @Override

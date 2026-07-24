@@ -14,6 +14,7 @@ import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.TemporalAccessor;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -36,7 +37,11 @@ import io.debezium.connector.jdbc.dialect.GeneralDatabaseDialect;
 import io.debezium.connector.jdbc.dialect.SqlStatementBuilder;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
 import io.debezium.connector.jdbc.type.JdbcType;
+import io.debezium.connector.jdbc.type.debezium.TargetTemporalCapabilities;
+import io.debezium.connector.jdbc.type.debezium.TemporalRange;
+import io.debezium.connector.jdbc.type.debezium.TemporalRange.Boundary;
 import io.debezium.sink.field.FieldDescriptor;
+import io.debezium.time.StructuredDuration;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.Strings;
 
@@ -46,6 +51,28 @@ import io.debezium.util.Strings;
  * @author Chris Cranford
  */
 public class MySqlDatabaseDialect extends GeneralDatabaseDialect {
+
+    // Boundaries carry the storage maximum; range checks truncate them to the
+    // target column precision after rounding. The MySQL manual documents .499999
+    // as the upper bound, but that is only the round-up-safe input limit for
+    // lower-precision conversions, not what a column can store.
+    private static final TemporalRange DATETIME_RANGE = new TemporalRange(
+            Boundary.timestamp(1000, 1, 1, 0, 0, 0, 0),
+            Boundary.timestamp(9999, 12, 31, 23, 59, 59, 999_999_999_999L));
+
+    private static final TemporalRange TIMESTAMP_RANGE = new TemporalRange(
+            Boundary.timestamp(1970, 1, 1, 0, 0, 1, 0),
+            Boundary.timestamp(2038, 1, 19, 3, 14, 7, 999_999_999_999L));
+
+    @Override
+    public TargetTemporalCapabilities getTargetTemporalCapabilities() {
+        return TargetTemporalCapabilities.defaults(getMaxTimePrecision(), getMaxTimestampPrecision())
+                .withDateRange(TemporalRange.dateYears(1000, 9999))
+                .withTimestampRange(DATETIME_RANGE)
+                .withTimestampRangeForType(TIMESTAMP_RANGE, "timestamp")
+                .withDurationKinds(EnumSet.of(StructuredDuration.Kind.ELAPSED_TIME))
+                .withZeroDateSupported(true);
+    }
 
     private static final List<String> NO_DEFAULT_VALUE_TYPES = Arrays.asList(
             "tinytext", "mediumtext", "longtext", "text", "tinyblob", "mediumblob", "longblob");

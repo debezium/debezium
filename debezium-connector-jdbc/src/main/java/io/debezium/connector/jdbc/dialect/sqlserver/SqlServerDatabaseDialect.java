@@ -19,6 +19,11 @@ import io.debezium.connector.jdbc.dialect.GeneralDatabaseDialect;
 import io.debezium.connector.jdbc.dialect.SqlStatementBuilder;
 import io.debezium.connector.jdbc.dialect.sqlserver.connect.ConnectTimeType;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
+import io.debezium.connector.jdbc.type.debezium.TargetTemporalCapabilities;
+import io.debezium.connector.jdbc.type.debezium.TargetTemporalCapabilities.ZonedTimestampRangeBasis;
+import io.debezium.connector.jdbc.type.debezium.TargetTemporalCapabilities.ZonedTimestampSupport;
+import io.debezium.connector.jdbc.type.debezium.TemporalRange;
+import io.debezium.connector.jdbc.type.debezium.TemporalRange.Boundary;
 
 /**
  * A {@link DatabaseDialect} implementation for SQL Server.
@@ -26,6 +31,25 @@ import io.debezium.connector.jdbc.relational.TableDescriptor;
  * @author Chris Cranford
  */
 public class SqlServerDatabaseDialect extends GeneralDatabaseDialect {
+
+    private static final TemporalRange DATETIME_RANGE = new TemporalRange(
+            Boundary.timestamp(1753, 1, 1, 0, 0, 0, 0),
+            Boundary.timestamp(9999, 12, 31, 23, 59, 59, 997_000_000_000L));
+
+    private static final TemporalRange SMALLDATETIME_RANGE = new TemporalRange(
+            Boundary.timestamp(1900, 1, 1, 0, 0, 0, 0),
+            Boundary.timestamp(2079, 6, 6, 23, 59, 0, 0));
+
+    @Override
+    public TargetTemporalCapabilities getTargetTemporalCapabilities() {
+        return TargetTemporalCapabilities.defaults(getMaxTimePrecision(), getMaxTimestampPrecision())
+                .withDateRange(TemporalRange.dateYears(1, 9999))
+                .withTimestampRange(TemporalRange.timestampYears(1, 9999))
+                .withTimestampRangeForType(DATETIME_RANGE, "datetime")
+                .withTimestampRangeForType(SMALLDATETIME_RANGE, "smalldatetime")
+                .withZonedTimestampRangeBasis(ZonedTimestampRangeBasis.LOCAL_AND_INSTANT)
+                .withZonedTimestampSupport(ZonedTimestampSupport.OFFSET);
+    }
 
     public static class SqlServerDatabaseDialectProvider implements DatabaseDialectProvider {
         @Override

@@ -31,6 +31,8 @@ import io.debezium.connector.jdbc.dialect.db2.debezium.NanoTimestampType;
 import io.debezium.connector.jdbc.dialect.db2.debezium.TimeType;
 import io.debezium.connector.jdbc.dialect.db2.debezium.TimestampType;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
+import io.debezium.connector.jdbc.type.debezium.TargetTemporalCapabilities;
+import io.debezium.connector.jdbc.type.debezium.TemporalRange;
 import io.debezium.metadata.CollectionId;
 import io.debezium.sink.field.FieldDescriptor;
 import io.debezium.time.ZonedTimestamp;
@@ -41,6 +43,13 @@ import io.debezium.time.ZonedTimestamp;
  * @author Chris Cranford
  */
 public class Db2DatabaseDialect extends GeneralDatabaseDialect {
+
+    @Override
+    public TargetTemporalCapabilities getTargetTemporalCapabilities() {
+        return TargetTemporalCapabilities.defaults(getMaxTimePrecision(), getMaxTimestampPrecision())
+                .withDateRange(TemporalRange.dateYears(1, 9999))
+                .withTimestampRange(TemporalRange.timestampYears(1, 9999));
+    }
 
     private static final DateTimeFormatter ISO_LOCAL_DATE_TIME_WITH_SPACE = new DateTimeFormatterBuilder()
             .parseCaseInsensitive()
@@ -92,6 +101,13 @@ public class Db2DatabaseDialect extends GeneralDatabaseDialect {
         registerType(TimeType.INSTANCE);
         registerType(NanoTimeType.INSTANCE);
         registerType(MicroTimeType.INSTANCE);
+        registerType(new StructuredTimestampType());
+        registerType(new StructuredZonedTimestampType());
+    }
+
+    @Override
+    public int getMaxTimestampPrecision() {
+        return 12;
     }
 
     @Override

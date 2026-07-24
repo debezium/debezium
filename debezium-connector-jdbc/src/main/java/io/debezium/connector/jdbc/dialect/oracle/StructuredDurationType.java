@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.jdbc.dialect.oracle;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.Types;
 import java.util.List;
 import java.util.Locale;
@@ -13,7 +15,9 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.hibernate.engine.jdbc.Size;
 
-import io.debezium.connector.jdbc.type.AbstractType;
+import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.TemporalPrecisionLossHandlingMode;
+import io.debezium.connector.jdbc.type.AbstractTemporalType;
+import io.debezium.connector.jdbc.type.debezium.StructuredTemporalPreflightValidator;
 import io.debezium.connector.jdbc.type.debezium.StructuredTemporalSupport;
 import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
@@ -23,7 +27,7 @@ import io.debezium.time.StructuredTemporal;
 /**
  * Oracle implementation of {@link StructuredDuration} values.
  */
-public class StructuredDurationType extends AbstractType {
+public class StructuredDurationType extends AbstractTemporalType {
 
     public static final StructuredDurationType INSTANCE = new StructuredDurationType();
 
@@ -35,7 +39,7 @@ public class StructuredDurationType extends AbstractType {
 
     @Override
     public String[] getRegistrationKeys() {
-        return new String[]{ StructuredDuration.SCHEMA_NAME };
+        return StructuredDuration.schemaNames();
     }
 
     @Override
@@ -61,7 +65,8 @@ public class StructuredDurationType extends AbstractType {
         final Struct struct = requireStruct(value);
         return switch (resolveIntervalKind(schema)) {
             case YEAR_MONTH -> "TO_YMINTERVAL('" + toYearMonthLiteral(struct) + "')";
-            case DAY_SECOND -> "TO_DSINTERVAL('" + toDaySecondLiteral(struct) + "')";
+            case DAY_SECOND -> "TO_DSINTERVAL('" + toDaySecondLiteral(
+                    struct, getDaySecondPrecision(schema), getPrecisionLossHandlingMode()) + "')";
             case TEXT -> "'" + StructuredTemporalSupport.toDurationString(struct) + "'";
         };
     }
@@ -74,25 +79,65 @@ public class StructuredDurationType extends AbstractType {
         return List.of(new ValueBindDescriptor(index, toBindingValue(schema, requireStruct(value)), Types.VARCHAR));
     }
 
+    @Override
+    public void validate(ColumnDescriptor column, Schema schema, Object value) {
+        if (value == null) {
+            return;
+        }
+        final Struct struct = requireStruct(value);
+        final var capabilities = getDialect().getTargetTemporalCapabilities();
+        StructuredTemporalPreflightValidator.validateDuration(schema, struct, capabilities);
+        if (resolveIntervalKind(schema) == IntervalKind.DAY_SECOND) {
+            StructuredTemporalPreflightValidator.validatePrecision(
+                    column, struct, capabilities.targetTimePrecision(column), getPrecisionLossHandlingMode());
+        }
+    }
+
+    @Override
+    public List<ValueBindDescriptor> bind(int index, ColumnDescriptor column, Schema schema, Object value) {
+        if (value == null) {
+            return List.of(new ValueBindDescriptor(index, null));
+        }
+        validate(column, schema, value);
+        final Struct struct = requireStruct(value);
+        if (resolveIntervalKind(schema) == IntervalKind.DAY_SECOND) {
+            final int precision = getDialect().getTargetTemporalCapabilities().targetTimePrecision(column);
+            return List.of(new ValueBindDescriptor(index,
+                    toDaySecondLiteral(struct, precision, getPrecisionLossHandlingMode()), Types.VARCHAR));
+        }
+        return List.of(new ValueBindDescriptor(index, toBindingValue(schema, struct), Types.VARCHAR));
+    }
+
     private String getDaySecondTypeName(Schema schema) {
         final String dayPrecision = getSourceColumnSize(schema)
                 .filter(StructuredDurationType::isPositive)
                 .map(value -> "(" + value + ")")
                 .orElse("");
-        final int secondPrecision = getSourceColumnPrecision(schema).map(Integer::parseInt).orElse(9);
-        return "INTERVAL DAY" + dayPrecision + " TO SECOND(" + Math.min(secondPrecision, 9) + ")";
+        return "INTERVAL DAY" + dayPrecision + " TO SECOND(" + getDaySecondPrecision(schema) + ")";
     }
 
     private String toBindingValue(Schema schema, Struct value) {
         return switch (resolveIntervalKind(schema)) {
             case YEAR_MONTH -> toYearMonthLiteral(value);
-            case DAY_SECOND -> toDaySecondLiteral(value);
+            case DAY_SECOND -> toDaySecondLiteral(value, getDaySecondPrecision(schema), getPrecisionLossHandlingMode());
             case TEXT -> StructuredTemporalSupport.toDurationString(value);
         };
     }
 
+    private int getDaySecondPrecision(Schema schema) {
+        return Math.min(StructuredTemporalSupport.getPrecision(schema).orElse(9), 9);
+    }
+
     private IntervalKind resolveIntervalKind(Schema schema) {
         if (schema != null) {
+            if (getSchemaParameter(schema, StructuredTemporal.DURATION_KIND_PARAMETER_KEY).isPresent()) {
+                final StructuredDuration.Kind kind = StructuredTemporalPreflightValidator.durationKind(schema, null);
+                return switch (kind) {
+                    case YEAR_MONTH -> IntervalKind.YEAR_MONTH;
+                    case DAY_TIME, ELAPSED_TIME -> IntervalKind.DAY_SECOND;
+                    case MIXED -> IntervalKind.TEXT;
+                };
+            }
             return resolveIntervalKind(getSourceColumnType(schema).orElse(null));
         }
         return IntervalKind.TEXT;
@@ -120,21 +165,41 @@ public class StructuredDurationType extends AbstractType {
         return String.format("%s%d-%02d", negative ? "-" : "", Math.abs(years), Math.abs(months));
     }
 
-    private String toDaySecondLiteral(Struct value) {
-        final int days = intValue(value, StructuredTemporal.DAYS_FIELD);
-        final int hours = intValue(value, StructuredTemporal.HOURS_FIELD);
-        final int minutes = intValue(value, StructuredTemporal.MINUTES_FIELD);
+    private String toDaySecondLiteral(Struct value, int precision, TemporalPrecisionLossHandlingMode handlingMode) {
+        long days = Math.abs((long) intValue(value, StructuredTemporal.DAYS_FIELD));
+        long hours = Math.abs((long) intValue(value, StructuredTemporal.HOURS_FIELD));
+        long minutes = Math.abs((long) intValue(value, StructuredTemporal.MINUTES_FIELD));
         final long seconds = longValue(value, StructuredTemporal.SECONDS_FIELD);
-        final int nanos = intValue(value, StructuredTemporal.NANOS_FIELD);
-        final boolean negative = days < 0 || hours < 0 || minutes < 0 || seconds < 0 || nanos < 0;
-        final String fraction = nanos == 0 ? "" : "." + String.format("%09d", Math.abs(nanos));
+        final long picoseconds = longValue(value, StructuredTemporal.PICOSECONDS_FIELD);
+        final boolean negative = intValue(value, StructuredTemporal.DAYS_FIELD) < 0
+                || intValue(value, StructuredTemporal.HOURS_FIELD) < 0
+                || intValue(value, StructuredTemporal.MINUTES_FIELD) < 0
+                || seconds < 0
+                || picoseconds < 0;
+        StructuredTemporalPreflightValidator.reduceFraction(picoseconds, precision, handlingMode);
+
+        BigDecimal adjustedSeconds = BigDecimal.valueOf(Math.abs(seconds))
+                .add(BigDecimal.valueOf(Math.abs(picoseconds), 12));
+        final RoundingMode roundingMode = handlingMode == TemporalPrecisionLossHandlingMode.ROUND ? RoundingMode.HALF_UP : RoundingMode.DOWN;
+        adjustedSeconds = adjustedSeconds.setScale(precision, roundingMode);
+
+        minutes += adjustedSeconds.divideToIntegralValue(BigDecimal.valueOf(60)).longValueExact();
+        adjustedSeconds = adjustedSeconds.remainder(BigDecimal.valueOf(60));
+        hours += minutes / 60;
+        minutes %= 60;
+        days += hours / 24;
+        hours %= 24;
+
+        final int wholeSeconds = adjustedSeconds.intValue();
+        final int fraction = adjustedSeconds.remainder(BigDecimal.ONE).movePointRight(precision).intValue();
+        final String suffix = precision == 0 ? "" : "." + String.format("%0" + precision + "d", fraction);
         return String.format("%s%d %02d:%02d:%02d%s",
                 negative ? "-" : "",
-                Math.abs(days),
-                Math.abs(hours),
-                Math.abs(minutes),
-                Math.abs(seconds),
-                fraction);
+                days,
+                hours,
+                minutes,
+                wholeSeconds,
+                suffix);
     }
 
     private int intValue(Struct value, String fieldName) {

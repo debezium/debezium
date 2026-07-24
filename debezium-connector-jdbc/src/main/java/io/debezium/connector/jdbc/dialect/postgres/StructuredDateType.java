@@ -28,8 +28,21 @@ public class StructuredDateType extends io.debezium.connector.jdbc.type.debezium
     }
 
     @Override
+    public String getDefaultValueBinding(Schema schema, Object value) {
+        if (supportsInfinity() && value instanceof Struct struct) {
+            if (StructuredTemporal.isPositiveInfinity(struct)) {
+                return "'infinity'";
+            }
+            if (StructuredTemporal.isNegativeInfinity(struct)) {
+                return "'-infinity'";
+            }
+        }
+        return super.getDefaultValueBinding(schema, value);
+    }
+
+    @Override
     public List<ValueBindDescriptor> bind(int index, Schema schema, Object value) {
-        if (value instanceof Struct struct) {
+        if (supportsInfinity() && value instanceof Struct struct) {
             if (StructuredTemporal.isPositiveInfinity(struct)) {
                 return List.of(new ValueBindDescriptor(index, "infinity", Types.VARCHAR));
             }
@@ -38,5 +51,30 @@ public class StructuredDateType extends io.debezium.connector.jdbc.type.debezium
             }
         }
         return super.bind(index, schema, value);
+    }
+
+    @Override
+    public void validate(ColumnDescriptor column, Schema schema, Object value) {
+        if (supportsInfinity() && value instanceof Struct struct && !StructuredTemporal.isFinite(struct)) {
+            return;
+        }
+        super.validate(column, schema, value);
+    }
+
+    @Override
+    public List<ValueBindDescriptor> bind(int index, ColumnDescriptor column, Schema schema, Object value) {
+        if (supportsInfinity() && value instanceof Struct struct) {
+            if (StructuredTemporal.isPositiveInfinity(struct)) {
+                return List.of(new ValueBindDescriptor(index, "infinity", Types.VARCHAR));
+            }
+            if (StructuredTemporal.isNegativeInfinity(struct)) {
+                return List.of(new ValueBindDescriptor(index, "-infinity", Types.VARCHAR));
+            }
+        }
+        return super.bind(index, column, schema, value);
+    }
+
+    private boolean supportsInfinity() {
+        return getDialect() != null && getDialect().getTargetTemporalCapabilities().dateInfinitySupported();
     }
 }

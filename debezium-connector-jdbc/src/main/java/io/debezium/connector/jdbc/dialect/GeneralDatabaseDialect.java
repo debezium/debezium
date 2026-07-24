@@ -90,6 +90,7 @@ import io.debezium.metadata.CollectionId;
 import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.sink.field.FieldDescriptor;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
+import io.debezium.time.StructuredTemporal;
 import io.debezium.util.Strings;
 
 /**
@@ -241,6 +242,11 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
             }
         }
         return missingFields;
+    }
+
+    @Override
+    public ColumnDescriptor resolveColumn(TableDescriptor table, JdbcFieldDescriptor field) {
+        return table.getColumnByName(resolveColumnName(field));
     }
 
     protected String resolveColumnName(FieldDescriptor field) {
@@ -427,6 +433,13 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     }
 
     @Override
+    public List<ValueBindDescriptor> bindValue(JdbcFieldDescriptor field, ColumnDescriptor column, int startIndex, Object value) {
+        var schemaType = getSchemaType(field.getSchema());
+        LOGGER.trace("Bind field '{}' at position {} with type {}: {}", field.getName(), startIndex, schemaType.getClass().getName(), value);
+        return field.bind(startIndex, column, value, schemaType);
+    }
+
+    @Override
     public int getMaxVarcharLengthInKey() {
         return dialect.getMaxVarcharLength();
     }
@@ -455,7 +468,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     @Override
     public JdbcType getSchemaType(Schema schema) {
         if (!Objects.isNull(schema.name())) {
-            final JdbcType type = typeRegistry.get(schema.name());
+            final JdbcType type = typeRegistry.get(StructuredTemporal.schemaNameWithoutSourceColumn(schema.name()));
             if (!Objects.isNull(type)) {
                 LOGGER.trace("Schema '{}' resolved by name from registry to type '{}'", schema.name(), type);
                 return type;
