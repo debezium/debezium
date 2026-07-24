@@ -50,6 +50,7 @@ import io.debezium.junit.SkipWhenConnectorUnderTest.Connector;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.notification.channels.SinkNotificationChannel;
 import io.debezium.pipeline.signal.actions.snapshotting.StopSnapshot;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.util.Testing;
 import io.strimzi.test.container.StrimziKafkaCluster;
 
@@ -176,6 +177,21 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
     private static Function<SourceRecord, String> getSnapshotField() {
         return s -> s.sourceOffset().get(SNAPSHOT_FIELD_NAME).toString();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2280")
+    public void snapshotShouldRunWhenColumnIncludeListExcludesSignalTable() throws Exception {
+        populateTable();
+        startConnector(x -> x.with(RelationalDatabaseConnectorConfig.COLUMN_INCLUDE_LIST, signalExcludingColumnIncludeList()));
+
+        sendAdHocSnapshotSignal();
+
+        final int expectedRecordCount = ROW_COUNT;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
+        for (int i = 0; i < expectedRecordCount; i++) {
+            assertThat(dbChanges).contains(entry(i + 1, i));
+        }
     }
 
     @Test

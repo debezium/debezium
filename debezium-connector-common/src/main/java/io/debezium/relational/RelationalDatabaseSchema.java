@@ -25,6 +25,7 @@ import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.mapping.ColumnMappers;
 import io.debezium.schema.DatabaseSchema;
 import io.debezium.spi.topic.TopicNamingStrategy;
+import io.debezium.util.Strings;
 
 /**
  * A {@link DatabaseSchema} of a relational database such as Postgres. Provides information about the physical structure
@@ -55,13 +56,32 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
         this.topicNamingStrategy = topicNamingStrategy;
         this.schemaBuilder = schemaBuilder;
         this.tableFilter = tableFilter;
-        this.columnFilter = columnFilter;
+        this.columnFilter = overrideColumnFilter(config, columnFilter);
         this.columnMappers = ColumnMappers.create(config);
         this.customKeysMapper = customKeysMapper;
 
         this.schemasByTableId = new SchemasByTableId(config.createSchemaStorage(tableIdCaseInsensitive));
         this.tables = new Tables(tableIdCaseInsensitive, config);
         this.taskContext = taskContext;
+    }
+
+    // The columns a signal data collection must expose (id, type, data) for source-channel signals to be parsed.
+    private static final Set<String> SIGNAL_REQUIRED_COLUMNS = Set.of("id", "type", "data");
+
+    /**
+     * Wraps the configured column filter so that the required columns of the signal data collection
+     * ({@code id}, {@code type}, {@code data}) are always included when {@code column.include.list} is used.
+     */
+    static ColumnNameFilter overrideColumnFilter(RelationalDatabaseConnectorConfig config, ColumnNameFilter columnFilter) {
+        final boolean includeListMode = !Strings.isNullOrBlank(
+                config.getConfig().getString(RelationalDatabaseConnectorConfig.COLUMN_INCLUDE_LIST));
+        // A null filter already includes every column, so there is nothing to widen.
+        if (columnFilter != null && includeListMode && !config.getSignalingDataCollectionTableIds().isEmpty()) {
+            return (catalogName, schemaName, tableName, columnName) -> (SIGNAL_REQUIRED_COLUMNS.contains(columnName.toLowerCase())
+                    && config.isSignalDataCollection(new TableId(catalogName, schemaName, tableName)))
+                    || columnFilter.matches(catalogName, schemaName, tableName, columnName);
+        }
+        return columnFilter;
     }
 
     @Override
