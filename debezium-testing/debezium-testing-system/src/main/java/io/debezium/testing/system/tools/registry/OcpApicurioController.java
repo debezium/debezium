@@ -96,12 +96,12 @@ public class OcpApicurioController implements RegistryController {
 
     @Override
     public String getRegistryApiAddress() {
-        return getRegistryAddress() + "/apis/registry/v3";
+        return getRegistryAddress();
     }
 
     @Override
     public String getPublicRegistryApiAddress() {
-        return "http://" + getPublicRegistryAddress() + "/apis/registry/v3";
+        return "http://" + getPublicRegistryAddress();
     }
 
     @Override
