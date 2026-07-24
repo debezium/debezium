@@ -1425,7 +1425,13 @@ Because CockroachDB is a distributed database, the cluster automatically handles
 If the entire cluster becomes unavailable, the changefeed stops producing events.
 After the cluster recovers, the connector resumes processing from the last stored offset.
 
-The connector includes retry logic with configurable parameters (`connection.max.retries`, `connection.retry.delay.ms`) for handling transient connection failures, including CockroachDB-specific errors like serialization failures (SQL state 40001) and connection errors (SQL state 08xxx).
+The connector automatically retries transient connection failures.
+The xref:cockroachdb-property-connection-max-retries[`connection.max.retries`] and xref:cockroachdb-property-connection-retry-delay[`connection.retry.delay.ms`] properties control the number of attempts and the delay between them.
+The connector treats the following SQL states as transient:
+
+* The entire connection exception class (SQL state `08xxx`), which includes the `08001` errors that the driver reports when a connection is refused or a host is unreachable.
+* Node shutdown (SQL state `57P01`), which CockroachDB reports while a node drains during a rolling restart.
+* The retryable transaction states `40001` (serialization failure), `40003` (statement completion unknown), and `40P01` (deadlock detected).
 
 [id="cockroachdb-kafka-connect-process-stops-gracefully"]
 === Kafka Connect process stops gracefully
