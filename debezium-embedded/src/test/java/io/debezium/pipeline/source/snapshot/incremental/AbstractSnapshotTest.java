@@ -278,6 +278,16 @@ public abstract class AbstractSnapshotTest<T extends SourceConnector> extends Ab
         return "pk";
     }
 
+    /**
+     * A {@code column.include.list} value covering the data table's own columns (pk and value) but not the signal
+     * data collection's columns, so the signal table is column filtered. Built from {@link #pkFieldName()} /
+     * {@link #valueFieldName()} so it is correct for every connector, including identifier case. Used by the
+     * incremental and blocking snapshot signal-filtering tests (debezium/dbz#2280).
+     */
+    protected String signalExcludingColumnIncludeList() {
+        return ".*\\." + pkFieldName() + ",.*\\." + valueFieldName();
+    }
+
     protected void startConnector(DebeziumEngine.CompletionCallback callback) {
         startConnector(Function.identity(), callback, true);
     }

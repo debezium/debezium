@@ -23,6 +23,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode;
 import io.debezium.config.Configuration;
 import io.debezium.data.VerifyRecord;
@@ -781,5 +782,80 @@ public class TableSchemaBuilderTest {
         assertThat(logInterceptor.containsErrorMessage(errorMessage)).isFalse();
         assertThat(logInterceptor.containsWarnMessage(errorMessage)).isFalse();
         logInterceptor.clear();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2280")
+    public void shouldIncludeRequiredSignalColumnsWithColumnIncludeList() {
+        final Configuration config = Configuration.create()
+                .with(RelationalDatabaseConnectorConfig.COLUMN_INCLUDE_LIST, "s1\\.customers\\.id")
+                .with(CommonConnectorConfig.SIGNAL_DATA_COLLECTION, "testdb.s1.debezium_signal")
+                .build();
+        final RelationalDatabaseConnectorConfig connectorConfig = new TestRelationalDatabaseConfig(config, null, null, 0);
+
+        final Tables.ColumnNameFilter filter = RelationalDatabaseSchema.overrideColumnFilter(connectorConfig, connectorConfig.getColumnFilter());
+
+        // The signal data collection keeps its required columns even though column.include.list excludes them.
+        assertThat(filter.matches("testdb", "s1", "debezium_signal", "id")).isTrue();
+        assertThat(filter.matches("testdb", "s1", "debezium_signal", "type")).isTrue();
+        assertThat(filter.matches("testdb", "s1", "debezium_signal", "data")).isTrue();
+
+        // Only the required columns are force-included: any extra signal-table column stays filtered out, so a
+        // signal table with more than three columns still yields exactly the required three fields.
+        assertThat(filter.matches("testdb", "s1", "debezium_signal", "extra")).isFalse();
+
+        // A non-signal table is still filtered by the configured column.include.list.
+        assertThat(filter.matches("testdb", "s1", "customers", "id")).isTrue();
+        assertThat(filter.matches("testdb", "s1", "customers", "name")).isFalse();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2280")
+    public void shouldMatchSignalColumnsCaseInsensitively() {
+        final Configuration config = Configuration.create()
+                .with(RelationalDatabaseConnectorConfig.COLUMN_INCLUDE_LIST, "S1\\.CUSTOMERS\\.ID")
+                .with(CommonConnectorConfig.SIGNAL_DATA_COLLECTION, "TESTDB.S1.DEBEZIUM_SIGNAL")
+                .build();
+        final RelationalDatabaseConnectorConfig connectorConfig = new TestRelationalDatabaseConfig(config, null, null, 0);
+
+        final Tables.ColumnNameFilter filter = RelationalDatabaseSchema.overrideColumnFilter(connectorConfig, connectorConfig.getColumnFilter());
+
+        // Upper-case identifiers (e.g. Oracle) must still be recognised as the required signal columns.
+        assertThat(filter.matches("TESTDB", "S1", "DEBEZIUM_SIGNAL", "ID")).isTrue();
+        assertThat(filter.matches("TESTDB", "S1", "DEBEZIUM_SIGNAL", "TYPE")).isTrue();
+        assertThat(filter.matches("TESTDB", "S1", "DEBEZIUM_SIGNAL", "DATA")).isTrue();
+        assertThat(filter.matches("TESTDB", "S1", "DEBEZIUM_SIGNAL", "EXTRA")).isFalse();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2280")
+    public void shouldNotAlterColumnFilterInExcludeListMode() {
+        // In exclude-list mode the signal columns already pass by default, so the filter must be left untouched,
+        // otherwise columns the user deliberately excluded from the signal table would be re-added.
+        final Configuration config = Configuration.create()
+                .with(RelationalDatabaseConnectorConfig.COLUMN_EXCLUDE_LIST, "s1\\.debezium_signal\\.extra")
+                .with(CommonConnectorConfig.SIGNAL_DATA_COLLECTION, "testdb.s1.debezium_signal")
+                .build();
+        final RelationalDatabaseConnectorConfig connectorConfig = new TestRelationalDatabaseConfig(config, null, null, 0);
+        final Tables.ColumnNameFilter original = connectorConfig.getColumnFilter();
+
+        final Tables.ColumnNameFilter filter = RelationalDatabaseSchema.overrideColumnFilter(connectorConfig, original);
+        assertThat(filter).isSameAs(original);
+        // The user's exclusion of the extra signal column is preserved.
+        assertThat(filter.matches("testdb", "s1", "debezium_signal", "extra")).isFalse();
+        assertThat(filter.matches("testdb", "s1", "debezium_signal", "id")).isTrue();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2280")
+    public void shouldNotAlterColumnFilterWhenNoSignalDataCollectionConfigured() {
+        final Configuration config = Configuration.create()
+                .with(RelationalDatabaseConnectorConfig.COLUMN_INCLUDE_LIST, "s1\\.customers\\.id")
+                .build();
+        final RelationalDatabaseConnectorConfig connectorConfig = new TestRelationalDatabaseConfig(config, null, null, 0);
+        final Tables.ColumnNameFilter original = connectorConfig.getColumnFilter();
+
+        // With no signal.data.collection configured, the column filter is returned unchanged.
+        assertThat(RelationalDatabaseSchema.overrideColumnFilter(connectorConfig, original)).isSameAs(original);
     }
 }
