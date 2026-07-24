@@ -22,7 +22,8 @@ public interface SinkProgressListener {
      * Invoked when records are routed to the errant record reporter (dead letter queue)
      * instead of being written to the target system.
      */
-    void errantRecordsReported(long count);
+    default void errantRecordsReported(long count) {
+    }
 
     void tableCreated();
 
@@ -45,10 +46,6 @@ public interface SinkProgressListener {
 
             @Override
             public void filtered() {
-            }
-
-            @Override
-            public void errantRecordsReported(long count) {
             }
 
             @Override
