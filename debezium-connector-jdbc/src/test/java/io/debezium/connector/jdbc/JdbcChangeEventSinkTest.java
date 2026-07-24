@@ -100,6 +100,7 @@ class JdbcChangeEventSinkTest {
 
         when(dialect.getVersion()).thenReturn(DatabaseVersion.make(1));
         when(dialect.getCommunicationExceptions()).thenReturn(Set.of(SQLRecoverableException.class));
+        doCallRealMethod().when(dialect).isCommunicationException(any());
 
         final JdbcChangeEventSink sink = new JdbcChangeEventSink(config, session, dialect, recordWriter, connectorContext,
                 mock(SinkProgressListener.class), ErrorReporters.nop());

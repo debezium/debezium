@@ -250,15 +250,7 @@ public class DefaultRecordWriter implements RecordWriter {
     }
 
     private boolean isRetriable(Throwable throwable) {
-        if (throwable == null) {
-            return false;
-        }
-        for (Class<? extends Exception> e : dialect.getCommunicationExceptions()) {
-            if (e.isAssignableFrom(throwable.getClass())) {
-                return true;
-            }
-        }
-        return isRetriable(throwable.getCause());
+        return dialect.isCommunicationException(throwable);
     }
 
     // Retries the callable operation based on the configured retry settings.
