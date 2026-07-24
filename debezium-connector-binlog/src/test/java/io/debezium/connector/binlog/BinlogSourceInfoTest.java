@@ -583,11 +583,16 @@ public abstract class BinlogSourceInfoTest<S extends BinlogSourceInfo, O extends
     }
 
     @Test
-    void shouldNotComparePositionsWithDifferentFilenameFormats() {
-        assertThrows(IllegalArgumentException.class, () -> {
-            Document history = positionWithoutGtids("mysql-bin.000001", 1, 0, 0);
-            assertThatDocument(history).isAtOrBefore(positionWithoutGtids("mysql-binlog-filename.000001", 1, 0, 0));
-        });
+    @FixFor("debezium/dbz#75")
+    void shouldNotFailWhenComparingPositionsWithDifferentBaseNames() {
+        // A changed binlog base name (e.g. after a restore, failover, or a log_bin_basename change) is a
+        // valid situation, not an error. The numeric extensions then belong to unrelated coordinate spaces,
+        // so instead of throwing the recorded position is treated as at-or-before the desired one and its
+        // DDL is applied during schema history recovery.
+        assertThatDocument(positionWithoutGtids("mysql-bin.000010", 100, 0, 0))
+                .isAtOrBefore(positionWithoutGtids("binlog.000002", 200, 0, 0));
+        assertThatDocument(positionWithoutGtids("binlog.000002", 200, 0, 0))
+                .isAtOrBefore(positionWithoutGtids("mysql-bin.000010", 100, 0, 0));
     }
 
     @Test
