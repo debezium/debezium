@@ -237,4 +237,11 @@ public abstract class AbstractJdbcSinkTest extends AbstractBaseJdbcSinkTest {
         return -1;
     }
 
+    protected int getTotalRecordsReported() {
+        if (sinkTask instanceof JdbcSinkConnectorTask jdbcTask && jdbcTask.getChangeEventSink() != null) {
+            return jdbcTask.getChangeEventSink().getTotalRecordsReported();
+        }
+        return -1;
+    }
+
 }
