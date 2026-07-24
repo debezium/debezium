@@ -111,6 +111,34 @@ public abstract class BinlogTinyIntIT<C extends SourceConnector> extends Abstrac
     }
 
     @Test
+    @FixFor("debezium/dbz#2260")
+    public void shouldHandleNegativeTinyIntOneAsTrue() throws SQLException, InterruptedException {
+        // Use the DB configuration to define the connector's configuration ...
+        config = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.INITIAL)
+                .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("DBZ1773"))
+                .with(BinlogConnectorConfig.CUSTOM_CONVERTERS, "boolean")
+                .with("boolean.type", TinyIntOneToBooleanConverter.class.getName())
+                .with("boolean.selector", ".*DBZ1773.b")
+                .build();
+
+        // Start the connector ...
+        start(getConnectorClass(), config);
+
+        consumeInitial();
+
+        assertBooleanChangeRecord();
+
+        // MySQL considers any nonzero value true, e.g. "SELECT -1 IS TRUE" returns 1
+        try (Connection conn = getTestDatabaseConnection(DATABASE.getDatabaseName()).connection()) {
+            conn.createStatement().execute("INSERT INTO DBZ1773 VALUES (DEFAULT, 100, 5, 50, -1)");
+        }
+        assertBooleanChangeRecord();
+
+        stopConnector();
+    }
+
+    @Test
     @FixFor("DBZ-2085")
     public void shouldDefaultValueForTinyIntOneAsBoolean() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
