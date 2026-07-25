@@ -240,7 +240,7 @@ public abstract class AbstractJdbcSinkIT {
                 sourceConfig.with("database.include.list", "test");
                 sourceConfig.with("table.include.list", "test." + tableName);
                 sourceConfig.with("schema.history.internal.kafka.bootstrap.servers", source.getKafka().getNetworkBootstrapServers());
-                sourceConfig.with("schema.history.internal.kafka.topic", "schema-history-mysql");
+                sourceConfig.with("schema.history.internal.kafka.topic", "schema-history-" + source.getSourceConnectorName());
                 sourceConfig.with("schema.history.internal.store.only.captured.tables.ddl", "true");
                 if (TestHelper.isConnectionTimeZoneUsed()) {
                     sourceConfig.with("driver.connectionTimeZone", TestHelper.getSourceTimeZone());
@@ -269,7 +269,7 @@ public abstract class AbstractJdbcSinkIT {
                 sourceConfig.with("database.names", "testDB");
                 sourceConfig.with("driver.encrypt", "false");
                 sourceConfig.with("schema.history.internal.kafka.bootstrap.servers", source.getKafka().getNetworkBootstrapServers());
-                sourceConfig.with("schema.history.internal.kafka.topic", "schema-history-sqlserver");
+                sourceConfig.with("schema.history.internal.kafka.topic", "schema-history-" + source.getSourceConnectorName());
                 sourceConfig.with("schema.history.internal.store.only.captured.tables.ddl", "true");
                 sourceConfig.with("table.include.list", "dbo." + tableName);
                 if (source.getOptions().isColumnTypePropagated()) {
@@ -286,7 +286,7 @@ public abstract class AbstractJdbcSinkIT {
                 sourceConfig.with("table.include.list", "debezium." + tableName);
                 sourceConfig.with("log.mining.strategy", "online_catalog");
                 sourceConfig.with("schema.history.internal.kafka.bootstrap.servers", source.getKafka().getNetworkBootstrapServers());
-                sourceConfig.with("schema.history.internal.kafka.topic", "schema-history-oracle");
+                sourceConfig.with("schema.history.internal.kafka.topic", "schema-history-" + source.getSourceConnectorName());
                 sourceConfig.with("schema.history.internal.store.only.captured.tables.ddl", "true");
                 if (source.getOptions().isColumnTypePropagated()) {
                     sourceConfig.with("column.propagate.source.type", "debezium.*");
