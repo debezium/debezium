@@ -117,7 +117,7 @@ public abstract class AbstractJdbcSinkDeleteEnabledTest extends AbstractJdbcSink
 
     @ParameterizedTest
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
-    @FixFor("DBZ-9583")
+    @FixFor("debezium/dbz#1421")
     public void testShouldDeleteRowWhenDeletesEnabledUsingRecordValuePrimaryKeyMode(SinkRecordFactory factory) {
         // A flattened delete event carries no value, so the primary key can only be
         // resolved from the record value for a full change event.
@@ -151,7 +151,7 @@ public abstract class AbstractJdbcSinkDeleteEnabledTest extends AbstractJdbcSink
 
     @ParameterizedTest
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
-    @FixFor("DBZ-9583")
+    @FixFor("debezium/dbz#1421")
     public void testShouldDeleteRowWhenDeletesEnabledUsingRecordHeaderPrimaryKeyMode(SinkRecordFactory factory) {
         final Map<String, String> properties = getDefaultSinkConfig();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
