@@ -97,6 +97,16 @@ public abstract class AbstractChangeEventSink implements ChangeEventSink {
                 }
             }
 
+            if (record.isTombstone()) {
+                switch (config.getPrimaryKeyMode()) {
+                    case RECORD_VALUE:
+                    case RECORD_HEADER: {
+                        LOGGER.debug("Tombstone skipped because primary.key.mode is {}.", config.getPrimaryKeyMode());
+                        continue;
+                    }
+                }
+            }
+
             buffer.enqueue(collectionId, record);
         }
 
