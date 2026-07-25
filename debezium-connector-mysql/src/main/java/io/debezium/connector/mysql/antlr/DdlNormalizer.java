@@ -14,6 +14,10 @@ import java.util.regex.Pattern;
  * but MySQL's default mode allows double quotes for strings. This normalizer
  * transforms DDL before parsing to support both modes.
  *
+ * When the server is running with {@code sql_mode=ANSI_QUOTES}, double-quoted
+ * text represents identifiers and must not be converted. In that case, callers
+ * should pass {@code ansiQuotesMode=true} to skip the conversion.
+ *
  * Also adds backticks around reserved keywords when used as identifiers.
  *
  * @author Debezium Authors
@@ -48,13 +52,28 @@ public class DdlNormalizer {
     /**
      * Normalizes MySQL DDL by converting double-quoted strings to single-quoted strings
      * while preserving backtick-quoted identifiers, and adding backticks around reserved
-     * keywords when used as identifiers.
+     * keywords when used as identifiers. Assumes the server is NOT in ANSI_QUOTES mode.
      *
      * @param ddlContent The DDL statement to normalize
      * @return Normalized DDL with double-quoted strings converted to single quotes
      *         and reserved keywords backtick-quoted, or the original input if null or empty
      */
     public static String normalize(String ddlContent) {
+        return normalize(ddlContent, false);
+    }
+
+    /**
+     * Normalizes MySQL DDL by adding backticks around reserved keywords when used as
+     * identifiers. When {@code ansiQuotesMode} is false, also converts double-quoted
+     * strings to single-quoted strings (for servers using the default sql_mode where
+     * double quotes delimit string literals). When {@code ansiQuotesMode} is true,
+     * double-quoted text is left as-is because it represents identifiers.
+     *
+     * @param ddlContent The DDL statement to normalize
+     * @param ansiQuotesMode true if the server's sql_mode includes ANSI_QUOTES
+     * @return Normalized DDL, or the original input if null or empty
+     */
+    public static String normalize(String ddlContent, boolean ansiQuotesMode) {
         if (ddlContent == null || ddlContent.isEmpty()) {
             return ddlContent;
         }
@@ -66,6 +85,9 @@ public class DdlNormalizer {
         while (matcher.find()) {
             normalized.append(addBackticksToReservedKeywords(ddlContent.substring(lastEnd, matcher.start())));
             if (isComment(matcher) || isSingleQuotedString(matcher) || isBacktickIdentifier(matcher)) {
+                preserveOriginal(matcher, normalized);
+            }
+            else if (ansiQuotesMode) {
                 preserveOriginal(matcher, normalized);
             }
             else {

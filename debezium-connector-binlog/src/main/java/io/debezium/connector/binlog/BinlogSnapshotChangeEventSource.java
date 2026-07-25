@@ -41,6 +41,7 @@ import io.debezium.DebeziumException;
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
 import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection.DatabaseLocales;
+import io.debezium.connector.binlog.jdbc.BinlogSystemVariables;
 import io.debezium.connector.binlog.metrics.BinlogSnapshotChangeEventSourceMetrics;
 import io.debezium.data.Envelope;
 import io.debezium.function.BlockingConsumer;
@@ -315,6 +316,8 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
         if (!snapshottingTask.isOnDemand()) {
             // Record default charset
             addSchemaEvent(snapshotContext, "", connection.setStatementFor(connection.readCharsetSystemVariables()));
+            // Set sql_mode directly so DDL parser knows whether ANSI_QUOTES is active
+            databaseSchema.setSystemVariables(BinlogSystemVariables.BinlogScope.GLOBAL, connection.readSqlModeSystemVariable());
         }
 
         for (TableId tableId : capturedSchemaTables) {

@@ -335,4 +335,63 @@ public class DdlNormalizerTest {
         String expected = "CREATE TABLE `RANK` (c VARCHAR(20) DEFAULT 'FROM RANK', `RANK` INT COMMENT 'RANK: n')";
         assertThat(DdlNormalizer.normalize(input)).isEqualTo(expected);
     }
+
+    @DisplayName("Given ANSI_QUOTES mode and double-quoted identifiers When normalize Then identifiers are preserved")
+    @Test
+    @FixFor("debezium/dbz#2291")
+    public void testAnsiQuotesModePreservesDoubleQuotedIdentifiers() {
+        String input = "CREATE TABLE \"customers\" (\"id\" int NOT NULL AUTO_INCREMENT, PRIMARY KEY (\"id\"))";
+        assertThat(DdlNormalizer.normalize(input, true)).isEqualTo(input);
+    }
+
+    @DisplayName("Given ANSI_QUOTES mode and full CREATE TABLE with double-quoted identifiers When normalize Then identifiers are preserved")
+    @Test
+    @FixFor("debezium/dbz#2291")
+    public void testAnsiQuotesModeFullCreateTable() {
+        String input = "CREATE TABLE \"addresses\" (\n" +
+                "  \"id\" int NOT NULL AUTO_INCREMENT,\n" +
+                "  \"customer_id\" int NOT NULL,\n" +
+                "  \"street\" varchar(255) NOT NULL,\n" +
+                "  \"city\" varchar(255) NOT NULL,\n" +
+                "  \"type\" enum('SHIPPING','BILLING','LIVING') NOT NULL,\n" +
+                "  PRIMARY KEY (\"id\"),\n" +
+                "  KEY \"address_customer\" (\"customer_id\"),\n" +
+                "  CONSTRAINT \"addresses_ibfk_1\" FOREIGN KEY (\"customer_id\") REFERENCES \"customers\" (\"id\")\n" +
+                ") ENGINE=InnoDB AUTO_INCREMENT=17 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci";
+        assertThat(DdlNormalizer.normalize(input, true)).isEqualTo(input);
+    }
+
+    @DisplayName("Given ANSI_QUOTES mode and ALTER TABLE with double-quoted identifiers When normalize Then identifiers are preserved")
+    @Test
+    @FixFor("debezium/dbz#2291")
+    public void testAnsiQuotesModeAlterTable() {
+        String input = "ALTER TABLE inventory.\"customers\" ADD COLUMN \"middle_name\" varchar(255) NULL";
+        assertThat(DdlNormalizer.normalize(input, true)).isEqualTo(input);
+    }
+
+    @DisplayName("Given ANSI_QUOTES mode with single-quoted strings When normalize Then strings are preserved")
+    @Test
+    @FixFor("debezium/dbz#2291")
+    public void testAnsiQuotesModeSingleQuotedStrings() {
+        String input = "CREATE TABLE \"t\" (\"col\" VARCHAR(10) DEFAULT 'hello')";
+        assertThat(DdlNormalizer.normalize(input, true)).isEqualTo(input);
+    }
+
+    @DisplayName("Given default mode (not ANSI_QUOTES) When normalize Then double-quoted strings are still converted")
+    @Test
+    @FixFor("debezium/dbz#2291")
+    public void testDefaultModeStillConvertsDoubleQuotes() {
+        String input = "CREATE TABLE t (col ENUM(\"a\", \"b\", \"c\"))";
+        String expected = "CREATE TABLE t (col ENUM('a', 'b', 'c'))";
+        assertThat(DdlNormalizer.normalize(input, false)).isEqualTo(expected);
+    }
+
+    @DisplayName("Given ANSI_QUOTES mode with reserved keywords When normalize Then keywords still get backticks")
+    @Test
+    @FixFor("debezium/dbz#2291")
+    public void testAnsiQuotesModeReservedKeywordsStillBackticked() {
+        String input = "CREATE TABLE RANK (\"id\" INT, \"name\" VARCHAR(50))";
+        String expected = "CREATE TABLE `RANK` (\"id\" INT, \"name\" VARCHAR(50))";
+        assertThat(DdlNormalizer.normalize(input, true)).isEqualTo(expected);
+    }
 }

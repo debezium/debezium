@@ -47,6 +47,7 @@ public abstract class BinlogConnectorConnection extends JdbcConnection {
 
     private static final String SQL_SHOW_SYSTEM_VARIABLES = "SHOW VARIABLES";
     private static final String SQL_SHOW_SYSTEM_VARIABLES_CHARACTER_SET = "SHOW VARIABLES WHERE Variable_name IN ('character_set_server','collation_server')";
+    private static final String SQL_SHOW_SYSTEM_VARIABLES_SQL_MODE = "SHOW VARIABLES WHERE Variable_name = 'sql_mode'";
     private static final String SQL_SHOW_SESSION_VARIABLE_SSL_VERSION = "SHOW SESSION STATUS LIKE 'Ssl_version'";
     private static final String QUOTED_CHARACTER = "`";
     public static final String MASTER_STATUS_STATEMENT = "SHOW MASTER STATUS";
@@ -246,6 +247,16 @@ public abstract class BinlogConnectorConnection extends JdbcConnection {
         // Read the system variables from the MySQL instance and get the current database name ...
         LOGGER.debug("Reading charset-related system variables before parsing DDL history.");
         return querySystemVariables(SQL_SHOW_SYSTEM_VARIABLES_CHARACTER_SET);
+    }
+
+    /**
+     * Read the sql_mode system variable from the server.
+     *
+     * @return a map containing the sql_mode variable; never null
+     */
+    public Map<String, String> readSqlModeSystemVariable() {
+        LOGGER.debug("Reading sql_mode system variable before parsing DDL history.");
+        return querySystemVariables(SQL_SHOW_SYSTEM_VARIABLES_SQL_MODE);
     }
 
     /**
