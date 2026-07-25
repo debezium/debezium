@@ -10,6 +10,7 @@ import java.sql.Types;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
@@ -25,6 +26,8 @@ import io.debezium.antlr.AntlrDdlParser;
 import io.debezium.antlr.AntlrDdlParserListener;
 import io.debezium.antlr.DataTypeResolver;
 import io.debezium.antlr.DataTypeResolver.DataTypeEntry;
+import io.debezium.antlr.mysql.SqlMode;
+import io.debezium.antlr.mysql.SqlModes;
 import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
 import io.debezium.connector.binlog.jdbc.BinlogSystemVariables;
 import io.debezium.connector.mysql.antlr.listener.MySqlAntlrDdlParserListener;
@@ -126,9 +129,17 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
 
     @Override
     public DdlChanges parse(String ddlContent, Tables databaseTables) {
-        // Normalize double-quoted strings to support MySQL default mode in ANSI_QUOTES parser
-        String normalizedDdl = DdlNormalizer.normalize(ddlContent);
+        String normalizedDdl = DdlNormalizer.normalize(ddlContent, isAnsiQuotesMode());
         return super.parse(normalizedDdl, databaseTables);
+    }
+
+    private boolean isAnsiQuotesMode() {
+        String sqlMode = systemVariables.getVariable("sql_mode");
+        if (sqlMode == null || sqlMode.isEmpty()) {
+            return false;
+        }
+        Set<SqlMode> modes = SqlModes.sqlModeFromString(sqlMode);
+        return modes.contains(SqlMode.AnsiQuotes);
     }
 
     @Override

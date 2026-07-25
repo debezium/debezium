@@ -247,4 +247,102 @@ public class MySqlAntlrDdlParserTest
             this.ddlChanges = changesListener;
         }
     }
+
+    @Test
+    @FixFor("debezium/dbz#2291")
+    public void shouldParseCreateTableWithAnsiQuotesMode() {
+        parser.parse("SET sql_mode='ANSI_QUOTES'", tables);
+        String ddl = "CREATE TABLE \"customers\" (\n" +
+                "  \"id\" int NOT NULL AUTO_INCREMENT,\n" +
+                "  \"first_name\" varchar(255) NOT NULL,\n" +
+                "  \"last_name\" varchar(255) NOT NULL,\n" +
+                "  \"email\" varchar(255) NOT NULL,\n" +
+                "  PRIMARY KEY (\"id\"),\n" +
+                "  UNIQUE KEY \"email\" (\"email\")\n" +
+                ") ENGINE=InnoDB AUTO_INCREMENT=1005 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci";
+        parser.parse(ddl, tables);
+        assertThat(parser.getParsingExceptionsFromWalker()).isEmpty();
+
+        Table table = tables.forTable(null, null, "customers");
+        assertThat(table).isNotNull();
+        assertThat(table.columns()).hasSize(4);
+        assertThat(table.columnWithName("id")).isNotNull();
+        assertThat(table.columnWithName("first_name")).isNotNull();
+        assertThat(table.columnWithName("last_name")).isNotNull();
+        assertThat(table.columnWithName("email")).isNotNull();
+        assertThat(table.primaryKeyColumnNames()).containsExactly("id");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2291")
+    public void shouldParseAlterTableWithAnsiQuotesMode() {
+        parser.parse("SET sql_mode='ANSI_QUOTES'", tables);
+        parser.parse("CREATE TABLE \"customers\" (\n" +
+                "  \"id\" int NOT NULL AUTO_INCREMENT,\n" +
+                "  \"first_name\" varchar(255) NOT NULL,\n" +
+                "  PRIMARY KEY (\"id\")\n" +
+                ") ENGINE=InnoDB", tables);
+        parser.parse("ALTER TABLE \"customers\" ADD COLUMN \"middle_name\" varchar(255) NULL", tables);
+        assertThat(parser.getParsingExceptionsFromWalker()).isEmpty();
+
+        Table table = tables.forTable(null, null, "customers");
+        assertThat(table).isNotNull();
+        assertThat(table.columns()).hasSize(3);
+        assertThat(table.columnWithName("middle_name")).isNotNull();
+        assertThat(table.columnWithName("middle_name").isOptional()).isTrue();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2291")
+    public void shouldParseCreateTableWithAnsiQuotesModeAndFullSqlMode() {
+        parser.parse("SET sql_mode='ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE," +
+                "ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION,ANSI_QUOTES'", tables);
+        String ddl = "CREATE TABLE \"addresses\" (\n" +
+                "  \"id\" int NOT NULL AUTO_INCREMENT,\n" +
+                "  \"customer_id\" int NOT NULL,\n" +
+                "  \"street\" varchar(255) NOT NULL,\n" +
+                "  \"city\" varchar(255) NOT NULL,\n" +
+                "  \"state\" varchar(255) NOT NULL,\n" +
+                "  \"zip\" varchar(255) NOT NULL,\n" +
+                "  \"type\" enum('SHIPPING','BILLING','LIVING') NOT NULL,\n" +
+                "  PRIMARY KEY (\"id\"),\n" +
+                "  KEY \"address_customer\" (\"customer_id\"),\n" +
+                "  CONSTRAINT \"addresses_ibfk_1\" FOREIGN KEY (\"customer_id\") REFERENCES \"customers\" (\"id\")\n" +
+                ") ENGINE=InnoDB AUTO_INCREMENT=17 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci";
+        parser.parse(ddl, tables);
+        assertThat(parser.getParsingExceptionsFromWalker()).isEmpty();
+
+        Table table = tables.forTable(null, null, "addresses");
+        assertThat(table).isNotNull();
+        assertThat(table.columns()).hasSize(7);
+        assertThat(table.columnWithName("type")).isNotNull();
+        assertThat(table.columnWithName("type").typeName()).isEqualTo("ENUM");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2291")
+    public void shouldParseCreateTableWithDefaultModeDoubleQuotedStrings() {
+        String ddl = "CREATE TABLE t (\n" +
+                "  col1 ENUM(\"a\", \"b\", \"c\"),\n" +
+                "  col2 VARCHAR(10) DEFAULT \"test\"\n" +
+                ")";
+        parser.parse(ddl, tables);
+        assertThat(parser.getParsingExceptionsFromWalker()).isEmpty();
+
+        Table table = tables.forTable(null, null, "t");
+        assertThat(table).isNotNull();
+        assertThat(table.columns()).hasSize(2);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2291")
+    public void shouldParseSchemaQualifiedAlterTableWithAnsiQuotesMode() {
+        parser.parse("SET sql_mode='ANSI_QUOTES'", tables);
+        parser.parse("CREATE TABLE \"customers\" (\n" +
+                "  \"id\" int NOT NULL AUTO_INCREMENT,\n" +
+                "  PRIMARY KEY (\"id\")\n" +
+                ") ENGINE=InnoDB", tables);
+        parser.parse("ALTER TABLE inventory.\"customers\" ADD COLUMN \"middle_name\" varchar(255) NULL", tables);
+        assertThat(parser.getParsingExceptionsFromWalker()).isEmpty();
+    }
 }
