@@ -133,6 +133,17 @@ public class JdbcChangeEventSink extends AbstractChangeEventSink implements Chan
                     continue;
                 }
 
+                if (record.isTombstone()) {
+                    switch (config.getPrimaryKeyMode()) {
+                        case RECORD_VALUE:
+                        case RECORD_HEADER: {
+                            LOGGER.debug("Tombstone skipped because primary.key.mode is {}.", config.getPrimaryKeyMode());
+                            progressListener.filtered();
+                            continue;
+                        }
+                    }
+                }
+
                 final Buffer upsertBufferToFlush = upsertBufferByTable.get(collectionId);
                 if (upsertBufferToFlush != null && !upsertBufferToFlush.isEmpty()) {
                     // When a delete event arrives, update buffer must be flushed to avoid losing the delete
