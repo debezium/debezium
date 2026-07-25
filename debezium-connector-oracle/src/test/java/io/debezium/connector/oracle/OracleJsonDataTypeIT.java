@@ -20,6 +20,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
@@ -41,6 +42,7 @@ import oracle.jdbc.OracleType;
  * @author Chris Cranford
  */
 @SkipWhenDatabaseVersion(check = EqualityCheck.LESS_THAN, major = 21, minor = 0, reason = "JSON was added in Oracle 21+")
+@SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER, reason = "OLR/XStream don't support JSON")
 public class OracleJsonDataTypeIT extends AbstractAsyncEngineConnectorTest {
 
     private OracleConnection connection;
