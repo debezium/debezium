@@ -119,20 +119,17 @@ public class LogFileCollector {
      * @throws SQLException if there is a database failure during the collection
      */
     public boolean isScnInArchiveLogs(Scn scn) throws SQLException {
-        try {
-            final List<LogFile> allLogs = getLogs(scn).logFiles();
-            final Map<Integer, List<LogFile>> threadLogs = allLogs.stream()
-                    .collect(Collectors.groupingBy(LogFile::getThread));
+        final Map<Integer, List<LogFile>> threadLogs = getLogsForOffsetScn(scn).stream()
+                .filter(LogFile::isArchive)
+                .collect(Collectors.groupingBy(LogFile::getThread));
 
-            return threadLogs.entrySet().stream()
-                    .allMatch(e -> e.getValue().stream()
-                            .filter(LogFile::isCurrent)
-                            .allMatch(log -> log.getFirstScn().compareTo(scn) > 0));
-        }
-        catch (LogFileNotFoundException e) {
-            // It is safe to ignore this because we used consistency checks
+        if (threadLogs.isEmpty()) {
             return false;
         }
+
+        return threadLogs.values().stream()
+                .allMatch(logs -> logs.stream()
+                        .anyMatch(log -> log.isScnInLogFileRange(scn)));
     }
 
     @VisibleForTesting
