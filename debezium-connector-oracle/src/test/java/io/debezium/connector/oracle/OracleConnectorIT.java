@@ -2665,11 +2665,13 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    @FixFor({ "DBZ-3712", "DBZ-4879" })
+    @FixFor({ "DBZ-3712", "DBZ-4879", "debezium/dbz#2296" })
     @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER, reason = "Tests archive log support for LogMiner only")
     public void shouldStartWithArchiveLogOnlyModeAndStreamWhenRecordsBecomeAvailable() throws Exception {
         TestHelper.dropTable(connection, "dbz3712");
         try {
+            final LogInterceptor logInterceptor = TestHelper.getAbstractEventProcessorLogInterceptor();
+
             connection.execute("CREATE TABLE dbz3712 (id number(9,0), data varchar2(50))");
             TestHelper.streamTable(connection, "dbz3712");
 
@@ -2688,10 +2690,16 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
             waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
             assertNoRecordsToConsume();
 
+            Awaitility.await().atMost(Duration.ofMinutes(1))
+                    .until(() -> logInterceptor.containsMessage("is not yet in archive logs, waiting for log switch."));
+
             // We will insert a new record but this record won't be emitted right away and will
             // require that a log switch happen so that it can be emitted.
             connection.execute("INSERT INTO dbz3712 (id,data) values (1, 'Test')");
             waitForLogSwitchOrForceOneAfterTimeout();
+
+            Awaitility.await().atMost(Duration.ofMinutes(1))
+                    .until(() -> logInterceptor.containsMessage("is now available in archive logs, log mining session resumed."));
 
             // We should now be able to consume a record
             SourceRecords records = consumeRecordsByTopic(1);
