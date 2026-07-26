@@ -110,10 +110,9 @@ public class SnapshotChunkQueryBuilder {
     /**
      * Prepare a statement and bind chunk boundary parameters.
      */
-    public PreparedStatement prepareChunkStatement(SnapshotChunk chunk, List<Column> keyColumns, String sql) throws SQLException {
-        final PreparedStatement statement = jdbcConnection.connection().prepareStatement(sql);
+    public void prepareChunkStatement(PreparedStatement statement, SnapshotChunk chunk, List<Column> keyColumns) throws SQLException {
         if (!chunk.hasLowerBound() && !chunk.hasUpperBound()) {
-            return statement;
+            return;
         }
         int paramIndex = 1;
 
@@ -128,8 +127,6 @@ public class SnapshotChunkQueryBuilder {
             connectionChunkQueryBuilder.bindBoundaryParams(
                     statement, keyColumns, chunk.getUpperBounds(), paramIndex, jdbcConnection);
         }
-
-        return statement;
     }
 
 }

@@ -996,45 +996,48 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         final String chunkQuery = queryBuilder.buildChunkQuery(chunk, keyColumns, chunk.getBaseSelectStatement());
         final Instant sourceTableSnapshotTimestamp = getSnapshotSourceTimestamp(jdbcConnection, offset, tableId);
 
-        try (PreparedStatement statement = queryBuilder.prepareChunkStatement(chunk, keyColumns, chunkQuery);
-                ResultSet rs = statement.executeQuery()) {
+        try (PreparedStatement statement = jdbcConnection.connection().prepareStatement(chunkQuery)) {
 
-            final ColumnUtils.ColumnArray columnArray = ColumnUtils.toArray(rs, table);
+            queryBuilder.prepareChunkStatement(statement, chunk, keyColumns);
             long rows = 0;
             Timer logTimer = getTableScanLogTimer();
-            boolean hasNext = rs.next();
 
-            if (hasNext) {
-                while (hasNext) {
-                    if (!sourceContext.isRunning()) {
-                        throw new InterruptedException("Interrupted while snapshotting chunk " + chunk.getChunkId());
+            try (ResultSet rs = statement.executeQuery()) {
+                final ColumnUtils.ColumnArray columnArray = ColumnUtils.toArray(rs, table);
+                boolean hasNext = rs.next();
+
+                if (hasNext) {
+                    while (hasNext) {
+                        if (!sourceContext.isRunning()) {
+                            throw new InterruptedException("Interrupted while snapshotting chunk " + chunk.getChunkId());
+                        }
+
+                        rows++;
+                        final Object[] row = jdbcConnection.rowToArray(table, rs, columnArray);
+
+                        if (logTimer.expired()) {
+                            exportTimer.stop();
+                            LOGGER.info("\t Chunk {}: Exported {} records for table '{}' after {}",
+                                    chunk.getChunkIndex() + 1, rows, tableId,
+                                    Strings.duration(exportTimer.durations().statistics().getTotal().toMillis()));
+                            exportTimer.start();
+                            logTimer = getTableScanLogTimer();
+                        }
+
+                        hasNext = rs.next();
+
+                        final boolean isFirstRecord = (rows == 1);
+                        final boolean isLastRecord = !hasNext;
+
+                        // Coordinate emission based on marker type
+                        emitRecordWithCoordination(snapshotContext, offset, snapshotReceiver, chunk, progress,
+                                snapshotProgress, tableId, row, sourceTableSnapshotTimestamp, isFirstRecord, isLastRecord);
                     }
-
-                    rows++;
-                    final Object[] row = jdbcConnection.rowToArray(table, rs, columnArray);
-
-                    if (logTimer.expired()) {
-                        exportTimer.stop();
-                        LOGGER.info("\t Chunk {}: Exported {} records for table '{}' after {}",
-                                chunk.getChunkIndex() + 1, rows, tableId,
-                                Strings.duration(exportTimer.durations().statistics().getTotal().toMillis()));
-                        exportTimer.start();
-                        logTimer = getTableScanLogTimer();
-                    }
-
-                    hasNext = rs.next();
-
-                    final boolean isFirstRecord = (rows == 1);
-                    final boolean isLastRecord = !hasNext;
-
-                    // Coordinate emission based on marker type
-                    emitRecordWithCoordination(snapshotContext, offset, snapshotReceiver, chunk, progress,
-                            snapshotProgress, tableId, row, sourceTableSnapshotTimestamp, isFirstRecord, isLastRecord);
                 }
-            }
-            else {
-                // Empty chunk - handle coordination for empty first/last chunks
-                handleEmptyChunkCoordination(chunk, progress, snapshotProgress);
+                else {
+                    // Empty chunk - handle coordination for empty first/last chunks
+                    handleEmptyChunkCoordination(chunk, progress, snapshotProgress);
+                }
             }
 
             // Update progress
