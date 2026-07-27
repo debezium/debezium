@@ -204,11 +204,17 @@ public class OlrNetworkClient {
      * OpenLogReplicator only sends what follows a confirmed position. The server is instead allowed
      * to release these once the connector confirms a position it has emitted from.
      *
+     * <p>Discarding changes one at a time is only correct because this runs before the connector
+     * has emitted anything. A change is only advanced over once it has been dispatched, and doing
+     * so records an index within its commit block, so an offset written by a connector that emitted
+     * a change always carries that index. Streaming is then continued from the block rather than
+     * advanced to a start position, and the transaction is replayed. A connector that stopped part
+     * way through a transaction therefore never reaches this method.
+     *
      * @param event the event that was read from the change stream, never {@code null}
      * @return {@code true} if the event should be emitted, {@code false} if it should be skipped
      */
     private boolean isStartScnReached(StreamingEvent event) {
-        // todo: what if we restart mid-transaction?
         if (event.getScn().compareTo(startScn) < 0) {
             LOGGER.trace("Skipped event at SCN {}, has not yet reached start SCN {}: {}", event.getScn(), startScn, event);
             if (!notifiedSkip) {
