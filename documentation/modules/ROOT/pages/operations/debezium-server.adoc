@@ -2409,6 +2409,139 @@ The connector provides the following features:
 |===
 
 
+==== Databricks Zerobus Ingest
+
+https://docs.databricks.com/aws/en/ingestion/zerobus[Databricks Zerobus Ingest] is a serverless, push-based ingestion service that writes records directly into Unity-Catalog-managed Delta tables, without an intermediate message broker.
+The sink authenticates with a Databricks service principal using OAuth and streams each change event to the managed Delta table whose name matches the event's destination (topic).
+
+The sink supports two delivery routes, selected by `debezium.sink.type`:
+
+* `zerobus` &mdash; uses the Databricks Zerobus Java SDK over gRPC (recommended);
+* `zerobusrest` &mdash; uses the Zerobus REST API, one HTTP request per record, for environments without a persistent connection.
+
+A third option is to reuse the built-in `kafka` sink against the Zerobus Kafka-compatible endpoint; see the `ZerobusOAuthBearerLoginCallbackHandler` shipped in this module for the required `OAUTHBEARER` login handler.
+
+Because Zerobus accepts only JSON objects that match the target table schema, configure {prodname} to emit flat JSON (`ExtractNewRecordState` with `schemas.enable=false`).
+Delivery is at-least-once, so deduplicate downstream (for example, using the source LSN carried in the record).
+The target table must be a Unity-Catalog-managed Delta table in the same region as the workspace, without Change Data Feed or column mapping, and the service principal needs `USE CATALOG`, `USE SCHEMA`, `SELECT` and `MODIFY` on it.
+
+===== gRPC route (`zerobus`)
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[zerobus-type]]<<zerobus-type, `debezium.sink.type`>>
+|
+|Must be set to `zerobus`.
+
+|[[zerobus-endpoint]]<<zerobus-endpoint, `debezium.sink.zerobus.endpoint`>>
+|
+|The Zerobus gRPC endpoint, for example `<workspace-id>.zerobus.<region>.cloud.databricks.com` (AWS) or `<workspace-id>.zerobus.<region>.azuredatabricks.net` (Azure).
+
+|[[zerobus-workspace-url]]<<zerobus-workspace-url, `debezium.sink.zerobus.workspace.url`>>
+|
+|The Databricks workspace URL, for example `https://dbc-xxxx.cloud.databricks.com`.
+
+|[[zerobus-client-id]]<<zerobus-client-id, `debezium.sink.zerobus.client.id`>>
+|
+|The OAuth client id (service principal application id).
+
+|[[zerobus-client-secret]]<<zerobus-client-secret, `debezium.sink.zerobus.client.secret`>>
+|
+|The OAuth client secret for the service principal.
+
+|[[zerobus-table]]<<zerobus-table, `debezium.sink.zerobus.table`>>
+|
+|(Optional) A fully-qualified default target table (`catalog.schema.table`). When set, all events are written to this table; otherwise the mapped destination (topic) name is used as the fully-qualified table name.
+
+|[[zerobus-max-inflight]]<<zerobus-max-inflight, `debezium.sink.zerobus.max.inflight.records`>>
+|`50000`
+|Maximum number of un-acknowledged records per stream.
+
+|===
+
+===== REST route (`zerobusrest`)
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[zerobusrest-type]]<<zerobusrest-type, `debezium.sink.type`>>
+|
+|Must be set to `zerobusrest`.
+
+|[[zerobusrest-uri]]<<zerobusrest-uri, `debezium.sink.zerobusrest.uri`>>
+|
+|The Zerobus REST base URI, for example `https://<workspace-id>.zerobus.<region>.cloud.databricks.com`.
+
+|[[zerobusrest-workspace-url]]<<zerobusrest-workspace-url, `debezium.sink.zerobusrest.workspace.url`>>
+|
+|The Databricks workspace URL, used for OAuth and the `unity-catalog-endpoint` header.
+
+|[[zerobusrest-workspace-id]]<<zerobusrest-workspace-id, `debezium.sink.zerobusrest.workspace.id`>>
+|
+|The numeric workspace id, used to build the Zerobus token audience.
+
+|[[zerobusrest-client-id]]<<zerobusrest-client-id, `debezium.sink.zerobusrest.client.id`>>
+|
+|The OAuth client id (service principal application id).
+
+|[[zerobusrest-client-secret]]<<zerobusrest-client-secret, `debezium.sink.zerobusrest.client.secret`>>
+|
+|The OAuth client secret for the service principal.
+
+|[[zerobusrest-table]]<<zerobusrest-table, `debezium.sink.zerobusrest.table`>>
+|
+|(Optional) A fully-qualified default target table (`catalog.schema.table`). When not set, the mapped destination (topic) name is used.
+
+|===
+
+===== Data type mapping
+
+The sink normalizes each value from the Kafka Connect schema to the shape the target Delta column expects, based on the logical type name rather than the already-serialized JSON.
+This avoids the "invalid type" class of ingestion errors without requiring source-side `*.handling.mode` tuning.
+Recommended Delta column types:
+
+[cols="45%a,55%a",options="header"]
+|===
+|Source / Debezium logical type
+|Delta column type
+
+|Integer, floating point, boolean, string
+|`INT`/`BIGINT`, `DOUBLE`/`FLOAT`, `BOOLEAN`, `STRING`
+
+|`org.apache.kafka.connect.data.Decimal` (decimal / numeric / money)
+|`DECIMAL(p,s)` &mdash; emitted as an exact string, locale-independent
+
+|`io.debezium.time.Date` / Connect `Date`
+|`DATE` (epoch days)
+
+|`io.debezium.time.Timestamp` / `MicroTimestamp` / `NanoTimestamp` / Connect `Timestamp`
+|`TIMESTAMP` or `TIMESTAMP_NTZ` (normalized to epoch micros)
+
+|`io.debezium.time.ZonedTimestamp` (timestamp with time zone)
+|`STRING` (ISO-8601 with offset)
+
+|`io.debezium.time.Time` and other time-of-day types
+|`BIGINT` (Zerobus does not currently ingest the Delta `TIME` type)
+
+|Bytes / `io.debezium.data.Bits` (binary, blob, varbinary)
+|`BINARY` (base64 on the wire)
+
+|`io.debezium.data.Json` (JSON / JSONB)
+|`VARIANT`
+
+|Homogeneous array
+|`ARRAY<T>`
+
+|===
+
+
 == Extensions
 
 {prodname} Server uses the https://quarkus.io/[Quarkus framework] and relies on dependency injection to enable developer to extend its behaviour.
