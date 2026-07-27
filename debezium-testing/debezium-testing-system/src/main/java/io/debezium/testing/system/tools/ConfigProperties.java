@@ -67,11 +67,10 @@ public final class ConfigProperties {
 
     // Apicurio Registry configuration
     public static final String VERSION_APICURIO = System.getProperty("version.apicurio", "3.2.5");
-    public static final String APICURIO_LOG_LEVEL = System.getProperty("test.apicurio.log.level", "INFO");
     public static final String APICURIO_OPERATOR_NAME = System.getProperty("test.apicurio.operator.name", "apicurio-registry-3");
     public static final String APICURIO_OPERATOR_CHANNEL = System.getProperty("test.apicurio.operator.channel", "3.x");
     public static final String APICURIO_OPERATOR_VERSION = System.getProperty("test.apicurio.operator.version", VERSION_APICURIO);
-    public static final String APICURIO_STARTING_CSV = System.getProperty("test.apicurio.operator.starting.csv.prefix",
+    public static final String APICURIO_STARTING_CSV = System.getProperty("test.apicurio.operator.starting.csv",
             "apicurio-registry-3.v" + APICURIO_OPERATOR_VERSION);
     public static final boolean APICURIO_TLS_ENABLED = booleanProperty("test.apicurio.tls.enabled", false);
 
