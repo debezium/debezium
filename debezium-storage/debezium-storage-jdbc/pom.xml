@@ -44,13 +44,11 @@
         <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-storage-api</artifactId>
-            <version>${project.version}</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-storage-common</artifactId>
-            <version>${project.version}</version>
             <scope>provided</scope>
         </dependency>
 
