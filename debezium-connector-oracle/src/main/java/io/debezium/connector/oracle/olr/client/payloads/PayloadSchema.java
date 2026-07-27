@@ -43,7 +43,16 @@ public class PayloadSchema {
         return columns;
     }
 
-    // todo: currently OpenLogReplicator does not expose the pluggable or root database name, pass configured value
+    /**
+     * Resolves the identifier of the table this schema describes.
+     *
+     * <p>The catalog is supplied by the caller because it is not part of the schema payload. It
+     * comes from the database name on the event the schema arrived in, which OpenLogReplicator
+     * reports as the container name of the database it is reading.
+     *
+     * @param catalogName the name of the database the change was made in, never {@code null}
+     * @return the table identifier, never {@code null}
+     */
     public TableId getTableId(String catalogName) {
         if (tableId == null) {
             tableId = new TableId(catalogName, owner, table);
