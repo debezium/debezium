@@ -18,12 +18,10 @@
         <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-storage-api</artifactId>
-            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>${version.jackson.databind}</version>
         </dependency>
     </dependencies>
 </project>
