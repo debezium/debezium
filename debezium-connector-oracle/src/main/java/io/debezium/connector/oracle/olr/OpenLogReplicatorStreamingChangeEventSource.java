@@ -9,6 +9,7 @@ import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 import org.slf4j.Logger;
@@ -23,6 +24,7 @@ import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.OracleSchemaChangeEventEmitter;
 import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.Scn;
+import io.debezium.connector.oracle.SourceInfo;
 import io.debezium.connector.oracle.jdbc.OracleConnectionFactory;
 import io.debezium.connector.oracle.olr.client.OlrNetworkClient;
 import io.debezium.connector.oracle.olr.client.PayloadEvent;
@@ -66,8 +68,16 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
     private OraclePartition partition;
     private OracleOffsetContext offsetContext;
     private boolean transactionEvents = false;
-    private Scn lastCheckpointScn = Scn.NULL;
-    private long lastCheckpointIndex;
+    /**
+     * The position the connector had emitted up to when it last stopped.
+     *
+     * <p>Streaming resumes at the start of the transaction that position falls in, so the changes
+     * before it arrive a second time and are discarded here rather than being filtered out by the
+     * server. Cleared once the stream advances past that transaction.
+     */
+    private Scn replayScn;
+    private Long replayScnIndex;
+    private String replayTransactionId;
 
     public OpenLogReplicatorStreamingChangeEventSource(OracleConnectorConfig connectorConfig, OracleConnectionFactory connectionFactory,
                                                        EventDispatcher<OraclePartition, TableId> dispatcher,
@@ -109,7 +119,22 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
             this.offsetContext = offsetContext;
 
             final Scn startScn = connectorConfig.getAdapter().getOffsetScn(offsetContext);
-            final Long startScnIndex = offsetContext.getScnIndex();
+            final Long offsetScnIndex = offsetContext.getScnIndex();
+
+            // Resume at the start of the transaction that the offset falls in rather than at the
+            // offset itself. OpenLogReplicator sends only what follows the requested position, so
+            // asking it to resume mid-transaction relies on it cutting the stream in exactly the
+            // right place. Replaying the transaction and discarding what was already emitted, the
+            // way the LogMiner adapter does, removes that dependency.
+            Long startScnIndex = offsetScnIndex;
+            if (offsetScnIndex != null) {
+                replayScn = startScn;
+                replayScnIndex = offsetScnIndex;
+                replayTransactionId = offsetContext.getTransactionId();
+                startScnIndex = 0L;
+                LOGGER.info("Replaying transaction {} at SCN {} from its start, skipping through index {}.",
+                        replayTransactionId, replayScn, replayScnIndex);
+            }
 
             this.client = new OlrNetworkClient(connectorConfig);
             if (client.connect(startScn, startScnIndex)) {
@@ -155,16 +180,66 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
 
     @Override
     public void commitOffset(Map<String, ?> partition, Map<String, ?> offset) {
-        confirmLastCheckpointScn();
+        confirmCommittedScn(offset);
     }
 
-    private void confirmLastCheckpointScn() {
-        if (!lastCheckpointScn.isNull() && lastCheckpointIndex > 0 && client != null && client.isConnected()) {
-            client.confirm(lastCheckpointScn, lastCheckpointIndex);
+    /**
+     * Confirms the committed streaming position with OpenLogReplicator, allowing the server to
+     * release everything before it.
+     *
+     * <p>The offset SCN is the system change number of the transaction the connector was last
+     * emitting changes from, so confirming it releases the transactions before that one and keeps
+     * that transaction itself available to be replayed. Confirming a position within the
+     * transaction would release the part of it that a restart has to read again.
+     *
+     * <p>Only changes that were dispatched move this position, which is what makes it safe to
+     * confirm. The checkpoint markers OpenLogReplicator streams alongside the changes are not
+     * ordered against them, so their positions cannot be used here.
+     *
+     * @param offset the offset that has been committed, never {@code null}
+     */
+    private void confirmCommittedScn(Map<String, ?> offset) {
+        if (client == null || !client.isConnected()) {
+            return;
         }
-        else if (lastCheckpointScn.isNull()) {
-            LOGGER.warn("Cannot flush latest offset SCN as no checkpoint event was received.");
+
+        final Scn scn = OracleOffsetContext.getScnFromOffsetMapByKey(offset, SourceInfo.SCN_KEY);
+        if (scn == null || scn.isNull()) {
+            LOGGER.debug("Cannot flush latest offset SCN, no streaming position has been committed yet.");
+            return;
         }
+
+        client.confirm(scn, 0L);
+    }
+
+    /**
+     * Checks whether a change was already emitted before the connector restarted, and so arrived
+     * only because streaming rewound to the start of the transaction it belongs to.
+     *
+     * @param event the event the change was read from, never {@code null}
+     * @return {@code true} if the change should be discarded, {@code false} if it should be emitted
+     */
+    private boolean isAlreadyEmitted(StreamingEvent event) {
+        if (replayScn == null) {
+            return false;
+        }
+
+        final int comparison = event.getCheckpointScn().compareTo(replayScn);
+        if (comparison > 0) {
+            LOGGER.info("Replay completed, streaming resumes at SCN {}.", event.getCheckpointScn());
+            replayScn = null;
+            replayScnIndex = null;
+            replayTransactionId = null;
+            return false;
+        }
+
+        if (comparison < 0) {
+            // Precedes the transaction being replayed, so it was emitted before the restart.
+            return true;
+        }
+
+        return Objects.equals(event.getXid(), replayTransactionId)
+                && event.getCheckpointIndex() <= replayScnIndex;
     }
 
     private void onEvent(StreamingEvent event) throws Exception {
@@ -197,10 +272,9 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
     }
 
     private void onBeginEvent(StreamingEvent event) {
-        offsetContext.setScn(event.getCheckpointScn());
-        offsetContext.setScnIndex(event.getCheckpointIndex());
+        // The offset position is only advanced by changes that are dispatched, so that it always
+        // describes something the connector has emitted. See #confirmCommittedScn.
         offsetContext.setEventScn(event.getCheckpointScn());
-        offsetContext.setTransactionId(event.getXid());
         offsetContext.setSourceTime(event.getTimestamp());
         transactionEvents = false;
 
@@ -212,10 +286,7 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
     }
 
     private void onCommitEvent(StreamingEvent event) throws InterruptedException {
-        offsetContext.setScn(event.getCheckpointScn());
-        offsetContext.setScnIndex(event.getCheckpointIndex());
         offsetContext.setEventScn(event.getCheckpointScn());
-        offsetContext.setTransactionId(event.getXid());
         offsetContext.setSourceTime(event.getTimestamp());
 
         streamingMetrics.incrementCommittedTransactionCount();
@@ -226,32 +297,32 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
             dispatcher.dispatchTransactionCommittedEvent(partition, offsetContext, event.getTimestamp());
         }
 
-        // Commits have checkpoint scn/indices that are part of the current checkpoint block.
-        // It is safe to update these values just like we do for DML events.
-        //
         // For situations where capture tables are changed in-frequently, enabling heartbeats
         // will have a heartbeat emit at commit boundaries even if transaction metadata isn't
         // enabled to guarantee checkpoint offset flushes.
-        updateCheckpoint(event);
         dispatcher.alwaysDispatchHeartbeatEvent(partition, offsetContext);
     }
 
     private void onCheckpointEvent(StreamingEvent event) throws InterruptedException {
-        offsetContext.setScn(event.getCheckpointScn());
-        offsetContext.setScnIndex(event.getCheckpointIndex());
+        // Checkpoint markers track how far OpenLogReplicator has read, which is not ordered against
+        // the changes it streams: a transaction is only sent once it commits, and its changes carry
+        // the system change number of that commit, which can be lower than a checkpoint that has
+        // already been sent. Moving the offset position here would therefore describe the stream as
+        // being further along than the changes the connector has actually been given, and the
+        // changes still owed would be filtered out as already seen after a restart.
         offsetContext.setEventScn(event.getCheckpointScn());
-        offsetContext.setTransactionId(event.getXid());
         offsetContext.setSourceTime(event.getTimestamp());
 
-        // For checkpoints, we do not emit any type of normal event, so while we do update
-        // the checkpoint details, these won't be flushed until the next commit flush.
-        // If the environment has low activity, enabling heartbeats will guarantee that
-        // checkpoint scn/indices are flushed.
-        updateCheckpoint(event);
         dispatcher.alwaysDispatchHeartbeatEvent(partition, offsetContext);
     }
 
     private void onMutationEvent(StreamingEvent event, AbstractMutationEvent mutationEvent) throws Exception {
+        if (isAlreadyEmitted(event)) {
+            LOGGER.trace("Skipping change at SCN {} index {}, it has already been emitted.",
+                    event.getCheckpointScn(), event.getCheckpointIndex());
+            return;
+        }
+
         final Type eventType = mutationEvent.getType();
         final TableId tableId = mutationEvent.getSchema().getTableId(event.getDatabaseName());
         if (!connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId)) {
@@ -282,7 +353,9 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
                 throw new DebeziumException("Unexpected DML event type: " + eventType);
         }
 
-        // Update offsets
+        // Update offsets. The position moves here, on a change that is about to be dispatched, so
+        // that it always describes something the connector has emitted. The index identifies the
+        // change within its transaction and is what a replay skips through on restart.
         offsetContext.setScn(event.getCheckpointScn());
         offsetContext.setScnIndex(event.getCheckpointIndex());
         offsetContext.setEventScn(event.getCheckpointScn());
@@ -291,8 +364,6 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
         offsetContext.setRowId(mutationEvent.getRid());
 
         streamingMetrics.setLastCapturedDmlCount(1);
-
-        updateCheckpoint(event);
 
         if (!transactionEvents) {
             // First data change that is of interest to the connector, emit the transaction start.
@@ -320,6 +391,12 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
     }
 
     private void onSchemaChangeEvent(StreamingEvent event, SchemaChangeEvent schemaEvent) throws Exception {
+        if (isAlreadyEmitted(event)) {
+            LOGGER.trace("Skipping schema change at SCN {} index {}, it has already been emitted.",
+                    event.getCheckpointScn(), event.getCheckpointIndex());
+            return;
+        }
+
         final PayloadSchema payloadSchema = schemaEvent.getSchema();
 
         final TableId tableId = payloadSchema.getTableId(event.getDatabaseName());
@@ -354,8 +431,6 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
             LOGGER.trace("Ignoring table rename to recycling object: {}", schemaEvent.getSql());
             return;
         }
-
-        updateCheckpoint(event);
 
         LOGGER.trace("Dispatching DDL (SCN {}): [{}]", event.getScn(), schemaEvent.getSql());
         dispatcher.dispatchSchemaChangeEvent(
@@ -477,8 +552,6 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
         offsetContext.setTransactionId(event.getXid());
         offsetContext.tableEvent(tableId, event.getTimestamp());
 
-        updateCheckpoint(event);
-
         LOGGER.trace("Dispatching {} (SCN {}) for table {}", Operation.TRUNCATE, event.getScn(), tableId);
         dispatcher.dispatchDataChangeEvent(
                 partition,
@@ -510,11 +583,6 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
             value = null;
         }
         return value;
-    }
-
-    private void updateCheckpoint(StreamingEvent event) {
-        this.lastCheckpointScn = event.getCheckpointScn();
-        this.lastCheckpointIndex = event.getCheckpointIndex();
     }
 
 }
