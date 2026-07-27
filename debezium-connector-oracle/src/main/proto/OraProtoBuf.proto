@@ -42,18 +42,17 @@ enum ColumnType {
     DATE = 4; //12
     RAW = 5; //23
     LONG_RAW = 6; //24
-    ROWID = 7; //69
-    CHAR = 8; //96, NCHAR
-    BINARY_FLOAT = 9; //100
-    BINARY_DOUBLE = 10; //101
-    CLOB = 11; //112, NCLOB
-    BLOB = 12; //113
-    TIMESTAMP = 13; //180
-    TIMESTAMP_WITH_TZ = 14; //181
-    INTERVAL_YEAR_TO_MONTH = 15; //182
-    INTERVAL_DAY_TO_SECOND = 16; //183
-    UROWID = 17; //208
-    TIMESTAMP_WITH_LOCAL_TZ = 18; //231
+    CHAR = 7; //96, NCHAR
+    BINARY_FLOAT = 8; //100
+    BINARY_DOUBLE = 9; //101
+    CLOB = 10; //112, NCLOB
+    BLOB = 11; //113
+    TIMESTAMP = 12; //180
+    TIMESTAMP_WITH_TZ = 13; //181
+    INTERVAL_YEAR_TO_MONTH = 14; //182
+    INTERVAL_DAY_TO_SECOND = 15; //183
+    UROWID = 16; //208
+    TIMESTAMP_WITH_LOCAL_TZ = 17; //231
 }
 
 service OpenLogReplicator {
@@ -119,7 +118,7 @@ message Payload {
     uint32 seq = 7;
     uint64 offset = 8;
     bool redo = 9;
-    optional uint64 num = 10;
+    uint64 num = 10;
 }
 
 message SchemaRequest {
@@ -155,7 +154,9 @@ message RedoResponse {
         string xid = 6;
         uint64 xidn = 7;
     }
-    repeated Payload payload = 8;
+    string db = 8;
+    repeated Payload payload = 9;
     uint64 c_scn = 10;
     uint64 c_idx = 11;
+    map<string,string> attributes = 12;
 }

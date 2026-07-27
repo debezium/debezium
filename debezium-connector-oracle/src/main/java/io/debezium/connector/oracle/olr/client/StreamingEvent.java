@@ -12,6 +12,7 @@ import java.util.List;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 
@@ -30,18 +31,34 @@ import io.debezium.connector.oracle.Scn;
 public class StreamingEvent {
 
     @JsonDeserialize(using = ScnDeserializer.class)
-    private Scn scn;
+    private Scn scn = Scn.NULL;
     @JsonProperty("tm")
     @JsonDeserialize(using = TimestampAsInstantDeserializer.class)
     private Instant timestamp;
+    @JsonProperty("b_tm")
+    @JsonDeserialize(using = TimestampAsInstantDeserializer.class)
+    private Instant beginTimestamp;
+    @JsonProperty("e_tm")
+    @JsonDeserialize(using = TimestampAsInstantDeserializer.class)
+    private Instant commitTimestamp;
     private String xid;
     @JsonProperty("db")
     private String databaseName;
     @JsonProperty("c_scn")
     @JsonDeserialize(using = ScnDeserializer.class)
-    private Scn checkpointScn;
+    private Scn checkpointScn = Scn.NULL;
+    @JsonProperty("b_scn")
+    @JsonDeserialize(using = ScnDeserializer.class)
+    private Scn beginScn = Scn.NULL;
+    @JsonProperty("e_scn")
+    @JsonDeserialize(using = ScnDeserializer.class)
+    private Scn commitScn = Scn.NULL;
     @JsonProperty("c_idx")
     private Long checkpointIndex;
+    @JsonProperty("usr")
+    private String userName;
+    @JsonProperty("rth")
+    private Integer redoThreadId;
     private List<PayloadEvent> payload;
 
     public Scn getScn() {
@@ -50,6 +67,14 @@ public class StreamingEvent {
 
     public Instant getTimestamp() {
         return timestamp;
+    }
+
+    public Instant getBeginTimestamp() {
+        return beginTimestamp;
+    }
+
+    public Instant getCommitTimestamp() {
+        return commitTimestamp;
     }
 
     public String getXid() {
@@ -64,8 +89,24 @@ public class StreamingEvent {
         return checkpointScn;
     }
 
+    public Scn getBeginScn() {
+        return beginScn;
+    }
+
+    public Scn getCommitScn() {
+        return commitScn;
+    }
+
     public Long getCheckpointIndex() {
         return checkpointIndex;
+    }
+
+    public String getUserName() {
+        return userName;
+    }
+
+    public int getRedoThreadId() {
+        return redoThreadId == null ? 0 : redoThreadId;
     }
 
     public List<PayloadEvent> getPayload() {
@@ -77,10 +118,16 @@ public class StreamingEvent {
         return "StreamingEvent{" +
                 "scn='" + scn + '\'' +
                 ", timestamp='" + timestamp + '\'' +
+                ", beginTimestamp='" + beginTimestamp + '\'' +
+                ", commitTimestamp='" + commitTimestamp + '\'' +
                 ", xid='" + xid + '\'' +
                 ", databaseName='" + databaseName + '\'' +
                 ", checkpointScn='" + checkpointScn + '\'' +
+                ", beginScn='" + beginScn + '\'' +
+                ", commitScn='" + commitScn + '\'' +
                 ", checkpointIndex=" + checkpointIndex +
+                ", userName='" + userName + '\'' +
+                ", redoThreadId=" + redoThreadId +
                 ", payload=" + payload +
                 '}';
     }
@@ -88,6 +135,11 @@ public class StreamingEvent {
     static class ScnDeserializer extends StdDeserializer<Scn> {
         ScnDeserializer() {
             super(Scn.class);
+        }
+
+        @Override
+        public Scn getNullValue(DeserializationContext ctxt) throws JsonMappingException {
+            return Scn.NULL;
         }
 
         @Override
