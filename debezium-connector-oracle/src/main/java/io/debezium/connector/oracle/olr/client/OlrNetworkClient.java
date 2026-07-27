@@ -193,7 +193,14 @@ public class OlrNetworkClient {
 
     /**
      * Checks whether the change stream has advanced to the requested start system change number,
-     * confirming and discarding the event when it precedes that point.
+     * discarding the event when it precedes that point.
+     *
+     * <p>Discarded events are not confirmed. A change carries the system change number of its own
+     * commit block, which is at or below the number the change itself was made at, so a change that
+     * is still wanted can belong to a commit block that precedes one being discarded here.
+     * Confirming a discarded event would release that commit block before it has been streamed, and
+     * OpenLogReplicator only sends what follows a confirmed position. The server is instead allowed
+     * to release these once the connector confirms a position it has emitted from.
      *
      * @param event the event that was read from the change stream, never {@code null}
      * @return {@code true} if the event should be emitted, {@code false} if it should be skipped
@@ -202,7 +209,6 @@ public class OlrNetworkClient {
         // todo: what if we restart mid-transaction?
         if (event.getScn().compareTo(startScn) < 0) {
             LOGGER.trace("Skipped event at SCN {}, has not yet reached start SCN {}: {}", event.getScn(), startScn, event);
-            this.confirm(event.getCheckpointScn(), event.getCheckpointIndex());
             if (!notifiedSkip) {
                 LOGGER.info("Advancing change stream to SCN {}", startScn);
                 notifiedSkip = true;
