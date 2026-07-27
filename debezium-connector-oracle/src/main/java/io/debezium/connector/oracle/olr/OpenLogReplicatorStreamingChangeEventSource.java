@@ -547,7 +547,12 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
             }
         }
 
-        offsetContext.setScn(event.getScn());
+        // The position is taken from the commit block the truncate belongs to, as it is for every
+        // other change, so that it stays comparable with the positions the server is confirmed at
+        // and resumed from. The record itself still reports the system change number the truncate
+        // was made at.
+        offsetContext.setScn(event.getCheckpointScn());
+        offsetContext.setScnIndex(event.getCheckpointIndex());
         offsetContext.setEventScn(event.getScn());
         offsetContext.setTransactionId(event.getXid());
         offsetContext.tableEvent(tableId, event.getTimestamp());
