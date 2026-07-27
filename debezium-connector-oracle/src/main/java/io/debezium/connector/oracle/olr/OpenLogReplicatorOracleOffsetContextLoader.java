@@ -34,6 +34,7 @@ public class OpenLogReplicatorOracleOffsetContextLoader implements OffsetContext
                 .logicalName(connectorConfig)
                 .scn(OracleOffsetContext.getScnFromOffsetMapByKey(offset, SourceInfo.SCN_KEY))
                 .scnIndex((Long) offset.get(SourceInfo.SCN_INDEX_KEY))
+                .transactionId(OracleOffsetContext.loadTransactionId(offset))
                 .commitScn(CommitScn.empty())
                 .snapshot(loadSnapshot(offset).orElse(null))
                 .snapshotCompleted(loadSnapshotCompleted(offset))

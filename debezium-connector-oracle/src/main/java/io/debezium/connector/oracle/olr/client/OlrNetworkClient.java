@@ -162,7 +162,9 @@ public class OlrNetworkClient {
      * @return true if the client is connected, false otherwise.
      */
     public boolean isConnected() {
-        return !disconnected && channel.isConnected();
+        // The channel is only created by #connect and is cleared again by #disconnect, while this is
+        // also called from the thread that flushes offsets, so it may be observed as unset.
+        return !disconnected && channel != null && channel.isConnected();
     }
 
     /**
