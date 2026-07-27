@@ -276,7 +276,10 @@ public class OlrNetworkClient {
             }
         }
         else if (response.getCode() == ResponseCode.READY) {
-            // todo: add support for continue index (c_idx)??
+            // The server has not begun processing this source, so there is no stream to continue
+            // and nothing an index could position within. Starting at the system change number
+            // begins at the commit block it falls in, and the changes in that block that were
+            // already emitted are discarded by the caller as the block is replayed.
             LOGGER.info("OpenLogReplicator ready, streaming from SCN {}.", scn);
             send(createRequest(RequestCode.START).setScn(scn.longValue()).build());
         }
