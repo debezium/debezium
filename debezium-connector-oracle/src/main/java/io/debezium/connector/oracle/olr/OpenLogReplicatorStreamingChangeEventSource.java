@@ -23,6 +23,7 @@ import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.OracleSchemaChangeEventEmitter;
 import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.Scn;
+import io.debezium.connector.oracle.SourceInfo;
 import io.debezium.connector.oracle.jdbc.OracleConnectionFactory;
 import io.debezium.connector.oracle.olr.client.OlrNetworkClient;
 import io.debezium.connector.oracle.olr.client.PayloadEvent;
@@ -66,8 +67,6 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
     private OraclePartition partition;
     private OracleOffsetContext offsetContext;
     private boolean transactionEvents = false;
-    private Scn lastCheckpointScn = Scn.NULL;
-    private long lastCheckpointIndex;
 
     public OpenLogReplicatorStreamingChangeEventSource(OracleConnectorConfig connectorConfig, OracleConnectionFactory connectionFactory,
                                                        EventDispatcher<OraclePartition, TableId> dispatcher,
@@ -155,16 +154,32 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
 
     @Override
     public void commitOffset(Map<String, ?> partition, Map<String, ?> offset) {
-        confirmLastCheckpointScn();
+        confirmCommittedScn(offset);
     }
 
-    private void confirmLastCheckpointScn() {
-        if (!lastCheckpointScn.isNull() && lastCheckpointIndex > 0 && client != null && client.isConnected()) {
-            client.confirm(lastCheckpointScn, lastCheckpointIndex);
+    /**
+     * Confirms the committed streaming position with OpenLogReplicator, allowing the server to
+     * release everything before it.
+     *
+     * <p>The position has to come from the offset that was committed rather than from the last
+     * event that was read. Reads run ahead of what has been delivered, so confirming a position
+     * taken from the read loop releases changes the connector has not handed on yet, and those
+     * changes are gone if it stops before they are.
+     *
+     * @param offset the offset that has been committed, never {@code null}
+     */
+    private void confirmCommittedScn(Map<String, ?> offset) {
+        if (client == null || !client.isConnected()) {
+            return;
         }
-        else if (lastCheckpointScn.isNull()) {
-            LOGGER.warn("Cannot flush latest offset SCN as no checkpoint event was received.");
+
+        final Scn scn = OracleOffsetContext.getScnFromOffsetMapByKey(offset, SourceInfo.SCN_KEY);
+        if (scn == null || scn.isNull()) {
+            LOGGER.debug("Cannot flush latest offset SCN, no streaming position has been committed yet.");
+            return;
         }
+
+        client.confirm(scn, 0L);
     }
 
     private void onEvent(StreamingEvent event) throws Exception {
@@ -232,7 +247,6 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
         // For situations where capture tables are changed in-frequently, enabling heartbeats
         // will have a heartbeat emit at commit boundaries even if transaction metadata isn't
         // enabled to guarantee checkpoint offset flushes.
-        updateCheckpoint(event);
         dispatcher.alwaysDispatchHeartbeatEvent(partition, offsetContext);
     }
 
@@ -247,7 +261,6 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
         // the checkpoint details, these won't be flushed until the next commit flush.
         // If the environment has low activity, enabling heartbeats will guarantee that
         // checkpoint scn/indices are flushed.
-        updateCheckpoint(event);
         dispatcher.alwaysDispatchHeartbeatEvent(partition, offsetContext);
     }
 
@@ -291,8 +304,6 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
         offsetContext.setRowId(mutationEvent.getRid());
 
         streamingMetrics.setLastCapturedDmlCount(1);
-
-        updateCheckpoint(event);
 
         if (!transactionEvents) {
             // First data change that is of interest to the connector, emit the transaction start.
@@ -354,8 +365,6 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
             LOGGER.trace("Ignoring table rename to recycling object: {}", schemaEvent.getSql());
             return;
         }
-
-        updateCheckpoint(event);
 
         LOGGER.trace("Dispatching DDL (SCN {}): [{}]", event.getScn(), schemaEvent.getSql());
         dispatcher.dispatchSchemaChangeEvent(
@@ -477,8 +486,6 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
         offsetContext.setTransactionId(event.getXid());
         offsetContext.tableEvent(tableId, event.getTimestamp());
 
-        updateCheckpoint(event);
-
         LOGGER.trace("Dispatching {} (SCN {}) for table {}", Operation.TRUNCATE, event.getScn(), tableId);
         dispatcher.dispatchDataChangeEvent(
                 partition,
@@ -510,11 +517,6 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
             value = null;
         }
         return value;
-    }
-
-    private void updateCheckpoint(StreamingEvent event) {
-        this.lastCheckpointScn = event.getCheckpointScn();
-        this.lastCheckpointIndex = event.getCheckpointIndex();
     }
 
 }
