@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.oracle.olr;
 
+import java.sql.SQLException;
+import java.sql.Types;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
@@ -44,6 +46,8 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.snapshot.SnapshotterService;
 import io.debezium.util.Clock;
+
+import oracle.sql.RAW;
 
 /**
  * An implementation of {@link StreamingChangeEventSource} based on OpenLogReplicator.
@@ -515,6 +519,18 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
                 }
             }
             value = null;
+        }
+        else if (column.jdbcType() == Types.VARBINARY && value instanceof String stringValue) {
+            // OpenLogReplicator sends binary columns hex encoded, as its payload is JSON and
+            // cannot carry binary. The decode belongs here rather than in the value converter,
+            // because a converter registered for a column through "converters" replaces the value
+            // converter instead of running after it, and so would never see the decode.
+            try {
+                value = RAW.hexString2Bytes(stringValue);
+            }
+            catch (SQLException e) {
+                throw new DebeziumException("Failed to convert HEX string into byte array: " + stringValue, e);
+            }
         }
         return value;
     }
