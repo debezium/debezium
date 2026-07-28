@@ -677,6 +677,18 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             throw primaryFailure;
         }
 
+        // Workers with no chunk yet are skipped: a null chunk position NPEs in the notification.
+        for (Map.Entry<T, TableSnapshotWorker<P, T>> entry : activeWorkers.entrySet()) {
+            if (completedThisRound.contains(entry.getKey())) {
+                continue;
+            }
+            final TableSnapshotContext<T> workerContext = entry.getValue().getContext();
+            if (workerContext.chunkEndPosititon() != null && workerContext.maximumKey().isPresent()) {
+                notificationService.incrementalSnapshotNotificationService()
+                        .notifyInProgress(workerContext, partition, offsetContext);
+            }
+        }
+
         // Don't remove workers/buffers yet. sendParallelWindowEvents needs
         // to drain them first. Store the list for the NEXT round's start.
         parallelCoordinator.recordCompletedTables(completedThisRound);
