@@ -16,6 +16,7 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 
 import io.debezium.connector.oracle.Scn;
+import io.debezium.time.Conversions;
 
 /**
  * A logical streaming event.
@@ -104,6 +105,14 @@ public class StreamingEvent {
     }
 
     static class TimestampAsInstantDeserializer extends StdDeserializer<Instant> {
+        /**
+         * Upper bounds used to tell apart the units a timestamp may be written in, each one the
+         * epoch value for a date early in the twenty-first century's final decades.
+         */
+        private static final long EPOCH_SECONDS_MAX = 4_000_000_000L;
+        private static final long EPOCH_MILLIS_MAX = 4_000_000_000_000L;
+        private static final long EPOCH_MICROS_MAX = 4_000_000_000_000_000L;
+
         TimestampAsInstantDeserializer() {
             super(Instant.class);
         }
@@ -113,11 +122,24 @@ public class StreamingEvent {
                 throws IOException {
             final String timestamp = jsonParser.getText();
             try {
-                return Instant.ofEpochMilli(Long.parseLong(timestamp));
+                return toInstant(Long.parseLong(timestamp));
             }
             catch (NumberFormatException e) {
                 throw new IOException("Failed to deserialize timestamp as instant: " + timestamp);
             }
+        }
+
+        private static Instant toInstant(long value) {
+            if (value < EPOCH_SECONDS_MAX) {
+                return Instant.ofEpochSecond(value);
+            }
+            if (value < EPOCH_MILLIS_MAX) {
+                return Conversions.toInstantFromMillis(value);
+            }
+            if (value < EPOCH_MICROS_MAX) {
+                return Conversions.toInstantFromMicros(value);
+            }
+            return Conversions.toInstantFromNanos(value);
         }
     }
 }
