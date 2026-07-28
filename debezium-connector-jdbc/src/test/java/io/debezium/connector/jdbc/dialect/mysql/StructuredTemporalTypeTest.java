@@ -32,6 +32,7 @@ import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.time.StructuredDate;
 import io.debezium.time.StructuredDuration;
 import io.debezium.time.StructuredTimestamp;
+import io.debezium.time.StructuredZonedTimestamp;
 
 @Tag("UnitTests")
 class StructuredTemporalTypeTest {
@@ -224,6 +225,24 @@ class StructuredTemporalTypeTest {
     }
 
     @Test
+    @DisplayName("Should report unsupported zoned timestamp offsets before precision and range loss")
+    void shouldRejectZonedTimestampOffsetBeforePrecisionAndRange() {
+        // The value violates all three conditions at once: MySQL cannot keep the +09:00 offset, the fraction
+        // carries digits beyond precision 6, and the year is outside the datetime range. Only the offset failure
+        // is unrecoverable, so it has to be the one reported.
+        final var schema = StructuredZonedTimestamp.builder(6).build();
+        final var value = StructuredZonedTimestamp.from(schema, 12_000, 1, 2, 3, 4, 5, 123_456_789, 32_400, null, 6);
+        final var type = configuredZonedTimestampType();
+
+        assertThatThrownBy(() -> type.validate(timestampColumn("datetime", 6), schema, value))
+                .isInstanceOf(ConnectException.class)
+                .hasMessageContaining("offset 32400")
+                .hasMessageContaining("cannot be preserved")
+                .hasMessageNotContaining("precision")
+                .hasMessageNotContaining("outside the range");
+    }
+
+    @Test
     @DisplayName("Should retain MySQL zero dates when range handling is enabled")
     void shouldRetainZeroDateWithRangeHandling() {
         final var schema = StructuredDate.schema();
@@ -251,6 +270,20 @@ class StructuredTemporalTypeTest {
         when(config.useTimeZone()).thenReturn("UTC");
         when(config.getTemporalPrecisionLossHandlingMode()).thenReturn(precisionMode);
         when(config.getTemporalRangeLossHandlingMode()).thenReturn(rangeMode);
+        when(dialect.getMaxTimestampPrecision()).thenReturn(6);
+        when(dialect.getDefaultTimestampPrecision()).thenReturn(6);
+        when(dialect.getTargetTemporalCapabilities()).thenReturn(mysqlCapabilities());
+        type.configure(config, dialect);
+        return type;
+    }
+
+    private StructuredZonedTimestampType configuredZonedTimestampType() {
+        final var type = new StructuredZonedTimestampType();
+        final JdbcSinkConnectorConfig config = mock(JdbcSinkConnectorConfig.class);
+        final DatabaseDialect dialect = mock(DatabaseDialect.class);
+        when(config.useTimeZone()).thenReturn("UTC");
+        when(config.getTemporalPrecisionLossHandlingMode()).thenReturn(TemporalPrecisionLossHandlingMode.FAIL);
+        when(config.getTemporalRangeLossHandlingMode()).thenReturn(TemporalRangeLossHandlingMode.FAIL);
         when(dialect.getMaxTimestampPrecision()).thenReturn(6);
         when(dialect.getDefaultTimestampPrecision()).thenReturn(6);
         when(dialect.getTargetTemporalCapabilities()).thenReturn(mysqlCapabilities());
