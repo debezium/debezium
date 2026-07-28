@@ -2461,6 +2461,10 @@ The target table must be a Unity-Catalog-managed Delta table in the same region 
 |`50000`
 |Maximum number of un-acknowledged records per stream.
 
+|[[zerobus-metrics-log-interval]]<<zerobus-metrics-log-interval, `debezium.sink.zerobus.metrics.log.interval`>>
+|`0`
+|Emit a periodic `INFO` log line summarizing the sink metrics every N processed batches. `0` (the default) disables periodic logging; the metrics remain available over JMX regardless. See <<zerobus-monitoring, Monitoring>>.
+
 |===
 
 ===== REST route (`zerobusrest`)
@@ -2498,6 +2502,10 @@ The target table must be a Unity-Catalog-managed Delta table in the same region 
 |[[zerobusrest-table]]<<zerobusrest-table, `debezium.sink.zerobusrest.table`>>
 |
 |(Optional) A fully-qualified default target table (`catalog.schema.table`). When not set, the mapped destination (topic) name is used.
+
+|[[zerobusrest-metrics-log-interval]]<<zerobusrest-metrics-log-interval, `debezium.sink.zerobusrest.metrics.log.interval`>>
+|`0`
+|Emit a periodic `INFO` log line summarizing the sink metrics every N processed batches. `0` (the default) disables periodic logging; the metrics remain available over JMX regardless. See <<zerobus-monitoring, Monitoring>>.
 
 |===
 
@@ -2538,6 +2546,49 @@ Recommended Delta column types:
 
 |Homogeneous array
 |`ARRAY<T>`
+
+|===
+
+[[zerobus-monitoring]]
+===== Monitoring
+
+Both routes expose sink metrics over JMX, under the object name `debezium.zerobus:type=connector-metrics,context=sink,server=<route>,task=0`, where `<route>` is `grpc` or `rest`.
+This mirrors how the JDBC sink connector and {prodname} source connectors expose their metrics, so the same JMX tooling (for example JConsole, `jmxterm`, or a Prometheus JMX exporter) works out of the box.
+In addition, setting `debezium.sink.zerobus[rest].metrics.log.interval` to a positive value emits a periodic `INFO` log line with the same values.
+
+The following attributes are available:
+
+[cols="40%a,60%a",options="header"]
+|===
+|Attribute
+|Description
+
+|`TotalRecordsIngested`
+|Total number of change events forwarded to Zerobus, across all tables.
+
+|`TotalInserts` / `TotalUpdates` / `TotalDeletes` / `TotalReads`
+|Ingested events split by operation (`c` / `u` / `d`, and snapshot reads `r`).
+
+|`TotalRecordsSkipped`
+|Records skipped without being forwarded (tombstones / null payloads, and events whose destination is not a fully-qualified `catalog.schema.table`, such as schema-history or DDL events).
+
+|`TotalErrors`
+|Ingestion or flush failures observed.
+
+|`TotalFlushes`
+|Stream flushes performed (gRPC route); successful record POSTs (REST route), which are the durability boundary there.
+
+|`MilliSecondsBehindSource`
+|Pipeline freshness: `now - source.ts_ms` of the most recently ingested event, in milliseconds. `-1` until the first event with a source timestamp is ingested; approaches `0` when the sink is caught up with the source. This is the primary signal in a CDC-to-lakehouse deployment.
+
+|`LastFlushDurationMillis` / `MaxFlushDurationMillis`
+|Duration of the most recent, and the longest, flush (gRPC) or record POST (REST).
+
+|`ActiveStreams`
+|Number of currently open Zerobus streams (one per target table); always `0` for the REST route, which opens no persistent streams.
+
+|`Route`
+|The delivery route these metrics belong to (`grpc` or `rest`).
 
 |===
 
