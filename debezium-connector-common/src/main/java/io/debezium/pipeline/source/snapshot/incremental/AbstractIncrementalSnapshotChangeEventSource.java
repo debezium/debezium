@@ -16,6 +16,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.sql.SQLNonTransientConnectionException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -288,6 +289,9 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                         context.maximumKey(maximumKey);
                     }
                     catch (SQLException e) {
+                        if (e instanceof SQLNonTransientConnectionException) {
+                            closeJdbcConnection();
+                        }
                         LOGGER.error("Failed to read maximum key for table {}", currentTableId, e);
                         notificationService.incrementalSnapshotNotificationService().notifyTableScanCompleted(context, partition, offsetContext, totalRowsScanned,
                                 SQL_EXCEPTION);
@@ -337,6 +341,9 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                     }
                 }
                 catch (SQLException e) {
+                    if (e instanceof SQLNonTransientConnectionException) {
+                        closeJdbcConnection();
+                    }
                     notificationService.incrementalSnapshotNotificationService().notifyTableScanCompleted(context, partition, offsetContext, totalRowsScanned,
                             SQL_EXCEPTION);
                     nextDataCollection(partition, offsetContext);
@@ -346,6 +353,9 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             LOGGER.trace("Window close emitted");
         }
         catch (SQLException e) {
+            if (e instanceof SQLNonTransientConnectionException) {
+                closeJdbcConnection();
+            }
             warnAndSkip(partition, offsetContext,
                     SQL_EXCEPTION,
                     "SQL error while executing incremental snapshot for table '%s', skipping and continuing streaming"
@@ -394,6 +404,16 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             return true;
         }
         return false;
+    }
+
+    private void closeJdbcConnection() {
+        try {
+            LOGGER.info("Connection is being closed after Not recoverable SQL exception");
+            jdbcConnection.close();
+        }
+        catch (SQLException ex) {
+            LOGGER.error("Failed to close JDBC connection", ex);
+        }
     }
 
     private void warnAndSkip(P partition, OffsetContext offsetContext, TableScanCompletionStatus status, String formattedReason, Throwable t) {
