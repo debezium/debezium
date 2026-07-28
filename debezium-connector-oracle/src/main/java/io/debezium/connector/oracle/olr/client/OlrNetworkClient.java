@@ -262,12 +262,15 @@ public class OlrNetworkClient {
         }
         else if (response.getCode() == ResponseCode.REPLICATE) {
             LOGGER.info("OpenLogReplicator has already started, continue from SCN {}", scn);
-            if (index != null) {
-                send(createRequest(RequestCode.CONTINUE).setCScn(scn.longValue()).setCIdx(index).build());
-            }
-            else {
-                send(createRequest(RequestCode.CONTINUE).setScn(scn.longValue()).build());
-            }
+            // The position a source is continued from is carried by c_scn and c_idx. The system
+            // change number on its own says where to begin reading redo, which only applies to
+            // starting a source, and is ignored when continuing one. Sending it there leaves the
+            // server to continue from whatever it last had confirmed instead, which is as far back
+            // as it still holds, so it streams changes that were emitted long ago.
+            send(createRequest(RequestCode.CONTINUE)
+                    .setCScn(scn.longValue())
+                    .setCIdx(index != null ? index : 0)
+                    .build());
         }
         else if (response.getCode() == ResponseCode.READY) {
             // todo: add support for continue index (c_idx)??
