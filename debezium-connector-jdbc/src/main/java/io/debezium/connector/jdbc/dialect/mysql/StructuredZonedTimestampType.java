@@ -24,10 +24,13 @@ public class StructuredZonedTimestampType extends StructuredTimestampType {
 
     @Override
     public void validate(ColumnDescriptor column, Schema schema, Object value) {
-        super.validate(column, schema, value);
+        // MySQL cannot store a zone or an offset at all, so that failure offers the user no remedy, while the
+        // precision and range failures each name a handling mode that resolves them. Report the unrecoverable
+        // one first, consistent with the shared base type and the Db2 dialect.
         if (value != null) {
             StructuredTemporalPreflightValidator.validateZonedTimestamp(
                     requireStruct(value), getDialect().getTargetTemporalCapabilities());
         }
+        super.validate(column, schema, value);
     }
 }
