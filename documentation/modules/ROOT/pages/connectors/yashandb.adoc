@@ -2015,6 +2015,19 @@ include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[levelo
 
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-schema-history-metrics.adoc[leveloffset=+1]
 
+[[yashandb-legacy-version-support]]
+== Legacy version support
+
+The YashanDB connector for {prodname} 2.4.2 and earlier versions is maintained by the YashanDB organization and is not an officially supported version within the {prodname} community.
+This legacy version is provided for users who still rely on older {prodname} releases.
+
+[IMPORTANT]
+====
+Users of the legacy YashanDB connector are encouraged to upgrade to the latest {prodname} community release as soon as possible to benefit from official support, bug fixes, and new features.
+====
+
+For more information about the legacy YashanDB connector, see the link:https://github.com/yashan-technologies/debezium-connector-yashandb/tree/2.4.2[YashanDB connector legacy repository^].
+
 [[yashandb-faq]]
 == Frequently Asked Questions
 
