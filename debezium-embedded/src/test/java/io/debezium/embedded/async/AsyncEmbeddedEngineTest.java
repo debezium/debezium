@@ -1647,11 +1647,11 @@ public class AsyncEmbeddedEngineTest {
 
     public static class OddIsNullTransform implements Transformation<SourceRecord> {
 
-        public static int counter = 0;
+        public static AtomicInteger counter = new AtomicInteger(0);
 
         @Override
         public SourceRecord apply(SourceRecord record) {
-            return (++counter % 2 == 0) ? record : null;
+            return (counter.incrementAndGet() % 2 == 0) ? record : null;
         }
 
         @Override
