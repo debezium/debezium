@@ -138,12 +138,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
 
         validateRedoLogConfiguration(connectorConfig, snapshotterService);
 
-        // The archive log destination is only consumed by the LogMiner streaming path; validating it
-        // is pointless (and, on managed/hidden-V$ deployments such as Oracle Autonomous Database,
-        // fatal) when this run will not stream. Gate it on the same redo-log requirement used above.
-        if (redoLogRequired(connectorConfig, snapshotterService)) {
-            connectorConfig.getArchiveDestinationNameResolver().validate(jdbcConnection);
-        }
+        connectorConfig.getArchiveDestinationNameResolver().validate(jdbcConnection);
 
         OracleOffsetContext previousOffset = previousOffsets.getTheOnlyOffset();
 

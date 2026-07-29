@@ -584,6 +584,24 @@ public class OracleConnection extends JdbcConnection {
         return singleOptionalValue("SELECT SYSTIMESTAMP FROM DUAL", rs -> rs.getObject(1, OffsetDateTime.class));
     }
 
+    /**
+     * Determines whether this connection is to an Oracle Autonomous Database (OA), i.e. one of the
+     * managed cloud services (Autonomous Transaction Processing, Data Warehouse, or JSON Database).
+     * On such deployments Oracle owns and hides parts of the data dictionary — notably the archive
+     * log destination views — so logic that resolves a physical archive destination cannot work.
+     *
+     * @return {@code true} when connected to an Autonomous Database, {@code false} otherwise
+     * @throws SQLException if a database exception occurred
+     */
+    public boolean isAutonomous() throws SQLException {
+        // CLOUD_SERVICE is set only on Autonomous Database; its values are OLTP (ATP), DWCS (ADW)
+        // and JDCS (AJD). It is null/absent on self-managed Oracle.
+        final String cloudService = singleOptionalValue(
+                "SELECT SYS_CONTEXT('USERENV', 'CLOUD_SERVICE') FROM DUAL",
+                rs -> rs.getString(1));
+        return "OLTP".equals(cloudService) || "DWCS".equals(cloudService) || "JDCS".equals(cloudService);
+    }
+
     public boolean isArchiveLogDestinationValid(String archiveDestinationName) throws SQLException {
         return prepareQueryAndMap("SELECT STATUS, TYPE FROM V$ARCHIVE_DEST_STATUS WHERE DEST_NAME=?",
                 st -> st.setString(1, archiveDestinationName),
