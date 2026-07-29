@@ -312,7 +312,7 @@ public class ApicurioRegistryTestIT {
     private String getApicurioUrl() {
         final String host = apicurioContainer.getContainerInfo().getConfig().getHostName();
         final int port = apicurioContainer.getExposedPorts().get(0);
-        final String apicurioUrl = "http://" + host + ":" + port + "/apis/registry/v2";
+        final String apicurioUrl = "http://" + host + ":" + port;
         return apicurioUrl;
     }
 
