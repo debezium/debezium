@@ -25,6 +25,9 @@
         <!-- Don't skip integration tests by default -->
         <skipITs>false</skipITs>
 
+        <!-- Skip ArchUnit tests when running specific tests -->
+        <archunit.skip>false</archunit.skip>
+
         <!-- Do not skip formatting source code by default -->
         <format.skip>false</format.skip>
 
@@ -284,6 +287,7 @@
                             <goal>test</goal>
                         </goals>
                         <configuration>
+                            <skipTests>${archunit.skip}</skipTests>
                             <dependenciesToScan>
                                 <dependency>io.debezium:debezium-archunit</dependency>
                             </dependenciesToScan>
