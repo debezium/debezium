@@ -43,6 +43,22 @@ public class ArchiveDestinationNameResolver {
      * @param connection the database connection, should not be {@code null}
      */
     public void validate(OracleConnection connection) {
+        try {
+            if (connection.isAutonomous()) {
+                // Oracle Autonomous Database hides the archive log destination views, so there is no
+                // destination to resolve or validate here. Skip validation so that use cases that do
+                // not consume the destination (e.g. a snapshot-only run) can proceed. Note this only
+                // satisfies the validation code path: if any part of the code later expects a
+                // destination name to build a query (i.e. LogMiner streaming), those queries will
+                // still fail on Autonomous, which Debezium does not officially support.
+                LOGGER.info("Connected to an Oracle Autonomous Database; skipping archive destination validation.");
+                return;
+            }
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Error while determining whether the database is Oracle Autonomous", e);
+        }
+
         if (resolvedDestinationNames.isEmpty()) {
             resolveDestinations(connection);
         }
