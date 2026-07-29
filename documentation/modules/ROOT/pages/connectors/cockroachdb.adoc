@@ -1339,11 +1339,11 @@ Set one of the following options:
 
 `bytes`:: Represents binary data as a byte array.
 
-`base64`:: Represents binary data as a base64-encoded string.
+`base64`:: Represents binary data as a Base64-encoded string.
 
-`base64-url-safe`:: Represents binary data as a base64-url-safe-encoded string.
+`base64-url-safe`:: Represents binary data as a URL-safe Base64-encoded string.
 
-`hex`:: Represents binary data as a hex-encoded (base16) string.
+`hex`:: Represents binary data as a hexadecimal-encoded (Base16) string.
 
 |[[cockroachdb-property-schema-include-list]]<<cockroachdb-property-schema-include-list, `+schema.include.list+`>>
 |No default
