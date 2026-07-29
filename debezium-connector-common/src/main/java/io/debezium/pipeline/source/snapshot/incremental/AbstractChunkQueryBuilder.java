@@ -91,15 +91,50 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
     }
 
     protected String buildProjection(Table table) {
-        String projection = "*";
-        if (connectorConfig.isColumnsFiltered()) {
-            TableId tableId = table.id();
-            projection = table.columns().stream()
-                    .filter(column -> columnFilter.matches(tableId.catalog(), tableId.schema(), tableId.table(), column.name()))
-                    .map(column -> jdbcConnection.quoteIdentifier(column.name()))
-                    .collect(Collectors.joining(", "));
+        // DBZ-2020: only fall back to an explicit column list when we actually need to drop
+        // columns from the projection (generated columns, or column include/exclude filters).
+        // In the common case where neither applies, keep emitting SELECT * so we do not widen
+        // the schemaChanges race window observed in DBZ-6000 / DBZ-7532.
+        final boolean columnsFiltered = connectorConfig.isColumnsFiltered();
+        // MySQL/MariaDB mark AUTO_INCREMENT (and SERIAL / ON UPDATE) as both autoIncremented and
+        // generated. Only treat "true" generated columns as ones we must omit from the projection.
+        final boolean hasGeneratedColumns = table.columns().stream().anyMatch(this::isGeneratedNonAutoIncrementColumn)
+                || hasAdditionalGeneratedColumns(table);
+        if (!columnsFiltered && !hasGeneratedColumns) {
+            return "*";
         }
-        return projection;
+        final TableId tableId = table.id();
+        return table.columns().stream()
+                .filter(column -> !isGeneratedNonAutoIncrementColumn(column))
+                .filter(column -> !isAdditionalGeneratedColumn(table, column.name()))
+                .filter(column -> !columnsFiltered
+                        || columnFilter.matches(tableId.catalog(), tableId.schema(), tableId.table(), column.name()))
+                .map(column -> jdbcConnection.quoteIdentifier(column.name()))
+                .collect(Collectors.joining(", "));
+    }
+
+    /**
+     * True when the column is generated and not auto-incremented. MySQL/MariaDB set both flags for
+     * {@code AUTO_INCREMENT}, so those columns must remain in the chunk projection.
+     */
+    private boolean isGeneratedNonAutoIncrementColumn(Column column) {
+        return column.isGenerated() && !column.isAutoIncremented();
+    }
+
+    /**
+     * Hook for connectors that track generated columns outside the in-memory {@link Table}
+     * (for example after {@code refreshFromIncrementalSnapshot} has pruned them). Default is none.
+     */
+    protected boolean hasAdditionalGeneratedColumns(Table table) {
+        return false;
+    }
+
+    /**
+     * Hook for connectors that track generated columns outside the in-memory {@link Table}.
+     * Default is never generated.
+     */
+    protected boolean isAdditionalGeneratedColumn(Table table, String columnName) {
+        return false;
     }
 
     protected void addLowerBound(IncrementalSnapshotContext<T> context, Table table, Object[] boundaryKey, StringBuilder sql) {

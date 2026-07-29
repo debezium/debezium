@@ -546,6 +546,44 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
     }
 
     @Test
+    @FixFor("DBZ-2020")
+    @SkipWhenDecoderPluginNameIsNot(value = DecoderPluginName.PGOUTPUT, reason = "Only pgoutput prunes generated columns from the in-memory Table")
+    public void incrementalSnapshotSkipsGeneratedColumnWithoutColumnExcludeList() throws Exception {
+        // Regression for DBZ-2020: without column.exclude.list, pgoutput incremental snapshot must
+        // omit STORED generated columns from the chunk SELECT. Otherwise SELECT * returns them while
+        // the pruned Table does not, and ColumnUtils fails with "Column 'X' not found in result set".
+        final String setup = "CREATE TABLE s1.gencol_isnap (pk int PRIMARY KEY, aa integer,"
+                + " gencol varchar(10) GENERATED ALWAYS AS ('aa') STORED, bb varchar(2));";
+        TestHelper.execute(setup);
+
+        try (JdbcConnection connection = databaseConnection()) {
+            connection.execute("INSERT INTO s1.gencol_isnap (pk, aa, bb) VALUES (1, 1, 'a')");
+            connection.execute("INSERT INTO s1.gencol_isnap (pk, aa, bb) VALUES (2, 2, 'b')");
+        }
+
+        startConnector(x -> x
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.gencol_isnap")
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA.getValue()));
+        waitForConnectorToStart();
+
+        sendAdHocSnapshotSignal("s1.gencol_isnap");
+
+        final String topicName = "test_server.s1.gencol_isnap";
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(
+                2,
+                x -> true,
+                k -> k.getInt32("pk"),
+                record -> {
+                    final Struct after = ((Struct) record.value()).getStruct("after");
+                    assertThat(after.schema().field("gencol")).isNull();
+                    return after.getInt32("aa");
+                },
+                topicName,
+                null);
+        assertThat(dbChanges).containsExactly(entry(1, 1), entry(2, 2));
+    }
+
+    @Test
     @FixFor("DBZ-1329")
     public void snapshotNewTableWithoutTableIncludeList() throws Exception {
         // Testing.Print.enable();
