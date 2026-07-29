@@ -1,0 +1,1028 @@
+= Debezium Source Connector Development Guide
+
+Creating a new Debezium source connector requires implementing a significant number of framework-level contracts from `debezium-core`. While each connector is unique in how it reads from its specific data source, the Debezium framework enforces a common lifecycle, offset management model, schema representation, and record envelope format. There is no canonical reference document that maps these abstractions to the concrete classes a connector developer must provide, nor does it explain where the framework ends and connector specific logic begins.
+
+This document provides a connector development guide right from scratch for building a Debezium source connector. It is grounded in the implementations of existing Debezium connectors including Cassandra, Db2, Ingres, and Informix, which together demonstrate the standard relational pattern, the agent or process-based pattern, and connectors that rely on native CDC APIs versus log scraping.
+
+== Overview and differences between a Kafka Connector and a Debezium Source Connector
+
+=== Kafka Connect Source Connector
+
+A standard Kafka Connect source connector reads data from an external system and produces records to Kafka topics. It implements two primary interfaces:
+
+- `org.apache.kafka.connect.source.SourceConnector` for validation and task planning.
+- `org.apache.kafka.connect.source.SourceTask` for polling and record emission.
+
+The developer is responsible for all aspects of the connector: data extraction, offset management, schema construction, error handling, and envelope format.
+
+=== Debezium Source Connector
+
+A Debezium source connector builds on top of Kafka Connect but delegates CDC mechanics to `debezium-core`. Instead of directly implementing `SourceTask#poll()`, the developer implements a set of framework contracts that describe:
+
+- How to snapshot the current state.
+- How to stream changes after the snapshot.
+- How to manage offsets in a source-specific format.
+- How to represent schemas and construct Debezium envelope records.
+- How to partition the source.
+
+The Debezium framework orchestrates snapshot and streaming handover, offset persistence, schema evolution, and record emission via the `ChangeEventSourceCoordinator`.
+
+=== Key Differences
+
+|===
+| Aspect | Standard Kafka Connect Source | Debezium Source Connector
+
+| Base API
+| `SourceConnector` / `SourceTask`
+| `BaseSourceConnector` / `BaseSourceTask`
+
+| Lifecycle
+| Manual `start()` / `stop()` / `poll()`
+| Framework-managed via `ChangeEventSourceCoordinator`
+
+| Offset management
+| Manual `SourceRecord` offsets
+| Framework-managed via `OffsetContext`
+
+| Schema construction
+| Manual `Schema` / `Struct`
+| Framework-managed `Envelope` with source metadata
+
+| Snapshot / Streaming
+| Manual implementation
+| Explicit `SnapshotChangeEventSource` / `StreamingChangeEventSource`
+
+| Envelope format
+| Not required
+| Standard Debezium envelope (`op`, `before`, `after`, `source`, `ts_ms`)
+
+| Error handling
+| Manual
+| Provided by `ErrorHandler`
+
+| Runtime
+| Kafka Connect only
+| Kafka Connect or Debezium Server
+|===
+
+=== How a Debezium Source Connector Works
+
+At runtime, Debezium follows a predictable flow:
+
+1. The connector validates configuration and creates task configurations.
+2. The task loads offsets and schema history.
+3. A snapshot runs (if required by `snapshot.mode`).
+4. The connector switches to streaming and emits change events.
+5. Offsets are persisted after every batch or record, depending on configuration.
+
+This flow is consistent across connectors, but the snapshot and streaming implementations are database-specific.
+
+=== Event Envelope Structure
+
+Debezium emits change events with a consistent envelope, regardless of source type.
+
+Common fields:
+- `before` contains the previous row state (if available).
+- `after` contains the new row state (if available).
+- `op` is the operation code (`c`, `u`, `d`, `r`).
+- `source` contains metadata about the origin of the change.
+- `ts_ms` is the event processing timestamp.
+
+Example payload structure:
+[source,json]
+----
+{
+    "op": "u",
+    "before": { "id": 1, "name": "Alice" },
+    "after": { "id": 1, "name": "Alice2" },
+    "source": { "db": "mydb", "table": "users", "lsn": 12345, "snapshot": false },
+    "ts_ms": 1713801600000
+}
+----
+
+=== Topic Naming
+
+Debezium uses `topic.prefix` as the base. Relational connectors typically use `topic.prefix.schema.table`, while some NoSQL connectors use `topic.prefix.keyspace.table` or equivalent. Consistent naming is critical for downstream consumers and schema management.
+
+NOTE: Topic naming strategies can be customized via `TopicNamingStrategy` implementations when needed.
+
+'''
+
+=== Two Architectural Patterns
+
+Debezium connectors fall into two broad architectural patterns:
+
+*Pattern A: Standard Relational and Coordinator Pattern*
+Used by Db2, Ingres, Informix, MySQL, PostgreSQL, SQL Server, Oracle, and similar connectors. These connectors implement the full `debezium-core` coordinator lifecycle: `BaseSourceConnector`, `BaseSourceTask`, `ChangeEventSourceCoordinator`, `SnapshotChangeEventSource`, and `StreamingChangeEventSource`.
+
+*Pattern B: Agent or Processor Pattern*
+Used by Cassandra and some historical connectors. These connectors run as an agent or process directly on the database node. They may not use `ChangeEventSourceCoordinator` at all; instead, they use a custom processor group or polling architecture. They often extend Kafka Connect's `SourceConnector` directly rather than `BaseSourceConnector`.
+
+This guide primarily describes Pattern A, which is the standard for new relational and CDC connectors. Pattern B is noted where relevant.
+
+'''
+
+== Prerequisites and Runtimes (kafka & Dbz Server)
+
+=== Kafka Connect Runtime
+
+Kafka Connect is the standard runtime for Kafka Connect plugins. It manages connector tasks, stores offsets in Kafka topics, and scales horizontally across a cluster of workers.
+
+*Prerequisites:*
+
+|===
+| Component | Version | Purpose
+
+| Apache Kafka
+| 3.x
+| Message broker and offset storage
+
+| Kafka Connect
+| 3.x
+| Connector runtime
+
+| Debezium Core
+| 3.5.x (recommended)
+| Framework classes and utilities
+
+| Java
+| 21
+| Runtime
+
+| Maven
+| 3.8+
+| Build tool
+|===
+
+*Runtime characteristics:*
+- Offsets are stored in a Kafka topic (`connect-offsets` by default).
+- The connector JAR (with dependencies) is placed in the Kafka Connect plugin path.
+- The connector is registered via the Kafka Connect REST API.
+- Output is inspected via Kafka UI or `kafka-console-consumer`.
+
+=== Debezium Server Runtime
+
+Debezium Server is a Quarkus-based standalone runtime that does not require a Kafka cluster. It can send captured changes to sinks such as Kafka, Pulsar, Kinesis, NATS, Redis, or HTTP via Quarkus extensions.
+
+*Prerequisites:*
+
+|===
+| Component | Version | Purpose
+
+| Debezium Server
+| 3.5.x (recommended)
+| Standalone CDC runtime
+
+| Debezium Core
+| 3.5.x
+| Framework classes
+
+| Java
+| 21
+| Runtime
+
+| Maven
+| 3.8+
+| Build tool
+|===
+
+*Runtime characteristics:*
+- No Kafka cluster is required.
+- Offsets are stored in a file (`file-offsets.dat` by default) or another configured store.
+- Configuration is provided via `application.properties`.
+- The connector JAR is added to the Debezium Server classpath.
+
+=== Runtime Choice
+
+- Use Kafka Connect if you already operate a Kafka cluster, need horizontal scaling of connector tasks, or want to use the Kafka ecosystem.
+- Use Debezium Server if you want to avoid operating a Kafka cluster, need to send changes to non-Kafka sinks, or prefer a lightweight standalone deployment.
+
+=== Build and Packaging Requirements
+
+Debezium source connectors are packaged as JARs. For Kafka Connect, dependencies not provided by the runtime must be bundled. For Debezium Server, the connector JAR is placed on the server classpath.
+
+Common build expectations:
+- Use the Maven assembly or shade plugin to create an uber JAR when required.
+- Avoid bundling Kafka Connect or SLF4J classes that are already provided by the runtime.
+- Keep connector-specific dependencies isolated to avoid classpath conflicts.
+
+=== Offset Storage and Schema History
+
+Offsets and schema history are essential for correctness:
+
+- Kafka Connect stores offsets in a Kafka topic. Ensure the topic is compacted and highly available.
+- Debezium Server stores offsets in a file or configurable store; the path must be persistent across restarts.
+- Schema history must be persisted so that updates and deletes can be interpreted using the correct schema.
+
+NOTE: For relational connectors, schema history is typically persisted via `KafkaDatabaseHistory` or `FileDatabaseHistory`.
+
+'''
+
+=== Converters and Serialization
+
+Debezium relies on Kafka Connect converters for key/value serialization:
+
+- JSON converter for lightweight testing.
+- Avro or Protobuf converters for production compatibility with schema registry.
+
+Choosing a converter affects how schemas are stored and how consumers decode events.
+
+=== CDC Enablement and Permissions
+
+Most sources require explicit CDC enablement and permissions. Your connector documentation should specify:
+
+- Which CDC features must be enabled (logical replication, binlog, change streams).
+- Which privileges the connector user needs (read, replication, log access).
+- Whether additional agents or log readers must be installed.
+- Any network or TLS requirements.
+
+WARNING: If CDC is not enabled or privileges are insufficient, the connector might start but never emit events.
+
+'''
+
+== Components, Classes & low level required services
+
+This section describes the core classes that must be implemented for a standard Debezium source connector (Pattern A), and the low-level services the runtime expects.
+
+=== Connector Entry Point
+
+==== Connector Class
+
+Extends `BaseSourceConnector` (from `debezium-core`). This is the class referenced by `connector.class` in the registration configuration.
+
+*Generic contract:*
+[source,java]
+----
+public class MyConnector extends BaseSourceConnector {
+    @Override
+    public Class<? extends Task> taskClass() {
+        return MyConnectorTask.class;
+    }
+
+    @Override
+    public List<Map<String, String>> taskConfigs(int maxTasks) {
+        // Divide connector properties into per-task configurations.
+    }
+}
+----
+
+*Real examples:*
+- `Db2Connector` extends `RelationalBaseSourceConnector`
+- `IngresConnector` extends `RelationalBaseSourceConnector`
+- `InformixConnector` extends `RelationalBaseSourceConnector`
+- `Cassandra3Connector` extends `SourceConnector` (Pattern B)
+
+*Responsibilities:*
+- Declare the task class.
+- Divide connector-level configuration into per-task configurations.
+- Validate configuration (often delegated to the base class).
+
+==== Task Class
+
+Extends `BaseSourceTask` (from `debezium-core`). This is the bridge between Kafka Connect and the Debezium framework.
+
+*Generic contract:*
+[source,java]
+----
+public class MyConnectorTask extends BaseSourceTask<MyPartition, MyOffsetContext> {
+    @Override
+    protected MyConnectorConfig config() { ... }
+
+    @Override
+    protected MyOffsetContext getOffsetContext() { ... }
+}
+----
+
+*Real examples:*
+- `Db2ConnectorTask` extends `BaseSourceTask\<<Db2Partition, Db2OffsetContext>\>`
+- `InformixConnectorTask` extends `BaseSourceTask\<<InformixPartition, InformixOffsetContext>\>`
+- `AbstractConnectorTask` extends `BaseSourceTask\<<CassandraPartition, CassandraOffsetContext>\>` (Cassandra)
+
+*Key initialization steps in `start()`:*
+1. Load or seed the initial `Offsets` (partition to offset mapping).
+2. Initialize `DatabaseSchema`.
+3. Create `ChangeEventSourceCoordinator` with a `ChangeEventSourceFactory`.
+4. Start the coordinator in a background thread.
+
+*Important pattern:* If no stored offset exists, seed a zero or default offset to force a snapshot on first start:
+[source,java]
+----
+if (previousOffsets.getTheOnlyOffset() == null) {
+    MyPartition partition = new MyPartition(serverName);
+    MyOffsetContext offsetContext = new MyOffsetContext(new MySourceInfo(config));
+    previousOffsets = Offsets.of(partition, offsetContext);
+}
+----
+
+=== Configuration
+
+==== Connector Config Class
+
+Extends `CommonConnectorConfig` (or `HistorizedRelationalDatabaseConnectorConfig` for relational connectors). Defines connector-specific configuration fields.
+
+*Generic contract:*
+[source,java]
+----
+public class MyConnectorConfig extends CommonConnectorConfig {
+    public static final Field MY_PROPERTY = Field.create("my.property")
+            .withType(ConfigDef.Type.STRING)
+            .required();
+
+    @Override
+    protected SourceInfoStructMaker<?> getSourceInfoStructMaker() {
+        return new MySourceInfoStructMaker();
+    }
+}
+----
+
+*Real examples:*
+- `Db2ConnectorConfig` extends `HistorizedRelationalDatabaseConnectorConfig`
+- `IngresConnectorConfig` extends `HistorizedRelationalDatabaseConnectorConfig`
+- `CassandraConnectorConfig` extends `CommonConnectorConfig`
+
+*Responsibilities:*
+- Define custom configuration fields.
+- Provide defaults, validators, and documentation for each field.
+- Return the `SourceInfoStructMaker` implementation.
+
+=== Partition and Offset Management
+
+==== Partition
+
+Implements `Partition`. Represents the source partition in connector-specific terms and provides its Kafka Connect `sourcePartition` map.
+
+*Generic contract:*
+[source,java]
+----
+public class MyPartition implements Partition {
+    @Override
+    public Map<String, String> getSourcePartition() {
+        return Map.of("server", serverName);
+    }
+}
+----
+
+*Real examples:*
+- `Db2Partition`, key is `database.server.name`
+- `InformixPartition`, key is `databaseName`
+- `CassandraPartition`, key is `logicalName` plus `nodeId`
+
+==== Partition.Provider
+
+Implements `Partition.Provider`. Returns the set of partitions that the task should process.
+
+[source,java]
+----
+public class MyPartition.Provider implements Partition.Provider<MyPartition> {
+    @Override
+    public Set<MyPartition> getPartitions() {
+        return Set.of(new MyPartition(config.getLogicalName()));
+    }
+}
+----
+
+==== OffsetContext
+
+Extends `CommonOffsetContext` or implements `OffsetContext`. Encapsulates the connector-specific state that must be persisted (LSN, line number, transaction ID, file position).
+
+*Generic contract:*
+[source,java]
+----
+public class MyOffsetContext extends CommonOffsetContext<MySourceInfo> {
+    @Override
+    public Map<String, ?> getOffset() {
+        return Map.of("position", serializePosition());
+    }
+}
+----
+
+*Real examples:*
+- `Db2OffsetContext` stores `commit_lsn`, `change_lsn`, and `event_serial_no` using `TxLogPosition`.
+- `InformixOffsetContext` stores `commit_lsn`, `change_lsn`, `begin_lsn`, and `txId` using `TxLogPosition`.
+- `IngresOffsetContext` stores `HeaderRecord` objects base64-encoded.
+- `CassandraOffsetContext` stores offsets keyed by `tableName` plus `.snapshot` or `.commitlog`.
+
+==== OffsetContext.Loader
+
+Implements `OffsetContext.Loader`. Deserializes the offset map from Kafka Connect offset storage into the connector's `OffsetContext`.
+
+[source,java]
+----
+public class MyOffsetContext.Loader implements OffsetContext.Loader<MyOffsetContext> {
+    @Override
+    public MyOffsetContext load(Map<String, ?> map) {
+        MyOffsetContext ctx = new MyOffsetContext(new MySourceInfo(config));
+        if (map != null) {
+            // Deserialize offset fields from map.
+        }
+        return ctx;
+    }
+}
+----
+
+*Key pattern:* When `map` is null on first start, the loader returns a zero or default state so the framework triggers a snapshot.
+
+=== Snapshot and Streaming Sources
+
+==== ChangeEventSourceFactory
+
+Implements `ChangeEventSourceFactory`. Provides the snapshot and streaming source instances to the coordinator.
+
+*Generic contract:*
+[source,java]
+----
+public class MyChangeEventSourceFactory implements ChangeEventSourceFactory<MyPartition, MyOffsetContext> {
+    @Override
+    public SnapshotChangeEventSource<MyPartition, MyOffsetContext> getSnapshotChangeEventSource(...) {
+        return new MySnapshotChangeEventSource(...);
+    }
+
+    @Override
+    public StreamingChangeEventSource<MyPartition, MyOffsetContext> getStreamingChangeEventSource() {
+        return new MyStreamingChangeEventSource(...);
+    }
+}
+----
+
+*Real examples:* `Db2ChangeEventSourceFactory`, `InformixChangeEventSourceFactory`, `IngresChangeEventSourceFactory`.
+
+==== SnapshotChangeEventSource
+
+Implements `SnapshotChangeEventSource` (or `RelationalSnapshotChangeEventSource` for relational connectors). Responsible for reading the current state and emitting READ (`r`) events.
+
+*Generic responsibilities:*
+- Determine if a snapshot is needed based on the current offset.
+- Read the source state (tables, files, collections).
+- Emit one READ event per record.
+- Update the offset context as progress is made.
+- Return `SnapshotResult.completed(offsetContext)` to signal handover to streaming.
+
+*Real examples:*
+- `Db2SnapshotChangeEventSource` extends `RelationalSnapshotChangeEventSource`
+- `InformixSnapshotChangeEventSource` extends `RelationalSnapshotChangeEventSource`
+- `SnapshotProcessor` extends `AbstractProcessor` (Cassandra pattern B)
+
+*Snapshot isolation and locking (relational connectors):*
+Relational connectors typically support configurable isolation modes:
+- `EXCLUSIVE` holds locks for the entire snapshot.
+- `REPEATABLE_READ` acquires locks briefly during schema capture, then releases via savepoint.
+- `READ_COMMITTED` or `READ_UNCOMMITTED` uses minimal or no locking.
+
+The snapshot source uses `SnapshotterService` with pluggable lock and query implementations (`ExclusiveSnapshotLock`, `SelectAllSnapshotQuery`).
+
+==== Snapshot Modes and Behavior
+
+Snapshot behavior is controlled by `snapshot.mode` and related settings:
+
+- `initial`: perform snapshot once, then stream.
+- `initial_only`: snapshot and stop without streaming.
+- `schema_only`: capture schema history only, do not emit data rows.
+- `never`: skip snapshot and start streaming from the current log position.
+
+Snapshot decisions are driven by the `OffsetContext`. If no previous offset exists, the framework assumes a snapshot is required unless configured otherwise.
+
+==== StreamingChangeEventSource
+
+Implements `StreamingChangeEventSource`. Responsible for capturing changes after the snapshot.
+
+*Generic responsibilities:*
+- Resume from the offset returned by the snapshot.
+- Listen for or poll new changes.
+- Emit `CREATE` (`c`), `UPDATE` (`u`), or `DELETE` (`d`) events.
+- Update the offset context so progress is persisted.
+- Honor `context.isRunning()` for graceful shutdown.
+
+*Real examples:*
+- `Db2StreamingChangeEventSource` queries DB2 CDC change tables directly and merges results via a priority queue to emit in LSN order.
+- `InformixStreamingChangeEventSource` wraps Informix native CDC APIs and groups records by transaction.
+- `IngresStreamingChangeEventSource` wraps Ingres CDC APIs and handles recovery replay.
+- `CommitLogProcessor` or `CommitLogIdxProcessor` (Cassandra) watches the filesystem CDC directory for commit log files.
+
+==== Streaming Ordering and Transactions
+
+Streaming must preserve change order for correctness:
+
+- Maintain ordering within a transaction when the source provides transaction boundaries.
+- Use LSN or log position ordering to avoid out-of-order emission.
+- Track transaction metadata via `TransactionMonitor` and `EventMetadataProvider` when available.
+
+If the source does not provide transaction boundaries, the connector should still preserve ordering based on log position and emit a consistent `source` state.
+
+==== Heartbeats and Signal Processing
+
+Some connectors emit periodic heartbeat records to ensure downstream consumers see progress even when no changes occur. When supported, this is usually controlled by a heartbeat interval and uses a dedicated heartbeat topic.
+
+Signal tables (for schema change triggers or ad hoc snapshots) are supported by some connectors and should be documented if implemented.
+
+=== Schema and Record Construction
+
+==== DatabaseSchema
+
+Implements `DatabaseSchema` (or `HistorizedRelationalDatabaseSchema` for relational connectors). Manages mapping from source collections to Kafka Connect schemas.
+
+*Generic responsibilities:*
+- Build `Schema` objects for keys, values, and the Debezium envelope.
+- Support schema evolution (if the source schema can change).
+- Provide lookup by collection identifier.
+
+*Real examples:*
+- `Db2DatabaseSchema` extends `HistorizedRelationalDatabaseSchema`
+- `InformixDatabaseSchema` extends `HistorizedRelationalDatabaseSchema`
+- `IngresDatabaseSchema` extends `HistorizedRelationalDatabaseSchema`
+- `SchemaHolder` (Cassandra) uses a concurrent map
+
+==== ChangeRecordEmitter
+
+Extends `AbstractChangeRecordEmitter` or `RelationalChangeRecordEmitter`. Constructs the final `Struct` that represents the Debezium envelope.
+
+*Generic contract:*
+[source,java]
+----
+public class MyChangeRecordEmitter extends RelationalChangeRecordEmitter<MyPartition> {
+    @Override
+    public void emitChangeRecords(DataCollectionSchema schema, Receiver<MyPartition> receiver) {
+        Envelope envelope = schema.getEnvelopeSchema();
+        Struct source = offsetContext.getSourceInfoStruct();
+        Instant now = Instant.now();
+
+        Struct envelopeStruct = switch (operation) {
+            case READ   -> envelope.read(valueStruct, source, now);
+            case CREATE -> envelope.create(valueStruct, source, now);
+            case UPDATE -> envelope.update(beforeStruct, valueStruct, source, now);
+            case DELETE -> envelope.delete(valueStruct, source, now);
+        };
+
+        receiver.changeRecord(partition, schema, operation, keyStruct, envelopeStruct, offsetContext, null);
+    }
+}
+----
+
+*Real examples:* `Db2ChangeRecordEmitter`, `InformixChangeRecordEmitter`, `IngresChangeRecordEmitter`.
+
+==== Data Type Handling
+
+Each connector must map source data types to Kafka Connect schema types. Common mapping patterns include:
+
+- Numeric types to `INT32`, `INT64`, or `FLOAT64`.
+- Timestamp and date types to Debezium logical types.
+- Binary and UUID types to `BYTES` or string representations.
+
+When defaults do not meet your needs, connectors can expose configuration to control decimal and temporal handling modes (for example, `decimal.handling.mode` and `time.precision.mode`).
+
+==== Before and After Semantics
+
+Not all sources provide full before images. Some log formats record only the changed columns. In those cases:
+
+- `before` might be null for updates and deletes.
+- `after` might contain only the updated columns.
+
+If the source supports read-before-write or provides full row images, both `before` and `after` can be populated consistently.
+
+==== Tombstone Events
+
+When `tombstones.on.delete=true`, the connector emits a tombstone message after a delete event to support log compaction. Some databases that allow partial updates can produce multiple updates for the same key, so evaluate tombstones carefully when using compacted topics.
+
+=== Source Info and Metadata
+
+==== SourceInfo
+
+Holds per-event source metadata (database name, table name, LSN, transaction ID, timestamp).
+
+*Real examples:*
+- `SourceInfo` (Db2) holds `changeLsn`, `commitLsn`, `eventSerialNo`.
+- `SourceInfo` (Informix) holds `commitLsn`, `changeLsn`, `beginLsn`, `txId`, `tableId`.
+- `SourceInfo` (Cassandra) holds `version`, `cluster`, `file`, `pos`.
+
+==== SourceInfoStructMaker
+
+Implements `SourceInfoStructMaker`. Defines the `source` field schema and builds its `Struct`.
+
+[source,java]
+----
+public class MySourceInfoStructMaker implements SourceInfoStructMaker<MySourceInfo> {
+    @Override
+    public Schema schema() {
+        return SchemaBuilder.struct()
+                .name("io.debezium.connector.my.Source")
+                .field("db", Schema.STRING_SCHEMA)
+                .field("table", Schema.STRING_SCHEMA)
+                .field("lsn", Schema.INT64_SCHEMA)
+                .build();
+    }
+}
+----
+
+=== Supporting Services
+
+|===
+| Service | Purpose | Examples
+
+| `ErrorHandler`
+| Classifies retriable vs fatal errors.
+| `InformixErrorHandler` extends `ErrorHandler`. Db2 and Ingres use `io.debezium.pipeline.ErrorHandler`.
+
+| `Snapshotter` / `SnapshotLock`
+| Determines snapshot strategy and locking.
+| `Db2Snapshotter`, `ExclusiveSnapshotLock`, `ShareSnapshotLock`, `NoSnapshotLock`.
+
+| `SnapshotQuery`
+| Customizes snapshot SELECT queries.
+| `SelectAllSnapshotQuery`.
+
+| `DataCollectionId`
+| Identifies a table, collection, or file.
+| `TableId`, `CsvId`, `KeyspaceTable`.
+
+| `EventMetadataProvider`
+| Provides event timestamps, positions, and txIds.
+| `Db2EventMetadataProvider`, `InformixEventMetadataProvider`.
+
+| `ValueConverters`
+| Converts source types to Kafka Connect types.
+| `Db2ValueConverters`, `InformixValueConverters`, `IngresValueConverters`.
+
+| `Connection`
+| Wraps JDBC or native connections.
+| `Db2Connection`, `InformixConnection`, `IngresConnection`. Cassandra uses the Cassandra driver.
+
+| `TransactionMonitor`
+| Tracks transaction boundaries.
+| `InformixTransactionMonitor`, `IngresTransactionMonitor`, `Db2TransactionMonitor`.
+|===
+
+=== Queues, Batching, and Backpressure
+
+Debezium uses internal queues to decouple log reading from event emission. Common tuning knobs include:
+
+- `max.queue.size` for the maximum number of change events held in memory.
+- `max.batch.size` for the number of records per poll batch.
+- `poll.interval.ms` for how frequently the streaming loop checks for new events.
+
+When Kafka or the sink is slow, backpressure prevents unbounded memory growth by blocking the log reader until the queue drains.
+
+=== Component Dependency Overview (Standard Pattern)
+
+....
+MyConnector (BaseSourceConnector)
+    └── MyConnectorTask (BaseSourceTask)
+            ├── MyConnectorConfig (CommonConnectorConfig)
+            ├── MyPartition / MyPartition.Provider (Partition)
+            ├── MyOffsetContext / MyOffsetContext.Loader (OffsetContext)
+            ├── MyDatabaseSchema (DatabaseSchema)
+            │       └── TableSchema / CollectionSchema (DataCollectionSchema)
+            ├── MyChangeEventSourceFactory (ChangeEventSourceFactory)
+            │       ├── MySnapshotChangeEventSource
+            │       │       └── SnapshotterService / SnapshotLock
+            │       └── MyStreamingChangeEventSource
+            ├── MyChangeRecordEmitter
+            ├── MySourceInfo / MySourceInfoStructMaker
+            └── MyErrorHandler (optional)
+....
+
+=== Variations by Connector Type
+
+|===
+| Feature | Relational (Db2, Ingres, Informix) | NoSQL or Agent (Cassandra)
+
+| Coordinator
+| `ChangeEventSourceCoordinator`
+| Custom `ProcessorGroup`
+
+| Snapshot
+| `RelationalSnapshotChangeEventSource`
+| Polling CQL `SnapshotProcessor`
+
+| Streaming
+| `StreamingChangeEventSource`
+| File watcher `CommitLogProcessor`
+
+| Offset storage
+| Kafka Connect offset topic
+| Local property files `FileOffsetWriter`
+
+| Schema
+| `HistorizedRelationalDatabaseSchema`
+| `SchemaHolder` (concurrent map)
+
+| Deployment
+| Kafka Connect or Debezium Server
+| Agent on Cassandra node
+
+| Base connector
+| `BaseSourceConnector`
+| `SourceConnector` (Kafka Connect directly)
+|===
+
+'''
+
+== Register and Configure the Connector
+
+=== Kafka Connect registration
+
+1. Build the connector JAR:
+[source,bash]
+----
+mvn package
+----
+
+2. Place the JAR and dependencies in the Kafka Connect plugin path.
+
+The connector JAR and runtime dependencies not provided by Kafka Connect should be placed in a directory listed in Kafka Connect `plugin.path`.
+
+3. Start Kafka Connect. Example `docker-compose.yml`:
+[source,yaml]
+----
+services:
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    ports:
+      - "9092:9092"
+  connect:
+    image: debezium/connect:3.0
+    ports:
+      - "8083:8083"
+    environment:
+      - BOOTSTRAP_SERVERS=kafka:9092
+      - GROUP_ID=1
+      - CONFIG_STORAGE_TOPIC=my_connect_configs
+      - OFFSET_STORAGE_TOPIC=my_connect_offsets
+      - STATUS_STORAGE_TOPIC=my_connect_status
+      - PLUGIN_PATH=/kafka/connect
+----
+
+4. Register the connector via the REST API:
+
+Create a registration payload file (for example `register-connector.json`):
+[source,json]
+----
+{
+  "name": "my-connector",
+  "config": {
+    "connector.class": "io.debezium.connector.my.MyConnector",
+    "tasks.max": "1",
+    "topic.prefix": "myapp",
+    "my.custom.property": "value"
+  }
+}
+----
+
+Then register it:
+[source,bash]
+----
+curl -i -X POST -H "Accept:application/json" -H "Content-Type:application/json" \
+  http://localhost:8083/connectors/ -d @register-connector.json
+----
+
+=== Debezium Server configuration
+
+When using Debezium Server, the connector is configured in `application.properties`.
+
+1. Add the connector JAR to the Debezium Server classpath (for example `lib/` directory).
+
+2. Configure `application.properties`:
+[source,properties]
+----
+# Debezium Server source
+debezium.source.connector.class=io.debezium.connector.my.MyConnector
+debezium.source.topic.prefix=myapp
+debezium.source.my.custom.property=value
+
+# Offset storage
+debezium.offset.storage.file.filename=/data/offsets.dat
+debezium.offset.flush.interval.ms=60000
+
+# Sink configuration (example: file)
+debezium.sink.type=file
+debezium.sink.file.path=/data/cdc-output.json
+----
+
+3. Start Debezium Server:
+[source,bash]
+----
+java -jar debezium-server-*.jar
+----
+
+=== Common configuration properties
+
+The following properties are common to all Debezium source connectors (provided by `CommonConnectorConfig`):
+
+|===
+| Property | Type | Default | Description
+
+| `topic.prefix`
+| STRING
+| required
+| Prefix for all topics produced by this connector.
+
+| `snapshot.mode`
+| STRING
+| `initial`
+| When to perform a snapshot: `initial`, `initial_only`, `schema_only`, `never`, etc.
+
+| `tombstones.on.delete`
+| BOOLEAN
+| `true`
+| Whether to emit tombstone events on DELETE.
+
+| `decimal.handling.mode`
+| STRING
+| `precise`
+| How to handle decimal types: `precise`, `double`, `string`.
+
+| `time.precision.mode`
+| STRING
+| `adaptive`
+| How to handle time types: `adaptive`, `connect`.
+
+| `max.batch.size`
+| INT
+| `2048`
+| Maximum number of records per batch.
+
+| `max.queue.size`
+| INT
+| `8192`
+| Maximum number of records in the queue.
+
+| `poll.interval.ms`
+| LONG
+| `1000`
+| Polling interval for the change event source.
+|===
+
+Connector-specific properties are defined in the connector's config class.
+
+=== Connector Configuration Groups
+
+Most connectors expose a similar set of configuration groups. Document them in the connector-specific configuration section:
+
+- *Connection*: host, port, user, password, database or cluster name.
+- *Capture*: include and exclude lists, snapshot mode, heartbeat interval.
+- *Offset and history*: storage location, flush interval, and history topic or file.
+- *Serialization*: key/value converters and schema registry settings.
+- *Performance*: batch size, queue size, poll interval.
+
+=== Example Kafka Connect Configuration
+
+[source,json]
+----
+{
+    "name": "my-connector",
+    "config": {
+        "connector.class": "io.debezium.connector.my.MyConnector",
+        "tasks.max": "1",
+        "topic.prefix": "myapp",
+        "database.hostname": "localhost",
+        "database.port": "5432",
+        "database.user": "dbz",
+        "database.password": "dbz",
+        "snapshot.mode": "initial",
+        "schema.history.internal.kafka.bootstrap.servers": "localhost:9092",
+        "schema.history.internal.kafka.topic": "schema-changes.myapp",
+        "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "key.converter.schemas.enable": "false",
+        "value.converter.schemas.enable": "false"
+    }
+}
+----
+
+=== Example Debezium Server Configuration
+
+[source,properties]
+----
+debezium.source.connector.class=io.debezium.connector.my.MyConnector
+debezium.source.topic.prefix=myapp
+debezium.source.database.hostname=localhost
+debezium.source.database.port=5432
+debezium.source.database.user=dbz
+debezium.source.database.password=dbz
+debezium.source.snapshot.mode=initial
+
+debezium.source.schema.history.internal.file.filename=/data/schema-history.dat
+debezium.offset.storage.file.filename=/data/offsets.dat
+debezium.offset.flush.interval.ms=60000
+
+debezium.sink.type=kafka
+debezium.sink.kafka.bootstrap.servers=localhost:9092
+----
+
+NOTE: Debezium Server prefixes connector options with `debezium.source.` and sink options with `debezium.sink.`.
+
+'''
+
+== Verification (with dbz server)
+
+Verification ensures that the connector correctly performs snapshotting, streaming, offset management, and schema evolution. This procedure is generic and can be applied to any connector, including the CSV connector example from `debezium-examples`.
+
+=== Verification with Debezium Server
+
+1. Build a Debezium Server distribution with the connector JAR.
+
+2. Configure `application.properties` as shown in the registration section.
+
+3. Start Debezium Server:
+[source,bash]
+----
+./run.sh
+----
+
+4. Inspect the sink.
+
+With the file sink:
+[source,bash]
+----
+tail -f /data/cdc-output.json
+----
+
+5. Prepare test data in the source system.
+
+For a database connector, create a table and insert a few rows. For the CSV example, provide snapshot rows and change rows.
+
+6. Verify snapshot output.
+
+You should see READ (`r`) events for each row present at snapshot time.
+
+Expected record shape:
+[source,json]
+----
+{
+  "schema": { "..." },
+  "payload": {
+    "op": "r",
+    "after": { "id": 1, "name": "Alice" },
+    "source": { "db": "mydb", "table": "mytable", "lsn": 12345 },
+    "ts_ms": 1713801600000
+  }
+}
+----
+
+7. Verify streaming output.
+
+Perform insert, update, and delete operations in the source system. The connector should emit:
+- `CREATE` (`c`) for inserts
+- `UPDATE` (`u`) for modifications
+- `DELETE` (`d`) for removals
+
+8. Verify offset persistence.
+
+Restart Debezium Server. The connector should resume from the last committed position, not re-emit previously processed events. This confirms that `OffsetContext` and `OffsetContext.Loader` are working correctly.
+
+9. Verify schema evolution if applicable.
+
+If the connector supports schema changes, alter the source schema and verify that subsequent records use the new schema.
+
+=== When Things Go Wrong
+
+==== Configuration and startup errors
+
+If configuration is invalid or connection parameters are wrong, the connector fails on startup and logs a clear error. Fix the configuration and restart.
+
+==== Source becomes unavailable
+
+If the source database becomes unavailable, the streaming loop typically fails and the connector stops. After the source recovers, restart the connector to resume from the last committed offset.
+
+==== Connector stops gracefully
+
+On a clean shutdown, Debezium flushes queued events and persists offsets. On restart, the connector resumes from the last known position without replay.
+
+==== Connector crashes
+
+If the process crashes, the most recent offsets might not be persisted. On restart, the connector resumes from the last committed offset, which can cause duplicates. Downstream consumers should be idempotent when possible.
+
+==== Kafka or sink becomes unavailable
+
+When the sink is unavailable, the connector retries sending records and applies backpressure to the log reader. If the outage exceeds retry limits, the connector stops.
+
+==== Snapshot interruptions
+
+If the connector stops during snapshot, it will typically restart the snapshot on the next run. For large data sets, this means snapshot restarts can be expensive. Use snapshot options and filters to keep snapshot scope manageable.
+
+=== What to Check in Logs
+
+- Snapshot start and completion messages.
+- Streaming start messages and current log position.
+- Offset flush events or warnings.
+- Schema history updates and schema change events.
+- Retries and error classifications from the `ErrorHandler`.
+
+=== Automated testing
+
+For production connectors, the Debezium framework provides test utilities:
+
+- `AbstractConnectorTest` for integration tests.
+- `TestHelper` for waiting for snapshots, streaming, and asserting offsets.
+- `FileDatabaseHistory` or `KafkaDatabaseHistory` for schema recovery tests.
+
+'''
+
+=== References
+
+- debezium-connector-cassandra: https://github.com/debezium/debezium-connector-cassandra
+- debezium-connector-db2: https://github.com/debezium/debezium-connector-db2
+- debezium-connector-ingres: https://github.com/debezium/debezium-connector-ingres
+- debezium-connector-informix: https://github.com/debezium/debezium-connector-informix
+- debezium-examples PR 407: https://github.com/debezium/debezium-examples/pull/407
+- Kafka Connect documentation: https://kafka.apache.org/documentation.html#connect
+- Debezium Server documentation: https://debezium.io/documentation/reference/stable/operations/debezium-server.html
+- Debezium connector development guide: https://debezium.io/documentation/reference/stable/development/engine.html
