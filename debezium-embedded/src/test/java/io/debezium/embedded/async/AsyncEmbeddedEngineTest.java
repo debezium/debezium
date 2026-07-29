@@ -68,7 +68,7 @@ import ch.qos.logback.classic.Level;
 public class AsyncEmbeddedEngineTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(AsyncEmbeddedEngineTest.class);
 
-    private static final int NUMBER_OF_LINES = 10;
+    private static final int NUMBER_OF_LINES = 1000;
     protected static final Path OFFSET_STORE_PATH = Testing.Files.createTestingPath("file-connector-offsets.txt").toAbsolutePath();
     private static final Path TEST_FILE_PATH = Testing.Files.createTestingPath("file-connector-input.txt").toAbsolutePath();
 
@@ -314,7 +314,7 @@ public class AsyncEmbeddedEngineTest {
         // Add a few more lines, and then verify they are consumed ...
         appendLinesToSource(NUMBER_OF_LINES);
         recordsLatch.await(AbstractConnectorTest.waitTimeForEngine(), TimeUnit.SECONDS);
-        assertThat(recordsSent.get()).isEqualTo(20);
+        assertThat(recordsSent.get()).isEqualTo(NUMBER_OF_LINES * 2);
 
         stopEngine();
         callbackLatch.await(AbstractConnectorTest.waitTimeForEngine(), TimeUnit.SECONDS);
