@@ -491,7 +491,7 @@ public class OracleConnection extends JdbcConnection {
                 .append(projection)
                 .append(" FROM ")
                 .append(quotedTableIdString(truncatedTableId));
-        if (condition != null) {
+        if (!Strings.isNullOrBlank(condition)) {
             sql.append(" WHERE ")
                     .append(condition);
         }
