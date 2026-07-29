@@ -70,6 +70,25 @@ public class ArchiveDestinationResolverTest {
         }).hasMessage("Failed to locate a local and valid archive destination in Oracle.");
     }
 
+    @FixFor("debezium/dbz#2305")
+    @Test
+    void shouldSkipValidationOnAutonomousDatabase() throws Exception {
+        final OracleConnection connection = Mockito.mock(OracleConnection.class);
+        Mockito.when(connection.isAutonomous()).thenReturn(true);
+
+        // No archive destinations resolvable (Autonomous hides the V$ views), yet validation must not
+        // throw: it returns early because the database is Autonomous.
+        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(Configuration.empty());
+        final LogInterceptor logInterceptor = new LogInterceptor(ArchiveDestinationNameResolver.class);
+
+        connectorConfig.getArchiveDestinationNameResolver().validate(connection);
+
+        assertThat(logInterceptor.containsMessage(
+                "Connected to an Oracle Autonomous Database; skipping archive destination validation.")).isTrue();
+        // The archive destination views are never queried on Autonomous.
+        Mockito.verify(connection, Mockito.never()).isArchiveLogDestinationValid(Mockito.anyString());
+    }
+
     @FixFor("DBZ-9041")
     @Test
     void shouldResolveDestinationNameFromListOfValidAndInvalidOptions() throws Exception {
