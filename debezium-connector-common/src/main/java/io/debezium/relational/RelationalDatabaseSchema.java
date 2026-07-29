@@ -8,6 +8,7 @@ package io.debezium.relational;
 import static io.debezium.openlineage.dataset.DatasetMetadata.DatasetKind.INPUT;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 import org.apache.kafka.connect.data.Schema;
@@ -77,7 +78,7 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
                 config.getConfig().getString(RelationalDatabaseConnectorConfig.COLUMN_INCLUDE_LIST));
         // A null filter already includes every column, so there is nothing to widen.
         if (columnFilter != null && includeListMode && !config.getSignalingDataCollectionTableIds().isEmpty()) {
-            return (catalogName, schemaName, tableName, columnName) -> (SIGNAL_REQUIRED_COLUMNS.contains(columnName.toLowerCase())
+            return (catalogName, schemaName, tableName, columnName) -> (SIGNAL_REQUIRED_COLUMNS.contains(columnName.toLowerCase(Locale.ROOT))
                     && config.isSignalDataCollection(new TableId(catalogName, schemaName, tableName)))
                     || columnFilter.matches(catalogName, schemaName, tableName, columnName);
         }
