@@ -93,7 +93,7 @@ public abstract class BinlogConnectorConnection extends JdbcConnection {
                 .append(projection)
                 .append(" FROM ")
                 .append(quotedTableIdString(tableId));
-        if (condition != null) {
+        if (!Strings.isNullOrBlank(condition)) {
             sql.append(" WHERE ")
                     .append(condition);
         }
