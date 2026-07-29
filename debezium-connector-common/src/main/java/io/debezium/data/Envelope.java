@@ -227,6 +227,34 @@ public final class Envelope {
         return SchemaFactory.get().datatypeEnvelopeSchema();
     }
 
+    /**
+     * Creates a new {@link Builder} using the supplied {@link EnvelopeSchemaFactory}.
+     *
+     * <p>This overload is the extension point for DBZ-8967: callers that need a non-standard
+     * envelope layout (e.g., sinks that do not require the full CDC format) can supply a custom
+     * factory instead of using the hardcoded default. The factory is responsible for returning
+     * an {@link Envelope.Builder}; the caller chains further configuration ({@code withName},
+     * {@code withRecord}, {@code withSource}, {@code build()}) on top of what the factory returns.
+     *
+     * <p>Example with a custom factory:
+     * <pre>{@code
+     * EnvelopeSchemaFactory myFactory = () -> Envelope.defineSchema().withDoc("Iceberg envelope");
+     * Envelope env = Envelope.defineSchema(myFactory)
+     *     .withName("my.Envelope")
+     *     .withRecord(tableSchema)
+     *     .withSource(sourceSchema)
+     *     .build();
+     * }</pre>
+     *
+     * @param factory the factory that provides the envelope builder; may not be {@code null}
+     * @return a new {@link Builder} as created by the factory; never {@code null}
+     * @see EnvelopeSchemaFactory
+     * @see DefaultEnvelopeSchemaFactory
+     */
+    public static Builder defineSchema(EnvelopeSchemaFactory factory) {
+        return factory.createEnvelopeSchema();
+    }
+
     public static Envelope fromSchema(Schema schema) {
         return new Envelope(schema);
     }
