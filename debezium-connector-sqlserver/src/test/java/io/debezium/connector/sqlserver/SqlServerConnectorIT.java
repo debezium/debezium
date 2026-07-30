@@ -635,7 +635,9 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
         assertRecord(insertValueB.getStruct("after"), expectedInsertRowB);
         assertRecord(insertkeyB, expectedInsertKeyB);
         assertNull(insertValueB.get("before"));
-        assertThat(insertValueB.getStruct("source").getInt64("event_serial_no")).isEqualTo(2L);
+        // The delete and the insert of this primary key update share a commit LSN and a sequence value but
+        // carry different command ids hence event_serial_no stays 1L.
+        assertThat(insertValueB.getStruct("source").getInt64("event_serial_no")).isEqualTo(1L);
 
         stopConnector();
     }
