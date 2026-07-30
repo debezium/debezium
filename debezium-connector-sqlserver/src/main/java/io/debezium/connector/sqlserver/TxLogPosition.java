@@ -12,21 +12,26 @@ import io.debezium.connector.Nullable;
  * and sequence number of the change in the given transaction.
  * The sequence number is monotonically increasing in transaction but it is not guaranteed across multiple
  * transactions so the combination is necessary to get total order.
+ * <p>
+ * The command id is only available when the change table is read directly
+ * ({@code data.query.mode=direct}). In function mode it is therefore always {@code null}
  *
  * @author Jiri Pechanec
  *
  */
 public class TxLogPosition implements Nullable, Comparable<TxLogPosition> {
 
-    public static final TxLogPosition NULL = new TxLogPosition(null, null, 0);
+    public static final TxLogPosition NULL = new TxLogPosition(null, null, 0, null);
     private final Lsn commitLsn;
     private final Lsn inTxLsn;
     private int operation;
+    private final Integer commandId;
 
-    private TxLogPosition(Lsn commitLsn, Lsn inTxLsn, int operation) {
+    private TxLogPosition(Lsn commitLsn, Lsn inTxLsn, int operation, Integer commandId) {
         this.commitLsn = commitLsn;
         this.inTxLsn = inTxLsn;
         this.operation = operation;
+        this.commandId = commandId;
     }
 
     public Lsn getCommitLsn() {
@@ -41,9 +46,13 @@ public class TxLogPosition implements Nullable, Comparable<TxLogPosition> {
         return operation;
     }
 
+    public Integer getCommandId() {
+        return commandId;
+    }
+
     @Override
     public String toString() {
-        return this == NULL ? "NULL" : commitLsn + "(" + inTxLsn + "," + operation + ")";
+        return this == NULL ? "NULL" : commitLsn + "(" + inTxLsn + "," + operation + "," + commandId + ")";
     }
 
     @Override
@@ -51,6 +60,7 @@ public class TxLogPosition implements Nullable, Comparable<TxLogPosition> {
         final int prime = 31;
         int result = 1;
         result = prime * result + ((commitLsn == null) ? 0 : commitLsn.hashCode());
+        result = prime * result + ((commandId == null) ? 0 : commandId.hashCode());
         result = prime * result + ((inTxLsn == null) ? 0 : inTxLsn.hashCode());
         result = prime * result + operation;
         return result;
@@ -76,6 +86,16 @@ public class TxLogPosition implements Nullable, Comparable<TxLogPosition> {
         else if (!commitLsn.equals(other.commitLsn)) {
             return false;
         }
+
+        if (commandId == null) {
+            if (other.commandId != null) {
+                return false;
+            }
+        }
+        else if (!commandId.equals(other.commandId)) {
+            return false;
+        }
+
         if (inTxLsn == null) {
             if (other.inTxLsn != null) {
                 return false;
@@ -89,24 +109,39 @@ public class TxLogPosition implements Nullable, Comparable<TxLogPosition> {
 
     @Override
     public int compareTo(TxLogPosition o) {
-        final int comparison = commitLsn.compareTo(o.getCommitLsn());
-        return comparison == 0 ? inTxLsn.compareTo(o.inTxLsn) : comparison;
+        int comparison = commitLsn.compareTo(o.getCommitLsn());
+        if (comparison != 0) {
+            return comparison;
+        }
+
+        if (commandId != null && o.getCommandId() != null) {
+            comparison = commandId.compareTo(o.getCommandId());
+            if (comparison != 0) {
+                return comparison;
+            }
+        }
+        return inTxLsn.compareTo(o.inTxLsn);
     }
 
-    public static TxLogPosition valueOf(Lsn commitLsn, Lsn inTxLsn, int operation) {
-        return commitLsn == null && inTxLsn == null ? NULL
+    public static TxLogPosition valueOf(Lsn commitLsn, Lsn inTxLsn, int operation, Integer commandId) {
+        return commitLsn == null && inTxLsn == null && commandId == null ? NULL
                 : new TxLogPosition(
                         commitLsn == null ? Lsn.NULL : commitLsn,
                         inTxLsn == null ? Lsn.NULL : inTxLsn,
-                        operation);
+                        operation,
+                        commandId);
+    }
+
+    public static TxLogPosition valueOf(Lsn commitLsn, Lsn inTxLsn, int operation) {
+        return valueOf(commitLsn, inTxLsn, operation, null);
     }
 
     public static TxLogPosition valueOf(Lsn commitLsn, Lsn inTxLsn) {
-        return valueOf(commitLsn, inTxLsn, 0);
+        return valueOf(commitLsn, inTxLsn, 0, null);
     }
 
     public static TxLogPosition valueOf(Lsn commitLsn) {
-        return valueOf(commitLsn, Lsn.NULL, 0);
+        return valueOf(commitLsn, Lsn.NULL, 0, null);
     }
 
     @Override

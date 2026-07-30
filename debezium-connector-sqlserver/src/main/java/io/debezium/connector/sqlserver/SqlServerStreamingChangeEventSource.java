@@ -143,6 +143,21 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         throw new UnsupportedOperationException("Currently unsupported by the SQL Server connector");
     }
 
+    private TxLogPosition resumePosition(TxLogPosition position) {
+        final boolean directMode = connectorConfig.getDataQueryMode() == SqlServerConnectorConfig.DataQueryMode.DIRECT;
+        final boolean commandIdExists = position.getCommandId() != null;
+
+        // direct and function mode orders change events differently hence a mode change contains a risk of data loss.
+        // To prevent data loss, we re-read the last transaction in full if the mode changes.
+        if ((directMode && commandIdExists) || (!directMode && !commandIdExists)) {
+            return position;
+        }
+
+        LOGGER.info("Offset {} and query mode {} indicates a change in mode, so the last transaction is streamed again", position,
+                connectorConfig.getDataQueryMode());
+        return TxLogPosition.valueOf(position.getCommitLsn());
+    }
+
     @Override
     public boolean executeIteration(ChangeEventSourceContext context, SqlServerPartition partition, SqlServerOffsetContext offsetContext) {
 
@@ -166,14 +181,16 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                             // otherwise we might skip an incomplete transaction after restart
                             offsetContext.isSnapshotCompleted()));
 
+            TxLogPosition lastProcessedPositionOnStart = offsetContext.getChangePosition();
+
             if (!streamingExecutionContexts.containsKey(partition)) {
                 streamingExecutionContexts.put(partition, streamingExecutionContext);
                 LOGGER.info("Last position recorded in offsets is {}[{}]", offsetContext.getChangePosition(), offsetContext.getEventSerialNo());
+                lastProcessedPositionOnStart = resumePosition(lastProcessedPositionOnStart);
             }
 
             final Queue<SqlServerChangeTable> schemaChangeCheckpoints = streamingExecutionContext.getSchemaChangeCheckpoints();
             final AtomicReference<SqlServerChangeTable[]> tablesSlot = streamingExecutionContext.getTablesSlot();
-            final TxLogPosition lastProcessedPositionOnStart = offsetContext.getChangePosition();
             final long lastProcessedEventSerialNoOnStart = offsetContext.getEventSerialNo();
             final AtomicBoolean changesStoppedBeingMonotonic = streamingExecutionContext.getChangesStoppedBeingMonotonic();
             final int maxTransactionsPerIteration = connectorConfig.getMaxTransactionsPerIteration();
@@ -257,7 +274,8 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                     changeTables = new SqlServerChangeTablePointer[tables.length];
 
                     for (int i = 0; i < tables.length; i++) {
-                        changeTables[i] = new SqlServerChangeTablePointer(tables[i], dataConnection, fromLsn, toLsn, connectorConfig.getStreamingFetchSize());
+                        changeTables[i] = new SqlServerChangeTablePointer(tables[i], dataConnection, fromLsn, toLsn, lastProcessedPositionOnStart,
+                                connectorConfig.getStreamingFetchSize(), connectorConfig.getDataQueryMode());
                         changeTables[i].next();
                     }
 
