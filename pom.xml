@@ -134,7 +134,7 @@
         <!-- Apicurio -->
         <version.apicurio>3.2.5</version.apicurio>
         <!-- hibernate -->
-        <version.hibernate>7.2.6.Final</version.hibernate>
+        <version.hibernate>7.2.19.Final</version.hibernate>
 
         <!-- Database drivers, should align with databases -->
         <version.postgresql.driver>42.7.13</version.postgresql.driver>

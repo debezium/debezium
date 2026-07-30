@@ -137,7 +137,12 @@
                 <version>${version.hibernate}</version>
             </dependency>
             <dependency>
-                <groupId>org.hibernate</groupId>
+                <groupId>org.hibernate.orm</groupId>
+                <artifactId>hibernate-community-dialects</artifactId>
+                <version>${version.hibernate}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.hibernate.orm</groupId>
                 <artifactId>hibernate-agroal</artifactId>
                 <version>${version.hibernate}</version>
             </dependency>
