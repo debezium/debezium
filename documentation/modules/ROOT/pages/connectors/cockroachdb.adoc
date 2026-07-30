@@ -753,8 +753,8 @@ The following data type mappings are applied for CockroachDB data:
 
 |`BYTES`, `BYTEA`, `BLOB`
 |`BYTES`
-|The connector decodes the hex literal that the changefeed emits for binary values.
-The schema type and representation follow the xref:cockroachdb-property-binary-handling-mode[`binary.handling.mode`] property; `BYTES` is the default.
+|The connector decodes the hexadecimal literal that the changefeed emits for binary values.
+The schema type and representation depend on the setting for the xref:cockroachdb-property-binary-handling-mode[`binary.handling.mode`] property; `BYTES` is the default.
 
 |`DATE`
 |`INT32` (`io.debezium.time.Date` logical type)
