@@ -28,6 +28,8 @@ public class RetryingRunnable<E extends Exception> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RetryingRunnable.class);
 
+    private final ThrowingRunnable<E> NO_OP_HEAL = () -> {
+    };
     private final int retries;
     private final ThrowingRunnable<E> doRun;
     private final ThrowingRunnable<E> doAutoHeal;
@@ -38,7 +40,7 @@ public class RetryingRunnable<E extends Exception> {
     private RetryingRunnable(Builder<E> b) {
         this.retries = b.retries;
         this.doRun = b.doRun;
-        this.doAutoHeal = b.doAutoHeal;
+        this.doAutoHeal = b.doAutoHeal == null ? NO_OP_HEAL : b.doAutoHeal;
         this.delayStrategy = b.delayStrategy;
         this.retriableExceptions = b.retriableExceptions;
     }
@@ -79,32 +81,42 @@ public class RetryingRunnable<E extends Exception> {
                 }
                 attempts--;
                 String retriesExplained = retries == -1 ? "infinity" : String.valueOf(retries);
-                LOGGER.info("Runnable failed with exception, will try and auto heal; attempt #{} out of {}",
+                LOGGER.info("Runnable failed with exception, will try and auto heal (if configured); attempt #{} out of {}",
                         retries - attempts,
                         retriesExplained,
                         ex);
 
-                // Auto heal
-                try {
-                    doAutoHeal.run();
+                if (doAutoHeal == NO_OP_HEAL) {
+                    executeDelayStrategy();
                 }
-                catch (InterruptedException exAutoHeal) {
-                    throw exAutoHeal;
-                }
-                catch (Exception exAutoHeal) {
-                    // Again, this must be E or a RuntimeException
-                    LOGGER.info("Auto heal failed with exception, will retry later; attempt #{} out of {}",
-                            retries - attempts,
-                            retriesExplained,
-                            exAutoHeal);
-                    delayStrategy.sleepWhen(true);
-                    if (Thread.currentThread().isInterrupted()) {
-                        throw new InterruptedException("Runnable was interrupted while sleeping in DelayStrategy");
+                else {
+                    // Auto heal
+                    try {
+                        doAutoHeal.run();
+                    }
+                    catch (InterruptedException exAutoHeal) {
+                        throw exAutoHeal;
+                    }
+                    catch (Exception exAutoHeal) {
+                        // Again, this must be E or a RuntimeException
+                        LOGGER.info("Auto heal failed with exception, will retry later; attempt #{} out of {}",
+                                retries - attempts,
+                                retriesExplained,
+                                exAutoHeal);
+                        executeDelayStrategy();
                     }
                 }
+
             }
         }
         doRun.run();
+    }
+
+    private void executeDelayStrategy() throws InterruptedException {
+        delayStrategy.sleepWhen(true);
+        if (Thread.currentThread().isInterrupted()) {
+            throw new InterruptedException("Runnable was interrupted while sleeping in DelayStrategy");
+        }
     }
 
     /**
@@ -154,8 +166,7 @@ public class RetryingRunnable<E extends Exception> {
     public static final class Builder<E extends Exception> {
         private int retries = 0;
         private ThrowingRunnable<E> doRun;
-        private ThrowingRunnable<E> doAutoHeal = () -> {
-        }; // default: no-op heal
+        private ThrowingRunnable<E> doAutoHeal;
         private DelayStrategy delayStrategy = DelayStrategy.none(); // default: no delay
         private List<Class<? extends Exception>> retriableExceptions = new ArrayList<>(); // default: retry all
 
