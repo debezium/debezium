@@ -2418,6 +2418,8 @@ Details are in the following sections:
 
 * xref:creating-a-{context}-user-for-a-debezium-connector[]
 * xref:enabling-the-{context}-binlog-for-debezium[]
+* xref:enabling-innodb-binlog-for-debezium[]
+
 * xref:enabling-{context}-gtids-for-debezium[]
 * xref:configuring-{context}-session-timeouts-for-debezium[]
 * xref:enabling-query-log-events-for-debezium-{context}-connectors[]
@@ -2616,17 +2618,22 @@ tag::binlog-config-props[]
 |`log_bin`
 |The value of `log_bin` is the base name of the sequence of binlog files.
 ifdef::MARIADB[]
+ifdef::community[]
 When using the link:https://mariadb.com/docs/server/server-management/server-monitoring-logs/binary-log/innodb-based-binary-log/[InnoDB-based binary log]
-on MariaDB 12.3+, this option must be specified without a value.
+If the MariaDB server uses link:https://mariadb.com/docs/server/server-management/server-monitoring-logs/binary-log/innodb-based-binary-log/[InnoDB to store the binary log], add an empty `log_bin` property to the MariaDB configuration.
+That is, list the property in the configuration, but do not specify a value.
+endif::community[]
 endif::MARIADB[]
 
 ifdef::MARIADB[]
+ifdef::community[]
 |`binlog_storage_engine`
 |Specifies the storage engine that manages the binary log.
 Set the value to `innodb` to enable the https://mariadb.com/docs/server/server-management/server-monitoring-logs/binary-log/innodb-based-binary-log/[InnoDB-based binary log]
 feature in MariaDB 12.3 and later.
 When set to `innodb`, the `log_bin` option must be specified with no value, and replication must use GTID-based positioning.
 If you do not set this property, the database uses the default value, `file`, and stores log data in standard flat file format.
+endif::community[]
 endif::MARIADB[]
 
 |`binlog_format`
