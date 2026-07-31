@@ -2552,21 +2552,22 @@ endif::community[]
 end::enabling-binlog[]
 
 
-ifdef::MARIADB[]
 === Enabling the InnoDB-based binary log (MariaDB 12.3 and later)
 
-From MariaDB 12.3, the binary log can be optionally stored in InnoDB-managed, page-structured files.
-When enabled, this feature eliminates the traditional two-phase commit (2PC) protocol between the
-binary log and InnoDB, providing improved commit latency and simplified crash recovery.
 
-.Important considerations
+tag::enabling-innodb-binlog[]
+ifdef::community[]
+In MariaDB versions 12.3 and later, you can configure the database to store the binary log in InnoDB-managed, page-structured files (`.ibb`), instead of traditional flat files.
+If you configure the database to store the binary log in InnoDB files, it does not enforce the two-phase commit (2PC) protocol between the
+binary log and InnoDB, resulting in improved commit latency and simplified crash recovery.
 
-* Replication must use GTID-based positioning. Filename and offset-based positions are not available.
-* This feature is mutually exclusive with the traditional file-based binlog. The server writes only the InnoDB-based format.
-* Galera Cluster is not supported when InnoDB-based binary logs are in use.
+When the database uses InnoDB to store the binary log, the following considerations apply:
+
+* This feature is mutually exclusive with the traditional file-based binlog.
+The server uses the InnoDB-based format to store all entries.
+* Galera Cluster is not supported.
 * Semi-synchronous replication is not supported.
 * The `sync_binlog` option is no longer required and is effectively ignored.
-* The {prodname} {connector-name} connector supports this feature from version {debezium-version}.
 
 .Prerequisites
 
@@ -2585,10 +2586,10 @@ binlog_format=ROW
 binlog_row_image=FULL
 ----
 +
-The `log_bin` option must be specified without a value. The `binlog_storage_engine=innodb`
-setting enables the InnoDB-based binary log.
+The `log_bin` property must be present in the configuration, but it cannot contain a value.
+The `binlog_storage_engine=innodb` setting enables the database to use InnoDB to store the binary log.
 
-. Verify the binlog format by connecting to the server and running:
+. Verify the binlog format by connecting to the server and running the following SQL command:
 +
 [source,sql]
 ----
@@ -2597,10 +2598,10 @@ SHOW BINARY LOGS;
 +
 Files are named with an `.ibb` extension (for example, `binlog-000000.ibb`).
 
-For additional information about the InnoDB-based binary log, see the
-link:https://mariadb.com/docs/server/server-management/server-monitoring-logs/binary-log/innodb-based-binary-log/[MariaDB documentation].
+For more information about the InnoDB-based binary log, see the https://mariadb.com/docs/server/server-management/server-monitoring-logs/binary-log/innodb-based-binary-log/[MariaDB documentation].
 
-endif::MARIADB[]
+endif::community[]
+end::enabling-innodb-binlog[]
 
 
 tag::binlog-config-props[]
@@ -2621,11 +2622,11 @@ endif::MARIADB[]
 
 ifdef::MARIADB[]
 |`binlog_storage_engine`
-|Controls which storage engine manages the binary log. Set to `innodb` to enable the
-link:https://mariadb.com/docs/server/server-management/server-monitoring-logs/binary-log/innodb-based-binary-log/[InnoDB-based binary log]
-feature in MariaDB 12.3 and later. When set to `innodb`, the `log_bin` option must be specified
-without a value, and replication must use GTID-based positioning.
-If unset, the default value is `file`, which uses the traditional file-based binary log.
+|Specifies the storage engine that manages the binary log.
+Set the value to `innodb` to enable the https://mariadb.com/docs/server/server-management/server-monitoring-logs/binary-log/innodb-based-binary-log/[InnoDB-based binary log]
+feature in MariaDB 12.3 and later.
+When set to `innodb`, the `log_bin` option must be specified with no value, and replication must use GTID-based positioning.
+If you do not set this property, the database uses the default value, `file`, and stores log data in standard flat file format.
 endif::MARIADB[]
 
 |`binlog_format`
