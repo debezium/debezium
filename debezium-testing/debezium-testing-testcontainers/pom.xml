@@ -155,7 +155,8 @@
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-test-common</artifactId>
-            <version>${quarkus.version.runtime}</version>
+	    <version>${quarkus.version.test}</version>
+	    <scope>test</scope>
             <exclusions>
                 <exclusion>
                     <groupId>org.jboss.slf4j</groupId>
