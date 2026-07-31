@@ -226,10 +226,12 @@ public class SqlServerDataQueryModeIT extends AbstractAsyncEngineConnectorTest {
     private void assertPlainUpdate(Map<Operation, Map<Integer, SourceRecord>> byOperation) {
         for (int id = PLAIN_FROM; id < PLAIN_FROM + PLAIN_COUNT; id++) {
             SourceRecord update = byOperation.get(Operation.UPDATE).get(id);
+            Struct source = (Struct) update.value();
 
             VerifyRecord.isValidUpdate(update, ID, id);
             assertThat(before(update).getString("status")).isEqualTo("NEW");
             assertThat(after(update).getString("status")).isEqualTo("PROCESSED");
+            assertThat(source.getStruct("source").getInt64("event_serial_no")).isEqualTo(2L);
         }
     }
 
@@ -240,6 +242,8 @@ public class SqlServerDataQueryModeIT extends AbstractAsyncEngineConnectorTest {
 
             VerifyRecord.isValidDelete(delete, ID, id);
             VerifyRecord.isValidInsert(insert, ID, id + PK_SHIFT);
+            assertThat(((Struct) delete.value()).getStruct("source").getInt64("event_serial_no")).isEqualTo(1L);
+            assertThat(((Struct) insert.value()).getStruct("source").getInt64("event_serial_no")).isEqualTo(1L);
         }
     }
 
