@@ -37,10 +37,7 @@ public class QueryInformationSchemaMetadata extends AbstractTimescaleDbMetadata 
             "SELECT ht.schema_name, ht.table_name, agg.user_view_schema, agg.user_view_name FROM %s.continuous_agg agg"
                     + " LEFT JOIN %s.hypertable ht ON agg.mat_hypertable_id = ht.id",
             CATALOG_SCHEMA, CATALOG_SCHEMA);
-    private static final String QUERY_CHUNK_TO_HYPERTABLE = String.format(
-            "SELECT c.schema_name, c.table_name, ht.schema_name, ht.table_name FROM %s.chunk c "
-                    + "LEFT JOIN %s.hypertable ht ON c.hypertable_id = ht.id",
-            CATALOG_SCHEMA, CATALOG_SCHEMA);
+    private static final String QUERY_CHUNK_TO_HYPERTABLE = "SELECT c.chunk_schema, c.chunk_name, c.hypertable_schema, c.hypertable_name FROM timescaledb_information.chunks c";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(QueryInformationSchemaMetadata.class);
 
