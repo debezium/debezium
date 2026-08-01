@@ -97,6 +97,22 @@ If you want to try latest and fresh or verify a bug fix you are interested in, t
 The installation procedure is the same as for regular releases.
 endif::[]
 
+== Installing the {prodname} Operator
+
+The {prodname} Operator is a Kubernetes operator that provides automated deployment and management of {prodname} Server instances on Kubernetes and OpenShift platforms.
+Helm is the preferred method for installing the operator.
+
+To install the operator, you can create a dedicated namespace and use the {prodname} Helm chart repository:
+
+[source,bash]
+----
+kubectl create namespace debezium
+helm repo add debezium https://charts.debezium.io
+helm install my-debezium-operator debezium/debezium-operator --version 3.2.0-final -n debezium
+----
+
+For detailed instructions on deploying the operator, tracking its progress, and configuring `DebeziumServer` custom resources, see the xref:operations/debezium-operator.adoc[{prodname} Operator documentation].
+
 == Using a {prodname} Connector
 
 To use a connector to produce change events for a particular source server/cluster, simply create a configuration file for the
