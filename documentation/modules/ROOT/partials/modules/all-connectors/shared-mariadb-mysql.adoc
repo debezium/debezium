@@ -2418,7 +2418,9 @@ Details are in the following sections:
 
 * xref:creating-a-{context}-user-for-a-debezium-connector[]
 * xref:enabling-the-{context}-binlog-for-debezium[]
+ifdef::community[]
 * xref:enabling-innodb-binlog-for-debezium[]
+endif::community[]
 
 * xref:enabling-{context}-gtids-for-debezium[]
 * xref:configuring-{context}-session-timeouts-for-debezium[]
