@@ -6,7 +6,6 @@
 package io.debezium.storage.redis;
 
 import java.io.File;
-import java.time.Duration;
 import java.util.regex.Pattern;
 
 import javax.net.ssl.SSLParameters;
@@ -16,11 +15,6 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.util.Strings;
-import io.lettuce.core.ClientOptions;
-import io.lettuce.core.RedisException;
-import io.lettuce.core.RedisURI;
-import io.lettuce.core.api.StatefulRedisConnection;
-import io.lettuce.core.codec.ByteArrayCodec;
 
 import redis.clients.jedis.DefaultJedisClientConfig;
 import redis.clients.jedis.DefaultJedisClientConfig.Builder;
@@ -43,22 +37,24 @@ public class RedisConnection {
     public static final String DEBEZIUM_SCHEMA_HISTORY = "debezium:schema_history";
     private static final String HOST_PORT_ERROR = "Invalid host:port format in '<...>.redis.address' property.";
 
-    private final String address;
-    private final int dbIndex;
-    private final String user;
-    private final String password;
-    private final int connectionTimeout;
-    private final int socketTimeout;
-    private final boolean sslEnabled;
-    private final boolean hostnameVerificationEnabled;
-    private final boolean clusterEnabled;
-    private final String clientLibrary;
-    private final String truststorePath;
-    private final String truststorePassword;
-    private final String truststoreType;
-    private final String keystorePath;
-    private final String keystorePassword;
-    private final String keystoreType;
+    // Package private so that the driver-specific client factories in this package can read the
+    // connection settings without this class having to reference their (optional) driver types.
+    final String address;
+    final int dbIndex;
+    final String user;
+    final String password;
+    final int connectionTimeout;
+    final int socketTimeout;
+    final boolean sslEnabled;
+    final boolean hostnameVerificationEnabled;
+    final boolean clusterEnabled;
+    final RedisClientLibrary clientLibrary;
+    final String truststorePath;
+    final String truststorePassword;
+    final String truststoreType;
+    final String keystorePath;
+    final String keystorePassword;
+    final String keystoreType;
 
     /**
      *
@@ -117,12 +113,12 @@ public class RedisConnection {
                            String keystorePath, String keystorePassword, String keystoreType, boolean clusterEnabled) {
         this(address, dbIndex, user, password, connectionTimeout, socketTimeout, sslEnabled, hostnameVerificationEnabled,
                 truststorePath, truststorePassword, truststoreType, keystorePath, keystorePassword, keystoreType, clusterEnabled,
-                RedisCommonConfig.CLIENT_LIBRARY_JEDIS);
+                RedisClientLibrary.JEDIS);
     }
 
     public RedisConnection(String address, int dbIndex, String user, String password, int connectionTimeout, int socketTimeout, boolean sslEnabled,
                            boolean hostnameVerificationEnabled, String truststorePath, String truststorePassword, String truststoreType,
-                           String keystorePath, String keystorePassword, String keystoreType, boolean clusterEnabled, String clientLibrary) {
+                           String keystorePath, String keystorePassword, String keystoreType, boolean clusterEnabled, RedisClientLibrary clientLibrary) {
         validateHostPort(address);
 
         this.address = address;
@@ -185,10 +181,35 @@ public class RedisConnection {
         }
 
         // Use config-driven driver selection; when 'lettuce' is requested, a Lettuce-backed client is created.
-        if (RedisCommonConfig.CLIENT_LIBRARY_LETTUCE.equalsIgnoreCase(this.clientLibrary)) {
+        if (RedisClientLibrary.LETTUCE == this.clientLibrary) {
             return createLettuceClient(clientName, waitEnabled, waitTimeout, waitRetry, waitRetryDelay);
         }
         return createJedisClient(clientName, waitEnabled, waitTimeout, waitRetry, waitRetryDelay);
+    }
+
+    /**
+     * Creates a Lettuce-backed client. {@code lettuce-core} is an optional dependency of this module, so
+     * every Lettuce type stays inside {@link LettuceClient}; this method must not reference any of them
+     * directly, otherwise loading this class would fail when the driver is absent.
+     */
+    private RedisClient createLettuceClient(String clientName, boolean waitEnabled, long waitTimeout, boolean waitRetry, long waitRetryDelay) {
+        if (this.clusterEnabled) {
+            throw new DebeziumException(
+                    "The Lettuce client does not yet support Redis Cluster mode; use the Jedis client (redis.client.library=jedis) for cluster mode.");
+        }
+
+        try {
+            Class.forName("io.lettuce.core.RedisClient", false, getClass().getClassLoader());
+        }
+        catch (ClassNotFoundException e) {
+            throw new DebeziumException("redis.client.library=lettuce requires the optional 'io.lettuce:lettuce-core' dependency on the classpath", e);
+        }
+
+        RedisClient lettuce = LettuceClient.create(this, clientName);
+        // Use WAIT wrapper only for standalone
+        RedisClient redisClient = waitEnabled ? new WaitReplicasRedisClient(lettuce, 1, waitTimeout, waitRetry, waitRetryDelay) : lettuce;
+        LOGGER.info("Using Redis client '{}'", redisClient);
+        return redisClient;
     }
 
     private RedisClient createJedisClient(String clientName, boolean waitEnabled, long waitTimeout, boolean waitRetry, long waitRetryDelay) {
@@ -280,82 +301,6 @@ public class RedisConnection {
             }
         }
         catch (JedisConnectionException e) {
-            throw new RedisClientConnectionException(e);
-        }
-    }
-
-    private RedisClient createLettuceClient(String clientName, boolean waitEnabled, long waitTimeout, boolean waitRetry, long waitRetryDelay) {
-        if (this.clusterEnabled) {
-            throw new DebeziumException(
-                    "The Lettuce client does not yet support Redis Cluster mode; use the Jedis client (redis.client.library=jedis) for cluster mode.");
-        }
-
-        // Lettuce standalone connects to a single node; if multiple addresses are provided, use the first.
-        String firstAddress = this.address.split(",")[0].trim();
-        if (this.address.contains(",")) {
-            LOGGER.warn("Multiple Redis addresses provided but Lettuce cluster mode is not supported; using the first address: {}", firstAddress);
-        }
-        int separatorIndex = firstAddress.lastIndexOf(':');
-        String host = firstAddress.substring(0, separatorIndex);
-        int port = Integer.parseInt(firstAddress.substring(separatorIndex + 1));
-
-        RedisURI.Builder uriBuilder = RedisURI.builder()
-                .withHost(host)
-                .withPort(port)
-                .withDatabase(this.dbIndex)
-                .withTimeout(Duration.ofMillis(this.connectionTimeout))
-                .withSsl(this.sslEnabled);
-
-        if (this.sslEnabled) {
-            // Mirror the Jedis behaviour: full hostname verification when enabled, otherwise CA-only verification.
-            uriBuilder.withVerifyPeer(hostnameVerificationEnabled ? io.lettuce.core.SslVerifyMode.FULL : io.lettuce.core.SslVerifyMode.CA);
-        }
-
-        if (!Strings.isNullOrEmpty(this.user) && !Strings.isNullOrEmpty(this.password)) {
-            uriBuilder.withAuthentication(this.user, this.password.toCharArray());
-        }
-        else if (!Strings.isNullOrEmpty(this.password)) {
-            uriBuilder.withPassword(this.password.toCharArray());
-        }
-
-        io.lettuce.core.RedisClient lettuceClient = io.lettuce.core.RedisClient.create(uriBuilder.build());
-
-        boolean configureSslOptions = this.sslEnabled && (!Strings.isNullOrEmpty(this.truststorePath) || !Strings.isNullOrEmpty(this.keystorePath));
-        if (configureSslOptions) {
-            // Lettuce derives the store type (JKS/PKCS12) from the file itself, so the *.type properties are not applied here.
-            io.lettuce.core.SslOptions.Builder sslBuilder = io.lettuce.core.SslOptions.builder();
-            if (!Strings.isNullOrEmpty(this.truststorePath)) {
-                sslBuilder.truststore(new File(this.truststorePath), this.truststorePassword);
-            }
-            if (!Strings.isNullOrEmpty(this.keystorePath)) {
-                char[] ksPassword = !Strings.isNullOrEmpty(this.keystorePassword) ? this.keystorePassword.toCharArray() : null;
-                sslBuilder.keystore(new File(this.keystorePath), ksPassword);
-            }
-            lettuceClient.setOptions(ClientOptions.builder().sslOptions(sslBuilder.build()).build());
-        }
-
-        try {
-            StatefulRedisConnection<String, String> stringConnection = lettuceClient.connect();
-            StatefulRedisConnection<byte[], byte[]> byteConnection = lettuceClient.connect(ByteArrayCodec.INSTANCE);
-
-            // make sure that the client is connected
-            stringConnection.sync().ping();
-
-            try {
-                stringConnection.sync().clientSetname(clientName);
-            }
-            catch (RedisException e) {
-                LOGGER.warn("Failed to set client name", e);
-            }
-
-            RedisClient lettuce = new LettuceClient(lettuceClient, stringConnection, byteConnection, this.socketTimeout);
-            // Use WAIT wrapper only for standalone
-            RedisClient redisClient = waitEnabled ? new WaitReplicasRedisClient(lettuce, 1, waitTimeout, waitRetry, waitRetryDelay) : lettuce;
-            LOGGER.info("Using Redis client '{}'", redisClient);
-            return redisClient;
-        }
-        catch (RedisException e) {
-            lettuceClient.shutdown();
             throw new RedisClientConnectionException(e);
         }
     }

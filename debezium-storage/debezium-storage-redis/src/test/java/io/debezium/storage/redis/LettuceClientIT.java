@@ -48,7 +48,7 @@ class LettuceClientIT {
         redis.start();
         Map<String, String> props = new HashMap<>();
         props.put(PROP_PREFIX + "address", redis.getHost() + ":" + redis.getFirstMappedPort());
-        props.put(PROP_PREFIX + "client.library", RedisCommonConfig.CLIENT_LIBRARY_LETTUCE);
+        props.put(PROP_PREFIX + "client.library", RedisClientLibrary.LETTUCE.getValue());
         RedisOffsetBackingStoreConfig config = new RedisOffsetBackingStoreConfig(Configuration.from(props));
         client = RedisConnection.getInstance(config).getRedisClient(CLIENT_NAME, false, 0, false, 0);
     }

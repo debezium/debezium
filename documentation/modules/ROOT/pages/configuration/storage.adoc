@@ -490,7 +490,12 @@ INSERT INTO %s(id, history_data, history_data_seq, record_insert_ts, record_inse
 
 {prodname} can use a https://redis.io/docs/latest/develop/clients/jedis/[Jedis client] (default) or a https://github.com/redis/lettuce[Lettuce client] to store data in a Redis cache.
 To select the client driver, set the `redis.client.library` property to `jedis` or `lettuce`.
-The Lettuce client supports single instance mode only; for Redis Cluster mode, use the Jedis client.
+
+The Lettuce driver is an optional dependency, so it is not part of a default {prodname} deployment.
+To use it, add the `io.lettuce:lettuce-core` artifact to the runtime classpath and be aware of the following differences from the Jedis driver:
+
+* Redis Cluster mode is not supported. For cluster mode, use the Jedis driver.
+* The `redis.ssl.truststore.type` and `redis.ssl.keystore.type` properties are ignored, because Lettuce determines the store type from the store file itself.
 
 {prodname} can use either a single Redis instance or use https://redis.io/docs/latest/operate/oss_and_stack/reference/cluster-spec/[Redis Cluster mode]:
 
@@ -610,7 +615,7 @@ Set the value to `true` to configure {prodname} to use a https://redis.io/docs/l
 |jedis
 |Specifies the Redis client driver library that {prodname} uses to store offset data.
 Set the value to `jedis` (default) or `lettuce`.
-The `lettuce` driver supports single instance mode only.
+The `lettuce` driver supports single instance mode only and requires the optional `io.lettuce:lettuce-core` artifact on the runtime classpath.
 
 |===
 
@@ -723,7 +728,7 @@ Set the value to `true` to configure {prodname} to use a https://redis.io/docs/l
 |jedis
 |Specifies the Redis client driver library that {prodname} uses to store schema history data.
 Set the value to `jedis` (default) or `lettuce`.
-The `lettuce` driver supports single instance mode only.
+The `lettuce` driver supports single instance mode only and requires the optional `io.lettuce:lettuce-core` artifact on the runtime classpath.
 
 |===
 

@@ -132,23 +132,10 @@ public class RedisCommonConfig {
             .withDefault(DEFAULT_CLUSTER_ENABLED);
 
     // Client driver library selection
-    public static final String CLIENT_LIBRARY_JEDIS = "jedis";
-    public static final String CLIENT_LIBRARY_LETTUCE = "lettuce";
-    private static final String DEFAULT_CLIENT_LIBRARY = CLIENT_LIBRARY_JEDIS;
     private static final Field PROP_CLIENT_LIBRARY = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "client.library")
-            .withDescription("The Redis client driver library to use: 'jedis' (default) or 'lettuce'.")
-            .withAllowedValues(Collect.unmodifiableSet(CLIENT_LIBRARY_JEDIS, CLIENT_LIBRARY_LETTUCE))
-            .withValidation(RedisCommonConfig::validateClientLibrary)
-            .withDefault(DEFAULT_CLIENT_LIBRARY);
-
-    private static int validateClientLibrary(Configuration config, Field field, Field.ValidationOutput problems) {
-        String value = config.getString(field);
-        if (value != null && !CLIENT_LIBRARY_JEDIS.equalsIgnoreCase(value) && !CLIENT_LIBRARY_LETTUCE.equalsIgnoreCase(value)) {
-            problems.accept(field, value, "Value must be one of " + CLIENT_LIBRARY_JEDIS + ", " + CLIENT_LIBRARY_LETTUCE);
-            return 1;
-        }
-        return 0;
-    }
+            .withDescription("The Redis client driver library to use; the 'lettuce' driver supports single instance mode only "
+                    + "and requires io.lettuce:lettuce-core on the classpath.")
+            .withEnum(RedisClientLibrary.class, RedisClientLibrary.JEDIS);
 
     private String address;
     private int dbIndex;
@@ -177,7 +164,7 @@ public class RedisCommonConfig {
     private long waitRetryDelay;
 
     private boolean clusterEnabled;
-    private String clientLibrary;
+    private RedisClientLibrary clientLibrary;
 
     public RedisCommonConfig() {
         // Intentionally blank
@@ -235,7 +222,7 @@ public class RedisCommonConfig {
 
         clusterEnabled = config.getBoolean(PROP_CLUSTER_ENABLED);
 
-        clientLibrary = config.getString(PROP_CLIENT_LIBRARY);
+        clientLibrary = RedisClientLibrary.parse(config.getString(PROP_CLIENT_LIBRARY));
     }
 
     public String getPassword() {
@@ -330,11 +317,7 @@ public class RedisCommonConfig {
         return clusterEnabled;
     }
 
-    public String getClientLibrary() {
+    public RedisClientLibrary getClientLibrary() {
         return clientLibrary;
-    }
-
-    public boolean isLettuceEnabled() {
-        return CLIENT_LIBRARY_LETTUCE.equalsIgnoreCase(clientLibrary);
     }
 }

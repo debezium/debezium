@@ -305,7 +305,7 @@ Set the value to `true` to configure {prodname} to use a https://redis.io/docs/l
 |`jedis`
 |If using Redis to store offsets, specifies the Redis client driver library to use.
 Set the value to `jedis` (default) or `lettuce`.
-The `lettuce` driver supports single instance mode only.
+The `lettuce` driver supports single instance mode only and requires the optional `io.lettuce:lettuce-core` artifact on the runtime classpath.
 
 |[[debezium-source-database-history-class]]<<debezium-source-database-history-class, `debezium.source.schema.history.internal`>>
 |`io.debezium.storage.kafka.history.KafkaSchemaHistory`
@@ -417,7 +417,7 @@ Set the value to `true` to configure {prodname} to use a https://redis.io/docs/l
 |`jedis`
 |If using Redis to store schema history, specifies the Redis client driver library to use.
 Set the value to `jedis` (default) or `lettuce`.
-The `lettuce` driver supports single instance mode only.
+The `lettuce` driver supports single instance mode only and requires the optional `io.lettuce:lettuce-core` artifact on the runtime classpath.
 
 |[[schema-history-internal-rocketmq-topic]]<<schema-history-internal-rocketmq-topic, `debezium.source.schema.history.internal.rocketmq.topic`>>
 |
@@ -1349,7 +1349,7 @@ Set the value to `true` to configure {prodname} to use a  https://redis.io/docs/
 |`jedis`
 |Specifies the Redis client driver library that {prodname} uses for sink operations.
 Set the value to `jedis` (default) or `lettuce`.
-The `lettuce` driver supports single instance mode only.
+The `lettuce` driver supports single instance mode only and requires the optional `io.lettuce:lettuce-core` artifact on the runtime classpath.
 
 |===
 

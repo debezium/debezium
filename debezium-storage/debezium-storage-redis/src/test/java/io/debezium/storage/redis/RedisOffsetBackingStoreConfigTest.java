@@ -48,18 +48,16 @@ public class RedisOffsetBackingStoreConfigTest {
         Map<String, String> props = new HashMap<>();
         props.put(PREFIX + "redis.address", "localhost:6379");
         RedisOffsetBackingStoreConfig cfg = new RedisOffsetBackingStoreConfig(Configuration.from(props));
-        assertEquals(RedisCommonConfig.CLIENT_LIBRARY_JEDIS, cfg.getClientLibrary(), "Client library should default to jedis");
-        assertFalse(cfg.isLettuceEnabled(), "Lettuce should be disabled by default");
+        assertEquals(RedisClientLibrary.JEDIS, cfg.getClientLibrary(), "Client library should default to jedis");
     }
 
     @Test
     public void clientLibraryCanBeSetToLettuce() {
         Map<String, String> props = new HashMap<>();
         props.put(PREFIX + "redis.address", "localhost:6379");
-        props.put(PREFIX + "redis.client.library", RedisCommonConfig.CLIENT_LIBRARY_LETTUCE);
+        props.put(PREFIX + "redis.client.library", RedisClientLibrary.LETTUCE.getValue());
         RedisOffsetBackingStoreConfig cfg = new RedisOffsetBackingStoreConfig(Configuration.from(props));
-        assertEquals(RedisCommonConfig.CLIENT_LIBRARY_LETTUCE, cfg.getClientLibrary(), "Client library should be lettuce");
-        assertTrue(cfg.isLettuceEnabled(), "Lettuce should be enabled when property is set to lettuce");
+        assertEquals(RedisClientLibrary.LETTUCE, cfg.getClientLibrary(), "Client library should be lettuce");
     }
 
     @Test
