@@ -2411,19 +2411,34 @@ The connector provides the following features:
 
 ==== Databricks Zerobus Ingest
 
-https://docs.databricks.com/aws/en/ingestion/zerobus[Databricks Zerobus Ingest] is a serverless, push-based ingestion service that writes records directly into Unity-Catalog-managed Delta tables, without an intermediate message broker.
-The sink authenticates with a Databricks service principal using OAuth and streams each change event to the managed Delta table whose name matches the event's destination (topic).
+The {prodname} https://docs.databricks.com/aws/en/ingestion/zerobus[Databricks Zerobus Ingest] is a serverless, push-based ingestion service that writes change event records directly into Unity Catalog Delta tables.
+The service does not require an intermediate message broker.
+The sink uses OAuth to authenticate with a Databricks service principal and streams each event record to the Delta table that corresponds to the event destination.
 
-The sink supports two delivery routes, selected by `debezium.sink.type`:
+The sink uses one of the following routes to deliver event records, as specified by the `debezium.sink.type` property:
 
-* `zerobus` &mdash; uses the Databricks Zerobus Java SDK over gRPC (recommended);
-* `zerobusrest` &mdash; uses the Zerobus REST API, one HTTP request per record, for environments without a persistent connection.
+`zerobus`:: (recommended) Uses the Databricks Zerobus Java SDK over gRPC.
+`zerobusrest`:: Uses the Zerobus REST API.
+This method accepts only one HTTP request per record.
+Select this option for environments that lack a persistent connection.
 
-A third option is to reuse the built-in `kafka` sink against the Zerobus Kafka-compatible endpoint; see the `ZerobusOAuthBearerLoginCallbackHandler` shipped in this module for the required `OAUTHBEARER` login handler.
+A third option is to reuse the built-in `kafka` sink against the Zerobus Kafka-compatible endpoint.
+For information about using this option, see the `ZerobusOAuthBearerLoginCallbackHandler` shipped in this module for the required `OAUTHBEARER` login handler.
 
-Because Zerobus accepts only JSON objects that match the target table schema, configure {prodname} to emit flat JSON (`ExtractNewRecordState` with `schemas.enable=false`).
-Delivery is at-least-once, so deduplicate downstream (for example, using the source LSN carried in the record).
-The target table must be a Unity-Catalog-managed Delta table in the same region as the workspace, without Change Data Feed or column mapping, and the service principal needs `USE CATALOG`, `USE SCHEMA`, `SELECT` and `MODIFY` on it.
+Because Zerobus accepts only JSON objects that match the target table schema, configure {prodname} to emit flat JSON by applying the {link-prefix}:{link-event-flattening}#new-record-state-extraction[`ExtractNewRecordState` SMT] with `schemas.enable=false`.
+Delivery uses an at-least-once guarantee.
+As a result, the sink might deliver the same record more than once.
+Configure downstream consumers to deduplicate records, for example, by using the source LSN that the record carries.
+To enable the service to write data to the target table, the following requirements apply:
+
+* The target table must be a Unity Catalog-managed Delta table.
+* The table must be in the same Databricks region as the workspace.
+* Change Data Feed and column mapping must be disabled.
+* The service principal must have the following permissions:
+** `USE CATALOG`
+** `USE SCHEMA`
+** `SELECT`
+** `MODIFY`
 
 ===== gRPC route (`zerobus`)
 
@@ -2434,28 +2449,29 @@ The target table must be a Unity-Catalog-managed Delta table in the same region 
 |Description
 
 |[[zerobus-type]]<<zerobus-type, `debezium.sink.type`>>
-|
+|No default value.
 |Must be set to `zerobus`.
 
 |[[zerobus-endpoint]]<<zerobus-endpoint, `debezium.sink.zerobus.endpoint`>>
-|
+|No default value.
 |The Zerobus gRPC endpoint, for example `<workspace-id>.zerobus.<region>.cloud.databricks.com` (AWS) or `<workspace-id>.zerobus.<region>.azuredatabricks.net` (Azure).
 
 |[[zerobus-workspace-url]]<<zerobus-workspace-url, `debezium.sink.zerobus.workspace.url`>>
-|
+|No default value.
 |The Databricks workspace URL, for example `https://dbc-xxxx.cloud.databricks.com`.
 
 |[[zerobus-client-id]]<<zerobus-client-id, `debezium.sink.zerobus.client.id`>>
-|
+|No default value.
 |The OAuth client id (service principal application id).
 
 |[[zerobus-client-secret]]<<zerobus-client-secret, `debezium.sink.zerobus.client.secret`>>
-|
+|No default value.
 |The OAuth client secret for the service principal.
 
 |[[zerobus-table]]<<zerobus-table, `debezium.sink.zerobus.table`>>
-|
-|(Optional) A fully-qualified default target table (`catalog.schema.table`). When set, all events are written to this table; otherwise the mapped destination (topic) name is used as the fully-qualified table name.
+|No default value.
+|(Optional) The fully-qualified name of the default target table (`catalog.schema.table`).
+When this option is set, all events are written to this table; otherwise the mapped destination (topic) name is used as the fully-qualified table name.
 
 |[[zerobus-max-inflight]]<<zerobus-max-inflight, `debezium.sink.zerobus.max.inflight.records`>>
 |`50000`
@@ -2463,7 +2479,10 @@ The target table must be a Unity-Catalog-managed Delta table in the same region 
 
 |[[zerobus-metrics-log-interval]]<<zerobus-metrics-log-interval, `debezium.sink.zerobus.metrics.log.interval`>>
 |`0`
-|Emit a periodic `INFO` log line summarizing the sink metrics every N processed batches. `0` (the default) disables periodic logging; the metrics remain available over JMX regardless. See <<zerobus-monitoring, Monitoring>>.
+|Specifies the number of batches that the service processes before it emits a periodic `INFO` log line to summarize sink metrics.
+Set the value to `0` to disable periodic logging.
+This setting does not affect availability of metrics over JMX.
+For more information, see <<zerobus-monitoring, Monitoring>>.
 
 |===
 
@@ -2476,42 +2495,46 @@ The target table must be a Unity-Catalog-managed Delta table in the same region 
 |Description
 
 |[[zerobusrest-type]]<<zerobusrest-type, `debezium.sink.type`>>
-|
+|No default value.
 |Must be set to `zerobusrest`.
 
 |[[zerobusrest-uri]]<<zerobusrest-uri, `debezium.sink.zerobusrest.uri`>>
-|
+|No default value.
 |The Zerobus REST base URI, for example `https://<workspace-id>.zerobus.<region>.cloud.databricks.com`.
 
 |[[zerobusrest-workspace-url]]<<zerobusrest-workspace-url, `debezium.sink.zerobusrest.workspace.url`>>
-|
-|The Databricks workspace URL, used for OAuth and the `unity-catalog-endpoint` header.
+|No default value.
+|The Databricks workspace URL.
+The service uses this value for OAuth and in the `unity-catalog-endpoint` header.
 
 |[[zerobusrest-workspace-id]]<<zerobusrest-workspace-id, `debezium.sink.zerobusrest.workspace.id`>>
-|
-|The numeric workspace id, used to build the Zerobus token audience.
+|No default value.
+|The numeric workspace id, that the service uses to build the Zerobus token audience.
 
 |[[zerobusrest-client-id]]<<zerobusrest-client-id, `debezium.sink.zerobusrest.client.id`>>
-|
+|No default value.
 |The OAuth client id (service principal application id).
 
 |[[zerobusrest-client-secret]]<<zerobusrest-client-secret, `debezium.sink.zerobusrest.client.secret`>>
-|
+|No default value.
 |The OAuth client secret for the service principal.
 
 |[[zerobusrest-table]]<<zerobusrest-table, `debezium.sink.zerobusrest.table`>>
-|
+|No default value.
 |(Optional) A fully-qualified default target table (`catalog.schema.table`). When not set, the mapped destination (topic) name is used.
 
 |[[zerobusrest-metrics-log-interval]]<<zerobusrest-metrics-log-interval, `debezium.sink.zerobusrest.metrics.log.interval`>>
 |`0`
-|Emit a periodic `INFO` log line summarizing the sink metrics every N processed batches. `0` (the default) disables periodic logging; the metrics remain available over JMX regardless. See <<zerobus-monitoring, Monitoring>>.
+|Specifies the number of batches that the service processes before it emits a periodic `INFO` log line to summarize sink metrics.
+Set the value to `0` to disable periodic logging.
+This setting does not affect availability of metrics over JMX.
+For more information, see <<zerobus-monitoring, Monitoring>>.
 
 |===
 
 ===== Data type mapping
 
-The sink normalizes each value from the Kafka Connect schema to the shape the target Delta column expects, based on the logical type name rather than the already-serialized JSON.
+The sink normalizes each Kafka Connect schema value to a format that is compatible with the target Delta column, based on the logical type name, rather than on the serialized JSON representation.
 This avoids the "invalid type" class of ingestion errors without requiring source-side `*.handling.mode` tuning.
 Recommended Delta column types:
 
@@ -2539,7 +2562,7 @@ Recommended Delta column types:
 |`BIGINT` (Zerobus does not currently ingest the Delta `TIME` type)
 
 |Bytes / `io.debezium.data.Bits` (binary, blob, varbinary)
-|`BINARY` (base64 on the wire)
+BINARY (encoded as Base64)
 
 |`io.debezium.data.Json` (JSON / JSONB)
 |`VARIANT`
@@ -2554,7 +2577,13 @@ Recommended Delta column types:
 
 Both routes expose sink metrics over JMX, under the object name `debezium.zerobus:type=connector-metrics,context=sink,server=<route>,task=0`, where `<route>` is `grpc` or `rest`.
 This mirrors how the JDBC sink connector and {prodname} source connectors expose their metrics, so the same JMX tooling (for example JConsole, `jmxterm`, or a Prometheus JMX exporter) works out of the box.
-In addition, setting `debezium.sink.zerobus[rest].metrics.log.interval` to a positive value emits a periodic `INFO` log line with the same values.
+You can use JMX metrics and connector log output to monitor the operational status and performance of the Debezium DataBricks Zero sink.
+
+The {prodname} DataBricks Zero sink supports the following delivery routes: zerobus (gRPC) and zerobusrest (REST).
+Both routes expose sink metrics over JMX under the object name debezium.zerobus:type=connector-metrics,context=sink,server=<route>,task=0, where <route> is `grpc` for the `zerobus` route or `rest` for the `zerobusrest` route.
+The metrics use the same JMX exposure model as the JDBC sink connector and {prodname} source connectors, enabling you to use existing JMX monitoring tools such as JConsole, jmxterm, and Prometheus JMX Exporter without additional configuration.
+You can also configure periodic metric logging by setting <<zerobus-metrics-log-interval, `debezium.sink.zerobus.metrics.log.interval`>> or <<zerobusrest-metrics-log-interval, `debezium.sink.zerobusrest.metrics.log.interval`>> to a positive value.
+After you enable either of these options, at the specified interval the connector writes an `INFO` log message that contains the same metric values that are available through JMX.
 
 The following attributes are available:
 
@@ -2567,25 +2596,35 @@ The following attributes are available:
 |Total number of change events forwarded to Zerobus, across all tables.
 
 |`TotalInserts` / `TotalUpdates` / `TotalDeletes` / `TotalReads`
-|Ingested events split by operation (`c` / `u` / `d`, and snapshot reads `r`).
+|These metrics report the number of ingested events sorted by operation type (`c` / `u` / `d`, and snapshot reads `r`).
 
 |`TotalRecordsSkipped`
-|Records skipped without being forwarded (tombstones / null payloads, and events whose destination is not a fully-qualified `catalog.schema.table`, such as schema-history or DDL events).
+|Number of records skipped without being forwarded (tombstones / null payloads, and events whose destination is not a fully-qualified `catalog.schema.table`, such as schema-history or DDL events).
 
 |`TotalErrors`
-|Ingestion or flush failures observed.
+|Number of ingestion or flush failures observed.
 
 |`TotalFlushes`
-|Stream flushes performed (gRPC route); successful record POSTs (REST route), which are the durability boundary there.
+|The metric counts stream flush operations when using the gRPC route, or successful record POST requests when using the REST route.
+For the REST route, a successful POST indicates that the record has been durably accepted and is no longer at risk of loss due to a service failure.
 
 |`MilliSecondsBehindSource`
-|Pipeline freshness: `now - source.ts_ms` of the most recently ingested event, in milliseconds. `-1` until the first event with a source timestamp is ingested; approaches `0` when the sink is caught up with the source. This is the primary signal in a CDC-to-lakehouse deployment.
+|Indicates the age, in milliseconds, of the most recently processed event.
+The value is calculated as `current time - source.ts_ms`.
+The metric reports the value  `-1 ` until after the Delta table ingests an event that contains a source timestamp.
+A values near `0` indicates that the sink is catching up to, or is synchronized with, the source.
 
-|`LastFlushDurationMillis` / `MaxFlushDurationMillis`
-|Duration of the most recent, and the longest, flush (gRPC) or record POST (REST).
+This metric is a primary indicator of pipeline freshness in a CDC-to-lakehouse deployment.
+
+|LastFlushDurationMillis
+|Duration of the most recent flush (gRPC) or record POST (REST) operation.
+
+|MaxFlushDurationMillis
+|Longest duration of any flush (gRPC) or record POST (REST) operation since the task started.
 
 |`ActiveStreams`
-|Number of currently open Zerobus streams (one per target table); always `0` for the REST route, which opens no persistent streams.
+|Number of currently open Zerobus streams (one per target table).
+For the REST route, which does not open persistent streams, this value is always `0`.
 
 |`Route`
 |The delivery route these metrics belong to (`grpc` or `rest`).
