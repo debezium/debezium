@@ -909,7 +909,7 @@ assignmentField
     ;
 
 lockClause
-    : FOR UPDATE
+    : FOR UPDATE (SKIP_ LOCKED | NOWAIT)?
     | LOCK IN SHARE MODE
     ;
 
