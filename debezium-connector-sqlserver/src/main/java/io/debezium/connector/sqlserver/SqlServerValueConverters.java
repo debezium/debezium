@@ -113,7 +113,7 @@ public class SqlServerValueConverters extends JdbcValueConverters {
                 return SpecialValueDecimal.builder(decimalMode, column.length(), column.scale().get());
             case microsoft.sql.Types.DATETIMEOFFSET:
                 if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
-                    return StructuredZonedTimestamp.builder();
+                    return StructuredZonedTimestamp.builder(getTimePrecision(column));
                 }
                 return ZonedTimestamp.builder();
             default:

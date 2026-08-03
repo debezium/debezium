@@ -1904,7 +1904,9 @@ Represents timestamp values in UTC format, according to the ISO 8601 standard, f
 .`time.precision.mode=structured`
 Set the `time.precision.mode` property to `structured` to configure the connector to represent temporal values as Kafka Connect structs with separate calendar and clock components.
 This mode avoids flattening high-precision temporal values into a single epoch-based integer.
-Structured temporal values that have fractional seconds include an optional `precision` field that records the source column's fractional second precision.
+Structured temporal values store fractional seconds in an optional `picoseconds` `INT64` field.
+The optional `precision` value field and the `io.debezium.time.precision` schema parameter record the source column's fractional-second precision.
+To keep Avro named-record definitions with different metadata distinct, structured temporal schema names include their precision.
 The {prodname} JDBC sink connector can consume these structured temporal schemas directly and maps them according to the target database dialect.
 
 .Mappings when `time.precision.mode` is `structured`
@@ -1922,19 +1924,19 @@ Contains `year`, `month`, and `day` fields.
 |`STRUCT`
 |`io.debezium.time.StructuredTime` +
  +
-Contains `hour`, `minute`, `second`, `nanos`, and optional `precision` fields.
+Contains `hour`, `minute`, `second`, `picoseconds`, and optional `precision` fields.
 
 |`TIMESTAMP`
 |`STRUCT`
 |`io.debezium.time.StructuredTimestamp` +
  +
-Contains `year`, `month`, `day`, `hour`, `minute`, `second`, `nanos`, and optional `precision` fields.
+Contains `year`, `month`, `day`, `hour`, `minute`, `second`, `picoseconds`, and optional `precision` fields. Timestamp precision up to 12 digits is preserved.
 
 |`TIMESTAMP WITH TIME ZONE`
 |`STRUCT`
 |`io.debezium.time.StructuredZonedTimestamp` +
  +
-Contains calendar and clock component fields, `offsetSeconds`, optional `zoneId`, and optional `precision`.
+Contains calendar and clock component fields, `picoseconds`, `offsetSeconds`, optional `zoneId`, and optional `precision`.
 
 |===
 

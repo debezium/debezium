@@ -276,4 +276,44 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
             return null;
         });
     }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("debezium/dbz#2119")
+    public void testShouldRoundStructuredTemporalsToTargetPrecision(SinkRecordFactory factory) throws Exception {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.NONE.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.TEMPORAL_PRECISION_LOSS_HANDLING_MODE, "round");
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server2", "schema", tableName);
+        final Schema timestampSchema = StructuredTimestamp.builder(9).optional().build();
+        final Schema durationSchema = StructuredDuration.builder(9, StructuredDuration.Kind.ELAPSED_TIME).optional().build();
+        final JdbcKafkaSinkRecord record = factory.createRecordWithSchemaValue(
+                topicName,
+                (byte) 1,
+                List.of("data", "duration"),
+                List.of(timestampSchema, durationSchema),
+                List.of(
+                        StructuredTimestamp.from(timestampSchema, 2026, 7, 21, 12, 13, 14, 123_456_789, 9),
+                        StructuredDuration.from(durationSchema, 0, 0, 0, 1, 2, 3, 123_456_789, 9)),
+                getConfig(properties));
+
+        final String destinationTable = destinationTableName(record);
+        getSink().execute(String.format(
+                "CREATE TABLE %s (id int not null, data datetime(6), duration time(6), primary key(id))",
+                destinationTable));
+
+        consume(record);
+
+        getSink().assertRows(destinationTable, rs -> {
+            assertThat(rs.getString("data")).isEqualTo("2026-07-21 12:13:14.123457");
+            assertThat(rs.getString("duration")).isEqualTo("01:02:03.123457");
+            return null;
+        });
+    }
 }

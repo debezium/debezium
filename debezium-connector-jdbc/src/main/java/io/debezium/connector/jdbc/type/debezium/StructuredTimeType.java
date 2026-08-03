@@ -12,6 +12,7 @@ import org.apache.kafka.connect.data.Schema;
 
 import io.debezium.connector.jdbc.type.AbstractTimeType;
 import io.debezium.connector.jdbc.type.JdbcType;
+import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
 import io.debezium.time.StructuredTime;
 
@@ -24,13 +25,16 @@ public class StructuredTimeType extends AbstractTimeType {
 
     @Override
     public String[] getRegistrationKeys() {
-        return new String[]{ StructuredTime.SCHEMA_NAME };
+        return StructuredTime.schemaNames();
     }
 
     @Override
     protected int getTimePrecision(Schema schema) {
-        final String length = getSourceColumnSize(schema).orElse("-1");
-        return getSourceColumnPrecision(schema).map(Integer::parseInt).orElseGet(() -> Integer.parseInt(length));
+        return StructuredTemporalSupport.getPrecision(schema)
+                .stream()
+                .map(precision -> Math.min(precision, getDialect().getMaxTimePrecision()))
+                .findFirst()
+                .orElse(-1);
     }
 
     @Override
@@ -40,7 +44,8 @@ public class StructuredTimeType extends AbstractTimeType {
 
     @Override
     public String getDefaultValueBinding(Schema schema, Object value) {
-        return getDialect().getFormattedTime(StructuredTemporalSupport.toLocalTime(requireStruct(value)));
+        return getDialect().getFormattedTime(StructuredTemporalSupport.toLocalTime(
+                requireStruct(value), getSchemaTimePrecision(schema), getPrecisionLossHandlingMode()));
     }
 
     @Override
@@ -50,5 +55,25 @@ public class StructuredTimeType extends AbstractTimeType {
         }
         final LocalTime localTime = StructuredTemporalSupport.toLocalTime(requireStruct(value));
         return List.of(new ValueBindDescriptor(index, localTime));
+    }
+
+    @Override
+    public void validate(ColumnDescriptor column, Schema schema, Object value) {
+        if (value != null) {
+            final var capabilities = getDialect().getTargetTemporalCapabilities();
+            StructuredTemporalPreflightValidator.validatePrecision(
+                    column, requireStruct(value), capabilities.targetTimePrecision(column), getPrecisionLossHandlingMode());
+        }
+    }
+
+    @Override
+    public List<ValueBindDescriptor> bind(int index, ColumnDescriptor column, Schema schema, Object value) {
+        if (value == null) {
+            return List.of(new ValueBindDescriptor(index, null));
+        }
+        validate(column, schema, value);
+        final int precision = getDialect().getTargetTemporalCapabilities().targetTimePrecision(column);
+        return List.of(new ValueBindDescriptor(index,
+                StructuredTemporalSupport.toLocalTime(requireStruct(value), precision, getPrecisionLossHandlingMode())));
     }
 }

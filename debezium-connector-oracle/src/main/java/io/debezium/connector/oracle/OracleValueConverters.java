@@ -150,17 +150,17 @@ public class OracleValueConverters extends JdbcValueConverters {
             case OracleTypes.TIMESTAMPTZ:
             case OracleTypes.TIMESTAMPLTZ:
                 if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
-                    return StructuredZonedTimestamp.builder();
+                    return StructuredZonedTimestamp.builder(getTimePrecision(column));
                 }
                 return ZonedTimestamp.builder();
             case OracleTypes.INTERVALDS:
                 if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
-                    return StructuredDuration.builder();
+                    return StructuredDuration.builder(getTimePrecision(column), StructuredDuration.Kind.DAY_TIME);
                 }
                 return intervalHandlingMode == OracleConnectorConfig.IntervalHandlingMode.STRING ? Interval.builder() : MicroDuration.builder();
             case OracleTypes.INTERVALYM:
                 if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
-                    return StructuredDuration.builder();
+                    return StructuredDuration.builder(0, StructuredDuration.Kind.YEAR_MONTH);
                 }
                 return intervalHandlingMode == OracleConnectorConfig.IntervalHandlingMode.STRING ? Interval.builder() : MicroDuration.builder();
             case Types.STRUCT:

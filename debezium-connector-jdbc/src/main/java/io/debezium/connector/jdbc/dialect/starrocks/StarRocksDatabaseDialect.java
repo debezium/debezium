@@ -38,6 +38,8 @@ import io.debezium.connector.jdbc.dialect.GeneralDatabaseDialect;
 import io.debezium.connector.jdbc.dialect.SqlStatementBuilder;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
 import io.debezium.connector.jdbc.type.JdbcType;
+import io.debezium.connector.jdbc.type.debezium.TargetTemporalCapabilities;
+import io.debezium.connector.jdbc.type.debezium.TemporalRange;
 import io.debezium.metadata.CollectionId;
 import io.debezium.sink.field.FieldDescriptor;
 import io.debezium.time.ZonedTimestamp;
@@ -54,6 +56,14 @@ import io.debezium.util.Strings;
  * do not exist.
  */
 public class StarRocksDatabaseDialect extends GeneralDatabaseDialect {
+
+    @Override
+    public TargetTemporalCapabilities getTargetTemporalCapabilities() {
+        return TargetTemporalCapabilities.defaults(12, getMaxTimestampPrecision())
+                .withDateRange(TemporalRange.dateYears(0, 9999))
+                .withTimestampRange(TemporalRange.timestampYears(0, 9999))
+                .withTimestampColumnPrecisionReliable(false);
+    }
 
     private static final Logger LOGGER = LoggerFactory.getLogger(StarRocksDatabaseDialect.class);
 
@@ -165,6 +175,8 @@ public class StarRocksDatabaseDialect extends GeneralDatabaseDialect {
         registerType(ConnectTimeType.INSTANCE);
         registerType(ZonedTimeType.INSTANCE);
         registerType(ZonedTimestampType.INSTANCE);
+        registerType(StructuredTimeType.INSTANCE);
+        registerType(StructuredZonedTimeType.INSTANCE);
     }
 
     @Override

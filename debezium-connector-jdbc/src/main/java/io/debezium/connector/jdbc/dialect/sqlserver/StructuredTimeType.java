@@ -35,4 +35,17 @@ public class StructuredTimeType extends io.debezium.connector.jdbc.type.debezium
         final LocalDateTime localDateTime = StructuredTemporalSupport.toLocalTime(requireStruct(value)).atDate(LocalDate.EPOCH);
         return List.of(new ValueBindDescriptor(index, localDateTime));
     }
+
+    @Override
+    public List<ValueBindDescriptor> bind(int index, ColumnDescriptor column, Schema schema, Object value) {
+        if (value == null) {
+            return List.of(new ValueBindDescriptor(index, null));
+        }
+        validate(column, schema, value);
+        final int precision = getDialect().getTargetTemporalCapabilities().targetTimePrecision(column);
+        final LocalDateTime localDateTime = StructuredTemporalSupport
+                .toLocalTime(requireStruct(value), precision, getPrecisionLossHandlingMode())
+                .atDate(LocalDate.EPOCH);
+        return List.of(new ValueBindDescriptor(index, localDateTime));
+    }
 }
