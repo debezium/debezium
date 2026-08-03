@@ -14,6 +14,8 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.kafka.connect.data.Field;
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.AfterEach;
@@ -158,6 +160,49 @@ public abstract class BinlogSourceTypeInSchemaIT<C extends SourceConnector> exte
 
         assertThat(f2SchemaParameters).contains(
                 entry(TYPE_NAME_PARAMETER_KEY, "FLOAT"), entry(TYPE_LENGTH_PARAMETER_KEY, "8"), entry(TYPE_SCALE_PARAMETER_KEY, "4"));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2189")
+    public void shouldStreamBooleanAliasesAsPropagatedTinyInt() throws InterruptedException {
+        executeStatements(DATABASE.getDatabaseName(),
+                "CREATE TABLE boolean_aliases (id INT PRIMARY KEY, created_bool BOOL)");
+
+        config = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
+                .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("boolean_aliases"))
+                .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with("column.propagate.source.type", DATABASE.qualifiedTableName("boolean_aliases") + ".*")
+                .build();
+
+        start(getConnectorClass(), config);
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName(), getStreamingNamespace());
+        executeStatements(DATABASE.getDatabaseName(),
+                "ALTER TABLE boolean_aliases ADD COLUMN added_boolean BOOLEAN",
+                "INSERT INTO boolean_aliases VALUES (1, 2, 3)");
+
+        final SourceRecords records = consumeRecordsByTopic(1);
+        stopConnector();
+        final String dataTopic = DATABASE.topicForTable("boolean_aliases");
+        assertThat(records.topics()).contains(dataTopic);
+        final List<SourceRecord> dmls = records.recordsForTopic(dataTopic);
+        assertThat(dmls).hasSize(1);
+
+        final SourceRecord insert = dmls.get(0);
+        final Schema afterSchema = insert.valueSchema().field("after").schema();
+        final Schema createdBoolSchema = afterSchema.field("created_bool").schema();
+        final Schema addedBooleanSchema = afterSchema.field("added_boolean").schema();
+
+        assertThat(createdBoolSchema.type()).isEqualTo(Schema.Type.INT8);
+        assertThat(createdBoolSchema.parameters()).contains(
+                entry(TYPE_NAME_PARAMETER_KEY, "TINYINT"), entry(TYPE_LENGTH_PARAMETER_KEY, "1"));
+        assertThat(addedBooleanSchema.type()).isEqualTo(Schema.Type.INT8);
+        assertThat(addedBooleanSchema.parameters()).contains(
+                entry(TYPE_NAME_PARAMETER_KEY, "TINYINT"), entry(TYPE_LENGTH_PARAMETER_KEY, "1"));
+
+        final Struct after = ((Struct) insert.value()).getStruct("after");
+        assertThat(after.getInt8("created_bool")).isEqualTo((byte) 2);
+        assertThat(after.getInt8("added_boolean")).isEqualTo((byte) 3);
     }
 
     @Test
