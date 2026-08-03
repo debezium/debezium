@@ -24,6 +24,7 @@ import io.debezium.function.ThrowingSupplier;
  * Optionally, a list of retriable exception types can be provided: if the list is empty, the action is retried for
  * all exceptions, otherwise it is retried only for exceptions which are, or contain in their cause chain, an
  * instance of one of the supplied types. A non-retriable exception is propagated immediately.
+ * Log messages are emitted through the configurable logger, so delegating adapters keep their own log category.
  * This class hosts the retry loop shared with {@link RetryingRunnable}.
  */
 public class RetryingSupplier<V, E extends Exception> {
@@ -36,6 +37,7 @@ public class RetryingSupplier<V, E extends Exception> {
     private final DelayStrategy delayStrategy;
     private final List<Class<? extends Exception>> retriableExceptions;
     private final String name;
+    private final Logger logger;
 
     private RetryingSupplier(Builder<V, E> b) {
         this.retries = b.retries;
@@ -44,6 +46,7 @@ public class RetryingSupplier<V, E extends Exception> {
         this.delayStrategy = b.delayStrategy;
         this.retriableExceptions = b.retriableExceptions;
         this.name = b.name;
+        this.logger = b.logger;
     }
 
     public static <V, E extends Exception> Builder<V, E> builder() {
@@ -70,7 +73,7 @@ public class RetryingSupplier<V, E extends Exception> {
             try {
                 final V result = doGet.get();
                 if (attempts != retries) {
-                    LOGGER.info("{} succeeded after {} retry attempt(s)", name, retries - attempts);
+                    logger.info("{} succeeded after {} retry attempt(s)", name, retries - attempts);
                 }
                 return result;
             }
@@ -83,7 +86,7 @@ public class RetryingSupplier<V, E extends Exception> {
                 }
                 attempts--;
                 String retriesExplained = retries == -1 ? "infinity" : String.valueOf(retries);
-                LOGGER.info("{} failed with exception, will try and auto heal (if configured); attempt #{} out of {}",
+                logger.info("{} failed with exception, will try and auto heal (if configured); attempt #{} out of {}",
                         name,
                         retries - attempts,
                         retriesExplained,
@@ -100,7 +103,7 @@ public class RetryingSupplier<V, E extends Exception> {
                         throw exAutoHeal;
                     }
                     catch (Exception exAutoHeal) {
-                        LOGGER.info("Auto heal of {} failed with exception, will retry later; attempt #{} out of {}",
+                        logger.info("Auto heal of {} failed with exception, will retry later; attempt #{} out of {}",
                                 name,
                                 retries - attempts,
                                 retriesExplained,
@@ -112,7 +115,7 @@ public class RetryingSupplier<V, E extends Exception> {
         }
         final V result = doGet.get();
         if (retries > 0) {
-            LOGGER.info("{} succeeded after {} retry attempt(s)", name, retries);
+            logger.info("{} succeeded after {} retry attempt(s)", name, retries);
         }
         return result;
     }
@@ -179,6 +182,7 @@ public class RetryingSupplier<V, E extends Exception> {
         private DelayStrategy delayStrategy = DelayStrategy.none();
         private List<Class<? extends Exception>> retriableExceptions = new ArrayList<>();
         private String name = "Operation";
+        private Logger logger = LOGGER;
 
         private Builder() {
         }
@@ -208,6 +212,14 @@ public class RetryingSupplier<V, E extends Exception> {
          */
         public Builder<V, E> name(String name) {
             this.name = name;
+            return this;
+        }
+
+        /**
+         * Sets the logger used for retry messages, so that delegating adapters keep their own log category.
+         */
+        public Builder<V, E> logger(Logger logger) {
+            this.logger = logger;
             return this;
         }
 
