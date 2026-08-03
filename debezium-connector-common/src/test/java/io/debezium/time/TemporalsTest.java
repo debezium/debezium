@@ -39,4 +39,22 @@ public class TemporalsTest {
         assertThat(Temporals.max(oneMilli, oneMillionNanos)).isEqualTo(oneMilli);
         assertThat(Temporals.max(oneMilli, oneMillionNanos)).isEqualTo(oneMillionNanos);
     }
+
+    @Test
+    public void maxAndMinHandleSubSecondDurationsWithSameWholeSeconds() {
+        // Duration.compareTo returns the nanos difference (not a normalized 1) when the whole-second
+        // counts are equal, so comparing against == 1 gets both max and min backwards here.
+        Duration fiveHundredMillis = Duration.ofMillis(500);
+        Duration twoHundredMillis = Duration.ofMillis(200);
+        assertThat(Temporals.max(fiveHundredMillis, twoHundredMillis)).isEqualTo(fiveHundredMillis);
+        assertThat(Temporals.min(fiveHundredMillis, twoHundredMillis)).isEqualTo(twoHundredMillis);
+    }
+
+    @Test
+    public void minCapsValueJustAboveTheLimit() {
+        // Mirrors ChangeEventQueue capping poll.interval.ms at 5000ms: values 5001-5999 share the
+        // same whole seconds as 5000, so the cap leaked before comparing against > 0.
+        assertThat(Temporals.min(Duration.ofMillis(5001), Duration.ofMillis(5000)))
+                .isEqualTo(Duration.ofMillis(5000));
+    }
 }
