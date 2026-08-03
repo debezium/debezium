@@ -8,6 +8,8 @@ package io.debezium.embedded.async;
 import java.util.concurrent.Callable;
 
 import org.apache.kafka.connect.errors.RetriableException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.util.DelayStrategy;
 import io.debezium.util.RetryingSupplier;
@@ -23,6 +25,8 @@ import io.debezium.util.RetryingSupplier;
  * @author vjuranek
  */
 public abstract class RetryingCallable<V> implements Callable<V> {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(RetryingCallable.class);
 
     private final int retries;
 
@@ -41,6 +45,7 @@ public abstract class RetryingCallable<V> implements Callable<V> {
                 .retriableExceptions(RetriableException.class)
                 .delayStrategy(delayStrategy())
                 .name("Callable")
+                .logger(LOGGER)
                 .build()
                 .get();
     }
