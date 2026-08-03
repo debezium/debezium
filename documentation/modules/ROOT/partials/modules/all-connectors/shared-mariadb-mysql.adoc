@@ -1792,7 +1792,7 @@ The following table shows how the connector maps basic {connector-name} data typ
 |{connector-name} type |Literal type |Semantic type
 
 |`BOOLEAN, BOOL`
-|`BOOLEAN`
+|`INT8`
 a|_n/a_
 
 |`BIT(1)`
@@ -2180,10 +2180,10 @@ end::decimal-data-types[]
 === Boolean values
 
 tag::boolean-values[]
-{connector-name} handles the `BOOLEAN` value internally in a specific way.
-The `BOOLEAN` column is internally mapped to the `TINYINT(1)` data type.
-When the table is created during streaming then it uses proper `BOOLEAN` mapping as {prodname} receives the original DDL.
-During snapshots, {prodname} executes `SHOW CREATE TABLE` to obtain table definitions that return `TINYINT(1)` for both `BOOLEAN` and `TINYINT(1)` columns. {prodname} then has no way to obtain the original type mapping and so maps to `TINYINT(1)`.
+{connector-name} treats `BOOL` and `BOOLEAN` as aliases for the `TINYINT(1)` data type.
+During snapshots, {prodname} executes `SHOW CREATE TABLE` to obtain table definitions, and the database returns `TINYINT(1)` for columns that were declared as `BOOL`, `BOOLEAN`, or `TINYINT(1)`.
+During streaming, {prodname} normalizes `BOOL` and `BOOLEAN` declarations in `CREATE TABLE` and `ALTER TABLE` statements to the same `TINYINT(1)` representation.
+As a result, the connector emits these columns as `INT8` in both phases and preserves values across the full signed `TINYINT` range.
 
 To enable you to convert source columns to Boolean data types, {prodname} provides a `TinyIntOneToBooleanConverter` {link-prefix}:{link-custom-converters}#custom-converters[custom converter] that you can use in one of the following ways:
 
@@ -2280,10 +2280,8 @@ end::custom-converters[]
 === `TINYINT(1)` to Boolean
 
 tag::tinyint-boolean-conv[]
-By default, during a connector snapshot, the {prodname} {connector-name} connector obtains column types from the JDBC driver, which assigns the `TINYINT(1)` type to `BOOLEAN` columns.
-{prodname} then uses these JDBC column types to define the schema for the snapshot events.
-After the connector transitions from the snapshot to the streaming phase, the change event schema that results from the default mapping can lead to inconsistent mappings for `BOOLEAN` columns.
-To help ensure that {connector-name} emits `BOOLEAN` columns uniformly, you can apply the custom  `TinyIntOneToBooleanConverter`, as shown in the following configuration example.
+By default, the {prodname} {connector-name} connector maps `BOOL`, `BOOLEAN`, and `TINYINT(1)` columns to `INT8` fields during both snapshots and streaming.
+To emit selected columns as `BOOLEAN` fields instead, you can apply the custom `TinyIntOneToBooleanConverter`, as shown in the following configuration example.
 
 .Example: `TinyIntOneToBooleanConverter` configuration
 [source]
