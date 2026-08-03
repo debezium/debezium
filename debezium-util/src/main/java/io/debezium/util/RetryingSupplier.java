@@ -27,6 +27,7 @@ import io.debezium.function.ThrowingSupplier;
  * contains in its cause chain, an instance of one of the supplied types, or when the predicate returns {@code true}
  * for it. If no condition is configured at all, the action is retried for all exceptions.
  * A non-retriable exception is propagated immediately.
+ * Log messages are emitted through the configurable logger, so delegating adapters keep their own log category.
  * This class hosts the retry loop shared with {@link RetryingRunnable}.
  */
 public class RetryingSupplier<V, E extends Exception> {
@@ -40,6 +41,7 @@ public class RetryingSupplier<V, E extends Exception> {
     private final List<Class<? extends Exception>> retriableExceptions;
     private final Predicate<Exception> retriableWhen;
     private final String name;
+    private final Logger logger;
 
     private RetryingSupplier(Builder<V, E> b) {
         this.retries = b.retries;
@@ -49,6 +51,7 @@ public class RetryingSupplier<V, E extends Exception> {
         this.retriableExceptions = b.retriableExceptions;
         this.retriableWhen = b.retriableWhen;
         this.name = b.name;
+        this.logger = b.logger;
     }
 
     public static <V, E extends Exception> Builder<V, E> builder() {
@@ -75,7 +78,7 @@ public class RetryingSupplier<V, E extends Exception> {
             try {
                 final V result = doGet.get();
                 if (attempts != retries) {
-                    LOGGER.info("{} succeeded after {} retry attempt(s)", name, retries - attempts);
+                    logger.info("{} succeeded after {} retry attempt(s)", name, retries - attempts);
                 }
                 return result;
             }
@@ -88,7 +91,7 @@ public class RetryingSupplier<V, E extends Exception> {
                 }
                 attempts--;
                 String retriesExplained = retries == -1 ? "infinity" : String.valueOf(retries);
-                LOGGER.info("{} failed with exception, will try and auto heal (if configured); attempt #{} out of {}",
+                logger.info("{} failed with exception, will try and auto heal (if configured); attempt #{} out of {}",
                         name,
                         retries - attempts,
                         retriesExplained,
@@ -105,7 +108,7 @@ public class RetryingSupplier<V, E extends Exception> {
                         throw exAutoHeal;
                     }
                     catch (Exception exAutoHeal) {
-                        LOGGER.info("Auto heal of {} failed with exception, will retry later; attempt #{} out of {}",
+                        logger.info("Auto heal of {} failed with exception, will retry later; attempt #{} out of {}",
                                 name,
                                 retries - attempts,
                                 retriesExplained,
@@ -117,7 +120,7 @@ public class RetryingSupplier<V, E extends Exception> {
         }
         final V result = doGet.get();
         if (retries > 0) {
-            LOGGER.info("{} succeeded after {} retry attempt(s)", name, retries);
+            logger.info("{} succeeded after {} retry attempt(s)", name, retries);
         }
         return result;
     }
@@ -155,7 +158,7 @@ public class RetryingSupplier<V, E extends Exception> {
             return retriableWhen.test(ex);
         }
         catch (RuntimeException predicateException) {
-            LOGGER.error("The retriableWhen predicate threw an exception while evaluating {}, treating the original exception as non-retriable",
+            logger.error("The retriableWhen predicate threw an exception while evaluating {}, treating the original exception as non-retriable",
                     ex.getClass().getName(), predicateException);
             return false;
         }
@@ -207,6 +210,7 @@ public class RetryingSupplier<V, E extends Exception> {
         private List<Class<? extends Exception>> retriableExceptions = new ArrayList<>();
         private Predicate<Exception> retriableWhen;
         private String name = "Operation";
+        private Logger logger = LOGGER;
 
         private Builder() {
         }
@@ -236,6 +240,14 @@ public class RetryingSupplier<V, E extends Exception> {
          */
         public Builder<V, E> name(String name) {
             this.name = name;
+            return this;
+        }
+
+        /**
+         * Sets the logger used for retry messages, so that delegating adapters keep their own log category.
+         */
+        public Builder<V, E> logger(Logger logger) {
+            this.logger = logger;
             return this;
         }
 

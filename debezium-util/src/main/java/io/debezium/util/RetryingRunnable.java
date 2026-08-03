@@ -10,6 +10,9 @@ import java.util.List;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.debezium.function.ThrowingRunnable;
 
 /**
@@ -27,6 +30,8 @@ import io.debezium.function.ThrowingRunnable;
  */
 public class RetryingRunnable<E extends Exception> {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(RetryingRunnable.class);
+
     private final RetryingSupplier<Void, E> delegate;
 
     private RetryingRunnable(Builder<E> b) {
@@ -41,6 +46,7 @@ public class RetryingRunnable<E extends Exception> {
                 .retriableExceptions(b.retriableExceptions)
                 .retriableWhen(b.retriableWhen)
                 .name("Runnable")
+                .logger(LOGGER)
                 .build();
     }
 
