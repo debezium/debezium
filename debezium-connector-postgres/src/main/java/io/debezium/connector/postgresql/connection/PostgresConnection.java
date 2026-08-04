@@ -6,6 +6,7 @@
 
 package io.debezium.connector.postgresql.connection;
 
+import java.lang.ref.WeakReference;
 import java.nio.charset.Charset;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
@@ -98,6 +99,22 @@ public class PostgresConnection extends JdbcConnection {
 
     private final TypeRegistry typeRegistry;
     private final PostgresDefaultValueConverter defaultValueConverter;
+
+    // Caches the resolved PostgresType per column during a snapshot, keyed by ResultSet identity. Without this,
+    // getColumnValue() resolves the column type (ResultSetMetaData#getColumnTypeName + TypeRegistry#get) for every
+    // column of every row, even though a column's type is constant for the lifetime of a ResultSet. A snapshot
+    // ResultSet is read by a single thread, so a ThreadLocal keyed by the ResultSet is sufficient and the resolution
+    // stays identical to the per-row path -- only its frequency changes (once per column instead of once per row).
+    // The ResultSet is held only through a WeakReference, purely as a cache-identity token: this connection outlives
+    // any single snapshot ResultSet, so a strong reference would pin the (already closed) ResultSet and everything it
+    // retains until the next snapshot replaced it. The weak reference lets the ResultSet be collected as soon as the
+    // snapshot releases it; get() then returns null, which simply triggers a harmless rebuild on the next query.
+    private final ThreadLocal<ColumnTypeCache> columnTypeCache = ThreadLocal.withInitial(ColumnTypeCache::new);
+
+    private static final class ColumnTypeCache {
+        private WeakReference<ResultSet> resultSetRef;
+        private PostgresType[] typesByColumnIndex;
+    }
 
     /**
      * Creates a Postgres connection using the supplied configuration.
@@ -814,12 +831,10 @@ public class PostgresConnection extends JdbcConnection {
     @Override
     public Object getColumnValue(ResultSet rs, int columnIndex, Column column, Table table) throws SQLException {
         try {
-            final ResultSetMetaData metaData = rs.getMetaData();
-            final String columnTypeName = metaData.getColumnTypeName(columnIndex);
-            final PostgresType type = getTypeRegistry().get(columnTypeName);
+            final PostgresType type = resolveColumnType(rs, columnIndex);
 
             LOGGER.trace("Type of incoming data is: {}", type.getOid());
-            LOGGER.trace("ColumnTypeName is: {}", columnTypeName);
+            LOGGER.trace("ColumnTypeName is: {}", type.getName());
             LOGGER.trace("Type is: {}", type);
 
             if (type.isArrayType()) {
@@ -862,6 +877,28 @@ public class PostgresConnection extends JdbcConnection {
             // not a known type
             return super.getColumnValue(rs, columnIndex, column, table);
         }
+    }
+
+    /**
+     * Resolves the {@link PostgresType} for a column, caching it per column so the
+     * {@link ResultSetMetaData#getColumnTypeName(int)} + {@link TypeRegistry#get(String)} lookups run once per column
+     * for the lifetime of a {@link ResultSet}, instead of once per column per row. The resolution is identical to the
+     * inline lookup; only its frequency changes. Any {@link SQLException} propagates to the caller so the
+     * "not a known type" fallback in {@link #getColumnValue} is preserved.
+     */
+    private PostgresType resolveColumnType(ResultSet rs, int columnIndex) throws SQLException {
+        final ColumnTypeCache cache = columnTypeCache.get();
+        if (cache.resultSetRef == null || cache.resultSetRef.get() != rs) {
+            cache.resultSetRef = new WeakReference<>(rs);
+            cache.typesByColumnIndex = new PostgresType[rs.getMetaData().getColumnCount() + 1];
+        }
+        PostgresType type = cache.typesByColumnIndex[columnIndex];
+        if (type == null) {
+            final ResultSetMetaData metaData = rs.getMetaData();
+            type = getTypeRegistry().get(metaData.getColumnTypeName(columnIndex));
+            cache.typesByColumnIndex[columnIndex] = type;
+        }
+        return type;
     }
 
     @Override
