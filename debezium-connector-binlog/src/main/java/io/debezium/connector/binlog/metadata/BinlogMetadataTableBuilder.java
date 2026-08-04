@@ -159,7 +159,7 @@ public class BinlogMetadataTableBuilder {
             final boolean binary = collation == BINARY_COLLATION_ID;
 
             switch (code) {
-                case TYPE_TINY -> numericType(column, "TINYINT", Types.SMALLINT, unsigned);
+                case TYPE_TINY -> numericType(column, "TINYINT", Types.TINYINT, unsigned);
                 case TYPE_SHORT -> numericType(column, "SMALLINT", Types.SMALLINT, unsigned);
                 case TYPE_INT24 -> numericType(column, "MEDIUMINT", Types.INTEGER, unsigned);
                 case TYPE_LONG -> numericType(column, "INT", Types.INTEGER, unsigned);
