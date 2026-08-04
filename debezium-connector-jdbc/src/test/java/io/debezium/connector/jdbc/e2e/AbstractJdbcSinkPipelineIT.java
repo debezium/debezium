@@ -286,6 +286,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
     }
 
     @TestTemplate
+    @FixFor("debezium/dbz#2235")
     @SkipWhenSource(value = { SourceType.POSTGRES, SourceType.ORACLE }, reason = "No TINYINT data type support")
     public void testTinyIntDataType(Source source, Sink sink) throws Exception {
         assertDataType(source,
@@ -293,14 +294,15 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 "tinyint",
                 List.of(10, 12),
                 (record) -> {
-                    final boolean columnTypePropagated = source.getOptions().isColumnTypePropagated();
-                    assertColumn(sink, record, "id", getInt16Type());
-                    assertColumn(sink, record, "data", columnTypePropagated ? getInt8Type() : getInt16Type());
+                    final boolean mysqlSource = source.getType().is(SourceType.MYSQL);
+                    assertColumn(sink, record, "id", mysqlSource ? getInt8Type() : getInt16Type());
+                    assertColumn(sink, record, "data", mysqlSource || source.getOptions().isColumnTypePropagated() ? getInt8Type() : getInt16Type());
                 },
                 ResultSet::getInt);
     }
 
     @TestTemplate
+    @FixFor("debezium/dbz#2235")
     @SkipWhenSource(value = { SourceType.POSTGRES, SourceType.ORACLE, SourceType.SQLSERVER }, reason = "No TINYINT(n) data type support")
     public void testTinyIntWithSizeDataType(Source source, Sink sink) throws Exception {
         assertDataType(source,
@@ -308,10 +310,8 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 "tinyint(2)",
                 List.of(10, 12),
                 (record) -> {
-                    final SourceConnectorOptions options = source.getOptions();
-                    final boolean mysqlInt8 = SinkType.MYSQL.is(sink.getType()) && options.isColumnTypePropagated();
-                    assertColumn(sink, record, "id", getInt16Type());
-                    assertColumn(sink, record, "data", mysqlInt8 ? getInt8Type() : getInt16Type());
+                    assertColumn(sink, record, "id", getInt8Type());
+                    assertColumn(sink, record, "data", getInt8Type());
                 },
                 ResultSet::getInt);
     }
