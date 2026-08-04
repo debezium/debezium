@@ -159,14 +159,15 @@ public class BinlogMetadataTableBuilder {
             final boolean binary = collation == BINARY_COLLATION_ID;
 
             switch (code) {
-                case TYPE_TINY -> intType(column, "TINYINT", Types.SMALLINT, unsigned);
-                case TYPE_SHORT -> intType(column, "SMALLINT", Types.SMALLINT, unsigned);
-                case TYPE_INT24 -> intType(column, "MEDIUMINT", Types.INTEGER, unsigned);
-                case TYPE_LONG -> intType(column, "INT", Types.INTEGER, unsigned);
-                case TYPE_LONGLONG -> intType(column, "BIGINT", Types.BIGINT, unsigned);
-                case TYPE_FLOAT -> intType(column, "FLOAT", Types.FLOAT, unsigned);
-                case TYPE_DOUBLE -> intType(column, "DOUBLE", Types.DOUBLE, unsigned);
+                case TYPE_TINY -> numericType(column, "TINYINT", Types.SMALLINT, unsigned);
+                case TYPE_SHORT -> numericType(column, "SMALLINT", Types.SMALLINT, unsigned);
+                case TYPE_INT24 -> numericType(column, "MEDIUMINT", Types.INTEGER, unsigned);
+                case TYPE_LONG -> numericType(column, "INT", Types.INTEGER, unsigned);
+                case TYPE_LONGLONG -> numericType(column, "BIGINT", Types.BIGINT, unsigned);
+                case TYPE_FLOAT -> numericType(column, "FLOAT", Types.FLOAT, unsigned);
+                case TYPE_DOUBLE -> numericType(column, "DOUBLE", Types.DOUBLE, unsigned);
                 case TYPE_YEAR -> column.type("YEAR").jdbcType(Types.INTEGER);
+                // DECIMAL metadata is encoded as (scale << 8) | precision.
                 case TYPE_DECIMAL, TYPE_NEWDECIMAL -> {
                     column.type(unsigned ? "DECIMAL UNSIGNED" : "DECIMAL").jdbcType(Types.DECIMAL);
                     column.length(columnMeta[i] & 0xFF);
@@ -237,7 +238,7 @@ public class BinlogMetadataTableBuilder {
         return table.create();
     }
 
-    private void intType(ColumnEditor column, String baseName, int jdbcType, boolean unsigned) {
+    private void numericType(ColumnEditor column, String baseName, int jdbcType, boolean unsigned) {
         column.type(unsigned ? baseName + " UNSIGNED" : baseName).jdbcType(jdbcType);
     }
 
