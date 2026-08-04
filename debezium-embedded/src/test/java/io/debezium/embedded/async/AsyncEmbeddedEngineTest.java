@@ -750,20 +750,13 @@ public class AsyncEmbeddedEngineTest {
                 })
                 .using(new DebeziumEngine.ConnectorCallback() {
                     @Override
-                    public void connectorStarted() {
-                        isEngineRunning.compareAndExchange(false, true);
+                    public void taskStarted() {
+                        runningTasks.incrementAndGet();
                     }
 
                     @Override
                     public void connectorStopped() {
-                        try {
-                            Thread.sleep(1_000); // sleep 1 second to make sure we don't return too early
-                        }
-                        catch (InterruptedException e) {
-                            LOGGER.warn("Connector callback was interrupted.");
-                        }
                         connectorCallbackCalled.set(true);
-                        isEngineRunning.set(false);
                     }
                 }).build();
 
@@ -771,7 +764,8 @@ public class AsyncEmbeddedEngineTest {
             LoggingContext.forConnector(getClass().getSimpleName(), "", "engine");
             engine.run();
         });
-        waitForEngineToStart();
+        waitForTasksToStart(1);
+        recordsLatch.await(AbstractConnectorTest.waitTimeForEngine(), TimeUnit.SECONDS);
         LOGGER.info("Stopping engine");
         engine.close();
         // If assertThat(connectorCallbackCalled.get()).isTrue() in completion callback throws, we will time out here.
