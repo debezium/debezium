@@ -381,4 +381,17 @@ Roshr2211,Roshni R
 sagnghos,Sagnik Ghosh
 leosanqing,刘镕通
 sundongkim-dev,Sundong Kim
+Paul_Kim,Sundong Kim
 TimurRakhmatullin86,Timur Rakhmatullin
+lekhrocks,Lekhraj Kumar
+zach-all,Zach All
+cuong-dang,Cuong Dang
+regi-c,Regi Çallmori
+MrIvv,Ivan Senyk
+jun-su-lee,Junsu Lee
+dutta1kartik3,Kartik Dutta
+hagar-yasser1,Hagar Yasser
+ochedru,Olivier Chédru
+prathit06,Malik Prathit
+LucjanoC,Luciano Capo
+Chaitanya-030,Chaitanya Sheth

@@ -127,6 +127,7 @@ Cao Manh Dat
 Cao Bá Hướng
 Chad Marmon
 Chai Stofkoper
+Chaitanya Sheth
 Chaitra Dalawai
 Chao Tian
 Choi Jang Ho
@@ -160,6 +161,7 @@ Collin Van Dyck
 Connor Szczepaniak
 Conor Gallagher
 Cory Harper
+Cuong Dang
 Cyprien Etienne
 Cyril Scetbon
 Daan Gerits
@@ -243,6 +245,7 @@ Gabriel Miklós
 Gagan Agrawal
 Ganesh Bankar
 Ganesh Ramasubramanian
+Ganeshan Nagarajan
 Giljae Joo
 Gilles Vaquez
 Gio Gutierrez
@@ -259,6 +262,7 @@ Gustavo Lira
 Guy Korland
 Guy Pascarella
 Grzegorz Kołakowski
+Hagar Yasser
 Haydar Miezanie Abdul Jamil
 ibnubay
 Ian Muge
@@ -324,6 +328,7 @@ Ivan Kovbas
 Ivan Lorenz
 Ivan Luzyanin
 Ivan San Jose
+Ivan Senyk
 Ivan Trusov
 Ivan Vucina
 Jackey Zhang
@@ -380,6 +385,7 @@ Justin Hiza
 Kanha Gupta
 Kanthi Subramanian
 Kartik Angiras
+Kartik Dutta
 Katerina Galieva
 Katsumi Miyajima
 Kaushik Iyer
@@ -417,12 +423,14 @@ Lokesh Sanapalli
 Lourens Naudé
 Luca Scannapieco
 Lucas Gazire
+Luciano Capo
 Luis Garcés-Erice
 Lukas Krejci
 Lukas Langegger
 Lukasz Korzeniowski
 Lukasz Selwa
 Luke Alexander
+Lekhraj Kumar
 lyidataminr
 M Sazzadul Hoque
 Maarten Vercruysse
@@ -574,6 +582,7 @@ Randall Hauch
 Raphael Auv
 Raúl Estrada
 Raúl Tovar
+Regi Çallmori
 Renato Mefi
 René Kerner
 René Rütter
@@ -618,6 +627,7 @@ Saurav Kumar
 Sayed Mohammad Hossein Torabi
 Scofield Xu
 Sara Fonseca
+Sean Connaughton
 Sean C. Sullivan
 Sean Rooney
 Sean Stewart
@@ -756,14 +766,17 @@ Yingying Tang
 Yoann Rodière
 Yohei Yoshimuta
 Yonatan Haile
+Yong Wang
 Yossi Shirizli
 Yuan Zhang
 Yuang Li
 Yue Wang
 Yuiham Chan
 Yuriy Vikulov
+Zach All
 Zakariae Ben Allal
 Zheng Wang
+Zihan Dai
 Zongwen Li
 Zoran Regvart
 志飞 张
@@ -777,9 +790,12 @@ Snigdhajyoti Ghosh
 Andrei Isac
 M. Gökhan Akgül
 Maithem
+Mahitha Adapa
+Malik Prathit
 Mark Allanson
 Mark Banierink
 Rahul Khanna
+Rainer Schamm
 Razvan Laurus
 Ronak Jain
 Pengwei Dou
@@ -840,3 +856,5 @@ Roshni R
 刘镕通
 Sundong Kim
 Timur Rakhmatullin
+skdus531
+Junsu Lee
