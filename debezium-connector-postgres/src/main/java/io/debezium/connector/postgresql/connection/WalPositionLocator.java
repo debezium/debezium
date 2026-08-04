@@ -78,7 +78,7 @@ public class WalPositionLocator {
      *         the position has not been found yet
      */
     public Optional<Lsn> resumeFromLsn(Lsn currentLsn, ReplicationMessage message) {
-        LOGGER.trace("Processing LSN '{}', operation '{}'", currentLsn, message.getOperation());
+        LOGGER.trace("Processing LSN '{}', operation '{}' during WAL position search", currentLsn, message.getOperation());
 
         lsnSeen.add(currentLsn);
 
@@ -130,6 +130,19 @@ public class WalPositionLocator {
             return Optional.of(startStreamingLsn);
         }
         if (currentLsn.equals(lastEventStoredLsn)) {
+            // debezium/dbz#76: In PG 17+, a COMMIT's txn->end_lsn (byte after the COMMIT WAL record)
+            // can equal the next transaction's first DML change->lsn. When the stored offset
+            // records a COMMIT at this LSN but the stream delivers a non-COMMIT event at the
+            // same position, it is a false match — the stored transaction was fully processed
+            // and this event belongs to the next unprocessed transaction.
+            if (lastProcessedMessageType == Operation.COMMIT && message.getOperation() != Operation.COMMIT
+                    && lastCommitStoredLsn != null && lastCommitStoredLsn.equals(lastEventStoredLsn)) {
+                LOGGER.info("Detected false LSN match at '{}': stored event was COMMIT but received {}. Resuming from '{}'",
+                        currentLsn, message.getOperation(), firstLsnReceived);
+                startStreamingLsn = firstLsnReceived;
+                return Optional.of(startStreamingLsn);
+            }
+
             storeLsnAfterLastEventStoredLsn = true;
             // Start counting events at this LSN
             currentLsnEventCount = 1;
