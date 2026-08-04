@@ -94,7 +94,7 @@ class BinlogMetadataTableBuilderTest {
         assertColumn(table, "id", "INT", Types.INTEGER, false);
         assertColumn(table, "big_u", "BIGINT UNSIGNED", Types.BIGINT, true);
         assertColumn(table, "small_s", "SMALLINT", Types.SMALLINT, true);
-        assertColumn(table, "is_active", "TINYINT", Types.SMALLINT, true);
+        assertColumn(table, "is_active", "TINYINT", Types.TINYINT, true);
 
         final Column price = table.columnWithName("price");
         assertThat(price.typeName()).isEqualTo("DECIMAL");
