@@ -28,6 +28,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
 import io.debezium.config.ConfigurationNames;
+import io.debezium.config.ConnectorConfigValidationHelper;
 import io.debezium.config.DependentFieldMatcher;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
@@ -2523,14 +2524,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     public static int validateUsernameExcludeList(Configuration config, Field field, ValidationOutput problems) {
         if (isLogMiner(config)) {
-            final String includeList = config.getString(LOG_MINING_USERNAME_INCLUDE_LIST);
-            final String excludeList = config.getString(LOG_MINING_USERNAME_EXCLUDE_LIST);
-
-            if (includeList != null && excludeList != null) {
-                problems.accept(LOG_MINING_USERNAME_EXCLUDE_LIST, excludeList,
-                        String.format("\"%s\" is already specified", LOG_MINING_USERNAME_INCLUDE_LIST.name()));
-                return 1;
-            }
+            return ConnectorConfigValidationHelper.validateExcludeField(
+                    config, LOG_MINING_USERNAME_INCLUDE_LIST, LOG_MINING_USERNAME_EXCLUDE_LIST, problems);
         }
         return 0;
     }
@@ -2628,13 +2623,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     public static int validateClientIdExcludeList(Configuration config, Field field, ValidationOutput problems) {
         if (isLogMiner(config)) {
-            final String includeList = config.getString(LOG_MINING_CLIENTID_INCLUDE_LIST);
-            final String excludeList = config.getString(LOG_MINING_CLIENTID_EXCLUDE_LIST);
-            if (includeList != null && excludeList != null) {
-                problems.accept(LOG_MINING_CLIENTID_EXCLUDE_LIST, excludeList,
-                        String.format("\"%s\": is already specified", LOG_MINING_CLIENTID_INCLUDE_LIST.name()));
-                return 1;
-            }
+            return ConnectorConfigValidationHelper.validateExcludeField(
+                    config, LOG_MINING_CLIENTID_INCLUDE_LIST, LOG_MINING_CLIENTID_EXCLUDE_LIST, problems);
         }
         return 0;
     }
