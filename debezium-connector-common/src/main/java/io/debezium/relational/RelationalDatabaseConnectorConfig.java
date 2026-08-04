@@ -24,6 +24,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
 import io.debezium.config.ConfigurationNames;
+import io.debezium.config.ConnectorConfigValidationHelper;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
@@ -704,31 +705,8 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         return snapshotOrderByRowCount;
     }
 
-    /**
-     * Validates that include and exclude lists are not both specified for the same filter type.
-     *
-     * @param config the configuration
-     * @param includeField the include list field
-     * @param excludeField the exclude list field
-     * @param problems the validation output
-     * @return 1 if both lists are specified, 0 otherwise
-     */
-    private static int validateExcludeList(Configuration config,
-                                           Field includeField,
-                                           Field excludeField,
-                                           ValidationOutput problems) {
-        String includeList = config.getString(includeField);
-        String excludeList = config.getString(excludeField);
-
-        if (includeList != null && excludeList != null) {
-            problems.accept(excludeField, excludeList, "\"%s\" is already specified".formatted(includeField.name()));
-            return 1;
-        }
-        return 0;
-    }
-
     private static int validateColumnExcludeList(Configuration config, Field field, ValidationOutput problems) {
-        return validateExcludeList(config, COLUMN_INCLUDE_LIST, COLUMN_EXCLUDE_LIST, problems);
+        return ConnectorConfigValidationHelper.validateExcludeField(config, COLUMN_INCLUDE_LIST, COLUMN_EXCLUDE_LIST, problems);
     }
 
     @Override
@@ -746,7 +724,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     }
 
     private static int validateTableExcludeList(Configuration config, Field field, ValidationOutput problems) {
-        return validateExcludeList(config, TABLE_INCLUDE_LIST, TABLE_EXCLUDE_LIST, problems);
+        return ConnectorConfigValidationHelper.validateExcludeField(config, TABLE_INCLUDE_LIST, TABLE_EXCLUDE_LIST, problems);
     }
 
     /**
@@ -781,11 +759,11 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
     }
 
     private static int validateSchemaExcludeList(Configuration config, Field field, ValidationOutput problems) {
-        return validateExcludeList(config, SCHEMA_INCLUDE_LIST, SCHEMA_EXCLUDE_LIST, problems);
+        return ConnectorConfigValidationHelper.validateExcludeField(config, SCHEMA_INCLUDE_LIST, SCHEMA_EXCLUDE_LIST, problems);
     }
 
     private static int validateDatabaseExcludeList(Configuration config, Field field, ValidationOutput problems) {
-        return validateExcludeList(config, DATABASE_INCLUDE_LIST, DATABASE_EXCLUDE_LIST, problems);
+        return ConnectorConfigValidationHelper.validateExcludeField(config, DATABASE_INCLUDE_LIST, DATABASE_EXCLUDE_LIST, problems);
     }
 
     private static int validateMessageKeyColumnsField(Configuration config, Field field, ValidationOutput problems) {
