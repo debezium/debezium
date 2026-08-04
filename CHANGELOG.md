@@ -3,6 +3,56 @@
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
 
+## 3.6.1.Final
+August 4th 2026 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A3.6.1.Final)
+
+### New features since 3.6.0.Final
+
+None
+
+
+### Breaking changes since 3.6.0.Final
+
+None
+
+
+### Fixes since 3.6.0.Final
+
+* Avoid logging Azure Eventhub connection string [debezium/dbz#27](https://github.com/debezium/dbz/issues/27)
+* Debezium Connector Postgres  DateTimeParseException: Text '0002-11-30 00:00:00 BC' and '0002-11-30 BC' could not be parsed [DBZ-8762] [debezium/dbz#1340](https://github.com/debezium/dbz/issues/1340)
+* Tombstones with JSONB column and table.expand.json.payload produce WARN logs [DBZ-9210] [debezium/dbz#1369](https://github.com/debezium/dbz/issues/1369)
+* MySQL with snapshot mode no_data produces snapshot remaining tables JMX metric [debezium/dbz#1479](https://github.com/debezium/dbz/issues/1479)
+* PostgreSQL to PostgreSQL JDBC sink type preservation audit exposes several failures [debezium/dbz#2100](https://github.com/debezium/dbz/issues/2100)
+* Make internal.legacy.snapshot.max.threads option public [debezium/dbz#2150](https://github.com/debezium/dbz/issues/2150)
+* Oracle - RowIdCodec silently discards high bits, producing corrupted row_id values in change events [debezium/dbz#2169](https://github.com/debezium/dbz/issues/2169)
+* MySQL connector: INTEGER UNSIGNED synonym maps to INT32 instead of INT64, diverging from snapshot [debezium/dbz#2172](https://github.com/debezium/dbz/issues/2172)
+* ZeroDateFallbackConverter truncates DATETIME(4-6) to millisecond precision [debezium/dbz#2187](https://github.com/debezium/dbz/issues/2187)
+* RocketMqConfig#toString() leaks the RocketMQ ACL secret key in clear text [debezium/dbz#2188](https://github.com/debezium/dbz/issues/2188)
+* Vitess connector drops BIT columns — VitessType does not resolve BIT, resolveValue returns null for Types.BIT [debezium/dbz#2191](https://github.com/debezium/dbz/issues/2191)
+* JDBC Sink: PostgreSQL tsvector binding strips all single quotes, corrupting lexemes with spaces or apostrophes [debezium/dbz#2199](https://github.com/debezium/dbz/issues/2199)
+* IBMI connector silently skips incremental snapshot if the underlying connection is re-opened [debezium/dbz#2204](https://github.com/debezium/dbz/issues/2204)
+* Fix hardcoded `MySQL` string in CdcSourceTaskContext.temporaryLoggingContext() [debezium/dbz#2210](https://github.com/debezium/dbz/issues/2210)
+* RocketMqSchemaHistory recovery fails on large histories and aborts on corrupted records [debezium/dbz#2215](https://github.com/debezium/dbz/issues/2215)
+* RedisSchemaHistory silently drops all schema history records after a corrupted entry during recovery [debezium/dbz#2221](https://github.com/debezium/dbz/issues/2221)
+* Event count reset for a transaction in progress [DBZ-5127] [debezium/dbz#633](https://github.com/debezium/dbz/issues/633)
+* MySQL connector emits duplicated type name "BINARY BINARY" for BINARY columns [debezium/dbz#2223](https://github.com/debezium/dbz/issues/2223)
+* Oracle Connector fails on unparseable DDL despite skip.unparseable.ddl=true [debezium/dbz#2234](https://github.com/debezium/dbz/issues/2234)
+* io.debezium.text.ParsingException after updating to debezium-connector-mysql-3.6.0.Final-plugin.tar [debezium/dbz#2237](https://github.com/debezium/dbz/issues/2237)
+* Predicates.excludesLiterals(String, Function) returns an includes predicate (double negation) [debezium/dbz#2246](https://github.com/debezium/dbz/issues/2246)
+* MySQL DdlNormalizer injects backticks into string literals and SQL comments when their content matches reserved-keyword heuristics [debezium/dbz#2254](https://github.com/debezium/dbz/issues/2254)
+* Oracle secondary configuration should not require `secondary.port` [debezium/dbz#2257](https://github.com/debezium/dbz/issues/2257)
+* Oracle USING INDEX; in add constraint fails to parse [debezium/dbz#2272](https://github.com/debezium/dbz/issues/2272)
+* Oracle archive log only mode advances too early [debezium/dbz#2296](https://github.com/debezium/dbz/issues/2296)
+* Debezium Server 3.6 RabbitMQ sink ignores routingKey.source=topic from environment variable [debezium/dbz#2317](https://github.com/debezium/dbz/issues/2317)
+
+
+### Other changes since 3.6.0.Final
+
+* Testing farm Oracle 19 XS/SE-XS jobs exceed allowed time [debezium/dbz#2193](https://github.com/debezium/dbz/issues/2193)
+* Apicurio + PostgreSQL 18 tests consistently fail [debezium/dbz#2293](https://github.com/debezium/dbz/issues/2293)
+
+
+
 ## 3.6.0.Final
 July 1st 2026 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A3.6.0.Final)
 
