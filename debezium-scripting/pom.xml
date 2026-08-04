@@ -13,6 +13,7 @@
 
     <modules>
       <module>debezium-scripting</module>
+      <module>debezium-scripting-dist</module>
       <module>debezium-scripting-languages</module>
     </modules>
 </project>
