@@ -30,6 +30,7 @@ import com.mongodb.ConnectionString;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
+import io.debezium.config.ConnectorConfigValidationHelper;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
@@ -48,9 +49,6 @@ import io.debezium.util.Strings;
 public class MongoDbConnectorConfig extends CommonConnectorConfig implements SharedMongoDbConnectorConfig {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbConnectorConfig.class);
-
-    protected static final String COLLECTION_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"collection.include.list\" is already specified";
-    protected static final String DATABASE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"database.include.list\" is already specified";
 
     protected static final Pattern PATTERN_SPILT = Pattern.compile(",");
 
@@ -1278,23 +1276,11 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
     }
 
     private static int validateCollectionExcludeList(Configuration config, Field field, ValidationOutput problems) {
-        String includeList = config.getString(COLLECTION_INCLUDE_LIST);
-        String excludeList = config.getString(COLLECTION_EXCLUDE_LIST);
-        if (includeList != null && excludeList != null) {
-            problems.accept(COLLECTION_EXCLUDE_LIST, excludeList, COLLECTION_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
-            return 1;
-        }
-        return 0;
+        return ConnectorConfigValidationHelper.validateExcludeField(config, COLLECTION_INCLUDE_LIST, COLLECTION_EXCLUDE_LIST, problems);
     }
 
     private static int validateDatabaseExcludeList(Configuration config, Field field, ValidationOutput problems) {
-        String includeList = config.getString(DATABASE_INCLUDE_LIST);
-        String excludeList = config.getString(DATABASE_EXCLUDE_LIST);
-        if (includeList != null && excludeList != null) {
-            problems.accept(DATABASE_EXCLUDE_LIST, excludeList, DATABASE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
-            return 1;
-        }
-        return 0;
+        return ConnectorConfigValidationHelper.validateExcludeField(config, DATABASE_INCLUDE_LIST, DATABASE_EXCLUDE_LIST, problems);
     }
 
     private static int validateCaptureTarget(Configuration config, Field field, ValidationOutput problems) {
