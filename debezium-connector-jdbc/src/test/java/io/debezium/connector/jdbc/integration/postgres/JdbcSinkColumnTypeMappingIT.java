@@ -31,7 +31,9 @@ import io.debezium.connector.jdbc.junit.jupiter.PostgresInsertModeArgumentsProvi
 import io.debezium.connector.jdbc.junit.jupiter.PostgresInsertModeArgumentsProvider.PostgresInsertMode;
 import io.debezium.connector.jdbc.junit.jupiter.PostgresSinkDatabaseContextProvider;
 import io.debezium.connector.jdbc.junit.jupiter.Sink;
+import io.debezium.connector.jdbc.junit.jupiter.SinkRecordFactoryArgumentsProvider;
 import io.debezium.connector.jdbc.util.SinkRecordFactory;
+import io.debezium.data.Enum;
 import io.debezium.data.Json;
 import io.debezium.data.Uuid;
 import io.debezium.doc.FixFor;
@@ -826,6 +828,88 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
             // than String, so compare on their textual form which is stable across both representations.
             final Object[] actual = (Object[]) rs.getArray(2).getArray();
             assertThat(Arrays.stream(actual).map(String::valueOf).toArray(String[]::new)).isEqualTo(expected);
+            return null;
+        });
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
+    @FixFor("debezium/dbz#1344")
+    public void testShouldCoerceEnumTypeToEnumColumnType(SinkRecordFactory factory, PostgresInsertMode insertMode) throws Exception {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.NONE.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, String.valueOf(insertMode.isUnnestEnabled()));
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server1", "schema", tableName);
+        // Mixed case, so that the cast fails unless the type name is quoted rather than folded to lower case.
+        final String enumType = "Role_" + tableName;
+
+        final Schema enumSchema = Enum.builder("system,assistant,user").optional().build();
+
+        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        final JdbcKafkaSinkRecord createRecord = factory.createRecordWithSchemaValue(
+                topicName, (byte) 1, "data", enumSchema, "user", config);
+
+        final String destinationTable = destinationTableName(createRecord);
+        getSink().execute(String.format("CREATE TYPE \"%s\" AS ENUM ('system','assistant','user')", enumType));
+        getSink().execute(String.format("CREATE TABLE %s (id int not null, data \"%s\", primary key(id))",
+                destinationTable, enumType));
+
+        consume(createRecord);
+
+        final JdbcKafkaSinkRecord updateRecord = factory.updateRecordWithSchemaValue(
+                topicName, (byte) 1, "data", enumSchema, "assistant", config);
+
+        consume(updateRecord);
+
+        getSink().assertColumn(destinationTable, "data", enumType);
+        getSink().assertRows(destinationTable, rs -> {
+            assertThat(rs.getString(2)).isEqualTo("assistant");
+            return null;
+        });
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("debezium/dbz#1344")
+    public void testShouldWriteEnumColumnWhenUnnestBatchIsEnabled(SinkRecordFactory factory) throws Exception {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.NONE.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, "true");
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server1", "schema", tableName);
+        final String enumType = "role_" + tableName;
+
+        final Schema enumSchema = Enum.builder("system,assistant,user").optional().build();
+
+        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        final JdbcKafkaSinkRecord record1 = factory.createRecordWithSchemaValue(
+                topicName, (byte) 1, "data", enumSchema, "user", config);
+        final JdbcKafkaSinkRecord record2 = factory.createRecordWithSchemaValue(
+                topicName, (byte) 2, "data", enumSchema, "assistant", config);
+
+        final String destinationTable = destinationTableName(record1);
+        getSink().execute(String.format("CREATE TYPE %s AS ENUM ('system','assistant','user')", enumType));
+        getSink().execute(String.format("CREATE TABLE %s (id int not null, data %s, primary key(id))",
+                destinationTable, enumType));
+
+        // More than one record so the UNNEST batch path is taken rather than the row-wise fallback.
+        consume(List.of(record1, record2));
+
+        getSink().assertRows(destinationTable, rs -> {
+            assertThat(rs.getString(2)).isEqualTo("user");
+            assertThat(rs.next()).isTrue();
+            assertThat(rs.getString(2)).isEqualTo("assistant");
             return null;
         });
     }
