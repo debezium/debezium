@@ -934,6 +934,7 @@
                             <systemPropertyVariables>
                                 <database.port>${mariadb.innodb.port}</database.port>
                                 <database.replica.port>${mariadb.innodb.port}</database.replica.port>
+                                <database.innodb.binlog>true</database.innodb.binlog>
                             </systemPropertyVariables>
                         </configuration>
                     </plugin>
