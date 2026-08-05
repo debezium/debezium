@@ -4706,4 +4706,82 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
             TestHelper.execute("DROP TABLE IF EXISTS t_long;", "DROP TABLE IF EXISTS t_short;");
         }
     }
+
+    @Test
+    @FixFor("debezium/dbz#2139")
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 10, reason = "Database version less than 10.0")
+    public void testShouldFailTaskWhenRoleCannotLogin() throws Exception {
+        // Start from a clean slate and create the database objects + a dedicated user
+        TestHelper.dropAllSchemas();
+        TestHelper.dropPublication();
+        TestHelper.dropDefaultReplicationSlot();
+        TestHelper.executeDDL("postgres_create_tables.ddl");
+
+        TestHelper.execute(
+                "DROP USER IF EXISTS canarytest;",
+                "CREATE USER canarytest WITH REPLICATION LOGIN PASSWORD 'canarytest';",
+                "GRANT ALL PRIVILEGES ON DATABASE postgres TO canarytest;",
+                "GRANT ALL ON ALL TABLES IN SCHEMA public TO canarytest;",
+                "GRANT USAGE ON SCHEMA public TO canarytest;");
+
+        // Pre-create the publication as superuser so the non-superuser 'canarytest'
+        // does not need to run CREATE PUBLICATION ... FOR ALL TABLES (which requires superuser).
+        TestHelper.execute("CREATE PUBLICATION " + ReplicationConnection.Builder.DEFAULT_PUBLICATION_NAME
+                + " FOR ALL TABLES;");
+
+        try {
+            Configuration config = TestHelper.defaultConfig()
+                    .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                    .with(PostgresConnectorConfig.SLOT_NAME, ReplicationConnection.Builder.DEFAULT_SLOT_NAME)
+                    .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, "disabled")
+                    .with(PostgresConnectorConfig.DATABASE_CONFIG_PREFIX + JdbcConfiguration.USER, "canarytest")
+                    .with(PostgresConnectorConfig.DATABASE_CONFIG_PREFIX + JdbcConfiguration.PASSWORD, "canarytest")
+                    .build();
+
+            // The engine's completion callback fires when the task terminates.
+            // For a permanent auth failure the task must FAIL (error != null),
+            // not retry indefinitely.
+            final CountDownLatch latch = new CountDownLatch(1);
+            final DebeziumEngine.CompletionCallback completionCallback = (success, message, error) -> {
+                if (!success && error != null) {
+                    latch.countDown();
+                }
+            };
+
+            start(PostgresConnector.class, config, completionCallback);
+            assertConnectorIsRunning();
+            waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
+
+            // Now permanently break the connection: revoke the role's ability to log in
+            // and terminate its active backend so it is forced to reconnect.
+            TestHelper.execute("ALTER USER canarytest NOLOGIN;");
+            TestHelper.execute(
+                    "SELECT pg_terminate_backend(pid) FROM pg_stat_activity " +
+                            "WHERE usename = 'canarytest' AND pid <> pg_backend_pid();");
+
+            // The task should transition to FAILED (the engine completes with an error),
+            // rather than looping forever in a retriable-restart state.
+            if (!latch.await(TestHelper.waitTimeForRecords() * 15L, TimeUnit.SECONDS)) {
+                fail("Connector task did not fail within the expected time after the role was denied login");
+            }
+
+            assertConnectorNotRunning();
+        }
+        finally {
+            stopConnector();
+
+            // re-enable login so the role can be cleaned up
+            TestHelper.execute("ALTER USER canarytest LOGIN;");
+            // revoke database-level grant (blocks DROP USER otherwise)
+            TestHelper.execute("REVOKE ALL PRIVILEGES ON DATABASE postgres FROM canarytest;");
+            // drop owned objects + remaining privileges
+            TestHelper.execute("DROP OWNED BY canarytest CASCADE;");
+            // now the role can be dropped
+            TestHelper.execute("DROP USER IF EXISTS canarytest;");
+            // clean up the pre-created publication
+            TestHelper.dropPublication();
+        }
+    }
+}
+
 }

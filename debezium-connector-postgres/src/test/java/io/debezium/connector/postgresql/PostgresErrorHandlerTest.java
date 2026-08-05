@@ -19,7 +19,11 @@ import io.debezium.connector.base.DefaultQueueProvider;
 import io.debezium.pipeline.DataChangeEvent;
 
 public class PostgresErrorHandlerTest {
+
+    private static final String ROLE_AUTHORIZATION_ERROR = "FATAL: role not permitted to log in";
+    private static final String PASSWORD_AUTHENTICATION_ERROR = "FATAL: password authentication failed for user debezium";
     private static final String A_CLASSIFIED_EXCEPTION = "Database connection failed when writing to copy";
+
     private final PostgresErrorHandler errorHandler = new PostgresErrorHandler(
             new PostgresConnectorConfig(Configuration.create()
                     .with(CommonConnectorConfig.TOPIC_PREFIX, "postgres")
@@ -68,4 +72,41 @@ public class PostgresErrorHandlerTest {
         RuntimeException testException = new RuntimeException();
         assertThat(errorHandler.isRetriable(testException)).isFalse();
     }
+
+    @Test
+    void connectionFailureIsNotPermanent() {
+        PSQLException psqlException = new PSQLException(A_CLASSIFIED_EXCEPTION, PSQLState.CONNECTION_FAILURE);
+        assertThat(PostgresErrorHandler.containsPermanentError(psqlException)).isFalse();
+    }
+
+    @Test
+    void authorizationFailureIsPermanent() {
+        PSQLException psqlException = new PSQLException(ROLE_AUTHORIZATION_ERROR, PSQLState.INVALID_AUTHORIZATION_SPECIFICATION);
+        assertThat(PostgresErrorHandler.containsPermanentError(psqlException)).isTrue();
+    }
+
+    @Test
+    void invalidPasswordIsPermanent() {
+        PSQLException psqlException = new PSQLException(PASSWORD_AUTHENTICATION_ERROR, PSQLState.INVALID_PASSWORD);
+        assertThat(PostgresErrorHandler.containsPermanentError(psqlException)).isTrue();
+    }
+
+    @Test
+    void authorizationFailureWrappedInDebeziumExceptionIsPermanent() {
+        // Mirrors getDatabaseCharset() wrapping PSQLException in DebeziumException during start()
+        PSQLException psqlException = new PSQLException(ROLE_AUTHORIZATION_ERROR, PSQLState.INVALID_AUTHORIZATION_SPECIFICATION);
+        DebeziumException wrapper = new DebeziumException("Couldn't obtain encoding for database", psqlException);
+        assertThat(PostgresErrorHandler.containsPermanentError(wrapper)).isTrue();
+    }
+
+    @Test
+    void nonSqlExceptionIsNotPermanent() {
+        assertThat(PostgresErrorHandler.containsPermanentError(new RuntimeException("boom"))).isFalse();
+    }
+
+    @Test
+    void nullIsNotPermanent() {
+        assertThat(PostgresErrorHandler.containsPermanentError(null)).isFalse();
+    }
+
 }
