@@ -106,8 +106,20 @@ public class IncrementalSnapshotNotificationService<P extends Partition, O exten
 
     public <T extends DataCollectionId> void notifyTableScanCompleted(IncrementalSnapshotContext<T> incrementalSnapshotContext, P partition, OffsetContext offsetContext,
                                                                       long totalRowsScanned, TableScanCompletionStatus status) {
+        notifyTableScanCompleted(incrementalSnapshotContext, partition, offsetContext, totalRowsScanned, status,
+                incrementalSnapshotContext.currentDataCollectionId().getId());
+    }
 
-        String scannedCollection = incrementalSnapshotContext.currentDataCollectionId().getId().identifier();
+    /**
+     * Variant accepting an explicit scanned data collection id. Required by
+     * parallel incremental snapshots where the table that just finished is not
+     * necessarily the one currently at the head of the snapshot queue.
+     */
+    public <T extends DataCollectionId> void notifyTableScanCompleted(IncrementalSnapshotContext<T> incrementalSnapshotContext, P partition, OffsetContext offsetContext,
+                                                                      long totalRowsScanned, TableScanCompletionStatus status,
+                                                                      T scannedDataCollectionId) {
+
+        String scannedCollection = scannedDataCollectionId.identifier();
         String dataCollections = incrementalSnapshotContext.getDataCollections().stream().map(DataCollection::getId)
                 .map(DataCollectionId::identifier)
                 .collect(Collectors.joining(LIST_DELIMITER));
