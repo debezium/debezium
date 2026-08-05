@@ -2423,8 +2423,7 @@ This method accepts only one HTTP request per record.
 Select this option for environments that lack a persistent connection.
 
 A third option is to reuse the built-in `kafka` sink against the Zerobus Kafka-compatible endpoint.
-To use the Kafka sink with the Zerobus Kafka-compatible endpoint, configure the Kafka SASL/OAUTHBEARER authentication and set the `sasl.login.callback.handler.class` to `io.debezium.server.databricks.zerobus.ZerobusOAuthBearerLoginCallbackHandler`.
-For the complete list of required OAuth properties, see the source code for the `ZerobusOAuthBearerLoginCallbackHandler` for {prodname} Server.
+For more information, see <<zerobus-kafka-route, Kafka route>>.
 
 Because Zerobus accepts only JSON objects that match the target table schema, configure {prodname} to emit flat JSON by applying the {link-prefix}:{link-event-flattening}#new-record-state-extraction[`ExtractNewRecordState` SMT] with `schemas.enable=false`.
 Delivery uses an at-least-once guarantee.
@@ -2532,6 +2531,98 @@ This setting does not affect availability of metrics over JMX.
 For more information, see <<zerobus-monitoring, Monitoring>>.
 
 |===
+
+[[zerobus-kafka-route]]
+===== Kafka route
+
+As an alternative to the `zerobus` and `zerobusrest` routes, you can reuse the built-in `kafka` sink to write to the Zerobus Kafka-compatible endpoint.
+This route uses the standard Kafka producer with `SASL_SSL` and the `OAUTHBEARER` mechanism.
+Authentication is handled by `io.debezium.server.databricks.zerobus.ZerobusOAuthBearerLoginCallbackHandler`, which performs the OAuth token exchange and attaches the Unity Catalog authorization details that Zerobus requires.
+
+To use this route, set `debezium.sink.type` to `kafka` and configure the following producer properties:
+
+[cols="55%a,45%a",options="header"]
+|===
+|Property
+|Description
+
+|`debezium.sink.kafka.producer.bootstrap.servers`
+|The Zerobus Kafka endpoint, for example `<workspace-id>.zerobus.<region>.cloud.databricks.com:9092`.
+
+|`debezium.sink.kafka.producer.security.protocol`
+|Must be set to `SASL_SSL`.
+
+|`debezium.sink.kafka.producer.sasl.mechanism`
+|Must be set to `OAUTHBEARER`.
+
+|`debezium.sink.kafka.producer.sasl.login.callback.handler.class`
+|Must be set to `io.debezium.server.databricks.zerobus.ZerobusOAuthBearerLoginCallbackHandler`.
+
+|`debezium.sink.kafka.producer.sasl.jaas.config`
+|The JAAS configuration for the `OAuthBearerLoginModule`, which supplies the OAuth options that the login callback handler reads.
+|===
+
+The `sasl.jaas.config` entry accepts the following options:
+
+[cols="25%a,20%a,55%a",options="header"]
+|===
+|Option
+|Required
+|Description
+
+|`clientId`
+|Yes
+|The OAuth client id (service principal application id).
+
+|`clientSecret`
+|Yes
+|The OAuth client secret for the service principal.
+
+|`workspaceUrl`
+|Yes, unless `tokenEndpoint` is set
+|The Databricks workspace URL.
+The token endpoint is derived as `<workspaceUrl>/oidc/v1/token`.
+
+|`workspaceId`
+|Yes, unless `audience` is set
+|The numeric workspace id.
+The token audience is derived as `api://databricks/workspaces/<workspaceId>/zerobusDirectWriteApi`.
+
+|`tables`
+|Yes
+|A comma-separated list of fully-qualified target tables (`catalog.schema.table`).
+The handler uses this list to build the OAuth Rich Authorization Requests (RFC 9396) authorization details, which grant the token the Unity Catalog privileges that Zerobus requires for the target tables.
+
+|`tokenEndpoint`
+|No
+|Overrides the OIDC token endpoint that is otherwise derived from `workspaceUrl`.
+
+|`audience`
+|No
+|Overrides the token audience that is otherwise derived from `workspaceId`.
+
+|`token`
+|No
+|A bearer token (for example, a personal access token) to use verbatim.
+When set, the handler skips the OAuth exchange and uses this token directly.
+|===
+
+The following example shows a complete configuration for the Kafka route:
+
+[source,properties]
+----
+debezium.sink.type=kafka
+debezium.sink.kafka.producer.bootstrap.servers=<workspace-id>.zerobus.<region>.cloud.databricks.com:9092
+debezium.sink.kafka.producer.security.protocol=SASL_SSL
+debezium.sink.kafka.producer.sasl.mechanism=OAUTHBEARER
+debezium.sink.kafka.producer.sasl.login.callback.handler.class=io.debezium.server.databricks.zerobus.ZerobusOAuthBearerLoginCallbackHandler
+debezium.sink.kafka.producer.sasl.jaas.config=org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required \
+    workspaceUrl="https://<workspace-host>" \
+    workspaceId="<workspace-id>" \
+    clientId="<client-id>" \
+    clientSecret="<client-secret>" \
+    tables="<catalog>.<schema>.<table>" ;
+----
 
 ===== Data type mapping
 
