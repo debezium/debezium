@@ -182,10 +182,14 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
      * values to {@link Connection#createArrayOf}, which only accepts scalar elements; a {@code STRUCT}
      * field (the geometric types point/box/lseg/path/polygon and circle/line) needs the per-value
      * {@code JdbcType#bind()} the row-wise path applies, so such records are handled row-wise instead.
+     * {@code BYTES} fields are also excluded: the PostgreSQL driver cannot encode {@code bytea} array
+     * elements ({@code createArrayOf} rejects {@code byte[]} nested inside {@code Object[]}), so such
+     * records take the row-wise path as well.
      */
     private static boolean hasUnnestUnsupportedField(JdbcSinkRecord record) {
         return record.jdbcFields().values().stream()
-                .anyMatch(field -> field.getSchema().type() == Schema.Type.STRUCT);
+                .anyMatch(field -> field.getSchema().type() == Schema.Type.STRUCT
+                        || field.getSchema().type() == Schema.Type.BYTES);
     }
 
     @Override
