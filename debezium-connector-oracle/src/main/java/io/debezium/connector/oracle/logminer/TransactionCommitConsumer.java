@@ -926,19 +926,6 @@ public class TransactionCommitConsumer implements AutoCloseable {
     static class XmlUnderConstruction extends AbstractUnderConstruction<XmlFragment> {
 
         static XmlUnderConstruction fromInitialValue(Object value) {
-            if (null == value) {
-                return new XmlUnderConstruction();
-            }
-            if (value instanceof XmlUnderConstruction) {
-                return (XmlUnderConstruction) value;
-            }
-            if (value instanceof String) {
-                XmlUnderConstruction lob = new XmlUnderConstruction();
-                lob.add(new XmlFragment((String) value));
-                return lob;
-            }
-
-            LOGGER.trace("Don't know how to construct an initial XML value from {}.", value);
             return new XmlUnderConstruction();
         }
 
@@ -971,22 +958,6 @@ public class TransactionCommitConsumer implements AutoCloseable {
 
     static class ExtendedStringUnderConstruction extends AbstractUnderConstruction<ExtendedStringFragment> {
         static ExtendedStringUnderConstruction fromInitialValue(Object value) {
-            if (null == value) {
-                return new ExtendedStringUnderConstruction();
-            }
-            if (value instanceof ExtendedStringUnderConstruction) {
-                return (ExtendedStringUnderConstruction) value;
-            }
-            if (value instanceof String) {
-                final String strval = (String) value;
-                ExtendedStringUnderConstruction lob = new ExtendedStringUnderConstruction();
-                if (!OracleValueConverters.EMPTY_EXTENDED_STRING.equals(strval)) {
-                    lob.add(new ExtendedStringFragment((String) value));
-                }
-                return lob;
-            }
-
-            LOGGER.trace("Don't know how to construct an initial extended string value from {}.", value);
             return new ExtendedStringUnderConstruction();
         }
 
