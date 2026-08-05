@@ -26,6 +26,7 @@ public interface TransactionStructMaker {
     String DEBEZIUM_TRANSACTION_COLLECTION_KEY = "data_collection";
     String DEBEZIUM_TRANSACTION_DATA_COLLECTIONS_KEY = "data_collections";
     String DEBEZIUM_TRANSACTION_TS_MS = "ts_ms";
+    String DEBEZIUM_TRANSACTION_COMMIT_LSN_KEY = "commit_lsn";
 
     /**
      * Adds the transaction block to the data change message

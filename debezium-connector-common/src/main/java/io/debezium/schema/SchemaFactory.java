@@ -63,10 +63,10 @@ public class SchemaFactory {
     private static final int TRANSACTION_METADATA_KEY_SCHEMA_VERSION = 1;
 
     private static final String TRANSACTION_METADATA_VALUE_SCHEMA_NAME = "io.debezium.connector.common.TransactionMetadataValue";
-    private static final int TRANSACTION_METADATA_VALUE_SCHEMA_VERSION = 1;
+    private static final int TRANSACTION_METADATA_VALUE_SCHEMA_VERSION = 2;
 
     protected static final String TRANSACTION_BLOCK_SCHEMA_NAME = "event.block";
-    protected static final int TRANSACTION_BLOCK_SCHEMA_VERSION = 1;
+    protected static final int TRANSACTION_BLOCK_SCHEMA_VERSION = 2;
 
     private static final String TRANSACTION_EVENT_COUNT_COLLECTION_SCHEMA_NAME = "event.collection";
     private static final int TRANSACTION_EVENT_COUNT_COLLECTION_SCHEMA_VERSION = 1;
@@ -185,6 +185,7 @@ public class SchemaFactory {
                 .field(TransactionStructMaker.DEBEZIUM_TRANSACTION_ID_KEY, Schema.STRING_SCHEMA)
                 .field(TransactionStructMaker.DEBEZIUM_TRANSACTION_TOTAL_ORDER_KEY, Schema.INT64_SCHEMA)
                 .field(TransactionStructMaker.DEBEZIUM_TRANSACTION_DATA_COLLECTION_ORDER_KEY, Schema.INT64_SCHEMA)
+                .field(TransactionStructMaker.DEBEZIUM_TRANSACTION_COMMIT_LSN_KEY, Schema.OPTIONAL_INT64_SCHEMA)
                 .build();
     }
 
@@ -215,6 +216,7 @@ public class SchemaFactory {
                 .field(TransactionStructMaker.DEBEZIUM_TRANSACTION_DATA_COLLECTIONS_KEY,
                         SchemaBuilder.array(transactionEventCountPerDataCollectionSchema()).optional().build())
                 .field(TransactionStructMaker.DEBEZIUM_TRANSACTION_TS_MS, Schema.INT64_SCHEMA)
+                .field(TransactionStructMaker.DEBEZIUM_TRANSACTION_COMMIT_LSN_KEY, Schema.OPTIONAL_INT64_SCHEMA)
                 .build();
     }
 
