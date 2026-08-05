@@ -47,4 +47,8 @@ public interface MariaDbCommon extends BinlogConnectorTest<MariaDbConnector> {
     default boolean isMariaDb() {
         return true;
     }
+
+    default boolean isInnoDbBinlogEnabled() {
+        return Boolean.getBoolean("database.innodb.binlog");
+    }
 }

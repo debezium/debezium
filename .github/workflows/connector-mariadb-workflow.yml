@@ -17,7 +17,7 @@ jobs:
       max-parallel: ${{ inputs.max-parallel }}
       fail-fast: false
       matrix:
-        profile: [ 'mariadb-ci', 'mariadb-ci-gtids', 'mariadb-ci-ssl' ]
+        profile: [ 'mariadb-ci', 'mariadb-ci-gtids', 'mariadb-ci-ssl', 'mariadb-innodb-binlog' ]
         version-mariadb-server: [ "11.4", "11.8", "12.3" ]
         exclude:
           - profile: "mariadb-ci-gtids"
@@ -28,6 +28,10 @@ jobs:
             version-mariadb-server: "12.3"
           - profile: "mariadb-ci-ssl"
             version-mariadb-server: "12.3"
+          - profile: "mariadb-innodb-binlog"
+            version-mariadb-server: "11.4"
+          - profile: "mariadb-innodb-binlog"
+            version-mariadb-server: "11.8"
     name: MariaDB ${{ matrix.version-mariadb-server }} - ${{ matrix.profile }}
     runs-on: ubuntu-latest
 
