@@ -4783,5 +4783,3 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
         }
     }
 }
-
-}

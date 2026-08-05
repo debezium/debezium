@@ -116,7 +116,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
             typeRegistrySchemaFilter = buildTypeRegistrySchemaFilter(connectorConfig, tempConnection);
         }
         catch (DebeziumException e) {
-            if (PostgresErrorHandler.containsPermanentError(e)) {
+            if (PostgresErrorHandler.isPermanentError(e)) {
                 throw new ConnectException("Non-retriable failure obtaining database encoding; failing task.", e);
             }
             throw new RetriableException("Couldn't obtain encoding for database", e);
