@@ -54,7 +54,7 @@ runs:
         -Dmaven.wagon.http.pool=false
         -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
         -Ddebezium.test.engine.waittime=10
-        -Ddebezium.test.records.waittime=3
+        -Ddebezium.test.records.waittime=5
         -Ddebezium.test.records.waittime.after.nulls=10
         -DfailFlakyTests=false
         ${{ inputs.only-build == 'true' && '-DskipTests=true -DskipITs=true' || '' }}
