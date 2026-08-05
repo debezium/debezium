@@ -1,0 +1,429 @@
+name: Deploy Debezium Snapshots
+
+on:
+  schedule:
+    - cron: '0 */12 * * *'
+  workflow_dispatch:
+    inputs:
+      debezium-repositories:
+        description: Multiline list of id#repo[#subDir]#branch entries. Include the main Debezium repository as a normal entry, for example core#debezium/debezium#main.
+        required: false
+        default: |
+          core#debezium/debezium#main
+          db2#debezium/debezium-connector-db2#main
+          vitess#debezium/debezium-connector-vitess#main
+          cassandra#debezium/debezium-connector-cassandra#main
+          spanner#debezium/debezium-connector-spanner#main
+          informix#debezium/debezium-connector-informix#main
+          ibmi#debezium/debezium-connector-ibmi#main
+          cockroachdb#debezium/debezium-connector-cockroachdb#main
+          quarkus#debezium/debezium-quarkus#main
+          server#debezium/debezium-server#main
+          operator#debezium/debezium-operator#main
+          platform#debezium/debezium-platform#debezium-platform-conductor#main
+          jbang-catalog#debezium/jbang-catalog#main
+        type: string
+      descriptors-repository:
+        description: Repository where Debezium descriptors are published
+        required: false
+        default: debezium/debezium-descriptors-registry
+        type: string
+      descriptors-branch:
+        description: Branch where descriptors are published
+        required: false
+        default: snapshot
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-snapshots-${{ github.event.inputs.descriptors-branch || 'snapshot' }}
+  cancel-in-progress: false
+
+jobs:
+  deploy_snapshots:
+    name: Build and deploy snapshots
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      MAVEN_OPTS: -Xmx4096m -Xms512m
+      DESCRIPTORS_OUTPUT_DIR: ${{ github.workspace }}/descriptors-output
+      DEBEZIUM_REPOSITORIES: |
+        core#debezium/debezium#main
+        db2#debezium/debezium-connector-db2#main
+        vitess#debezium/debezium-connector-vitess#main
+        cassandra#debezium/debezium-connector-cassandra#main
+        spanner#debezium/debezium-connector-spanner#main
+        informix#debezium/debezium-connector-informix#main
+        ibmi#debezium/debezium-connector-ibmi#main
+        cockroachdb#debezium/debezium-connector-cockroachdb#main
+        quarkus#debezium/debezium-quarkus#main
+        server#debezium/debezium-server#main
+        operator#debezium/debezium-operator#main
+        platform#debezium/debezium-platform#debezium-platform-conductor#main
+        jbang-catalog#debezium/jbang-catalog#main
+      DESCRIPTORS_REPOSITORY: debezium/debezium-descriptors-registry
+      DESCRIPTORS_BRANCH: snapshot
+    steps:
+      - name: Override defaults from workflow_dispatch inputs
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo 'DEBEZIUM_REPOSITORIES<<EOF'
+            printf '%s\n' "${{ github.event.inputs.debezium-repositories }}"
+            echo 'EOF'
+            echo "DESCRIPTORS_REPOSITORY=${{ github.event.inputs.descriptors-repository }}"
+            echo "DESCRIPTORS_BRANCH=${{ github.event.inputs.descriptors-branch }}"
+          } >> "${GITHUB_ENV}"
+
+      - name: Checkout workflow repository
+        uses: actions/checkout@v7
+        with:
+          path: workflow-repo
+          token: ${{ secrets.DEBEZIUM_GH_TOKEN }}
+
+      - name: Parse Debezium repositories
+        id: parse-repositories
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 workflow-repo/.github/scripts/parse_snapshot_repositories.py \
+            --repositories "${DEBEZIUM_REPOSITORIES}" \
+            --output "${RUNNER_TEMP}/debezium-repositories.json"
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          repositories = json.loads(Path(os.environ["RUNNER_TEMP"], "debezium-repositories.json").read_text(encoding="utf-8"))
+          core_repository = next((repository for repository in repositories if repository["id"] == "core"), None)
+          if core_repository is None:
+              raise SystemExit("The debezium-repositories setting must include a 'core' entry.")
+          Path(os.environ["RUNNER_TEMP"], "core-repository.json").write_text(
+              json.dumps(core_repository, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          PY
+          {
+            echo 'repositories_json<<EOF'
+            cat "${RUNNER_TEMP}/debezium-repositories.json"
+            echo 'EOF'
+            echo 'core_repository_json<<EOF'
+            cat "${RUNNER_TEMP}/core-repository.json"
+            echo 'EOF'
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Checkout Debezium repositories
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.DEBEZIUM_GH_TOKEN }}
+          REPOSITORIES_JSON: ${{ steps.parse-repositories.outputs.repositories_json }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          import os
+          import subprocess
+
+          repositories = json.loads(os.environ["REPOSITORIES_JSON"])
+          workspace = os.environ["GITHUB_WORKSPACE"]
+          token = os.environ["GH_TOKEN"]
+
+          for repository in repositories:
+              subprocess.run(
+                  [
+                      "git",
+                      "clone",
+                      "--depth",
+                      "1",
+                      "--branch",
+                      repository["branch"],
+                      f"https://x-access-token:{token}@github.com/{repository['repository']}.git",
+                      os.path.join(workspace, repository["id"]),
+                  ],
+                  check=True,
+              )
+          PY
+
+      - name: Checkout Debezium private artifacts
+        uses: actions/checkout@v7
+        with:
+          repository: debezium/debezium-private
+          path: debezium-private
+          token: ${{ secrets.DEBEZIUM_PRIVATE_REPO_TOKEN }}
+
+      - name: Set repository metadata
+        id: repository-metadata
+        shell: bash
+        env:
+          CORE_REPOSITORY_JSON: ${{ steps.parse-repositories.outputs.core_repository_json }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          import os
+
+          core_repository = json.loads(os.environ["CORE_REPOSITORY_JSON"])
+          github_output = os.environ["GITHUB_OUTPUT"]
+
+          with open(github_output, "a", encoding="utf-8") as output:
+              output.write(f"core_id={core_repository['id']}\n")
+              output.write(f"core_repository={core_repository['repository']}\n")
+              output.write(f"core_branch={core_repository['branch']}\n")
+              output.write(f"core_subdir={core_repository['subdir']}\n")
+          PY
+
+      - name: Set up Java
+        uses: ./workflow-repo/.github/actions/setup-java
+
+      - name: Restore Maven cache
+        uses: ./workflow-repo/.github/actions/maven-cache
+        with:
+          key: maven-deploy-snapshots-${{ hashFiles('workflow-repo/**/pom.xml') }}
+
+      - name: Configure Maven Central credentials
+        shell: bash
+        env:
+          MAVEN_USERNAME: ${{ secrets.MAVEN_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "${MAVEN_USERNAME}"
+          test -n "${MAVEN_PASSWORD}"
+          mkdir -p "${HOME}/.m2"
+          cat > "${HOME}/.m2/settings-snapshots.xml" <<SETTINGS
+          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                    xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
+            <servers>
+              <server>
+                <id>central</id>
+                <username>${MAVEN_USERNAME}</username>
+                <password>${MAVEN_PASSWORD}</password>
+              </server>
+            </servers>
+          </settings>
+          SETTINGS
+
+      - name: Configure Git identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config --global user.email "debezium@gmail.com"
+          git config --global user.name "Debezium Builder"
+
+      - name: Checkout descriptors registry
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ env.DESCRIPTORS_REPOSITORY }}
+          ref: ${{ env.DESCRIPTORS_BRANCH }}
+          path: descriptors-registry
+          token: ${{ secrets.DEBEZIUM_GH_TOKEN }}
+
+      - name: Resolve xstreams artifact
+        id: resolve-xstreams
+        shell: bash
+        env:
+          CORE_DIR: ${{ github.workspace }}/${{ steps.repository-metadata.outputs.core_id }}/${{ steps.repository-metadata.outputs.core_subdir }}
+        run: |
+          set -euo pipefail
+          oracle_version="$(python3 - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          pom = Path(os.environ["CORE_DIR"], "pom.xml").read_text(encoding="utf-8")
+          match = re.search(r"<version.oracle.driver>(.+)</version.oracle.driver>", pom, re.MULTILINE | re.DOTALL)
+          if not match:
+              raise SystemExit("Unable to resolve version.oracle.driver from pom.xml")
+          print(match.group(1).strip())
+          PY
+          )"
+          xstreams_dir="${GITHUB_WORKSPACE}/debezium-private/xstreams/${oracle_version}"
+          test -f "${xstreams_dir}/xstreams.jar"
+          {
+            echo "oracle_version=${oracle_version}"
+            echo "xstreams_dir=${xstreams_dir}"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Install xstreams artifact into local Maven repository
+        shell: bash
+        env:
+          CORE_DIR: ${{ github.workspace }}/${{ steps.repository-metadata.outputs.core_id }}/${{ steps.repository-metadata.outputs.core_subdir }}
+        run: |
+          set -euo pipefail
+          "${CORE_DIR}/mvnw" -B -ntp install:install-file \
+            -DgroupId=com.oracle.instantclient \
+            -DartifactId=xstreams \
+            -Dversion="${{ steps.resolve-xstreams.outputs.oracle_version }}" \
+            -Dpackaging=jar \
+            -Dfile="${{ steps.resolve-xstreams.outputs.xstreams_dir }}/xstreams.jar"
+
+      - name: Build and deploy Debezium repositories
+        shell: bash
+        env:
+          REPOSITORIES_JSON: ${{ steps.parse-repositories.outputs.repositories_json }}
+          CORE_ID: ${{ steps.repository-metadata.outputs.core_id }}
+        run: |
+          set -euo pipefail
+          mkdir -p "${DESCRIPTORS_OUTPUT_DIR}"
+          python3 - <<'PY'
+          import json
+          import os
+          import subprocess
+
+          repositories = json.loads(os.environ["REPOSITORIES_JSON"])
+          workspace = os.environ["GITHUB_WORKSPACE"]
+          descriptors_output_dir = os.environ["DESCRIPTORS_OUTPUT_DIR"]
+          home = os.environ["HOME"]
+          core_id = os.environ["CORE_ID"]
+
+          for repository in repositories:
+              repo_dir = os.path.join(workspace, repository["id"], repository["subdir"])
+              install_script = os.path.join(repo_dir, "install-artifacts.sh")
+              if os.path.isfile(install_script):
+                  subprocess.run(["bash", install_script], cwd=repo_dir, check=True)
+
+              command = [
+                  os.path.join(repo_dir, "mvnw"),
+                  "-B",
+                  "-ntp",
+                  "clean",
+                  "deploy",
+                  "-U",
+                  "-s",
+                  f"{home}/.m2/settings-snapshots.xml",
+                  "-DdeployAtEnd=true",
+                  "-Dpublish.skip=false",
+                  "-DskipITs",
+                  "-DskipTests",
+                  "-Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn",
+                  "-Dmaven.wagon.http.pool=false",
+                  "-Dmaven.wagon.httpconnectionManager.ttlSeconds=120",
+                  "-Dmaven.wagon.rto=20000",
+                  "-Dmaven.wagon.http.retryHandler.count=1",
+                  "-Dmaven.wagon.http.serviceUnavailableRetryStrategy.retryInterval=5000",
+                  f"-Dschema.generator.output.dir={descriptors_output_dir}",
+              ]
+
+              if repository["id"] == core_id:
+                  command.append("-Passembly,oracle-all,docs")
+              elif repository["id"] != "jbang-catalog":
+                  command.append("-Passembly,docs")
+
+              subprocess.run(command, cwd=repo_dir, check=True)
+          PY
+
+      - name: Capture build metadata
+        id: metadata
+        shell: bash
+        env:
+          CORE_DIR: ${{ github.workspace }}/${{ steps.repository-metadata.outputs.core_id }}/${{ steps.repository-metadata.outputs.core_subdir }}
+        run: |
+          set -euo pipefail
+          {
+            echo "debezium_commit=$(git -C "${CORE_DIR}" rev-parse --short HEAD)"
+            echo "snapshot_version=$("${CORE_DIR}/mvnw" -q -f "${CORE_DIR}/pom.xml" -DforceStdout help:evaluate -Dexpression=project.version)"
+            echo "build_timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Generate descriptors manifest
+        shell: bash
+        env:
+          DEBEZIUM_COMMIT: ${{ steps.metadata.outputs.debezium_commit }}
+          DEBEZIUM_BRANCH: ${{ steps.repository-metadata.outputs.core_branch }}
+          SNAPSHOT_VERSION: ${{ steps.metadata.outputs.snapshot_version }}
+          BUILD_TIMESTAMP: ${{ steps.metadata.outputs.build_timestamp }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          output_dir = Path(os.environ["DESCRIPTORS_OUTPUT_DIR"])
+          output_dir.mkdir(parents=True, exist_ok=True)
+          manifest = {
+              "debezium_commit": os.environ["DEBEZIUM_COMMIT"],
+              "debezium_branch": os.environ["DEBEZIUM_BRANCH"],
+              "build_timestamp": os.environ["BUILD_TIMESTAMP"],
+              "snapshot_version": os.environ["SNAPSHOT_VERSION"],
+          }
+          (output_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+          PY
+
+      - name: Publish descriptors
+        shell: bash
+        working-directory: descriptors-registry
+        env:
+          CORE_REPOSITORY: ${{ steps.repository-metadata.outputs.core_repository }}
+        run: |
+          set -euo pipefail
+          find . -maxdepth 1 -type d -name '*-SNAPSHOT' -exec rm -rf {} + 2>/dev/null || true
+          mkdir -p "${{ steps.metadata.outputs.snapshot_version }}"
+          cp -r "${DESCRIPTORS_OUTPUT_DIR}/." "${{ steps.metadata.outputs.snapshot_version }}/"
+          git add "${{ steps.metadata.outputs.snapshot_version }}"
+          git commit -m "[snapshot] ${{ steps.metadata.outputs.snapshot_version }} from ${CORE_REPOSITORY}@${{ steps.metadata.outputs.debezium_commit }} at ${{ steps.metadata.outputs.build_timestamp }}" || echo "No changes to commit"
+          git push origin "HEAD:${DESCRIPTORS_BRANCH}"
+
+      - name: Trigger snapshot updated dispatch
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.DEBEZIUM_GH_TOKEN }}
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error \
+            -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            "https://api.github.com/repos/${DESCRIPTORS_REPOSITORY}/dispatches" \
+            -d '{"event_type":"snapshot-updated"}'
+
+      - name: Upload descriptors artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: descriptors-${{ steps.metadata.outputs.snapshot_version || github.run_id }}
+          path: ${{ env.DESCRIPTORS_OUTPUT_DIR }}
+
+      - name: Publish workflow summary
+        if: always()
+        shell: bash
+        env:
+          CORE_REPOSITORY: ${{ steps.repository-metadata.outputs.core_repository }}
+          CORE_BRANCH: ${{ steps.repository-metadata.outputs.core_branch }}
+        run: |
+          {
+            echo "## Debezium snapshot deployment"
+            echo
+            echo "- Result: ${{ job.status }}"
+            echo "- Debezium repository: ${CORE_REPOSITORY}"
+            echo "- Debezium branch: ${CORE_BRANCH}"
+            echo "- Snapshot version: ${{ steps.metadata.outputs.snapshot_version }}"
+            echo "- Debezium commit: ${{ steps.metadata.outputs.debezium_commit }}"
+            echo "- Descriptors repository: ${DESCRIPTORS_REPOSITORY}"
+            echo "- Descriptors branch: ${DESCRIPTORS_BRANCH}"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Send Zulip notification
+        if: failure()
+        uses: zulip/github-actions-zulip/send-message@v2
+        with:
+          api-key: ${{ secrets.ZULIP_TOKEN }}
+          email: ${{ secrets.ZULIP_TOKEN_EMAIL_ADDRESS }}
+          organization-url: "https://debezium.zulipchat.com"
+          to: dev
+          type: "stream"
+          topic: alerts
+          content: |
+            ⚠️ **Debezium snapshot deployment failed**
+
+            **Debezium repository:** ${{ steps.repository-metadata.outputs.core_repository }}
+            **Debezium branch:** ${{ steps.repository-metadata.outputs.core_branch }}
+            **Descriptors repository:** ${{ env.DESCRIPTORS_REPOSITORY }}
+            **Descriptors branch:** ${{ env.DESCRIPTORS_BRANCH }}
+            **Workflow Run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
