@@ -2579,12 +2579,12 @@ The `sasl.jaas.config` entry accepts the following options:
 |The OAuth client secret for the service principal.
 
 |`workspaceUrl`
-|Yes, unless `tokenEndpoint` is set
+|Yes, unless `tokenEndpoint` is set.
 |The Databricks workspace URL.
 The token endpoint is derived as `<workspaceUrl>/oidc/v1/token`.
 
 |`workspaceId`
-|Yes, unless `audience` is set
+|Yes, unless `audience` is set.
 |The numeric workspace id.
 The token audience is derived as `api://databricks/workspaces/<workspaceId>/zerobusDirectWriteApi`.
 
@@ -2603,8 +2603,8 @@ The handler uses this list to build the OAuth Rich Authorization Requests (RFC 9
 
 |`token`
 |No
-|A bearer token (for example, a personal access token) to use verbatim.
-When set, the handler skips the OAuth exchange and uses this token directly.
+|A bearer token, such as a personal access token, to use without modification.
+If you set this option, the handler skips the OAuth exchange and uses this token directly.
 |===
 
 The following example shows a complete configuration for the Kafka route:
@@ -2628,11 +2628,12 @@ debezium.sink.kafka.producer.sasl.jaas.config=org.apache.kafka.common.security.o
 
 When the sink maps data types, rather than converting values based on their serialized JSON representation, it uses Kafka Connect logical type information to normalize values to a format that is compatible with the target Delta column.
 By basing conversions on logical types rather than on the JSON encoding of values, the sink can accommodate different source-side serialization settings and avoid invalid-type ingestion errors without requiring users to tune source-side *.handling.mode options.
-Recommended Delta column types:
+
+The following table shows mappings between {prodname} logical types and Delta column types:
 
 [cols="45%a,55%a",options="header"]
 |===
-|Source / Debezium logical type
+|Source / {prodname} logical type
 |Delta column type
 
 |Integer, floating point, boolean, string
