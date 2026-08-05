@@ -2415,7 +2415,7 @@ The {prodname} https://docs.databricks.com/aws/en/ingestion/zerobus[Databricks Z
 The service does not require an intermediate message broker.
 The sink uses OAuth to authenticate with a Databricks service principal and streams each event record to the Delta table that corresponds to the event destination.
 
-The sink uses one of the following routes to deliver event records, as specified by the `debezium.sink.type` property:
+The sink uses one of the following routes to deliver event records, as specified by the xref:zerobus-type[`debezium.sink.type`] property:
 
 `zerobus`:: (recommended) Uses the Databricks Zerobus Java SDK over gRPC.
 `zerobusrest`:: Uses the Zerobus REST API.
@@ -2423,7 +2423,8 @@ This method accepts only one HTTP request per record.
 Select this option for environments that lack a persistent connection.
 
 A third option is to reuse the built-in `kafka` sink against the Zerobus Kafka-compatible endpoint.
-For information about using this option, see the `ZerobusOAuthBearerLoginCallbackHandler` shipped in this module for the required `OAUTHBEARER` login handler.
+To use the Kafka sink with the Zerobus Kafka-compatible endpoint, configure the Kafka SASL/OAUTHBEARER authentication and set the `sasl.login.callback.handler.class` to `io.debezium.server.databricks.zerobus.ZerobusOAuthBearerLoginCallbackHandler`.
+For the complete list of required OAuth properties, see the source code for the `ZerobusOAuthBearerLoginCallbackHandler` for {prodname} Server.
 
 Because Zerobus accepts only JSON objects that match the target table schema, configure {prodname} to emit flat JSON by applying the {link-prefix}:{link-event-flattening}#new-record-state-extraction[`ExtractNewRecordState` SMT] with `schemas.enable=false`.
 Delivery uses an at-least-once guarantee.
@@ -2534,8 +2535,8 @@ For more information, see <<zerobus-monitoring, Monitoring>>.
 
 ===== Data type mapping
 
-The sink normalizes each Kafka Connect schema value to a format that is compatible with the target Delta column, based on the logical type name, rather than on the serialized JSON representation.
-This avoids the "invalid type" class of ingestion errors without requiring source-side `*.handling.mode` tuning.
+When the sink maps data types, rather than converting values based on their serialized JSON representation, it uses Kafka Connect logical type information to normalize values to a format that is compatible with the target Delta column.
+By basing conversions on logical types rather than on the JSON encoding of values, the sink can accommodate different source-side serialization settings and avoid invalid-type ingestion errors without requiring users to tune source-side *.handling.mode options.
 Recommended Delta column types:
 
 [cols="45%a,55%a",options="header"]
@@ -2575,14 +2576,10 @@ BINARY (encoded as Base64)
 [[zerobus-monitoring]]
 ===== Monitoring
 
-Both routes expose sink metrics over JMX, under the object name `debezium.zerobus:type=connector-metrics,context=sink,server=<route>,task=0`, where `<route>` is `grpc` or `rest`.
-This mirrors how the JDBC sink connector and {prodname} source connectors expose their metrics, so the same JMX tooling (for example JConsole, `jmxterm`, or a Prometheus JMX exporter) works out of the box.
-You can use JMX metrics and connector log output to monitor the operational status and performance of the Debezium DataBricks Zero sink.
-
 The {prodname} DataBricks Zero sink supports the following delivery routes: zerobus (gRPC) and zerobusrest (REST).
 Both routes expose sink metrics over JMX under the object name debezium.zerobus:type=connector-metrics,context=sink,server=<route>,task=0, where <route> is `grpc` for the `zerobus` route or `rest` for the `zerobusrest` route.
 The metrics use the same JMX exposure model as the JDBC sink connector and {prodname} source connectors, enabling you to use existing JMX monitoring tools such as JConsole, jmxterm, and Prometheus JMX Exporter without additional configuration.
-You can also configure periodic metric logging by setting <<zerobus-metrics-log-interval, `debezium.sink.zerobus.metrics.log.interval`>> or <<zerobusrest-metrics-log-interval, `debezium.sink.zerobusrest.metrics.log.interval`>> to a positive value.
+You can automate periodic metric logging by setting <<zerobus-metrics-log-interval, `debezium.sink.zerobus.metrics.log.interval`>> or <<zerobusrest-metrics-log-interval, `debezium.sink.zerobusrest.metrics.log.interval`>> to a positive value.
 After you enable either of these options, at the specified interval the connector writes an `INFO` log message that contains the same metric values that are available through JMX.
 
 The following attributes are available:
