@@ -76,19 +76,19 @@ public class PostgresErrorHandlerTest {
     @Test
     void connectionFailureIsNotPermanent() {
         PSQLException psqlException = new PSQLException(A_CLASSIFIED_EXCEPTION, PSQLState.CONNECTION_FAILURE);
-        assertThat(PostgresErrorHandler.containsPermanentError(psqlException)).isFalse();
+        assertThat(PostgresErrorHandler.isPermanentError(psqlException)).isFalse();
     }
 
     @Test
     void authorizationFailureIsPermanent() {
         PSQLException psqlException = new PSQLException(ROLE_AUTHORIZATION_ERROR, PSQLState.INVALID_AUTHORIZATION_SPECIFICATION);
-        assertThat(PostgresErrorHandler.containsPermanentError(psqlException)).isTrue();
+        assertThat(PostgresErrorHandler.isPermanentError(psqlException)).isTrue();
     }
 
     @Test
     void invalidPasswordIsPermanent() {
         PSQLException psqlException = new PSQLException(PASSWORD_AUTHENTICATION_ERROR, PSQLState.INVALID_PASSWORD);
-        assertThat(PostgresErrorHandler.containsPermanentError(psqlException)).isTrue();
+        assertThat(PostgresErrorHandler.isPermanentError(psqlException)).isTrue();
     }
 
     @Test
@@ -96,17 +96,17 @@ public class PostgresErrorHandlerTest {
         // Mirrors getDatabaseCharset() wrapping PSQLException in DebeziumException during start()
         PSQLException psqlException = new PSQLException(ROLE_AUTHORIZATION_ERROR, PSQLState.INVALID_AUTHORIZATION_SPECIFICATION);
         DebeziumException wrapper = new DebeziumException("Couldn't obtain encoding for database", psqlException);
-        assertThat(PostgresErrorHandler.containsPermanentError(wrapper)).isTrue();
+        assertThat(PostgresErrorHandler.isPermanentError(wrapper)).isTrue();
     }
 
     @Test
     void nonSqlExceptionIsNotPermanent() {
-        assertThat(PostgresErrorHandler.containsPermanentError(new RuntimeException("boom"))).isFalse();
+        assertThat(PostgresErrorHandler.isPermanentError(new RuntimeException("boom"))).isFalse();
     }
 
     @Test
     void nullIsNotPermanent() {
-        assertThat(PostgresErrorHandler.containsPermanentError(null)).isFalse();
+        assertThat(PostgresErrorHandler.isPermanentError(null)).isFalse();
     }
 
 }
