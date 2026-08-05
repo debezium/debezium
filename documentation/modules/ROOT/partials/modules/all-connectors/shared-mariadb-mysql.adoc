@@ -2562,8 +2562,7 @@ end::enabling-binlog[]
 tag::enabling-innodb-binlog[]
 ifdef::community[]
 In MariaDB versions 12.3 and later, you can configure the database to store the binary log in InnoDB-managed, page-structured files (`.ibb`), instead of traditional flat files.
-If you configure the database to store the binary log in InnoDB files, it does not enforce the two-phase commit (2PC) protocol between the
-binary log and InnoDB, resulting in improved commit latency and simplified crash recovery.
+If you configure the database to store the binary log in InnoDB files, it does not enforce the two-phase commit (2PC) protocol between the binary log and InnoDB, resulting in improved commit latency and simplified crash recovery.
 
 When the database uses InnoDB to store the binary log, the following considerations apply:
 
@@ -2621,7 +2620,6 @@ tag::binlog-config-props[]
 |The value of `log_bin` is the base name of the sequence of binlog files.
 ifdef::MARIADB[]
 ifdef::community[]
-When using the link:https://mariadb.com/docs/server/server-management/server-monitoring-logs/binary-log/innodb-based-binary-log/[InnoDB-based binary log]
 If the MariaDB server uses link:https://mariadb.com/docs/server/server-management/server-monitoring-logs/binary-log/innodb-based-binary-log/[InnoDB to store the binary log], add an empty `log_bin` property to the MariaDB configuration.
 That is, list the property in the configuration, but do not specify a value.
 endif::community[]
