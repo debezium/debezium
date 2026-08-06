@@ -12,8 +12,11 @@ import static org.junit.jupiter.api.Assertions.fail;
 import java.nio.file.Path;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
+import java.util.regex.Pattern;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
@@ -37,6 +40,11 @@ import io.debezium.junit.SkipWhenDatabaseVersion;
 @SkipWhenDatabaseIs(value = SkipWhenDatabaseIs.Type.MYSQL, versions = @SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 7, reason = "JSON data type was not added until MySQL 5.7"))
 @SkipWhenDatabaseIs(value = SkipWhenDatabaseIs.Type.MARIADB, reason = "MariaDB does not support JSON natively, its treated as long text as an alias")
 public abstract class BinlogJsonIT<C extends SourceConnector> extends AbstractBinlogConnectorIT<C> {
+
+    /**
+     * Matches doubles the server renders in scientific notation, e.g. {@code 1.8446744073709552e19}.
+     */
+    private static final Pattern SCIENTIFIC_NOTATION = Pattern.compile("-?[0-9.]+e-?[0-9]+");
 
     private static final Path SCHEMA_HISTORY_PATH = Files.createTestingPath("file-schema-history-json.txt").toAbsolutePath();
     private final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase("jsonit", "json_test")
@@ -112,6 +120,73 @@ public abstract class BinlogJsonIT<C extends SourceConnector> extends AbstractBi
             fail("" + errors.size() + " errors with JSON records..." + System.lineSeparator() +
                     String.join(System.lineSeparator(), errors));
         }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2376")
+    public void shouldMatchJdbcFormatWhenStreamingWithDatabaseJsonStringFormattingMode() throws SQLException, InterruptedException {
+        // Use the DB configuration to define the connector's configuration ...
+        config = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
+                .with(BinlogConnectorConfig.JSON_STRING_FORMATTING_MODE, BinlogConnectorConfig.JsonStringFormattingMode.DATABASE)
+                .build();
+        // Start the connector ...
+        start(getConnectorClass(), config);
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName(), getStreamingNamespace());
+        DATABASE.initialize();
+
+        // ---------------------------------------------------------------------------------------------------------------
+        // Consume all of the events due to startup and initialization of the database
+        // ---------------------------------------------------------------------------------------------------------------
+        int numCreateDatabase = 1;
+        int numCreateTables = 1;
+        int numDataRecords = 41;
+        SourceRecords records = consumeRecordsByTopic(numCreateDatabase + numCreateTables + numDataRecords);
+        stopConnector();
+        assertThat(records).isNotNull();
+        assertThat(records.recordsForTopic(DATABASE.topicForTable("dbz_126_jsontable")).size()).isEqualTo(numDataRecords);
+
+        // Streamed values are expected to equal what the server returns over JDBC, which is what a snapshot
+        // would emit. The values are read back live rather than taken from the expectedJdbcStr column, as
+        // some fixture rows depend on the server environment (UNIX_TIMESTAMP varies with the time zone).
+        Map<Integer, String> jdbcValues = new HashMap<>();
+        try (BinlogTestConnection conn = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
+            conn.query("SELECT id, json FROM dbz_126_jsontable", rs -> {
+                while (rs.next()) {
+                    jdbcValues.put(rs.getInt(1), rs.getString(2));
+                }
+            });
+        }
+        assertThat(jdbcValues).hasSize(numDataRecords);
+
+        // Check that all records are valid, can be serialized and deserialized ...
+        records.forEach(this::validate);
+        List<String> errors = new ArrayList<>();
+        List<Integer> skipped = new ArrayList<>();
+        records.forEach(record -> {
+            Struct value = (Struct) record.value();
+            if (record.topic().endsWith("dbz_126_jsontable")) {
+                Struct after = value.getStruct(Envelope.FieldName.AFTER);
+                Integer i = after.getInt32("id");
+                assertThat(i).isNotNull();
+                String json = after.getString("json");
+                String expectedJdbc = jdbcValues.get(i);
+                if (expectedJdbc != null && SCIENTIFIC_NOTATION.matcher(expectedJdbc).matches()) {
+                    // The binlog client renders doubles of large or small magnitude differently from the
+                    // server whatever the formatting mode; the only such value here is one the server
+                    // prints in scientific notation
+                    skipped.add(i);
+                    return;
+                }
+                check(json, expectedJdbc, errors::add);
+            }
+        });
+        if (!errors.isEmpty()) {
+            fail("" + errors.size() + " errors with JSON records..." + System.lineSeparator() +
+                    String.join(System.lineSeparator(), errors));
+        }
+        // The fixture holds exactly one such value; asserting the count keeps the skip from hiding a regression
+        assertThat(skipped).hasSize(1);
     }
 
     @Test
