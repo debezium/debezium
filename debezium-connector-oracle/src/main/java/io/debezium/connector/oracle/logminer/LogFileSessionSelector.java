@@ -32,4 +32,24 @@ public interface LogFileSessionSelector {
      * @return the selected logs and boundary based on the selector implementation
      */
     SessionLogSelection selectLogsForSession(LogFileCollector.LogFilesResult logFilesResult, Scn upperBoundary);
+
+    /**
+     * Gets the collected logs restricted to the consistent mining window.
+     * <p>
+     * When the collector truncated the consistency range at a log sequence gap, logs that start at or
+     * beyond the consistent boundary must not be added to the mining session; otherwise the full
+     * collected log list is returned unchanged.
+     *
+     * @param logFilesResult the collected log files result object, should not be {@code null}
+     * @return the logs eligible for the mining session, never {@code null}
+     */
+    default List<LogFile> getConsistentLogFiles(LogFileCollector.LogFilesResult logFilesResult) {
+        final Scn consistentThroughScn = logFilesResult.consistentThroughScn();
+        if (consistentThroughScn.isNull()) {
+            return logFilesResult.logFiles();
+        }
+        return logFilesResult.logFiles().stream()
+                .filter(log -> log.getFirstScn().compareTo(consistentThroughScn) < 0)
+                .toList();
+    }
 }
