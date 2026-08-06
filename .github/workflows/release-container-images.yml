@@ -1,0 +1,248 @@
+name: Release Container Images
+
+on:
+  workflow_dispatch:
+    inputs:
+      debezium_repository:
+        description: 'Repository from which Debezium is built'
+        required: false
+        default: 'debezium/debezium'
+      images_repository:
+        description: 'Repository with Debezium Dockerfiles'
+        required: false
+        default: 'debezium/container-images'
+      images_branch:
+        description: 'Branch used for images repository'
+        required: false
+        default: 'main'
+      platforms:
+        description: 'Platforms to build (comma-separated)'
+        required: false
+        default: 'linux/amd64,linux/arm64'
+      streams_to_build_count:
+        description: 'How many most recent streams should be built'
+        required: false
+        default: '2'
+      tags_per_stream_count:
+        description: 'How many most recent tags per stream should be built'
+        required: false
+        default: '1'
+      skip_ui:
+        description: 'Skip building UI image'
+        required: false
+        type: boolean
+        default: false
+      dry_run:
+        description: 'Dry run mode (do not push images)'
+        required: false
+        type: boolean
+        default: false
+  schedule:
+    - cron: '0 0 * * *'  # Daily at midnight UTC
+  workflow_call:
+    inputs:
+      debezium_repository:
+        type: string
+        default: 'debezium/debezium'
+      images_repository:
+        type: string
+        default: 'debezium/container-images'
+      images_branch:
+        type: string
+        default: 'main'
+      platforms:
+        type: string
+        default: 'linux/amd64,linux/arm64'
+      streams_to_build_count:
+        type: string
+        default: '2'
+      tags_per_stream_count:
+        type: string
+        default: '1'
+      skip_ui:
+        type: boolean
+        default: false
+      dry_run:
+        type: boolean
+        default: false
+
+jobs:
+  discover-versions:
+    name: Discover Versions and Build List
+    runs-on: ubuntu-latest
+    outputs:
+      streams: ${{ steps.versions.outputs.streams }}
+      stable_stream: ${{ steps.versions.outputs.stable_stream }}
+      build_list: ${{ steps.versions.outputs.build_list }}
+    
+    steps:
+      - name: Checkout debezium repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository }}
+          ref: main
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Discover versions
+        id: versions
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Fetch all tags from debezium repository
+          gh api repos/${{ inputs.debezium_repository }}/tags --paginate | \
+            jq -r '.[].name' | \
+            grep -E '^v[0-9]+\.[0-9]+\.[0-9]+' | \
+            python3 .github/scripts/release-container-images/process-versions.py \
+              --streams-count ${{ inputs.streams_to_build_count }} \
+              --tags-per-stream ${{ inputs.tags_per_stream_count }} >> $GITHUB_OUTPUT
+
+      - name: Display discovered versions
+        run: |
+          echo "Streams to build: ${{ steps.versions.outputs.streams }}"
+          echo "Stable stream: ${{ steps.versions.outputs.stable_stream }}"
+          echo "Build list: ${{ steps.versions.outputs.build_list }}"
+
+  build-master-images:
+    name: Build Master Images
+    needs: discover-versions
+    runs-on: ubuntu-latest
+    timeout-minutes: 720
+
+    steps:
+      - name: Checkout container-images repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.images_repository }}
+          ref: ${{ inputs.images_branch }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Quay.io
+        uses: docker/login-action@v3
+        with:
+          registry: quay.io
+          username: ${{ secrets.QUAY_IO_USERNAME }}
+          password: ${{ secrets.QUAY_IO_PASSWORD }}
+
+      - name: Setup local builder
+        run: |
+          ./setup-local-builder.sh
+          docker run --privileged --rm tonistiigi/binfmt --install all
+
+      - name: Build all images for latest streams
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+          SKIP_UI: ${{ inputs.skip_ui }}
+          DEBEZIUM_VERSIONS: ${{ needs.discover-versions.outputs.streams }}
+          LATEST_STREAM: ${{ needs.discover-versions.outputs.stable_stream }}
+          PLATFORM_CONDUCTOR_PLATFORM: linux/amd64
+          PLATFORM_STAGE_PLATFORM: linux/amd64
+          MULTIPLATFORM_PLATFORMS: ${{ inputs.platforms }}
+        run: |
+          echo "Building images for streams: $DEBEZIUM_VERSIONS"
+          echo "Latest stable stream: $LATEST_STREAM"
+          echo "Platforms: $MULTIPLATFORM_PLATFORMS"
+          echo "Dry run: $DRY_RUN"
+          echo "Skip UI: $SKIP_UI"
+          ./build-all-multiplatform.sh
+
+      - name: Send Zulip notification on failure
+        if: failure()
+        uses: zulip/github-actions-zulip/send-message@v1
+        with:
+          api-key: ${{ secrets.ZULIP_TOKEN }}
+          email: ${{ secrets.ZULIP_TOKEN_EMAIL_ADDRESS }}
+          organization-url: "https://debezium.zulipchat.com"
+          to: dev
+          type: "stream"
+          topic: alerts
+          content: |
+            ⚠️ **Release container images build failed (master images)**
+            
+            **Debezium repository:** ${{ inputs.debezium_repository }}
+            **Images repository:** ${{ inputs.images_repository }}
+            **Images branch:** ${{ inputs.images_branch }}
+            **Streams:** ${{ needs.discover-versions.outputs.streams }}
+            **Platforms:** ${{ inputs.platforms }}
+            **Workflow Run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+  build-tagged-images:
+    name: Build Tagged Images
+    needs: discover-versions
+    runs-on: ubuntu-latest
+    timeout-minutes: 720
+
+    steps:
+      - name: Checkout container-images repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.images_repository }}
+          ref: ${{ inputs.images_branch }}
+          fetch-depth: 0  # Fetch all history for all tags
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Quay.io
+        uses: docker/login-action@v3
+        with:
+          registry: quay.io
+          username: ${{ secrets.QUAY_IO_USERNAME }}
+          password: ${{ secrets.QUAY_IO_PASSWORD }}
+
+      - name: Setup local builder
+        run: |
+          ./setup-local-builder.sh
+          docker run --privileged --rm tonistiigi/binfmt --install all
+
+      - name: Checkout debezium repository for build script
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository }}
+          ref: main
+          path: debezium-repo
+
+      - name: Build images for each tag sequentially
+        env:
+          BUILD_LIST: ${{ needs.discover-versions.outputs.build_list }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          SKIP_UI: ${{ inputs.skip_ui }}
+          LATEST_STREAM: ${{ needs.discover-versions.outputs.stable_stream }}
+          PLATFORM_CONDUCTOR_PLATFORM: linux/amd64
+          PLATFORM_STAGE_PLATFORM: linux/amd64
+          MULTIPLATFORM_PLATFORMS: ${{ inputs.platforms }}
+          IMAGES_BRANCH: ${{ inputs.images_branch }}
+        run: |
+          chmod +x ../debezium-repo/.github/scripts/release-container-images/build-tagged-images.sh
+          ../debezium-repo/.github/scripts/release-container-images/build-tagged-images.sh
+
+      - name: Send Zulip notification on failure
+        if: failure()
+        uses: zulip/github-actions-zulip/send-message@v1
+        with:
+          api-key: ${{ secrets.ZULIP_TOKEN }}
+          email: ${{ secrets.ZULIP_TOKEN_EMAIL_ADDRESS }}
+          organization-url: "https://debezium.zulipchat.com"
+          to: dev
+          type: "stream"
+          topic: alerts
+          content: |
+            ⚠️ **Release container images build failed (tagged images)**
+            
+            **Debezium repository:** ${{ inputs.debezium_repository }}
+            **Images repository:** ${{ inputs.images_repository }}
+            **Images branch:** ${{ inputs.images_branch }}
+            **Build list:** ${{ needs.discover-versions.outputs.build_list }}
+            **Platforms:** ${{ inputs.platforms }}
+            **Workflow Run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

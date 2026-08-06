@@ -1,0 +1,75 @@
+name: Tool Images
+
+on:
+  workflow_dispatch:
+    inputs:
+      images_repository:
+        description: 'Repository with Debezium Dockerfiles'
+        required: false
+        default: 'debezium/container-images'
+      images_branch:
+        description: 'Branch used for images repository'
+        required: false
+        default: 'main'
+      tag:
+        description: 'Tag used for building images'
+        required: false
+        default: 'latest'
+  schedule:
+    - cron: '0 0 * * 1'  # Weekly on Monday at midnight UTC
+  workflow_call:
+    inputs:
+      images_repository:
+        type: string
+        default: 'debezium/container-images'
+      images_branch:
+        type: string
+        default: 'main'
+      tag:
+        type: string
+        default: 'latest'
+
+jobs:
+  build-tool-images:
+    name: Build and Push Tool Images
+    runs-on: ubuntu-latest
+    timeout-minutes: 720
+
+    steps:
+      - name: Checkout container-images repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.images_repository }}
+          ref: ${{ inputs.images_branch }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Quay.io
+        uses: docker/login-action@v3
+        with:
+          registry: quay.io
+          username: ${{ secrets.QUAY_IO_USERNAME }}
+          password: ${{ secrets.QUAY_IO_PASSWORD }}
+
+      - name: Build tool images
+        run: |
+          PUSH_IMAGES=true TAG=${{ inputs.tag }} ./build-tool-images.sh
+
+      - name: Send Zulip notification on failure
+        if: failure()
+        uses: zulip/github-actions-zulip/send-message@v1
+        with:
+          api-key: ${{ secrets.ZULIP_TOKEN }}
+          email: ${{ secrets.ZULIP_TOKEN_EMAIL_ADDRESS }}
+          organization-url: "https://debezium.zulipchat.com"
+          to: dev
+          type: "stream"
+          topic: alerts
+          content: |
+            ⚠️ **Tool images build failed**
+            
+            **Repository:** ${{ inputs.images_repository }}
+            **Branch:** ${{ inputs.images_branch }}
+            **Tag:** ${{ inputs.tag }}
+            **Workflow Run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
