@@ -31,7 +31,6 @@ import io.debezium.connector.jdbc.junit.jupiter.PostgresInsertModeArgumentsProvi
 import io.debezium.connector.jdbc.junit.jupiter.PostgresInsertModeArgumentsProvider.PostgresInsertMode;
 import io.debezium.connector.jdbc.junit.jupiter.PostgresSinkDatabaseContextProvider;
 import io.debezium.connector.jdbc.junit.jupiter.Sink;
-import io.debezium.connector.jdbc.junit.jupiter.SinkRecordFactoryArgumentsProvider;
 import io.debezium.connector.jdbc.util.SinkRecordFactory;
 import io.debezium.data.Enum;
 import io.debezium.data.Json;
@@ -875,14 +874,14 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
     }
 
     @ParameterizedTest
-    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
     @FixFor("debezium/dbz#1344")
-    public void testShouldWriteEnumColumnWhenUnnestBatchIsEnabled(SinkRecordFactory factory) throws Exception {
+    public void testShouldWriteEnumColumnWhenRecordsAreBatched(SinkRecordFactory factory, PostgresInsertMode insertMode) throws Exception {
         final Map<String, String> properties = getDefaultSinkConfig();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.NONE.getValue());
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
         properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
-        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, "true");
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, String.valueOf(insertMode.isUnnestEnabled()));
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();
 
@@ -903,7 +902,7 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
         getSink().execute(String.format("CREATE TABLE %s (id int not null, data %s, primary key(id))",
                 destinationTable, enumType));
 
-        // More than one record so the UNNEST batch path is taken rather than the row-wise fallback.
+        // More than one record, so that the UNNEST batch path is reached when it is enabled.
         consume(List.of(record1, record2));
 
         getSink().assertRows(destinationTable, rs -> {
