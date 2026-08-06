@@ -820,17 +820,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDescription("Specifies the inner body the Ehcache <cache/> tag for the rollbacks cache, but " +
                     "should not include the <key-type/> nor the <value-type/> attributes as these are managed by Debezium.");
 
-    @Deprecated
-    public static final Field LOG_MINING_CONTINUOUS_MINE = Field.create("log.mining.continuous.mine")
-            .withDisplayName("Should log mining session configured with CONTINUOUS_MINE setting?")
-            .withType(Type.BOOLEAN)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.LOW)
-            .withDefault(false)
-            .withValidation(Field::isBoolean)
-            .withDescription("(Deprecated) if true, CONTINUOUS_MINE option will be added to the log mining session. " +
-                    "This will manage log files switches seamlessly.");
-
     public static final Field OBJECT_ID_CACHE_SIZE = Field.createInternal("object.id.cache.size")
             .withDisplayName("Controls the maximum size of the object ID cache")
             .withType(Type.INT)
@@ -969,7 +958,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_SCN_GAP_DETECTION_TIME_INTERVAL_MAX_MS, LOG_MINING_LOG_QUERY_MAX_RETRIES, LOG_MINING_LOG_BACKOFF_INITIAL_DELAY_MS,
                     LOG_MINING_LOG_BACKOFF_MAX_DELAY_MS, LOG_MINING_SESSION_MAX_MS, LOG_MINING_WINDOW_MAX_MS, LOG_MINING_TRANSACTION_SNAPSHOT_BOUNDARY_MODE,
                     LOG_MINING_READ_ONLY, LOG_MINING_FLUSH_TABLE_NAME, LOG_MINING_QUERY_FILTER_MODE, LOG_MINING_RESTART_CONNECTION, LOG_MINING_MAX_SCN_DEVIATION_MS,
-                    LOG_MINING_SCHEMA_CHANGES_USERNAME_EXCLUDE_LIST, LOG_MINING_INCLUDE_REDO_SQL, OLR_SOURCE, OLR_HOST, OLR_PORT, LOG_MINING_CONTINUOUS_MINE,
+                    LOG_MINING_SCHEMA_CHANGES_USERNAME_EXCLUDE_LIST, LOG_MINING_INCLUDE_REDO_SQL, OLR_SOURCE, OLR_HOST, OLR_PORT,
                     LOG_MINING_BUFFER_EHCACHE_GLOBAL_CONFIG, LOG_MINING_BUFFER_EHCACHE_TRANSACTIONS_CONFIG, LOG_MINING_BUFFER_EHCACHE_PROCESSED_TRANSACTIONS_CONFIG,
                     LOG_MINING_BUFFER_EHCACHE_SCHEMA_CHANGES_CONFIG, LOG_MINING_BUFFER_EHCACHE_EVENTS_CONFIG, LOG_MINING_BUFFER_EHCACHE_ROLLBACKS_CONFIG,
                     LOG_MINING_SQL_RELAXED_QUOTE_DETECTION, LOG_MINING_CLIENTID_INCLUDE_LIST, LOG_MINING_CLIENTID_EXCLUDE_LIST, LOG_MINING_RESUME_POSITION_INTERVAL_MS,
@@ -1051,7 +1040,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final String logMiningInifispanGlobalConfiguration;
     private final Set<String> logMiningSchemaChangesUsernameExcludes;
     private final Boolean logMiningIncludeRedoSql;
-    private final boolean logMiningContinuousMining;
     private final Configuration logMiningEhCacheConfiguration;
     private final boolean logMiningUseSqlRelaxedQuoteDetection;
     private final Set<String> logMiningClientIdIncludes;
@@ -1145,7 +1133,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningInifispanGlobalConfiguration = config.getString(LOG_MINING_BUFFER_INFINISPAN_CACHE_GLOBAL);
         this.logMiningSchemaChangesUsernameExcludes = Strings.setOf(config.getString(LOG_MINING_SCHEMA_CHANGES_USERNAME_EXCLUDE_LIST), String::new);
         this.logMiningIncludeRedoSql = config.getBoolean(LOG_MINING_INCLUDE_REDO_SQL);
-        this.logMiningContinuousMining = config.getBoolean(LOG_MINING_CONTINUOUS_MINE);
         this.logMiningUseSqlRelaxedQuoteDetection = config.getBoolean(LOG_MINING_SQL_RELAXED_QUOTE_DETECTION);
         this.logMiningClientIdIncludes = Strings.setOfTrimmed(config.getString(LOG_MINING_CLIENTID_INCLUDE_LIST), String::new);
         this.logMiningClientIdExcludes = Strings.setOfTrimmed(config.getString(LOG_MINING_CLIENTID_EXCLUDE_LIST), String::new);
@@ -1652,15 +1639,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
         /**
          * This strategy uses LogMiner with data dictionary in online catalog.
-         * This option will not capture DDL , but acts fast on REDO LOG switch events
-         * This option does not use CONTINUOUS_MINE option
+         * This option will not capture DDL, but acts fast on REDO LOG switch events
          */
         ONLINE_CATALOG("online_catalog"),
 
         /**
          * This strategy uses LogMiner with data dictionary in REDO LOG files.
          * This option will capture DDL, but will develop some lag on REDO LOG switch event and will eventually catch up
-         * This option does not use CONTINUOUS_MINE option
          *
          * @deprecated to be removed in Debezium 3.7, use {@link #HYBRID} or {@link #ONLINE_CATALOG} instead
          */
@@ -2245,24 +2230,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      */
     public boolean isLogMiningIncludeRedoSql() {
         return logMiningIncludeRedoSql;
-    }
-
-    /**
-     * Returns whether the LogMiner adapter should use continuous mining or not.
-     *
-     * @return true continuous mining should be used
-     */
-    @Deprecated
-    public boolean isLogMiningContinuousMining(OracleDatabaseVersion version) {
-        if (logMiningContinuousMining) {
-            if (version.getMajor() > 12) {
-                // Guards against users who may set this mistakenly, logs a WARN and explicitly sets the state
-                // within the streaming source explicitly to false
-                LOGGER.warn("Continuous mining is no longer available in Oracle {} and won't be used.", version);
-                return false;
-            }
-        }
-        return logMiningContinuousMining;
     }
 
     /**

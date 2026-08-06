@@ -115,7 +115,6 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     private final OracleDatabaseSchema schema;
     private final LogMinerStreamingChangeEventSourceMetrics metrics;
     private final JdbcConfiguration jdbcConfiguration;
-    private final boolean useContinuousMining;
     private final LogFileCollector logCollector;
     private final LogMinerSessionContext sessionContext;
     private final LogMinerDmlParser dmlParser;
@@ -157,9 +156,8 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         this.schema = schema;
         this.metrics = metrics;
         this.jdbcConfiguration = JdbcConfiguration.adapt(jdbcConfig);
-        this.useContinuousMining = connectorConfig.isLogMiningContinuousMining(streamingConnection.getOracleVersion());
         this.logCollector = new LogFileCollector(connectorConfig, streamingConnection);
-        this.sessionContext = new LogMinerSessionContext(streamingConnection, useContinuousMining, connectorConfig.getLogMiningStrategy(),
+        this.sessionContext = new LogMinerSessionContext(streamingConnection, connectorConfig.getLogMiningStrategy(),
                 connectorConfig.getLogMiningPathToDictionary());
         this.dmlParser = new LogMinerDmlParser(connectorConfig);
         this.reconstructColumnDmlParser = new LogMinerColumnResolverDmlParser(connectorConfig);
@@ -211,7 +209,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             }
 
             // Fail-fast check: makes sure the offset SCN is still available in the logs
-            if (!useContinuousMining && offsetScn.compareTo(firstScn.subtract(Scn.ONE)) < 0) {
+            if (offsetScn.compareTo(firstScn.subtract(Scn.ONE)) < 0) {
                 // offsetScn is the exclusive lower bound, so must be >= (firstScn - 1)
                 throw new DebeziumException("Online REDO LOG files or archive log files do not contain the offset scn " +
                         offsetScn + ". Please perform a new snapshot.");
@@ -1135,19 +1133,16 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
 
         detectRedoThreadTransitions(logFilesResult.redoThreadState());
 
-        Scn upperBoundaryScn = upperBoundsScn;
-        if (!useContinuousMining) {
-            SessionLogSelection sessionLogSelection = logFileSessionSelector.selectLogsForSession(logFilesResult, upperBoundsScn);
+        SessionLogSelection sessionLogSelection = logFileSessionSelector.selectLogsForSession(logFilesResult, upperBoundsScn);
 
-            sessionLogFilesChanged = !sessionLogSelection.logFiles().equals(sessionLogFiles);
-            sessionLogFiles = sessionLogSelection.logFiles();
+        sessionLogFilesChanged = !sessionLogSelection.logFiles().equals(sessionLogFiles);
+        sessionLogFiles = sessionLogSelection.logFiles();
 
-            if (sessionLogFilesChanged) {
-                LOGGER.trace("LogMiner session log files list changed, forcing a new mining session.");
-            }
-
-            upperBoundaryScn = sessionLogSelection.effectiveUpperBounds();
+        if (sessionLogFilesChanged) {
+            LOGGER.trace("LogMiner session log files list changed, forcing a new mining session.");
         }
+
+        Scn upperBoundaryScn = sessionLogSelection.effectiveUpperBounds();
 
         metrics.setRedoLogStatuses(streamingConnection.queryAndMap(
                 SqlUtils.redoLogStatusQuery(),
@@ -1167,23 +1162,19 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      * @throws SQLException if a database exception occurs
      */
     protected void applyLogsToSession() throws SQLException {
-        if (!useContinuousMining) {
-            sessionContext.removeAllLogFilesFromSession();
-        }
+        sessionContext.removeAllLogFilesFromSession();
 
-        if (!useContinuousMining) {
-            sessionContext.addLogFiles(sessionLogFiles);
+        sessionContext.addLogFiles(sessionLogFiles);
 
-            // These need to be updated when we prepare the session so that log switch check works
-            currentRedoLogSequences = currentLogFiles.stream()
-                    .filter(LogFile::isCurrent)
-                    .map(LogFile::getSequence)
-                    .toList();
+        // These need to be updated when we prepare the session so that log switch check works
+        currentRedoLogSequences = currentLogFiles.stream()
+                .filter(LogFile::isCurrent)
+                .map(LogFile::getSequence)
+                .toList();
 
-            metrics.setMinedLogFileNames(sessionLogFiles.stream()
-                    .map(LogFile::getFileName)
-                    .collect(Collectors.toSet()));
-        }
+        metrics.setMinedLogFileNames(sessionLogFiles.stream()
+                .map(LogFile::getFileName)
+                .collect(Collectors.toSet()));
 
         metrics.setCurrentLogFileNames(currentLogFiles.stream()
                 .filter(LogFile::isCurrent)

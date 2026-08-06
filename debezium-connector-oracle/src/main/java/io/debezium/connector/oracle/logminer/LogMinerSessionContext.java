@@ -30,7 +30,6 @@ public class LogMinerSessionContext implements AutoCloseable {
     private static final Logger LOGGER = LoggerFactory.getLogger(LogMinerSessionContext.class);
 
     private final OracleConnection connection;
-    private final boolean useContinuousMining;
     private final LogMiningStrategy strategy;
     private final String dictionaryFilePath;
 
@@ -39,9 +38,8 @@ public class LogMinerSessionContext implements AutoCloseable {
     private Scn currentSessionStartScn = Scn.NULL;
     private Scn currentSessionEndScn = Scn.NULL;
 
-    public LogMinerSessionContext(OracleConnection connection, boolean useContinuousMining, LogMiningStrategy strategy, String dictionaryFilePath) {
+    public LogMinerSessionContext(OracleConnection connection, LogMiningStrategy strategy, String dictionaryFilePath) {
         this.connection = connection;
-        this.useContinuousMining = useContinuousMining;
         this.strategy = strategy;
         this.dictionaryFilePath = dictionaryFilePath;
     }
@@ -205,10 +203,6 @@ public class LogMinerSessionContext implements AutoCloseable {
                 break;
             default:
                 miningOptions.add("DBMS_LOGMNR.DICT_FROM_ONLINE_CATALOG");
-        }
-
-        if (useContinuousMining) {
-            miningOptions.add("DBMS_LOGMNR.CONTINUOUS_MINE");
         }
 
         if (committedDataOnly) {
