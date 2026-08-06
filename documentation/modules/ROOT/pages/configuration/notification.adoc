@@ -88,25 +88,21 @@ The following example shows a typical notification that provides the status of a
 {
     "id": "5563ae14-49f8-4579-9641-c1bbc2d76f99",
     "aggregate_type": "Initial Snapshot",
-    "type": "COMPLETED", // <1>
+    "type": "COMPLETED",
     "additional_data" : {
         "connector_name": "myConnector"
     },
     "timestamp": "1695817046353"
 }
 ----
-[cols="1,7a",options="header",subs="+attributes"]
-|===
-|Item |Description
+The following list describes select fields in the preceding initial snapshot notification example:
 
-|1
-|The `type` field can contain one of the following values:
+`type`::
+The `type` field can contain one of the following values:
 
 * `COMPLETED`
 * `ABORTED`
 * `SKIPPED`
-
-|===
 
 
 The following table shows examples of the different payloads that might be present in notifications that report the status of initial snapshots:
@@ -401,35 +397,31 @@ For example:
 ----
 public interface NotificationChannel {
 
-    String name(); // <1>
+    String name();
 
-    void init(CommonConnectorConfig config); // <2>
+    void init(CommonConnectorConfig config);
 
-    void send(Notification notification); // <3>
+    void send(Notification notification);
 
-    void close(); // <4>
+    void close();
 }
 ----
-[cols="1,7a",options="header",subs="+attributes"]
-|===
-|Item |Description
+The following list describes the purpose of select lines in the preceding `NotificationChannel` interface example:
 
-|1
-|The name of the channel.
+`String name()`::
+The name of the channel.
 To enable {prodname} to use the channel, specify this name in the connector's `notification.enabled.channels` property.
 
-|2
-|Initializes specific configuration, variables, or connections that the channel requires.
+`void init(CommonConnectorConfig config)`::
+Initializes specific configuration, variables, or connections that the channel requires.
 
-|3
-|ends the notification on the channel.
+`void send(Notification notification)`::
+ends the notification on the channel.
 {prodname} calls this method to report its status.
 
-|4
-|Closes all allocated resources.
+`void close()`::
+Closes all allocated resources.
 {prodname} calls this method when the connector is stopped.
-
-|===
 
 //   Type: concept
 [id="debezium-connector-common-module-dependency"]
@@ -444,17 +436,13 @@ You must include these compile dependencies in your project's `pom.xml` file, as
 <dependency>
     <groupId>io.debezium</groupId>
     <artifactId>debezium-connector-common</artifactId>
-    <version>${version.debezium}</version> // <1>
+    <version>${version.debezium}</version>
 </dependency>
 ----
-[cols="1,7",options="header",subs="+attributes"]
-|===
-|Item |Description
+The following list describes select fields in the preceding `pom.xml` dependency example:
 
-|1
-|`${version.debezium}` represents the version of the {prodname} connector.
-
-|===
+`${version.debezium}`::
+Represents the version of the {prodname} connector.
 
 Declare your implementation in the `META-INF/services/io.debezium.pipeline.notification.channels.NotificationChannel` file.
 
