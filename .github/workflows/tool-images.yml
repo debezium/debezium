@@ -31,9 +31,14 @@ on:
 
 jobs:
   build-tool-images:
-    name: Build and Push Tool Images
+    name: Build ${{ matrix.tool }}
     runs-on: ubuntu-latest
-    timeout-minutes: 720
+    timeout-minutes: 120
+    strategy:
+      matrix:
+        tool:
+          - tooling
+          - website-builder
 
     steps:
       - name: Checkout container-images repository
@@ -52,9 +57,13 @@ jobs:
           username: ${{ secrets.QUAY_IO_USERNAME }}
           password: ${{ secrets.QUAY_IO_PASSWORD }}
 
-      - name: Build tool images
-        run: |
-          PUSH_IMAGES=true TAG=${{ inputs.tag }} ./build-tool-images.sh
+      - name: Build and push ${{ matrix.tool }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ./${{ matrix.tool }}
+          push: true
+          tags: quay.io/debezium/${{ matrix.tool }}:${{ inputs.tag }}
+          platforms: linux/amd64,linux/arm64
 
       - name: Send Zulip notification on failure
         if: failure()
@@ -67,8 +76,8 @@ jobs:
           type: "stream"
           topic: alerts
           content: |
-            ⚠️ **Tool images build failed**
-            
+            ⚠️ **Tool image build failed: ${{ matrix.tool }}**
+
             **Repository:** ${{ inputs.images_repository }}
             **Branch:** ${{ inputs.images_branch }}
             **Tag:** ${{ inputs.tag }}
