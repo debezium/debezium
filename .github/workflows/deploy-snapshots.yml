@@ -213,6 +213,8 @@ jobs:
         env:
           REPOSITORIES_JSON: ${{ steps.parse-repositories.outputs.repositories_json }}
           CORE_ID: ${{ steps.repository-metadata.outputs.core_id }}
+          MAVEN_USERNAME: ${{ secrets.MAVEN_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}
         run: |
           set -euo pipefail
           mkdir -p "${DESCRIPTORS_OUTPUT_DIR}"
