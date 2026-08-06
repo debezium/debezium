@@ -286,6 +286,7 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
                 configuration.binaryHandlingMode(),
                 configuration.isTimeAdjustedEnabled() ? MySqlValueConverters::adjustTemporal : x -> x,
                 configuration.getEventConvertingFailureHandlingMode(),
+                configuration.getJsonStringFormattingMode(),
                 configuration.getServiceRegistry(),
                 configuration.getUnavailableValuePlaceholder());
     }
