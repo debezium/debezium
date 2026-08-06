@@ -1933,9 +1933,11 @@ If a batch includes multiple events for the same primary key while `use.reductio
 
 The task then stops.
 
-For information about the performance benefits of enabling the UNNEST function for PostgreSQL, see link:https://www.tigerdata.com/blog/boosting-postgres-insert-performance["Boosting Postgres Insert Performance"^] in the Tiger Data blog.
+For more information about how the connector's use of the UNNEST function improves write performance for PostgreSQL and CockroachDB databases, see the following resources:
 
-For information about the performance benefits of enabling the UNNEST function for CockroachDB, see link:https://www.cockroachlabs.com/docs/stable/performance-best-practices-overview#use-multi-row-statements-instead-of-multiple-single-row-statements["Use multi-row statements instead of multiple single-row statements"^] in the CockroachDB documentation.
+* link:https://www.tigerdata.com/blog/boosting-postgres-insert-performance["Boosting Postgres Insert Performance"^] in the Tiger Data blog.
+
+* link:https://www.cockroachlabs.com/docs/stable/performance-best-practices-overview#use-multi-row-statements-instead-of-multiple-single-row-statements["Use multi-row statements instead of multiple single-row statements"^] in the CockroachDB documentation.
 
 |[[jdbc-property-dialect-sqlserver-identity-insert]]<<jdbc-property-dialect-sqlserver-identity-insert, `+dialect.sqlserver.identity.insert+`>>
 |`false`
