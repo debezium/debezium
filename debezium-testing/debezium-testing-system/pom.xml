@@ -509,6 +509,7 @@
       <artifactId>debezium-connector-jdbc</artifactId>
       <type>jar</type>
       <scope>test</scope>
+      <version>${version.debezium.connector}</version>
     </dependency>
 
     <dependency>
