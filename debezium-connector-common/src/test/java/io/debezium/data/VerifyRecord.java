@@ -70,7 +70,7 @@ public class VerifyRecord {
         void assertEquals(String pathToField, Object actualValue, Object expectedValue);
     }
 
-    private static final String APICURIO_URL = "http://localhost:8080/apis/registry/v2";
+    private static final String APICURIO_URL = "http://localhost:8080";
 
     private static final JsonConverter keyJsonConverter = new JsonConverter();
     private static final JsonConverter valueJsonConverter = new JsonConverter();

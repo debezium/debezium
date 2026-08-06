@@ -39,6 +39,6 @@ public class ApicurioTestResourceLifeCycleManager implements QuarkusTestResource
     }
 
     public static String getApicurioUrl() {
-        return "http://" + container.getHost() + ":" + container.getMappedPort(APICURIO_PORT) + "/apis/registry/v2";
+        return "http://" + container.getHost() + ":" + container.getMappedPort(APICURIO_PORT);
     }
 }

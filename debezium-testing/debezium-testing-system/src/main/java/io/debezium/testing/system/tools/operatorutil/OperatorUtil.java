@@ -47,6 +47,8 @@ public class OperatorUtil {
         }
         else {
             sb = ApicurioSubscriptionBuilder.base().withConfig(PRODUCT_BUILD);
+            startingCSV = operatorEnum.getStartingCSV();
+            sb.withStartingCSV(startingCSV);
         }
 
         sb.withChannel(operatorEnum.getSubscriptionUpdateChannel())

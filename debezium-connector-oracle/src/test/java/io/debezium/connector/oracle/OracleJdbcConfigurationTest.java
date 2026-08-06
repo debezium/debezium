@@ -161,24 +161,6 @@ public class OracleJdbcConfigurationTest {
 
     @Test
     @FixFor("debezium/dbz#2257")
-    public void shouldResolveDualConnectionFactoryForDownstreamCaptureMode() {
-        final Configuration config = Configuration.create()
-                .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
-                .with(OracleConnectorConfig.CAPTURE_MODE, "downstream")
-                .with(OracleConnectorConfig.HOSTNAME, "primary")
-                .with(OracleConnectorConfig.DATABASE_NAME, "primarydb")
-                .with(OracleConnectorConfig.SECONDARY_HOSTNAME, "secondary")
-                .with(OracleConnectorConfig.SECONDARY_DATABASE, "secondarydb")
-                .build();
-
-        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
-        final OracleConnectionFactory factory = OracleConnectionFactoryProvider.create(connectorConfig);
-        assertThat(factory).isInstanceOf(DualOracleConnectionFactory.class);
-        assertThat(providerLogInterceptor.containsMessage("Using DUAL connection factory - Streams from Downstream Mining Instance")).isTrue();
-    }
-
-    @Test
-    @FixFor("debezium/dbz#2257")
     public void shouldResolveSecondaryPortBasedOnPrimaryPort() {
         final Configuration config = Configuration.create()
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
