@@ -1,0 +1,63 @@
+[id="stringify-fields"]
+= Stringify Fields
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+
+Some sinks accept a schema-flexible column only as JSON text, and reject a native struct, array, or map.
+A Databricks Delta `VARIANT` column and a `JSON`/`JSONB` column are typical examples.
+To write nested data to such a column, {prodname} provides the Stringify Fields single message transformation (SMT), which serializes the fields that you specify into their JSON-string representation.
+
+Fields that already contain a string, and fields that are absent from a record, are left unmodified.
+Fields that you do not list are also left unmodified, so that scalar fields retain their original, strongly typed schema.
+
+== Use cases
+
+After a document is flattened, for example by the xref:transformations/mongodb-event-flattening.adoc[MongoDB new document state extraction] transformation, nested fields arrive as native structs and arrays.
+A column that accepts only JSON text cannot store those values directly.
+
+By applying the transformation to the nested fields, you can preserve a strongly typed schema for the scalar fields of a record, and write a single schema-flexible field, such as `properties`, as JSON text.
+
+== Configuration
+
+The following example shows how to configure the transformation to serialize the `properties` field:
+
+[source]
+----
+transforms=stringify
+transforms.stringify.type=io.debezium.transforms.StringifyFields
+transforms.stringify.fields=properties
+----
+
+To serialize more than one field, specify a comma-separated list, as in the following example:
+
+[source]
+----
+transforms.stringify.fields=properties,metadata
+----
+
+== Configuration options
+
+The following table lists the configuration options for the transformation.
+
+[cols="30%a,15%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[stringify-fields-fields]]<<stringify-fields-fields, `fields`>>
+|No default value.
+|A comma-separated list of the top-level value fields to serialize to a JSON string.
+
+|===
+
+== Error handling
+
+If the transformation cannot serialize a field that you specify, it logs the context of the record, that is, the field name, the schema type and name, the value class, and the value, at `ERROR` level, and then throws an exception.
+The stream halts, and the offset is not committed past the record, so that no data is dropped silently.
+To skip such records instead, set `errors.tolerance=all`.
