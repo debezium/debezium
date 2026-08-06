@@ -131,3 +131,23 @@ jobs:
           tags: quay.io/debezium/platform-stage:nightly
           build-args: |
             ${{ inputs.debezium_version && format('DEBEZIUM_VERSION={0}', inputs.debezium_version) || '' }}
+
+      - name: Send Zulip notification
+        if: failure()
+        uses: zulip/github-actions-zulip/send-message@v2
+        with:
+          api-key: ${{ secrets.ZULIP_TOKEN }}
+          email: ${{ secrets.ZULIP_TOKEN_EMAIL_ADDRESS }}
+          organization-url: "https://debezium.zulipchat.com"
+          to: dev
+          type: "stream"
+          topic: alerts
+          content: |
+            ⚠️ **Debezium nightly container images build failed**
+
+            **Debezium repository:** ${{ inputs.debezium_repository }}
+            **Debezium branch:** ${{ inputs.debezium_branch }}
+            **Images repository:** ${{ inputs.images_repository }}
+            **Images branch:** ${{ inputs.images_branch }}
+            **Platforms:** ${{ inputs.platforms }}
+            **Workflow Run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
