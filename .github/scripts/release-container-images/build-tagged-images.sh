@@ -71,13 +71,13 @@ FAILED_TAGS=()
 echo "$BUILD_LIST" | jq -c '.[]' | while read -r item; do
     STREAM=$(echo "$item" | jq -r '.stream')
     TAG=$(echo "$item" | jq -r '.tag')
-    
+
     BUILD_COUNT=$((BUILD_COUNT + 1))
-    
+
     echo "=========================================="
     echo "Build #$BUILD_COUNT: Tag $TAG (Stream $STREAM)"
     echo "=========================================="
-    
+
     # Checkout the specific tag
     echo "Checking out tag v$TAG..."
     if ! git checkout "v$TAG"; then
@@ -85,7 +85,7 @@ echo "$BUILD_LIST" | jq -c '.[]' | while read -r item; do
         FAILED_TAGS+=("$TAG")
         continue
     fi
-    
+
     # Fetch and checkout build scripts from main branch
     echo "Fetching build scripts from $IMAGES_BRANCH branch..."
     if ! git fetch origin "$IMAGES_BRANCH:$IMAGES_BRANCH"; then
@@ -94,7 +94,7 @@ echo "$BUILD_LIST" | jq -c '.[]' | while read -r item; do
         git reset --hard
         continue
     fi
-    
+
     echo "Checking out build scripts..."
     if ! git checkout "$IMAGES_BRANCH" build-all-multiplatform.sh build-debezium-multiplatform.sh build-postgres-multiplatform.sh script-functions/; then
         echo "Error: Failed to checkout build scripts" >&2
@@ -102,15 +102,15 @@ echo "$BUILD_LIST" | jq -c '.[]' | while read -r item; do
         git reset --hard
         continue
     fi
-    
+
     # Build images for this tag
     echo ""
     echo "Building images for tag $TAG..."
     echo "Note: UI images only built for linux/amd64 (arm64 not working)"
     echo ""
-    
+
     export RELEASE_TAG="$TAG"
-    
+
     if ./build-debezium-multiplatform.sh "$STREAM" "$MULTIPLATFORM_PLATFORMS"; then
         echo "✅ Successfully built images for tag $TAG"
         SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
@@ -118,11 +118,11 @@ echo "$BUILD_LIST" | jq -c '.[]' | while read -r item; do
         echo "❌ Failed to build images for tag $TAG" >&2
         FAILED_TAGS+=("$TAG")
     fi
-    
+
     # Reset to clean state
     echo "Resetting to clean state..."
     git reset --hard
-    
+
     echo ""
     echo "Completed build for tag: $TAG"
     echo "=========================================="

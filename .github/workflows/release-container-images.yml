@@ -74,7 +74,7 @@ jobs:
       streams: ${{ steps.versions.outputs.streams }}
       stable_stream: ${{ steps.versions.outputs.stable_stream }}
       build_list: ${{ steps.versions.outputs.build_list }}
-    
+
     steps:
       - name: Checkout debezium repository
         uses: actions/checkout@v4
@@ -166,7 +166,7 @@ jobs:
           topic: alerts
           content: |
             ⚠️ **Release container images build failed (master images)**
-            
+
             **Debezium repository:** ${{ inputs.debezium_repository }}
             **Images repository:** ${{ inputs.images_repository }}
             **Images branch:** ${{ inputs.images_branch }}
@@ -239,7 +239,7 @@ jobs:
           topic: alerts
           content: |
             ⚠️ **Release container images build failed (tagged images)**
-            
+
             **Debezium repository:** ${{ inputs.debezium_repository }}
             **Images repository:** ${{ inputs.images_repository }}
             **Images branch:** ${{ inputs.images_branch }}
