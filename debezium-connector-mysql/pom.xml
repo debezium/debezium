@@ -317,6 +317,59 @@
                             </external>
                         </image>
                         <image>
+                            <!-- Docker image for the binlog-row-image test. -->
+                            <name>debezium/mysql-server-test-binlog-row-image-database</name>
+                            <run>
+                                <namingStrategy>none</namingStrategy>
+                                <env>
+                                    <MYSQL_ROOT_PASSWORD>debezium-rocks</MYSQL_ROOT_PASSWORD>
+                                    <MYSQL_DATABASE>mysql</MYSQL_DATABASE> <!-- database created upon init -->
+                                    <MYSQL_USER>${mysql.user}</MYSQL_USER>
+                                    <MYSQL_PASSWORD>${mysql.password}</MYSQL_PASSWORD>
+                                </env>
+                                <ports>
+                                    <port>${mysql.port}:3306</port>
+                                </ports>
+                                <log>
+                                    <prefix>mysql</prefix>
+                                    <enabled>true</enabled>
+                                    <color>yellow</color>
+                                </log>
+                                <wait>
+                                    <log>(MySQL|MariaDB) init process done. Ready for start up.(?s)(.*)(mysqld|mariadbd): ready for connections.</log>
+                                    <time>${mysql.init.timeout}</time>
+                                </wait>
+                            </run>
+                            <build>
+                                <from>${mysql.server.image.source}:${version.mysql.server}</from>
+                                <runCmds>
+                                    <run>${docker.initimage}</run>
+                                </runCmds>
+                                <assembly>
+                                    <inline>
+                                        <fileSets>
+                                            <fileSet>
+                                                <directory>${project.basedir}/src/test/docker/server-binlog-row-image</directory>
+                                                <includes>
+                                                    <include>my.cnf</include>
+                                                </includes>
+                                                <outputDirectory>etc/mysql</outputDirectory>
+                                            </fileSet>
+                                            <fileSet>
+                                                <directory>${project.basedir}/src/test/docker/init</directory>
+                                                <outputDirectory>docker-entrypoint-initdb.d</outputDirectory>
+                                            </fileSet>
+                                        </fileSets>
+                                    </inline>
+                                    <targetDir>/</targetDir>
+                                </assembly>
+                            </build>
+                            <external>
+                                <type>properties</type>
+                                <mode>override</mode>
+                            </external>
+                        </image>
+                        <image>
                             <!-- A Docker image using a partial MySQL installation maintained by MySQL team
                              that enable mysql ssl connection -->
                             <name>debezium/mysql-server-test-database-ssl</name>
@@ -600,6 +653,14 @@
                 <configuration>
                     <skipTests>${skipITs}</skipTests>
                     <enableAssertions>true</enableAssertions>
+                    <!--
+                    MySqlConnectorNoBlobIT asserts behaviour that only holds against a server running with
+                    binlog_row_image=NOBLOB. It is therefore excluded from the default run and executed only
+                    via the 'mysql-binlog-row-image' profile against the dedicated Docker image.
+                    -->
+                    <excludes>
+                        <exclude>**/MySqlConnectorNoBlobIT.java</exclude>
+                    </excludes>
                     <systemPropertyVariables>
                         <!-- Make these available to the tests via system properties -->
                         <database.hostname>${docker.host.address}</database.hostname>
@@ -993,6 +1054,42 @@
                                 <database.ssl.keystore>${project.basedir}/src/test/resources/ssl/keystore</database.ssl.keystore>
                                 <database.ssl.keystore.password>debezium</database.ssl.keystore.password>
                             </systemPropertyVariables>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+              Use the Docker image configured with binlog_row_image=NOBLOB and run only the
+              MySqlConnectorNoBlobIT integration test against it. This test is excluded from
+              all other runs because its assertions only hold for a NOBLOB server.
+              To use, specify "-Dmysql-binlog-row-image" or -Pmysql-binlog-row-image on the Maven command line.
+              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+        <profile>
+            <id>mysql-binlog-row-image</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+                <property>
+                    <name>mysql-binlog-row-image</name>
+                </property>
+            </activation>
+            <properties>
+                <!-- Docker properties: start the server image built with binlog_row_image=NOBLOB -->
+                <docker.dbs>debezium/mysql-server-test-binlog-row-image-database</docker.dbs>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <!-- Override the default exclusion so this test runs here, and only here. -->
+                            <excludes combine.self="override">
+                                <exclude>none</exclude>
+                            </excludes>
+                            <includes>
+                                <include>**/MySqlConnectorNoBlobIT.java</include>
+                            </includes>
                         </configuration>
                     </plugin>
                 </plugins>
