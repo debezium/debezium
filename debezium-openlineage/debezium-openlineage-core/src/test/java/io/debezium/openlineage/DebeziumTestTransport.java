@@ -5,8 +5,8 @@
  */
 package io.debezium.openlineage;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import io.openlineage.client.OpenLineage.DatasetEvent;
 import io.openlineage.client.OpenLineage.JobEvent;
@@ -15,9 +15,9 @@ import io.openlineage.client.transports.Transport;
 
 public class DebeziumTestTransport extends Transport {
 
-    private final List<RunEvent> runEvents = new ArrayList<>();
-    private final List<DatasetEvent> datasetEvents = new ArrayList<>();
-    private final List<JobEvent> jobEvents = new ArrayList<>();
+    private final List<RunEvent> runEvents = new CopyOnWriteArrayList<>();
+    private final List<DatasetEvent> datasetEvents = new CopyOnWriteArrayList<>();
+    private final List<JobEvent> jobEvents = new CopyOnWriteArrayList<>();
 
     @Override
     public void emit(RunEvent runEvent) {
