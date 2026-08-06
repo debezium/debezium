@@ -33,9 +33,7 @@ class EnumType extends AbstractType {
 
     @Override
     public String getQueryBinding(ColumnDescriptor column, Schema schema, Object value) {
-        // PostgreSQL does not implicitly cast a bound character varying value to an enum column, so the
-        // cast must be explicit.
-        return "cast(? as " + quoteTypeName(column.getTypeName()) + ")";
+        return "cast(? as %s)".formatted(quoteTypeName(column.getTypeName()));
     }
 
     /**
