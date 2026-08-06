@@ -338,6 +338,7 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
                 connectorConfig.binaryHandlingMode(),
                 connectorConfig.isTimeAdjustedEnabled() ? MariaDbValueConverters::adjustTemporal : x -> x,
                 connectorConfig.getEventConvertingFailureHandlingMode(),
+                connectorConfig.getJsonStringFormattingMode(),
                 connectorConfig.getServiceRegistry());
     }
 

@@ -15,6 +15,7 @@ import com.github.shyiko.mysql.binlog.event.deserialization.AbstractRowsEventDat
 import io.debezium.annotation.Immutable;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode;
+import io.debezium.connector.binlog.BinlogConnectorConfig.JsonStringFormattingMode;
 import io.debezium.connector.binlog.jdbc.BinlogValueConverters;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.jdbc.TemporalPrecisionMode;
@@ -50,6 +51,8 @@ public class MySqlValueConverters extends BinlogValueConverters {
      * @param binaryMode how binary columns should be represented
      * @param adjuster a temporal adjuster to make a database specific time modification before conversion
      * @param eventConvertingFailureHandlingMode how handle when converting failure
+     * @param jsonStringFormattingMode how {@code JSON} values read from the binlog are serialized; may be null,
+     *            which is treated as {@link JsonStringFormattingMode#LEGACY}
      * @param serviceRegistry the service registry, should not be {@code null}
      */
     public MySqlValueConverters(DecimalMode decimalMode,
@@ -58,10 +61,11 @@ public class MySqlValueConverters extends BinlogValueConverters {
                                 BinaryHandlingMode binaryMode,
                                 TemporalAdjuster adjuster,
                                 EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode,
+                                JsonStringFormattingMode jsonStringFormattingMode,
                                 ServiceRegistry serviceRegistry,
                                 byte[] unavailableValuePlaceholder) {
-        super(decimalMode, temporalPrecisionMode, bigIntUnsignedMode, binaryMode, adjuster, eventConvertingFailureHandlingMode, serviceRegistry,
-                unavailableValuePlaceholder);
+        super(decimalMode, temporalPrecisionMode, bigIntUnsignedMode, binaryMode, adjuster, eventConvertingFailureHandlingMode, jsonStringFormattingMode,
+                serviceRegistry, unavailableValuePlaceholder);
     }
 
     @Override

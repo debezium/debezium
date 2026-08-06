@@ -474,6 +474,25 @@ The connector then stops.
 
 
 
+[id="{context}-property-json-string-formatting-mode"]
+xref:{context}-property-json-string-formatting-mode[`json.string.formatting.mode`]::
+
+Default value::: `legacy`
+
+Description:::
+Specifies how the connector serializes `JSON` column values that it reads from the binlog.
+During a snapshot, the connector emits `JSON` values exactly as the database server returns them over JDBC, for example, `{"key": "value"}`; this property does not affect those values.
++
+Set one of the following options:
+
+`legacy`:::: The connector omits whitespace, for example, `{"key":"value"}`.
+The string representation of a value therefore depends on whether the connector captured it during a snapshot or from the binlog.
+
+`database`:::: The connector uses the same format that the database server produces, for example, `{"key": "value"}`.
+Temporal scalars carry a six-digit fractional-seconds part, for example, `"2015-01-15 23:24:25.000000"`, and opaque binary scalars carry a `base64:typeNN:` prefix.
+
+
+
 [id="{context}-property-message-key-columns"]
 xref:{context}-property-message-key-columns[`message.key.columns`]::
 
