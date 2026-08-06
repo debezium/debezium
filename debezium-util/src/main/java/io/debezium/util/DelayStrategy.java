@@ -193,15 +193,15 @@ public interface DelayStrategy {
      *
      * @param initialDelay the initial delay; must be positive
      * @param maxDelay the maximum delay; must be no less than the initial delay
-     * @param backOffMultiplier the factor by which the delay increases each pass; must be at least 1
+     * @param backOffMultiplier the factor by which the delay increases each pass; must be greater than 1
      * @param jitterFactor the fraction of the current delay used as randomization range; must be in [0, 1)
      * @return the strategy
      */
     static DelayStrategy exponentialWithJitter(Duration initialDelay, Duration maxDelay, double backOffMultiplier, double jitterFactor) {
         final long initialDelayInMilliseconds = initialDelay.toMillis();
         final long maxDelayInMilliseconds = maxDelay.toMillis();
-        if (backOffMultiplier < 1.0) {
-            throw new IllegalArgumentException("Backoff multiplier must be at least 1");
+        if (backOffMultiplier <= 1.0) {
+            throw new IllegalArgumentException("Backoff multiplier must be greater than 1");
         }
         if (initialDelayInMilliseconds <= 0) {
             throw new IllegalArgumentException("Initial delay must be positive");
