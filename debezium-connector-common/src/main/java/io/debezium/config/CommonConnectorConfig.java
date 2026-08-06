@@ -653,6 +653,7 @@ public abstract class CommonConnectorConfig {
     public static final int DEFAULT_MAX_RETRIES = ErrorHandler.RETRIES_UNLIMITED;
     public static final String ERRORS_MAX_RETRIES = "errors.max.retries";
     private final int maxRetriesOnError;
+    private final int maxSnapshotRetriesOnError;
 
     public static final Field TOPIC_PREFIX = Field.create(ConfigurationNames.TOPIC_PREFIX_PROPERTY_NAME)
             .withDisplayName("Topic prefix")
@@ -1064,6 +1065,16 @@ public abstract class CommonConnectorConfig {
             .withValidation(Field::isInteger)
             .withDescription(
                     "The maximum number of retries on connection errors before failing (-1 = no limit, 0 = disabled, > 0 = num of retries).");
+    public static final Field MAX_SNAPSHOT_RETRIES_ON_ERROR = Field.create("snapshot.errors.max.retries")
+            .withDisplayName("The maximum number of retries for failing parts of a snapshot")
+            .withType(Type.INT)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withDefault(0)
+            .withValidation(Field::isNonNegativeInteger)
+            .withDescription(
+                    "The maximum number of retries on errors before failing in case a part (chunk/table) of the snapshot failed. (0 = disabled, > 0 = num of retries).");
 
     public static final Field CUSTOM_METRIC_TAGS = Field.create("custom.metric.tags")
             .withDisplayName("Customize metric tags")
@@ -1651,6 +1662,7 @@ public abstract class CommonConnectorConfig {
         this.enabledNotificationChannels = config.getList(NOTIFICATION_ENABLED_CHANNELS);
         this.skipMessagesWithoutChange = config.getBoolean(SKIP_MESSAGES_WITHOUT_CHANGE);
         this.maxRetriesOnError = config.getInteger(MAX_RETRIES_ON_ERROR);
+        this.maxSnapshotRetriesOnError = config.getInteger(MAX_SNAPSHOT_RETRIES_ON_ERROR);
         this.customMetricTags = createCustomMetricTags(config);
         this.incrementalSnapshotWatermarkingStrategy = WatermarkStrategy.parse(config.getString(INCREMENTAL_SNAPSHOT_WATERMARKING_STRATEGY));
         this.snapshotLockingModeCustomName = config.getString(SNAPSHOT_LOCKING_MODE_CUSTOM_NAME, "");
@@ -2324,6 +2336,10 @@ public abstract class CommonConnectorConfig {
 
     public int getMaxRetriesOnError() {
         return maxRetriesOnError;
+    }
+
+    public int getMaxSnapshotRetriesOnError() {
+        return maxSnapshotRetriesOnError;
     }
 
     public String getTaskId() {
