@@ -78,7 +78,7 @@ public class RetryingSupplier<V, E extends Exception> {
             try {
                 final V result = doGet.get();
                 if (attempts != retries) {
-                    logger.info("{} succeeded after {} retry attempt(s)", name, retries - attempts);
+                    logger.debug("{} succeeded after {} retry attempt(s)", name, retries - attempts);
                 }
                 return result;
             }
@@ -120,7 +120,7 @@ public class RetryingSupplier<V, E extends Exception> {
         }
         final V result = doGet.get();
         if (retries > 0) {
-            logger.info("{} succeeded after {} retry attempt(s)", name, retries);
+            logger.debug("{} succeeded after {} retry attempt(s)", name, retries);
         }
         return result;
     }
