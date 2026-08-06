@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import javax.management.InstanceNotFoundException;
@@ -268,6 +269,17 @@ public class TestHelper {
                 .build();
 
         return testConnection(config);
+    }
+
+    /**
+     * Returns a connection to the given database whose connector config carries the additional options applied by the
+     * supplied customizer, e.g. {@code internal.capture.instance.exclude.list}.
+     */
+    public static SqlServerConnection testConnection(String databaseName, Consumer<Configuration.Builder> customizer) {
+        Configuration.Builder builder = defaultConnectorConfig()
+                .with(ConfigurationNames.DATABASE_CONFIG_PREFIX + JdbcConfiguration.ON_CONNECT_STATEMENTS, "USE [" + databaseName + "]");
+        customizer.accept(builder);
+        return testConnection(builder.build());
     }
 
     public static SqlServerConnection testConnection(Configuration config) {

@@ -11,6 +11,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Predicate;
+import java.util.regex.Pattern;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
@@ -28,6 +30,7 @@ import io.debezium.config.Field;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.document.Document;
+import io.debezium.function.Predicates;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.relational.ColumnFilterMode;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
@@ -497,6 +500,26 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .withDescription("Specifies the maximum number of rows that should be read in one go from each table while streaming. "
                     + "The connector will read the table contents in multiple batches of this size. Defaults to 0 which means no limit.");
 
+    public static final Field CAPTURE_INSTANCE_INCLUDE_LIST = Field.createInternal("capture.instance.include.list")
+            .withDisplayName("Include capture instances")
+            .withType(Type.LIST)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.MEDIUM)
+            .withValidation(Field::isListOfRegex)
+            .withDescription("A comma-separated list of regular expressions that match the names of the CDC capture instances to include for streaming. "
+                    + "When set, only matching capture instances are used. May not be used with '" + Field.INTERNAL_PREFIX + "capture.instance.exclude.list" + "'.");
+
+    public static final Field CAPTURE_INSTANCE_EXCLUDE_LIST = Field.createInternal("capture.instance.exclude.list")
+            .withDisplayName("Exclude capture instances")
+            .withType(Type.LIST)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.MEDIUM)
+            .withValidation(Field::isListOfRegex, SqlServerConnectorConfig::validateCaptureInstanceExcludeList)
+            .withDescription("A comma-separated list of regular expressions that match the names of the CDC capture instances to exclude from streaming. "
+                    + "Any capture instance whose name matches is ignored, so the connector never enumerates it or queries its cdc.fn_cdc_get_all_changes_# function. "
+                    + "Useful when several capture instances exist for the same source table (for example one the connector's account is not granted to read). "
+                    + "May not be used with '" + CAPTURE_INSTANCE_INCLUDE_LIST.name() + "'.");
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("SQL Server")
             .excluding(
@@ -506,7 +529,8 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                     RelationalDatabaseConnectorConfig.DATABASE_NAME)
             .group(Field.Group.CONNECTION, DATABASE_NAMES, HOSTNAME, PORT, USER, PASSWORD, QUERY_TIMEOUT_MS, INSTANCE)
             .group(Field.Group.CONNECTOR, BINARY_HANDLING_MODE, SCHEMA_NAME_ADJUSTMENT_MODE, DATA_QUERY_MODE, SOURCE_INFO_STRUCT_MAKER)
-            .group(Field.Group.CONNECTOR_ADVANCED, MAX_TRANSACTIONS_PER_ITERATION, QUERY_FETCH_SIZE, STREAMING_FETCH_SIZE)
+            .group(Field.Group.CONNECTOR_ADVANCED, MAX_TRANSACTIONS_PER_ITERATION, QUERY_FETCH_SIZE, STREAMING_FETCH_SIZE,
+                    CAPTURE_INSTANCE_INCLUDE_LIST, CAPTURE_INSTANCE_EXCLUDE_LIST)
             .group(Field.Group.CONNECTOR_SNAPSHOT, SNAPSHOT_MODE, SNAPSHOT_ISOLATION_MODE, INCREMENTAL_SNAPSHOT_OPTION_RECOMPILE, INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
                     INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES)
             .create();
@@ -532,6 +556,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     private final int queryFetchSize;
     private final DataQueryMode dataQueryMode;
     private final int streamingFetchSize;
+    private final Predicate<String> captureInstanceFilter;
 
     public SqlServerConnectorConfig(Configuration config) {
         super(
@@ -582,6 +607,34 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         this.dataQueryMode = DataQueryMode.parse(config.getString(DATA_QUERY_MODE), DATA_QUERY_MODE.defaultValueAsString());
         this.snapshotLockingMode = SnapshotLockingMode.parse(config.getString(SNAPSHOT_LOCKING_MODE), SNAPSHOT_LOCKING_MODE.defaultValueAsString());
         this.streamingFetchSize = config.getInteger(STREAMING_FETCH_SIZE);
+        this.captureInstanceFilter = buildCaptureInstanceFilter(config);
+    }
+
+    private static Predicate<String> buildCaptureInstanceFilter(Configuration config) {
+        final String includeList = config.getString(CAPTURE_INSTANCE_INCLUDE_LIST);
+        final String excludeList = config.getString(CAPTURE_INSTANCE_EXCLUDE_LIST);
+        final Predicate<String> inclusions = !Strings.isNullOrBlank(includeList) ? Predicates.includes(includeList, Pattern.CASE_INSENSITIVE) : null;
+        final Predicate<String> exclusions = !Strings.isNullOrBlank(excludeList) ? Predicates.excludes(excludeList, Pattern.CASE_INSENSITIVE) : null;
+        if (inclusions == null && exclusions == null) {
+            return captureInstance -> true;
+        }
+        return captureInstance -> {
+            if (inclusions != null && !inclusions.test(captureInstance)) {
+                return false;
+            }
+            return exclusions == null || exclusions.test(captureInstance);
+        };
+    }
+
+    private static int validateCaptureInstanceExcludeList(Configuration config, Field field, Field.ValidationOutput problems) {
+        String includeList = config.getString(CAPTURE_INSTANCE_INCLUDE_LIST);
+        String excludeList = config.getString(CAPTURE_INSTANCE_EXCLUDE_LIST);
+
+        if (includeList != null && excludeList != null) {
+            problems.accept(CAPTURE_INSTANCE_EXCLUDE_LIST, excludeList, "\"%s\" is already specified".formatted(CAPTURE_INSTANCE_INCLUDE_LIST.name()));
+            return 1;
+        }
+        return 0;
     }
 
     public List<String> getDatabaseNames() {
@@ -734,6 +787,15 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         }
 
         return count;
+    }
+
+    /**
+     * A filter that decides whether a CDC capture instance (by name) should be used by the connector,
+     * derived from {@link #CAPTURE_INSTANCE_INCLUDE_LIST} / {@link #CAPTURE_INSTANCE_EXCLUDE_LIST}.
+     * Defaults to accepting every capture instance when neither option is set.
+     */
+    public Predicate<String> getCaptureInstanceFilter() {
+        return captureInstanceFilter;
     }
 
     public int getStreamingFetchSize() {
