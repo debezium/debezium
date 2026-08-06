@@ -506,6 +506,86 @@ public class CappedLogFileSessionSelectorTest {
         assertThat(second.effectiveUpperBounds()).isEqualTo(Scn.valueOf(250));
     }
 
+    @Test
+    @FixFor("dbz#1589")
+    void testConsistentThroughScnCapsBoundsAndFiltersLogs() {
+        // The collector truncated consistency at SCN 300 (SEQ3 missing); the redo log (SEQ4)
+        // starts beyond the boundary and must be excluded, and bounds capped to 300.
+        List<LogFile> logs = List.of(
+                createArchiveLog("arc1.log", 100, 200, 1, 1, ONE_GB / 2),
+                createArchiveLog("arc2.log", 200, 300, 2, 1, ONE_GB / 2),
+                createRedoLog("redo1.log", 400, 4, 1));
+
+        SessionLogSelection result = selector.selectLogsForSession(
+                new LogFilesResult(logs, singleThreadOpen(), Scn.valueOf(300)), UPPER_BOUNDS);
+
+        assertThat(result.logFiles()).extracting(LogFile::getFileName)
+                .containsExactly("arc1.log", "arc2.log");
+        assertThat(result.effectiveUpperBounds()).isEqualTo(Scn.valueOf(300));
+    }
+
+    @Test
+    @FixFor("dbz#1589")
+    void testOpenThreadWithAllLogsBeyondConsistentBoundaryDoesNotThrow() {
+        // Thread 1 truncated at SCN 150 (SEQ2 missing); thread 2's logs all start at or beyond
+        // the boundary and are filtered out entirely. The open-thread sanity check must not
+        // throw in that case; thread 2 simply contributes nothing to this session.
+        List<LogFile> logs = List.of(
+                createArchiveLog("t1_arc1.log", 100, 150, 1, 1, ONE_GB),
+                createRedoLog("t1_redo.log", 200, 3, 1),
+                createArchiveLog("t2_arc1.log", 160, 250, 1, 2, ONE_GB),
+                createRedoLog("t2_redo.log", 250, 2, 2));
+
+        SessionLogSelection result = selector.selectLogsForSession(
+                new LogFilesResult(logs, twoThreadsOpen(), Scn.valueOf(150)), UPPER_BOUNDS);
+
+        assertThat(result.logFiles()).extracting(LogFile::getFileName)
+                .containsExactly("t1_arc1.log");
+        assertThat(result.effectiveUpperBounds()).isEqualTo(Scn.valueOf(150));
+    }
+
+    @Test
+    @FixFor("dbz#1589")
+    void testConsistentThroughScnTakesPrecedenceOverMinedBoundaryFloor() {
+        // The floor from previously mined boundaries must never force mining past a log sequence
+        // gap; the collector's consistent-through boundary always wins. Once the gap heals, the
+        // floor resumes from the highest previously mined boundary, not the gap-capped one.
+        CappedLogFileSessionSelector pinnedSelector = new CappedLogFileSessionSelector(1, ONE_GB);
+
+        // Call 1: no gap; online mode mines through 500
+        List<LogFile> initialLogs = List.of(
+                createArchiveLog("arc1.log", 100, 200, 1, 1, ONE_GB / 2),
+                createRedoLog("redo1.log", 200, 2, 1));
+        SessionLogSelection first = pinnedSelector.selectLogsForSession(
+                new LogFilesResult(initialLogs, singleThreadOpen()), Scn.valueOf(500));
+        assertThat(first.effectiveUpperBounds()).isEqualTo(Scn.valueOf(500));
+
+        // Call 2: SEQ3 went missing and consistency is truncated at 300, below the mined
+        // boundary; the gap cap wins and the window cannot extend across the gap
+        List<LogFile> gappedLogs = List.of(
+                createArchiveLog("arc1.log", 100, 200, 1, 1, ONE_GB),
+                createArchiveLog("arc2.log", 200, 300, 2, 1, ONE_GB),
+                createRedoLog("redo1.log", 400, 4, 1));
+        SessionLogSelection second = pinnedSelector.selectLogsForSession(
+                new LogFilesResult(gappedLogs, singleThreadOpen(), Scn.valueOf(300)), UPPER_BOUNDS);
+        assertThat(second.logFiles()).extracting(LogFile::getFileName)
+                .containsExactly("arc1.log", "arc2.log");
+        assertThat(second.effectiveUpperBounds()).isEqualTo(Scn.valueOf(300));
+
+        // Call 3: the gap healed; the window extends past the highest mined boundary (500)
+        List<LogFile> healedLogs = List.of(
+                createArchiveLog("arc1.log", 100, 200, 1, 1, ONE_GB),
+                createArchiveLog("arc2.log", 200, 300, 2, 1, ONE_GB),
+                createArchiveLog("arc3.log", 300, 450, 3, 1, ONE_GB),
+                createArchiveLog("arc4.log", 450, 600, 4, 1, ONE_GB),
+                createRedoLog("redo1.log", 600, 5, 1));
+        SessionLogSelection third = pinnedSelector.selectLogsForSession(
+                new LogFilesResult(healedLogs, singleThreadOpen()), UPPER_BOUNDS);
+        assertThat(third.logFiles()).extracting(LogFile::getFileName)
+                .containsExactly("arc1.log", "arc2.log", "arc3.log", "arc4.log");
+        assertThat(third.effectiveUpperBounds()).isEqualTo(Scn.valueOf(600));
+    }
+
     private static LogFile createArchiveLog(String name, long startScn, long endScn, int seq, int thread, long bytes) {
         return LogFile.forArchive(name, Scn.valueOf(startScn), Scn.valueOf(endScn), BigInteger.valueOf(seq), thread, bytes, false, false);
     }

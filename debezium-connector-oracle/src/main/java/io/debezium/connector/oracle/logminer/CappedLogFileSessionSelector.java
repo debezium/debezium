@@ -47,9 +47,18 @@ public class CappedLogFileSessionSelector implements LogFileSessionSelector {
     public SessionLogSelection selectLogsForSession(LogFilesResult logFilesResult, Scn upperBoundary) {
         Scn effectiveUpperBoundary = upperBoundary;
 
+        // When the collector truncated the consistency range at a log sequence gap, do not read beyond it
+        final Scn consistentThroughScn = logFilesResult.consistentThroughScn();
+        if (!consistentThroughScn.isNull() && consistentThroughScn.compareTo(effectiveUpperBoundary) < 0) {
+            effectiveUpperBoundary = consistentThroughScn;
+        }
+
+        // Restrict the selection to logs within the consistent mining window
+        final List<LogFile> availableLogs = getConsistentLogFiles(logFilesResult);
+
         // Groups all collected logs by redo thread, sorted in ascending order by sequence.
         // The ordering is important for this algorithm when inspecting what is the first/last logs per thread.
-        final Map<Integer, List<LogFile>> logsByThread = logFilesResult.logFiles().stream()
+        final Map<Integer, List<LogFile>> logsByThread = availableLogs.stream()
                 .sorted(Comparator.comparing(LogFile::getSequence))
                 .collect(Collectors.groupingBy(LogFile::getThread));
 
@@ -77,9 +86,15 @@ public class CappedLogFileSessionSelector implements LogFileSessionSelector {
         for (RedoThread redoThread : logFilesResult.redoThreadState().getThreads()) {
             if (redoThread.isOpen()) {
                 final List<LogFile> threadLogs = cappedLogsByThread.get(redoThread.getThreadId());
-                if (threadLogs == null) {
-                    // Should never happen, just sanity check
-                    throw new DebeziumException("Redo thread %d is open, expected logs".formatted(redoThread.getThreadId()));
+                if (threadLogs == null || threadLogs.isEmpty()) {
+                    if (consistentThroughScn.isNull()) {
+                        // Should never happen, just sanity check
+                        throw new DebeziumException("Redo thread %d is open, expected logs".formatted(redoThread.getThreadId()));
+                    }
+                    // All the thread's logs start at or beyond the consistent boundary; the thread
+                    // contributes nothing to this session and the boundary already precedes its logs.
+                    allThreadsMineOnline = false;
+                    continue;
                 }
 
                 // Checks if the last log in the thread's capped list is an online redo log.
@@ -100,16 +115,16 @@ public class CappedLogFileSessionSelector implements LogFileSessionSelector {
         }
 
         if (allThreadsMineOnline) {
-            LOGGER.debug("All threads are reading online redo, using all logs and reading up to {}.", upperBoundary);
+            LOGGER.debug("All threads are reading online redo, using all logs and reading up to {}.", effectiveUpperBoundary);
             // When all threads mine online redo logs, no upper boundary cap is necessary
             // Resort the log files in thread+sequence order for application.
-            recordEffectiveUpperBoundary(upperBoundary);
+            recordEffectiveUpperBoundary(effectiveUpperBoundary);
             return new SessionLogSelection(
-                    logFilesResult.logFiles().stream()
+                    availableLogs.stream()
                             .sorted(Comparator.comparingInt(LogFile::getThread)
                                     .thenComparing(LogFile::getSequence))
                             .toList(),
-                    upperBoundary);
+                    effectiveUpperBoundary);
         }
 
         LOGGER.debug("Using capped logs, reading up to {}.", effectiveUpperBoundary);

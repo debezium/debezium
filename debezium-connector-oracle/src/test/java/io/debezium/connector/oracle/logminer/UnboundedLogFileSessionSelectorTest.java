@@ -69,6 +69,39 @@ public class UnboundedLogFileSessionSelectorTest {
         assertThat(result.effectiveUpperBounds()).isEqualTo(Scn.valueOf(400));
     }
 
+    @Test
+    @FixFor("dbz#1589")
+    void testConsistentThroughScnCapsBoundsAndFiltersLogs() {
+        // The collector truncated consistency at SCN 300 (SEQ3 missing); the redo log (SEQ4)
+        // starts beyond the boundary and must be excluded, and bounds capped to 300.
+        List<LogFile> logs = List.of(
+                createArchiveLog("arc1.log", 100, 200, 1, 1),
+                createArchiveLog("arc2.log", 200, 300, 2, 1),
+                createRedoLog("redo1.log", 400, 4, 1));
+
+        SessionLogSelection result = selector.selectLogsForSession(
+                new LogFilesResult(logs, emptyState(), Scn.valueOf(300)), Scn.valueOf(500));
+
+        assertThat(result.logFiles()).extracting(LogFile::getFileName)
+                .containsExactly("arc1.log", "arc2.log");
+        assertThat(result.effectiveUpperBounds()).isEqualTo(Scn.valueOf(300));
+    }
+
+    @Test
+    @FixFor("dbz#1589")
+    void testConsistentThroughScnDoesNotRaiseLowerUpperBounds() {
+        // The consistent boundary (450) is above the pre-computed upper bounds (400);
+        // the smaller pre-computed bounds must be preserved.
+        List<LogFile> logs = List.of(
+                createArchiveLog("arc1.log", 100, 450, 1, 1));
+
+        SessionLogSelection result = selector.selectLogsForSession(
+                new LogFilesResult(logs, emptyState(), Scn.valueOf(450)), Scn.valueOf(400));
+
+        assertThat(result.logFiles()).isEqualTo(logs);
+        assertThat(result.effectiveUpperBounds()).isEqualTo(Scn.valueOf(400));
+    }
+
     private static LogFile createArchiveLog(String name, long startScn, long endScn, int seq, int thread) {
         return LogFile.forArchive(name, Scn.valueOf(startScn), Scn.valueOf(endScn), BigInteger.valueOf(seq), thread,
                 1024L * 1024L * 1024L, false, false);
