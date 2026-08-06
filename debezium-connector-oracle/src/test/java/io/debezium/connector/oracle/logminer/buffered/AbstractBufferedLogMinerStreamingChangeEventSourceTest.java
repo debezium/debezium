@@ -56,6 +56,7 @@ import io.debezium.connector.oracle.logminer.OffsetActivityMonitor;
 import io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerStreamingChangeEventSource.ProcessResult;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
+import io.debezium.connector.oracle.logminer.platforms.DefaultLogMinerPlatformStrategy;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
@@ -771,6 +772,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         final OracleConnectionFactory factory = Mockito.mock(StandardOracleConnectionFactory.class);
         Mockito.when(factory.mainConnection()).thenReturn(connection);
         Mockito.when(factory.streamingConnectionFactory()).thenReturn(factory);
+        Mockito.when(connection.getPlatformStrategy()).thenReturn(new DefaultLogMinerPlatformStrategy());
 
         return factory;
     }

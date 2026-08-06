@@ -23,6 +23,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.Scn;
+import io.debezium.connector.oracle.logminer.platforms.DefaultLogMinerPlatformStrategy;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.doc.FixFor;
 import io.debezium.util.HexConverter;
@@ -57,10 +58,12 @@ public abstract class AbstractLogMinerAdapterTest<T extends AbstractLogMinerStre
 
         final OracleConnection oracleConnection = Mockito.mock(OracleConnection.class);
         Mockito.when(oracleConnection.connection()).thenReturn(connection);
+        Mockito.when(oracleConnection.connection(Mockito.anyBoolean())).thenReturn(connection);
         Mockito.when(connection.createStatement()).thenReturn(statement);
         Mockito.when(statement.executeQuery(Mockito.anyString())).thenReturn(rs);
         Mockito.when(oracleConnection.query(Mockito.any(), Mockito.any())).thenCallRealMethod();
         Mockito.when(oracleConnection.query(Mockito.any(), Mockito.any(), Mockito.any())).thenCallRealMethod();
+        Mockito.when(oracleConnection.getPlatformStrategy()).thenReturn(new DefaultLogMinerPlatformStrategy());
 
         final Map<String, Scn> pendingTransactions = new LinkedHashMap<>();
 
