@@ -280,7 +280,7 @@ public class ClientIdFilterIT extends AbstractAsyncEngineConnectorTest {
             Awaitility.await()
                     .atMost(Duration.ofSeconds(TestHelper.defaultMessageConsumerPollTimeout()))
                     .until(() -> logInterceptor.containsErrorMessage("Connector configuration is not valid. The " +
-                            "'log.mining.clientid.exclude.list' value is invalid: \"log.mining.clientid.include.list\": is already specified"));
+                            "'log.mining.clientid.exclude.list' value is invalid: \"log.mining.clientid.include.list\" is already specified"));
         }
         finally {
             TestHelper.dropTable(connection, "dbz8904");
