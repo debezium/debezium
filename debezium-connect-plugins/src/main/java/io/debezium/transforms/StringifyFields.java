@@ -12,8 +12,8 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.connect.components.Versioned;
 import org.apache.kafka.connect.connector.ConnectRecord;
-import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -23,6 +23,10 @@ import org.apache.kafka.connect.storage.Converter;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import io.debezium.Module;
+import io.debezium.config.Field;
+import io.debezium.metadata.ConfigDescriptor;
 
 /**
  * A Kafka Connect SMT that serializes selected record-value fields to JSON strings.
@@ -48,15 +52,22 @@ import org.slf4j.LoggerFactory;
  *
  * @param <R> the type of {@link ConnectRecord} that the transformation applies to
  */
-public class StringifyFields<R extends ConnectRecord<R>> implements Transformation<R> {
+public class StringifyFields<R extends ConnectRecord<R>> implements Transformation<R>, Versioned, ConfigDescriptor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(StringifyFields.class);
 
     public static final String FIELDS_CONFIG = "fields";
 
+    private static final Field FIELDS_FIELD = Field.create(FIELDS_CONFIG)
+            .withDisplayName("Fields to serialize")
+            .withType(ConfigDef.Type.LIST)
+            .withImportance(ConfigDef.Importance.HIGH)
+            .required()
+            .withDescription("Comma-separated list of value field names to serialize to a JSON string.");
+
     private static final ConfigDef CONFIG_DEF = new ConfigDef().define(
             FIELDS_CONFIG, ConfigDef.Type.LIST, ConfigDef.NO_DEFAULT_VALUE, ConfigDef.Importance.HIGH,
-            "Comma-separated list of value field names to serialize to a JSON string.");
+            FIELDS_FIELD.description());
 
     private Set<String> fields;
     private final JsonConverter jsonConverter = new JsonConverter();
@@ -96,7 +107,7 @@ public class StringifyFields<R extends ConnectRecord<R>> implements Transformati
 
         // Build a new schema in which the targeted fields become STRING.
         SchemaBuilder builder = SchemaBuilder.struct().name(schema.name()).version(schema.version());
-        for (Field field : schema.fields()) {
+        for (org.apache.kafka.connect.data.Field field : schema.fields()) {
             if (fields.contains(field.name())) {
                 builder.field(field.name(), field.schema().isOptional() ? Schema.OPTIONAL_STRING_SCHEMA : Schema.STRING_SCHEMA);
             }
@@ -107,7 +118,7 @@ public class StringifyFields<R extends ConnectRecord<R>> implements Transformati
         Schema newSchema = builder.build();
 
         Struct newValue = new Struct(newSchema);
-        for (Field field : schema.fields()) {
+        for (org.apache.kafka.connect.data.Field field : schema.fields()) {
             Object fieldValue = value.get(field);
             if (fields.contains(field.name()) && fieldValue != null && !(fieldValue instanceof String)) {
                 newValue.put(field.name(), toJsonString(field.name(), field.schema(), fieldValue));
@@ -148,6 +159,16 @@ public class StringifyFields<R extends ConnectRecord<R>> implements Transformati
     @Override
     public ConfigDef config() {
         return CONFIG_DEF;
+    }
+
+    @Override
+    public String version() {
+        return Module.version();
+    }
+
+    @Override
+    public Field.Set getConfigFields() {
+        return Field.setOf(FIELDS_FIELD);
     }
 
     @Override
