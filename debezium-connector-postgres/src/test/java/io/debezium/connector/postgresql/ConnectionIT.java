@@ -8,7 +8,10 @@ package io.debezium.connector.postgresql;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.postgresql.util.PSQLException;
@@ -17,6 +20,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConfiguration;
+import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
@@ -83,6 +87,54 @@ public class ConnectionIT implements Testing {
         finally {
             try (PostgresConnection conn = TestHelper.create()) {
                 conn.execute("DROP SCHEMA IF EXISTS dbz5571 CASCADE");
+            }
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2350")
+    void shouldReadEveryRowWhenColumnTypeIsCachedPerColumn() throws SQLException {
+        try (PostgresConnection conn = TestHelper.createWithTypeRegistry()) {
+            conn.execute(
+                    "DROP SCHEMA IF EXISTS dbz2350 CASCADE",
+                    "CREATE SCHEMA dbz2350",
+                    "CREATE TABLE dbz2350.t (id integer, amount numeric(12,2), label text, flag boolean, tags integer[])",
+                    "INSERT INTO dbz2350.t VALUES (1, 10.50, 'a', true, '{1,2}')",
+                    "INSERT INTO dbz2350.t VALUES (2, 20.75, 'b', false, '{3}')",
+                    "INSERT INTO dbz2350.t VALUES (3, 30.00, 'c', true, '{}')");
+
+            Tables tables = new Tables();
+            conn.readSchema(tables, null, "dbz2350", null, null, false);
+            Table table = tables.forTable(new TableId(null, "dbz2350", "t"));
+
+            List<Object> ids = new ArrayList<>();
+            List<Object> labels = new ArrayList<>();
+            conn.query("SELECT id, amount, label, flag, tags FROM dbz2350.t ORDER BY id", rs -> {
+                ResultSetMetaData metaData = rs.getMetaData();
+                while (rs.next()) {
+                    // Exercise getColumnValue for every column of every row. The per-column type cache is
+                    // populated on the first row and reused for the remaining rows, and must still decode each
+                    // value; a stale/incorrect cache would surface as a null or wrong value here.
+                    for (int i = 1; i <= metaData.getColumnCount(); i++) {
+                        Column column = table.columnWithName(metaData.getColumnName(i));
+                        Object value = conn.getColumnValue(rs, i, column, table);
+                        assertThat(value).as("column %s row-value", column.name()).isNotNull();
+                        if ("id".equals(column.name())) {
+                            ids.add(value);
+                        }
+                        else if ("label".equals(column.name())) {
+                            labels.add(value);
+                        }
+                    }
+                }
+            });
+
+            assertThat(ids).containsExactly(1, 2, 3);
+            assertThat(labels).containsExactly("a", "b", "c");
+        }
+        finally {
+            try (PostgresConnection conn = TestHelper.create()) {
+                conn.execute("DROP SCHEMA IF EXISTS dbz2350 CASCADE");
             }
         }
     }
