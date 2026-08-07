@@ -29,6 +29,7 @@ import io.debezium.connector.jdbc.dialect.GeneralDatabaseDialect;
 import io.debezium.connector.jdbc.dialect.SqlStatementBuilder;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
 import io.debezium.connector.jdbc.type.JdbcType;
+import io.debezium.data.Enum;
 import io.debezium.metadata.CollectionId;
 import io.debezium.sink.column.ColumnDescriptor;
 
@@ -184,12 +185,15 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
      * {@code JdbcType#bind()} the row-wise path applies, so such records are handled row-wise instead.
      * {@code BYTES} fields are also excluded: the PostgreSQL driver cannot encode {@code bytea} array
      * elements ({@code createArrayOf} rejects {@code byte[]} nested inside {@code Object[]}), so such
-     * records take the row-wise path as well.
+     * records take the row-wise path as well. An enum field is handled row-wise for a related reason:
+     * the array cast above is derived from the field schema, which for an enum only resolves to the
+     * character varying fallback, whereas the cast has to name the destination column's enum type.
      */
     private static boolean hasUnnestUnsupportedField(JdbcSinkRecord record) {
         return record.jdbcFields().values().stream()
                 .anyMatch(field -> field.getSchema().type() == Schema.Type.STRUCT
-                        || field.getSchema().type() == Schema.Type.BYTES);
+                        || field.getSchema().type() == Schema.Type.BYTES
+                        || Enum.LOGICAL_NAME.equals(field.getSchema().name()));
     }
 
     @Override
