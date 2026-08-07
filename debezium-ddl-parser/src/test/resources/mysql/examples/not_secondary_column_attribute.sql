@@ -1,0 +1,4 @@
+-- debezium/dbz#71: NOT SECONDARY column attribute (MySQL HeatWave)
+CREATE TABLE t1 (id INT NOT SECONDARY);
+CREATE TABLE t2 (`method` set('ALL','CREDIT_CARD','PIX') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT SECONDARY, PRIMARY KEY (`method`));
+ALTER TABLE t1 ADD COLUMN payload JSON NOT SECONDARY;
