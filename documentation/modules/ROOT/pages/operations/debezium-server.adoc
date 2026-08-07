@@ -2422,7 +2422,7 @@ The sink uses one of the following routes to deliver event records, as specified
 This method accepts only one HTTP request per record.
 Select this option for environments that lack a persistent connection.
 
-A third option is to reuse the built-in `kafka` sink against the Zerobus Kafka-compatible endpoint.
+`kafka`:: Reuses the built-in Kafka sink against the Zerobus Kafka-compatible endpoint.
 For more information, see <<zerobus-kafka-route, Kafka route>>.
 
 Because Zerobus accepts only JSON objects that match the target table schema, configure {prodname} to emit flat JSON by applying the {link-prefix}:{link-event-flattening}#new-record-state-extraction[`ExtractNewRecordState` SMT] with `schemas.enable=false`.
@@ -2725,12 +2725,13 @@ Because of the latter, the `connect` mode, which emits milliseconds, silently st
 
 ====== Tuning throughput on the Kafka route
 
-Throughput on this route is bound by network round trips rather than by local processing, because Zerobus acknowledges each request from the region in which the workspace runs.
-With the default producer settings, the number of records that the service ingests per second is approximately the number of in-flight requests, multiplied by the number of records per request, and divided by the request latency.
+Throughput on the Kafka route is bound by network round trips rather than by local processing, because Zerobus acknowledges each request from the region in which the workspace runs.
+When the default producer settings are active, the number of records that the service ingests per second is approximately equal to the number of in-flight requests, multiplied by the number of records per request, and divided by the request latency.
 As a result, a pipeline that produces one record at a time spends most of its time waiting.
 
-The following producer properties control that behavior.
-Because the optimal values depend on the latency between the service and the workspace, treat the values in the following table as a starting point, and then measure.
+You can modify the default behavior by configuring the producer properties in the following table.
+Optimal values for these settings depend on the latency between the service and the workspace.
+Use the values in the table as starting points and adjust them based on latency data.
 To find the request latency of a running pipeline, read the `request_latency_avg` attribute of the standard `kafka.producer:type=producer-metrics` MBean, and to confirm that batching takes effect, read `records_per_request_avg`.
 
 [cols="40%a,15%a,45%a",options="header"]
@@ -2741,26 +2742,39 @@ To find the request latency of a running pipeline, read the `request_latency_avg
 
 |`debezium.sink.kafka.producer.linger.ms`
 |`100`
-|Specifies how long the producer waits to accumulate records before it sends a request.
-The default value, `0`, sends each record as soon as possible, so every request pays a full round trip to carry very few records.
+|Specifies how long the producer waits to send requests.
+Requests accumulate until the configured interval passes.
 
-Because this setting delays a record by up to the configured duration, it trades latency for throughput.
-On a change data capture pipeline, in which a round trip to the workspace already dominates, the added delay is typically negligible.
+Set the value to `0` to remove the delay interval so that the producer sends each request as soon as possible.
+When the property is set to `0`, the producer sends requests even if they contain a small number of records.
+Because each request incurs the overhead of a full network round trip, when the producer has a high number of records to process, a `0` value can result in lower throughput.
+
+Set a value greater than `0` if you want the producer to wait between sending requests.
+Setting a value greater than `0` can improve throughput, because the producer batches more records per request.
+
+In a change data capture pipeline, the end-to-end latency is typically much greater than the delay introduced by this setting, so the additional wait is usually negligible.
 
 |`debezium.sink.kafka.producer.batch.size`
 |`1048576`
 |Specifies the maximum size, in bytes, of a single batch.
-Set this option together with `linger.ms`: at the default value of `16384`, a batch of even moderately sized change events fills, and is therefore sent, before the configured wait elapses, which limits the effect of the preceding setting.
-Zerobus rejects a record that is larger than 10 MB, so a batch size of 1 MB leaves ample headroom.
+If `linger.ms` is set, set this option if you want the producer to send batches after their size reaches the configured limit.
+This setting overrides the `linger.ms` setting to allow the producer to send batches before the end of the configured wait time.
+Zerobus rejects records larger than 10 MB, so a batch size of 1 MB leaves ample headroom.
 
 |`debezium.sink.kafka.producer.max.in.flight.requests.per.connection`
 |`10`
-|Specifies how many requests can be awaiting a response at the same time, which sets how much of the round-trip latency the producer can overlap.
+|Specifies the maximum number of unacknowledged requests that the producer can send before it receives a response.
+Increasing the value can improve throughput by allowing the producer to send additional requests before it receives acknowledgements from earlier requests.
+However, increasing the value can also result in records being delivered out of order if requests are retried.
 
-A value greater than `5` is permitted here only because this route requires `enable.idempotence=false`.
-Increasing the value relaxes the ordering of records that are retried.
-Zerobus is partitionless and provides an at-least-once guarantee, so a pipeline on this route cannot depend on strict ordering in any case.
+Zerobus is partitionless and provides an at-least-once delivery guarantee, so strict record ordering is not guaranteed regardless of how you configure this property.
 |===
+
+[NOTE]
+====
+In standard Kafka environments where idempotence is enabled, `max.in.flight.requests.per.connection` must not exceed `5`, because the idempotent producer only guarantees ordering and exactly-once semantics for up to five in-flight requests.
+The Kafka route for the Databricks Zerobus Ingest sink requires `enable.idempotence=false`, so you can set this property to a value greater than `5`.
+====
 
 The following example shows a complete configuration for the Kafka route:
 
@@ -2846,6 +2860,8 @@ BINARY (encoded as Base64)
 [[zerobus-monitoring]]
 ===== Monitoring
 
+You can use JMX metrics and connector log output to monitor the operational status and performance of the Debezium DataBricks Zero sink.
+
 The {prodname} DataBricks Zero sink supports the following delivery routes: zerobus (gRPC), zerobusrest (REST), and the <<zerobus-kafka-route, Kafka route>>.
 All three routes expose sink metrics over JMX under the object name debezium.zerobus:type=connector-metrics,context=sink,server=<route>,task=0, where <route> is `grpc` for the `zerobus` route, `rest` for the `zerobusrest` route, or `kafka` for the Kafka route.
 The metrics use the same JMX exposure model as the JDBC sink connector and {prodname} source connectors, so existing JMX monitoring tools such as JConsole, jmxterm, and Prometheus JMX Exporter can read them without any Zerobus-specific configuration.
@@ -2902,7 +2918,12 @@ The value remains `0` on the Kafka route, which forwards every record that it re
 |Number of ingestion or flush failures observed.
 
 |`TotalFlushes`
-|The metric counts stream flush operations when using the gRPC route, successful record POST requests when using the REST route, or broker-acknowledged records when using the Kafka route.
+|The metric counts one of the following operations, depending on the route configuration:
+
+* Stream flush operations (gRPC route).
+* Successful record POST requests (REST route).
+* Broker-acknowledged records (Kafka route).
+
 For the REST and Kafka routes, a successful POST or acknowledgement indicates that the record has been durably accepted and is no longer at risk of loss due to a service failure.
 
 |`MilliSecondsBehindSource`
