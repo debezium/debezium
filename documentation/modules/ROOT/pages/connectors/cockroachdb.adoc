@@ -753,7 +753,8 @@ The following data type mappings are applied for CockroachDB data:
 
 |`BYTES`, `BYTEA`, `BLOB`
 |`BYTES`
-|
+|The connector decodes the hexadecimal literal that the changefeed emits for binary values.
+The schema type and representation depend on the setting for the xref:cockroachdb-property-binary-handling-mode[`binary.handling.mode`] property; `BYTES` is the default.
 
 |`DATE`
 |`INT32` (`io.debezium.time.Date` logical type)
@@ -1330,6 +1331,19 @@ Set one of the following options: `serializable` (CockroachDB default), `read_co
 |Specifies how the connector holds locks on tables when it performs a schema snapshot.
 Set one of the following options: `shared`, `none`, `custom`.
 Because changefeed-based snapshots in CockroachDB do not require table locks, the default and recommended setting is `none`.
+
+|[[cockroachdb-property-binary-handling-mode]]<<cockroachdb-property-binary-handling-mode, `+binary.handling.mode+`>>
+|`bytes`
+|Specifies how binary (`BYTES`) columns are represented in change events.
+Set one of the following options:
+
+`bytes`:: Represents binary data as a byte array.
+
+`base64`:: Represents binary data as a Base64-encoded string.
+
+`base64-url-safe`:: Represents binary data as a URL-safe Base64-encoded string.
+
+`hex`:: Represents binary data as a hexadecimal-encoded (Base16) string.
 
 |[[cockroachdb-property-schema-include-list]]<<cockroachdb-property-schema-include-list, `+schema.include.list+`>>
 |No default

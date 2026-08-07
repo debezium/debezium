@@ -10,7 +10,7 @@ import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.apicurio.registry.operator.api.v1.model.ApicurioRegistryStatus;
+import io.apicurio.registry.operator.api.v1.ApicurioRegistry3Status;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.api.model.apps.DeploymentCondition;
 import io.fabric8.kubernetes.api.model.apps.DeploymentStatus;
@@ -84,7 +84,7 @@ public class WaitConditions {
      * @param resource dc resource
      * @return true when resource is deleted
      */
-    public static <T extends ApicurioRegistryStatus> boolean apicurioResourceDeleted(CustomResource<?, T> resource) {
+    public static <T extends ApicurioRegistry3Status> boolean apicurioResourceDeleted(CustomResource<?, T> resource) {
         T status = resource.getStatus();
         return status == null;
     }

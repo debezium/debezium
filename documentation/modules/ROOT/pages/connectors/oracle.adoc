@@ -3231,6 +3231,7 @@ This reduces the load on the primary by offloading LogMiner operations to the st
 * Add the following properties to the connector configuration:
 +
 ```
+capture.mode=physical_standby
 log.mining.strategy=dictionary_from_file
 log.mining.path.dictionary=/path/to/dictionary.ora
 log.mining.read.only=true
@@ -5951,14 +5952,15 @@ For more information about the required format of this file, see the https://git
       "schema": 7,
       "scn-all": 1,
       "timestamp-all": 1
-    }
+    },
+    "flags": 69728 <7>
   }],
   "target": [{
     "alias": "DEBEZIUM",
     "source": "SOURCE",
     "writer": {
-      "type": "network", <7>
-      "uri": "<host>:<port>" <8>
+      "type": "network", <8>
+      "uri": "<host>:<port>" <9>
     }
   }]
 }
@@ -5969,9 +5971,46 @@ For more information about the required format of this file, see the https://git
 <4> This should match the `database.password` connector property.
 <5> This should point to the database host, port, and Oracle SID.
 <6> This specifies the payload format ingested by {prodname} Oracle connector. Use these values as specified, as these are the only format options that we require beyond the defaults.
-<7> This must specify `network`, as {prodname} Oracle connector communicates with OpenLogReplicator via a network connection.
-<8> This specifies the bind host and port that OpenLogReplicator listens for connections on.  This should be accessible by {prodname} Oracle connector.
+<7> The sum of the OpenLogReplicator flags that control what the stream includes. See <<oracle-openlogreplicator-flags>>.
+<8> This must specify `network`, as {prodname} Oracle connector communicates with OpenLogReplicator via a network connection.
+<9> This specifies the bind host and port that OpenLogReplicator listens for connections on.  This should be accessible by {prodname} Oracle connector.
 ====
+
+[id="oracle-openlogreplicator-flags"]
+==== OpenLogReplicator flags
+
+The `flags` property is the sum of a set of bit flags that determine what OpenLogReplicator includes in the stream.
+It applies to the source, alongside `format`, rather than within it.
+
+A column that OpenLogReplicator omits because of a missing flag is not reported as an error.
+The connector receives no value for it, and the field is `null` in the change event, so a missing flag looks like missing data rather than a configuration problem.
+
+.OpenLogReplicator flags used by {prodname}
+[cols="35%a,15%a,50%a"]
+|===
+|Flag
+|Value
+|Description
+
+|`SHOW_DDL`
+|`32`
+|Includes DDL statements in the stream. Required for the connector to track schema changes.
+
+|`SHOW_HIDDEN_COLUMNS`
+|`64`
+|Includes columns that Oracle marks as hidden. Required to capture columns that are declared `INVISIBLE`; without it, such a column is silently absent from every change event.
+
+|`SHOW_CHECKPOINT`
+|`4096`
+|Includes checkpoint markers in the stream. Required for the connector to advance its offsets while no captured table is changing.
+
+|`EXPERIMENTAL_XMLTYPE`
+|`65536`
+|Includes the values of `XMLTYPE` columns. Required to capture them; without it, such a column is silently absent from every change event. This flag is experimental in OpenLogReplicator.
+|===
+
+The value `69728` in the preceding example is the sum of all four.
+Omit `65536` if the tables you capture contain no `XMLTYPE` columns, and `64` if they contain no `INVISIBLE` columns.
 
 [[oracle-openlogreplicator-connector-properties]]
 === OpenLogReplicator connector properties

@@ -206,7 +206,12 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Oracl
 
     @Override
     protected int defaultIncrementalSnapshotChunkSize() {
-        return 250;
+        // A chunk cannot be read until the watermark that closes the previous one has been
+        // streamed back, so the chunk size is what decides how long a snapshot stays in progress.
+        // OpenLogReplicator returns those watermarks within a few milliseconds and finishes all of
+        // ROW_COUNT in well under a second, which is too quick for a test that has to pause a
+        // snapshot while it is still running.
+        return TestHelper.isOpenLogReplicator() ? 1 : 250;
     }
 
     @Override

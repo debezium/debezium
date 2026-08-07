@@ -4622,4 +4622,88 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
             TestHelper.execute("SELECT pg_drop_replication_slot('" + SLOT + "');");
         }
     }
+
+    @Test
+    @FixFor("debezium/dbz#76")
+    void shouldNotLoseDataOnRestartWithInterleavedTransactions() throws Exception {
+        // Reproduces the silent data loss scenario reported on Zulip (debezium/dbz#76).
+        //
+        // Root cause: with provide.transaction.metadata=true and interleaved transactions,
+        // after restart WalPositionLocator can falsely match the stored COMMIT LSN to a
+        // DML event from the next transaction at the same WAL position (PG 17+ assigns
+        // txn->end_lsn = byte after COMMIT, which can equal the next DML's change->lsn).
+        //
+        // The fix: WalPositionLocator detects this false LSN match (stored event was COMMIT
+        // but received event is not COMMIT at the same position) and resumes from the first
+        // LSN received, ensuring no events are silently filtered.
+
+        TestHelper.execute(
+                "DROP TABLE IF EXISTS t_long;",
+                "DROP TABLE IF EXISTS t_short;",
+                "CREATE TABLE t_long (id INT PRIMARY KEY);",
+                "CREATE TABLE t_short (id INT PRIMARY KEY);");
+
+        try {
+            final Configuration config = TestHelper.defaultConfig()
+                    .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
+                    .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.t_long,public.t_short")
+                    .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                    .with(PostgresConnectorConfig.PROVIDE_TRANSACTION_METADATA, Boolean.TRUE)
+                    .build();
+
+            start(PostgresConnector.class, config);
+            assertConnectorIsRunning();
+            waitForStreamingRunning();
+
+            // Session A: start a long-running transaction AFTER connector is streaming,
+            // so A's DML WAL positions are after the slot's starting LSN but BEFORE B's.
+            PostgresConnection connA = TestHelper.create();
+            connA.setAutoCommit(false);
+            connA.executeWithoutCommitting("INSERT INTO t_long SELECT generate_series(1,5)");
+
+            // Session B: auto-commit insert — Debezium processes this transaction fully,
+            // including the COMMIT record (transaction metadata), which carries lsn_commit.
+            // B's COMMIT LSN is ABOVE A's DML WAL positions because A inserted first.
+            TestHelper.execute("INSERT INTO t_short VALUES (90)");
+
+            // Consume B's transaction: BEGIN + DML + COMMIT = 3 records
+            final SourceRecords batchB = consumeRecordsByTopic(3);
+            assertThat(batchB.recordsForTopic(topicName("public.t_short"))).hasSize(1);
+
+            // Session A: insert more rows while Debezium is running (still no commit).
+            // These DMLs go into the WAL AFTER B's COMMIT position.
+            connA.executeWithoutCommitting("INSERT INTO t_long SELECT generate_series(6,10)");
+
+            // Stop connector — slot is preserved
+            stopConnector();
+
+            // Session A: commit the long-running transaction (while Debezium is stopped)
+            connA.connection().commit();
+            connA.close();
+
+            // Restart the connector
+            start(PostgresConnector.class, config);
+            assertConnectorIsRunning();
+            waitForStreamingRunning();
+
+            // All 10 rows from A's transaction must arrive after restart.
+            // With provide.transaction.metadata=true: BEGIN + 10 DMLs + COMMIT = 12 records
+            final SourceRecords afterRestart = consumeRecordsByTopic(12);
+            final List<SourceRecord> longRecords = afterRestart.recordsForTopic(topicName("public.t_long"));
+            assertThat(longRecords).as("All 10 rows from session A's transaction must be captured")
+                    .hasSize(10);
+
+            final Set<Integer> capturedIds = new HashSet<>();
+            for (SourceRecord record : longRecords) {
+                final Struct after = (Struct) ((Struct) record.value()).get(Envelope.FieldName.AFTER);
+                capturedIds.add(after.getInt32("id"));
+            }
+            assertThat(capturedIds).as("All IDs from 1-10 must be present — no silent data loss")
+                    .containsExactlyInAnyOrder(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+        }
+        finally {
+            stopConnector();
+            TestHelper.execute("DROP TABLE IF EXISTS t_long;", "DROP TABLE IF EXISTS t_short;");
+        }
+    }
 }

@@ -12,6 +12,7 @@ import java.sql.SQLException;
 import java.util.List;
 
 import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -22,10 +23,12 @@ import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnector;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.Scn;
+import io.debezium.connector.oracle.junit.SkipOnDatabaseParameter;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.junit.SkipWhenLogMiningStrategyIs;
 import io.debezium.connector.oracle.util.OracleMetricsHelper;
 import io.debezium.connector.oracle.util.TestHelper;
+import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
@@ -248,6 +251,42 @@ public class TransactionCommitConsumerIT extends AbstractAsyncEngineConnectorTes
         finally {
             TestHelper.dropTable(connection, "dbz9521a");
             TestHelper.dropTable(connection, "dbz9521b");
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2368")
+    @SkipOnDatabaseParameter(parameterName = "max_string_size", value = "EXTENDED", matches = false, reason = "Requires max_string_size set to EXTENDED")
+    public void shouldNotMergeExtendedStringAndXmlValues() throws Exception {
+        TestHelper.dropTable(connection, "dbz2368");
+        try {
+            connection.execute("create table dbz2368(id number(9,0) primary key, ext0 varchar2(8000), xml0 xmltype)");
+            TestHelper.streamTable(connection, "dbz2368");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ2368")
+                    .with(OracleConnectorConfig.LOB_ENABLED, "true")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute(
+                    "insert into dbz2368(id, ext0, xml0) values (1, RPAD('ext0-1-', 4000, '0'), xmltype('<xml0><id>1</id><v>0</v></xml0>'))",
+                    "update dbz2368 set ext0 = RPAD('ext0-1-', 4000, '1'), xml0 = xmltype('<xml0><id>1</id><v>1</v></xml0>') where id = 1");
+
+            List<SourceRecord> tableRecords = consumeRecordsByTopic(1).recordsForTopic("server1.DEBEZIUM.DBZ2368");
+            assertThat(tableRecords).hasSize(1);
+
+            Struct after = ((Struct) tableRecords.get(0).value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("EXT0")).isEqualTo("ext0-1-" + "1".repeat(3993));
+            assertThat(after.get("XML0")).isEqualTo("<xml0><id>1</id><v>1</v></xml0>");
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz2368");
         }
     }
 

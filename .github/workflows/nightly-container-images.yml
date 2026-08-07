@@ -1,0 +1,153 @@
+name: Build Nightly Container Images
+
+on:
+  workflow_dispatch:
+    inputs:
+      debezium_repository:
+        description: 'Repository from which Debezium is built'
+        required: false
+        default: 'debezium/debezium'
+      debezium_branch:
+        description: 'Branch used to build Debezium'
+        required: false
+        default: 'main'
+      debezium_version:
+        description: 'Debezium version to use (optional, if not provided Dockerfile determines version)'
+        required: false
+        default: ''
+      images_repository:
+        description: 'Repository with Debezium Dockerfiles'
+        required: false
+        default: 'debezium/container-images'
+      images_branch:
+        description: 'Branch used for images repository'
+        required: false
+        default: 'main'
+      platforms:
+        description: 'Platforms to build (comma-separated)'
+        required: false
+        default: 'linux/amd64,linux/arm64'
+      push:
+        description: 'Push images to registry'
+        required: false
+        type: boolean
+        default: true
+  workflow_call:
+    inputs:
+      debezium_repository:
+        type: string
+        default: 'debezium/debezium'
+      debezium_branch:
+        type: string
+        default: 'main'
+      debezium_version:
+        type: string
+        default: ''
+      images_repository:
+        type: string
+        default: 'debezium/container-images'
+      images_branch:
+        type: string
+        default: 'main'
+      platforms:
+        type: string
+        default: 'linux/amd64,linux/arm64'
+      push:
+        type: boolean
+        default: true
+
+jobs:
+  build-nightly-images:
+    name: Build and Push Nightly Images
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout container-images repository
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ inputs.images_repository }}
+          ref: ${{ inputs.images_branch }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to Quay.io
+        uses: docker/login-action@v4
+        with:
+          registry: quay.io
+          username: ${{ secrets.QUAY_IO_USERNAME }}
+          password: ${{ secrets.QUAY_IO_PASSWORD }}
+
+      - name: Build and push connect:nightly
+        uses: docker/build-push-action@v7
+        with:
+          context: ./connect/snapshot
+          platforms: ${{ inputs.platforms }}
+          push: ${{ inputs.push }}
+          tags: quay.io/debezium/connect:nightly
+          build-args: |
+            ${{ inputs.debezium_version && format('DEBEZIUM_VERSION={0}', inputs.debezium_version) || '' }}
+
+      - name: Build and push server:nightly
+        uses: docker/build-push-action@v7
+        with:
+          context: ./server/snapshot
+          platforms: ${{ inputs.platforms }}
+          push: ${{ inputs.push }}
+          tags: quay.io/debezium/server:nightly
+          build-args: |
+            ${{ inputs.debezium_version && format('DEBEZIUM_VERSION={0}', inputs.debezium_version) || '' }}
+
+      - name: Build and push operator:nightly
+        uses: docker/build-push-action@v7
+        with:
+          context: ./operator/snapshot
+          platforms: ${{ inputs.platforms }}
+          push: ${{ inputs.push }}
+          tags: quay.io/debezium/operator:nightly
+          build-args: |
+            ${{ inputs.debezium_version && format('DEBEZIUM_VERSION={0}', inputs.debezium_version) || '' }}
+
+      - name: Build and push platform-conductor:nightly
+        uses: docker/build-push-action@v7
+        with:
+          context: ./platform-conductor/snapshot
+          platforms: ${{ inputs.platforms }}
+          push: ${{ inputs.push }}
+          tags: quay.io/debezium/platform-conductor:nightly
+          build-args: |
+            ${{ inputs.debezium_version && format('DEBEZIUM_VERSION={0}', inputs.debezium_version) || '' }}
+
+      - name: Build and push platform-stage:nightly
+        uses: docker/build-push-action@v7
+        with:
+          context: ./platform-stage/snapshot
+          platforms: ${{ inputs.platforms }}
+          push: ${{ inputs.push }}
+          tags: quay.io/debezium/platform-stage:nightly
+          build-args: |
+            ${{ inputs.debezium_version && format('DEBEZIUM_VERSION={0}', inputs.debezium_version) || '' }}
+
+      - name: Send Zulip notification
+        if: failure()
+        uses: zulip/github-actions-zulip/send-message@v2
+        with:
+          api-key: ${{ secrets.ZULIP_TOKEN }}
+          email: ${{ secrets.ZULIP_TOKEN_EMAIL_ADDRESS }}
+          organization-url: "https://debezium.zulipchat.com"
+          to: dev
+          type: "stream"
+          topic: alerts
+          content: |
+            ⚠️ **Debezium nightly container images build failed**
+
+            **Debezium repository:** ${{ inputs.debezium_repository }}
+            **Debezium branch:** ${{ inputs.debezium_branch }}
+            **Images repository:** ${{ inputs.images_repository }}
+            **Images branch:** ${{ inputs.images_branch }}
+            **Platforms:** ${{ inputs.platforms }}
+            **Workflow Run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

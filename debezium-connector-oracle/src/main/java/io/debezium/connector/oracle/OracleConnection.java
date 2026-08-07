@@ -485,12 +485,17 @@ public class OracleConnection extends JdbcConnection {
     }
 
     @Override
-    public String buildSelectPrimaryKeyBoundaries(TableId tableId, long size, String projection, String orderBy) {
+    public String buildSelectPrimaryKeyBoundaries(TableId tableId, long size, String projection, String orderBy, String condition) {
         final TableId truncatedTableId = new TableId(null, tableId.schema(), tableId.table());
-        return new StringBuilder("SELECT ")
+        StringBuilder sql = new StringBuilder("SELECT ")
                 .append(projection)
                 .append(" FROM ")
-                .append(quotedTableIdString(truncatedTableId))
+                .append(quotedTableIdString(truncatedTableId));
+        if (!Strings.isNullOrBlank(condition)) {
+            sql.append(" WHERE ")
+                    .append(condition);
+        }
+        return sql
                 .append(" ORDER BY ")
                 .append(orderBy)
                 .append(" OFFSET ").append(size)
@@ -582,6 +587,24 @@ public class OracleConnection extends JdbcConnection {
      */
     public OffsetDateTime getDatabaseSystemTime() throws SQLException {
         return singleOptionalValue("SELECT SYSTIMESTAMP FROM DUAL", rs -> rs.getObject(1, OffsetDateTime.class));
+    }
+
+    /**
+     * Determines whether this connection is to an Oracle Autonomous Database (OA), i.e. one of the
+     * managed cloud services (Autonomous Transaction Processing, Data Warehouse, or JSON Database).
+     * On such deployments Oracle owns and hides parts of the data dictionary — notably the archive
+     * log destination views — so logic that resolves a physical archive destination cannot work.
+     *
+     * @return {@code true} when connected to an Autonomous Database, {@code false} otherwise
+     * @throws SQLException if a database exception occurred
+     */
+    public boolean isAutonomous() throws SQLException {
+        // CLOUD_SERVICE is set only on Autonomous Database; its values are OLTP (ATP), DWCS (ADW)
+        // and JDCS (AJD). It is null/absent on self-managed Oracle.
+        final String cloudService = singleOptionalValue(
+                "SELECT SYS_CONTEXT('USERENV', 'CLOUD_SERVICE') FROM DUAL",
+                rs -> rs.getString(1));
+        return "OLTP".equals(cloudService) || "DWCS".equals(cloudService) || "JDCS".equals(cloudService);
     }
 
     public boolean isArchiveLogDestinationValid(String archiveDestinationName) throws SQLException {

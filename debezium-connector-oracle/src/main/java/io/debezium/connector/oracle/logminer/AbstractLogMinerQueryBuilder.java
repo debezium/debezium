@@ -172,7 +172,7 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
             //
             // Oracle always stores usernames as upper-case.
             // This predicate build applies upper-case to the provided value lists from the configuration.
-            return IncludeExcludeInClause.builder()
+            final String predicate = IncludeExcludeInClause.builder()
                     .withField("USERNAME")
                     .withFilterMode(LogMiningQueryFilterMode.IN)
                     .withDefaultIncludeValues(Collections.singletonList(UNKNOWN_USERNAME))
@@ -180,6 +180,10 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
                     .withExcludeValues(connectorConfig.getLogMiningUsernameExcludes())
                     .caseInsensitive()
                     .build();
+            if (!predicate.isEmpty() && !connectorConfig.getLogMiningUsernameExcludes().isEmpty()) {
+                return "(" + predicate + " OR USERNAME IS NULL)";
+            }
+            return predicate;
         }
         return EMPTY;
     }
@@ -193,13 +197,17 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
         if (!LogMiningQueryFilterMode.NONE.equals(connectorConfig.getLogMiningQueryFilterMode())) {
             // Only filter client ids when using IN and REGEX modes
             // Client id filters always use an IN-clause predicate
-            return IncludeExcludeInClause.builder()
+            final String predicate = IncludeExcludeInClause.builder()
                     .withField("CLIENT_ID")
                     .withFilterMode(LogMiningQueryFilterMode.IN)
                     .withIncludeValues(connectorConfig.getLogMiningClientIdIncludes())
                     .withExcludeValues(connectorConfig.getLogMiningClientIdExcludes())
                     .caseInsensitive()
                     .build();
+            if (!predicate.isEmpty() && !connectorConfig.getLogMiningClientIdExcludes().isEmpty()) {
+                return "(" + predicate + " OR CLIENT_ID IS NULL)";
+            }
+            return predicate;
         }
         return EMPTY;
     }

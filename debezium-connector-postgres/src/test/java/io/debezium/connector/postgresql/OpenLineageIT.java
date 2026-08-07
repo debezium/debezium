@@ -275,6 +275,7 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.INITIAL.getValue())
                 .with("schema.history.internal.kafka.bootstrap.servers", "test-kafka:9092")
+                .with("record.processing.threads", "1")
                 .with("openlineage.integration.enabled", true)
                 .with("openlineage.integration.config.file.path", getClass().getClassLoader().getResource("openlineage/openlineage.yml").getPath())
                 .with("openlineage.integration.job.description", "This connector does cdc for products")

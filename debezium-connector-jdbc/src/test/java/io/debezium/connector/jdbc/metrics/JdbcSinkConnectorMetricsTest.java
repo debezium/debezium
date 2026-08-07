@@ -58,6 +58,16 @@ class JdbcSinkConnectorMetricsTest {
     }
 
     @Test
+    void shouldCountErrantRecords() {
+        final JdbcSinkConnectorMetrics metrics = new JdbcSinkConnectorMetrics("my-sink", "0");
+
+        metrics.errantRecordsReported(1);
+        metrics.errantRecordsReported(2);
+
+        assertThat(metrics.getTotalNumberOfErrantRecords()).isEqualTo(3);
+    }
+
+    @Test
     void shouldRegisterAndUnregisterMBeanUnderDebeziumJdbcDomain() throws Exception {
         final MBeanServer server = ManagementFactory.getPlatformMBeanServer();
         final ObjectName objectName = new ObjectName("debezium.jdbc:type=connector-metrics,context=sink,server=my-sink,task=0");

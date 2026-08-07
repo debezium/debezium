@@ -47,6 +47,8 @@ public class OpenLogReplicatorValueConverter extends OracleValueConverters {
 
     private static final String COLUMN_TYPE_DATE = "DATE";
     private static final String COMMA = ",";
+    private static final BigInteger NANOS_PER_SECOND = BigInteger.valueOf(1_000_000_000L);
+    private static final BigInteger NANOS_PER_MILLISECOND = BigInteger.valueOf(1_000_000L);
     private static final String PRECISION = "%precision%";
     private static final String TIMESTAMP_TIME_ZONE_FORMAT = "yyyy-MM-dd'T'HH:mm:ss." + PRECISION + "xxxxx";
     private static final String TIMESTAMP_LOCAL_TIME_ZONE_FORMAT = "yyyy-MM-dd'T'HH:mm:ss." + PRECISION + "XXXX";
@@ -124,6 +126,25 @@ public class OpenLogReplicatorValueConverter extends OracleValueConverters {
     }
 
     @Override
+    protected Object convertTimestampToStructured(Column column, Field fieldDefn, Object value) {
+        if (value instanceof Number) {
+            value = convertTimestampValue(column, value);
+        }
+        return super.convertTimestampToStructured(column, fieldDefn, value);
+    }
+
+    @Override
+    protected Object convertTimestampToUtcIsoString(Column column, Field fieldDefn, Object value) {
+        if (value instanceof Number) {
+            // Hand over an instant rather than going through convertTimestampValue(), which
+            // reduces a DATE column to milliseconds. A bare number is read here as nanoseconds,
+            // so those milliseconds would be taken for a time a few minutes after the epoch.
+            value = toInstantFromEpochNanos((Number) value);
+        }
+        return super.convertTimestampToUtcIsoString(column, fieldDefn, value);
+    }
+
+    @Override
     protected Object convertTimestampWithZone(Column column, Field fieldDefn, Object value) {
         if (value instanceof String) {
             final String valueStr = (String) value;
@@ -135,7 +156,7 @@ public class OpenLogReplicatorValueConverter extends OracleValueConverters {
             // OpenLogReplicator provides the data in '<epoch>,<timezone>' format.
             final String[] valueBits = valueStr.split(",");
 
-            final Instant instant = Instant.ofEpochSecond(0, Long.parseLong(valueBits[0]));
+            final Instant instant = toInstantFromEpochNanos(new BigInteger(valueBits[0]));
             final ZoneId zoneId = getZoneIdFromTimeZone(valueBits[1]);
             if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
                 return super.convertTimestampWithZone(column, fieldDefn, OffsetDateTime.ofInstant(instant, zoneId));
@@ -148,7 +169,7 @@ public class OpenLogReplicatorValueConverter extends OracleValueConverters {
     @Override
     protected Object convertTimestampWithLocalZone(Column column, Field fieldDefn, Object value) {
         if (value instanceof Number) {
-            final Instant instant = Instant.ofEpochSecond(0, ((Number) value).longValue());
+            final Instant instant = toInstantFromEpochNanos((Number) value);
             if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
                 return super.convertTimestampWithLocalZone(column, fieldDefn, OffsetDateTime.ofInstant(instant, ZoneOffset.UTC));
             }
@@ -188,20 +209,24 @@ public class OpenLogReplicatorValueConverter extends OracleValueConverters {
         return super.convertIntervalDaySecond(column, fieldDefn, value);
     }
 
+    private static Instant toInstantFromEpochNanos(Number epochNanos) {
+        final BigInteger[] secondsAndNanos = toBigInteger(epochNanos).divideAndRemainder(NANOS_PER_SECOND);
+        return Instant.ofEpochSecond(secondsAndNanos[0].longValueExact(), secondsAndNanos[1].longValueExact());
+    }
+
+    private static BigInteger toBigInteger(Number value) {
+        return value instanceof BigInteger bigIntegerValue ? bigIntegerValue : BigInteger.valueOf(value.longValue());
+    }
+
     private Object convertTimestampValue(Column column, Object value) {
         if (column.typeName().equalsIgnoreCase(COLUMN_TYPE_DATE)) {
             // Value is being provided in nanoseconds based on OpenLogReplicator configuration
             // We need to reduce the column's precision to milliseconds
-            if (value instanceof BigInteger) {
-                value = ((BigInteger) value).divide(BigInteger.valueOf(1_000_000L)).longValue();
-            }
-            else {
-                value = ((Number) value).longValue() / 1_000_000L;
-            }
+            value = toBigInteger((Number) value).divide(NANOS_PER_MILLISECOND).longValueExact();
         }
         else {
             // TIMESTAMP(n)
-            value = Instant.ofEpochSecond(0, ((Number) value).longValue());
+            value = toInstantFromEpochNanos((Number) value);
         }
         return value;
     }

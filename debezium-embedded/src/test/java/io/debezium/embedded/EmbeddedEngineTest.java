@@ -29,15 +29,12 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
 import org.apache.kafka.common.config.ConfigDef;
-import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.SchemaAndValue;
 import org.apache.kafka.connect.file.FileStreamSourceConnector;
 import org.apache.kafka.connect.header.ConnectHeaders;
 import org.apache.kafka.connect.header.Headers;
 import org.apache.kafka.connect.json.JsonDeserializer;
 import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.apache.kafka.connect.storage.HeaderConverter;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.apache.kafka.connect.transforms.predicates.Predicate;
 import org.apache.kafka.connect.util.SafeObjectInputStream;
@@ -57,12 +54,14 @@ import io.debezium.engine.ChangeEvent;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.Header;
 import io.debezium.engine.RecordChangeEvent;
+import io.debezium.engine.converter.HeaderConverter;
 import io.debezium.engine.format.ChangeEventFormat;
 import io.debezium.engine.format.Json;
 import io.debezium.engine.format.JsonByteArray;
 import io.debezium.engine.format.KeyValueHeaderChangeEventFormat;
 import io.debezium.engine.format.SimpleString;
 import io.debezium.engine.spi.OffsetCommitPolicy;
+import io.debezium.storage.kafka.offset.KafkaInterruptingOffsetStoreProvider;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.Testing;
 import io.debezium.util.Throwables;
@@ -195,7 +194,7 @@ public class EmbeddedEngineTest extends AbstractAsyncEngineConnectorTest {
         props.put(EmbeddedEngineConfig.ENGINE_NAME.name(), "testing-connector");
         props.put(EmbeddedEngineConfig.CONNECTOR_CLASS.name(), DebeziumAsyncEngineTestUtils.InterruptedConnector.class.getName());
         props.put(EmbeddedEngineConfig.OFFSET_FLUSH_INTERVAL_MS.name(), 0);
-        props.put(EmbeddedEngineConfig.OFFSET_STORAGE.name(), InterruptingOffsetStore.class.getName());
+        props.put(EmbeddedEngineConfig.OFFSET_STORAGE.name(), KafkaInterruptingOffsetStoreProvider.NAME);
         props.put(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
         props.put(DebeziumEngine.OFFSET_FLUSH_INTERVAL_MS_PROP, "0");
 
@@ -230,7 +229,7 @@ public class EmbeddedEngineTest extends AbstractAsyncEngineConnectorTest {
         final Properties props = new Properties();
         props.put(EmbeddedEngineConfig.ENGINE_NAME.name(), "testing-connector");
         props.put(EmbeddedEngineConfig.CONNECTOR_CLASS.name(), SimpleSourceConnector.class.getName());
-        props.put(EmbeddedEngineConfig.OFFSET_STORAGE.name(), InterruptingOffsetStore.class.getName());
+        props.put(EmbeddedEngineConfig.OFFSET_STORAGE.name(), KafkaInterruptingOffsetStoreProvider.NAME);
         props.put(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
         props.put(SimpleSourceConnector.BATCH_COUNT, 1);
         props.put(DebeziumEngine.OFFSET_FLUSH_INTERVAL_MS_PROP, "0");
@@ -965,22 +964,12 @@ public class EmbeddedEngineTest extends AbstractAsyncEngineConnectorTest {
     public static class NullReturningHeaderConverter implements HeaderConverter {
 
         @Override
-        public byte[] fromConnectHeader(String topic, String headerKey, Schema schema, Object value) {
-            return null;
-        }
-
-        @Override
-        public SchemaAndValue toConnectHeader(String topic, String headerKey, byte[] value) {
+        public byte[] fromHeader(String topic, String headerKey, Object schema, Object value) {
             return null;
         }
 
         @Override
         public void configure(Map<String, ?> configs) {
-        }
-
-        @Override
-        public ConfigDef config() {
-            return new ConfigDef();
         }
 
         @Override

@@ -825,7 +825,22 @@
             </dependency>
             <dependency>
                 <groupId>io.debezium</groupId>
+                <artifactId>debezium-kafka-adapters</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
                 <artifactId>debezium-sink</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-storage-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-storage-common</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -837,6 +852,12 @@
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-storage-kafka</artifactId>
                 <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-storage-kafka</artifactId>
+                <version>${project.version}</version>
+                <type>test-jar</type>
             </dependency>
             <dependency>
                 <groupId>io.debezium</groupId>
@@ -967,11 +988,6 @@
             <dependency>
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-connector-cockroachdb</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.debezium</groupId>
-                <artifactId>debezium-connector-cassandra-3</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

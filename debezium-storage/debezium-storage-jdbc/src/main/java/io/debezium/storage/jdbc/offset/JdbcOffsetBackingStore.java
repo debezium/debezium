@@ -16,7 +16,6 @@ import java.sql.Timestamp;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
@@ -26,21 +25,22 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.apache.kafka.common.utils.ThreadUtils;
-import org.apache.kafka.connect.errors.ConnectException;
-import org.apache.kafka.connect.runtime.WorkerConfig;
-import org.apache.kafka.connect.storage.OffsetBackingStore;
-import org.apache.kafka.connect.util.Callback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
+import io.debezium.spi.storage.DefaultOffsetStorageReader;
+import io.debezium.spi.storage.DefaultOffsetStorageWriter;
+import io.debezium.spi.storage.OffsetStorageReader;
+import io.debezium.spi.storage.OffsetStorageWriter;
+import io.debezium.spi.storage.OffsetStore;
 import io.debezium.storage.jdbc.RetriableConnection;
 
 /**
- * Implementation of OffsetBackingStore that saves data to database table.
+ * Implementation of OffsetStore that saves data to database table.
  */
-public class JdbcOffsetBackingStore implements OffsetBackingStore {
+public class JdbcOffsetBackingStore implements OffsetStore {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JdbcOffsetBackingStore.class);
 
@@ -63,24 +63,25 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
     }
 
     @Override
-    public void configure(WorkerConfig config) {
-
+    public void configure(Configuration config) {
         try {
-            Configuration configuration = Configuration.from(config.originalsStrings());
-            this.config = new JdbcOffsetBackingStoreConfig(configuration);
+            this.config = new JdbcOffsetBackingStoreConfig(config);
 
             conn = new RetriableConnection(this.config.getJdbcUrl(), this.config.getUser(), this.config.getPassword(),
                     this.config.getWaitRetryDelay(), this.config.getMaxRetryCount());
         }
         catch (Exception e) {
-            throw new IllegalStateException("Failed to connect JDBC offset backing store: " + config.originalsStrings(), e);
+            throw new IllegalStateException("Failed to connect JDBC offset backing store: " + config, e);
         }
     }
 
     @Override
     public synchronized void start() {
-        executor = Executors.newFixedThreadPool(1, ThreadUtils.createThreadFactory(
-                this.getClass().getSimpleName() + "-%d", false));
+        executor = Executors.newFixedThreadPool(1, r -> {
+            Thread t = new Thread(r, JdbcOffsetBackingStore.class.getSimpleName());
+            t.setDaemon(false);
+            return t;
+        });
 
         LOGGER.info("Starting JdbcOffsetBackingStore db '{}'", config.getJdbcUrl());
         try {
@@ -134,7 +135,7 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
             }, "Saving offset", true);
         }
         catch (SQLException e) {
-            throw new ConnectException(e);
+            throw new DebeziumException(e);
         }
     }
 
@@ -157,7 +158,7 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
             }, "loading offset data", false);
         }
         catch (SQLException e) {
-            throw new ConnectException("Failed recover records from database: " + config.getJdbcUrl(), e);
+            throw new DebeziumException("Failed recover records from database: " + config.getJdbcUrl(), e);
         }
     }
 
@@ -172,7 +173,7 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
                 Thread.currentThread().interrupt();
             }
             if (!executor.shutdownNow().isEmpty()) {
-                throw new ConnectException("Failed to stop JdbcOffsetBackingStore. Exiting without cleanly " +
+                throw new DebeziumException("Failed to stop JdbcOffsetBackingStore. Exiting without cleanly " +
                         "shutting down pending tasks and/or callbacks.");
             }
             executor = null;
@@ -195,7 +196,7 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
 
     @Override
     public Future<Void> set(final Map<ByteBuffer, ByteBuffer> values,
-                            final Callback<Void> callback) {
+                            final OffsetStore.Callback<Void> callback) {
         return executor.submit(new Callable<>() {
             @Override
             public Void call() {
@@ -229,7 +230,12 @@ public class JdbcOffsetBackingStore implements OffsetBackingStore {
     }
 
     @Override
-    public Set<Map<String, Object>> connectorPartitions(String connectorName) {
-        return null;
+    public OffsetStorageReader createReader(String namespace) {
+        return new DefaultOffsetStorageReader(this, namespace);
+    }
+
+    @Override
+    public OffsetStorageWriter createWriter(String namespace) {
+        return new DefaultOffsetStorageWriter(this, namespace);
     }
 }

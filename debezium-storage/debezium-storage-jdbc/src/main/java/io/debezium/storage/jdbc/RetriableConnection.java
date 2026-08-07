@@ -14,7 +14,6 @@ import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.storage.jdbc.offset.JdbcOffsetBackingStore;
 import io.debezium.util.DelayStrategy;
 
 /**
@@ -32,7 +31,7 @@ import io.debezium.util.DelayStrategy;
  */
 public class RetriableConnection implements AutoCloseable {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(JdbcOffsetBackingStore.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(RetriableConnection.class);
     private final String url;
     private final String user;
     private final String pwd;

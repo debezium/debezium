@@ -173,6 +173,11 @@ public class LogMinerQueryBuilderTest {
         assertQuery(getBuilderForMode(mode).with(LOG_MINING_USERNAME_INCLUDE_LIST, users));
         assertQuery(getBuilderForMode(mode).with(LOG_MINING_USERNAME_EXCLUDE_LIST, users));
 
+        // Client Id Include/Excludes
+        final String clientIds = "abc,xyz";
+        assertQuery(getBuilderForMode(mode).with(OracleConnectorConfig.LOG_MINING_CLIENTID_INCLUDE_LIST, clientIds));
+        assertQuery(getBuilderForMode(mode).with(OracleConnectorConfig.LOG_MINING_CLIENTID_EXCLUDE_LIST, clientIds));
+
         // Table Includes/Exclude without Signal Collection Table + Signal Data Collection Specified
         final String signalTable = TestHelper.getDatabaseName() + ".DEBEZIUM1.SIGNAL_TABLE";
         assertQuery(getBuilderForMode(mode).with(TABLE_INCLUDE_LIST, tables).with(SIGNAL_DATA_COLLECTION, signalTable));
@@ -308,7 +313,8 @@ public class LogMinerQueryBuilderTest {
                     + applyTransactionMarkerExclusions("UPPER(USERNAME) IN ('UNKNOWN'," + includes.stream().map(this::quote).collect(Collectors.joining(",")) + ")");
         }
         else if (!excludes.isEmpty() && !queryFilterMode.equals(LogMiningQueryFilterMode.NONE)) {
-            return " AND " + applyTransactionMarkerExclusions("UPPER(USERNAME) NOT IN (" + excludes.stream().map(this::quote).collect(Collectors.joining(",")) + ")");
+            return " AND " + applyTransactionMarkerExclusions(
+                    "(UPPER(USERNAME) NOT IN (" + excludes.stream().map(this::quote).collect(Collectors.joining(",")) + ") OR USERNAME IS NULL)");
         }
         else {
             return "";
@@ -321,10 +327,11 @@ public class LogMinerQueryBuilderTest {
         final Set<String> excludes = config.getLogMiningClientIdExcludes();
 
         if (!includes.isEmpty() && !queryFilterMode.equals(LogMiningQueryFilterMode.NONE)) {
-            return " AND " + applyTransactionMarkerExclusions("UPPER(CLIENT_ID) IN (" + includes.stream().map(this::quote).collect(Collectors.joining(",")) + ")");
+            return " AND " + applyTransactionMarkerExclusions("UPPER(CLIENT_ID) IN (" + includes.stream().map(this::quoteUpper).collect(Collectors.joining(",")) + ")");
         }
         else if (!excludes.isEmpty() && !queryFilterMode.equals(LogMiningQueryFilterMode.NONE)) {
-            return " AND " + applyTransactionMarkerExclusions("UPPER(CLIENT_ID) NOT IN (" + excludes.stream().map(this::quote).collect(Collectors.joining(",")) + ")");
+            return " AND " + applyTransactionMarkerExclusions(
+                    "(UPPER(CLIENT_ID) NOT IN (" + excludes.stream().map(this::quoteUpper).collect(Collectors.joining(",")) + ") OR CLIENT_ID IS NULL)");
         }
         else {
             return "";
@@ -573,6 +580,10 @@ public class LogMinerQueryBuilderTest {
 
     private String quote(String value) {
         return "'" + value + "'";
+    }
+
+    private String quoteUpper(String value) {
+        return "'" + value.trim().toUpperCase() + "'";
     }
 
     private class ConfigBuilder {

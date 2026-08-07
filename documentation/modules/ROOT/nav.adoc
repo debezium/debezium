@@ -27,6 +27,7 @@
 ** xref:connectors/informix.adoc[Informix]
 ** xref:connectors/cockroachdb.adoc[CockroachDB]
 ** xref:connectors/yashandb.adoc[YashanDB]
+** xref:connectors/ingres.adoc[Ingres]
 * Sink Connectors
 ** xref:connectors/index-sink.adoc[Overview]
 ** xref:connectors/jdbc.adoc[JDBC]

@@ -47,16 +47,11 @@ import org.apache.kafka.connect.data.SchemaAndValue;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.json.JsonConverter;
-import org.apache.kafka.connect.json.JsonConverterConfig;
 import org.apache.kafka.connect.json.JsonDeserializer;
 import org.apache.kafka.connect.runtime.WorkerConfig;
 import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.apache.kafka.connect.storage.Converter;
-import org.apache.kafka.connect.storage.FileOffsetBackingStore;
-import org.apache.kafka.connect.storage.OffsetStorageReaderImpl;
-import org.apache.kafka.connect.storage.OffsetStorageWriter;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
 import org.junit.jupiter.api.AfterEach;
@@ -65,7 +60,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
-import io.debezium.config.Instantiator;
+import io.debezium.config.EmbeddedWorkerConfig;
+import io.debezium.converter.kafka.KafkaConnectConverterAdapter;
 import io.debezium.data.VerifyRecord;
 import io.debezium.embedded.util.MetricsHelper;
 import io.debezium.engine.DebeziumEngine;
@@ -73,6 +69,13 @@ import io.debezium.function.BooleanConsumer;
 import io.debezium.pipeline.txmetadata.TransactionStatus;
 import io.debezium.pipeline.txmetadata.TransactionStructMaker;
 import io.debezium.relational.history.HistoryRecord;
+import io.debezium.spi.storage.OffsetStorageReader;
+import io.debezium.spi.storage.OffsetStorageWriter;
+import io.debezium.spi.storage.OffsetStore;
+import io.debezium.storage.kafka.KafkaConnectOffsetStorageReaderAdapter;
+import io.debezium.storage.kafka.KafkaConnectOffsetStorageWriterAdapter;
+import io.debezium.storage.kafka.KafkaConnectStorageAdapter;
+import io.debezium.storage.kafka.offset.KafkaFileOffsetProvider;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.Testing;
 
@@ -1223,24 +1226,22 @@ public abstract class AbstractConnectorTest implements Testing {
                 .build();
 
         final String engineName = config.getString(EmbeddedEngineConfig.ENGINE_NAME);
-        Map<String, String> internalConverterConfig = Collections.singletonMap(JsonConverterConfig.SCHEMAS_ENABLE_CONFIG, "false");
-        Converter keyConverter = Instantiator.getInstance(JsonConverter.class.getName());
-        keyConverter.configure(internalConverterConfig, true);
-        Converter valueConverter = Instantiator.getInstance(JsonConverter.class.getName());
-        valueConverter.configure(internalConverterConfig, false);
+        Map<String, String> internalConverterConfig = Collections.singletonMap("schemas.enable", "false");
+        KafkaConnectConverterAdapter keyConverter = new KafkaConnectConverterAdapter(
+                Configuration.from(internalConverterConfig).edit().with("class", "org.apache.kafka.connect.json.JsonConverter").build(), "class", true);
+        KafkaConnectConverterAdapter valueConverter = new KafkaConnectConverterAdapter(
+                Configuration.from(internalConverterConfig).edit().with("class", "org.apache.kafka.connect.json.JsonConverter").build(), "class", false);
 
-        // Create the worker config, adding extra fields that are required for validation of a worker config
-        // but that are not used within the embedded engine (since the source records are never serialized) ...
-        Map<String, String> embeddedConfig = config.asMap(EmbeddedEngineConfig.ALL_FIELDS);
-        embeddedConfig.put(WorkerConfig.KEY_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
-        embeddedConfig.put(WorkerConfig.VALUE_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
-        WorkerConfig workerConfig = new EmbeddedWorkerConfig(embeddedConfig);
+        // Enrich config with the default values need for Worker config.
+        // TODO Keep WorkerConfig for now, but it should be removed in the future and directly providing Debezium config should be enough.
+        WorkerConfig workerConfig = new EmbeddedWorkerConfig(config.asMap());
 
-        FileOffsetBackingStore offsetStore = KafkaConnectUtil.fileOffsetBackingStore();
-        offsetStore.configure(workerConfig);
+        OffsetStore offsetStore = new KafkaFileOffsetProvider().create();
+        offsetStore.configure(Configuration.from(workerConfig.originalsStrings()));
         offsetStore.start();
         try {
-            OffsetStorageReaderImpl offsetReader = new OffsetStorageReaderImpl(offsetStore, engineName, keyConverter, valueConverter);
+            final OffsetStorageReader offsetReader = new KafkaConnectOffsetStorageReaderAdapter((KafkaConnectStorageAdapter.OffsetBackingStore) offsetStore, engineName,
+                    keyConverter.getDelegate(), valueConverter.getDelegate());
             return offsetReader.offsets(partitions);
         }
         finally {
@@ -1255,29 +1256,28 @@ public abstract class AbstractConnectorTest implements Testing {
                 .build();
 
         final String engineName = config.getString(EmbeddedEngineConfig.ENGINE_NAME);
-        Map<String, String> internalConverterConfig = Collections.singletonMap(JsonConverterConfig.SCHEMAS_ENABLE_CONFIG, "false");
-        Converter keyConverter = Instantiator.getInstance(JsonConverter.class.getName());
-        keyConverter.configure(internalConverterConfig, true);
-        Converter valueConverter = Instantiator.getInstance(JsonConverter.class.getName());
-        valueConverter.configure(internalConverterConfig, false);
+        Map<String, String> internalConverterConfig = Collections.singletonMap("schemas.enable", "false");
+        KafkaConnectConverterAdapter keyConverter = new KafkaConnectConverterAdapter(
+                Configuration.from(internalConverterConfig).edit().with("class", "org.apache.kafka.connect.json.JsonConverter").build(), "class", true);
+        KafkaConnectConverterAdapter valueConverter = new KafkaConnectConverterAdapter(
+                Configuration.from(internalConverterConfig).edit().with("class", "org.apache.kafka.connect.json.JsonConverter").build(), "class", false);
 
-        // Create the worker config, adding extra fields that are required for validation of a worker config
-        // but that are not used within the embedded engine (since the source records are never serialized) ...
-        Map<String, String> embeddedConfig = config.asMap(EmbeddedEngineConfig.ALL_FIELDS);
-        embeddedConfig.put(WorkerConfig.KEY_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
-        embeddedConfig.put(WorkerConfig.VALUE_CONVERTER_CLASS_CONFIG, JsonConverter.class.getName());
-        WorkerConfig workerConfig = new EmbeddedWorkerConfig(embeddedConfig);
+        // Enrich config with the default values need for Worker config.
+        // TODO Keep WorkerConfig for now, but it should be removed in the future and directly providing Debezium config should be enough.
+        WorkerConfig workerConfig = new EmbeddedWorkerConfig(config.asMap());
 
-        FileOffsetBackingStore offsetStore = KafkaConnectUtil.fileOffsetBackingStore();
-        offsetStore.configure(workerConfig);
+        OffsetStore offsetStore = new KafkaFileOffsetProvider().create();
+        offsetStore.configure(Configuration.from(workerConfig.originalsStrings()));
         offsetStore.start();
+
         var latch = new CountDownLatch(1);
         try {
-            OffsetStorageWriter offsetWriter = new OffsetStorageWriter(offsetStore, engineName, keyConverter, valueConverter);
+            final OffsetStorageWriter offsetWriter = new KafkaConnectOffsetStorageWriterAdapter((KafkaConnectStorageAdapter.OffsetBackingStore) offsetStore, engineName,
+                    keyConverter.getDelegate(), valueConverter.getDelegate());
             for (var partition : offsets.keySet()) {
                 offsetWriter.offset(partition, offsets.get(partition));
             }
-            offsetWriter.beginFlush();
+            offsetWriter.beginFlush(0, TimeUnit.NANOSECONDS);
             offsetWriter.doFlush((t, r) -> latch.countDown());
         }
         finally {

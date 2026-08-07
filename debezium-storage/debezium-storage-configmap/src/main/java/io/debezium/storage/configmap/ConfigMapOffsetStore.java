@@ -10,22 +10,22 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import org.apache.kafka.common.utils.ThreadUtils;
-import org.apache.kafka.connect.runtime.WorkerConfig;
-import org.apache.kafka.connect.storage.OffsetBackingStore;
-import org.apache.kafka.connect.util.Callback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.common.annotation.Incubating;
 import io.debezium.config.Configuration;
+import io.debezium.spi.storage.DefaultOffsetStorageReader;
+import io.debezium.spi.storage.DefaultOffsetStorageWriter;
+import io.debezium.spi.storage.OffsetStorageReader;
+import io.debezium.spi.storage.OffsetStorageWriter;
+import io.debezium.spi.storage.OffsetStore;
 import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.kubernetes.api.model.ConfigMapBuilder;
 import io.fabric8.kubernetes.client.Config;
@@ -33,14 +33,18 @@ import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientBuilder;
 
 @Incubating
-public class ConfigMapOffsetStore implements OffsetBackingStore {
+public class ConfigMapOffsetStore implements OffsetStore {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ConfigMapOffsetStore.class);
     public static final String OFFSET_STORAGE_CONFIGMAP_NAME_CONFIG = "offset.storage.configmap.name";
 
     private String configMapName;
 
-    private final ExecutorService executor = Executors.newFixedThreadPool(1, ThreadUtils.createThreadFactory(this.getClass().getSimpleName() + "-%d", false));
+    private final ExecutorService executor = Executors.newFixedThreadPool(1, r -> {
+        Thread t = new Thread(r, ConfigMapOffsetStore.class.getSimpleName());
+        t.setDaemon(false);
+        return t;
+    });
     private final KubernetesClient k8sClient;
     private final ConfigMapFormatter configMapFormatter;
 
@@ -60,9 +64,7 @@ public class ConfigMapOffsetStore implements OffsetBackingStore {
     }
 
     @Override
-    public void configure(WorkerConfig workerConfig) {
-
-        Configuration configuration = Configuration.from(workerConfig.originalsStrings());
+    public void configure(Configuration configuration) {
 
         configMapName = configuration.getString(OFFSET_STORAGE_CONFIGMAP_NAME_CONFIG);
 
@@ -157,7 +159,7 @@ public class ConfigMapOffsetStore implements OffsetBackingStore {
     }
 
     @Override
-    public Future<Void> set(Map<ByteBuffer, ByteBuffer> values, Callback<Void> callback) {
+    public Future<Void> set(Map<ByteBuffer, ByteBuffer> values, OffsetStore.Callback<Void> callback) {
 
         return executor.submit(() -> {
             for (Map.Entry<ByteBuffer, ByteBuffer> entry : values.entrySet()) {
@@ -184,7 +186,12 @@ public class ConfigMapOffsetStore implements OffsetBackingStore {
     }
 
     @Override
-    public Set<Map<String, Object>> connectorPartitions(String s) {
-        return null;
+    public OffsetStorageReader createReader(String namespace) {
+        return new DefaultOffsetStorageReader(this, namespace);
+    }
+
+    @Override
+    public OffsetStorageWriter createWriter(String namespace) {
+        return new DefaultOffsetStorageWriter(this, namespace);
     }
 }

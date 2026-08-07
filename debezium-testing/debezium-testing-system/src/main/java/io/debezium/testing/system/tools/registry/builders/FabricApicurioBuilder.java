@@ -9,37 +9,30 @@ import static io.debezium.testing.system.tools.ConfigProperties.APICURIO_TLS_ENA
 import static io.debezium.testing.system.tools.kafka.builders.FabricKafkaConnectBuilder.KAFKA_CERT_SECRET;
 import static io.debezium.testing.system.tools.kafka.builders.FabricKafkaConnectBuilder.KAFKA_CLIENT_CERT_SECRET;
 
-import io.apicurio.registry.operator.api.v1.model.ApicurioRegistry;
-import io.apicurio.registry.operator.api.v1.model.ApicurioRegistryBuilder;
-import io.apicurio.registry.operator.api.v1.model.apicurioregistryspec.configuration.kafkasql.Security;
-import io.apicurio.registry.operator.api.v1.model.apicurioregistryspec.configuration.kafkasql.SecurityBuilder;
-import io.apicurio.registry.operator.api.v1.model.apicurioregistryspec.configuration.kafkasql.security.TlsBuilder;
-import io.debezium.testing.system.tools.ConfigProperties;
-import io.debezium.testing.system.tools.fabric8.FabricBuilderWrapper;
+import io.apicurio.registry.operator.api.v1.ApicurioRegistry3;
+import io.apicurio.registry.operator.api.v1.spec.KafkaSqlTLSSpec;
+import io.apicurio.registry.operator.api.v1.spec.SecretKeyRef;
+import io.apicurio.registry.operator.api.v1.spec.StorageType;
+import io.fabric8.kubernetes.api.model.ObjectMeta;
 
-public class FabricApicurioBuilder
-        extends FabricBuilderWrapper<FabricApicurioBuilder, ApicurioRegistryBuilder, ApicurioRegistry> {
+public class FabricApicurioBuilder {
 
-    private static final String DEFAULT_PERSISTENCE_TYPE = "kafkasql";
+    private final ApicurioRegistry3 registry;
 
-    protected FabricApicurioBuilder(ApicurioRegistryBuilder builder) {
-        super(builder);
+    protected FabricApicurioBuilder(ApicurioRegistry3 registry) {
+        this.registry = registry;
     }
 
-    @Override
-    public ApicurioRegistry build() {
-        return builder.build();
+    public ApicurioRegistry3 build() {
+        return registry;
     }
 
     private static FabricApicurioBuilder base() {
-        ApicurioRegistryBuilder builder = new ApicurioRegistryBuilder()
-                .withNewMetadata()
-                .withName("debezium-registry")
-                .endMetadata()
-                .withNewSpec()
-                .endSpec();
-
-        return new FabricApicurioBuilder(builder);
+        ApicurioRegistry3 registry = new ApicurioRegistry3();
+        ObjectMeta metadata = new ObjectMeta();
+        metadata.setName("debezium-registry");
+        registry.setMetadata(metadata);
+        return new FabricApicurioBuilder(registry);
     }
 
     public static FabricApicurioBuilder baseKafkaSql(String bootstrap) {
@@ -47,41 +40,28 @@ public class FabricApicurioBuilder
     }
 
     public FabricApicurioBuilder withKafkaSqlConfiguration(String bootstrap) {
-        builder.editSpec()
-                .withNewConfiguration()
-                .withLogLevel(ConfigProperties.APICURIO_LOG_LEVEL)
-                .withPersistence(DEFAULT_PERSISTENCE_TYPE)
-                .withNewKafkasql()
-                .withBootstrapServers(bootstrap)
-                .endKafkasql()
-                .endConfiguration()
-                .endSpec();
+        registry.withSpec().withApp().withStorage().setType(StorageType.KAFKASQL);
+        registry.withSpec().withApp().withStorage().withKafkasql().setBootstrapServers(bootstrap);
 
         if (APICURIO_TLS_ENABLED) {
             withTls();
         }
 
-        return self();
+        return this;
     }
 
     public FabricApicurioBuilder withTls() {
-        builder.editSpec()
-                .editConfiguration()
-                .editKafkasql()
-                .withSecurity(getTlsSpec())
-                .endKafkasql()
-                .endConfiguration()
-                .endSpec();
-        return self();
-    }
-
-    private Security getTlsSpec() {
-        return new SecurityBuilder()
-                .withTls(
-                        new TlsBuilder()
-                                .withKeystoreSecretName(KAFKA_CLIENT_CERT_SECRET)
-                                .withTruststoreSecretName(KAFKA_CERT_SECRET)
-                                .build())
+        KafkaSqlTLSSpec tlsSpec = KafkaSqlTLSSpec.builder()
+                .keystoreSecretRef(SecretKeyRef.builder()
+                        .name(KAFKA_CLIENT_CERT_SECRET)
+                        .build())
+                .truststoreSecretRef(SecretKeyRef.builder()
+                        .name(KAFKA_CERT_SECRET)
+                        .build())
                 .build();
+
+        registry.withSpec().withApp().withStorage().withKafkasql().setTls(tlsSpec);
+
+        return this;
     }
 }

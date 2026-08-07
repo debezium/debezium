@@ -50,6 +50,12 @@ public interface JdbcSinkConnectorMetricsMXBean {
     long getTotalNumberOfFilteredEvents();
 
     /**
+     * Returns the total number of records that were routed to the errant record reporter
+     * (dead letter queue) instead of being written to the target database.
+     */
+    long getTotalNumberOfErrantRecords();
+
+    /**
      * @return the total number of tables the sink created in the target database; only increases
      *         when {@code schema.evolution} is enabled
      */

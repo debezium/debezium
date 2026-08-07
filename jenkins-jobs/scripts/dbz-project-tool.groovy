@@ -84,6 +84,9 @@ import okhttp3.MediaType
 
 import org.kohsuke.github.GitHubBuilder
 
+// Batch size for GraphQL mutations to avoid timeouts and rate limits
+BATCH_SIZE = 10
+
 LABEL_RELEASE_NOTES = 'backward-incompatible'
 
 def cli = new CliBuilder(usage: 'groovy dbz-project-tool.groovy [options]')
@@ -553,7 +556,7 @@ def setNewIteration() {
     def issues = getProjectIssuesForIteration(iterationTitle)
     def allIssuesToUpdate = issues.collectEntries({ [(it): it.findIterationField(iterationTitle)] }).findAll { it.value }
 
-    allIssuesToUpdate.entrySet().toList().collate(10).each { issuesToUpdate -> 
+    allIssuesToUpdate.entrySet().toList().collate(BATCH_SIZE).each { issuesToUpdate ->
         def updateQuery = new StringBuilder(modifyOperationPre)
 
         def anythingToUpdate = false
@@ -653,13 +656,16 @@ def setStatusToReleasedInIteration() {
         System.exit(8)
     }
 
-    def updateQuery = new StringBuilder(modifyOperationPre)
-    issuesToMarkAsReleased.each { issue ->
-        def itemNo = issue.number
-        def itemId = issue.itemId
-        def releaseOptionId = statusOptionsByName['Released']
+    // Process issues in batches to avoid timeouts and rate limits
+    issuesToMarkAsReleased.collate(BATCH_SIZE).each { issueBatch ->
+        def updateQuery = new StringBuilder(modifyOperationPre)
 
-        def updateFragment = """
+        issueBatch.each { issue ->
+            def itemNo = issue.number
+            def itemId = issue.itemId
+            def releaseOptionId = statusOptionsByName['Released']
+
+            def updateFragment = """
   setStatus${itemNo}: updateProjectV2ItemFieldValue(
     input: {
       projectId: \$projectId,
@@ -671,41 +677,42 @@ def setStatusToReleasedInIteration() {
     projectV2Item { id }
   }
 """
-        updateQuery << updateFragment
-    }
-    updateQuery << '}'
+            updateQuery << updateFragment
+        }
+        updateQuery << '}'
 
-    def client = new OkHttpClient()
-    def slurper = new JsonSlurper()
-    def variables = [
-        'projectId': projectId
-    ]
+        def client = new OkHttpClient()
+        def slurper = new JsonSlurper()
+        def variables = [
+            'projectId': projectId
+        ]
 
-    def payload = JsonOutput.toJson([query: updateQuery, variables: variables])
+        def payload = JsonOutput.toJson([query: updateQuery, variables: variables])
 
-    def requestBody = RequestBody.create(payload, MediaType.get("application/json"))
-    def request = new Request.Builder()
-            .url("https://api.github.com/graphql")
-            .addHeader("Authorization", "Bearer ${token}")
-            .addHeader("Accept", "application/vnd.github+json")
-            .post(requestBody)
-            .build()
-    def response = client.newCall(request).execute()
-    def body = response.body().string()
+        def requestBody = RequestBody.create(payload, MediaType.get("application/json"))
+        def request = new Request.Builder()
+                .url("https://api.github.com/graphql")
+                .addHeader("Authorization", "Bearer ${token}")
+                .addHeader("Accept", "application/vnd.github+json")
+                .post(requestBody)
+                .build()
+        def response = client.newCall(request).execute()
+        def body = response.body().string()
 
-    if (!response.isSuccessful()) {
-        System.err.println("GitHub GraphQL call failed: HTTP ${response.code()}")
-        System.err.println(body)
-        System.exit(3)
-    }
+        if (!response.isSuccessful()) {
+            System.err.println("GitHub GraphQL call failed: HTTP ${response.code()}")
+            System.err.println(body)
+            System.exit(3)
+        }
 
-    def json = slurper.parseText(body)
-    if (json.errors) {
-        System.err.println("Failed to parse GraphQL (set status) response with errors:")
-        json.errors.each { System.err.println(" - ${it.message}") }
-        System.err.println(body)
-        System.err.println(payload)
-        System.exit(4)
+        def json = slurper.parseText(body)
+        if (json.errors) {
+            System.err.println("Failed to parse GraphQL (set status) response with errors:")
+            json.errors.each { System.err.println(" - ${it.message}") }
+            System.err.println(body)
+            System.err.println(payload)
+            System.exit(4)
+        }
     }
 }
 

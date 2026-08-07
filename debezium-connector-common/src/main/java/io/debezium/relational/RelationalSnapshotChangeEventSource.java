@@ -595,7 +595,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         final Map<TableId, TableChunkProgress> progressMap = new ConcurrentHashMap<>();
         final List<SnapshotChunk> allChunks = new ArrayList<>();
 
-        final ChunkBoundaryCalculator boundaryCalculator = new ChunkBoundaryCalculator(jdbcConnection);
+        final ChunkBoundaryCalculator boundaryCalculator = new ChunkBoundaryCalculator(jdbcConnection, connectorConfig);
 
         int tableOrder = 1;
         final int tableCount = prepared.rowCountTables.size();
@@ -967,7 +967,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         final Table table = chunk.getTable();
         final TableChunkProgress progress = progressMap.get(tableId);
 
-        final Stopwatch exportTimer = Stopwatch.accumulating();
+        final Stopwatch exportTimer = Stopwatch.accumulating().start();
         LOGGER.info("Exporting chunk {}/{} from table '{}' ({}/{} tables)",
                 chunk.getChunkIndex() + 1, chunk.getTotalChunks(),
                 tableId, chunk.getTableOrder(), chunk.getTableCount());
@@ -992,49 +992,52 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         final List<Column> keyColumns = getKeyColumnsForChunking(table);
 
         // Build chunk query using standalone SnapshotChunkQueryBuilder
-        final SnapshotChunkQueryBuilder queryBuilder = new SnapshotChunkQueryBuilder(jdbcConnection);
+        final SnapshotChunkQueryBuilder queryBuilder = new SnapshotChunkQueryBuilder(jdbcConnection, connectorConfig);
         final String chunkQuery = queryBuilder.buildChunkQuery(chunk, keyColumns, chunk.getBaseSelectStatement());
         final Instant sourceTableSnapshotTimestamp = getSnapshotSourceTimestamp(jdbcConnection, offset, tableId);
 
-        try (PreparedStatement statement = queryBuilder.prepareChunkStatement(chunk, keyColumns, chunkQuery);
-                ResultSet rs = statement.executeQuery()) {
+        try (PreparedStatement statement = jdbcConnection.connection().prepareStatement(chunkQuery)) {
 
-            final ColumnUtils.ColumnArray columnArray = ColumnUtils.toArray(rs, table);
+            queryBuilder.prepareChunkStatement(statement, chunk, keyColumns);
             long rows = 0;
             Timer logTimer = getTableScanLogTimer();
-            boolean hasNext = rs.next();
 
-            if (hasNext) {
-                while (hasNext) {
-                    if (!sourceContext.isRunning()) {
-                        throw new InterruptedException("Interrupted while snapshotting chunk " + chunk.getChunkId());
+            try (ResultSet rs = statement.executeQuery()) {
+                final ColumnUtils.ColumnArray columnArray = ColumnUtils.toArray(rs, table);
+                boolean hasNext = rs.next();
+
+                if (hasNext) {
+                    while (hasNext) {
+                        if (!sourceContext.isRunning()) {
+                            throw new InterruptedException("Interrupted while snapshotting chunk " + chunk.getChunkId());
+                        }
+
+                        rows++;
+                        final Object[] row = jdbcConnection.rowToArray(table, rs, columnArray);
+
+                        if (logTimer.expired()) {
+                            exportTimer.stop();
+                            LOGGER.info("\t Chunk {}: Exported {} records for table '{}' after {}",
+                                    chunk.getChunkIndex() + 1, rows, tableId,
+                                    Strings.duration(exportTimer.durations().statistics().getTotal().toMillis()));
+                            exportTimer.start();
+                            logTimer = getTableScanLogTimer();
+                        }
+
+                        hasNext = rs.next();
+
+                        final boolean isFirstRecord = (rows == 1);
+                        final boolean isLastRecord = !hasNext;
+
+                        // Coordinate emission based on marker type
+                        emitRecordWithCoordination(snapshotContext, offset, snapshotReceiver, chunk, progress,
+                                snapshotProgress, tableId, row, sourceTableSnapshotTimestamp, isFirstRecord, isLastRecord);
                     }
-
-                    rows++;
-                    final Object[] row = jdbcConnection.rowToArray(table, rs, columnArray);
-
-                    if (logTimer.expired()) {
-                        exportTimer.stop();
-                        LOGGER.info("\t Chunk {}: Exported {} records for table '{}' after {}",
-                                chunk.getChunkIndex() + 1, rows, tableId,
-                                Strings.duration(exportTimer.durations().statistics().getTotal().toMillis()));
-                        exportTimer.start();
-                        logTimer = getTableScanLogTimer();
-                    }
-
-                    hasNext = rs.next();
-
-                    final boolean isFirstRecord = (rows == 1);
-                    final boolean isLastRecord = !hasNext;
-
-                    // Coordinate emission based on marker type
-                    emitRecordWithCoordination(snapshotContext, offset, snapshotReceiver, chunk, progress,
-                            snapshotProgress, tableId, row, sourceTableSnapshotTimestamp, isFirstRecord, isLastRecord);
                 }
-            }
-            else {
-                // Empty chunk - handle coordination for empty first/last chunks
-                handleEmptyChunkCoordination(chunk, progress, snapshotProgress);
+                else {
+                    // Empty chunk - handle coordination for empty first/last chunks
+                    handleEmptyChunkCoordination(chunk, progress, snapshotProgress);
+                }
             }
 
             // Update progress
