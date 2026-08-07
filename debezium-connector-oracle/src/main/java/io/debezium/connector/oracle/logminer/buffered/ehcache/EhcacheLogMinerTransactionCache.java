@@ -21,7 +21,7 @@ import org.ehcache.Cache;
 import io.debezium.connector.oracle.logminer.buffered.AbstractLogMinerTransactionCache;
 import io.debezium.connector.oracle.logminer.buffered.CacheProvider;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
-import io.debezium.connector.oracle.logminer.events.RowIdCodec;
+import io.debezium.connector.oracle.logminer.events.RollbackToSavepointEvent;
 
 /**
  * A concrete implementation of {@link AbstractLogMinerTransactionCache} for Ehcache.
@@ -32,7 +32,6 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
 
     private final Cache<String, EhcacheTransaction> transactionCache;
     private final Cache<String, LogMinerEvent> eventCache;
-    private final Cache<String, Boolean> rollbackCache;
     private final EhcacheEvictionListener evictionListener;
 
     // Heap-backed caches for quick access to specific metadata to speed up processing
@@ -40,11 +39,9 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
 
     public EhcacheLogMinerTransactionCache(Cache<String, EhcacheTransaction> transactionCache,
                                            Cache<String, LogMinerEvent> eventCache,
-                                           Cache<String, Boolean> rollbackCache,
                                            EhcacheEvictionListener evictionListener) {
         this.transactionCache = transactionCache;
         this.eventCache = eventCache;
-        this.rollbackCache = rollbackCache;
         this.evictionListener = evictionListener;
 
         primeHeapCacheFromOffHeapCaches();
@@ -104,14 +101,14 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
     }
 
     @Override
-    public void forEachEvent(EhcacheTransaction transaction, LogMinerEventPredicate predicate) throws InterruptedException {
+    public void forEachEvent(EhcacheTransaction transaction, InterruptiblePredicate<LogMinerEvent> predicate) throws InterruptedException {
         final var events = eventIdsByTransactionId.get(transaction.getTransactionId());
         if (events != null) {
             try (var stream = events.stream()) {
                 final Iterator<Integer> iterator = stream.iterator();
                 while (iterator.hasNext()) {
-                    final String eventKey = transaction.getEventId(iterator.next());
-                    if (!predicate.test(eventCache.get(eventKey), rollbackCache.containsKey(eventKey))) {
+                    final LogMinerEvent event = getTransactionEvent(transaction, iterator.next());
+                    if (!predicate.test(event)) {
                         break;
                     }
                 }
@@ -135,46 +132,47 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
 
     @Override
     public void addTransactionEvent(EhcacheTransaction transaction, int eventKey, LogMinerEvent event) {
+        final TreeSet<Integer> eventIds = eventIdsByTransactionId.get(transaction.getTransactionId());
+        if (event instanceof RollbackToSavepointEvent rollbackEvent) {
+            final Iterator<LogMinerEventEntry> reverseIterator = new LogMinerEventEntryIterator(
+                    eventIds.descendingIterator(), id -> eventCache.get(transaction.getEventId(id)));
+            final LogMinerEventEntry rolledBackEntry = findFirstRolledBackEventEntry(transaction, reverseIterator, rollbackEvent);
+            if (rolledBackEntry != null) {
+                final Iterator<Integer> forwardIterator = eventIds.tailSet(rolledBackEntry.eventId()).iterator();
+                while (forwardIterator.hasNext()) {
+                    final int id = forwardIterator.next();
+                    final String eventId = transaction.getEventId(id);
+                    if (eventCache.get(eventId) instanceof RollbackToSavepointEvent) {
+                        break;
+                    }
+                    eventCache.remove(eventId);
+                    forwardIterator.remove();
+                }
+            }
+        }
         eventCache.put(transaction.getEventId(eventKey), event);
         checkAndThrowIfEviction(CacheProvider.EVENTS_CACHE_NAME);
-        eventIdsByTransactionId.get(transaction.getTransactionId()).add(eventKey);
+        eventIds.add(eventKey);
     }
 
     @Override
     public void removeTransactionEvents(EhcacheTransaction transaction) {
         final var events = eventIdsByTransactionId.get(transaction.getTransactionId());
         if (events != null) {
-            final Set<String> keys = events.stream()
+            eventCache.removeAll(events
+                    .stream()
                     .map(transaction::getEventId)
-                    .collect(Collectors.toSet());
-            eventCache.removeAll(keys);
-            rollbackCache.removeAll(keys);
+                    .collect(Collectors.toSet()));
         }
         eventIdsByTransactionId.remove(transaction.getTransactionId());
     }
 
     @Override
-    public boolean rollbackTransactionEventWithRowId(EhcacheTransaction transaction, String rowId) {
-        final RowIdCodec.Packed encodedRowId = RowIdCodec.encode(rowId);
-        final TreeSet<Integer> eventIds = eventIdsByTransactionId.get(transaction.getTransactionId());
-        for (Integer eventId : eventIds.descendingSet()) {
-            final String eventKey = transaction.getEventId(eventId);
-            final LogMinerEvent event = eventCache.get(eventKey);
-            if (event != null && event.getRowId().equals(encodedRowId) && !rollbackCache.containsKey(eventKey)) {
-                rollbackCache.put(eventKey, Boolean.TRUE);
-                return true;
-            }
-        }
-        return false;
-    }
-
-    @Override
     public boolean containsTransactionEvent(EhcacheTransaction transaction, int eventKey) {
+        // Uses the highest event key ever assigned rather than checking for presence directly
+        // since a partial rollback may have removed the event's entry from the cache.
         final var events = eventIdsByTransactionId.get(transaction.getTransactionId());
-        if (events != null) {
-            return events.contains(eventKey);
-        }
-        return false;
+        return events != null && !events.isEmpty() && events.last() >= eventKey;
     }
 
     @Override
@@ -195,7 +193,6 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
     public void clear() {
         transactionCache.clear();
         eventCache.clear();
-        rollbackCache.clear();
         eventIdsByTransactionId.clear();
     }
 
