@@ -44,6 +44,7 @@ import io.debezium.DebeziumException;
 import io.debezium.annotation.Immutable;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode;
+import io.debezium.connector.binlog.BinlogConnectorConfig.JsonStringFormattingMode;
 import io.debezium.connector.binlog.BinlogGeometry;
 import io.debezium.connector.binlog.BinlogUnsignedIntegerConverter;
 import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
@@ -108,6 +109,7 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
 
     private final EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode;
     private final BinlogCharsetRegistry charsetRegistry;
+    private final JsonStringFormattingMode jsonStringFormattingMode;
 
     /**
      * Create a new instance of the value converters that always uses UTC for the default time zone when
@@ -119,6 +121,8 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
      * @param binaryHandlingMode how binary columns should be treated
      * @param adjuster a temporal adjuster to make a database specific time before conversion
      * @param eventConvertingFailureHandlingMode how to handle conversion failures
+     * @param jsonStringFormattingMode how {@code JSON} values read from the binlog are serialized; may be null,
+     *            which is treated as {@link JsonStringFormattingMode#LEGACY}
      * @param serviceRegistry the service registry instance, should not be {@code null}
      */
     public BinlogValueConverters(DecimalMode decimalMode,
@@ -127,9 +131,11 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
                                  BinaryHandlingMode binaryHandlingMode,
                                  TemporalAdjuster adjuster,
                                  EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode,
+                                 JsonStringFormattingMode jsonStringFormattingMode,
                                  ServiceRegistry serviceRegistry) {
         super(decimalMode, temporalPrecisionMode, ZoneOffset.UTC, adjuster, bigIntUnsignedMode, binaryHandlingMode);
         this.eventConvertingFailureHandlingMode = eventConvertingFailureHandlingMode;
+        this.jsonStringFormattingMode = jsonStringFormattingMode;
         this.charsetRegistry = serviceRegistry.getService(BinlogCharsetRegistry.class);
     }
 
@@ -449,13 +455,13 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
         return convertValue(column, fieldDefn, data, "{}", (r) -> {
             if (data instanceof byte[]) {
                 // The BinlogReader sees these JSON values as binary encoded, so we use the binlog client library's utility
-                // to parse the database's internal binary representation into a JSON string, using the standard formatter.
+                // to parse the database's internal binary representation into a JSON string, using the configured formatter.
                 if (((byte[]) data).length == 0) {
                     r.deliver(column.isOptional() ? null : "{}");
                 }
                 else {
                     try {
-                        r.deliver(JsonBinary.parseAsString((byte[]) data));
+                        r.deliver(parseJsonBinary((byte[]) data));
                     }
                     catch (IOException e) {
                         if (eventConvertingFailureHandlingMode == FAIL) {
@@ -474,6 +480,25 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
                 r.deliver(data);
             }
         });
+    }
+
+    private String parseJsonBinary(byte[] data) throws IOException {
+        if (jsonStringFormattingMode == JsonStringFormattingMode.DATABASE && !isTextJson(data)) {
+            DatabaseJsonStringFormatter formatter = new DatabaseJsonStringFormatter();
+            JsonBinary.parse(data, formatter);
+            return formatter.getString();
+        }
+        return JsonBinary.parseAsString(data);
+    }
+
+    /**
+     * MariaDB stores {@code JSON} columns as {@code LONGTEXT} and replicates them as text, which
+     * {@link JsonBinary#parseAsString(byte[])} passes through unchanged; the same check is applied here so
+     * that text values do not reach the binary parser.
+     */
+    private static boolean isTextJson(byte[] data) {
+        // Binary JSON type markers are all <= 0x0f
+        return data[0] > 0x0f;
     }
 
     /**
