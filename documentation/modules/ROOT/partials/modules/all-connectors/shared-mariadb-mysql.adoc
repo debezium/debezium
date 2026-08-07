@@ -2418,6 +2418,10 @@ Details are in the following sections:
 
 * xref:creating-a-{context}-user-for-a-debezium-connector[]
 * xref:enabling-the-{context}-binlog-for-debezium[]
+ifdef::community[]
+* xref:enabling-innodb-binlog-for-debezium[]
+endif::community[]
+
 * xref:enabling-{context}-gtids-for-debezium[]
 * xref:configuring-{context}-session-timeouts-for-debezium[]
 * xref:enabling-query-log-events-for-debezium-{context}-connectors[]
@@ -2552,6 +2556,57 @@ endif::community[]
 end::enabling-binlog[]
 
 
+=== Enabling the InnoDB-based binary log (MariaDB 12.3 and later)
+
+
+tag::enabling-innodb-binlog[]
+ifdef::community[]
+In MariaDB versions 12.3 and later, you can configure the database to store the binary log in InnoDB-managed, page-structured files (`.ibb`), instead of traditional flat files.
+If you configure the database to store the binary log in InnoDB files, it does not enforce the two-phase commit (2PC) protocol between the binary log and InnoDB, resulting in improved commit latency and simplified crash recovery.
+
+When the database uses InnoDB to store the binary log, the following considerations apply:
+
+* This feature is mutually exclusive with the traditional file-based binlog.
+The server uses the InnoDB-based format to store all entries.
+* Galera Cluster is not supported.
+* Semi-synchronous replication is not supported.
+* The `sync_binlog` option is no longer required and is effectively ignored.
+
+.Prerequisites
+
+* MariaDB version 12.3 or later.
+* GTID-based replication is enabled.
+
+.Procedure
+
+. Add the following options to your MariaDB configuration file:
++
+[source,properties]
+----
+log_bin
+binlog_storage_engine=innodb
+binlog_format=ROW
+binlog_row_image=FULL
+----
++
+The `log_bin` property must be present in the configuration, but it cannot contain a value.
+The `binlog_storage_engine=innodb` setting enables the database to use InnoDB to store the binary log.
+
+. Verify the binlog format by connecting to the server and running the following SQL command:
++
+[source,sql]
+----
+SHOW BINARY LOGS;
+----
++
+Files are named with an `.ibb` extension (for example, `binlog-000000.ibb`).
+
+For more information about the InnoDB-based binary log, see the https://mariadb.com/docs/server/server-management/server-monitoring-logs/binary-log/innodb-based-binary-log/[MariaDB documentation].
+
+endif::community[]
+end::enabling-innodb-binlog[]
+
+
 tag::binlog-config-props[]
 .Descriptions of {connector-name} binlog configuration properties
 [cols="1,4",options="header",subs="+attributes"]
@@ -2563,6 +2618,23 @@ tag::binlog-config-props[]
 
 |`log_bin`
 |The value of `log_bin` is the base name of the sequence of binlog files.
+ifdef::MARIADB[]
+ifdef::community[]
+If the MariaDB server uses link:https://mariadb.com/docs/server/server-management/server-monitoring-logs/binary-log/innodb-based-binary-log/[InnoDB to store the binary log], add an empty `log_bin` property to the MariaDB configuration.
+That is, list the property in the configuration, but do not specify a value.
+endif::community[]
+endif::MARIADB[]
+
+ifdef::MARIADB[]
+ifdef::community[]
+|`binlog_storage_engine`
+|Specifies the storage engine that manages the binary log.
+Set the value to `innodb` to enable the https://mariadb.com/docs/server/server-management/server-monitoring-logs/binary-log/innodb-based-binary-log/[InnoDB-based binary log]
+feature in MariaDB 12.3 and later.
+When set to `innodb`, the `log_bin` option must be specified with no value, and replication must use GTID-based positioning.
+If you do not set this property, the database uses the default value, `file`, and stores log data in standard flat file format.
+endif::community[]
+endif::MARIADB[]
 
 |`binlog_format`
 |The `binlog-format` must be set to `ROW` or `row`.

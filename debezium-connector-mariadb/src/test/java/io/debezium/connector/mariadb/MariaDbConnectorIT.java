@@ -86,6 +86,12 @@ public class MariaDbConnectorIT extends BinlogConnectorIT<MariaDbConnector, Mari
 
     @Override
     protected void assertBinlogPosition(long offsetPosition, long beforeInsertsPosition) {
+        // With the InnoDB-based binary log (MariaDB 12.3+), event header positions are
+        // reported as 0 and are not meaningful; GTID positions should be used instead.
+        // Skip the position assertion when the InnoDB-based binary log is enabled.
+        if (isInnoDbBinlogEnabled()) {
+            return;
+        }
         assertThat(offsetPosition).isGreaterThanOrEqualTo(beforeInsertsPosition);
     }
 
