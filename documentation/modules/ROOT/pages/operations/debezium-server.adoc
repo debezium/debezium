@@ -2477,6 +2477,29 @@ When this option is set, all events are written to this table; otherwise the map
 |`50000`
 |Maximum number of un-acknowledged records per stream.
 
+|[[zerobus-recovery]]<<zerobus-recovery, `debezium.sink.zerobus.recovery`>>
+|The SDK default.
+|Specifies whether the Zerobus SDK recovers a stream that fails with a retriable error by re-sending the records that the service has not acknowledged.
+
+Because the SDK tracks which records are unacknowledged, recovery re-sends only those, and the sink does not retry the batch itself.
+An error that recovery cannot resolve still stops the connector, so the offset does not advance past it.
+
+|[[zerobus-recovery-retries]]<<zerobus-recovery-retries, `debezium.sink.zerobus.recovery.retries`>>
+|The SDK default.
+|Specifies the maximum number of times that the SDK attempts to recover a failed stream.
+
+|[[zerobus-recovery-backoff-ms]]<<zerobus-recovery-backoff-ms, `debezium.sink.zerobus.recovery.backoff.ms`>>
+|The SDK default.
+|Specifies the delay, in milliseconds, between stream recovery attempts.
+
+|[[zerobus-recovery-timeout-ms]]<<zerobus-recovery-timeout-ms, `debezium.sink.zerobus.recovery.timeout.ms`>>
+|The SDK default.
+|Specifies the time, in milliseconds, after which the SDK abandons a stream recovery attempt.
+
+|[[zerobus-flush-timeout-ms]]<<zerobus-flush-timeout-ms, `debezium.sink.zerobus.flush.timeout.ms`>>
+|The SDK default.
+|Specifies the time, in milliseconds, that a flush waits for the records in the stream to be acknowledged.
+
 |[[zerobus-metrics-log-interval]]<<zerobus-metrics-log-interval, `debezium.sink.zerobus.metrics.log.interval`>>
 |`0`
 |Specifies the number of batches that the service processes before it emits a periodic `INFO` log line to summarize sink metrics.
@@ -2485,6 +2508,8 @@ This setting does not affect availability of metrics over JMX.
 For more information, see <<zerobus-monitoring, Monitoring>>.
 
 |===
+
+The preceding options that default to "The SDK default" are not set unless you configure them, so that the value that applies is the one that the Zerobus SDK version in use defines rather than one that this connector pins.
 
 ===== REST route (`zerobusrest`)
 
