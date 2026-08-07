@@ -2473,9 +2473,31 @@ To enable the service to write data to the target table, the following requireme
 |(Optional) The fully-qualified name of the default target table (`catalog.schema.table`).
 When this option is set, all events are written to this table; otherwise the mapped destination (topic) name is used as the fully-qualified table name.
 
+|[[zerobus-payload-mode]]<<zerobus-payload-mode, `debezium.sink.zerobus.payload.mode`>>
+|`typed`
+|Specifies the shape of the row that the sink writes, which is the data contract of the target table.
+Set the value to `typed` to map each change event onto the column types of the target table, as <<zerobus-data-type-mapping, Data type mapping>> describes.
+Set the value to `envelope` to land the change event as a raw CDC envelope, so that typed materialization occurs downstream of the table.
+
+The two modes are mutually exclusive, because a table is created for one of them.
+Currently the sink implements the `typed` mode only, and it reports an error at start-up if you set any other value.
+
+|[[zerobus-record-format]]<<zerobus-record-format, `debezium.sink.zerobus.record.format`>>
+|`json`
+|Specifies the encoding of a record on the wire.
+The `typed` payload mode writes `json`.
+Currently the sink implements the `json` format only, and it reports an error at start-up if you set any other value.
+
 |[[zerobus-max-inflight]]<<zerobus-max-inflight, `debezium.sink.zerobus.max.inflight.records`>>
 |`50000`
 |Maximum number of un-acknowledged records per stream.
+
+|[[zerobus-max-open-streams]]<<zerobus-max-open-streams, `debezium.sink.zerobus.max.open.streams`>>
+|`100`
+|Maximum number of Zerobus streams that the sink keeps open at one time.
+Zerobus binds one stream to one table, so a source that captures many tables would otherwise hold an unbounded number of connections.
+When the number of tables exceeds this limit, the sink flushes and closes the least recently used streams, and reopens them on demand.
+Set the value to `0` to keep every stream open.
 
 |[[zerobus-recovery]]<<zerobus-recovery, `debezium.sink.zerobus.recovery`>>
 |The SDK default.
@@ -2510,6 +2532,24 @@ For more information, see <<zerobus-monitoring, Monitoring>>.
 |===
 
 The preceding options that default to "The SDK default" are not set unless you configure them, so that the value that applies is the one that the Zerobus SDK version in use defines rather than one that this connector pins.
+
+====== Injection points
+
+The behaviour of the gRPC route can be modified by custom logic that provides an alternative implementation for a specific functionality.
+When the alternative implementation is not available, the default one is used.
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Interface
+|CDI classifier
+|Description
+
+|[[zerobus-ext-sdk]]<<zerobus-ext-sdk, `com.databricks.zerobus.ZerobusSdk`>>
+|`@CustomConsumerBuilder`
+|Custom configured instance of a `ZerobusSdk` used to open the streams that carry records to the target tables.
+By default, the sink builds one from the <<zerobus-endpoint, `endpoint`>> and <<zerobus-workspace-url, `workspace.url`>> options.
+
+|===
 
 ===== REST route (`zerobusrest`)
 
@@ -2848,7 +2888,8 @@ The following attributes are available:
 |Description
 
 |`TotalRecordsIngested`
-|Total number of change events forwarded to Zerobus, across all tables.
+|Total number of change events that Zerobus durably accepted, across all tables.
+On the gRPC route the sink counts a record only after the flush that covers it succeeds, so a batch that fails to flush never advances this metric.
 
 |`TotalInserts` / `TotalUpdates` / `TotalDeletes` / `TotalReads`
 |These metrics report the number of ingested events sorted by operation type (`c` / `u` / `d`, and snapshot reads `r`).
