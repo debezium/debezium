@@ -838,7 +838,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                                                               SnapshotReceiver<P> snapshotReceiver, Table table, boolean firstTable, boolean lastTable, int tableOrder,
                                                               int tableCount, String selectStatement, OptionalLong rowCount, Set<TableId> rowCountTablesKeySet,
                                                               Queue<JdbcConnection> connectionPool, Queue<O> offsets) {
-        return createPooledResourceCallable(connectionPool, offsets,
+        return createPooledResourceCallable(snapshotContext, connectionPool, offsets,
                 (connection, offset) -> {
                     LoggingContext.PreviousContext previousLoggingContext = LoggingContext.forConnector(
                             connectorConfig.getContextName(), connectorConfig.getLogicalName(), null, "snapshot", snapshotContext.partition);
@@ -863,7 +863,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                                                                      SnapshotReceiver<P> snapshotReceiver, SnapshotChunk chunk,
                                                                      Map<TableId, TableChunkProgress> progressMap, SnapshotProgress snapshotProgress,
                                                                      Queue<JdbcConnection> connectionPool, Queue<O> offsets) {
-        return createPooledResourceCallable(connectionPool, offsets,
+        return createPooledResourceCallable(snapshotContext, connectionPool, offsets,
                 (connection, offset) -> {
                     LoggingContext.PreviousContext previousLoggingContext = LoggingContext.forConnector(
                             connectorConfig.getContextName(), connectorConfig.getLogicalName(), null, "snapshot", snapshotContext.partition);
@@ -1406,7 +1406,8 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
      * @return a Callable wrapping the resource management
      */
     @SuppressWarnings("SameParameterValue")
-    private Callable<Void> createPooledResourceCallable(Queue<JdbcConnection> connectionPool,
+    private Callable<Void> createPooledResourceCallable(RelationalSnapshotContext<P, O> snapshotContext,
+                                                        Queue<JdbcConnection> connectionPool,
                                                         Queue<O> offsetPool,
                                                         PooledWork<O> work,
                                                         Runnable errorHandler) {
@@ -1417,6 +1418,10 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                 LOGGER.warn("Snapshot pool connection is no longer valid, attempting reconnect. Snapshot consistency for subsequent tables may be affected.");
                 connection.reconnect();
                 initializePooledConnection(connection);
+                // Re-apply the connector-specific pin (e.g. Oracle PDB, PostgreSQL exported snapshot) that
+                // createConnectionPool applies at pool creation, so a reconnected connection is not left with
+                // only the isolation level copied by initializePooledConnection.
+                connectionPoolConnectionCreated(snapshotContext, connection);
             }
             try {
                 work.execute(connection, offset);
