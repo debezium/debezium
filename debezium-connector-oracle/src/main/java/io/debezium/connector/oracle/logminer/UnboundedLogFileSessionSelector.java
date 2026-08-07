@@ -22,7 +22,15 @@ public class UnboundedLogFileSessionSelector implements LogFileSessionSelector {
 
     @Override
     public SessionLogSelection selectLogsForSession(LogFileCollector.LogFilesResult logFilesResult, Scn upperBoundary) {
-        LOGGER.debug("Using all logs and reading up to {}.", upperBoundary);
-        return new SessionLogSelection(logFilesResult.logFiles(), upperBoundary);
+        Scn effectiveUpperBoundary = upperBoundary;
+
+        // When the collector truncated the consistency range at a log sequence gap, do not read beyond it
+        final Scn consistentThroughScn = logFilesResult.consistentThroughScn();
+        if (!consistentThroughScn.isNull() && consistentThroughScn.compareTo(effectiveUpperBoundary) < 0) {
+            effectiveUpperBoundary = consistentThroughScn;
+        }
+
+        LOGGER.debug("Using all consistent logs and reading up to {}.", effectiveUpperBoundary);
+        return new SessionLogSelection(getConsistentLogFiles(logFilesResult), effectiveUpperBoundary);
     }
 }

@@ -55,6 +55,7 @@ public class LogFileCollector {
     private final boolean archiveLogOnlyMode;
     private final List<String> archiveLogDestinationNames;
     private final OracleConnection connection;
+    private final boolean tolerateSequenceGaps;
 
     public LogFileCollector(OracleConnectorConfig connectorConfig, OracleConnection connection) {
         this.initialDelay = connectorConfig.getLogMiningInitialDelay();
@@ -64,6 +65,7 @@ public class LogFileCollector {
         this.archiveLogOnlyMode = connectorConfig.isArchiveLogOnlyMode();
         this.archiveLogDestinationNames = connectorConfig.getArchiveDestinationNameResolver().getDestinationNames(connection);
         this.connection = connection;
+        this.tolerateSequenceGaps = isGapToleranceSupported(connectorConfig);
     }
 
     /**
@@ -86,13 +88,14 @@ public class LogFileCollector {
 
             // Fetch logs
             final List<LogFile> files = getLogsForOffsetScn(offsetScn);
-            if (!isLogFileListConsistent(offsetScn, files, currentRedoThreadState)) {
+            final ConsistencyCheckResult consistency = checkLogFileListConsistency(offsetScn, files, currentRedoThreadState);
+            if (!consistency.consistent()) {
                 LOGGER.info("No logs available yet (attempt {})...", attempt + 1);
                 retryStrategy.sleepWhen(true);
                 continue;
             }
 
-            return new LogFilesResult(files, currentRedoThreadState);
+            return new LogFilesResult(files, currentRedoThreadState, consistency.consistentThroughScn());
         }
 
         try {
@@ -256,10 +259,29 @@ public class LogFileCollector {
      * @param startScn the read position system change number, should not be {@code null}
      * @param logs the list of logs to inspect, should not be {@code null}
      * @param currentRedoThreadState the current database redo thread state, should not be {@code null}
-     * @return {@code true} if the logs are consistent; {@code false} otherwise
+     * @return {@code true} if the logs are fully consistent without truncation; {@code false} otherwise
      */
     @VisibleForTesting
     public boolean isLogFileListConsistent(Scn startScn, List<LogFile> logs, RedoThreadState currentRedoThreadState) {
+        final ConsistencyCheckResult result = checkLogFileListConsistency(startScn, logs, currentRedoThreadState);
+        return result.consistent() && result.consistentThroughScn().isNull();
+    }
+
+    /**
+     * Checks consistency of the list of log files for redo threads in the {@code currentRedoThreadState} state.
+     * <p>
+     * When sequence gaps can be tolerated by the mining strategy, an open redo thread with a sequence gap
+     * above the read position does not fail the check; instead the thread is treated as consistent up to
+     * the gap and the result carries the minimum such boundary across all threads so that mining can
+     * proceed with the logs that are currently available.
+     *
+     * @param startScn the read position system change number, should not be {@code null}
+     * @param logs the list of logs to inspect, should not be {@code null}
+     * @param currentRedoThreadState the current database redo thread state, should not be {@code null}
+     * @return the consistency check result, never {@code null}
+     */
+    @VisibleForTesting
+    public ConsistencyCheckResult checkLogFileListConsistency(Scn startScn, List<LogFile> logs, RedoThreadState currentRedoThreadState) {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Performing consistency check on the following collected logs:");
             for (LogFile logFile : logs) {
@@ -282,17 +304,21 @@ public class LogFileCollector {
                 .collect(Collectors.toList());
 
         // Checks current redo thread state against the logs
+        Scn consistentThroughScn = Scn.NULL;
         for (Integer threadId : currentThreads) {
             final RedoThread redoThread = currentRedoThreadState.getRedoThread(threadId);
-            if (redoThread.isOpen()) {
-                if (!isOpenThreadConsistent(redoThread, startScn, redoThreadLogs.get(threadId))) {
-                    return false;
-                }
+            final ConsistencyCheckResult threadResult = redoThread.isOpen()
+                    ? checkOpenThreadConsistency(redoThread, startScn, redoThreadLogs.get(threadId))
+                    : checkClosedThreadConsistency(redoThread, startScn, redoThreadLogs.get(threadId));
+
+            if (!threadResult.consistent()) {
+                return ConsistencyCheckResult.INCONSISTENT;
             }
-            else {
-                if (!isClosedThreadConsistent(redoThread, startScn, redoThreadLogs.get(threadId))) {
-                    return false;
-                }
+
+            final Scn threadConsistentThroughScn = threadResult.consistentThroughScn();
+            if (!threadConsistentThroughScn.isNull()
+                    && (consistentThroughScn.isNull() || threadConsistentThroughScn.compareTo(consistentThroughScn) < 0)) {
+                consistentThroughScn = threadConsistentThroughScn;
             }
         }
 
@@ -303,7 +329,9 @@ public class LogFileCollector {
                 .filter(not(currentThreads::contains))
                 .forEach(this::logThreadCheckSkippedNotInDatabase);
 
-        return true;
+        return consistentThroughScn.isNull()
+                ? ConsistencyCheckResult.CONSISTENT
+                : ConsistencyCheckResult.consistentThrough(consistentThroughScn);
     }
 
     /**
@@ -337,26 +365,29 @@ public class LogFileCollector {
 
     /**
      * Checks whether the specified open {@code thread} has consistent redo-logs in the specified collection.
+     * <p>
+     * When the mining strategy tolerates sequence gaps, a gap above the read position does not fail the
+     * check; the thread is instead reported consistent up to the system change number just before the gap.
      *
      * @param thread the redo thread to inspect; should not be {@code null}
      * @param startScn the read position system change number, should not be {@code null}
      * @param threadLogs the redo-thread logs to check consistency against, may be {@code null} or empty
-     * @return {@code true} if the open thread's logs are consistent; {@code false} otherwise
+     * @return the open thread's consistency check result, never {@code null}
      */
-    private boolean isOpenThreadConsistent(RedoThread thread, Scn startScn, List<LogFile> threadLogs) {
+    private ConsistencyCheckResult checkOpenThreadConsistency(RedoThread thread, Scn startScn, List<LogFile> threadLogs) {
         final int threadId = thread.getThreadId();
         final Scn enabledScn = thread.getEnabledScn();
         final Scn checkpointScn = thread.getCheckpointScn();
 
         if (thread.isDisabled()) {
             logException(String.format("Redo thread %d expected to have ENABLED with value PUBLIC or PRIVATE.", threadId));
-            return false;
+            return ConsistencyCheckResult.INCONSISTENT;
         }
 
         if (threadLogs == null || threadLogs.isEmpty()) {
             logException(String.format("Redo thread %d is inconsistent; enabled SCN %s checkpoint SCN %s reading from SCN %s, no logs found.",
                     threadId, enabledScn, checkpointScn, startScn));
-            return false;
+            return ConsistencyCheckResult.INCONSISTENT;
         }
 
         // Consistency is expected since the ENABLED_SCN point.
@@ -370,14 +401,18 @@ public class LogFileCollector {
             if (enabledLogs.isEmpty()) {
                 logException(String.format("Redo Thread %d is inconsistent; expected logs after enabled SCN %s",
                         threadId, enabledLogs));
-                return false;
+                return ConsistencyCheckResult.INCONSISTENT;
             }
 
             final Optional<Long> missingSequence = getFirstLogMissingSequence(enabledLogs);
             if (missingSequence.isPresent()) {
+                final Optional<Scn> consistentThroughScn = getConsistentScnBeforeGap(threadId, startScn, enabledLogs, missingSequence.get());
+                if (consistentThroughScn.isPresent()) {
+                    return ConsistencyCheckResult.consistentThrough(consistentThroughScn.get());
+                }
                 logException(String.format("Redo Thread %d is inconsistent; failed to find log with sequence %d (enabled).",
                         threadId, missingSequence.get()));
-                return false;
+                return ConsistencyCheckResult.INCONSISTENT;
             }
 
             LOGGER.debug("Redo Thread {} is consistent after enabled SCN {} ({}).", threadId, enabledScn, thread.getStatus());
@@ -393,12 +428,12 @@ public class LogFileCollector {
 
                     if (allThreadArchiveLogs.isEmpty()) {
                         logException(String.format("Redo Thread %d is inconsistent; at least one archive log expected.", threadId));
-                        return false;
+                        return ConsistencyCheckResult.INCONSISTENT;
                     }
                     else if (allThreadArchiveLogs.stream().anyMatch(l -> l.isScnInLogFileRange(startScn))) {
                         logException(String.format("Redo thread %d is inconsistent; does not have a log that conatins scn %s. " +
                                 "A recent log switch may not have been archived by the Oracle ARC process yet.", threadId, startScn));
-                        return false;
+                        return ConsistencyCheckResult.INCONSISTENT;
                     }
                     else {
                         // Collects all archive logs for a given redo thread and returns the first archive log
@@ -414,15 +449,20 @@ public class LogFileCollector {
                         if (logWithRangeBeforeStartScn.isEmpty()) {
                             logException(String.format("Redo Thread %d is inconsistent; expected archive log with range just before scn %s.",
                                     threadId, startScn));
-                            return false;
+                            return ConsistencyCheckResult.INCONSISTENT;
                         }
 
-                        final Optional<Long> missingSequence = getFirstLogMissingSequence(Stream.concat(
-                                threadLogs.stream(), logWithRangeBeforeStartScn.stream()).toList());
+                        final List<LogFile> bridgedLogs = Stream.concat(
+                                threadLogs.stream(), logWithRangeBeforeStartScn.stream()).toList();
+                        final Optional<Long> missingSequence = getFirstLogMissingSequence(bridgedLogs);
                         if (missingSequence.isPresent()) {
+                            final Optional<Scn> consistentThroughScn = getConsistentScnBeforeGap(threadId, startScn, bridgedLogs, missingSequence.get());
+                            if (consistentThroughScn.isPresent()) {
+                                return ConsistencyCheckResult.consistentThrough(consistentThroughScn.get());
+                            }
                             logException(String.format("Redo Thread %d is inconsistent; an archive log with sequence %d is not available",
                                     threadId, missingSequence.get()));
-                            return false;
+                            return ConsistencyCheckResult.INCONSISTENT;
                         }
                     }
 
@@ -434,32 +474,79 @@ public class LogFileCollector {
                 }
                 catch (SQLException e) {
                     logException(String.format("Redo thread %d is inconsistent; " + e.getMessage(), threadId), e);
-                    return false;
+                    return ConsistencyCheckResult.INCONSISTENT;
                 }
             }
 
             // Make sure the thread logs from the read position until now have no gaps
             final Optional<Long> missingSequence = getFirstLogMissingSequence(threadLogs);
             if (missingSequence.isPresent()) {
+                final Optional<Scn> consistentThroughScn = getConsistentScnBeforeGap(threadId, startScn, threadLogs, missingSequence.get());
+                if (consistentThroughScn.isPresent()) {
+                    return ConsistencyCheckResult.consistentThrough(consistentThroughScn.get());
+                }
                 logException(String.format("Redo Thread %d is inconsistent; failed to find log with sequence %d",
                         threadId, missingSequence.get()));
-                return false;
+                return ConsistencyCheckResult.INCONSISTENT;
             }
 
             LOGGER.debug("Redo Thread {} is consistent.", threadId);
         }
-        return true;
+        return ConsistencyCheckResult.CONSISTENT;
+    }
+
+    /**
+     * Computes the system change number through which the specified redo thread logs are consistent when
+     * truncating the thread's log chain just before the specified missing sequence.
+     * <p>
+     * An empty value is returned when the mining strategy does not tolerate sequence gaps or when the
+     * truncation would not allow the connector to advance beyond the read position, in which case the
+     * gap must be treated as an inconsistency.
+     *
+     * @param threadId the redo thread id
+     * @param startScn the read position system change number, should not be {@code null}
+     * @param threadLogs the redo-thread logs that contain the sequence gap, should not be {@code null}
+     * @param missingSequence the first missing log sequence in the collection
+     * @return the system change number the thread is consistent through, or empty if the gap cannot be tolerated
+     */
+    private Optional<Scn> getConsistentScnBeforeGap(int threadId, Scn startScn, List<LogFile> threadLogs, long missingSequence) {
+        if (!tolerateSequenceGaps) {
+            return Optional.empty();
+        }
+
+        // All logs with a sequence before the first missing sequence form a contiguous chain
+        final Scn consistentThroughScn = threadLogs.stream()
+                .filter(log -> log.getSequence().longValue() < missingSequence)
+                .map(LogFile::getNextScn)
+                .max(Scn::compareTo)
+                .orElse(Scn.NULL);
+
+        if (consistentThroughScn.isNull() || consistentThroughScn.compareTo(startScn) <= 0) {
+            // Truncating at the gap would not advance the read position; treat the gap as an inconsistency
+            return Optional.empty();
+        }
+
+        LOGGER.warn("Redo Thread {} has a log sequence gap at sequence {}; mining will proceed up to SCN {} " +
+                "until the missing log becomes available.", threadId, missingSequence, consistentThroughScn);
+
+        return Optional.of(consistentThroughScn);
     }
 
     /**
      * Checks whether the specified closed {@code thread} has consistent redo-logs in the specified collection.
+     * <p>
+     * When the mining strategy tolerates sequence gaps, a gap below the checkpoint of a thread that was
+     * shutdown (closed but not disabled) does not fail the check; the thread is instead reported consistent
+     * up to the system change number just before the gap, as the missing log may simply not have been
+     * archived yet. Gaps in a disabled thread's log chain remain strict inconsistencies, since a disabled
+     * thread's redo is fully archived at disable time and such a gap indicates a deleted archive log.
      *
      * @param thread the redo thread to inspect; should not be {@code null}
      * @param startScn the read position system change number, should not be {@code null}
      * @param threadLogs the redo-thread logs to check consistency against, may be {@code null} or empty
-     * @return {@code true} if the closed thread's logs are consistent; {@code false} otherwise
+     * @return the closed thread's consistency check result, never {@code null}
      */
-    private boolean isClosedThreadConsistent(RedoThread thread, Scn startScn, List<LogFile> threadLogs) {
+    private ConsistencyCheckResult checkClosedThreadConsistency(RedoThread thread, Scn startScn, List<LogFile> threadLogs) {
         final int threadId = thread.getThreadId();
         if (!thread.isDisabled()) {
             // The node was shutdown and not disabled.
@@ -477,7 +564,7 @@ public class LogFileCollector {
                     }
                     logException(String.format("Redo Thread %d stopped at SCN %s, but logs detected using SCN %s.",
                             threadId, checkpointScn, startScn));
-                    return false;
+                    return ConsistencyCheckResult.INCONSISTENT;
                 }
 
                 final List<LogFile> logsToCheck;
@@ -492,7 +579,7 @@ public class LogFileCollector {
                     if (logsToCheck.isEmpty()) {
                         logException(String.format("Redo Thread %d is inconsistent; expected logs between enabled SCN %s and checkpoint SCN %s",
                                 threadId, enabledScn, checkpointScn));
-                        return false;
+                        return ConsistencyCheckResult.INCONSISTENT;
                     }
                 }
                 else {
@@ -505,15 +592,22 @@ public class LogFileCollector {
                     if (logsToCheck.isEmpty()) {
                         logException(String.format("Redo Thread %d is inconsistent; expected logs before checkpoint SCN %s",
                                 threadId, checkpointScn));
-                        return false;
+                        return ConsistencyCheckResult.INCONSISTENT;
                     }
                 }
 
                 final Optional<Long> missingSequence = getFirstLogMissingSequence(logsToCheck);
                 if (missingSequence.isPresent()) {
+                    // The thread's trailing logs may still be pending archival by the ARC process even
+                    // though the thread has since transitioned to the closed state, e.g. a node shutdown
+                    // or scale-down; the gap may heal once the archiver catches up.
+                    final Optional<Scn> consistentThroughScn = getConsistentScnBeforeGap(threadId, startScn, logsToCheck, missingSequence.get());
+                    if (consistentThroughScn.isPresent()) {
+                        return ConsistencyCheckResult.consistentThrough(consistentThroughScn.get());
+                    }
                     logException(String.format("Redo Thread %d is inconsistent; failed to find log with sequence %d (checkpoint).",
                             threadId, missingSequence.get()));
-                    return false;
+                    return ConsistencyCheckResult.INCONSISTENT;
                 }
             }
             LOGGER.debug("Redo Thread {} is consistent before checkpoint SCN {} ({}).", threadId, checkpointScn, thread.getStatus());
@@ -524,7 +618,7 @@ public class LogFileCollector {
             final Scn disabledScn = thread.getDisabledScn();
             if (disabledScn.isNull() || disabledScn.asBigInteger().equals(BigInteger.ZERO)) {
                 LOGGER.debug("Redo Thread {} is disabled but has no disabled SCN; consistency check skipped.", threadId);
-                return true;
+                return ConsistencyCheckResult.CONSISTENT;
             }
 
             // If there are logs we need to check the consistency state up to the DISABLED_SCN
@@ -539,7 +633,7 @@ public class LogFileCollector {
                     }
                     logException(String.format("Redo Thread %d disabled at SCN %s, but logs detected using SCN %s.",
                             threadId, disabledScn, startScn));
-                    return false;
+                    return ConsistencyCheckResult.INCONSISTENT;
                 }
 
                 // Consistency is expected up to the DISABLED_SCN point.
@@ -550,20 +644,23 @@ public class LogFileCollector {
                 if (disabledLogs.isEmpty()) {
                     logException(String.format("Redo Thread %d is inconsistent; expected logs before disabled SCN %s.",
                             threadId, disabledLogs));
-                    return false;
+                    return ConsistencyCheckResult.INCONSISTENT;
                 }
 
+                // A disabled thread's redo is fully archived when the thread is disabled, so a sequence
+                // gap here indicates a deleted archive log that will never become available; no gap
+                // truncation is applied so the failure surfaces quickly.
                 final Optional<Long> missingSequence = getFirstLogMissingSequence(disabledLogs);
                 if (missingSequence.isPresent()) {
                     logException(String.format("Redo Thread %d is inconsistent; failed to find log with sequence %d.",
                             threadId, missingSequence.get()));
-                    return false;
+                    return ConsistencyCheckResult.INCONSISTENT;
                 }
             }
             LOGGER.debug("Redo Thread {} is consistent after disabled SCN {} ({}).", threadId, disabledScn, thread.getStatus());
         }
 
-        return true;
+        return ConsistencyCheckResult.CONSISTENT;
     }
 
     /**
@@ -696,6 +793,21 @@ public class LogFileCollector {
     }
 
     /**
+     * Sequence gaps can only be tolerated when the dictionary is not read from the logs themselves. For
+     * the {@code redo_log_catalog} strategy, the mined logs must form an unbroken chain that includes
+     * the dictionary, so the strict consistency check must be retained.
+     *
+     * @param connectorConfig the connector configuration, should not be {@code null}
+     * @return {@code true} if consistency can be truncated at a log sequence gap; {@code false} otherwise
+     */
+    private static boolean isGapToleranceSupported(OracleConnectorConfig connectorConfig) {
+        return switch (connectorConfig.getLogMiningStrategy()) {
+            case HYBRID, ONLINE_CATALOG -> true;
+            default -> false;
+        };
+    }
+
+    /**
      * Represents an inclusive range between two values.
      */
     @Immutable
@@ -718,11 +830,40 @@ public class LogFileCollector {
     }
 
     /**
+     * The result of a log file list consistency check.
+     * <p>
+     * A result may be fully consistent, inconsistent, or consistent up to a specific system change number
+     * when a tolerated log sequence gap truncated the consistency range. In the truncated case, mining
+     * must not read beyond {@link #consistentThroughScn()}.
+     *
+     * @param consistent whether the log file list can be safely mined
+     * @param consistentThroughScn the boundary the logs are consistent through when truncated at a
+     *         sequence gap; {@link Scn#NULL} when no truncation applies
+     */
+    @Immutable
+    public record ConsistencyCheckResult(boolean consistent, Scn consistentThroughScn) {
+
+        public static final ConsistencyCheckResult CONSISTENT = new ConsistencyCheckResult(true, Scn.NULL);
+        public static final ConsistencyCheckResult INCONSISTENT = new ConsistencyCheckResult(false, Scn.NULL);
+
+        public static ConsistencyCheckResult consistentThrough(Scn consistentThroughScn) {
+            return new ConsistencyCheckResult(true, consistentThroughScn);
+        }
+    }
+
+    /**
      * A result object when collecting Oracle logs.
      *
      * @param logFiles the logs that were fetched, never {@code null}
      * @param redoThreadState the redo thread state used when fetching logs, never {@code null}
+     * @param consistentThroughScn the boundary the logs are consistent through when a tolerated log
+     *         sequence gap truncated the consistency range; {@link Scn#NULL} when the logs are fully
+     *         consistent and no truncation applies
      */
-    public record LogFilesResult(List<LogFile> logFiles, RedoThreadState redoThreadState) {
+    public record LogFilesResult(List<LogFile> logFiles, RedoThreadState redoThreadState, Scn consistentThroughScn) {
+
+        public LogFilesResult(List<LogFile> logFiles, RedoThreadState redoThreadState) {
+            this(logFiles, redoThreadState, Scn.NULL);
+        }
     }
 }
