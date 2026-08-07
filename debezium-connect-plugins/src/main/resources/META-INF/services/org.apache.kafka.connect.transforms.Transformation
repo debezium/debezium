@@ -14,3 +14,4 @@ io.debezium.transforms.VectorToJsonConverter
 io.debezium.transforms.openlineage.OpenLineage
 io.debezium.transforms.SwapGeometryCoordinates
 io.debezium.transforms.GeometryFormatTransformer
+io.debezium.transforms.Neo4jCudConverter
