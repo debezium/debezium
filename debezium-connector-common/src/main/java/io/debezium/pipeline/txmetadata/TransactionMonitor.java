@@ -57,6 +57,7 @@ public class TransactionMonitor {
     // Following instance variables are kept for backward compatibility with connectors that override TransactionMonitor
     protected final Schema transactionKeySchema;
     protected final String DEBEZIUM_TRANSACTION_ID_KEY = TransactionStructMaker.DEBEZIUM_TRANSACTION_ID_KEY;
+    protected final String DEBEZIUM_TRANSACTION_COMMIT_LSN_KEY = TransactionStructMaker.DEBEZIUM_TRANSACTION_COMMIT_LSN_KEY;
 
     public TransactionMonitor(CommonConnectorConfig connectorConfig, EventMetadataProvider eventMetadataProvider,
                               SchemaNameAdjuster schemaNameAdjuster, BlockingConsumer<SourceRecord> sender,

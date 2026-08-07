@@ -33,6 +33,7 @@ import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.connection.ReplicationMessage;
 import io.debezium.connector.postgresql.connection.ReplicationMessage.Operation;
 import io.debezium.connector.postgresql.connection.ReplicationStream;
+import io.debezium.connector.postgresql.connection.TransactionMessage;
 import io.debezium.connector.postgresql.connection.WalPositionLocator;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.pipeline.ErrorHandler;
@@ -348,12 +349,16 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             }
 
             if (message.getOperation() == Operation.BEGIN) {
+                if (message instanceof TransactionMessage) {
+                    offsetContext.setCurrentTransactionCommitLsn(((TransactionMessage) message).getFinalLsn());
+                }
                 dispatcher.dispatchTransactionStartedEvent(partition, toString(message.getTransactionId()), offsetContext, message.getCommitTime());
             }
             else if (message.getOperation() == Operation.COMMIT) {
                 offsetContext.resetLsnEventsProcessed();
                 commitMessage(partition, offsetContext, lsn);
                 dispatcher.dispatchTransactionCommittedEvent(partition, offsetContext, message.getCommitTime());
+                offsetContext.setCurrentTransactionCommitLsn(null);
             }
             maybeWarnAboutGrowingWalBacklog(true);
         }

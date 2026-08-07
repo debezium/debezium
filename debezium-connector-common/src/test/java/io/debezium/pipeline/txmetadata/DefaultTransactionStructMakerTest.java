@@ -45,4 +45,26 @@ public class DefaultTransactionStructMakerTest {
         DefaultTransactionStructMaker transactionStructMaker = new DefaultTransactionStructMaker(Configuration.empty());
         assertThat(transactionStructMaker.getTransactionValueSchema()).isEqualTo(expectedSchema);
     }
+
+    @Test
+    public void transactionSchemasExposeOptionalCommitLsn() {
+        // The optional commit_lsn field is added to both the transaction block (embedded in data
+        // events) and the transaction-metadata value (BEGIN/END records). It must be optional so
+        // that connectors which do not provide it (and snapshot records) remain valid.
+        SchemaNameAdjuster adjuster = SchemaNameAdjuster.NO_OP;
+
+        final Schema blockSchema = SchemaFactory.get().transactionBlockSchema();
+        assertThat(blockSchema.field(TransactionStructMaker.DEBEZIUM_TRANSACTION_COMMIT_LSN_KEY)).isNotNull();
+        assertThat(blockSchema.field(TransactionStructMaker.DEBEZIUM_TRANSACTION_COMMIT_LSN_KEY).schema())
+                .isEqualTo(Schema.OPTIONAL_INT64_SCHEMA);
+
+        final Schema valueSchema = SchemaFactory.get().transactionValueSchema(adjuster);
+        assertThat(valueSchema.field(TransactionStructMaker.DEBEZIUM_TRANSACTION_COMMIT_LSN_KEY)).isNotNull();
+        assertThat(valueSchema.field(TransactionStructMaker.DEBEZIUM_TRANSACTION_COMMIT_LSN_KEY).schema())
+                .isEqualTo(Schema.OPTIONAL_INT64_SCHEMA);
+
+        // Adding a field is a schema change, so both schema versions are bumped from 1 to 2.
+        assertThat(blockSchema.version()).isEqualTo(2);
+        assertThat(valueSchema.version()).isEqualTo(2);
+    }
 }
