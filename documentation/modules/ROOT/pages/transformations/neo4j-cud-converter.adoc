@@ -1,0 +1,550 @@
+[id="neo4j-cud-converter"]
+= Neo4j CUD Converter
+
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+
+The `Neo4jCudConverter` SMT converts {prodname} change events into https://neo4j.com/docs/kafka/current/sink/cud-file-format/[Neo4j CUD format], enabling CDC pipelines from relational databases to Neo4j via the Neo4j Kafka sink connector.
+
+The SMT is stateless and processes one message at a time.
+It supports all {prodname} operations (`c`, `r`, `u`, `d`) and maps them to CUD operations (`merge` for create/read/update, `delete` for delete).
+
+The SMT supports two modes:
+
+`node.mode=node` (default)::
+Treats the table row as a graph node. Foreign key columns can be configured to produce relationship events.
+
+`node.mode=relationship`::
+Treats the table row as a graph relationship (for join tables). No entity node is created.
+
+[[neo4j-cud-converter-per-table-mappings]]
+== Per-table mappings
+
+A single `Neo4jCudConverter` instance can map several source tables at once.
+Each table has its own mapping, declared under a `table.<table_name>.` namespace, and the SMT dispatches every record to the matching mapping by reading the table name from the change event's `source` block.
+
+[source]
+----
+transforms=neo4j
+transforms.neo4j.type=io.debezium.transforms.Neo4jCudConverter
+
+# customers -> (:Customer)
+transforms.neo4j.table.customers.node.labels=Customer
+transforms.neo4j.table.customers.node.id.properties=id
+
+# orders -> (:Order)-[:PLACED_BY]->(:Customer)
+transforms.neo4j.table.orders.node.labels=Order
+transforms.neo4j.table.orders.node.id.properties=id
+transforms.neo4j.table.orders.relationship.customer_id.type=PLACED_BY
+transforms.neo4j.table.orders.relationship.customer_id.target.label=Customer
+transforms.neo4j.table.orders.relationship.customer_id.target.id=id
+----
+
+The structural options documented below are always configured with the full path `table.<table_name>.node.*` or `table.<table_name>.relationship.<fk_column>.*`.
+Configuring at least one table mapping is required; a configuration with no `table.<table_name>.*` mapping is rejected.
+
+Matching uses the bare table name from `source.table` (for example `orders`, not `public.orders`).
+The `<table_name>` you use in the `table.<table_name>.` namespace must match this value *exactly*: the comparison is case-sensitive and performed by simple string equality, with no normalization.
+For example, `table.customers.node.labels` applies only to change events whose `source.table` is exactly `customers` (not `Customers`, `CUSTOMERS`, or `public.customers`).
+A record whose table has no configured mapping, or a record with no `source.table` field, passes through *unchanged*.
+
+[NOTE]
+====
+Because matching is on the bare table name, identically-named tables in different schemas (for example `sales.orders` and `archive.orders`) cannot be distinguished by a single SMT instance.
+To map them differently, route each with a Kafka Connect predicate to a separate `Neo4jCudConverter` instance, or use separate connectors.
+====
+
+[NOTE]
+====
+A dot (`.`) separates the namespace segments of a configuration key, so `<table_name>` cannot itself contain a dot.
+Table names may contain any other character (for example underscores, as in `table.order_items.*`).
+A table whose name contains a dot cannot be mapped by name; route it with a Kafka Connect predicate to a dedicated `Neo4jCudConverter` instance instead.
+====
+
+The `output.mode` and `tombstones.enabled` options are *global*: they are configured once per SMT instance (without a `table.<table_name>.` prefix) and define a single output contract for the downstream Neo4j sink, regardless of how many tables are mapped.
+
+[[neo4j-cud-converter-output-modes]]
+== Output modes
+
+The `output.mode` property controls the output format:
+
+`array` (default)::
+Packs all CUD events (node + relationships) into a JSON array in a single Kafka record.
+This guarantees ordering between node and relationship events.
+The output requires a xref:neo4j-cud-converter-split-step[split step] before the Neo4j sink connector can consume it.
+
+`single`::
+Produces one CUD event per Kafka record.
+The output is directly consumable by the Neo4j sink connector.
+Due to the Kafka Connect `apply()` API constraint, only one event is emitted per input record.
+With `node.mode=node`, only the node event is emitted (no relationships).
+With `node.mode=relationship`, only the relationship event is emitted.
+
+[[neo4j-cud-converter-split-step]]
+== Splitting the array output
+
+When using `output.mode=array`, the SMT writes JSON arrays to the Debezium Kafka topics.
+The Neo4j sink connector expects one CUD event per record, not an array.
+A split step is needed between the SMT output and the Neo4j sink connector to split each array into individual CUD records.
+
+The split step must preserve the order of elements within each array so that node events are always processed before their relationship events.
+
+=== ksqlDB
+
+If you are running Confluent Platform, ksqlDB provides the `EXPLODE` function to split arrays into individual records.
+
+Create a stream over the Debezium topic:
+
+[source,sql]
+----
+CREATE STREAM orders_cud_arrays (
+  cud_events ARRAY<VARCHAR>
+) WITH (
+  KAFKA_TOPIC='dbserver1.public.orders',
+  VALUE_FORMAT='JSON'
+);
+----
+
+Split the array into individual records:
+
+[source,sql]
+----
+CREATE STREAM orders_cud_events AS
+  SELECT EXPLODE(cud_events) AS cud_event
+  FROM orders_cud_arrays
+  EMIT CHANGES;
+----
+
+The Neo4j sink connector then consumes from the `ORDERS_CUD_EVENTS` topic.
+
+=== Kafka Streams
+
+A lightweight Kafka Streams application can read JSON arrays and produce individual records.
+This is a good option for users on vanilla Apache Kafka who want a JVM-based solution.
+
+[source,java]
+----
+StreamsBuilder builder = new StreamsBuilder();
+builder.<String, String>stream("dbserver1.public.orders")
+    .flatMapValues(value -> {
+        ObjectMapper mapper = new ObjectMapper();
+        List<String> events = new ArrayList<>();
+        for (JsonNode node : mapper.readTree(value)) {
+            events.add(node.toString());
+        }
+        return events;
+    })
+    .to("orders-cud-events");
+----
+
+=== Apache Flink
+
+A Flink job can read from the Debezium topics and produce individual records.
+This is a good option for users who already have Flink infrastructure.
+
+=== Choosing a split step
+
+The choice depends on what is already available in your infrastructure:
+
+[cols="30%a,70%a",options="header"]
+|===
+|Infrastructure
+|Recommended split step
+
+|Confluent Platform
+|ksqlDB (simplest, no code needed)
+
+|Vanilla Apache Kafka
+|Kafka Streams (lightweight JVM application)
+
+|Apache Flink
+|Flink job
+|===
+
+[[neo4j-cud-converter-type-mapping]]
+== Type mapping
+
+{prodname} represents column values using Kafka Connect schema types and logical types.
+The SMT maps these to the property types that Neo4j supports.
+Because CUD events are serialized as JSON, values with no direct JSON representation (temporal, decimal, and nested structures) are emitted as strings or lists.
+
+.Type mapping from {prodname} to Neo4j
+[cols="40%a,25%a,35%a",options="header"]
+|===
+|{prodname} / Kafka Connect type
+|Neo4j property type
+|Notes
+
+|`INT8`, `INT16`, `INT32`, `INT64`
+|`Long`
+|Neo4j stores all integers as 64-bit, so narrower integers are widened.
+
+|`FLOAT32`, `FLOAT64`
+|`Double`
+|Neo4j stores all floating-point numbers as 64-bit.
+
+|`BOOLEAN`
+|`Boolean`
+|
+
+|`STRING`
+|`String`
+|
+
+|`BYTES`
+|`String` (Base64)
+|Serialized as a Base64-encoded string in the JSON payload.
+
+|`io.debezium.time.Date`
+|`String`
+|ISO-8601 date with no offset, for example `2024-01-01`. Compatible with Neo4j `date()`.
+
+|`io.debezium.time.Time`, `io.debezium.time.MicroTime`, `io.debezium.time.NanoTime`
+|`String`
+|ISO-8601 time of day at UTC with a trailing `Z`, for example `12:30:45.123Z` (milli-, micro-, and nanosecond precision respectively). Compatible with Neo4j `time()`.
+
+|`io.debezium.time.Timestamp`
+|`String`
+|ISO-8601 date-time at UTC with millisecond precision, for example `2024-01-01T12:30:45.123Z`. Compatible with Neo4j `datetime()`.
+
+|`io.debezium.time.MicroTimestamp`
+|`String`
+|ISO-8601 date-time at UTC with microsecond precision, for example `2024-01-01T12:30:45.123456Z`. Compatible with Neo4j `datetime()`.
+
+|`io.debezium.time.NanoTimestamp`
+|`String`
+|ISO-8601 date-time at UTC with nanosecond precision, for example `2024-01-01T12:30:45.123456789Z`. Compatible with Neo4j `datetime()`.
+
+|`io.debezium.time.ZonedTimestamp`
+|`String`
+|ISO-8601 date-time with its original zone offset, for example `2024-01-01T12:30:45Z`. Passed through unchanged. Compatible with Neo4j `datetime()`.
+
+|`io.debezium.time.ZonedTime`
+|`String`
+|ISO-8601 time of day with its original zone offset, for example `12:30:45Z`. Passed through unchanged. Compatible with Neo4j `time()`.
+
+|`org.apache.kafka.connect.data.Date`, `org.apache.kafka.connect.data.Time`, `org.apache.kafka.connect.data.Timestamp`
+|`String`
+|The Kafka Connect logical types emitted when the source connector uses `time.precision.mode=connect`. Normalized to the same ISO-8601 strings as their `io.debezium.time` counterparts (date without offset; time and date-time at UTC with a trailing `Z`, millisecond precision).
+
+|`io.debezium.data.Json`
+|`String`
+|Stored as a JSON string.
+
+|`org.apache.kafka.connect.data.Decimal`, `io.debezium.data.VariableScaleDecimal`
+|`Double` or `String`
+|Depends on the source connector's `decimal.handling.mode`. See xref:neo4j-cud-converter-decimal-handling[Decimal handling].
+
+|`STRUCT` (nested)
+|`String` (JSON)
+|Serialized as a JSON string, because Neo4j properties are flat.
+
+|`ARRAY`
+|`List`
+|Neo4j supports homogeneous lists.
+
+|`MAP`
+|`String` (JSON)
+|Serialized as a JSON string.
+
+|`null`
+|(property omitted)
+|Null values are not written as properties.
+|===
+
+[NOTE]
+====
+Time-of-day and date-time values (`Time`, `MicroTime`, `NanoTime`, `Timestamp`, `MicroTimestamp`, `NanoTimestamp`, and the corresponding Kafka Connect logical types) are normalized to UTC and rendered with a trailing `Z`, consistent with {prodname}'s `time.precision.mode=isostring` convention, which represents temporal values as ISO-8601 strings at the UTC time zone.
+`Date` is rendered without an offset, because Neo4j `date()` does not accept one.
+`ZonedTimestamp` and `ZonedTime` keep their original zone offset and are passed through unchanged.
+A downstream consumer can convert these strings into native Neo4j temporals in Cypher, for example with `date()`, `time()`, or `datetime()`.
+====
+
+[[neo4j-cud-converter-decimal-handling]]
+== Decimal handling
+
+Neo4j property types are limited to `Long`, `Double`, `String`, `Boolean`, and arrays of those.
+There is no arbitrary-precision numeric type, so `java.math.BigDecimal` values (represented in {prodname} by `org.apache.kafka.connect.data.Decimal` or `io.debezium.data.VariableScaleDecimal`) cannot be stored losslessly as a numeric property.
+
+How a decimal reaches the SMT is controlled by the source connector's `decimal.handling.mode`, so set it according to your needs:
+
+`decimal.handling.mode=double`::
+Decimals arrive as a `FLOAT64` schema (`java.lang.Double`) and are mapped to a Neo4j `Double`.
+Choose this when you need to perform numeric operations in Neo4j and can accept the precision limits of a 64-bit float.
+
+`decimal.handling.mode=string`::
+Decimals arrive as a `STRING` schema (`java.lang.String`) and are mapped to a Neo4j `String`.
+Choose this when you need exact precision and do not need to perform numeric operations in Neo4j.
+
+When `decimal.handling.mode` is left at its default (`precise`), the value reaches the SMT as a `BigDecimal` (`Decimal` or `VariableScaleDecimal`).
+Rather than silently converting to a `Double` (risking precision loss) or failing the record, the SMT serializes the value to its exact string representation.
+A precise decimal therefore materializes as a Neo4j `String`.
+Users who want a numeric `Double` property should explicitly set `decimal.handling.mode=double`.
+
+[[neo4j-cud-converter-configuration-options]]
+== Configuration options
+
+The node and relationship options below are per-table: each is shown with its full path, where `<table_name>` is the bare source table name it applies to (see xref:neo4j-cud-converter-per-table-mappings[Per-table mappings]).
+The output options (`output.mode`, `tombstones.enabled`) are global and carry no `table.<table_name>.` prefix.
+
+=== Node configuration
+
+.Neo4jCudConverter node configuration options
+[cols="30%a,10%a,10%a,50%a",options="header"]
+|===
+|Property
+|Default
+|Importance
+|Description
+
+|[[neo4j-node-mode]]<<neo4j-node-mode, `table.<table_name>.node.mode`>>
+|`node`
+|high
+a|Controls the entity type:
+
+* `node`: treats the table row as a graph node.
+* `relationship`: treats the table row as a graph relationship (for join tables). No entity node is created.
+
+|[[neo4j-node-labels]]<<neo4j-node-labels, `table.<table_name>.node.labels`>>
+|
+|high
+|Comma-separated list of Neo4j labels to apply to the node. Set explicitly for each table.
+
+|[[neo4j-node-id-properties]]<<neo4j-node-id-properties, `table.<table_name>.node.id.properties`>>
+|
+|high
+|Comma-separated list of column names to use as CUD key properties (`ids`). Required when `node.mode=node`.
+
+|[[neo4j-node-properties-include]]<<neo4j-node-properties-include, `table.<table_name>.node.properties.include`>>
+|
+|medium
+|Comma-separated list of columns to include as node properties. Mutually exclusive with `table.<table_name>.node.properties.exclude`.
+
+|[[neo4j-node-properties-exclude]]<<neo4j-node-properties-exclude, `table.<table_name>.node.properties.exclude`>>
+|
+|medium
+|Comma-separated list of columns to exclude from node properties. FK columns mapped to relationships are excluded automatically.
+
+|[[neo4j-node-delete-detach]]<<neo4j-node-delete-detach, `table.<table_name>.node.delete.detach`>>
+|`true`
+|medium
+|Whether to set `detach: true` on delete operations, removing the node and all its relationships.
+|===
+
+=== Relationship configuration
+
+Relationships are configured per foreign key column using the property pattern `table.<table_name>.relationship.<fk_column>.*`.
+You can configure multiple relationships by repeating the pattern with different FK column names.
+
+[NOTE]
+====
+The number of relationship mappings you configure depends on `node.mode`:
+
+* With `node.mode=node`, you can configure zero or more relationship mappings; each foreign key column produces its own relationship from the entity node.
+* With `node.mode=relationship`, you must configure *exactly two* relationship mappings, one for each foreign key column of the join table. These two mappings become the endpoints of the join relationship, and each must set `direction`: exactly one `outgoing` (the source endpoint) and one `incoming` (the target endpoint). The relationship always runs from the `outgoing` node to the `incoming` node, so the orientation is deterministic and independent of configuration order. Configuring fewer or more than two mappings, omitting `direction`, or not assigning exactly one `outgoing` and one `incoming`, is a configuration error.
+
+The `table.<table_name>.node.*` properties (`table.<table_name>.node.labels`, `table.<table_name>.node.id.properties`, `table.<table_name>.node.properties.include`, `table.<table_name>.node.properties.exclude`, and `table.<table_name>.node.delete.detach`) apply only to `node.mode=node` and have no effect when `node.mode=relationship`, because no entity node is created.
+====
+
+.Neo4jCudConverter relationship configuration options
+[cols="30%a,10%a,10%a,50%a",options="header"]
+|===
+|Property
+|Default
+|Importance
+|Description
+
+|[[neo4j-rel-type]]<<neo4j-rel-type, `table.<table_name>.relationship.<fk_column>.type`>>
+|
+|high
+|The Neo4j relationship type (e.g., `PLACED_BY`, `CONTAINS`). Required when a relationship mapping is defined.
+
+|[[neo4j-rel-direction]]<<neo4j-rel-direction, `table.<table_name>.relationship.<fk_column>.direction`>>
+|`outgoing`
+|medium
+a|Relationship direction. In `node.mode=node` it controls the orientation of the FK relationship and defaults to `outgoing`. In `node.mode=relationship` it is *required* on both endpoints and identifies each endpoint's role: exactly one mapping must be `outgoing` (the source) and one `incoming` (the target).
+
+* `outgoing`: source node to target node.
+* `incoming`: target node to source node.
+
+|[[neo4j-rel-target-label]]<<neo4j-rel-target-label, `table.<table_name>.relationship.<fk_column>.target.label`>>
+|
+|high
+|The label of the target node. Required when a relationship mapping is defined.
+
+|[[neo4j-rel-target-id]]<<neo4j-rel-target-id, `table.<table_name>.relationship.<fk_column>.target.id`>>
+|Same as `<fk_column>`
+|medium
+|The property name on the target node that the FK value maps to.
+
+|[[neo4j-rel-target-node-op]]<<neo4j-rel-target-node-op, `table.<table_name>.relationship.<fk_column>.target.node.op`>>
+|`match`
+|medium
+a|How to handle the target node in the CUD relationship event:
+
+* `match`: the target node must already exist.
+* `merge`: create the target node with key properties if it does not exist.
+
+|[[neo4j-rel-properties]]<<neo4j-rel-properties, `table.<table_name>.relationship.<fk_column>.properties`>>
+|
+|medium
+|Comma-separated list of columns to include as relationship properties.
+|===
+
+=== Output configuration
+
+.Neo4jCudConverter output configuration options
+[cols="30%a,10%a,10%a,50%a",options="header"]
+|===
+|Property
+|Default
+|Importance
+|Description
+
+|[[neo4j-output-mode]]<<neo4j-output-mode, `output.mode`>>
+|`array`
+|high
+a|Controls the output format:
+
+* `array`: packs all CUD events into a JSON array. Requires a xref:neo4j-cud-converter-split-step[split step] before the Neo4j sink connector.
+* `single`: produces one CUD event per record. Directly consumable by the Neo4j sink connector.
+
+|[[neo4j-tombstones-enabled]]<<neo4j-tombstones-enabled, `tombstones.enabled`>>
+|`true`
+|low
+|Whether to pass through tombstone records (null value) emitted after delete events for Kafka log compaction.
+|===
+
+[[example-neo4j-cud-converter]]
+== Examples
+
+The following examples map a `customers`, an `orders`, and an `order_items` table.
+A single `Neo4jCudConverter` instance handles all three, with one `table.<table_name>.` namespace per table:
+
+[source]
+----
+transforms=neo4j
+transforms.neo4j.type=io.debezium.transforms.Neo4jCudConverter
+
+# customers: entity table without relationships
+transforms.neo4j.table.customers.node.labels=Customer
+transforms.neo4j.table.customers.node.id.properties=id
+
+# orders: entity table with a foreign key relationship
+transforms.neo4j.table.orders.node.labels=Order
+transforms.neo4j.table.orders.node.id.properties=id
+transforms.neo4j.table.orders.relationship.customer_id.type=PLACED_BY
+transforms.neo4j.table.orders.relationship.customer_id.target.label=Customer
+transforms.neo4j.table.orders.relationship.customer_id.target.id=id
+
+# order_items: join table (many-to-many relationship)
+transforms.neo4j.table.order_items.node.mode=relationship
+transforms.neo4j.table.order_items.relationship.order_id.direction=outgoing
+transforms.neo4j.table.order_items.relationship.order_id.type=CONTAINS
+transforms.neo4j.table.order_items.relationship.order_id.target.label=Order
+transforms.neo4j.table.order_items.relationship.order_id.target.id=id
+transforms.neo4j.table.order_items.relationship.product_id.direction=incoming
+transforms.neo4j.table.order_items.relationship.product_id.type=CONTAINS
+transforms.neo4j.table.order_items.relationship.product_id.target.label=Product
+transforms.neo4j.table.order_items.relationship.product_id.target.id=id
+transforms.neo4j.table.order_items.relationship.order_id.properties=quantity
+----
+
+The SMT reads `source.table` from each change event and applies the matching table mapping.
+The three subsections below walk through the output each mapping produces.
+
+=== Entity table without relationships
+
+The `customers` table has no foreign key columns, so its mapping declares only the node label and id:
+
+[source]
+----
+transforms.neo4j.table.customers.node.labels=Customer
+transforms.neo4j.table.customers.node.id.properties=id
+----
+
+An INSERT event produces the following CUD output (wrapped in an array by default):
+
+[source,json]
+----
+[
+  {
+    "type": "node",
+    "op": "merge",
+    "labels": ["Customer"],
+    "ids": { "id": 1004 },
+    "properties": {
+      "first_name": "John",
+      "last_name": "Foo",
+      "email": "john@foo.org"
+    }
+  }
+]
+----
+
+=== Entity table with foreign key relationship
+
+The `orders` table has a `customer_id` foreign key, so its mapping adds a relationship using the `table.<table_name>.relationship.<fk_column>.*` properties:
+
+[source]
+----
+transforms.neo4j.table.orders.node.labels=Order
+transforms.neo4j.table.orders.node.id.properties=id
+transforms.neo4j.table.orders.relationship.customer_id.type=PLACED_BY
+transforms.neo4j.table.orders.relationship.customer_id.target.label=Customer
+transforms.neo4j.table.orders.relationship.customer_id.target.id=id
+----
+
+An INSERT event produces an array with the node event followed by the relationship event:
+
+[source,json]
+----
+[
+  {
+    "type": "node",
+    "op": "merge",
+    "labels": ["Order"],
+    "ids": { "id": 5001 },
+    "properties": { "total": 99.95, "status": "pending" }
+  },
+  {
+    "type": "relationship",
+    "op": "merge",
+    "rel_type": "PLACED_BY",
+    "from": { "labels": ["Order"], "ids": { "id": 5001 }, "op": "merge" },
+    "to": { "labels": ["Customer"], "ids": { "id": 1004 }, "op": "match" },
+    "properties": {}
+  }
+]
+----
+
+The `customer_id` column is automatically excluded from the node properties because it is configured as a relationship.
+
+=== Join table (many-to-many relationship)
+
+The `order_items` join table uses `node.mode=relationship` to suppress the entity node and emit only the relationship:
+
+[source]
+----
+transforms.neo4j.table.order_items.node.mode=relationship
+transforms.neo4j.table.order_items.relationship.order_id.direction=outgoing
+transforms.neo4j.table.order_items.relationship.order_id.type=CONTAINS
+transforms.neo4j.table.order_items.relationship.order_id.target.label=Order
+transforms.neo4j.table.order_items.relationship.order_id.target.id=id
+transforms.neo4j.table.order_items.relationship.product_id.direction=incoming
+transforms.neo4j.table.order_items.relationship.product_id.type=CONTAINS
+transforms.neo4j.table.order_items.relationship.product_id.target.label=Product
+transforms.neo4j.table.order_items.relationship.product_id.target.id=id
+transforms.neo4j.table.order_items.relationship.order_id.properties=quantity
+----
+
+The `order_id` mapping is `outgoing` (the source) and `product_id` is `incoming` (the target), so the relationship runs `(Order)-[:CONTAINS]->(Product)` regardless of configuration order.
+The relationship `type` and `properties` are taken from the `outgoing` (source) mapping.
+
+With `output.mode=array` (the default), the output includes node merges for the referenced endpoints followed by the relationship event.
+Non-FK columns on the join table (like `quantity`) become relationship properties.
