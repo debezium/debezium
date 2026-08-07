@@ -1,0 +1,27 @@
+# GitHub handle to Zulip user ID mapping
+#
+# This file maps GitHub usernames to Zulip user IDs for PR notifications.
+# When a user opens a PR, they will receive a private Zulip message if they
+# are listed in this file.
+#
+# Format: github_handle,zulip_user_id
+# One mapping per line. Lines starting with # are comments.
+#
+# To find your Zulip user ID:
+# 1. Visit your profile in Zulip web interface (https://debezium.zulipchat.com)
+# 2. Click on your profile picture/name in the top right
+# 3. Click "Profile" in the dropdown menu
+# 4. The user ID is shown in the profile details (or in the URL)
+#
+# Alternatively, use the Zulip API:
+# curl -X GET https://debezium.zulipchat.com/api/v1/users \
+#   -u BOT_EMAIL:BOT_API_KEY
+#
+# To add yourself to this list, submit a PR with your GitHub handle and Zulip user ID.
+#
+# Example entries:
+# username1,12345
+# username2,67890
+#
+# Add your mapping below:
+jpechane,448915
