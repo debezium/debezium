@@ -2539,6 +2539,14 @@ As an alternative to the `zerobus` and `zerobusrest` routes, you can reuse the b
 This route uses the standard Kafka producer with `SASL_SSL` and the `OAUTHBEARER` mechanism.
 Authentication is handled by `io.debezium.server.databricks.zerobus.ZerobusOAuthBearerLoginCallbackHandler`, which performs the OAuth token exchange and attaches the Unity Catalog authorization details that Zerobus requires.
 
+Because this route uses the generic `kafka` sink rather than the Zerobus sink, the data type normalization that the <<zerobus-data-type-mapping, Data type mapping>> section describes does not apply.
+Instead, the emitted JSON must match the target Delta table schema, which requires the source-side and format settings that the following sections describe.
+Zerobus is partitionless, and it ingests only the record value.
+It does not persist record keys, headers, partition assignments, or timestamps.
+
+The Kafka-compatible endpoint must be enabled for the workspace.
+If it is not enabled, authentication fails with `Access denied: feature "Zerobus Ingest Kafka Endpoint" is not enabled for workspace "<workspace-id>". Error Code: 4062`.
+
 To use this route, set `debezium.sink.type` to `kafka` and configure the following producer properties:
 
 [cols="55%a,45%a",options="header"]
@@ -2560,6 +2568,19 @@ To use this route, set `debezium.sink.type` to `kafka` and configure the followi
 
 |`debezium.sink.kafka.producer.sasl.jaas.config`
 |The JAAS configuration for the `OAuthBearerLoginModule`, which supplies the OAuth options that the login callback handler reads.
+
+|`debezium.sink.kafka.producer.acks`
+|Must be set to `all`.
+
+|`debezium.sink.kafka.producer.enable.idempotence`
+|Must be set to `false`.
+Zerobus does not implement the transactional APIs, so it rejects the `InitProducerId` request that the Kafka producer sends when idempotence is enabled.
+The producer then fails with `UnsupportedVersionException: The node does not support INIT_PRODUCER_ID`.
+Because Kafka clients enable idempotence by default, you must set this property explicitly.
+
+|`debezium.sink.kafka.producer.compression.type`
+|Must be set to `none`.
+Zerobus rejects compressed record batches.
 |===
 
 The `sasl.jaas.config` entry accepts the following options:
@@ -2607,6 +2628,75 @@ The handler uses this list to build the OAuth Rich Authorization Requests (RFC 9
 If you set this option, the handler skips the OAuth exchange and uses this token directly.
 |===
 
+====== Record format for the Kafka route
+
+Zerobus accepts a record value only if it is a JSON object whose fields match the target Delta table schema.
+A record that does not match is rejected with `InvalidRecordException: This record has failed the validation on broker and hence will be rejected`.
+To satisfy the requirement, configure the following options in addition to the producer properties:
+
+[cols="55%a,45%a",options="header"]
+|===
+|Property
+|Description
+
+|`debezium.transforms`
+|Apply the {link-prefix}:{link-event-flattening}#new-record-state-extraction[`ExtractNewRecordState` SMT] so that the emitted record is a flat row rather than a change event envelope.
+Optionally apply the `RegexRouter` SMT to map the topic name to the fully-qualified name of the target table.
+
+|`debezium.format.value.schemas.enable`
+|Must be set to `false`.
+Otherwise, the JSON converter wraps each value in a `{"schema": ..., "payload": ...}` envelope, which does not match the table schema.
+
+|`debezium.source.decimal.handling.mode`
+|Must be set to `string`.
+Zerobus rejects a JSON number for a `DECIMAL` column, and the default `precise` mode emits a Base64-encoded byte array.
+The `string` mode emits the exact decimal value as a JSON string, which Zerobus accepts.
+
+|`debezium.source.time.precision.mode`
+|Use the default `adaptive` mode, which emits a `TIMESTAMP` column as the number of microseconds since the epoch.
+Zerobus rejects an ISO-8601 string for a `TIMESTAMP` column, and it interprets a numeric value as microseconds.
+Because of the latter, the `connect` mode, which emits milliseconds, silently stores an incorrect instant.
+|===
+
+====== Tuning throughput on the Kafka route
+
+Throughput on this route is bound by network round trips rather than by local processing, because Zerobus acknowledges each request from the region in which the workspace runs.
+With the default producer settings, the number of records that the service ingests per second is approximately the number of in-flight requests, multiplied by the number of records per request, and divided by the request latency.
+As a result, a pipeline that produces one record at a time spends most of its time waiting.
+
+The following producer properties control that behavior.
+Because the optimal values depend on the latency between the service and the workspace, treat the values in the following table as a starting point, and then measure.
+To find the request latency of a running pipeline, read the `request_latency_avg` attribute of the standard `kafka.producer:type=producer-metrics` MBean, and to confirm that batching takes effect, read `records_per_request_avg`.
+
+[cols="40%a,15%a,45%a",options="header"]
+|===
+|Property
+|Suggested value
+|Description
+
+|`debezium.sink.kafka.producer.linger.ms`
+|`100`
+|Specifies how long the producer waits to accumulate records before it sends a request.
+The default value, `0`, sends each record as soon as possible, so every request pays a full round trip to carry very few records.
+
+Because this setting delays a record by up to the configured duration, it trades latency for throughput.
+On a change data capture pipeline, in which a round trip to the workspace already dominates, the added delay is typically negligible.
+
+|`debezium.sink.kafka.producer.batch.size`
+|`1048576`
+|Specifies the maximum size, in bytes, of a single batch.
+Set this option together with `linger.ms`: at the default value of `16384`, a batch of even moderately sized change events fills, and is therefore sent, before the configured wait elapses, which limits the effect of the preceding setting.
+Zerobus rejects a record that is larger than 10 MB, so a batch size of 1 MB leaves ample headroom.
+
+|`debezium.sink.kafka.producer.max.in.flight.requests.per.connection`
+|`10`
+|Specifies how many requests can be awaiting a response at the same time, which sets how much of the round-trip latency the producer can overlap.
+
+A value greater than `5` is permitted here only because this route requires `enable.idempotence=false`.
+Increasing the value relaxes the ordering of records that are retried.
+Zerobus is partitionless and provides an at-least-once guarantee, so a pipeline on this route cannot depend on strict ordering in any case.
+|===
+
 The following example shows a complete configuration for the Kafka route:
 
 [source,properties]
@@ -2622,8 +2712,31 @@ debezium.sink.kafka.producer.sasl.jaas.config=org.apache.kafka.common.security.o
     clientId="<client-id>" \
     clientSecret="<client-secret>" \
     tables="<catalog>.<schema>.<table>" ;
+debezium.sink.kafka.producer.acks=all
+debezium.sink.kafka.producer.enable.idempotence=false
+debezium.sink.kafka.producer.compression.type=none
+debezium.sink.kafka.producer.linger.ms=100
+debezium.sink.kafka.producer.batch.size=1048576
+debezium.sink.kafka.producer.max.in.flight.requests.per.connection=10
+debezium.sink.kafka.producer.key.serializer=org.apache.kafka.common.serialization.StringSerializer
+debezium.sink.kafka.producer.value.serializer=org.apache.kafka.common.serialization.StringSerializer
+debezium.sink.kafka.producer.interceptor.classes=io.debezium.server.databricks.zerobus.metrics.ZerobusProducerInterceptor
+
+debezium.format.value=json
+debezium.format.value.schemas.enable=false
+debezium.source.decimal.handling.mode=string
+
+debezium.transforms=unwrap,route
+debezium.transforms.unwrap.type=io.debezium.transforms.ExtractNewRecordState
+debezium.transforms.unwrap.delete.tombstone.handling.mode=rewrite
+debezium.transforms.unwrap.add.fields=op,source.ts_ms
+debezium.transforms.unwrap.add.headers=op,source.ts_ms
+debezium.transforms.route.type=org.apache.kafka.connect.transforms.RegexRouter
+debezium.transforms.route.regex=<topic-prefix>\\.<schema>\\.<table>
+debezium.transforms.route.replacement=<catalog>.<schema>.<table>
 ----
 
+[[zerobus-data-type-mapping]]
 ===== Data type mapping
 
 When the sink maps data types, rather than converting values based on their serialized JSON representation, it uses Kafka Connect logical type information to normalize values to a format that is compatible with the target Delta column.
@@ -2668,11 +2781,39 @@ BINARY (encoded as Base64)
 [[zerobus-monitoring]]
 ===== Monitoring
 
-The {prodname} DataBricks Zero sink supports the following delivery routes: zerobus (gRPC) and zerobusrest (REST).
-Both routes expose sink metrics over JMX under the object name debezium.zerobus:type=connector-metrics,context=sink,server=<route>,task=0, where <route> is `grpc` for the `zerobus` route or `rest` for the `zerobusrest` route.
-The metrics use the same JMX exposure model as the JDBC sink connector and {prodname} source connectors, enabling you to use existing JMX monitoring tools such as JConsole, jmxterm, and Prometheus JMX Exporter without additional configuration.
+The {prodname} DataBricks Zero sink supports the following delivery routes: zerobus (gRPC), zerobusrest (REST), and the <<zerobus-kafka-route, Kafka route>>.
+All three routes expose sink metrics over JMX under the object name debezium.zerobus:type=connector-metrics,context=sink,server=<route>,task=0, where <route> is `grpc` for the `zerobus` route, `rest` for the `zerobusrest` route, or `kafka` for the Kafka route.
+The metrics use the same JMX exposure model as the JDBC sink connector and {prodname} source connectors, so existing JMX monitoring tools such as JConsole, jmxterm, and Prometheus JMX Exporter can read them without any Zerobus-specific configuration.
+
+The sink registers the metrics when it starts, so no option is required to begin collecting them.
+Reading them from outside the process is a separate step: the service exposes JMX only after you set the `JMX_HOST` and `JMX_PORT` environment variables, and it starts the bundled Prometheus JMX Exporter only after you set `JMX_EXPORTER_PORT`.
+The {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[{prodname} monitoring documentation] provides details about how to expose metrics by using JMX.
 You can automate periodic metric logging by setting <<zerobus-metrics-log-interval, `debezium.sink.zerobus.metrics.log.interval`>> or <<zerobusrest-metrics-log-interval, `debezium.sink.zerobusrest.metrics.log.interval`>> to a positive value.
 After you enable either of these options, at the specified interval the connector writes an `INFO` log message that contains the same metric values that are available through JMX.
+
+The Kafka route is the exception to metrics being collected automatically: because it writes through the generic `kafka` sink, the Zerobus sink is never invoked and cannot instrument itself.
+On that route the metrics are not collected until you register the following producer interceptor, which reports the same attributes under `server=kafka`:
+
+[source,properties]
+----
+debezium.sink.kafka.producer.interceptor.classes=io.debezium.server.databricks.zerobus.metrics.ZerobusProducerInterceptor
+----
+
+The interceptor reads the operation and the source timestamp from the record headers, and falls back to scanning the serialized value when the headers are absent.
+Because the interceptor runs for every produced record, prefer the headers on a high-volume pipeline: configure the `ExtractNewRecordState` SMT with `add.headers=op,source.ts_ms` in addition to `add.fields`, as shown in <<zerobus-kafka-route, Kafka route>>.
+Zerobus does not persist record headers, so the metadata does not reach the target table, and reading it from a header rather than scanning the value makes the interceptor several times cheaper per record.
+To enable periodic metric logging on this route, set `debezium.sink.kafka.producer.zerobus.metrics.log.interval` to a positive value.
+The option is the counterpart of `debezium.sink.zerobus[rest].metrics.log.interval`, except that it counts records rather than batches, because a producer interceptor observes individual sends.
+Two attributes carry a route-specific meaning: `TotalFlushes` counts broker-acknowledged records, which is the durability boundary on this route, and `TotalRecordsSkipped` remains `0`, because the generic sink forwards every record that it receives.
+
+[NOTE]
+====
+On the Kafka route the interceptor times one in every 128 records rather than every record, so that `LastFlushDurationMillis` and `MaxFlushDurationMillis` describe a representative sample.
+Reading the system clock is significantly more expensive when the producer's network thread reads it concurrently, and on a high-volume pipeline that cost outweighs everything else the interceptor does.
+The first record is always timed, so the gauges report a value even on a pipeline that produces few records.
+All counters remain exact.
+====
+The standard `kafka.producer:type=producer-metrics` and `kafka.producer:type=producer-topic-metrics` MBeans remain available, and provide per-topic byte counts and request latencies that complement the sink metrics.
 
 The following attributes are available:
 
@@ -2689,13 +2830,14 @@ The following attributes are available:
 
 |`TotalRecordsSkipped`
 |Number of records skipped without being forwarded (tombstones / null payloads, and events whose destination is not a fully-qualified `catalog.schema.table`, such as schema-history or DDL events).
+The value remains `0` on the Kafka route, which forwards every record that it receives.
 
 |`TotalErrors`
 |Number of ingestion or flush failures observed.
 
 |`TotalFlushes`
-|The metric counts stream flush operations when using the gRPC route, or successful record POST requests when using the REST route.
-For the REST route, a successful POST indicates that the record has been durably accepted and is no longer at risk of loss due to a service failure.
+|The metric counts stream flush operations when using the gRPC route, successful record POST requests when using the REST route, or broker-acknowledged records when using the Kafka route.
+For the REST and Kafka routes, a successful POST or acknowledgement indicates that the record has been durably accepted and is no longer at risk of loss due to a service failure.
 
 |`MilliSecondsBehindSource`
 |Indicates the age, in milliseconds, of the most recently processed event.
@@ -2705,18 +2847,34 @@ A values near `0` indicates that the sink is catching up to, or is synchronized 
 
 This metric is a primary indicator of pipeline freshness in a CDC-to-lakehouse deployment.
 
+|`MilliSecondsSinceLastEvent`
+|Indicates the time that elapsed since the sink last forwarded an event.
+The metric reports the value `-1` until the sink forwards the first event.
+
+Use this metric together with `MilliSecondsBehindSource`.
+Because `MilliSecondsBehindSource` reports the age of the last event that the sink processed, its value stops changing if the pipeline stops, and, as a result, an idle source cannot be distinguished from a stalled sink.
+By contrast, if the value of `MilliSecondsSinceLastEvent` grows while the source database is known to be receiving writes, the pipeline is stalled.
+
 |LastFlushDurationMillis
-|Duration of the most recent flush (gRPC) or record POST (REST) operation.
+|Duration of the most recent flush (gRPC), record POST (REST), or broker acknowledgement (Kafka) operation.
+On the Kafka route the value describes a sampled subset of records rather than every record, as the following note describes.
 
 |MaxFlushDurationMillis
-|Longest duration of any flush (gRPC) or record POST (REST) operation since the task started.
+|Longest duration of any flush (gRPC), record POST (REST), or broker acknowledgement (Kafka) operation since the task started.
+On the Kafka route the value describes a sampled subset of records rather than every record, as the following note describes.
 
 |`ActiveStreams`
 |Number of currently open Zerobus streams (one per target table).
-For the REST route, which does not open persistent streams, this value is always `0`.
+For the REST and Kafka routes, which do not open persistent streams, this value is always `0`.
+
+|`Connected`
+|Indicates whether the sink currently holds a usable connection to Zerobus.
+On the gRPC route the value reflects the state of the SDK client, and on the REST route the state of the HTTP client.
+On the Kafka route the value is always `true` while metrics are reported, because a producer interceptor observes records rather than connection state.
+To monitor the connection on the Kafka route, use the standard `kafka.producer:type=producer-metrics` attributes.
 
 |`Route`
-|The delivery route these metrics belong to (`grpc` or `rest`).
+|The delivery route these metrics belong to (`grpc`, `rest`, or `kafka`).
 
 |===
 
