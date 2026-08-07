@@ -52,6 +52,7 @@
 ** xref:transformations/timescaledb.adoc[TimescaleDB Integration]
 ** xref:transformations/decode-logical-decoding-message-content.adoc[Decode Logical Decoding Message Content]
 ** xref:transformations/vector-to-json.adoc[Vector Data Types to JSON Types]
+** xref:transformations/neo4j-cud-converter.adoc[Neo4j CUD Converter]
 ** xref:transformations/enforce-record-size.adoc[Enforce Record Size]
 ** xref:transformations/swap-geometry-coordinates.adoc[Swap Geometry Coordinates]
 * Post Processors
