@@ -51,6 +51,7 @@ jobs:
       mariadb-ddl-parser-changed: ${{ steps.changed-files-mariadb-ddl-parser.outputs.any_changed }}
       documentation-only-changed: ${{ steps.changed-files-documentation.outputs.only_changed }}
       storage-changed: ${{ steps.changed-files-storage.outputs.any_changed }}
+      archetype-changed: ${{ steps.changed-files-archetype.outputs.any_changed }}
     steps:
       - name: Checkout Action
         uses: actions/checkout@v7
@@ -211,8 +212,15 @@ jobs:
         with:
           files: |
             debezium-openlineage/**
-    
-      
+
+      - name: Get modified files (Archetype)
+        id: changed-files-archetype
+        uses: tj-actions/changed-files@v47.0.6
+        with:
+          files: |
+            debezium-connector-archetype/**
+
+
 
   # Approx 1m
   build_cache:
@@ -582,6 +590,19 @@ jobs:
     uses: ./.github/workflows/apicurio-check-workflow.yml
     with:
       maven-cache-key: maven-debezium-test-build
+
+  build_archetype:
+    name: "Connector Archetypes"
+    needs: [ check_style, file_changes, build_core ]
+    runs-on: ubuntu-latest
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.archetype-changed == 'true' }}
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v6
+      - uses: ./.github/actions/build-debezium-archetype
+        with:
+          maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+          only-build: ${{ needs.file_changes.outputs.common-changed != 'true' }}
 
   build_ai:
     name: "Debezium AI module"
