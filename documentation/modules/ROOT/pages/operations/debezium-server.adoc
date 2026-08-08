@@ -2480,13 +2480,19 @@ Set the value to `typed` to map each change event onto the column types of the t
 Set the value to `envelope` to land the change event as a raw CDC envelope, so that typed materialization occurs downstream of the table.
 
 The two modes are mutually exclusive, because a table is created for one of them.
-Currently the sink implements the `typed` mode only, and it reports an error at start-up if you set any other value.
+
+[IMPORTANT]
+====
+Do not apply the `ExtractNewRecordState` SMT when you set the value to `envelope`.
+The transformation removes the `op` field of the change event, so the sink cannot determine the operation and records every row with `operation=change`.
+Apply only routing transformations, such as `RegexRouter`, in this mode.
+====
 
 |[[zerobus-record-format]]<<zerobus-record-format, `debezium.sink.zerobus.record.format`>>
 |`json`
 |Specifies the encoding of a record on the wire.
 The `typed` payload mode writes `json`.
-Currently the sink implements the `json` format only, and it reports an error at start-up if you set any other value.
+The sink reports an error at start-up if you combine the `typed` mode with the `protobuf` format.
 
 |[[zerobus-max-inflight]]<<zerobus-max-inflight, `debezium.sink.zerobus.max.inflight.records`>>
 |`50000`
