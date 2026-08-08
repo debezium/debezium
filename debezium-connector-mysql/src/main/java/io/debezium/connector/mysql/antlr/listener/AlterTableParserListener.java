@@ -13,8 +13,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.antlr.v4.runtime.tree.ParseTreeListener;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
@@ -32,8 +30,6 @@ public class AlterTableParserListener extends TableCommonParserListener {
 
     private static final int STARTING_INDEX = 1;
 
-    private final static Logger LOG = LoggerFactory.getLogger(AlterTableParserListener.class);
-
     private ColumnEditor defaultValueColumnEditor;
     private DefaultValueParserListener defaultValueListener;
 
@@ -50,8 +46,7 @@ public class AlterTableParserListener extends TableCommonParserListener {
     @Override
     public void enterAlterTable(MySqlParser.AlterTableContext ctx) {
         final TableId tableId = parser.parseQualifiedTableId(ctx.tableRef());
-        if (parser.databaseTables().forTable(tableId) == null) {
-            LOG.debug("Ignoring ALTER TABLE statement for non-captured table {}", tableId);
+        if (parser.handleAlterTableIfTableIsMissing(tableId, ctx, parser.getTableFilter())) {
             return;
         }
         tableEditor = parser.databaseTables().editTable(tableId);

@@ -40,6 +40,7 @@ import org.junit.jupiter.api.Test;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.jdbc.BinlogValueConverters;
+import io.debezium.connector.binlog.junit.SkipWhenSchemaHistoryDisabled;
 import io.debezium.connector.binlog.util.BinlogTestConnection;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
@@ -337,6 +338,9 @@ public abstract class BinlogDefaultValueIT<C extends SourceConnector> extends Ab
 
     @Test
     @SkipWhenKafkaVersion(check = EqualityCheck.EQUAL, value = KafkaVersion.KAFKA_1XX, description = "Not compatible with Kafka 1.x")
+    @SkipWhenSchemaHistoryDisabled(reason = "Column DEFAULT values exist only in the table definition; none of the TABLE_MAP optional metadata "
+            + "fields carries them, so schemas reconstructed from the binlog declare no field defaults. Row values are unaffected, because "
+            + "binlog_row_image=FULL writes the materialized values")
     public void schemaHistorySaveDefaultValuesTest() throws InterruptedException, SQLException {
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.INITIAL)
@@ -502,6 +506,9 @@ public abstract class BinlogDefaultValueIT<C extends SourceConnector> extends Ab
 
     @Test
     @SkipWhenKafkaVersion(check = EqualityCheck.EQUAL, value = KafkaVersion.KAFKA_1XX, description = "Not compatible with Kafka 1.x")
+    @SkipWhenSchemaHistoryDisabled(reason = "Column DEFAULT values exist only in the table definition; none of the TABLE_MAP optional metadata "
+            + "fields carries them, so schemas reconstructed from the binlog declare no field defaults. Row values are unaffected, because "
+            + "binlog_row_image=FULL writes the materialized values")
     public void tinyIntBooleanTest() throws Exception {
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.INITIAL)
@@ -532,6 +539,9 @@ public abstract class BinlogDefaultValueIT<C extends SourceConnector> extends Ab
     @Test
     @FixFor("DBZ-1689")
     @SkipWhenKafkaVersion(check = EqualityCheck.EQUAL, value = KafkaVersion.KAFKA_1XX, description = "Not compatible with Kafka 1.x")
+    @SkipWhenSchemaHistoryDisabled(reason = "Column DEFAULT values exist only in the table definition; none of the TABLE_MAP optional metadata "
+            + "fields carries them, so schemas reconstructed from the binlog declare no field defaults. Row values are unaffected, because "
+            + "binlog_row_image=FULL writes the materialized values")
     public void intBooleanTest() throws Exception {
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.INITIAL)
@@ -812,6 +822,9 @@ public abstract class BinlogDefaultValueIT<C extends SourceConnector> extends Ab
     @Test
     @FixFor("DBZ-771")
     @SkipWhenKafkaVersion(check = EqualityCheck.EQUAL, value = KafkaVersion.KAFKA_1XX, description = "Not compatible with Kafka 1.x")
+    @SkipWhenSchemaHistoryDisabled(reason = "Column DEFAULT values exist only in the table definition; none of the TABLE_MAP optional metadata "
+            + "fields carries them, so schemas reconstructed from the binlog declare no field defaults. Row values are unaffected, because "
+            + "binlog_row_image=FULL writes the materialized values")
     public void columnTypeAndDefaultValueChange() throws Exception {
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.INITIAL)
@@ -894,6 +907,9 @@ public abstract class BinlogDefaultValueIT<C extends SourceConnector> extends Ab
 
     @Test
     @FixFor({ "DBZ-2267", "DBZ-6029" })
+    @SkipWhenSchemaHistoryDisabled(reason = "Column DEFAULT values exist only in the table definition; none of the TABLE_MAP optional metadata "
+            + "fields carries them, so schemas reconstructed from the binlog declare no field defaults. Row values are unaffected, because "
+            + "binlog_row_image=FULL writes the materialized values")
     public void alterDateAndTimeTest() throws Exception {
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.INITIAL)
@@ -974,6 +990,9 @@ public abstract class BinlogDefaultValueIT<C extends SourceConnector> extends Ab
 
     @Test
     @FixFor("DBZ-5241")
+    @SkipWhenSchemaHistoryDisabled(reason = "Column DEFAULT values exist only in the table definition; none of the TABLE_MAP optional metadata "
+            + "fields carries them, so schemas reconstructed from the binlog declare no field defaults. Row values are unaffected, because "
+            + "binlog_row_image=FULL writes the materialized values")
     public void shouldConvertDefaultWithCharacterSetIntroducer() throws Exception {
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
