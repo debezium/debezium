@@ -2503,8 +2503,9 @@ Set the value to `0` to keep every stream open.
 |The SDK default.
 |Specifies whether the Zerobus SDK recovers a stream that fails with a retriable error by re-sending the records that the service has not acknowledged.
 
-Because the SDK tracks which records are unacknowledged, recovery re-sends only those, and the sink does not retry the batch itself.
-An error that recovery cannot resolve still stops the connector, so the offset does not advance past it.
+Because the SDK tracks which records are unacknowledged, recovery re-sends only those records.
+The sink does not retry the entire batch.
+If the recovery process cannot resolve an error, the connector stops, and the offset does not advance further.
 
 |[[zerobus-recovery-retries]]<<zerobus-recovery-retries, `debezium.sink.zerobus.recovery.retries`>>
 |The SDK default.
@@ -2531,7 +2532,10 @@ For more information, see <<zerobus-monitoring, Monitoring>>.
 
 |===
 
-The preceding options that default to "The SDK default" are not set unless you configure them, so that the value that applies is the one that the Zerobus SDK version in use defines rather than one that this connector pins.
+Several properties in the preceding table list "The SDK default" as their default value.
+If you do not add such a property to the configuration, the sink does not pass a value for it to the Zerobus SDK, and the default of the SDK version in use applies.
+If you add the property and set a value, the sink passes your value instead.
+The sink deliberately avoids pinning these values so that they cannot drift from the SDK across upgrades.
 
 ====== Injection points
 
@@ -2546,8 +2550,8 @@ When the alternative implementation is not available, the default one is used.
 
 |[[zerobus-ext-sdk]]<<zerobus-ext-sdk, `com.databricks.zerobus.ZerobusSdk`>>
 |`@CustomConsumerBuilder`
-|Custom configured instance of a `ZerobusSdk` used to open the streams that carry records to the target tables.
-By default, the sink builds one from the <<zerobus-endpoint, `endpoint`>> and <<zerobus-workspace-url, `workspace.url`>> options.
+|A customized instance of a `ZerobusSdk` that is configured for use in opening the streams that carry records to target tables.
+By default, the sink builds the instance from the <<zerobus-endpoint, `endpoint`>> and <<zerobus-workspace-url, `workspace.url`>> options.
 
 |===
 
