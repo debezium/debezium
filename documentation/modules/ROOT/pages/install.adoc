@@ -37,7 +37,7 @@ ifeval::['{page-version}' == 'master']
 * {link-cassandra-4-plugin-snapshot}[Cassandra 4.x plugin archive]
 * {link-cassandra-5-plugin-snapshot}[Cassandra 5.x plugin archive]
 * {link-jdbc-plugin-snapshot}[JDBC sink plugin archive]
-* {link-spanner-plugin-snapshot}[Spanner plugin archive]
+* {link-spanner-plugin-snapshot}[Spanner plugin archive] (incubating)
 * {link-vitess-plugin-snapshot}[Vitess plugin archive] (incubating)
 * {link-informix-plugin-snapshot}[Informix plugin archive] (incubating)
 * {link-ingres-plugin-snapshot}[Ingres plugin archive] (incubating)
@@ -60,7 +60,7 @@ ifeval::['{page-version}' != 'master']
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-spanner/{debezium-version}/debezium-connector-spanner-{debezium-version}-plugin.tar.gz[Spanner plugin archive] (incubating)
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-vitess/{debezium-version}/debezium-connector-vitess-{debezium-version}-plugin.tar.gz[Vitess plugin archive] (incubating)
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-informix/{debezium-version}/debezium-connector-informix-{debezium-version}-plugin.tar.gz[Informix plugin archive] (incubating)
-* https://repo1.maven.org/maven2/io/debezium/debezium-connector-informix/{debezium-version}/debezium-connector-ingres-{debezium-version}-plugin.tar.gz[Ingres plugin archive] (incubating)
+* https://repo1.maven.org/maven2/io/debezium/debezium-connector-ingres/{debezium-version}/debezium-connector-ingres-{debezium-version}-plugin.tar.gz[Ingres plugin archive] (incubating)
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-cockroachdb/{debezium-version}/debezium-connector-cockroachdb-{debezium-version}-plugin.tar.gz[CockroachDB plugin archive] (incubating)
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-yashandb/{debezium-version}/debezium-connector-yashandb-{debezium-version}-plugin.tar.gz[YashanDB plugin archive] (incubating)
 endif::[]
@@ -112,7 +112,9 @@ xref:connectors/vitess.adoc#vitess-deploying-a-connector[Vitess Connector],
 xref:connectors/spanner.adoc#spanner-deploying-a-connector[Spanner Connector],
 xref:connectors/jdbc.adoc#jdbc-deployment[JDBC sink Connector],
 xref:connectors/informix.adoc#informix-deploying-a-connector[Informix Connector],
+xref:connectors/cockroachdb.adoc#cockroachdb-deploying-a-connector[CockroachDB Connector],
 xref:connectors/yashandb.adoc#deploying-yashandb-connector[YashanDB Connector],
+xref:connectors/ingres.adoc#ingres-deploying-a-connector[Ingres Connector],
 and use the link:{link-kafka-docs}/#connect_rest[Kafka Connect REST API] to add that
 connector configuration to your Kafka Connect cluster. When the connector starts, it will connect to the source and produce events
 for each inserted, updated, and deleted row or document.
