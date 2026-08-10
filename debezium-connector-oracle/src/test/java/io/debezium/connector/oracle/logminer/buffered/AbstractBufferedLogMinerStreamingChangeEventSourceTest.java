@@ -1004,7 +1004,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
                                                   OracleOffsetContext offsetContext) {
             super(connectorConfig, connectionFactory, dispatcher, null, Clock.SYSTEM, schema, connectorConfig.getJdbcConfig(), metrics);
             this.context = context;
-            this.offsetActivityMonitor = new OffsetActivityMonitor(25, offsetContext, metrics);
+            this.offsetActivityMonitor = new OffsetActivityMonitor(Duration.ofMinutes(10), offsetContext, metrics);
         }
 
         @Override

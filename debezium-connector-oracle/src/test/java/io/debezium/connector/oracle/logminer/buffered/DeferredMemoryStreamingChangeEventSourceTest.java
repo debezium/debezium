@@ -629,7 +629,7 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
                                                   OracleOffsetContext offsetContext) {
             super(connectorConfig, connectionFactory, dispatcher, null, Clock.SYSTEM, schema, connectorConfig.getJdbcConfig(), metrics);
             this.context = context;
-            this.offsetActivityMonitor = new OffsetActivityMonitor(OFFSET_ACTIVITY_MONITOR_INACTIVE_THRESHOLD_MS, offsetContext, metrics);
+            this.offsetActivityMonitor = new OffsetActivityMonitor(Duration.ofMinutes(10), offsetContext, metrics);
         }
 
         @Override

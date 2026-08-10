@@ -2164,6 +2164,14 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     /**
+     * @return the duration between each mining offset activity check
+     */
+    public Duration getLogMiningOffsetActivityCheckDuration() {
+        // todo: consider making configurable
+        return Duration.ofMinutes(10);
+    }
+
+    /**
      * @return the infinispan global conifguration.
      */
     public String getLogMiningInifispanGlobalConfiguration() {

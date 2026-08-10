@@ -102,7 +102,6 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
 
     private static final int MINING_START_RETRIES = 5;
     private static final int MAXIMUM_NAME_LENGTH = 30;
-    private static final int MAX_ITERATIONS_BEFORE_OFFSET_STALE = 25;
     private static final Long SMALL_REDO_LOG_WARNING = 524_288_000L;
 
     private final OracleConnectorConfig connectorConfig;
@@ -189,7 +188,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             this.effectiveOffset = offsetContext;
             this.partition = partition;
             this.context = context;
-            this.offsetActivityMonitor = new OffsetActivityMonitor(MAX_ITERATIONS_BEFORE_OFFSET_STALE, getOffsetContext(), getMetrics());
+            this.offsetActivityMonitor = new OffsetActivityMonitor(connectorConfig.getLogMiningOffsetActivityCheckDuration(), getOffsetContext(), getMetrics());
             this.logFileSessionSelector = resolveLogFileSessionSelector(connectorConfig, streamingConnection);
 
             // perform various pre-streaming initialization steps

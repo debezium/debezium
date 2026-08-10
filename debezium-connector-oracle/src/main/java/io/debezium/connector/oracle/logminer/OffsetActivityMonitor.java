@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.oracle.logminer;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -15,6 +16,8 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.Scn;
+import io.debezium.util.Clock;
+import io.debezium.util.ElapsedTimeStrategy;
 
 /**
  * A utility class that provides methods for tracking state changes to the connector's offsets.
@@ -25,16 +28,17 @@ public class OffsetActivityMonitor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OffsetActivityMonitor.class);
 
-    private final int staleMaxIterations;
+    private final Duration windowDuration;
+    private final ElapsedTimeStrategy elapsedStrategy;
     private final OracleOffsetContext offsetContext;
     private final LogMinerStreamingChangeEventSourceMetrics metrics;
 
-    private int unchangedScnCount;
     private Scn previousOffsetScn = Scn.NULL;
     private Map<Integer, Scn> previousCommitScns = new HashMap<>();
 
-    public OffsetActivityMonitor(int staleMaxIterations, OracleOffsetContext offsetContext, LogMinerStreamingChangeEventSourceMetrics metrics) {
-        this.staleMaxIterations = staleMaxIterations;
+    public OffsetActivityMonitor(Duration windowDuration, OracleOffsetContext offsetContext, LogMinerStreamingChangeEventSourceMetrics metrics) {
+        this.windowDuration = windowDuration;
+        this.elapsedStrategy = ElapsedTimeStrategy.constant(Clock.SYSTEM, windowDuration);
         this.offsetContext = offsetContext;
         this.metrics = metrics;
     }
@@ -48,22 +52,18 @@ public class OffsetActivityMonitor {
         // Check for stale state
         if (offsetContext.getCommitScn() != null) {
             final Scn currentScn = offsetContext.getScn();
-            if (previousOffsetScn.equals(currentScn)) {
-                unchangedScnCount++;
-
-                if (unchangedScnCount == staleMaxIterations) {
+            if (elapsedStrategy.hasElapsed()) {
+                if (previousOffsetScn.equals(currentScn)) {
                     final List<String> activeTransactions = activeTransactionIdSupplier.get();
-                    LOGGER.warn("Offset SCN {} has not changed in {} mining session iterations. " +
+                    LOGGER.warn("Offset SCN {} has not changed in {} milliseconds. " +
                             "This may indicate long running transaction(s), active transactions: {}. Commit SCNs {}.",
-                            previousOffsetScn, staleMaxIterations, activeTransactions, previousCommitScns);
+                            previousOffsetScn, windowDuration.toMillis(), activeTransactions, previousCommitScns);
 
                     metrics.incrementScnFreezeCount();
-                    unchangedScnCount = 0;
                 }
-            }
-            else {
-                metrics.setScnFreezeCount(0);
-                unchangedScnCount = 0;
+                else {
+                    metrics.setScnFreezeCount(0);
+                }
             }
         }
 
