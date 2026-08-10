@@ -885,7 +885,7 @@ public class SqlServerChangeTableSetIT extends AbstractAsyncEngineConnectorTest 
     }
 
     @Test
-    @FixFor("DBZ-7587")
+    @FixFor("debezium/dbz#960")
     void excludedCaptureInstanceIsNotEnumerated() throws Exception {
         // tableb already has its default capture instance "dbo_tableb"; add a second one for the same source table.
         TestHelper.enableTableCdc(connection, "tableb", "tableb_v2");
@@ -907,7 +907,7 @@ public class SqlServerChangeTableSetIT extends AbstractAsyncEngineConnectorTest 
     }
 
     @Test
-    @FixFor("DBZ-7587")
+    @FixFor("debezium/dbz#960")
     void includeListLimitsEnumerationToMatchingCaptureInstances() throws Exception {
         TestHelper.enableTableCdc(connection, "tableb", "tableb_v2");
 
