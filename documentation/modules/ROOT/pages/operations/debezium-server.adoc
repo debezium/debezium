@@ -2475,24 +2475,101 @@ When this option is set, all events are written to this table; otherwise the map
 
 |[[zerobus-payload-mode]]<<zerobus-payload-mode, `debezium.sink.zerobus.payload.mode`>>
 |`typed`
-|Specifies the shape of the row that the sink writes, which is the data contract of the target table.
-Set the value to `typed` to map each change event onto the column types of the target table, as <<zerobus-data-type-mapping, Data type mapping>> describes.
-Set the value to `envelope` to land the change event as a raw CDC envelope, so that typed materialization occurs downstream of the table.
+|Specifies the structure of rows that the sink writes to the target table.
 
-The two modes are mutually exclusive, because a table is created for one of them.
+Set one of the following values:
+
+`typed`::
+Writes the fields of each change event to columns by using the data types of the target table.
+For details about how source types map to target column types, see <<zerobus-data-type-mapping, Data type mapping>>.
+
+`envelope`::
+Writes each change event as a raw CDC envelope.
+Use this mode when a downstream process handles type casting and materialization.
+
+The two modes write different row schemas.
+The target table schema must match the selected mode; changing the mode without changing the target table schema causes ingestion to fail.
 
 [IMPORTANT]
 ====
-Do not apply the `ExtractNewRecordState` SMT when you set the value to `envelope`.
-The transformation removes the `op` field of the change event, so the sink cannot determine the operation and records every row with `operation=change`.
+If you set the value to `envelope`, do not apply the `ExtractNewRecordState` SMT.
+This transformation removes the `op` field of the change event, so the sink cannot determine the operation type and records every row with `operation=change`.
 Apply only routing transformations, such as `RegexRouter`, in this mode.
 ====
 
 |[[zerobus-record-format]]<<zerobus-record-format, `debezium.sink.zerobus.record.format`>>
 |`json`
-|Specifies the encoding of a record on the wire.
-The `typed` payload mode writes `json`.
-The sink reports an error at start-up if you combine the `typed` mode with the `protobuf` format.
+|Specifies the wire encoding for records that use the <<zerobus-payload-mode, configured payload mode>>.
+
+Set one of the following values:
+
+`json`::
+Writes JSON records.
+This format supports the `typed` and `envelope` payload modes.
+
+`protobuf`::
+Writes schema-bound Protobuf records by using a descriptor that the sink supplies to Zerobus.
+This format supports only the `envelope` payload mode.
+The sink reports an error at start-up if you combine `protobuf` with the `typed` payload mode.
+
+|[[zerobus-max-record-bytes]]<<zerobus-max-record-bytes, `debezium.sink.zerobus.max.record.bytes`>>
+|`10000000`
+|Specifies the maximum encoded size, in bytes, of a JSON or Protobuf envelope record.
+The sink validates every record in a target-table group before it ingests any record in that group.
+If a record exceeds the limit, ingestion fails and the source offsets for the batch are not committed.
+
+|[[zerobus-json-flexible-fields-encoding]]<<zerobus-json-flexible-fields-encoding, `debezium.sink.zerobus.json.flexible.fields.encoding`>>
+|`string`
+|Specifies how JSON envelope mode writes the `key`, `value`, `source_position`, and `headers` fields.
+Set the value to `string` to write canonical JSON text, or to `object` to write nested JSON values.
+
+|[[zerobus-idempotency-mode]]<<zerobus-idempotency-mode, `debezium.sink.zerobus.idempotency.mode`>>
+|`source`
+|Specifies whether an envelope contains a deterministic `idempotency_key`.
+Set the value to `source` to write a `sha256:<64 hexadecimal characters>` identity derived from the source event, or to `none` to omit the identity.
+The readable source partition and offset remain available in `source_position` in both modes.
+
+|[[zerobus-tombstone-handling-mode]]<<zerobus-tombstone-handling-mode, `debezium.sink.zerobus.tombstone.handling.mode`>>
+|`event`
+|Specifies how envelope mode handles tombstone records.
+Set the value to `event` to write an envelope with `operation=tombstone`, the original key, and a null value.
+Set the value to `drop` to skip tombstones intentionally.
+
+|[[zerobus-filter-destination-regex]]<<zerobus-filter-destination-regex, `debezium.sink.zerobus.filter.destination.regex`>>
+|No default value.
+|An optional regular expression that the complete Debezium destination must match for the envelope to be ingested.
+
+|[[zerobus-filter-operations]]<<zerobus-filter-operations, `debezium.sink.zerobus.filter.operations`>>
+|No default value.
+|An optional comma-separated operation allowlist.
+The canonical Debezium codes are `c`, `r`, `u`, `d`, `t`, and `m`.
+The aliases `create`, `read`, `update`, `delete`, `truncate`, `message`, `change`, and `tombstone` are also accepted.
+
+|[[zerobus-filter-header-name]]<<zerobus-filter-header-name, `debezium.sink.zerobus.filter.header.name`>>
+|No default value.
+|The name of the record header to evaluate.
+Configure this property together with <<zerobus-filter-header-value-regex, `filter.header.value.regex`>>.
+
+|[[zerobus-filter-header-value-regex]]<<zerobus-filter-header-value-regex, `debezium.sink.zerobus.filter.header.value.regex`>>
+|No default value.
+|An optional regular expression that the complete value of the configured header must match.
+Configure this property together with <<zerobus-filter-header-name, `filter.header.name`>>.
+
+|[[zerobus-filter-value-json-pointer]]<<zerobus-filter-value-json-pointer, `debezium.sink.zerobus.filter.value.json.pointer`>>
+|No default value.
+|A JSON Pointer that selects a field from the serialized event value for filtering.
+The pointer must begin with `/`.
+Configure this property together with <<zerobus-filter-value-regex, `filter.value.regex`>>.
+
+|[[zerobus-filter-value-regex]]<<zerobus-filter-value-regex, `debezium.sink.zerobus.filter.value.regex`>>
+|No default value.
+|An optional regular expression that the complete value selected by the configured JSON Pointer must match.
+Configure this property together with <<zerobus-filter-value-json-pointer, `filter.value.json.pointer`>>.
+
+|[[zerobus-filter-malformed-mode]]<<zerobus-filter-malformed-mode, `debezium.sink.zerobus.filter.malformed.mode`>>
+|`fail`
+|Specifies how the sink handles an event value that it cannot parse or evaluate for value filtering.
+Set the value to `fail` to stop the batch, or to `drop` to skip the event.
 
 |[[zerobus-max-inflight]]<<zerobus-max-inflight, `debezium.sink.zerobus.max.inflight.records`>>
 |`50000`
@@ -2542,6 +2619,84 @@ Several properties in the preceding table list "The SDK default" as their defaul
 If you do not add such a property to the configuration, the sink does not pass a value for it to the Zerobus SDK, and the default of the SDK version in use applies.
 If you add the property and set a value, the sink passes your value instead.
 The sink deliberately avoids pinning these values so that they cannot drift from the SDK across upgrades.
+
+[[zerobus-envelope-row-contract]]
+====== Envelope row contract
+
+Set <<zerobus-payload-mode, `debezium.sink.zerobus.payload.mode`>> to `envelope` to preserve the change event for downstream materialization instead of mapping it directly onto the target table columns.
+The `max.record.bytes`, `json.flexible.fields.encoding`, `idempotency.mode`, `tombstone.handling.mode`, and `filter.*` properties apply only to this payload mode.
+
+JSON and Protobuf envelope records expose the same logical fields:
+
+[cols="25%a,75%a",options="header"]
+|===
+|Field
+|Description
+
+|`target_table`
+|The fully-qualified Unity Catalog table to which the sink routes the record.
+
+|`destination`
+|The original Debezium destination before the sink resolves the target table.
+
+|`partition`
+|The event partition, when one is present.
+
+|`operation`
+|One of `create`, `read`, `update`, `delete`, `truncate`, `message`, `change`, or `tombstone`.
+The sink uses `change` when the source value does not contain a recognized Debezium operation.
+
+|`idempotency_key`
+|A deterministic `sha256:<64 hexadecimal characters>` event identity when <<zerobus-idempotency-mode, `idempotency.mode`>> is `source`.
+Use this field to deduplicate records after an at-least-once replay.
+
+|`key`
+|The original serialized record key.
+
+|`value`
+|The original serialized Debezium change-event value.
+The value is null for a tombstone.
+
+|`source_position`
+|A map containing source partition and offset entries.
+Entry names use the `partition.` and `offset.` prefixes.
+
+|`headers`
+|The record headers, ordered by header name.
+|===
+
+For JSON records, <<zerobus-json-flexible-fields-encoding, `json.flexible.fields.encoding`>> controls whether `key`, `value`, `source_position`, and `headers` are canonical JSON strings or nested JSON values.
+For Protobuf records, the sink supplies the descriptor to Zerobus and encodes these flexible fields as canonical JSON strings.
+
+The sink applies configured include filters in the following order: destination, operation, header, and value.
+Every configured regular expression must match the complete selected value.
+An event that does not match is skipped and is considered processed when the rest of the batch succeeds.
+If <<zerobus-filter-operations, `filter.operations`>> is configured, a tombstone is ingested only when the allowlist includes `tombstone`, even if <<zerobus-tombstone-handling-mode, `tombstone.handling.mode`>> is `event`.
+
+Delivery remains at least once.
+For each contiguous target-table group, the sink serializes and validates every record before ingestion, ingests the group, and waits for Zerobus to acknowledge the final record.
+The sink commits source offsets only after every target-table group in the batch succeeds.
+If a later group fails, an earlier acknowledged group can be replayed because the source batch remains uncommitted.
+Use `idempotency_key` to deduplicate such replays downstream.
+
+The following example configures the JSON envelope contract, deterministic identities, explicit tombstones, and an operation allowlist:
+
+[source,properties]
+----
+debezium.sink.type=zerobus
+debezium.sink.zerobus.endpoint=<workspace-id>.zerobus.<region>.cloud.databricks.com
+debezium.sink.zerobus.workspace.url=https://<workspace-host>
+debezium.sink.zerobus.client.id=<client-id>
+debezium.sink.zerobus.client.secret=<client-secret>
+
+debezium.sink.zerobus.payload.mode=envelope
+debezium.sink.zerobus.record.format=json
+debezium.sink.zerobus.max.record.bytes=10000000
+debezium.sink.zerobus.json.flexible.fields.encoding=string
+debezium.sink.zerobus.idempotency.mode=source
+debezium.sink.zerobus.tombstone.handling.mode=event
+debezium.sink.zerobus.filter.operations=c,r,u,d,t,m,tombstone
+----
 
 ====== Injection points
 
