@@ -7,7 +7,6 @@ package io.debezium.transforms;
 
 import java.util.HashMap;
 import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -19,14 +18,15 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.json.JsonConverter;
-import org.apache.kafka.connect.storage.Converter;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.Module;
+import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.metadata.ConfigDescriptor;
+import io.debezium.util.Strings;
 
 /**
  * A Kafka Connect SMT that serializes selected record-value fields to JSON strings.
@@ -74,20 +74,14 @@ public class StringifyFields<R extends ConnectRecord<R>> implements Transformati
 
     @Override
     public void configure(Map<String, ?> configs) {
-        // Depending on the runtime, transformation config values arrive either already parsed
-        // through ConfigDef as a List, or as the raw comma-separated String, so accept both.
-        Object raw = configs.get(FIELDS_CONFIG);
+        final Configuration config = Configuration.from(configs);
+        final SmtManager<R> smtManager = new SmtManager<>(config);
+        smtManager.validate(config, Field.setOf(FIELDS_FIELD));
+
         this.fields = new LinkedHashSet<>();
-        if (raw instanceof List) {
-            for (Object f : (List<?>) raw) {
-                this.fields.add(f.toString().trim());
-            }
-        }
-        else if (raw != null) {
-            for (String f : raw.toString().split(",")) {
-                if (!f.trim().isEmpty()) {
-                    this.fields.add(f.trim());
-                }
+        for (String field : config.getList(FIELDS_FIELD)) {
+            if (!Strings.isNullOrBlank(field)) {
+                this.fields.add(field.trim());
             }
         }
         // schemas.enable=false emits plain JSON without the Connect schema envelope.
@@ -137,7 +131,7 @@ public class StringifyFields<R extends ConnectRecord<R>> implements Transformati
      */
     private String toJsonString(String fieldName, Schema fieldSchema, Object fieldValue) {
         try {
-            byte[] json = ((Converter) jsonConverter).fromConnectData("_stringify", fieldSchema, fieldValue);
+            byte[] json = jsonConverter.fromConnectData("_stringify", fieldSchema, fieldValue);
             return new String(json, java.nio.charset.StandardCharsets.UTF_8);
         }
         catch (Exception e) {
