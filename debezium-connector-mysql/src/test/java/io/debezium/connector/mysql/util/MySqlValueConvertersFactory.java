@@ -28,6 +28,7 @@ public class MySqlValueConvertersFactory implements BinlogValueConvertersFactory
                 connectorConfig.binaryHandlingMode(),
                 temporalAdjuster,
                 connectorConfig.getEventConvertingFailureHandlingMode(),
+                connectorConfig.getJsonStringFormattingMode(),
                 connectorConfig.getServiceRegistry());
     }
 }
