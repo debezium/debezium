@@ -278,10 +278,10 @@ jobs:
             await github.rest.actions.createWorkflowDispatch({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              workflow_id: 'release-container-images.yml',
+              workflow_id: 'nightly-container-images.yml',
               ref: 'main'
             });
-            console.log('Triggered release-container-images workflow with default parameters');
+            console.log('Triggered nightly-container-images workflow with default parameters');
 
       - name: Upload descriptors artifact
         if: always()
