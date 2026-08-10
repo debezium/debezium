@@ -2578,10 +2578,12 @@ Set the value to `fail` to stop the batch, or to `drop` to skip the event.
 
 |[[zerobus-max-open-streams]]<<zerobus-max-open-streams, `debezium.sink.zerobus.max.open.streams`>>
 |`100`
-|Maximum number of Zerobus streams that the sink keeps open at one time.
-Zerobus binds one stream to one table, so a source that captures many tables would otherwise hold an unbounded number of connections.
-When the number of tables exceeds this limit, the sink flushes and closes the least recently used streams, and reopens them on demand.
-Set the value to `0` to keep every stream open.
+|Specifies the maximum number of Zerobus streams that the sink keeps open at one time.
+Zerobus binds each stream to a single target table, and each stream holds a connection.
+Set this property to limit how many connections a source that captures many tables can hold at once.
+
+When the number of open streams exceeds the specified value, the sink flushes and closes the streams that have gone longest without receiving a record, and reopens them on demand when a record for that table arrives.
+Set the value to `0` to keep every stream open, so that the sink never closes a stream to stay within a limit.
 
 |[[zerobus-recovery]]<<zerobus-recovery, `debezium.sink.zerobus.recovery`>>
 |The SDK default.
@@ -2616,10 +2618,12 @@ For more information, see <<zerobus-monitoring, Monitoring>>.
 
 |===
 
-Several properties in the preceding table list "The SDK default" as their default value.
-If you do not add such a property to the configuration, the sink does not pass a value for it to the Zerobus SDK, and the default of the SDK version in use applies.
-If you add the property and set a value, the sink passes your value instead.
-The sink deliberately avoids pinning these values so that they cannot drift from the SDK across upgrades.
+In the preceding table, several Zerobus sink properties list the default value `The SDK default`.
+The SDK default is the value defined by the version of the Zerobus SDK that is used by the current {prodname} Server instance.
+
+The SDK default applies only when the property is not specified in the {prodname} Server configuration.
+If the property is omitted, the sink uses the SDK-defined value, including any changes introduced by later SDK upgrades.
+If you specify a value for the property, the configured value takes precedence.
 
 [[zerobus-envelope-row-contract]]
 ====== Envelope row contract
