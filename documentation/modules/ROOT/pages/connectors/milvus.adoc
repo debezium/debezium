@@ -1,5 +1,3 @@
-// Category: debezium-using
-// Type: assembly
 [id="debezium-connector-for-milvus"]
 = {prodname} connector for Milvus
 
@@ -48,9 +46,6 @@ The format of emitted messages might change, and specific features might not be 
 ====
 endif::community[]
 
-// Type: concept
-// ModuleID: overview-of-debezium-milvus-connector
-// Title: Overview of the {prodname} Milvus connector
 [[milvus-overview]]
 == Overview
 
@@ -73,17 +68,11 @@ Milvus assigns every operation a timestamp from a Hybrid Logical Clock (HLC), wh
 The high 46 bits of a TSO encode the number of milliseconds that elapsed since the UNIX epoch, and the low 18 bits encode a logical counter that orders operations that occur within the same millisecond.
 The connector preserves this value in the `source` block of every event, and uses it to order events across vchannels.
 
-// Type: assembly
-// ModuleID: how-debezium-milvus-connectors-work
-// Title: How {prodname} Milvus connectors work
 [[how-the-milvus-connector-works]]
 == How the connector works
 
 To optimally configure and run a {prodname} Milvus connector, it is helpful to understand how the connector performs snapshots, orders events, and names topics.
 
-// Type: concept
-// ModuleID: how-debezium-milvus-connectors-perform-database-snapshots
-// Title: How {prodname} Milvus connectors perform database snapshots
 [[milvus-snapshots]]
 === Snapshots
 
@@ -122,9 +111,6 @@ The `snapshot.mode` property controls the snapshot behavior:
 The Milvus connector does not support incremental snapshots, ad hoc snapshots, or blocking snapshots.
 ====
 
-// Type: concept
-// ModuleID: how-debezium-milvus-connectors-stream-change-events
-// Title: How {prodname} Milvus connectors stream change events
 [[milvus-streaming-changes]]
 === Streaming changes
 
@@ -154,9 +140,6 @@ After a restart, the connector pre-warms the ordering engine with the vchannel w
 A Milvus connector supports a single task and consumes a single pchannel.
 If `tasks.max` is set to a value greater than `1`, the connector logs a warning and ignores the value.
 
-// Type: concept
-// ModuleID: default-names-of-kafka-topics-that-receive-debezium-milvus-change-event-records
-// Title: Default names of Kafka topics that receive {prodname} Milvus change event records
 [[milvus-topic-names]]
 === Topic names
 
@@ -175,9 +158,6 @@ For example, if `topic.prefix` is set to `milvus`, the connector captures the `d
 
 To change the topic naming convention, you can configure a custom topic naming strategy.
 
-// Type: assembly
-// ModuleID: descriptions-of-debezium-milvus-connector-data-change-events
-// Title: Descriptions of {prodname} Milvus connector data change events
 [[milvus-events]]
 == Data change events
 
@@ -216,9 +196,6 @@ The connector emits that pair of operations as it observes them on the channel, 
 Collection creation and removal are tracked internally, so that the connector can order events correctly, but they are not emitted as schema change events.
 The connector does not produce a schema change topic.
 
-// Type: concept
-// ModuleID: about-keys-in-debezium-milvus-change-events
-// Title: About keys in {prodname} Milvus change events
 [[milvus-change-event-keys]]
 === Change event keys
 
@@ -249,9 +226,6 @@ For a collection named `orders` in the `default` database with an `Int64` primar
 }
 ----
 
-// Type: concept
-// ModuleID: about-values-in-debezium-milvus-change-events
-// Title: About values in {prodname} Milvus change events
 [[milvus-change-event-values]]
 === Change event values
 
@@ -347,9 +321,6 @@ The `source` block of a Milvus change event contains the following connector-spe
 |The raw Milvus HLC timestamp of the operation. The high 46 bits encode milliseconds since the UNIX epoch, and the low 18 bits encode a logical counter. The `ts_ms` field is derived from the physical component of this value.
 |===
 
-// Type: reference
-// ModuleID: how-debezium-milvus-connectors-map-data-types
-// Title: How {prodname} Milvus connectors map data types
 [[milvus-data-type-mappings]]
 == Data type mappings
 
@@ -422,9 +393,6 @@ You can override this default:
 `precise`:: Emits `org.apache.kafka.connect.data.Decimal` values, which have an underlying type of `BYTES`.
 `string`:: Emits the values as formatted strings.
 
-// Type: procedure
-// ModuleID: setting-up-milvus-to-run-a-debezium-connector
-// Title: Setting up Milvus to run a {prodname} connector
 [[setting-up-milvus]]
 == Setting up Milvus
 
@@ -470,9 +438,6 @@ Because a connector instance consumes a single pchannel, deploy one connector fo
 
 . If the Milvus deployment requires authentication, create a user for the connector and supply its credentials through the `milvus.token` property.
 
-// Type: assembly
-// ModuleID: deployment-of-debezium-milvus-connectors
-// Title: Deployment of {prodname} Milvus connectors
 [[milvus-deployment]]
 == Deployment
 
@@ -490,9 +455,6 @@ To deploy a {prodname} Milvus connector, you install the connector archive on a 
 . Add the directory that contains the connector files to the Kafka Connect `plugin.path`.
 . Restart the Kafka Connect process to pick up the new JAR files.
 
-// Type: procedure
-// ModuleID: descriptions-of-debezium-milvus-connector-configuration-properties
-// Title: {prodname} Milvus connector configuration example
 [[milvus-example-configuration]]
 === Connector configuration example
 
@@ -527,9 +489,6 @@ The following example shows the configuration of a connector that captures the c
 
 You can send this configuration to a running Kafka Connect service with the `POST` command of the Kafka Connect REST API.
 
-// Type: reference
-// ModuleID: descriptions-of-debezium-milvus-connector-properties
-// Title: Descriptions of {prodname} Milvus connector configuration properties
 [[milvus-connector-properties]]
 === Connector properties
 
@@ -676,9 +635,6 @@ The generic action-query feature requires a JDBC connection on which to run the 
 Interval-based heartbeats, which you configure with the `heartbeat.interval.ms` and `heartbeat.topics.prefix` properties, are fully supported.
 ====
 
-// Type: reference
-// ModuleID: monitoring-debezium-milvus-connector-performance
-// Title: Monitoring {prodname} Milvus connector performance
 [[milvus-monitoring]]
 == Monitoring
 
@@ -721,9 +677,6 @@ Unlike the `Connected` attribute, which becomes `true` as soon as the streaming 
 |The replication lag, in milliseconds. The connector computes this value as the difference between the current time and the physical component of the global timetick watermark.
 |===
 
-// Type: reference
-// ModuleID: debezium-milvus-connector-limitations
-// Title: {prodname} Milvus connector limitations
 [[milvus-limitations]]
 == Limitations
 
