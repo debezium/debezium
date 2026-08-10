@@ -6,10 +6,12 @@
 package io.debezium.transforms;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
 import java.util.Map;
 
+import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -64,6 +66,14 @@ class StringifyFieldsTest {
         assertThat((String) outValue.get("props")).isEqualTo("{\"a\":1,\"b\":\"x\"}");
         assertThat(outValue.get("id")).isEqualTo(7);
         assertThat(outValue.get("name")).isEqualTo("n");
+    }
+
+    @Test
+    void rejectsAMissingFieldsConfigurationAtConfigureTime() {
+        // SmtManager validates the required option during the configuration pass, so a deployment that
+        // forgets it fails while the connector is being set up rather than on the first record.
+        assertThatThrownBy(() -> smt.configure(Map.of()))
+                .isInstanceOf(ConfigException.class);
     }
 
     @Test
