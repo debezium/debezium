@@ -19,6 +19,7 @@ We currently have the following connectors:
 * xref:connectors/cockroachdb.adoc[CockroachDB] (Incubating)
 * xref:connectors/yashandb.adoc[YashanDB] (Incubating)
 * xref:connectors/ingres.adoc[Ingres] (Incubating)
+* xref:connectors/milvus.adoc[Milvus] (Incubating)
 
 [NOTE]
 ====
