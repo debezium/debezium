@@ -23,6 +23,7 @@ import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnector;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.Scn;
+import io.debezium.connector.oracle.junit.SkipOnDatabaseParameter;
 import io.debezium.connector.oracle.util.OracleMetricsHelper;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
@@ -387,9 +388,21 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceIT exten
 
     @Test
     @FixFor("debezium/dbz#1960")
-    public void shouldRollbackInsertOutOfLine() throws Exception {
+    @SkipOnDatabaseParameter(parameterName = "max_string_size", value = "EXTENDED", matches = false, reason = "Requires max_string_size set to EXTENDED")
+    public void shouldRollbackInsertOutOfLineExt() throws Exception {
+        shouldRollbackInsertOutOfLine("VARCHAR2(8000)");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1960")
+    @SkipOnDatabaseParameter(parameterName = "max_string_size", value = "EXTENDED", matches = true, reason = "Fallback test for max_string_size!=EXTENDED")
+    public void shouldRollbackInsertOutOfLineLob() throws Exception {
+        shouldRollbackInsertOutOfLine("CLOB");
+    }
+
+    private void shouldRollbackInsertOutOfLine(String extType) throws Exception {
         String tableName = "DBZ1960_04";
-        String tableSpec = "(ID NUMERIC(9,0) PRIMARY KEY, XML0 XMLTYPE, LOB0 CLOB, EXT0 VARCHAR2(8000))";
+        String tableSpec = "(ID NUMERIC(9,0) PRIMARY KEY, XML0 XMLTYPE, LOB0 CLOB, EXT0 %s)".formatted(extType);
         String[] statements = new String[]{
                 "SAVEPOINT s1",
                 "INSERT INTO DBZ1960_04 (ID, XML0, LOB0, EXT0) VALUES (1, XMLTYPE('<XML0><ID>1</ID><V>0</V></XML0>'), RPAD('LOB0-1-', 1985, '0'), RPAD('EXT0-1-', 4000, '0'))",
@@ -407,9 +420,21 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceIT exten
 
     @Test
     @FixFor("debezium/dbz#1960")
-    public void shouldRollbackInsertInlineAndOutOfLine() throws Exception {
+    @SkipOnDatabaseParameter(parameterName = "max_string_size", value = "EXTENDED", matches = false, reason = "Requires max_string_size set to EXTENDED")
+    public void shouldRollbackInsertInlineAndOutOfLineExt() throws Exception {
+        shouldRollbackInsertInlineAndOutOfLine("VARCHAR2(8000)");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1960")
+    @SkipOnDatabaseParameter(parameterName = "max_string_size", value = "EXTENDED", matches = true, reason = "Fallback test for max_string_size!=EXTENDED")
+    public void shouldRollbackInsertInlineAndOutOfLineLob() throws Exception {
+        shouldRollbackInsertInlineAndOutOfLine("CLOB");
+    }
+
+    private void shouldRollbackInsertInlineAndOutOfLine(String extType) throws Exception {
         String tableName = "DBZ1960_05";
-        String tableSpec = "(ID NUMERIC(9,0) PRIMARY KEY, EXT0 VARCHAR2(8000), XML0 XMLTYPE, LOB0 CLOB, LOB1 CLOB)";
+        String tableSpec = "(ID NUMERIC(9,0) PRIMARY KEY, EXT0 %s, XML0 XMLTYPE, LOB0 CLOB, LOB1 CLOB)".formatted(extType);
         String[] statements = new String[]{
                 "SAVEPOINT s1",
                 "INSERT INTO DBZ1960_05 (ID, EXT0, XML0, LOB0, LOB1) VALUES (1, RPAD('EXT0-1-', 4000, '0'), XMLTYPE('<XML0><ID>1</ID><V>0</V></XML0>'), RPAD('LOB0-1-', 1985, '0'), 'LOB1-1-0')",
@@ -490,9 +515,21 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceIT exten
 
     @Test
     @FixFor("debezium/dbz#1960")
-    public void shouldRollbackUpdateOutOfLine() throws Exception {
+    @SkipOnDatabaseParameter(parameterName = "max_string_size", value = "EXTENDED", matches = false, reason = "Requires max_string_size set to EXTENDED")
+    public void shouldRollbackUpdateOutOfLineExt() throws Exception {
+        shouldRollbackUpdateOutOfLine("VARCHAR2(8000)");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1960")
+    @SkipOnDatabaseParameter(parameterName = "max_string_size", value = "EXTENDED", matches = true, reason = "Fallback test for max_string_size!=EXTENDED")
+    public void shouldRollbackUpdateOutOfLineLob() throws Exception {
+        shouldRollbackUpdateOutOfLine("CLOB");
+    }
+
+    private void shouldRollbackUpdateOutOfLine(String extType) throws Exception {
         String tableName = "DBZ1960_09";
-        String tableSpec = "(ID NUMERIC(9,0) PRIMARY KEY, XML0 XMLTYPE, LOB0 CLOB, EXT0 VARCHAR2(8000))";
+        String tableSpec = "(ID NUMERIC(9,0) PRIMARY KEY, XML0 XMLTYPE, LOB0 CLOB, EXT0 %s)".formatted(extType);
         String[] statements = new String[]{
                 "INSERT INTO DBZ1960_09 (ID, XML0, LOB0, EXT0) VALUES (1, XMLTYPE('<XML0><ID>1</ID><V>0</V></XML0>'), 'LOB0-1-0', 'EXT0-1-0')",
                 "SAVEPOINT s1",
@@ -532,9 +569,21 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceIT exten
 
     @Test
     @FixFor("debezium/dbz#1960")
-    public void shouldRollbackUpdateScalarAndOutOfLine() throws Exception {
+    @SkipOnDatabaseParameter(parameterName = "max_string_size", value = "EXTENDED", matches = false, reason = "Requires max_string_size set to EXTENDED")
+    public void shouldRollbackUpdateScalarAndOutOfLineExt() throws Exception {
+        shouldRollbackUpdateScalarAndOutOfLine("VARCHAR2(8000)");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1960")
+    @SkipOnDatabaseParameter(parameterName = "max_string_size", value = "EXTENDED", matches = true, reason = "Fallback test for max_string_size!=EXTENDED")
+    public void shouldRollbackUpdateScalarAndOutOfLineLob() throws Exception {
+        shouldRollbackUpdateScalarAndOutOfLine("CLOB");
+    }
+
+    private void shouldRollbackUpdateScalarAndOutOfLine(String extType) throws Exception {
         String tableName = "DBZ1960_11";
-        String tableSpec = "(ID NUMERIC(9,0) PRIMARY KEY, STR0 VARCHAR2(50), XML0 XMLTYPE, LOB0 CLOB, EXT0 VARCHAR2(8000))";
+        String tableSpec = "(ID NUMERIC(9,0) PRIMARY KEY, STR0 VARCHAR2(50), XML0 XMLTYPE, LOB0 CLOB, EXT0 %s)".formatted(extType);
         String[] statements = new String[]{
                 "INSERT INTO DBZ1960_11 (ID, STR0, EXT0, LOB0) VALUES (1, 'STR0-1-0', 'EXT0-1-0', 'LOB0-1-0')",
                 "SAVEPOINT s1",
@@ -576,9 +625,21 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceIT exten
 
     @Test
     @FixFor("debezium/dbz#1960")
-    public void shouldRollbackUpdateInlineAndOutOfLine() throws Exception {
+    @SkipOnDatabaseParameter(parameterName = "max_string_size", value = "EXTENDED", matches = false, reason = "Requires max_string_size set to EXTENDED")
+    public void shouldRollbackUpdateInlineAndOutOfLineExt() throws Exception {
+        shouldRollbackUpdateInlineAndOutOfLine("VARCHAR2(8000)");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1960")
+    @SkipOnDatabaseParameter(parameterName = "max_string_size", value = "EXTENDED", matches = true, reason = "Fallback test for max_string_size!=EXTENDED")
+    public void shouldRollbackUpdateInlineAndOutOfLineLob() throws Exception {
+        shouldRollbackUpdateInlineAndOutOfLine("CLOB");
+    }
+
+    private void shouldRollbackUpdateInlineAndOutOfLine(String extType) throws Exception {
         String tableName = "DBZ1960_13";
-        String tableSpec = "(ID NUMERIC(9,0) PRIMARY KEY, LOB0 CLOB, XML0 XMLTYPE, LOB1 CLOB, EXT0 VARCHAR2(8000))";
+        String tableSpec = "(ID NUMERIC(9,0) PRIMARY KEY, LOB0 CLOB, XML0 XMLTYPE, LOB1 CLOB, EXT0 %s)".formatted(extType);
         String[] statements = new String[]{
                 "INSERT INTO DBZ1960_13 (ID, LOB0, XML0, EXT0, LOB1) VALUES (1, 'LOB0-1-0', XMLTYPE('<XML0><ID>1</ID><V>0</V></XML0>'), 'EXT0-1-0', 'LOB1-1-0')",
                 "SAVEPOINT s1",
@@ -599,9 +660,21 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceIT exten
 
     @Test
     @FixFor("debezium/dbz#1960")
-    public void shouldRollbackUpdateScalarAndInlineAndOutOfLine() throws Exception {
+    @SkipOnDatabaseParameter(parameterName = "max_string_size", value = "EXTENDED", matches = false, reason = "Requires max_string_size set to EXTENDED")
+    public void shouldRollbackUpdateScalarAndInlineAndOutOfLineExt() throws Exception {
+        shouldRollbackUpdateScalarAndInlineAndOutOfLine("VARCHAR2(8000)");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1960")
+    @SkipOnDatabaseParameter(parameterName = "max_string_size", value = "EXTENDED", matches = true, reason = "Fallback test for max_string_size!=EXTENDED")
+    public void shouldRollbackUpdateScalarAndInlineAndOutOfLineLob() throws Exception {
+        shouldRollbackUpdateScalarAndInlineAndOutOfLine("CLOB");
+    }
+
+    private void shouldRollbackUpdateScalarAndInlineAndOutOfLine(String extType) throws Exception {
         String tableName = "DBZ1960_14";
-        String tableSpec = "(ID NUMERIC(9,0) PRIMARY KEY, STR0 VARCHAR2(50), LOB0 CLOB, XML0 XMLTYPE, LOB1 CLOB, EXT0 VARCHAR2(8000))";
+        String tableSpec = "(ID NUMERIC(9,0) PRIMARY KEY, STR0 VARCHAR2(50), LOB0 CLOB, XML0 XMLTYPE, LOB1 CLOB, EXT0 %s)".formatted(extType);
         String[] statements = new String[]{
                 "INSERT INTO DBZ1960_14 (ID, STR0, LOB0, EXT0, LOB1) VALUES (1, 'STR0-1-0', 'LOB0-1-0', 'EXT0-1-0', 'LOB1-1-0')",
                 "SAVEPOINT s1",
@@ -675,9 +748,21 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceIT exten
 
     @Test
     @FixFor("debezium/dbz#1960")
-    public void shouldRollbackDelete() throws Exception {
+    @SkipOnDatabaseParameter(parameterName = "max_string_size", value = "EXTENDED", matches = false, reason = "Requires max_string_size set to EXTENDED")
+    public void shouldRollbackDeleteExt() throws Exception {
+        shouldRollbackDelete("VARCHAR2(8000)");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1960")
+    @SkipOnDatabaseParameter(parameterName = "max_string_size", value = "EXTENDED", matches = true, reason = "Fallback test for max_string_size!=EXTENDED")
+    public void shouldRollbackDeleteLob() throws Exception {
+        shouldRollbackDelete("CLOB");
+    }
+
+    private void shouldRollbackDelete(String extType) throws Exception {
         String tableName = "DBZ1960_17";
-        String tableSpec = "(ID NUMERIC(9,0) PRIMARY KEY, STR0 VARCHAR2(50), LOB0 CLOB, XML0 XMLTYPE, LOB1 CLOB, EXT0 VARCHAR2(8000))";
+        String tableSpec = "(ID NUMERIC(9,0) PRIMARY KEY, STR0 VARCHAR2(50), LOB0 CLOB, XML0 XMLTYPE, LOB1 CLOB, EXT0 %s)".formatted(extType);
         String[] statements = new String[]{
                 "INSERT INTO DBZ1960_17 (ID, STR0, LOB0, XML0, EXT0, LOB1) VALUES (1, 'STR0-1-0', RPAD('LOB0-1-', 1985, '0'), XMLTYPE('<XML0><ID>1</ID><V>0</V></XML0>'), RPAD('EXT0-1-', 4000, '0'), 'LOB1-1-0')",
                 "SAVEPOINT s1",
@@ -794,9 +879,21 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceIT exten
 
     @Test
     @FixFor("debezium/dbz#1960")
-    public void shouldUpdateOutOfLineWithoutInternalAndRollbackUpdateInlineAndOutOfLine() throws Exception {
+    @SkipOnDatabaseParameter(parameterName = "max_string_size", value = "EXTENDED", matches = false, reason = "Requires max_string_size set to EXTENDED")
+    public void shouldUpdateOutOfLineWithoutInternalAndRollbackUpdateInlineAndOutOfLineExt() throws Exception {
+        shouldUpdateOutOfLineWithoutInternalAndRollbackUpdateInlineAndOutOfLine("VARCHAR2(8000)");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1960")
+    @SkipOnDatabaseParameter(parameterName = "max_string_size", value = "EXTENDED", matches = true, reason = "Fallback test for max_string_size!=EXTENDED")
+    public void shouldUpdateOutOfLineWithoutInternalAndRollbackUpdateInlineAndOutOfLineLob() throws Exception {
+        shouldUpdateOutOfLineWithoutInternalAndRollbackUpdateInlineAndOutOfLine("CLOB");
+    }
+
+    private void shouldUpdateOutOfLineWithoutInternalAndRollbackUpdateInlineAndOutOfLine(String extType) throws Exception {
         String tableName = "DBZ1960_22";
-        String tableSpec = "(ID NUMERIC(9,0) PRIMARY KEY, LOB0 CLOB, EXT0 VARCHAR2(8000))";
+        String tableSpec = "(ID NUMERIC(9,0) PRIMARY KEY, LOB0 CLOB, EXT0 %s)".formatted(extType);
         String[] statements = new String[]{
                 "INSERT INTO DBZ1960_22 (ID, LOB0, EXT0) VALUES (1, 'LOB0-1-0', 'EXT0-1-0')",
                 "UPDATE DBZ1960_22 SET LOB0 = RPAD('LOB0-1-', 1985, '1') WHERE ID = 1",
@@ -837,9 +934,21 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceIT exten
 
     @Test
     @FixFor("debezium/dbz#1960")
-    public void shouldUpdateXmlWithoutInternalAndRollbackUpdateInlineAndOutOfLine() throws Exception {
+    @SkipOnDatabaseParameter(parameterName = "max_string_size", value = "EXTENDED", matches = false, reason = "Requires max_string_size set to EXTENDED")
+    public void shouldUpdateXmlWithoutInternalAndRollbackUpdateInlineAndOutOfLineExt() throws Exception {
+        shouldUpdateXmlWithoutInternalAndRollbackUpdateInlineAndOutOfLine("VARCHAR2(8000)");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1960")
+    @SkipOnDatabaseParameter(parameterName = "max_string_size", value = "EXTENDED", matches = true, reason = "Fallback test for max_string_size!=EXTENDED")
+    public void shouldUpdateXmlWithoutInternalAndRollbackUpdateInlineAndOutOfLineLob() throws Exception {
+        shouldUpdateXmlWithoutInternalAndRollbackUpdateInlineAndOutOfLine("CLOB");
+    }
+
+    private void shouldUpdateXmlWithoutInternalAndRollbackUpdateInlineAndOutOfLine(String extType) throws Exception {
         String tableName = "DBZ1960_24";
-        String tableSpec = "(ID NUMERIC(9,0) PRIMARY KEY, XML0 XMLTYPE, EXT0 VARCHAR2(8000), LOB0 CLOB)";
+        String tableSpec = "(ID NUMERIC(9,0) PRIMARY KEY, XML0 XMLTYPE, EXT0 %s, LOB0 CLOB)".formatted(extType);
         String[] statements = new String[]{
                 "INSERT INTO DBZ1960_24 (ID, XML0, EXT0, LOB0) VALUES (1, XMLTYPE('<XML0><ID>1</ID><V>0</V></XML0>'), 'EXT0-1-0', 'LOB0-1-0')",
                 "UPDATE DBZ1960_24 SET XML0 = XMLTYPE('<XML0><ID>1</ID><V>1</V></XML0>') WHERE ID = 1",
@@ -860,9 +969,21 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceIT exten
 
     @Test
     @FixFor("debezium/dbz#1960")
-    public void shouldUpdateOutOfLineAndXmlWithoutInternalAndRollbackUpdateInlineAndXml() throws Exception {
+    @SkipOnDatabaseParameter(parameterName = "max_string_size", value = "EXTENDED", matches = false, reason = "Requires max_string_size set to EXTENDED")
+    public void shouldUpdateOutOfLineAndXmlWithoutInternalAndRollbackUpdateInlineAndXmlExt() throws Exception {
+        shouldUpdateOutOfLineAndXmlWithoutInternalAndRollbackUpdateInlineAndXml("VARCHAR2(8000)");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1960")
+    @SkipOnDatabaseParameter(parameterName = "max_string_size", value = "EXTENDED", matches = true, reason = "Fallback test for max_string_size!=EXTENDED")
+    public void shouldUpdateOutOfLineAndXmlWithoutInternalAndRollbackUpdateInlineAndXmlLob() throws Exception {
+        shouldUpdateOutOfLineAndXmlWithoutInternalAndRollbackUpdateInlineAndXml("CLOB");
+    }
+
+    private void shouldUpdateOutOfLineAndXmlWithoutInternalAndRollbackUpdateInlineAndXml(String extType) throws Exception {
         String tableName = "DBZ1960_25";
-        String tableSpec = "(ID NUMERIC(9,0) PRIMARY KEY, EXT0 VARCHAR2(8000), XML0 XMLTYPE)";
+        String tableSpec = "(ID NUMERIC(9,0) PRIMARY KEY, EXT0 %s, XML0 XMLTYPE)".formatted(extType);
         String[] statements = new String[]{
                 "INSERT INTO DBZ1960_25 (ID, EXT0, XML0) VALUES (1, 'EXT0-1-0', XMLTYPE('<XML0><ID>1</ID><V>0</V></XML0>'))",
                 "UPDATE DBZ1960_25 SET EXT0 = RPAD('EXT0-1-', 4000, '1'), XML0 = XMLTYPE('<XML0><ID>1</ID><V>1</V></XML0>') WHERE ID = 1",
