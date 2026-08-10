@@ -1149,6 +1149,14 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             upperBoundaryScn = sessionLogSelection.effectiveUpperBounds();
         }
 
+        // When the collector truncated the consistency range at a tolerated log sequence gap, the
+        // mining session must not read beyond the boundary the logs are consistent through.
+        final Scn consistentThroughScn = logFilesResult.consistentThroughScn();
+        if (!consistentThroughScn.isNull() && consistentThroughScn.compareTo(upperBoundaryScn) < 0) {
+            LOGGER.debug("Mining session upper boundary capped to consistent SCN {} due to a log sequence gap.", consistentThroughScn);
+            upperBoundaryScn = consistentThroughScn;
+        }
+
         metrics.setRedoLogStatuses(streamingConnection.queryAndMap(
                 SqlUtils.redoLogStatusQuery(),
                 rs -> {

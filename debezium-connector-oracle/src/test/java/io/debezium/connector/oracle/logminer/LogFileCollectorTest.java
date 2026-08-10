@@ -2417,6 +2417,190 @@ public class LogFileCollectorTest {
         }
     }
 
+    @Test
+    @FixFor("dbz#1589")
+    void testOpenThreadGapAboveReadPositionTruncatesConsistency() throws Exception {
+        // The test scenario is (gap above the read position, arc process fell behind)
+        // ARC1 - 110 to NOW - SEQ5
+        // ARC1 - 090 to 100 - SEQ3
+        // ARC1 - 080 to 090 - SEQ2
+        // SEQ4 for ARC1 is missing (pending archival); read position 85 is in SEQ2
+        // Expectation: consistent through SCN 100 (just before the gap); strict view remains false.
+        final List<LogFile> files = new ArrayList<>();
+        files.add(createRedoLog("redo1.log", 110, 5, 1));
+        files.add(createArchiveLog("archive2.log", 90, 100, 3, 1));
+        files.add(createArchiveLog("archive1.log", 80, 90, 2, 1));
+
+        final RedoThreadState state = getSingleThreadOpenState(Scn.valueOf(50), Scn.valueOf(111));
+        final LogFileCollector collector = getGapTolerantLogFileCollector(state);
+
+        final LogFileCollector.ConsistencyCheckResult result = collector.checkLogFileListConsistency(Scn.valueOf(85), files, state);
+        assertThat(result.consistent()).isTrue();
+        assertThat(result.consistentThroughScn()).isEqualTo(Scn.valueOf(100));
+
+        assertThat(collector.isLogFileListConsistent(Scn.valueOf(85), files, state)).isFalse();
+    }
+
+    @Test
+    @FixFor("dbz#1589")
+    void testOpenThreadGapTruncationNotAppliedWithRedoLogCatalogStrategy() throws Exception {
+        // Same scenario as testOpenThreadGapAboveReadPositionTruncatesConsistency, but the
+        // redo_log_catalog strategy requires the dictionary from the logs, so no truncation applies.
+        // Expectation: inconsistent, wait needed.
+        final List<LogFile> files = new ArrayList<>();
+        files.add(createRedoLog("redo1.log", 110, 5, 1));
+        files.add(createArchiveLog("archive2.log", 90, 100, 3, 1));
+        files.add(createArchiveLog("archive1.log", 80, 90, 2, 1));
+
+        final RedoThreadState state = getSingleThreadOpenState(Scn.valueOf(50), Scn.valueOf(111));
+        final Configuration config = getDefaultConfig()
+                .with(OracleConnectorConfig.LOG_MINING_STRATEGY, "redo_log_catalog")
+                .build();
+        final LogFileCollector collector = getLogFileCollector(config, getOracleConnectionMock(state));
+
+        final LogFileCollector.ConsistencyCheckResult result = collector.checkLogFileListConsistency(Scn.valueOf(85), files, state);
+        assertThat(result.consistent()).isFalse();
+    }
+
+    @Test
+    @FixFor("dbz#1589")
+    void testOpenThreadGapImmediatelyAboveReadPositionRemainsInconsistent() throws Exception {
+        // The test scenario is (gap right above the read position log, no forward progress possible)
+        // ARC1 - 100 to NOW - SEQ4
+        // ARC1 - 080 to 090 - SEQ2
+        // SEQ3 for ARC1 is missing; read position 101 is in SEQ4, above the gap
+        // Truncating before the gap (SCN 90) would not advance beyond the read position.
+        // Expectation: inconsistent, wait needed.
+        final List<LogFile> files = new ArrayList<>();
+        files.add(createRedoLog("redo1.log", 100, 4, 1));
+        files.add(createArchiveLog("archive1.log", 80, 90, 2, 1));
+
+        final RedoThreadState state = getSingleThreadOpenState(Scn.valueOf(50), Scn.valueOf(101));
+        final LogFileCollector collector = getGapTolerantLogFileCollector(state);
+
+        final LogFileCollector.ConsistencyCheckResult result = collector.checkLogFileListConsistency(Scn.valueOf(101), files, state);
+        assertThat(result.consistent()).isFalse();
+    }
+
+    @Test
+    @FixFor("dbz#1589")
+    void testOpenThreadEnabledAfterReadPositionGapTruncatesConsistency() throws Exception {
+        // The test scenario is (thread enabled after the read position, gap in the enabled logs)
+        // ARC1 - 110 to NOW - SEQ4
+        // ARC1 - 090 to 100 - SEQ2
+        // ARC1 - 080 to 090 - SEQ1
+        // SEQ3 for ARC1 is missing; thread enabled at 80, after the read position 70
+        // Expectation: consistent through SCN 100 (just before the gap).
+        final List<LogFile> files = new ArrayList<>();
+        files.add(createRedoLog("redo1.log", 110, 4, 1));
+        files.add(createArchiveLog("archive2.log", 90, 100, 2, 1));
+        files.add(createArchiveLog("archive1.log", 80, 90, 1, 1));
+
+        final RedoThreadState state = getSingleThreadOpenState(Scn.valueOf(80), Scn.valueOf(111));
+        final LogFileCollector collector = getGapTolerantLogFileCollector(state);
+
+        final LogFileCollector.ConsistencyCheckResult result = collector.checkLogFileListConsistency(Scn.valueOf(70), files, state);
+        assertThat(result.consistent()).isTrue();
+        assertThat(result.consistentThroughScn()).isEqualTo(Scn.valueOf(100));
+    }
+
+    @Test
+    @FixFor("dbz#1589")
+    void testClosedThreadCheckpointGapTruncatesConsistency() throws Exception {
+        // The test scenario is (node shutdown, trailing log still pending archival)
+        // ARC1 - 080 to NOW - SEQ5 (open thread 1, contains read position 85)
+        // ARC2 - 100 to 105 - SEQ4 (closed thread 2, checkpoint 105)
+        // ARC2 - 080 to 090 - SEQ2
+        // SEQ3 for ARC2 is missing; thread 2 is closed but enabled (shutdown, not disabled)
+        // Expectation: consistent through SCN 90 (just before thread 2's gap).
+        final List<LogFile> files = new ArrayList<>();
+        files.add(createRedoLog("redo1.log", 80, 5, 1));
+        files.add(createArchiveLog("archive4.log", 100, 105, 4, 2));
+        files.add(createArchiveLog("archive2.log", 80, 90, 2, 2));
+
+        RedoThreadState.Builder builder = RedoThreadState.builder();
+        builder = makeOpenRedoThreadState(builder.thread(), 1, Scn.valueOf(50), Scn.valueOf(111)).build();
+        builder = makeClosedRedoThreadState(builder.thread(), 2, Scn.valueOf(50), Scn.valueOf(104)).build();
+        final RedoThreadState state = builder.build();
+
+        final LogFileCollector collector = getGapTolerantLogFileCollector(state);
+
+        final LogFileCollector.ConsistencyCheckResult result = collector.checkLogFileListConsistency(Scn.valueOf(85), files, state);
+        assertThat(result.consistent()).isTrue();
+        assertThat(result.consistentThroughScn()).isEqualTo(Scn.valueOf(90));
+    }
+
+    @Test
+    @FixFor("dbz#1589")
+    void testDisabledThreadGapRemainsInconsistent() throws Exception {
+        // The test scenario is (thread disabled, archive log deleted)
+        // ARC1 - 080 to NOW - SEQ5 (open thread 1, contains read position 85)
+        // ARC2 - 100 to 105 - SEQ4 (disabled thread 2, disabled at 105)
+        // ARC2 - 080 to 090 - SEQ2
+        // SEQ3 for ARC2 is missing; a disabled thread's redo is fully archived at disable
+        // time, so the gap indicates a deleted archive log that will never become available.
+        // Expectation: inconsistent, no truncation.
+        final List<LogFile> files = new ArrayList<>();
+        files.add(createRedoLog("redo1.log", 80, 5, 1));
+        files.add(createArchiveLog("archive4.log", 100, 105, 4, 2));
+        files.add(createArchiveLog("archive2.log", 80, 90, 2, 2));
+
+        RedoThreadState.Builder builder = RedoThreadState.builder();
+        builder = makeOpenRedoThreadState(builder.thread(), 1, Scn.valueOf(50), Scn.valueOf(111)).build();
+        builder = makeDisabledRedoThreadState(builder.thread(), 2, Scn.valueOf(50), Scn.valueOf(105)).build();
+        final RedoThreadState state = builder.build();
+
+        final LogFileCollector collector = getGapTolerantLogFileCollector(state);
+
+        final LogFileCollector.ConsistencyCheckResult result = collector.checkLogFileListConsistency(Scn.valueOf(85), files, state);
+        assertThat(result.consistent()).isFalse();
+    }
+
+    @Test
+    @FixFor("dbz#1589")
+    void testRacMultipleThreadGapsTruncateToMinimumBoundary() throws Exception {
+        // The test scenario is (gaps on both threads, boundaries differ)
+        // ARC1 - 110 to NOW - SEQ5, ARC1 - 090 to 100 - SEQ3, ARC1 - 080 to 090 - SEQ2 (SEQ4 missing)
+        // ARC2 - 105 to NOW - SEQ4, ARC2 - 060 to 095 - SEQ2 (SEQ3 missing)
+        // Thread 1 is consistent through 100, thread 2 through 95.
+        // Expectation: consistent through SCN 95, the minimum boundary across all threads.
+        final List<LogFile> files = new ArrayList<>();
+        files.add(createRedoLog("redo1.log", 110, 5, 1));
+        files.add(createArchiveLog("t1_archive2.log", 90, 100, 3, 1));
+        files.add(createArchiveLog("t1_archive1.log", 80, 90, 2, 1));
+        files.add(createRedoLog("redo2.log", 105, 4, 2));
+        files.add(createArchiveLog("t2_archive1.log", 60, 95, 2, 2));
+
+        final RedoThreadState state = getTwoThreadOpenState(Scn.valueOf(50), Scn.valueOf(111), Scn.valueOf(50), Scn.valueOf(106));
+        final LogFileCollector collector = getGapTolerantLogFileCollector(state);
+
+        final LogFileCollector.ConsistencyCheckResult result = collector.checkLogFileListConsistency(Scn.valueOf(85), files, state);
+        assertThat(result.consistent()).isTrue();
+        assertThat(result.consistentThroughScn()).isEqualTo(Scn.valueOf(95));
+    }
+
+    @Test
+    @FixFor("dbz#1589")
+    void testGetLogsReturnsConsistentThroughScnWhenGapTolerated() throws Exception {
+        // End-to-end getLogs: a gap above the read position must not block the collection;
+        // the result carries the full log list and the boundary the logs are consistent through.
+        final List<LogFile> files = new ArrayList<>();
+        files.add(createArchiveLog("archive1.log", 80, 90, 2, 1));
+        files.add(createArchiveLog("archive2.log", 90, 100, 3, 1));
+        files.add(createRedoLog("redo1.log", 110, 5, 1));
+
+        final RedoThreadState state = getSingleThreadOpenState(Scn.valueOf(50), Scn.valueOf(111));
+        final Configuration config = getDefaultConfig()
+                .with(OracleConnectorConfig.LOG_MINING_STRATEGY, "online_catalog")
+                .build();
+        final OracleConnection connection = getOracleConnectionMock(state, files);
+        final LogFileCollector collector = getLogFileCollector(config, connection);
+
+        final LogFileCollector.LogFilesResult result = collector.getLogs(Scn.valueOf(85));
+        assertThat(result.logFiles()).hasSize(3);
+        assertThat(result.consistentThroughScn()).isEqualTo(Scn.valueOf(100));
+    }
+
     private static LogFile createRedoLog(String name, long startScn, int sequence, int threadId) {
         return createRedoLog(name, startScn, Long.MAX_VALUE, sequence, threadId);
     }
@@ -2535,6 +2719,13 @@ public class LogFileCollectorTest {
         return new LogFileCollector(new OracleConnectorConfig(configuration), connection);
     }
 
+    private LogFileCollector getGapTolerantLogFileCollector(RedoThreadState state) throws SQLException {
+        final Configuration config = getDefaultConfig()
+                .with(OracleConnectorConfig.LOG_MINING_STRATEGY, "online_catalog")
+                .build();
+        return getLogFileCollector(config, getOracleConnectionMock(state));
+    }
+
     private LogFileCollector setCollectorLogFiles(LogFileCollector collector, List<LogFile> logFiles) throws SQLException {
         return setCollectorLogFiles(collector, logFiles, Collections.emptyMap());
     }
@@ -2623,6 +2814,29 @@ public class LogFileCollectorTest {
                 .lastRedoBlock(1234L)
                 .lastRedoSequenceNumber(2L)
                 .lastRedoTime(Instant.now().minus(3, ChronoUnit.SECONDS))
+                .conId(0L);
+    }
+
+    private RedoThread.Builder makeDisabledRedoThreadState(RedoThread.Builder builder,
+                                                           int threadId, Scn enabledScn, Scn disabledScn) {
+        return builder.threadId(threadId)
+                .status("CLOSED")
+                .enabled("DISABLED")
+                .instanceName("ORCLCDB")
+                .logGroups(2L)
+                .openTime(Instant.now().minus(10, ChronoUnit.MINUTES))
+                .checkpointTime(Instant.now().minus(5, ChronoUnit.MINUTES))
+                .checkpointScn(disabledScn)
+                .currentGroupNumber(1L)
+                .currentSequenceNumber(1L)
+                .enabledScn(enabledScn)
+                .enabledTime(Instant.now().minus(10, ChronoUnit.MINUTES))
+                .disabledScn(disabledScn)
+                .disabledTime(Instant.now().minus(5, ChronoUnit.MINUTES))
+                .lastRedoScn(disabledScn)
+                .lastRedoBlock(1234L)
+                .lastRedoSequenceNumber(2L)
+                .lastRedoTime(Instant.now().minus(5, ChronoUnit.MINUTES))
                 .conId(0L);
     }
 
