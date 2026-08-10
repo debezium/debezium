@@ -25,6 +25,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
 import io.debezium.config.ConfigurationNames;
+import io.debezium.config.ConnectorConfigValidationHelper;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.connector.AbstractSourceInfo;
@@ -627,14 +628,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     }
 
     private static int validateCaptureInstanceExcludeList(Configuration config, Field field, Field.ValidationOutput problems) {
-        String includeList = config.getString(CAPTURE_INSTANCE_INCLUDE_LIST);
-        String excludeList = config.getString(CAPTURE_INSTANCE_EXCLUDE_LIST);
-
-        if (includeList != null && excludeList != null) {
-            problems.accept(CAPTURE_INSTANCE_EXCLUDE_LIST, excludeList, "\"%s\" is already specified".formatted(CAPTURE_INSTANCE_INCLUDE_LIST.name()));
-            return 1;
-        }
-        return 0;
+        return ConnectorConfigValidationHelper.validateExcludeField(config, CAPTURE_INSTANCE_INCLUDE_LIST, CAPTURE_INSTANCE_EXCLUDE_LIST, problems);
     }
 
     public List<String> getDatabaseNames() {
