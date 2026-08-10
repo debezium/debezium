@@ -48,8 +48,7 @@ public class OffsetActivityMonitor {
         // Check for stale state
         if (offsetContext.getCommitScn() != null) {
             final Scn currentScn = offsetContext.getScn();
-            final Map<Integer, Scn> currentCommitScns = offsetContext.getCommitScn().getCommitScnForAllRedoThreads();
-            if (previousOffsetScn.equals(currentScn) && !previousOffsetScn.equals(currentCommitScns)) {
+            if (previousOffsetScn.equals(currentScn)) {
                 unchangedScnCount++;
 
                 if (unchangedScnCount == staleMaxIterations) {
