@@ -2509,6 +2509,7 @@ This format supports the `typed` and `envelope` payload modes.
 
 `protobuf`::
 Writes schema-bound Protobuf records by using a descriptor that the sink supplies to Zerobus.
+Choose this format for envelope mode when you want Zerobus to use an explicit Protobuf schema instead of JSON encoding.
 This format supports only the `envelope` payload mode.
 The sink reports an error at start-up if you combine `protobuf` with the `typed` payload mode.
 
