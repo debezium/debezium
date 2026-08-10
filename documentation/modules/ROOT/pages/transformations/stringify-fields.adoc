@@ -8,19 +8,27 @@
 
 toc::[]
 
-Some sinks accept a schema-flexible column only as JSON text, and reject a native struct, array, or map.
-A Databricks Delta `VARIANT` column and a `JSON`/`JSONB` column are typical examples.
-To write nested data to such a column, {prodname} provides the Stringify Fields single message transformation (SMT), which serializes the fields that you specify into their JSON-string representation.
+Use the Stringify Fields single message transformation (SMT) to convert selected fields from struct, array, or map values to JSON strings.
 
-Fields that already contain a string, and fields that are absent from a record, are left unmodified.
-Fields that you do not list are also left unmodified, so that scalar fields retain their original, strongly typed schema.
+Some sink systems store schema-flexible columns as JSON text and do not accept native struct, array, or map values.
+Examples include Databricks Delta `VARIANT` columns and PostgreSQL `JSON` or `JSONB` columns.
+
+The transformation serializes specified fields to their JSON string representation.
+
+The transformation does not modify fields that already contain string values.
+It also does not modify fields that are absent from a record.
+Fields that are not included in the configuration remain unchanged.
+As a result, scalar fields retain their original strongly typed schema.
 
 == Use cases
 
-After a document is flattened, for example by the xref:transformations/mongodb-event-flattening.adoc[MongoDB new document state extraction] transformation, nested fields arrive as native structs and arrays.
-A column that accepts only JSON text cannot store those values directly.
+Use the Stringify Fields SMT when a sink column stores JSON text but the source record contains nested fields as native data structures.
 
-By applying the transformation to the nested fields, you can preserve a strongly typed schema for the scalar fields of a record, and write a single schema-flexible field, such as `properties`, as JSON text.
+After a document is flattened, for example, by the {link-prefix}:{link-mongodb-event-flattening}#mongodb-new-document-state-extraction[MongoDB new document state extraction] transformation, nested fields are represented as native structs and arrays.
+Columns that store JSON text cannot store these values directly.
+
+By applying the Stringify Fields SMT to selected nested fields, you can write schema-flexible content as JSON text while preserving the strongly typed schema of scalar fields.
+For example, you can serialize a field such as `properties` to JSON text and leave all other fields unchanged.
 
 == Configuration
 
@@ -58,6 +66,17 @@ The following table lists the configuration options for the transformation.
 
 == Error handling
 
-If the transformation cannot serialize a field that you specify, it logs the context of the record, that is, the field name, the schema type and name, the value class, and the value, at `ERROR` level, and then throws an exception.
+If the transformation cannot serialize a field that you specify, it logs the context of the record at `ERROR` level, and then throws an exception.
+The log entry contains information about the following fields:
+
+* Field name
+* Schema type
+* Schema name
+* Value class
+* Value
+
 The stream halts, and the offset is not committed past the record, so that no data is dropped silently.
-To skip such records instead, set `errors.tolerance=all`.
+
+If you prefer to have the transformation skip records that it cannot serialize, add the following entry to the configuration: `errors.tolerance=all`.
+This option applies to deployments on Kafka Connect, where the runtime applies the setting to the transformation chain.
+{prodname} Server does not provide an equivalent setting, so on that runtime a record that cannot be serialized always halts the stream.
