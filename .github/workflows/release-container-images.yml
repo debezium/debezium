@@ -146,6 +146,7 @@ jobs:
           PLATFORM_CONDUCTOR_PLATFORM: linux/amd64
           PLATFORM_STAGE_PLATFORM: linux/amd64
           MULTIPLATFORM_PLATFORMS: ${{ inputs.platforms }}
+          DEBEZIUM_DOCKER_REGISTRY_PRIMARY_NAME: quay.io/debezium
         run: |
           echo "Building images for streams: $DEBEZIUM_VERSIONS"
           echo "Latest stable stream: $LATEST_STREAM"
@@ -223,9 +224,10 @@ jobs:
           PLATFORM_STAGE_PLATFORM: linux/amd64
           MULTIPLATFORM_PLATFORMS: ${{ inputs.platforms }}
           IMAGES_BRANCH: ${{ inputs.images_branch }}
+          DEBEZIUM_DOCKER_REGISTRY_PRIMARY_NAME: quay.io/debezium
         run: |
-          chmod +x ../debezium-repo/.github/scripts/release-container-images/build-tagged-images.sh
-          ../debezium-repo/.github/scripts/release-container-images/build-tagged-images.sh
+          chmod +x debezium-repo/.github/scripts/release-container-images/build-tagged-images.sh
+          debezium-repo/.github/scripts/release-container-images/build-tagged-images.sh
 
       - name: Send Zulip notification on failure
         if: failure()

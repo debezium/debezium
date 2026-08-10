@@ -90,6 +90,7 @@ jobs:
           push: ${{ inputs.push }}
           tags: quay.io/debezium/connect:nightly
           build-args: |
+            DEBEZIUM_DOCKER_REGISTRY_PRIMARY_NAME=quay.io/debezium
             ${{ inputs.debezium_version && format('DEBEZIUM_VERSION={0}', inputs.debezium_version) || '' }}
 
       - name: Build and push server:nightly
@@ -100,6 +101,7 @@ jobs:
           push: ${{ inputs.push }}
           tags: quay.io/debezium/server:nightly
           build-args: |
+            DEBEZIUM_DOCKER_REGISTRY_PRIMARY_NAME=quay.io/debezium
             ${{ inputs.debezium_version && format('DEBEZIUM_VERSION={0}', inputs.debezium_version) || '' }}
 
       - name: Build and push operator:nightly
@@ -110,6 +112,7 @@ jobs:
           push: ${{ inputs.push }}
           tags: quay.io/debezium/operator:nightly
           build-args: |
+            DEBEZIUM_DOCKER_REGISTRY_PRIMARY_NAME=quay.io/debezium
             ${{ inputs.debezium_version && format('DEBEZIUM_VERSION={0}', inputs.debezium_version) || '' }}
 
       - name: Build and push platform-conductor:nightly
@@ -120,6 +123,7 @@ jobs:
           push: ${{ inputs.push }}
           tags: quay.io/debezium/platform-conductor:nightly
           build-args: |
+            DEBEZIUM_DOCKER_REGISTRY_PRIMARY_NAME=quay.io/debezium
             ${{ inputs.debezium_version && format('DEBEZIUM_VERSION={0}', inputs.debezium_version) || '' }}
 
       - name: Build and push platform-stage:nightly
@@ -130,6 +134,7 @@ jobs:
           push: ${{ inputs.push }}
           tags: quay.io/debezium/platform-stage:nightly
           build-args: |
+            DEBEZIUM_DOCKER_REGISTRY_PRIMARY_NAME=quay.io/debezium
             ${{ inputs.debezium_version && format('DEBEZIUM_VERSION={0}', inputs.debezium_version) || '' }}
 
       - name: Send Zulip notification

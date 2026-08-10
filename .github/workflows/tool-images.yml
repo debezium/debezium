@@ -64,6 +64,8 @@ jobs:
           push: true
           tags: quay.io/debezium/${{ matrix.tool }}:${{ inputs.tag }}
           platforms: linux/amd64,linux/arm64
+          build-args: |
+            DEBEZIUM_DOCKER_REGISTRY_PRIMARY_NAME=quay.io/debezium
 
       - name: Send Zulip notification on failure
         if: failure()
