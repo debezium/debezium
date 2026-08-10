@@ -42,7 +42,7 @@ jobs:
 
     steps:
       - name: Checkout container-images repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: ${{ inputs.images_repository }}
           ref: ${{ inputs.images_branch }}
