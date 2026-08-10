@@ -2226,6 +2226,7 @@ public class OracleBlobDataTypesIT extends AbstractAsyncEngineConnectorTest {
 
     @Test
     @FixFor("debezium/dbz#1917")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER_BUFFERED)
     public void shouldRollbackExactlyOneOperation() throws Exception {
         TestHelper.dropTable(connection, "DBZ1917");
         try {
