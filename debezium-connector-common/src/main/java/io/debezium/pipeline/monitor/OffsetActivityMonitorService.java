@@ -9,6 +9,7 @@ import io.debezium.common.annotation.Incubating;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.service.Service;
+import io.debezium.service.spi.ServiceRegistry;
 
 /**
  * A service that coordinates the periodic evaluation of a connector's {@link OffsetActivityMonitor}.
@@ -46,4 +47,17 @@ public interface OffsetActivityMonitorService extends Service {
      * @param offsetContext the partition's offsets, should not be {@code null}
      */
     <P extends Partition, O extends OffsetContext> void pulse(P partition, O offsetContext);
+
+    /**
+     * Resolves the service from the given registry, returning a disabled instance whose pulses
+     * are no-ops when the service has not been registered, e.g. when the streaming source is
+     * constructed outside the connector task lifecycle.
+     *
+     * @param serviceRegistry the service registry, should not be {@code null}
+     * @return the offset activity monitor service, never {@code null}
+     */
+    static OffsetActivityMonitorService lookup(ServiceRegistry serviceRegistry) {
+        final OffsetActivityMonitorService service = serviceRegistry.tryGetService(OffsetActivityMonitorService.class);
+        return service != null ? service : DefaultOffsetActivityMonitorService.disabled();
+    }
 }
