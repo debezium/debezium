@@ -286,7 +286,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
     }
 
     @TestTemplate
-    @FixFor("debezium/dbz#2235")
+    @FixFor({ "debezium/dbz#2235", "debezium/dbz#2352" })
     @SkipWhenSource(value = { SourceType.POSTGRES, SourceType.ORACLE }, reason = "No TINYINT data type support")
     public void testTinyIntDataType(Source source, Sink sink) throws Exception {
         assertDataType(source,
@@ -294,9 +294,12 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 "tinyint",
                 List.of(10, 12),
                 (record) -> {
+                    // A signed MySQL TINYINT is emitted as INT8 and maps to tinyint. SQL Server's
+                    // unsigned TINYINT is emitted as INT16 and maps to smallint, even when column
+                    // type propagation is enabled, so it can hold the full 0-255 range.
                     final boolean mysqlSource = source.getType().is(SourceType.MYSQL);
                     assertColumn(sink, record, "id", mysqlSource ? getInt8Type() : getInt16Type());
-                    assertColumn(sink, record, "data", mysqlSource || source.getOptions().isColumnTypePropagated() ? getInt8Type() : getInt16Type());
+                    assertColumn(sink, record, "data", mysqlSource ? getInt8Type() : getInt16Type());
                 },
                 ResultSet::getInt);
     }
