@@ -33,6 +33,8 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.monitor.OffsetActivityMonitor;
+import io.debezium.pipeline.monitor.OffsetActivityMonitorService;
 import io.debezium.pipeline.notification.Notification;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.spi.ChangeTableResultSet;
@@ -105,6 +107,8 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
     private boolean checkAgent;
     private SqlServerOffsetContext effectiveOffset;
     private final NotificationService<SqlServerPartition, SqlServerOffsetContext> notificationService;
+    private final OffsetActivityMonitorService offsetActivityMonitorService;
+    private OffsetActivityMonitor<SqlServerPartition, SqlServerOffsetContext> offsetActivityMonitor;
 
     public SqlServerStreamingChangeEventSource(SqlServerConnectorConfig connectorConfig, SqlServerConnection dataConnection,
                                                SqlServerConnection metadataConnection,
@@ -131,6 +135,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                         : intervalBetweenCommitsBasedOnPoll.toMillis());
         this.streamingExecutionContexts = new HashMap<>();
         this.checkAgent = true;
+        this.offsetActivityMonitorService = OffsetActivityMonitorService.lookup(connectorConfig.getServiceRegistry());
     }
 
     @Override
@@ -383,8 +388,21 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         catch (Exception e) {
             errorHandler.setProducerThrowable(e);
         }
+        finally {
+            offsetActivityMonitorService.pulse(partition, offsetContext);
+        }
 
         return true;
+    }
+
+    @Override
+    public Optional<OffsetActivityMonitor<SqlServerPartition, SqlServerOffsetContext>> getOffsetActivityMonitor() {
+        if (offsetActivityMonitor == null) {
+            offsetActivityMonitor = new SqlServerOffsetActivityMonitor(
+                    connectorConfig.getOffsetActivityMonitorInterval(),
+                    connectorConfig.getTaskId());
+        }
+        return Optional.of(offsetActivityMonitor);
     }
 
     @Override
