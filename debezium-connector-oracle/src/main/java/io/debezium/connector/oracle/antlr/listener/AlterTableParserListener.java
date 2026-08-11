@@ -118,8 +118,10 @@ public class AlterTableParserListener extends BaseParserListener {
                 ColumnEditor editor = Column.editor().name(columnName);
                 columnEditors.add(editor);
             }
-            columnDefinitionParserListener = new ColumnDefinitionParserListener(tableEditor, columnEditors.get(0), parser, listeners);
-            listeners.add(columnDefinitionParserListener);
+            if (!columnEditors.isEmpty()) {
+                columnDefinitionParserListener = new ColumnDefinitionParserListener(tableEditor, columnEditors.get(0), parser, listeners);
+                listeners.add(columnDefinitionParserListener);
+            }
         }, tableEditor);
         super.enterAdd_column_clause(ctx);
     }
@@ -158,6 +160,10 @@ public class AlterTableParserListener extends BaseParserListener {
             listeners.remove(columnDefinitionParserListener);
             columnDefinitionParserListener = null;
         }, tableEditor, columnEditors);
+        // Oracle permits out-of-line constraints to be mixed into the ADD (...) column list.
+        // The columns are committed by exitColumn_definition, which also resets columnEditors to
+        // null before this callback fires, so this must only be guarded by the table editor.
+        parser.runIfNotNull(() -> setPrimaryKeyFromOutOfLineConstraints(ctx.out_of_line_constraint()), tableEditor);
         super.exitAdd_column_clause(ctx);
     }
 
@@ -239,17 +245,7 @@ public class AlterTableParserListener extends BaseParserListener {
         parser.runIfNotNull(() -> {
             if (ctx.ADD() != null) {
                 // ALTER TABLE ADD PRIMARY KEY
-                List<String> primaryKeyColumns = new ArrayList<>();
-                for (PlSqlParser.Out_of_line_constraintContext constraint : ctx.out_of_line_constraint()) {
-                    if (constraint.PRIMARY() != null && constraint.KEY() != null) {
-                        for (PlSqlParser.Column_nameContext columnNameContext : constraint.column_name()) {
-                            primaryKeyColumns.add(getColumnName(columnNameContext));
-                        }
-                    }
-                }
-                if (!primaryKeyColumns.isEmpty()) {
-                    parser.setTablePrimaryKeyColumns(tableEditor, primaryKeyColumns);
-                }
+                setPrimaryKeyFromOutOfLineConstraints(ctx.out_of_line_constraint());
             }
             else if (ctx.MODIFY() != null && ctx.PRIMARY() != null && ctx.KEY() != null) {
                 // ALTER TABLE MODIFY PRIMARY KEY columns
@@ -273,5 +269,19 @@ public class AlterTableParserListener extends BaseParserListener {
             }
         }, tableEditor);
         super.enterDrop_constraint_clause(ctx);
+    }
+
+    private void setPrimaryKeyFromOutOfLineConstraints(List<PlSqlParser.Out_of_line_constraintContext> constraints) {
+        List<String> primaryKeyColumns = new ArrayList<>();
+        for (PlSqlParser.Out_of_line_constraintContext constraint : constraints) {
+            if (constraint.PRIMARY() != null && constraint.KEY() != null) {
+                for (PlSqlParser.Column_nameContext columnNameContext : constraint.column_name()) {
+                    primaryKeyColumns.add(getColumnName(columnNameContext));
+                }
+            }
+        }
+        if (!primaryKeyColumns.isEmpty()) {
+            parser.setTablePrimaryKeyColumns(tableEditor, primaryKeyColumns);
+        }
     }
 }
