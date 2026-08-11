@@ -108,6 +108,16 @@ public class MySqlAntlrDdlParserTest
     }
 
     @Test
+    @FixFor("debezium/dbz#2401")
+    public void shouldParseFlushTablesWithQualifiedTableNames() {
+        parser.parse("FLUSH TABLES `mysql`.`user`", tables);
+        assertThat(parser.getParsingExceptionsFromWalker()).isEmpty();
+
+        parser.parse("FLUSH TABLES mysql.user, other.tbl FOR EXPORT", tables);
+        assertThat(parser.getParsingExceptionsFromWalker()).isEmpty();
+    }
+
+    @Test
     public void testMultiColumnAlterWithDefaults() {
         String ddl = "CREATE TABLE ALTER_DATE_TIME (ID int primary key);"
                 + "ALTER TABLE ALTER_DATE_TIME ADD COLUMN (CREATED timestamp not null default current_timestamp, C time not null default '08:00');";

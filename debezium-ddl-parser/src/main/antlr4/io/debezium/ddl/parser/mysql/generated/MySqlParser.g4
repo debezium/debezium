@@ -2694,7 +2694,7 @@ logType
 flushTables
     : (TABLES_SYMBOL | TABLE_SYMBOL) (
         WITH_SYMBOL READ_SYMBOL LOCK_SYMBOL
-        | identifierList flushTablesOptions?
+        | tableRefList flushTablesOptions?
     )?
     ;
 
