@@ -159,188 +159,120 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
     @Override
     public SchemaBuilder schemaBuilder(Column column) {
-        switch (column.jdbcType()) {
-            case Types.NULL:
+        return switch (column.jdbcType()) {
+            case Types.NULL -> {
                 logger.warn("Unexpected JDBC type: NULL");
-                return null;
+                yield null;
+            }
 
             // Single- and multi-bit values ...
-            case Types.BIT:
+            case Types.BIT -> {
                 if (column.length() > 1) {
-                    return Bits.builder(column.length());
+                    yield Bits.builder(column.length());
                 }
                 // otherwise, it is just one bit so use a boolean ...
-            case Types.BOOLEAN:
-                return SchemaBuilder.bool();
+                yield SchemaBuilder.bool();
+            }
+            case Types.BOOLEAN -> SchemaBuilder.bool();
 
             // Fixed-length binary values ...
-            case Types.BLOB:
-            case Types.BINARY:
-                return binaryMode.getSchema();
+            case Types.BLOB, Types.BINARY -> binaryMode.getSchema();
 
             // Variable-length binary values ...
-            case Types.VARBINARY:
-            case Types.LONGVARBINARY:
-                return binaryMode.getSchema();
+            case Types.VARBINARY, Types.LONGVARBINARY -> binaryMode.getSchema();
 
             // Numeric integers
-            case Types.TINYINT:
-                // values are an 8-bit signed integer value between -128 and 127
-                return SchemaBuilder.int8();
-            case Types.SMALLINT:
-                // values are a 16-bit signed integer value between -32768 and 32767
-                return SchemaBuilder.int16();
-            case Types.INTEGER:
-                // values are a 32-bit signed integer value between - 2147483648 and 2147483647
-                return SchemaBuilder.int32();
-            case Types.BIGINT:
-                // values are a 64-bit signed integer value between -9223372036854775808 and 9223372036854775807
-                return SchemaBuilder.int64();
+            case Types.TINYINT -> SchemaBuilder.int8();
+            case Types.SMALLINT -> SchemaBuilder.int16();
+            case Types.INTEGER -> SchemaBuilder.int32();
+            case Types.BIGINT -> SchemaBuilder.int64();
 
             // Numeric decimal numbers
-            case Types.REAL:
-                // values are single precision floating point number which supports 7 digits of mantissa.
-                return SchemaBuilder.float32();
-            case Types.FLOAT:
-            case Types.DOUBLE:
-                // values are double precision floating point number which supports 15 digits of mantissa.
-                return SchemaBuilder.float64();
-            case Types.NUMERIC:
-            case Types.DECIMAL:
-                return SpecialValueDecimal.builder(decimalMode, column.length(), column.scale().get());
+            case Types.REAL -> SchemaBuilder.float32();
+            case Types.FLOAT, Types.DOUBLE -> SchemaBuilder.float64();
+            case Types.NUMERIC, Types.DECIMAL -> SpecialValueDecimal.builder(decimalMode, column.length(), column.scale().get());
 
             // Fixed-length string values
-            case Types.CHAR:
-            case Types.NCHAR:
-            case Types.NVARCHAR:
-            case Types.LONGNVARCHAR:
-            case Types.NCLOB:
-                return SchemaBuilder.string();
+            case Types.CHAR, Types.NCHAR, Types.NVARCHAR, Types.LONGNVARCHAR, Types.NCLOB -> SchemaBuilder.string();
 
             // Variable-length string values
-            case Types.VARCHAR:
-            case Types.LONGVARCHAR:
-            case Types.CLOB:
-            case Types.DATALINK:
-                return SchemaBuilder.string();
-            case Types.SQLXML:
-                return Xml.builder();
+            case Types.VARCHAR, Types.LONGVARCHAR, Types.CLOB, Types.DATALINK -> SchemaBuilder.string();
+            case Types.SQLXML -> Xml.builder();
+
             // Date and time values
-            case Types.DATE:
-                return temporalPrecisionMode.getDateBuilder();
-            case Types.TIME:
-                return temporalPrecisionMode.getTimeBuilder(getTimePrecision(column));
-            case Types.TIMESTAMP:
-                return temporalPrecisionMode.getTimestampBuilder(getTimePrecision(column));
-            case Types.TIME_WITH_TIMEZONE:
+            case Types.DATE -> temporalPrecisionMode.getDateBuilder();
+            case Types.TIME -> temporalPrecisionMode.getTimeBuilder(getTimePrecision(column));
+            case Types.TIMESTAMP -> temporalPrecisionMode.getTimestampBuilder(getTimePrecision(column));
+            case Types.TIME_WITH_TIMEZONE -> {
                 if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
-                    return StructuredZonedTime.builder();
+                    yield StructuredZonedTime.builder();
                 }
-                return ZonedTime.builder();
-            case Types.TIMESTAMP_WITH_TIMEZONE:
+                yield ZonedTime.builder();
+            }
+            case Types.TIMESTAMP_WITH_TIMEZONE -> {
                 if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
-                    return StructuredZonedTimestamp.builder();
+                    yield StructuredZonedTimestamp.builder();
                 }
-                return ZonedTimestamp.builder();
+                yield ZonedTimestamp.builder();
+            }
 
             // Other types ...
-            case Types.ROWID:
-                // often treated as a string, but we'll generalize and treat it as a byte array
-                return SchemaBuilder.bytes();
+            case Types.ROWID -> SchemaBuilder.bytes();
 
             // Unhandled types
-            case Types.DISTINCT:
-            case Types.ARRAY:
-            case Types.JAVA_OBJECT:
-            case Types.OTHER:
-            case Types.REF:
-            case Types.REF_CURSOR:
-            case Types.STRUCT:
-            default:
-                break;
-        }
-        return null;
+            case Types.DISTINCT, Types.ARRAY, Types.JAVA_OBJECT, Types.OTHER,
+                    Types.REF, Types.REF_CURSOR, Types.STRUCT ->
+                null;
+            default -> null;
+        };
     }
 
     @Override
     public ValueConverter converter(Column column, Field fieldDefn) {
-        switch (column.jdbcType()) {
-            case Types.NULL:
-                return (data) -> null;
-            case Types.BIT:
-                return convertBits(column, fieldDefn);
-            case Types.BOOLEAN:
-                return (data) -> convertBoolean(column, fieldDefn, data);
+        return switch (column.jdbcType()) {
+            case Types.NULL -> (data) -> null;
+            case Types.BIT -> convertBits(column, fieldDefn);
+            case Types.BOOLEAN -> (data) -> convertBoolean(column, fieldDefn, data);
 
             // Binary values ...
-            case Types.BLOB:
-            case Types.BINARY:
-            case Types.VARBINARY:
-            case Types.LONGVARBINARY:
-                return (data) -> convertBinary(column, fieldDefn, data, binaryMode);
+            case Types.BLOB, Types.BINARY, Types.VARBINARY, Types.LONGVARBINARY ->
+                (data) -> convertBinary(column, fieldDefn, data, binaryMode);
 
             // Numeric integers
-            case Types.TINYINT:
-                return (data) -> convertTinyInt(column, fieldDefn, data);
-            case Types.SMALLINT:
-                return (data) -> convertSmallInt(column, fieldDefn, data);
-            case Types.INTEGER:
-                return (data) -> convertInteger(column, fieldDefn, data);
-            case Types.BIGINT:
-                return (data) -> convertBigInt(column, fieldDefn, data);
+            case Types.TINYINT -> (data) -> convertTinyInt(column, fieldDefn, data);
+            case Types.SMALLINT -> (data) -> convertSmallInt(column, fieldDefn, data);
+            case Types.INTEGER -> (data) -> convertInteger(column, fieldDefn, data);
+            case Types.BIGINT -> (data) -> convertBigInt(column, fieldDefn, data);
 
             // Numeric decimal numbers
-            case Types.FLOAT:
-                return (data) -> convertFloat(column, fieldDefn, data);
-            case Types.DOUBLE:
-                return (data) -> convertDouble(column, fieldDefn, data);
-            case Types.REAL:
-                return (data) -> convertReal(column, fieldDefn, data);
-            case Types.NUMERIC:
-                return (data) -> convertNumeric(column, fieldDefn, data);
-            case Types.DECIMAL:
-                return (data) -> convertDecimal(column, fieldDefn, data);
+            case Types.FLOAT -> (data) -> convertFloat(column, fieldDefn, data);
+            case Types.DOUBLE -> (data) -> convertDouble(column, fieldDefn, data);
+            case Types.REAL -> (data) -> convertReal(column, fieldDefn, data);
+            case Types.NUMERIC -> (data) -> convertNumeric(column, fieldDefn, data);
+            case Types.DECIMAL -> (data) -> convertDecimal(column, fieldDefn, data);
 
             // String values
-            case Types.CHAR: // variable-length
-            case Types.VARCHAR: // variable-length
-            case Types.LONGVARCHAR: // variable-length
-            case Types.CLOB: // variable-length
-            case Types.NCHAR: // fixed-length
-            case Types.NVARCHAR: // fixed-length
-            case Types.LONGNVARCHAR: // fixed-length
-            case Types.NCLOB: // fixed-length
-            case Types.DATALINK:
-            case Types.SQLXML:
-                return (data) -> convertString(column, fieldDefn, data);
+            case Types.CHAR, Types.VARCHAR, Types.LONGVARCHAR, Types.CLOB,
+                    Types.NCHAR, Types.NVARCHAR, Types.LONGNVARCHAR, Types.NCLOB,
+                    Types.DATALINK, Types.SQLXML ->
+                (data) -> convertString(column, fieldDefn, data);
 
             // Date and time values
-            case Types.DATE:
-                return (data) -> convertDate(column, fieldDefn, data);
-            case Types.TIME:
-                return (data) -> convertTime(column, fieldDefn, data);
-            case Types.TIMESTAMP:
-                return (data) -> convertTimestamp(column, fieldDefn, data);
-            case Types.TIME_WITH_TIMEZONE:
-                return (data) -> convertTimeWithZone(column, fieldDefn, data);
-            case Types.TIMESTAMP_WITH_TIMEZONE:
-                return (data) -> convertTimestampWithZone(column, fieldDefn, data);
+            case Types.DATE -> (data) -> convertDate(column, fieldDefn, data);
+            case Types.TIME -> (data) -> convertTime(column, fieldDefn, data);
+            case Types.TIMESTAMP -> (data) -> convertTimestamp(column, fieldDefn, data);
+            case Types.TIME_WITH_TIMEZONE -> (data) -> convertTimeWithZone(column, fieldDefn, data);
+            case Types.TIMESTAMP_WITH_TIMEZONE -> (data) -> convertTimestampWithZone(column, fieldDefn, data);
 
             // Other types ...
-            case Types.ROWID:
-                return (data) -> convertRowId(column, fieldDefn, data);
+            case Types.ROWID -> (data) -> convertRowId(column, fieldDefn, data);
 
             // Unhandled types
-            case Types.DISTINCT:
-            case Types.ARRAY:
-            case Types.JAVA_OBJECT:
-            case Types.OTHER:
-            case Types.REF:
-            case Types.REF_CURSOR:
-            case Types.STRUCT:
-            default:
-                return null;
-        }
+            case Types.DISTINCT, Types.ARRAY, Types.JAVA_OBJECT, Types.OTHER,
+                    Types.REF, Types.REF_CURSOR, Types.STRUCT ->
+                null;
+            default -> null;
+        };
     }
 
     protected ValueConverter convertBits(Column column, Field fieldDefn) {
@@ -440,68 +372,51 @@ public class JdbcValueConverters implements ValueConverterProvider {
     }
 
     protected Object convertDate(Column column, Field fieldDefn, Object data) {
-        switch (temporalPrecisionMode) {
-            case ISOSTRING:
-                return convertDateToUtcIsoString(column, fieldDefn, data);
-            case STRUCTURED:
-                return convertDateToStructured(column, fieldDefn, data);
-            case ADAPTIVE_TIME_MICROSECONDS:
-            case NANOSECONDS:
-            case MICROSECONDS:
-            case ADAPTIVE:
-                return convertDateToEpochDays(column, fieldDefn, data);
-            default:
-                return convertDateToEpochDaysAsDate(column, fieldDefn, data);
-        }
+        return switch (temporalPrecisionMode) {
+            case ISOSTRING -> convertDateToUtcIsoString(column, fieldDefn, data);
+            case STRUCTURED -> convertDateToStructured(column, fieldDefn, data);
+            case ADAPTIVE_TIME_MICROSECONDS, NANOSECONDS, MICROSECONDS, ADAPTIVE -> convertDateToEpochDays(column, fieldDefn, data);
+            default -> convertDateToEpochDaysAsDate(column, fieldDefn, data);
+        };
     }
 
     protected Object convertTime(Column column, Field fieldDefn, Object data) {
-        switch (temporalPrecisionMode) {
-            case ISOSTRING:
-                return convertTimeToUtcIsoString(column, fieldDefn, data);
-            case STRUCTURED:
-                return convertTimeToStructured(column, fieldDefn, data);
-            case MICROSECONDS:
-                return convertTimeToMicrosPastMidnight(column, fieldDefn, data);
-            case NANOSECONDS:
-                return convertTimeToNanosPastMidnight(column, fieldDefn, data);
-            case ADAPTIVE_TIME_MICROSECONDS:
-                return convertTimeToMicrosPastMidnight(column, fieldDefn, data);
-            case ADAPTIVE:
+        return switch (temporalPrecisionMode) {
+            case ISOSTRING -> convertTimeToUtcIsoString(column, fieldDefn, data);
+            case STRUCTURED -> convertTimeToStructured(column, fieldDefn, data);
+            case MICROSECONDS -> convertTimeToMicrosPastMidnight(column, fieldDefn, data);
+            case NANOSECONDS -> convertTimeToNanosPastMidnight(column, fieldDefn, data);
+            case ADAPTIVE_TIME_MICROSECONDS -> convertTimeToMicrosPastMidnight(column, fieldDefn, data);
+            case ADAPTIVE -> {
                 if (getTimePrecision(column) <= 3) {
-                    return convertTimeToMillisPastMidnight(column, fieldDefn, data);
+                    yield convertTimeToMillisPastMidnight(column, fieldDefn, data);
                 }
                 else if (getTimePrecision(column) <= 6) {
-                    return convertTimeToMicrosPastMidnight(column, fieldDefn, data);
+                    yield convertTimeToMicrosPastMidnight(column, fieldDefn, data);
                 }
-                return convertTimeToNanosPastMidnight(column, fieldDefn, data);
-            default:
-                return convertTimeToMillisPastMidnightAsDate(column, fieldDefn, data);
-        }
+                yield convertTimeToNanosPastMidnight(column, fieldDefn, data);
+            }
+            default -> convertTimeToMillisPastMidnightAsDate(column, fieldDefn, data);
+        };
     }
 
     protected Object convertTimestamp(Column column, Field fieldDefn, Object data) {
-        switch (temporalPrecisionMode) {
-            case ADAPTIVE:
-            case ADAPTIVE_TIME_MICROSECONDS:
+        return switch (temporalPrecisionMode) {
+            case ADAPTIVE, ADAPTIVE_TIME_MICROSECONDS -> {
                 if (getTimePrecision(column) <= 3) {
-                    return convertTimestampToEpochMillis(column, fieldDefn, data);
+                    yield convertTimestampToEpochMillis(column, fieldDefn, data);
                 }
                 else if (getTimePrecision(column) <= 6) {
-                    return convertTimestampToEpochMicros(column, fieldDefn, data);
+                    yield convertTimestampToEpochMicros(column, fieldDefn, data);
                 }
-                return convertTimestampToEpochNanos(column, fieldDefn, data);
-            case ISOSTRING:
-                return convertTimestampToUtcIsoString(column, fieldDefn, data);
-            case MICROSECONDS:
-                return convertTimestampToEpochMicros(column, fieldDefn, data);
-            case NANOSECONDS:
-                return convertTimestampToEpochNanos(column, fieldDefn, data);
-            case STRUCTURED:
-                return convertTimestampToStructured(column, fieldDefn, data);
-            default:
-                return convertTimestampToEpochMillisAsDate(column, fieldDefn, data);
-        }
+                yield convertTimestampToEpochNanos(column, fieldDefn, data);
+            }
+            case ISOSTRING -> convertTimestampToUtcIsoString(column, fieldDefn, data);
+            case MICROSECONDS -> convertTimestampToEpochMicros(column, fieldDefn, data);
+            case NANOSECONDS -> convertTimestampToEpochNanos(column, fieldDefn, data);
+            case STRUCTURED -> convertTimestampToStructured(column, fieldDefn, data);
+            default -> convertTimestampToEpochMillisAsDate(column, fieldDefn, data);
+        };
     }
 
     /**
@@ -887,17 +802,12 @@ public class JdbcValueConverters implements ValueConverterProvider {
     }
 
     protected Object convertBinary(Column column, Field fieldDefn, Object data, BinaryHandlingMode mode) {
-        switch (mode) {
-            case BASE64:
-                return convertBinaryToBase64(column, fieldDefn, data);
-            case BASE64_URL_SAFE:
-                return convertBinaryToBase64UrlSafe(column, fieldDefn, data);
-            case HEX:
-                return convertBinaryToHex(column, fieldDefn, data);
-            case BYTES:
-            default:
-                return convertBinaryToBytes(column, fieldDefn, data);
-        }
+        return switch (mode) {
+            case BASE64 -> convertBinaryToBase64(column, fieldDefn, data);
+            case BASE64_URL_SAFE -> convertBinaryToBase64UrlSafe(column, fieldDefn, data);
+            case HEX -> convertBinaryToHex(column, fieldDefn, data);
+            case BYTES -> convertBinaryToBytes(column, fieldDefn, data);
+        };
     }
 
     /**
@@ -1063,18 +973,17 @@ public class JdbcValueConverters implements ValueConverterProvider {
      */
     protected Object convertTinyInt(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, BYTE_FALSE, (r) -> {
-            if (data instanceof Byte) {
-                r.deliver(data);
+            if (data instanceof Byte b) {
+                r.deliver(b);
             }
-            else if (data instanceof Number) {
-                Number value = (Number) data;
-                r.deliver(Byte.valueOf(value.byteValue()));
+            else if (data instanceof Number num) {
+                r.deliver(Byte.valueOf(num.byteValue()));
             }
-            else if (data instanceof Boolean) {
-                r.deliver(NumberConversions.getByte((Boolean) data));
+            else if (data instanceof Boolean bool) {
+                r.deliver(NumberConversions.getByte(bool));
             }
-            else if (data instanceof String) {
-                r.deliver(Byte.valueOf((String) data));
+            else if (data instanceof String str) {
+                r.deliver(Byte.valueOf(str));
             }
         });
     }
@@ -1090,18 +999,17 @@ public class JdbcValueConverters implements ValueConverterProvider {
      */
     protected Object convertSmallInt(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, SHORT_FALSE, (r) -> {
-            if (data instanceof Short) {
-                r.deliver(data);
+            if (data instanceof Short s) {
+                r.deliver(s);
             }
-            else if (data instanceof Number) {
-                Number value = (Number) data;
-                r.deliver(Short.valueOf(value.shortValue()));
+            else if (data instanceof Number num) {
+                r.deliver(Short.valueOf(num.shortValue()));
             }
-            else if (data instanceof Boolean) {
-                r.deliver(NumberConversions.getShort((Boolean) data));
+            else if (data instanceof Boolean bool) {
+                r.deliver(NumberConversions.getShort(bool));
             }
-            else if (data instanceof String) {
-                r.deliver(Short.valueOf((String) data));
+            else if (data instanceof String str) {
+                r.deliver(Short.valueOf(str));
             }
         });
     }
@@ -1117,18 +1025,17 @@ public class JdbcValueConverters implements ValueConverterProvider {
      */
     protected Object convertInteger(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, 0, (r) -> {
-            if (data instanceof Integer) {
-                r.deliver(data);
+            if (data instanceof Integer i) {
+                r.deliver(i);
             }
-            else if (data instanceof Number) {
-                Number value = (Number) data;
-                r.deliver(Integer.valueOf(value.intValue()));
+            else if (data instanceof Number num) {
+                r.deliver(Integer.valueOf(num.intValue()));
             }
-            else if (data instanceof Boolean) {
-                r.deliver(NumberConversions.getInteger((Boolean) data));
+            else if (data instanceof Boolean bool) {
+                r.deliver(NumberConversions.getInteger(bool));
             }
-            else if (data instanceof String) {
-                r.deliver(Integer.valueOf((String) data));
+            else if (data instanceof String str) {
+                r.deliver(Integer.valueOf(str));
             }
         });
     }
@@ -1144,18 +1051,17 @@ public class JdbcValueConverters implements ValueConverterProvider {
      */
     protected Object convertBigInt(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, 0L, (r) -> {
-            if (data instanceof Long) {
-                r.deliver(data);
+            if (data instanceof Long l) {
+                r.deliver(l);
             }
-            else if (data instanceof Number) {
-                Number value = (Number) data;
-                r.deliver(Long.valueOf(value.longValue()));
+            else if (data instanceof Number num) {
+                r.deliver(Long.valueOf(num.longValue()));
             }
-            else if (data instanceof Boolean) {
-                r.deliver(NumberConversions.getLong((Boolean) data));
+            else if (data instanceof Boolean bool) {
+                r.deliver(NumberConversions.getLong(bool));
             }
-            else if (data instanceof String) {
-                r.deliver(Long.valueOf((String) data));
+            else if (data instanceof String str) {
+                r.deliver(Long.valueOf(str));
             }
         });
     }
@@ -1184,19 +1090,18 @@ public class JdbcValueConverters implements ValueConverterProvider {
      */
     protected Object convertDouble(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, 0.0d, (r) -> {
-            if (data instanceof Double) {
-                r.deliver(data);
+            if (data instanceof Double d) {
+                r.deliver(d);
             }
-            else if (data instanceof Number) {
+            else if (data instanceof Number num) {
                 // Includes BigDecimal and other numeric values ...
-                Number value = (Number) data;
-                r.deliver(Double.valueOf(value.doubleValue()));
+                r.deliver(Double.valueOf(num.doubleValue()));
             }
-            else if (data instanceof SpecialValueDecimal) {
-                r.deliver(((SpecialValueDecimal) data).toDouble());
+            else if (data instanceof SpecialValueDecimal svd) {
+                r.deliver(svd.toDouble());
             }
-            else if (data instanceof Boolean) {
-                r.deliver(NumberConversions.getDouble((Boolean) data));
+            else if (data instanceof Boolean bool) {
+                r.deliver(NumberConversions.getDouble(bool));
             }
         });
     }
@@ -1212,16 +1117,15 @@ public class JdbcValueConverters implements ValueConverterProvider {
      */
     protected Object convertReal(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, 0.0f, (r) -> {
-            if (data instanceof Float) {
-                r.deliver(data);
+            if (data instanceof Float f) {
+                r.deliver(f);
             }
-            else if (data instanceof Number) {
+            else if (data instanceof Number num) {
                 // Includes BigDecimal and other numeric values ...
-                Number value = (Number) data;
-                r.deliver(Float.valueOf(value.floatValue()));
+                r.deliver(Float.valueOf(num.floatValue()));
             }
-            else if (data instanceof Boolean) {
-                r.deliver(NumberConversions.getFloat((Boolean) data));
+            else if (data instanceof Boolean bool) {
+                r.deliver(NumberConversions.getFloat(bool));
             }
         });
     }
@@ -1249,45 +1153,45 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertDecimal(Column column, Field fieldDefn, Object data) {
-        if (data instanceof SpecialValueDecimal) {
-            return SpecialValueDecimal.fromLogical((SpecialValueDecimal) data, decimalMode, column.name());
+        if (data instanceof SpecialValueDecimal svd) {
+            return SpecialValueDecimal.fromLogical(svd, decimalMode, column.name());
         }
-        Object decimal = toBigDecimal(column, fieldDefn, data);
-        if (decimal instanceof BigDecimal) {
-            return SpecialValueDecimal.fromLogical(new SpecialValueDecimal((BigDecimal) decimal), decimalMode, column.name());
+        final Object decimal = toBigDecimal(column, fieldDefn, data);
+        if (decimal instanceof BigDecimal bd) {
+            return SpecialValueDecimal.fromLogical(new SpecialValueDecimal(bd), decimalMode, column.name());
         }
         return decimal;
     }
 
     protected Object toBigDecimal(Column column, Field fieldDefn, Object data) {
-        BigDecimal fallback = withScaleAdjustedIfNeeded(column, BigDecimal.ZERO);
+        final BigDecimal fallback = withScaleAdjustedIfNeeded(column, BigDecimal.ZERO);
         return convertValue(column, fieldDefn, data, fallback, (r) -> {
-            if (data instanceof BigDecimal) {
-                r.deliver(data);
+            if (data instanceof BigDecimal bd) {
+                r.deliver(bd);
             }
-            else if (data instanceof BigInteger) {
-                r.deliver(new BigDecimal((BigInteger) data));
+            else if (data instanceof BigInteger bi) {
+                r.deliver(new BigDecimal(bi));
             }
-            else if (data instanceof Boolean) {
-                r.deliver(NumberConversions.getBigDecimal((Boolean) data));
+            else if (data instanceof Boolean bool) {
+                r.deliver(NumberConversions.getBigDecimal(bool));
             }
-            else if (data instanceof Short) {
-                r.deliver(new BigDecimal(((Short) data).intValue()));
+            else if (data instanceof Short s) {
+                r.deliver(new BigDecimal(s.intValue()));
             }
-            else if (data instanceof Integer) {
-                r.deliver(new BigDecimal(((Integer) data).intValue()));
+            else if (data instanceof Integer i) {
+                r.deliver(new BigDecimal(i.intValue()));
             }
-            else if (data instanceof Long) {
-                r.deliver(BigDecimal.valueOf(((Long) data).longValue()));
+            else if (data instanceof Long l) {
+                r.deliver(BigDecimal.valueOf(l.longValue()));
             }
-            else if (data instanceof Float) {
-                r.deliver(BigDecimal.valueOf(((Float) data).doubleValue()));
+            else if (data instanceof Float f) {
+                r.deliver(BigDecimal.valueOf(f.doubleValue()));
             }
-            else if (data instanceof Double) {
-                r.deliver(BigDecimal.valueOf(((Double) data).doubleValue()));
+            else if (data instanceof Double d) {
+                r.deliver(BigDecimal.valueOf(d.doubleValue()));
             }
-            else if (data instanceof String) {
-                r.deliver(new BigDecimal((String) data));
+            else if (data instanceof String str) {
+                r.deliver(new BigDecimal(str));
             }
         });
     }
@@ -1313,9 +1217,9 @@ public class JdbcValueConverters implements ValueConverterProvider {
      */
     protected Object convertString(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, "", (r) -> {
-            if (data instanceof SQLXML) {
+            if (data instanceof SQLXML xml) {
                 try {
-                    r.deliver(((SQLXML) data).getString());
+                    r.deliver(xml.getString());
                 }
                 catch (SQLException e) {
                     throw new RuntimeException("Error processing data from " + column.jdbcType() + " and column " + column +
@@ -1339,8 +1243,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      */
     protected Object convertRowId(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, BYTE_BUFFER_ZERO, (r) -> {
-            if (data instanceof java.sql.RowId) {
-                java.sql.RowId row = (java.sql.RowId) data;
+            if (data instanceof java.sql.RowId row) {
                 r.deliver(ByteBuffer.wrap(row.getBytes()));
             }
         });
