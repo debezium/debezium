@@ -312,6 +312,20 @@ The following table shows the `upsert` DML syntax for the database dialects that
 
 |===
 
+[WARNING]
+====
+Secondary unique constraints can create ordering dependencies between records that have different primary keys.
+Kafka guarantees record order only within a partition.
+If dependent records are routed to different partitions, the sink connector might apply them out of source order, causing a unique constraint violation.
+
+MySQL and SingleStore use `INSERT ... ON DUPLICATE KEY UPDATE`, which reacts to a conflict with any unique index, not only the configured primary key.
+A secondary unique-key conflict can therefore update an existing row whose primary key differs from the incoming record, potentially causing data inconsistency without reporting an error.
+
+If a destination table contains secondary unique constraints, route all dependent events through the same Kafka partition, preserve source event order, and set xref:jdbc-property-use-reduction-buffer[`use.reduction.buffer=false`].
+For a table with dependencies between arbitrary rows, using a single partition for its Kafka topic provides this ordering.
+Setting `tasks.max=1` alone does not restore ordering between records that are already in different partitions.
+====
+
 // Type: reference
 // Title: Schema evolution modes for the {prodname} JDBC connector
 // ModuleID: debezium-jdbc-connector-schema-evolution-modes
@@ -1996,6 +2010,8 @@ Choose one of the following settings:
 `true`:: The connector uses the reduction buffer to reduce change events before it writes them to the sink database.
 That is, if multiple events refer to the same primary key, the connector consolidates the SQL queries and writes only a single logical SQL change, based on the row state that is reported in the most recent offset record.
 Choose this option to reduce the SQL load on the target database.
+Do not enable the reduction buffer if destination constraints create dependencies between records with different primary keys.
+Reduction by primary key can remove intermediate row states that are required to satisfy secondary unique constraints.
 
 To optimize query processing in a PostgreSQL sink database when the reduction buffer is enabled, you must also enable the database to execute the batched queries by adding the `reWriteBatchedInserts` parameter to the JDBC connection URL.
 
