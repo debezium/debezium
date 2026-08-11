@@ -20,11 +20,14 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConfiguration;
+import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.util.Testing;
+
+import ch.qos.logback.classic.Level;
 
 public class ConnectionIT implements Testing {
 
@@ -137,6 +140,65 @@ public class ConnectionIT implements Testing {
                 conn.execute("DROP SCHEMA IF EXISTS dbz2350 CASCADE");
             }
         }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2041")
+    void shouldPrimeDependentTypesWithoutIndividualLookups() throws SQLException {
+        try (PostgresConnection conn = TestHelper.create()) {
+            conn.connect();
+            conn.execute(
+                    "DROP SCHEMA IF EXISTS dbz2041 CASCADE",
+                    "CREATE SCHEMA dbz2041",
+                    "CREATE DOMAIN dbz2041.base_domain AS varchar(50)",
+                    "CREATE DOMAIN dbz2041.dependent_domain AS dbz2041.base_domain",
+                    // Rewrites the pg_type row of the base domain, so that the types are read back with the
+                    // dependent one first, as it happens on databases where the catalog has been updated.
+                    "ALTER DOMAIN dbz2041.base_domain SET NOT NULL");
+        }
+
+        try (PostgresConnection conn = TestHelper.create()) {
+            final long baseTypeOid = conn.queryAndMap(
+                    "SELECT 'dbz2041.base_domain'::regtype::oid",
+                    rs -> {
+                        rs.next();
+                        return rs.getLong(1);
+                    });
+            assertThat(readTypeScanOrder(conn))
+                    .as("the types are no longer read with the dependent one first, so debezium/dbz#2041 is not reproduced")
+                    .containsSubsequence("dependent_domain", "base_domain");
+
+            final LogInterceptor logInterceptor = new LogInterceptor(TypeRegistry.class);
+            logInterceptor.setLoggerLevel(TypeRegistry.class, Level.TRACE);
+
+            TestHelper.getTypeRegistry();
+
+            // Priming has to register the base domain first, rather than look it up on its own
+            assertThat(logInterceptor.containsMessage("Type OID '" + baseTypeOid + "' not cached")).isFalse();
+        }
+        finally {
+            try (PostgresConnection conn = TestHelper.create()) {
+                conn.execute("DROP SCHEMA IF EXISTS dbz2041 CASCADE");
+            }
+        }
+    }
+
+    /**
+     * @return the types of the {@code dbz2041} schema, in the order in which the registry reads the types.
+     *         The schema is filtered here rather than in the query, as an additional predicate lets
+     *         PostgreSQL use an index on pg_type and return the types in a different order.
+     */
+    private List<String> readTypeScanOrder(PostgresConnection conn) throws SQLException {
+        return conn.queryAndMap(TypeRegistry.SQL_TYPES,
+                rs -> {
+                    final List<String> typeNames = new ArrayList<>();
+                    while (rs.next()) {
+                        if ("dbz2041".equals(rs.getString("schema_name"))) {
+                            typeNames.add(rs.getString("name"));
+                        }
+                    }
+                    return typeNames;
+                });
     }
 
     private void assertUnqualifiedTypeNames(String searchPath) throws SQLException {
