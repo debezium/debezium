@@ -73,6 +73,8 @@ import io.debezium.connector.oracle.logminer.parser.XmlWriteParser;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.monitor.OffsetActivityMonitor;
+import io.debezium.pipeline.monitor.OffsetActivityMonitorService;
 import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotContext;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.pipeline.txmetadata.TransactionContext;
@@ -102,7 +104,6 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
 
     private static final int MINING_START_RETRIES = 5;
     private static final int MAXIMUM_NAME_LENGTH = 30;
-    private static final int MAX_ITERATIONS_BEFORE_OFFSET_STALE = 25;
     private static final Long SMALL_REDO_LOG_WARNING = 524_288_000L;
 
     private final OracleConnectorConfig connectorConfig;
@@ -125,6 +126,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     private final Tables.TableFilter tableFilter;
     private final List<String> archiveDestinationNames;
     private final LogMinerColumnIndexes columnIndexes;
+    private final OffsetActivityMonitorService offsetActivityMonitorService;
 
     private boolean sequenceUnavailable = false;
     private List<LogFile> currentLogFiles;
@@ -167,6 +169,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         this.tableFilter = connectorConfig.getTableFilters().dataCollectionFilter();
         this.archiveDestinationNames = connectorConfig.getArchiveDestinationNameResolver().getDestinationNames(streamingConnection);
         this.columnIndexes = LogMinerColumnIndexes.fromConfig(connectorConfig);
+        this.offsetActivityMonitorService = connectorConfig.getServiceRegistry().tryGetService(OffsetActivityMonitorService.class);
     }
 
     @Override
@@ -187,7 +190,6 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             this.effectiveOffset = offsetContext;
             this.partition = partition;
             this.context = context;
-            this.offsetActivityMonitor = new OffsetActivityMonitor(MAX_ITERATIONS_BEFORE_OFFSET_STALE, getOffsetContext(), getMetrics());
             this.logFileSessionSelector = resolveLogFileSessionSelector(connectorConfig, streamingConnection);
 
             // perform various pre-streaming initialization steps
@@ -334,8 +336,16 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         return sessionLogFiles;
     }
 
-    protected OffsetActivityMonitor getOffsetActivityMonitor() {
-        return offsetActivityMonitor;
+    @Override
+    public Optional<OffsetActivityMonitor> getOffsetActivityMonitor() {
+        if (offsetActivityMonitor == null) {
+            offsetActivityMonitor = new LogMinerOffsetActivityMonitor(
+                    connectorConfig.getOffsetActivityMonitorInterval(),
+                    this::getOffsetContext,
+                    getMetrics(),
+                    this::getActiveTransactionIds);
+        }
+        return Optional.of(offsetActivityMonitor);
     }
 
     protected void executeBlockingSnapshot() throws InterruptedException {
@@ -429,8 +439,11 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
 
             getBatchMetrics().updateStreamingMetrics();
 
-            if (getBatchMetrics().hasProcessedAnyTransactions()) {
-                getOffsetActivityMonitor().checkForStaleOffsets(this::getActiveTransactionIds);
+            // This is purposely buried inside this method so that the initial delay waiting for
+            // archive log only mode to advanced into the streaming loop does not create any
+            // false-positive on the first mining iteration.
+            if (offsetActivityMonitorService != null) {
+                offsetActivityMonitorService.pulse();
             }
 
             LOGGER.debug("{}.", getBatchMetrics());
