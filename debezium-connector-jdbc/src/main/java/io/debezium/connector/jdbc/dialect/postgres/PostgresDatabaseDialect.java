@@ -188,11 +188,15 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
      * records take the row-wise path as well. An enum field is handled row-wise for a related reason:
      * the array cast above is derived from the field schema, which for an enum only resolves to the
      * character varying fallback, whereas the cast has to name the destination column's enum type.
+     * An {@code ARRAY} field cannot be batched at all: this path binds one array per column holding the
+     * value of every row, so an array column would need an array of arrays, and the cast derived above
+     * would be {@code ?::text[][]}, which {@code UNNEST} flattens into scalars the column rejects.
      */
     private static boolean hasUnnestUnsupportedField(JdbcSinkRecord record) {
         return record.jdbcFields().values().stream()
                 .anyMatch(field -> field.getSchema().type() == Schema.Type.STRUCT
                         || field.getSchema().type() == Schema.Type.BYTES
+                        || field.getSchema().type() == Schema.Type.ARRAY
                         || Enum.LOGICAL_NAME.equals(field.getSchema().name()));
     }
 
