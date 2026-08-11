@@ -11,9 +11,11 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -29,6 +31,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.annotation.Immutable;
+import io.debezium.annotation.VisibleForTesting;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.util.Collect;
 
@@ -72,7 +75,8 @@ public class TypeRegistry {
     private static final String SQL_ENUM_VALUES = "SELECT t.enumtypid as id, array_agg(t.enumlabel ORDER BY t.enumsortorder) as values "
             + "FROM pg_catalog.pg_enum t GROUP BY id";
 
-    private static final String SQL_TYPES = "SELECT t.oid AS oid, t.typname AS name, n.nspname AS schema_name, t.typelem AS element, t.typbasetype AS parentoid, t.typtypmod as modifiers, t.typcategory as category, e.values as enum_values "
+    @VisibleForTesting
+    static final String SQL_TYPES = "SELECT t.oid AS oid, t.typname AS name, n.nspname AS schema_name, t.typelem AS element, t.typbasetype AS parentoid, t.typtypmod as modifiers, t.typcategory as category, e.values as enum_values "
             + "FROM pg_catalog.pg_type t "
             + "JOIN pg_catalog.pg_namespace n ON (t.typnamespace = n.oid) "
             + "LEFT JOIN (" + SQL_ENUM_VALUES + ") e ON (t.oid = e.id) "
@@ -532,10 +536,54 @@ public class TypeRegistry {
             }
         }
 
-        // Resolve delayed builders
+        resolveDelayedBuilders(delayResolvedBuilders);
+    }
+
+    /**
+     * Registers the delayed builders dependency-first. A delayed type whose base or element type is delayed
+     * as well must be built after that dependency has been registered, otherwise
+     * {@link PostgresType.Builder#build()} resolves the dependency with an individual {@code SQL_OID_LOOKUP}
+     * query. The order in which the types are read from the database is not guaranteed to be a dependency
+     * order, so it is established here.
+     * <p>
+     * The dependencies are walked with an explicit stack to keep long chains of types off the JVM stack, and
+     * a builder is taken out of {@code unresolved} when it is first visited, so that a cycle cannot loop.
+     */
+    private void resolveDelayedBuilders(List<TypeBuilderWithSchema> delayResolvedBuilders) {
+        final Map<Integer, TypeBuilderWithSchema> unresolved = new HashMap<>();
         for (TypeBuilderWithSchema builderWithSchema : delayResolvedBuilders) {
-            addType(builderWithSchema.builder().build(), builderWithSchema.schemaName());
+            unresolved.put(builderWithSchema.oid(), builderWithSchema);
         }
+
+        final Deque<TypeBuilderWithSchema> unbuilt = new ArrayDeque<>();
+        for (TypeBuilderWithSchema builderWithSchema : delayResolvedBuilders) {
+            final TypeBuilderWithSchema root = unresolved.remove(builderWithSchema.oid());
+            if (root == null) {
+                // Already registered as a dependency of a previously processed type
+                continue;
+            }
+            unbuilt.push(root);
+            while (!unbuilt.isEmpty()) {
+                final TypeBuilderWithSchema current = unbuilt.peek();
+                final TypeBuilderWithSchema dependency = takeUnresolvedDependency(current, unresolved);
+                if (dependency != null) {
+                    unbuilt.push(dependency);
+                }
+                else {
+                    unbuilt.pop();
+                    addType(current.builder().build(), current.schemaName());
+                }
+            }
+        }
+    }
+
+    /**
+     * @return one type the given type depends on and that is not registered yet, or {@code null} if there is none
+     */
+    private static TypeBuilderWithSchema takeUnresolvedDependency(TypeBuilderWithSchema builderWithSchema,
+                                                                  Map<Integer, TypeBuilderWithSchema> unresolved) {
+        final TypeBuilderWithSchema parent = unresolved.remove(builderWithSchema.parentTypeOid());
+        return parent != null ? parent : unresolved.remove(builderWithSchema.elementTypeOid());
     }
 
     private void collectBuilders(ResultSet rs, List<TypeBuilderWithSchema> builders) throws SQLException {
@@ -543,7 +591,7 @@ public class TypeRegistry {
             TypeBuilderWithSchema builderWithSchema = createTypeBuilderFromResultSet(rs);
             // If the type has neither a base type nor an element type,
             // we can build and add it immediately.
-            if (!builderWithSchema.builder().hasParentType() && !builderWithSchema.builder().hasElementType()) {
+            if (builderWithSchema.parentTypeOid() == 0 && builderWithSchema.elementTypeOid() == 0) {
                 addType(builderWithSchema.builder().build(), builderWithSchema.schemaName());
                 continue;
             }
@@ -554,7 +602,7 @@ public class TypeRegistry {
         }
     }
 
-    private record TypeBuilderWithSchema(PostgresType.Builder builder, String schemaName) {
+    private record TypeBuilderWithSchema(PostgresType.Builder builder, String schemaName, int oid, int parentTypeOid, int elementTypeOid) {
     }
 
     private TypeBuilderWithSchema createTypeBuilderFromResultSet(ResultSet rs) throws SQLException {
@@ -575,14 +623,16 @@ public class TypeRegistry {
                 modifiers,
                 getTypeInfo(connection));
 
+        int elementTypeOid = 0;
         if (CATEGORY_ENUM.equals(category)) {
             String[] enumValues = (String[]) rs.getArray("enum_values").getArray();
             builder = builder.enumValues(Arrays.asList(enumValues));
         }
         else if (CATEGORY_ARRAY.equals(category)) {
-            builder = builder.elementType((int) rs.getLong("element"));
+            elementTypeOid = (int) rs.getLong("element");
+            builder = builder.elementType(elementTypeOid);
         }
-        return new TypeBuilderWithSchema(builder.parentType(parentTypeOid), schemaName);
+        return new TypeBuilderWithSchema(builder.parentType(parentTypeOid), schemaName, oid, parentTypeOid, elementTypeOid);
     }
 
     private PostgresType resolveUnknownType(String name) {
