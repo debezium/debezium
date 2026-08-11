@@ -10,6 +10,8 @@ import java.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Partition;
 import io.debezium.util.Clock;
 import io.debezium.util.ElapsedTimeStrategy;
 
@@ -18,10 +20,10 @@ import io.debezium.util.ElapsedTimeStrategy;
  *
  * The registered monitor is invoked at most once per configured check interval, with the first
  * check occurring after one full interval has elapsed. A non-positive interval disables the
- * service, making {@link #pulse()} a no-op.
+ * service, making {@link #pulse(Partition, OffsetContext)} a no-op.
  *
  * This implementation is not thread-safe; {@link #register(OffsetActivityMonitor)} and
- * {@link #pulse()} are expected to be invoked from the streaming thread.
+ * {@link #pulse(Partition, OffsetContext)} are expected to be invoked from the streaming thread.
  *
  * @author Chris Cranford
  */
@@ -31,7 +33,7 @@ public class DefaultOffsetActivityMonitorService implements OffsetActivityMonito
 
     private final ElapsedTimeStrategy elapsedStrategy;
 
-    private OffsetActivityMonitor monitor;
+    private OffsetActivityMonitor<Partition, OffsetContext> monitor;
 
     public DefaultOffsetActivityMonitorService(Duration checkInterval) {
         this(checkInterval, Clock.SYSTEM);
@@ -48,15 +50,17 @@ public class DefaultOffsetActivityMonitorService implements OffsetActivityMonito
     }
 
     @Override
-    public void register(OffsetActivityMonitor monitor) {
-        this.monitor = monitor;
+    @SuppressWarnings("unchecked")
+    public <P extends Partition, O extends OffsetContext> void register(OffsetActivityMonitor<P, O> monitor) {
+        // Safe: the monitor is registered by the same streaming source that pulses with matching types
+        this.monitor = (OffsetActivityMonitor<Partition, OffsetContext>) monitor;
     }
 
     @Override
-    public void pulse() {
+    public <P extends Partition, O extends OffsetContext> void pulse(P partition, O offsetContext) {
         if (monitor != null && elapsedStrategy != null && elapsedStrategy.hasElapsed()) {
             try {
-                monitor.checkForStaleOffsets();
+                monitor.checkForStaleOffsets(partition, offsetContext);
             }
             catch (Exception e) {
                 LOGGER.warn("Offset activity check failed, it will be retried at the next interval.", e);
