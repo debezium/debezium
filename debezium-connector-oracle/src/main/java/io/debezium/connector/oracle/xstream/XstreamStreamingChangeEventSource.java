@@ -9,6 +9,7 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.slf4j.Logger;
@@ -28,6 +29,8 @@ import io.debezium.connector.oracle.StreamingAdapter.TableNameCaseSensitivity;
 import io.debezium.connector.oracle.jdbc.OracleConnectionFactory;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.monitor.OffsetActivityMonitor;
+import io.debezium.pipeline.monitor.OffsetActivityMonitorService;
 import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotContext;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.pipeline.txmetadata.TransactionContext;
@@ -70,7 +73,9 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
      * internal Oracle code locking.
      */
     private final AtomicReference<PositionAndScn> lcrMessage = new AtomicReference<>();
+    private final OffsetActivityMonitorService offsetActivityMonitorService;
     private OracleOffsetContext effectiveOffset;
+    private OffsetActivityMonitor<OraclePartition, OracleOffsetContext> offsetActivityMonitor;
 
     public XstreamStreamingChangeEventSource(OracleConnectorConfig connectorConfig, OracleConnectionFactory connectionFactory,
                                              EventDispatcher<OraclePartition, TableId> dispatcher, ErrorHandler errorHandler,
@@ -85,6 +90,7 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
         this.streamingMetrics = streamingMetrics;
         this.xstreamOutboundServerName = connectorConfig.getXStreamOutboundServerName();
         this.posVersion = resolvePosVersion(connectionFactory.streamingConnectionFactory().mainConnection());
+        this.offsetActivityMonitorService = OffsetActivityMonitorService.lookup(connectorConfig.getServiceRegistry());
     }
 
     @Override
@@ -115,6 +121,8 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
                     LOGGER.trace("Receiving LCR");
                     xsOut.receiveLCRCallback(eventHandler, XStreamOut.DEFAULT_MODE);
                     dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
+
+                    offsetActivityMonitorService.pulse(partition, offsetContext);
 
                     if (context.isPaused()) {
                         LOGGER.info("Streaming will now pause");
@@ -158,6 +166,16 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
     @Override
     public OracleOffsetContext getOffsetContext() {
         return effectiveOffset;
+    }
+
+    @Override
+    public Optional<OffsetActivityMonitor<OraclePartition, OracleOffsetContext>> getOffsetActivityMonitor() {
+        if (offsetActivityMonitor == null) {
+            offsetActivityMonitor = new XStreamOffsetActivityMonitor(
+                    connectorConfig.getOffsetActivityMonitorInterval(),
+                    streamingMetrics);
+        }
+        return Optional.of(offsetActivityMonitor);
     }
 
     private boolean isTableCaseInsensitive() {
