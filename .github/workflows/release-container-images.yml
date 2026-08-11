@@ -93,12 +93,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           # Fetch all tags from debezium repository
-          gh api repos/${{ inputs.debezium_repository }}/tags --paginate | \
+          DEBEZIUM_REPO="${{ inputs.debezium_repository || 'debezium/debezium' }}"
+          STREAMS_COUNT="${{ inputs.streams_to_build_count || '2' }}"
+          TAGS_PER_STREAM="${{ inputs.tags_per_stream_count || '1' }}"
+
+          gh api repos/${DEBEZIUM_REPO}/tags --paginate | \
             jq -r '.[].name' | \
             grep -E '^v[0-9]+\.[0-9]+\.[0-9]+' | \
             python3 .github/scripts/release-container-images/process-versions.py \
-              --streams-count ${{ inputs.streams_to_build_count }} \
-              --tags-per-stream ${{ inputs.tags_per_stream_count }} >> $GITHUB_OUTPUT
+              --streams-count ${STREAMS_COUNT} \
+              --tags-per-stream ${TAGS_PER_STREAM} >> $GITHUB_OUTPUT
 
       - name: Display discovered versions
         run: |
