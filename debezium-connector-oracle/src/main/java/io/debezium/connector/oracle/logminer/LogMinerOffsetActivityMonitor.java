@@ -15,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.oracle.OracleOffsetContext;
+import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.pipeline.monitor.OffsetActivityMonitor;
 
@@ -27,12 +28,11 @@ import io.debezium.pipeline.monitor.OffsetActivityMonitor;
  *
  * @author Chris Cranford
  */
-public class LogMinerOffsetActivityMonitor implements OffsetActivityMonitor {
+public class LogMinerOffsetActivityMonitor implements OffsetActivityMonitor<OraclePartition, OracleOffsetContext> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(LogMinerOffsetActivityMonitor.class);
 
     private final Duration checkInterval;
-    private final Supplier<OracleOffsetContext> offsetContextSupplier;
     private final LogMinerStreamingChangeEventSourceMetrics metrics;
     private final Supplier<List<String>> activeTransactionIdSupplier;
 
@@ -40,19 +40,15 @@ public class LogMinerOffsetActivityMonitor implements OffsetActivityMonitor {
     private Map<Integer, Scn> previousCommitScns = new HashMap<>();
 
     public LogMinerOffsetActivityMonitor(Duration checkInterval,
-                                         Supplier<OracleOffsetContext> offsetContextSupplier,
                                          LogMinerStreamingChangeEventSourceMetrics metrics,
                                          Supplier<List<String>> activeTransactionIdSupplier) {
         this.checkInterval = checkInterval;
-        this.offsetContextSupplier = offsetContextSupplier;
         this.metrics = metrics;
         this.activeTransactionIdSupplier = activeTransactionIdSupplier;
     }
 
     @Override
-    public void checkForStaleOffsets() {
-        final OracleOffsetContext offsetContext = offsetContextSupplier.get();
-
+    public void checkForStaleOffsets(OraclePartition partition, OracleOffsetContext offsetContext) {
         // Check for stale state
         if (offsetContext.getCommitScn() != null) {
             if (previousOffsetScn.equals(offsetContext.getScn())) {
