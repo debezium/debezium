@@ -637,6 +637,7 @@ public abstract class CommonConnectorConfig {
     // This should be less than the value of worker config task.shutdown.graceful.timeout.ms. It
     // defaults to 5 seconds, hence setting it to 4 seconds.
     public static final Duration DEFAULT_EXECUTOR_SHUTDOWN_TIMEOUT = Duration.ofSeconds(4);
+    public static final Duration DEFAULT_OFFSET_ACTIVITY_MONITOR_INTERVAL = Duration.ofMinutes(10);
     public static final int DEFAULT_MAX_QUEUE_SIZE = 8192;
     public static final int DEFAULT_MAX_BATCH_SIZE = 2048;
     public static final int DEFAULT_QUERY_FETCH_SIZE = 0;
@@ -1230,6 +1231,18 @@ public abstract class CommonConnectorConfig {
             .optional()
             .withDescription("When enabled the connector checks if the position stored in the offset is still available in the log");
 
+    public static final Field OFFSET_ACTIVITY_MONITOR_INTERVAL_MS = Field.createInternal("offset.activity.monitor.interval.ms")
+            .withDisplayName("Offset activity monitor interval (ms)")
+            .withType(Type.LONG)
+            .withDefault(DEFAULT_OFFSET_ACTIVITY_MONITOR_INTERVAL.toMillis())
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .optional()
+            .withValidation(Field::isNonNegativeLong)
+            .withDescription("The interval in milliseconds at which the connector checks for stale offsets during streaming. "
+                    + "A value of 0 disables the checks.");
+
     public static final Field ADVANCED_METRICS_ENABLE = Field.createInternal("advanced.metrics.enable")
             .withDisplayName("Enable/Disable advance metrics")
             .withType(Type.BOOLEAN)
@@ -1550,7 +1563,7 @@ public abstract class CommonConnectorConfig {
                     OPEN_LINEAGE_INTEGRATION_JOB_NAMESPACE, OPEN_LINEAGE_INTEGRATION_JOB_DESCRIPTION, OPEN_LINEAGE_INTEGRATION_JOB_TAGS,
                     OPEN_LINEAGE_INTEGRATION_JOB_OWNERS, OPEN_LINEAGE_INTEGRATION_DATASET_KAFKA_BOOTSTRAP_SERVER, EXTENDED_HEADERS_ENABLED, GUARDRAIL_COLLECTIONS_MAX,
                     GUARDRAIL_COLLECTIONS_LIMIT_ACTION, CUSTOM_SANITIZE_PATTERN, SIGNAL_EMIT_FAILURE_MAX_RETRIES, SIGNAL_EMIT_FAILURE_BACKOFF_INTERVAL_MS,
-                    STATISTICS_METRICS_ENABLED)
+                    STATISTICS_METRICS_ENABLED, OFFSET_ACTIVITY_MONITOR_INTERVAL_MS)
             .group(Field.Group.ADVANCED_HEARTBEAT, Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX, SIGNAL_POLL_INTERVAL_MS)
             .group(Field.Group.CONNECTOR, TOPIC_NAMING_STRATEGY, SinkNotificationChannel.NOTIFICATION_TOPIC, CUSTOM_METRIC_TAGS)
             .create();
@@ -2241,6 +2254,10 @@ public abstract class CommonConnectorConfig {
 
     public Duration getExecutorShutdownTimeout() {
         return Duration.ofMillis(config.getLong(EXECUTOR_SHUTDOWN_TIMEOUT_MS));
+    }
+
+    public Duration getOffsetActivityMonitorInterval() {
+        return Duration.ofMillis(config.getLong(OFFSET_ACTIVITY_MONITOR_INTERVAL_MS));
     }
 
     public EnumeratedValue snapshotQueryMode() {

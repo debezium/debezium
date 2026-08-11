@@ -54,7 +54,6 @@ import io.debezium.connector.oracle.jdbc.StandardOracleConnectionFactory;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.logminer.AbstractLogMinerStreamingChangeEventSource;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
-import io.debezium.connector.oracle.logminer.OffsetActivityMonitor;
 import io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerStreamingChangeEventSource.ProcessResult;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
@@ -85,7 +84,6 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DeferredMemoryStreamingChangeEventSourceTest.class);
 
-    private static final int OFFSET_ACTIVITY_MONITOR_INACTIVE_THRESHOLD_MS = 25;
     private static final String TRANSACTION_ID_1 = "1234567890";
     private static final String TRANSACTION_ID_2 = "9876543210";
 
@@ -617,7 +615,6 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
     protected static class BufferedStreamingChangeEventSource extends BufferedLogMinerStreamingChangeEventSource {
 
         private final ChangeEventSourceContext context;
-        private final OffsetActivityMonitor offsetActivityMonitor;
 
         public BufferedStreamingChangeEventSource(
                                                   OracleConnectorConfig connectorConfig,
@@ -629,19 +626,12 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
                                                   OracleOffsetContext offsetContext) {
             super(connectorConfig, connectionFactory, dispatcher, null, Clock.SYSTEM, schema, connectorConfig.getJdbcConfig(), metrics);
             this.context = context;
-            this.offsetActivityMonitor = new OffsetActivityMonitor(OFFSET_ACTIVITY_MONITOR_INACTIVE_THRESHOLD_MS, offsetContext, metrics);
         }
 
         @Override
         protected ChangeEventSourceContext getContext() {
             // Necessary for mock purposes only
             return context;
-        }
-
-        @Override
-        protected OffsetActivityMonitor getOffsetActivityMonitor() {
-            // Necessary for mock purposes only
-            return offsetActivityMonitor;
         }
 
         @Override

@@ -7,7 +7,9 @@ package io.debezium.pipeline.source.spi;
 
 import java.io.Closeable;
 import java.util.Map;
+import java.util.Optional;
 
+import io.debezium.pipeline.monitor.OffsetActivityMonitor;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
 
@@ -74,6 +76,16 @@ public interface StreamingChangeEventSource<P extends Partition, O extends Offse
 
     default O getOffsetContext() {
         return null;
+    }
+
+    /**
+     * Returns the connector-specific offset activity monitor when the connector supports
+     * stale offset detection. Called after {@link #init(OffsetContext)}; the returned monitor
+     * is registered with the {@code OffsetActivityMonitorService} and invoked periodically
+     * as the streaming source pulses the service during its streaming loop.
+     */
+    default Optional<OffsetActivityMonitor> getOffsetActivityMonitor() {
+        return Optional.empty();
     }
 
     @Override
