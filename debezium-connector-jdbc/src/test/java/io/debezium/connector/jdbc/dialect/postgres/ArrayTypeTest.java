@@ -7,9 +7,18 @@ package io.debezium.connector.jdbc.dialect.postgres;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.math.BigDecimal;
+import java.util.Arrays;
+import java.util.List;
+
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+
+import io.debezium.data.VariableScaleDecimal;
+import io.debezium.doc.FixFor;
 
 /**
  * Unit tests for the PostgreSQL {@link ArrayType} handler.
@@ -77,6 +86,31 @@ class ArrayTypeTest {
         assertThat(ArrayType.nativeElementTypeName("_TEXT")).isNull();
         assertThat(ArrayType.nativeElementTypeName("_INT4")).isNull();
         assertThat(ArrayType.nativeElementTypeName("_UUID")).isNull();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2398")
+    @DisplayName("Should unwrap VariableScaleDecimal elements to their decimal value")
+    void testUnwrapsVariableScaleDecimalElements() {
+        // Connection#createArrayOf cannot encode a Struct; the driver renders it through toString().
+        final Schema elementSchema = VariableScaleDecimal.optionalSchema();
+        final Schema arraySchema = SchemaBuilder.array(elementSchema).optional().build();
+        final List<Object> elements = Arrays.asList(
+                VariableScaleDecimal.fromLogical(elementSchema, new BigDecimal("1.25")),
+                null);
+
+        assertThat(ArrayType.unwrapElements(arraySchema, elements))
+                .isEqualTo(Arrays.asList(new BigDecimal("1.25"), null));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2398")
+    @DisplayName("Should pass elements of other types through untouched")
+    void testPassesOtherElementsThrough() {
+        final Schema arraySchema = SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build();
+        final List<Object> elements = List.of("a", "b");
+
+        assertThat(ArrayType.unwrapElements(arraySchema, elements)).isSameAs(elements);
     }
 
     @Test
