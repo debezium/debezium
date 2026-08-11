@@ -39,6 +39,13 @@ public class DefaultOffsetActivityMonitorService implements OffsetActivityMonito
         this(checkInterval, Clock.SYSTEM);
     }
 
+    /**
+     * Creates a disabled service instance whose pulses are no-ops.
+     */
+    public static DefaultOffsetActivityMonitorService disabled() {
+        return new DefaultOffsetActivityMonitorService(null);
+    }
+
     public DefaultOffsetActivityMonitorService(Duration checkInterval, Clock clock) {
         if (checkInterval == null || checkInterval.isZero() || checkInterval.isNegative()) {
             LOGGER.info("Offset activity monitoring is disabled.");

@@ -169,7 +169,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         this.tableFilter = connectorConfig.getTableFilters().dataCollectionFilter();
         this.archiveDestinationNames = connectorConfig.getArchiveDestinationNameResolver().getDestinationNames(streamingConnection);
         this.columnIndexes = LogMinerColumnIndexes.fromConfig(connectorConfig);
-        this.offsetActivityMonitorService = connectorConfig.getServiceRegistry().tryGetService(OffsetActivityMonitorService.class);
+        this.offsetActivityMonitorService = OffsetActivityMonitorService.lookup(connectorConfig.getServiceRegistry());
     }
 
     @Override
@@ -441,9 +441,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             // This is purposely buried inside this method so that the initial delay waiting for
             // archive log only mode to advanced into the streaming loop does not create any
             // false-positive on the first mining iteration.
-            if (offsetActivityMonitorService != null) {
-                offsetActivityMonitorService.pulse(partition, getOffsetContext());
-            }
+            offsetActivityMonitorService.pulse(partition, getOffsetContext());
 
             LOGGER.debug("{}.", getBatchMetrics());
             LOGGER.debug("Processed in {} ms. Lag {}. Active Transactions: {}. Offsets: {}",
