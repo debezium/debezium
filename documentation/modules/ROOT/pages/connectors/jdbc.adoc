@@ -281,49 +281,75 @@ If the primary key value already exists, the operation updates values in the row
 If the specified primary key value doesn't exist, an `insert` adds a new row.
 
 Each database dialect handles idempotent writes differently, because there is no SQL standard for _upsert_ operations.
-The following table shows the `upsert` DML syntax for the database dialects that {prodname} supports:
+The following table shows the `upsert` DML syntax for the database dialects that {prodname} supports, and the constraint that each dialect evaluates to decide between the insert and the update action:
 
 |===
-|Dialect |Upsert Syntax
+|Dialect |Upsert Syntax |Constraint that triggers the update action
 
 |CockroachDB
 |`INSERT ... ON CONFLICT ... DO UPDATE SET ...`
+|Configured primary key only
 
 |Db2
 |`MERGE ...`
+|Configured primary key only
+
+|MariaDB
+|`INSERT ... ON DUPLICATE KEY UPDATE ...`
+|Any unique index
 
 |MySQL
 |`INSERT ... ON DUPLICATE KEY UPDATE ...`
+|Any unique index
 
 |Oracle
 |`MERGE ...`
+|Configured primary key only
 
 |PostgreSQL
 |`INSERT ... ON CONFLICT ... DO UPDATE SET ...`
+|Configured primary key only
 
 |SingleStore
 |`INSERT ... ON DUPLICATE KEY UPDATE ...`
+|Any unique index
 
 |SQL Server
 |`MERGE ...`
+|Configured primary key only
 
 |StarRocks
 |`INSERT ...` (PRIMARY KEY tables execute inserts as upserts)
+|Table primary key
 
 |===
 
 [WARNING]
 ====
 Secondary unique constraints can create ordering dependencies between records that have different primary keys.
-Kafka guarantees record order only within a partition.
-If dependent records are routed to different partitions, the sink connector might apply them out of source order, causing a unique constraint violation.
+Kafka guarantees record order only within a partition, and the connector batches and reduces events based only on the configured primary key.
+For these reasons, avoid defining secondary unique constraints or secondary unique indexes on destination tables.
+If a uniqueness rule must be enforced, enforce it in the source database, and omit the constraint from the destination table.
 
-MySQL and SingleStore use `INSERT ... ON DUPLICATE KEY UPDATE`, which reacts to a conflict with any unique index, not only the configured primary key.
-A secondary unique-key conflict can therefore update an existing row whose primary key differs from the incoming record, potentially causing data inconsistency without reporting an error.
+If dependent records are routed to different partitions, the sink connector might apply them out of source order.
+How the resulting conflict surfaces depends on the dialect, as shown in the preceding table:
 
-If a destination table contains secondary unique constraints, route all dependent events through the same Kafka partition, preserve source event order, and set xref:jdbc-property-use-reduction-buffer[`use.reduction.buffer=false`].
-For a table with dependencies between arbitrary rows, using a single partition for its Kafka topic provides this ordering.
+* Dialects that use `INSERT ... ON DUPLICATE KEY UPDATE` react to a conflict with any unique index, not only the configured primary key.
+A secondary unique-key conflict can therefore update an existing row whose primary key differs from the incoming record, causing silent data inconsistency.
+* Dialects that use `INSERT ... ON CONFLICT` or `MERGE` detect conflicts only on the configured primary key.
+A conflict with a secondary unique constraint causes the write to fail with a constraint violation error, rather than silently modifying a different row.
+
+If a destination table must retain a secondary unique constraint, all of the following conditions are required:
+
+* Route all dependent events through the same Kafka partition, and preserve the source event order.
+For a table with dependencies between arbitrary rows, use a single partition for its Kafka topic.
 Setting `tasks.max=1` alone does not restore ordering between records that are already in different partitions.
+* Keep xref:jdbc-property-use-reduction-buffer[`use.reduction.buffer`] at its default value of `false`.
+Reduction by primary key can remove intermediate row states that are required to satisfy secondary unique constraints.
+* Set xref:jdbc-property-batch-size[`batch.size`] to `1` if a batch might contain multiple events for a primary key that does not yet exist in the destination table.
+Some dialects and driver configurations process a batch in a single pass, rather than validating each row against the effects of the preceding rows in the same batch.
+For example, `MERGE`-based dialects can attempt two `INSERT` operations for the same primary key instead of an `INSERT` followed by an `UPDATE`, and PostgreSQL combines the batch into a single multi-row statement when xref:jdbc-property-dialect-postgres-unnest-insert-enabled[`dialect.postgres.unnest.insert.enabled`] is enabled.
+In both cases, the batch fails.
 ====
 
 // Type: reference
