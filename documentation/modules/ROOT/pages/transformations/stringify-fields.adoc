@@ -77,6 +77,7 @@ The log entry contains information about the following fields:
 
 The stream halts, and the offset is not committed past the record, so that no data is dropped silently.
 
-If you prefer to have the transformation skip records that it cannot serialize, add the following entry to the configuration: `errors.tolerance=all`.
-This option applies to deployments on Kafka Connect, where the runtime applies the setting to the transformation chain.
-{prodname} Server does not provide an equivalent setting, so on that runtime a record that cannot be serialized always halts the stream.
+On Kafka Connect, if you prefer to have the transformation skip records that it cannot serialize, add the following entry to the configuration: `errors.tolerance=all`.
+The runtime then applies the setting to the transformation chain.
+
+Because {prodname} Server does not implement the Kafka Connect property `errors.tolerance=all`, if the Stringify Fields SMT cannot serialize an event message, event processing stops.
