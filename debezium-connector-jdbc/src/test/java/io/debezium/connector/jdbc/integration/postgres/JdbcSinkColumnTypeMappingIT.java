@@ -35,6 +35,7 @@ import io.debezium.connector.jdbc.util.SinkRecordFactory;
 import io.debezium.data.Enum;
 import io.debezium.data.Json;
 import io.debezium.data.Uuid;
+import io.debezium.data.VariableScaleDecimal;
 import io.debezium.doc.FixFor;
 import io.debezium.time.StructuredDate;
 import io.debezium.time.StructuredDuration;
@@ -699,6 +700,87 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
             assertThat(rs.getInt(1)).isEqualTo(1);
             assertThat(rs.getArray(2).getArray()).isEqualTo(new BigDecimal[]{
                     new BigDecimal("1.25"), new BigDecimal("2.50"), new BigDecimal("-9999999.99") });
+            return null;
+        });
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
+    @FixFor("debezium/dbz#2398")
+    public void testShouldWorkWithUnboundedNumericArray(SinkRecordFactory factory, PostgresInsertMode insertMode) throws Exception {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.NONE.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, String.valueOf(insertMode.isUnnestEnabled()));
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server2", "schema", tableName);
+
+        // A numeric[] column without a type modifier has no precision/scale, so the source emits each
+        // element as a VariableScaleDecimal struct rather than a Decimal.
+        final Schema elementSchema = VariableScaleDecimal.optionalSchema();
+
+        JdbcSinkConnectorConfig config = getConfig(properties);
+        final JdbcKafkaSinkRecord createRecord = factory.createRecordWithSchemaValue(
+                topicName,
+                (byte) 1,
+                "data",
+                SchemaBuilder.array(elementSchema).optional().build(),
+                Arrays.asList(
+                        VariableScaleDecimal.fromLogical(elementSchema, new BigDecimal("1.25")),
+                        VariableScaleDecimal.fromLogical(elementSchema, new BigDecimal("2.50")),
+                        VariableScaleDecimal.fromLogical(elementSchema, new BigDecimal("-9999999.99"))),
+                config);
+
+        final String destinationTable = destinationTableName(createRecord);
+        final String sql = "CREATE TABLE %s (id int not null, data numeric[], primary key(id))";
+        getSink().execute(String.format(sql, destinationTable));
+
+        consume(createRecord);
+
+        getSink().assertRows(destinationTable, rs -> {
+            assertThat(rs.getInt(1)).isEqualTo(1);
+            assertThat(rs.getArray(2).getArray()).isEqualTo(new BigDecimal[]{
+                    new BigDecimal("1.25"), new BigDecimal("2.50"), new BigDecimal("-9999999.99") });
+            return null;
+        });
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
+    @FixFor("debezium/dbz#2398")
+    public void testShouldCreateNumericArrayColumnForUnboundedNumericArray(SinkRecordFactory factory, PostgresInsertMode insertMode) throws Exception {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, String.valueOf(insertMode.isUnnestEnabled()));
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server2", "schema", tableName);
+
+        final Schema elementSchema = VariableScaleDecimal.optionalSchema();
+
+        JdbcSinkConnectorConfig config = getConfig(properties);
+        final JdbcKafkaSinkRecord createRecord = factory.createRecordWithSchemaValue(
+                topicName,
+                (byte) 1,
+                "data",
+                SchemaBuilder.array(elementSchema).optional().build(),
+                List.of(VariableScaleDecimal.fromLogical(elementSchema, new BigDecimal("1.25"))),
+                config);
+
+        consume(createRecord);
+
+        final String destinationTable = destinationTableName(createRecord);
+        getSink().assertColumn(destinationTable, "data", "_numeric");
+        getSink().assertRows(destinationTable, rs -> {
+            assertThat(rs.getArray(2).getArray()).isEqualTo(new BigDecimal[]{ new BigDecimal("1.25") });
             return null;
         });
     }
