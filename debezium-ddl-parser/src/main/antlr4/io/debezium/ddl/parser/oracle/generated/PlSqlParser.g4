@@ -5056,7 +5056,8 @@ modify_table_partition
         (PARTITION | SUBPARTITION) partition_name ((ADD | DROP) list_values_clause)? (ADD range_subpartition_desc)? (
             REBUILD? UNUSABLE LOCAL INDEXES
         )? shrink_clause?
-        | range_partitions
+        // modify_to_partitioned: MODIFY table_partitioning_clauses [filter_condition] [ONLINE] [update_index_clauses]
+        | table_partitioning_clauses filter_condition? ONLINE? update_index_clauses?
     )
     ;
 
