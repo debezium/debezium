@@ -22,6 +22,7 @@ import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -85,6 +86,8 @@ import io.debezium.function.BlockingConsumer;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.monitor.OffsetActivityMonitor;
+import io.debezium.pipeline.monitor.OffsetActivityMonitorService;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -148,6 +151,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
     private final Map<String, Thread> binaryLogClientThreads = new ConcurrentHashMap<>(4);
     private final EnumMap<EventType, BlockingConsumer<Event>> eventHandlers = new EnumMap<>(EventType.class);
     private final float heartbeatIntervalFactor = 0.8f;
+    private final OffsetActivityMonitorService offsetActivityMonitorService;
 
     private int startingRowNumber = 0;
     private long initialEventsToSkip = 0L;
@@ -155,6 +159,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
     private boolean ignoreDmlEventByGtidSource = false;
     private volatile Map<String, ?> lastOffset = null;
     private O effectiveOffsetContext;
+    private OffsetActivityMonitor<P, O> offsetActivityMonitor;
 
     @SingleThreadAccess("binlog client thread")
     protected Instant eventTimestamp;
@@ -185,6 +190,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         configureBinaryLogClient(client, connectorConfig, binaryLogClientThreads, connection);
         this.gtidDmlSourceFilter = getGtidDmlSourceFilter();
         this.isGtidModeEnabled = connection.isGtidModeEnabled();
+        this.offsetActivityMonitorService = OffsetActivityMonitorService.lookup(connectorConfig.getServiceRegistry());
     }
 
     @Override
@@ -387,6 +393,14 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
     @Override
     public O getOffsetContext() {
         return effectiveOffsetContext;
+    }
+
+    @Override
+    public Optional<OffsetActivityMonitor<P, O>> getOffsetActivityMonitor() {
+        if (offsetActivityMonitor == null) {
+            offsetActivityMonitor = new BinlogOffsetActivityMonitor<>(connectorConfig.getOffsetActivityMonitorInterval());
+        }
+        return Optional.of(offsetActivityMonitor);
     }
 
     protected void setEffectiveOffsetContext(O offsetContext) {
@@ -647,6 +661,10 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
 
             // update last offset used for logging
             lastOffset = offsetContext.getOffset();
+
+            // Invoked on the binlog client thread; the monitor is registered on the coordinator
+            // thread before the client is connected, so it is safely published by the thread start
+            offsetActivityMonitorService.pulse(partition, offsetContext);
 
             if (skipEvent) {
                 // We're in the mode of skipping events and we just skipped this one, so decrement our skip count ...
