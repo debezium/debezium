@@ -6,6 +6,8 @@
 package io.debezium.pipeline.monitor;
 
 import io.debezium.common.annotation.Incubating;
+import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Partition;
 
 /**
  * Contract used to define connector-specific offset state for staleness.
@@ -14,9 +16,12 @@ import io.debezium.common.annotation.Incubating;
  * @author Chris Cranford
  */
 @Incubating
-public interface OffsetActivityMonitor {
+public interface OffsetActivityMonitor<P extends Partition, O extends OffsetContext> {
     /**
-     * Checks for stale offsets
+     * Checks for stale offsets.
+     *
+     * @param partition the partition currently being streamed, should not be {@code null}
+     * @param offsetContext the partition's offsets, should not be {@code null}
      */
-    void checkForStaleOffsets();
+    void checkForStaleOffsets(P partition, O offsetContext);
 }

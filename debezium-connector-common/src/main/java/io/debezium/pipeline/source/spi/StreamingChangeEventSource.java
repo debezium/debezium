@@ -84,7 +84,7 @@ public interface StreamingChangeEventSource<P extends Partition, O extends Offse
      * is registered with the {@code OffsetActivityMonitorService} and invoked periodically
      * as the streaming source pulses the service during its streaming loop.
      */
-    default Optional<OffsetActivityMonitor> getOffsetActivityMonitor() {
+    default Optional<OffsetActivityMonitor<P, O>> getOffsetActivityMonitor() {
         return Optional.empty();
     }
 

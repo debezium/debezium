@@ -139,7 +139,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     private OraclePartition partition;
     private ChangeEventSourceContext context;
     private long currentSleepTime;
-    private OffsetActivityMonitor offsetActivityMonitor;
+    private OffsetActivityMonitor<OraclePartition, OracleOffsetContext> offsetActivityMonitor;
 
     public AbstractLogMinerStreamingChangeEventSource(OracleConnectorConfig connectorConfig,
                                                       OracleConnectionFactory connectionFactory,
@@ -337,11 +337,10 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     }
 
     @Override
-    public Optional<OffsetActivityMonitor> getOffsetActivityMonitor() {
+    public Optional<OffsetActivityMonitor<OraclePartition, OracleOffsetContext>> getOffsetActivityMonitor() {
         if (offsetActivityMonitor == null) {
             offsetActivityMonitor = new LogMinerOffsetActivityMonitor(
                     connectorConfig.getOffsetActivityMonitorInterval(),
-                    this::getOffsetContext,
                     getMetrics(),
                     this::getActiveTransactionIds);
         }
@@ -443,7 +442,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             // archive log only mode to advanced into the streaming loop does not create any
             // false-positive on the first mining iteration.
             if (offsetActivityMonitorService != null) {
-                offsetActivityMonitorService.pulse();
+                offsetActivityMonitorService.pulse(partition, getOffsetContext());
             }
 
             LOGGER.debug("{}.", getBatchMetrics());
