@@ -5332,10 +5332,14 @@ modify_col_substitutable
     : COLUMN column_name NOT? SUBSTITUTABLE AT ALL LEVELS FORCE?
     ;
 
+// The documented BNF only permits column definitions here, but the server also accepts
+// out-of-line (ref) constraints mixed into the list, as in CREATE TABLE's relational_properties.
+// Constraints must precede column_definition so that "CONSTRAINT name ..." is not parsed as
+// a column named CONSTRAINT with a type of the constraint's name.
 add_column_clause
     : ADD (
-        '(' (column_definition | virtual_column_definition) (
-            ',' (column_definition | virtual_column_definition)
+        '(' (out_of_line_constraint | out_of_line_ref_constraint | column_definition | virtual_column_definition) (
+            ',' (out_of_line_constraint | out_of_line_ref_constraint | column_definition | virtual_column_definition)
         )* ')'
         | ( column_definition | virtual_column_definition)
     ) column_properties?
