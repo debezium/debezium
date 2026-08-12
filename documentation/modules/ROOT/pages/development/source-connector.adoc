@@ -1,0 +1,1103 @@
+[id="developing-source-connectors"]
+= Developing {prodname} Source Connectors
+
+:source-highlighter: highlight.js
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+
+toc::[]
+
+== Introduction
+
+This guide explains how to develop a new {prodname} source connector.
+It walks you through every framework contract that a connector must implement, in the order in which you build them, and shows how the pieces fit together at runtime.
+It is written for Java developers who are familiar with Apache Kafka and Kafka Connect concepts and who want to capture changes from a data source that {prodname} does not yet support.
+
+Every {prodname} source connector _is_ a Kafka Connect source connector; building one requires additional implementation work on top of the Kafka Connect API.
+In exchange, the framework provides the same change data capture pipeline that all existing {prodname} connectors run on: a managed snapshot-to-streaming lifecycle, structured offset management, schema representation, a standard change event envelope, queueing with backpressure, heartbeats, signals, notifications, and metrics.
+
+Each connector reads from its data source in its own way, so there is no single global rule for where the framework ends and connector-specific logic begins.
+Instead, the framework defines a set of contracts, and each connector decides how much of the provided base implementation it can reuse.
+This guide maps those contracts to the concrete classes that you provide, using a generic connector (`MyConnector`) for the code snippets and the connectors in the main {prodname} repository as production references, in particular:
+
+* The xref:{link-sqlserver-connector}[SQL Server connector], a relational connector that polls change tables and relies on a database schema history.
+* The xref:{link-postgresql-connector}[PostgreSQL connector], a relational connector that consumes a pushed logical replication stream and rebuilds schema from the live catalog.
+
+The framework classes described in this guide live in the `debezium-connector-common` module.
+This module was previously named `debezium-core`, and the Maven artifact `io.debezium:debezium-core` now relocates to `io.debezium:debezium-connector-common`; the Java package names (`io.debezium.pipeline.\*`, `io.debezium.relational.*`, and so on) are unchanged.
+A small number of stable SPIs, such as `io.debezium.spi.snapshot.Snapshotter` and `io.debezium.spi.topic.TopicNamingStrategy`, live in the `debezium-api` module.
+
+=== What the framework adds to Kafka Connect
+
+A plain Kafka Connect source connector implements `org.apache.kafka.connect.source.SourceConnector` and `org.apache.kafka.connect.source.SourceTask`, and the developer is responsible for everything else: data extraction, offset bookkeeping, schema construction, and message format.
+All of that still applies to a {prodname} connector; you still implement `start()`, a poll method, and `stop()`, but the framework structures the work and provides reusable implementations for the common parts.
+
+[cols="2,4,5",options="header"]
+|===
+| Aspect | Plain Kafka Connect source connector | Source connector built on the {prodname} framework
+
+| Base API
+| `SourceConnector` / `SourceTask`
+| `BaseSourceConnector` / `BaseSourceTask`, which extend the Kafka Connect classes
+
+| Lifecycle
+| You implement `start()`, `poll()`, and `stop()` from scratch
+| You still implement `start(Configuration)`, `doPoll()`, and `doStop()`, but `BaseSourceTask` provides the surrounding template (validation, restart backoff, offset commits) and `ChangeEventSourceCoordinator` manages the snapshot-to-streaming handover
+
+| Offset management
+| Hand-built maps attached to each `SourceRecord`
+| Structured through `Partition`, `OffsetContext`, and `OffsetContext.Loader`
+
+| Schema and records
+| Hand-built `Schema` and `Struct` objects
+| `DatabaseSchema` caches per-table schemas; the `Envelope` factory builds change event values with `source` metadata
+
+| Snapshot and streaming
+| Your own ad-hoc logic
+| Explicit `SnapshotChangeEventSource` and `StreamingChangeEventSource` contracts, coordinated by the framework
+
+| Envelope format
+| No envelope required
+| Standard {prodname} envelope (`op`, `before`, `after`, `source`, `ts_ms`)
+
+| Error handling
+| Entirely manual
+| Still implemented by the connector, with `ErrorHandler` as a helper that classifies retriable versus fatal failures and drives task restarts
+|===
+
+The runtime is not a differentiator.
+Kafka Connect runs any source connector, and xref:{link-debezium-server}[{prodname} Server] and the xref:{link-engine}[{prodname} Engine] embed the Kafka Connect API, so they can also run source connectors.
+The practical benefit of implementing the {prodname} contracts is that your events carry the standard envelope, which makes them work with {prodname}'s converters, single message transformations, and sink ecosystem.
+
+== Architecture overview
+
+=== Component overview
+
+The diagram below shows every class you will create, together with the framework contract that each one fulfills.
+Later sections of this guide build these classes one by one, so you may want to refer back to this tree as you read.
+
+....
+MyConnector                                (BaseSourceConnector)
+└── MyConnectorTask                        (BaseSourceTask<MyPartition, MyOffsetContext>)
+    ├── MyConnectorConfig                  (CommonConnectorConfig)
+    ├── MyPartition / MyPartition.Provider (Partition / Partition.Provider)
+    ├── MyOffsetContext / .Loader          (CommonOffsetContext / OffsetContext.Loader)
+    ├── MySourceInfo / MySourceInfoStructMaker (BaseSourceInfo / SourceInfoStructMaker)
+    ├── MyDatabaseSchema                   (DatabaseSchema, e.g. via RelationalDatabaseSchema)
+    ├── MyChangeEventSourceFactory         (ChangeEventSourceFactory)
+    │   ├── MySnapshotChangeEventSource    (SnapshotChangeEventSource)
+    │   └── MyStreamingChangeEventSource   (StreamingChangeEventSource)
+    ├── MyChangeRecordEmitter              (ChangeRecordEmitter)
+    ├── MyErrorHandler                     (ErrorHandler)
+    └── Framework services instantiated in the task:
+        ChangeEventQueue, EventDispatcher, ChangeEventSourceCoordinator,
+        SignalProcessor, NotificationService, SnapshotterService
+....
+
+The classes on the left are yours.
+The services at the bottom come from `debezium-connector-common` and are only instantiated and wired together in your task class.
+
+=== Runtime flow
+
+At runtime, every {prodname} connector follows the same five-step flow:
+
+. Kafka Connect (or {prodname} Server) instantiates the connector class, validates the configuration, and creates the task configurations.
+. The task starts, loads previously persisted offsets through the `OffsetContext.Loader`, and builds the pipeline: schema, queue, dispatcher, and coordinator.
+. The `ChangeEventSourceCoordinator` asks the `Snapshotter` whether a snapshot is needed and, if so, runs the `SnapshotChangeEventSource`, which emits `READ` (`r`) events for existing data.
+. When the snapshot completes, the coordinator starts the `StreamingChangeEventSource` at the offset where the snapshot finished, and streaming emits `CREATE` (`c`), `UPDATE` (`u`), and `DELETE` (`d`) events from that point on.
+. Emitted events flow through the `ChangeEventQueue` into the Kafka Connect polling loop, and Kafka Connect periodically persists the offsets that your `OffsetContext.getOffset()` returns.
+
+The flow is identical for every connector; only the snapshot and streaming implementations are source-specific.
+
+=== The change event envelope
+
+{prodname} emits change events with a consistent envelope, regardless of the source type.
+The envelope is defined by `io.debezium.data.Envelope` and contains the following fields:
+
+* `before` — the previous row state, if the source provides it.
+* `after` — the new row state, if available.
+* `op` — the operation code: `r` (read, during snapshot), `c` (create), `u` (update), `d` (delete), and for some connectors `t` (truncate) and `m` (message).
+* `source` — metadata about the origin of the change, built by your `SourceInfoStructMaker`.
+* `ts_ms` (plus `ts_us` and `ts_ns`) — the event processing timestamp.
+
+Example payload structure:
+
+[source,json]
+----
+{
+    "op": "u",
+    "before": { "id": 1, "name": "Alice" },
+    "after": { "id": 1, "name": "Alice2" },
+    "source": { "db": "mydb", "table": "users", "lsn": 12345, "snapshot": "false" },
+    "ts_ms": 1713801600000
+}
+----
+
+You never assemble this structure by hand.
+The `Envelope` class provides `read(...)`, `create(...)`, `update(...)`, and `delete(...)` factory methods, and for relational connectors the `RelationalChangeRecordEmitter` base class calls them for you.
+
+=== Topic naming
+
+Topic names are produced by a `TopicNamingStrategy` (an SPI in `debezium-api`).
+The default for relational connectors, `SchemaTopicNamingStrategy`, produces `<topic.prefix>.<schema>.<table>`; heartbeat, transaction metadata, and schema change topics are also derived from `topic.prefix`.
+You rarely implement this SPI yourself; you obtain the configured strategy from the connector configuration and pass it to the schema and dispatcher.
+
+=== Capture patterns in existing connectors
+
+Before designing a new connector, it helps to know the main capture patterns that existing {prodname} connectors use, because your data source will usually resemble one of them.
+
+Relational connectors split into two groups by how they obtain changes:
+
+* *Push-based log subscription.*
+The MySQL and MariaDB connectors connect to the server as if they were a replica: `BinlogStreamingChangeEventSource` registers listeners on a binlog client, and the server pushes binary log events to it.
+The PostgreSQL connector attaches to a logical replication slot through `PostgresStreamingChangeEventSource`, and the server pushes WAL contents decoded by the `pgoutput` plugin.
+* *Pull-based polling or mining.*
+The SQL Server connector polls per-table CDC change tables in LSN windows: `SqlServerStreamingChangeEventSource` implements `executeIteration(...)`, which the coordinator invokes repeatedly, and merges rows across change tables in commit order.
+The Oracle connector's LogMiner adapter runs an iterative mining loop over redo logs, querying `V$LOGMNR_CONTENTS` for each SCN window.
+
+Non-relational sources follow the same framework.
+The MongoDB connector consumes MongoDB change streams in `MongoDbStreamingChangeEventSource`, keyed by `CollectionId` instead of `TableId`, and models schemaless documents with its own `MongoDbSchema implements DatabaseSchema<CollectionId>` instead of the relational schema classes.
+Everything above the schema (`BaseSourceTask`, `ChangeEventSourceCoordinator`, `ChangeEventQueue`, `EventDispatcher`, signals, and notifications) is reused unchanged.
+
+A second design decision cuts across both groups: whether the connector needs a *database schema history*.
+
+* If the change log references table structure as it was at write time, and the source cannot reproduce old structure on demand, the connector must record DDL in a schema history topic and replay it on restart.
+MySQL, Oracle, and SQL Server work this way; their config and schema classes extend `HistorizedRelationalDatabaseConnectorConfig` and `HistorizedRelationalDatabaseSchema`.
+* If the current catalog is always a valid description of incoming events, no history is needed.
+PostgreSQL works this way; `PostgresConnectorConfig` extends plain `RelationalDatabaseConnectorConfig`, and `PostgresSchema` refreshes table definitions from JDBC metadata whenever it detects drift.
+
+Decide early which camp your source is in, because it determines which base classes you extend.
+
+== Prerequisites and project setup
+
+=== Prerequisites
+
+A source connector is runtime-independent: the same artifact runs on Kafka Connect and on {prodname} Server.
+{prodname} connectors target Java {min-java-connectors-version} for portability across runtimes.
+
+[cols="2,2,4",options="header"]
+|===
+| Component | Version | Purpose
+
+| Java
+| {min-java-connectors-version} or later
+| Build and runtime target for connectors
+
+| Apache Maven
+| {maven-version}
+| Build tool
+
+| Apache Kafka / Kafka Connect
+| {debezium-kafka-version}
+| Provides the `connect-api` dependency; Kafka Connect is one of the deployment runtimes
+
+| {prodname}
+| {debezium-version}
+| Framework classes (`debezium-connector-common`, `debezium-api`) and, optionally, {prodname} Server as an alternative runtime
+|===
+
+You also need Docker (or a local Kafka installation) to run the connector during verification, and access to the data source you want to capture.
+
+=== Maven module
+
+Create a standard Maven module and declare the framework dependency.
+The Kafka Connect API and logging are provided by the runtime and must not be bundled:
+
+[source,xml]
+----
+<dependencies>
+    <dependency>
+        <groupId>io.debezium</groupId>
+        <artifactId>debezium-connector-common</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.apache.kafka</groupId>
+        <artifactId>connect-api</artifactId>
+        <scope>provided</scope>
+    </dependency>
+    <dependency>
+        <groupId>org.slf4j</groupId>
+        <artifactId>slf4j-api</artifactId>
+        <scope>provided</scope>
+    </dependency>
+</dependencies>
+----
+
+Import `io.debezium:debezium-bom` in `dependencyManagement` to keep versions aligned.
+
+NOTE: In {prodname} versions before the module rename, the framework artifact is `io.debezium:debezium-core`.
+Depending on `debezium-core` still works, because the artifact relocates to `debezium-connector-common`, but new connectors should depend on `debezium-connector-common` directly.
+
+Package the connector with the Maven Shade or Assembly plugin so that connector-specific dependencies are included in the plugin directory, while provided runtime dependencies are not.
+
+=== Package structure and conventions
+
+Follow the `io.debezium.connector.<name>` package convention used by all {prodname} connectors, with one class per framework contract as shown in the component overview.
+
+Two resource conventions matter:
+
+* `META-INF/services/org.apache.kafka.connect.source.SourceConnector` must list your connector class so that the Kafka Connect plugin scanner discovers it.
+* Add a `Module` class and a Maven-filtered `build.version` properties file, so that `version()` reports the project version; see `io.debezium.connector.sqlserver.Module` for the pattern.
+
+== Implementation walkthrough
+
+This section builds each contract in dependency order.
+Every subsection states the contract, shows a short generic snippet, and points at the SQL Server and PostgreSQL implementations for the production-grade details.
+
+=== The connector class
+
+The connector class is the entry point that you reference in `connector.class`.
+It extends `io.debezium.connector.common.BaseSourceConnector`, which adds a single validation hook on top of Kafka Connect's `SourceConnector`:
+
+[source,java]
+----
+public class MyConnector extends BaseSourceConnector {
+
+    @Override
+    public Class<? extends Task> taskClass() {
+        return MyConnectorTask.class;
+    }
+
+    @Override
+    public List<Map<String, String>> taskConfigs(int maxTasks) {
+        // Split the configuration across tasks; most sources support exactly one task.
+        return List.of(Map.copyOf(properties));
+    }
+
+    @Override
+    protected Map<String, ConfigValue> validateAllFields(Configuration config) {
+        return config.validate(MyConnectorConfig.ALL_FIELDS);
+    }
+}
+----
+
+The connector class runs on the Kafka Connect worker, not inside the task, so keep it thin: declare the task class, split the configuration across tasks, and validate the configuration.
+
+Relational connectors extend `RelationalBaseSourceConnector` instead, which implements `validate(...)` for you and adds a `validateConnection(...)` hook.
+`PostgresConnector`, for example, opens a real connection with a timeout during validation and attaches any failure to the `database.hostname` config value, so that the error appears on the right field in the Kafka Connect UI.
+
+=== The connector configuration
+
+Your configuration class defines the connector's `Field` constants and gives the framework typed access to common settings.
+Which base class you extend is the first consequence of the design decision from the architecture overview:
+
+* `CommonConnectorConfig` — sources that are not relational (MongoDB).
+* `RelationalDatabaseConnectorConfig` — relational sources without schema history (PostgreSQL).
+* `HistorizedRelationalDatabaseConnectorConfig` — relational sources with schema history (SQL Server, MySQL, Oracle).
+
+[source,java]
+----
+public class MyConnectorConfig extends RelationalDatabaseConnectorConfig {
+
+    public static final Field MY_PROPERTY = Field.create("my.property")
+            .withType(ConfigDef.Type.STRING)
+            .withImportance(ConfigDef.Importance.HIGH)
+            .withDescription("Description shown in the Connect UI and generated docs.")
+            .required();
+
+    @Override
+    protected SourceInfoStructMaker<?> getSourceInfoStructMaker(Version version) {
+        return new MySourceInfoStructMaker();
+    }
+}
+----
+
+`CommonConnectorConfig` already defines the connector-agnostic options that every {prodname} connector inherits: `topic.prefix`, `max.queue.size`, `max.batch.size`, `poll.interval.ms`, `tombstones.on.delete`, signal and notification channels, and more.
+The relational base adds `database.hostname`-style connection fields and the table/column include and exclude list machinery; the historized base adds the `schema.history.internal.*` configuration and a `HistoryRecordComparator`.
+
+=== SourceInfo and SourceInfoStructMaker
+
+Every change event carries a `source` struct that identifies where the event came from.
+You model the mutable state in a `SourceInfo` class extending `io.debezium.connector.common.BaseSourceInfo`, and you describe its schema in a `SourceInfoStructMaker`, usually by extending `AbstractSourceInfoStructMaker`, which contributes the common fields (`version`, `connector`, `name`, `ts_ms`, `snapshot`, `db`, and so on):
+
+[source,java]
+----
+public class MySourceInfoStructMaker extends AbstractSourceInfoStructMaker<MySourceInfo> {
+
+    private Schema schema;
+
+    @Override
+    public void init(String connector, String version, CommonConnectorConfig config) {
+        super.init(connector, version, config);
+        schema = commonSchemaBuilder()
+                .name("io.debezium.connector.my.Source")
+                .field("position", Schema.INT64_SCHEMA)   // your position fields
+                .build();
+    }
+
+    @Override
+    public Schema schema() {
+        return schema;
+    }
+
+    @Override
+    public Struct struct(MySourceInfo sourceInfo) {
+        return commonStruct(sourceInfo).put("position", sourceInfo.getPosition());
+    }
+}
+----
+
+For comparison, SQL Server's `SourceInfo` carries `change_lsn`, `commit_lsn`, and `event_serial_no`, and PostgreSQL's carries `lsn`, `txId`, and `xmin`.
+
+=== Partition and Partition.Provider
+
+A `Partition` identifies one independently-captured slice of the source and provides the map that Kafka Connect uses as the source partition key for offset storage.
+Most connectors have exactly one partition per task, keyed by the logical server name:
+
+[source,java]
+----
+public class MyPartition implements Partition {
+
+    @Override
+    public Map<String, String> getSourcePartition() {
+        return Map.of("server", serverName);
+    }
+
+    // Implement equals() and hashCode(): partitions are used as
+    // map keys by the coordinator and the metrics.
+}
+----
+
+The nested `Partition.Provider` returns the set of partitions the task must process, typically a singleton set.
+SQL Server is the instructive production example: its `SqlServerPartition.Provider` returns one partition per configured database (`{"server": ..., "database": ...}`), which is what enables its multi-database mode.
+
+=== OffsetContext and OffsetContext.Loader
+
+The `OffsetContext` encapsulates the connector-specific position that must survive restarts, and `getOffset()` serializes it to the map that Kafka Connect persists.
+Extend `io.debezium.pipeline.CommonOffsetContext`, which already implements the snapshot state machine (`snapshot` and `snapshot_completed` keys) for you.
+
+[source,java]
+----
+public class MyOffsetContext extends CommonOffsetContext<MySourceInfo> {
+
+    @Override
+    public Map<String, ?> getOffset() {
+        return Map.of("position", position.toString());
+    }
+
+    @Override
+    public void event(DataCollectionId collectionId, Instant timestamp) {
+        // Called by the dispatcher for every event; stamp the source info
+        // so the position appears in the outgoing source block.
+        sourceInfo.update(position, timestamp, collectionId);
+    }
+}
+----
+
+The `Loader` is the inverse: it rehydrates the context from the persisted map on startup.
+
+[source,java]
+----
+public static class Loader implements OffsetContext.Loader<MyOffsetContext> {
+
+    @Override
+    public MyOffsetContext load(Map<String, ?> offset) {
+        return new MyOffsetContext(config,
+                Position.valueOf((String) offset.get("position")),
+                loadSnapshot(offset).orElse(null), loadSnapshotCompleted(offset));
+    }
+}
+----
+
+Two rules to respect:
+
+* `getOffset()` must only contain types that Kafka Connect can serialize (strings, numbers, booleans).
+Production connectors stringify structured positions; SQL Server, for example, stores `commit_lsn` and `change_lsn` as strings and adds an `event_serial_no` counter to disambiguate events that share an LSN.
+* On first start there is no stored offset, and the framework hands your `Loader` nothing.
+Your task must seed a default context in that case (shown in the task section below), so that the snapshot logic sees a valid, "empty" position rather than `null`.
+
+=== The database schema
+
+The `DatabaseSchema` maps each captured collection to a `DataCollectionSchema`, which bundles the key schema and the `Envelope` for the value.
+Collections are identified by a `DataCollectionId`; relational connectors use the provided `TableId`.
+
+For relational sources you extend one of the provided base classes and inherit the schema construction machinery:
+
+* `RelationalDatabaseSchema` builds `TableSchema` objects (key schema, value schema, envelope) from `Table` metadata through `TableSchemaBuilder`, honoring the column filters, custom converters, and the topic naming strategy.
+* `HistorizedRelationalDatabaseSchema` adds schema history recording and `recover(...)`, which replays DDL from the history topic on restart; you implement `getDdlParser()` and `applySchemaChange(...)`.
+
+Non-relational sources implement `DatabaseSchema<I>` directly, as the MongoDB connector does with `MongoDbSchema`, and build their `DataCollectionSchema` objects from whatever structure the source provides.
+
+If your source can change schemas while streaming, decide here how the connector notices: SQL Server detects a second capture instance for a table and switches at the right LSN; PostgreSQL compares each incoming message's columns with the cached table and refreshes from JDBC metadata on drift.
+
+=== The snapshot change event source
+
+The `SnapshotChangeEventSource` reads the current state of the source and emits one `READ` (`r`) event per existing record.
+Its two responsibilities are deciding whether a snapshot is needed and executing it:
+
+[source,java]
+----
+@Override
+public SnapshottingTask getSnapshottingTask(MyPartition partition, MyOffsetContext offsetContext) {
+    boolean snapshotData = snapshotterService.getSnapshotter()
+            .shouldSnapshotData(offsetContext != null, offsetContext != null && offsetContext.isInitialSnapshotRunning());
+    return new SnapshottingTask(false, snapshotData, List.of(), Map.of(), false);
+}
+
+@Override
+public SnapshotResult<MyOffsetContext> execute(ChangeEventSourceContext context, MyPartition partition,
+                                               MyOffsetContext offsetContext, SnapshottingTask task) {
+    if (task.shouldSkipSnapshot()) {
+        return SnapshotResult.skipped(offsetContext);
+    }
+    for (SourceRow row : readCurrentState()) {                  // your source access
+        offsetContext.advanceTo(row.position());
+        dispatcher.dispatchSnapshotEvent(partition, collectionId(row),
+                new MyChangeRecordEmitter(partition, offsetContext, Operation.READ, row),
+                snapshotReceiver);
+    }
+    return SnapshotResult.completed(offsetContext);             // streaming starts at this offset
+}
+----
+
+The contract is small: emit `READ` events, keep the offset context up to date, and return `SnapshotResult.completed(offsetContext)` so the coordinator can start streaming at exactly that position.
+
+Relational connectors should not implement this interface directly.
+`RelationalSnapshotChangeEventSource` already implements the entire snapshot algorithm (determining captured tables from the include/exclude filters, locking, reading table structure, persisting schema history, and reading data in chunks) and leaves you a handful of template methods:
+
+[source,java]
+----
+protected abstract Set<TableId> getAllTableIds(RelationalSnapshotContext<P, O> ctx);
+protected abstract void lockTablesForSchemaSnapshot(ChangeEventSourceContext ctx, RelationalSnapshotContext<P, O> snapshotCtx);
+protected abstract void determineSnapshotOffset(RelationalSnapshotContext<P, O> ctx, O previousOffset);
+protected abstract void readTableStructure(ChangeEventSourceContext ctx, RelationalSnapshotContext<P, O> snapshotCtx, O offset, SnapshottingTask task);
+protected abstract void releaseSchemaSnapshotLocks(RelationalSnapshotContext<P, O> ctx);
+protected abstract SchemaChangeEvent getCreateTableEvent(RelationalSnapshotContext<P, O> ctx, Table table);
+protected abstract Optional<String> getSnapshotSelect(RelationalSnapshotContext<P, O> ctx, TableId tableId, List<String> columns);
+protected abstract O copyOffset(RelationalSnapshotContext<P, O> snapshotContext);
+----
+
+See `SqlServerSnapshotChangeEventSource` and `PostgresSnapshotChangeEventSource` for complete implementations of these methods.
+
+*Snapshot modes and the Snapshotter SPI.*
+Whether a snapshot runs is decided by the `Snapshotter` (SPI in `debezium-api`), selected by the `snapshot.mode` property.
+The framework ships the standard modes (`always`, `initial`, `initial_only`, `no_data`, `recovery`, `when_needed`, `configuration_based`, and `when_needed_no_data`) as `Snapshotter` implementations discovered via `ServiceLoader`, together with `SnapshotLock` and `SnapshotQuery` SPIs that connectors can specialize; see the `META-INF/services` files in the SQL Server connector for the registration pattern.
+Setting `snapshot.mode` to `custom` selects a user-provided `Snapshotter`, registered the same way and named by `snapshot.mode.custom.name`.
+
+=== The streaming change event source
+
+The `StreamingChangeEventSource` carries most of the connector-specific logic: it obtains changes from the source, updates the offset context, and dispatches one emitter per change.
+Its `execute(...)` method must loop until `context.isRunning()` turns false:
+
+[source,java]
+----
+@Override
+public void execute(ChangeEventSourceContext context, MyPartition partition, MyOffsetContext offsetContext)
+        throws InterruptedException {
+    while (context.isRunning()) {
+        for (SourceChange change : pollChanges(offsetContext.position())) {   // your source access
+            offsetContext.advanceTo(change.position());
+            dispatcher.dispatchDataChangeEvent(partition, change.collectionId(),
+                    new MyChangeRecordEmitter(partition, offsetContext, change));
+        }
+        pauseUntilNewChanges();   // poll interval, watch API, blocking read, ...
+    }
+}
+----
+
+Dispatching goes through the framework's `EventDispatcher`, never directly to the queue.
+The dispatcher applies the collection filter, looks up the schema, runs your emitter, and enqueues the resulting `SourceRecord` into the `ChangeEventQueue`, which applies backpressure when Kafka or the sink is slow.
+
+For production examples of the two streaming styles, read these two classes side by side:
+
+* `SqlServerStreamingChangeEventSource` (pull): implements `executeIteration(...)` instead of a loop in `execute(...)`, computes an LSN window per iteration, opens a `SqlServerChangeTablePointer` per captured change table, and merge-sorts rows across tables so events are emitted in commit order.
+* `PostgresStreamingChangeEventSource` (push): attaches to a logical replication slot, reads `ReplicationMessage`s decoded by the plugin, and implements `commitOffset(...)` to flush the confirmed LSN back to the replication slot so that the database can recycle WAL.
+
+Ordering matters in both styles: preserve the source's commit order, and if the source provides transaction boundaries, dispatch them through the `TransactionMonitor` so that transaction metadata topics stay consistent.
+
+=== The change record emitter
+
+The `ChangeRecordEmitter` converts one source-level change into the final key and envelope structs.
+How much you write here depends entirely on which base class you can use.
+
+*Relational connectors: extend `RelationalChangeRecordEmitter`.*
+The base class already implements `emitChangeRecords(...)`: it builds the key and value structs from column arrays via the `TableSchema`, constructs the envelope (`create`/`read`/`update`/`delete`), handles primary-key changes (emitted as a delete plus a create with correlation headers), and supports skipping unchanged events.
+A subclass typically provides only the operation mapping and the row images.
+`SqlServerChangeRecordEmitter` is the most trivial example in the main repository; apart from the mirror-image `getOldColumnValues()`, this is essentially the whole class:
+
+[source,java]
+----
+public class SqlServerChangeRecordEmitter extends RelationalChangeRecordEmitter {
+
+    @Override
+    public Operation getOperation() {
+        // Maps SQL Server's __$operation codes (1=delete, 2=insert,
+        // 3=update-before, 4=update-after) to Envelope operations.
+        ...
+    }
+
+    @Override
+    protected Object[] getNewColumnValues() {
+        switch (getOperation()) {
+            case CREATE:
+            case READ:
+                return data;
+            case UPDATE:
+                return dataNext;
+            default:
+                return null;
+        }
+    }
+}
+----
+
+Emitters grow only when the change feed is raw.
+`PostgresChangeRecordEmitter` maps the decoder's operation enum to `Envelope.Operation` in the same way, but additionally positions decoder columns against the cached table schema, recovers unchanged TOASTed column values, honors `REPLICA IDENTITY` (the before-image only exists to the extent the WAL contains it), and triggers a schema refresh when the incoming message no longer matches the cached table.
+As a rule of thumb, emitter complexity tracks how raw the change feed is, not how complex the database is.
+
+*Non-relational connectors: implement `ChangeRecordEmitter` (or extend `AbstractChangeRecordEmitter`).*
+Without table semantics you call the `Envelope` factory methods yourself:
+
+[source,java]
+----
+@Override
+public void emitChangeRecords(DataCollectionSchema schema, Receiver<MyPartition> receiver)
+        throws InterruptedException {
+    Envelope envelope = schema.getEnvelopeSchema();
+    Struct source = offsetContext.getSourceInfo();
+    Struct value = switch (operation) {
+        case READ   -> envelope.read(after, source, clock.currentTimeAsInstant());
+        case CREATE -> envelope.create(after, source, clock.currentTimeAsInstant());
+        case UPDATE -> envelope.update(before, after, source, clock.currentTimeAsInstant());
+        case DELETE -> envelope.delete(before, source, clock.currentTimeAsInstant());
+        default     -> throw new IllegalStateException("Unexpected operation: " + operation);
+    };
+    receiver.changeRecord(partition, schema, operation, key, value, offsetContext, null);
+}
+----
+
+IMPORTANT: The value passed to `receiver.changeRecord(...)` must be the complete envelope struct, not the raw row struct.
+Passing the row struct compiles fine but fails at serialization time with `DataException: Mismatching schema`.
+
+If your source does not provide before-images, leave `before` as `null`; consumers must be prepared for that.
+
+=== The change event source factory
+
+The factory is plain glue code: the coordinator asks it for the snapshot and streaming sources.
+
+[source,java]
+----
+public class MyChangeEventSourceFactory implements ChangeEventSourceFactory<MyPartition, MyOffsetContext> {
+
+    @Override
+    public SnapshotChangeEventSource<MyPartition, MyOffsetContext> getSnapshotChangeEventSource(
+            SnapshotProgressListener<MyPartition> progressListener,
+            NotificationService<MyPartition, MyOffsetContext> notificationService) {
+        return new MySnapshotChangeEventSource(config, schema, dispatcher, progressListener);
+    }
+
+    @Override
+    public StreamingChangeEventSource<MyPartition, MyOffsetContext> getStreamingChangeEventSource() {
+        return new MyStreamingChangeEventSource(config, schema, dispatcher);
+    }
+}
+----
+
+Connectors that support incremental snapshots also override `getIncrementalSnapshotChangeEventSource(...)`; see `PostgresChangeEventSourceFactory` for a complete example.
+
+=== The connector task
+
+The task class brings everything together.
+It extends `BaseSourceTask<P, O>`, whose Kafka Connect lifecycle methods (`start`, `poll`, `stop`) are `final` template methods; you implement the abstract hooks:
+
+* `preStart(Configuration)` — create the typed configuration and return the task context (this hook is public; the rest are protected).
+* `start(Configuration)` — build the pipeline and return the started coordinator.
+* `doPoll()` — almost always one line: drain the queue.
+* `doStop()` — close connections and other resources.
+* `connectorName()`, `getAllConfigurationFields()`, `getErrorHandler()` (returns `Optional<ErrorHandler>`), and `version()`.
+
+`start(Configuration)` follows the same wiring sequence in every connector:
+
+[source,java]
+----
+@Override
+protected ChangeEventSourceCoordinator<MyPartition, MyOffsetContext> start(Configuration configuration) {
+    // 1. Load previous offsets; seed a default context on first start.
+    Offsets<MyPartition, MyOffsetContext> previousOffsets = getPreviousOffsets(
+            new MyPartition.Provider(connectorConfig), new MyOffsetContext.Loader(connectorConfig));
+    if (previousOffsets.getTheOnlyOffset() == null) {
+        previousOffsets = Offsets.of(new MyPartition(serverName), MyOffsetContext.initial(connectorConfig));
+    }
+
+    // 2. Queue, error handler, dispatcher.
+    queue = new ChangeEventQueue.Builder<DataChangeEvent>()
+            .pollInterval(connectorConfig.getPollInterval())
+            .maxBatchSize(connectorConfig.getMaxBatchSize())
+            .maxQueueSize(connectorConfig.getMaxQueueSize())
+            .build();
+    errorHandler = new MyErrorHandler(connectorConfig, queue, errorHandler);
+    EventDispatcher<MyPartition, TableId> dispatcher = new EventDispatcher<>(
+            connectorConfig, topicNamingStrategy, schema, queue, dataCollectionFilter,
+            DataChangeEvent::new, metadataProvider, connectorConfig.schemaNameAdjuster(),
+            signalProcessor, headerProducer);
+
+    // 3. Coordinator: orchestrates the snapshot -> streaming handover.
+    ChangeEventSourceCoordinator<MyPartition, MyOffsetContext> coordinator =
+            new ChangeEventSourceCoordinator<>(previousOffsets, errorHandler, MyConnector.class,
+                    connectorConfig, new MyChangeEventSourceFactory(...), metricsFactory,
+                    dispatcher, schema, signalProcessor, notificationService, snapshotterService);
+    coordinator.start(taskContext, queue, metadataProvider);
+    return coordinator;
+}
+
+@Override
+protected List<SourceRecord> doPoll() throws InterruptedException {
+    return pollRecords(queue);
+}
+----
+
+`SqlServerConnectorTask.start(...)` is the recommended full reference: it adds JDBC connection factories, `schema.initializeStorage()` and `validateSchemaHistory(...)` for the schema history, the bean registry, and a `ServiceLoader`-resolved `SnapshotterService`.
+
+`BaseSourceTask` also provides configuration validation before `start(Configuration)` is called, restart backoff when your code throws Kafka Connect's `RetriableException`, offset commit propagation to `StreamingChangeEventSource.commitOffset(...)`, and `getPreviousOffsets(...)` for reading persisted offsets.
+
+=== Supporting services
+
+A few small classes round out the connector: an `ErrorHandler` that classifies retriable failures, an `EventMetadataProvider` that feeds metrics and heartbeats, a metrics factory, value converters, the `Module` class, and the `META-INF/services` registration files.
+Each of them is summarized, with examples from the main repository, in the supporting services table in the Reference section at the end of this guide.
+
+Heartbeats, signals (including ad-hoc incremental snapshots), and notifications are provided by the framework and enabled through configuration; you get them by wiring the `SignalProcessor` and `NotificationService` into the dispatcher and coordinator as shown above.
+
+== Configuration and deployment
+
+=== Common configuration properties
+
+Every connector inherits these properties from `CommonConnectorConfig`:
+
+[cols="3,1,1,5",options="header"]
+|===
+| Property | Type | Default | Description
+
+| `topic.prefix`
+| STRING
+| (required)
+| Logical name of the source; prefix for all topics produced by this connector.
+
+| `snapshot.mode`
+| STRING
+| connector-specific (usually `initial`)
+| Which `Snapshotter` to use: `always`, `initial`, `initial_only`, `no_data`, `recovery`, `when_needed`, `when_needed_no_data`, `configuration_based`, or `custom` (a user-provided implementation named by `snapshot.mode.custom.name`).
+
+| `tombstones.on.delete`
+| BOOLEAN
+| `true`
+| Whether to emit a tombstone record after each delete event, for log compaction.
+
+| `max.batch.size`
+| INT
+| `2048`
+| Maximum number of records returned per poll batch.
+
+| `max.queue.size`
+| INT
+| `8192`
+| Maximum number of records held in the change event queue; the producer thread blocks when the queue is full.
+
+| `max.queue.size.in.bytes`
+| LONG
+| `0` (disabled)
+| Optional byte-based bound for the queue.
+
+| `poll.interval.ms`
+| LONG
+| `500`
+| How long the queue poll waits for records before returning an empty batch.
+
+| `heartbeat.interval.ms`
+| INT
+| `0` (disabled)
+| Interval for emitting heartbeat records to the `__debezium-heartbeat.<topic.prefix>` topic.
+|===
+
+Connector-specific properties are the `Field` constants defined in your configuration class.
+
+=== Deploying to Kafka Connect
+
+. Build the connector archive with `mvn clean package`.
+
+. Place the connector JAR (with its bundled dependencies) in a directory on the Kafka Connect `plugin.path`.
+
+. Start Kafka and Kafka Connect, for example with the {prodname} container image:
++
+[source,yaml,subs="attributes+"]
+----
+services:
+  kafka:
+    image: apache/kafka:latest
+  connect:
+    image: quay.io/debezium/connect:{debezium-docker-label}
+    ports:
+      - "8083:8083"
+    environment:
+      - BOOTSTRAP_SERVERS=kafka:9092
+      - GROUP_ID=1
+      - CONFIG_STORAGE_TOPIC=my_connect_configs
+      - OFFSET_STORAGE_TOPIC=my_connect_offsets
+      - STATUS_STORAGE_TOPIC=my_connect_status
+    volumes:
+      - ./target/my-connector:/kafka/connect/my-connector
+----
+
+. Register the connector through the REST API:
++
+[source,json]
+----
+{
+    "name": "my-connector",
+    "config": {
+        "connector.class": "io.debezium.connector.my.MyConnector",
+        "tasks.max": "1",
+        "topic.prefix": "myserver",
+        "my.property": "value"
+    }
+}
+----
++
+[source,bash]
+----
+curl -i -X POST -H "Accept:application/json" -H "Content-Type:application/json" \
+  http://localhost:8083/connectors/ -d @register-my-connector.json
+----
+
+=== Deploying to {prodname} Server
+
+xref:{link-debezium-server}[{prodname} Server] runs the same connector without a Kafka cluster and can forward events to sinks such as Kafka, Pulsar, Kinesis, NATS, Redis, or HTTP.
+
+. Add the connector JAR to the {prodname} Server `lib` directory.
+
+. Configure the source and a sink in `config/application.properties`.
+Connector options keep their names, prefixed with `debezium.source.`:
++
+[source,properties]
+----
+debezium.source.connector.class=io.debezium.connector.my.MyConnector
+debezium.source.topic.prefix=myserver
+debezium.source.my.property=value
+debezium.source.offset.storage.file.filename=data/offsets.dat
+debezium.source.offset.flush.interval.ms=1000
+
+debezium.sink.type=file
+debezium.sink.file.path=data/cdc-output.jsonl
+----
+
+. Start the server with `./run.sh`.
+
+Offsets are stored in the configured file (or another offset store) instead of a Kafka topic, which makes {prodname} Server convenient for quick development iterations: delete the offset file to force a fresh snapshot.
+
+=== Verifying the connector
+
+Verification exercises the four behaviors that every source connector must get right: snapshotting, streaming, offset persistence, and (if supported) schema evolution.
+The steps below use {prodname} Server with the file sink, but the same checks apply on Kafka Connect with `kafka-console-consumer` or a Kafka UI.
+
+. *Verify the snapshot.*
+Start the runtime with existing data in the source.
+You should see one `READ` (`"op": "r"`) event per existing record, with `source.snapshot` indicating the snapshot phase.
+
+. *Verify streaming.*
+Change the source while the connector runs, for example with INSERT/UPDATE/DELETE statements or the source's equivalent.
+The connector should emit `c`, `u`, and `d` events with correct `before`/`after` images.
+
+. *Verify offset persistence.*
+Stop the runtime, change the source again, and restart it.
+The connector must resume from the last committed position: no snapshot, no re-emission of already-processed events, and the changes made while it was down are captured.
+This confirms that `OffsetContext.getOffset()` and the `Loader` round-trip correctly.
+
+. *Verify schema evolution.*
+If the connector supports schema changes, alter the source schema and verify that subsequent records use the new schema.
+
+== Testing
+
+Automated tests matter as much as the implementation, and the framework ships a reusable test harness so that a new connector inherits the same scenario coverage as the established ones.
+
+=== Test dependencies
+
+The test utilities live in the test-jars of `debezium-embedded` (the harness and scenario bases), `debezium-connector-common` (assertions and JUnit extensions), and `debezium-util` (the `Testing` helpers).
+Declare each with `<type>test-jar</type>` and `<scope>test</scope>`, plus the plain `debezium-embedded` jar at test scope to run the engine, following the pattern in `debezium-connector-sqlserver/pom.xml`.
+
+=== Integration tests with AbstractConnectorTest
+
+`io.debezium.embedded.AbstractConnectorTest` runs your connector inside an embedded xref:{link-engine}[{prodname} Engine] with file-based offset storage, captures every emitted `SourceRecord`, and validates each record's envelope structure.
+Extend its async binding, `AbstractAsyncEngineConnectorTest`, and write tests in the start-act-consume-assert style:
+
+[source,java]
+----
+@Test
+public void shouldSnapshotAndStream() throws Exception {
+    start(MyConnector.class, config());
+    assertConnectorIsRunning();
+
+    SourceRecords snapshot = consumeRecordsByTopic(EXISTING_ROWS);
+    VerifyRecord.isValidRead(snapshot.recordsForTopic("myserver.db.table").get(0), "id", 1);
+
+    insertSourceRow();                                   // act on the source
+    SourceRecords streamed = consumeRecordsByTopic(1);
+    VerifyRecord.isValidInsert(streamed.recordsForTopic("myserver.db.table").get(0), "id", 2);
+
+    stopConnector();
+}
+----
+
+The pieces you will use constantly:
+
+* `start(connectorClass, config)` / `stopConnector()` — engine lifecycle per test.
+* `consumeRecordsByTopic(n)` returning a `SourceRecords` collector with `recordsForTopic(...)`, `topics()`, and `allRecordsInOrder()`.
+* `assertConnectorIsRunning()`, `assertNoRecordsToConsume()`, `assertInsert/assertUpdate/assertDelete/assertTombstone(...)`, `assertOffset(...)`.
+* `VerifyRecord.isValid...(...)` for structural envelope validation, and `SourceRecordAssert.assertThat(record)` for fluent value assertions.
+* The static JMX waits `waitForSnapshotToBeCompleted(connector, server)` and `waitForStreamingRunning(connector, server)`, which poll the standard snapshot and streaming metrics with Awaitility.
+Any connector that uses the default metrics factory gets these waits for free.
+
+=== Reusable scenario test bases
+
+Beyond the basic harness, `debezium-embedded` ships abstract test classes that encode complete scenario suites: incremental snapshots, blocking (ad-hoc) snapshots, chunked snapshots, notifications, and metrics.
+A connector test suite extends them and implements only small adapter methods (connector class, configuration, topic and table names, and DDL dialect); the scenarios themselves are inherited.
+
+[cols="3,4,4",options="header"]
+|===
+| Test base (in `debezium-embedded` test-jar) | Scenarios it covers | Key adapter methods you implement
+
+| `AbstractSnapshotTest<T>`
+| Shared plumbing: table population, signal sending, mixed snapshot/stream consumption
+| `connectorClass()`, `config()`, `topicName()`, `tableName()`, `signalTableName()`, `connector()`, `server()`
+
+| `AbstractIncrementalSnapshotTest<T>`
+| Roughly 40 incremental snapshot scenarios: snapshot-only, concurrent inserts/updates, restarts, pause/resume and stop signals, regex data collections, additional conditions, surrogate keys
+| the above plus `noPKTopicName()`, `noPKTableName()`
+
+| `AbstractIncrementalSnapshotWithSchemaChangesSupportTest<T>`
+| Schema changes during incremental snapshots: column adds, renames, default and nullability changes
+| SQL-dialect adapters such as `alterColumnStatement(...)`, `executeRenameTable(...)`
+
+| `AbstractBlockingSnapshotTest<T>`
+| Ad-hoc blocking snapshots while streaming, error recovery, offset reuse
+| `escapedTableDataCollectionId()` plus the shared adapters
+
+| `AbstractChunkedSnapshotTest<T>`
+| Chunked initial snapshots: composite keys, keyless tables, per-table multipliers, snapshot-select overrides, concurrent streaming
+| table-creation and naming adapters, `waitForSnapshotToBeCompleted()`
+
+| `AbstractNotificationsIT<T>` / `AbstractMetricsTest<T>`
+| Snapshot progress notifications; snapshot and streaming JMX metrics
+| `connectorClass()`, `config()`, `connector()`, `server()`, expected counts
+|===
+
+This is exactly how the production connectors are tested.
+SQL Server's `IncrementalSnapshotIT` is a good template; it inherits every scenario and supplies only configuration and dialect:
+
+[source,java]
+----
+public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchemaChangesSupportTest<SqlServerConnector> {
+
+    @Override
+    protected Class<SqlServerConnector> connectorClass() {
+        return SqlServerConnector.class;
+    }
+
+    @Override
+    protected String topicName() {
+        return "server1.testDB1.dbo.a";
+    }
+
+    @Override
+    protected Builder config() {
+        return TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                .with(SqlServerConnectorConfig.SIGNAL_DATA_COLLECTION, "testDB1.dbo.debezium_signal")
+                .with(SqlServerConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 250)
+                .with(SqlServerConnectorConfig.INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES, true);
+    }
+    // + signalTableName(), connector(), server(), DDL dialect adapters
+}
+----
+
+Postgres's `BlockingSnapshotIT` and `PostgresChunkedSnapshotIT` show the same pattern for the other bases.
+Plan your test suite around these classes from the start: implement the adapter methods once, and your connector is exercised against the same snapshot, restart, and signal scenarios as SQL Server and PostgreSQL.
+
+=== What to assert beyond the scenarios
+
+For behavior the shared bases do not cover (your streaming loop, your offset arithmetic, your type conversions), add targeted integration tests that assert:
+
+* Envelope correctness per operation (`r`, `c`, `u`, `d`), including `before` being `null` when the source has no before-image.
+* Offset round-trips: stop the engine mid-stream, restart, and assert no duplicates and no gaps.
+* Schema evolution: change the source schema and assert the new value schema on subsequent records.
+* Error classification: kill the source and assert the task fails with a retriable exception (and recovers when the source returns).
+
+The JUnit extensions in `io.debezium.junit` (`@SkipLongRunning`, `@SkipWhenDatabaseVersion`, `@Flaky`) and the `LogInterceptor` (assert on emitted log messages) are available from the `debezium-connector-common` test-jar.
+
+== Debugging and troubleshooting
+
+The problems below are the ones you are most likely to hit during development, roughly in the order you will meet them.
+
+*The connector class does not appear in Kafka Connect.*
+Check that the JAR is inside a directory listed in `plugin.path` (each plugin in its own subdirectory) and that `META-INF/services/org.apache.kafka.connect.source.SourceConnector` names your connector class.
+`GET /connector-plugins` shows what the worker discovered.
+
+*The task starts but no snapshot runs, or a snapshot runs on every restart.*
+Both symptoms point at the offset lifecycle.
+Log what your `Loader.load(...)` receives and what `getOffset()` returns.
+If the loader returns a context that already looks "past the snapshot", `getSnapshottingTask(...)` (or the `Snapshotter`) will skip the snapshot; if `getOffset()` emits keys the loader does not read back, every restart looks like a first start.
+Remember that on a true first start there is no offset map at all and your task must seed a default context.
+
+*`DataException: Mismatching schema` when records are serialized.*
+You passed a raw row struct where the envelope struct was expected, or built a struct against a stale cached schema.
+The value handed to `receiver.changeRecord(...)` must be built by the `Envelope` factory methods from the same `DataCollectionSchema` the dispatcher resolved.
+
+*Changes happen in the source but nothing reaches the topic.*
+Work backwards: is your streaming loop running (`waitForStreamingRunning(...)`, or the streaming metrics MBean `debezium.<connector>:type=connector-metrics,context=streaming,server=<topic.prefix>`)?
+Is the event filtered out by the data collection filter or the include/exclude lists?
+Does `schema.schemaFor(id)` return a schema?
+The dispatcher drops or fails events for unknown collections, depending on the inconsistent-schema handler.
+Set the connector's log level to `DEBUG`; the MDC context (`dbz.connectorContext` = `snapshot` or `streaming`) makes the phases easy to separate.
+
+*Offsets never advance.*
+Kafka Connect commits offsets from the records it polls, so if all events are filtered before reaching Kafka, there is nothing to commit; heartbeats exist for exactly this case (`heartbeat.interval.ms`).
+Also verify that every value in `getOffset()` is a plain string, number, or boolean; non-serializable values break offset storage silently.
+
+*Duplicates after a crash.*
+This is expected: {prodname} delivers events at least once, and the position of the last poll may not have been committed before the crash.
+Make sure your positions are monotonic and fine-grained enough that redelivery is minimal (SQL Server adds `event_serial_no` for exactly this reason), and state the at-least-once contract in your connector's documentation.
+
+*The task dies instead of retrying on a source hiccup.*
+The `ErrorHandler` only retries exceptions it classifies as retriable; the default is `IOException` alone.
+Override `communicationExceptions()` to include your driver's connection-loss exceptions, the way `PostgresErrorHandler` adds `SQLException`.
+Retries are budgeted by `errors.max.retries`.
+
+*Snapshot interrupted during development.*
+A connector restart during an incomplete snapshot re-runs the snapshot from scratch (the offset context marks the snapshot as incomplete).
+During development, keep test datasets small; for real deployments, that is what incremental snapshots are for.
+
+When in doubt, compare against the reference implementations: run the SQL Server or PostgreSQL connector with the same runtime configuration and diff the logged startup sequence against yours; divergence usually shows exactly which pipeline piece is miswired.
+
+== Reference
+
+=== Contract-to-class map
+
+[cols="3,3,3",options="header"]
+|===
+| Framework contract | SQL Server | PostgreSQL
+
+| `BaseSourceConnector`
+| `SqlServerConnector` (via `RelationalBaseSourceConnector`)
+| `PostgresConnector` (via `RelationalBaseSourceConnector`)
+
+| `BaseSourceTask<P, O>`
+| `SqlServerConnectorTask`
+| `PostgresConnectorTask`
+
+| `CommonConnectorConfig`
+| `SqlServerConnectorConfig` (historized relational)
+| `PostgresConnectorConfig` (relational)
+
+| `Partition` / `Provider`
+| `SqlServerPartition` (server + database)
+| `PostgresPartition`
+
+| `OffsetContext` / `Loader`
+| `SqlServerOffsetContext` (commit/change LSN + serial no)
+| `PostgresOffsetContext` (LSN, txId)
+
+| `DatabaseSchema`
+| `SqlServerDatabaseSchema` (historized)
+| `PostgresSchema` (live catalog refresh)
+
+| `ChangeEventSourceFactory`
+| `SqlServerChangeEventSourceFactory`
+| `PostgresChangeEventSourceFactory`
+
+| `SnapshotChangeEventSource`
+| `SqlServerSnapshotChangeEventSource` (relational base)
+| `PostgresSnapshotChangeEventSource` (relational base)
+
+| `StreamingChangeEventSource`
+| `SqlServerStreamingChangeEventSource` (CDC table polling)
+| `PostgresStreamingChangeEventSource` (logical replication)
+
+| `ChangeRecordEmitter`
+| `SqlServerChangeRecordEmitter` (trivial relational)
+| `PostgresChangeRecordEmitter` (schema-aware relational)
+
+| `SourceInfo` / `SourceInfoStructMaker`
+| `SourceInfo` / `SqlServerSourceInfoStructMaker`
+| `SourceInfo` / `PostgresSourceInfoStructMaker`
+
+| `ErrorHandler`
+| `SqlServerErrorHandler`
+| `PostgresErrorHandler`
+|===
+
+For a non-relational mapping, the MongoDB connector implements the same contracts with `MongoDbConnectorTask`, `MongoDbOffsetContext` (change stream resume token), `MongoDbSchema`, and `MongoDbChangeRecordEmitter`.
+
+=== Supporting services
+
+[cols="2,4,4",options="header"]
+|===
+| Service | Purpose | Examples in the main repository
+
+| `ErrorHandler`
+| Classifies errors as retriable or fatal when the streaming loop fails.
+Override `communicationExceptions()` (or `isRetriable(...)`) to declare which exceptions warrant a task restart.
+| `PostgresErrorHandler` adds `SQLException` to the default `IOException`; `SqlServerErrorHandler` likewise adds `SQLException`
+
+| `EventMetadataProvider`
+| Extracts event timestamp, position, and transaction id from emitted events, feeding metrics, heartbeats, and the transaction monitor.
+| `SqlServerEventMetadataProvider`
+
+| `ChangeEventSourceMetricsFactory`
+| Creates the snapshot and streaming JMX metrics.
+Use `DefaultChangeEventSourceMetricsFactory` unless you need custom metrics.
+| `SqlServerMetricsFactory`
+
+| Value converters
+| Map source data types to Kafka Connect schema types, including the `decimal.handling.mode` and `time.precision.mode` semantics.
+Relational connectors extend `JdbcValueConverters`.
+| `SqlServerValueConverters`, `PostgresValueConverter`
+
+| `Module`
+| Reports the connector name, version (from a Maven-filtered `build.version` resource), and JMX/MDC context name.
+| `io.debezium.connector.sqlserver.Module`
+
+| `META-INF/services` registrations
+| `org.apache.kafka.connect.source.SourceConnector` for plugin discovery; `io.debezium.spi.snapshot.Snapshotter`, `io.debezium.snapshot.spi.SnapshotLock`, and `io.debezium.snapshot.spi.SnapshotQuery` for snapshot behavior.
+| `debezium-connector-sqlserver/src/main/resources/META-INF/services/`
+|===
+
+=== Variations by capture pattern
+
+[cols="2,4,4,4",options="header"]
+|===
+| Aspect | Relational, push-based (MySQL, PostgreSQL) | Relational, pull-based (SQL Server, Oracle LogMiner) | Non-relational (MongoDB)
+
+| Streaming style
+| Server pushes a decoded log stream; connector reacts to events
+| Connector polls or mines in windows; `executeIteration(...)` pattern
+| Source-appropriate, for example a change streams cursor
+
+| Schema class
+| Historized (MySQL) or live-catalog (PostgreSQL)
+| Historized
+| Direct `DatabaseSchema` implementation
+
+| Emitter
+| Operation mapping, possibly schema-aware (PostgreSQL)
+| Often trivial (`SqlServerChangeRecordEmitter`)
+| Direct `Envelope` factory calls
+
+| Offset content
+| Log coordinates (binlog position/GTID, LSN)
+| Window position (commit LSN + serial no, SCN)
+| Whatever identifies progress (resume token)
+
+| Extra duties
+| Acknowledge positions back to the source (PostgreSQL slot flush)
+| Merge ordering across parallel change feeds
+| —
+|===
+
+=== Further reading
+
+* link:https://kafka.apache.org/documentation.html#connect[Kafka Connect documentation] — the underlying connector API and runtime.
+* xref:{link-engine}[{prodname} Engine] — embedding connectors in an application, and the engine used by the test harness.
+* xref:{link-debezium-server}[{prodname} Server] — the standalone runtime and its sink configuration.
+* xref:{link-connectors}[{prodname} connector documentation] — per-connector behavior your documentation should mirror.
+* link:https://github.com/debezium/debezium-examples[debezium-examples repository] — runnable end-to-end examples.
+* link:https://github.com/debezium/debezium/blob/main/CONTRIBUTING.md[Contributing to {prodname}] — how to propose a new connector to the community.

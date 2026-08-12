@@ -60,6 +60,7 @@
 * API and SPI
 ** xref:development/engine.adoc[Debezium Engine]
 ** xref:development/converters.adoc[Custom Converters]
+** xref:development/source-connector.adoc[Developing Source Connectors]
 * Integrations
 ** xref:integrations/serdes.adoc[Change Event SerDes]
 ** xref:integrations/outbox.adoc[Outbox Quarkus Extension]
