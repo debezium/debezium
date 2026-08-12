@@ -17,11 +17,12 @@ import io.debezium.util.ElapsedTimeStrategy;
 
 /**
  * The default implementation of the {@link OffsetActivityMonitorService} contract.
- *
+ * <p>
  * The registered monitor is invoked at most once per configured check interval, with the first
- * check occurring after one full interval has elapsed. A non-positive interval disables the
- * service, making {@link #pulse(Partition, OffsetContext)} a no-op.
- *
+ * check occurring after one full interval has elapsed. When the monitor reports a
+ * {@link StaleOffsetsResult.Stale} result, its message is logged as a warning. A non-positive
+ * interval disables the service, making {@link #pulse(Partition, OffsetContext)} a no-op.
+ * <p>
  * This implementation is not thread-safe; {@link #register(OffsetActivityMonitor)} and
  * {@link #pulse(Partition, OffsetContext)} are expected to be invoked from the streaming thread.
  *
@@ -67,7 +68,9 @@ public class DefaultOffsetActivityMonitorService implements OffsetActivityMonito
     public <P extends Partition, O extends OffsetContext> void pulse(P partition, O offsetContext) {
         if (monitor != null && elapsedStrategy != null && elapsedStrategy.hasElapsed()) {
             try {
-                monitor.checkForStaleOffsets(partition, offsetContext);
+                if (monitor.checkForStaleOffsets(partition, offsetContext) instanceof StaleOffsetsResult.Stale stale) {
+                    LOGGER.warn("{}", stale.message());
+                }
             }
             catch (Exception e) {
                 LOGGER.warn("Offset activity check failed, it will be retried at the next interval.", e);

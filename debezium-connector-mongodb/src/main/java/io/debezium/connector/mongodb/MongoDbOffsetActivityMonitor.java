@@ -9,17 +9,16 @@ import java.time.Duration;
 import java.util.Objects;
 
 import org.bson.BsonTimestamp;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import io.debezium.pipeline.monitor.OffsetActivityMonitor;
+import io.debezium.pipeline.monitor.StaleOffsetsResult;
 
 /**
  * An {@link OffsetActivityMonitor} that tracks state changes to the connector's offsets.
  * <p>
  * The offset resume token is compared against the value captured when the monitor was last
- * consulted, and when the token has not moved, a warning is logged. When the offsets do not
- * yet contain a resume token, i.e. streaming has not observed the first change stream event,
+ * consulted, and when the token has not moved, a stale result is reported. When the offsets do
+ * not yet contain a resume token, i.e. streaming has not observed the first change stream event,
  * the offset timestamp is compared instead.
  * <p>
  * The change stream advances the resume token with every batch, including empty batches, so
@@ -29,8 +28,6 @@ import io.debezium.pipeline.monitor.OffsetActivityMonitor;
  * @author Chris Cranford
  */
 public class MongoDbOffsetActivityMonitor implements OffsetActivityMonitor<MongoDbPartition, MongoDbOffsetContext> {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbOffsetActivityMonitor.class);
 
     private final Duration checkInterval;
 
@@ -42,29 +39,34 @@ public class MongoDbOffsetActivityMonitor implements OffsetActivityMonitor<Mongo
     }
 
     @Override
-    public void checkForStaleOffsets(MongoDbPartition partition, MongoDbOffsetContext offsetContext) {
+    public StaleOffsetsResult checkForStaleOffsets(MongoDbPartition partition, MongoDbOffsetContext offsetContext) {
         final String resumeToken = offsetContext.lastResumeToken();
         final BsonTimestamp timestamp = offsetContext.lastTimestamp();
 
         // Check for stale state
+        StaleOffsetsResult result = StaleOffsetsResult.fresh();
         if (resumeToken != null) {
             if (Objects.equals(previousResumeToken, resumeToken)) {
-                LOGGER.warn("Offset resume token {} has not changed in {} milliseconds. " +
-                        "This may indicate the connector is no longer receiving events from the change stream.",
-                        previousResumeToken, checkInterval.toMillis());
+                result = StaleOffsetsResult.stale(
+                        ("Offset resume token %s has not changed in %d milliseconds. " +
+                                "This may indicate the connector is no longer receiving events from the change stream.")
+                                .formatted(previousResumeToken, checkInterval.toMillis()));
             }
         }
         else if (previousResumeToken == null && Objects.equals(previousTimestamp, timestamp)) {
             // No resume token has been observed yet; fallback to comparing the offset timestamp
-            LOGGER.warn("Offset timestamp {} has not changed in {} milliseconds and no resume token has " +
-                    "been received. This may indicate the connector is no longer receiving events from " +
-                    "the change stream.",
-                    previousTimestamp, checkInterval.toMillis());
+            result = StaleOffsetsResult.stale(
+                    ("Offset timestamp %s has not changed in %d milliseconds and no resume token has " +
+                            "been received. This may indicate the connector is no longer receiving events from " +
+                            "the change stream.")
+                            .formatted(previousTimestamp, checkInterval.toMillis()));
         }
 
         // Update tracked stats
         previousResumeToken = resumeToken;
         previousTimestamp = timestamp;
+
+        return result;
     }
 
 }

@@ -11,26 +11,22 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.pipeline.monitor.OffsetActivityMonitor;
+import io.debezium.pipeline.monitor.StaleOffsetsResult;
 
 /**
  * An {@link OffsetActivityMonitor} that tracks state changes to the connector's offsets.
  * <p>
  * The offset and commit system change numbers are compared against the values captured when
  * the monitor was last consulted, and when the offset system change number has not moved, a
- * warning is logged and the SCN freeze metric is incremented.
+ * stale result is reported and the SCN freeze metric is incremented.
  *
  * @author Chris Cranford
  */
 public class LogMinerOffsetActivityMonitor implements OffsetActivityMonitor<OraclePartition, OracleOffsetContext> {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(LogMinerOffsetActivityMonitor.class);
 
     private final Duration checkInterval;
     private final LogMinerStreamingChangeEventSourceMetrics metrics;
@@ -48,13 +44,15 @@ public class LogMinerOffsetActivityMonitor implements OffsetActivityMonitor<Orac
     }
 
     @Override
-    public void checkForStaleOffsets(OraclePartition partition, OracleOffsetContext offsetContext) {
+    public StaleOffsetsResult checkForStaleOffsets(OraclePartition partition, OracleOffsetContext offsetContext) {
         // Check for stale state
+        StaleOffsetsResult result = StaleOffsetsResult.fresh();
         if (offsetContext.getCommitScn() != null) {
             if (previousOffsetScn.equals(offsetContext.getScn())) {
-                LOGGER.warn("Offset SCN {} has not changed in {} milliseconds. " +
-                        "This may indicate long running transaction(s), active transactions: {}. Commit SCNs {}.",
-                        previousOffsetScn, checkInterval.toMillis(), activeTransactionIdSupplier.get(), previousCommitScns);
+                result = StaleOffsetsResult.stale(
+                        ("Offset SCN %s has not changed in %d milliseconds. " +
+                                "This may indicate long running transaction(s), active transactions: %s. Commit SCNs %s.")
+                                .formatted(previousOffsetScn, checkInterval.toMillis(), activeTransactionIdSupplier.get(), previousCommitScns));
 
                 metrics.incrementScnFreezeCount();
             }
@@ -68,6 +66,8 @@ public class LogMinerOffsetActivityMonitor implements OffsetActivityMonitor<Orac
         if (offsetContext.getCommitScn() != null) {
             previousCommitScns = offsetContext.getCommitScn().getCommitScnForAllRedoThreads();
         }
+
+        return result;
     }
 
 }
