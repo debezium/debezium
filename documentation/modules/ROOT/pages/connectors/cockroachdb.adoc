@@ -126,6 +126,8 @@ Only ongoing changes after the changefeed is created are captured.
 |`when_needed`
 |`yes` on first start, `no` on restart
 |Same as `initial`, but if the stored offset is no longer valid, the connector performs a new initial snapshot.
+The snapshot re-emits rows that still exist, which can result in duplicate events.
+It cannot recover delete events for rows that were deleted while the connector was offline.
 |===
 
 [[cockroachdb-streaming-changes]]
@@ -1484,6 +1486,8 @@ That is, it generates change event records for all database changes that were ma
 The CockroachDB link:https://www.cockroachlabs.com/docs/stable/configure-replication-zones#gc-ttlseconds[garbage collection TTL] (default: 4 hours) limits how far back in time a changefeed can be started.
 If the connector is stopped for longer than the configured TTL interval, the stored offset may no longer be valid.
 In this case, use `snapshot.mode=when_needed` to automatically re-snapshot when the offset has expired.
+The new snapshot re-emits rows that still exist, which can result in duplicate events.
+It cannot recover delete events for rows that were deleted while the connector was offline.
 
 [id="cockroachdb-debugging"]
 === Enabling debug logging
