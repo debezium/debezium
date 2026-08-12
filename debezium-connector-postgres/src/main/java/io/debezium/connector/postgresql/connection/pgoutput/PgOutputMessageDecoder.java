@@ -54,7 +54,6 @@ import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.util.HexConverter;
-import io.debezium.util.Strings;
 
 /**
  * Decodes messages from the PG logical replication plug-in ("pgoutput").
@@ -358,7 +357,8 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         Set<String> seenLowercaseColumnNames = new HashSet<>();
         for (short i = 0; i < columnCount; ++i) {
             byte flags = buffer.get();
-            String columnName = Strings.unquoteIdentifierPart(readString(buffer));
+            // pgoutput sends column names unquoted
+            String columnName = readString(buffer);
             int columnType = buffer.getInt();
             int attypmod = buffer.getInt();
 

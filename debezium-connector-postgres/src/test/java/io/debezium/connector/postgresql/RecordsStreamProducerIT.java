@@ -4980,6 +4980,23 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         }
     }
 
+    @Test
+    @FixFor("debezium/dbz#1235")
+    public void shouldStreamColumnWhoseNameIsItselfQuoted() throws Exception {
+        TestHelper.execute(
+                "DROP TABLE IF EXISTS quoted_column_table;",
+                "CREATE TABLE quoted_column_table (pk SERIAL, \"'quoted'\" TEXT, PRIMARY KEY(pk));");
+        startConnector();
+        consumer = testConsumer(1);
+
+        executeAndWait("INSERT INTO quoted_column_table (\"'quoted'\") VALUES ('some text');");
+
+        assertRecordSchemaAndValues(
+                Collections.singletonList(new SchemaAndValueField("'quoted'", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "some text")),
+                consumer.remove(),
+                Envelope.FieldName.AFTER);
+    }
+
     private String getMessagePrefix(SourceRecord record) {
         Struct message = ((Struct) record.value()).getStruct(LogicalDecodingMessageMonitor.DEBEZIUM_LOGICAL_DECODING_MESSAGE_KEY);
         return message.getString(LogicalDecodingMessageMonitor.DEBEZIUM_LOGICAL_DECODING_MESSAGE_PREFIX_KEY);
