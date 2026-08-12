@@ -112,6 +112,13 @@ public class TimescaleDbTest extends AbstractAsyncEngineConnectorTest {
         logInterceptor.containsWarnMessage("Unable to find hypertable for chunk '_timescaledb_internal._hyper_10_1_chunk'");
     }
 
+    @Test
+    void shouldSelectTimescaleDbQueryBasedOnVersion() {
+        assertThat(QueryInformationSchemaMetadata.isTimescaleDbVersionAtLeast229("2.28.2")).isFalse();
+        assertThat(QueryInformationSchemaMetadata.isTimescaleDbVersionAtLeast229("2.29.0")).isTrue();
+        assertThat(QueryInformationSchemaMetadata.isTimescaleDbVersionAtLeast229("3.0.0")).isTrue();
+    }
+
     private SourceRecord createSourceRecord(String schema, String table, long id) {
 
         final var valueSchema = SchemaBuilder.struct()
