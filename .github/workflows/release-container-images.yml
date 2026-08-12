@@ -67,8 +67,35 @@ on:
         default: false
 
 jobs:
+  setup-parameters:
+    name: Setup Parameters
+    runs-on: ubuntu-latest
+    outputs:
+      debezium_repository: ${{ steps.params.outputs.debezium_repository }}
+      images_repository: ${{ steps.params.outputs.images_repository }}
+      images_branch: ${{ steps.params.outputs.images_branch }}
+      platforms: ${{ steps.params.outputs.platforms }}
+      streams_to_build_count: ${{ steps.params.outputs.streams_to_build_count }}
+      tags_per_stream_count: ${{ steps.params.outputs.tags_per_stream_count }}
+      skip_ui: ${{ steps.params.outputs.skip_ui }}
+      dry_run: ${{ steps.params.outputs.dry_run }}
+
+    steps:
+      - name: Set parameters
+        id: params
+        run: |
+          echo "debezium_repository=${{ inputs.debezium_repository || 'debezium/debezium' }}" >> $GITHUB_OUTPUT
+          echo "images_repository=${{ inputs.images_repository || 'debezium/container-images' }}" >> $GITHUB_OUTPUT
+          echo "images_branch=${{ inputs.images_branch || 'main' }}" >> $GITHUB_OUTPUT
+          echo "platforms=${{ inputs.platforms || 'linux/amd64,linux/arm64' }}" >> $GITHUB_OUTPUT
+          echo "streams_to_build_count=${{ inputs.streams_to_build_count || '2' }}" >> $GITHUB_OUTPUT
+          echo "tags_per_stream_count=${{ inputs.tags_per_stream_count || '1' }}" >> $GITHUB_OUTPUT
+          echo "skip_ui=${{ inputs.skip_ui || 'false' }}" >> $GITHUB_OUTPUT
+          echo "dry_run=${{ inputs.dry_run || 'false' }}" >> $GITHUB_OUTPUT
+
   discover-versions:
     name: Discover Versions and Build List
+    needs: setup-parameters
     runs-on: ubuntu-latest
     outputs:
       streams: ${{ steps.versions.outputs.streams }}
@@ -93,9 +120,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           # Fetch all tags from debezium repository
-          DEBEZIUM_REPO="${{ inputs.debezium_repository || 'debezium/debezium' }}"
-          STREAMS_COUNT="${{ inputs.streams_to_build_count || '2' }}"
-          TAGS_PER_STREAM="${{ inputs.tags_per_stream_count || '1' }}"
+          DEBEZIUM_REPO="${{ needs.setup-parameters.outputs.debezium_repository }}"
+          STREAMS_COUNT="${{ needs.setup-parameters.outputs.streams_to_build_count }}"
+          TAGS_PER_STREAM="${{ needs.setup-parameters.outputs.tags_per_stream_count }}"
 
           gh api repos/${DEBEZIUM_REPO}/tags --paginate | \
             jq -r '.[].name' | \
@@ -112,7 +139,7 @@ jobs:
 
   build-master-images:
     name: Build Master Images
-    needs: discover-versions
+    needs: [setup-parameters, discover-versions]
     runs-on: ubuntu-latest
     timeout-minutes: 720
 
@@ -120,8 +147,8 @@ jobs:
       - name: Checkout container-images repository
         uses: actions/checkout@v7
         with:
-          repository: ${{ inputs.images_repository }}
-          ref: ${{ inputs.images_branch }}
+          repository: ${{ needs.setup-parameters.outputs.images_repository }}
+          ref: ${{ needs.setup-parameters.outputs.images_branch }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
@@ -143,13 +170,13 @@ jobs:
 
       - name: Build all images for latest streams
         env:
-          DRY_RUN: ${{ inputs.dry_run }}
-          SKIP_UI: ${{ inputs.skip_ui }}
+          DRY_RUN: ${{ needs.setup-parameters.outputs.dry_run }}
+          SKIP_UI: ${{ needs.setup-parameters.outputs.skip_ui }}
           DEBEZIUM_VERSIONS: ${{ needs.discover-versions.outputs.streams }}
           LATEST_STREAM: ${{ needs.discover-versions.outputs.stable_stream }}
           PLATFORM_CONDUCTOR_PLATFORM: linux/amd64
           PLATFORM_STAGE_PLATFORM: linux/amd64
-          MULTIPLATFORM_PLATFORMS: ${{ inputs.platforms }}
+          MULTIPLATFORM_PLATFORMS: ${{ needs.setup-parameters.outputs.platforms }}
           DEBEZIUM_DOCKER_REGISTRY_PRIMARY_NAME: quay.io/debezium
         run: |
           echo "Building images for streams: $DEBEZIUM_VERSIONS"
@@ -172,16 +199,16 @@ jobs:
           content: |
             ⚠️ **Release container images build failed (master images)**
 
-            **Debezium repository:** ${{ inputs.debezium_repository }}
-            **Images repository:** ${{ inputs.images_repository }}
-            **Images branch:** ${{ inputs.images_branch }}
+            **Debezium repository:** ${{ needs.setup-parameters.outputs.debezium_repository }}
+            **Images repository:** ${{ needs.setup-parameters.outputs.images_repository }}
+            **Images branch:** ${{ needs.setup-parameters.outputs.images_branch }}
             **Streams:** ${{ needs.discover-versions.outputs.streams }}
-            **Platforms:** ${{ inputs.platforms }}
+            **Platforms:** ${{ needs.setup-parameters.outputs.platforms }}
             **Workflow Run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
   build-tagged-images:
     name: Build Tagged Images
-    needs: discover-versions
+    needs: [setup-parameters, discover-versions]
     runs-on: ubuntu-latest
     timeout-minutes: 720
 
@@ -189,8 +216,8 @@ jobs:
       - name: Checkout container-images repository
         uses: actions/checkout@v7
         with:
-          repository: ${{ inputs.images_repository }}
-          ref: ${{ inputs.images_branch }}
+          repository: ${{ needs.setup-parameters.outputs.images_repository }}
+          ref: ${{ needs.setup-parameters.outputs.images_branch }}
           fetch-depth: 0  # Fetch all history for all tags
 
       - name: Set up QEMU
@@ -221,13 +248,13 @@ jobs:
       - name: Build images for each tag sequentially
         env:
           BUILD_LIST: ${{ needs.discover-versions.outputs.build_list }}
-          DRY_RUN: ${{ inputs.dry_run }}
-          SKIP_UI: ${{ inputs.skip_ui }}
+          DRY_RUN: ${{ needs.setup-parameters.outputs.dry_run }}
+          SKIP_UI: ${{ needs.setup-parameters.outputs.skip_ui }}
           LATEST_STREAM: ${{ needs.discover-versions.outputs.stable_stream }}
           PLATFORM_CONDUCTOR_PLATFORM: linux/amd64
           PLATFORM_STAGE_PLATFORM: linux/amd64
-          MULTIPLATFORM_PLATFORMS: ${{ inputs.platforms }}
-          IMAGES_BRANCH: ${{ inputs.images_branch }}
+          MULTIPLATFORM_PLATFORMS: ${{ needs.setup-parameters.outputs.platforms }}
+          IMAGES_BRANCH: ${{ needs.setup-parameters.outputs.images_branch }}
           DEBEZIUM_DOCKER_REGISTRY_PRIMARY_NAME: quay.io/debezium
         run: |
           chmod +x debezium-repo/.github/scripts/release-container-images/build-tagged-images.sh
@@ -246,9 +273,9 @@ jobs:
           content: |
             ⚠️ **Release container images build failed (tagged images)**
 
-            **Debezium repository:** ${{ inputs.debezium_repository }}
-            **Images repository:** ${{ inputs.images_repository }}
-            **Images branch:** ${{ inputs.images_branch }}
+            **Debezium repository:** ${{ needs.setup-parameters.outputs.debezium_repository }}
+            **Images repository:** ${{ needs.setup-parameters.outputs.images_repository }}
+            **Images branch:** ${{ needs.setup-parameters.outputs.images_branch }}
             **Build list:** ${{ needs.discover-versions.outputs.build_list }}
-            **Platforms:** ${{ inputs.platforms }}
+            **Platforms:** ${{ needs.setup-parameters.outputs.platforms }}
             **Workflow Run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
