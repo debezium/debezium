@@ -236,6 +236,19 @@ You can use incremental snapshots to perform the following tasks:
 * Backfill a newly added sink or topic.
 * Verify source-target consistency by re-snapshotting and comparing.
 
+[IMPORTANT]
+====
+The connector evaluates `table.include.list` and `table.exclude.list` and discovers the captured tables only when the connector task starts.
+The table set in the running CockroachDB changefeed does not change automatically.
+As a result, the connector does not capture a table that is created later, even if its name matches an include-list regular expression.
+
+Restart the connector to discover and add the table.
+An `execute-snapshot` signal cannot add a table to the running changefeed.
+If a signal requests a table outside the running capture set, the connector logs a warning.
+Restart the connector, and then reissue the signal so that the snapshot runs and subsequent changes are streamed.
+This behavior applies to both `kafka` and `sinkless` delivery modes.
+====
+
 [id="cockroachdb-prepare-to-use-incremental-snapshots"]
 ==== Prepare to use incremental snapshots
 
