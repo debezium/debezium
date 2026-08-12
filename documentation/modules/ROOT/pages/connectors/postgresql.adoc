@@ -543,53 +543,44 @@ If you use the JSON converter and you configure it to produce all four basic cha
 [source,json,index=0]
 ----
 {
- "schema": { // <1>
+ "schema": {
    ...
   },
- "payload": { // <2>
+ "payload": {
    ...
  },
- "schema": { // <3>
+ "schema": {
    ...
  },
- "payload": { // <4>
+ "payload": {
    ...
  },
 }
 ----
 
-.Overview of change event basic content
-[cols="1,2,7",options="header"]
-|===
-|Item |Field name |Description
+The following list describes the fields in the preceding change event example:
 
-|1
-|`schema`
-a|The first `schema` field is part of the event key.
+`schema` (first)::
+The first `schema` field is part of the event key.
 It specifies a Kafka Connect schema that describes what is in the event key's `payload` portion.
 In other words, the first `schema` field describes the structure of the primary key, or the unique key if the table does not have a primary key, for the table that was changed.
-
++
 It is possible to override the table's primary key by setting the xref:postgresql-property-message-key-columns[`message.key.columns` connector configuration property].
 In this case, the first schema field describes the structure of the key identified by that property.
 
-|2
-|`payload`
-|The first `payload` field is part of the event key.
+`payload` (first)::
+The first `payload` field is part of the event key.
 It has the structure described by the previous `schema` field and it contains the key for the row that was changed.
 
-|3
-|`schema`
-|The second `schema` field is part of the event value.
+`schema` (second)::
+The second `schema` field is part of the event value.
 It specifies the Kafka Connect schema that describes what is in the event value's `payload` portion.
 In other words, the second `schema` describes the structure of the row that was changed.
 Typically, this schema contains nested schemas.
 
-|4
-|`payload`
-|The second `payload` field is part of the event value.
+`payload` (second)::
+The second `payload` field is part of the event value.
 It has the structure described by the previous `schema` field and it contains the actual data for the row that was changed.
-
-|===
 
 
 By default behavior is that the connector streams change event records to xref:postgresql-topic-names[topics with names that are the same as the event's originating table].
@@ -646,11 +637,11 @@ If the `topic.prefix` connector configuration property has the value `PostgreSQL
 [source,json,indent=0]
 ----
   {
-    "schema": { // <1>
+    "schema": {
       "type": "struct",
-      "name": "PostgreSQL_server.public.customers.Key", // <2>
-      "optional": false, // <3>
-      "fields": [ // <4>
+      "name": "PostgreSQL_server.public.customers.Key",
+      "optional": false,
+      "fields": [
             {
                 "name": "id",
                 "index": "0",
@@ -661,48 +652,38 @@ If the `topic.prefix` connector configuration property has the value `PostgreSQL
             }
         ]
     },
-    "payload": { // <5>
+    "payload": {
         "id": "1"
     },
   }
 ----
 
-.Description of change event key
-[cols="1,2,7",options="header"]
-|===
-|Item |Field name |Description
+The following list describes the fields in the preceding change event key example:
 
-|1
-|`schema`
-|The schema portion of the key specifies a Kafka Connect schema that describes what is in the key's `payload` portion.
+`schema`::
+The schema portion of the key specifies a Kafka Connect schema that describes what is in the key's `payload` portion.
 
-|2
-|`PostgreSQL_server.inventory.customers.Key`
-a|Name of the schema that defines the structure of the key's payload.
+`schema.name`::
+Name of the schema that defines the structure of the key's payload.
 This schema describes the structure of the primary key for the table that was changed.
 Key schema names have the format _connector-name_._database-name_._table-name_.`Key`.
 In this example:
-
++
 * `PostgreSQL_server` is the name of the connector that generated this event.
 * `inventory` is the database that contains the table that was changed.
 * `customers` is the table that was updated.
 
-|3
-|`optional`
-|Indicates whether the event key must contain a value in its `payload` field.
+`optional`::
+Indicates whether the event key must contain a value in its `payload` field.
 In this example, a value in the key's payload is required.
 A value in the key's payload field is optional when a table does not have a primary key.
 
-|4
-|`fields`
-|Specifies each field that is expected in the `payload`, including each field's name, index, and schema.
+`fields`::
+Specifies each field that is expected in the `payload`, including each field's name, index, and schema.
 
-|5
-|`payload`
-|Contains the key for the row for which this change event was generated.
+`payload`::
+Contains the key for the row for which this change event was generated.
 In this example, the key, contains a single `id` field whose value is `1`.
-
-|===
 
 [NOTE]
 ====
@@ -782,7 +763,7 @@ The following example shows the value portion of a change event that the connect
 [source,json,options="nowrap",indent=0,subs="+attributes"]
 ----
 {
-    "schema": { // <1>
+    "schema": {
         "type": "struct",
         "fields": [
             {
@@ -810,7 +791,7 @@ The following example shows the value portion of a change event that the connect
                     }
                 ],
                 "optional": true,
-                "name": "PostgreSQL_server.inventory.customers.Value", // <2>
+                "name": "PostgreSQL_server.inventory.customers.Value",
                 "field": "before"
             },
             {
@@ -912,7 +893,7 @@ The following example shows the value portion of a change event that the connect
                     }
                 ],
                 "optional": false,
-                "name": "io.debezium.connector.postgresql.Source", // <3>
+                "name": "io.debezium.connector.postgresql.Source",
                 "field": "source"
             },
             {
@@ -937,17 +918,17 @@ The following example shows the value portion of a change event that the connect
             }
         ],
         "optional": false,
-        "name": "PostgreSQL_server.inventory.customers.Envelope" // <4>
+        "name": "PostgreSQL_server.inventory.customers.Envelope"
     },
-    "payload": { // <5>
-        "before": null, // <6>
-        "after": { // <7>
+    "payload": {
+        "before": null,
+        "after": {
             "id": 1,
             "first_name": "Anne",
             "last_name": "Kretchmar",
             "email": "annek@noanswer.org"
         },
-        "source": { // <8>
+        "source": {
             "version": "{debezium-version}",
             "connector": "postgresql",
             "name": "PostgreSQL_server",
@@ -963,75 +944,63 @@ The following example shows the value portion of a change event that the connect
             "lsn": 24023128,
             "xmin": null
         },
-        "op": "c", // <9>
-        "ts_ms": 1559033904863, // <10>
-        "ts_us": 1559033904863841, // <10>
-        "ts_ns": 1559033904863841257 // <10>
+        "op": "c",
+        "ts_ms": 1559033904863,
+        "ts_us": 1559033904863841,
+        "ts_ns": 1559033904863841257
     }
 }
 ----
 
+The following list describes select fields in the preceding _create_ event value example:
 
-.Descriptions of _create_ event value fields
-[cols="1,2,7",options="header"]
-|===
-|Item |Field name |Description
-
-|1
-|`schema`
-|The value's schema, which describes the structure of the value's payload.
+`schema`::
+The value's schema, which describes the structure of the value's payload.
 A change event's value schema is the same in every change event that the connector generates for a particular table.
 
-|2
-|`name`
-a|In the `schema` section, each `name` field specifies the schema for a field in the value's payload.
-
+`name` (`PostgreSQL_server.inventory.customers.Value`)::
+In the `schema` section, each `name` field specifies the schema for a field in the value's payload.
++
 `PostgreSQL_server.inventory.customers.Value` is the schema for the payload's `before` and `after` fields.
 This schema is specific to the `customers` table.
-
++
 Names of schemas for `before` and `after` fields are of the form `_logicalName_._tableName_.Value`, which ensures that the schema name is unique in the database.
 This means that when using the {link-prefix}:{link-avro-serialization}#avro-serialization[Avro converter], the resulting Avro schema for each table in each logical source has its own evolution and history.
 
-|3
-|`name`
-a|`io.debezium.connector.postgresql.Source` is the schema for the payload's `source` field.
+`name` (`io.debezium.connector.postgresql.Source`)::
+`io.debezium.connector.postgresql.Source` is the schema for the payload's `source` field.
 This schema is specific to the PostgreSQL connector.
 The connector uses it for all events that it generates.
 
-|4
-|`name`
-a|`PostgreSQL_server.inventory.customers.Envelope` is the schema for the overall structure of the payload, where `PostgreSQL_server` is the connector name, `inventory` is the database, and `customers` is the table.
+`name` (`PostgreSQL_server.inventory.customers.Envelope`)::
+`PostgreSQL_server.inventory.customers.Envelope` is the schema for the overall structure of the payload, where `PostgreSQL_server` is the connector name, `inventory` is the database, and `customers` is the table.
 
-|5
-|`payload`
-a|The value's actual data.
+`payload`::
+The value's actual data.
 This is the information that the change event is providing.
-
++
 It may appear that the JSON representations of the events are much larger than the rows they describe.
 This is because the JSON representation must include the schema and the payload portions of the message.
 However, by using the {link-prefix}:{link-avro-serialization}#avro-serialization[Avro converter], you can significantly decrease the size of the messages that the connector streams to Kafka topics.
 
-|6
-|`before`
-a|An optional field that specifies the state of the row before the event occurred.
+`before`::
+An optional field that specifies the state of the row before the event occurred.
 When the `op` field is `c` for create, as it is in this example, the `before` field is `null` since this change event is for new content.
-
++
 [NOTE]
 ====
 Whether or not this field is available is dependent on the xref:postgresql-replica-identity[`REPLICA IDENTITY`] setting for each table.
 ====
 
-|7
-|`after`
-|An optional field that specifies the state of the row after the event occurred.
+`after`::
+An optional field that specifies the state of the row after the event occurred.
 In this example, the `after` field contains the values of the new row's `id`, `first_name`, `last_name`, and `email` columns.
 
-|8
-|`source`
-a|Mandatory field that describes the source metadata for the event.
+`source`::
+Mandatory field that describes the source metadata for the event.
 This field contains information that you can use to compare this event with other events, with regard to the origin of the events, the order in which the events occurred, and whether events were part of the same transaction.
 The source metadata includes:
-
++
 * {prodname} version
 * Connector type and name
 * Database and table that contains the new row
@@ -1044,28 +1013,24 @@ Either value may be `null`.
 * Offset of the operation in the database log
 * Timestamp for when the change was made in the database
 
-|9
-|`op`
-a|Mandatory string that describes the type of operation that caused the connector to generate the event.
+`op`::
+Mandatory string that describes the type of operation that caused the connector to generate the event.
 In this example, `c` indicates that the operation created a row.
 Valid values are:
++
+`c`::: create
+`u`::: update
+`d`::: delete
+`r`::: read (applies to only snapshots)
+`t`::: truncate
+`m`::: message
 
-* `c` = create
-* `u` = update
-* `d` = delete
-* `r` = read (applies to only snapshots)
-* `t` = truncate
-* `m` = message
-
-|10
-|`ts_ms`, `ts_us`, `ts_ns`
-a|Optional field that displays the time at which the connector processed the event.
+`ts_ms`, `ts_us`, `ts_ns`::
+Optional fields that display the time at which the connector processed the event in millisecond, microsecond, and nanosecond formats.
 The time is based on the system clock in the JVM running the Kafka Connect task.
-
++
 In the `source` object, `ts_ms` indicates the time that the change was made in the database.
 By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
-
-|===
 
 
 // Type: reference
@@ -1082,16 +1047,16 @@ Here is an example of a change event value in an event that the connector genera
 {
     "schema": { ... },
     "payload": {
-        "before": { // <1>
+        "before": {
             "id": 1
         },
-        "after": { // <2>
+        "after": {
             "id": 1,
             "first_name": "Anne Marie",
             "last_name": "Kretchmar",
             "email": "annek@noanswer.org"
         },
-        "source": { // <3>
+        "source": {
             "version": "{debezium-version}",
             "connector": "postgresql",
             "name": "PostgreSQL_server",
@@ -1106,37 +1071,31 @@ Here is an example of a change event value in an event that the connector genera
             "lsn": 24023128,
             "xmin": null
         },
-        "op": "u", // <4>
-        "ts_ms": 1465584025523,  // <5>
-        "ts_us": 1465584025523514,  // <5>
-        "ts_ns": 1465584025523514964,  // <5>
+        "op": "u",
+        "ts_ms": 1465584025523,
+        "ts_us": 1465584025523514,
+        "ts_ns": 1465584025523514964,
     }
 }
 ----
 
-.Descriptions of _update_ event value fields
-[cols="1,2,7",options="header"]
-|===
-|Item |Field name |Description
+The following list describes select fields in the preceding _update_ event value example:
 
-|1
-|`before`
-|An optional field that contains values that were in the row before the database commit.
+`before`::
+An optional field that contains values that were in the row before the database commit.
 In this example, only the primary key column, `id`, is present because the table's xref:postgresql-replica-identity[`REPLICA IDENTITY`] setting is, by default, `DEFAULT`.
-
++
 For an _update_ event to contain the previous values of all columns in the row, you would have to change the `customers` table by running `ALTER TABLE customers REPLICA IDENTITY FULL`.
 
-|2
-|`after`
-|An optional field that specifies the state of the row after the event occurred.
+`after`::
+An optional field that specifies the state of the row after the event occurred.
 In this example, the `first_name` value is now `Anne Marie`.
 
-|3
-|`source`
-a|Mandatory field that describes the source metadata for the event.
+`source`::
+Mandatory field that describes the source metadata for the event.
 The `source` field structure has the same fields as in a _create_ event, but some values are different.
 The source metadata includes:
-
++
 * {prodname} version
 * Connector type and name
 * Database and table that contains the new row
@@ -1146,26 +1105,22 @@ The source metadata includes:
 * Offset of the operation in the database log
 * Timestamp for when the change was made in the database
 
-|4
-|`op`
-a|Mandatory string that describes the type of operation.
+`op`::
+Mandatory string that describes the type of operation.
 In an _update_ event value, the `op` field value is `u`, signifying that this row changed because of an update.
 
-|5
-|`ts_ms`, `ts_us`, `ts_ns`
-a|Optional field that displays the time at which the connector processed the event.
-The time is based on the system clock in the JVM running the Kafka Connect task.
-
+`ts_ms`, `ts_us`, `ts_ns`::
+Optional fields that display the time at which the connector processed the event in millisecond, microsecond, and nanosecond formats.
+The time is based on the system clock in the JVM that runs the Kafka Connect task.
++
 In the `source` object, `ts_ms` indicates the time that the change was made in the database.
 By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
 
-|===
-
 [NOTE]
 ====
-Updating the columns for a row's primary/unique key changes the value of the row's key.
+Updates to the columns that represent the primary or unique key for a row changes the value of the row's key.
 When a key changes, {prodname} outputs _three_ events: a `DELETE` event and a xref:postgresql-tombstone-events[tombstone event] with the old key for the row, followed by an event with the new key for the row.
-Details are in the next section.
+For more information, see xref:postgresql-primary-key-updates[Primary key updates].
 ====
 
 
@@ -1197,11 +1152,11 @@ The `payload` portion in a _delete_ event for the sample `customers` table looks
 {
     "schema": { ... },
     "payload": {
-        "before": { // <1>
+        "before": {
             "id": 1
         },
-        "after": null, // <2>
-        "source": { // <3>
+        "after": null,
+        "source": {
             "version": "{debezium-version}",
             "connector": "postgresql",
             "name": "PostgreSQL_server",
@@ -1216,39 +1171,33 @@ The `payload` portion in a _delete_ event for the sample `customers` table looks
             "lsn": 46523128,
             "xmin": null
         },
-        "op": "d", // <4>
-        "ts_ms": 1465581902461, // <5>
-        "ts_us": 1465581902461496, // <5>
-        "ts_ns": 1465581902461496187, // <5>
+        "op": "d",
+        "ts_ms": 1465581902461,
+        "ts_us": 1465581902461496,
+        "ts_ns": 1465581902461496187,
     }
 }
 ----
 
-.Descriptions of _delete_ event value fields
-[cols="1,2,7",options="header"]
-|===
-|Item |Field name |Description
+The following list describes select fields in the preceding _delete_ event value example:
 
-|1
-|`before`
-a|Optional field that specifies the state of the row before the event occurred.
+`before`::
+Optional field that specifies the state of the row before the event occurred.
 In a _delete_ event value, the `before` field contains the values that were in the row before it was deleted with the database commit.
-
++
 In this example, the `before` field contains only the primary key column because the table's xref:postgresql-replica-identity[`REPLICA IDENTITY`] setting is `DEFAULT`.
 
-|2
-|`after`
-|Optional field that specifies the state of the row after the event occurred.
+`after`::
+Optional field that specifies the state of the row after the event occurred.
 In a _delete_ event value, the `after` field is `null`, signifying that the row no longer exists.
 
-|3
-|`source`
-a|Mandatory field that describes the source metadata for the event.
+`source`::
+Mandatory field that describes the source metadata for the event.
 In a _delete_ event value, the `source` field structure is the same as for _create_ and _update_ events for the same table.
 Many `source` field values are also the same.
 In a _delete_ event value, the `ts_ms` and `lsn` field values, as well as other values, might have changed.
 But the `source` field in a _delete_ event value provides the same metadata:
-
++
 * {prodname} version
 * Connector type and name
 * Database and table that contained the deleted row
@@ -1258,20 +1207,16 @@ But the `source` field in a _delete_ event value provides the same metadata:
 * Offset of the operation in the database log
 * Timestamp for when the change was made in the database
 
-|4
-|`op`
-a|Mandatory string that describes the type of operation.
+`op`::
+Mandatory string that describes the type of operation.
 The `op` field value is `d`, signifying that this row was deleted.
 
-|5
-|`ts_ms`, `ts_us`, `ts_ns`
-a|Optional field that displays the time at which the connector processed the event.
-The time is based on the system clock in the JVM running the Kafka Connect task.
-
+`ts_ms`, `ts_us`, `ts_ns`::
+Optional fields that display the time at which the connector processed the event in millisecond, microsecond, and nanosecond formats.
+The time is based on the system clock in the JVM that runs the Kafka Connect task.
++
 In the `source` object, `ts_ms` indicates the time that the change was made in the database.
 By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
-
-|===
 
 A _delete_ change event record provides a consumer with the information it needs to process the removal of this row.
 
@@ -1306,7 +1251,7 @@ The message key is `null` in this case, the message value looks like this:
 {
     "schema": { ... },
     "payload": {
-        "source": { // <1>
+        "source": {
             "version": "{debezium-version}",
             "connector": "postgresql",
             "name": "PostgreSQL_server",
@@ -1321,47 +1266,39 @@ The message key is `null` in this case, the message value looks like this:
             "lsn": 46523128,
             "xmin": null
         },
-        "op": "t", // <2>
-        "ts_ms": 1559033904961, // <3>
-        "ts_us": 1559033904961654, // <3>
-        "ts_ns": 1559033904961654789 // <3>
+        "op": "t",
+        "ts_ms": 1559033904961,
+        "ts_us": 1559033904961654,
+        "ts_ns": 1559033904961654789
     }
 }
 ----
 
-.Descriptions of _truncate_ event value fields
-[cols="1,2,7",options="header"]
-|===
-|Item |Field name |Description
+The following list describes select fields in the preceding _truncate_ event value example:
 
-|1
-|`source`
-a|Mandatory field that describes the source metadata for the event.
-In a _truncate_ event value, the `source` field structure is the same as for _create_, _update_, and _delete_ events for the same table, provides this metadata:
-
+`source`::
+Mandatory field that describes the source metadata for the event.
+In a _truncate_ event value, the `source` field structure is the same as for _create_, _update_, and _delete_ events for the same table, and provides this metadata:
++
 * {prodname} version
 * Connector type and name
 * Database and table that contains the new row
 * Schema name
-* If the event was part of a snapshot (always `false` for _delete_ events)
+* Whether the event was part of a snapshot (always `false` for _delete_ events)
 * ID of the transaction in which the operation was performed
 * Offset of the operation in the database log
 * Timestamp for when the change was made in the database
 
-|2
-|`op`
-a|Mandatory string that describes the type of operation.
+`op`::
+Mandatory string that describes the type of operation.
 The `op` field value is `t`, signifying that this table was truncated.
 
-|3
-|`ts_ms`, `ts_us`, `ts_ns`
-a|Optional field that displays the time at which the connector processed the event.
+`ts_ms`, `ts_us`, `ts_ns`::
+Optional field that displays the time at which the connector processed the event in millisecond, microsecond, and nanosecond formats.
 The time is based on the system clock in the JVM running the Kafka Connect task.
-
++
 In the `source` object, `ts_ms` indicates the time that the change was made in the database.
 By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
-
-|===
 
 If a single `TRUNCATE` operation affects multiple tables, the connector emits one _truncate_ change event record for each truncated table.
 
@@ -1393,7 +1330,7 @@ The message value looks like this for transactional messages:
 {
     "schema": { ... },
     "payload": {
-        "source": { // <1>
+        "source": {
             "version": "{debezium-version}",
             "connector": "postgresql",
             "name": "PostgreSQL_server",
@@ -1408,11 +1345,11 @@ The message value looks like this for transactional messages:
             "lsn": 46523128,
             "xmin": null
         },
-        "op": "m", // <2>
-        "ts_ms": 1559033904961, // <3>
-        "ts_us": 1559033904961621, // <3>
-        "ts_ns": 1559033904961621379, // <3>
-        "message": { // <4>
+        "op": "m",
+        "ts_ms": 1559033904961,
+        "ts_us": 1559033904961621,
+        "ts_ns": 1559033904961621379,
+        "message": {
             "prefix": "foo",
             "content": "Ymfy"
         }
@@ -1428,7 +1365,7 @@ The message value looks like this for non-transactional messages:
 {
     "schema": { ... },
     "payload": {
-        "source": { // <1>
+        "source": {
             "version": "{debezium-version}",
             "connector": "postgresql",
             "name": "PostgreSQL_server",
@@ -1442,27 +1379,23 @@ The message value looks like this for non-transactional messages:
             "lsn": 46523128,
             "xmin": null
         },
-        "op": "m", // <2>
-        "ts_ms": 1559033904961, // <3>
-        "ts_us": 1559033904961741, // <3>
-        "ts_ns": 1559033904961741698, // <3>
-        "message": { // <4>
+        "op": "m",
+        "ts_ms": 1559033904961,
+        "ts_us": 1559033904961741,
+        "ts_ns": 1559033904961741698,
+        "message": {
             "prefix": "foo",
             "content": "Ymfy"
     }
 }
 ----
 
-.Descriptions of _message_ event value fields
-[cols="1,2,7",options="header"]
-|===
-|Item |Field name |Description
+The following list describes select fields in the preceding _message_ event value examples:
 
-|1
-|`source`
-a|Mandatory field that describes the source metadata for the event.
+`source`::
+Mandatory field that describes the source metadata for the event.
 In a _message_ event value, the `source` field structure will not have `table` or `schema` information for any _message_ events and will only have `txId` if the _message_ event is transactional.
-
++
 * {prodname} version
 * Connector type and name
 * Database name
@@ -1472,32 +1405,27 @@ In a _message_ event value, the `source` field structure will not have `table` o
 * ID of the transaction in which the operation was performed (`null` for non-transactional _message_ events)
 * Offset of the operation in the database log
 * Transactional messages: Timestamp for when the message was inserted into the WAL
-* Non-Transactional messages; Timestamp for when the connector encounters the message
+* Non-Transactional messages: Timestamp for when the connector encounters the message
 
-|2
-|`op`
-a|Mandatory string that describes the type of operation.
+`op`::
+Mandatory string that describes the type of operation.
 The `op` field value is `m`, signifying that this is a _message_ event.
 
-|3
-|`ts_ms`, `ts_us`, `ts_ns`
-a|Optional field that displays the time at which the connector processed the event.
+`ts_ms`, `ts_us`, `ts_ns`::
+Optional fields that display the time at which the connector processed the event in millisecond, microsecond, and nanosecond formats.
 The time is based on the system clock in the JVM running the Kafka Connect task.
-
-For transactional _message_ events, the `ts_ms` attribute of the `source` object indicates the time that the change was made in the database for transactional _message_ events.
++
+For transactional _message_ events, the `ts_ms` attribute of the `source` object indicates the time that the change was made in the database.
 By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
-
-For non-transactional _message_ events, the `source` object's `ts_ms` indicates time at which the connector encounters the _message_ event, while the `payload.ts_ms` indicates the time at which the connector processed the event.
++
+For non-transactional _message_ events, the `source` object's `ts_ms` indicates the time at which the connector encounters the _message_ event, while the `payload.ts_ms` indicates the time at which the connector processed the event.
 This difference is due to the fact that the commit timestamp is not present in Postgres's generic logical message format and non-transactional logical messages are not preceded by a `BEGIN` event (which has timestamp information).
 
-|4
-|`message`
-a|Field that contains the message metadata
-
+`message`::
+Field that contains the message metadata.
++
 * Prefix (text)
 * Content (byte array that is encoded based on the xref:postgresql-property-binary-handling-mode[binary handling mode] setting)
-
-|===
 
 // Type: reference
 // ModuleID: how-debezium-postgresql-connectors-map-data-types
@@ -2889,26 +2817,21 @@ For example,
 .`pg_hba.conf` file example:
 [source]
 ----
-local   replication     <youruser>                          trust   // <1>
-host    replication     <youruser>  127.0.0.1/32            trust   // <2>
-host    replication     <youruser>  ::1/128                 trust   // <3>
+local   replication     <youruser>                          trust
+host    replication     <youruser>  127.0.0.1/32            trust
+host    replication     <youruser>  ::1/128                 trust
 ----
 +
-.Descriptions of `pg_hba.conf` settings
-[cols="1,7",options="header",subs="+attributes"]
-|===
-|Item |Description
+The following list describes the purpose of select lines in the preceding `pg_hba.conf` example:
 
-|1
-|Instructs the server to allow replication for `<youruser>` locally, that is, on the server machine.
+`local   replication     <youruser>`::
+Instructs the server to allow replication for `<youruser>` locally, that is, on the server machine.
 
-|2
-|Instructs the server to allow `<youruser>` on `localhost` to receive replication changes using `IPV4`.
+`host    replication     <youruser>  127.0.0.1/32`::
+Instructs the server to allow `<youruser>` on `localhost` to receive replication changes using `IPV4`.
 
-|3
-|Instructs the server to allow `<youruser>` on `localhost` to receive replication changes using `IPV6`.
-
-|===
+`host    replication     <youruser>  ::1/128`::
+Instructs the server to allow `<youruser>` on `localhost` to receive replication changes using `IPV6`.
 +
 [NOTE]
 ====
@@ -3242,10 +3165,10 @@ For example, from a terminal window, enter the following command:
 =====================================================================
 [source,shell,subs="+attributes,+quotes"]
 ----
-cat <<EOF >debezium-container-for-{context}.yaml // <1>
+cat <<EOF >debezium-container-for-{context}.yaml
 FROM {DockerKafkaConnect}
 USER root:root
-RUN mkdir -p /opt/kafka/plugins/debezium // <2>
+RUN mkdir -p /opt/kafka/plugins/debezium
 RUN cd /opt/kafka/plugins/debezium/ \
 && curl -O {red-hat-maven-repository}debezium/debezium-connector-{connector-file}/{debezium-version}-redhat-{debezium-build-number}/debezium-connector-{connector-file}-{debezium-version}-redhat-{debezium-build-number}-plugin.zip \
 && unzip debezium-connector-{connector-file}-{debezium-version}-redhat-{debezium-build-number}-plugin.zip \
@@ -3256,18 +3179,16 @@ EOF
 ----
 =====================================================================
 +
-[cols="1,7",options="header"]
-|===
-|Item |Description
+The following list describes the purpose of select lines in the preceding command:
 
-|1
-|You can specify any file name that you want.
+`debezium-container-for-{context}.yaml`::
+Defines the name for the Dockerfile.
+You can specify any file name that you want.
 
-|2
-|Specifies the path to your Kafka Connect plug-ins directory.
+`/opt/kafka/plugins/debezium`::
+Specifies the path to your Kafka Connect plug-ins directory.
 If your Kafka Connect plug-ins directory is in a different location, replace this path with the actual path of your directory.
 
-|===
 +
 The command creates a Dockerfile with the name `debezium-container-for-postgresql.yaml` in the current directory.
 
@@ -3312,26 +3233,22 @@ kind: KafkaConnect
 metadata:
   name: my-connect-cluster
   annotations:
-    strimzi.io/use-connector-resources: "true" // <1>
+    strimzi.io/use-connector-resources: "true"
 spec:
-  image: debezium-container-for-postgresql // <2>
+  image: debezium-container-for-postgresql
 
   ...
 ----
 =====================================================================
 +
-[cols="1,7",options="header"]
-|===
-|Item |Description
+The following list describes select fields in the preceding `KafkaConnect` custom resource example:
 
-|1
-|`metadata.annotations` indicates to the Cluster Operator that `KafkaConnector` resources are used to configure connectors in this Kafka Connect cluster.
+`metadata.annotations`::
+Indicates to the Cluster Operator that `KafkaConnector` resources are used to configure connectors in this Kafka Connect cluster.
 
-|2
-|`spec.image` specifies the name of the image that you created to run your Debezium connector.
+`spec.image`::
+Specifies the name of the image that you created to run your Debezium connector.
 This property overrides the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable in the Cluster Operator.
-
-|===
 
 .. Apply your `KafkaConnect` CR to the OpenShift Kafka instance by running the following command:
 +
@@ -3358,63 +3275,59 @@ This host has a database named `sampledb`, a schema named `public`, and `invento
 apiVersion: {KafkaConnectorApiVersion}
   kind: KafkaConnector
   metadata:
-    name: inventory-connector-{context}  // <1>
+    name: inventory-connector-{context}
     labels:
       strimzi.io/cluster: my-connect-cluster
   spec:
     class: io.debezium.connector.postgresql.PostgresConnector
-    tasksMax: 1  // <2>
-    config:  // <3>
-      database.hostname: 192.168.99.100   // <4>
+    tasksMax: 1
+    config:
+      database.hostname: 192.168.99.100
       database.port: 5432
       database.user: debezium
       database.password: dbz
       database.dbname: sampledb
-      topic.prefix: inventory-connector-{context}   // <5>
-      schema.include.list: public   // <6>
-      plugin.name: pgoutput    // <7>
+      topic.prefix: inventory-connector-{context}
+      schema.include.list: public
+      plugin.name: pgoutput
 
       ...
 ----
 =====================================================================
 +
 .Descriptions of settings in the PostgreSQL `inventory-connector.yaml` example
-[cols="1,7",options="header",subs="+attributes"]
-|===
-|Item |Description
+// TODO: Review this introductory sentence for accuracy after callout removal (DBZ-9674).
 
-|1
-|The name that is used to register the connector with Kafka Connect.
+`metadata.name`::
+The name that is used to register the connector with Kafka Connect.
 
-|2
-|The maximum number of tasks to create for this connector.
+`spec.tasksMax`::
+The maximum number of tasks to create for this connector.
 Because the PostgreSQL connector uses a single connector task read the PostgreSQL server `binlog`, to ensure proper order and event handling, only one task should operate at a time.
 The Kafka Connect service uses connectors to start one or more tasks to perform the work,
 and it automatically distributes the running tasks across the cluster of Kafka Connect services.
 If any services stop or crash, tasks are redistributed to running services.
 
-|3
-|The connector’s configuration.
+`spec.config`::
+The connector's configuration.
 
-|4
-|The name of the database host that runs the PostgreSQL server.
+`database.hostname`::
+The name of the database host that runs the PostgreSQL server.
 In this example, the database host name is `192.168.99.100`.
 
-|5
-|A unique topic prefix.
+`topic.prefix`::
+A unique topic prefix.
 The topic prefix is the logical identifier for the PostgreSQL server or cluster of servers.
 This string is prefixed to the names of all Kafka topics that receive change event records from the connector.
 
-|6
-|The connector captures changes in only the `public` schema.
+`schema.include.list`::
+The connector captures changes in only the `public` schema.
 It is possible to configure the connector to capture changes in only the tables that you choose.
 For more information, see xref:postgresql-property-table-include-list[`table.include.list`].
 
-|7
-|The name of the PostgreSQL xref:postgresql-output-plugin[logical decoding plug-in] installed on the PostgreSQL server.
+`plugin.name`::
+The name of the PostgreSQL xref:postgresql-output-plugin[logical decoding plug-in] installed on the PostgreSQL server.
 Although the connector only supports use of the `pgoutput` plugin, you must explicitly set `plugin.name` to `pgoutput`.
-
-|===
 
 . Create your connector instance with Kafka Connect. For example, if you saved your `KafkaConnector` resource in the `inventory-connector.yaml` file, you would run the following command:
 +
@@ -3441,29 +3354,49 @@ Optionally, you can ignore, mask, or truncate columns that contain sensitive dat
 [source,json]
 ----
 {
-  "name": "fulfillment-connector",  // <1>
+  "name": "fulfillment-connector",
   "config": {
-    "connector.class": "io.debezium.connector.postgresql.PostgresConnector", // <2>
-    "database.hostname": "192.168.99.100", // <3>
-    "database.port": "5432", // <4>
-    "database.user": "postgres", // <5>
-    "database.password": "postgres", // <6>
-    "database.dbname" : "postgres", // <7>
-    "topic.prefix": "fulfillment", // <8>
-    "table.include.list": "public.inventory" // <9>
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "database.hostname": "192.168.99.100",
+    "database.port": "5432",
+    "database.user": "postgres",
+    "database.password": "postgres",
+    "database.dbname" : "postgres",
+    "topic.prefix": "fulfillment",
+    "table.include.list": "public.inventory"
 
   }
 }
 ----
-<1> The name of the connector when registered with a Kafka Connect service.
-<2> The name of this PostgreSQL connector class.
-<3> The address of the PostgreSQL server.
-<4> The port number of the PostgreSQL server.
-<5> The name of the PostgreSQL user that has the xref:postgresql-permissions[required privileges].
-<6> The password for the PostgreSQL user that has the xref:postgresql-permissions[required privileges].
-<7> The name of the PostgreSQL database to connect to
-<8> The topic prefix for the PostgreSQL server/cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the Avro converter is used.
-<9> A list of all tables hosted by this server that this connector will monitor.
+
+The following list describes select fields in the preceding connector configuration example:
+
+`name`::
+The name of the connector when registered with a Kafka Connect service.
+
+`connector.class`::
+The name of this PostgreSQL connector class.
+
+`database.hostname`::
+The address of the PostgreSQL server.
+
+`database.port`::
+The port number of the PostgreSQL server.
+
+`database.user`::
+The name of the PostgreSQL user that has the xref:postgresql-permissions[required privileges].
+
+`database.password`::
+The password for the PostgreSQL user that has the xref:postgresql-permissions[required privileges].
+
+`database.dbname`::
+The name of the PostgreSQL database to connect to.
+
+`topic.prefix`::
+The topic prefix for the PostgreSQL server/cluster, which forms a namespace and is used in all the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the Avro converter is used.
+
+`table.include.list`::
+A list of all tables hosted by this server that this connector will monitor.
 This is optional, and there are other properties for listing the schemas and tables to include or exclude from monitoring.
 
 See the xref:postgresql-connector-properties[complete list of PostgreSQL connector properties] that can be specified in these configurations.
