@@ -5,6 +5,10 @@ inputs:
   maven-cache-key:
     description: "The maven build cache key"
     required: true
+  maven-cache-save:
+    description: "Whether to save the Maven cache after the job completes"
+    required: false
+    default: 'true'
   only-build:
     description: "Only build without tests, checkstyle, and format"
     required: false
@@ -22,6 +26,7 @@ runs:
     - uses: ./.github/actions/maven-cache
       with:
         key: ${{ inputs.maven-cache-key }}
+        save: ${{ inputs.maven-cache-save }}
 
     - name: Build Schema Generator
       shell: ${{ inputs.shell }}
