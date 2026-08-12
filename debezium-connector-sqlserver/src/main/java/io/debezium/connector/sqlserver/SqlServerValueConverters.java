@@ -101,45 +101,34 @@ public class SqlServerValueConverters extends JdbcValueConverters {
 
     @Override
     public SchemaBuilder schemaBuilder(Column column) {
-        switch (column.jdbcType()) {
-            // Numeric integers
-            case Types.TINYINT:
+        return switch (column.jdbcType()) {
+            case Types.TINYINT ->
                 // values are an 8-bit unsigned integer value between 0 and 255, we thus need to store it in short int
-                return SchemaBuilder.int16();
-
-            // Floating point
-            case microsoft.sql.Types.SMALLMONEY:
-            case microsoft.sql.Types.MONEY:
-                return SpecialValueDecimal.builder(decimalMode, column.length(), column.scale().get());
-            case microsoft.sql.Types.DATETIMEOFFSET:
+                SchemaBuilder.int16();
+            case microsoft.sql.Types.SMALLMONEY, microsoft.sql.Types.MONEY ->
+                SpecialValueDecimal.builder(decimalMode, column.length(), column.scale().get());
+            case microsoft.sql.Types.DATETIMEOFFSET -> {
                 if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
-                    return StructuredZonedTimestamp.builder();
+                    yield StructuredZonedTimestamp.builder();
                 }
-                return ZonedTimestamp.builder();
-            default:
-                return super.schemaBuilder(column);
-        }
+                yield ZonedTimestamp.builder();
+            }
+            default -> super.schemaBuilder(column);
+        };
     }
 
     @Override
     public ValueConverter converter(Column column, Field fieldDefn) {
-        switch (column.jdbcType()) {
-            // Numeric integers
-            case Types.TINYINT:
+        return switch (column.jdbcType()) {
+            case Types.TINYINT ->
                 // values are an 8-bit unsigned integer value between 0 and 255, we thus need to store it in short int
-                return (data) -> convertSmallInt(column, fieldDefn, data);
-
-            // Floating point
-            case microsoft.sql.Types.SMALLMONEY:
-            case microsoft.sql.Types.MONEY:
-                return (data) -> convertDecimal(column, fieldDefn, data);
-            case microsoft.sql.Types.DATETIMEOFFSET:
-                return (data) -> convertTimestampWithZone(column, fieldDefn, data);
-
-            // TODO Geometry and geography supported since 6.5.0
-            default:
-                return super.converter(column, fieldDefn);
-        }
+                (data) -> convertSmallInt(column, fieldDefn, data);
+            case microsoft.sql.Types.SMALLMONEY, microsoft.sql.Types.MONEY ->
+                (data) -> convertDecimal(column, fieldDefn, data);
+            case microsoft.sql.Types.DATETIMEOFFSET ->
+                (data) -> convertTimestampWithZone(column, fieldDefn, data);
+            default -> super.converter(column, fieldDefn);
+        };
     }
 
     /**
@@ -167,10 +156,9 @@ public class SqlServerValueConverters extends JdbcValueConverters {
     }
 
     protected Object convertTimestampWithZone(Column column, Field fieldDefn, Object data) {
-        if (!(data instanceof DateTimeOffset)) {
+        if (!(data instanceof DateTimeOffset dto)) {
             return super.convertTimestampWithZone(column, fieldDefn, data);
         }
-        final DateTimeOffset dto = (DateTimeOffset) data;
 
         // Timestamp is provided in UTC time
         final Timestamp utc = dto.getTimestamp();

@@ -221,209 +221,155 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
     @Override
     public SchemaBuilder schemaBuilder(Column column) {
-        int oidValue = column.nativeType();
-        switch (oidValue) {
-            case PgOid.BIT:
-            case PgOid.BIT_ARRAY:
-            case PgOid.VARBIT:
-                return column.length() > 1 ? Bits.builder(column.length()) : SchemaBuilder.bool();
-            case PgOid.INTERVAL:
+        final int oidValue = column.nativeType();
+        return switch (oidValue) {
+            case PgOid.BIT, PgOid.BIT_ARRAY, PgOid.VARBIT -> column.length() > 1 ? Bits.builder(column.length()) : SchemaBuilder.bool();
+            case PgOid.INTERVAL -> {
                 if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
-                    return StructuredDuration.builder();
+                    yield StructuredDuration.builder();
                 }
-                return intervalMode == IntervalHandlingMode.STRING ? Interval.builder() : MicroDuration.builder();
-            case PgOid.TIMESTAMPTZ:
+                yield intervalMode == IntervalHandlingMode.STRING ? Interval.builder() : MicroDuration.builder();
+            }
+            case PgOid.TIMESTAMPTZ -> {
                 // JDBC reports this as "timestamp" even though it's with tz, so we can't use the base class...
                 if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
-                    return StructuredZonedTimestamp.builder();
+                    yield StructuredZonedTimestamp.builder();
                 }
-                return ZonedTimestamp.builder();
-            case PgOid.TIMETZ:
+                yield ZonedTimestamp.builder();
+            }
+            case PgOid.TIMETZ -> {
                 // JDBC reports this as "time" but this contains TZ information
                 if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
-                    return StructuredZonedTime.builder();
+                    yield StructuredZonedTime.builder();
                 }
-                return ZonedTime.builder();
-            case PgOid.OID:
-                return SchemaBuilder.int64();
-            case PgOid.JSONB_OID:
-            case PgOid.JSON:
-                return Json.builder();
-            case PgOid.TSRANGE_OID:
-            case PgOid.TSTZRANGE_OID:
-            case PgOid.DATERANGE_OID:
-            case PgOid.INET_OID:
-            case PgOid.CIDR_OID:
-            case PgOid.MACADDR_OID:
-            case PgOid.MACADDR8_OID:
-            case PgOid.INT4RANGE_OID:
-            case PgOid.NUM_RANGE_OID:
-            case PgOid.INT8RANGE_OID:
-            case PgOid.BPCHAR:
-                return SchemaBuilder.string();
-            case PgOid.UUID:
-                return Uuid.builder();
-            case PgOid.POINT:
-                return Point.builder();
-            case PgOid.BOX:
-            case PgOid.LSEG:
-            case PgOid.PATH:
-            case PgOid.POLYGON:
-                return Geometry.builder();
-            case PgOid.CIRCLE:
-                return Circle.builder();
-            case PgOid.LINE:
-                return Line.builder();
-            case PgOid.MONEY:
-                return moneySchema();
-            case PgOid.NUMERIC:
-                return numericSchema(column);
-            case PgOid.BYTEA:
-                return binaryMode.getSchema();
-            case PgOid.TSVECTOR_OID:
-                return TsVector.builder();
-            case PgOid.INT2_ARRAY:
-                return SchemaBuilder.array(SchemaBuilder.OPTIONAL_INT16_SCHEMA);
-            case PgOid.INT4_ARRAY:
-                return SchemaBuilder.array(SchemaBuilder.OPTIONAL_INT32_SCHEMA);
-            case PgOid.INT8_ARRAY:
-            case PgOid.OID_ARRAY:
-                return SchemaBuilder.array(SchemaBuilder.OPTIONAL_INT64_SCHEMA);
-            case PgOid.CHAR_ARRAY:
-            case PgOid.VARCHAR_ARRAY:
-            case PgOid.TEXT_ARRAY:
-            case PgOid.BPCHAR_ARRAY:
-            case PgOid.INET_ARRAY:
-            case PgOid.CIDR_ARRAY:
-            case PgOid.MACADDR_ARRAY:
-            case PgOid.MACADDR8_ARRAY:
-            case PgOid.TSRANGE_ARRAY:
-            case PgOid.TSTZRANGE_ARRAY:
-            case PgOid.DATERANGE_ARRAY:
-            case PgOid.INT4RANGE_ARRAY:
-            case PgOid.NUM_RANGE_ARRAY:
-            case PgOid.INT8RANGE_ARRAY:
-                return SchemaBuilder.array(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
-            case PgOid.NUMERIC_ARRAY:
-                return SchemaBuilder.array(numericSchema(column).optional().build());
-            case PgOid.FLOAT4_ARRAY:
-                return SchemaBuilder.array(Schema.OPTIONAL_FLOAT32_SCHEMA);
-            case PgOid.FLOAT8_ARRAY:
-                return SchemaBuilder.array(Schema.OPTIONAL_FLOAT64_SCHEMA);
-            case PgOid.BOOL_ARRAY:
-                return SchemaBuilder.array(SchemaBuilder.OPTIONAL_BOOLEAN_SCHEMA);
-            case PgOid.DATE_ARRAY:
-                return SchemaBuilder.array(temporalPrecisionMode.getDateBuilder().optional().build());
-            case PgOid.UUID_ARRAY:
-                return SchemaBuilder.array(Uuid.builder().optional().build());
-            case PgOid.JSONB_ARRAY:
-            case PgOid.JSON_ARRAY:
-                return SchemaBuilder.array(Json.builder().optional().build());
-            case PgOid.TIME_ARRAY:
-                return SchemaBuilder.array(temporalPrecisionMode.getTimeBuilder(getTimePrecision(column)).optional().build());
-            case PgOid.TIMETZ_ARRAY:
+                yield ZonedTime.builder();
+            }
+            case PgOid.OID -> SchemaBuilder.int64();
+            case PgOid.JSONB_OID, PgOid.JSON -> Json.builder();
+            case PgOid.TSRANGE_OID, PgOid.TSTZRANGE_OID, PgOid.DATERANGE_OID, PgOid.INET_OID, PgOid.CIDR_OID, PgOid.MACADDR_OID, PgOid.MACADDR8_OID, PgOid.INT4RANGE_OID,
+                    PgOid.NUM_RANGE_OID, PgOid.INT8RANGE_OID, PgOid.BPCHAR ->
+                SchemaBuilder.string();
+            case PgOid.UUID -> Uuid.builder();
+            case PgOid.POINT -> Point.builder();
+            case PgOid.BOX, PgOid.LSEG, PgOid.PATH, PgOid.POLYGON -> Geometry.builder();
+            case PgOid.CIRCLE -> Circle.builder();
+            case PgOid.LINE -> Line.builder();
+            case PgOid.MONEY -> moneySchema();
+            case PgOid.NUMERIC -> numericSchema(column);
+            case PgOid.BYTEA -> binaryMode.getSchema();
+            case PgOid.TSVECTOR_OID -> TsVector.builder();
+            case PgOid.INT2_ARRAY -> SchemaBuilder.array(SchemaBuilder.OPTIONAL_INT16_SCHEMA);
+            case PgOid.INT4_ARRAY -> SchemaBuilder.array(SchemaBuilder.OPTIONAL_INT32_SCHEMA);
+            case PgOid.INT8_ARRAY, PgOid.OID_ARRAY -> SchemaBuilder.array(SchemaBuilder.OPTIONAL_INT64_SCHEMA);
+            case PgOid.CHAR_ARRAY, PgOid.VARCHAR_ARRAY, PgOid.TEXT_ARRAY, PgOid.BPCHAR_ARRAY, PgOid.INET_ARRAY, PgOid.CIDR_ARRAY, PgOid.MACADDR_ARRAY,
+                    PgOid.MACADDR8_ARRAY, PgOid.TSRANGE_ARRAY, PgOid.TSTZRANGE_ARRAY, PgOid.DATERANGE_ARRAY, PgOid.INT4RANGE_ARRAY, PgOid.NUM_RANGE_ARRAY,
+                    PgOid.INT8RANGE_ARRAY ->
+                SchemaBuilder.array(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+            case PgOid.NUMERIC_ARRAY -> SchemaBuilder.array(numericSchema(column).optional().build());
+            case PgOid.FLOAT4_ARRAY -> SchemaBuilder.array(Schema.OPTIONAL_FLOAT32_SCHEMA);
+            case PgOid.FLOAT8_ARRAY -> SchemaBuilder.array(Schema.OPTIONAL_FLOAT64_SCHEMA);
+            case PgOid.BOOL_ARRAY -> SchemaBuilder.array(SchemaBuilder.OPTIONAL_BOOLEAN_SCHEMA);
+            case PgOid.DATE_ARRAY -> SchemaBuilder.array(temporalPrecisionMode.getDateBuilder().optional().build());
+            case PgOid.UUID_ARRAY -> SchemaBuilder.array(Uuid.builder().optional().build());
+            case PgOid.JSONB_ARRAY, PgOid.JSON_ARRAY -> SchemaBuilder.array(Json.builder().optional().build());
+            case PgOid.TIME_ARRAY -> SchemaBuilder.array(temporalPrecisionMode.getTimeBuilder(getTimePrecision(column)).optional().build());
+            case PgOid.TIMETZ_ARRAY -> {
                 if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
-                    return SchemaBuilder.array(StructuredZonedTime.builder().optional().build());
+                    yield SchemaBuilder.array(StructuredZonedTime.builder().optional().build());
                 }
-                return SchemaBuilder.array(ZonedTime.builder().optional().build());
-            case PgOid.TIMESTAMP_ARRAY:
-                return SchemaBuilder.array(temporalPrecisionMode.getTimestampBuilder(getTimePrecision(column)).optional().build());
-            case PgOid.TIMESTAMPTZ_ARRAY:
+                yield SchemaBuilder.array(ZonedTime.builder().optional().build());
+            }
+            case PgOid.TIMESTAMP_ARRAY -> SchemaBuilder.array(temporalPrecisionMode.getTimestampBuilder(getTimePrecision(column)).optional().build());
+            case PgOid.TIMESTAMPTZ_ARRAY -> {
                 if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
-                    return SchemaBuilder.array(StructuredZonedTimestamp.builder().optional().build());
+                    yield SchemaBuilder.array(StructuredZonedTimestamp.builder().optional().build());
                 }
-                return SchemaBuilder.array(ZonedTimestamp.builder().optional().build());
-            case PgOid.BYTEA_ARRAY:
-                return SchemaBuilder.array(binaryMode.getSchema().optional().build());
-            case PgOid.MONEY_ARRAY:
-            case PgOid.NAME_ARRAY:
-            case PgOid.INTERVAL_ARRAY:
-            case PgOid.VARBIT_ARRAY:
-            case PgOid.XML_ARRAY:
-            case PgOid.POINT_ARRAY:
-            case PgOid.REF_CURSOR_ARRAY:
+                yield SchemaBuilder.array(ZonedTimestamp.builder().optional().build());
+            }
+            case PgOid.BYTEA_ARRAY -> SchemaBuilder.array(binaryMode.getSchema().optional().build());
+            case PgOid.MONEY_ARRAY, PgOid.NAME_ARRAY, PgOid.INTERVAL_ARRAY, PgOid.VARBIT_ARRAY, PgOid.XML_ARRAY, PgOid.POINT_ARRAY, PgOid.REF_CURSOR_ARRAY -> {
                 // These array types still need to be implemented. The superclass won't handle them so
                 // we return null here until we can code schema implementations for them.
-                return null;
+                yield null;
+            }
 
-            default:
+            default -> {
                 if (oidValue == typeRegistry.geometryOid()) {
-                    return Geometry.builder();
+                    yield Geometry.builder();
                 }
                 else if (oidValue == typeRegistry.geographyOid()) {
-                    return Geography.builder();
+                    yield Geography.builder();
                 }
                 else if (oidValue == typeRegistry.citextOid()) {
-                    return SchemaBuilder.string();
+                    yield SchemaBuilder.string();
                 }
                 else if (oidValue == typeRegistry.geometryArrayOid()) {
-                    return SchemaBuilder.array(Geometry.builder().optional().build());
+                    yield SchemaBuilder.array(Geometry.builder().optional().build());
                 }
                 else if (oidValue == typeRegistry.hstoreOid()) {
-                    return hstoreSchema();
+                    yield hstoreSchema();
                 }
                 else if (oidValue == typeRegistry.ltreeOid()) {
-                    return Ltree.builder();
+                    yield Ltree.builder();
                 }
                 else if (oidValue == typeRegistry.vectorOid()) {
-                    return DoubleVector.builder();
+                    yield DoubleVector.builder();
                 }
                 else if (oidValue == typeRegistry.halfVectorOid()) {
-                    return FloatVector.builder();
+                    yield FloatVector.builder();
                 }
                 else if (oidValue == typeRegistry.sparseVectorOid()) {
-                    return SparseDoubleVector.builder();
+                    yield SparseDoubleVector.builder();
                 }
                 else if (oidValue == typeRegistry.hstoreArrayOid()) {
-                    return SchemaBuilder.array(hstoreSchema().optional().build());
+                    yield SchemaBuilder.array(hstoreSchema().optional().build());
                 }
                 else if (oidValue == typeRegistry.geographyArrayOid()) {
-                    return SchemaBuilder.array(Geography.builder().optional().build());
+                    yield SchemaBuilder.array(Geography.builder().optional().build());
                 }
                 else if (oidValue == typeRegistry.citextArrayOid()) {
-                    return SchemaBuilder.array(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
+                    yield SchemaBuilder.array(SchemaBuilder.OPTIONAL_STRING_SCHEMA);
                 }
                 else if (oidValue == typeRegistry.ltreeArrayOid()) {
-                    return SchemaBuilder.array(Ltree.builder().optional().build());
+                    yield SchemaBuilder.array(Ltree.builder().optional().build());
                 }
                 else if (oidValue == typeRegistry.isbn()) {
-                    return SchemaBuilder.string();
+                    yield SchemaBuilder.string();
                 }
 
                 final PostgresType resolvedType = typeRegistry.get(oidValue);
                 if (resolvedType.isEnumType()) {
-                    return io.debezium.data.Enum.builder(Strings.join(",", resolvedType.getEnumValues()));
+                    yield io.debezium.data.Enum.builder(Strings.join(",", resolvedType.getEnumValues()));
                 }
                 else if (resolvedType.isArrayType()) {
                     if (resolvedType.getElementType().isEnumType()) {
-                        Set<String> enumValues = resolvedType.getElementType().getEnumValues();
-                        return SchemaBuilder.array(io.debezium.data.Enum.builder(Strings.join(",", enumValues)));
+                        final Set<String> enumValues = resolvedType.getElementType().getEnumValues();
+                        yield SchemaBuilder.array(io.debezium.data.Enum.builder(Strings.join(",", enumValues)));
                     }
                     else {
                         // unfortunately, this does not work for array columns of domain types; the element type will have a
                         // non-matching JDBC id, resulting in no schema builder to be returned for those; the only way to export
                         // them right now is via 'includeUnknownDatatypes'
                         final SchemaBuilder jdbcSchemaBuilder = arrayElementSchema(column);
-
                         if (jdbcSchemaBuilder != null) {
-                            return SchemaBuilder.array(jdbcSchemaBuilder);
+                            yield SchemaBuilder.array(jdbcSchemaBuilder);
                         }
                         else {
-                            return includeUnknownDatatypes ? SchemaBuilder.array(binaryMode.getSchema()) : null;
+                            yield includeUnknownDatatypes ? SchemaBuilder.array(binaryMode.getSchema()) : null;
                         }
                     }
                 }
                 else {
-                    SchemaBuilder jdbcSchemaBuilder = super.schemaBuilder(column);
-
+                    final SchemaBuilder jdbcSchemaBuilder = super.schemaBuilder(column);
                     if (jdbcSchemaBuilder != null) {
-                        return jdbcSchemaBuilder;
+                        yield jdbcSchemaBuilder;
                     }
                     else {
-                        return includeUnknownDatatypes ? binaryMode.getSchema() : null;
+                        yield includeUnknownDatatypes ? binaryMode.getSchema() : null;
                     }
                 }
-        }
+            }
+        };
     }
 
     private SchemaBuilder numericSchema(Column column) {
@@ -478,159 +424,97 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
     @Override
     public ValueConverter converter(Column column, Field fieldDefn) {
-        int oidValue = column.nativeType();
-        switch (oidValue) {
-            case PgOid.BIT:
-            case PgOid.VARBIT:
-                return convertBits(column, fieldDefn);
-            case PgOid.INTERVAL:
-                return data -> convertInterval(column, fieldDefn, data);
-            case PgOid.TIME:
-                return data -> convertTime(column, fieldDefn, data);
-            case PgOid.TIMESTAMP:
-                return ((ValueConverter) (data -> convertTimestampToLocalDateTime(column, fieldDefn, data))).and(super.converter(column, fieldDefn));
-            case PgOid.TIMESTAMPTZ:
-                return data -> convertTimestampWithZone(column, fieldDefn, data);
-            case PgOid.TIMETZ:
-                return data -> convertTimeWithZone(column, fieldDefn, data);
-            case PgOid.OID:
-                return data -> convertBigInt(column, fieldDefn, data);
-            case PgOid.JSONB_OID:
-            case PgOid.UUID:
-            case PgOid.TSRANGE_OID:
-            case PgOid.TSTZRANGE_OID:
-            case PgOid.DATERANGE_OID:
-            case PgOid.JSON:
-            case PgOid.INET_OID:
-            case PgOid.CIDR_OID:
-            case PgOid.MACADDR_OID:
-            case PgOid.MACADDR8_OID:
-            case PgOid.INT4RANGE_OID:
-            case PgOid.NUM_RANGE_OID:
-            case PgOid.INT8RANGE_OID:
-            case PgOid.TSVECTOR_OID:
-            case PgOid.BPCHAR:
-                return data -> convertString(column, fieldDefn, data);
-            case PgOid.POINT:
-                return data -> convertPoint(column, fieldDefn, data);
-            case PgOid.BOX:
-                return data -> convertBox(column, fieldDefn, data);
-            case PgOid.LSEG:
-                return data -> convertLseg(column, fieldDefn, data);
-            case PgOid.PATH:
-                return data -> convertPath(column, fieldDefn, data);
-            case PgOid.POLYGON:
-                return data -> convertPolygon(column, fieldDefn, data);
-            case PgOid.CIRCLE:
-                return data -> convertCircle(column, fieldDefn, data);
-            case PgOid.LINE:
-                return data -> convertLine(column, fieldDefn, data);
-            case PgOid.MONEY:
-                return data -> convertMoney(column, fieldDefn, data, decimalMode);
-            case PgOid.NUMERIC:
-                return (data) -> convertDecimal(column, fieldDefn, data, decimalMode);
-            case PgOid.BYTEA:
-                return data -> convertBinary(column, fieldDefn, data, binaryMode);
-            case PgOid.INT2_ARRAY:
-            case PgOid.INT4_ARRAY:
-            case PgOid.INT8_ARRAY:
-            case PgOid.CHAR_ARRAY:
-            case PgOid.VARCHAR_ARRAY:
-            case PgOid.TEXT_ARRAY:
-            case PgOid.BPCHAR_ARRAY:
-            case PgOid.NUMERIC_ARRAY:
-            case PgOid.FLOAT4_ARRAY:
-            case PgOid.FLOAT8_ARRAY:
-            case PgOid.BOOL_ARRAY:
-            case PgOid.DATE_ARRAY:
-            case PgOid.INET_ARRAY:
-            case PgOid.CIDR_ARRAY:
-            case PgOid.MACADDR_ARRAY:
-            case PgOid.MACADDR8_ARRAY:
-            case PgOid.TSRANGE_ARRAY:
-            case PgOid.TSTZRANGE_ARRAY:
-            case PgOid.DATERANGE_ARRAY:
-            case PgOid.INT4RANGE_ARRAY:
-            case PgOid.NUM_RANGE_ARRAY:
-            case PgOid.INT8RANGE_ARRAY:
-            case PgOid.UUID_ARRAY:
-            case PgOid.JSONB_ARRAY:
-            case PgOid.JSON_ARRAY:
-            case PgOid.TIME_ARRAY:
-            case PgOid.TIMETZ_ARRAY:
-            case PgOid.TIMESTAMP_ARRAY:
-            case PgOid.TIMESTAMPTZ_ARRAY:
-            case PgOid.OID_ARRAY:
-            case PgOid.BYTEA_ARRAY:
-                return createArrayConverter(column, fieldDefn);
+        final int oidValue = column.nativeType();
+        return switch (oidValue) {
+            case PgOid.BIT, PgOid.VARBIT -> convertBits(column, fieldDefn);
+            case PgOid.INTERVAL -> data -> convertInterval(column, fieldDefn, data);
+            case PgOid.TIME -> data -> convertTime(column, fieldDefn, data);
+            case PgOid.TIMESTAMP -> ((ValueConverter) (data -> convertTimestampToLocalDateTime(column, fieldDefn, data))).and(super.converter(column, fieldDefn));
+            case PgOid.TIMESTAMPTZ -> data -> convertTimestampWithZone(column, fieldDefn, data);
+            case PgOid.TIMETZ -> data -> convertTimeWithZone(column, fieldDefn, data);
+            case PgOid.OID -> data -> convertBigInt(column, fieldDefn, data);
+            case PgOid.JSONB_OID, PgOid.UUID, PgOid.TSRANGE_OID, PgOid.TSTZRANGE_OID, PgOid.DATERANGE_OID, PgOid.JSON, PgOid.INET_OID, PgOid.CIDR_OID, PgOid.MACADDR_OID,
+                    PgOid.MACADDR8_OID, PgOid.INT4RANGE_OID, PgOid.NUM_RANGE_OID, PgOid.INT8RANGE_OID, PgOid.TSVECTOR_OID, PgOid.BPCHAR ->
+                data -> convertString(column, fieldDefn, data);
+            case PgOid.POINT -> data -> convertPoint(column, fieldDefn, data);
+            case PgOid.BOX -> data -> convertBox(column, fieldDefn, data);
+            case PgOid.LSEG -> data -> convertLseg(column, fieldDefn, data);
+            case PgOid.PATH -> data -> convertPath(column, fieldDefn, data);
+            case PgOid.POLYGON -> data -> convertPolygon(column, fieldDefn, data);
+            case PgOid.CIRCLE -> data -> convertCircle(column, fieldDefn, data);
+            case PgOid.LINE -> data -> convertLine(column, fieldDefn, data);
+            case PgOid.MONEY -> data -> convertMoney(column, fieldDefn, data, decimalMode);
+            case PgOid.NUMERIC -> (data) -> convertDecimal(column, fieldDefn, data, decimalMode);
+            case PgOid.BYTEA -> data -> convertBinary(column, fieldDefn, data, binaryMode);
+            case PgOid.INT2_ARRAY, PgOid.INT4_ARRAY, PgOid.INT8_ARRAY, PgOid.CHAR_ARRAY, PgOid.VARCHAR_ARRAY, PgOid.TEXT_ARRAY, PgOid.BPCHAR_ARRAY, PgOid.NUMERIC_ARRAY,
+                    PgOid.FLOAT4_ARRAY, PgOid.FLOAT8_ARRAY, PgOid.BOOL_ARRAY, PgOid.DATE_ARRAY, PgOid.INET_ARRAY, PgOid.CIDR_ARRAY, PgOid.MACADDR_ARRAY,
+                    PgOid.MACADDR8_ARRAY, PgOid.TSRANGE_ARRAY, PgOid.TSTZRANGE_ARRAY, PgOid.DATERANGE_ARRAY, PgOid.INT4RANGE_ARRAY, PgOid.NUM_RANGE_ARRAY,
+                    PgOid.INT8RANGE_ARRAY, PgOid.UUID_ARRAY, PgOid.JSONB_ARRAY, PgOid.JSON_ARRAY, PgOid.TIME_ARRAY, PgOid.TIMETZ_ARRAY, PgOid.TIMESTAMP_ARRAY,
+                    PgOid.TIMESTAMPTZ_ARRAY, PgOid.OID_ARRAY, PgOid.BYTEA_ARRAY ->
+                createArrayConverter(column, fieldDefn);
 
             // TODO DBZ-459 implement support for these array types; for now we just fall back to the default, i.e.
             // having no converter, so to be consistent with the schema definitions above
-            case PgOid.MONEY_ARRAY:
-            case PgOid.NAME_ARRAY:
-            case PgOid.INTERVAL_ARRAY:
-            case PgOid.VARBIT_ARRAY:
-            case PgOid.XML_ARRAY:
-            case PgOid.POINT_ARRAY:
-            case PgOid.REF_CURSOR_ARRAY:
-                return super.converter(column, fieldDefn);
+            case PgOid.MONEY_ARRAY, PgOid.NAME_ARRAY, PgOid.INTERVAL_ARRAY, PgOid.VARBIT_ARRAY, PgOid.XML_ARRAY, PgOid.POINT_ARRAY, PgOid.REF_CURSOR_ARRAY ->
+                super.converter(column, fieldDefn);
 
-            default:
+            default -> {
                 if (oidValue == typeRegistry.geometryOid()) {
-                    return data -> convertGeometry(column, fieldDefn, data);
+                    yield data -> convertGeometry(column, fieldDefn, data);
                 }
                 else if (oidValue == typeRegistry.geographyOid()) {
-                    return data -> convertGeography(column, fieldDefn, data);
+                    yield data -> convertGeography(column, fieldDefn, data);
                 }
                 else if (oidValue == typeRegistry.citextOid()) {
-                    return data -> convertCitext(column, fieldDefn, data);
+                    yield data -> convertCitext(column, fieldDefn, data);
                 }
                 else if (oidValue == typeRegistry.hstoreOid()) {
-                    return data -> convertHStore(column, fieldDefn, data, hStoreMode);
+                    yield data -> convertHStore(column, fieldDefn, data, hStoreMode);
                 }
                 else if (oidValue == typeRegistry.ltreeOid()) {
-                    return data -> convertLtree(column, fieldDefn, data);
+                    yield data -> convertLtree(column, fieldDefn, data);
                 }
                 else if (oidValue == typeRegistry.vectorOid()) {
-                    return data -> convertPgVector(column, fieldDefn, data);
+                    yield data -> convertPgVector(column, fieldDefn, data);
                 }
                 else if (oidValue == typeRegistry.halfVectorOid()) {
-                    return data -> convertPgHalfVector(column, fieldDefn, data);
+                    yield data -> convertPgHalfVector(column, fieldDefn, data);
                 }
                 else if (oidValue == typeRegistry.sparseVectorOid()) {
-                    return data -> convertPgSparseVector(column, fieldDefn, data);
+                    yield data -> convertPgSparseVector(column, fieldDefn, data);
                 }
                 else if (oidValue == typeRegistry.ltreeArrayOid()) {
-                    return data -> convertLtreeArray(column, fieldDefn, data);
+                    yield data -> convertLtreeArray(column, fieldDefn, data);
                 }
                 else if (oidValue == typeRegistry.geometryArrayOid() ||
                         oidValue == typeRegistry.geographyArrayOid() ||
                         oidValue == typeRegistry.citextArrayOid() ||
                         oidValue == typeRegistry.hstoreArrayOid()) {
-                    return createArrayConverter(column, fieldDefn);
+                    yield createArrayConverter(column, fieldDefn);
                 }
                 else if (oidValue == typeRegistry.isbnOid()) {
-                    return data -> convertIsbn(column, fieldDefn, data);
+                    yield data -> convertIsbn(column, fieldDefn, data);
                 }
 
                 final PostgresType resolvedType = typeRegistry.get(oidValue);
                 if (resolvedType.isArrayType()) {
-                    return createArrayConverter(column, fieldDefn);
+                    yield createArrayConverter(column, fieldDefn);
                 }
 
                 // Enum types don't have a JDBC converter, but we need to return a converter that passes through the string value
                 if (resolvedType.isEnumType()) {
-                    return data -> convertString(column, fieldDefn, data);
+                    yield data -> convertString(column, fieldDefn, data);
                 }
 
                 final ValueConverter jdbcConverter = super.converter(column, fieldDefn);
                 if (jdbcConverter == null) {
-                    return includeUnknownDatatypes ? data -> convertBinary(column, fieldDefn, data, binaryMode) : null;
+                    yield includeUnknownDatatypes ? data -> convertBinary(column, fieldDefn, data, binaryMode) : null;
                 }
                 else {
-                    return jdbcConverter;
+                    yield jdbcConverter;
                 }
-        }
+            }
+        };
     }
 
     private ValueConverter createArrayConverter(Column column, Field fieldDefn) {
@@ -664,19 +548,19 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
     @Override
     protected Object convertTime(Column column, Field fieldDefn, Object data) {
-        if (data instanceof String) {
-            data = Strings.asDuration((String) data);
+        if (data instanceof String stringData) {
+            data = Strings.asDuration(stringData);
         }
 
         return super.convertTime(column, fieldDefn, data);
     }
 
     protected Object convertDecimal(Column column, Field fieldDefn, Object data, DecimalMode mode) {
-        SpecialValueDecimal value;
+        final SpecialValueDecimal value;
         BigDecimal newDecimal;
 
-        if (data instanceof SpecialValueDecimal) {
-            value = (SpecialValueDecimal) data;
+        if (data instanceof SpecialValueDecimal specialValueDecimal) {
+            value = specialValueDecimal;
 
             if (value.getDecimalValue().isEmpty()) {
                 return SpecialValueDecimal.fromLogical(value, mode, column.name());
@@ -685,10 +569,10 @@ public class PostgresValueConverter extends JdbcValueConverters {
         else {
             final Object o = toBigDecimal(column, fieldDefn, data);
 
-            if (!(o instanceof BigDecimal)) {
+            if (!(o instanceof BigDecimal bigDecimal)) {
                 return o;
             }
-            value = new SpecialValueDecimal((BigDecimal) o);
+            value = new SpecialValueDecimal(bigDecimal);
         }
 
         newDecimal = withScaleAdjustedIfNeeded(column, value.getDecimalValue().get());
@@ -727,14 +611,14 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
     private Object convertLtree(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, "", r -> {
-            if (data instanceof byte[]) {
-                r.deliver(new String((byte[]) data, databaseCharset));
+            if (data instanceof byte[] bytes) {
+                r.deliver(new String(bytes, databaseCharset));
             }
-            if (data instanceof String) {
-                r.deliver(data);
+            if (data instanceof String stringData) {
+                r.deliver(stringData);
             }
-            else if (data instanceof PGobject) {
-                r.deliver(data.toString());
+            else if (data instanceof PGobject pgObject) {
+                r.deliver(pgObject.toString());
             }
         });
     }
@@ -783,27 +667,25 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
     private Object convertLtreeArray(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, Collections.emptyList(), r -> {
-            if (data instanceof byte[]) {
-                String s = new String((byte[]) data, databaseCharset);
+            if (data instanceof byte[] bytes) {
+                String s = new String(bytes, databaseCharset);
                 // remove '{' and '}'
                 s = s.substring(1, s.length() - 1);
-                List<String> ltrees = Arrays.asList(s.split(","));
+                final List<String> ltrees = Arrays.asList(s.split(","));
                 r.deliver(ltrees);
             }
-            else if (data instanceof List) {
-                List<Object> list = (List<Object>) data;
-                List<String> ltrees = new ArrayList<>(list.size());
-                for (Object value : list) {
+            else if (data instanceof List<?> list) {
+                final List<String> ltrees = new ArrayList<>(list.size());
+                for (final var value : list) {
                     ltrees.add(value.toString());
                 }
                 r.deliver(ltrees);
             }
-            else if (data instanceof PgArray) {
-                PgArray pgArray = (PgArray) data;
+            else if (data instanceof PgArray pgArray) {
                 try {
-                    Object[] array = (Object[]) pgArray.getArray();
-                    List<String> ltrees = new ArrayList<>(array.length);
-                    for (Object value : array) {
+                    final Object[] array = (Object[]) pgArray.getArray();
+                    final List<String> ltrees = new ArrayList<>(array.length);
+                    for (final var value : array) {
                         ltrees.add(value.toString());
                     }
                     r.deliver(ltrees);
@@ -817,17 +699,17 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
     private Object convertHstoreToMap(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, Collections.emptyMap(), (r) -> {
-            if (data instanceof String) {
-                r.deliver(HStoreConverter.fromString((String) data));
+            if (data instanceof String stringData) {
+                r.deliver(HStoreConverter.fromString(stringData));
             }
-            else if (data instanceof byte[]) {
-                r.deliver(HStoreConverter.fromString(asHstoreString((byte[]) data)));
+            else if (data instanceof byte[] bytes) {
+                r.deliver(HStoreConverter.fromString(asHstoreString(bytes)));
             }
-            else if (data instanceof PGobject) {
-                r.deliver(HStoreConverter.fromString(data.toString()));
+            else if (data instanceof PGobject pgObject) {
+                r.deliver(HStoreConverter.fromString(pgObject.toString()));
             }
-            else if (data instanceof Map) {
-                r.deliver(data);
+            else if (data instanceof Map<?, ?> map) {
+                r.deliver(map);
             }
         });
     }
@@ -845,17 +727,17 @@ public class PostgresValueConverter extends JdbcValueConverters {
         return convertValue(column, fieldDefn, data, "{}", (r) -> {
             logger.trace("in ANON: value from data object: *** {} ***", data);
             logger.trace("in ANON: object type is: *** {} ***", data.getClass());
-            if (data instanceof String) {
-                r.deliver(changePlainStringRepresentationToJsonStringRepresentation(((String) data)));
+            if (data instanceof String stringData) {
+                r.deliver(changePlainStringRepresentationToJsonStringRepresentation(stringData));
             }
-            else if (data instanceof byte[]) {
-                r.deliver(changePlainStringRepresentationToJsonStringRepresentation(asHstoreString((byte[]) data)));
+            else if (data instanceof byte[] bytes) {
+                r.deliver(changePlainStringRepresentationToJsonStringRepresentation(asHstoreString(bytes)));
             }
-            else if (data instanceof PGobject) {
-                r.deliver(changePlainStringRepresentationToJsonStringRepresentation(data.toString()));
+            else if (data instanceof PGobject pgObject) {
+                r.deliver(changePlainStringRepresentationToJsonStringRepresentation(pgObject.toString()));
             }
-            else if (data instanceof java.util.HashMap) {
-                r.deliver(convertMapToJsonStringRepresentation((Map<String, String>) data));
+            else if (data instanceof java.util.HashMap<?, ?> map) {
+                r.deliver(convertMapToJsonStringRepresentation((Map<String, String>) map));
             }
         });
     }
@@ -889,8 +771,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
     @Override
     protected Object convertBit(Column column, Field fieldDefn, Object data) {
-        if (data instanceof String) {
-            data = Integer.valueOf((String) data, 2);
+        if (data instanceof String stringData) {
+            data = Integer.valueOf(stringData, 2);
         }
         return super.convertBit(column, fieldDefn, data);
     }
@@ -925,10 +807,9 @@ public class PostgresValueConverter extends JdbcValueConverters {
             return Integer.valueOf(str, 2) == 0 ? Boolean.FALSE : Boolean.TRUE;
         }
 
-        if (data instanceof String) {
-            String dataStr = (String) data;
-            BitSet bitset = new BitSet(dataStr.length());
-            int len = dataStr.length();
+        if (data instanceof String dataStr) {
+            final BitSet bitset = new BitSet(dataStr.length());
+            final int len = dataStr.length();
             for (int i = len - 1; i >= 0; i--) {
                 if (dataStr.charAt(i) == '1') {
                     bitset.set(len - i - 1);
@@ -949,43 +830,42 @@ public class PostgresValueConverter extends JdbcValueConverters {
     }
 
     protected Object convertMoney(Column column, Field fieldDefn, Object data, DecimalMode mode) {
-        var fallback = decimalMode.equals(decimalMode.STRING) ? BigDecimal.ZERO.setScale(moneyFractionDigits).toString()
+        final var fallback = decimalMode.equals(decimalMode.STRING) ? BigDecimal.ZERO.setScale(moneyFractionDigits).toString()
                 : decimalMode.equals(decimalMode.DOUBLE) ? BigDecimal.ZERO.setScale(moneyFractionDigits).doubleValue() : BigDecimal.ZERO.setScale(moneyFractionDigits);
         return convertValue(column, fieldDefn, data, fallback, (r) -> {
             switch (mode) {
-                case DOUBLE:
-                    if (data instanceof BigDecimal) {
-                        r.deliver(((BigDecimal) data).doubleValue());
+                case DOUBLE -> {
+                    if (data instanceof BigDecimal bigDecimal) {
+                        r.deliver(bigDecimal.doubleValue());
                     }
-                    else if (data instanceof Double) {
-                        r.deliver(data);
+                    else if (data instanceof Double doubleValue) {
+                        r.deliver(doubleValue);
                     }
-                    else if (data instanceof Number) {
-                        r.deliver(((Number) data).doubleValue());
+                    else if (data instanceof Number number) {
+                        r.deliver(number.doubleValue());
                     }
-                    break;
-                case PRECISE:
-                    if (data instanceof BigDecimal) {
-                        r.deliver(((BigDecimal) data).setScale(moneyFractionDigits, RoundingMode.HALF_UP));
+                }
+                case PRECISE -> {
+                    if (data instanceof BigDecimal bigDecimal) {
+                        r.deliver(bigDecimal.setScale(moneyFractionDigits, RoundingMode.HALF_UP));
                     }
-                    else if (data instanceof Double) {
-                        r.deliver(BigDecimal.valueOf((Double) data).setScale(moneyFractionDigits, RoundingMode.HALF_UP));
+                    else if (data instanceof Double doubleValue) {
+                        r.deliver(BigDecimal.valueOf(doubleValue).setScale(moneyFractionDigits, RoundingMode.HALF_UP));
                     }
-                    else if (data instanceof Number) {
+                    else if (data instanceof Number number) {
                         // the plugin will return a 64bit signed integer where the last #moneyFractionDigits are always decimals
-                        r.deliver(BigDecimal.valueOf(((Number) data).longValue()).setScale(moneyFractionDigits, RoundingMode.HALF_UP));
+                        r.deliver(BigDecimal.valueOf(number.longValue()).setScale(moneyFractionDigits, RoundingMode.HALF_UP));
                     }
-                    break;
-                case STRING:
-                    if (data instanceof BigDecimal) {
-                        r.deliver(((BigDecimal) data).toPlainString());
+                }
+                case STRING -> {
+                    if (data instanceof BigDecimal bigDecimal) {
+                        r.deliver(bigDecimal.toPlainString());
                     }
                     else {
                         r.deliver(String.valueOf(data));
                     }
-                    break;
-                default:
-                    throw new IllegalArgumentException("Unknown decimalMode");
+                }
+                default -> throw new IllegalArgumentException("Unknown decimalMode");
             }
         });
     }
@@ -994,10 +874,10 @@ public class PostgresValueConverter extends JdbcValueConverters {
         if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
             return convertIntervalToStructured(column, fieldDefn, data);
         }
-        Object fallback = intervalMode == IntervalHandlingMode.STRING ? Interval.toIsoString(0, 0, 0, 0, 0, new BigDecimal(0)) : NumberConversions.LONG_FALSE;
+        final Object fallback = intervalMode == IntervalHandlingMode.STRING ? Interval.toIsoString(0, 0, 0, 0, 0, new BigDecimal(0)) : NumberConversions.LONG_FALSE;
         return convertValue(column, fieldDefn, data, fallback, (r) -> {
-            if (data instanceof Number) {
-                final long micros = ((Number) data).longValue();
+            if (data instanceof Number number) {
+                final long micros = number.longValue();
                 if (intervalMode == IntervalHandlingMode.STRING) {
                     r.deliver(Interval.toIsoString(0, 0, 0, 0, 0, new BigDecimal(micros).divide(MICROSECONDS_PER_SECOND)));
                 }
@@ -1005,8 +885,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
                     r.deliver(micros);
                 }
             }
-            if (data instanceof PGInterval) {
-                final PGInterval interval = (PGInterval) data;
+            if (data instanceof PGInterval interval) {
                 if (intervalMode == IntervalHandlingMode.STRING) {
                     r.deliver(
                             Interval.toIsoString(
@@ -1035,14 +914,13 @@ public class PostgresValueConverter extends JdbcValueConverters {
     protected Object convertIntervalToStructured(Column column, Field fieldDefn, Object data) {
         final int precision = getTimePrecision(column);
         return convertValue(column, fieldDefn, data, StructuredDuration.from(fieldDefn.schema(), 0, 0, 0, 0, 0, 0, 0, precision), (r) -> {
-            if (data instanceof Number) {
-                final long micros = ((Number) data).longValue();
+            if (data instanceof Number number) {
+                final long micros = number.longValue();
                 final long seconds = micros / 1_000_000;
                 final int nanos = (int) (micros % 1_000_000) * 1_000;
                 r.deliver(StructuredDuration.from(fieldDefn.schema(), 0, 0, 0, 0, 0, seconds, nanos, precision));
             }
-            if (data instanceof PGInterval) {
-                final PGInterval interval = (PGInterval) data;
+            if (data instanceof PGInterval interval) {
                 final BigDecimal seconds = BigDecimal.valueOf(interval.getSeconds());
                 final long wholeSeconds = seconds.longValue();
                 final int nanos = seconds.subtract(BigDecimal.valueOf(wholeSeconds))
@@ -1076,10 +954,10 @@ public class PostgresValueConverter extends JdbcValueConverters {
             data = DateTimeFormat.get().timestampWithTimeZoneToOffsetDateTime(str).withOffsetSameInstant(ZoneOffset.UTC);
         }
 
-        if (data instanceof java.util.Date) {
+        if (data instanceof java.util.Date date) {
             // any Date like subclasses will be given to us by the JDBC driver, which uses the local VM TZ, so we need to go
             // back to GMT
-            data = OffsetDateTime.ofInstant(((Date) data).toInstant(), ZoneOffset.UTC);
+            data = OffsetDateTime.ofInstant(date.toInstant(), ZoneOffset.UTC);
         }
 
         if (POSITIVE_INFINITY_OFFSET_DATE_TIME.equals(data)) {
@@ -1088,8 +966,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
         else if (NEGATIVE_INFINITY_OFFSET_DATE_TIME.equals(data)) {
             return NEGATIVE_INFINITY_TIMESTAMP_PG_STRING;
         }
-        else if (data instanceof OffsetDateTime) {
-            data = ((OffsetDateTime) data).toZonedDateTime();
+        else if (data instanceof OffsetDateTime offsetDateTime) {
+            data = offsetDateTime.toZonedDateTime();
         }
 
         final Object javaData = data;
@@ -1186,11 +1064,11 @@ public class PostgresValueConverter extends JdbcValueConverters {
         if (data instanceof String str) {
             data = DateTimeFormat.get().timestampWithTimeZoneToOffsetDateTime(str).withOffsetSameInstant(ZoneOffset.UTC);
         }
-        if (data instanceof java.util.Date) {
-            data = OffsetDateTime.ofInstant(((Date) data).toInstant(), ZoneOffset.UTC);
+        if (data instanceof java.util.Date date) {
+            data = OffsetDateTime.ofInstant(date.toInstant(), ZoneOffset.UTC);
         }
-        if (data instanceof OffsetDateTime) {
-            data = ((OffsetDateTime) data).toZonedDateTime();
+        if (data instanceof OffsetDateTime offsetDateTime) {
+            data = offsetDateTime.toZonedDateTime();
         }
         return super.convertTimestampWithZone(column, fieldDefn, data);
     }
@@ -1260,17 +1138,16 @@ public class PostgresValueConverter extends JdbcValueConverters {
         return convertValue(column, fieldDefn, data, io.debezium.data.geometry.Geometry.createValue(fieldDefn.schema(), empty.getWkb(), empty.getSrid()), (r) -> {
             try {
                 final Schema schema = fieldDefn.schema();
-                if (data instanceof byte[]) {
-                    PostgisGeometry geom = PostgisGeometry.fromHexEwkb(new String((byte[]) data, StandardCharsets.US_ASCII));
+                if (data instanceof byte[] bytes) {
+                    final PostgisGeometry geom = PostgisGeometry.fromHexEwkb(new String(bytes, StandardCharsets.US_ASCII));
                     r.deliver(io.debezium.data.geometry.Geometry.createValue(schema, geom.getWkb(), geom.getSrid()));
                 }
-                else if (data instanceof PGobject) {
-                    PGobject pgo = (PGobject) data;
-                    PostgisGeometry geom = PostgisGeometry.fromHexEwkb(pgo.getValue());
+                else if (data instanceof PGobject pgObject) {
+                    final PostgisGeometry geom = PostgisGeometry.fromHexEwkb(pgObject.getValue());
                     r.deliver(io.debezium.data.geometry.Geometry.createValue(schema, geom.getWkb(), geom.getSrid()));
                 }
-                else if (data instanceof String) {
-                    PostgisGeometry geom = PostgisGeometry.fromHexEwkb((String) data);
+                else if (data instanceof String stringData) {
+                    final PostgisGeometry geom = PostgisGeometry.fromHexEwkb(stringData);
                     r.deliver(io.debezium.data.geometry.Geometry.createValue(schema, geom.getWkb(), geom.getSrid()));
                 }
             }
@@ -1285,17 +1162,16 @@ public class PostgresValueConverter extends JdbcValueConverters {
         return convertValue(column, fieldDefn, data, io.debezium.data.geometry.Geography.createValue(fieldDefn.schema(), empty.getWkb(), empty.getSrid()), (r) -> {
             final Schema schema = fieldDefn.schema();
             try {
-                if (data instanceof byte[]) {
-                    PostgisGeometry geom = PostgisGeometry.fromHexEwkb(new String((byte[]) data, StandardCharsets.US_ASCII));
+                if (data instanceof byte[] bytes) {
+                    final PostgisGeometry geom = PostgisGeometry.fromHexEwkb(new String(bytes, StandardCharsets.US_ASCII));
                     r.deliver(io.debezium.data.geometry.Geography.createValue(schema, geom.getWkb(), geom.getSrid()));
                 }
-                else if (data instanceof PGobject) {
-                    PGobject pgo = (PGobject) data;
-                    PostgisGeometry geom = PostgisGeometry.fromHexEwkb(pgo.getValue());
+                else if (data instanceof PGobject pgObject) {
+                    final PostgisGeometry geom = PostgisGeometry.fromHexEwkb(pgObject.getValue());
                     r.deliver(io.debezium.data.geometry.Geography.createValue(schema, geom.getWkb(), geom.getSrid()));
                 }
-                else if (data instanceof String) {
-                    PostgisGeometry geom = PostgisGeometry.fromHexEwkb((String) data);
+                else if (data instanceof String stringData) {
+                    final PostgisGeometry geom = PostgisGeometry.fromHexEwkb(stringData);
                     r.deliver(io.debezium.data.geometry.Geography.createValue(schema, geom.getWkb(), geom.getSrid()));
                 }
             }
@@ -1307,28 +1183,28 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
     protected Object convertCitext(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, "", (r) -> {
-            if (data instanceof byte[]) {
-                r.deliver(new String((byte[]) data));
+            if (data instanceof byte[] bytes) {
+                r.deliver(new String(bytes));
             }
-            else if (data instanceof String) {
-                r.deliver(data);
+            else if (data instanceof String stringData) {
+                r.deliver(stringData);
             }
-            else if (data instanceof PGobject) {
-                r.deliver(((PGobject) data).getValue());
+            else if (data instanceof PGobject pgObject) {
+                r.deliver(pgObject.getValue());
             }
         });
     }
 
     protected Object convertIsbn(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, "", (r) -> {
-            if (data instanceof byte[]) {
-                r.deliver(new String((byte[]) data));
+            if (data instanceof byte[] bytes) {
+                r.deliver(new String(bytes));
             }
-            else if (data instanceof String) {
-                r.deliver(data);
+            else if (data instanceof String stringData) {
+                r.deliver(stringData);
             }
-            else if (data instanceof PGobject) {
-                r.deliver(((PGobject) data).getValue());
+            else if (data instanceof PGobject pgObject) {
+                r.deliver(pgObject.getValue());
             }
         });
     }
@@ -1344,22 +1220,20 @@ public class PostgresValueConverter extends JdbcValueConverters {
     protected Object convertPoint(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, Point.createValue(fieldDefn.schema(), 0, 0), (r) -> {
             final Schema schema = fieldDefn.schema();
-            if (data instanceof PGpoint) {
-                PGpoint pgPoint = (PGpoint) data;
+            if (data instanceof PGpoint pgPoint) {
                 r.deliver(Point.createValue(schema, pgPoint.x, pgPoint.y));
             }
-            else if (data instanceof String) {
-                String dataString = data.toString();
+            else if (data instanceof String dataString) {
                 try {
-                    PGpoint pgPoint = new PGpoint(dataString);
+                    final PGpoint pgPoint = new PGpoint(dataString);
                     r.deliver(Point.createValue(schema, pgPoint.x, pgPoint.y));
                 }
                 catch (SQLException e) {
                     logger.warn("Error converting the string '{}' to a PGPoint type for the column '{}'", dataString, column);
                 }
             }
-            else if (data instanceof PgProto.Point) {
-                r.deliver(Point.createValue(schema, ((PgProto.Point) data).getX(), ((PgProto.Point) data).getY()));
+            else if (data instanceof PgProto.Point point) {
+                r.deliver(Point.createValue(schema, point.getX(), point.getY()));
             }
         });
     }
@@ -1486,8 +1360,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
         if (type.isInstance(data)) {
             return type.cast(data);
         }
-        if (data instanceof String) {
-            String dataString = data.toString();
+        if (data instanceof String dataString) {
             try {
                 return factory.parse(dataString);
             }
@@ -1593,27 +1466,26 @@ public class PostgresValueConverter extends JdbcValueConverters {
         // PostgreSQL time data types with time-zones are handled differently when included in an array.
         // The values are automatically translated to the local JVM time-zone and need to be converted back to GMT
         // before delegating the value to the element converter.
-        switch (elementType.getOid()) {
-            case PgOid.TIMETZ: {
-                if (value instanceof java.sql.Time) {
-                    ZonedDateTime zonedDateTime = ZonedDateTime.of(LocalDate.now(), ((java.sql.Time) value).toLocalTime(), systemDefault());
+        return switch (elementType.getOid()) {
+            case PgOid.TIMETZ -> {
+                if (value instanceof java.sql.Time timeValue) {
+                    var zonedDateTime = ZonedDateTime.of(LocalDate.now(), timeValue.toLocalTime(), systemDefault());
                     // Daylight savings gets applied by PgArray, need to account for that here
                     zonedDateTime = zonedDateTime.plus(systemDefault().getRules().getDaylightSavings(zonedDateTime.toInstant()));
-                    return OffsetTime.of(zonedDateTime.withZoneSameInstant(ZoneOffset.UTC).toLocalTime(), ZoneOffset.UTC);
+                    yield OffsetTime.of(zonedDateTime.withZoneSameInstant(ZoneOffset.UTC).toLocalTime(), ZoneOffset.UTC);
                 }
-                break;
+                yield value;
             }
-            case PgOid.TIMESTAMPTZ: {
-                if (value instanceof java.sql.Timestamp) {
+            case PgOid.TIMESTAMPTZ -> {
+                if (value instanceof java.sql.Timestamp timestampValue) {
                     // Daylight savings isn't applied here, no need to account for it
-                    ZonedDateTime zonedDateTime = ZonedDateTime.of(((java.sql.Timestamp) value).toLocalDateTime(), systemDefault());
-                    return OffsetDateTime.of(zonedDateTime.withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime(), ZoneOffset.UTC);
+                    final var zonedDateTime = ZonedDateTime.of(timestampValue.toLocalDateTime(), systemDefault());
+                    yield OffsetDateTime.of(zonedDateTime.withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime(), ZoneOffset.UTC);
                 }
+                yield value;
             }
-        }
-
-        // no special handling is needed, return value as-is
-        return value;
+            default -> value;
+        };
     }
 
     private boolean isVariableScaleDecimal(final Column column) {
@@ -1713,20 +1585,20 @@ public class PostgresValueConverter extends JdbcValueConverters {
         if (data == UnchangedToastedReplicationMessageColumn.UNCHANGED_TOAST_VALUE) {
             return unchangedToastedPlaceholder.getToastPlaceholderBinary();
         }
-        if (data instanceof PgArray) {
-            data = ((PgArray) data).toString();
+        if (data instanceof PgArray pgArray) {
+            data = pgArray.toString();
         }
-        return super.convertBinaryToBytes(column, fieldDefn, (data instanceof PGobject) ? ((PGobject) data).getValue() : data);
+        return super.convertBinaryToBytes(column, fieldDefn, (data instanceof PGobject pgObject) ? pgObject.getValue() : data);
     }
 
     @Override
     protected Object convertBinaryToBase64(Column column, Field fieldDefn, Object data) {
-        return super.convertBinaryToBase64(column, fieldDefn, (data instanceof PGobject) ? ((PGobject) data).getValue() : data);
+        return super.convertBinaryToBase64(column, fieldDefn, (data instanceof PGobject pgObject) ? pgObject.getValue() : data);
     }
 
     @Override
     protected Object convertBinaryToBase64UrlSafe(Column column, Field fieldDefn, Object data) {
-        return super.convertBinaryToBase64UrlSafe(column, fieldDefn, (data instanceof PGobject) ? ((PGobject) data).getValue() : data);
+        return super.convertBinaryToBase64UrlSafe(column, fieldDefn, (data instanceof PGobject pgObject) ? pgObject.getValue() : data);
     }
 
     @Override
@@ -1734,7 +1606,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
         if (data == UnchangedToastedReplicationMessageColumn.UNCHANGED_TOAST_VALUE) {
             return unchangedToastedPlaceholder.getToastPlaceholderString();
         }
-        return super.convertBinaryToHex(column, fieldDefn, (data instanceof PGobject) ? ((PGobject) data).getValue() : data);
+        return super.convertBinaryToHex(column, fieldDefn, (data instanceof PGobject pgObject) ? pgObject.getValue() : data);
     }
 
     /**

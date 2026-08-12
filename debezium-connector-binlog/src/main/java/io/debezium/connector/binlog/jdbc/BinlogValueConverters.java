@@ -194,14 +194,13 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
         }
         if (matches(typeName, "BIGINT UNSIGNED") || matches(typeName, "BIGINT UNSIGNED ZEROFILL")
                 || matches(typeName, "INT8 UNSIGNED") || matches(typeName, "INT8 UNSIGNED ZEROFILL")) {
-            switch (super.bigIntUnsignedMode) {
-                case LONG:
-                    return SchemaBuilder.int64();
-                case PRECISE:
+            return switch (super.bigIntUnsignedMode) {
+                case LONG -> SchemaBuilder.int64();
+                case PRECISE ->
                     // In order to capture unsigned INT 64-bit data source, org.apache.kafka.connect.data.Decimal:Byte will be required to safely capture all valid values with scale of 0
                     // Source: https://kafka.apache.org/0102/javadoc/org/apache/kafka/connect/data/Schema.Type.html
-                    return SpecialValueDecimal.builder(DecimalMode.PRECISE, 20, 0);
-            }
+                    SpecialValueDecimal.builder(DecimalMode.PRECISE, 20, 0);
+            };
         }
         if ((matches(typeName, "FLOAT")
                 || matches(typeName, "FLOAT UNSIGNED")
@@ -273,52 +272,40 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
         }
         if (matches(typeName, "BIGINT UNSIGNED") || matches(typeName, "BIGINT UNSIGNED ZEROFILL")
                 || matches(typeName, "INT8 UNSIGNED") || matches(typeName, "INT8 UNSIGNED ZEROFILL")) {
-            switch (super.bigIntUnsignedMode) {
-                case LONG:
-                    return (data) -> convertBigInt(column, fieldDefn, data);
-                case PRECISE:
+            return switch (super.bigIntUnsignedMode) {
+                case LONG -> (data) -> convertBigInt(column, fieldDefn, data);
+                case PRECISE ->
                     // Convert BIGINT UNSIGNED internally from SIGNED to UNSIGNED based on the boundary settings
-                    return (data) -> convertUnsignedBigint(column, fieldDefn, data);
-            }
+                    (data) -> convertUnsignedBigint(column, fieldDefn, data);
+            };
         }
         if (matches(typeName, "VECTOR")) {
             return (data) -> convertVector(column, fieldDefn, data);
         }
 
         // We have to convert bytes encoded in the column's character set ...
-        switch (column.jdbcType()) {
-            case Types.CHAR: // variable-length
-            case Types.VARCHAR: // variable-length
-            case Types.LONGVARCHAR: // variable-length
-            case Types.CLOB: // variable-length
-            case Types.NCHAR: // fixed-length
-            case Types.NVARCHAR: // fixed-length
-            case Types.LONGNVARCHAR: // fixed-length
-            case Types.NCLOB: // fixed-length
-            case Types.DATALINK:
-            case Types.SQLXML:
-                Charset charset = charsetFor(column);
+        return switch (column.jdbcType()) {
+            case Types.CHAR, Types.VARCHAR, Types.LONGVARCHAR, Types.CLOB, Types.NCHAR, Types.NVARCHAR, Types.LONGNVARCHAR, Types.NCLOB, Types.DATALINK, Types.SQLXML -> {
+                final Charset charset = charsetFor(column);
                 if (charset != null) {
                     logger.debug("Using {} charset by default for column: {}", charset, column);
-                    return (data) -> convertString(column, fieldDefn, charset, data);
+                    yield (data) -> convertString(column, fieldDefn, charset, data);
                 }
                 logger.warn("Using UTF-8 charset by default for column without charset: {}", column);
-                return (data) -> convertString(column, fieldDefn, StandardCharsets.UTF_8, data);
-            case Types.TIME:
+                yield (data) -> convertString(column, fieldDefn, StandardCharsets.UTF_8, data);
+            }
+            case Types.TIME -> {
                 if (temporalPrecisionMode == TemporalPrecisionMode.STRUCTURED) {
-                    return data -> convertDurationToStructured(column, fieldDefn, data);
+                    yield data -> convertDurationToStructured(column, fieldDefn, data);
                 }
                 if (temporalPrecisionMode == TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS) {
-                    return data -> convertDurationToMicroseconds(column, fieldDefn, data);
+                    yield data -> convertDurationToMicroseconds(column, fieldDefn, data);
                 }
-            case Types.TIMESTAMP:
-                return ((ValueConverter) (data -> convertTimestampToLocalDateTime(column, fieldDefn, data))).and(super.converter(column, fieldDefn));
-            default:
-                break;
-        }
-
-        // Otherwise, let the base class handle it ...
-        return super.converter(column, fieldDefn);
+                yield super.converter(column, fieldDefn);
+            }
+            case Types.TIMESTAMP -> ((ValueConverter) (data -> convertTimestampToLocalDateTime(column, fieldDefn, data))).and(super.converter(column, fieldDefn));
+            default -> super.converter(column, fieldDefn);
+        };
     }
 
     @Override
@@ -329,8 +316,8 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
     @Override
     protected Object convertTinyInt(Column column, Field fieldDefn, Object data) {
         // Allows decimal default values for tinyint columns
-        if (data instanceof String) {
-            data = Math.round(Double.parseDouble((String) data));
+        if (data instanceof String str) {
+            data = Math.round(Double.parseDouble(str));
         }
         return super.convertTinyInt(column, fieldDefn, data);
     }
@@ -338,8 +325,8 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
     @Override
     protected Object convertSmallInt(Column column, Field fieldDefn, Object data) {
         // Allows decimal default values for smallint columns
-        if (data instanceof String) {
-            data = Math.round(Double.parseDouble((String) data));
+        if (data instanceof String str) {
+            data = Math.round(Double.parseDouble(str));
         }
         return super.convertSmallInt(column, fieldDefn, data);
     }
@@ -347,8 +334,8 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
     @Override
     protected Object convertInteger(Column column, Field fieldDefn, Object data) {
         // Allows decimal default values for integer columns
-        if (data instanceof String) {
-            data = Math.round(Double.parseDouble((String) data));
+        if (data instanceof String str) {
+            data = Math.round(Double.parseDouble(str));
         }
         return super.convertInteger(column, fieldDefn, data);
     }
@@ -356,8 +343,8 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
     @Override
     protected Object convertBigInt(Column column, Field fieldDefn, Object data) {
         // Allows decimal default values for bigint columns
-        if (data instanceof String) {
-            data = Math.round(Double.parseDouble((String) data));
+        if (data instanceof String str) {
+            data = Math.round(Double.parseDouble(str));
         }
         return super.convertBigInt(column, fieldDefn, data);
     }
@@ -384,9 +371,8 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
     @Override
     protected Object convertBinary(Column column, Field fieldDefn, Object data, BinaryHandlingMode mode) {
         // During snapshots, the JDBC ResultSet returns Blob instances
-        if (data instanceof Blob) {
+        if (data instanceof Blob blob) {
             try {
-                final Blob blob = (Blob) data;
                 data = blob.getBytes(1, (int) blob.length());
             }
             catch (SQLException e) {
@@ -426,12 +412,12 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
      */
     protected Object convertString(Column column, Field fieldDefn, Charset columnCharset, Object data) {
         return convertValue(column, fieldDefn, data, "", (r) -> {
-            if (data instanceof byte[]) {
+            if (data instanceof byte[] bytes) {
                 // Decode the binary representation using the given character encoding ...
-                r.deliver(new String((byte[]) data, columnCharset));
+                r.deliver(new String(bytes, columnCharset));
             }
-            else if (data instanceof String) {
-                r.deliver(data);
+            else if (data instanceof String str) {
+                r.deliver(str);
             }
         });
     }
@@ -447,31 +433,31 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
      */
     protected Object convertJson(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, "{}", (r) -> {
-            if (data instanceof byte[]) {
+            if (data instanceof byte[] bytes) {
                 // The BinlogReader sees these JSON values as binary encoded, so we use the binlog client library's utility
                 // to parse the database's internal binary representation into a JSON string, using the standard formatter.
-                if (((byte[]) data).length == 0) {
+                if (bytes.length == 0) {
                     r.deliver(column.isOptional() ? null : "{}");
                 }
                 else {
                     try {
-                        r.deliver(JsonBinary.parseAsString((byte[]) data));
+                        r.deliver(JsonBinary.parseAsString(bytes));
                     }
                     catch (IOException e) {
                         if (eventConvertingFailureHandlingMode == FAIL) {
-                            Loggings.logErrorAndTraceRecord(logger, Arrays.toString((byte[]) data),
+                            Loggings.logErrorAndTraceRecord(logger, Arrays.toString(bytes),
                                     "Failed to parse and read a JSON value on '{}'", column, e);
                             throw new DebeziumException("Failed to parse and read a JSON value on '" + column + "'", e);
                         }
-                        Loggings.logWarningAndTraceRecord(logger, Arrays.toString((byte[]) data),
+                        Loggings.logWarningAndTraceRecord(logger, Arrays.toString(bytes),
                                 "Failed to parse and read a JSON value on '{}'", column, e);
                         r.deliver(column.isOptional() ? null : "{}");
                     }
                 }
             }
-            else if (data instanceof String) {
+            else if (data instanceof String str) {
                 // The SnapshotReader sees JSON values as UTF-8 encoded strings.
-                r.deliver(data);
+                r.deliver(str);
             }
         });
     }
@@ -490,21 +476,21 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
     protected Object convertYearToInt(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, 0, (r) -> {
             Object mutData = data;
-            if (data instanceof java.time.Year) {
+            if (data instanceof java.time.Year year) {
                 // The binlog always returns a Year object ...
-                r.deliver(adjustTemporal(java.time.Year.of(((java.time.Year) data).getValue())).get(ChronoField.YEAR));
+                r.deliver(adjustTemporal(java.time.Year.of(year.getValue())).get(ChronoField.YEAR));
             }
-            else if (data instanceof java.sql.Date) {
+            else if (data instanceof java.sql.Date date) {
                 // JDBC driver sometimes returns a Java SQL Date object ...
                 // year from java.sql.Date is defined as number of years since 1900
-                r.deliver(((java.sql.Date) data).getYear() + 1900);
+                r.deliver(date.getYear() + 1900);
             }
-            else if (data instanceof String) {
-                mutData = Integer.valueOf((String) data);
+            else if (data instanceof String str) {
+                mutData = Integer.valueOf(str);
             }
-            if (mutData instanceof Number) {
+            if (mutData instanceof Number num) {
                 // JDBC driver sometimes returns a short ...
-                r.deliver(adjustTemporal(java.time.Year.of(((Number) mutData).intValue())).get(ChronoField.YEAR));
+                r.deliver(adjustTemporal(java.time.Year.of(num.intValue())).get(ChronoField.YEAR));
             }
         });
     }
@@ -523,19 +509,19 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
      */
     protected Object convertEnumToString(List<String> options, Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, "", (r) -> {
-            if (data instanceof String) {
+            if (data instanceof String str) {
                 // JDBC should return strings ...
-                r.deliver(data);
+                r.deliver(str);
             }
-            else if (data instanceof Integer) {
+            else if (data instanceof Integer intValue) {
                 if (options != null) {
                     // The binlog will contain an int with the 1-based index of the option in the enum value ...
-                    int value = ((Integer) data).intValue();
+                    final int value = intValue.intValue();
                     if (value == 0) {
                         // an invalid value was specified, which corresponds to the empty string '' and an index of 0
                         r.deliver("");
                     }
-                    int index = value - 1; // 'options' is 0-based
+                    final int index = value - 1; // 'options' is 0-based
                     if (index < options.size() && index >= 0) {
                         r.deliver(options.get(index));
                     }
@@ -561,13 +547,13 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
      */
     protected Object convertSetToString(List<String> options, Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, "", (r) -> {
-            if (data instanceof String) {
+            if (data instanceof String str) {
                 // JDBC should return strings ...
-                r.deliver(data);
+                r.deliver(str);
             }
-            else if (data instanceof Long) {
+            else if (data instanceof Long longValue) {
                 // The binlog will contain a long with the indexes of the options in the set value ...
-                long indexes = ((Long) data).longValue();
+                final long indexes = longValue.longValue();
                 r.deliver(convertSetValue(column, indexes, options));
             }
         });
@@ -677,10 +663,10 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
     protected Object convertPoint(Column column, Field fieldDefn, Object data) {
         final BinlogGeometry empty = BinlogGeometry.createEmpty();
         return convertValue(column, fieldDefn, data, io.debezium.data.geometry.Geometry.createValue(fieldDefn.schema(), empty.getWkb(), empty.getSrid()), (r) -> {
-            if (data instanceof byte[]) {
+            if (data instanceof byte[] bytes) {
                 // The binlog utility sends a byte array for any Geometry type, we will use our own binaryParse to parse the byte to WKB, hence
                 // to the suitable class
-                BinlogGeometry geometry = BinlogGeometry.fromBytes((byte[]) data);
+                final BinlogGeometry geometry = BinlogGeometry.fromBytes(bytes);
                 if (geometry.isPoint()) {
                     r.deliver(io.debezium.data.geometry.Point.createValue(fieldDefn.schema(), geometry.getWkb(), geometry.getSrid()));
                 }
@@ -703,10 +689,10 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
     protected Object convertGeometry(Column column, Field fieldDefn, Object data) {
         final BinlogGeometry empty = BinlogGeometry.createEmpty();
         return convertValue(column, fieldDefn, data, io.debezium.data.geometry.Geometry.createValue(fieldDefn.schema(), empty.getWkb(), empty.getSrid()), (r) -> {
-            if (data instanceof byte[]) {
+            if (data instanceof byte[] bytes) {
                 // The binlog utility sends a byte array for any Geometry type, we will use our own binaryParse to parse the byte to WKB, hence
                 // to the suitable class
-                BinlogGeometry geometry = BinlogGeometry.fromBytes((byte[]) data);
+                final BinlogGeometry geometry = BinlogGeometry.fromBytes(bytes);
                 r.deliver(io.debezium.data.geometry.Geometry.createValue(fieldDefn.schema(), geometry.getWkb(), geometry.getSrid()));
             }
         });
@@ -725,11 +711,11 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
      */
     protected Object convertUnsignedTinyint(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, (short) 0, (r) -> {
-            if (data instanceof Short) {
-                r.deliver(BinlogUnsignedIntegerConverter.convertUnsignedTinyint((short) data));
+            if (data instanceof Short shortValue) {
+                r.deliver(BinlogUnsignedIntegerConverter.convertUnsignedTinyint(shortValue));
             }
-            else if (data instanceof Number) {
-                r.deliver(BinlogUnsignedIntegerConverter.convertUnsignedTinyint(((Number) data).shortValue()));
+            else if (data instanceof Number num) {
+                r.deliver(BinlogUnsignedIntegerConverter.convertUnsignedTinyint(num.shortValue()));
             }
             else {
                 // We continue with the original converting method (smallint) since we have an unsigned Tinyint
@@ -751,11 +737,11 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
      */
     protected Object convertUnsignedSmallint(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, 0, (r) -> {
-            if (data instanceof Integer) {
-                r.deliver(BinlogUnsignedIntegerConverter.convertUnsignedSmallint((int) data));
+            if (data instanceof Integer intValue) {
+                r.deliver(BinlogUnsignedIntegerConverter.convertUnsignedSmallint(intValue));
             }
-            else if (data instanceof Number) {
-                r.deliver(BinlogUnsignedIntegerConverter.convertUnsignedSmallint(((Number) data).intValue()));
+            else if (data instanceof Number num) {
+                r.deliver(BinlogUnsignedIntegerConverter.convertUnsignedSmallint(num.intValue()));
             }
             else {
                 // We continue with the original converting method (integer) since we have an unsigned Smallint
@@ -777,11 +763,11 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
      */
     protected Object convertUnsignedMediumint(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, 0, (r) -> {
-            if (data instanceof Integer) {
-                r.deliver(BinlogUnsignedIntegerConverter.convertUnsignedMediumint((int) data));
+            if (data instanceof Integer intValue) {
+                r.deliver(BinlogUnsignedIntegerConverter.convertUnsignedMediumint(intValue));
             }
-            else if (data instanceof Number) {
-                r.deliver(BinlogUnsignedIntegerConverter.convertUnsignedMediumint(((Number) data).intValue()));
+            else if (data instanceof Number num) {
+                r.deliver(BinlogUnsignedIntegerConverter.convertUnsignedMediumint(num.intValue()));
             }
             else {
                 // We continue with the original converting method (integer) since we have an unsigned Medium
@@ -803,11 +789,11 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
      */
     protected Object convertUnsignedInt(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, 0L, (r) -> {
-            if (data instanceof Long) {
-                r.deliver(BinlogUnsignedIntegerConverter.convertUnsignedInteger((long) data));
+            if (data instanceof Long longValue) {
+                r.deliver(BinlogUnsignedIntegerConverter.convertUnsignedInteger(longValue));
             }
-            else if (data instanceof Number) {
-                r.deliver(BinlogUnsignedIntegerConverter.convertUnsignedInteger(((Number) data).longValue()));
+            else if (data instanceof Number num) {
+                r.deliver(BinlogUnsignedIntegerConverter.convertUnsignedInteger(num.longValue()));
             }
             else {
                 // We continue with the original converting method (bigint) since we have an unsigned Integer
@@ -829,14 +815,14 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
      */
     protected Object convertUnsignedBigint(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, 0L, (r) -> {
-            if (data instanceof BigDecimal) {
-                r.deliver(BinlogUnsignedIntegerConverter.convertUnsignedBigint((BigDecimal) data));
+            if (data instanceof BigDecimal bigDecimal) {
+                r.deliver(BinlogUnsignedIntegerConverter.convertUnsignedBigint(bigDecimal));
             }
-            else if (data instanceof Number) {
-                r.deliver(BinlogUnsignedIntegerConverter.convertUnsignedBigint(new BigDecimal(((Number) data).toString())));
+            else if (data instanceof Number num) {
+                r.deliver(BinlogUnsignedIntegerConverter.convertUnsignedBigint(new BigDecimal(num.toString())));
             }
-            else if (data instanceof String) {
-                r.deliver(BinlogUnsignedIntegerConverter.convertUnsignedBigint(new BigDecimal((String) data)));
+            else if (data instanceof String str) {
+                r.deliver(BinlogUnsignedIntegerConverter.convertUnsignedBigint(new BigDecimal(str)));
             }
             else {
                 r.deliver(convertNumeric(column, fieldDefn, data));
@@ -862,8 +848,8 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
     protected Object convertDurationToMicroseconds(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, 0L, (r) -> {
             try {
-                if (data instanceof Duration) {
-                    r.deliver(((Duration) data).toNanos() / 1_000);
+                if (data instanceof Duration duration) {
+                    r.deliver(duration.toNanos() / 1_000);
                 }
             }
             catch (IllegalArgumentException e) {
@@ -875,8 +861,7 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
         final int precision = getTimePrecision(column);
         return convertValue(column, fieldDefn, data, StructuredDuration.from(fieldDefn.schema(), 0, 0, 0, 0, 0, 0, 0, precision), (r) -> {
             try {
-                if (data instanceof Duration) {
-                    final Duration duration = (Duration) data;
+                if (data instanceof Duration duration) {
                     final int sign = duration.isNegative() ? -1 : 1;
                     final Duration abs = duration.abs();
                     r.deliver(StructuredDuration.from(
@@ -946,10 +931,10 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
         if (data == null && !fieldDefn.schema().isOptional()) {
             return null;
         }
-        if (!(data instanceof Timestamp)) {
+        if (!(data instanceof Timestamp timestamp)) {
             return data;
         }
-        return ((Timestamp) data).toLocalDateTime();
+        return timestamp.toLocalDateTime();
     }
 
     /**
