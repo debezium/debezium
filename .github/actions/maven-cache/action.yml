@@ -5,11 +5,24 @@ inputs:
   key:
     description: "The maven cache key to use"
     required: true
+  save:
+    description: "Whether to save the cache after the job completes"
+    required: false
+    default: 'true'
 
 runs:
   using: "composite"
   steps:
+    - name: Restore Maven Repository (read-only)
+      if: ${{ inputs.save != 'true' }}
+      uses: actions/cache/restore@v5
+      with:
+        path: ~/.m2/repository
+        key: ${{ inputs.key }}
+        restore-keys: ${{ inputs.key }}
+
     - name: Cache Maven Repository
+      if: ${{ inputs.save == 'true' }}
       id: cache-check
       uses: actions/cache@v5
       with:
