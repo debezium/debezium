@@ -367,6 +367,61 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
     }
 
     @Test
+    @FixFor("debezium/dbz#2333")
+    public void insertsNumericPkWithSpecialValues() throws Exception {
+        try (JdbcConnection connection = databaseConnection()) {
+            connection.setAutoCommit(false);
+            for (int i = 1; i <= 18; i++) {
+                connection.executeWithoutCommitting(
+                        String.format("INSERT INTO s1.anumeric (pk, aa) VALUES (%d, %d)", i, i));
+            }
+            connection.executeWithoutCommitting(
+                    "INSERT INTO s1.anumeric (pk, aa) VALUES ('-Infinity'::numeric, 100)",
+                    "INSERT INTO s1.anumeric (pk, aa) VALUES ('Infinity'::numeric, 101)",
+                    "INSERT INTO s1.anumeric (pk, aa) VALUES ('NaN'::numeric, 102)");
+            connection.commit();
+        }
+        // String mode keeps the emitted keys JSON-safe: the test harness round-trips every record
+        // through the JSON converter, which cannot represent NaN or the infinities as float64. The
+        // boundary extraction under test is unaffected: chunk reads produce SpecialValueDecimal
+        // regardless of the emission mode.
+        startConnector(x -> x.with(PostgresConnectorConfig.DECIMAL_HANDLING_MODE, "string"));
+
+        sendAdHocSnapshotSignal("s1.anumeric");
+
+        // 21 rows with chunk size 10: the ascending key order is -Infinity, 1..18, Infinity, NaN, so the
+        // second chunk ends exactly on Infinity (bound as the next chunk's lower bound) and NaN is the
+        // maximum key, bound into every chunk query.
+        final int expectedRecordCount = 21;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(
+                expectedRecordCount,
+                x -> true,
+                k -> specialAwareKey(Double.parseDouble(k.getString("pk"))),
+                record -> ((Struct) record.value()).getStruct("after").getInt32(valueFieldName()),
+                "test_server.s1.anumeric",
+                null);
+        for (int i = 1; i <= 18; i++) {
+            assertThat(dbChanges).contains(entry(i, i));
+        }
+        assertThat(dbChanges).contains(entry(Integer.MIN_VALUE, 100));
+        assertThat(dbChanges).contains(entry(Integer.MAX_VALUE - 1, 101));
+        assertThat(dbChanges).contains(entry(Integer.MAX_VALUE, 102));
+    }
+
+    private int specialAwareKey(double pk) {
+        if (Double.isNaN(pk)) {
+            return Integer.MAX_VALUE;
+        }
+        if (pk == Double.POSITIVE_INFINITY) {
+            return Integer.MAX_VALUE - 1;
+        }
+        if (pk == Double.NEGATIVE_INFINITY) {
+            return Integer.MIN_VALUE;
+        }
+        return (int) pk;
+    }
+
+    @Test
     @FixFor("DBZ-5240")
     @SkipWhenDatabaseVersion(check = LESS_THAN, major = 11, reason = "Primary keys on partitioned tables are supported only on Postgres 11+")
     public void snapshotPartitionedTable() throws Exception {
