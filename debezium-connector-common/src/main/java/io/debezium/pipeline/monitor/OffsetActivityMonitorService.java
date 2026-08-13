@@ -58,6 +58,6 @@ public interface OffsetActivityMonitorService extends Service {
      */
     static OffsetActivityMonitorService lookup(ServiceRegistry serviceRegistry) {
         final OffsetActivityMonitorService service = serviceRegistry.tryGetService(OffsetActivityMonitorService.class);
-        return service != null ? service : DefaultOffsetActivityMonitorService.disabled();
+        return service != null ? service : DefaultOffsetActivityMonitorService.NO_OP;
     }
 }
