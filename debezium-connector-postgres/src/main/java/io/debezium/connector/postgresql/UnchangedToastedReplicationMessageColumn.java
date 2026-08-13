@@ -18,27 +18,15 @@ import io.debezium.connector.postgresql.connection.AbstractReplicationMessageCol
  */
 public class UnchangedToastedReplicationMessageColumn extends AbstractReplicationMessageColumn {
 
-    private static final String TYPE_ARRAY_SUFFIX = "[]";
-    private static final String TYPE_ARRAY_PREFIX = "_";
     /**
      * Marker value indicating an unchanged TOAST column value.
      */
     public static final Object UNCHANGED_TOAST_VALUE = new Object();
-    public static final Object UNCHANGED_TEXT_ARRAY_TOAST_VALUE = new Object();
-    public static final Object UNCHANGED_BINARY_ARRAY_TOAST_VALUE = new Object();
-    public static final Object UNCHANGED_INT_ARRAY_TOAST_VALUE = new Object();
-    public static final Object UNCHANGED_BIGINT_ARRAY_TOAST_VALUE = new Object();
     public static final Object UNCHANGED_HSTORE_TOAST_VALUE = new Object();
-    public static final Object UNCHANGED_UUID_TOAST_VALUE = new Object();
 
     private static final Object[] UNCHANGED_TOAST_VALUES = {
             UnchangedToastedReplicationMessageColumn.UNCHANGED_TOAST_VALUE,
-            UnchangedToastedReplicationMessageColumn.UNCHANGED_TEXT_ARRAY_TOAST_VALUE,
-            UnchangedToastedReplicationMessageColumn.UNCHANGED_BINARY_ARRAY_TOAST_VALUE,
-            UnchangedToastedReplicationMessageColumn.UNCHANGED_INT_ARRAY_TOAST_VALUE,
-            UnchangedToastedReplicationMessageColumn.UNCHANGED_BIGINT_ARRAY_TOAST_VALUE,
-            UnchangedToastedReplicationMessageColumn.UNCHANGED_HSTORE_TOAST_VALUE,
-            UnchangedToastedReplicationMessageColumn.UNCHANGED_UUID_TOAST_VALUE };
+            UnchangedToastedReplicationMessageColumn.UNCHANGED_HSTORE_TOAST_VALUE };
     private Object unchangedToastValue;
 
     public UnchangedToastedReplicationMessageColumn(String columnName, PostgresType type, String typeWithModifiers, boolean optional) {
@@ -70,65 +58,8 @@ public class UnchangedToastedReplicationMessageColumn extends AbstractReplicatio
     }
 
     private void setUnchangedToastValue(String typeWithModifiers) {
-        typeWithModifiers = removeSizeModifierFromArrayTypes(typeWithModifiers);
-        switch (typeWithModifiers) {
-            case "text[]":
-            case "_text":
-            case "character varying[]":
-            case "_varchar":
-            case "character[]":
-            case "_bpchar":
-            case "json[]":
-            case "_json":
-            case "jsonb[]":
-            case "_jsonb":
-                unchangedToastValue = UNCHANGED_TEXT_ARRAY_TOAST_VALUE;
-                break;
-            case "bytea[]":
-            case "_bytea":
-                unchangedToastValue = UNCHANGED_BINARY_ARRAY_TOAST_VALUE;
-                break;
-            case "integer[]":
-            case "_int4":
-            case "date[]":
-            case "_date":
-                unchangedToastValue = UNCHANGED_INT_ARRAY_TOAST_VALUE;
-                break;
-            case "bigint[]":
-            case "_int8":
-                unchangedToastValue = UNCHANGED_BIGINT_ARRAY_TOAST_VALUE;
-                break;
-            case "hstore":
-                unchangedToastValue = UNCHANGED_HSTORE_TOAST_VALUE;
-                break;
-            case "uuid[]":
-            case "_uuid":
-                unchangedToastValue = UNCHANGED_UUID_TOAST_VALUE;
-                break;
-            default:
-                unchangedToastValue = UNCHANGED_TOAST_VALUE;
-        }
-    }
-
-    private boolean isArrayType(String typeWithModifiers) {
-        return typeWithModifiers.startsWith(TYPE_ARRAY_PREFIX) || typeWithModifiers.endsWith(TYPE_ARRAY_SUFFIX);
-    }
-
-    protected String removeSizeModifierFromArrayTypes(String typeWithModifiers) {
-        // Removing the size for type like _varchar(2000, 0)
-        if (isArrayType(typeWithModifiers)) {
-            final int leftParenthesis = typeWithModifiers.indexOf("(");
-            final int rightParenthesis = typeWithModifiers.lastIndexOf(")");
-            if (leftParenthesis > 0 && rightParenthesis > 0) {
-                if (rightParenthesis == typeWithModifiers.length() - 1) {
-                    typeWithModifiers = typeWithModifiers.substring(0, leftParenthesis);
-                }
-                else {
-                    typeWithModifiers = typeWithModifiers.substring(0, leftParenthesis)
-                            + typeWithModifiers.substring(rightParenthesis + 1);
-                }
-            }
-        }
-        return typeWithModifiers;
+        // Array columns carry their placeholder in the element type, which the value converter resolves from
+        // the field schema; the marker below is enough for them.
+        unchangedToastValue = "hstore".equals(typeWithModifiers) ? UNCHANGED_HSTORE_TOAST_VALUE : UNCHANGED_TOAST_VALUE;
     }
 }
