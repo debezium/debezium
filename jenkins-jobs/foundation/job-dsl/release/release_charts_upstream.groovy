@@ -1,9 +1,9 @@
-folder("release") {
-    description("This folder contains all jobs used by developers for upstream release and all relevant stuff")
-    displayName("Release")
+folder('release') {
+    description('This folder contains all jobs used by developers for upstream release and all relevant stuff')
+    displayName('Release')
 }
 
-def releaseChartsPipelineParameters = evaluate(readFileFromWorkspace('jenkins-jobs/job-dsl/release/parameters/release_charts_upstream_parameters.groovy'))
+def releaseChartsPipelineParameters = evaluate(readFileFromWorkspace('jenkins-jobs/foundation/job-dsl/release/parameters/release_charts_upstream_parameters.groovy'))
 
 pipelineJob('release/release-debezium-charts-upstream') {
     displayName('Debezium Charts Release')
@@ -14,22 +14,18 @@ pipelineJob('release/release-debezium-charts-upstream') {
     }
 
     logRotator {
-        numToKeep(5)
+        numToKeep(20)
     }
 
     parameters {
-
-        stringParam('MAIL_TO', 'mvitale@redhat.com')
-        booleanParam('DRY_RUN', true, 'When checked the changes and artifacts are not pushed to repositories and registries')
-        stringParam('RELEASE_VERSION', 'x.y.z.Final', 'Version of Debezium to be released - e.g. 0.5.2.Final')
-
         // Pass the parameters context to the function
         releaseChartsPipelineParameters(delegate)
     }
 
     definition {
         cps {
-            script(readFileFromWorkspace('jenkins-jobs/pipelines/release/release-charts-pipeline.groovy'))
+            script(readFileFromWorkspace('jenkins-jobs/foundation/pipelines/release/release-charts-pipeline.groovy'))
+            sandbox()
         }
     }
 }
