@@ -118,7 +118,7 @@ Post processors run in the order that you list them.
 |[[reselect-columns-post-processor-property-reselect-columns-include-list]]<<reselect-columns-post-processor-property-reselect-columns-include-list, `+post.processors.reselect.columns.include.list+`>>
 |No default
 |Comma-separated list of column names to reselect from the source database.
-If the values for the specified columns are not present in the change event, the post processor requeries the source table to retrieve the values. 
+If the values for the specified columns are not present in the change event, the post processor requeries the source table to retrieve the values.
 Use the following format to specify column names:
 
 `__<schema>__.__<table>__:__<column>__`
@@ -170,7 +170,7 @@ This is most useful for large, rarely-changing columns (such as TOAST or LOB val
 
 |[[reselect-columns-post-processor-property-reselect-cache-type]]<<reselect-columns-post-processor-property-reselect-cache-type, `+post.processors.reselect.cache.type+`>>
 |`io.debezium.processors.reselect.cache.MemoryReselectColumnCache`
-|The fully-qualified name of the `io.debezium.processors.reselect.cache.ReselectColumnCache` implementation used to store reselected values. 
+|The fully-qualified name of the `io.debezium.processors.reselect.cache.ReselectColumnCache` implementation used to store reselected values.
 
 Defaults to an in-memory implementation.
 Provide a custom class to plug in an alternative cache backend.
@@ -200,4 +200,3 @@ Applies only to the default in-memory cache, when `reselect.cache.enabled` is `t
 
 
 |===
-
