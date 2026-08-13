@@ -431,7 +431,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(
                 expectedRecordCount,
                 x -> true,
-                k -> specialAwareKey(Double.parseDouble(k.getString("pk"))),
+                k -> specialAwareKey(k.getString("pk")),
                 record -> ((Struct) record.value()).getStruct("after").getInt32(valueFieldName()),
                 "test_server.s1.anumeric",
                 null);
@@ -443,17 +443,17 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
         assertThat(dbChanges).contains(entry(Integer.MAX_VALUE, 102));
     }
 
-    private int specialAwareKey(double pk) {
-        if (Double.isNaN(pk)) {
-            return Integer.MAX_VALUE;
+    private int specialAwareKey(String pk) {
+        switch (pk) {
+            case "NAN":
+                return Integer.MAX_VALUE;
+            case "POSITIVE_INFINITY":
+                return Integer.MAX_VALUE - 1;
+            case "NEGATIVE_INFINITY":
+                return Integer.MIN_VALUE;
+            default:
+                return Integer.parseInt(pk);
         }
-        if (pk == Double.POSITIVE_INFINITY) {
-            return Integer.MAX_VALUE - 1;
-        }
-        if (pk == Double.NEGATIVE_INFINITY) {
-            return Integer.MIN_VALUE;
-        }
-        return (int) pk;
     }
 
     @Test
