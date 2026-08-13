@@ -338,7 +338,7 @@ For more information about their use, see xref:sink-connector-secondary-unique-c
 Secondary unique constraints can create ordering dependencies between records that have different primary keys.
 Kafka guarantees record order only within a partition, and the connector batches and reduces events based only on the configured primary key.
 For these reasons, you should avoid defining secondary unique constraints or secondary unique indexes on destination tables.
-If a uniqueness rule must be enforced, enforce the rule in the source database, and omit the constraint from the destination table.
+If a uniqueness rule is required, enforce the rule in the source database, and omit the constraint from the destination table.
 
 .Understanding the risk
 
