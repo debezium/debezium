@@ -785,7 +785,10 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
     private Object convertLtreeArray(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, Collections.emptyList(), r -> {
-            if (data instanceof byte[]) {
+            if (UnchangedToastedReplicationMessageColumn.isUnchangedToastedValue(data)) {
+                r.deliver(unchangedToastedPlaceholder.getArrayValue(fieldDefn.schema().valueSchema()).orElse(null));
+            }
+            else if (data instanceof byte[]) {
                 String s = new String((byte[]) data, databaseCharset);
                 // remove '{' and '}'
                 s = s.substring(1, s.length() - 1);
@@ -1567,7 +1570,10 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
     protected Object convertArray(Column column, Field fieldDefn, PostgresType elementType, ValueConverter elementConverter, Object data) {
         return convertValue(column, fieldDefn, data, Collections.emptyList(), (r) -> {
-            if (data instanceof List) {
+            if (UnchangedToastedReplicationMessageColumn.isUnchangedToastedValue(data)) {
+                r.deliver(unchangedToastedPlaceholder.getArrayValue(fieldDefn.schema().valueSchema()).orElse(null));
+            }
+            else if (data instanceof List) {
                 r.deliver(((List<?>) data).stream()
                         .map(value -> resolveArrayValue(value, elementType))
                         .map(elementConverter::convert)

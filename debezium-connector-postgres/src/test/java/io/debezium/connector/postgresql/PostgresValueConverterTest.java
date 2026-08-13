@@ -92,6 +92,25 @@ class PostgresValueConverterTest {
                 .hasMessageContaining("Unexpected value for JDBC type " + Types.ARRAY);
     }
 
+    @FixFor("debezium/dbz#2418")
+    @Test
+    public void shouldConvertUnchangedToastedArrayToPlaceholderOfElementType() {
+        Object converted = converter.convertArray(NUMERIC_ARRAY_COLUMN, NUMERIC_ARRAY_FIELD, PostgresType.UNKNOWN,
+                elementConverter, UnchangedToastedReplicationMessageColumn.UNCHANGED_TOAST_VALUE);
+
+        assertThat(converted).isEqualTo(DecoderDifferences.toastedValueDecimalPlaceholder(3));
+    }
+
+    @FixFor("debezium/dbz#2418")
+    @Test
+    public void shouldConvertUnchangedToastedArrayWithoutPlaceholderRepresentationToNull() {
+        final Column column = Column.editor().name("bool_array").type("_bool").jdbcType(Types.ARRAY).optional(true).create();
+        final Field field = new Field("bool_array", 0, SchemaBuilder.array(SchemaBuilder.OPTIONAL_BOOLEAN_SCHEMA).optional().build());
+
+        assertThat(converter.convertArray(column, field, PostgresType.UNKNOWN, elementConverter,
+                UnchangedToastedReplicationMessageColumn.UNCHANGED_TOAST_VALUE)).isNull();
+    }
+
     private static Array jdbcArrayOf(Object[] values) {
         return jdbcArray(values, null);
     }

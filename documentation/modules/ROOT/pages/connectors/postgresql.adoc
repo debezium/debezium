@@ -2356,6 +2356,22 @@ Consequently, {prodname} follows these rules to handle toasted values:
 Similarly, when receiving a `DELETE` event, no TOAST columns, if any, are  in the `before` field.
 As {prodname} cannot safely provide the column value in this case, the connector returns a placeholder value as defined by the connector configuration property, `unavailable.value.placeholder`.
 
+For an array column the placeholder is expressed in the array's element type, which depends on the column type and on the `binary.handling.mode`, `decimal.handling.mode`, and `time.precision.mode` properties:
+
+* String elements, for example, `text[]`, `json[]`, `ltree[]`, `timestamptz[]`, or enum arrays, carry the placeholder string as the single element of the array.
+`uuid[]` carries a single UUID that is derived from the placeholder bytes.
+* Binary elements, `bytea[]` with `binary.handling.mode=bytes`, carry the placeholder bytes as the single element of the array.
+* Numeric elements, for example, `integer[]`, `numeric[]`, `float[]`, or `date[]` and `timestamp[]` with the default `time.precision.mode`, carry one element per placeholder byte, each element holding the numeric value of that byte.
+* All other arrays have no placeholder representation and arrive as `null`:
+** `boolean[]`, because a list of booleans cannot be told apart from a real value.
+** Arrays with structured or map elements, for example, `geometry[]`, or `hstore[]` with `hstore.handling.mode=map`.
+** `date[]`, `time[]`, and `timestamp[]` with `time.precision.mode=connect`.
+** `numeric(p,s)[]` columns whose precision cannot hold the placeholder values.
+
+The xref:post-processors/reselect-columns.adoc[`ReselectColumnsPostProcessor`] recognizes these placeholder representations, except for the `uuid[]` placeholder, which is not re-selected.
+Columns that arrive as `null` can be re-selected through the post-processor's `reselect.null.values` option.
+Consumers that do not recognize the placeholder, for example, the JDBC sink connector, write it as a regular value.
+
 [id="postgresql-default-values"]
 === Default values
 If a default value is specified for a column in the database schema, the PostgreSQL connector will attempt to propagate this value to the Kafka schema whenever possible.
