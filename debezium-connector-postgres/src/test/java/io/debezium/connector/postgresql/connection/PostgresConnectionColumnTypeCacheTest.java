@@ -42,9 +42,8 @@ public class PostgresConnectionColumnTypeCacheTest {
     /**
      * Builds a {@link PostgresConnection} whose real {@code getColumnValue}/type-cache code runs, without opening a
      * database connection: the (config, null, null, usage) constructor takes the no-value-converter branch (so
-     * {@code getTimestampUtils()} is never called) while still running the field initializers, so the cache's
-     * {@code ThreadLocal} is set up exactly as in production. {@link PostgresConnection#getTypeRegistry()} is then
-     * stubbed to the supplied registry.
+     * {@code getTimestampUtils()} is never called). {@link PostgresConnection#getTypeRegistry()} is then stubbed to
+     * the supplied registry.
      */
     private static PostgresConnection connectionWith(TypeRegistry registry) {
         JdbcConfiguration config = TestHelper.defaultJdbcConfig();
