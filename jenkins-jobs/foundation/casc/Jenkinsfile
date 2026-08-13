@@ -1,0 +1,28 @@
+pipeline {
+    agent any
+
+    stages {
+            stage('Checkout Job DSL definitions') {
+                steps {
+                    checkout([
+                            $class           : 'GitSCM',
+                            branches         : [[name: "${JOB_REPO_BRANCH}"]],
+                            userRemoteConfigs: [[url: "${JOB_REPO_URL}"]],
+                            extensions       : [[$class           : 'RelativeTargetDirectory',
+                                                 relativeTargetDir: 'debezium'],
+                                                 [$class: 'CloneOption', noTags: false, depth: 1, reference: '', shallow: true, timeout: 60]],
+                    ])
+                }
+            }
+
+            stage("Invoke Job DSL") {
+                steps {
+                    dir("${env.WORKSPACE}/debezium") {
+                        jobDsl targets: 'jenkins-jobs/foundation/job-dsl/**/*.groovy',
+                        removedJobAction: 'DELETE',
+                        removedViewAction: 'DELETE'
+                    }
+                }
+            }
+        }
+}
