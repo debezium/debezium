@@ -18,6 +18,7 @@ import io.debezium.connector.jdbc.type.AbstractType;
 import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
+import io.debezium.util.SchemaUtils;
 
 /**
  * An implementation of {@link JdbcType} for {@code ARRAY} column types.
@@ -57,17 +58,13 @@ public class ArrayType extends AbstractType {
         if (nativeElementType != null) {
             return nativeElementType;
         }
-        if (isVariableScaleDecimalElement(schema)) {
+        if (SchemaUtils.isVariableScaleDecimal(schema.valueSchema())) {
             // The scalar handler maps VariableScaleDecimal to double precision, which would round the
             // exact values of a numeric[] away.
             return "numeric";
         }
         JdbcType elementJdbcType = dialect.getSchemaType(schema.valueSchema());
         return elementJdbcType.getTypeName(schema.valueSchema(), isKey);
-    }
-
-    private static boolean isVariableScaleDecimalElement(Schema schema) {
-        return VariableScaleDecimal.LOGICAL_NAME.equals(schema.valueSchema().name());
     }
 
     /**
@@ -97,7 +94,7 @@ public class ArrayType extends AbstractType {
      * {@link java.sql.Connection#createArrayOf} can encode. Every other element type is passed through.
      */
     static Object unwrapElements(Schema schema, Object value) {
-        if (!isVariableScaleDecimalElement(schema)) {
+        if (!SchemaUtils.isVariableScaleDecimal(schema.valueSchema())) {
             return value;
         }
         return ((Collection<?>) value).stream()

@@ -79,4 +79,13 @@ class SchemaUtilsTest {
 
         assertThat(SchemaUtils.getSchemaParameter(schema, "__debezium.source.column.type")).isEmpty();
     }
+
+    @FixFor("debezium/dbz#2398")
+    @Test
+    void shouldDetectVariableScaleDecimalSchema() {
+        Schema schema = SchemaBuilder.struct().name("io.debezium.data.VariableScaleDecimal").build();
+
+        assertThat(SchemaUtils.isVariableScaleDecimal(schema)).isTrue();
+        assertThat(SchemaUtils.isVariableScaleDecimal(Schema.FLOAT64_SCHEMA)).isFalse();
+    }
 }
