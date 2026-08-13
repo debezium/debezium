@@ -75,14 +75,14 @@ In this example, the PostgreSQL connector is configured to use JSON as the Cloud
 [source,json,indent=0,subs="+attributes"]
 ----
 {
-  "id" : "name:test_server;lsn:29274832;txId:565",  // <1>
-  "source" : "/debezium/postgresql/test_server",    // <2>
-  "specversion" : "1.0",                            // <3>
-  "type" : "io.debezium.connector.postgresql.DataChangeEvent", // <4>
-  "time" : "2020-01-13T13:55:39.738Z",             // <5>
-  "datacontenttype" : "application/json",          // <6>
-  "iodebeziumop" : "r",                            // <7>
-  "iodebeziumversion" : "{debezium-version}",      // <8>
+  "id" : "name:test_server;lsn:29274832;txId:565",
+  "source" : "/debezium/postgresql/test_server",
+  "specversion" : "1.0",
+  "type" : "io.debezium.connector.postgresql.DataChangeEvent",
+  "time" : "2020-01-13T13:55:39.738Z",
+  "datacontenttype" : "application/json",
+  "iodebeziumop" : "r",
+  "iodebeziumversion" : "{debezium-version}",
   "iodebeziumconnector" : "postgresql",
   "iodebeziumname" : "test_server",
   "iodebeziumtsms" : "1578923739738",
@@ -92,10 +92,10 @@ In this example, the PostgreSQL connector is configured to use JSON as the Cloud
   "iodebeziumtable" : "a",
   "iodebeziumlsn" : "29274832",
   "iodebeziumxmin" : null,
-  "iodebeziumtxid": "565",                       // <9>
+  "iodebeziumtxid": "565",
   "iodebeziumtxtotalorder": "1",
   "iodebeziumtxdatacollectionorder": "1",
-  "data" : {                                       // <10>
+  "data" : {
     "before" : null,
     "after" : {
       "pk" : 1,
@@ -104,52 +104,48 @@ In this example, the PostgreSQL connector is configured to use JSON as the Cloud
   }
 }
 ----
-.Descriptions of fields in a CloudEvents change event record
-[cols="1,7",options="header",subs="+attributes"]
-|===
-|Item |Description
 
-|1
-|Unique ID that the connector generates for the change event based on the change event's content.
+The following list describes select fields in the preceding CloudEvents change event record:
 
-|2
-|The source of the event, which is the logical name of the database as specified by the `topic.prefix` property in the connector's configuration.
+`id`::
+Unique ID that the connector generates for the change event based on the change event's content.
 
-|3
-|The CloudEvents specification version.
+`source`::
+The source of the event, which is the logical name of the database as specified by the `topic.prefix` property in the connector's configuration.
 
-|4
-a|Connector type that generated the change event.
+`specversion`::
+The CloudEvents specification version.
+
+`type`::
+Connector type that generated the change event.
 The format of this field is `io.debezium.connector.__CONNECTOR_TYPE__.DataChangeEvent`.
-
-Valid values for `_CONNECTOR_TYPE_` are `db2`,
++
+Valid values for `_CONNECTOR_TYPE_` are `db2`, `mariadb,`
 ifdef::community[]
 `informix`,
 endif::community[]
 `mongodb`, `mysql`, `oracle`, `postgresql`, or `sqlserver`.
 
-|5
-|Time of the change in the source database.
+`time`::
+Time of the change in the source database.
 
-|6
-|Describes the content type of the `data` attribute.
+`datacontenttype`::
+Describes the content type of the `data` attribute.
 Possible values are `json`, as in this example, or `avro`.
 
-|7
-|An operation identifier.
+`iodebeziumop`::
+An operation identifier.
 Possible values are `r` for read, `c` for create, `u` for update, or `d` for delete.
 
-|8
-|All `source` attributes that are known from {prodname} change events are mapped to CloudEvents extension attributes by using the `iodebezium` prefix for the attribute name.
+`iodebeziumversion`::
+All `source` attributes that are known from {prodname} change events are mapped to CloudEvents extension attributes by using the `iodebezium` prefix for the attribute name.
 
-|9
-|When enabled in the connector, each `transaction` attribute that is known from {prodname} change events is mapped to a CloudEvents extension attribute by using the `iodebeziumtx` prefix for the attribute name.
+`iodebeziumtxid`::
+When enabled in the connector, each `transaction` attribute that is known from {prodname} change events is mapped to a CloudEvents extension attribute by using the `iodebeziumtx` prefix for the attribute name.
 
-|10
-|The actual data change.
+`data`::
+The actual data change.
 Depending on the operation and the connector, the data might contain `before`, `after`, or `patch` fields.
-
-|===
 
 The following example also shows what a CloudEvents change event record emitted by a PostgreSQL connector looks like. In this example, the PostgreSQL connector is again configured to use JSON as the CloudEvents format envelope, but this time the connector is configured to use Avro for the `data` format.
 
@@ -161,8 +157,8 @@ The following example also shows what a CloudEvents change event record emitted 
   "specversion" : "1.0",
   "type" : "io.debezium.connector.postgresql.DataChangeEvent",
   "time" : "2020-01-13T14:04:18.597Z",
-  "datacontenttype" : "application/avro",          // <1>
-  "dataschema" : "http://my-registry/schemas/ids/1", // <2>
+  "datacontenttype" : "application/avro",
+  "dataschema" : "http://my-registry/schemas/ids/1",
   "iodebeziumop" : "r",
   "iodebeziumversion" : "{debezium-version}",
   "iodebeziumconnector" : "postgresql",
@@ -178,24 +174,20 @@ The following example also shows what a CloudEvents change event record emitted 
   "iodebeziumtxid": "578",
   "iodebeziumtxtotalorder": "1",
   "iodebeziumtxdatacollectionorder": "1",
-  "data" : "AAAAAAEAAgICAg=="                    // <3>
+  "data" : "AAAAAAEAAgICAg=="
 }
 ----
-.Descriptions of fields in a CloudEvents event record for a connector that uses Avro to format data
-[cols="1,7",options="header",subs="+attributes"]
-|===
-|Item |Description
 
-|1
-|Indicates that the `data` attribute contains Avro binary data.
+The following list describes selected fields in a CloudEvents change event record that uses Avro format:
 
-|2
-|URI of the schema to which the Avro data adheres.
+`datacontenttype`::
+Indicates that the `data` attribute contains Avro binary data.
 
-|3
-|The `data` attribute contains base64-encoded Avro binary data.
+`dataschema`::
+URI of the schema to which the Avro data adheres.
 
-|===
+`data`::
+The `data` attribute contains base64-encoded Avro binary data.
 
 It is also possible to use Avro for the envelope as well as the `data` attribute.
 
@@ -214,22 +206,19 @@ The following example shows how to configure the CloudEvents converter to emit c
 ----
 ...
 "value.converter": "io.debezium.converters.CloudEventsConverter",
-"value.converter.serializer.type" : "json",        // <1>
+"value.converter.serializer.type" : "json",
 "value.converter.data.serializer.type" : "avro",
 "value.converter.avro.schema.registry.url": "http://my-registry/schemas/ids/1"
 ...
 ----
-[cols="1,7",options="header",subs="+attributes"]
-.Description of fields in CloudEvents converter configuration
-|===
-|Item |Description
 
-|1
-|Specifying the `serializer.type` is optional, because `json` is the default.
+The following list describes selected fields in the preceding CloudEvents converter configuration:
 
-|===
+`value.converter.serializer.type`::
+Specifying the `serializer.type` is optional, because `json` is the default.
 
-The CloudEvents converter converts Kafka record values. In the same connector configuration, you can specify `key.converter` if you want to operate on record keys.
+The CloudEvents converter converts Kafka record values. 
+In the same connector configuration, you can specify `key.converter` if you want to operate on record keys.
 For example, you might specify `StringConverter`, `LongConverter`, `JsonConverter`, or `AvroConverter`.
 
 // Type: concept
