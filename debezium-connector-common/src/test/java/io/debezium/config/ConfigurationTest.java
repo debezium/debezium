@@ -14,6 +14,7 @@ import static io.debezium.relational.RelationalDatabaseConnectorConfig.HOSTNAME;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -23,6 +24,7 @@ import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.StreamSupport;
 
+import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -580,5 +582,53 @@ public class ConfigurationTest {
 
         // XStream field should not be validated when LogMiner is selected
         assertThat(validationResult.get("xstream.server.name").errorMessages()).isEmpty();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2415")
+    public void shouldReturnConfigValuesForDeprecatedAliases() {
+        Field fieldWithAlias = Field.create("canonical.name")
+                .withType(ConfigDef.Type.STRING)
+                .withWidth(ConfigDef.Width.MEDIUM)
+                .withImportance(ConfigDef.Importance.HIGH)
+                .withDescription("A field with a deprecated alias")
+                .withDeprecatedAliases("old.name");
+
+        Field requiredField = Field.create("required.field")
+                .withType(ConfigDef.Type.STRING)
+                .withWidth(ConfigDef.Width.MEDIUM)
+                .withImportance(ConfigDef.Importance.HIGH)
+                .withDescription("A required field")
+                .required();
+
+        Field.Set fields = Field.setOf(fieldWithAlias, requiredField);
+
+        ConfigDef configDef = new ConfigDef();
+        Field.group(configDef, "test-group", fieldWithAlias, requiredField);
+
+        Configuration config = Configuration.create()
+                .with("canonical.name", "some-value")
+                .build();
+
+        Map<String, ConfigValue> results = config.validate(fields);
+
+        // ConfigDef includes both the canonical name and the deprecated alias
+        assertThat(configDef.configKeys()).containsKey("canonical.name");
+        assertThat(configDef.configKeys()).containsKey("old.name");
+
+        // Verify that validate() returns a ConfigValue for every key in ConfigDef,
+        // including deprecated aliases. Kafka Connect's AbstractHerder iterates
+        // all ConfigDef keys and calls configValue.errors() on each matching
+        // ConfigValue; a missing entry causes an NPE (DBZ-2415).
+        List<String> missingKeys = new ArrayList<>();
+        for (String configKey : configDef.configKeys().keySet()) {
+            if (!results.containsKey(configKey)) {
+                missingKeys.add(configKey);
+            }
+        }
+        assertThat(missingKeys)
+                .as("Every ConfigDef key must have a corresponding ConfigValue from validate(), "
+                        + "otherwise Kafka Connect's AbstractHerder will throw an NPE")
+                .isEmpty();
     }
 }
