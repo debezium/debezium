@@ -1552,7 +1552,12 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
     protected Object convertArray(Column column, Field fieldDefn, PostgresType elementType, ValueConverter elementConverter, Object data) {
         return convertValue(column, fieldDefn, data, Collections.emptyList(), (r) -> {
-            if (data instanceof List) {
+            if (UnchangedToastedReplicationMessageColumn.isUnchangedToastedValue(data)) {
+                // The placeholder has to be expressed in the element type, a plain string would not fit the
+                // array schema. Element types without a representation fall through to handleUnknownData.
+                unchangedToastedPlaceholder.getArrayValue(fieldDefn.schema().valueSchema()).ifPresent(r::deliver);
+            }
+            else if (data instanceof List) {
                 r.deliver(((List<?>) data).stream()
                         .map(value -> resolveArrayValue(value, elementType))
                         .map(elementConverter::convert)
