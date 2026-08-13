@@ -32,19 +32,14 @@ public class DefaultOffsetActivityMonitorService implements OffsetActivityMonito
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultOffsetActivityMonitorService.class);
 
+    public static final DefaultOffsetActivityMonitorService NO_OP = new DefaultOffsetActivityMonitorService(null);
+
     private final ElapsedTimeStrategy elapsedStrategy;
 
     private OffsetActivityMonitor<Partition, OffsetContext> monitor;
 
     public DefaultOffsetActivityMonitorService(Duration checkInterval) {
         this(checkInterval, Clock.SYSTEM);
-    }
-
-    /**
-     * Creates a disabled service instance whose pulses are no-ops.
-     */
-    public static DefaultOffsetActivityMonitorService disabled() {
-        return new DefaultOffsetActivityMonitorService(null);
     }
 
     public DefaultOffsetActivityMonitorService(Duration checkInterval, Clock clock) {
