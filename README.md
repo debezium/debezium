@@ -1,3 +1,4 @@
+ii
 [![License](http://img.shields.io/:license-apache%202.0-brightgreen.svg)](http://www.apache.org/licenses/LICENSE-2.0.html)
 [![Maven Central](https://img.shields.io/maven-central/v/io.debezium/debezium-connector-common?color=bright-green)](https://central.sonatype.com/search?q=io.debezium)
 [![User chat](https://img.shields.io/badge/chat-users-brightgreen.svg)](https://debezium.zulipchat.com/#narrow/stream/302529-users)
