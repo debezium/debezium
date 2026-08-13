@@ -23,7 +23,7 @@ To reduce I/O overhead and increase query speed, when data changes in a table ro
 As a result, the value of the externally stored column is not recorded in the database log, and {prodname} subsequently omits the column when it emits the event record.
 Downstream consumers that receive event records that omit required values can experience processing errors.
 
-IF a value for an externally stored column is not present in the database log entry for an event, when {prodname} emits a record for the event, it replaces the missing value with an `unavailable.value.placeholder` sentinel value.
+If a value for an externally stored column is not present in the database log entry for an event, when {prodname} emits a record for the event, it replaces the missing value with an `unavailable.value.placeholder` sentinel value.
 These sentinel values are inserted into appropriately typed fields, for example, a byte array for bytes, a string for strings, or a key-value map for maps.
 
 To retrieve data for columns that were not available in the initial query, you can apply the {prodname} reselect columns post processor (`ReselectColumnsPostProcessor`).
@@ -79,44 +79,22 @@ To enable the connector to use the `ReselectColumnsPostProcessor`, add the follo
 
 [source,json,subs="+attributes,+quotes"]
 ----
-  "post.processors" : "reselector", // <1>
-  "post.processors.reselector.type" : "io.debezium.processors.reselect.ReselectColumnsPostProcessor", // <2>
-  "post.processors.reselector.reselect.columns.include.list" : "_<schema>_.__<table>__:__<column>__,__<schema>__.__<table>__:__<column>__", // <3>
-  "post.processors.reselector.reselect.unavailable.values" : "true", // <4>
-  "post.processors.reselector.reselect.null.values" : "true", // <5>
-  "post.processors.reselector.reselect.use.event.key" : "false", // <6>
-  "post.processors.reselector.reselect.error.handling.mode" : "WARN" // <7>
+  "post.processors" : "reselector",
+  "post.processors.reselector.type" : "io.debezium.processors.reselect.ReselectColumnsPostProcessor",
+  "post.processors.reselector.reselect.columns.include.list" : "_<schema>_.__<table>__:__<column>__,__<schema>__.__<table>__:__<column>__",
+  "post.processors.reselector.reselect.unavailable.values" : "true",
+  "post.processors.reselector.reselect.null.values" : "true",
+  "post.processors.reselector.reselect.use.event.key" : "false",
+  "post.processors.reselector.reselect.error.handling.mode" : "WARN"
 ----
-[cols="1,7",options="header"]
-|===
-|Item |Description
 
-|1
-|Comma-separated list of post processor prefixes.
+See the xref:post-processor-configuration-options[configuration options] for the full list of available configuration properties.
 
-|2
-|The fully-qualified class type name for the post processor.
-
-|3
-|Comma-separated list of column names, specified by using the following format: `_<schema>_.__<table>__:__<column>__`.
-
-|4
-|Enables or disables reselection of columns that contain the `unavailable.value.placeholder` sentinel value.
-
-|5
-|Enables or disables reselection of columns that are `null`.
-
-|6
-|Enables or disables reselection based event key field names.
-
-|7
-|Log a warning or throw an exception when reselection does not find the row or if a database exception is raised.
-
-|===
 
 // Type: reference
 // ModuleID: descriptions-of-debezium-reselect-columns-post-processor-configuration-properties
 // Title: Descriptions of {prodname} reselect columns post processor configuration properties
+[id="post-processor-configuration-options"]
 == Configuration options
 
 The following table lists the configuration options that you can set for the Reselect Columns post-processor.
@@ -128,9 +106,19 @@ The following table lists the configuration options that you can set for the Res
 |Default
 |Description
 
+|[[reselect-columns-post-processor-property-post-processors]]<<reselect-columns-post-processor-property-post-processors, `+post.processors.reselect.columns.post.processors+`>>
+|No default
+|Comma-separated list of post processors to enable.
+Post processors run in the order that you list them.
+
+|[[reselect-columns-post-processor-property-post-processors-reselector-type]] <<reselect-columns-post-processor-property-post-processors-reselector-type, `+`post.processors.reselector.type+`>>
+|No default
+|The fully-qualified class type name for the specified post processor.
+
 |[[reselect-columns-post-processor-property-reselect-columns-include-list]]<<reselect-columns-post-processor-property-reselect-columns-include-list, `+post.processors.reselect.columns.include.list+`>>
 |No default
 |Comma-separated list of column names to reselect from the source database.
+If the values for the specified columns are not present in the change event, the post processor requeries the source table to retrieve the values.
 Use the following format to specify column names:
 
 `__<schema>__.__<table>__:__<column>__`
@@ -172,4 +160,3 @@ When set to `FAIL`, the connector will stop processing changes if the row no lon
 
 
 |===
-
