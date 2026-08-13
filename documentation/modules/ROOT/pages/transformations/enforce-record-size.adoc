@@ -13,13 +13,15 @@
 
 toc::[]
 
-The `EnforceRecordSize` SMT estimates the serialized size of each record and, if it exceeds the configured maximum, truncates eligible string and bytes columns proportionally to bring the record within the size limit.
+The `EnforceRecordSize` SMT estimates the serialized size of each record and applies a configured strategy if the record exceeds the maximum size.
+By default, the SMT truncates eligible string and bytes columns proportionally.
+Alternatively, the SMT can store the complete record externally and replace selected columns with claim-check markers.
 
 Some downstream systems, such as Apache Kafka brokers or sink connectors, impose a maximum message size limit.
 When {prodname} captures a change event for a row that contains large string or bytes columns, the serialized record can exceed that limit, causing the connector to fail.
 
-The SMT truncates larger columns aggressively to comply with the threshold.
-If does not modify columns if their sizes are at or below the configured threshold.
+With the default strategy, the SMT truncates larger columns aggressively to comply with the threshold.
+It does not modify columns if their sizes are at or below the configured threshold.
 
 // Type: concept
 // Title: Example: Basic configuration of the {prodname} enforce record size SMT
@@ -40,6 +42,55 @@ transforms.EnforceRecordSize.max.bytes=1048576
 When this configuration is active, if the estimated serialized size of a record exceeds 1,048,576 bytes (1 MB), its large string and bytes fields are truncated proportionally until the record conforms to the configured limit.
 
 // Type: concept
+// Title: Storing oversized records by using the claim-check strategy
+// ModuleID: storing-oversized-records-by-using-the-enforce-record-size-claim-check-strategy
+[[enforce-record-size-claim-check]]
+== Storing oversized records by using the claim-check strategy
+
+Use the `claim_check` strategy when downstream consumers require the complete value and truncation would cause data loss.
+When an event exceeds `max.bytes`, the SMT serializes the complete source record, including its source partition and offset, key, and value, and writes it through an `OversizedRecordStorage` implementation.
+After the storage implementation acknowledges the write, the SMT copies the event and replaces each configured non-null string or bytes column in its `before` and `after` sections with a claim-check marker.
+
+The following example stores oversized records in Amazon S3:
+
+[source]
+----
+transforms=EnforceRecordSize
+transforms.EnforceRecordSize.type=io.debezium.transforms.EnforceRecordSize
+transforms.EnforceRecordSize.max.bytes=1048576
+transforms.EnforceRecordSize.strategy=claim_check
+transforms.EnforceRecordSize.claim.check.columns.include.list=inventory.customers.payload
+transforms.EnforceRecordSize.claim.check.storage.class=io.debezium.storage.s3.S3OversizedRecordStorage
+transforms.EnforceRecordSize.claim.check.storage.base.path=s3://my-bucket/debezium/oversized
+transforms.EnforceRecordSize.claim.check.storage.region=us-west-1
+----
+
+The S3 implementation uses the AWS default credentials provider chain.
+To use it, make the `debezium-storage-s3` artifact and its dependencies available on the same Kafka Connect plugin path as the connector.
+
+The marker is a JSON value that retains the column's original string or bytes schema.
+For example:
+
+[source,json]
+----
+{
+  "__debezium_claim_check": true,
+  "version": 1,
+  "storage": "s3",
+  "uri": "s3://my-bucket/debezium/oversized/inventory.customers/offset-a1b2c3d4-sha256-e5f6.json",
+  "column": "payload",
+  "size_bytes": 2097152,
+  "sha256": "e5f6..."
+}
+----
+
+A downstream consumer must recognize the marker, read the complete record from `uri`, verify it as needed by using `sha256`, and recover the value identified by `column`.
+
+The storage key is derived from the source partition and offset and from the serialized payload hash.
+As a result, a retry of the same source event writes the same key and does not create duplicate objects.
+The write is synchronous and fail-closed: if storage does not acknowledge the write, the SMT throws an exception and does not emit a marker record.
+
+// Type: concept
 // Title: How the enforce record size SMT estimates record size
 // ModuleID: how-the-enforce-record-size-smt-estimates-record-size
 [[enforce-record-size-how-it-works]]
@@ -51,6 +102,7 @@ The string size calculation assumes one byte per character, which understates mu
 
 When the estimated size (adjusted by the optional `compression.ratio`) exceeds `max.bytes`, the SMT identifies all string and bytes fields in the `before` and `after` sections of the envelope that are larger than `min.field.size`.
 It then distributes the excess bytes proportionally across those fields, truncating larger fields more than smaller fields.
+This truncation behavior applies when `strategy` is set to its default value, `truncate`.
 
 // Type: concept
 // ModuleID: enforce-record-size-smt-configuration-with-compression-ratio
@@ -116,6 +168,12 @@ It passes non-envelope records, such as schema change events or tombstones, unch
 * The SMT does not guarantee that the final serialized record is exactly at or below `max.bytes`, because it estimates size approximately and the actual serialized size depends on the converter (JSON, Avro, or Protobuf) and its associated overhead.
 To provide a safety margin, configure a conservative `max.bytes` value or adjust the `compression.ratio` setting.
 
+* With the `claim_check` strategy, the SMT supports only string and bytes columns.
+It validates all configured column names before writing the record to storage.
+
+* The `claim_check` strategy leaves the input record unchanged and returns a copied envelope that contains the markers.
+It emits that copy only after external storage acknowledges the complete record.
+
 // Type: reference
 // ModuleID: options-for-configuring-the-enforce-record-size-transformation
 // Title: Options for configuring the enforce record size transformation
@@ -134,7 +192,7 @@ The following table lists the configuration options that you can set for the enf
 |[[enforce-record-size-max-bytes]]<<enforce-record-size-max-bytes, `max.bytes`>>
 |No default  value.
 |(Required) The maximum record size in bytes.
-If the estimated serialized size of a record (adjusted by `compression.ratio`) exceeds the specified limit, the transformation proportionally truncates values in string and bytes columns to conform to the limit
+If the estimated serialized size of a record (adjusted by `compression.ratio`) exceeds the specified limit, the transformation applies the configured `strategy`.
 
 |[[enforce-record-size-compression-ratio]]<<enforce-record-size-compression-ratio, `compression.ratio`>>
 |`1.0`
@@ -147,5 +205,40 @@ For example, if serialization compresses raw record size by 50%, set this to `0.
 |A non-negative number that specifies the maximum size of fields that are subject to truncation.
 The transformation does not truncate fields if their size is less than or equal to this value (in bytes).
 Only fields larger than this threshold are eligible for proportional truncation.
+This option does not apply to the `claim_check` strategy.
+
+|[[enforce-record-size-strategy]]<<enforce-record-size-strategy, `strategy`>>
+|`truncate`
+|Specifies the action to take when an event exceeds `max.bytes`.
+Set the value to `truncate` to proportionally truncate eligible columns.
+Set the value to `claim_check` to store the complete record externally and replace configured columns with durable references.
+
+|[[enforce-record-size-claim-check-storage-class]]<<enforce-record-size-claim-check-storage-class, `claim.check.storage.class`>>
+|No default value.
+|The fully qualified name of an `OversizedRecordStorage` implementation.
+Required when `strategy` is set to `claim_check`.
+For S3, set the value to `io.debezium.storage.s3.S3OversizedRecordStorage`.
+
+|[[enforce-record-size-claim-check-columns]]<<enforce-record-size-claim-check-columns, `claim.check.columns.include.list`>>
+|No default value.
+|A comma-separated list of string or bytes columns to replace with claim-check markers.
+You can specify an unqualified column name, such as `payload`, or a qualified name, such as `inventory.customers.payload`.
+Required when `strategy` is set to `claim_check`.
+
+|[[enforce-record-size-claim-check-s3-base-path]]<<enforce-record-size-claim-check-s3-base-path, `claim.check.storage.base.path`>>
+|No default value.
+|For `S3OversizedRecordStorage`, the S3 bucket and optional object prefix, in the form `s3://bucket/optional-prefix`.
+
+|[[enforce-record-size-claim-check-s3-region]]<<enforce-record-size-claim-check-s3-region, `claim.check.storage.region`>>
+|No default value.
+|For `S3OversizedRecordStorage`, the AWS region in which the bucket is located.
+
+|[[enforce-record-size-claim-check-s3-endpoint]]<<enforce-record-size-claim-check-s3-endpoint, `claim.check.storage.endpoint`>>
+|No default value.
+|For `S3OversizedRecordStorage`, an optional absolute URI for a custom S3-compatible endpoint.
+
+|[[enforce-record-size-claim-check-s3-force-path-style]]<<enforce-record-size-claim-check-s3-force-path-style, `claim.check.storage.force.path.style`>>
+|`false`
+|For `S3OversizedRecordStorage`, specifies whether the S3 client uses path-style access.
 
 |===
