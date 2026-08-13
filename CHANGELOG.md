@@ -3,6 +3,101 @@
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
 
+## 3.7.0.Alpha2
+August 13rd 2026 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A3.7.0.Alpha2)
+
+### New features since 3.6.0.Alpha1
+
+* Support TiDB connector in Debezium [DBZ-6269] [debezium/dbz#789](https://github.com/debezium/dbz/issues/789)
+* Convert OpenLogReplicator Client to non-blocking [DBZ-8203] [debezium/dbz#1198](https://github.com/debezium/dbz/issues/1198)
+* JDBC Sink connector: allow sink to an enum column [DBZ-8900] [debezium/dbz#1344](https://github.com/debezium/dbz/issues/1344)
+* Allow using record_value and record_header with row deletion [DBZ-9583] [debezium/dbz#1421](https://github.com/debezium/dbz/issues/1421)
+* Add connection validator for Azure Event Hub [DBZ-9431] [debezium/dbz#1088](https://github.com/debezium/dbz/issues/1088)
+* Week 6: Implement Structured Metadata Filtering & LangGraph Reactive Agent [debezium/dbz#2156](https://github.com/debezium/dbz/issues/2156)
+* Build Week 5: Complete Platform Subsystem - signals, config management, and environment switching [debezium/dbz#2176](https://github.com/debezium/dbz/issues/2176)
+* Support MariaDB InnoDB-based binary logs [debezium/dbz#2259](https://github.com/debezium/dbz/issues/2259)
+* TinyIntOneToBooleanConverter converts negative TINYINT(1) values to false [debezium/dbz#2260](https://github.com/debezium/dbz/issues/2260)
+* Add feedback on frontend for the pipeline failure [debezium/dbz#2261](https://github.com/debezium/dbz/issues/2261)
+* Enable support for all JdbcSinkConnector database dialects in debezium-server-jdbc [debezium/dbz#2265](https://github.com/debezium/dbz/issues/2265)
+* Db2 connector does not serialize LOB columns (CLOB/BLOB/DBCLOB): snapshot emits the JCC handle's toString(), streaming emits null [debezium/dbz#2304](https://github.com/debezium/dbz/issues/2304)
+* Oracle connector validates the archive-log destination even for snapshot-only runs (initial_only), breaking on managed deployments where V$ARCHIVE_DEST is hidden [debezium/dbz#2305](https://github.com/debezium/dbz/issues/2305)
+* Add optional OIDC bearer-token authentication to conductor [debezium/dbz#2306](https://github.com/debezium/dbz/issues/2306)
+* Uppdate Informix JDBC Driver to v15.0.1.4 [debezium/dbz#2342](https://github.com/debezium/dbz/issues/2342)
+* JDBC sink tasks should retry on error and provide a DLQ [DBZ-7877] [debezium/dbz#984](https://github.com/debezium/dbz/issues/984)
+* Document static table.include.list capture sets and warn on unmatched snapshot signals [debezium/dbz#2392](https://github.com/debezium/dbz/issues/2392)
+* Improve Debezium Server Readiness probe [debezium/dbz#2393](https://github.com/debezium/dbz/issues/2393)
+* How to specify the  "capture_instance"  parameter for Debezuim [DBZ-7587] [debezium/dbz#960](https://github.com/debezium/dbz/issues/960)
+
+
+### Breaking changes since 3.6.0.Alpha1
+
+* Remove support for Oracle 12 continuous mining [debezium/dbz#1953](https://github.com/debezium/dbz/issues/1953)
+* Bump com.google.guava:guava to 32.0.0 [debezium/dbz#2273](https://github.com/debezium/dbz/issues/2273)
+
+
+### Fixes since 3.6.0.Alpha1
+
+* Postgres: Potential data loss on connector restart [DBZ-9149] [debezium/dbz#76](https://github.com/debezium/dbz/issues/76)
+* DDL statement couldn't be parsed. [DBZ-8819] [debezium/dbz#71](https://github.com/debezium/dbz/issues/71)
+* Debezium Postgres connector silent data loss on connector restart [DBZ-8312] [debezium/dbz#51](https://github.com/debezium/dbz/issues/51)
+* Blocking Regression in TIMESTAMP tolerance in IBMi Connector between 3.5.0.Beta2 and 3.6.0.Final [debezium/dbz#2153](https://github.com/debezium/dbz/issues/2153)
+* If connection was closed from MySQL side no incremental snapshots working anymore [debezium/dbz#2275](https://github.com/debezium/dbz/issues/2275)
+* Debezium Server 3.7 fails to start with several sources (MongoDB, Db2): Quarkus engine/Agroal bootstrap defects [debezium/dbz#2284](https://github.com/debezium/dbz/issues/2284)
+* HistorizedRelationalDatabaseConnectorConfig.SCHEMA_HISTORY requires Kafka storage on the classpath [DBZ-6804] [debezium/dbz#870](https://github.com/debezium/dbz/issues/870)
+* OpenLogReplicator network client shutdown is not graceful on interrupt [debezium/dbz#2299](https://github.com/debezium/dbz/issues/2299)
+* Blocking snapshot race condition using OpenLogReplicator [debezium/dbz#2301](https://github.com/debezium/dbz/issues/2301)
+* Remove the predicate object from transform payload if no predicate is present [debezium/dbz#2308](https://github.com/debezium/dbz/issues/2308)
+* Debezium Operator Helm chart renders duplicate debeziumserver-role-binding RoleBinding [debezium/dbz#2309](https://github.com/debezium/dbz/issues/2309)
+* Debezium Server 3.6 RabbitMQ sink ignores routingKey.source=topic from environment variable [debezium/dbz#2317](https://github.com/debezium/dbz/issues/2317)
+* Db2 connector is missing from the Debezium Server assembly distribution profile [debezium/dbz#2318](https://github.com/debezium/dbz/issues/2318)
+* MySQL legacy DDL parser fails on CREATE PROCEDURE containing SELECT ... FOR UPDATE SKIP LOCKED [debezium/dbz#2321](https://github.com/debezium/dbz/issues/2321)
+* RetryingRunnable not honor delay strategy without configuring autoheal [debezium/dbz#2329](https://github.com/debezium/dbz/issues/2329)
+* PostgreSQL parallel snapshot: pooled connections are not pinned to the exported snapshot, giving inconsistent reads across connections [debezium/dbz#2330](https://github.com/debezium/dbz/issues/2330)
+* AsyncEmbeddedEngineTest#testCompletionCallbackCalledAfterConnectorStop fails randomly [debezium/dbz#2341](https://github.com/debezium/dbz/issues/2341)
+* Client ID exclude list not accounting for nulls [debezium/dbz#2348](https://github.com/debezium/dbz/issues/2348)
+* JDBC sink UNNEST batch writes fail on CockroachDB targets for tables with binary columns [debezium/dbz#2357](https://github.com/debezium/dbz/issues/2357)
+* OpenLineageIT#shouldProduceOpenLineageFailEvent fails randomly [debezium/dbz#2364](https://github.com/debezium/dbz/issues/2364)
+* ExtendedStringParser fails on table alias [debezium/dbz#2366](https://github.com/debezium/dbz/issues/2366)
+* Duplicated extended string and XML values [debezium/dbz#2368](https://github.com/debezium/dbz/issues/2368)
+* Aggregate functions should be allowed as ids [DBZ-2437] [debezium/dbz#360](https://github.com/debezium/dbz/issues/360)
+* MySQL executable comments are not supported [DBZ-5621] [debezium/dbz#690](https://github.com/debezium/dbz/issues/690)
+* Quote table identifier components in generated CREATE CHANGEFEED SQL [debezium/dbz#2390](https://github.com/debezium/dbz/issues/2390)
+* Make snapshot.mode=when_needed recover from a stale CockroachDB cursor [debezium/dbz#2391](https://github.com/debezium/dbz/issues/2391)
+* Liveness probe always UP in Debezium Server 3.7 [debezium/dbz#2394](https://github.com/debezium/dbz/issues/2394)
+* JDBC sink UNNEST batch writes fail for any array column when the batch holds more than one record [debezium/dbz#2399](https://github.com/debezium/dbz/issues/2399)
+* MySql DDL parser fails to parse qualified FLUSH TABLES [debezium/dbz#2401](https://github.com/debezium/dbz/issues/2401)
+* Oracle: ALTER TABLE ADD with column and constraint incorrectly parses CONSTRAINT as a column [debezium/dbz#2405](https://github.com/debezium/dbz/issues/2405)
+* Oracle Alter Range Partition with Index-Clause fails [debezium/dbz#2407](https://github.com/debezium/dbz/issues/2407)
+* Declare connect-json as a test dependency [debezium/dbz#2414](https://github.com/debezium/dbz/issues/2414)
+* Config validation errors are lost in HTTP 500 NPE [debezium/dbz#2415](https://github.com/debezium/dbz/issues/2415)
+
+
+### Other changes since 3.6.0.Alpha1
+
+* [Host Deployment ~5] Implement host provisioning service with Ansible playbook execution [debezium/dbz#2092](https://github.com/debezium/dbz/issues/2092)
+* Use the Retrying runnable into Debezium Platform [debezium/dbz#2136](https://github.com/debezium/dbz/issues/2136)
+* Add integration tests for debezium-connector-yashandb and fix related code regressions [debezium/dbz#2205](https://github.com/debezium/dbz/issues/2205)
+* Oracle examples do not include `capture.mode` where needed [debezium/dbz#2258](https://github.com/debezium/dbz/issues/2258)
+* Milvus Source Connector: Metrics and Observability [debezium/dbz#2282](https://github.com/debezium/dbz/issues/2282)
+* Implement Week 9: Packaging, Release Preparation, Stability & CI/CD Refinement [debezium/dbz#2298](https://github.com/debezium/dbz/issues/2298)
+* Milvus Source Connector: Heartbeat Mechanism for Milvus [debezium/dbz#2328](https://github.com/debezium/dbz/issues/2328)
+* `heartbeat.action.query` causes Null Pointer Exception for non-JDBC connectors instead of failing validation [debezium/dbz#2339](https://github.com/debezium/dbz/issues/2339)
+* Update Infinispan to 16.2.2 [debezium/dbz#2365](https://github.com/debezium/dbz/issues/2365)
+* Generate Debezium Platform Conductor OpenAPI spec during build [debezium/dbz#2367](https://github.com/debezium/dbz/issues/2367)
+* Update Cassandra 5 to 5.0.8 [debezium/dbz#2370](https://github.com/debezium/dbz/issues/2370)
+* Create GitHub Action to build and deploy nightly images [debezium/dbz#2371](https://github.com/debezium/dbz/issues/2371)
+* Support dynamic snapshot versions in snapshot Dockerfiles [debezium/dbz#2372](https://github.com/debezium/dbz/issues/2372)
+* Provide image build job in GHA [debezium/dbz#2373](https://github.com/debezium/dbz/issues/2373)
+* Update debezium operator systemtests test-frame dependency [DBZ-8988] [debezium/dbz#1051](https://github.com/debezium/dbz/issues/1051)
+* Sync source connector list across documentation pages [debezium/dbz#2397](https://github.com/debezium/dbz/issues/2397)
+* Bump PostgreSQL JDBC driver to 42.7.13 for CVE-2026-54291 [debezium/dbz#2400](https://github.com/debezium/dbz/issues/2400)
+* Move OffsetActivityMonitor into Debezium Core [debezium/dbz#2406](https://github.com/debezium/dbz/issues/2406)
+* [ci] nightly-build-size-check save a partial cache causing failures on other workflow [debezium/dbz#2409](https://github.com/debezium/dbz/issues/2409)
+* Test against CockroachDB v25.4.14 [debezium/dbz#2413](https://github.com/debezium/dbz/issues/2413)
+* Cross Maven CI matches core branches by substring instead of exact name [debezium/dbz#2417](https://github.com/debezium/dbz/issues/2417)
+
+
+
 ## 3.7.0.Alpha1
 July 30th 2026 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A3.7.0.Alpha1)
 

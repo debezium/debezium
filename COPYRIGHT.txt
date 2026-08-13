@@ -290,6 +290,7 @@ Jordan Pittier
 Juan Fiallo
 Juanma Barea
 Julien Roy
+Jun Wang
 Jun Zhao
 Hady Willi
 Hagar Yasser
@@ -546,6 +547,7 @@ Oskar Polak
 P. Aum
 Pablo Ugarte
 Patrick Chu
+Pavel Ivanovskii
 Pavel Strashkin
 Paul Cheung
 Paul Mellor
@@ -733,6 +735,7 @@ Vivek Wassan
 Vladimir Osin
 Vojtech Juranek
 Vojtěch Juránek
+Wagner Santos
 Wang Min Chao
 Wang-Yu-Chao
 WenChao Ke
