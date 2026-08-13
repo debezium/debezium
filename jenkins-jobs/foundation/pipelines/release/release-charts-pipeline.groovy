@@ -1,50 +1,144 @@
 import groovy.json.*
+import groovy.transform.Field
 import java.util.stream.*
 
 import com.cloudbees.groovy.cps.NonCPS
 
-@Library("dbz-libs") _
+@Library('dbz-libs') _
 
-if (
-        !RELEASE_VERSION ||
-        !DEBEZIUM_OPERATOR_REPOSITORY ||
-        !DEBEZIUM_OPERATOR_BRANCH ||
-        !DEBEZIUM_PLATFORM_REPOSITORY ||
-        !DEBEZIUM_PLATFORM_BRANCH ||
-        !DEBEZIUM_CHART_REPOSITORY ||
-        !DEBEZIUM_CHART_BRANCH ||
-        !OCI_ARTIFACT_REPO_URL
-) {
-    error 'Input parameters not provided'
+properties([
+    parameters([
+        string(name: 'RELEASE_VERSION'),
+        string(name: 'DEBEZIUM_OPERATOR_REPOSITORY'),
+        string(name: 'DEBEZIUM_OPERATOR_BRANCH'),
+        string(name: 'DEBEZIUM_PLATFORM_REPOSITORY'),
+        string(name: 'DEBEZIUM_PLATFORM_BRANCH'),
+        string(name: 'DEBEZIUM_CHART_REPOSITORY'),
+        string(name: 'DEBEZIUM_CHART_BRANCH'),
+        string(name: 'OCI_ARTIFACT_REPO_URL'),
+        string(name: 'ZULIP_TO'),
+        booleanParam(name: 'DRY_RUN')
+    ])
+])
+
+// Configure 1Password CLI, the service account and secrets provided
+@Field final ONE_PASSWORD_CONFIG = [
+    serviceAccountCredentialId: 'sa-onepassword',
+    opCLIPath: '/usr/bin'
+]
+
+@Field final SECRETS = [
+    [envVar: 'GPG_PRIVATE_KEY', secretRef: 'op://Debezium Secrets Limited/Maven secret key/add more/GPG Private key'],
+    [envVar: 'GPG_PASSPHRASE', secretRef: 'op://Debezium Secrets Limited/Maven secret key/password'],
+    [envVar: 'GITHUB_USERNAME', secretRef: 'op://Debezium Secrets Limited/GitHub/username'],
+    [envVar: 'GITHUB_PASSWORD', secretRef: 'op://Debezium Secrets Limited/GitHub/write token'],
+    [envVar: 'QUAYIO_USERNAME', secretRef: 'op://Debezium Secrets Limited/Quay.io - debezium-charts/username'],
+    [envVar: 'QUAYIO_PASSWORD', secretRef: 'op://Debezium Secrets Limited/Quay.io - debezium-charts/password'],
+    [envVar: 'ZULIPBOT_USERNAME', secretRef: 'op://Debezium Secrets Limited/Zulip Jenkins Bot/username'],
+    [envVar: 'ZULIPBOT_TOKEN', secretRef: 'op://Debezium Secrets Limited/Zulip Jenkins Bot/password']
+]
+
+@Field final GIT_CREDENTIALS_ID = 'debezium-github'
+@Field final QUAYIO_CREDENTIALS_ID = 'debezium-charts-quay'
+@Field final HOME_DIR = '/var/lib/jenkins'
+@Field final GPG_DIR = 'gpg'
+
+@Field final DEBEZIUM_OPERATOR_DIR = 'operator'
+@Field final DEBEZIUM_PLATFORM_DIR = 'platform'
+@Field final DEBEZIUM_CHARTS_DIR = 'charts'
+@Field final HELM_CHART_OUTPUT_DIR = 'charts-output'
+@Field final DEBEZIUM_CHART_URL = 'charts.debezium.io'
+
+@Field final MAVEN_CENTRAL = 'https://repo1.maven.org/maven2'
+
+@Field DRY_RUN
+
+@Field DEBEZIUM_OPERATOR_REPOSITORY
+@Field DEBEZIUM_OPERATOR_BRANCH
+@Field DEBEZIUM_PLATFORM_REPOSITORY
+@Field DEBEZIUM_PLATFORM_BRANCH
+@Field DEBEZIUM_CHART_REPOSITORY
+@Field DEBEZIUM_CHART_BRANCH
+@Field OCI_ARTIFACT_REPO_URL
+@Field RELEASE_VERSION
+@Field RELEASE_SEM_VERSION
+@Field VERSION_TAG
+@Field ZULIP_TO
+
+@Field final ZULIP_URL = 'https://debezium.zulipchat.com/api/v1'
+
+def executeShell(directory, script) {
+    def evaluatedScript = ""
+    dir(directory) {
+        withSecrets(config: ONE_PASSWORD_CONFIG, secrets: SECRETS) {
+            def engine = new groovy.text.SimpleTemplateEngine()
+            def binding = [
+                'GPG_PRIVATE_KEY': GPG_PRIVATE_KEY,
+                'GPG_PASSPHRASE': GPG_PASSPHRASE,
+                'GITHUB_USERNAME': GITHUB_USERNAME,
+                'GITHUB_PASSWORD': GITHUB_PASSWORD,
+                'QUAYIO_USERNAME': QUAYIO_USERNAME,
+                'QUAYIO_PASSWORD': QUAYIO_PASSWORD,
+                'ZULIPBOT_USERNAME': ZULIPBOT_USERNAME,
+                'ZULIPBOT_TOKEN': ZULIPBOT_TOKEN
+            ]
+            evaluatedScript = engine.createTemplate(script).make(binding).toString()
+        }
+        sh(script: evaluatedScript, returnStdout: false)
+    }
 }
 
-DRY_RUN = common.getDryRun()
+def sendZulipNotification(message) {
+    if (!ZULIP_TO) {
+        return
+    }
 
-GIT_CREDENTIALS_ID = 'debezium-github'
-QUAYIO_CREDENTIALS_ID = 'debezium-charts-quay'
-HOME_DIR = '/home/cloud-user'
-GPG_DIR = 'gpg'
-GITHUB_CLI_VERSION= '2.67.0'
+    executeShell('.',
+"""
+    curl -sSf -u "\$ZULIPBOT_USERNAME:\$ZULIPBOT_TOKEN" \
+      --data-urlencode type=private \
+      --data-urlencode 'to=[$ZULIP_TO]' \
+      --data-urlencode content="$message" \
+      "$ZULIP_URL/messages"
+"""
+    )
+}
 
-// Helm uses the semantic version format 3.1.0-cr1/3.1.0 instead of the one used by Debezium 3.1.0.CR1/3.1.0.Final
-RELEASE_SEM_VERSION= common.convertToSemver(RELEASE_VERSION)
+node {
+    if (
+        !params.RELEASE_VERSION ||
+        !params.DEBEZIUM_OPERATOR_REPOSITORY ||
+        !params.DEBEZIUM_OPERATOR_BRANCH ||
+        !params.DEBEZIUM_PLATFORM_REPOSITORY ||
+        !params.DEBEZIUM_PLATFORM_BRANCH ||
+        !params.DEBEZIUM_CHART_REPOSITORY ||
+        !params.DEBEZIUM_CHART_BRANCH ||
+        !params.OCI_ARTIFACT_REPO_URL
+    ) {
+        error 'Input parameters not provided'
+    }
 
-MAVEN_CENTRAL = 'https://repo1.maven.org/maven2'
+    DRY_RUN = common.getBooleanParameter(params.DRY_RUN)
+    echo "Dry run: ${DRY_RUN}"
 
-DEBEZIUM_OPERATOR_DIR='operator'
-DEBEZIUM_PLATFORM_DIR='platform'
-DEBEZIUM_CHARTS_DIR='charts'
-HELM_CHART_OUTPUT_DIR='charts-output'
-DEBEZIUM_CHART_URL='charts.debezium.io'
+    RELEASE_VERSION = params.RELEASE_VERSION
+    DEBEZIUM_OPERATOR_REPOSITORY = params.DEBEZIUM_OPERATOR_REPOSITORY
+    DEBEZIUM_OPERATOR_BRANCH = params.DEBEZIUM_OPERATOR_BRANCH
+    DEBEZIUM_PLATFORM_REPOSITORY = params.DEBEZIUM_PLATFORM_REPOSITORY
+    DEBEZIUM_PLATFORM_BRANCH = params.DEBEZIUM_PLATFORM_BRANCH
+    DEBEZIUM_CHART_REPOSITORY = params.DEBEZIUM_CHART_REPOSITORY
+    DEBEZIUM_CHART_BRANCH = params.DEBEZIUM_CHART_BRANCH
+    OCI_ARTIFACT_REPO_URL = params.OCI_ARTIFACT_REPO_URL
+    ZULIP_TO = params.ZULIP_TO
 
-
-node('Slave') {
     catchError {
         stage('Validate parameters') {
             common.validateVersionFormat(RELEASE_VERSION)
         }
 
         stage('Initialize') {
+            RELEASE_SEM_VERSION = common.convertToSemver(RELEASE_VERSION)
+
             dir('.') {
                 deleteDir()
                 sh "git config user.email || git config --global user.email \"debezium@gmail.com\" && git config --global user.name \"Debezium Builder\""
@@ -54,15 +148,12 @@ node('Slave') {
                 sh "mkdir ${WORKSPACE}/${HELM_CHART_OUTPUT_DIR}/debezium-operator"
                 sh "mkdir ${WORKSPACE}/${HELM_CHART_OUTPUT_DIR}/debezium-platform"
             }
-            dir(GPG_DIR) {
-                withCredentials([
-                        string(credentialsId: 'debezium-ci-gpg-passphrase', variable: 'PASSPHRASE'),
-                        [$class: 'FileBinding', credentialsId: 'debezium-ci-secret-key', variable: 'SECRET_KEY_FILE']]) {
-                    echo 'Creating GPG directory'
-                    def gpglog = sh(script: "gpg --import --batch --passphrase $PASSPHRASE --homedir . $SECRET_KEY_FILE", returnStdout: true).trim()
-                    echo gpglog
-                }
-            }
+
+            echo "Configuring GPG in '${GPG_DIR}'"
+            executeShell(GPG_DIR, '''gpg --import --batch --passphrase ${GPG_PASSPHRASE} --homedir . <<-EOF
+${GPG_PRIVATE_KEY}
+EOF''')
+
             checkout([$class                           : 'GitSCM',
                       branches                         : [[name: "*/$DEBEZIUM_OPERATOR_BRANCH"]],
                       doGenerateSubmoduleConfigurations: false,
@@ -91,25 +182,17 @@ node('Slave') {
             )
         }
 
-        stage("Install helm") {
-            sh 'curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3'
-            sh 'chmod 700 get_helm.sh'
-            sh './get_helm.sh'
-            sh 'helm version'
-        }
-
-        stage("Install GitHub CLI") {
-            sh "curl -fLjsO https://github.com/cli/cli/releases/download/v${GITHUB_CLI_VERSION}/gh_${GITHUB_CLI_VERSION}_linux_amd64.tar.gz"
-            sh "tar -xvzf gh_${GITHUB_CLI_VERSION}_linux_amd64.tar.gz --one-top-level=gh-cli --strip-components=1"
-            sh 'sudo mv gh-cli/bin/gh /usr/local/bin'
-            sh 'gh --version'
-        }
-
         def TMP_WORKDIR = sh(script: 'mktemp -d', returnStdout: true).trim()
 
         stage('Release operator chart') {
             echo "=== Downloading Debezium operator chart ==="
             def INPUT_URL = "$MAVEN_CENTRAL/io/debezium/debezium-operator-dist/$RELEASE_VERSION/debezium-operator-dist-$RELEASE_VERSION-helm-chart.tar.gz"
+
+            // Determine chart structure based on version (3.6+ uses new structure)
+            def versionParts = RELEASE_VERSION.tokenize('.')
+            def majorVersion = versionParts[0].toInteger()
+            def minorVersion = versionParts[1].tokenize(/[^0-9]/)[0].toInteger()
+            def useNewStructure = (majorVersion > 3) || (majorVersion == 3 && minorVersion >= 6)
 
             dir(TMP_WORKDIR) {
 
@@ -127,19 +210,32 @@ node('Slave') {
                             """
                 )
 
-                dir("debezium-operator-${RELEASE_SEM_VERSION}") {
+                // Set chart path based on structure
+                def chartPath = useNewStructure ?
+                    "debezium-operator-${RELEASE_SEM_VERSION}/kubernetes/debezium-operator" :
+                    "debezium-operator-${RELEASE_SEM_VERSION}"
+
+                dir(chartPath) {
                     fileUtils.modifyFile("values.yaml", { content ->
-                        return content.replaceAll(
-                                /(image:\s*"[^:]+:)[^"]+(")/,
-                                "\$1${RELEASE_SEM_VERSION}\$2"
-                        )
+                        // Old structure uses quoted values, new structure uses unquoted
+                        if (useNewStructure) {
+                            return content.replaceAll(
+                                    /(image:\s*[^:]+:)[^\s]+/,
+                                    "\$1${RELEASE_SEM_VERSION}"
+                            )
+                        } else {
+                            return content.replaceAll(
+                                    /(image:\s*"[^:]+:)[^"]+(")/,
+                                    "\$1${RELEASE_SEM_VERSION}\$2"
+                            )
+                        }
                     })
 
                 }
 
                 sh(label: 'Repackage',
                         script: """
-                            helm package --app-version=${RELEASE_SEM_VERSION} --version=${RELEASE_SEM_VERSION} debezium-operator-${RELEASE_SEM_VERSION}
+                            helm package --app-version=${RELEASE_SEM_VERSION} --version=${RELEASE_SEM_VERSION} ${chartPath}
                             cp debezium-operator-${RELEASE_SEM_VERSION}.tgz ${WORKSPACE}/${HELM_CHART_OUTPUT_DIR}/debezium-operator
                         """
                 )
@@ -148,23 +244,19 @@ node('Slave') {
             stage('Create a GH release') {
                 dir(DEBEZIUM_OPERATOR_DIR) {
                     if (!DRY_RUN) {
-                        withCredentials([usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
-                            withEnv(["GH_TOKEN=$GIT_PASSWORD"]) {
-                                sh "gh release create v${RELEASE_VERSION} --verify-tag  -t 'Debezium Operator Chart v${RELEASE_VERSION}' --latest '$TMP_WORKDIR/debezium-operator-${RELEASE_SEM_VERSION}.tgz'"
-                            }
-                        }
+                        executeShell('.', """
+                            export GH_TOKEN=\${GITHUB_PASSWORD}
+                            gh release create v${RELEASE_VERSION} --verify-tag -t 'Debezium Operator Chart v${RELEASE_VERSION}' --latest '$TMP_WORKDIR/debezium-operator-${RELEASE_SEM_VERSION}.tgz'
+                        """)
                     }
                 }
             }
 
             stage('Pushing chart to quay.io') {
-                withCredentials([string(credentialsId: QUAYIO_CREDENTIALS_ID, variable: 'USERNAME_PASSWORD')]) {
-                    def credentials = USERNAME_PASSWORD.split(':')
-                    sh """
-                        set +x
-                        helm registry login -u ${credentials[0]} -p ${credentials[1]} quay.io
-                    """
-                }
+                executeShell('.', '''
+                    set +x
+                    helm registry login -u ${QUAYIO_USERNAME} -p ${QUAYIO_PASSWORD} quay.io
+                ''')
                 if (!DRY_RUN) {
                     sh "helm push $TMP_WORKDIR/debezium-operator-${RELEASE_SEM_VERSION}.tgz $OCI_ARTIFACT_REPO_URL"
                 }
@@ -222,22 +314,18 @@ node('Slave') {
 
                 stage('Create a GH release') {
                     if (!DRY_RUN) {
-                        withCredentials([usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
-                            withEnv(["GH_TOKEN=$GIT_PASSWORD"]) {
-                                sh "gh release create v${RELEASE_VERSION} --verify-tag  -t 'Debezium Platform Chart v${RELEASE_VERSION}' --latest 'debezium-platform-${RELEASE_SEM_VERSION}.tgz'"
-                            }
-                        }
+                        executeShell('.', """
+                            export GH_TOKEN=\${GITHUB_PASSWORD}
+                            gh release create v${RELEASE_VERSION} --verify-tag -t 'Debezium Platform Chart v${RELEASE_VERSION}' --latest 'debezium-platform-${RELEASE_SEM_VERSION}.tgz'
+                        """)
                     }
                 }
 
                 stage('Pushing chart to quay.io') {
-                    withCredentials([string(credentialsId: QUAYIO_CREDENTIALS_ID, variable: 'USERNAME_PASSWORD')]) {
-                        def credentials = USERNAME_PASSWORD.split(':')
-                        sh """
-                            set +x
-                            helm registry login -u ${credentials[0]} -p ${credentials[1]} quay.io
-                        """
-                    }
+                    executeShell('.', '''
+                        set +x
+                        helm registry login -u ${QUAYIO_USERNAME} -p ${QUAYIO_PASSWORD} quay.io
+                    ''')
                     if (!DRY_RUN) {
                         sh "helm push debezium-platform-${RELEASE_SEM_VERSION}.tgz $OCI_ARTIFACT_REPO_URL"
                     }
@@ -253,15 +341,15 @@ node('Slave') {
                 sh "helm repo index ${WORKSPACE}/${HELM_CHART_OUTPUT_DIR}/debezium-platform --merge ./index.yaml --url https://github.com/debezium/debezium-platform/releases/download/v${RELEASE_VERSION}"
                 sh "cp ${WORKSPACE}/${HELM_CHART_OUTPUT_DIR}/debezium-platform/index.yaml index.yaml"
                 if (!DRY_RUN) {
-                    withCredentials([usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
-                        sh "git commit -a -m '[release] Stable $RELEASE_VERSION for Debezium Charts'"
-                        sh "git push https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${DEBEZIUM_CHART_REPOSITORY} HEAD:${DEBEZIUM_CHART_BRANCH}"
-                        sh "git tag v$RELEASE_VERSION && git push \"https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${DEBEZIUM_CHART_REPOSITORY}\" v$RELEASE_VERSION"
-                    }
+                    executeShell('.', """
+                        git commit -a -m '[release] Stable $RELEASE_VERSION for Debezium Charts'
+                        git push \"https://\${GITHUB_USERNAME}:\${GITHUB_PASSWORD}@${DEBEZIUM_CHART_REPOSITORY}\" HEAD:${DEBEZIUM_CHART_BRANCH}
+                        git tag v$RELEASE_VERSION && git push \"https://\${GITHUB_USERNAME}:\${GITHUB_PASSWORD}@${DEBEZIUM_CHART_REPOSITORY}\" v$RELEASE_VERSION
+                    """)
                 }
             }
         }
     }
 
-    mail to: MAIL_TO, subject: "${JOB_NAME} run #${BUILD_NUMBER} finished with ${currentBuild.currentResult}", body: "Run ${BUILD_URL} finished with result: ${currentBuild.currentResult}"
+    sendZulipNotification("${JOB_NAME} run #${BUILD_NUMBER} finished with ${currentBuild.currentResult}. Run ${BUILD_URL} finished with result: ${currentBuild.currentResult}")
 }
