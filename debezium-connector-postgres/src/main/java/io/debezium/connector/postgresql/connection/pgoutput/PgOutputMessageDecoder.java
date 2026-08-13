@@ -334,6 +334,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         // Perform several out-of-bands database metadata queries
         Map<String, Optional<String>> columnDefaults;
         Map<String, Boolean> columnOptionality;
+        Map<String, String> columnTypeNames;
         List<String> primaryKeyColumns;
 
         final DatabaseMetaData databaseMetadata = connection.connection().getMetaData();
@@ -346,6 +347,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                 .collect(toMap(io.debezium.relational.Column::name, io.debezium.relational.Column::defaultValueExpression));
 
         columnOptionality = readColumns.stream().collect(toMap(io.debezium.relational.Column::name, io.debezium.relational.Column::isOptional));
+        columnTypeNames = readColumns.stream().collect(toMap(io.debezium.relational.Column::name, io.debezium.relational.Column::typeName));
         primaryKeyColumns = connection.readPrimaryKeyNames(databaseMetadata, tableId);
         if (primaryKeyColumns == null || primaryKeyColumns.isEmpty()) {
             LOGGER.warn("Primary keys are not defined for table '{}', defaulting to unique indices", tableName);
@@ -386,7 +388,8 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
             final boolean hasDefault = columnDefaults.containsKey(columnName);
             final String defaultValueExpression = columnDefaults.getOrDefault(columnName, Optional.empty()).orElse(null);
 
-            columns.add(new ColumnMetaData(columnName, postgresType, key, optional, hasDefault, defaultValueExpression, attypmod));
+            columns.add(new ColumnMetaData(columnName, postgresType, key, optional, hasDefault, defaultValueExpression, attypmod,
+                    columnTypeNames.get(columnName)));
             columnNames.add(columnName);
         }
 
@@ -690,7 +693,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                     .jdbcType(columnMetadata.getPostgresType().getRootType().getJdbcId())
                     .nativeType(columnMetadata.getPostgresType().getRootType().getOid())
                     .optional(columnMetadata.isOptional())
-                    .type(columnMetadata.getPostgresType().getName(), columnMetadata.getTypeName())
+                    .type(columnMetadata.getDriverTypeName(), columnMetadata.getTypeName())
                     .length(columnMetadata.getLength())
                     .scale(columnMetadata.getScale());
 
