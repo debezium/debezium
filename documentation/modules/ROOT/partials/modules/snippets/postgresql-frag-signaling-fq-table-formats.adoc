@@ -103,11 +103,11 @@ tag::stopping-incremental-snapshot-example[]
 ====
 [source,sql,indent=0,subs="+attributes"]
 ----
-INSERT INTO myschema.debezium_signal (id, type, data) // <1>
-values ('ad-hoc-1',   // <2>
-    'stop-snapshot',  // <3>
-    '{"data-collections": ["schema1.table1", "schema1.table2"], // <4>
-    "type":"incremental"}'); // <5>
+INSERT INTO myschema.debezium_signal (id, type, data)
+values ('ad-hoc-1',  
+    'stop-snapshot', 
+    '{"data-collections": ["schema1.table1", "schema1.table2"],
+    "type":"incremental"}');
 ----
 ====
 +
