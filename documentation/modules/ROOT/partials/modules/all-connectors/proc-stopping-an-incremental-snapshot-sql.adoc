@@ -30,6 +30,7 @@ For example,
 include::{snippetsdir}/{context}-frag-signaling-fq-table-formats.adoc[leveloffset=+1,tags=stopping-incremental-snapshot-example]
 
 The values of the `id`, `type`, and `data` parameters in the signal command correspond to the {link-prefix}:{link-signalling}#debezium-signaling-description-of-required-structure-of-a-signaling-data-collection[fields of the signaling {data-collection}].
++
 The following list describes the fields in the preceding signal example:
 +
 `{collection-container}.debezium_signal`::
