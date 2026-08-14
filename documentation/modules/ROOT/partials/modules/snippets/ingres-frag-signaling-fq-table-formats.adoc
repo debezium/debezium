@@ -1,5 +1,4 @@
-//include::{partialsdir}/modules/snippets/db2-frag-signaling-fq-table-formats.adoc[]
-= Shared snippets for Db2 and PG incremental snapshots
+= Shared snippets for Ingres Server incremental snapshots
 
 
 == Triggering an incremental snapshot (SQL)
@@ -9,8 +8,8 @@
 tag::fq-table-name-format-note[]
 [NOTE]
 ====
-If the name of a table that you want to include in a snapshot contains a dot (`.`), a space, or some other non-alphanumeric character, you must escape the table name in double quotes.
-For example, to include a table that exists in the `*public*` schema and that has the name `*My.Table*`, use the following format: `*"public.\"My.Table\""*`.
+If the name of a table that you want to include in a snapshot contains a dot (`.`), a space, or some other non-alphanumeric character, you must escape the table name in double quotes. +
+For example, to include a table that exists in the `*public*` schema, and that has the name `*My.Table*`, use the following format: `*"public.\"My.Table\""*`.
 ====
 end::fq-table-name-format-note[]
 
@@ -22,18 +21,15 @@ end::fq-table-name-format-note[]
 // Example in Step 1 of procedure
 
 tag::snapshot-signal-example[]
-====
 [source,sql,indent=0,subs="+attributes"]
 ----
 INSERT INTO myschema.debezium_signal (id, type, data)
-values ('ad-hoc-1', 
+values ('ad-hoc-1',
     'execute-snapshot',
     '{"data-collections": ["schema1.table1", "schema1.table2"],
     "type":"incremental",
     "additional-conditions":[{"data-collection": "schema1.table1" ,"filter":"color=\'blue\'"}]}');
 ----
-====
-+
 end::snapshot-signal-example[]
 
 
@@ -70,7 +66,6 @@ end::snapshot-multiple-additional-conditions-example[]
 
 === Kafka snapshot with additional conditions example
 
-
 tag::triggering-incremental-snapshot-kafka-addtl-cond-example[]
 [source,json]
 ----
@@ -79,6 +74,7 @@ Key = `test_connector`
 Value = `{"type":"execute-snapshot","data": {"data-collections": ["schema1.products"], "type": "INCREMENTAL", "additional-conditions": [{"data-collection": "schema1.products" ,"filter":"color='blue'"}]}}`
 ----
 end::triggering-incremental-snapshot-kafka-addtl-cond-example[]
+
 
 
 
@@ -112,6 +108,7 @@ values ('ad-hoc-1',
 ====
 +
 end::stopping-incremental-snapshot-example[]
+
 
 
 
