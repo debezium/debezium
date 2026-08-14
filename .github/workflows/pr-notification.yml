@@ -121,7 +121,7 @@ jobs:
           email: ${{ secrets.ZULIP_TOKEN_EMAIL_ADDRESS }}
           organization-url: "https://debezium.zulipchat.com"
           type: "private"
-          to: '[${{ steps.check-notification.outputs.zulip_user_id }}]'
+          to: '${{ steps.check-notification.outputs.zulip_user_id }}'
           content: |
             ${{ steps.result.outputs.status_emoji }} **PR Build Completed**
 
