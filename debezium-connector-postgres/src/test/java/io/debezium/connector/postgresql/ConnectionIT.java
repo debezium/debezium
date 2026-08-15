@@ -93,7 +93,7 @@ public class ConnectionIT implements Testing {
 
     @Test
     @FixFor("debezium/dbz#2350")
-    void shouldReadEveryRowWhenColumnTypeIsCachedPerColumn() throws SQLException {
+    void shouldReadEveryColumnValueThroughGetColumnValue() throws SQLException {
         try (PostgresConnection conn = TestHelper.createWithTypeRegistry()) {
             conn.execute(
                     "DROP SCHEMA IF EXISTS dbz2350 CASCADE",
@@ -112,9 +112,9 @@ public class ConnectionIT implements Testing {
             conn.query("SELECT id, amount, label, flag, tags FROM dbz2350.t ORDER BY id", rs -> {
                 ResultSetMetaData metaData = rs.getMetaData();
                 while (rs.next()) {
-                    // Exercise getColumnValue for every column of every row. The per-column type cache is
-                    // populated on the first row and reused for the remaining rows, and must still decode each
-                    // value; a stale/incorrect cache would surface as a null or wrong value here.
+                    // Exercise getColumnValue for every column of every row across the array / numeric / default
+                    // type paths, ensuring each value decodes correctly (a mis-resolved column type would surface
+                    // as a null or wrong value here).
                     for (int i = 1; i <= metaData.getColumnCount(); i++) {
                         Column column = table.columnWithName(metaData.getColumnName(i));
                         Object value = conn.getColumnValue(rs, i, column, table);
