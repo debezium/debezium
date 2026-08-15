@@ -5,12 +5,10 @@
  */
 package io.debezium.storage.rocksdb.reselect;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import org.rocksdb.CompressionType;
 import org.rocksdb.Options;
 import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
@@ -22,6 +20,7 @@ import io.debezium.DebeziumException;
 import io.debezium.common.annotation.Incubating;
 import io.debezium.config.Configuration;
 import io.debezium.processors.reselect.cache.AbstractSerializingReselectColumnCache;
+import io.debezium.storage.rocksdb.RocksDbUtil;
 import io.debezium.util.Strings;
 
 /**
@@ -75,7 +74,7 @@ public class RocksDbReselectColumnCache extends AbstractSerializingReselectColum
 
         try {
             Files.createDirectories(dbPath);
-            try (Options options = createOptions()) {
+            try (Options options = RocksDbUtil.createOptions()) {
                 final long ttlMs = getTtlMs();
                 if (ttlMs > 0) {
                     // RocksDB's TTL reclaims expired entries during compaction but may still serve them
@@ -132,41 +131,8 @@ public class RocksDbReselectColumnCache extends AbstractSerializingReselectColum
             db = null;
         }
         if (cleanupOnClose && dbPath != null) {
-            deleteDirectory(dbPath.toFile());
+            RocksDbUtil.deleteDirectory(dbPath);
             LOGGER.info("RocksDB reselect cache cleaned up: {}", dbPath);
-        }
-    }
-
-    private Options createOptions() {
-        return new Options()
-                .setCreateIfMissing(true)
-                .setCompressionType(CompressionType.LZ4_COMPRESSION);
-    }
-
-    private void deleteDirectory(File directory) {
-        if (directory.exists()) {
-            final File[] files = directory.listFiles();
-            if (files != null) {
-                for (File file : files) {
-                    if (file.isDirectory()) {
-                        deleteDirectory(file);
-                    }
-                    else {
-                        try {
-                            Files.delete(file.toPath());
-                        }
-                        catch (IOException e) {
-                            LOGGER.warn("Failed to delete file: {}", file, e);
-                        }
-                    }
-                }
-            }
-            try {
-                Files.delete(directory.toPath());
-            }
-            catch (IOException e) {
-                LOGGER.warn("Failed to delete directory: {}", directory, e);
-            }
         }
     }
 }

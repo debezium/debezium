@@ -9,7 +9,6 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -19,7 +18,6 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.function.BiConsumer;
 
-import org.rocksdb.Options;
 import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
 import org.rocksdb.RocksIterator;
@@ -32,6 +30,7 @@ import io.debezium.relational.AbstractCachedTableMappingStorage;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableMappingStorage;
+import io.debezium.storage.rocksdb.RocksDbUtil;
 import io.debezium.util.Strings;
 
 /**
@@ -100,7 +99,7 @@ public class RocksDbTableMappingStorage<V> extends AbstractCachedTableMappingSto
             }
 
             // Initialize RocksDb
-            try (var options = createOptions()) {
+            try (var options = RocksDbUtil.createOptions()) {
                 db = RocksDB.open(options, dbPath.toString());
             }
             LOGGER.info("RocksDb table mapping storage initialized at: {} (type: {})", dbPath, storageTypeName);
@@ -163,10 +162,10 @@ public class RocksDbTableMappingStorage<V> extends AbstractCachedTableMappingSto
             db.close();
             db = null;
         }
-        deleteDirectory(dbPath.toFile());
+        RocksDbUtil.deleteDirectory(dbPath);
         try {
             Files.createDirectories(dbPath);
-            try (var options = createOptions()) {
+            try (var options = RocksDbUtil.createOptions()) {
                 db = RocksDB.open(options, dbPath.toString());
             }
         }
@@ -250,20 +249,9 @@ public class RocksDbTableMappingStorage<V> extends AbstractCachedTableMappingSto
         }
         // Clean up storage directory if configured and not in cache-only mode
         if (!cacheOnlyMode && cleanupOnClose && dbPath != null) {
-            deleteDirectory(dbPath.toFile());
+            RocksDbUtil.deleteDirectory(dbPath);
             LOGGER.info("RocksDb storage cleaned up: {}", dbPath);
         }
-    }
-
-    /**
-     * Creates and configures RocksDb Options.
-     *
-     * @return configured Options instance
-     */
-    private Options createOptions() {
-        return new Options()
-                .setCreateIfMissing(true)
-                .setCompressionType(org.rocksdb.CompressionType.LZ4_COMPRESSION);
     }
 
     /**
@@ -726,35 +714,5 @@ public class RocksDbTableMappingStorage<V> extends AbstractCachedTableMappingSto
         // The connector will need to rebuild the TableSchema from the Table definition
         LOGGER.warn("Schema parsing not fully implemented - returning null. Schema string: {}", schemaStr);
         return null;
-    }
-
-    /**
-     * Recursively deletes a directory and its contents.
-     */
-    private void deleteDirectory(File directory) {
-        if (directory.exists()) {
-            File[] files = directory.listFiles();
-            if (files != null) {
-                for (File file : files) {
-                    if (file.isDirectory()) {
-                        deleteDirectory(file);
-                    }
-                    else {
-                        try {
-                            Files.delete(file.toPath());
-                        }
-                        catch (IOException e) {
-                            LOGGER.warn("Failed to delete file: {}", file, e);
-                        }
-                    }
-                }
-            }
-            try {
-                Files.delete(directory.toPath());
-            }
-            catch (IOException e) {
-                LOGGER.warn("Failed to delete directory: {}", directory, e);
-            }
-        }
     }
 }
