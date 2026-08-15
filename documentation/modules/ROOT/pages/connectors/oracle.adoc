@@ -2556,6 +2556,123 @@ Contains calendar and clock component fields, `offsetSeconds`, optional `zoneId`
 
 |===
 
+When the `time.precision.mode` configuration property is set to `microseconds`, the connector maps temporal values to microsecond-precision integers.
+Oracle `DATE` and `TIMESTAMP` values (including `DATE`, which always contains a time component in Oracle) are represented as the number of microseconds since the UNIX epoch.
+
+[cols="25%a,20%a,55%a",options="header"]
+|===
+|Oracle data type |Literal type (schema type) |Semantic type (schema name) and Notes
+
+|`DATE`
+|`INT64`
+|`io.debezium.time.MicroTimestamp`
+
+Represents the number of microseconds since the UNIX epoch, and does not include timezone information.
+Note that Oracle `DATE` always includes a time component.
+
+|`INTERVAL DAY[(M)] TO SECOND`
+|`FLOAT64`
+|`io.debezium.time.MicroDuration`
+
+The number of microseconds for a time interval using the `365.25 / 12.0` formula for days per month average.
+
+`io.debezium.time.Interval` (when `interval.handling.mode` is set to `string`)
+
+The string representation of the interval value that follows the pattern `P<years>Y<months>M<days>DT<hours>H<minutes>M<seconds>S`, for example,  `P1Y2M3DT4H5M6.78S`.
+
+|`INTERVAL YEAR[(M)] TO MONTH`
+|`FLOAT64`
+|`io.debezium.time.MicroDuration`
+
+The number of microseconds for a time interval using the `365.25 / 12.0` formula for days per month average.
+
+`io.debezium.time.Interval` (when `interval.handling.mode` is set to `string`)
+
+The string representation of the interval value that follows the pattern `P<years>Y<months>M<days>DT<hours>H<minutes>M<seconds>S`, for example,  `P1Y2M3DT4H5M6.78S`.
+
+|`TIMESTAMP(0 - 9)`
+|`INT64`
+|`io.debezium.time.MicroTimestamp`
+
+Represents the number of microseconds since the UNIX epoch, and does not include timezone information.
+
+|`TIMESTAMP WITH TIME ZONE`
+|`STRING`
+|`io.debezium.time.ZonedTimestamp`
+
+A string representation of a timestamp with timezone information.
+
+|`TIMESTAMP WITH LOCAL TIME ZONE`
+|`STRING`
+|`io.debezium.time.ZonedTimestamp`
+
+A string representation of a timestamp in UTC.
+
+|===
+
+When the `time.precision.mode` configuration property is set to `nanoseconds`, the connector maps temporal values to nanosecond-precision integers.
+Oracle `DATE` and `TIMESTAMP` values are represented as the number of nanoseconds since the UNIX epoch.
+
+[IMPORTANT]
+====
+Because nanoseconds since the Unix epoch are stored in a signed `INT64`, the representable range of `io.debezium.time.NanoTimestamp` is approximately *`1677-09-21T00:12:43Z` to `2262-04-11T23:47:16Z`*.
+Values outside this range — for example a `9999-12-31` end-of-time sentinel stored in a `TIMESTAMP(7 - 9)` column — cannot be represented and cause the connector to throw an `IllegalArgumentException` from the value converter.
+The exception is routed through the standard `event.processing.failure.handling.mode` configuration, so operators can choose `fail` (the default), `warn`, or `skip` per their requirements.
+
+If a column may legitimately contain values outside the representable range, set `time.precision.mode=microseconds` or `time.precision.mode=isostring` to capture the value with lower precision or as an ISO 8601 string.
+====
+
+[cols="25%a,20%a,55%a",options="header"]
+|===
+|Oracle data type |Literal type (schema type) |Semantic type (schema name) and Notes
+
+|`DATE`
+|`INT64`
+|`io.debezium.time.NanoTimestamp`
+
+Represents the number of nanoseconds since the UNIX epoch, and does not include timezone information.
+Note that Oracle `DATE` always includes a time component.
+
+|`INTERVAL DAY[(M)] TO SECOND`
+|`FLOAT64`
+|`io.debezium.time.MicroDuration`
+
+The number of microseconds for a time interval using the `365.25 / 12.0` formula for days per month average.
+
+`io.debezium.time.Interval` (when `interval.handling.mode` is set to `string`)
+
+The string representation of the interval value that follows the pattern `P<years>Y<months>M<days>DT<hours>H<minutes>M<seconds>S`, for example,  `P1Y2M3DT4H5M6.78S`.
+
+|`INTERVAL YEAR[(M)] TO MONTH`
+|`FLOAT64`
+|`io.debezium.time.MicroDuration`
+
+The number of microseconds for a time interval using the `365.25 / 12.0` formula for days per month average.
+
+`io.debezium.time.Interval` (when `interval.handling.mode` is set to `string`)
+
+The string representation of the interval value that follows the pattern `P<years>Y<months>M<days>DT<hours>H<minutes>M<seconds>S`, for example,  `P1Y2M3DT4H5M6.78S`.
+
+|`TIMESTAMP(0 - 9)`
+|`INT64`
+|`io.debezium.time.NanoTimestamp`
+
+Represents the number of nanoseconds since the UNIX epoch, and does not include timezone information.
+
+|`TIMESTAMP WITH TIME ZONE`
+|`STRING`
+|`io.debezium.time.ZonedTimestamp`
+
+A string representation of a timestamp with timezone information.
+
+|`TIMESTAMP WITH LOCAL TIME ZONE`
+|`STRING`
+|`io.debezium.time.ZonedTimestamp`
+
+A string representation of a timestamp in UTC.
+
+|===
+
 [id="oracle-rowid-types"]
 === ROWID types
 
