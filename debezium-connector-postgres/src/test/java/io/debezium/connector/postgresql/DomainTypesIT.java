@@ -81,6 +81,7 @@ public class DomainTypesIT extends AbstractRecordsProducerTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2350")
     public void shouldSnapshotDomainColumnsIdenticallyToTheirBaseType() throws Exception {
         // getColumnValue() resolves a column's type to decide how to read it (NUMERIC/MONEY/temporal are read
         // specially). A domain must be read exactly like its base type. This snapshots (initial mode -> the
