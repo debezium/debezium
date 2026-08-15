@@ -34,7 +34,7 @@ public class CappedLogFileSessionSelector implements LogFileSessionSelector {
     private final long redoLogSizeInBytes;
 
     private int logsPerRedoThread;
-    private Map<Integer, List<LogFile>> previousCappedLogsByThread;
+    private Map<Integer, List<LogFile>> previousBudgetLogsByThread;
     private Scn previousEffectiveUpperBoundary;
 
     public CappedLogFileSessionSelector(int minimumLogsPerRedoThread, long redoLogSizeInBytes) {
@@ -53,25 +53,17 @@ public class CappedLogFileSessionSelector implements LogFileSessionSelector {
                 .sorted(Comparator.comparing(LogFile::getSequence))
                 .collect(Collectors.groupingBy(LogFile::getThread));
 
-        Map<Integer, List<LogFile>> cappedLogsByThread = getThreadLogsCappedBySize(logsByThread, (long) logsPerRedoThread * redoLogSizeInBytes);
+        Map<Integer, List<LogFile>> budgetLogsByThread = getThreadLogsCappedByBudget(logsByThread, (long) logsPerRedoThread * redoLogSizeInBytes);
 
-        if (previousCappedLogsByThread != null) {
-            if (cappedLogsByThread.equals(previousCappedLogsByThread)) {
-                // Same log set as last iteration: the lower watermark did not advance, so a long-running
-                // transaction may extend beyond the current cap. Grow by one log to find the end.
-                logsPerRedoThread++;
-                LOGGER.debug("Capped log set unchanged, growing log count per redo thread to {}.", logsPerRedoThread);
-                cappedLogsByThread = getThreadLogsCappedBySize(logsByThread, (long) logsPerRedoThread * redoLogSizeInBytes);
-            }
-            else if (logsPerRedoThread > minimumLogsPerRedoThread) {
-                // Log set changed: the watermark advanced, so reset the count back to the configured minimum.
-                logsPerRedoThread = minimumLogsPerRedoThread;
-                LOGGER.debug("Capped log set changed, resetting log count per redo thread to {}.", logsPerRedoThread);
-                cappedLogsByThread = getThreadLogsCappedBySize(logsByThread, (long) logsPerRedoThread * redoLogSizeInBytes);
-            }
+        if (previousBudgetLogsByThread != null && budgetLogsByThread.equals(previousBudgetLogsByThread)) {
+            logsPerRedoThread++;
+            LOGGER.debug("Capped log set unchanged, growing log count per redo thread to {}.", logsPerRedoThread);
+            budgetLogsByThread = getThreadLogsCappedByBudget(logsByThread, (long) logsPerRedoThread * redoLogSizeInBytes);
         }
 
-        previousCappedLogsByThread = cappedLogsByThread;
+        previousBudgetLogsByThread = budgetLogsByThread;
+
+        Map<Integer, List<LogFile>> cappedLogsByThread = extendPastPreviousBoundary(logsByThread, budgetLogsByThread);
 
         boolean allThreadsMineOnline = true;
         for (RedoThread redoThread : logFilesResult.redoThreadState().getThreads()) {
@@ -101,8 +93,10 @@ public class CappedLogFileSessionSelector implements LogFileSessionSelector {
 
         if (allThreadsMineOnline) {
             LOGGER.debug("All threads are reading online redo, using all logs and reading up to {}.", upperBoundary);
-            // When all threads mine online redo logs, no upper boundary cap is necessary
-            // Resort the log files in thread+sequence order for application.
+            if (logsPerRedoThread > minimumLogsPerRedoThread) {
+                logsPerRedoThread = minimumLogsPerRedoThread;
+                LOGGER.debug("All threads reading online redo, resetting log count per redo thread to {}.", logsPerRedoThread);
+            }
             recordEffectiveUpperBoundary(upperBoundary);
             return new SessionLogSelection(
                     logFilesResult.logFiles().stream()
@@ -124,49 +118,52 @@ public class CappedLogFileSessionSelector implements LogFileSessionSelector {
                 effectiveUpperBoundary);
     }
 
-    private Map<Integer, List<LogFile>> getThreadLogsCappedBySize(Map<Integer, List<LogFile>> logsByThread, long thresholdBytes) {
+    private Map<Integer, List<LogFile>> getThreadLogsCappedByBudget(Map<Integer, List<LogFile>> logsByThread, long thresholdBytes) {
         final Map<Integer, List<LogFile>> logsByThreadCapped = new HashMap<>();
         for (Map.Entry<Integer, List<LogFile>> entry : logsByThread.entrySet()) {
-            final List<LogFile> threadLogs = entry.getValue();
             final List<LogFile> cappedLogs = new ArrayList<>();
 
             long accumulatedSize = 0;
-            int nextIndex = 0;
-            while (nextIndex < threadLogs.size()) {
-                final LogFile logFile = threadLogs.get(nextIndex);
+            for (LogFile logFile : entry.getValue()) {
                 accumulatedSize += logFile.getBytes();
                 cappedLogs.add(logFile);
-                nextIndex++;
 
                 if (accumulatedSize >= thresholdBytes) {
                     break;
                 }
             }
 
-            // The effective upper boundary must never regress below a boundary a previous session
-            // already mined; such a session re-reads redo without producing any new events. Extend
-            // the capped window until its top passes the previously mined boundary.
-            if (previousEffectiveUpperBoundary != null) {
-                while (nextIndex < threadLogs.size() && isWindowTopAtOrBelow(cappedLogs, previousEffectiveUpperBoundary)) {
-                    cappedLogs.add(threadLogs.get(nextIndex));
-                    nextIndex++;
-                }
-            }
-
-            // When the capped window has consumed all the thread's archive logs and reached the
-            // online redo logs, include the thread's remaining online logs so the session reads
-            // through the online upper boundary rather than being capped at a non-current online
-            // log; the marginal cost is bounded by the thread's redo log group count.
-            if (!cappedLogs.get(cappedLogs.size() - 1).isArchive()) {
-                while (nextIndex < threadLogs.size()) {
-                    cappedLogs.add(threadLogs.get(nextIndex));
-                    nextIndex++;
-                }
-            }
-
             logsByThreadCapped.put(entry.getKey(), cappedLogs);
         }
         return logsByThreadCapped;
+    }
+
+    private Map<Integer, List<LogFile>> extendPastPreviousBoundary(
+                                                                   Map<Integer, List<LogFile>> logsByThread, Map<Integer, List<LogFile>> budgetCapped) {
+        final Map<Integer, List<LogFile>> result = new HashMap<>();
+        for (Map.Entry<Integer, List<LogFile>> entry : logsByThread.entrySet()) {
+            final List<LogFile> threadLogs = entry.getValue();
+            final List<LogFile> budgetLogs = budgetCapped.get(entry.getKey());
+            final List<LogFile> extended = new ArrayList<>(budgetLogs);
+            int nextIndex = budgetLogs.size();
+
+            if (previousEffectiveUpperBoundary != null) {
+                while (nextIndex < threadLogs.size() && isWindowTopAtOrBelow(extended, previousEffectiveUpperBoundary)) {
+                    extended.add(threadLogs.get(nextIndex));
+                    nextIndex++;
+                }
+            }
+
+            if (!extended.get(extended.size() - 1).isArchive()) {
+                while (nextIndex < threadLogs.size()) {
+                    extended.add(threadLogs.get(nextIndex));
+                    nextIndex++;
+                }
+            }
+
+            result.put(entry.getKey(), extended);
+        }
+        return result;
     }
 
     private static boolean isWindowTopAtOrBelow(List<LogFile> windowLogs, Scn boundary) {
