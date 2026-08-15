@@ -633,7 +633,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      * @throws InterruptedException if the thread is interrupted
      */
     protected void handleDataChangeEvent(LogMinerEventRow event) throws SQLException, InterruptedException {
-        if (Strings.isNullOrBlank(event.getRedoSql())) {
+        if (!event.isRollbackFlag() && Strings.isNullOrBlank(event.getRedoSql())) {
             LOGGER.trace("Data event in transaction {} with SCN {} has empty redo SQL: {}",
                     event.getTransactionId(), event.getScn(), Loggings.maybeRedactSensitiveData(event));
             return;
