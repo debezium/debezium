@@ -684,7 +684,7 @@ For information about capturing data from a new table that has undergone structu
 .Procedure
 
 1. Stop the connector.
-2. Remove the internal database schema history topic that is specified by the xref:{context}-property-database-history-kafka-topic[`documentation/modules/ROOT/partials/modules/all-connectors property`].
+2. Remove the internal database schema history topic that is specified by the xref:{context}-property-database-history-kafka-topic[`schema.history.internal.kafka.topic property`].
 3. Apply the following changes to the connector configuration:
 .. Set the xref:{context}-property-snapshot-mode[`snapshot.mode`] to `recovery`.
 .. Set the value of xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.store.only.captured.tables.ddl`] to `false`.
@@ -3129,7 +3129,9 @@ Specifies the Kafka brokers that the connector uses to write and recover DDL sta
 `schema.history.internal.kafka.topic`::
 Specifies the name of the database schema history topic.
 This topic is for internal use only and should not be used by consumers.
-This topic must be configured with infinite retention (`cleanup.policy=delete`, `retention.ms=-1`); insufficient retention can cause the connector to throw a `SchemaHistoryException`.
+ifdef::community[]
+To learn more about the topic configuration requirements, see xref:install.html#configuring-debezium
+endif::community[]
 
 `include.schema.changes`::
 Specifies whether the connector should generate events for DDL changes and emit them to the `fulfillment` schema change topic for use by consumers.
