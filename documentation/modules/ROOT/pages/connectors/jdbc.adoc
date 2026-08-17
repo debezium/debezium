@@ -259,8 +259,8 @@ Consult your specific database vendor's documentation for what data types are an
 [[jdbc-delete-mode]]
 === Delete mode
 
-The {prodname} JDBC sink connector can delete rows in the destination database when a `DELETE` or _tombstone_ event is consumed.
-By default, the JDBC sink connector does not enable delete mode.
+By default, when the connector consumes `DELETE` or tombstone events, it does not delete the corresponding row in the sink database.
+You might want the connector to remove rows when you need to maintain data parity between the source and sink databases, so that deletions in the source are also reflected in the sink.
 
 If you want to the connector to remove rows, you must explicitly set `delete.enabled=true` in the connector configuration.
 To use this mode you must also set xref:jdbc-property-primary-key-fields[`primary.key.fields`] to a value other than `none`.
@@ -272,7 +272,8 @@ The preceding configuration is necessary, because deletes are executed based on 
 [[jdbc-idempotent-writes]]
 === Idempotent writes
 
-The {prodname} JDBC sink connector can perform idempotent writes, enabling it to replay the same records repeatedly and not change the final database state.
+In an at-least-once delivery pipeline, the connector can receive the same event more than once after a restart or rebalance.
+Configure the connector to use `upsert` mode so that data written to the sink database is idempotent, and replaying an event always produces the same final row state.
 
 To enable the connector to perform idempotent writes, you must be explicitly set the `insert.mode` for the connector to `upsert`.
 An `upsert` operation is applied as either an `update` or an `insert`, depending on whether the specified primary key already exists.
@@ -318,7 +319,8 @@ The following table shows the `upsert` DML syntax for the database dialects that
 [[jdbc-schema-evolution]]
 === Schema evolution
 
-You can use the following schema evolution modes with the {prodname} JDBC sink connector:
+The `schema.evolution` property controls whether the connector automatically creates or alters destination tables when event schemas change.
+The following table describes the available modes, from no evolution (`none`) through startup validation (`validate-only`) to automatic table creation and column addition (`basic`).
 
 |===
 |Mode |Description
@@ -400,6 +402,9 @@ Enabling quoting results in the same behavior when the connector creates column 
 
 [[jdbc-connection-idle-timeouts]]
 === Connection Idle Timeouts
+
+Connections held idle in the pool can time out if they remain inactive beyond the database's configured threshold, causing subsequent write operations to fail.
+Set the `hibernate.agroal.idleValidation` property to enable periodic validation of pooled connections and prevent idle timeout errors.
 
 The JDBC sink connector for {prodname} leverages a connection pool to enhance performance.
 Connection pools are engineered to establish an initial set of connections, maintain a specified number of connections, and efficiently allocate connections to the application as required.
@@ -558,6 +563,8 @@ The actual final column type varies with for each database type.
 [[jdbc-kafka-connect-primitive-mappings]]
 === Kafka Connect primitive data type mappings
 
+The following table maps each Kafka Connect primitive type to its corresponding JDBC SQL type, which the {prodname} JDBC sink connector uses when creating or altering columns in the destination database.
+
 .Mappings between Kafka Connect primitive data types and column data types
 |===
 |Primitive Type |JDBC SQL Type
@@ -605,6 +612,8 @@ As a workaround, if you need a BOOLEAN data type for an Oracle 23 sink, add the 
 [[jdbc-kafka-connect-logical-mappings]]
 === Kafka Connect logical data type mappings
 
+The following table maps each Kafka Connect logical type to its corresponding JDBC SQL type, which the {prodname} JDBC sink connector uses when writing structured data such as dates, times, and decimals to the destination database.
+
 .Mappings between Kafka Connect logical data types and column data types
 |===
 |Logical Type |JDBC SQL Type
@@ -627,6 +636,8 @@ As a workaround, if you need a BOOLEAN data type for an Oracle 23 sink, add the 
 // Title: Mappings between {prodname} logical data types and JDBC column types
 [[jdbc-debezium-logical-mappings]]
 === {prodname} logical data type mappings
+
+The following table maps {prodname} logical types to their corresponding JDBC SQL types, which the connector uses when writing {prodname} change event fields — such as timestamps, durations, and variable-scale decimals — to the destination database.
 
 .Mappings between {prodname} logical types and column data types
 |===
@@ -693,6 +704,8 @@ If the database does not support time or timestamps with time zones, the mapping
 // Title: Mappings between {prodname} dialect-specific logical data types and RDBMS column data types
 [[jdbc-debezium-logical-mappings-dialect-specific]]
 === {prodname} dialect-specific data type mappings
+
+The following table maps {prodname} logical types to dialect-specific column types for each supported database, which you can use to understand how the connector resolves fields such as JSON, geospatial data, and bit strings when targeting a specific database dialect.
 
 .Mappings between {prodname} dialect-specific logical types and column data types
 [cols="as,as,as,as,as,as",options="header"]
@@ -1081,7 +1094,7 @@ After you apply the SMT to an event that includes a field with the name `ID`, th
 == Deployment
 
 ifdef::community[]
-To deploy a {prodname} JDBC connector, you install the {prodname} JDBC connector archive, configure the connector, and start the connector by adding its configuration to Kafka Connect.
+To deploy the {prodname} JDBC sink connector, install the connector archive in your Kafka Connect environment, configure the connector properties, and register the connector with Kafka Connect.
 
 .Prerequisites
 * link:http://kafka.apache.org/[Apache Kafka] and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
@@ -1735,6 +1748,8 @@ Information about the properties is organized as follows:
 [[jdbc-connector-properties-kafka-consumer]]
 === JDBC connector Kafka consumer properties
 
+The following table describes the Kafka consumer properties that control how the {prodname} JDBC sink connector identifies itself to Kafka Connect and specifies the topics it consumes.
+
 [cols="30%a,25%a,45%a"]
 |===
 |Property |Default |Description
@@ -1779,6 +1794,8 @@ Do not use this property in combination with the xref:jdbc-property-connection-t
 // Type: reference
 [[jdbc-connector-properties-connection]]
 === JDBC connector connection properties
+
+The following table describes the properties that control how the {prodname} JDBC sink connector connects to and authenticates with the destination database, including connection pool settings.
 
 [cols="30%a,25%a,45%a"]
 |===
@@ -1831,6 +1848,8 @@ Use with caution where strong data consistency is required.
 // Type: reference
 [[jdbc-connector-properties-runtime]]
 === JDBC connector runtime properties
+
+The following table describes the runtime properties that control how the {prodname} JDBC sink connector processes events and writes data to the destination database, including insert mode, primary key resolution, schema evolution, and batching behavior.
 
 [cols="30%a,25%a,45%a"]
 |===
@@ -2015,6 +2034,8 @@ To prevent the connector from rebalancing, set the total retry time (flush.retry
 [[jdbc-connector-properties-extendable]]
 === JDBC connector extendable properties
 
+The following table describes the properties that allow you to customize the naming strategies the {prodname} JDBC sink connector uses to resolve destination table names and column names from incoming event data.
+
 [cols="30%a,25%a,45%a"]
 |===
 |Property |Default |Description
@@ -2053,6 +2074,8 @@ For example, to assist Hibernate in resolving the type and version of the target
 // Title: JDBC connector frequently asked questions
 [[jdbc-faq]]
 == Frequently asked questions
+
+The following questions and answers address common decisions and scenarios when you configure and operate the {prodname} JDBC sink connector, including event transformation requirements, schema evolution limitations, data type mapping, and table naming options.
 
 *Is the* `ExtractNewRecordState` *single message transformation required?*::
 No, that is actually one of the differentiating factors of the {prodname} JDBC connector from other implementations.
