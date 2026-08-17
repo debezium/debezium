@@ -30,8 +30,25 @@ on:
         default: 'latest'
 
 jobs:
+  setup-parameters:
+    name: Setup Parameters
+    runs-on: ubuntu-latest
+    outputs:
+      images_repository: ${{ steps.params.outputs.images_repository }}
+      images_branch: ${{ steps.params.outputs.images_branch }}
+      tag: ${{ steps.params.outputs.tag }}
+
+    steps:
+      - name: Set parameters
+        id: params
+        run: |
+          echo "images_repository=${{ inputs.images_repository || 'debezium/container-images' }}" >> $GITHUB_OUTPUT
+          echo "images_branch=${{ inputs.images_branch || 'main' }}" >> $GITHUB_OUTPUT
+          echo "tag=${{ inputs.tag || 'latest' }}" >> $GITHUB_OUTPUT
+
   build-tool-images:
     name: Build ${{ matrix.tool }}
+    needs: setup-parameters
     runs-on: ubuntu-latest
     timeout-minutes: 120
     strategy:
@@ -44,8 +61,8 @@ jobs:
       - name: Checkout container-images repository
         uses: actions/checkout@v7
         with:
-          repository: ${{ inputs.images_repository }}
-          ref: ${{ inputs.images_branch }}
+          repository: ${{ needs.setup-parameters.outputs.images_repository }}
+          ref: ${{ needs.setup-parameters.outputs.images_branch }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -62,7 +79,7 @@ jobs:
         with:
           context: ./${{ matrix.tool }}
           push: true
-          tags: quay.io/debezium/${{ matrix.tool }}:${{ inputs.tag }}
+          tags: quay.io/debezium/${{ matrix.tool }}:${{ needs.setup-parameters.outputs.tag }}
           platforms: linux/amd64,linux/arm64
           build-args: |
             DEBEZIUM_DOCKER_REGISTRY_PRIMARY_NAME=quay.io/debezium
@@ -80,7 +97,7 @@ jobs:
           content: |
             ⚠️ **Tool image build failed: ${{ matrix.tool }}**
 
-            **Repository:** ${{ inputs.images_repository }}
-            **Branch:** ${{ inputs.images_branch }}
-            **Tag:** ${{ inputs.tag }}
+            **Repository:** ${{ needs.setup-parameters.outputs.images_repository }}
+            **Branch:** ${{ needs.setup-parameters.outputs.images_branch }}
+            **Tag:** ${{ needs.setup-parameters.outputs.tag }}
             **Workflow Run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
