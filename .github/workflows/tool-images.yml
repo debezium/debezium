@@ -58,7 +58,7 @@ jobs:
           password: ${{ secrets.QUAY_IO_PASSWORD }}
 
       - name: Build and push ${{ matrix.tool }}
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ./${{ matrix.tool }}
           push: true
