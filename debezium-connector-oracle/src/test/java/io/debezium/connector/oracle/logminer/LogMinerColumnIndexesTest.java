@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.util.TestHelper;
+import io.debezium.doc.FixFor;
 
 /**
  * Unit tests for {@link LogMinerColumnIndexes}.
@@ -62,6 +63,23 @@ public class LogMinerColumnIndexesTest {
         assertThat(idx.getRsIdIndex()).isEqualTo(24);
         assertThat(idx.getUsernameIndex()).isEqualTo(25);
         assertThat(idx.getClientIdIndex()).isEqualTo(26);
+        assertThat(idx.getSrcConNameIndex()).isNull();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#478")
+    void multiplePdbNamesShouldAddSrcConNameOrdinal() {
+        LogMinerColumnIndexes idx = fromConfig(OracleConnectorConfig.PDB_NAMES, "ORCLPDB1,ORCLPDB2");
+
+        assertThat(idx.getSrcConNameIndex()).isEqualTo(27);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#478")
+    void singlePdbNameShouldNotAddSrcConNameOrdinal() {
+        LogMinerColumnIndexes idx = fromConfig(OracleConnectorConfig.PDB_NAMES, "ORCLPDB1");
+
+        assertThat(idx.getSrcConNameIndex()).isNull();
     }
 
     @Test
@@ -143,6 +161,13 @@ public class LogMinerColumnIndexesTest {
     @Test
     void allTrackingEnabledShouldProduceFullResolverArray() {
         assertThat(fromDefaultConfig().getResolverCount()).isEqualTo(RESOLVER_COUNT_ALL_ENABLED);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#478")
+    void multiplePdbNamesShouldIncreaseResolverCountByOne() {
+        assertThat(fromConfig(OracleConnectorConfig.PDB_NAMES, "ORCLPDB1,ORCLPDB2")
+                .getResolverCount()).isEqualTo(RESOLVER_COUNT_ALL_ENABLED + 1);
     }
 
     @Test

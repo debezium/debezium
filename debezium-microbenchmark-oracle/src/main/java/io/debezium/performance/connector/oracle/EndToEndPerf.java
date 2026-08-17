@@ -226,7 +226,7 @@ public class EndToEndPerf {
             jdbcConfiguration.forEach((f, v) -> builder.with(ConfigurationNames.DATABASE_CONFIG_PREFIX + f, v));
 
             return builder.with(CommonConnectorConfig.TOPIC_PREFIX, SERVER_NAME)
-                    .with(OracleConnectorConfig.PDB_NAME, "ORCLPDB1")
+                    .with(OracleConnectorConfig.PDB_NAMES, "ORCLPDB1")
                     .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                     .with(OracleConnectorConfig.CONNECTOR_ADAPTER, ConnectorAdapter.LOG_MINER)
                     .with(OracleConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
@@ -242,9 +242,9 @@ public class EndToEndPerf {
 
         private OracleConnection getTestConnection() {
             OracleConnection connection = new OracleConnection(testJdbcConfig(), false);
-            String pdbName = new OracleConnectorConfig(testConfig().build()).getPdbName();
-            if (pdbName != null) {
-                connection.setSessionToPdb(pdbName);
+            List<String> pdbNames = new OracleConnectorConfig(testConfig().build()).getPdbNames();
+            if (!pdbNames.isEmpty()) {
+                connection.setSessionToPdb(pdbNames.get(0));
             }
 
             return connection;

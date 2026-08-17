@@ -7,6 +7,7 @@ package io.debezium.connector.oracle;
 
 import java.sql.SQLException;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -51,7 +52,6 @@ import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.snapshot.SnapshotterService;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Clock;
-import io.debezium.util.Strings;
 
 public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleOffsetContext> {
 
@@ -118,11 +118,11 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
 
         Offsets<OraclePartition, OracleOffsetContext> previousOffsets = getPreviousOffsets(partitionProvider, offsetContextLoader);
 
-        // The bean registry JDBC connection should always be pinned to the PDB
-        // when the connector is configured to use a pluggable database
+        // The bean registry JDBC connection should always be pinned to the primary (first) PDB
+        // when the connector is configured to use pluggable databases
         beanRegistryJdbcConnection = connectionFactory.newConnection();
-        if (!Strings.isNullOrEmpty(connectorConfig.getPdbName())) {
-            beanRegistryJdbcConnection.setSessionToPdb(connectorConfig.getPdbName());
+        if (connectorConfig.isUsingPluggableDatabase()) {
+            beanRegistryJdbcConnection.setSessionToPdb(connectorConfig.getPdbNames().get(0));
         }
 
         // Manual Bean Registration
@@ -236,8 +236,8 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
 
     private OracleConnection getHeartbeatConnection(OracleConnectorConfig connectorConfig, JdbcConfiguration jdbcConfig) {
         final OracleConnection connection = new OracleConnection(connectorConfig, jdbcConfig, true);
-        if (!Strings.isNullOrBlank(connectorConfig.getPdbName())) {
-            connection.setSessionToPdb(connectorConfig.getPdbName());
+        if (connectorConfig.isUsingPluggableDatabase()) {
+            connection.setSessionToPdb(connectorConfig.getPdbNames().get(0));
         }
         return connection;
     }
@@ -337,14 +337,15 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
     private void validateGuardrailLimits(OracleConnectorConfig connectorConfig, OracleConnection connection) {
         boolean switchedToPdb = false;
         try {
-            // Set the main connection to the PDB if configured.
-            // This is done before operations that need to see PDB-specific tables like validateGuardrailLimits.
-            if (!Strings.isNullOrEmpty(connectorConfig.getPdbName())) {
-                connection.setSessionToPdb(connectorConfig.getPdbName());
-                switchedToPdb = true;
+            final Set<TableId> allTableIds = new HashSet<>();
+            for (String catalogName : connectorConfig.getCatalogNames()) {
+                if (connectorConfig.isUsingPluggableDatabase()) {
+                    connection.setSessionToPdb(catalogName);
+                    switchedToPdb = true;
+                }
+                allTableIds.addAll(connection.getAllTableIds(catalogName));
             }
 
-            Set<TableId> allTableIds = connection.getAllTableIds(connectorConfig.getCatalogName());
             GuardrailValidator validator = new GuardrailValidator(connectorConfig, schema);
             validator.validate(allTableIds);
         }

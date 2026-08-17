@@ -3200,7 +3200,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
         final Configuration config;
         if (TestHelper.isUsingPdb()) {
             config = TestHelper.defaultConfig()
-                    .with(OracleConnectorConfig.PDB_NAME, TestHelper.getDatabaseName().toLowerCase())
+                    .with(OracleConnectorConfig.PDB_NAMES, TestHelper.getDatabaseName().toLowerCase())
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER")
                     .build();
         }
@@ -3226,7 +3226,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
         final Configuration config;
         if (TestHelper.isUsingPdb()) {
             config = TestHelper.defaultConfig()
-                    .with(OracleConnectorConfig.PDB_NAME, "\"" + TestHelper.getDatabaseName() + "\"")
+                    .with(OracleConnectorConfig.PDB_NAMES, "\"" + TestHelper.getDatabaseName() + "\"")
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER")
                     .build();
         }
@@ -5804,10 +5804,10 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
             Configuration tempConfig = TestHelper.defaultConfig().build();
 
             final Configuration.Builder builder = TestHelper.defaultConfig();
-            if (!Strings.isNullOrEmpty(tempConfig.getString(OracleConnectorConfig.PDB_NAME))) {
+            if (!Strings.isNullOrEmpty(tempConfig.getString(OracleConnectorConfig.PDB_NAMES))) {
                 // For this use case, both PDB and DBNAME should refer to PDB
                 // This is an unconventional configuration, but permissible.
-                builder.with(OracleConnectorConfig.DATABASE_NAME, tempConfig.getString(OracleConnectorConfig.PDB_NAME));
+                builder.with(OracleConnectorConfig.DATABASE_NAME, tempConfig.getString(OracleConnectorConfig.PDB_NAMES));
             }
             builder.with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ8577")
                     .with(OracleConnectorConfig.LOG_MINING_RESTART_CONNECTION, "true");

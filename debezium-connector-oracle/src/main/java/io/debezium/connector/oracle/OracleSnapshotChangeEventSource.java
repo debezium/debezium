@@ -12,7 +12,10 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Queue;
@@ -25,13 +28,18 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.connector.oracle.jdbc.OracleConnectionFactory;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.SnapshottingTask;
+import io.debezium.pipeline.source.snapshot.chunked.SnapshotChunk;
+import io.debezium.pipeline.source.snapshot.chunked.SnapshotProgress;
+import io.debezium.pipeline.source.snapshot.chunked.TableChunkProgress;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
+import io.debezium.relational.Column;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -52,8 +60,10 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     private static final Logger LOGGER = LoggerFactory.getLogger(OracleSnapshotChangeEventSource.class);
 
     private final OracleConnectorConfig connectorConfig;
+    private final OracleConnectionFactory connectionFactory;
     private final OracleConnection jdbcConnection;
     private final OracleDatabaseSchema databaseSchema;
+    private final Map<String, OracleConnection> pdbLockConnections = new LinkedHashMap<>();
 
     public OracleSnapshotChangeEventSource(OracleConnectorConfig connectorConfig, OracleConnectionFactory connectionFactory,
                                            OracleDatabaseSchema schema, EventDispatcher<OraclePartition, TableId> dispatcher, Clock clock,
@@ -61,67 +71,156 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
                                            NotificationService<OraclePartition, OracleOffsetContext> notificationService, SnapshotterService snapshotterService) {
         super(connectorConfig, connectionFactory, schema, dispatcher, clock, snapshotProgressListener, notificationService, snapshotterService);
         this.connectorConfig = connectorConfig;
+        this.connectionFactory = connectionFactory;
         this.jdbcConnection = connectionFactory.mainConnection();
         this.databaseSchema = schema;
     }
 
     @Override
     protected SnapshotContext<OraclePartition, OracleOffsetContext> prepare(OraclePartition partition, boolean onDemand) {
-        if (!Strings.isNullOrBlank(connectorConfig.getPdbName())) {
-            jdbcConnection.setSessionToPdb(connectorConfig.getPdbName());
+        final List<String> pdbNames = connectorConfig.getPdbNames();
+        if (pdbNames.size() == 1) {
+            // All snapshot operations occur within the single container, pin for the snapshot's duration
+            jdbcConnection.setSessionToPdb(pdbNames.get(0));
+        }
+        else if (pdbNames.size() > 1) {
+            // Operations that require a specific container pin the session on demand and restore it;
+            // anything else, such as resolving the snapshot offset, must observe the entire container
+            // hierarchy, so the main connection is anchored to the root container.
+            jdbcConnection.resetSessionToCdb();
         }
 
-        return new OracleSnapshotContext(partition, connectorConfig.getCatalogName(), onDemand);
+        // With multiple pluggable databases there is no single catalog; the empty sentinel mirrors the
+        // binlog connector's multi-catalog convention and the catalog of record is each TableId's.
+        final String catalogName = pdbNames.size() > 1 ? "" : connectorConfig.getDefaultCatalogName();
+        return new OracleSnapshotContext(partition, catalogName, onDemand);
     }
 
     @Override
     protected void connectionPoolConnectionCreated(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext,
                                                    JdbcConnection connection) {
-        if (!Strings.isNullOrBlank(connectorConfig.getPdbName())) {
-            ((OracleConnection) connection).setSessionToPdb(connectorConfig.getPdbName());
+        // With multiple pluggable databases the pool connections cannot be pinned up front; they are
+        // pinned per table or per chunk as each unit of work is executed.
+        final List<String> pdbNames = connectorConfig.getPdbNames();
+        if (pdbNames.size() == 1) {
+            ((OracleConnection) connection).setSessionToPdb(pdbNames.get(0));
         }
     }
 
     @Override
     protected Set<TableId> getAllTableIds(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> ctx)
             throws Exception {
-        return jdbcConnection.getAllTableIds(ctx.catalogName);
-        // this very slow approach(commented out), it took 30 minutes on an instance with 600 tables
-        // return jdbcConnection.readTableNames(ctx.catalogName, null, null, new String[] {"TABLE"} );
+        // getAllTableIds is preferred over readTableNames as the latter is very slow, taking upwards
+        // of 30 minutes on an instance with 600 tables
+        final boolean multiplePdbNames = connectorConfig.getPdbNames().size() > 1;
+        try {
+            final Set<TableId> tableIds = new HashSet<>();
+            for (String catalogName : connectorConfig.getCatalogNames()) {
+                if (multiplePdbNames) {
+                    jdbcConnection.setSessionToPdb(catalogName);
+                }
+                tableIds.addAll(jdbcConnection.getAllTableIds(catalogName));
+            }
+            return tableIds;
+        }
+        finally {
+            if (multiplePdbNames) {
+                jdbcConnection.resetSessionToCdb();
+            }
+        }
     }
 
     @Override
     protected void lockTablesForSchemaSnapshot(ChangeEventSourceContext sourceContext,
                                                RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext)
             throws SQLException, InterruptedException {
-        if (connectorConfig.getSnapshotLockingMode().get().usesLocking()) {
-            ((OracleSnapshotContext) snapshotContext).preSchemaSnapshotSavepoint = jdbcConnection.connection().setSavepoint("dbz_schema_snapshot");
+        if (!connectorConfig.getSnapshotLockingMode().get().usesLocking()) {
+            LOGGER.info("Schema locking was disabled in connector configuration");
+            return;
+        }
 
-            try (Statement statement = jdbcConnection.connection().createStatement()) {
-                for (TableId tableId : snapshotContext.capturedTables) {
-                    if (!sourceContext.isRunning()) {
-                        throw new InterruptedException("Interrupted while locking table " + tableId);
-                    }
-
-                    Optional<String> lockingStatement = snapshotterService.getSnapshotLock().tableLockingStatement(null, quote(tableId));
-                    if (lockingStatement.isPresent()) {
-                        LOGGER.debug("Locking table {}", tableId);
-                        statement.execute(lockingStatement.get());
-                    }
-                }
+        if (connectorConfig.getPdbNames().size() > 1) {
+            // A transaction cannot span containers, so each pluggable database's tables are locked on a
+            // dedicated connection whose transaction is held until the schema snapshot completes.
+            final Map<String, List<TableId>> tablesByCatalog = snapshotContext.capturedTables.stream()
+                    .collect(Collectors.groupingBy(TableId::catalog, LinkedHashMap::new, Collectors.toList()));
+            for (Map.Entry<String, List<TableId>> catalogTables : tablesByCatalog.entrySet()) {
+                final OracleConnection connection = connectionFactory.newConnection();
+                pdbLockConnections.put(catalogTables.getKey(), connection);
+                connection.setSessionToPdb(catalogTables.getKey());
+                lockTables(sourceContext, connection, catalogTables.getValue());
             }
         }
         else {
-            LOGGER.info("Schema locking was disabled in connector configuration");
+            ((OracleSnapshotContext) snapshotContext).preSchemaSnapshotSavepoint = jdbcConnection.connection().setSavepoint("dbz_schema_snapshot");
+            lockTables(sourceContext, jdbcConnection, snapshotContext.capturedTables);
+        }
+    }
+
+    /**
+     * Acquires the snapshot lock for each of the specified tables using the given connection.
+     *
+     * @param sourceContext the change event source context
+     * @param connection the connection whose transaction should hold the locks
+     * @param tableIds the tables to be locked
+     * @throws SQLException if a database exception occurred
+     * @throws InterruptedException if the thread is interrupted
+     */
+    private void lockTables(ChangeEventSourceContext sourceContext, OracleConnection connection, Collection<TableId> tableIds)
+            throws SQLException, InterruptedException {
+        try (Statement statement = connection.connection().createStatement()) {
+            for (TableId tableId : tableIds) {
+                if (!sourceContext.isRunning()) {
+                    throw new InterruptedException("Interrupted while locking table " + tableId);
+                }
+
+                Optional<String> lockingStatement = snapshotterService.getSnapshotLock().tableLockingStatement(null, quote(tableId));
+                if (lockingStatement.isPresent()) {
+                    LOGGER.debug("Locking table {}", tableId);
+                    statement.execute(lockingStatement.get());
+                }
+            }
         }
     }
 
     @Override
     protected void releaseSchemaSnapshotLocks(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext)
             throws SQLException {
-        if (connectorConfig.getSnapshotLockingMode().get().usesLocking()) {
+        if (!connectorConfig.getSnapshotLockingMode().get().usesLocking()) {
+            return;
+        }
+
+        if (connectorConfig.getPdbNames().size() > 1) {
+            try {
+                for (Map.Entry<String, OracleConnection> lockConnection : pdbLockConnections.entrySet()) {
+                    if (!lockConnection.getValue().isConnected()) {
+                        // The server rolls back a lost connection's transaction, silently releasing its locks;
+                        // fail so the snapshot is retried rather than risk an inconsistent schema.
+                        throw new DebeziumException("Lock connection for pluggable database '" + lockConnection.getKey()
+                                + "' was lost during the schema snapshot");
+                    }
+                    lockConnection.getValue().connection().rollback();
+                }
+            }
+            finally {
+                closePdbLockConnections();
+            }
+        }
+        else {
             jdbcConnection.connection().rollback(((OracleSnapshotContext) snapshotContext).preSchemaSnapshotSavepoint);
         }
+    }
+
+    private void closePdbLockConnections() {
+        for (Map.Entry<String, OracleConnection> lockConnection : pdbLockConnections.entrySet()) {
+            try {
+                lockConnection.getValue().close();
+            }
+            catch (SQLException e) {
+                LOGGER.warn("Failed to close lock connection for pluggable database '{}'", lockConnection.getKey(), e);
+            }
+        }
+        pdbLockConnections.clear();
     }
 
     @Override
@@ -153,9 +252,25 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
             LOGGER.info("All eligible tables schema should be captured, capturing: {}", capturedSchemaTables);
         }
 
-        Set<String> schemas = capturedSchemaTables.stream().map(TableId::schema).collect(Collectors.toSet());
-
         final Tables.TableFilter tableFilter = getTableFilter(snapshottingTask, snapshotContext);
+        if (connectorConfig.getPdbNames().size() > 1) {
+            final Map<String, Set<String>> schemasByCatalog = capturedSchemaTables.stream()
+                    .collect(Collectors.groupingBy(TableId::catalog, Collectors.mapping(TableId::schema, Collectors.toSet())));
+            for (Map.Entry<String, Set<String>> catalogSchemas : schemasByCatalog.entrySet()) {
+                jdbcConnection.setSessionToPdb(catalogSchemas.getKey());
+                readSchemas(sourceContext, snapshotContext, catalogSchemas.getValue(), tableFilter);
+            }
+        }
+        else {
+            Set<String> schemas = capturedSchemaTables.stream().map(TableId::schema).collect(Collectors.toSet());
+            readSchemas(sourceContext, snapshotContext, schemas, tableFilter);
+        }
+    }
+
+    private void readSchemas(ChangeEventSourceContext sourceContext,
+                             RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext,
+                             Set<String> schemas, Tables.TableFilter tableFilter)
+            throws SQLException, InterruptedException {
         for (String schema : schemas) {
             if (!sourceContext.isRunning()) {
                 throw new InterruptedException("Interrupted while reading structure of schema " + schema);
@@ -203,14 +318,28 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     protected SchemaChangeEvent getCreateTableEvent(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext,
                                                     Table table)
             throws SQLException {
+        setSessionToTablePdb(jdbcConnection, table.id());
         return SchemaChangeEvent.ofCreate(
                 snapshotContext.partition,
                 snapshotContext.offset,
-                snapshotContext.catalogName,
+                table.id().catalog(),
                 table.id().schema(),
                 jdbcConnection.getTableMetadataDdl(table.id()),
                 table,
                 true);
+    }
+
+    /**
+     * Pins the connection's session to the pluggable database that contains the specified table when
+     * multiple pluggable databases are configured; no-op otherwise as the session is already pinned.
+     *
+     * @param connection the connection whose session should be pinned
+     * @param tableId the table whose pluggable database should be made current
+     */
+    private void setSessionToTablePdb(OracleConnection connection, TableId tableId) {
+        if (connectorConfig.getPdbNames().size() > 1 && !tableId.catalog().equals(connection.getSessionPdbName())) {
+            connection.setSessionToPdb(tableId.catalog());
+        }
     }
 
     @Override
@@ -244,10 +373,31 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
 
     @Override
     protected Long rowCountForTableChunked(TableId tableId) throws SQLException {
+        setSessionToTablePdb(jdbcConnection, tableId);
         // Oracle TableIds carry a CDB/PDB catalog that cannot appear in a qualified name; strip it
         // before quoting (as getSnapshotSelect does), otherwise the shared implementation would emit
         // an invalid "catalog"."schema"."table".
         return jdbcConnection.getRowCount(new TableId(null, tableId.schema(), tableId.table()));
+    }
+
+    @Override
+    protected List<Column> getKeyColumnsForChunking(Table table) {
+        // This hook is invoked at the start of each table's chunk boundary preparation, and the boundary
+        // queries that follow run on the main connection; there is no dedicated per-table hook in the
+        // chunked flow, so the session is pinned to the table's container here.
+        setSessionToTablePdb(jdbcConnection, table.id());
+        return super.getKeyColumnsForChunking(table);
+    }
+
+    @Override
+    protected void doCreateDataEventsForChunk(ChangeEventSourceContext sourceContext,
+                                              RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext,
+                                              OracleOffsetContext offset, EventDispatcher.SnapshotReceiver<OraclePartition> snapshotReceiver,
+                                              SnapshotChunk chunk, Map<TableId, TableChunkProgress> progressMap,
+                                              SnapshotProgress snapshotProgress, JdbcConnection jdbcConnection)
+            throws InterruptedException, SQLException {
+        setSessionToTablePdb((OracleConnection) jdbcConnection, chunk.getTableId());
+        super.doCreateDataEventsForChunk(sourceContext, snapshotContext, offset, snapshotReceiver, chunk, progressMap, snapshotProgress, jdbcConnection);
     }
 
     @Override
@@ -261,7 +411,8 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
 
     @Override
     public void close() {
-        if (!Strings.isNullOrBlank(connectorConfig.getPdbName())) {
+        closePdbLockConnections();
+        if (connectorConfig.isUsingPluggableDatabase()) {
             jdbcConnection.resetSessionToCdb();
         }
     }
@@ -298,6 +449,8 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
             JdbcConnection connection = connectionPool.poll();
             OracleOffsetContext offset = offsets.poll();
             try {
+                setSessionToTablePdb((OracleConnection) connection, table.id());
+
                 final int maxRetries = getTableSnapshotMaxRetries();
                 final Metronome retrySleeper = Metronome.sleeper(Duration.ofSeconds(5), clock);
 

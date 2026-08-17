@@ -30,7 +30,6 @@ import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
-import io.debezium.util.Strings;
 
 import oracle.streams.ChunkColumnValue;
 import oracle.streams.DDLLCR;
@@ -309,12 +308,11 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
 
     private String getTableMetadataDdl(TableId tableId) throws NonRelationalTableException {
         LOGGER.info("Getting database metadata for table '{}'", tableId);
-        final String pdbName = connectorConfig.getPdbName();
         // A separate connection must be used for this out-of-bands query while processing the Xstream callback.
         // This should have negligible overhead as this should happen rarely.
         try (OracleConnection connection = new OracleConnection(connectorConfig, false)) {
-            if (!Strings.isNullOrBlank(pdbName)) {
-                connection.setSessionToPdb(pdbName);
+            if (connectorConfig.isUsingPluggableDatabase()) {
+                connection.setSessionToPdb(tableId.catalog());
             }
             return connection.getTableMetadataDdl(tableId);
         }

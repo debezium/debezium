@@ -126,7 +126,7 @@ public class FlushStrategyIT extends AbstractAsyncEngineConnectorTest {
 
     private void assertFlushTableHasExactlyOneRow(Configuration config) throws SQLException {
         try (OracleConnection conn = TestHelper.defaultConnection(true)) {
-            final String databasePdbName = config.getString(OracleConnectorConfig.PDB_NAME);
+            final String databasePdbName = config.getString(OracleConnectorConfig.PDB_NAMES);
             if (!Strings.isNullOrEmpty(databasePdbName)) {
                 conn.setSessionToPdb(databasePdbName);
             }
@@ -136,7 +136,7 @@ public class FlushStrategyIT extends AbstractAsyncEngineConnectorTest {
 
     private void dropFlushTable(Configuration config) throws SQLException {
         try (OracleConnection admin = TestHelper.adminConnection(true)) {
-            final String databasePdbName = config.getString(OracleConnectorConfig.PDB_NAME);
+            final String databasePdbName = config.getString(OracleConnectorConfig.PDB_NAMES);
             if (!Strings.isNullOrEmpty(databasePdbName)) {
                 admin.setSessionToPdb(databasePdbName);
             }
@@ -146,7 +146,7 @@ public class FlushStrategyIT extends AbstractAsyncEngineConnectorTest {
 
     private void insertFlushTable(Configuration config, String scnValue) throws SQLException {
         try (OracleConnection conn = TestHelper.defaultConnection(true)) {
-            final String databasePdbName = config.getString(OracleConnectorConfig.PDB_NAME);
+            final String databasePdbName = config.getString(OracleConnectorConfig.PDB_NAMES);
             if (!Strings.isNullOrEmpty(databasePdbName)) {
                 conn.setSessionToPdb(databasePdbName);
             }

@@ -213,7 +213,7 @@ public class TestHelper {
         // the environment wishes to use non-CDB mode, the database.pdb.name setting should be
         // given but without a value.
         if (isUsingPdb()) {
-            builder.withDefault(OracleConnectorConfig.PDB_NAME, DATABASE);
+            builder.withDefault(DATABASE_PREFIX + PDB_NAME, DATABASE);
         }
 
         return builder.with(CommonConnectorConfig.TOPIC_PREFIX, SERVER_NAME)
@@ -405,9 +405,9 @@ public class TestHelper {
         try {
             connection.setAutoCommit(autoCommit);
 
-            String pdbName = new OracleConnectorConfig(config).getPdbName();
-            if (!Strings.isNullOrEmpty(pdbName)) {
-                connection.setSessionToPdb(pdbName);
+            List<String> pdbNames = new OracleConnectorConfig(config).getPdbNames();
+            if (!pdbNames.isEmpty()) {
+                connection.setSessionToPdb(pdbNames.get(0));
             }
 
             return connection;
@@ -422,7 +422,7 @@ public class TestHelper {
         Configuration jdbcConfig = config.subset(DATABASE_PREFIX, true);
 
         try (OracleConnection jdbcConnection = new OracleConnection(JdbcConfiguration.adapt(jdbcConfig), true)) {
-            if (!Strings.isNullOrEmpty((new OracleConnectorConfig(defaultConfig().build())).getPdbName())) {
+            if (!(new OracleConnectorConfig(defaultConfig().build())).getPdbNames().isEmpty()) {
                 jdbcConnection.resetSessionToCdb();
             }
             jdbcConnection.execute("ALTER SYSTEM SWITCH LOGFILE");
@@ -437,7 +437,7 @@ public class TestHelper {
         Configuration jdbcConfig = config.subset(DATABASE_PREFIX, true);
 
         try (OracleConnection jdbcConnection = new OracleConnection(JdbcConfiguration.adapt(jdbcConfig), true)) {
-            if (!Strings.isNullOrEmpty((new OracleConnectorConfig(defaultConfig().build())).getPdbName())) {
+            if (!(new OracleConnectorConfig(defaultConfig().build())).getPdbNames().isEmpty()) {
                 jdbcConnection.resetSessionToCdb();
             }
             return jdbcConnection.queryAndMap("SELECT COUNT(GROUP#) FROM V$LOG", rs -> {
@@ -567,7 +567,7 @@ public class TestHelper {
      * @throws RuntimeException if the role cannot be granted
      */
     public static void grantRole(String roleName, String objectName, String userName) {
-        final String pdbName = defaultConfig().build().getString(OracleConnectorConfig.PDB_NAME);
+        final String pdbName = defaultConfig().build().getString(OracleConnectorConfig.PDB_NAMES);
         try (OracleConnection connection = adminConnection()) {
             if (pdbName != null) {
                 connection.setSessionToPdb(pdbName);
@@ -594,7 +594,7 @@ public class TestHelper {
      * @throws RuntimeException if the role cannot be revoked
      */
     public static void revokeRole(String roleName) {
-        final String pdbName = defaultConfig().build().getString(OracleConnectorConfig.PDB_NAME);
+        final String pdbName = defaultConfig().build().getString(OracleConnectorConfig.PDB_NAMES);
         final String userName = testJdbcConfig().getString(JdbcConfiguration.USER);
         try (OracleConnection connection = adminConnection()) {
             if (pdbName != null) {
@@ -846,7 +846,7 @@ public class TestHelper {
         if (imageTag.contains("-")) {
             imageTagSuffix = imageTag.substring(imageTag.lastIndexOf("-") + 1);
         }
-        String pdbName = connectorConfiguration.asProperties().getProperty(OracleConnectorConfig.PDB_NAME.name());
+        String pdbName = connectorConfiguration.asProperties().getProperty(DATABASE_PREFIX + PDB_NAME);
         if (!imageTag.contains("-") || "xs".equals(imageTagSuffix)) {
             if (!Strings.isNullOrEmpty(pdbName)) {
                 connectorConfiguration.with(OracleConnectorConfig.DATABASE_NAME.name(), pdbName);
@@ -854,7 +854,7 @@ public class TestHelper {
         }
         else if ("noncdb".equals(imageTagSuffix)) {
             if (!Strings.isNullOrEmpty(pdbName)) {
-                connectorConfiguration.remove(OracleConnectorConfig.PDB_NAME.name());
+                connectorConfiguration.remove(DATABASE_PREFIX + PDB_NAME);
             }
         }
         else {

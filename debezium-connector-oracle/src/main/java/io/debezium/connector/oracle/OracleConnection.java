@@ -93,6 +93,7 @@ public class OracleConnection extends JdbcConnection {
 
     private final int queryFetchSize;
     private OracleDatabaseVersion databaseVersion;
+    private String sessionPdbName;
 
     public OracleConnection(OracleConnectorConfig connectorConfig, boolean autoCommit) {
         this(connectorConfig.getJdbcConfig(), connectorConfig.getQueryFetchSize(), autoCommit);
@@ -128,10 +129,22 @@ public class OracleConnection extends JdbcConnection {
 
     public void setSessionToPdb(String pdbName) {
         setContainerAs(pdbName);
+        this.sessionPdbName = pdbName;
     }
 
     public void resetSessionToCdb() {
         setContainerAs("cdb$root");
+        this.sessionPdbName = null;
+    }
+
+    /**
+     * Get the pluggable database the session was last pinned to via {@link #setSessionToPdb(String)},
+     * or {@code null} when the session operates against the root container.
+     *
+     * @return the pinned pluggable database name, may be {@code null}
+     */
+    public String getSessionPdbName() {
+        return sessionPdbName;
     }
 
     private void setContainerAs(String containerName) {
@@ -219,9 +232,21 @@ public class OracleConnection extends JdbcConnection {
 
     @Override
     protected String resolveCatalogName(String catalogName) {
-        final String pdbName = OracleUtils.getObjectName(config().getString("pdb.name"));
+        if (!Strings.isNullOrEmpty(sessionPdbName)) {
+            return OracleUtils.getObjectName(sessionPdbName);
+        }
+        final String pdbName = OracleUtils.getObjectName(getFirstConfiguredPdbName());
         final String databaseName = OracleUtils.getObjectName(config().getString("dbname"));
         return !OracleUtils.isObjectNameNullOrEmpty(pdbName) ? pdbName : databaseName;
+    }
+
+    private String getFirstConfiguredPdbName() {
+        final String pdbNames = config().getString("pdb.names");
+        if (!Strings.isNullOrEmpty(pdbNames)) {
+            final List<String> names = Strings.listOfTrimmed(pdbNames, String::new);
+            return names.isEmpty() ? null : names.get(0);
+        }
+        return config().getString("pdb.name");
     }
 
     @Override

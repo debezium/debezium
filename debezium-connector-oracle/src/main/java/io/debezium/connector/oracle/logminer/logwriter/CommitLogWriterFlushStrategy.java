@@ -49,7 +49,8 @@ public class CommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
     public CommitLogWriterFlushStrategy(OracleConnectorConfig connectorConfig, OracleConnection connection) {
         this.flushTableId = TableId.parse(connectorConfig.getLogMiningFlushTableName());
         this.flushTableName = flushTableId.toDoubleQuotedString();
-        this.databasePdbName = connectorConfig.getPdbName();
+        // The flush table is maintained in the primary (first) PDB when pluggable databases are used
+        this.databasePdbName = connectorConfig.getPdbNames().isEmpty() ? null : connectorConfig.getPdbNames().get(0);
         this.connection = connection;
         createFlushTableIfNotExists();
     }

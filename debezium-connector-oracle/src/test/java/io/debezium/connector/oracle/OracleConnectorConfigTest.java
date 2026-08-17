@@ -119,6 +119,67 @@ public class OracleConnectorConfigTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#478")
+    void shouldTreatDeprecatedPdbNameAsSingleEntryPdbNames() throws Exception {
+
+        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(
+                defaultConfigBuilder()
+                        .with("database.pdb.name", "orclpdb1")
+                        .build());
+        assertTrue(connectorConfig.validateAndRecord(OracleConnectorConfig.ALL_FIELDS, LOGGER::error));
+        assertThat(connectorConfig.getPdbNames()).containsExactly("ORCLPDB1");
+        assertThat(connectorConfig.getCatalogNames()).containsExactly("ORCLPDB1");
+        assertTrue(connectorConfig.isUsingPluggableDatabase());
+    }
+
+    @Test
+    @FixFor("debezium/dbz#478")
+    void shouldTreatPdbNamesAsCollectionOfPdbNames() throws Exception {
+
+        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(
+                defaultConfigBuilder()
+                        .with(OracleConnectorConfig.PDB_NAMES, "orclpdb1, orclpdb2")
+                        .build());
+        assertTrue(connectorConfig.validateAndRecord(OracleConnectorConfig.ALL_FIELDS, LOGGER::error));
+        assertThat(connectorConfig.getPdbNames()).containsExactly("ORCLPDB1", "ORCLPDB2");
+        assertThat(connectorConfig.getCatalogNames()).containsExactly("ORCLPDB1", "ORCLPDB2");
+        assertTrue(connectorConfig.isUsingPluggableDatabase());
+    }
+
+    @Test
+    @FixFor("debezium/dbz#478")
+    void shouldPreferPdbNamesOverDeprecatedPdbName() throws Exception {
+
+        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(
+                defaultConfigBuilder()
+                        .with("database.pdb.name", "otherpdb")
+                        .with(OracleConnectorConfig.PDB_NAMES, "orclpdb1")
+                        .build());
+        assertThat(connectorConfig.getPdbNames()).containsExactly("ORCLPDB1");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#478")
+    void shouldHaveNoPdbNamesWhenNotConfigured() throws Exception {
+
+        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(defaultConfigBuilder().build());
+        assertThat(connectorConfig.getPdbNames()).isEmpty();
+        assertThat(connectorConfig.getCatalogNames()).containsExactly("MYDB");
+        assertFalse(connectorConfig.isUsingPluggableDatabase());
+    }
+
+    private Configuration.Builder defaultConfigBuilder() {
+        return Configuration.create()
+                .with(OracleConnectorConfig.CONNECTOR_ADAPTER, "logminer")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
+                .with(OracleConnectorConfig.HOSTNAME, "MyHostname")
+                .with(OracleConnectorConfig.DATABASE_NAME, "mydb")
+                .with(OracleConnectorConfig.USER, "debezium")
+                .with(KafkaSchemaHistory.BOOTSTRAP_SERVERS, "localhost:9092")
+                .with(KafkaSchemaHistory.TOPIC, "history");
+    }
+
+    @Test
     void invalidNoHostnameNoUri() throws Exception {
 
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(
