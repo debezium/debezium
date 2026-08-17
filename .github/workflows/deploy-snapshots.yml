@@ -285,7 +285,7 @@ jobs:
 
       - name: Upload descriptors artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: descriptors-${{ steps.metadata.outputs.snapshot_version || github.run_id }}
           path: ${{ env.DESCRIPTORS_OUTPUT_DIR }}
