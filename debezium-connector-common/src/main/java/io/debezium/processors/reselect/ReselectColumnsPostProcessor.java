@@ -346,7 +346,7 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
                     final Object convertedValue = getConvertedValue(tableId, column, field, rawValues.get(columnName));
                     selections.put(columnName, convertedValue);
                     if (rowCache != null) {
-                        rowCache.put(columnName, convertedValue);
+                        rowCache.put(columnName, field.schema(), convertedValue);
                     }
                 }
             }
@@ -394,7 +394,7 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
             }
             final String fullyQualifiedName = jdbcConnection.getQualifiedTableName(tableId) + ":" + columnName;
             if (selector.test(fullyQualifiedName)) {
-                rowCache.put(columnName, after.get(field));
+                rowCache.put(columnName, field.schema(), after.get(field));
             }
         }
     }

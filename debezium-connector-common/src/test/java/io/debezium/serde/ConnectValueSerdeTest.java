@@ -11,10 +11,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.kafka.connect.data.Decimal;
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.junit.jupiter.api.Test;
 
@@ -33,17 +37,57 @@ public class ConnectValueSerdeTest {
     private final ConnectValueSerde serde = new ConnectValueSerde();
 
     private Object roundTrip(Object value) {
-        return serde.deserialize(serde.serialize(value, 42L)).value();
+        return serde.deserialize(serde.serialize(value, null, 42L)).value();
     }
 
     @Test
     public void timestampIsPreserved() {
-        assertThat(serde.deserialize(serde.serialize("x", 12345L)).timestampMs()).isEqualTo(12345L);
+        assertThat(serde.deserialize(serde.serialize("x", null, 12345L)).timestampMs()).isEqualTo(12345L);
     }
+
+    // The tag byte's offset in the envelope: three magic bytes, the version byte, the timestamp long.
+    private static final int TAG_OFFSET = 3 + 1 + 8;
 
     @Test
     public void nullRoundTrips() {
         assertThat(roundTrip(null)).isNull();
+    }
+
+    @Test
+    public void typedNullKeepsItsDeclaredTypeInTheStoredBytes() {
+        final byte[] intNull = serde.serialize(null, Schema.OPTIONAL_INT32_SCHEMA, 0L);
+        final byte[] stringNull = serde.serialize(null, Schema.OPTIONAL_STRING_SCHEMA, 0L);
+        final byte[] untypedNull = serde.serialize(null, null, 0L);
+
+        // Typed nulls carry the null flag plus a type-specific tag; without a schema the plain null tag
+        // is written as before.
+        assertThat(intNull[TAG_OFFSET] & 0x80).isNotZero();
+        assertThat(stringNull[TAG_OFFSET] & 0x80).isNotZero();
+        assertThat(intNull[TAG_OFFSET]).isNotEqualTo(stringNull[TAG_OFFSET]);
+        assertThat(untypedNull[TAG_OFFSET]).isZero();
+    }
+
+    @Test
+    public void typedNullDeserializesToNullWithItsTimestamp() {
+        final byte[] bytes = serde.serialize(null, Schema.OPTIONAL_INT64_SCHEMA, 7L);
+        assertThat(serde.deserialize(bytes).value()).isNull();
+        assertThat(serde.deserialize(bytes).timestampMs()).isEqualTo(7L);
+    }
+
+    @Test
+    public void logicalDecimalNullIsTypedAsDecimalNotBytes() {
+        // Connect's Decimal has Schema.Type.BYTES; the logical name must win so a null decimal is not
+        // conflated with a null raw-bytes column.
+        final byte[] decimalNull = serde.serialize(null, Decimal.builder(2).optional().build(), 0L);
+        final byte[] bytesNull = serde.serialize(null, Schema.OPTIONAL_BYTES_SCHEMA, 0L);
+        assertThat(decimalNull[TAG_OFFSET]).isNotEqualTo(bytesNull[TAG_OFFSET]);
+    }
+
+    @Test
+    public void nullListElementsAreTypedFromTheArraySchema() {
+        final Schema listSchema = SchemaBuilder.array(Schema.OPTIONAL_INT32_SCHEMA).optional().build();
+        final List<Object> list = Arrays.asList(1, null, 3);
+        assertThat(serde.deserialize(serde.serialize(list, listSchema, 0L)).value()).isEqualTo(list);
     }
 
     @Test
@@ -79,7 +123,7 @@ public class ConnectValueSerdeTest {
     @Test
     public void byteBufferSerializationDoesNotConsumeTheBuffer() {
         final ByteBuffer buffer = ByteBuffer.wrap(new byte[]{ 1, 2, 3 });
-        serde.serialize(buffer, 0L);
+        serde.serialize(buffer, null, 0L);
         assertThat(buffer.remaining()).isEqualTo(3);
     }
 
@@ -117,7 +161,7 @@ public class ConnectValueSerdeTest {
     public void sqlDateSubclassesAreRejectedRatherThanChangingType() {
         // java.sql.Timestamp would silently round-trip as java.util.Date; it is rejected instead so the
         // caller can skip storing the value.
-        assertThatThrownBy(() -> serde.serialize(new java.sql.Timestamp(0L), 0L))
+        assertThatThrownBy(() -> serde.serialize(new java.sql.Timestamp(0L), null, 0L))
                 .isInstanceOf(DebeziumException.class);
     }
 
@@ -143,14 +187,14 @@ public class ConnectValueSerdeTest {
 
     @Test
     public void unsupportedTypeThrows() {
-        assertThatThrownBy(() -> serde.serialize(new Object(), 0L))
+        assertThatThrownBy(() -> serde.serialize(new Object(), null, 0L))
                 .isInstanceOf(DebeziumException.class)
                 .hasMessageContaining("Unsupported");
     }
 
     @Test
     public void serializedValuesStartWithTheDebeziumMagicBytes() {
-        final byte[] bytes = serde.serialize("x", 0L);
+        final byte[] bytes = serde.serialize("x", null, 0L);
         assertThat(bytes[0]).isEqualTo((byte) 'D');
         assertThat(bytes[1]).isEqualTo((byte) 'B');
         assertThat(bytes[2]).isEqualTo((byte) 'Z');
@@ -158,7 +202,7 @@ public class ConnectValueSerdeTest {
 
     @Test
     public void bytesWithoutTheMagicPrefixThrow() {
-        final byte[] bytes = serde.serialize("x", 0L);
+        final byte[] bytes = serde.serialize("x", null, 0L);
         bytes[0] = 99;
         assertThatThrownBy(() -> serde.deserialize(bytes))
                 .isInstanceOf(DebeziumException.class)
@@ -167,7 +211,7 @@ public class ConnectValueSerdeTest {
 
     @Test
     public void unknownFormatVersionThrows() {
-        final byte[] bytes = serde.serialize("x", 0L);
+        final byte[] bytes = serde.serialize("x", null, 0L);
         // The version byte follows the three magic bytes.
         bytes[3] = 99;
         assertThatThrownBy(() -> serde.deserialize(bytes))
@@ -177,7 +221,7 @@ public class ConnectValueSerdeTest {
 
     @Test
     public void truncatedBytesThrow() {
-        final byte[] bytes = serde.serialize("hello world", 0L);
+        final byte[] bytes = serde.serialize("hello world", null, 0L);
         final byte[] truncated = new byte[bytes.length - 5];
         System.arraycopy(bytes, 0, truncated, 0, truncated.length);
         assertThatThrownBy(() -> serde.deserialize(truncated)).isInstanceOf(DebeziumException.class);

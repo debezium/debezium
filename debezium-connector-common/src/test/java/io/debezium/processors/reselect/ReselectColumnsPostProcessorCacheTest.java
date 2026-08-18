@@ -297,7 +297,7 @@ public class ReselectColumnsPostProcessorCacheTest {
                 }
 
                 @Override
-                public void put(String column, Object value) {
+                public void put(String column, Schema schema, Object value) {
                 }
 
                 @Override
