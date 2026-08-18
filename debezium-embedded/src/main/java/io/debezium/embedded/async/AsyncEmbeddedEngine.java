@@ -16,8 +16,10 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.ServiceLoader;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CancellationException;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorCompletionService;
@@ -699,6 +701,8 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
      * @param tasks {@link List<EngineSourceTask>} of source tasks which should be stopped.
      */
     private void stopSourceTasks(final List<EngineSourceTask> tasks) {
+        final Set<EngineSourceTask> pendingStopTasks = ConcurrentHashMap.newKeySet();
+        pendingStopTasks.addAll(tasks);
         try {
             LOGGER.debug("Stopping source connector tasks.");
             final ExecutorCompletionService<Void> taskCompletionService = new ExecutorCompletionService(taskService);
@@ -708,7 +712,9 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
                     LOGGER.debug("Committing task's offset.");
                     commitOffsets(task.context().offsetStorageWriter(), task.context().clock(), commitTimeout, task.connectTask());
                     LOGGER.debug("Stopping Connect task.");
-                    task.connectTask().stop();
+                    if (pendingStopTasks.remove(task)) {
+                        task.connectTask().stop();
+                    }
                     return null;
                 });
             }
@@ -745,6 +751,25 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         finally {
             // Make sure task service is shut down and no other tasks can be run.
             taskService.shutdownNow();
+            stopAbandonedTasks(pendingStopTasks);
+        }
+    }
+
+    private void stopAbandonedTasks(final Set<EngineSourceTask> pendingStopTasks) {
+        for (EngineSourceTask task : List.copyOf(pendingStopTasks)) {
+            if (pendingStopTasks.remove(task)) {
+                LOGGER.warn("Stop of task {} was discarded together with the task service, stopping the task directly to avoid leaving it running.",
+                        task.context().connectorTaskId());
+                final long startTime = System.nanoTime();
+                try {
+                    task.connectTask().stop();
+                    LOGGER.info("Stopped abandoned task {} in {} ms.", task.context().connectorTaskId(), (System.nanoTime() - startTime) / 1_000_000);
+                    connectorCallback.ifPresent(ConnectorCallback::taskStopped);
+                }
+                catch (Throwable t) {
+                    LOGGER.error("Failed to stop abandoned task {} after {} ms.", task.context().connectorTaskId(), (System.nanoTime() - startTime) / 1_000_000, t);
+                }
+            }
         }
     }
 
