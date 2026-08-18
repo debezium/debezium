@@ -596,6 +596,34 @@ public abstract class BinlogSourceInfoTest<S extends BinlogSourceInfo, O extends
     }
 
     @Test
+    @FixFor("debezium/dbz#1541")
+    void shouldCompareTimestampsOfPositionsFromDifferentServers() {
+        // The comparator has to read the timestamp key the offset is written with, or every position compares as 0.
+        assertThatDocument(positionWithServerId("mysql-bin.000003", 900, 223344, 1_000))
+                .isAtOrBefore(positionWithServerId("mysql-bin.000007", 154, 223345, 2_000));
+        assertThatDocument(positionWithServerId("mysql-bin.000003", 900, 223344, 2_000))
+                .isAfter(positionWithServerId("mysql-bin.000007", 154, 223345, 1_000));
+
+        // The same server keeps comparing by coordinates, even when the timestamps disagree.
+        assertThatDocument(positionWithServerId("mysql-bin.000003", 900, 223344, 2_000))
+                .isAtOrBefore(positionWithServerId("mysql-bin.000007", 154, 223344, 1_000));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1541")
+    void shouldNotTreatPositionWithoutServerIdAsDifferentServer() {
+        // Streaming records a server id, but the restart position rebuilt by the offset loaders carries none.
+        // That pair must not take the different-servers branch: it is compared by coordinates, which here
+        // contradict the timestamps.
+        final Document withoutServerId = positionWithoutGtids("mysql-bin.000003", 154, 0, 0)
+                .set(BinlogOffsetContext.TIMESTAMP_KEY, 2_000);
+        final Document withServerId = positionWithServerId("mysql-bin.000003", 900, 223344, 1_000);
+
+        assertThatDocument(withoutServerId).isAtOrBefore(withServerId);
+        assertThatDocument(withServerId).isAfter(withoutServerId);
+    }
+
+    @Test
     void shouldNotComparePositionsWithInvalidFilenameFormat() {
         assertThrows(IllegalArgumentException.class, () -> {
             Document history = positionWithoutGtids("mysql-bin.000001", 1, 0, 0);
@@ -741,6 +769,12 @@ public abstract class BinlogSourceInfoTest<S extends BinlogSourceInfo, O extends
             pos = pos.set(BinlogSourceInfo.SNAPSHOT_KEY, true);
         }
         return pos;
+    }
+
+    protected Document positionWithServerId(String filename, int position, int serverId, long timestamp) {
+        return positionWithoutGtids(filename, position, 0, 0)
+                .set(BinlogSourceInfo.SERVER_ID_KEY, serverId)
+                .set(BinlogOffsetContext.TIMESTAMP_KEY, timestamp);
     }
 
     protected PositionAssert assertThatDocument(Document position) {
