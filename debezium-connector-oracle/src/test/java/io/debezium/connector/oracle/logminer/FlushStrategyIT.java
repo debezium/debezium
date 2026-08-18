@@ -126,7 +126,7 @@ public class FlushStrategyIT extends AbstractAsyncEngineConnectorTest {
 
     private void assertFlushTableHasExactlyOneRow(Configuration config) throws SQLException {
         try (OracleConnection conn = TestHelper.defaultConnection(true)) {
-            final String databasePdbName = config.getString(OracleConnectorConfig.PDB_NAMES);
+            final String databasePdbName = getFlushTablePdbName(config);
             if (!Strings.isNullOrEmpty(databasePdbName)) {
                 conn.setSessionToPdb(databasePdbName);
             }
@@ -136,7 +136,7 @@ public class FlushStrategyIT extends AbstractAsyncEngineConnectorTest {
 
     private void dropFlushTable(Configuration config) throws SQLException {
         try (OracleConnection admin = TestHelper.adminConnection(true)) {
-            final String databasePdbName = config.getString(OracleConnectorConfig.PDB_NAMES);
+            final String databasePdbName = getFlushTablePdbName(config);
             if (!Strings.isNullOrEmpty(databasePdbName)) {
                 admin.setSessionToPdb(databasePdbName);
             }
@@ -146,12 +146,17 @@ public class FlushStrategyIT extends AbstractAsyncEngineConnectorTest {
 
     private void insertFlushTable(Configuration config, String scnValue) throws SQLException {
         try (OracleConnection conn = TestHelper.defaultConnection(true)) {
-            final String databasePdbName = config.getString(OracleConnectorConfig.PDB_NAMES);
+            final String databasePdbName = getFlushTablePdbName(config);
             if (!Strings.isNullOrEmpty(databasePdbName)) {
                 conn.setSessionToPdb(databasePdbName);
             }
             conn.execute("INSERT INTO " + getFlushTableName() + " values (" + scnValue + ")");
         }
+    }
+
+    private static String getFlushTablePdbName(Configuration config) {
+        // The flush table is maintained in the first configured pluggable database
+        return new OracleConnectorConfig(config).getPdbNames().stream().findFirst().orElse(null);
     }
 
     private static String getFlushTableName() {

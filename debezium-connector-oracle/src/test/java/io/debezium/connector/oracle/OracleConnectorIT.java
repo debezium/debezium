@@ -103,7 +103,6 @@ import io.debezium.relational.history.MemorySchemaHistory;
 import io.debezium.spi.converter.CustomConverter;
 import io.debezium.spi.converter.RelationalColumn;
 import io.debezium.storage.file.history.FileSchemaHistory;
-import io.debezium.util.Strings;
 import io.debezium.util.Testing;
 
 import ch.qos.logback.classic.Level;
@@ -5802,12 +5801,14 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
             TestHelper.streamTable(connection, "dbz8577");
 
             Configuration tempConfig = TestHelper.defaultConfig().build();
+            final List<String> pdbNames = new OracleConnectorConfig(tempConfig).getPdbNames();
 
             final Configuration.Builder builder = TestHelper.defaultConfig();
-            if (!Strings.isNullOrEmpty(tempConfig.getString(OracleConnectorConfig.PDB_NAMES))) {
-                // For this use case, both PDB and DBNAME should refer to PDB
+            if (!pdbNames.isEmpty()) {
+                // For this use case, both PDB and DBNAME should refer to the same, single PDB
                 // This is an unconventional configuration, but permissible.
-                builder.with(OracleConnectorConfig.DATABASE_NAME, tempConfig.getString(OracleConnectorConfig.PDB_NAMES));
+                builder.with(OracleConnectorConfig.DATABASE_NAME, pdbNames.get(0));
+                builder.with(OracleConnectorConfig.PDB_NAMES, pdbNames.get(0));
             }
             builder.with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ8577")
                     .with(OracleConnectorConfig.LOG_MINING_RESTART_CONNECTION, "true");
