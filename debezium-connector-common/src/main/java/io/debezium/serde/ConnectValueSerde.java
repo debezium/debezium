@@ -23,9 +23,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaAndValue;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.data.Time;
+import org.apache.kafka.connect.data.Timestamp;
 import org.apache.kafka.connect.json.JsonConverter;
 
 import io.debezium.DebeziumException;
@@ -55,8 +58,14 @@ import io.debezium.common.annotation.Incubating;
  * reconstructed without their {@link org.apache.kafka.connect.data.Schema}, so they are delegated to
  * Kafka's {@link JsonConverter} with the schema embedded alongside the payload.
  * <p>
- * Unsupported value types raise a {@link DebeziumException} from {@link #serialize(Object, long)}; callers
- * are expected to skip storing such values.
+ * Null values keep their declared type: when the caller supplies the value's Connect {@link Schema}, a
+ * null is written as the type's tag with the high bit set as a null flag, so the stored bytes record what
+ * the value would have been (a null {@code INT32} is distinguishable from a null {@code STRING}). Without
+ * a schema the type of a null is unknowable (null has no runtime class) and a plain untyped null tag is
+ * written instead.
+ * <p>
+ * Unsupported value types raise a {@link DebeziumException} from {@link #serialize(Object, Schema, long)};
+ * callers are expected to skip storing such values.
  * <p>
  * Keys use a separate, compare-only encoding produced by {@link #serializeStructIdentity(Struct)}: keys
  * are pure identity and are never deserialized, so nested structs are written positionally with no schema
@@ -90,6 +99,10 @@ public final class ConnectValueSerde {
     private static final byte TAG_STRUCT = 14;
     private static final byte TAG_LIST = 15;
     private static final byte TAG_MAP = 16;
+
+    // High bit of the tag byte: the value is null, and the low seven bits carry the type it would have
+    // had. TAG_NULL alone (no flag) is a null whose type was unknown at write time.
+    private static final byte NULL_FLAG = (byte) 0x80;
 
     private static final int FINGERPRINT_LENGTH = 16;
 
@@ -130,19 +143,26 @@ public final class ConnectValueSerde {
 
     /**
      * Serialize the given value into the versioned, type-tagged envelope.
+     * <p>
+     * The schema only influences null handling: a non-null value is tagged by its runtime class, while a
+     * null value is tagged with the type derived from the schema so the declared type survives
+     * serialization. Container schemas ({@code ARRAY}, {@code MAP}) are descended into so nested nulls
+     * are typed as well.
      *
      * @param value the value to serialize; may be null
+     * @param schema the value's Connect schema, used to preserve the declared type of null values; may be
+     *        null when unknown, in which case nulls are written untyped
      * @param timestampMs the wall-clock time of the write, stored for read-side TTL enforcement
      * @return the serialized bytes
      * @throws DebeziumException if the value's type is not supported by the encoding
      */
-    public byte[] serialize(Object value, long timestampMs) {
+    public byte[] serialize(Object value, Schema schema, long timestampMs) {
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
                 DataOutputStream dos = new DataOutputStream(baos)) {
             dos.write(MAGIC);
             dos.writeByte(FORMAT_VERSION);
             dos.writeLong(timestampMs);
-            writeTaggedValue(dos, value);
+            writeTaggedValue(dos, value, schema);
             dos.flush();
             return baos.toByteArray();
         }
@@ -152,7 +172,7 @@ public final class ConnectValueSerde {
     }
 
     /**
-     * Deserialize bytes previously produced by {@link #serialize(Object, long)}.
+     * Deserialize bytes previously produced by {@link #serialize(Object, Schema, long)}.
      *
      * @param bytes the serialized bytes; may not be null
      * @return the deserialized value and its write timestamp
@@ -206,9 +226,9 @@ public final class ConnectValueSerde {
         }
     }
 
-    private void writeTaggedValue(DataOutputStream dos, Object value) throws IOException {
+    private void writeTaggedValue(DataOutputStream dos, Object value, Schema schema) throws IOException {
         if (value == null) {
-            dos.writeByte(TAG_NULL);
+            dos.writeByte(schema != null ? (byte) (schemaTypeTag(schema) | NULL_FLAG) : TAG_NULL);
         }
         else if (value instanceof String string) {
             dos.writeByte(TAG_STRING);
@@ -271,18 +291,22 @@ public final class ConnectValueSerde {
             writeBytes(dos, structConverter.fromConnectData(schemaTopic(struct), struct.schema(), struct));
         }
         else if (value instanceof List<?> list) {
+            final Schema elementSchema = schema != null && schema.type() == Schema.Type.ARRAY ? schema.valueSchema() : null;
             dos.writeByte(TAG_LIST);
             dos.writeInt(list.size());
             for (Object element : list) {
-                writeTaggedValue(dos, element);
+                writeTaggedValue(dos, element, elementSchema);
             }
         }
         else if (value instanceof Map<?, ?> map) {
+            final boolean mapSchema = schema != null && schema.type() == Schema.Type.MAP;
+            final Schema keySchema = mapSchema ? schema.keySchema() : null;
+            final Schema valueSchema = mapSchema ? schema.valueSchema() : null;
             dos.writeByte(TAG_MAP);
             dos.writeInt(map.size());
             for (Map.Entry<?, ?> entry : map.entrySet()) {
-                writeTaggedValue(dos, entry.getKey());
-                writeTaggedValue(dos, entry.getValue());
+                writeTaggedValue(dos, entry.getKey(), keySchema);
+                writeTaggedValue(dos, entry.getValue(), valueSchema);
             }
         }
         else {
@@ -292,6 +316,11 @@ public final class ConnectValueSerde {
 
     private Object readTaggedValue(DataInputStream dis) throws IOException {
         final byte tag = dis.readByte();
+        if ((tag & NULL_FLAG) != 0) {
+            // A typed null: the low bits record the declared type in the stored form, but the
+            // deserialized value is simply null.
+            return null;
+        }
         switch (tag) {
             case TAG_NULL:
                 return null;
@@ -485,6 +514,52 @@ public final class ConnectValueSerde {
         }
         else {
             throw new DebeziumException("Unsupported key value type: " + value.getClass().getName());
+        }
+    }
+
+    /**
+     * Map a Connect schema to the tag its values would carry, used to type null values. Logical types
+     * whose runtime class differs from their storage type are matched by name first; {@code BYTES} maps
+     * to the byte-array tag since a null carries no runtime {@code byte[]}/{@link ByteBuffer} distinction.
+     */
+    private static byte schemaTypeTag(Schema schema) {
+        final String schemaName = schema.name();
+        if (Decimal.LOGICAL_NAME.equals(schemaName)) {
+            return TAG_BIG_DECIMAL;
+        }
+        if (org.apache.kafka.connect.data.Date.LOGICAL_NAME.equals(schemaName)
+                || Time.LOGICAL_NAME.equals(schemaName)
+                || Timestamp.LOGICAL_NAME.equals(schemaName)) {
+            return TAG_DATE;
+        }
+        switch (schema.type()) {
+            case STRING:
+                return TAG_STRING;
+            case BOOLEAN:
+                return TAG_BOOLEAN;
+            case INT8:
+                return TAG_INT8;
+            case INT16:
+                return TAG_INT16;
+            case INT32:
+                return TAG_INT32;
+            case INT64:
+                return TAG_INT64;
+            case FLOAT32:
+                return TAG_FLOAT32;
+            case FLOAT64:
+                return TAG_FLOAT64;
+            case BYTES:
+                return TAG_BYTE_ARRAY;
+            case STRUCT:
+                return TAG_STRUCT;
+            case ARRAY:
+                return TAG_LIST;
+            case MAP:
+                return TAG_MAP;
+            default:
+                // Serializing a null must never fail; fall back to an untyped null.
+                return TAG_NULL;
         }
     }
 

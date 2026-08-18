@@ -70,8 +70,8 @@ public class RocksDbReselectColumnCacheTest {
     public void putThenGetRoundTripsThroughRocksDb() {
         cache = open(config().build());
 
-        cache.forRow(intKey(1)).put("data", "AAA");
-        cache.forRow(intKey(1)).put("empty", null);
+        cache.forRow(intKey(1)).put("data", Schema.OPTIONAL_STRING_SCHEMA, "AAA");
+        cache.forRow(intKey(1)).put("empty", Schema.OPTIONAL_STRING_SCHEMA, null);
 
         assertThat(cache.forRow(intKey(1)).get("data")).map(Hit::value).contains("AAA");
         assertThat(cache.forRow(intKey(1)).get("empty")).isPresent();
@@ -83,7 +83,7 @@ public class RocksDbReselectColumnCacheTest {
     @Test
     public void entriesSurviveCloseAndReopen() {
         cache = open(config().build());
-        cache.forRow(intKey(1)).put("data", "AAA");
+        cache.forRow(intKey(1)).put("data", Schema.OPTIONAL_STRING_SCHEMA, "AAA");
         cache.close();
 
         cache = open(config().build());
@@ -94,7 +94,7 @@ public class RocksDbReselectColumnCacheTest {
     public void cleanupOnCloseRemovesDatabaseDirectory() {
         final Path dbDir = tempDir.resolve("reselect-cache");
         cache = open(config().with(RocksDbReselectColumnCache.CLEANUP, true).build());
-        cache.forRow(intKey(1)).put("data", "AAA");
+        cache.forRow(intKey(1)).put("data", Schema.OPTIONAL_STRING_SCHEMA, "AAA");
         cache.close();
         cache = null;
 
@@ -105,7 +105,7 @@ public class RocksDbReselectColumnCacheTest {
     public void directoryIsRetainedOnCloseByDefault() {
         final Path dbDir = tempDir.resolve("reselect-cache");
         cache = open(config().build());
-        cache.forRow(intKey(1)).put("data", "AAA");
+        cache.forRow(intKey(1)).put("data", Schema.OPTIONAL_STRING_SCHEMA, "AAA");
         cache.close();
         cache = null;
 
@@ -123,7 +123,7 @@ public class RocksDbReselectColumnCacheTest {
     public void positiveTtlExpiresEntries() throws Exception {
         cache = open(config().with("reselect.cache.ttl.ms", 100).build());
 
-        cache.forRow(intKey(1)).put("data", "AAA");
+        cache.forRow(intKey(1)).put("data", Schema.OPTIONAL_STRING_SCHEMA, "AAA");
         assertThat(cache.forRow(intKey(1)).get("data")).map(Hit::value).contains("AAA");
 
         Thread.sleep(150); // exceed the 100ms TTL; expiry is enforced at read time
@@ -146,7 +146,7 @@ public class RocksDbReselectColumnCacheTest {
                     start.await();
                     for (int i = 0; i < rowsPerThread; i++) {
                         final int id = thread * rowsPerThread + i;
-                        cache.forRow(intKey(id)).put("data", "value-" + id);
+                        cache.forRow(intKey(id)).put("data", Schema.OPTIONAL_STRING_SCHEMA, "value-" + id);
                     }
                     return null;
                 }));

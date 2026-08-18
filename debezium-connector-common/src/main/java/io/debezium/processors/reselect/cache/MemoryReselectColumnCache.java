@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -116,7 +117,8 @@ public class MemoryReselectColumnCache implements ReselectColumnCache {
         }
 
         @Override
-        public void put(String column, Object value) {
+        public void put(String column, Schema schema, Object value) {
+            // The live value is stored as-is; the schema only matters to serializing implementations.
             rows.computeIfAbsent(rowKey, k -> new BoundedConcurrentHashMap<>(maxColumnsPerRow, 4, Eviction.LRU))
                     .put(column, new CachedValue(value, System.currentTimeMillis()));
         }
