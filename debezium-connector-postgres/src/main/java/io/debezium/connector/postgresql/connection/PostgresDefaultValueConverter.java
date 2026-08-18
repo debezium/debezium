@@ -44,7 +44,7 @@ public class PostgresDefaultValueConverter implements DefaultValueConverter {
 
     private static Logger LOGGER = LoggerFactory.getLogger(PostgresDefaultValueConverter.class);
 
-    private static final Pattern LITERAL_DEFAULT_PATTERN = Pattern.compile("'((?:''|[^'])*)'");
+    private static final Pattern LITERAL_DEFAULT_PATTERN = Pattern.compile("'([^']*(?:''[^']*)*)'");
     private static final Pattern FUNCTION_DEFAULT_PATTERN = Pattern.compile("^[(]?[A-Za-z0-9_.]+\\((?:.+(?:, ?.+)*)?\\)");
     private static final Set<String> CURRENT_DATE_TIMES = Collect.unmodifiableSet("current_timestamp",
             "current_time", "current_date", "localtime", "localtimestamp");
