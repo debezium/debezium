@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.kafka.connect.connector.Task;
@@ -108,6 +109,25 @@ public class DebeziumAsyncEngineTestUtils {
                 }
                 throw new IllegalStateException("Exception during start of the task");
             }
+        }
+    }
+
+    public static class StopTrackingConnector extends SimpleSourceConnector {
+
+        @Override
+        public Class<? extends Task> taskClass() {
+            return StopTrackingTask.class;
+        }
+    }
+
+    public static class StopTrackingTask extends SimpleSourceConnector.SimpleConnectorTask {
+
+        public static final AtomicBoolean stopInvoked = new AtomicBoolean(false);
+
+        @Override
+        public void stop() {
+            stopInvoked.set(true);
+            super.stop();
         }
     }
 }
