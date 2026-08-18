@@ -264,6 +264,16 @@ public class TestHelper {
     }
 
     /**
+     * Obtain a connection using the default configuration, pinned to the specified pluggable database.
+     *
+     * @param pdbName the pluggable database to pin the connection's session to
+     */
+    public static OracleConnection defaultConnection(String pdbName) {
+        Configuration jdbcConfig = defaultConfig().build().subset(DATABASE_PREFIX, true);
+        return createConnection(JdbcConfiguration.adapt(jdbcConfig), pdbName, true);
+    }
+
+    /**
      * Returns a JdbcConfiguration for the test schema and user account.
      */
     private static JdbcConfiguration testJdbcConfig() {
@@ -358,6 +368,17 @@ public class TestHelper {
     }
 
     /**
+     * Return a test connection that is suitable for performing test database changes in tests,
+     * pinned to the specified pluggable database.
+     *
+     * @param pdbName the pluggable database to pin the connection's session to
+     */
+    public static OracleConnection testConnection(String pdbName) {
+        Configuration jdbcConfig = testConfig().build().subset(DATABASE_PREFIX, true);
+        return createConnection(JdbcConfiguration.adapt(jdbcConfig), pdbName, false);
+    }
+
+    /**
      * Return a connection that is suitable for performing test database changes that require
      * an administrator role permission.
      *
@@ -390,6 +411,17 @@ public class TestHelper {
     }
 
     /**
+     * Return a connection that is suitable for performing test database changes that require
+     * an administrator role permission, pinned to the specified pluggable database.
+     *
+     * @param pdbName the pluggable database to pin the connection's session to
+     */
+    public static OracleConnection adminConnection(String pdbName) {
+        Configuration jdbcConfig = adminConfig().build().subset(DATABASE_PREFIX, true);
+        return createConnection(JdbcConfiguration.adapt(jdbcConfig), pdbName, false);
+    }
+
+    /**
      * Create an OracleConnection.
      *
      * @param config the connector configuration
@@ -398,6 +430,19 @@ public class TestHelper {
      * @return the connection
      */
     private static OracleConnection createConnection(Configuration config, JdbcConfiguration jdbcConfig, boolean autoCommit) {
+        return createConnection(jdbcConfig, getFirstPdbName(config), autoCommit);
+    }
+
+    /**
+     * Create an OracleConnection pinned to the specified pluggable database.
+     *
+     * @param jdbcConfig the JDBC configuration
+     * @param pdbName the pluggable database to pin the connection's session to, or {@code null} to
+     *        leave the session in the container the connection was established against
+     * @param autoCommit whether the connection should enforce auto-commit
+     * @return the connection
+     */
+    private static OracleConnection createConnection(JdbcConfiguration jdbcConfig, String pdbName, boolean autoCommit) {
         // Setting this to true at least keeps existing behavior, expecting tests to set this to false
         // as needed since this connection is not used in the connector but as part of the test, to
         // perform required database SQL operations.
@@ -405,9 +450,8 @@ public class TestHelper {
         try {
             connection.setAutoCommit(autoCommit);
 
-            List<String> pdbNames = new OracleConnectorConfig(config).getPdbNames();
-            if (!pdbNames.isEmpty()) {
-                connection.setSessionToPdb(pdbNames.get(0));
+            if (!Strings.isNullOrEmpty(pdbName)) {
+                connection.setSessionToPdb(pdbName);
             }
 
             return connection;
@@ -567,9 +611,24 @@ public class TestHelper {
      * @throws RuntimeException if the role cannot be granted
      */
     public static void grantRole(String roleName, String objectName, String userName) {
-        final String pdbName = defaultConfig().build().getString(OracleConnectorConfig.PDB_NAMES);
+        grantRole(roleName, objectName, userName, getFirstDefaultConfigPdbName());
+    }
+
+    /**
+     * Grants the specified roles to the {@link TestHelper#SCHEMA_USER} or the user configured using the
+     * configuration option {@code database.user}, which has precedence, on the specified object within
+     * the specified pluggable database.
+     *
+     * @param roleName role to be granted
+     * @param objectName the object to grant the role against
+     * @param userName the user to whom the grant should be applied
+     * @param pdbName the pluggable database in which to perform the grant, or {@code null} to perform
+     *        it in the current container
+     * @throws RuntimeException if the role cannot be granted
+     */
+    public static void grantRole(String roleName, String objectName, String userName, String pdbName) {
         try (OracleConnection connection = adminConnection()) {
-            if (pdbName != null) {
+            if (!Strings.isNullOrEmpty(pdbName)) {
                 connection.setSessionToPdb(pdbName);
             }
             final StringBuilder sql = new StringBuilder("GRANT ").append(roleName);
@@ -594,10 +653,23 @@ public class TestHelper {
      * @throws RuntimeException if the role cannot be revoked
      */
     public static void revokeRole(String roleName) {
-        final String pdbName = defaultConfig().build().getString(OracleConnectorConfig.PDB_NAMES);
+        revokeRole(roleName, getFirstDefaultConfigPdbName());
+    }
+
+    /**
+     * Revokes the specified role from the {@link TestHelper#SCHEMA_USER} or the user configured using
+     * the configuration option {@code database.user}, whichever has precedence, within the specified
+     * pluggable database.
+     *
+     * @param roleName role to be revoked
+     * @param pdbName the pluggable database in which to perform the revoke, or {@code null} to perform
+     *        it in the current container
+     * @throws RuntimeException if the role cannot be revoked
+     */
+    public static void revokeRole(String roleName, String pdbName) {
         final String userName = testJdbcConfig().getString(JdbcConfiguration.USER);
         try (OracleConnection connection = adminConnection()) {
-            if (pdbName != null) {
+            if (!Strings.isNullOrEmpty(pdbName)) {
                 connection.setSessionToPdb(pdbName);
             }
             connection.execute("REVOKE " + roleName + " FROM " + userName);
@@ -605,6 +677,15 @@ public class TestHelper {
         catch (SQLException e) {
             throw new RuntimeException("Failed to revoke role '" + roleName + "' for user " + userName, e);
         }
+    }
+
+    private static String getFirstDefaultConfigPdbName() {
+        return getFirstPdbName(defaultConfig().build());
+    }
+
+    private static String getFirstPdbName(Configuration config) {
+        final List<String> pdbNames = new OracleConnectorConfig(config).getPdbNames();
+        return pdbNames.isEmpty() ? null : pdbNames.get(0);
     }
 
     public static int defaultMessageConsumerPollTimeout() {
@@ -846,7 +927,7 @@ public class TestHelper {
         if (imageTag.contains("-")) {
             imageTagSuffix = imageTag.substring(imageTag.lastIndexOf("-") + 1);
         }
-        String pdbName = connectorConfiguration.asProperties().getProperty(DATABASE_PREFIX + PDB_NAME);
+        String pdbName = getFirstConfiguredPdbName(connectorConfiguration);
         if (!imageTag.contains("-") || "xs".equals(imageTagSuffix)) {
             if (!Strings.isNullOrEmpty(pdbName)) {
                 connectorConfiguration.with(OracleConnectorConfig.DATABASE_NAME.name(), pdbName);
@@ -854,12 +935,22 @@ public class TestHelper {
         }
         else if ("noncdb".equals(imageTagSuffix)) {
             if (!Strings.isNullOrEmpty(pdbName)) {
+                connectorConfiguration.remove(OracleConnectorConfig.PDB_NAMES.name());
                 connectorConfiguration.remove(DATABASE_PREFIX + PDB_NAME);
             }
         }
         else {
             throw new RuntimeException("Invalid or unknown image tag '" + imageTagSuffix + "' for Oracle container image: " + oracleImageName);
         }
+    }
+
+    private static String getFirstConfiguredPdbName(ConnectorConfiguration connectorConfiguration) {
+        String pdbNames = connectorConfiguration.asProperties().getProperty(OracleConnectorConfig.PDB_NAMES.name());
+        if (Strings.isNullOrEmpty(pdbNames)) {
+            pdbNames = connectorConfiguration.asProperties().getProperty(DATABASE_PREFIX + PDB_NAME);
+        }
+        final List<String> names = Strings.listOfTrimmed(pdbNames, String::new);
+        return names.isEmpty() ? null : names.get(0);
     }
 
     public static long getUndoRetentionSeconds() throws SQLException {
