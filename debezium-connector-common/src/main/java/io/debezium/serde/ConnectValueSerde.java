@@ -44,10 +44,11 @@ import io.debezium.common.annotation.Incubating;
  * a {@code Long}, and a {@code byte[]} is distinguished from a {@link ByteBuffer}), rather than relying
  * on a schemaless representation that loses those distinctions.
  * <p>
- * The stored form is a versioned envelope: {@code [formatVersion][writeTimestampMs][tagged value]}. The
- * write timestamp supports read-side TTL enforcement by the caller; the version byte allows the format to
- * evolve, with unknown versions surfacing as a {@link DebeziumException} that callers can treat as a
- * missing entry.
+ * The stored form is a versioned envelope: {@code [magic][formatVersion][writeTimestampMs][tagged value]}.
+ * The magic bytes (ASCII {@code DBZ}) identify the bytes as Debezium-serialized; the write timestamp
+ * supports read-side TTL enforcement by the caller; the version byte allows the format to evolve. Foreign
+ * bytes and unknown versions surface as a {@link DebeziumException} that callers can treat as a missing
+ * entry.
  * <p>
  * Values are stored without their schema (the tag byte alone restores the runtime type) with one
  * exception: {@link Struct} values (e.g. {@code VariableScaleDecimal}, geometry types) cannot be
@@ -66,6 +67,9 @@ import io.debezium.common.annotation.Incubating;
 @Incubating
 @ThreadSafe
 public final class ConnectValueSerde {
+
+    // ASCII "DBZ": marks the bytes as Debezium-serialized, e.g. when inspecting a shared store.
+    private static final byte[] MAGIC = { 'D', 'B', 'Z' };
 
     private static final byte FORMAT_VERSION = 1;
 
@@ -135,6 +139,7 @@ public final class ConnectValueSerde {
     public byte[] serialize(Object value, long timestampMs) {
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
                 DataOutputStream dos = new DataOutputStream(baos)) {
+            dos.write(MAGIC);
             dos.writeByte(FORMAT_VERSION);
             dos.writeLong(timestampMs);
             writeTaggedValue(dos, value);
@@ -151,10 +156,16 @@ public final class ConnectValueSerde {
      *
      * @param bytes the serialized bytes; may not be null
      * @return the deserialized value and its write timestamp
-     * @throws DebeziumException if the bytes are undecodable or use an unknown format version
+     * @throws DebeziumException if the bytes are undecodable, lack the Debezium magic bytes, or use an
+     *         unknown format version
      */
     public DeserializedValue deserialize(byte[] bytes) {
         try (DataInputStream dis = new DataInputStream(new ByteArrayInputStream(bytes))) {
+            final byte[] magic = new byte[MAGIC.length];
+            dis.readFully(magic);
+            if (!Arrays.equals(magic, MAGIC)) {
+                throw new DebeziumException("Serialized value does not start with the Debezium magic bytes");
+            }
             final byte version = dis.readByte();
             if (version != FORMAT_VERSION) {
                 throw new DebeziumException("Unknown value format version: " + version);

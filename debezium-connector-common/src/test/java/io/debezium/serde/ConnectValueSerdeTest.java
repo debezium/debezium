@@ -149,9 +149,27 @@ public class ConnectValueSerdeTest {
     }
 
     @Test
-    public void unknownFormatVersionThrows() {
+    public void serializedValuesStartWithTheDebeziumMagicBytes() {
+        final byte[] bytes = serde.serialize("x", 0L);
+        assertThat(bytes[0]).isEqualTo((byte) 'D');
+        assertThat(bytes[1]).isEqualTo((byte) 'B');
+        assertThat(bytes[2]).isEqualTo((byte) 'Z');
+    }
+
+    @Test
+    public void bytesWithoutTheMagicPrefixThrow() {
         final byte[] bytes = serde.serialize("x", 0L);
         bytes[0] = 99;
+        assertThatThrownBy(() -> serde.deserialize(bytes))
+                .isInstanceOf(DebeziumException.class)
+                .hasMessageContaining("magic");
+    }
+
+    @Test
+    public void unknownFormatVersionThrows() {
+        final byte[] bytes = serde.serialize("x", 0L);
+        // The version byte follows the three magic bytes.
+        bytes[3] = 99;
         assertThatThrownBy(() -> serde.deserialize(bytes))
                 .isInstanceOf(DebeziumException.class)
                 .hasMessageContaining("version");
