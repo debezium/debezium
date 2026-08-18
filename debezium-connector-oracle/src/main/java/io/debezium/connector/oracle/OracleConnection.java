@@ -486,6 +486,26 @@ public class OracleConnection extends JdbcConnection {
     @Override
     public String buildSelectPrimaryKeyBoundaries(TableId tableId, long size, String projection, String orderBy) {
         final TableId truncatedTableId = new TableId(null, tableId.schema(), tableId.table());
+        // Oracle 11g and earlier
+        if (getOracleVersion().getMajor() < 12) {
+            StringBuilder innerSql = new StringBuilder("SELECT ")
+                    .append(projection)
+                    .append(", ROWNUM AS RNUM FROM (SELECT ")
+                    .append(projection)
+                    .append(" FROM ")
+                    .append(quotedTableIdString(truncatedTableId))
+                    .append(" ORDER BY ").append(orderBy).append(")");
+            // Target row index corresponds to OFFSET size FETCH NEXT 1 (1-based index)
+            long targetRow = size + 1;
+            return new StringBuilder("SELECT ")
+                    .append(projection)
+                    .append(" FROM (")
+                    .append(innerSql)
+                    .append(") WHERE RNUM = ")
+                    .append(targetRow)
+                    .toString();
+        }
+        // Oracle 12c+
         return new StringBuilder("SELECT ")
                 .append(projection)
                 .append(" FROM ")
