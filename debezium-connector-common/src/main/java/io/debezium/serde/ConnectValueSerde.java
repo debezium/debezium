@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.processors.reselect.cache;
+package io.debezium.serde;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -33,20 +33,21 @@ import io.debezium.annotation.ThreadSafe;
 import io.debezium.common.annotation.Incubating;
 
 /**
- * Serializes cached re-select column values, and the row keys they are stored under, to and from bytes
- * for persistent {@link ReselectColumnCache} backends.
+ * Serializes Kafka Connect field values, and {@link Struct} keys they may be stored under, to and from
+ * bytes, preserving each value's exact runtime type. Useful for persistent caches or any store that must
+ * later write a value back into an outgoing {@link Struct}.
  * <p>
- * Cached values are the final converted values as they appear in an event's {@code after} struct, and a
- * cache hit is written back into an outgoing {@link Struct}, whose {@code put} validates the value's exact
- * runtime class against the field schema. The encoding therefore tags every value with a type marker so
- * deserialization restores the exact runtime type (e.g. an {@code Integer} never widens to a {@code Long},
- * and a {@code byte[]} is distinguished from a {@link ByteBuffer}), rather than relying on a schemaless
- * representation that loses those distinctions.
+ * Values are the final converted values as they appear in a Connect record's payload, and a restored
+ * value is typically written back into an outgoing {@link Struct}, whose {@code put} validates the
+ * value's exact runtime class against the field schema. The encoding therefore tags every value with a
+ * type marker so deserialization restores the exact runtime type (e.g. an {@code Integer} never widens to
+ * a {@code Long}, and a {@code byte[]} is distinguished from a {@link ByteBuffer}), rather than relying
+ * on a schemaless representation that loses those distinctions.
  * <p>
  * The stored form is a versioned envelope: {@code [formatVersion][writeTimestampMs][tagged value]}. The
  * write timestamp supports read-side TTL enforcement by the caller; the version byte allows the format to
- * evolve, with unknown versions surfacing as a {@link DebeziumException} that callers treat as a cache
- * miss.
+ * evolve, with unknown versions surfacing as a {@link DebeziumException} that callers can treat as a
+ * missing entry.
  * <p>
  * Values are stored without their schema (the tag byte alone restores the runtime type) with one
  * exception: {@link Struct} values (e.g. {@code VariableScaleDecimal}, geometry types) cannot be
@@ -54,17 +55,17 @@ import io.debezium.common.annotation.Incubating;
  * Kafka's {@link JsonConverter} with the schema embedded alongside the payload.
  * <p>
  * Unsupported value types raise a {@link DebeziumException} from {@link #serialize(Object, long)}; callers
- * are expected to skip caching such values, leaving them to be re-queried on a later miss.
+ * are expected to skip storing such values.
  * <p>
- * Row keys use a separate, compare-only encoding produced by {@link #serializeRowKey(Struct)}: keys are
- * pure identity and are never deserialized, so nested structs are written positionally with no schema
+ * Keys use a separate, compare-only encoding produced by {@link #serializeStructIdentity(Struct)}: keys
+ * are pure identity and are never deserialized, so nested structs are written positionally with no schema
  * detail, and a fingerprint of the key schema pins the shape (see that method for details).
  *
  * @author Chris Cranford
  */
 @Incubating
 @ThreadSafe
-public final class ReselectValueSerde {
+public final class ConnectValueSerde {
 
     private static final byte FORMAT_VERSION = 1;
 
@@ -88,8 +89,8 @@ public final class ReselectValueSerde {
 
     private static final int FINGERPRINT_LENGTH = 16;
 
-    // Row-key value tags. Distinct from the value tags above: row keys are compare-only identity bytes
-    // and are never deserialized, so nested structs are written positionally without any schema detail.
+    // Key value tags. Distinct from the value tags above: keys are compare-only identity bytes and are
+    // never deserialized, so nested structs are written positionally without any schema detail.
     private static final byte KEY_TAG_NULL = 0;
     private static final byte KEY_TAG_STRING = 1;
     private static final byte KEY_TAG_BOOLEAN = 2;
@@ -108,7 +109,7 @@ public final class ReselectValueSerde {
 
     private final JsonConverter structConverter;
 
-    public ReselectValueSerde() {
+    public ConnectValueSerde() {
         this.structConverter = new JsonConverter();
         this.structConverter.configure(Map.of("schemas.enable", "true"), false);
     }
@@ -141,7 +142,7 @@ public final class ReselectValueSerde {
             return baos.toByteArray();
         }
         catch (IOException e) {
-            throw new DebeziumException("Failed to serialize reselect cache value", e);
+            throw new DebeziumException("Failed to serialize value", e);
         }
     }
 
@@ -150,48 +151,47 @@ public final class ReselectValueSerde {
      *
      * @param bytes the serialized bytes; may not be null
      * @return the deserialized value and its write timestamp
-     * @throws DebeziumException if the bytes are undecodable or use an unknown format version; callers
-     *         should treat this as a cache miss
+     * @throws DebeziumException if the bytes are undecodable or use an unknown format version
      */
     public DeserializedValue deserialize(byte[] bytes) {
         try (DataInputStream dis = new DataInputStream(new ByteArrayInputStream(bytes))) {
             final byte version = dis.readByte();
             if (version != FORMAT_VERSION) {
-                throw new DebeziumException("Unknown reselect cache value format version: " + version);
+                throw new DebeziumException("Unknown value format version: " + version);
             }
             final long timestampMs = dis.readLong();
             return new DeserializedValue(timestampMs, readTaggedValue(dis));
         }
         catch (IOException e) {
-            throw new DebeziumException("Failed to deserialize reselect cache value", e);
+            throw new DebeziumException("Failed to deserialize value", e);
         }
     }
 
     /**
-     * Serialize the given message key {@link Struct} into stable, compare-only row identity bytes.
+     * Serialize the given key {@link Struct} into stable, compare-only identity bytes.
      * <p>
      * The encoding is a truncated SHA-256 fingerprint over a canonical, recursive description of the key
      * schema (name, field names, field order and field types), followed by the key's field values written
      * positionally in schema order. Any change to the key schema changes the fingerprint and therefore
-     * the row key, yielding a natural miss. This is the byte-level equivalent of the {@code Struct}
-     * equality semantics documented on {@link ReselectColumnCache}. Because the fingerprint pins the
-     * schema shape, nested structs (e.g. {@code VariableScaleDecimal}) serialize positionally as their
-     * raw field values with no schema detail, and the resulting bytes are never deserialized.
+     * the identity bytes, so entries stored under the old shape naturally become unreachable. This is the
+     * byte-level equivalent of {@code Struct} equality. Because the fingerprint pins the schema shape,
+     * nested structs (e.g. {@code VariableScaleDecimal}) serialize positionally as their raw field values
+     * with no schema detail, and the resulting bytes are never deserialized.
      *
-     * @param messageKey the event's message key struct; may not be null
-     * @return the row identity bytes
+     * @param key the key struct; may not be null
+     * @return the identity bytes
      * @throws DebeziumException if the key contains a value whose type is not supported by the encoding
      */
-    public byte[] serializeRowKey(Struct messageKey) {
+    public byte[] serializeStructIdentity(Struct key) {
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
                 DataOutputStream dos = new DataOutputStream(baos)) {
-            dos.write(fingerprint(messageKey.schema()));
-            writeKeyStructFields(dos, messageKey);
+            dos.write(fingerprint(key.schema()));
+            writeKeyStructFields(dos, key);
             dos.flush();
             return baos.toByteArray();
         }
         catch (IOException e) {
-            throw new DebeziumException("Failed to serialize reselect cache row key", e);
+            throw new DebeziumException("Failed to serialize struct identity", e);
         }
     }
 
@@ -275,7 +275,7 @@ public final class ReselectValueSerde {
             }
         }
         else {
-            throw new DebeziumException("Unsupported reselect cache value type: " + value.getClass().getName());
+            throw new DebeziumException("Unsupported value type: " + value.getClass().getName());
         }
     }
 
@@ -330,7 +330,7 @@ public final class ReselectValueSerde {
                 }
                 return map;
             default:
-                throw new DebeziumException("Unknown reselect cache value tag: " + tag);
+                throw new DebeziumException("Unknown value tag: " + tag);
         }
     }
 
@@ -421,8 +421,7 @@ public final class ReselectValueSerde {
             dos.writeDouble(doubleValue);
         }
         else if (value instanceof byte[] byteArray) {
-            // byte[] and ByteBuffer share a tag: binary key identity is content-based, matching the
-            // content-based comparison documented for the in-memory cache.
+            // byte[] and ByteBuffer share a tag: binary key identity is content-based.
             dos.writeByte(KEY_TAG_BYTES);
             writeBytes(dos, byteArray);
         }
@@ -474,7 +473,7 @@ public final class ReselectValueSerde {
             }
         }
         else {
-            throw new DebeziumException("Unsupported reselect cache key value type: " + value.getClass().getName());
+            throw new DebeziumException("Unsupported key value type: " + value.getClass().getName());
         }
     }
 
