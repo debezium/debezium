@@ -14,17 +14,15 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.connector.oracle.Scn;
-import io.debezium.connector.oracle.logminer.buffered.memory.MemoryLogMinerTransactionCache;
-import io.debezium.connector.oracle.logminer.buffered.memory.MemoryTransaction;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.events.RollbackToSavepointEvent;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.TableId;
 
-public class FindFirstRolledBackEventEntryTest {
-    private static final TableId TABLE = TableId.parse("db.schema.table");
-    private static final Instant CHANGE_TIME = Instant.now();
+public abstract class AbstractFindFirstRolledBackEventEntryTest<T extends Transaction> {
+    protected static final TableId TABLE = TableId.parse("db.schema.table");
+    protected static final Instant CHANGE_TIME = Instant.now();
 
     // INSERT
 
@@ -827,7 +825,7 @@ public class FindFirstRolledBackEventEntryTest {
         // INSERT INTO DBZ1960_28 (ID, STR0) VALUES (1, 'STR0-1-0');
         //
         // With INTERNAL:
-        // UPDATE DBZ1960_28 SET LOB0 = EMPTY_CLOB() WHERE ID = 1;
+        // UPDATE DBZ1960_28 SET STR0 = 'STR0-1-1', LOB0 = EMPTY_CLOB() WHERE ID = 1;
         // SAVEPOINT s1;
         // UPDATE DBZ1960_28 SET STR0 = 'STR0-1-2' WHERE ID = 1;
         // ROLLBACK TO SAVEPOINT s1;
@@ -864,7 +862,7 @@ public class FindFirstRolledBackEventEntryTest {
         //
         // Without INTERNAL:
         // SAVEPOINT s1;
-        // UPDATE DBZ1960_29 SET LOB0 = 'LOB0-1-2', EXT0 = RPAD('EXT0-1-', 4000, '1') WHERE ID = 1;
+        // UPDATE DBZ1960_29 SET LOB0 = 'LOB0-1-1', EXT0 = RPAD('EXT0-1-', 4000, '1') WHERE ID = 1;
         // ROLLBACK TO SAVEPOINT s1;
         // Version: 26ai Free Release 23.26.2.0.0
         LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
@@ -889,9 +887,9 @@ public class FindFirstRolledBackEventEntryTest {
         // INSERT INTO DBZ1960_30 (ID, STR0, XML0) VALUES (1, 'STR0-1-0', XMLTYPE('<XML0><ID>1</ID><V>0</V></XML0>'));
         //
         // With INTERNAL:
-        // UPDATE DBZ1960_30 SET LOB0 = EMPTY_CLOB() WHERE ID = 1;
+        // UPDATE DBZ1960_30 SET STR0 = 'STR0-1-1', LOB0 = EMPTY_CLOB() WHERE ID = 1;
         // SAVEPOINT s1;
-        // UPDATE DBZ1960_30 SET LOB0 = 'LOB0-1-2', XML0 = XMLTYPE('<XML0><ID>1</ID><V>2</V></XML0>' WHERE ID = 1;
+        // UPDATE DBZ1960_30 SET LOB0 = 'LOB0-1-2', XML0 = XMLTYPE('<XML0><ID>1</ID><V>2</V></XML0>') WHERE ID = 1;
         // ROLLBACK TO SAVEPOINT s1;
         //
         // Without INTERNAL:
@@ -929,7 +927,7 @@ public class FindFirstRolledBackEventEntryTest {
         //
         // Without INTERNAL:
         // SAVEPOINT s1;
-        // UPDATE DBZ1960_31 SET XML0 = XMLTYPE('<XML0><ID>1</ID><V>1</V></XML0>'), XML1 = XMLTYPE('<XML1><ID>1</ID><V>2</V></XML1>'), LOB0 = 'LOB0-1-2' WHERE ID = 1;
+        // UPDATE DBZ1960_31 SET XML0 = XMLTYPE('<XML0><ID>1</ID><V>1</V></XML0>'), XML1 = XMLTYPE('<XML1><ID>1</ID><V>1</V></XML1>'), LOB0 = 'LOB0-1-1' WHERE ID = 1;
         // ROLLBACK TO SAVEPOINT s1;
         // Version: 26ai Free Release 23.26.2.0.0
         LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
@@ -1077,14 +1075,18 @@ public class FindFirstRolledBackEventEntryTest {
     }
 
     private LogMinerEvent[] cache(LogMinerEvent[] events) throws InterruptedException {
-        MemoryLogMinerTransactionCache cache = new MemoryLogMinerTransactionCache();
-        MemoryTransaction transaction = new MemoryTransaction("1", Scn.ONE, CHANGE_TIME, "userName", 1, "clientId");
+        LogMinerTransactionCache<T> cache = getCacheProvider().getTransactionCache();
+        T transaction = getTransactionFactory().createTransaction("1", Scn.ONE, CHANGE_TIME, "userName", 1, "clientId");
         cache.addTransaction(transaction);
-        for (int i = 0; i < events.length; i++) {
-            cache.addTransactionEvent(transaction, i, events[i]);
+        for (LogMinerEvent event : events) {
+            cache.addTransactionEvent(transaction, transaction.getNextEventId(), event);
         }
         List<LogMinerEvent> result = new ArrayList<>(transaction.getNumberOfEvents());
         cache.forEachEvent(transaction, result::add);
         return result.toArray(new LogMinerEvent[result.size()]);
     }
+
+    protected abstract CacheProvider<T> getCacheProvider();
+
+    protected abstract TransactionFactory<T> getTransactionFactory();
 }

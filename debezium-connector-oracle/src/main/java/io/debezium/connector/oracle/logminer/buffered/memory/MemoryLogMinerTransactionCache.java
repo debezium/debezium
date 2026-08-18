@@ -9,12 +9,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
-
-import com.google.common.collect.Lists;
 
 import io.debezium.connector.oracle.logminer.buffered.AbstractLogMinerTransactionCache;
 import io.debezium.connector.oracle.logminer.buffered.LogMinerTransactionCache;
@@ -116,9 +115,15 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
         List<LogMinerEventEntry> entries = eventsByTransactionId.computeIfAbsent(transaction.getTransactionId(), (id) -> new ArrayList<>());
         Map<Integer, LogMinerEvent> eventsByEventId = eventsByEventIdByTransactionId.computeIfAbsent(transaction.getTransactionId(), (id) -> new HashMap<>());
         if (event instanceof RollbackToSavepointEvent rollbackEvent) {
-            LogMinerEventEntry rolledBackEntry = findFirstRolledBackEventEntry(transaction, Lists.reverse(entries).iterator(), rollbackEvent);
+            ListIterator<LogMinerEventEntry> it = entries.listIterator(entries.size());
+            LogMinerEventEntry rolledBackEntry = findFirstRolledBackEventEntry(transaction, reverseIterator(it), rollbackEvent);
             if (rolledBackEntry != null) {
-                Iterator<LogMinerEventEntry> it = entries.listIterator(entries.indexOf(rolledBackEntry));
+                while (it.hasNext()) {
+                    if (it.next() == rolledBackEntry) {
+                        it.previous();
+                        break;
+                    }
+                }
                 while (it.hasNext()) {
                     LogMinerEventEntry entry = it.next();
                     if (entry.event() instanceof RollbackToSavepointEvent) {
@@ -131,6 +136,20 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
         }
         entries.add(new LogMinerEventEntry(eventKey, event));
         eventsByEventId.put(eventKey, event);
+    }
+
+    private Iterator<LogMinerEventEntry> reverseIterator(ListIterator<LogMinerEventEntry> it) {
+        return new Iterator<>() {
+            @Override
+            public boolean hasNext() {
+                return it.hasPrevious();
+            }
+
+            @Override
+            public LogMinerEventEntry next() {
+                return it.previous();
+            }
+        };
     }
 
     @Override

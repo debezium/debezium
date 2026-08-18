@@ -228,7 +228,7 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
             rolledBackEntry = lobStartEntry;
         }
 
-        EventType rolledBackType = rolledBackEntry.event().getEventType();
+        EventType rolledBackType = rolledBackEntry == null ? null : rolledBackEntry.event().getEventType();
         if ((rolledBackType == EventType.UPDATE
                 || rolledBackType == EventType.SELECT_LOB_LOCATOR
                 || rolledBackType == EventType.EXTENDED_STRING_BEGIN

@@ -1051,6 +1051,135 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceIT exten
         assertThat(((Struct) tableRecords.get(1).value()).getStruct(Envelope.FieldName.AFTER).get("ID")).isEqualTo(2);
     }
 
+    // Rollback to savepoint - Not supported without INTERNAL: silently remove valid events because the event sequence is ambiguous
+
+    @Test
+    @FixFor("debezium/dbz#1960")
+    public void shouldUpdateEmptyWithoutInternalAndRollbackUpdateScalar() throws Exception {
+        String tableName = "DBZ1960_28";
+        String tableSpec = "(ID NUMERIC(9,0) PRIMARY KEY, STR0 VARCHAR2(50), LOB0 CLOB)";
+        String[] statements = new String[]{
+                "INSERT INTO DBZ1960_28 (ID, STR0) VALUES (1, 'STR0-1-0')",
+                "UPDATE DBZ1960_28 SET STR0 = 'STR0-1-1', LOB0 = EMPTY_CLOB() WHERE ID = 1",
+                "SAVEPOINT s1",
+                "UPDATE DBZ1960_28 SET STR0 = 'STR0-1-2' WHERE ID = 1",
+                "ROLLBACK TO SAVEPOINT s1",
+                // Without INTERNAL the two update statements above are represented in the cache in the same sequence as the following statement:
+                // "SAVEPOINT s1",
+                // "UPDATE DBZ1960_28 SET STR0 = 'STR0-1-1', LOB0 = 'LOB0-1-1' WHERE ID = 1",
+                // "ROLLBACK TO SAVEPOINT s1",
+                "INSERT INTO DBZ1960_28(ID) VALUES (2)", };
+        List<SourceRecord> tableRecords = execute(tableName, tableSpec, false, 2, statements);
+        assertThat(tableRecords).hasSize(2);
+
+        Struct after = ((Struct) tableRecords.get(0).value()).getStruct(Envelope.FieldName.AFTER);
+        assertThat(after.get("ID")).isEqualTo(1);
+        assertThat(after.get("STR0")).isEqualTo("STR0-1-0");
+        // With INTERNAL:
+        // assertThat(after.get("STR0")).isEqualTo("STR0-1-1");
+        assertThat(after.get("LOB0")).isEqualTo(null);
+        assertThat(((Struct) tableRecords.get(1).value()).getStruct(Envelope.FieldName.AFTER).get("ID")).isEqualTo(2);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1960")
+    @SkipOnDatabaseParameter(parameterName = "max_string_size", value = "EXTENDED", matches = false, reason = "Requires max_string_size set to EXTENDED")
+    public void shouldUpdateOutOfLineWithoutInternalAndRollbackUpdateScalarExt() throws Exception {
+        shouldUpdateOutOfLineWithoutInternalAndRollbackUpdateScalar("VARCHAR2(8000)");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1960")
+    @SkipOnDatabaseParameter(parameterName = "max_string_size", value = "EXTENDED", matches = true, reason = "Fallback test for max_string_size!=EXTENDED")
+    public void shouldUpdateOutOfLineWithoutInternalAndRollbackUpdateScalarLob() throws Exception {
+        shouldUpdateOutOfLineWithoutInternalAndRollbackUpdateScalar("CLOB");
+    }
+
+    private void shouldUpdateOutOfLineWithoutInternalAndRollbackUpdateScalar(String extType) throws Exception {
+        String tableName = "DBZ1960_29";
+        String tableSpec = "(ID NUMERIC(9,0) PRIMARY KEY, STR0 VARCHAR2(50), LOB0 CLOB, EXT0 %s)".formatted(extType);
+        String[] statements = new String[]{
+                "INSERT INTO DBZ1960_29 (ID, STR0, LOB0) VALUES (1, 'STR0-1-0', EMPTY_CLOB())",
+                "UPDATE DBZ1960_29 SET EXT0 = RPAD('EXT0-1-', 4000, '1') WHERE ID = 1",
+                "SAVEPOINT s1",
+                "UPDATE DBZ1960_29 SET STR0 = 'STR0-1-2' WHERE ID = 1",
+                "ROLLBACK TO SAVEPOINT s1",
+                // Without INTERNAL the two update statements above are represented in the cache in the same sequence as the following statement:
+                // "SAVEPOINT s1",
+                // "UPDATE DBZ1960_29 SET LOB0 = 'LOB0-1-1', EXT0 = RPAD('EXT0-1-', 4000, '1') WHERE ID = 1",
+                // "ROLLBACK TO SAVEPOINT s1",
+                "INSERT INTO DBZ1960_29(ID) VALUES (2)", };
+        List<SourceRecord> tableRecords = execute(tableName, tableSpec, false, 2, statements);
+        assertThat(tableRecords).hasSize(2);
+
+        Struct after = ((Struct) tableRecords.get(0).value()).getStruct(Envelope.FieldName.AFTER);
+        assertThat(after.get("ID")).isEqualTo(1);
+        assertThat(after.get("STR0")).isEqualTo("STR0-1-0");
+        assertThat(after.get("LOB0")).isEqualTo(null);
+        assertThat(after.get("EXT0")).isEqualTo(null);
+        // With INTERNAL:
+        // assertThat(after.get("EXT0")).isEqualTo("EXT0-1-" + "1".repeat(3993));
+        assertThat(((Struct) tableRecords.get(1).value()).getStruct(Envelope.FieldName.AFTER).get("ID")).isEqualTo(2);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1960")
+    public void shouldUpdateEmptyWithoutInternalAndRollbackUpdateInlineAndXml() throws Exception {
+        String tableName = "DBZ1960_30";
+        String tableSpec = "(ID NUMERIC(9,0) PRIMARY KEY, STR0 VARCHAR2(50), LOB0 CLOB, XML0 XMLTYPE)";
+        String[] statements = new String[]{
+                "INSERT INTO DBZ1960_30 (ID, STR0, XML0) VALUES (1, 'STR0-1-0', XMLTYPE('<XML0><ID>1</ID><V>0</V></XML0>'))",
+                "UPDATE DBZ1960_30 SET STR0 = 'STR0-1-1', LOB0 = EMPTY_CLOB() WHERE ID = 1",
+                "SAVEPOINT s1",
+                "UPDATE DBZ1960_30 SET LOB0 = 'LOB0-1-2', XML0 = XMLTYPE('<XML0><ID>1</ID><V>2</V></XML0>') WHERE ID = 1",
+                "ROLLBACK TO SAVEPOINT s1",
+                // Without INTERNAL the two update statements above are represented in the cache in the same sequence as the following statement:
+                // "SAVEPOINT s1",
+                // "UPDATE DBZ1960_30 SET STR0 = 'STR0-1-1', LOB0 = 'LOB0-1-1', XML0 = XMLTYPE('<XML0><ID>1</ID><V>1</V></XML0>') WHERE ID = 1",
+                // "ROLLBACK TO SAVEPOINT s1",
+                "INSERT INTO DBZ1960_30(ID) VALUES (2)", };
+        List<SourceRecord> tableRecords = execute(tableName, tableSpec, false, 2, statements);
+        assertThat(tableRecords).hasSize(2);
+
+        Struct after = ((Struct) tableRecords.get(0).value()).getStruct(Envelope.FieldName.AFTER);
+        assertThat(after.get("ID")).isEqualTo(1);
+        assertThat(after.get("STR0")).isEqualTo("STR0-1-0");
+        // With INTERNAL:
+        // assertThat(after.get("STR0")).isEqualTo("STR0-1-1");
+        assertThat(after.get("LOB0")).isEqualTo(null);
+        assertThat(after.get("XML0")).isEqualTo("<XML0><ID>1</ID><V>0</V></XML0>");
+        assertThat(((Struct) tableRecords.get(1).value()).getStruct(Envelope.FieldName.AFTER).get("ID")).isEqualTo(2);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1960")
+    public void shouldUpdateXmlWithoutInternalAndRollbackUpdateInlineAndXml() throws Exception {
+        String tableName = "DBZ1960_31";
+        String tableSpec = "(ID NUMERIC(9,0) PRIMARY KEY, XML0 XMLTYPE, XML1 XMLTYPE, LOB0 CLOB)";
+        String[] statements = new String[]{
+                "INSERT INTO DBZ1960_31 (ID, XML0, XML1, LOB0) VALUES (1, XMLTYPE('<XML0><ID>1</ID><V>0</V></XML0>'), XMLTYPE('<XML1><ID>1</ID><V>0</V></XML1>'), 'LOB0-1-0')",
+                "UPDATE DBZ1960_31 SET XML0 = XMLTYPE('<XML0><ID>1</ID><V>1</V></XML0>') WHERE ID = 1",
+                "SAVEPOINT s1",
+                "UPDATE DBZ1960_31 SET XML1 = XMLTYPE('<XML1><ID>1</ID><V>2</V></XML1>'), LOB0 = 'LOB0-1-2' WHERE ID = 1",
+                "ROLLBACK TO SAVEPOINT s1",
+                // Without INTERNAL the two update statements above are represented in the cache in the same sequence as the following statement:
+                // "SAVEPOINT s1",
+                // "UPDATE DBZ1960_31 SET XML0 = XMLTYPE('<XML0><ID>1</ID><V>1</V></XML0>'), XML1 = XMLTYPE('<XML1><ID>1</ID><V>1</V></XML1>'), LOB0 = 'LOB0-1-1' WHERE ID = 1",
+                // "ROLLBACK TO SAVEPOINT s1",
+                "INSERT INTO DBZ1960_31(ID) VALUES (2)", };
+        List<SourceRecord> tableRecords = execute(tableName, tableSpec, false, 2, statements);
+        assertThat(tableRecords).hasSize(2);
+
+        Struct after = ((Struct) tableRecords.get(0).value()).getStruct(Envelope.FieldName.AFTER);
+        assertThat(after.get("ID")).isEqualTo(1);
+        assertThat(after.get("XML0")).isEqualTo("<XML0><ID>1</ID><V>0</V></XML0>");
+        // With INTERNAL:
+        // assertThat(after.get("XML0")).isEqualTo("<XML0><ID>1</ID><V>1</V></XML0>");
+        assertThat(after.get("XML1")).isEqualTo("<XML1><ID>1</ID><V>0</V></XML1>");
+        assertThat(after.get("LOB0")).isEqualTo("LOB0-1-0");
+        assertThat(((Struct) tableRecords.get(1).value()).getStruct(Envelope.FieldName.AFTER).get("ID")).isEqualTo(2);
+    }
+
     private List<SourceRecord> execute(String tableName, String tableSpec, boolean includeInternalEvents, int numRecords, String[] statements)
             throws Exception {
         TestHelper.dropTable(connection, tableName);
