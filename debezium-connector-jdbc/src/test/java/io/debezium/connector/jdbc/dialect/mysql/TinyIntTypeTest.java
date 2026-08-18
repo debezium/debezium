@@ -59,11 +59,26 @@ class TinyIntTypeTest {
 
     @Test
     @FixFor("debezium/dbz#2352")
-    @DisplayName("Should widen a propagated INT16 TINYINT that also carries a display width")
+    @DisplayName("Should keep an INT16 TINYINT with display width 1 as tinyint(1), e.g. a BOOLEAN")
+    void shouldKeepDisplayWidthForInt16TinyInt() {
+        // A MySQL BOOLEAN mapped to INT16 propagates TINYINT with length 1. A width of exactly 1 is
+        // the tinyint(1) BOOLEAN convention (reported as BIT by the driver) and must be preserved
+        // rather than widened to smallint.
+        final Schema schema = SchemaBuilder.int16()
+                .parameter("__debezium.source.column.type", "TINYINT")
+                .parameter("__debezium.source.column.length", "1")
+                .build();
+
+        assertThat(type.getTypeName(schema, false)).isEqualTo("tinyint(1)");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2352")
+    @DisplayName("Should widen an INT16 TINYINT with a display width other than 1 to smallint, e.g. SQL Server")
     void shouldWidenInt16PropagatedTinyIntWithDisplayWidth() {
-        // Type propagation emits the source column length alongside the type name, so SQL Server's
-        // TINYINT arrives as INT16 with length 3. The width must not keep it as tinyint(3), because
-        // it does not change the 0-255 range that the column has to hold.
+        // Type propagation emits the source column length alongside the type, so SQL Server's
+        // unsigned TINYINT arrives as INT16 with length 3. Unlike a BOOLEAN's length 1, this width
+        // does not change the 0-255 range the column must hold, so it must widen to smallint.
         final Schema schema = SchemaBuilder.int16()
                 .parameter("__debezium.source.column.type", "TINYINT")
                 .parameter("__debezium.source.column.length", "3")
