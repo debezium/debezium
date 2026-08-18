@@ -110,8 +110,9 @@ public abstract class BinlogHistoryRecordComparator extends HistoryRecordCompara
             return false;
         }
 
-        // Both positions are missing GTIDs, compare servers
-        if (getServerId(recorded) != getServerId(desired)) {
+        // Both positions are missing GTIDs, compare servers. A missing server id is not a different server:
+        // snapshot offsets never carry one, as there is no way to tell which primary of a topology wrote the change.
+        if (hasServerId(recorded) && hasServerId(desired) && getServerId(recorded) != getServerId(desired)) {
             // These are from different servers.
             // Their binlog coordinates are not related, so the only thing that is possible is to compare
             // timestamps, and assume that the server timestamps can be compared.
@@ -175,6 +176,16 @@ public abstract class BinlogHistoryRecordComparator extends HistoryRecordCompara
     }
 
     /**
+     * Get whether the position carries a server unique identifier.
+     *
+     * @param document the document to inspect, should not be null
+     * @return true if the document has a server identifier, false otherwise
+     */
+    protected boolean hasServerId(Document document) {
+        return document.has(BinlogSourceInfo.SERVER_ID_KEY);
+    }
+
+    /**
      * Get the server unique identifier.
      *
      * @param document the document to inspect, should not be null
@@ -198,10 +209,10 @@ public abstract class BinlogHistoryRecordComparator extends HistoryRecordCompara
      * Get the timestamp.
      *
      * @param document the document to inspect, should not be null
-     * @return the timestamp value
+     * @return the timestamp value, in seconds
      */
     protected long getTimestamp(Document document) {
-        return document.getLong(BinlogSourceInfo.TIMESTAMP_KEY, 0);
+        return document.getLong(BinlogOffsetContext.TIMESTAMP_KEY, 0);
     }
 
     /**
