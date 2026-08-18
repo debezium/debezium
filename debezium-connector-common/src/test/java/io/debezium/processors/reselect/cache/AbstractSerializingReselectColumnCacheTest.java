@@ -93,7 +93,7 @@ public class AbstractSerializingReselectColumnCacheTest {
 
     @Test
     public void putThenGetRoundTripsThroughBytes() {
-        row(1).put("data", "AAA");
+        row(1).put("data", Schema.OPTIONAL_STRING_SCHEMA, "AAA");
         assertThat(row(1).get("data")).map(Hit::value).contains("AAA");
         assertThat(row(1).get("other")).isEmpty();
         assertThat(row(2).get("data")).isEmpty();
@@ -101,7 +101,7 @@ public class AbstractSerializingReselectColumnCacheTest {
 
     @Test
     public void cachedNullIsAHitNotAMiss() {
-        row(1).put("data", null);
+        row(1).put("data", Schema.OPTIONAL_STRING_SCHEMA, null);
         assertThat(row(1).get("data")).isPresent();
         assertThat(row(1).get("data").get().value()).isNull();
     }
@@ -109,8 +109,8 @@ public class AbstractSerializingReselectColumnCacheTest {
     @Test
     public void invalidateRemovesOnlyThatColumn() {
         final RowCache r = row(1);
-        r.put("data", "AAA");
-        r.put("name", "BBB");
+        r.put("data", Schema.OPTIONAL_STRING_SCHEMA, "AAA");
+        r.put("name", Schema.OPTIONAL_STRING_SCHEMA, "BBB");
 
         r.invalidate("data");
 
@@ -122,7 +122,7 @@ public class AbstractSerializingReselectColumnCacheTest {
     public void keySchemaChangeYieldsMiss() {
         // Same logical id value but a renamed key field (e.g. after DDL) must not hit the stale entry.
         final Schema renamed = SchemaBuilder.struct().name("key").field("pk", Schema.INT32_SCHEMA).build();
-        row(1).put("data", "AAA");
+        row(1).put("data", Schema.OPTIONAL_STRING_SCHEMA, "AAA");
 
         assertThat(cache.forRow(new Struct(renamed).put("pk", 1)).get("data")).isEmpty();
     }
@@ -134,14 +134,14 @@ public class AbstractSerializingReselectColumnCacheTest {
         final Schema ba = SchemaBuilder.struct().name("key")
                 .field("b", Schema.INT32_SCHEMA).field("a", Schema.INT32_SCHEMA).build();
 
-        cache.forRow(new Struct(ab).put("a", 1).put("b", 2)).put("data", "AAA");
+        cache.forRow(new Struct(ab).put("a", 1).put("b", 2)).put("data", Schema.OPTIONAL_STRING_SCHEMA, "AAA");
 
         assertThat(cache.forRow(new Struct(ba).put("a", 1).put("b", 2)).get("data")).isEmpty();
     }
 
     @Test
     public void binaryKeyValuesAreComparedByContent() {
-        cache.forRow(new Struct(BYTES_KEY).put("id", new byte[]{ 1, 2, 3 })).put("data", "AAA");
+        cache.forRow(new Struct(BYTES_KEY).put("id", new byte[]{ 1, 2, 3 })).put("data", Schema.OPTIONAL_STRING_SCHEMA, "AAA");
 
         // A distinct byte[] instance, and a ByteBuffer, with the same content resolve to the same entry.
         assertThat(cache.forRow(new Struct(BYTES_KEY).put("id", new byte[]{ 1, 2, 3 })).get("data"))
@@ -159,7 +159,7 @@ public class AbstractSerializingReselectColumnCacheTest {
         final Struct key = new Struct(keySchema)
                 .put("id", VariableScaleDecimal.fromLogical(VariableScaleDecimal.schema(), new BigDecimal("42.42")));
 
-        cache.forRow(key).put("data", "AAA");
+        cache.forRow(key).put("data", Schema.OPTIONAL_STRING_SCHEMA, "AAA");
 
         final Struct sameKey = new Struct(keySchema)
                 .put("id", VariableScaleDecimal.fromLogical(VariableScaleDecimal.schema(), new BigDecimal("42.42")));
@@ -172,7 +172,7 @@ public class AbstractSerializingReselectColumnCacheTest {
 
     @Test
     public void zeroTtlNeverExpires() {
-        row(1).put("data", "AAA");
+        row(1).put("data", Schema.OPTIONAL_STRING_SCHEMA, "AAA");
         cache.clockMs += 1_000_000_000L;
         assertThat(row(1).get("data")).map(Hit::value).contains("AAA");
     }
@@ -182,7 +182,7 @@ public class AbstractSerializingReselectColumnCacheTest {
         final InMemoryByteStoreCache ttlCache = new InMemoryByteStoreCache();
         ttlCache.configure(Configuration.create().with("reselect.cache.ttl.ms", 100).build());
 
-        ttlCache.forRow(intKey(1)).put("data", "AAA");
+        ttlCache.forRow(intKey(1)).put("data", Schema.OPTIONAL_STRING_SCHEMA, "AAA");
         ttlCache.clockMs += 99;
         assertThat(ttlCache.forRow(intKey(1)).get("data")).map(Hit::value).contains("AAA");
 
@@ -194,14 +194,14 @@ public class AbstractSerializingReselectColumnCacheTest {
 
     @Test
     public void unsupportedValueTypeIsSkippedNotFatal() {
-        row(1).put("data", new Object());
+        row(1).put("data", null, new Object());
         assertThat(row(1).get("data")).isEmpty();
         assertThat(cache.store).isEmpty();
     }
 
     @Test
     public void undecodableStoredBytesAreDeletedAndTreatedAsMiss() {
-        row(1).put("data", "AAA");
+        row(1).put("data", Schema.OPTIONAL_STRING_SCHEMA, "AAA");
         // Corrupt the stored entry as a stand-in for a format change.
         cache.store.replaceAll((k, v) -> new byte[]{ 99 });
 

@@ -12,6 +12,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -167,10 +168,10 @@ public abstract class AbstractSerializingReselectColumnCache implements Reselect
         }
 
         @Override
-        public void put(String column, Object value) {
+        public void put(String column, Schema schema, Object value) {
             final byte[] serialized;
             try {
-                serialized = serde.serialize(value, currentTimeMillis());
+                serialized = serde.serialize(value, schema, currentTimeMillis());
             }
             catch (Exception e) {
                 final String valueType = value != null ? value.getClass().getName() : "null";
@@ -205,7 +206,7 @@ public abstract class AbstractSerializingReselectColumnCache implements Reselect
         }
 
         @Override
-        public void put(String column, Object value) {
+        public void put(String column, Schema schema, Object value) {
         }
 
         @Override

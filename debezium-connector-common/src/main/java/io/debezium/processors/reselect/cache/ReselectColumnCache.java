@@ -7,6 +7,7 @@ package io.debezium.processors.reselect.cache;
 
 import java.util.Optional;
 
+import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.common.annotation.Incubating;
@@ -97,9 +98,11 @@ public interface ReselectColumnCache extends AutoCloseable {
          * the event's {@code after} struct and may be {@code null}.
          *
          * @param column the column name
+         * @param schema the column's Connect schema, letting implementations that serialize values
+         *        preserve the declared type of a {@code null} value; may be null when unknown
          * @param value the value to cache; may be null
          */
-        void put(String column, Object value);
+        void put(String column, Schema schema, Object value);
 
         /**
          * Evict the cached value for the given column, if any.

@@ -55,22 +55,22 @@ public class MemoryReselectColumnCacheTest {
 
     @Test
     public void putThenGetReturnsValue() {
-        row(1).put("data", "AAA");
+        row(1).put("data", Schema.OPTIONAL_STRING_SCHEMA, "AAA");
         assertThat(row(1).get("data")).map(Hit::value).contains("AAA");
     }
 
     @Test
     public void invalidateRemovesEntry() {
-        row(1).put("data", "AAA");
+        row(1).put("data", Schema.OPTIONAL_STRING_SCHEMA, "AAA");
         row(1).invalidate("data");
         assertThat(row(1).get("data")).isEmpty();
     }
 
     @Test
     public void differentColumnsAndRowsAreIsolated() {
-        row(1).put("data", "AAA");
-        row(1).put("name", "BBB");
-        row(2).put("data", "CCC");
+        row(1).put("data", Schema.OPTIONAL_STRING_SCHEMA, "AAA");
+        row(1).put("name", Schema.OPTIONAL_STRING_SCHEMA, "BBB");
+        row(2).put("data", Schema.OPTIONAL_STRING_SCHEMA, "CCC");
 
         assertThat(row(1).get("data")).map(Hit::value).contains("AAA");
         assertThat(row(1).get("name")).map(Hit::value).contains("BBB");
@@ -80,8 +80,8 @@ public class MemoryReselectColumnCacheTest {
     @Test
     public void invalidatingOneColumnLeavesOthersIntact() {
         final RowCache r = row(1);
-        r.put("data", "AAA");
-        r.put("name", "BBB");
+        r.put("data", Schema.OPTIONAL_STRING_SCHEMA, "AAA");
+        r.put("name", Schema.OPTIONAL_STRING_SCHEMA, "BBB");
 
         r.invalidate("data");
 
@@ -91,7 +91,7 @@ public class MemoryReselectColumnCacheTest {
 
     @Test
     public void nullValuesAreCachedAndDistinguishedFromMiss() {
-        row(1).put("data", null);
+        row(1).put("data", Schema.OPTIONAL_STRING_SCHEMA, null);
 
         // A cached null is a hit carrying a null value, not a miss.
         assertThat(row(1).get("data")).isPresent();
@@ -103,7 +103,7 @@ public class MemoryReselectColumnCacheTest {
 
     @Test
     public void binaryKeyValuesAreComparedByContent() {
-        cache.forRow(new Struct(BYTES_KEY).put("id", new byte[]{ 1, 2, 3 })).put("data", "AAA");
+        cache.forRow(new Struct(BYTES_KEY).put("id", new byte[]{ 1, 2, 3 })).put("data", Schema.OPTIONAL_STRING_SCHEMA, "AAA");
         // A distinct byte[] instance with the same content must resolve to the same entry.
         assertThat(cache.forRow(new Struct(BYTES_KEY).put("id", new byte[]{ 1, 2, 3 })).get("data"))
                 .map(Hit::value).contains("AAA");
@@ -115,7 +115,7 @@ public class MemoryReselectColumnCacheTest {
         // Same logical id value but a different key schema (e.g. after a DDL change) is a distinct key
         // and must not return the earlier entry, avoiding a false hit against stale data.
         final Schema renamed = SchemaBuilder.struct().name("key").field("pk", Schema.INT32_SCHEMA).build();
-        cache.forRow(intKey(1)).put("data", "AAA");
+        cache.forRow(intKey(1)).put("data", Schema.OPTIONAL_STRING_SCHEMA, "AAA");
 
         assertThat(cache.forRow(new Struct(renamed).put("pk", 1)).get("data")).isEmpty();
     }
@@ -130,11 +130,11 @@ public class MemoryReselectColumnCacheTest {
                 .build());
 
         final RowCache r = bounded.forRow(intKey(99));
-        r.put("col1", "A");
-        r.put("col2", "B");
-        r.put("col3", "C");
+        r.put("col1", Schema.OPTIONAL_STRING_SCHEMA, "A");
+        r.put("col2", Schema.OPTIONAL_STRING_SCHEMA, "B");
+        r.put("col3", Schema.OPTIONAL_STRING_SCHEMA, "C");
         // col4 pushes col1 out (LRU eviction on the inner map)
-        r.put("col4", "D");
+        r.put("col4", Schema.OPTIONAL_STRING_SCHEMA, "D");
 
         // col4, col3, col2 should still be present; col1 was the LRU entry and was evicted
         assertThat(r.get("col4")).map(Hit::value).contains("D");
@@ -151,7 +151,7 @@ public class MemoryReselectColumnCacheTest {
                 .with("reselect.cache.ttl.ms", 50)
                 .build());
 
-        shortTtl.forRow(intKey(1)).put("data", "AAA");
+        shortTtl.forRow(intKey(1)).put("data", Schema.OPTIONAL_STRING_SCHEMA, "AAA");
         assertThat(shortTtl.forRow(intKey(1)).get("data")).map(Hit::value).contains("AAA");
 
         Thread.sleep(80); // exceed the 50ms TTL
