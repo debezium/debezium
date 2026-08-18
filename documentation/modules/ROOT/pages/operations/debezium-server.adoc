@@ -2442,6 +2442,8 @@ To enable the service to write data to the target table, the following requireme
 
 ===== gRPC route (`zerobus`)
 
+The following table describes the properties that control how Zerobus Ingest behaves when it uses gRPC streams to maintain connections between {prodname} and Zerobus endpoints.
+
 [cols="35%a,10%a,55%a",options="header"]
 |===
 |Property
@@ -2470,8 +2472,8 @@ To enable the service to write data to the target table, the following requireme
 
 |[[zerobus-table]]<<zerobus-table, `debezium.sink.zerobus.table`>>
 |No default value.
-|(Optional) The fully-qualified name of the default target table (`catalog.schema.table`).
-When this option is set, all events are written to this table; otherwise the mapped destination (topic) name is used as the fully-qualified table name.
+|(Optional) The fully qualified name of the default target table (`catalog.schema.table`).
+When this option is set, all events are written to this table; otherwise the mapped destination (topic) name is used as the fully qualified table name.
 
 |[[zerobus-payload-mode]]<<zerobus-payload-mode, `debezium.sink.zerobus.payload.mode`>>
 |`typed`
@@ -2591,7 +2593,7 @@ Set the value to `0` to keep every stream open, so that the sink never closes a 
 
 Because the SDK tracks which records are unacknowledged, recovery re-sends only those records.
 The sink does not retry the entire batch.
-If the recovery process cannot resolve an error, the connector stops, and the offset does not advance further.
+If the recovery process cannot resolve an error, the connector stops, and the offset does not advance.
 
 |[[zerobus-recovery-retries]]<<zerobus-recovery-retries, `debezium.sink.zerobus.recovery.retries`>>
 |The SDK default.
@@ -2639,7 +2641,7 @@ JSON and Protobuf envelope records expose the same logical fields:
 |Description
 
 |`target_table`
-|The fully-qualified Unity Catalog table to which the sink routes the record.
+|The fully qualified Unity Catalog table to which the sink routes the record.
 
 |`destination`
 |The original Debezium destination before the sink resolves the target table.
@@ -2678,7 +2680,7 @@ Every configured regular expression must match the complete selected value.
 An event that does not match is skipped and is considered processed when the rest of the batch succeeds.
 If <<zerobus-filter-operations, `filter.operations`>> is configured, a tombstone is ingested only when the allowlist includes `tombstone`, even if <<zerobus-tombstone-handling-mode, `tombstone.handling.mode`>> is `event`.
 
-Delivery remains at least once.
+The sink provides an at-least-once delivery guarantee.
 For each contiguous target-table group, the sink serializes and validates every record before ingestion, ingests the group, and waits for Zerobus to acknowledge the final record.
 The sink commits source offsets only after every target-table group in the batch succeeds.
 If a later group fails, an earlier acknowledged group can be replayed because the source batch remains uncommitted.
@@ -2705,8 +2707,8 @@ debezium.sink.zerobus.filter.operations=c,r,u,d,t,m,tombstone
 
 ====== Injection points
 
-The behaviour of the gRPC route can be modified by custom logic that provides an alternative implementation for a specific functionality.
-When the alternative implementation is not available, the default one is used.
+You can modify the behavior of the gRPC route by injecting custom logic that replaces a specific default implementation.
+When no alternative implementation is available, the sink uses the default.
 
 [cols="35%a,10%a,55%a",options="header"]
 |===
@@ -2744,11 +2746,11 @@ The service uses this value for OAuth and in the `unity-catalog-endpoint` header
 
 |[[zerobusrest-workspace-id]]<<zerobusrest-workspace-id, `debezium.sink.zerobusrest.workspace.id`>>
 |No default value.
-|The numeric workspace id, that the service uses to build the Zerobus token audience.
+|The numeric workspace ID that the service uses to build the Zerobus token audience.
 
 |[[zerobusrest-client-id]]<<zerobusrest-client-id, `debezium.sink.zerobusrest.client.id`>>
 |No default value.
-|The OAuth client id (service principal application id).
+|The OAuth client ID (service principal application ID).
 
 |[[zerobusrest-client-secret]]<<zerobusrest-client-secret, `debezium.sink.zerobusrest.client.secret`>>
 |No default value.
@@ -2756,7 +2758,7 @@ The service uses this value for OAuth and in the `unity-catalog-endpoint` header
 
 |[[zerobusrest-table]]<<zerobusrest-table, `debezium.sink.zerobusrest.table`>>
 |No default value.
-|(Optional) A fully-qualified default target table (`catalog.schema.table`). When not set, the mapped destination (topic) name is used.
+|(Optional) A fully qualified default target table (`catalog.schema.table`). When not set, the mapped destination (topic) name is used.
 
 |[[zerobusrest-metrics-log-interval]]<<zerobusrest-metrics-log-interval, `debezium.sink.zerobusrest.metrics.log.interval`>>
 |`0`
@@ -2846,7 +2848,7 @@ The token audience is derived as `api://databricks/workspaces/<workspaceId>/zero
 
 |`tables`
 |Yes
-|A comma-separated list of fully-qualified target tables (`catalog.schema.table`).
+|A comma-separated list of fully qualified target tables (`catalog.schema.table`).
 The handler uses this list to build the OAuth Rich Authorization Requests (RFC 9396) authorization details, which grant the token the Unity Catalog privileges that Zerobus requires for the target tables.
 
 |`tokenEndpoint`
@@ -2876,7 +2878,7 @@ To satisfy the requirement, configure the following options in addition to the p
 
 |`debezium.transforms`
 |Apply the {link-prefix}:{link-event-flattening}#new-record-state-extraction[`ExtractNewRecordState` SMT] so that the emitted record is a flat row rather than a change event envelope.
-Optionally apply the `RegexRouter` SMT to map the topic name to the fully-qualified name of the target table.
+Optionally apply the `RegexRouter` SMT to map the topic name to the fully qualified name of the target table.
 
 |`debezium.format.value.schemas.enable`
 |Must be set to `false`.
@@ -3002,7 +3004,7 @@ The following table shows mappings between {prodname} logical types and Delta co
 |`INT`/`BIGINT`, `DOUBLE`/`FLOAT`, `BOOLEAN`, `STRING`
 
 |`org.apache.kafka.connect.data.Decimal` (decimal / numeric / money)
-|`DECIMAL(p,s)` &mdash; emitted as an exact string, locale-independent
+|`DECIMAL(p,s)` Emitted as an exact locale-independent string.
 
 |`io.debezium.time.Date` / Connect `Date`
 |`DATE` (epoch days)
@@ -3017,7 +3019,7 @@ The following table shows mappings between {prodname} logical types and Delta co
 |`BIGINT` (Zerobus does not currently ingest the Delta `TIME` type)
 
 |Bytes / `io.debezium.data.Bits` (binary, blob, varbinary)
-BINARY (encoded as Base64)
+|BINARY (encoded as Base64)
 
 |`io.debezium.data.Json` (JSON / JSONB)
 |`VARIANT`
@@ -3030,10 +3032,10 @@ BINARY (encoded as Base64)
 [[zerobus-monitoring]]
 ===== Monitoring
 
-You can use JMX metrics and connector log output to monitor the operational status and performance of the Debezium DataBricks Zero sink.
+You can use JMX metrics and connector log output to monitor the operational status and performance of the Debezium Databricks Zerobus Ingest sink.
 
-The {prodname} DataBricks Zero sink supports the following delivery routes: zerobus (gRPC), zerobusrest (REST), and the <<zerobus-kafka-route, Kafka route>>.
-All three routes expose sink metrics over JMX under the object name debezium.zerobus:type=connector-metrics,context=sink,server=<route>,task=0, where <route> is `grpc` for the `zerobus` route, `rest` for the `zerobusrest` route, or `kafka` for the Kafka route.
+The {prodname} Databricks Zerobus Ingest sink supports the following delivery routes: zerobus (gRPC), zerobusrest (REST), and the <<zerobus-kafka-route, Kafka route>>.
+All three routes expose sink metrics over JMX under the object name `debezium.zerobus:type=connector-metrics,context=sink,server=<route>,task=0`, where `<route>` is `grpc` for the `zerobus` route, `rest` for the `zerobusrest` route, or `kafka` for the Kafka route.
 The metrics use the same JMX exposure model as the JDBC sink connector and {prodname} source connectors, so existing JMX monitoring tools such as JConsole, jmxterm, and Prometheus JMX Exporter can read them without any Zerobus-specific configuration.
 
 The sink registers the metrics when it starts, so no option is required to begin collecting them.
@@ -3081,7 +3083,7 @@ On the gRPC route the sink counts a record only after the flush that covers it s
 |These metrics report the number of ingested events sorted by operation type (`c` / `u` / `d`, and snapshot reads `r`).
 
 |`TotalRecordsSkipped`
-|Number of records skipped without being forwarded (tombstones / null payloads, and events whose destination is not a fully-qualified `catalog.schema.table`, such as schema-history or DDL events).
+|Number of records skipped without being forwarded (tombstones / null payloads, and events whose destination is not a fully qualified `catalog.schema.table`, such as schema-history or DDL events).
 The value remains `0` on the Kafka route, which forwards every record that it receives.
 
 |`TotalErrors`
@@ -3099,8 +3101,8 @@ For the REST and Kafka routes, a successful POST or acknowledgement indicates th
 |`MilliSecondsBehindSource`
 |Indicates the age, in milliseconds, of the most recently processed event.
 The value is calculated as `current time - source.ts_ms`.
-The metric reports the value  `-1 ` until after the Delta table ingests an event that contains a source timestamp.
-A values near `0` indicates that the sink is catching up to, or is synchronized with, the source.
+The metric reports the value `-1` until after the Delta table ingests an event that contains a source timestamp.
+Values near `0` indicates that the sink is catching up to, or is synchronized with, the source.
 
 This metric is a primary indicator of pipeline freshness in a CDC-to-lakehouse deployment.
 
@@ -3112,11 +3114,11 @@ Use this metric together with `MilliSecondsBehindSource`.
 Because `MilliSecondsBehindSource` reports the age of the last event that the sink processed, its value stops changing if the pipeline stops, and, as a result, an idle source cannot be distinguished from a stalled sink.
 By contrast, if the value of `MilliSecondsSinceLastEvent` grows while the source database is known to be receiving writes, the pipeline is stalled.
 
-|LastFlushDurationMillis
+|`LastFlushDurationMillis`
 |Duration of the most recent flush (gRPC), record POST (REST), or broker acknowledgement (Kafka) operation.
 On the Kafka route the value describes a sampled subset of records rather than every record, as the following note describes.
 
-|MaxFlushDurationMillis
+|`MaxFlushDurationMillis`
 |Longest duration of any flush (gRPC), record POST (REST), or broker acknowledgement (Kafka) operation since the task started.
 On the Kafka route the value describes a sampled subset of records rather than every record, as the following note describes.
 
