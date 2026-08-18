@@ -71,7 +71,7 @@ public class PostgresReadOnlyIncrementalSnapshotChangeEventSourceTest {
     }
 
     @Test
-    @FixFor("DBZ-2431")
+    @FixFor("debezium/dbz#2431")
     void forceTransactionQueryIsRecoveryAware() throws Exception {
         Field field = PostgresReadOnlyIncrementalSnapshotChangeEventSource.class
                 .getDeclaredField("FORCE_NEW_TRANSACTION");
@@ -83,7 +83,7 @@ public class PostgresReadOnlyIncrementalSnapshotChangeEventSourceTest {
     }
 
     @Test
-    @FixFor("DBZ-2431")
+    @FixFor("debezium/dbz#2431")
     void forceNewTransactionIdIsNoOpOnHotStandby() throws Exception {
         // Simulate a hot standby: pg_is_in_recovery() = true, so the CASE returns NULL
         stubQueryResult(null);
@@ -95,7 +95,7 @@ public class PostgresReadOnlyIncrementalSnapshotChangeEventSourceTest {
     }
 
     @Test
-    @FixFor("DBZ-2431")
+    @FixFor("debezium/dbz#2431")
     void forceNewTransactionIdLogsTransactionOnPrimary() throws Exception {
         // Simulate a primary: pg_is_in_recovery() = false, so a real transaction ID is returned
         stubQueryResult("12345");
