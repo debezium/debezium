@@ -1229,24 +1229,134 @@ MySQL converts `TIMESTAMP` values to UTC when they are written.
 |===
 
 time.precision.mode=isostring::
-The Vitess connector uses string representations for all temporal types.
+The Vitess connector represents date, time, and datetime values as ISO-8601 formatted strings at the UTC time zone.
+Because the values are represented as strings, this mode preserves the fractional-second precision that the `connect` mode can lose.
 +
-.Mappings when `time.precision.mode=connect`
+.Mappings when `time.precision.mode=isostring`
 [cols="25%a,20%a,55%a",options="header",subs="+attributes"]
 |===
 |Vitess data type |Literal type |Semantic type
 
 |`DATE`
 |`STRING`
-|n/a
+a|`io.debezium.time.IsoDate` +
+Represents the date value in UTC format, according to the ISO 8601 standard, for example, `2017-09-15Z`.
 
 |`TIME[(M)]`
 |`STRING`
-|n/a
+a|`io.debezium.time.IsoTime` +
+Represents the time value in UTC format, according to the ISO 8601 standard, for example, `04:05:11.789Z`.
 
 |`DATETIME[(M)]`
 |`STRING`
-|n/a
+a|`io.debezium.time.IsoTimestamp` +
+Represents the datetime value in UTC format, according to the ISO 8601 standard, for example, `2019-07-09T02:28:57.123456Z`.
+
+|===
+
+time.precision.mode=microseconds::
+The Vitess connector maps all temporal values to microsecond-precision integers.
+All `DATE` values are represented as the number of days since the epoch, and all `TIME` and `DATETIME` values are represented as the number of microseconds since the epoch or since midnight.
++
+.Mappings when `time.precision.mode=microseconds`
+[cols="25%a,20%a,55%a",options="header",subs="+attributes"]
+|===
+|Vitess data type |Literal type |Semantic type
+
+|`DATE`
+|`INT32`
+a|`io.debezium.time.Date` +
+Represents the number of days since the epoch.
+
+|`TIME[(M)]`
+|`INT64`
+a|`io.debezium.time.MicroTime` +
+Represents the time value in microseconds since midnight and does not include time zone information.
+MySQL allows `M` to be in the range of `0-6`.
+
+|`DATETIME[(M)]`
+|`INT64`
+a|`io.debezium.time.MicroTimestamp` +
+Represents the number of microseconds since the epoch and does not include time zone information.
+
+|`TIMESTAMP[(M)]`
+|`STRING`
+a|`io.debezium.time.ZonedTimestamp` +
+Represents the timestamp with time zone information.
+
+|===
+
+time.precision.mode=nanoseconds::
+The Vitess connector maps all temporal values to nanosecond-precision integers.
+All `DATE` values are represented as the number of days since the epoch, and all `TIME` and `DATETIME` values are represented as the number of nanoseconds since the epoch or since midnight.
++
+NOTE: Vitess `DATETIME` and `TIME` columns are limited to microsecond precision (`DATETIME(0-6)`, `TIME(0-6)`), so `nanoseconds` does not provide additional precision beyond what `microseconds` already offers.
++
+[IMPORTANT]
+====
+Nanoseconds since the Unix epoch are stored in a signed `INT64`, restricting the representable range to approximately *`1677-09-21T00:12:43Z` to `2262-04-11T23:47:16Z`*.
+Values outside this range — for example a `9999-12-31` end-of-time sentinel — cannot be represented and cause the connector to throw an `IllegalArgumentException` from the value converter.
+The exception is routed through the standard `event.processing.failure.handling.mode` configuration, so operators can choose `fail` (the default), `warn`, or `skip`.
+Use `time.precision.mode=microseconds` (or `isostring`) to avoid the limitation.
+====
++
+.Mappings when `time.precision.mode=nanoseconds`
+[cols="25%a,20%a,55%a",options="header",subs="+attributes"]
+|===
+|Vitess data type |Literal type |Semantic type
+
+|`DATE`
+|`INT32`
+a|`io.debezium.time.Date` +
+Represents the number of days since the epoch.
+
+|`TIME[(M)]`
+|`INT64`
+a|`io.debezium.time.NanoTime` +
+Represents the time value in nanoseconds since midnight and does not include time zone information.
+MySQL allows `M` to be in the range of `0-6`.
+
+|`DATETIME[(M)]`
+|`INT64`
+a|`io.debezium.time.NanoTimestamp` +
+Represents the number of nanoseconds since the epoch and does not include time zone information.
+
+|`TIMESTAMP[(M)]`
+|`STRING`
+a|`io.debezium.time.ZonedTimestamp` +
+Represents the timestamp with time zone information.
+
+|===
+
+time.precision.mode=structured::
+The Vitess connector represents temporal values as Kafka Connect structs with separate calendar and clock components.
+This mode can preserve zero and invalid temporal components without converting them to epoch-based numeric values.
+Structured temporal values that have fractional seconds include an optional `precision` field that records the source column's fractional second precision.
++
+.Mappings when `time.precision.mode=structured`
+[cols="25%a,20%a,55%a",options="header",subs="+attributes"]
+|===
+|Vitess data type |Literal type |Semantic type
+
+|`DATE`
+|`STRUCT`
+a|`io.debezium.time.StructuredDate` +
+Contains `year`, `month`, and `day` fields.
+
+|`TIME[(M)]`
+|`STRUCT`
+a|`io.debezium.time.StructuredDuration` +
+Contains signed `years`, `months`, `days`, `hours`, `minutes`, `seconds`, `nanos`, and optional `precision` fields.
+
+|`DATETIME[(M)]`
+|`STRUCT`
+a|`io.debezium.time.StructuredTimestamp` +
+Contains `year`, `month`, `day`, `hour`, `minute`, `second`, `nanos`, and optional `precision` fields.
+
+|`TIMESTAMP[(M)]`
+|`STRUCT`
+a|`io.debezium.time.StructuredZonedTimestamp` +
+Contains calendar and clock component fields, `offsetSeconds`, optional `zoneId`, and optional `precision`.
 
 |===
 
