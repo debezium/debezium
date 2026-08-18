@@ -1175,8 +1175,9 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         if (lastEvent != null && lastEvent != event
                 && lastEvent.getEventType() == EventType.XML_END && lastEvent.getTransactionSequence() == 1
                 && event.getEventType() == EventType.XML_BEGIN && event.getTransactionSequence() > 1) {
-            // Missing INTERNAL ROLLBACK=0 SEQUENCE#=1 with a real ROW_ID,
-            // simulate it to mark the end of the previous statement
+            LOGGER.debug(
+                    "Transaction {} is missing INTERNAL ROLLBACK=0 SEQUENCE#=1 with a real ROW_ID between XML_END at SCN {} and XML_BEGIN at SCN {}, simulate it to mark the end of the previous statement in the cache",
+                    transactionId, lastEvent.getScn(), event.getScn());
             enqueueEvent(lastEvent, new LogMinerEvent(EventType.INTERNAL, lastEvent.getScn(),
                     lastEvent.getTableId(), lastEvent.getRowId(), lastEvent.getRsId(), lastEvent.getChangeTime()));
         }
