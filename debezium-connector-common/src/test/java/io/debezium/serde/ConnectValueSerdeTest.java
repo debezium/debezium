@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.processors.reselect.cache;
+package io.debezium.serde;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -22,15 +22,15 @@ import io.debezium.DebeziumException;
 import io.debezium.data.VariableScaleDecimal;
 
 /**
- * Unit tests for {@link ReselectValueSerde}, exercising exact-runtime-type round-trips for every
+ * Unit tests for {@link ConnectValueSerde}, exercising exact-runtime-type round-trips for every
  * supported value type, the envelope timestamp, and the failure contract for unsupported types and
  * undecodable bytes.
  *
  * @author Chris Cranford
  */
-public class ReselectValueSerdeTest {
+public class ConnectValueSerdeTest {
 
-    private final ReselectValueSerde serde = new ReselectValueSerde();
+    private final ConnectValueSerde serde = new ConnectValueSerde();
 
     private Object roundTrip(Object value) {
         return serde.deserialize(serde.serialize(value, 42L)).value();
@@ -42,7 +42,7 @@ public class ReselectValueSerdeTest {
     }
 
     @Test
-    public void nullRoundTripsAsCachedNull() {
+    public void nullRoundTrips() {
         assertThat(roundTrip(null)).isNull();
     }
 
@@ -116,7 +116,7 @@ public class ReselectValueSerdeTest {
     @Test
     public void sqlDateSubclassesAreRejectedRatherThanChangingType() {
         // java.sql.Timestamp would silently round-trip as java.util.Date; it is rejected instead so the
-        // caller skips caching and re-queries.
+        // caller can skip storing the value.
         assertThatThrownBy(() -> serde.serialize(new java.sql.Timestamp(0L), 0L))
                 .isInstanceOf(DebeziumException.class);
     }

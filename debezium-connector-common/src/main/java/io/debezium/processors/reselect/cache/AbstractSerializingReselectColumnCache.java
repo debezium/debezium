@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.common.annotation.Incubating;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
+import io.debezium.serde.ConnectValueSerde;
 
 /**
  * Base class for {@link ReselectColumnCache} implementations backed by a byte-oriented store (embedded
@@ -29,12 +30,12 @@ import io.debezium.config.Field;
  * {@code equals} contract makes the key <em>schema</em> part of the identity: a DDL change or primary-key
  * reordering yields a different key and a natural cache miss rather than a false hit against a stale
  * entry. To preserve those semantics in a byte-keyed store, the row key is encoded via
- * {@link ReselectValueSerde#serializeRowKey(Struct)} as a fingerprint of the key schema followed by the
+ * {@link ConnectValueSerde#serializeStructIdentity(Struct)} as a fingerprint of the key schema followed by the
  * key's field values written positionally (see that method for details). The per-column storage key
  * appends a {@code 0x00} separator and the UTF-8 column name, so all columns of a row share a common byte
  * prefix and sort adjacently in ordered stores.
  * <p>
- * <b>Value encoding.</b> Values are serialized via {@link ReselectValueSerde}: a versioned envelope
+ * <b>Value encoding.</b> Values are serialized via {@link ConnectValueSerde}: a versioned envelope
  * carrying the write timestamp (for read-side TTL enforcement) and a type-tagged, value-only payload.
  * Values whose type the serde does not support are skipped with a one-time warning; the column is simply
  * re-queried on a later miss. Undecodable stored bytes (e.g. after a format change) are deleted and
@@ -70,13 +71,13 @@ public abstract class AbstractSerializingReselectColumnCache implements Reselect
     private final Set<String> unsupportedValueTypes = ConcurrentHashMap.newKeySet();
     private final Set<String> unsupportedKeyTypes = ConcurrentHashMap.newKeySet();
 
-    private ReselectValueSerde serde;
+    private ConnectValueSerde serde;
     private long ttlMs;
 
     @Override
     public void configure(Configuration config) {
         this.ttlMs = config.getLong(TTL_MS);
-        this.serde = new ReselectValueSerde();
+        this.serde = new ConnectValueSerde();
         configureStorage(config);
     }
 
@@ -84,7 +85,7 @@ public abstract class AbstractSerializingReselectColumnCache implements Reselect
     public RowCache forRow(Struct messageKey) {
         final byte[] rowKey;
         try {
-            rowKey = serde.serializeRowKey(messageKey);
+            rowKey = serde.serializeStructIdentity(messageKey);
         }
         catch (Exception e) {
             // An unencodable key disables caching for this row only; processing must not fail because of it.
@@ -149,7 +150,7 @@ public abstract class AbstractSerializingReselectColumnCache implements Reselect
             if (stored == null) {
                 return Optional.empty();
             }
-            final ReselectValueSerde.DeserializedValue deserialized;
+            final ConnectValueSerde.DeserializedValue deserialized;
             try {
                 deserialized = serde.deserialize(stored);
             }
