@@ -29,7 +29,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -86,6 +85,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     private int staleSchemaDeferrals = 0;
     private Table lastStaleTable;
     private Object[] windowStartPosition;
+    private TableSchema windowSchema;
 
     private Table currentTable;
 
@@ -178,21 +178,39 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
 
     protected void sendWindowEvents(P partition, OffsetContext offsetContext) throws InterruptedException {
         LOGGER.debug("Sending {} events from window buffer", window.size());
+        if (!window.isEmpty() && windowSchema != null && databaseSchema.schemaFor(currentTable.id()) != windowSchema) {
+            // The emission schema rotated after the window was buffered (every schema refresh
+            // replaces the TableSchema instance, and the pipeline is single-threaded, so the
+            // identity comparison detects the rotation deterministically): the buffered rows
+            // no longer match it. The chunk position returns to the window start and the whole
+            // window is re-read (at-least-once); sendEvent advances lastEventKeySent before
+            // dispatching, so reverting to it would skip a row.
+            deferChunkOnStaleSchema(new DebeziumException(
+                    "The schema of table '%s' was refreshed after the window was buffered".formatted(currentTable.id())));
+            window.clear();
+            context.revertChunk();
+            context.nextChunkPosition(windowStartPosition);
+            return;
+        }
         offsetContext.incrementalSnapshotEvents();
         try {
             for (Object[] row : window.values()) {
                 sendEvent(partition, dispatcher, offsetContext, row);
             }
         }
-        catch (ConnectException e) {
-            // Rows buffered against a schema that rotated before the window closed. sendEvent
-            // advances lastEventKeySent before dispatching, so reverting to it would skip the
-            // failed row: the chunk position returns to the window start instead and the whole
-            // window is re-read (at-least-once).
-            deferChunkOnStaleSchema(e);
+        catch (InterruptedException e) {
+            throw e;
+        }
+        catch (Exception e) {
+            // Same policy as a failed chunk read: emitting this window is not going to succeed
+            // on a retry either, so skip the table visibly instead of letting the failure reach
+            // the signal processor, which swallows it and stalls the snapshot silently.
             window.clear();
-            context.revertChunk();
-            context.nextChunkPosition(windowStartPosition);
+            warnAndSkip(partition, offsetContext,
+                    SQL_EXCEPTION,
+                    "Error while emitting the incremental snapshot window of table '%s', skipping and continuing streaming"
+                            .formatted(context.currentDataCollectionId().getId()),
+                    e);
             return;
         }
         offsetContext.postSnapshotCompletion();
@@ -735,6 +753,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                 selectStatement, context.chunkEndPosititon(), maybeRedactSensitiveData(context.maximumKey().get()));
 
         final TableSchema tableSchema = databaseSchema.schemaFor(currentTable.id());
+        windowSchema = tableSchema;
 
         try (PreparedStatement statement = chunkQueryBuilder.readTableChunkStatement(context, currentTable, selectStatement);
                 ResultSet rs = statement.executeQuery()) {
