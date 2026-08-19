@@ -24,7 +24,9 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 
 public abstract class AbstractIncrementalSnapshotWithSchemaChangesSupportTest<T extends SourceConnector> extends AbstractIncrementalSnapshotTest<T> {
 
@@ -50,6 +52,23 @@ public abstract class AbstractIncrementalSnapshotWithSchemaChangesSupportTest<T 
 
         populateTable();
         startConnector();
+        executeSchemaChangesTest();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2452")
+    public void schemaChangesWithColumnFilter() throws Exception {
+        // Testing.Print.enable();
+
+        // A non-matching exclude list keeps every column but switches the chunk query from '*' to
+        // an explicit column projection, so a DDL landing mid-snapshot can also surface as an
+        // undefined-column error on the query itself instead of only as a result-set mismatch.
+        populateTable();
+        startConnector(x -> x.with(RelationalDatabaseConnectorConfig.COLUMN_EXCLUDE_LIST, "no_such_schema\\.no_such_table\\.no_such_column"));
+        executeSchemaChangesTest();
+    }
+
+    private void executeSchemaChangesTest() throws Exception {
         waitForConnectorToStart();
 
         waitForAvailableRecords(1, TimeUnit.SECONDS);
