@@ -312,9 +312,11 @@ endif::community[]
 |`INSERT ... ON CONFLICT ... DO UPDATE SET ...`
 |Configured primary key only
 
+ifdef::community[]
 |SingleStore
 |`INSERT ... ON DUPLICATE KEY UPDATE ...`
 |Any unique index
+endif::community[]
 
 |SQL Server
 |`MERGE ...`
