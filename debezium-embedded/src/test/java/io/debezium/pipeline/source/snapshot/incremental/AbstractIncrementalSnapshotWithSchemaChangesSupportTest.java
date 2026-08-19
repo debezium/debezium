@@ -26,6 +26,7 @@ import org.junit.jupiter.api.Test;
 import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 
 public abstract class AbstractIncrementalSnapshotWithSchemaChangesSupportTest<T extends SourceConnector> extends AbstractIncrementalSnapshotTest<T> {
@@ -64,8 +65,24 @@ public abstract class AbstractIncrementalSnapshotWithSchemaChangesSupportTest<T 
         // an explicit column projection, so a DDL landing mid-snapshot can also surface as an
         // undefined-column error on the query itself instead of only as a result-set mismatch.
         populateTable();
+        final LogInterceptor logInterceptor = new LogInterceptor(AbstractIncrementalSnapshotChangeEventSource.class);
         startConnector(x -> x.with(RelationalDatabaseConnectorConfig.COLUMN_EXCLUDE_LIST, "no_such_schema\\.no_such_table\\.no_such_column"));
         executeSchemaChangesTest();
+        if (expectsStaleSchemaDeferral()) {
+            assertTrue(logInterceptor.containsMessage("is stale against the database"),
+                    "the stale-schema deferral should have been exercised at least once");
+        }
+    }
+
+    /**
+     * Whether {@link #schemaChangesWithColumnFilter()} is expected to exercise the stale-schema
+     * deferral. On the binlog family the DDL travels in the log on the same thread as the window
+     * watermarks, so the mid-window rotation is structurally guaranteed; connectors where schema
+     * changes reach the connector with a lag (for example SQL Server capture instances) typically
+     * close the window before the rotation and legitimately never defer.
+     */
+    protected boolean expectsStaleSchemaDeferral() {
+        return true;
     }
 
     private void executeSchemaChangesTest() throws Exception {
