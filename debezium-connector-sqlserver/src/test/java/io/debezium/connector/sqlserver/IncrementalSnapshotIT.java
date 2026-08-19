@@ -390,4 +390,11 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
                 topicName,
                 null);
     }
+
+    @Override
+    protected boolean expectsStaleSchemaDeferral() {
+        // Schema changes reach the connector through the CDC capture instances with a lag: the
+        // window typically closes against the old schema and the deferral is never needed.
+        return false;
+    }
 }
