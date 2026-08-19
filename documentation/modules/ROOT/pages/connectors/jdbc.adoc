@@ -287,9 +287,11 @@ The following table shows, for each database dialect that {prodname} supports, t
 |===
 |Dialect |Upsert Syntax |Constraint that triggers the update action
 
+ifdef::community[]
 |CockroachDB
 |`INSERT ... ON CONFLICT ... DO UPDATE SET ...`
 |Configured primary key only
+endif::community[]
 
 |Db2
 |`MERGE ...`
