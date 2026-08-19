@@ -243,7 +243,7 @@ For these reasons, you should avoid defining secondary unique constraints or sec
 If a uniqueness rule is required, enforce the rule in the source database, and omit the constraint from the destination table.
 
 If dependent records are routed to different partitions, the sink connector might apply records out of source order, which can lead to inconsistent results.
-The following table shows how different database dialects respond to a resulting conflict:
+The following table shows how different database dialects handle conflicts involving secondary unique constraints:
 
 .Dialect-specific behavior when secondary unique constraint conflicts occur
 |===
