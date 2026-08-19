@@ -282,7 +282,7 @@ If the primary key value already exists, the operation updates values in the row
 If the specified primary key value doesn't exist, an `insert` adds a new row.
 
 Each database dialect handles idempotent writes differently, because there is no SQL standard for _upsert_ operations.
-The following table shows the upsert DML syntax for each database dialect that {prodname} supports and which constraints trigger an update action when processing an `upsert` operation.
+The following table shows, for each database dialect that {prodname} supports, the upsert DML syntax and the constraints that trigger an update action during an upsert operation.
 
 |===
 |Dialect |Upsert Syntax |Constraint that triggers the update action
