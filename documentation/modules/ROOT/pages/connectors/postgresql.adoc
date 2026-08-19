@@ -4595,6 +4595,12 @@ Increasing the chunk size provides greater efficiency, because the snapshot runs
 However, larger chunk sizes also require more memory to buffer the snapshot data.
 Adjust the chunk size to a value that provides the best performance in your environment.
 
+|[[postgresql-property-incremental-snapshot-preserve-state]]<<postgresql-property-incremental-snapshot-preserve-state, `+incremental.snapshot.preserve.state+`>>
+|`false`
+|Specifies whether a pending incremental snapshot that is restored from the offsets is carried over when a snapshot runs at connector startup, rather than discarded. +
+This option is honored only when `snapshot.mode` is set to `configuration_based` or `custom`; the named snapshot modes always reset the incremental snapshot state. +
+*Use this option at your own risk*: the preserved incremental snapshot state is consistent only if the startup snapshot does not copy the data ranges that the pending incremental snapshot reads. If the startup snapshot copies those ranges, the incremental snapshot can emit duplicate or stale events.
+
 |[[postgresql-property-incremental-snapshot-watermarking-strategy]]<<postgresql-property-incremental-snapshot-watermarking-strategy, `+incremental.snapshot.watermarking.strategy+`>>
 |`insert_insert`
 |Specifies the watermarking mechanism that the connector uses during an incremental snapshot to deduplicate events that might be captured by an incremental snapshot and then recaptured after streaming resumes.
