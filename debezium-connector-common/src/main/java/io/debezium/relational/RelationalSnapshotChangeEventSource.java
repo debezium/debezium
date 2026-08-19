@@ -43,6 +43,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.jdbc.CancellableResultSet;
 import io.debezium.jdbc.JdbcConnection;
@@ -59,6 +60,7 @@ import io.debezium.pipeline.source.snapshot.chunked.SnapshotChunk;
 import io.debezium.pipeline.source.snapshot.chunked.SnapshotChunkQueryBuilder;
 import io.debezium.pipeline.source.snapshot.chunked.SnapshotProgress;
 import io.debezium.pipeline.source.snapshot.chunked.TableChunkProgress;
+import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
@@ -103,6 +105,37 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     protected final Clock clock;
     private final SnapshotProgressListener<P> snapshotProgressListener;
     protected final SnapshotterService snapshotterService;
+
+    /**
+     * A snapshot at connector startup replaces the offsets, and with them any pending incremental
+     * snapshot restored from the previous run. The named snapshot modes are a deliberate reset, so
+     * the pending state is only carried over when the user opted in and the startup pass is one the
+     * user composes ('configuration_based' or 'custom'), where the snapshot does not necessarily
+     * cover the data ranges the incremental snapshot was reading.
+     */
+    protected IncrementalSnapshotContext<?> carriedIncrementalSnapshotContext(O previousOffset) {
+        if (previousOffset == null) {
+            return null;
+        }
+        final IncrementalSnapshotContext<?> pending = previousOffset.getIncrementalSnapshotContext();
+        if (pending == null || !pending.snapshotRunning()) {
+            return null;
+        }
+        final String snapshotMode = connectorConfig.getConfig().getString(CommonConnectorConfig.SNAPSHOT_MODE_PROPERTY_NAME);
+        if (connectorConfig.isIncrementalSnapshotPreserveStateEnabled()) {
+            if ("configuration_based".equals(snapshotMode) || "custom".equals(snapshotMode)) {
+                LOGGER.info("Preserving the pending incremental snapshot of {} collection(s) across the startup snapshot ('{}' is enabled)",
+                        pending.dataCollectionsToBeSnapshottedCount(), CommonConnectorConfig.INCREMENTAL_SNAPSHOT_PRESERVE_STATE.name());
+                return pending;
+            }
+            LOGGER.warn("'{}' is enabled but 'snapshot.mode' is '{}': the named snapshot modes always reset the incremental snapshot state, the option is ignored",
+                    CommonConnectorConfig.INCREMENTAL_SNAPSHOT_PRESERVE_STATE.name(), snapshotMode);
+        }
+        LOGGER.warn("A pending incremental snapshot of {} collection(s) is discarded because the connector performs a snapshot at startup (snapshot.mode='{}')",
+                pending.dataCollectionsToBeSnapshottedCount(), snapshotMode);
+        return null;
+    }
+
     protected Queue<JdbcConnection> connectionPool;
     private final TableId signalDataCollectionTableId;
 
