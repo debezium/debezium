@@ -55,6 +55,13 @@ public abstract class BinlogConnectorConnection extends JdbcConnection {
     private final ConnectionConfiguration connectionConfig;
     private final BinlogFieldReader fieldReader;
 
+    private static final String SQLSTATE_UNDEFINED_COLUMN = "42S22";
+
+    @Override
+    public boolean isUndefinedColumnError(SQLException exception) {
+        return SQLSTATE_UNDEFINED_COLUMN.equals(exception.getSQLState());
+    }
+
     public BinlogConnectorConnection(ConnectionConfiguration configuration, BinlogFieldReader fieldReader) {
         super(configuration.config(), configuration.factory(), initialOperations(), QUOTED_CHARACTER, QUOTED_CHARACTER);
         this.connectionConfig = configuration;
