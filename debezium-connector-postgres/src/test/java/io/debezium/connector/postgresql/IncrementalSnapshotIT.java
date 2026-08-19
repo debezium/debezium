@@ -638,4 +638,5 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
             populate4PkTable(connection, "s1.a4");
         }
     }
+
 }
