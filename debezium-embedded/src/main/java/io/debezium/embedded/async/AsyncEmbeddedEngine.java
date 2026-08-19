@@ -77,6 +77,7 @@ import io.debezium.spi.storage.OffsetStoreProvider;
 import io.debezium.storage.kafka.offset.KafkaConnectOffsetUtil;
 import io.debezium.util.DelayStrategy;
 import io.debezium.util.KafkaConnectUtil;
+import io.debezium.util.Threads;
 
 /**
  * Implementation of {@link DebeziumEngine} which allows to run multiple tasks in parallel and also
@@ -701,19 +702,32 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
      * @param tasks {@link List<EngineSourceTask>} of source tasks which should be stopped.
      */
     private void stopSourceTasks(final List<EngineSourceTask> tasks) {
-        final Set<EngineSourceTask> pendingStopTasks = ConcurrentHashMap.newKeySet();
-        pendingStopTasks.addAll(tasks);
+        final ExecutorService stopTaskService = Threads.newFixedThreadPool(AsyncEmbeddedEngine.class,
+                config.getString(EmbeddedEngineConfig.ENGINE_NAME), "task-stop", Math.max(tasks.size(), 1));
+        final Set<ConnectorTaskId> tasksNotStopped = ConcurrentHashMap.newKeySet();
+        tasks.forEach(task -> tasksNotStopped.add(task.context().connectorTaskId()));
         try {
             LOGGER.debug("Stopping source connector tasks.");
-            final ExecutorCompletionService<Void> taskCompletionService = new ExecutorCompletionService(taskService);
+            final ExecutorCompletionService<Void> taskCompletionService = new ExecutorCompletionService(stopTaskService);
+            final ClassLoader originalTccl = Thread.currentThread().getContextClassLoader();
             for (EngineSourceTask task : tasks) {
                 final long commitTimeout = Configuration.from(task.context().config()).getLong(EmbeddedEngineConfig.OFFSET_COMMIT_TIMEOUT_MS);
                 taskCompletionService.submit(() -> {
-                    LOGGER.debug("Committing task's offset.");
-                    commitOffsets(task.context().offsetStorageWriter(), task.context().clock(), commitTimeout, task.connectTask());
-                    LOGGER.debug("Stopping Connect task.");
-                    if (pendingStopTasks.remove(task)) {
-                        task.connectTask().stop();
+                    LoggingContext.clear();
+                    try (LoggingContext loggingContext = LoggingContext.forTask(task.context().connectorTaskId())) {
+                        Thread.currentThread().setContextClassLoader(this.classLoader);
+                        try {
+                            LOGGER.debug("Committing task's offset.");
+                            commitOffsets(task.context().offsetStorageWriter(), task.context().clock(), commitTimeout, task.connectTask());
+                        }
+                        finally {
+                            LOGGER.debug("Stopping Connect task.");
+                            task.connectTask().stop();
+                            tasksNotStopped.remove(task.context().connectorTaskId());
+                        }
+                    }
+                    finally {
+                        Thread.currentThread().setContextClassLoader(originalTccl);
                     }
                     return null;
                 });
@@ -749,27 +763,30 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
             LOGGER.warn("Failure during stopping tasks, stopping them immediately. Failed with ", e);
         }
         finally {
-            // Make sure task service is shut down and no other tasks can be run.
+            // Make sure both executors are shut down and no other tasks can be run.
             taskService.shutdownNow();
-            stopAbandonedTasks(pendingStopTasks);
+            shutdownStopTaskServiceForcefully(stopTaskService);
+            if (!tasksNotStopped.isEmpty()) {
+                LOGGER.warn("Stopping of task(s) {} timed out or failed, the task(s) may still be running.", tasksNotStopped);
+            }
         }
     }
 
-    private void stopAbandonedTasks(final Set<EngineSourceTask> pendingStopTasks) {
-        for (EngineSourceTask task : List.copyOf(pendingStopTasks)) {
-            if (pendingStopTasks.remove(task)) {
-                LOGGER.warn("Stop of task {} was discarded together with the task service, stopping the task directly to avoid leaving it running.",
-                        task.context().connectorTaskId());
-                final long startTime = System.nanoTime();
-                try {
-                    task.connectTask().stop();
-                    LOGGER.info("Stopped abandoned task {} in {} ms.", task.context().connectorTaskId(), (System.nanoTime() - startTime) / 1_000_000);
-                    connectorCallback.ifPresent(ConnectorCallback::taskStopped);
-                }
-                catch (Throwable t) {
-                    LOGGER.error("Failed to stop abandoned task {} after {} ms.", task.context().connectorTaskId(), (System.nanoTime() - startTime) / 1_000_000, t);
-                }
+    /**
+     * Shuts down the executor which runs the stop callables. Interrupts right away the callables already got the
+     * whole {@code task.management.timeout.ms}, so whatever still runs is overdue. Then waits, bounded by the same
+     * timeout, for the interrupted callables to finish stopping their tasks while the offset store is still available.
+     */
+    private void shutdownStopTaskServiceForcefully(final ExecutorService stopTaskService) {
+        stopTaskService.shutdownNow();
+        try {
+            if (!stopTaskService.awaitTermination(config.getLong(AsyncEngineConfig.TASK_MANAGEMENT_TIMEOUT_MS), TimeUnit.MILLISECONDS)) {
+                LOGGER.warn("Stop task executor did not terminate within the task management timeout, giving up on waiting.");
             }
+        }
+        catch (InterruptedException e) {
+            LOGGER.warn("Interrupted while waiting for the stop task executor to terminate.");
+            Thread.currentThread().interrupt();
         }
     }
 
@@ -925,35 +942,41 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
      */
     private static boolean commitOffsets(final OffsetStorageWriter offsetWriter, final io.debezium.util.Clock clock, final long commitTimeout, final SourceTask task)
             throws InterruptedException, TimeoutException {
-        final long timeout = clock.currentTimeInMillis() + commitTimeout;
-        if (!offsetWriter.beginFlush(commitTimeout, TimeUnit.MILLISECONDS)) {
-            LOGGER.trace("No offset to be committed.");
-            return false;
-        }
-
-        try {
-            final Future<Void> flush = offsetWriter.doFlush((Throwable error, Void result) -> {
-            });
-            if (flush == null) {
-                LOGGER.warn("Flushing process probably failed, please check previous log for more details.");
-                offsetWriter.cancelFlush();
+        // Serialize whole flush cycles on the shared writer: the offset commit can be called concurrently from the
+        // record processing thread and from the task stop thread, and interleaving two flush cycles could make one
+        // thread cancel the flush begun by the other one. Both the flush wait and the lock hold time are bounded by
+        // the commit timeout, so this cannot block the stop path forever.
+        synchronized (offsetWriter) {
+            final long timeout = clock.currentTimeInMillis() + commitTimeout;
+            if (!offsetWriter.beginFlush(commitTimeout, TimeUnit.MILLISECONDS)) {
+                LOGGER.trace("No offset to be committed.");
                 return false;
             }
 
-            flush.get(Math.max(timeout - clock.currentTimeInMillis(), 0), TimeUnit.MILLISECONDS);
-            task.commit();
+            try {
+                final Future<Void> flush = offsetWriter.doFlush((Throwable error, Void result) -> {
+                });
+                if (flush == null) {
+                    LOGGER.warn("Flushing process probably failed, please check previous log for more details.");
+                    offsetWriter.cancelFlush();
+                    return false;
+                }
+
+                flush.get(Math.max(timeout - clock.currentTimeInMillis(), 0), TimeUnit.MILLISECONDS);
+                task.commit();
+            }
+            catch (InterruptedException e) {
+                LOGGER.debug("Flush of the offsets interrupted, canceling the flush.");
+                offsetWriter.cancelFlush();
+                throw e;
+            }
+            catch (Exception e) {
+                LOGGER.warn("Flush of the offsets failed, canceling the flush.", e);
+                offsetWriter.cancelFlush();
+                return false;
+            }
+            return true;
         }
-        catch (InterruptedException e) {
-            LOGGER.debug("Flush of the offsets interrupted, canceling the flush.");
-            offsetWriter.cancelFlush();
-            throw e;
-        }
-        catch (Exception e) {
-            LOGGER.warn("Flush of the offsets failed, canceling the flush.", e);
-            offsetWriter.cancelFlush();
-            return false;
-        }
-        return true;
     }
 
     @Override
