@@ -8,6 +8,7 @@ package io.debezium.connector.binlog.jdbc;
 import static io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode.FAIL;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.nio.ByteOrder;
 import java.nio.charset.Charset;
@@ -91,6 +92,14 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
     private static final Logger INVALID_VALUE_LOGGER = LoggerFactory.getLogger(BinlogValueConverters.class.getName() + ".invalid_value");
 
     /**
+     * Marker value indicating an unavailable column value, e.g. when the database
+     * runs with {@code binlog_row_image=NOBLOB} and a BLOB/TEXT column was not
+     * included in the row image.
+     */
+    public static final Serializable UNAVAILABLE_VALUE = new Serializable() {
+    };
+
+    /**
      * Used to parse values of TIME columns. Format: 000:00:00.000000.
      */
     private static final Pattern TIME_FIELD_PATTERN = Pattern.compile("(\\-?[0-9]*):([0-9]*)(:([0-9]*))?(\\.([0-9]*))?");
@@ -108,6 +117,8 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
 
     private final EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode;
     private final BinlogCharsetRegistry charsetRegistry;
+    private final byte[] unavailableValuePlaceholderBinary;
+    private final String unavailableValuePlaceholderString;
 
     /**
      * Create a new instance of the value converters that always uses UTC for the default time zone when
@@ -120,6 +131,7 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
      * @param adjuster a temporal adjuster to make a database specific time before conversion
      * @param eventConvertingFailureHandlingMode how to handle conversion failures
      * @param serviceRegistry the service registry instance, should not be {@code null}
+     * @param unavailableValuePlaceholder the placeholder bytes for unavailable column values; may be null
      */
     public BinlogValueConverters(DecimalMode decimalMode,
                                  TemporalPrecisionMode temporalPrecisionMode,
@@ -127,10 +139,28 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
                                  BinaryHandlingMode binaryHandlingMode,
                                  TemporalAdjuster adjuster,
                                  EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode,
-                                 ServiceRegistry serviceRegistry) {
+                                 ServiceRegistry serviceRegistry,
+                                 byte[] unavailableValuePlaceholder) {
         super(decimalMode, temporalPrecisionMode, ZoneOffset.UTC, adjuster, bigIntUnsignedMode, binaryHandlingMode);
         this.eventConvertingFailureHandlingMode = eventConvertingFailureHandlingMode;
         this.charsetRegistry = serviceRegistry.getService(BinlogCharsetRegistry.class);
+        this.unavailableValuePlaceholderBinary = unavailableValuePlaceholder;
+        this.unavailableValuePlaceholderString = unavailableValuePlaceholder != null ? new String(unavailableValuePlaceholder) : null;
+    }
+
+    /**
+     * @deprecated Use the constructor that accepts an unavailable value placeholder.
+     */
+    @Deprecated
+    public BinlogValueConverters(DecimalMode decimalMode,
+                                 TemporalPrecisionMode temporalPrecisionMode,
+                                 BigIntUnsignedMode bigIntUnsignedMode,
+                                 BinaryHandlingMode binaryHandlingMode,
+                                 TemporalAdjuster adjuster,
+                                 EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode,
+                                 ServiceRegistry serviceRegistry) {
+        this(decimalMode, temporalPrecisionMode, bigIntUnsignedMode, binaryHandlingMode, adjuster,
+                eventConvertingFailureHandlingMode, serviceRegistry, null);
     }
 
     @Override
@@ -383,6 +413,9 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
 
     @Override
     protected Object convertBinary(Column column, Field fieldDefn, Object data, BinaryHandlingMode mode) {
+        if (data == UNAVAILABLE_VALUE) {
+            data = unavailableValuePlaceholderBinary;
+        }
         // During snapshots, the JDBC ResultSet returns Blob instances
         if (data instanceof Blob) {
             try {
@@ -425,6 +458,9 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
      * @throws IllegalArgumentException if the value could not be converted but the column does not allow nulls
      */
     protected Object convertString(Column column, Field fieldDefn, Charset columnCharset, Object data) {
+        if (data == UNAVAILABLE_VALUE) {
+            return unavailableValuePlaceholderString;
+        }
         return convertValue(column, fieldDefn, data, "", (r) -> {
             if (data instanceof byte[]) {
                 // Decode the binary representation using the given character encoding ...

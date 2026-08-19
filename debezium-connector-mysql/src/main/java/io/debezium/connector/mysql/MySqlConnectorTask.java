@@ -40,6 +40,7 @@ import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
+import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.GuardrailValidator;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalProcessor;
@@ -220,8 +221,7 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
         final Configuration heartbeatConfig = config;
         final DebeziumHeaderProducer debeziumHeaderProducer = connectorConfig.getServiceRegistry().tryGetService(
                 DebeziumHeaderProducer.class);
-        final boolean noblob = connection.isBinlogRowImageNoblob();
-        final MysqlEventDispatcher<MySqlPartition> dispatcher = new MysqlEventDispatcher<>(
+        final EventDispatcher<MySqlPartition, TableId> dispatcher = new EventDispatcher<>(
                 connectorConfig,
                 topicNamingStrategy,
                 schema,
@@ -239,8 +239,7 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
                         queue),
                 schemaNameAdjuster,
                 signalProcessor,
-                debeziumHeaderProducer,
-                noblob);
+                debeziumHeaderProducer);
 
         // Create the binary log client that will be used for streaming change events
         final BinaryLogClient binaryLogClient = new BinaryLogClient(
@@ -297,7 +296,8 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
                 configuration.binaryHandlingMode(),
                 configuration.isTimeAdjustedEnabled() ? MySqlValueConverters::adjustTemporal : x -> x,
                 configuration.getEventConvertingFailureHandlingMode(),
-                configuration.getServiceRegistry());
+                configuration.getServiceRegistry(),
+                configuration.getUnavailableValuePlaceholder());
     }
 
     @Override
