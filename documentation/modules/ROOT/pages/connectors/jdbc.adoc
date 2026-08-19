@@ -266,7 +266,7 @@ For a table with dependencies between arbitrary rows, use a single partition for
 Setting `tasks.max=1` is not sufficient to restore ordering between records that are already in different partitions.
 
 Reduction buffering disabled::
-The default value (`false`) is retained for the xref:jdbc-property-use-reduction-buffer[`use.reduction.buffer`] property.
+Retain the default value (`false`) of the xref:jdbc-property-use-reduction-buffer[`use.reduction.buffer`] property.
 Reduction by primary key can remove intermediate row states that are required to satisfy secondary unique constraints.
 
 Batch size set to `1`::
