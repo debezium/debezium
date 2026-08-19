@@ -394,4 +394,261 @@ public class DdlNormalizerTest {
         String expected = "CREATE TABLE `RANK` (\"id\" INT, \"name\" VARCHAR(50))";
         assertThat(DdlNormalizer.normalize(input, true)).isEqualTo(expected);
     }
+
+    @DisplayName("Given version-gated keyword as table and column name When normalize Then add backticks")
+    @Test
+    @FixFor("debezium/dbz#2381")
+    public void testGatedKeywordAsTableAndColumnName() {
+        for (String keyword : new String[]{ "url", "auto", "manual", "offline", "online", "parallel", "vector", "qualify", "tablesample" }) {
+            String input = "CREATE TABLE " + keyword + " (" + keyword + " INT)";
+            String expected = "CREATE TABLE `" + keyword + "` (`" + keyword + "` INT)";
+            assertThat(DdlNormalizer.normalize(input)).isEqualTo(expected);
+        }
+    }
+
+    @DisplayName("Given keyword table name in ALTER TABLE When normalize Then add backticks to table name only")
+    @Test
+    @FixFor("debezium/dbz#2381")
+    public void testUrlAsAlterTableTarget() {
+        String input = "ALTER TABLE URL ADD account_id BIGINT";
+        String expected = "ALTER TABLE `URL` ADD account_id BIGINT";
+        assertThat(DdlNormalizer.normalize(input)).isEqualTo(expected);
+    }
+
+    @DisplayName("Given keyword column in CHANGE clause When normalize Then add backticks to old and new name")
+    @Test
+    @FixFor("debezium/dbz#2381")
+    public void testKeywordInChangeColumn() {
+        String input = "ALTER TABLE URL CHANGE url url VARCHAR(700)";
+        String expected = "ALTER TABLE `URL` CHANGE `url` `url` VARCHAR(700)";
+        assertThat(DdlNormalizer.normalize(input)).isEqualTo(expected);
+    }
+
+    @DisplayName("Given keyword column in ADD COLUMN with TINYINT When normalize Then add backticks")
+    @Test
+    @FixFor("debezium/dbz#2381")
+    public void testKeywordInAddColumn() {
+        String input = "ALTER TABLE vector ADD COLUMN online TINYINT";
+        String expected = "ALTER TABLE `vector` ADD COLUMN `online` TINYINT";
+        assertThat(DdlNormalizer.normalize(input)).isEqualTo(expected);
+    }
+
+    @DisplayName("Given keyword columns in RENAME COLUMN When normalize Then add backticks to both sides")
+    @Test
+    @FixFor("debezium/dbz#2381")
+    public void testKeywordInRenameColumn() {
+        String input = "ALTER TABLE auto RENAME COLUMN auto TO manual";
+        String expected = "ALTER TABLE `auto` RENAME COLUMN `auto` TO `manual`";
+        assertThat(DdlNormalizer.normalize(input)).isEqualTo(expected);
+    }
+
+    @DisplayName("Given keyword column in DROP with and without COLUMN word When normalize Then add backticks")
+    @Test
+    @FixFor("debezium/dbz#2381")
+    public void testKeywordInDropColumn() {
+        // COLUMN is optional in the DROP branch of alterListItem; both spellings are valid MySQL.
+        assertThat(DdlNormalizer.normalize("ALTER TABLE t1 DROP COLUMN url"))
+                .isEqualTo("ALTER TABLE t1 DROP COLUMN `url`");
+        assertThat(DdlNormalizer.normalize("ALTER TABLE t1 DROP url"))
+                .isEqualTo("ALTER TABLE t1 DROP `url`");
+        assertThat(DdlNormalizer.normalize("ALTER TABLE t1 DROP vector, DROP auto"))
+                .isEqualTo("ALTER TABLE t1 DROP `vector`, DROP `auto`");
+        // The bare DROP anchor must not swallow the more specific DROP variants.
+        assertThat(DdlNormalizer.normalize("ALTER TABLE t1 DROP INDEX online"))
+                .isEqualTo("ALTER TABLE t1 DROP INDEX `online`");
+        assertThat(DdlNormalizer.normalize("ALTER TABLE t1 DROP FOREIGN KEY fk_name"))
+                .isEqualTo("ALTER TABLE t1 DROP FOREIGN KEY fk_name");
+    }
+
+    @DisplayName("Given keyword table name in RENAME TABLE When normalize Then add backticks to source and target")
+    @Test
+    @FixFor("debezium/dbz#2381")
+    public void testKeywordInRenameTable() {
+        String input = "RENAME TABLE url TO archive, t1 TO parallel";
+        String expected = "RENAME TABLE `url` TO archive, t1 TO `parallel`";
+        assertThat(DdlNormalizer.normalize(input)).isEqualTo(expected);
+    }
+
+    @DisplayName("Given keyword index names When normalize Then add backticks")
+    @Test
+    @FixFor("debezium/dbz#2381")
+    public void testKeywordAsIndexName() {
+        String input = "ALTER TABLE t1 ADD INDEX parallel (id), ADD UNIQUE KEY qualify (id)";
+        String expected = "ALTER TABLE t1 ADD INDEX `parallel` (id), ADD UNIQUE KEY `qualify` (id)";
+        assertThat(DdlNormalizer.normalize(input)).isEqualTo(expected);
+    }
+
+    @DisplayName("Given keyword constraint name When normalize Then add backticks")
+    @Test
+    @FixFor("debezium/dbz#2381")
+    public void testKeywordAsConstraintName() {
+        String input = "ALTER TABLE t1 ADD CONSTRAINT online CHECK (id > 0)";
+        String expected = "ALTER TABLE t1 ADD CONSTRAINT `online` CHECK (id > 0)";
+        assertThat(DdlNormalizer.normalize(input)).isEqualTo(expected);
+    }
+
+    @DisplayName("Given keyword column with VECTOR type When normalize Then only the column name gets backticks")
+    @Test
+    @FixFor("debezium/dbz#2381")
+    public void testKeywordColumnWithVectorType() {
+        String input = "CREATE TABLE t1 (vector VECTOR(3))";
+        String expected = "CREATE TABLE t1 (`vector` VECTOR(3))";
+        assertThat(DdlNormalizer.normalize(input)).isEqualTo(expected);
+    }
+
+    @DisplayName("Given VECTOR used as a data type When normalize Then do not add backticks")
+    @Test
+    @FixFor("debezium/dbz#2381")
+    public void testVectorAsDataTypeNotBackticked() {
+        String input = "CREATE TABLE t1 (embedding VECTOR(3))";
+        assertThat(DdlNormalizer.normalize(input)).isEqualTo(input);
+    }
+
+    @DisplayName("Given AUTO_INCREMENT attribute When normalize Then AUTO is not backticked")
+    @Test
+    @FixFor("debezium/dbz#2381")
+    public void testAutoIncrementNotBackticked() {
+        String input = "CREATE TABLE t1 (id INT AUTO_INCREMENT, PRIMARY KEY (id))";
+        assertThat(DdlNormalizer.normalize(input)).isEqualTo(input);
+    }
+
+    @DisplayName("Given url inside string literals When normalize Then literal content is preserved")
+    @Test
+    @FixFor("debezium/dbz#2381")
+    public void testUrlInsideStringLiteralsPreserved() {
+        String input = "CREATE TABLE t1 (c VARCHAR(500) DEFAULT 'http://url:8080/path' COMMENT 'copied from url')";
+        assertThat(DdlNormalizer.normalize(input)).isEqualTo(input);
+    }
+
+    @DisplayName("Given QUALIFY used as a query clause When normalize Then do not add backticks")
+    @Test
+    @FixFor("debezium/dbz#2381")
+    public void testQualifyClauseNotBackticked() {
+        String input = "SELECT id, ROW_NUMBER() OVER (ORDER BY id) rn FROM t1 QUALIFY rn = 1";
+        assertThat(DdlNormalizer.normalize(input)).isEqualTo(input);
+    }
+
+    @DisplayName("Given IF [NOT] EXISTS and TEMPORARY variants When normalize Then table name still gets backticks")
+    @Test
+    @FixFor("debezium/dbz#2381")
+    public void testIfExistsAndTemporaryVariants() {
+        assertThat(DdlNormalizer.normalize("CREATE TABLE IF NOT EXISTS url (id INT)"))
+                .isEqualTo("CREATE TABLE IF NOT EXISTS `url` (id INT)");
+        assertThat(DdlNormalizer.normalize("DROP TABLE IF EXISTS url"))
+                .isEqualTo("DROP TABLE IF EXISTS `url`");
+        assertThat(DdlNormalizer.normalize("CREATE TEMPORARY TABLE auto (id INT)"))
+                .isEqualTo("CREATE TEMPORARY TABLE `auto` (id INT)");
+    }
+
+    @DisplayName("Given TRUNCATE with keyword table name When normalize Then add backticks")
+    @Test
+    @FixFor("debezium/dbz#2381")
+    public void testTruncateKeywordTable() {
+        assertThat(DdlNormalizer.normalize("TRUNCATE TABLE url")).isEqualTo("TRUNCATE TABLE `url`");
+        assertThat(DdlNormalizer.normalize("TRUNCATE url")).isEqualTo("TRUNCATE `url`");
+    }
+
+    @DisplayName("Given CREATE INDEX ON keyword table When normalize Then backtick index name and table name")
+    @Test
+    @FixFor("debezium/dbz#2381")
+    public void testCreateIndexOnKeywordTable() {
+        String input = "CREATE UNIQUE INDEX parallel ON url (id)";
+        String expected = "CREATE UNIQUE INDEX `parallel` ON `url` (id)";
+        assertThat(DdlNormalizer.normalize(input)).isEqualTo(expected);
+    }
+
+    @DisplayName("Given foreign key referencing keyword table When normalize Then add backticks")
+    @Test
+    @FixFor("debezium/dbz#2381")
+    public void testReferencesKeywordTable() {
+        String input = "ALTER TABLE t1 ADD FOREIGN KEY (x) REFERENCES url (id) ON DELETE CASCADE";
+        String expected = "ALTER TABLE t1 ADD FOREIGN KEY (x) REFERENCES `url` (id) ON DELETE CASCADE";
+        assertThat(DdlNormalizer.normalize(input)).isEqualTo(expected);
+    }
+
+    @DisplayName("Given CREATE TABLE LIKE keyword table When normalize Then add backticks")
+    @Test
+    @FixFor("debezium/dbz#2381")
+    public void testCreateTableLikeKeywordTable() {
+        String input = "CREATE TABLE t2 LIKE url";
+        String expected = "CREATE TABLE t2 LIKE `url`";
+        assertThat(DdlNormalizer.normalize(input)).isEqualTo(expected);
+    }
+
+    @DisplayName("Given ALTER [COLUMN] and AFTER with keyword column When normalize Then add backticks")
+    @Test
+    @FixFor("debezium/dbz#2381")
+    public void testAlterColumnAndAfterKeywordColumn() {
+        assertThat(DdlNormalizer.normalize("ALTER TABLE t1 ALTER COLUMN online SET DEFAULT 1"))
+                .isEqualTo("ALTER TABLE t1 ALTER COLUMN `online` SET DEFAULT 1");
+        assertThat(DdlNormalizer.normalize("ALTER TABLE t1 ALTER online DROP DEFAULT"))
+                .isEqualTo("ALTER TABLE t1 ALTER `online` DROP DEFAULT");
+        assertThat(DdlNormalizer.normalize("ALTER TABLE t1 ADD COLUMN c INT AFTER url"))
+                .isEqualTo("ALTER TABLE t1 ADD COLUMN c INT AFTER `url`");
+    }
+
+    @DisplayName("Given keyword partition names When normalize Then add backticks but not to PARTITION BY")
+    @Test
+    @FixFor("debezium/dbz#2381")
+    public void testKeywordPartitionNames() {
+        String input = "CREATE TABLE pt (id INT) PARTITION BY RANGE (id) (PARTITION auto VALUES LESS THAN (10))";
+        String expected = "CREATE TABLE pt (id INT) PARTITION BY RANGE (id) (PARTITION `auto` VALUES LESS THAN (10))";
+        assertThat(DdlNormalizer.normalize(input)).isEqualTo(expected);
+        assertThat(DdlNormalizer.normalize("ALTER TABLE pt DROP PARTITION auto"))
+                .isEqualTo("ALTER TABLE pt DROP PARTITION `auto`");
+    }
+
+    @DisplayName("Given keyword database names When normalize Then add backticks")
+    @Test
+    @FixFor("debezium/dbz#2381")
+    public void testKeywordDatabaseNames() {
+        assertThat(DdlNormalizer.normalize("CREATE DATABASE IF NOT EXISTS url"))
+                .isEqualTo("CREATE DATABASE IF NOT EXISTS `url`");
+        assertThat(DdlNormalizer.normalize("USE url")).isEqualTo("USE `url`");
+        assertThat(DdlNormalizer.normalize("DROP DATABASE url")).isEqualTo("DROP DATABASE `url`");
+    }
+
+    @DisplayName("Given keyword names for other schema objects When normalize Then add backticks")
+    @Test
+    @FixFor("debezium/dbz#2381")
+    public void testKeywordObjectNames() {
+        assertThat(DdlNormalizer.normalize("CREATE OR REPLACE VIEW auto AS SELECT 1"))
+                .isEqualTo("CREATE OR REPLACE VIEW `auto` AS SELECT 1");
+        assertThat(DdlNormalizer.normalize("DROP TRIGGER IF EXISTS online"))
+                .isEqualTo("DROP TRIGGER IF EXISTS `online`");
+        assertThat(DdlNormalizer.normalize("CREATE PROCEDURE parallel() SELECT 1"))
+                .isEqualTo("CREATE PROCEDURE `parallel`() SELECT 1");
+        assertThat(DdlNormalizer.normalize("DROP FUNCTION manual")).isEqualTo("DROP FUNCTION `manual`");
+        assertThat(DdlNormalizer.normalize("DROP EVENT offline")).isEqualTo("DROP EVENT `offline`");
+    }
+
+    @DisplayName("Given DROP/ALTER CHECK with keyword constraint name When normalize Then add backticks")
+    @Test
+    @FixFor("debezium/dbz#2381")
+    public void testDropAlterCheckKeywordName() {
+        assertThat(DdlNormalizer.normalize("ALTER TABLE ck ALTER CHECK online NOT ENFORCED"))
+                .isEqualTo("ALTER TABLE ck ALTER CHECK `online` NOT ENFORCED");
+        assertThat(DdlNormalizer.normalize("ALTER TABLE ck DROP CHECK online"))
+                .isEqualTo("ALTER TABLE ck DROP CHECK `online`");
+    }
+
+    @DisplayName("Given keyword columns with extended data types When normalize Then add backticks")
+    @Test
+    @FixFor("debezium/dbz#2381")
+    public void testKeywordColumnsWithExtendedTypes() {
+        String input = "CREATE TABLE ty (url GEOMETRY, auto CHARACTER(5), online SERIAL, manual DEC(5,2), offline POINT, parallel LONG)";
+        String expected = "CREATE TABLE ty (`url` GEOMETRY, `auto` CHARACTER(5), `online` SERIAL, `manual` DEC(5,2), `offline` POINT, `parallel` LONG)";
+        assertThat(DdlNormalizer.normalize(input)).isEqualTo(expected);
+    }
+
+    @DisplayName("Given keyword-like anchors in legitimate keyword usage When normalize Then only identifiers are rewritten")
+    @Test
+    @FixFor("debezium/dbz#2381")
+    public void testLegitimateKeywordUsageUnchanged() {
+        // AFTER INSERT is trigger timing, not a column position; ON auto is a table position
+        assertThat(DdlNormalizer.normalize("CREATE TRIGGER trg AFTER INSERT ON auto FOR EACH ROW SET @a = 1"))
+                .isEqualTo("CREATE TRIGGER trg AFTER INSERT ON `auto` FOR EACH ROW SET @a = 1");
+        String hint = "SELECT id FROM t1 USE INDEX (idx1) WHERE id = DATABASE()";
+        assertThat(DdlNormalizer.normalize(hint)).isEqualTo(hint);
+    }
 }
