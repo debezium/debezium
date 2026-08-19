@@ -220,6 +220,7 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
         final Configuration heartbeatConfig = config;
         final DebeziumHeaderProducer debeziumHeaderProducer = connectorConfig.getServiceRegistry().tryGetService(
                 DebeziumHeaderProducer.class);
+        final boolean noblob = connection.isBinlogRowImageNoblob();
         final MysqlEventDispatcher<MySqlPartition> dispatcher = new MysqlEventDispatcher<>(
                 connectorConfig,
                 topicNamingStrategy,
@@ -238,7 +239,8 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
                         queue),
                 schemaNameAdjuster,
                 signalProcessor,
-                debeziumHeaderProducer);
+                debeziumHeaderProducer,
+                noblob);
 
         // Create the binary log client that will be used for streaming change events
         final BinaryLogClient binaryLogClient = new BinaryLogClient(
