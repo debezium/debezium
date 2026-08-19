@@ -68,18 +68,16 @@ public class MySqlConnectorNoBlobIT extends AbstractAsyncEngineConnectorTest {
     }
 
     /**
-     * Since we exclude text/blob columns during the snapshot process, we test that this behavior is done correctly.
-     * */
+     * Snapshots read directly from the table, so BLOB/TEXT columns are available
+     * even when binlog_row_image=NOBLOB. Verify that the real values are delivered.
+     */
     @Test
-    public void textAndBlobColumnShouldNotBeContainedDuringSnapshot() throws InterruptedException, SQLException {
-        // Use the DB configuration to define the connector's configuration.
+    public void textAndBlobColumnShouldContainRealValuesDuringSnapshot() throws InterruptedException, SQLException {
         config = simpleConfig()
                 .build();
 
-        // Start the connector.
         start(MySqlConnector.class, config);
 
-        // Poll for records.
         final int expected = 15;
         final int consumed = consumeAtLeast(expected);
 
@@ -87,10 +85,8 @@ public class MySqlConnectorNoBlobIT extends AbstractAsyncEngineConnectorTest {
         final KeyValueStore.Collection products = store.collection(DATABASE.getDatabaseName(), productsTableName());
         final List<Struct> productRecords = new ArrayList<>();
 
-        // Getting the after image.
         products.forEach(val -> productRecords.add(((Struct) val.value()).getStruct("after")));
 
-        // Check that the image does not contain a text/blob column.
         productRecords.forEach(val -> {
             final Schema schema = val.schema();
             final List<Field> fields = schema.fields();
@@ -101,8 +97,9 @@ public class MySqlConnectorNoBlobIT extends AbstractAsyncEngineConnectorTest {
             final Struct struct = (Struct) val.value();
             final Struct after = struct.getStruct("after");
             final byte[] bytes = after.getBytes("description");
-            final String descriptions = new String(bytes);
-            assertThat(descriptions).isEqualTo("__debezium_unavailable_value");
+            final String description = new String(bytes);
+            assertThat(description).isNotEqualTo("__debezium_unavailable_value");
+            assertThat(description).isNotEmpty();
         });
     }
 

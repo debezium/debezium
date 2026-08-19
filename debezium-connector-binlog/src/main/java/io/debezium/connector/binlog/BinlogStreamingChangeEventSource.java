@@ -84,6 +84,7 @@ import io.debezium.connector.binlog.event.StopEventDataDeserializer;
 import io.debezium.connector.binlog.event.TransactionPayloadDeserializer;
 import io.debezium.connector.binlog.gtid.GtidSet;
 import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
+import io.debezium.connector.binlog.jdbc.BinlogValueConverters;
 import io.debezium.connector.binlog.metrics.BinlogStreamingChangeEventSourceMetrics;
 import io.debezium.connector.binlog.util.RowImageUtils;
 import io.debezium.data.Envelope;
@@ -152,6 +153,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
     private final SnapshotterService snapshotterService;
     private final Predicate<String> gtidDmlSourceFilter;
     private final boolean isGtidModeEnabled;
+    private final boolean isBinlogRowImageNoblob;
     private final AtomicLong totalRecordCounter = new AtomicLong();
     private final Map<String, Thread> binaryLogClientThreads = new ConcurrentHashMap<>(4);
     private final EnumMap<EventType, BlockingConsumer<Event>> eventHandlers = new EnumMap<>(EventType.class);
@@ -195,6 +197,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         configureBinaryLogClient(client, connectorConfig, binaryLogClientThreads, connection);
         this.gtidDmlSourceFilter = getGtidDmlSourceFilter();
         this.isGtidModeEnabled = connection.isGtidModeEnabled();
+        this.isBinlogRowImageNoblob = connection.isBinlogRowImageNoblob();
         this.offsetActivityMonitorService = OffsetActivityMonitorService.lookup(connectorConfig.getServiceRegistry());
     }
 
@@ -1303,7 +1306,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
      * @return the row expanded to the full table width, or the original row if no expansion applies
      */
     private Serializable[] alignRowToTable(Table table, BitSet includedColumns, Serializable[] row) {
-        if (table == null || row == null || includedColumns == null || row.length == table.columns().size()) {
+        if (!isBinlogRowImageNoblob || table == null || row == null || includedColumns == null || row.length >= table.columns().size()) {
             return row;
         }
         final Serializable[] aligned = new Serializable[table.columns().size()];
@@ -1313,7 +1316,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
                 aligned[i] = row[sourceIndex++];
             }
             else if (RowImageUtils.isBlobOrTextColumn(table.columns().get(i))) {
-                aligned[i] = connectorConfig.getUnavailableValuePlaceholder();
+                aligned[i] = BinlogValueConverters.UNAVAILABLE_VALUE;
             }
         }
         return aligned;

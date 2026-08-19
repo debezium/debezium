@@ -58,8 +58,10 @@ public class MySqlValueConverters extends BinlogValueConverters {
                                 BinaryHandlingMode binaryMode,
                                 TemporalAdjuster adjuster,
                                 EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode,
-                                ServiceRegistry serviceRegistry) {
-        super(decimalMode, temporalPrecisionMode, bigIntUnsignedMode, binaryMode, adjuster, eventConvertingFailureHandlingMode, serviceRegistry);
+                                ServiceRegistry serviceRegistry,
+                                byte[] unavailableValuePlaceholder) {
+        super(decimalMode, temporalPrecisionMode, bigIntUnsignedMode, binaryMode, adjuster, eventConvertingFailureHandlingMode, serviceRegistry,
+                unavailableValuePlaceholder);
     }
 
     @Override

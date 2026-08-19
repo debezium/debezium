@@ -76,18 +76,18 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
     private static final Logger LOGGER = LoggerFactory.getLogger(EventDispatcher.class);
 
     protected final TransactionMonitor transactionMonitor;
-    protected final TopicNamingStrategy<T> topicNamingStrategy;
+    private final TopicNamingStrategy<T> topicNamingStrategy;
     private final DatabaseSchema<T> schema;
     private final HistorizedDatabaseSchema<T> historizedSchema;
-    protected final ChangeEventQueue<DataChangeEvent> queue;
+    private final ChangeEventQueue<DataChangeEvent> queue;
     private final DataCollectionFilter<T> filter;
-    protected final ChangeEventCreator changeEventCreator;
+    private final ChangeEventCreator changeEventCreator;
     private final DebeziumHeaderProducer debeziumHeaderProducer;
     private final ScheduledHeartbeat heartbeat;
     private DataChangeEventListener<P> eventListener = DataChangeEventListener.NO_OP();
     private final boolean emitTombstonesOnDelete;
     private final InconsistentSchemaHandler<P, T> inconsistentSchemaHandler;
-    protected final CommonConnectorConfig connectorConfig;
+    private final CommonConnectorConfig connectorConfig;
     private final EnumSet<Operation> skippedOperations;
     private final boolean neverSkip;
 
@@ -749,15 +749,6 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
      */
     public void setIncrementalSnapshotChangeEventSource(Optional<IncrementalSnapshotChangeEventSource<P, ? extends DataCollectionId>> incrementalSnapshotChangeEventSource) {
         this.incrementalSnapshotChangeEventSource = (IncrementalSnapshotChangeEventSource<P, T>) incrementalSnapshotChangeEventSource.orElse(null);
-    }
-
-    /**
-     * Returns the maximum number of threads used for snapshot operations.
-     *
-     * @return the maximum number of threads for snapshot operations
-     */
-    public int getSnapshotMaxThreads() {
-        return connectorConfig.getSnapshotMaxThreads();
     }
 
     /**
