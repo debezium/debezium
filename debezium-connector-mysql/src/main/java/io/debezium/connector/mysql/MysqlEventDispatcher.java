@@ -58,6 +58,7 @@ public class MysqlEventDispatcher<P extends Partition> extends EventDispatcher<P
 
     private final MySqlDatabaseSchema schema;
     private final MySqlConnectorConfig mySqlConnectorConfig;
+    private final boolean noblob;
 
     public MysqlEventDispatcher(CommonConnectorConfig connectorConfig, TopicNamingStrategy<TableId> topicNamingStrategy,
                                 MySqlDatabaseSchema schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<TableId> filter,
@@ -65,11 +66,12 @@ public class MysqlEventDispatcher<P extends Partition> extends EventDispatcher<P
                                 InconsistentSchemaHandler<P, TableId> inconsistentSchemaHandler,
                                 EventMetadataProvider metadataProvider, ScheduledHeartbeat heartbeat,
                                 SchemaNameAdjuster schemaNameAdjuster, SignalProcessor<P, ?> signalProcessor,
-                                DebeziumHeaderProducer debeziumHeaderProducer) {
+                                DebeziumHeaderProducer debeziumHeaderProducer, boolean noblob) {
         super(connectorConfig, topicNamingStrategy, schema, queue, filter, changeEventCreator,
                 inconsistentSchemaHandler, metadataProvider, heartbeat, schemaNameAdjuster, signalProcessor, debeziumHeaderProducer);
         this.schema = schema;
         this.mySqlConnectorConfig = (MySqlConnectorConfig) connectorConfig;
+        this.noblob = noblob;
     }
 
     @Override
@@ -216,6 +218,9 @@ public class MysqlEventDispatcher<P extends Partition> extends EventDispatcher<P
      * unavailable-value placeholder for the table the record belongs to.
      */
     private void applyUnavailablePlaceholdersForNoblobColumns(Struct value, DataCollectionSchema dataCollectionSchema) {
+        if (!noblob) {
+            return;
+        }
         final Table table = schema.tableFor((TableId) dataCollectionSchema.id());
         if (table == null) {
             return;
