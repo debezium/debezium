@@ -27,7 +27,9 @@ import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.SnapshottingTask;
+import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
+import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.Column;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.Table;
@@ -156,11 +158,16 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
         }
 
         boolean directMode = connectorConfig.getDataQueryMode() == SqlServerConnectorConfig.DataQueryMode.DIRECT;
+        @SuppressWarnings("unchecked")
+        final IncrementalSnapshotContext<TableId> carriedIncrementalContext = (IncrementalSnapshotContext<TableId>) carriedIncrementalSnapshotContext(previousOffset);
         ctx.offset = new SqlServerOffsetContext(
                 connectorConfig,
                 TxLogPosition.valueOf(jdbcConnection.getMaxLsn(ctx.partition.getDatabaseName()), directMode ? -1 : null),
                 null,
-                false);
+                false,
+                1,
+                new TransactionContext(),
+                carriedIncrementalContext != null ? carriedIncrementalContext : new SqlServerIncrementalSnapshotContext<>());
     }
 
     @Override
