@@ -88,6 +88,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     private long totalRowsScanned = 0;
     private int staleSchemaDeferrals = 0;
     private Table lastStaleTable;
+    private Object[] windowStartPosition;
 
     private Table currentTable;
 
@@ -187,11 +188,14 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             }
         }
         catch (ConnectException e) {
-            // Rows buffered against a schema that rotated before the window closed. revertChunk
-            // falls back to the last emitted key, so the re-read loses and duplicates nothing.
+            // Rows buffered against a schema that rotated before the window closed. sendEvent
+            // advances lastEventKeySent before dispatching, so reverting to it would skip the
+            // failed row: the chunk position returns to the window start instead and the whole
+            // window is re-read (at-least-once).
             deferChunkOnStaleSchema(e);
             window.clear();
             context.revertChunk();
+            context.nextChunkPosition(windowStartPosition);
             return;
         }
         offsetContext.postSnapshotCompletion();
@@ -754,6 +758,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             else {
                 progressListener.currentChunk(partition, context.currentChunkId(), firstKey, lastKey, context.maximumKey().orElse(null));
             }
+            windowStartPosition = context.chunkEndPosititon();
             context.nextChunkPosition(chunkQueryBuilder.resolveChunkEndPosition(context, currentTable, lastKey));
             if (lastRow != null) {
                 LOGGER.debug("\t Next window will resume from {}", (Object) context.chunkEndPosititon());
