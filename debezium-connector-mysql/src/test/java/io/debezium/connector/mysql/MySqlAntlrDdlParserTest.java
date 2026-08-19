@@ -355,4 +355,78 @@ public class MySqlAntlrDdlParserTest
         parser.parse("ALTER TABLE inventory.\"customers\" ADD COLUMN \"middle_name\" varchar(255) NULL", tables);
         assertThat(parser.getParsingExceptionsFromWalker()).isEmpty();
     }
+
+    @Test
+    @FixFor("debezium/dbz#2381")
+    public void shouldParseNonReservedKeywordsAsUnquotedIdentifiers() {
+        String ddl = "CREATE TABLE url (url VARCHAR(700));" +
+                "ALTER TABLE url ADD account_id BIGINT;" +
+                "ALTER TABLE url CHANGE url url VARCHAR(700) NOT NULL;" +
+                "CREATE TABLE auto (auto INT);" +
+                "CREATE TABLE manual (manual INT);" +
+                "CREATE TABLE offline (offline INT);" +
+                "CREATE TABLE online (online INT, id INT);" +
+                "CREATE TABLE parallel (parallel INT, id INT);" +
+                "CREATE TABLE vector (vector INT);" +
+                "CREATE TABLE qualify (qualify INT);" +
+                "CREATE TABLE tablesample (tablesample INT);" +
+                "ALTER TABLE vector ADD COLUMN online TINYINT;" +
+                "ALTER TABLE auto RENAME COLUMN auto TO manual;" +
+                "ALTER TABLE parallel ADD INDEX parallel (id);" +
+                "ALTER TABLE online ADD CONSTRAINT online CHECK (id > 0);" +
+                // COLUMN is optional in the DROP branch of alterListItem.
+                "ALTER TABLE vector DROP online;";
+        parser.parse(ddl, tables);
+        assertThat(parser.getParsingExceptionsFromWalker()).isEmpty();
+        assertThat(tables.size()).isEqualTo(9);
+
+        Table url = tables.forTable(null, null, "url");
+        assertThat(url.columnWithName("url")).isNotNull();
+        assertThat(url.columnWithName("account_id")).isNotNull();
+
+        Table vector = tables.forTable(null, null, "vector");
+        assertThat(vector.columnWithName("vector")).isNotNull();
+        assertThat(vector.columnWithName("online")).isNull();
+
+        Table auto = tables.forTable(null, null, "auto");
+        assertThat(auto.columnWithName("manual")).isNotNull();
+        assertThat(auto.columnWithName("auto")).isNull();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2381")
+    public void shouldParseNonReservedKeywordIdentifiersInExtendedDdlClauses() {
+        String ddl = "CREATE TABLE IF NOT EXISTS url (id INT PRIMARY KEY);" +
+                "CREATE INDEX idx_url ON url (id);" +
+                "CREATE TABLE offline (id INT PRIMARY KEY, FOREIGN KEY (id) REFERENCES url (id));" +
+                "CREATE TABLE t2 LIKE url;" +
+                "ALTER TABLE offline ADD COLUMN online INT;" +
+                "ALTER TABLE offline ALTER COLUMN online SET DEFAULT 1;" +
+                "ALTER TABLE offline ADD COLUMN c2 INT AFTER online;" +
+                "TRUNCATE TABLE t2;" +
+                "DROP TABLE IF EXISTS t2;" +
+                "CREATE TABLE pt (id INT) PARTITION BY RANGE (id) " +
+                "(PARTITION auto VALUES LESS THAN (10), PARTITION pmax VALUES LESS THAN MAXVALUE);" +
+                "ALTER TABLE pt DROP PARTITION auto;" +
+                "CREATE TABLE typed (url GEOMETRY, manual CHARACTER(5), online SERIAL);" +
+                "CREATE TRIGGER parallel BEFORE INSERT ON url FOR EACH ROW SET @x = 1;" +
+                "DROP TRIGGER parallel;" +
+                "CREATE DATABASE auto;" +
+                "USE auto;" +
+                "CREATE TABLE t3 (id INT);";
+        parser.parse(ddl, tables);
+        assertThat(parser.getParsingExceptionsFromWalker()).isEmpty();
+
+        Table offline = tables.forTable(null, null, "offline");
+        assertThat(offline.columnWithName("online")).isNotNull();
+        assertThat(offline.columnWithName("c2")).isNotNull();
+
+        Table typed = tables.forTable(null, null, "typed");
+        assertThat(typed.columnWithName("url")).isNotNull();
+        assertThat(typed.columnWithName("manual")).isNotNull();
+        assertThat(typed.columnWithName("online")).isNotNull();
+
+        assertThat(tables.forTable(null, null, "t2")).isNull();
+        assertThat(tables.forTable("auto", null, "t3")).isNotNull();
+    }
 }
