@@ -797,6 +797,7 @@ The following table maps {prodname} logical types to dialect-specific column typ
 |`blob`
 |`bit(n)`
 |`bit varying`
+
 `bit(n)`^1^
 |`blob`
 |`varbinary(n)`
@@ -840,7 +841,9 @@ The following table maps {prodname} logical types to dialect-specific column typ
 |`varchar(128)`
 |`time`
 |`interval`
-|`interval year to month` +
+
+|`interval year to month`  
+
 `interval day to second`
 |`varchar(128)`
 
@@ -848,6 +851,7 @@ The following table maps {prodname} logical types to dialect-specific column typ
 |`clob`
 `varchar(n)`^1^
 |`longtext`
+
 `varchar`^1^
 |`ltree`
 |`clob`
@@ -856,21 +860,27 @@ The following table maps {prodname} logical types to dialect-specific column typ
 
 |io.debezium.data.Uuid
 |`clob`
+
 `varchar(n)`^1^
 |`uuid`
 |`text`
+
 `varchar(n)`^1^
 |`clob`
+
 `varchar2(n)`^1^
 |`varchar`
 
 |io.debezium.data.Tsvector
 |`clob`
+
 `varchar(n)`^1^
 |`longtext`
+
 `varchar`^1^
 |`tsvector`
 |`clob`
+
 `varchar2(n)`^1^
 |`varchar`
 
