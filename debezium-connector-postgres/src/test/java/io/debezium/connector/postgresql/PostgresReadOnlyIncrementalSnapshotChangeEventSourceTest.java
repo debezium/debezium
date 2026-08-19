@@ -26,6 +26,8 @@ import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.logging.LogInterceptor;
+
+import ch.qos.logback.classic.Level;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
@@ -89,6 +91,7 @@ public class PostgresReadOnlyIncrementalSnapshotChangeEventSourceTest {
         stubQueryResult(null);
 
         LogInterceptor logInterceptor = new LogInterceptor(PostgresReadOnlyIncrementalSnapshotChangeEventSource.class);
+        logInterceptor.setLoggerLevel(PostgresReadOnlyIncrementalSnapshotChangeEventSource.class, Level.TRACE);
 
         assertThatNoException().isThrownBy(this::invokeForceNewTransactionId);
         assertThat(logInterceptor.containsMessage("Skipping transaction ID assignment on hot standby")).isTrue();
@@ -101,6 +104,7 @@ public class PostgresReadOnlyIncrementalSnapshotChangeEventSourceTest {
         stubQueryResult("12345");
 
         LogInterceptor logInterceptor = new LogInterceptor(PostgresReadOnlyIncrementalSnapshotChangeEventSource.class);
+        logInterceptor.setLoggerLevel(PostgresReadOnlyIncrementalSnapshotChangeEventSource.class, Level.TRACE);
 
         assertThatNoException().isThrownBy(this::invokeForceNewTransactionId);
         assertThat(logInterceptor.containsMessage("Created new transaction ID 12345")).isTrue();
