@@ -163,6 +163,15 @@ public class SqlServerConnection extends JdbcConnection {
      * @param valueConverters     {@link SqlServerValueConverters} instance
      * @param skippedOperations   a set of {@link Envelope.Operation} to skip in streaming
      */
+    private static final int ERROR_INVALID_COLUMN_NAME = 207;
+
+    @Override
+    public boolean isUndefinedColumnError(SQLException exception) {
+        // The driver reports the generic S0001 SQLSTATE for most server errors, so the
+        // classification has to use the server error code.
+        return exception.getErrorCode() == ERROR_INVALID_COLUMN_NAME;
+    }
+
     public SqlServerConnection(SqlServerConnectorConfig config, SqlServerValueConverters valueConverters,
                                Set<Envelope.Operation> skippedOperations,
                                boolean useSingleDatabase) {

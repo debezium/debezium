@@ -24,7 +24,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -77,8 +76,6 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractIncrementalSnapshotChangeEventSource.class);
 
     private static final int MAX_STALE_SCHEMA_DEFERRALS = 3;
-    // PostgreSQL/Db2: 42703, MySQL/MariaDB: 42S22, SQL Server: S0022
-    private static final Set<String> UNDEFINED_COLUMN_SQL_STATES = Set.of("42703", "42S22", "S0022");
 
     protected final RelationalDatabaseConnectorConfig connectorConfig;
     private final Clock clock;
@@ -856,9 +853,9 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         lastStaleTable = null;
     }
 
-    private static boolean isUndefinedColumn(SQLException e) {
+    private boolean isUndefinedColumn(SQLException e) {
         for (Throwable t = e; t != null; t = t.getCause()) {
-            if (t instanceof SQLException sql && UNDEFINED_COLUMN_SQL_STATES.contains(sql.getSQLState())) {
+            if (t instanceof SQLException sql && jdbcConnection.isUndefinedColumnError(sql)) {
                 return true;
             }
         }
