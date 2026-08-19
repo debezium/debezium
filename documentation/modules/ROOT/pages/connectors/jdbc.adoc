@@ -362,7 +362,7 @@ A conflict involving a secondary unique constraint can therefore update an exist
 A conflict involving a secondary unique constraint causes the write operation to fail with a constraint violation error rather than updating a different row.
 |===
 
-For a destination table to retain a secondary unique constraint, the data pipeline must meet all of the following requirements:
+To prevent data inconsistencies when a destination table includes a secondary unique constraint, the data pipeline must meet all of the following requirements:
 
 Dependent events routed through the same partition::
 Route all dependent events through the same Kafka partition, and preserve the source event order.
