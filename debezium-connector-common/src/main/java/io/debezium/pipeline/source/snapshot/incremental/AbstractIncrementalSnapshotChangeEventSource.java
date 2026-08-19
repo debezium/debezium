@@ -400,6 +400,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             if (e instanceof SQLNonTransientConnectionException) {
                 closeJdbcConnection();
             }
+            rollbackWindowTransaction();
             warnAndSkip(partition, offsetContext,
                     SQL_EXCEPTION,
                     "SQL error while executing incremental snapshot for table '%s', skipping and continuing streaming"
@@ -407,6 +408,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                     e);
         }
         catch (Exception e) {
+            rollbackWindowTransaction();
             warnAndSkip(partition, offsetContext,
                     SQL_EXCEPTION,
                     "Error while executing incremental snapshot for table '%s', skipping and continuing streaming".formatted(context.currentDataCollectionId().getId()),
@@ -448,6 +450,20 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             return true;
         }
         return false;
+    }
+
+    /**
+     * The window transaction is normally committed by the watermark writes; an exception that
+     * skips {@code emitWindowClose} would leave it open, and the transaction keeps the table's
+     * metadata lock, blocking any subsequent DDL on it until the connection is closed.
+     */
+    private void rollbackWindowTransaction() {
+        try {
+            jdbcConnection.rollback();
+        }
+        catch (SQLException e) {
+            LOGGER.warn("Failed to roll back the incremental snapshot window transaction", e);
+        }
     }
 
     private void closeJdbcConnection() {
