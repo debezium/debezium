@@ -250,8 +250,8 @@ The following table shows how different database dialects handle conflicts invol
 |Dialect |Behavior
 
 |Dialects that use `INSERT ... ON DUPLICATE KEY UPDATE`
-|React to a conflict with any unique index, not only the configured primary key.
-A secondary unique-key conflict can therefore update an existing row whose primary key differs from the incoming record, causing silent data inconsistency.
+|Consider conflicts on any unique index, not only the configured primary key.
+A conflict involving a secondary unique constraint can therefore update an existing row whose primary key differs from the incoming record, causing silent data inconsistency.
 
 |Dialects that use `INSERT ... ON CONFLICT` or `MERGE`
 |Detect conflicts only on the configured primary key.
