@@ -323,9 +323,11 @@ endif::community[]
 |`MERGE ...`
 |Configured primary key only
 
+ifdef::community[]
 |StarRocks
 |`INSERT ...` (PRIMARY KEY tables execute inserts as upserts)
 |Table primary key
+endif::community[]
 
 |===
 
