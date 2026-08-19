@@ -1013,7 +1013,7 @@ If the source column length is unavailable, the connector uses default dimension
 
 endif::community[]
 
-ifdef::product[
+ifdef::product[]
 .Mappings between {prodname} Vector Types and Column Data Types
 |===
 |Logical Type |Db2 |MySQL |PostgreSQL |Oracle |SQL Server
