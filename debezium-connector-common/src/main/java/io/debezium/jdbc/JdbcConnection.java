@@ -85,6 +85,7 @@ public class JdbcConnection implements AutoCloseable {
 
     private static final int WAIT_FOR_CLOSE_SECONDS = 10;
     private static final char STATEMENT_DELIMITER = ';';
+    private static final String SQLSTATE_UNDEFINED_COLUMN = "42703";
 
     /**
      * The wildcard characters that must be escaped when constructing patterns for the JDBC
@@ -410,6 +411,16 @@ public class JdbcConnection implements AutoCloseable {
             conn.commit();
         }
         return this;
+    }
+
+    /**
+     * Whether the given exception reports a reference to a column that does not exist in the
+     * database. Used by the incremental snapshot to classify a chunk query failure as a
+     * stale-schema condition. Defaults to the SQL standard SQLSTATE; dialects that report a
+     * vendor-specific code override this.
+     */
+    public boolean isUndefinedColumnError(SQLException exception) {
+        return SQLSTATE_UNDEFINED_COLUMN.equals(exception.getSQLState());
     }
 
     public synchronized JdbcConnection rollback() throws SQLException {
