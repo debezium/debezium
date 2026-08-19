@@ -242,8 +242,6 @@ Kafka guarantees record order only within a partition, and the connector batches
 For these reasons, you should avoid defining secondary unique constraints or secondary unique indexes on destination tables.
 If a uniqueness rule is required, enforce the rule in the source database, and omit the constraint from the destination table.
 
-.Understanding the risk
-
 If dependent records are routed to different partitions, the sink connector might apply them out of source order.
 The following table shows how different database dialects respond to a resulting conflict:
 
