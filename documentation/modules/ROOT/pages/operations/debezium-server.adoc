@@ -2418,7 +2418,7 @@ The sink uses OAuth to authenticate with a Databricks service principal and stre
 The sink uses one of the following routes to deliver event records, as specified by the xref:zerobus-type[`debezium.sink.type`] property:
 
 `zerobus`:: (recommended) Uses the Databricks Zerobus Java SDK over gRPC.
-`zerobusrest`:: Uses the Zerobus REST API.
+`zerobus-rest`:: Uses the Zerobus REST API.
 This method accepts only one HTTP request per record.
 Select this option for environments that lack a persistent connection.
 
@@ -2723,7 +2723,7 @@ By default, the sink builds the instance from the <<zerobus-endpoint, `endpoint`
 
 |===
 
-===== REST route (`zerobusrest`)
+===== REST route (`zerobus-rest`)
 
 [cols="35%a,10%a,55%a",options="header"]
 |===
@@ -2731,36 +2731,36 @@ By default, the sink builds the instance from the <<zerobus-endpoint, `endpoint`
 |Default
 |Description
 
-|[[zerobusrest-type]]<<zerobusrest-type, `debezium.sink.type`>>
+|[[zerobus-rest-type]]<<zerobus-rest-type, `debezium.sink.type`>>
 |No default value.
-|Must be set to `zerobusrest`.
+|Must be set to `zerobus-rest`.
 
-|[[zerobusrest-uri]]<<zerobusrest-uri, `debezium.sink.zerobusrest.uri`>>
+|[[zerobus-rest-uri]]<<zerobus-rest-uri, `debezium.sink.zerobus-rest.uri`>>
 |No default value.
 |The Zerobus REST base URI, for example `https://<workspace-id>.zerobus.<region>.cloud.databricks.com`.
 
-|[[zerobusrest-workspace-url]]<<zerobusrest-workspace-url, `debezium.sink.zerobusrest.workspace.url`>>
+|[[zerobus-rest-workspace-url]]<<zerobus-rest-workspace-url, `debezium.sink.zerobus-rest.workspace.url`>>
 |No default value.
 |The Databricks workspace URL.
 The service uses this value for OAuth and in the `unity-catalog-endpoint` header.
 
-|[[zerobusrest-workspace-id]]<<zerobusrest-workspace-id, `debezium.sink.zerobusrest.workspace.id`>>
+|[[zerobus-rest-workspace-id]]<<zerobus-rest-workspace-id, `debezium.sink.zerobus-rest.workspace.id`>>
 |No default value.
 |The numeric workspace ID that the service uses to build the Zerobus token audience.
 
-|[[zerobusrest-client-id]]<<zerobusrest-client-id, `debezium.sink.zerobusrest.client.id`>>
+|[[zerobus-rest-client-id]]<<zerobus-rest-client-id, `debezium.sink.zerobus-rest.client.id`>>
 |No default value.
 |The OAuth client ID (service principal application ID).
 
-|[[zerobusrest-client-secret]]<<zerobusrest-client-secret, `debezium.sink.zerobusrest.client.secret`>>
+|[[zerobus-rest-client-secret]]<<zerobus-rest-client-secret, `debezium.sink.zerobus-rest.client.secret`>>
 |No default value.
 |The OAuth client secret for the service principal.
 
-|[[zerobusrest-table]]<<zerobusrest-table, `debezium.sink.zerobusrest.table`>>
+|[[zerobus-rest-table]]<<zerobus-rest-table, `debezium.sink.zerobus-rest.table`>>
 |No default value.
 |(Optional) A fully qualified default target table (`catalog.schema.table`). When not set, the mapped destination (topic) name is used.
 
-|[[zerobusrest-metrics-log-interval]]<<zerobusrest-metrics-log-interval, `debezium.sink.zerobusrest.metrics.log.interval`>>
+|[[zerobus-rest-metrics-log-interval]]<<zerobus-rest-metrics-log-interval, `debezium.sink.zerobus-rest.metrics.log.interval`>>
 |`0`
 |Specifies the number of batches that the service processes before it emits a periodic `INFO` log line to summarize sink metrics.
 Set the value to `0` to disable periodic logging.
@@ -2772,7 +2772,7 @@ For more information, see <<zerobus-monitoring, Monitoring>>.
 [[zerobus-kafka-route]]
 ===== Kafka route
 
-As an alternative to the `zerobus` and `zerobusrest` routes, you can reuse the built-in `kafka` sink to write to the Zerobus Kafka-compatible endpoint.
+As an alternative to the `zerobus` and `zerobus-rest` routes, you can reuse the built-in `kafka` sink to write to the Zerobus Kafka-compatible endpoint.
 This route uses the standard Kafka producer with `SASL_SSL` and the `OAUTHBEARER` mechanism.
 Authentication is handled by `io.debezium.server.databricks.zerobus.ZerobusOAuthBearerLoginCallbackHandler`, which performs the OAuth token exchange and attaches the Unity Catalog authorization details that Zerobus requires.
 
@@ -3034,14 +3034,14 @@ The following table shows mappings between {prodname} logical types and Delta co
 
 You can use JMX metrics and connector log output to monitor the operational status and performance of the Debezium Databricks Zerobus Ingest sink.
 
-The {prodname} Databricks Zerobus Ingest sink supports the following delivery routes: zerobus (gRPC), zerobusrest (REST), and the <<zerobus-kafka-route, Kafka route>>.
-All three routes expose sink metrics over JMX under the object name `debezium.zerobus:type=connector-metrics,context=sink,server=<route>,task=0`, where `<route>` is `grpc` for the `zerobus` route, `rest` for the `zerobusrest` route, or `kafka` for the Kafka route.
+The {prodname} Databricks Zerobus Ingest sink supports the following delivery routes: zerobus (gRPC), zerobus-rest (REST), and the <<zerobus-kafka-route, Kafka route>>.
+All three routes expose sink metrics over JMX under the object name `debezium.zerobus:type=connector-metrics,context=sink,server=<route>,task=0`, where `<route>` is `grpc` for the `zerobus` route, `rest` for the `zerobus-rest` route, or `kafka` for the Kafka route.
 The metrics use the same JMX exposure model as the JDBC sink connector and {prodname} source connectors, so existing JMX monitoring tools such as JConsole, jmxterm, and Prometheus JMX Exporter can read them without any Zerobus-specific configuration.
 
 The sink registers the metrics when it starts, so no option is required to begin collecting them.
 Reading them from outside the process is a separate step: the service exposes JMX only after you set the `JMX_HOST` and `JMX_PORT` environment variables, and it starts the bundled Prometheus JMX Exporter only after you set `JMX_EXPORTER_PORT`.
 The {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[{prodname} monitoring documentation] provides details about how to expose metrics by using JMX.
-You can automate periodic metric logging by setting <<zerobus-metrics-log-interval, `debezium.sink.zerobus.metrics.log.interval`>> or <<zerobusrest-metrics-log-interval, `debezium.sink.zerobusrest.metrics.log.interval`>> to a positive value.
+You can automate periodic metric logging by setting <<zerobus-metrics-log-interval, `debezium.sink.zerobus.metrics.log.interval`>> or <<zerobus-rest-metrics-log-interval, `debezium.sink.zerobus-rest.metrics.log.interval`>> to a positive value.
 After you enable either of these options, at the specified interval the connector writes an `INFO` log message that contains the same metric values that are available through JMX.
 
 The Kafka route is the exception to metrics being collected automatically: because it writes through the generic `kafka` sink, the Zerobus sink is never invoked and cannot instrument itself.
