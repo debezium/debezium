@@ -195,6 +195,13 @@ If you want the connector to capture data only from specific tables you can dire
 3. Obtain a `ROW SHARE MODE` lock on each of the captured tables to prevent structural changes from occurring during creation of the snapshot.
 +
 NOTE: {prodname} holds the locks for only a short time.
++
+[NOTE]
+====
+Because an Oracle transaction cannot span containers, when you configure the connector to capture changes from multiple pluggable databases through the xref:oracle-property-database-pdb-names[`database.pdb.names`] property, the connector opens a dedicated database connection for each pluggable database.
+Each connection holds the locks for its pluggable database's tables until the schema capture completes (Step 6), ensuring a consistent snapshot across all pluggable databases.
+The connector closes these additional connections after it releases the locks.
+====
 
 4. Read the current system change number (SCN) position from the server's redo log.
 
@@ -4030,7 +4037,8 @@ Valid values include raw TNS names and RAC connection strings.
 |No default
 |Comma-separated list of the names of the Oracle pluggable databases to capture changes from. Use this property with container database (CDB) installations only. +
 The first name in the list designates the container that the connector uses for connector-managed objects, such as the LogMiner flush table and heartbeat action queries. +
-This property replaces the deprecated `database.pdb.name` property. If you specify `database.pdb.name`, the connector treats its value as a single-entry list.
+This property replaces the deprecated `database.pdb.name` property. If you specify `database.pdb.name`, the connector treats its value as a single-entry list. +
+When multiple names are specified, the connector opens one additional connection per pluggable database during the initial snapshot to hold schema locks while it creates a consistent snapshot.
 
 |[[oracle-property-topic-prefix]]<<oracle-property-topic-prefix, `+topic.prefix+`>>
 |No default
