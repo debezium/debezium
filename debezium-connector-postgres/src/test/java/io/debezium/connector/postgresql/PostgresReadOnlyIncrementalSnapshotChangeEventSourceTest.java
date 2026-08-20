@@ -26,14 +26,14 @@ import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.logging.LogInterceptor;
-
-import ch.qos.logback.classic.Level;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.util.Clock;
+
+import ch.qos.logback.classic.Level;
 
 /**
  * Unit tests for {@link PostgresReadOnlyIncrementalSnapshotChangeEventSource}.
