@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.DebeziumException;
 import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.Configuration;
+import io.debezium.connector.oracle.CommitScn;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnection.NonRelationalTableException;
 import io.debezium.connector.oracle.OracleConnectorConfig;
@@ -2142,7 +2143,12 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             switch (connectorConfig.getLogMiningStrategy()) {
                 case HYBRID, ONLINE_CATALOG: {
                     final long maximumRedoLogFileSize = connection.getMaximumRedoLogFileSize();
-                    return new CappedLogFileSessionSelector(minimumLogCountPerThread, maximumRedoLogFileSize);
+                    // The maximum committed SCN across redo threads is a lower bound on the upper
+                    // boundary of the last mining session before a restart; seeding it restores the
+                    // capped window sizing that would otherwise collapse to the minimum log count.
+                    final CommitScn commitScn = getOffsetContext().getCommitScn();
+                    final Scn minedBoundary = commitScn != null ? commitScn.getMaxCommittedScn() : Scn.NULL;
+                    return new CappedLogFileSessionSelector(minimumLogCountPerThread, maximumRedoLogFileSize, minedBoundary);
                 }
             }
         }
