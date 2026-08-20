@@ -5,6 +5,9 @@ folder("release") {
 
 pipelineJob('release/release-deploy-debezium-tool-images') {
 
+    // Moved to GH actions
+    disabled()
+
     displayName('Debezium Deploy Tool Images')
     description('Build and deploy debezium tool images to the registry')
 
