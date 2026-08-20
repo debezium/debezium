@@ -415,7 +415,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             if (e instanceof SQLNonTransientConnectionException) {
                 closeJdbcConnection();
             }
-            rollbackWindowTransaction();
+            commitWindowTransaction();
             warnAndSkip(partition, offsetContext,
                     SQL_EXCEPTION,
                     "SQL error while executing incremental snapshot for table '%s', skipping and continuing streaming"
@@ -423,7 +423,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                     e);
         }
         catch (Exception e) {
-            rollbackWindowTransaction();
+            commitWindowTransaction();
             warnAndSkip(partition, offsetContext,
                     SQL_EXCEPTION,
                     "Error while executing incremental snapshot for table '%s', skipping and continuing streaming".formatted(context.currentDataCollectionId().getId()),
@@ -470,14 +470,19 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     /**
      * The window transaction is normally committed by the watermark writes; an exception that
      * skips {@code emitWindowClose} would leave it open, and the transaction keeps the table's
-     * metadata lock, blocking any subsequent DDL on it until the connection is closed.
+     * metadata lock, blocking any subsequent DDL on it until the connection is closed. A commit,
+     * not a rollback: the transaction only reads, and a rollback would invalidate the open
+     * cursors of connectors whose streaming polls over the same connection, while held cursors
+     * survive a commit.
      */
-    private void rollbackWindowTransaction() {
+    private void commitWindowTransaction() {
         try {
-            jdbcConnection.rollback();
+            if (jdbcConnection.isConnected()) {
+                jdbcConnection.commit();
+            }
         }
         catch (SQLException e) {
-            LOGGER.warn("Failed to roll back the incremental snapshot window transaction", e);
+            LOGGER.warn("Failed to commit the incremental snapshot window transaction", e);
         }
     }
 
