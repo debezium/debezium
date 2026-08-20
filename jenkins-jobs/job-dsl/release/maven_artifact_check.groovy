@@ -8,6 +8,9 @@ freeStyleJob('release/prepare-maven-artifact-check') {
     description('Verify integrity of maven artifact')
     label('Slave')
 
+    // Moved to GH actions
+    disabled()
+
     parameters {
         stringParam('REPOSITORY', 'https://github.com/debezium/debezium', 'Debezium repository where the script is located')
         stringParam('BRANCH', '*/main', 'A branch/tag where the script is located')

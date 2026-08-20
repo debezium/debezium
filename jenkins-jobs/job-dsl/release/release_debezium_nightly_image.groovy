@@ -10,6 +10,9 @@ freeStyleJob('release/release-debezium-nightly-image') {
     description('Build and deploy nightly image to the registry')
     label('Slave')
 
+    // Moved to GH actions
+    disabled()
+
     properties {
         githubProjectUrl('https://github.com/debezium/container-images')
     }

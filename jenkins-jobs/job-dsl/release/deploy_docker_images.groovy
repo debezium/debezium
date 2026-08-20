@@ -10,6 +10,9 @@ pipelineJob('release/release-deploy-container-images') {
     displayName('Debezium Deploy Container Images')
     description('Build and deploy Container images to the registry')
 
+    // Moved to GH actions
+    disabled()
+
     properties {
         githubProjectUrl('https://github.com/debezium/container-images')
     }

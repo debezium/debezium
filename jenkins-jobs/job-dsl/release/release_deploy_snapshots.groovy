@@ -7,6 +7,9 @@ pipelineJob('release/release-deploy_snapshots_pipeline') {
     displayName('Debezium Deploy Snapshots')
     description('Deploy -SNAPSHOT versions to Maven Central')
 
+    // Moved to GH actions
+    disabled()
+
     properties {
         githubProjectUrl('https://github.com/debezium/debezium')
     }

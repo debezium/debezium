@@ -10,6 +10,9 @@ pipelineJob('release/release-debezium-upstream') {
     displayName('Debezium Release')
     description('Builds Debezium and deploys into Maven Central and Docker Hub')
 
+    // Moved to GH actions
+    disabled()
+
     properties {
         githubProjectUrl('https://github.com/debezium/debezium')
     }
