@@ -1145,10 +1145,10 @@ When {prodname} Oracle connector is configured to capture changes from a downstr
 
 To use the connector with a downstream mining database, you must first register transaction logs with that database.
 
-When Oracle Remove File Server (RFS) replicates changes, the replication should happen automatically when using a real-time downstream mining configuration. 
+When Oracle Remove File Server (RFS) replicates changes, the replication should happen automatically when using a real-time downstream mining configuration.
 {prodname} does not perform any log registration.
 
-If a log fails to register and a gap in log sequences occurs, the {prodname} connector pauses capture. A database administrator must review the registered logs and register any missing logs to close the gap. 
+If a log fails to register and a gap in log sequences occurs, the {prodname} connector pauses capture. A database administrator must review the registered logs and register any missing logs to close the gap.
 Typically, this should be necessary only during the initial set up and synchronization with the primary.
 
 endif::community[]
@@ -5889,7 +5889,7 @@ To configure the connector to use OpenLogReplicator, you must apply specific dat
 .Prerequisites
 
 * Download and compile OpenLogReplicator for your database environment.
-* OpenLogReplicator is installed with direct access to the archive and redo log files. 
+* OpenLogReplicator is installed with direct access to the archive and redo log files.
 This does not necessarily require installation on the physical database server if the archive and redo logs can be accessed via some shared filesystem.
 
 === How OpenLogReplicator works
