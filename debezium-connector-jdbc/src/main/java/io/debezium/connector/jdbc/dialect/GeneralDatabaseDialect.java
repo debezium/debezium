@@ -355,13 +355,23 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
 
         builder.appendLists(", ", record.keyFieldNames(), record.nonKeyFieldNames(), (name) -> columnNameFromField(name, record));
 
-        builder.append(") VALUES (");
+        builder.append(")");
+        builder.append(getOverrideClause(table));
+        builder.append(" VALUES (");
 
         builder.appendLists(", ", record.keyFieldNames(), record.nonKeyFieldNames(), (name) -> columnQueryBindingFromField(name, table, record));
 
         builder.append(")");
 
         return builder.build();
+    }
+
+    /**
+     * Returns the SQL standard override clause to place after an INSERT column list, carrying its own
+     * leading space, or an empty string when the dialect needs none.
+     */
+    protected String getOverrideClause(TableDescriptor table) {
+        return "";
     }
 
     @Override
