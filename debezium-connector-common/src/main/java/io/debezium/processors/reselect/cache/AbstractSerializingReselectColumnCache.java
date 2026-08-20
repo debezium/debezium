@@ -49,6 +49,11 @@ import io.debezium.serde.ConnectValueSerde;
  * enforced strictly at read time against the envelope's write timestamp (expired entries are deleted and
  * reported as misses); subclasses may additionally reclaim expired data in storage.
  * <p>
+ * <b>Storage failures.</b> The cache is an optimization, so a failing backend must never fail event
+ * processing: exceptions from the storage primitives are caught here and degraded, a read failure to a
+ * cache miss (the column falls back to re-selection) and a write or removal failure to a skipped
+ * operation, each with a warning. Subclasses may therefore let their storage exceptions propagate freely.
+ * <p>
  * Storage primitives are invoked concurrently (streaming and snapshot threads) and must be thread-safe.
  *
  * @author Chris Cranford
@@ -109,16 +114,19 @@ public abstract class AbstractSerializingReselectColumnCache implements Reselect
 
     /**
      * Return the stored bytes for the given storage key, or {@code null} if absent. Must be thread-safe.
+     * May throw on storage failure; the failure is degraded to a cache miss.
      */
     protected abstract byte[] getFromStorage(byte[] key);
 
     /**
-     * Store the given bytes under the given storage key. Must be thread-safe.
+     * Store the given bytes under the given storage key. Must be thread-safe. May throw on storage
+     * failure; the failure is degraded to a skipped write, so the value is re-queried on a later miss.
      */
     protected abstract void putToStorage(byte[] key, byte[] value);
 
     /**
-     * Remove the entry for the given storage key, if any. Must be thread-safe.
+     * Remove the entry for the given storage key, if any. Must be thread-safe. May throw on storage
+     * failure; the failure is degraded to a skipped removal.
      */
     protected abstract void removeFromStorage(byte[] key);
 
@@ -147,7 +155,16 @@ public abstract class AbstractSerializingReselectColumnCache implements Reselect
         @Override
         public Optional<Hit> get(String column) {
             final byte[] storageKey = storageKey(column);
-            final byte[] stored = getFromStorage(storageKey);
+            final byte[] stored;
+            try {
+                stored = getFromStorage(storageKey);
+            }
+            catch (Exception e) {
+                // The cache must never fail event processing; a failed read is a miss and the column
+                // falls back to re-selection.
+                LOGGER.warn("Reselect cache read failed for column '{}'; falling back to re-selection.", column, e);
+                return Optional.empty();
+            }
             if (stored == null) {
                 return Optional.empty();
             }
@@ -157,11 +174,11 @@ public abstract class AbstractSerializingReselectColumnCache implements Reselect
             }
             catch (Exception e) {
                 LOGGER.warn("Discarding undecodable reselect cache entry for column '{}'.", column, e);
-                removeFromStorage(storageKey);
+                tryRemoveFromStorage(storageKey, column);
                 return Optional.empty();
             }
             if (ttlMs > 0 && currentTimeMillis() - deserialized.timestampMs() >= ttlMs) {
-                removeFromStorage(storageKey);
+                tryRemoveFromStorage(storageKey, column);
                 return Optional.empty();
             }
             return Optional.of(new Hit(deserialized.value()));
@@ -180,12 +197,27 @@ public abstract class AbstractSerializingReselectColumnCache implements Reselect
                 }
                 return;
             }
-            putToStorage(storageKey(column), serialized);
+            try {
+                putToStorage(storageKey(column), serialized);
+            }
+            catch (Exception e) {
+                // A failed write only skips caching; the value is re-queried on a later miss.
+                LOGGER.warn("Reselect cache write failed for column '{}'; the value will be re-queried on demand.", column, e);
+            }
         }
 
         @Override
         public void invalidate(String column) {
-            removeFromStorage(storageKey(column));
+            tryRemoveFromStorage(storageKey(column), column);
+        }
+
+        private void tryRemoveFromStorage(byte[] storageKey, String column) {
+            try {
+                removeFromStorage(storageKey);
+            }
+            catch (Exception e) {
+                LOGGER.warn("Reselect cache removal failed for column '{}'.", column, e);
+            }
         }
 
         private byte[] storageKey(String column) {
