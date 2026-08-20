@@ -36,11 +36,29 @@ public class CappedLogFileSessionSelector implements LogFileSessionSelector {
     private int logsPerRedoThread;
     private Map<Integer, List<LogFile>> previousBudgetLogsByThread;
     private Scn previousEffectiveUpperBoundary;
+    private boolean deriveLogCountFromSeed;
 
-    public CappedLogFileSessionSelector(int minimumLogsPerRedoThread, long redoLogSizeInBytes) {
+    /**
+     * Creates a capped log file session selector.
+     *
+     * The previously mined boundary seeds the capped window state from the restored offsets so the
+     * window guarantees survive a connector restart. The seed is a lower bound on the upper boundary
+     * of the last mining session before the restart; the log count per redo thread is re-derived from
+     * the seeded span on the first selection, when the collected logs provide the byte sizes needed
+     * to translate the span into a per-thread log count.
+     *
+     * @param minimumLogsPerRedoThread minimum number of logs to mine per redo thread
+     * @param redoLogSizeInBytes maximum size of an online redo log in bytes
+     * @param previouslyMinedBoundary lower bound on the previously mined upper boundary; ignored when null or none
+     */
+    public CappedLogFileSessionSelector(int minimumLogsPerRedoThread, long redoLogSizeInBytes, Scn previouslyMinedBoundary) {
         this.minimumLogsPerRedoThread = minimumLogsPerRedoThread;
         this.redoLogSizeInBytes = redoLogSizeInBytes;
         this.logsPerRedoThread = minimumLogsPerRedoThread;
+        if (previouslyMinedBoundary != null && !previouslyMinedBoundary.isNull()) {
+            this.previousEffectiveUpperBoundary = previouslyMinedBoundary;
+            this.deriveLogCountFromSeed = true;
+        }
     }
 
     @Override
@@ -52,6 +70,11 @@ public class CappedLogFileSessionSelector implements LogFileSessionSelector {
         final Map<Integer, List<LogFile>> logsByThread = logFilesResult.logFiles().stream()
                 .sorted(Comparator.comparing(LogFile::getSequence))
                 .collect(Collectors.groupingBy(LogFile::getThread));
+
+        if (deriveLogCountFromSeed) {
+            deriveLogCountFromSeed = false;
+            logsPerRedoThread = deriveLogsPerRedoThread(logsByThread);
+        }
 
         Map<Integer, List<LogFile>> budgetLogsByThread = getThreadLogsCappedByBudget(logsByThread, (long) logsPerRedoThread * redoLogSizeInBytes);
 
@@ -122,6 +145,28 @@ public class CappedLogFileSessionSelector implements LogFileSessionSelector {
                 effectiveUpperBoundary);
     }
 
+    private int deriveLogsPerRedoThread(Map<Integer, List<LogFile>> logsByThread) {
+        // The seeded boundary marks ground already mined before the restart; the per-thread byte
+        // span up to it re-expresses the window width the budget had grown to, so the first
+        // session resumes at that width rather than re-climbing from the minimum.
+        long maxThreadBytes = 0;
+        for (List<LogFile> threadLogs : logsByThread.values()) {
+            long threadBytes = 0;
+            for (LogFile logFile : threadLogs) {
+                if (logFile.getFirstScn().compareTo(previousEffectiveUpperBoundary) >= 0) {
+                    break;
+                }
+                threadBytes += logFile.getBytes();
+            }
+            maxThreadBytes = Math.max(maxThreadBytes, threadBytes);
+        }
+
+        final int derived = Math.toIntExact(Math.max(minimumLogsPerRedoThread, (maxThreadBytes + redoLogSizeInBytes - 1) / redoLogSizeInBytes));
+        LOGGER.debug("Derived log count per redo thread {} from previously mined boundary {}.", derived, previousEffectiveUpperBoundary);
+
+        return derived;
+    }
+
     private Map<Integer, List<LogFile>> getThreadLogsCappedByBudget(Map<Integer, List<LogFile>> logsByThread, long thresholdBytes) {
         final Map<Integer, List<LogFile>> logsByThreadCapped = new HashMap<>();
         for (Map.Entry<Integer, List<LogFile>> entry : logsByThread.entrySet()) {
@@ -142,8 +187,8 @@ public class CappedLogFileSessionSelector implements LogFileSessionSelector {
         return logsByThreadCapped;
     }
 
-    private Map<Integer, List<LogFile>> extendPastPreviousBoundary(
-                                                                   Map<Integer, List<LogFile>> logsByThread, Map<Integer, List<LogFile>> budgetCapped) {
+    private Map<Integer, List<LogFile>> extendPastPreviousBoundary(Map<Integer, List<LogFile>> logsByThread,
+                                                                   Map<Integer, List<LogFile>> budgetCapped) {
         final Map<Integer, List<LogFile>> result = new HashMap<>();
         for (Map.Entry<Integer, List<LogFile>> entry : logsByThread.entrySet()) {
             final List<LogFile> threadLogs = entry.getValue();
@@ -155,6 +200,10 @@ public class CappedLogFileSessionSelector implements LogFileSessionSelector {
                 while (nextIndex < threadLogs.size() && isWindowTopAtOrBelow(extended, previousEffectiveUpperBoundary)) {
                     extended.add(threadLogs.get(nextIndex));
                     nextIndex++;
+                }
+                if (nextIndex > budgetLogs.size()) {
+                    LOGGER.debug("Extended thread {} window by {} logs past previously mined boundary {}.",
+                            entry.getKey(), nextIndex - budgetLogs.size(), previousEffectiveUpperBoundary);
                 }
             }
 
