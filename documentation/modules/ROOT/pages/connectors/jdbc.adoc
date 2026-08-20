@@ -469,6 +469,7 @@ Tables that the connector creates automatically from events with key fields are 
 
 If xref:jdbc-property-schema-evolution[`schema.evolution`] is set to `basic`, the connector can create or alter destination tables from event schemas.
 Tables that the connector creates use `PRIMARY KEY (...) DISTRIBUTED BY HASH (...)` clauses based on the record key fields.
+
 StarRocks limits the encoded size of all primary key column values of a PRIMARY KEY table to 128 bytes and does not permit `FLOAT`, `DOUBLE`, or `DECIMAL` key columns.
 Automatic table creation does not expose StarRocks-specific distribution, partitioning, or other table option settings.
 If the target table requires explicit table options, create the destination table in StarRocks before the connector writes to it.
@@ -476,14 +477,22 @@ StarRocks applies `ALTER TABLE` schema changes asynchronously; writes that arriv
 
 StarRocks has no `TIME` data type.
 The connector writes {prodname} `io.debezium.time.Time`, `io.debezium.time.MicroTime`, and `io.debezium.time.NanoTime` logical values, and Kafka Connect `Time` values, to `VARCHAR` columns as `HH:mm:ss.ffffff` formatted strings.
+
 MySQL `TIME` values outside of the 24-hour clock range retain the MySQL `[-]HHH:mm:ss.ffffff` notation, and `io.debezium.time.ZonedTime` values are stored verbatim with their original offset.
+
 `io.debezium.time.ZonedTimestamp` values are normalized to the database time zone and written to `DATETIME` columns; the original offset is not preserved.
-StarRocks `DATETIME` columns do not accept a precision argument; StarRocks retains fractional seconds up to microsecond precision.
+S
+tarRocks `DATETIME` columns do not accept a precision argument; StarRocks retains fractional seconds up to microsecond precision.
+
 Note that the StarRocks JDBC driver reports `DATETIME` columns without fractional second precision, so although values are stored with microsecond precision, reading them through the JDBC driver truncates the fraction unless the value is explicitly cast, for example, to `VARCHAR`.
+
 StarRocks `VARCHAR` lengths are byte lengths rather than character lengths, so the connector multiplies propagated character lengths by four, up to the maximum length of 1048576; `CHAR` columns whose scaled length exceeds the 255 byte `CHAR` maximum are promoted to `VARCHAR`.
+
 `BYTES` values are written to `VARBINARY` columns, which are limited to the same 1048576 byte maximum.
+
 `DECIMAL` columns support a maximum precision of 38; the connector caps larger propagated precisions at 38, and values that exceed the capped precision fail on write.
 When column type propagation is enabled, `BIGINT UNSIGNED` source columns map to `LARGEINT` columns, preserving the full unsigned 64-bit range.
+
 {prodname} `io.debezium.data.Json` logical values and Kafka Connect `MAP` schema values map to the StarRocks `JSON` column type, `ENUM` and `SET` values map to `STRING` columns, and `YEAR` values map to `INT` columns.
 The StarRocks dialect does not support geospatial or vector logical types, and Kafka Connect `ARRAY` and `STRUCT` schema types are not mapped to the StarRocks `ARRAY` and `STRUCT` column types.
 
@@ -842,7 +851,7 @@ The following table maps {prodname} logical types to dialect-specific column typ
 |`time`
 |`interval`
 
-|`interval year to month`  
+|`interval year to month`
 
 `interval day to second`
 |`varchar(128)`
@@ -925,11 +934,14 @@ The following table maps {prodname} logical types to dialect-specific column typ
 ^1^ When a logical type maps to more than one type, the {prodname} JDBC connector defaults to the first more generalized data type.
 If the connector consumes change events from topics that are populated by a {prodname} source connector, the JDBC connector can use stricter, more concrete data types when it sends data to some targets.
 To enable the use of these stricter data type conversions, set the `column.propagate.source.type` or `datatype.propagate.source.type` properties in the source connector configuration.
+
 When these properties are set in the source connector, the events that it generates include additional column metadata that the JDBC connector then uses to construct columns with a stricter concrete data type.
 In the preceding table, where a second entry, marked with an asterisk, appears in a table cell, it represents the stricter data type.
 ifdef::community[]
+
 For SingleStore targets, {prodname} uses MySQL/MariaDB-compatible mappings for most dialect-specific logical types.
 SingleStore maps {prodname} `io.debezium.data.Json` logical values to `json`.
+
 Kafka Connect `MAP` schema values are also written to SingleStore `json` columns.
 {prodname} `io.debezium.data.geometry.Geometry` and `io.debezium.data.geometry.Geography` logical values are written to SingleStore `geography` columns, and `io.debezium.data.geometry.Point` logical values are written to SingleStore `geographypoint` columns.
 
@@ -1377,7 +1389,7 @@ To use an ImageStream, an ImageStream resource must be deployed to the cluster.
 For more information about specifying the `build.output` in the KafkaConnect configuration, see the link:{LinkStreamsAPIReference}#type-Build-reference[Build schema reference] in the {NameStreamsAPIReference}.
 
 //     Future changes to the Streams content or structure could break this link in future releases.
-//     Consider removing it. 
+//     Consider removing it.
 
 `spec.plugins`::
 Lists all of the connectors that you want to include in the Kafka Connect image.
@@ -1450,7 +1462,7 @@ The following list describes select fields in the preceding `KafkaConnector` con
 The name of the Kafka connector instance that {StreamsName} creates in Kafka Connect.
 
 `metadata.labels: strimzi.io/cluster`::
-Identifies the KafkaConnect cluster resource that hosts the connector. 
+Identifies the KafkaConnect cluster resource that hosts the connector.
 {StreamsName} uses this label to associate the KafkaConnector with a specific KafkaConnect deployment.
 
 `spec.class`::
