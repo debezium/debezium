@@ -1143,7 +1143,7 @@ When {prodname} Oracle connector is configured to capture changes from a downstr
 
 ==== Important considerations when the connector uses a downstream mining database
 
-To use the connector with a downstream mining database, you must first register transaction logs with that database.
+To ensure reliable log mining and schema change detection, ensure that the mining database can access dictionary and redo log files on the primary, per the following requirements:
 
 When Oracle Remove File Server (RFS) replicates changes, the replication should happen automatically when using a real-time downstream mining configuration.
 {prodname} does not perform any log registration.
