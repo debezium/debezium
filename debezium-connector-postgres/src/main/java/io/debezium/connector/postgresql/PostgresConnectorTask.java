@@ -234,6 +234,13 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                             () -> new PostgresConnection(connectorConfig.getJdbcConfig(), PostgresConnection.CONNECTION_GENERAL),
                             exception -> {
                                 String sqlErrorId = exception.getSQLState();
+                                if (sqlErrorId == null) {
+                                    // The driver reported no SQL state, which typically indicates a
+                                    // connection-level failure rather than an error response from the
+                                    // server. There is nothing to classify; leave it to the caller to
+                                    // log the exception.
+                                    return;
+                                }
                                 switch (sqlErrorId) {
                                     case "57P01":
                                         // Postgres error admin_shutdown, see https://www.postgresql.org/docs/12/errcodes-appendix.html
