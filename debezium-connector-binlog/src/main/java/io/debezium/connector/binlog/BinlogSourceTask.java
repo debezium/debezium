@@ -82,6 +82,11 @@ public abstract class BinlogSourceTask<P extends Partition, O extends OffsetCont
         @Override
         public void onError(SQLException exception) throws RuntimeException {
             final String sqlErrorId = exception.getSQLState();
+            if (sqlErrorId == null) {
+                // The driver reported no SQL state, which typically indicates a connection-level
+                // failure, returning to the caller to log the exception.
+                return;
+            }
             switch (sqlErrorId) {
                 case "42000":
                     // error_er_dbaccess_denied_error, see https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_dbaccess_denied_error
