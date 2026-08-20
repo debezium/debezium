@@ -12,6 +12,9 @@ pipelineJob('release/release-orchestrator') {
     displayName('Debezium Release Orchestrator')
     description('Orchestrator pipeline that executes release pipelines')
 
+    // Moved to GH actions
+    disabled()
+
     properties {
         githubProjectUrl('https://github.com/debezium/debezium')
     }
