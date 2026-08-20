@@ -1310,6 +1310,12 @@ If multiple connectors share the same intermediate Kafka cluster, specify a valu
 |Specifies where the connector begins processing when it does not detect an initial offset in the intermediate Kafka cluster.
 Specify one of the following options: `earliest` (start from beginning), `latest` (start from end).
 
+|[[cockroachdb-property-kafka-consumer-offset-commit-enabled]]<<cockroachdb-property-kafka-consumer-offset-commit-enabled, `+cockroachdb.changefeed.kafka.consumer.offset.commit.enabled+`>>
+|`false`
+|Specifies whether the connector also commits its consumed positions to the Kafka consumer group after each processed batch, so that external lag tooling such as `kafka-consumer-groups` reflects the connector's progress on the intermediate topics.
+By default, the connector never commits group offsets; it stores its positions in the {prodname} offsets and restores them with explicit seeks, so consumer group views show no committed offsets for the intermediate topics.
+The connector always resumes from the positions in the {prodname} offsets, never from the group, so enabling this option has no effect on delivery semantics.
+
 |[[cockroachdb-property-kafka-consumer-override]]<<cockroachdb-property-kafka-consumer-override, `+cockroachdb.changefeed.kafka.consumer.override.*+`>>
 |No default
 |Properties with this prefix are passed as-is to the connector's changefeed consumer (a standard Kafka client), with the prefix stripped.
