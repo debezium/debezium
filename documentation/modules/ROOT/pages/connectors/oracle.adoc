@@ -1021,6 +1021,8 @@ However, before you choose a log mining strategy, it's important to consider the
 
 ==== Writing the data dictionary to redo logs
 
+The `redo_log_catalog` mining strategy provides reliable schema change tracking at the cost of higher redo log volume and archive log consumption.
+
 [WARNING]
 ====
 The `redo_log_catalog` mining strategy is deprecated, and is scheduled for removal in a future {prodname} release.
@@ -1139,7 +1141,9 @@ When {prodname} Oracle connector is configured to capture changes from a downstr
 3. The connector connects to the downstream mining database to read the transaction logs.
 4. Changes are captured with minimal impact to the primary database performance.
 
-==== Important considerations
+==== Important considerations when the connector uses a downstream mining database
+
+To use the connector with a downstream mining database, you must first register transaction logs with that database.
 
 * All transaction logs must be registered with the Oracle downstream database. When Oracle RFS replicates changes, this should happen automatically when using a real-time downstream mining configuration. {prodname} does not perform any log registration.
 * When a log fails to register and a gap in log sequences occurs, the {prodname} connector will pause the capture. A database administrator will be required to review the registered logs and register any missing logs to close the gap. In an ideal deployment, this should only be necessary during the initial set up and synchronization with the primary.
@@ -1192,6 +1196,8 @@ The connector drops change events that are discarded by a rollback.
 You can configure the buffering mechanism that the connector uses by setting the property xref:oracle-property-log-mining-buffer-type[`log.mining.buffer.type`].
 
 ==== Heap
+
+The heap buffer stores in-progress transaction data in the JVM process memory, making it suitable for environments where transactions are short-lived and transaction volume is moderate.
 The default buffer type is configured using `memory`.
 Under the default `memory` setting, the connector uses the heap memory of the JVM process to allocate and manage buffered event records.
 If you use the `memory` buffer setting, be sure that the amount of memory that you allocate to the Java process can accommodate long-running and large transactions in your environment.
@@ -2624,6 +2630,9 @@ The following table describes how the connector maps JSON data types.
 
 [id="oracle-xml-types"]
 === XML types
+
+The {prodname} Oracle connector supports the `XMLTYPE` data type and maps it as a string value.
+
 ifdef::community[]
 [NOTE]
 ====
@@ -2860,6 +2869,8 @@ To enable the connector to capture a table with a name that matches any of the p
 // ModuleID: preparing-oracle-databases-for-use-with-debezium
 // Title: Preparing Oracle databases for use with {prodname}
 === Preparing the database
+
+Before you deploy the {prodname} Oracle connector, you must configure the Oracle database to run in archive log mode and enable supplemental logging.
 
 .Configuration needed for Oracle LogMiner
 [source,indent=0]
@@ -3865,6 +3876,8 @@ You can use either of the following methods to establish mTLS connections betwee
 [[using-mtls-secure-connections-java-key-trust-stores]]
 ==== Java key/trust stores
 
+You can configure the {prodname} Oracle connector to use Java key and trust stores when establishing a mutually authenticated TLS connection to the database.
+
 .Prerequisites
 * Verify connector can access the configured key and trust store files.
 * Verify that the database TNS (Transparent Network Substrate) listener supports TCPS secure connections.
@@ -3899,6 +3912,8 @@ Unlike the `database.host` property, the `database.url` property permits you to 
 // Title: Using Oracle wallet to configure the connector to use mTLS
 [[using-mtls-secure-connections-oracle-wallet]]
 ==== Oracle Wallet
+
+You can configure the {prodname} Oracle connector to use Oracle Wallet when establishing a mutually authenticated TLS connection to the database.
 
 .Prerequisites
 * Verify with your database administrators that Oracle Wallet is configured on the Oracle database server.
@@ -3958,7 +3973,8 @@ Information about the properties is organized as follows:
 
 [id="required-debezium-{context}-connector-configuration-properties"]
 === Required {prodname} Oracle connector configuration properties
-The following configuration properties are _required_ unless a default value is available.
+
+The following configuration properties are required to configure the {prodname} Oracle connector unless a default value is specified.
 
 [cols="30%a,25%a,45%a"]
 |===
@@ -5739,14 +5755,15 @@ After the connector's commit SCN advances beyond the DDL change, to prevent unpa
 [[oracle-openlogreplicator-support]]
 == OpenLogReplicator support
 
+As an alternative to LogMiner, the {prodname} Oracle connector can use OpenLogReplicator, a free, open-source, third-party application to read changes directly from the Oracle redo and archive logs with low database impact.
+
 [NOTE]
 ====
 The OpenLogReplicator ingestion adapter is currently in incubating state, i.e. exact semantics, configuration options etc. may change in future revisions, based on the feedback we receive.
 Please let us know if you encounter any problems.
 ====
 
-The {prodname} Oracle connector by default ingests changes using native Oracle LogMiner.
-However, the connector can be toggled to use OpenLogReplicator, an open-source and free third-party application that reads Oracle changes directly from the redo and archive logs with low impact on the database.
+By default, the {prodname} Oracle connector uses the native Oracle LogMiner to ingest changes.
 To configure the connector to use OpenLogReplicator, you must apply specific database and connector configurations that differ from those that you use with LogMiner.
 
 .Prerequisites
@@ -6126,6 +6143,8 @@ Installing GoldenGate is not required.
 // Title: Preparing Oracle XStream databases for use with {prodname}
 === Preparing the Database
 
+Before you configure the {prodname} Oracle connector to use XStream, you must prepare the Oracle database by enabling archive log mode and supplemental logging.
+
 .Configuration needed for Oracle XStream
 [source,indent=0]
 ----
@@ -6168,6 +6187,8 @@ The following examples provide information about how to create user configuratio
 [[oracle-create-users-xstream]]
 ==== Creating an XStream Administrator user
 
+The XStream administrator user requires specific tablespace and privilege grants to authorize the {prodname} Oracle connector to capture change events using XStream.
+
 [source,indent=0]
 ----
 sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
@@ -6205,6 +6226,8 @@ sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
 // ModuleID: creating-an-xstream-user-for-the-debezium-oracle-connector
 // Title: Creating an XStream user for the {prodname} Oracle connector
 ==== Creating the connector's XStream user
+
+The connector's XStream user requires a dedicated tablespace and a set of privileges that grant access to the database views and objects needed for change data capture.
 
 [source,indent=0]
 ----
@@ -6402,6 +6425,8 @@ endif::community[]
 // Title: Oracle connector frequently asked questions
 [[oracle-frequently-asked-questions]]
 == Frequently Asked Questions
+
+Find answers to common questions about {prodname} Oracle connector version support, LogMiner behavior, offset management, and error recovery.
 
 *Is Oracle 11g supported?*::
 Oracle 11g is not supported; however, we do aim to be backward compatible with Oracle 11g on a best-effort basis.
