@@ -164,7 +164,8 @@ The binlog metadata mode has the following limitations:
 * The source server must support `binlog_row_metadata` and run with `binlog_row_metadata=FULL`.
 The connector fails at startup if full row metadata is not enabled.
 * Integer display width is not available, so `TINYINT(1)` cannot be distinguished from `TINYINT`.
-The default mapping (`INT16`) is identical in both modes, but the optional `TinyIntOneToBooleanConverter` relies on the column length; set its `length.checker` option to `false` to convert all `TINYINT` columns instead.
+The default mapping (`INT8`) is identical in both modes, but the optional `TinyIntOneToBooleanConverter` relies on the column length.
+To use the converter in binlog metadata mode, set its `length.checker` option to `false` and configure an explicit selector for the columns to convert.
 * Column default values are not part of the reconstructed schema, so the Kafka field schemas do not declare them.
 Row values are unaffected, because every change event carries the actual column values.
 As a consequence, a `NOT NULL` column with a `DEFAULT` value surfaces as a required field without a default: when such a column is added to a captured table, the Avro converter registers a schema that a schema registry rejects under the `BACKWARD` subject compatibility, and sink connectors that create or evolve tables do not receive the column default.
