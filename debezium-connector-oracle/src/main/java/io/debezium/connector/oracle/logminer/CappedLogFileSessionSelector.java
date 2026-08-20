@@ -97,6 +97,10 @@ public class CappedLogFileSessionSelector implements LogFileSessionSelector {
                 logsPerRedoThread = minimumLogsPerRedoThread;
                 LOGGER.debug("All threads reading online redo, resetting log count per redo thread to {}.", logsPerRedoThread);
             }
+            // Growth only widens a window capped below the online redo logs; after an online pass
+            // there is no cap to widen, so clear the baseline to avoid growing the log count on
+            // the next iteration only to reset it within the same call.
+            previousBudgetLogsByThread = null;
             recordEffectiveUpperBoundary(upperBoundary);
             return new SessionLogSelection(
                     logFilesResult.logFiles().stream()

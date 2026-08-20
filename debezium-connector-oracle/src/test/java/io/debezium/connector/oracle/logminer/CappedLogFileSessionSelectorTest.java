@@ -22,6 +22,9 @@ import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.logminer.LogFileCollector.LogFilesResult;
 import io.debezium.connector.oracle.logminer.LogFileSessionSelector.SessionLogSelection;
 import io.debezium.doc.FixFor;
+import io.debezium.junit.logging.LogInterceptor;
+
+import ch.qos.logback.classic.Level;
 
 /**
  * Unit tests for {@link CappedLogFileSessionSelector}.
@@ -629,6 +632,64 @@ public class CappedLogFileSessionSelectorTest {
         assertThat(third.logFiles()).extracting(LogFile::getFileName)
                 .containsExactly("arc1.log", "arc2.log", "arc3.log", "arc4.log", "redo1.log");
         assertThat(third.effectiveUpperBounds()).isEqualTo(UPPER_BOUNDS);
+    }
+
+    @Test
+    @FixFor("dbz#2326")
+    void testSteadyOnlineModeDoesNotOscillateGrowthAndReset() {
+        // In steady all-online mode the budget set is identical between iterations, which grew the
+        // log count only for the all-online branch to reset it within the same call - a grow/reset
+        // DEBUG pair and a redundant budget recomputation on every iteration. After an online pass
+        // the growth baseline is cleared, so neither message should be emitted.
+        final LogInterceptor interceptor = new LogInterceptor(CappedLogFileSessionSelector.class);
+        interceptor.setLoggerLevel(CappedLogFileSessionSelector.class, Level.DEBUG);
+
+        List<LogFile> logs = List.of(
+                createArchiveLog("arc1.log", 100, 200, 1, 1, ONE_GB),
+                createRedoLog("redo1.log", 200, 2, 1));
+        LogFilesResult result = new LogFilesResult(logs, singleThreadOpen());
+
+        for (int i = 0; i < 3; i++) {
+            SessionLogSelection selection = selector.selectLogsForSession(result, UPPER_BOUNDS);
+            assertThat(selection.logFiles()).containsExactlyInAnyOrderElementsOf(logs);
+            assertThat(selection.effectiveUpperBounds()).isEqualTo(UPPER_BOUNDS);
+        }
+
+        assertThat(interceptor.containsMessage("growing log count")).isFalse();
+        assertThat(interceptor.containsMessage("resetting log count")).isFalse();
+    }
+
+    @Test
+    @FixFor("dbz#2326")
+    void testGrowthReengagesAfterLeavingOnlineMode() {
+        // An all-online pass clears the growth baseline; the first capped iteration afterward
+        // establishes a new baseline, and growth engages from the second identical capped set.
+        List<LogFile> onlineLogs = List.of(
+                createArchiveLog("arc1.log", 100, 200, 1, 1, ONE_GB),
+                createRedoLog("redo1.log", 200, 2, 1));
+        selector.selectLogsForSession(new LogFilesResult(onlineLogs, singleThreadOpen()), Scn.valueOf(250));
+
+        // A burst of switches leaves a capped backlog pinned at arc1
+        List<LogFile> cappedLogs = List.of(
+                createArchiveLog("arc1.log", 100, 200, 1, 1, ONE_GB),
+                createArchiveLog("arc2.log", 200, 300, 2, 1, ONE_GB),
+                createArchiveLog("arc3.log", 300, 400, 3, 1, ONE_GB),
+                createArchiveLog("arc4.log", 400, 500, 4, 1, ONE_GB),
+                createRedoLog("redo1.log", 500, 5, 1));
+        LogFilesResult cappedResult = new LogFilesResult(cappedLogs, singleThreadOpen());
+
+        // First capped call: budget=2 => arc1+arc2, no growth (baseline was cleared by the
+        // online pass); the window is already past the previously mined boundary of 250
+        SessionLogSelection first = selector.selectLogsForSession(cappedResult, UPPER_BOUNDS);
+        assertThat(first.logFiles()).extracting(LogFile::getFileName)
+                .containsExactly("arc1.log", "arc2.log");
+        assertThat(first.effectiveUpperBounds()).isEqualTo(Scn.valueOf(300));
+
+        // Second capped call with the same set: growth fires => arc1+arc2+arc3
+        SessionLogSelection second = selector.selectLogsForSession(cappedResult, UPPER_BOUNDS);
+        assertThat(second.logFiles()).extracting(LogFile::getFileName)
+                .containsExactly("arc1.log", "arc2.log", "arc3.log");
+        assertThat(second.effectiveUpperBounds()).isEqualTo(Scn.valueOf(400));
     }
 
     private static LogFile createArchiveLog(String name, long startScn, long endScn, int seq, int thread, long bytes) {
