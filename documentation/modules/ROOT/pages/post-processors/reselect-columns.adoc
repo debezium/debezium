@@ -149,6 +149,13 @@ Storage is permanent by default: no time-to-live is applied, and the database di
 If you configure a positive `reselect.cache.ttl.ms`, expired entries are treated as cache misses and removed when they are read, and RocksDB additionally reclaims expired entries from disk during compaction.
 A time-to-live is recommended for schemas that change frequently, because entries written under a previous key schema are never overwritten and would otherwise remain on disk indefinitely.
 
+[NOTE]
+====
+The time-to-live setting determines how the RocksDB database is opened, and the two modes store entries on disk in different formats.
+If you change `reselect.cache.ttl.ms` between `0` and a positive value across a connector restart, entries that were written before the change can become unreadable in the new mode.
+Unreadable entries are discarded and treated as cache misses, so the affected columns are transparently reselected from the database and re-cached; no manual cleanup of the storage directory is required.
+====
+
 [IMPORTANT]
 ====
 RocksDB takes an exclusive lock on its storage directory.

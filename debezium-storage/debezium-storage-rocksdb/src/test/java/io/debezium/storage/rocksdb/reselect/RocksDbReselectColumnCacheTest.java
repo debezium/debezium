@@ -91,6 +91,34 @@ public class RocksDbReselectColumnCacheTest {
     }
 
     @Test
+    public void enablingTtlAcrossReopenDiscardsOldEntriesAsMisses() {
+        // Without a TTL the database is opened plain; with a TTL it is opened as a TtlDB, whose on-disk
+        // value format differs. Entries written in the other mode must degrade to misses, never fail.
+        cache = open(config().build());
+        cache.forRow(intKey(1)).put("data", Schema.OPTIONAL_STRING_SCHEMA, "AAA");
+        cache.close();
+
+        cache = open(config().with("reselect.cache.ttl.ms", 60_000).build());
+        assertThat(cache.forRow(intKey(1)).get("data")).isEmpty();
+
+        // The cache remains fully usable in the new mode.
+        cache.forRow(intKey(1)).put("data", Schema.OPTIONAL_STRING_SCHEMA, "BBB");
+        assertThat(cache.forRow(intKey(1)).get("data")).map(Hit::value).contains("BBB");
+    }
+
+    @Test
+    public void disablingTtlAcrossReopenRemainsReadable() {
+        cache = open(config().with("reselect.cache.ttl.ms", 60_000).build());
+        cache.forRow(intKey(1)).put("data", Schema.OPTIONAL_STRING_SCHEMA, "AAA");
+        cache.close();
+
+        // TtlDB-written values carry a trailing timestamp the envelope decoder ignores, so entries stay
+        // readable when the TTL is later disabled.
+        cache = open(config().build());
+        assertThat(cache.forRow(intKey(1)).get("data")).map(Hit::value).contains("AAA");
+    }
+
+    @Test
     public void cleanupOnCloseRemovesDatabaseDirectory() {
         final Path dbDir = tempDir.resolve("reselect-cache");
         cache = open(config().with(RocksDbReselectColumnCache.CLEANUP, true).build());
