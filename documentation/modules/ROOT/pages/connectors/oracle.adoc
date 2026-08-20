@@ -1145,8 +1145,11 @@ When {prodname} Oracle connector is configured to capture changes from a downstr
 
 To use the connector with a downstream mining database, you must first register transaction logs with that database.
 
-* All transaction logs must be registered with the Oracle downstream database. When Oracle RFS replicates changes, this should happen automatically when using a real-time downstream mining configuration. {prodname} does not perform any log registration.
-* When a log fails to register and a gap in log sequences occurs, the {prodname} connector will pause the capture. A database administrator will be required to review the registered logs and register any missing logs to close the gap. In an ideal deployment, this should only be necessary during the initial set up and synchronization with the primary.
+When Oracle Remove File Server (RFS) replicates changes, the replication should happen automatically when using a real-time downstream mining configuration. 
+{prodname} does not perform any log registration.
+
+If a log fails to register and a gap in log sequences occurs, the {prodname} connector pauses capture. A database administrator must review the registered logs and register any missing logs to close the gap. 
+Typically, this should be necessary only during the initial set up and synchronization with the primary.
 
 endif::community[]
 
@@ -1195,7 +1198,7 @@ The connector drops change events that are discarded by a rollback.
 
 You can configure the buffering mechanism that the connector uses by setting the property xref:oracle-property-log-mining-buffer-type[`log.mining.buffer.type`].
 
-==== Heap
+==== Heap buffering
 
 The heap buffer stores in-progress transaction data in the JVM process memory, making it suitable for environments where transactions are short-lived and transaction volume is moderate.
 The default buffer type is configured using `memory`.
@@ -5755,7 +5758,8 @@ After the connector's commit SCN advances beyond the DDL change, to prevent unpa
 [[oracle-openlogreplicator-support]]
 == OpenLogReplicator support
 
-As an alternative to LogMiner, the {prodname} Oracle connector can use OpenLogReplicator, a free, open-source, third-party application to read changes directly from the Oracle redo and archive logs with low database impact.
+By default, the {prodname} Oracle connector uses the native Oracle LogMiner to ingest changes.
+As an alternative to LogMiner, you can configure the connector to use OpenLogReplicator, a free, open-source, third-party application to read changes directly from the Oracle redo and archive logs with low database impact.
 
 [NOTE]
 ====
@@ -5763,13 +5767,13 @@ The OpenLogReplicator ingestion adapter is currently in incubating state, i.e. e
 Please let us know if you encounter any problems.
 ====
 
-By default, the {prodname} Oracle connector uses the native Oracle LogMiner to ingest changes.
 To configure the connector to use OpenLogReplicator, you must apply specific database and connector configurations that differ from those that you use with LogMiner.
 
 .Prerequisites
 
 * Download and compile OpenLogReplicator for your database environment.
-* OpenLogReplicator must be installed with direct access to the archive and redo log files. This does not necessarily require installation on the physical database server if the archive and redo logs can be accessed via some shared filesystem.
+* OpenLogReplicator is installed with direct access to the archive and redo log files. 
+This does not necessarily require installation on the physical database server if the archive and redo logs can be accessed via some shared filesystem.
 
 === How OpenLogReplicator works
 
