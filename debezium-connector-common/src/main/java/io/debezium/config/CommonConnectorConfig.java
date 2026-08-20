@@ -991,6 +991,17 @@ public abstract class CommonConnectorConfig {
             .withValidation(Field::isPositiveInteger)
             .withDescription("Interval for looking for new signals in registered channels, given in milliseconds. Defaults to 5 seconds.");
 
+    public static final Field SIGNAL_PROCESSOR_SEMAPHORE_WAIT_MS = Field.createInternal("signal.processor.semaphore.wait.ms")
+            .withDisplayName("Signal processor semaphore wait time (ms)")
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED))
+            .withType(Type.LONG)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(10000L)
+            .withValidation(Field::isPositiveInteger)
+            .withDescription("The maximum time in milliseconds the signal processor waits to acquire its internal lock before "
+                    + "skipping a signal processing cycle. Defaults to 10 seconds.");
+
     public static final Field SIGNAL_EMIT_FAILURE_MAX_RETRIES = Field.create("signal.emit.failure.max.retries")
             .withDisplayName("Signal emit window event failure maximum retries")
             .withType(Type.INT)
@@ -1577,7 +1588,8 @@ public abstract class CommonConnectorConfig {
                     OPEN_LINEAGE_INTEGRATION_JOB_NAMESPACE, OPEN_LINEAGE_INTEGRATION_JOB_DESCRIPTION, OPEN_LINEAGE_INTEGRATION_JOB_TAGS,
                     OPEN_LINEAGE_INTEGRATION_JOB_OWNERS, OPEN_LINEAGE_INTEGRATION_DATASET_KAFKA_BOOTSTRAP_SERVER, EXTENDED_HEADERS_ENABLED, GUARDRAIL_COLLECTIONS_MAX,
                     GUARDRAIL_COLLECTIONS_LIMIT_ACTION, CUSTOM_SANITIZE_PATTERN, SIGNAL_EMIT_FAILURE_MAX_RETRIES, SIGNAL_EMIT_FAILURE_BACKOFF_INTERVAL_MS,
-                    STATISTICS_METRICS_ENABLED, OFFSET_ACTIVITY_MONITOR_INTERVAL_MS, CUSTOM_METRIC_TAGS, SIGNAL_SYNCHRONOUS_BATCH_SIZE)
+                    STATISTICS_METRICS_ENABLED, OFFSET_ACTIVITY_MONITOR_INTERVAL_MS, CUSTOM_METRIC_TAGS, SIGNAL_SYNCHRONOUS_BATCH_SIZE,
+                    SIGNAL_PROCESSOR_SEMAPHORE_WAIT_MS)
             .group(Field.Group.ADVANCED_HEARTBEAT, Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX, SIGNAL_POLL_INTERVAL_MS)
             .create();
 
@@ -1616,6 +1628,7 @@ public abstract class CommonConnectorConfig {
     private final List<TableId> signalingDataCollectionIds;
 
     private final Duration signalPollInterval;
+    private final Duration signalProcessorSemaphoreWait;
     private final Duration signalEmitFailureBackoff;
     private final int signalEmitFailureMaxRetries;
 
@@ -1673,6 +1686,7 @@ public abstract class CommonConnectorConfig {
         this.binaryHandlingMode = BinaryHandlingMode.parse(config.getString(BINARY_HANDLING_MODE));
         this.signalingDataCollections = getSignalingDataCollections(config);
         this.signalPollInterval = Duration.ofMillis(config.getLong(SIGNAL_POLL_INTERVAL_MS));
+        this.signalProcessorSemaphoreWait = Duration.ofMillis(config.getLong(SIGNAL_PROCESSOR_SEMAPHORE_WAIT_MS));
         this.signalEmitFailureMaxRetries = config.getInteger(SIGNAL_EMIT_FAILURE_MAX_RETRIES);
         this.signalEmitFailureBackoff = Duration.ofMillis(config.getLong(SIGNAL_EMIT_FAILURE_BACKOFF_INTERVAL_MS));
         this.signalEnabledChannels = getSignalEnabledChannels(config);
@@ -2337,6 +2351,10 @@ public abstract class CommonConnectorConfig {
 
     public Duration getSignalPollInterval() {
         return signalPollInterval;
+    }
+
+    public Duration getSignalProcessorSemaphoreWait() {
+        return signalProcessorSemaphoreWait;
     }
 
     public Duration getSignalEmitFailureBackoff() {
