@@ -18,6 +18,7 @@ import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.dialect.DatabaseDialectProvider;
 import io.debezium.connector.jdbc.dialect.postgres.PostgresDatabaseDialect;
+import io.debezium.connector.jdbc.relational.TableDescriptor;
 
 /**
  * A {@link DatabaseDialect} implementation for CockroachDB.
@@ -50,6 +51,13 @@ public class CockroachDBDatabaseDialect extends PostgresDatabaseDialect {
 
     protected CockroachDBDatabaseDialect(JdbcSinkConnectorConfig config, SessionFactory sessionFactory) {
         super(config, sessionFactory);
+    }
+
+    @Override
+    protected String getOverrideClause(TableDescriptor table) {
+        // CockroachDB rejects an explicit value for a GENERATED ALWAYS column as PostgreSQL does, but
+        // does not parse OVERRIDING SYSTEM VALUE (SQLSTATE 42601), so there is nothing to emit.
+        return "";
     }
 
     /**
