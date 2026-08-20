@@ -38,12 +38,16 @@ public class AbstractSerializingReselectColumnCacheTest {
 
     /**
      * A minimal backend over a concurrent map keyed by wrapped bytes, with a controllable clock so TTL
-     * behavior is exercised deterministically.
+     * behavior is exercised deterministically, and per-operation failure switches so storage-failure
+     * degradation is exercised as well.
      */
     private static class InMemoryByteStoreCache extends AbstractSerializingReselectColumnCache {
 
         private final Map<ByteBuffer, byte[]> store = new ConcurrentHashMap<>();
         private long clockMs;
+        private boolean failGets;
+        private boolean failPuts;
+        private boolean failRemoves;
 
         @Override
         protected void configureStorage(Configuration config) {
@@ -51,16 +55,25 @@ public class AbstractSerializingReselectColumnCacheTest {
 
         @Override
         protected byte[] getFromStorage(byte[] key) {
+            if (failGets) {
+                throw new RuntimeException("simulated storage read failure");
+            }
             return store.get(ByteBuffer.wrap(key));
         }
 
         @Override
         protected void putToStorage(byte[] key, byte[] value) {
+            if (failPuts) {
+                throw new RuntimeException("simulated storage write failure");
+            }
             store.put(ByteBuffer.wrap(key), value);
         }
 
         @Override
         protected void removeFromStorage(byte[] key) {
+            if (failRemoves) {
+                throw new RuntimeException("simulated storage removal failure");
+            }
             store.remove(ByteBuffer.wrap(key));
         }
 
@@ -207,5 +220,49 @@ public class AbstractSerializingReselectColumnCacheTest {
 
         assertThat(row(1).get("data")).isEmpty();
         assertThat(cache.store).isEmpty();
+    }
+
+    @Test
+    public void storageReadFailureDegradesToMiss() {
+        // The cache is an optimization: a failing backend must surface as a miss, never as an exception
+        // that would fail event processing, so the column falls back to re-selection.
+        row(1).put("data", Schema.OPTIONAL_STRING_SCHEMA, "AAA");
+        cache.failGets = true;
+
+        assertThat(row(1).get("data")).isEmpty();
+
+        // The entry is untouched and served again once the backend recovers.
+        cache.failGets = false;
+        assertThat(row(1).get("data")).map(Hit::value).contains("AAA");
+    }
+
+    @Test
+    public void storageWriteFailureIsSkippedNotFatal() {
+        cache.failPuts = true;
+        row(1).put("data", Schema.OPTIONAL_STRING_SCHEMA, "AAA");
+
+        cache.failPuts = false;
+        assertThat(row(1).get("data")).isEmpty();
+        assertThat(cache.store).isEmpty();
+    }
+
+    @Test
+    public void storageRemovalFailureDuringUndecodableReadStillYieldsMiss() {
+        row(1).put("data", Schema.OPTIONAL_STRING_SCHEMA, "AAA");
+        cache.store.replaceAll((k, v) -> new byte[]{ 99 });
+        cache.failRemoves = true;
+
+        assertThat(row(1).get("data")).isEmpty();
+    }
+
+    @Test
+    public void storageRemovalFailureDuringInvalidateIsNotFatal() {
+        row(1).put("data", Schema.OPTIONAL_STRING_SCHEMA, "AAA");
+        cache.failRemoves = true;
+
+        row(1).invalidate("data");
+
+        cache.failRemoves = false;
+        assertThat(row(1).get("data")).map(Hit::value).contains("AAA");
     }
 }
