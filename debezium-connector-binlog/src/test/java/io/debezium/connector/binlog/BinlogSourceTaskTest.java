@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.binlog.BinlogSourceTask.BinlogHeartbeatErrorHandler;
+import io.debezium.doc.FixFor;
 
 /**
  * Unit tests for {@link BinlogSourceTask.BinlogHeartbeatErrorHandler}.
@@ -23,6 +24,7 @@ public class BinlogSourceTaskTest {
     private final BinlogHeartbeatErrorHandler errorHandler = new BinlogHeartbeatErrorHandler();
 
     @Test
+    @FixFor("dbz#2464")
     void shouldNotFailWhenSqlStateIsNotReported() {
         // A driver is not required to populate the SQL state; a connection-level failure
         // commonly leaves it unset. The handler must not dereference it unconditionally.
@@ -32,6 +34,7 @@ public class BinlogSourceTaskTest {
     }
 
     @Test
+    @FixFor("dbz#2464")
     void shouldThrowWhenDatabaseAccessIsDenied() {
         final SQLException exception = new SQLException("Access denied", "42000");
 
@@ -42,6 +45,7 @@ public class BinlogSourceTaskTest {
     }
 
     @Test
+    @FixFor("dbz#2464")
     void shouldThrowWhenDatabaseIsNotSelected() {
         final SQLException exception = new SQLException("No database selected", "3D000");
 
@@ -52,6 +56,7 @@ public class BinlogSourceTaskTest {
     }
 
     @Test
+    @FixFor("dbz#2464")
     void shouldTolerateUnrecognizedSqlState() {
         // Anything that is not a permanent configuration fault is left for the caller to log,
         // so that a transient failure does not terminate the task.
