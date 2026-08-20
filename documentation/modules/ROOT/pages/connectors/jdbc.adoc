@@ -27,6 +27,7 @@ It provides support for the following database dialects:
 
 ifdef::community[]
 * CockroachDB
+endif::community[]
 * Db2
 * MySQL
 * Oracle
