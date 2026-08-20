@@ -1,4 +1,4 @@
-// Category: debezium-using
+brolda// Category: debezium-using
 // Type: assembly
 [id="debezium-connector-for-mongodb"]
 = {prodname} connector for MongoDB
@@ -121,7 +121,7 @@ As a result, a secondary node can emit an event only after it receives confirmat
 [[how-the-mongodb-connector-works]]
 == How the MongoDB connector works
 
-An overview of the MongoDB topologies that the connector supports is useful for planning your application.
+To optimally configure and run a {prodname} MongoDB connector, it is helpful to understand the MongoDB topologies that the connector supports, how the connector uses logical names and performs snapshots and incremental snapshots, and how it streams change events to Kafka topics.
 
 ifdef::product[]
 The following topics provide details about how the {prodname} MongoDB connector works:
@@ -144,7 +144,8 @@ endif::product[]
 [[supported-mongodb-topologies]]
 === Supported MongoDB topologies
 
-The MongoDB connector supports the following MongoDB topologies:
+The {prodname} MongoDB connector can capture changes from a MongoDB replica set or a MongoDB sharded cluster.
+Understanding the differences between these deployment types helps you configure the connector's connection string and capture scope correctly.
 
 [[mongodb-replicaset]]
 MongoDB replica set::
@@ -772,6 +773,9 @@ The value portion of a change event for a change to this document is described f
 [id="mongodb-create-events"]
 === _create_ events
 
+The connector emits a `create` event whenever a new document is inserted into a collection.
+The event payload contains the full state of the new document in the `after` field, along with source metadata that identifies the replica set, database, and collection.
+
 The following example shows the value portion of a change event that the connector generates for an operation that creates data in the `customers` collection:
 
 [source,json,options="nowrap",indent=0,subs="+attributes"]
@@ -994,6 +998,9 @@ The time is based on the system clock in the JVM running the Kafka Connect task.
 [id="mongodb-update-events"]
 === _update_ events
 
+The connector emits an `update` event whenever an existing document in a collection is modified.
+The content of the event payload varies based on the value of the `capture.mode` connector property, which controls whether the full document state and pre-image are included.
+
 ==== Change streams capture mode
 The value of a change event for an update in the sample `customers` collection has the same schema as a _create_ event for that collection.
 Likewise, the event value's payload has the same structure.
@@ -1108,7 +1115,13 @@ If your application depends on gradual change evolution then you should rely on 
 [id="mongodb-delete-events"]
 === _delete_ events
 
-The value in a _delete_ change event has the same `schema` portion as _create_ and _update_ events for the same collection. The `payload` portion in a _delete_ event contains values that are different from _create_ and _update_ events for the same collection. In particular, a _delete_ event contains neither an `after` value nor a `updateDescription` value. Here is an example of a _delete_ event for a document in the `customers` collection:
+The connector emits a `delete` event whenever a document is removed from a collection.
+The event payload contains neither an `after` field nor an `updateDescription` field.
+
+The value in a _delete_ change event has the same `schema` portion as _create_ and _update_ events for the same collection.
+The `payload` portion in a _delete_ event contains values that are different from _create_ and _update_ events for the same collection.
+In particular, a _delete_ event contains neither an `after` value nor a `updateDescription` value.
+Here is an example of a _delete_ event for a document in the `customers` collection:
 
 [source,json,indent=0,subs="+attributes"]
 ----
@@ -1248,6 +1261,8 @@ If the oplog grows at the rate of 3GB/hour, and {prodname} is offline for two ho
 // Title: Deployment of {prodname} MongoDB connectors
 [[mongodb-deploying-a-connector]]
 == Deployment
+
+To capture change events from MongoDB, deploy the {prodname} MongoDB connector to a Kafka Connect environment and configure it to connect to a MongoDB replica set or sharded cluster.
 
 ifdef::community[]
 To deploy a {prodname} MongoDB connector, you install the {prodname} MongoDB connector archive, configure the connector, and start the connector by adding its configuration to Kafka Connect.
@@ -1602,6 +1617,9 @@ The following configuration properties are _required_ unless a default value is 
 [id="debezium-mongodb-connector-required-configuration-properties"]
 ==== Required {prodname} MongoDB connector configuration properties
 
+The following properties are required to run the {prodname} MongoDB connector.
+You must supply values for all required properties that do not have a default value.
+
 [cols="30%a,25%a,45%a",options="header"]
 |===
 |Property |Default |Description
@@ -1915,6 +1933,9 @@ The following _advanced_ configuration properties have good defaults that will w
 
 [id="debezium-mongodb-connector-advanced-configuration-properties"]
 ==== {prodname} MongoDB connector advanced configuration properties
+
+The following advanced properties control connector behavior that rarely requires customization.
+The default values are suitable for most environments, but you can adjust them to optimize performance, tune snapshot behavior, or refine filtering.
 
 [cols="30%a,25%a,45%a",options="header"]
 |===
