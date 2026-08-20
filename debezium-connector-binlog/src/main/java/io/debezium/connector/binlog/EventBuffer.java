@@ -116,6 +116,9 @@ public class EventBuffer<T extends BinlogStreamingChangeEventSource<P, O>, P ext
                 // signals a new transaction for MariaDB, treat like QUERY events with BEGIN
                 beginTransaction(partition, offsetContext, event);
             }
+            else {
+                consumeEvent(partition, offsetContext, event);
+            }
         }
         else if (event.getHeader().getEventType() == EventType.XID) {
             completeTransaction(partition, offsetContext, true, event);
