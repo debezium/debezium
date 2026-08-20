@@ -130,6 +130,7 @@ public abstract class BinlogTinyIntIT<C extends SourceConnector> extends Abstrac
                 .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("DBZ1773"))
                 .with(BinlogConnectorConfig.CUSTOM_CONVERTERS, "boolean")
                 .with("boolean.type", TinyIntOneToBooleanConverter.class.getName())
+                .with("boolean.length.checker", "false")
                 .with("boolean.selector", ".*DBZ1773.b")
                 .build();
 

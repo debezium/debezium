@@ -30,9 +30,9 @@ import io.debezium.relational.TableId;
  * <p>
  * The mapping mirrors what the DDL-based path ({@code MySqlAntlrDdlParser}) produces so that the
  * downstream value converters behave identically: JDBC types follow the same {@code DataTypeEntry}
- * registrations (e.g. TINYINT/SMALLINT &rarr; {@link Types#SMALLINT}, DATETIME &rarr;
- * {@link Types#TIMESTAMP}, TIMESTAMP &rarr; {@link Types#TIMESTAMP_WITH_TIMEZONE}, ENUM/SET &rarr;
- * {@link Types#CHAR}, JSON/GEOMETRY &rarr; {@link Types#OTHER}).
+ * registrations (e.g. TINYINT &rarr; {@link Types#TINYINT}, SMALLINT &rarr; {@link Types#SMALLINT},
+ * DATETIME &rarr; {@link Types#TIMESTAMP}, TIMESTAMP &rarr; {@link Types#TIMESTAMP_WITH_TIMEZONE},
+ * ENUM/SET &rarr; {@link Types#CHAR}, JSON/GEOMETRY &rarr; {@link Types#OTHER}).
  * <p>
  * Attributes that the binlog metadata does not carry (column defaults, generated-column flag,
  * comments) are intentionally not populated; those are documented limitations of this mode.
