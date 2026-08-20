@@ -15,14 +15,11 @@ import java.util.Optional;
  * Each consumer implementation must be annotated with {@code @Named} using the sink type identifier
  * (e.g., "kinesis", "kafka", "http") to enable CDI-based discovery via {@link ChangeConsumerHolder}.
  * <p>
- * Typical implementations extend {@link BaseChangeConsumer} to leverage common utilities for
- * stream name mapping, header conversion, and configuration extraction.
  *
  * @param <T> the type of events to handle, typically {@code CapturingEvents<BatchEvent>}
  *            containing batches of change events with their metadata
  *
  * @see ChangeConsumerHolder
- * @see BaseChangeConsumer
  */
 public interface DebeziumServerConsumer<T> {
 

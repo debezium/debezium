@@ -18,7 +18,6 @@ import io.debezium.server.ConnectionValidationResult;
  * This interface extends {@link ConfigDescriptor} to provide configuration metadata
  * and defines common lifecycle methods and operations for sink implementations.
  * <p>
- * The {@link DefaultChangeConsumer} wrapper manages the sink lifecycle in this order:
  * <ol>
  *   <li>{@link #validateConnection(Map)} - Validates sink connectivity (optional)</li>
  *   <li>{@link #configure(org.eclipse.microprofile.config.Config)} - Configures and initializes the sink</li>
@@ -32,7 +31,6 @@ public interface DebeziumServerSink extends ConfigDescriptor, ComponentMetadataP
 
     /**
      * Configures the sink by loading configuration and setting up required resources.
-     * This method is called by {@link DefaultChangeConsumer} after {@link #validateConnection(Map)}
      * and before any batch processing begins.
      * <p>
      * Implementations should:
