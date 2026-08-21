@@ -119,6 +119,19 @@ class JdbcSinkConnectorConfigBinaryHandlingModeTest {
                 .isInstanceOf(ConnectException.class);
     }
 
+    @Test
+    @FixFor("debezium/dbz#2468")
+    @DisplayName("binary handling is reported enabled only when a mode or selector is configured")
+    void shouldReportBinaryHandlingEnabledOnlyWhenConfigured() {
+        assertThat(new JdbcSinkConnectorConfig(Map.of()).isBinaryHandlingEnabled()).isFalse();
+        assertThat(new JdbcSinkConnectorConfig(Map.of(
+                JdbcSinkConnectorConfig.BINARY_HANDLING_MODE, "bytes")).isBinaryHandlingEnabled()).isFalse();
+        assertThat(new JdbcSinkConnectorConfig(Map.of(
+                JdbcSinkConnectorConfig.BINARY_HANDLING_MODE, "hex")).isBinaryHandlingEnabled()).isTrue();
+        assertThat(new JdbcSinkConnectorConfig(Map.of(
+                JdbcSinkConnectorConfig.BINARY_HANDLING_SELECTOR_BASE64, "data")).isBinaryHandlingEnabled()).isTrue();
+    }
+
     private static BinaryHandlingMode mode(String value) {
         return new JdbcSinkConnectorConfig(Map.of(JdbcSinkConnectorConfig.BINARY_HANDLING_MODE, value)).getBinaryHandlingMode();
     }

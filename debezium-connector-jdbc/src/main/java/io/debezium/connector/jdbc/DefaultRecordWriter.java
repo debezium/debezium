@@ -13,6 +13,7 @@ import java.sql.Statement;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +22,7 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
 
+import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.DataException;
@@ -34,6 +36,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.field.JdbcFieldDescriptor;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
+import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.connector.jdbc.util.BinaryHandling;
 import io.debezium.connector.jdbc.util.ByteArrayUtils;
 import io.debezium.metadata.CollectionId;
@@ -56,6 +59,18 @@ import io.debezium.util.Stopwatch;
 public class DefaultRecordWriter implements RecordWriter {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultRecordWriter.class);
+
+    private enum BinaryBindingKind {
+        BYTES,
+        STRING,
+        OTHER
+    }
+
+    private record BinaryFieldBinding(String fieldName, boolean key, Class<?> jdbcType, BinaryBindingKind kind) {
+    }
+
+    private record BinaryBindingSignature(List<BinaryFieldBinding> fields) {
+    }
 
     private final SharedSessionContract session;
     private final QueryBinderResolver queryBinderResolver;
@@ -417,13 +432,13 @@ public class DefaultRecordWriter implements RecordWriter {
     public void write(TableDescriptor tableDescriptor, List<JdbcSinkRecord> records) {
         Stopwatch writeStopwatch = Stopwatch.reusable();
         writeStopwatch.start();
-        SqlStatementInfo statementInfo = getSqlStatementInfo(tableDescriptor, records);
         final Transaction transaction = getSession().beginTransaction();
 
         try {
             getSession().doWork(connection -> performTableWrites(connection, tableDescriptor, records));
             transaction.commit();
-            processMetrics(records, statementInfo);
+            // The statements are derived per write group; the metrics only need the delete flag.
+            processMetrics(records, records.get(0).isDelete());
         }
         catch (Exception e) {
             transaction.rollback();
@@ -434,7 +449,11 @@ public class DefaultRecordWriter implements RecordWriter {
     }
 
     protected void processMetrics(List<JdbcSinkRecord> records, SqlStatementInfo statementInfo) {
-        if (statementInfo.isDelete()) {
+        processMetrics(records, statementInfo.isDelete());
+    }
+
+    private void processMetrics(List<JdbcSinkRecord> records, boolean deletes) {
+        if (deletes) {
             progressListener().deleted(records.size());
         }
         else {
@@ -469,11 +488,54 @@ public class DefaultRecordWriter implements RecordWriter {
     }
 
     /**
-     * Writes records for a single table. Subclasses can partition a write when their statement shape
-     * requires homogeneous records.
+     * Splits records into contiguous groups with a consistent binary parameter shape. SQL generation
+     * derives its parameter bindings from the first record, so a JDBC batch cannot mix raw byte arrays
+     * and encoded strings for the same field. Keeping groups contiguous preserves input record order.
      */
     protected void performTableWrites(Connection conn, TableDescriptor table, List<JdbcSinkRecord> records) throws SQLException {
-        performTableWrite(conn, table, records);
+        if (!config.isBinaryHandlingEnabled() || records.size() < 2) {
+            // Bindings cannot differ per record, so skip the per-record signature resolution.
+            performTableWrite(conn, table, records);
+            return;
+        }
+        for (List<JdbcSinkRecord> group : partitionRecordsByBinaryBinding(table, records)) {
+            performTableWrite(conn, table, group);
+        }
+    }
+
+    private List<List<JdbcSinkRecord>> partitionRecordsByBinaryBinding(TableDescriptor table, List<JdbcSinkRecord> records) {
+        final List<List<JdbcSinkRecord>> groups = new ArrayList<>();
+        BinaryBindingSignature previousSignature = null;
+
+        for (JdbcSinkRecord record : records) {
+            final BinaryBindingSignature signature = resolveBinaryBindingSignature(table, record);
+            if (!signature.equals(previousSignature)) {
+                groups.add(new ArrayList<>());
+                previousSignature = signature;
+            }
+            groups.get(groups.size() - 1).add(record);
+        }
+        return groups;
+    }
+
+    private BinaryBindingSignature resolveBinaryBindingSignature(TableDescriptor table, JdbcSinkRecord record) {
+        final List<BinaryFieldBinding> fields = record.jdbcFields().values().stream()
+                .filter(field -> field.getSchema().type() == Schema.Type.BYTES)
+                .sorted(Comparator.comparing(JdbcFieldDescriptor::getName).thenComparing(JdbcFieldDescriptor::isKey))
+                .map(field -> {
+                    final JdbcType jdbcType = dialect.getSchemaType(field.getSchema());
+                    final BinaryHandling.Resolution resolution = dialect.resolveBinaryHandling(table, record, field);
+                    final BinaryBindingKind kind;
+                    if (!BinaryHandling.isRawBytesSchema(field.getSchema(), jdbcType)) {
+                        kind = BinaryBindingKind.OTHER;
+                    }
+                    else {
+                        kind = resolution.isEncoded() ? BinaryBindingKind.STRING : BinaryBindingKind.BYTES;
+                    }
+                    return new BinaryFieldBinding(field.getName(), field.isKey(), jdbcType.getClass(), kind);
+                })
+                .toList();
+        return new BinaryBindingSignature(fields);
     }
 
     protected void performWrite(Connection conn, TableDescriptor table, SqlStatementInfo statementInfo, List<JdbcSinkRecord> records) throws SQLException {

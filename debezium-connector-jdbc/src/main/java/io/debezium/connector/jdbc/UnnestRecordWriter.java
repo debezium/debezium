@@ -12,7 +12,6 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 
@@ -48,68 +47,9 @@ public class UnnestRecordWriter extends DefaultRecordWriter {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(UnnestRecordWriter.class);
 
-    private enum BinaryBindingKind {
-        BYTES,
-        STRING,
-        OTHER
-    }
-
-    private record BinaryFieldBinding(String fieldName, boolean key, Class<?> jdbcType, BinaryBindingKind kind) {
-    }
-
-    private record BinaryBindingSignature(List<BinaryFieldBinding> fields) {
-    }
-
     public UnnestRecordWriter(SharedSessionContract session, QueryBinderResolver queryBinderResolver,
                               JdbcSinkConnectorConfig config, DatabaseDialect dialect, SinkProgressListener progressListener) {
         super(session, queryBinderResolver, config, dialect, progressListener);
-    }
-
-    /**
-     * Splits records into contiguous groups with a consistent binary parameter shape. UNNEST derives
-     * its SQL array element types from the first record, so a group cannot mix raw byte arrays and
-     * encoded string arrays. Keeping groups contiguous preserves the input record order.
-     */
-    @Override
-    protected void performTableWrites(Connection conn, TableDescriptor table, List<JdbcSinkRecord> records) throws SQLException {
-        for (List<JdbcSinkRecord> group : partitionRecordsByBinaryBinding(table, records)) {
-            performTableWrite(conn, table, group);
-        }
-    }
-
-    private List<List<JdbcSinkRecord>> partitionRecordsByBinaryBinding(TableDescriptor table, List<JdbcSinkRecord> records) {
-        final List<List<JdbcSinkRecord>> groups = new ArrayList<>();
-        BinaryBindingSignature previousSignature = null;
-
-        for (JdbcSinkRecord record : records) {
-            final BinaryBindingSignature signature = resolveBinaryBindingSignature(table, record);
-            if (!signature.equals(previousSignature)) {
-                groups.add(new ArrayList<>());
-                previousSignature = signature;
-            }
-            groups.get(groups.size() - 1).add(record);
-        }
-        return groups;
-    }
-
-    private BinaryBindingSignature resolveBinaryBindingSignature(TableDescriptor table, JdbcSinkRecord record) {
-        final List<BinaryFieldBinding> fields = record.jdbcFields().values().stream()
-                .filter(field -> field.getSchema().type() == Schema.Type.BYTES)
-                .sorted(Comparator.comparing(JdbcFieldDescriptor::getName).thenComparing(JdbcFieldDescriptor::isKey))
-                .map(field -> {
-                    final JdbcType jdbcType = getDialect().getSchemaType(field.getSchema());
-                    final BinaryHandling.Resolution resolution = getDialect().resolveBinaryHandling(table, record, field);
-                    final BinaryBindingKind kind;
-                    if (!BinaryHandling.isRawBytesSchema(field.getSchema(), jdbcType)) {
-                        kind = BinaryBindingKind.OTHER;
-                    }
-                    else {
-                        kind = resolution.isEncoded() ? BinaryBindingKind.STRING : BinaryBindingKind.BYTES;
-                    }
-                    return new BinaryFieldBinding(field.getName(), field.isKey(), jdbcType.getClass(), kind);
-                })
-                .toList();
-        return new BinaryBindingSignature(fields);
     }
 
     @Override
