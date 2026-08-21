@@ -216,6 +216,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             // Same policy as a failed chunk read: emitting this window is not going to succeed
             // on a retry either, so skip the table visibly instead of letting the failure reach
             // the signal processor, which swallows it and stalls the snapshot silently.
+            offsetContext.postSnapshotCompletion();
             window.clear();
             warnAndSkip(partition, offsetContext,
                     SQL_EXCEPTION,
