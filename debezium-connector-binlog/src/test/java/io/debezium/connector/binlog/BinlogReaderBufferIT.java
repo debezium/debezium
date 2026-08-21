@@ -69,6 +69,7 @@ public abstract class BinlogReaderBufferIT<C extends SourceConnector> extends Ab
     @SkipWhenDatabaseIs(value = SkipWhenDatabaseIs.Type.MYSQL, reason = "MariaDB-specific GTID behavior")
     @SkipWhenDatabaseIs(value = SkipWhenDatabaseIs.Type.PERCONA, reason = "MariaDB-specific GTID behavior")
     @Test
+    @FixFor("debezium/dbz#2470")
     void shouldPropagateGtidForStandaloneDdl() throws SQLException, InterruptedException {
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.HOSTNAME, System.getProperty("database.replica.hostname", "localhost"))
