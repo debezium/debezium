@@ -2556,6 +2556,25 @@ Contains calendar and clock component fields, `offsetSeconds`, optional `zoneId`
 
 |===
 
+[id="oracle-temporal-types-bc-era"]
+==== BC era and pre-Gregorian dates
+
+The connector emits temporal values that precede the common era (BC) or the Gregorian calendar cut-over in 1582 by using the proleptic Gregorian calendar of ISO 8601, matching the `java.time` semantics used across {prodname}.
+Temporal values in the common era (AD) from the year 1582 onward are unaffected by this mapping and are emitted exactly as described in the preceding sections.
+
+Because ISO 8601 includes a year zero and the Oracle calendar does not, BC years are offset by one in emitted values: Oracle year `-N` (N BC) corresponds to ISO year `-(N-1)`.
+For example, the Oracle date `-2018-03-27` (2018 BC) is emitted with the ISO year `-2017`.
+
+For epoch-based semantic types such as `io.debezium.time.Timestamp` and `io.debezium.time.MicroTimestamp`, BC values are emitted as negative values relative to the UNIX epoch.
+For string-based semantic types such as `io.debezium.time.ZonedTimestamp` and `io.debezium.time.IsoTimestamp`, BC values are emitted as ISO 8601 strings with a signed year, for example, `-2017-03-27T01:34:56.007890-11:00`.
+Consumers must be prepared to handle the leading sign in the year component.
+
+[IMPORTANT]
+====
+BC values stored in `TIMESTAMP(7 - 9)` columns exceed the representable range of `io.debezium.time.NanoTimestamp`, as described in the preceding note about the nanosecond range.
+If a column may contain BC values at nanosecond precision, use `time.precision.mode` set to `isostring` or `structured` to represent the values without loss.
+====
+
 [id="oracle-rowid-types"]
 === ROWID types
 
