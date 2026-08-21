@@ -12,11 +12,14 @@ import java.util.Map;
 
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.BinaryHandlingMode;
+import io.debezium.connector.jdbc.type.connect.ConnectBytesType;
+import io.debezium.connector.jdbc.type.connect.ConnectDecimalType;
 import io.debezium.doc.FixFor;
 import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.sink.field.FieldDescriptor;
@@ -37,8 +40,10 @@ class BinaryHandlingTest {
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(Map.of(
                 JdbcSinkConnectorConfig.BINARY_HANDLING_MODE, "base64"));
 
-        assertThat(BinaryHandling.resolve(config, TOPIC, bytesField(), column(Types.VARCHAR))).isEqualTo(BinaryHandlingMode.BASE64);
-        assertThat(BinaryHandling.resolve(config, TOPIC, bytesField(), column(Types.CLOB))).isEqualTo(BinaryHandlingMode.BASE64);
+        assertThat(BinaryHandling.resolve(config, TOPIC, bytesField(), ConnectBytesType.INSTANCE, column(Types.VARCHAR)).mode())
+                .isEqualTo(BinaryHandlingMode.BASE64);
+        assertThat(BinaryHandling.resolve(config, TOPIC, bytesField(), ConnectBytesType.INSTANCE, column(Types.CLOB)).mode())
+                .isEqualTo(BinaryHandlingMode.BASE64);
     }
 
     @Test
@@ -49,9 +54,12 @@ class BinaryHandlingTest {
                 JdbcSinkConnectorConfig.BINARY_HANDLING_MODE, "base64"));
         final JdbcSinkConnectorConfig defaultConfig = new JdbcSinkConnectorConfig(Map.of());
 
-        assertThat(BinaryHandling.resolve(textualConfig, TOPIC, bytesField(), column(Types.VARBINARY))).isEqualTo(BinaryHandlingMode.BYTES);
-        assertThat(BinaryHandling.resolve(textualConfig, TOPIC, bytesField(), null)).isEqualTo(BinaryHandlingMode.BYTES);
-        assertThat(BinaryHandling.resolve(defaultConfig, TOPIC, bytesField(), column(Types.VARCHAR))).isEqualTo(BinaryHandlingMode.BYTES);
+        assertThat(BinaryHandling.resolve(textualConfig, TOPIC, bytesField(), ConnectBytesType.INSTANCE, column(Types.VARBINARY)).mode())
+                .isEqualTo(BinaryHandlingMode.BYTES);
+        assertThat(BinaryHandling.resolve(textualConfig, TOPIC, bytesField(), ConnectBytesType.INSTANCE, null).mode())
+                .isEqualTo(BinaryHandlingMode.BYTES);
+        assertThat(BinaryHandling.resolve(defaultConfig, TOPIC, bytesField(), ConnectBytesType.INSTANCE, column(Types.VARCHAR)).mode())
+                .isEqualTo(BinaryHandlingMode.BYTES);
     }
 
     @Test
@@ -62,7 +70,21 @@ class BinaryHandlingTest {
                 JdbcSinkConnectorConfig.BINARY_HANDLING_MODE, "base64"));
         final FieldDescriptor decimalField = new FieldDescriptor(Decimal.schema(2), "data", false);
 
-        assertThat(BinaryHandling.resolve(config, TOPIC, decimalField, column(Types.VARCHAR))).isEqualTo(BinaryHandlingMode.BYTES);
+        assertThat(BinaryHandling.resolve(config, TOPIC, decimalField, ConnectDecimalType.INSTANCE, column(Types.VARCHAR)).mode())
+                .isEqualTo(BinaryHandlingMode.BYTES);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2468")
+    @DisplayName("resolves a textual mode for named schemas that use the raw BYTES type")
+    void shouldResolveTextualModeForNamedRawBytesSchema() {
+        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(Map.of(
+                JdbcSinkConnectorConfig.BINARY_HANDLING_MODE, "hex"));
+        final Schema namedBytesSchema = SchemaBuilder.bytes().name("com.example.Binary").optional().build();
+        final FieldDescriptor namedBytesField = new FieldDescriptor(namedBytesSchema, "data", false);
+
+        assertThat(BinaryHandling.resolve(config, TOPIC, namedBytesField, ConnectBytesType.INSTANCE, column(Types.VARCHAR)).mode())
+                .isEqualTo(BinaryHandlingMode.HEX);
     }
 
     @Test
@@ -73,9 +95,10 @@ class BinaryHandlingTest {
                 JdbcSinkConnectorConfig.BINARY_HANDLING_MODE, "base64",
                 JdbcSinkConnectorConfig.BINARY_HANDLING_SELECTOR_BYTES, "data"));
 
-        assertThat(BinaryHandling.resolve(config, TOPIC, bytesField(), column(Types.VARCHAR))).isEqualTo(BinaryHandlingMode.BYTES);
+        assertThat(BinaryHandling.resolve(config, TOPIC, bytesField(), ConnectBytesType.INSTANCE, column(Types.VARCHAR)).mode())
+                .isEqualTo(BinaryHandlingMode.BYTES);
         assertThat(BinaryHandling.resolve(config, TOPIC, new FieldDescriptor(Schema.OPTIONAL_BYTES_SCHEMA, "other", false),
-                column(Types.VARCHAR))).isEqualTo(BinaryHandlingMode.BASE64);
+                ConnectBytesType.INSTANCE, column(Types.VARCHAR)).mode()).isEqualTo(BinaryHandlingMode.BASE64);
     }
 
     @Test

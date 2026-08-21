@@ -5,9 +5,9 @@
  */
 package io.debezium.connector.jdbc;
 
+import java.io.StringReader;
 import java.sql.Array;
 import java.sql.Blob;
-import java.sql.Clob;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Types;
@@ -32,6 +32,11 @@ public class PreparedStatementQueryBinder implements QueryBinder {
     public void bind(ValueBindDescriptor valueBindDescriptor) {
         try {
             if (valueBindDescriptor.getTargetSqlType() != null) {
+                if (valueBindDescriptor.getValue() == null) {
+                    LOGGER.trace("Binding parameter #{} as NULL with Jdbc Type {}", valueBindDescriptor.getIndex(), valueBindDescriptor.getTargetSqlType());
+                    binder.setNull(valueBindDescriptor.getIndex(), valueBindDescriptor.getTargetSqlType());
+                    return;
+                }
                 switch (valueBindDescriptor.getTargetSqlType()) {
                     case Types.ARRAY -> {
                         LOGGER.trace("Binding parameter #{} as ARRAY", valueBindDescriptor.getIndex());
@@ -39,11 +44,13 @@ public class PreparedStatementQueryBinder implements QueryBinder {
                         Array array = binder.getConnection().createArrayOf(valueBindDescriptor.getElementTypeName(), collection.toArray());
                         binder.setArray(valueBindDescriptor.getIndex(), array);
                     }
-                    case Types.CLOB -> {
-                        LOGGER.trace("Binding parameter #{} as CLOB", valueBindDescriptor.getIndex());
-                        final Clob clob = binder.getConnection().createClob();
-                        clob.setString(1, (String) valueBindDescriptor.getValue());
-                        binder.setClob(valueBindDescriptor.getIndex(), clob);
+                    case Types.CLOB, Types.LONGVARCHAR -> {
+                        LOGGER.trace("Binding parameter #{} as a character stream", valueBindDescriptor.getIndex());
+                        binder.setCharacterStream(valueBindDescriptor.getIndex(), new StringReader((String) valueBindDescriptor.getValue()));
+                    }
+                    case Types.NCLOB, Types.LONGNVARCHAR -> {
+                        LOGGER.trace("Binding parameter #{} as a national character stream", valueBindDescriptor.getIndex());
+                        binder.setNCharacterStream(valueBindDescriptor.getIndex(), new StringReader((String) valueBindDescriptor.getValue()));
                     }
                     case Types.BLOB -> {
                         LOGGER.trace("Binding parameter #{} as BLOB", valueBindDescriptor.getIndex());

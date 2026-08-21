@@ -37,4 +37,9 @@ public class JdbcSinkBinaryHandlingModeIT extends AbstractJdbcSinkBinaryHandling
     protected String binaryColumnType() {
         return "bytea";
     }
+
+    @Override
+    protected String largeCharacterColumnType() {
+        return "text";
+    }
 }

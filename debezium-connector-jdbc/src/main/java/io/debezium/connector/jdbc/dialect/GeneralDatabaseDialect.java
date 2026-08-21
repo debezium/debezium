@@ -744,10 +744,10 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     }
 
     @Override
-    public JdbcSinkConnectorConfig.BinaryHandlingMode resolveBinaryHandlingMode(TableDescriptor table, JdbcSinkRecord record, FieldDescriptor field) {
+    public BinaryHandling.Resolution resolveBinaryHandling(TableDescriptor table, JdbcSinkRecord record, FieldDescriptor field) {
         final String columnName = resolveColumnName(field);
         final ColumnDescriptor column = table.hasColumn(columnName) ? table.getColumnByName(columnName) : null;
-        return BinaryHandling.resolve(connectorConfig, record.topicName(), field, column);
+        return BinaryHandling.resolve(connectorConfig, record.topicName(), field, getSchemaType(field.getSchema()), column);
     }
 
     protected String columnQueryBindingFromField(String fieldName, TableDescriptor table, JdbcSinkRecord record) {
@@ -755,7 +755,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         final String columnName = resolveColumnName(field);
         final ColumnDescriptor column = table.getColumnByName(columnName);
 
-        if (JdbcSinkConnectorConfig.BinaryHandlingMode.BYTES != resolveBinaryHandlingMode(table, record, field)) {
+        if (resolveBinaryHandling(table, record, field).isEncoded()) {
             // An encoded string must not use a binary-specific query binding.
             return "?";
         }
@@ -849,7 +849,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         final JdbcFieldDescriptor field = record.jdbcFields().get(fieldName);
         final String columnName = resolveColumnName(field);
         final ColumnDescriptor column = table.getColumnByName(columnName);
-        if (JdbcSinkConnectorConfig.BinaryHandlingMode.BYTES != resolveBinaryHandlingMode(table, record, field)) {
+        if (resolveBinaryHandling(table, record, field).isEncoded()) {
             // An encoded string must not use a binary-specific query binding.
             return toIdentifier(columnName) + "=?";
         }

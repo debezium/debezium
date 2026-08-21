@@ -189,11 +189,12 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR))
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.LOW)
-            .withDescription("Specifies how BYTES fields are bound when the destination column is a character type: "
+            .withDescription("Specifies how BYTES fields that resolve to a raw binary JDBC type are bound when the destination column is a character type: "
                     + "'bytes' (default) binds the original bytes and delegates conversion to the destination database; "
                     + "'base64' binds a Base64-encoded string; "
                     + "'base64-url-safe' binds a URL-safe Base64-encoded string; "
                     + "'hex' binds a hex-encoded string. "
+                    + "Logical types backed by BYTES retain their logical JDBC mapping. "
                     + "Binary destination columns always receive the original bytes. "
                     + "This setting does not affect table creation or schema evolution.");
 
@@ -272,14 +273,14 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
             .withDescription("Name of the schema where postgis extension is installed. Default is public");
 
     public static final Field POSTGRES_UNNEST_INSERT_FIELD = Field.create(POSTGRES_UNNEST_INSERT)
-            .withDisplayName("Enable UNNEST-based batch inserts for PostgreSQL")
+            .withDisplayName("Enable UNNEST-based batch inserts for PostgreSQL-compatible targets")
             .withType(Type.BOOLEAN)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.MEDIUM)
             .withDefault(false)
             .withDescription(
-                    "When enabled, uses PostgreSQL UNNEST() for batch inserts which can significantly improve performance by reducing the number of SQL statements executed. "
+                    "When enabled, uses PostgreSQL-compatible UNNEST() statements for batch inserts which can significantly improve performance by reducing the number of SQL statements executed. "
                             +
                             "This optimization is compatible with INSERT and UPSERT modes. " +
                             "Instead of executing multiple INSERT statements with JDBC batching, a single INSERT statement with UNNEST is used to insert all records at once. "

@@ -7,9 +7,11 @@ package io.debezium.connector.jdbc.integration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import org.apache.kafka.connect.data.Schema;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -119,6 +121,72 @@ public abstract class AbstractJdbcSinkBinaryHandlingModeUnnestTest extends Abstr
         });
 
         assertThat(interceptor.containsMessage(UNNEST_EXECUTED_MESSAGE)).isTrue();
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("debezium/dbz#2468")
+    public void testTopicQualifiedModesUseSeparateUnnestBatchesWithEncodedRecordsFirst(SinkRecordFactory factory) throws Exception {
+        assertTopicQualifiedModesUseSeparateUnnestBatches(factory, true);
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("debezium/dbz#2468")
+    public void testTopicQualifiedModesUseSeparateUnnestBatchesWithRawRecordsFirst(SinkRecordFactory factory) throws Exception {
+        assertTopicQualifiedModesUseSeparateUnnestBatches(factory, false);
+    }
+
+    private void assertTopicQualifiedModesUseSeparateUnnestBatches(SinkRecordFactory factory, boolean encodedRecordsFirst) throws Exception {
+        final String tableName = randomTableName();
+        final String encodedTopic = "encoded_" + tableName;
+        final String rawTopic = "raw_" + tableName;
+
+        final Map<String, String> properties = unnestSinkConfig("bytes");
+        properties.put(JdbcSinkConnectorConfig.COLLECTION_NAME_FORMAT, tableName);
+        properties.put(JdbcSinkConnectorConfig.BINARY_HANDLING_SELECTOR_HEX, Pattern.quote(encodedTopic) + ":data");
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final JdbcSinkConnectorConfig config = getConfig(properties);
+        final List<JdbcKafkaSinkRecord> encodedRecords = List.of(
+                createRecord(factory, encodedTopic, (byte) 1, new byte[]{ 0x01, 0x11 }, config),
+                createRecord(factory, encodedTopic, (byte) 2, new byte[]{ 0x02, 0x22 }, config));
+        final List<JdbcKafkaSinkRecord> rawRecords = List.of(
+                createRecord(factory, rawTopic, (byte) 3, new byte[]{ 0x41, 0x31 }, config),
+                createRecord(factory, rawTopic, (byte) 4, new byte[]{ 0x42, 0x32 }, config));
+        final List<JdbcKafkaSinkRecord> batch = new ArrayList<>();
+        if (encodedRecordsFirst) {
+            batch.addAll(encodedRecords);
+            batch.addAll(rawRecords);
+        }
+        else {
+            batch.addAll(rawRecords);
+            batch.addAll(encodedRecords);
+        }
+
+        final String destinationTable = getSink().formatTableName(tableName);
+        getSink().execute(singleDataColumnTableDdl(destinationTable, characterColumnType()));
+
+        final LogInterceptor interceptor = new LogInterceptor(UnnestRecordWriter.class);
+        interceptor.setLoggerLevel(UnnestRecordWriter.class, Level.DEBUG);
+
+        consume(batch);
+
+        getSink().assertRows(destinationTable, rs -> {
+            final Map<Integer, String> rows = new HashMap<>();
+            do {
+                rows.put(rs.getInt(1), rs.getString(2));
+            } while (rs.next());
+            assertThat(rows).containsOnlyKeys(1, 2, 3, 4);
+            assertThat(rows.get(1)).isEqualTo("0111");
+            assertThat(rows.get(2)).isEqualTo("0222");
+            assertThat(rows.get(3)).isNotNull();
+            assertThat(rows.get(4)).isNotNull();
+            return null;
+        });
+
+        assertThat(interceptor.countOccurrences(UNNEST_EXECUTED_MESSAGE)).isEqualTo(2);
     }
 
     private Map<String, String> unnestSinkConfig(String binaryHandlingMode) {
