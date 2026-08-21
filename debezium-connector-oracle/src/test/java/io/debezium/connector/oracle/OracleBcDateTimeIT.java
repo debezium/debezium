@@ -64,6 +64,38 @@ public class OracleBcDateTimeIT extends AbstractAsyncEngineConnectorTest {
     @Test
     @FixFor("debezium/dbz#1286")
     public void shouldSnapshotBcAndPreGregorianCutoverValues() throws Exception {
+        insertRows();
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.BC_DATETIME_TEST")
+                .build();
+
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+
+        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        assertRows();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1286")
+    public void shouldStreamBcAndPreGregorianCutoverValues() throws Exception {
+        Configuration config = TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.BC_DATETIME_TEST")
+                .build();
+
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+
+        waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        insertRows();
+
+        assertRows();
+    }
+
+    private void insertRows() throws Exception {
         // 2018 BC (Oracle year -2018, ISO proleptic year -2017)
         connection.executeWithoutCommitting("INSERT INTO debezium.bc_datetime_test VALUES ("
                 + "1"
@@ -89,16 +121,9 @@ public class OracleBcDateTimeIT extends AbstractAsyncEngineConnectorTest {
                 + ", TO_TIMESTAMP_TZ('1500-03-01 01:34:56.00789 -05:00', 'YYYY-MM-DD HH24:MI:SS.FF5 TZH:TZM')"
                 + ")");
         connection.execute("COMMIT");
+    }
 
-        Configuration config = TestHelper.defaultConfig()
-                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.BC_DATETIME_TEST")
-                .build();
-
-        start(OracleConnector.class, config);
-        assertConnectorIsRunning();
-
-        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
-
+    private void assertRows() throws Exception {
         SourceRecords records = consumeRecordsByTopic(3);
         List<SourceRecord> testRecords = records.recordsForTopic("server1.DEBEZIUM.BC_DATETIME_TEST");
         assertThat(testRecords).hasSize(3);

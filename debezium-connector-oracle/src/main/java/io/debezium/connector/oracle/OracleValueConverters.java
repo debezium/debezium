@@ -24,7 +24,9 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
+import java.time.format.TextStyle;
 import java.time.temporal.ChronoField;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -90,10 +92,18 @@ public class OracleValueConverters extends JdbcValueConverters {
             .appendFraction(ChronoField.NANO_OF_SECOND, 0, 9, false)
             .optionalEnd()
             .optionalStart()
+            .appendLiteral(' ')
+            .appendText(ChronoField.ERA, TextStyle.SHORT)
+            .optionalEnd()
+            .optionalStart()
             .appendPattern(" ")
             .optionalEnd()
             .appendOffset("+HH:MM", "")
-            .toFormatter();
+            .optionalStart()
+            .appendLiteral(' ')
+            .appendText(ChronoField.ERA, TextStyle.SHORT)
+            .optionalEnd()
+            .toFormatter(Locale.ENGLISH);
 
     private static final Pattern TO_TIMESTAMP_TZ = Pattern.compile("TO_TIMESTAMP_TZ\\('(.*)'\\)", Pattern.CASE_INSENSITIVE);
     private static final BigDecimal MICROSECONDS_PER_SECOND = new BigDecimal(1_000_000);

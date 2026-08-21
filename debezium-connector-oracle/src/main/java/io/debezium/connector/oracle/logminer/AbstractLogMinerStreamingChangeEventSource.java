@@ -1753,11 +1753,14 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      * @throws SQLException if a database exception occurred
      */
     private void setNlsSessionParameters() throws SQLException {
+        // The era suffix is required so that BC values remain distinguishable from AD values in the
+        // redo SQL; NLS_DATE_LANGUAGE pins the era markers to "AD"/"BC" regardless of database locale.
         final String NLS_SESSION_PARAMETERS = "ALTER SESSION SET "
-                + "  NLS_DATE_FORMAT = 'YYYY-MM-DD HH24:MI:SS'"
-                + "  NLS_TIMESTAMP_FORMAT = 'YYYY-MM-DD HH24:MI:SS.FF9'"
-                + "  NLS_TIMESTAMP_TZ_FORMAT = 'YYYY-MM-DD HH24:MI:SS.FF9 TZH:TZM'"
-                + "  NLS_NUMERIC_CHARACTERS = '.,'";
+                + "  NLS_DATE_FORMAT = 'YYYY-MM-DD HH24:MI:SS AD'"
+                + "  NLS_TIMESTAMP_FORMAT = 'YYYY-MM-DD HH24:MI:SS.FF9 AD'"
+                + "  NLS_TIMESTAMP_TZ_FORMAT = 'YYYY-MM-DD HH24:MI:SS.FF9 TZH:TZM AD'"
+                + "  NLS_NUMERIC_CHARACTERS = '.,'"
+                + "  NLS_DATE_LANGUAGE = 'AMERICAN'";
         streamingConnection.executeWithoutCommitting(NLS_SESSION_PARAMETERS);
 
         // This is necessary so that TIMESTAMP WITH LOCAL TIME ZONE is returned in UTC
