@@ -317,7 +317,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                 catch (DebeziumException e) {
                     // The verification query itself uses the cached projection, so it fails the
                     // same way the chunk query does when a column was just dropped
-                    if (e.getCause() instanceof SQLException sql && isUndefinedColumn(sql)) {
+                    if (isUndefinedColumn(e)) {
                         deferChunkOnStaleSchema(e);
                         break;
                     }
@@ -877,7 +877,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         lastStaleTable = null;
     }
 
-    private boolean isUndefinedColumn(SQLException e) {
+    private boolean isUndefinedColumn(Exception e) {
         for (Throwable t = e; t != null; t = t.getCause()) {
             if (t instanceof SQLException sql && jdbcConnection.isUndefinedColumnError(sql)) {
                 return true;
