@@ -52,4 +52,10 @@ public class JdbcSinkBinaryHandlingModeIT extends AbstractJdbcSinkBinaryHandling
                 "CREATE TABLE %s (id tinyint NOT NULL, data_hex %s NULL, data_b64 %s NULL, data_raw %s NULL) PRIMARY KEY(id) DISTRIBUTED BY HASH(id)",
                 tableName, characterColumnType(), characterColumnType(), binaryColumnType());
     }
+
+    @Override
+    protected boolean supportsSchemaEvolution() {
+        // Upstream has no schema evolution IT coverage for this dialect
+        return false;
+    }
 }
