@@ -35,8 +35,10 @@ public class MariaDbReadOnlyIncrementalSnapshotChangeEventSource
                                                                Clock clock,
                                                                SnapshotProgressListener<MariaDbPartition> progressListener,
                                                                DataChangeEventListener<MariaDbPartition> dataChangeEventListener,
-                                                               NotificationService<MariaDbPartition, MariaDbOffsetContext> notificationService) {
-        super(connectorConfig, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener, notificationService);
+                                                               NotificationService<MariaDbPartition, MariaDbOffsetContext> notificationService,
+                                                               UndefinedColumnClassifier undefinedColumnClassifier) {
+        super(connectorConfig, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener, notificationService,
+                undefinedColumnClassifier);
     }
 
     @Override

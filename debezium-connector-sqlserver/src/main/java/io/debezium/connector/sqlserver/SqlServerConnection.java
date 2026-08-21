@@ -196,7 +196,6 @@ public class SqlServerConnection extends JdbcConnection {
         this.optionRecompile = optionRecompile;
     }
 
-    @Override
     public boolean isUndefinedColumnError(SQLException exception) {
         // The driver reports the generic S0001 SQLSTATE for most server errors, so the
         // classification has to use the server error code.

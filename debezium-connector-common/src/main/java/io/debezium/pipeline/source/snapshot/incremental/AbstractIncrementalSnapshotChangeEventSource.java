@@ -81,6 +81,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     private final RelationalDatabaseSchema databaseSchema;
     private final SnapshotProgressListener<P> progressListener;
     private final DataChangeEventListener<P> dataListener;
+    private final UndefinedColumnClassifier undefinedColumnClassifier;
     private long totalRowsScanned = 0;
     private int staleSchemaDeferrals = 0;
     private Table lastStaleTable;
@@ -104,6 +105,20 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                                                         SnapshotProgressListener<P> progressListener,
                                                         DataChangeEventListener<P> dataChangeEventListener,
                                                         NotificationService<P, ? extends OffsetContext> notificationService) {
+        this(config, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener, notificationService,
+                UndefinedColumnClassifier.NONE);
+    }
+
+    public AbstractIncrementalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig config,
+                                                        JdbcConnection jdbcConnection,
+                                                        EventDispatcher<P, T> dispatcher,
+                                                        DatabaseSchema<?> databaseSchema,
+                                                        Clock clock,
+                                                        SnapshotProgressListener<P> progressListener,
+                                                        DataChangeEventListener<P> dataChangeEventListener,
+                                                        NotificationService<P, ? extends OffsetContext> notificationService,
+                                                        UndefinedColumnClassifier undefinedColumnClassifier) {
+        this.undefinedColumnClassifier = undefinedColumnClassifier;
         this.connectorConfig = config;
         this.jdbcConnection = jdbcConnection;
         this.chunkQueryBuilder = jdbcConnection.chunkQueryBuilder(config);
@@ -899,7 +914,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
 
     private boolean isUndefinedColumn(Exception e) {
         for (Throwable t = e; t != null; t = t.getCause()) {
-            if (t instanceof SQLException sql && jdbcConnection.isUndefinedColumnError(sql)) {
+            if (t instanceof SQLException sql && undefinedColumnClassifier.isUndefinedColumn(sql)) {
                 return true;
             }
         }

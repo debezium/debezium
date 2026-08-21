@@ -95,6 +95,8 @@ public class PostgresConnection extends JdbcConnection {
 
     private static final Duration PAUSE_BETWEEN_REPLICATION_SLOT_RETRIEVAL_ATTEMPTS = Duration.ofSeconds(2);
 
+    private static final String SQLSTATE_UNDEFINED_COLUMN = "42703";
+
     private final TypeRegistry typeRegistry;
     private final PostgresDefaultValueConverter defaultValueConverter;
 
@@ -187,6 +189,10 @@ public class PostgresConnection extends JdbcConnection {
                 .with("assumeMinServerVersion", "9.4")
                 .with("ApplicationName", connectionUsage)
                 .build());
+    }
+
+    public boolean isUndefinedColumnError(SQLException exception) {
+        return SQLSTATE_UNDEFINED_COLUMN.equals(exception.getSQLState());
     }
 
     /**
