@@ -313,7 +313,7 @@ Set the value of the xref:jdbc-property-batch-size[`batch.size`] property to `1`
 +
 Some dialects and driver configurations process a batch in a single pass, rather than validating each row against the effects of the preceding rows in the same batch.
 For example, `MERGE`-based dialects can attempt two `INSERT` operations for the same primary key instead of an `INSERT` followed by an `UPDATE`.
-Similarly, when xref:jdbc-property-dialect-postgres-unnest-insert-enabled[`dialect.postgres.unnest.insert.enabled`] is set to `true`, PostgreSQL combines a batch into a single multi-row statement.
+Similarly, when xref:jdbc-property-dialect-postgres-unnest-insert-enabled[`dialect.postgres.unnest.insert.enabled`] is set to `true`, PostgreSQL and CockroachDB combine a batch into a single multi-row statement.
 In each of these cases, the batch fails.
 
 // Type: reference
@@ -2087,7 +2087,7 @@ The connector adds missing columns to the table by comparing the incoming event'
 
 |[[jdbc-property-binary-handling-mode]]<<jdbc-property-binary-handling-mode, `+binary.handling.mode+`>>
 |`bytes`
-|Specifies how the connector binds fields that use the Kafka Connect `BYTES` schema when the corresponding destination column is a character type, for example, `CHAR`, `VARCHAR`, `TEXT`, or `CLOB`.
+|Specifies how the connector binds fields that use the Kafka Connect `BYTES` schema and resolve to a raw binary JDBC type when the corresponding destination column is a character type, for example, `CHAR`, `VARCHAR`, `TEXT`, or `CLOB`.
 The following options are available:
 
 `bytes`:: Specifies that the connector binds binary values as raw bytes.
@@ -2099,7 +2099,12 @@ Depending on the database, the write might fail instead.
 
 This setting applies only to existing character columns.
 For binary destination columns, the connector always binds the original bytes.
+Named `BYTES` schemas that retain the raw binary JDBC mapping are also eligible for encoding.
+Logical types that use `BYTES` as their underlying schema type, such as `Decimal`, retain their logical JDBC mapping and are not affected.
 The setting does not change the column types that the connector creates or adds through schema evolution.
+
+Ensure that the destination character column can hold the encoded value.
+Base64 encoding requires approximately four characters for every three input bytes, while hexadecimal encoding requires two characters for every input byte.
 
 |[[jdbc-property-binary-handling-selector-base64]]<<jdbc-property-binary-handling-selector-base64, `+binary.handling.selector.base64+`>>
 |No default
@@ -2146,9 +2151,9 @@ The default is `public`; however, if the PostGIS extension was installed in anot
 
 |[[jdbc-property-dialect-postgres-unnest-insert-enabled]]<<jdbc-property-dialect-postgres-unnest-insert-enabled, `+dialect.postgres.unnest.insert.enabled+`>>
 |`false`
-|Specifies whether to enable `UNNEST`-based batch inserts for PostgreSQL.
+|Specifies whether to enable `UNNEST`-based batch inserts for PostgreSQL and CockroachDB targets.
 
-When enabled, uses PostgreSQL `UNNEST()` for batch inserts, which can significantly improve performance by reducing the number of SQL statements executed.
+When enabled, the connector uses PostgreSQL-compatible `UNNEST()` statements for batch inserts, which can significantly improve performance by reducing the number of SQL statements executed.
 This optimization is compatible with `INSERT` and `UPSERT` modes.
 
 For information about the performance benefits of enabling the UNNEST function, see link:https://www.tigerdata.com/blog/boosting-postgres-insert-performance["Boosting Postgres Insert Performance"^] in the Tiger Data blog.
