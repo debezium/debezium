@@ -74,6 +74,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
     public static final String FLUSH_MAX_RETRIES = "flush.max.retries";
     public static final String FLUSH_RETRY_DELAY_MS = "flush.retry.delay.ms";
     public static final String CONNECTION_RESTART_ON_ERRORS = "connection.restart.on.errors";
+    public static final String TIMESTAMP_CLAMP_OUT_OF_RANGE_VALUES = "timestamp.clamp.out.of.range.values";
 
     // todo add support for the ValueConverter contract
 
@@ -278,6 +279,19 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
                     "In environments where the sink database uses asynchronous replication, enabling this option may risk data loss or inconsistencies " +
                     "during failover if the replica has not fully caught up with the primary.");
 
+    public static final Field TIMESTAMP_CLAMP_OUT_OF_RANGE_VALUES_FIELD = Field.create(TIMESTAMP_CLAMP_OUT_OF_RANGE_VALUES)
+            .withDisplayName("Clamp out-of-range timestamp values")
+            .withType(Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDefault(false)
+            .withDescription("Specifies whether temporal values that cannot be represented by the target database, " +
+                    "for example BC-era timestamps emitted by an Oracle source, are clamped to the target database's " +
+                    "minimum or maximum supported timestamp, mirroring how explicit infinity markers are handled. " +
+                    "When set to false (the default), out-of-range values are passed to the target database unchanged " +
+                    "and may cause the write to fail.");
+
     public static final Field COLLECTION_TABLE_FORMAT_FIELD = Field.create(COLLECTION_TABLE_FORMAT)
             .withDisplayName("Format string using table name")
             .withType(Type.STRING)
@@ -319,6 +333,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
                     FLUSH_MAX_RETRIES_FIELD,
                     FLUSH_RETRY_DELAY_MS_FIELD,
                     CONNECTION_RESTART_ON_ERRORS_FIELD,
+                    TIMESTAMP_CLAMP_OUT_OF_RANGE_VALUES_FIELD,
                     CLOUDEVENTS_SCHEMA_NAME_PATTERN_FIELD)
             .create();
 
@@ -450,6 +465,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
     private final boolean useReductionBuffer;
     private final KeyedMessageBatchMode keyedMessageBatchMode;
     private final boolean connectionRestartOnErrors;
+    private final boolean timestampClampOutOfRangeValues;
     private final String cloudEventsSchemaNamePattern;
     private final PrimaryKeyMode primaryKeyMode;
     private final Set<String> primaryKeyFields;
@@ -475,6 +491,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         this.flushMaxRetries = config.getInteger(FLUSH_MAX_RETRIES_FIELD);
         this.flushRetryDelayMs = config.getLong(FLUSH_RETRY_DELAY_MS_FIELD);
         this.connectionRestartOnErrors = config.getBoolean(CONNECTION_RESTART_ON_ERRORS_FIELD);
+        this.timestampClampOutOfRangeValues = config.getBoolean(TIMESTAMP_CLAMP_OUT_OF_RANGE_VALUES_FIELD);
         this.cloudEventsSchemaNamePattern = config.getString(CLOUDEVENTS_SCHEMA_NAME_PATTERN_FIELD);
         this.collectionNamingStrategy = resolveCollectionNamingStrategy(config, props);
         this.columnNamingStrategy = resolveColumnNamingStrategy(config, props);
@@ -610,6 +627,10 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
 
     public boolean isConnectionRestartOnErrors() {
         return connectionRestartOnErrors;
+    }
+
+    public boolean isTimestampClampForOutOfRangeValuesEnabled() {
+        return timestampClampOutOfRangeValues;
     }
 
     @Override

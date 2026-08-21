@@ -29,7 +29,7 @@ public abstract class AbstractDebeziumTimestampType extends AbstractTimestampTyp
         }
         if (value instanceof Number) {
 
-            final LocalDateTime localDateTime = getLocalDateTime(((Number) value).longValue());
+            final LocalDateTime localDateTime = clampIfOutOfRange(getLocalDateTime(((Number) value).longValue()));
 
             if (getDialect().isTimeZoneSet()) {
                 return List.of(new ValueBindDescriptor(index,
