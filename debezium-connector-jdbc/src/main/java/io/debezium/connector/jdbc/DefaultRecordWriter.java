@@ -10,7 +10,6 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Types;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -28,7 +27,6 @@ import org.apache.kafka.connect.errors.DataException;
 import org.hibernate.JDBCException;
 import org.hibernate.SharedSessionContract;
 import org.hibernate.Transaction;
-import org.hibernate.jdbc.Work;
 import org.hibernate.query.NativeQuery;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,6 +34,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.field.JdbcFieldDescriptor;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
+import io.debezium.connector.jdbc.util.BinaryHandling;
 import io.debezium.connector.jdbc.util.ByteArrayUtils;
 import io.debezium.metadata.CollectionId;
 import io.debezium.sink.batch.Batch;
@@ -148,19 +147,20 @@ public class DefaultRecordWriter implements RecordWriter {
         if (table == null) {
             return null;
         }
-        final JdbcSinkConnectorConfig.BinaryHandlingMode mode = dialect.resolveBinaryHandlingMode(table, record, field);
-        if (JdbcSinkConnectorConfig.BinaryHandlingMode.BYTES == mode) {
+        final BinaryHandling.Resolution resolution = dialect.resolveBinaryHandling(table, record, field);
+        if (!resolution.isEncoded()) {
             return null;
         }
+        final int targetJdbcType = resolution.targetColumn().getJdbcType();
         if (value == null) {
-            return List.of(new ValueBindDescriptor(index, null, Types.VARCHAR));
+            return List.of(new ValueBindDescriptor(index, null, targetJdbcType));
         }
         final byte[] bytes = ByteArrayUtils.getByteArrayFromValue(value);
         if (bytes == null) {
             // Let the regular binding report an unexpected value type.
             return null;
         }
-        return List.of(new ValueBindDescriptor(index, mode.encode(bytes), Types.VARCHAR));
+        return List.of(new ValueBindDescriptor(index, resolution.mode().encode(bytes), targetJdbcType));
     }
 
     private TableDescriptor readTable(CollectionId collectionId) {
@@ -386,10 +386,10 @@ public class DefaultRecordWriter implements RecordWriter {
                         session.doWork(conn -> {
                             for (var entry : resolved.values()) {
                                 if (!entry.inserts().isEmpty()) {
-                                    performTableWrite(conn, entry.table(), entry.inserts());
+                                    performTableWrites(conn, entry.table(), entry.inserts());
                                 }
                                 if (!entry.deletes().isEmpty()) {
-                                    performTableWrite(conn, entry.table(), entry.deletes());
+                                    performTableWrites(conn, entry.table(), entry.deletes());
                                 }
                             }
                         });
@@ -421,7 +421,7 @@ public class DefaultRecordWriter implements RecordWriter {
         final Transaction transaction = getSession().beginTransaction();
 
         try {
-            getSession().doWork(processBatch(tableDescriptor, statementInfo, records));
+            getSession().doWork(connection -> performTableWrites(connection, tableDescriptor, records));
             transaction.commit();
             processMetrics(records, statementInfo);
         }
@@ -468,8 +468,12 @@ public class DefaultRecordWriter implements RecordWriter {
         performWrite(conn, table, getSqlStatementInfo(table, records), records);
     }
 
-    private Work processBatch(TableDescriptor table, SqlStatementInfo statementInfo, List<JdbcSinkRecord> records) {
-        return conn -> performWrite(conn, table, statementInfo, records);
+    /**
+     * Writes records for a single table. Subclasses can partition a write when their statement shape
+     * requires homogeneous records.
+     */
+    protected void performTableWrites(Connection conn, TableDescriptor table, List<JdbcSinkRecord> records) throws SQLException {
+        performTableWrite(conn, table, records);
     }
 
     protected void performWrite(Connection conn, TableDescriptor table, SqlStatementInfo statementInfo, List<JdbcSinkRecord> records) throws SQLException {

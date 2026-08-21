@@ -16,11 +16,11 @@ import org.apache.kafka.connect.data.Schema;
 import org.hibernate.dialect.DatabaseVersion;
 import org.hibernate.engine.jdbc.Size;
 
-import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.JdbcSinkRecord;
 import io.debezium.connector.jdbc.field.JdbcFieldDescriptor;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
 import io.debezium.connector.jdbc.type.JdbcType;
+import io.debezium.connector.jdbc.util.BinaryHandling;
 import io.debezium.metadata.CollectionId;
 import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.sink.field.FieldDescriptor;
@@ -213,17 +213,15 @@ public interface DatabaseDialect {
     String getQueryBindingWithValueCast(ColumnDescriptor column, Schema schema, JdbcType type);
 
     /**
-     * Resolves how a field is bound for the destination table. A textual mode binds the value as an
-     * encoded string, and {@link JdbcSinkConnectorConfig.BinaryHandlingMode#BYTES} uses the regular
-     * binding.
+     * Resolves how a field is bound for the destination table.
      *
      * @param table the table descriptor, never {@code null}
      * @param record the sink record the field belongs to, never {@code null}
      * @param field the field descriptor, never {@code null}
-     * @return the resolved binary handling mode
+     * @return the resolved binary handling mode and destination column
      */
-    default JdbcSinkConnectorConfig.BinaryHandlingMode resolveBinaryHandlingMode(TableDescriptor table, JdbcSinkRecord record, FieldDescriptor field) {
-        return JdbcSinkConnectorConfig.BinaryHandlingMode.BYTES;
+    default BinaryHandling.Resolution resolveBinaryHandling(TableDescriptor table, JdbcSinkRecord record, FieldDescriptor field) {
+        return BinaryHandling.Resolution.bytes(null);
     }
 
     /**

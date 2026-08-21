@@ -36,4 +36,14 @@ public class JdbcSinkBinaryHandlingModeIT extends AbstractJdbcSinkBinaryHandling
     protected String binaryColumnType() {
         return "blob";
     }
+
+    @Override
+    protected String largeCharacterColumnType() {
+        return "nclob";
+    }
+
+    @Override
+    protected String nationalCharacterColumnType() {
+        return "nvarchar2(64)";
+    }
 }

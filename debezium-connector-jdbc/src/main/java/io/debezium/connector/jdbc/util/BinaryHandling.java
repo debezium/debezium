@@ -11,6 +11,8 @@ import org.apache.kafka.connect.data.Schema;
 
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.BinaryHandlingMode;
+import io.debezium.connector.jdbc.type.JdbcType;
+import io.debezium.connector.jdbc.type.RawBytesJdbcType;
 import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.sink.field.FieldDescriptor;
 
@@ -25,23 +27,22 @@ public final class BinaryHandling {
     }
 
     /**
-     * Resolves the mode for a field and destination column. A textual mode applies only to an
-     * unnamed {@code BYTES} schema that targets a character column. {@link BinaryHandlingMode#BYTES}
-     * indicates that the regular binding applies.
+     * Resolves how a field is bound to its destination column. A textual mode applies only when the
+     * field resolves to a raw {@code BYTES} JDBC type and targets a character column.
      */
-    public static BinaryHandlingMode resolve(JdbcSinkConnectorConfig config, String topicName, FieldDescriptor field, ColumnDescriptor column) {
-        if (column == null || !isPlainBytesSchema(field.getSchema()) || !isCharacterType(column.getJdbcType())) {
-            return BinaryHandlingMode.BYTES;
+    public static Resolution resolve(JdbcSinkConnectorConfig config, String topicName, FieldDescriptor field, JdbcType jdbcType, ColumnDescriptor column) {
+        if (column == null || !isRawBytesSchema(field.getSchema(), jdbcType) || !isCharacterType(column.getJdbcType())) {
+            return Resolution.bytes(column);
         }
-        return config.getBinaryHandlingMode(topicName, field.getName());
+        return new Resolution(config.getBinaryHandlingMode(topicName, field.getName()), column);
     }
 
     /**
-     * Returns whether the schema is an unnamed {@code BYTES} schema. Named logical schemas such as
-     * {@code Decimal} and {@code Bits} use separate type mappings and are not subject to this setting.
+     * Returns whether the schema resolves to a JDBC type that binds values as raw bytes. Logical
+     * types such as {@code Decimal} and {@code Bits} use separate type mappings and are excluded.
      */
-    public static boolean isPlainBytesSchema(Schema schema) {
-        return schema.type() == Schema.Type.BYTES && schema.name() == null;
+    public static boolean isRawBytesSchema(Schema schema, JdbcType jdbcType) {
+        return schema.type() == Schema.Type.BYTES && jdbcType instanceof RawBytesJdbcType;
     }
 
     /**
@@ -60,6 +61,22 @@ public final class BinaryHandling {
                 return true;
             default:
                 return false;
+        }
+    }
+
+    /**
+     * The resolved binary handling mode and its destination column. The column may be {@code null}
+     * when the destination could not be resolved; {@link #isEncoded()} then always returns
+     * {@code false}, so callers only read {@link #targetColumn()} for encoded resolutions.
+     */
+    public record Resolution(BinaryHandlingMode mode, ColumnDescriptor targetColumn) {
+
+        public static Resolution bytes(ColumnDescriptor targetColumn) {
+            return new Resolution(BinaryHandlingMode.BYTES, targetColumn);
+        }
+
+        public boolean isEncoded() {
+            return mode != BinaryHandlingMode.BYTES;
         }
     }
 }

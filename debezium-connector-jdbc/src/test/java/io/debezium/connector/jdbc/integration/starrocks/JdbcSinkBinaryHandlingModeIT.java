@@ -32,6 +32,9 @@ public class JdbcSinkBinaryHandlingModeIT extends AbstractJdbcSinkBinaryHandling
         return "string";
     }
 
+    // No largeCharacterColumnType override: STRING caps at 65,533 characters, which cannot
+    // hold the Base64 encoding of the 64 KiB payload used by the large-value test.
+
     @Override
     protected String binaryColumnType() {
         return "varbinary(16)";

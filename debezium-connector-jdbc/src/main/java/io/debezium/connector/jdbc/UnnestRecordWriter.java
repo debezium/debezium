@@ -12,6 +12,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 
@@ -19,8 +20,6 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.hibernate.SharedSessionContract;
-import org.hibernate.Transaction;
-import org.hibernate.jdbc.Work;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,7 +33,7 @@ import io.debezium.sink.valuebinding.ValueBindDescriptor;
 import io.debezium.util.Stopwatch;
 
 /**
- * UNNEST-optimized implementation for PostgreSQL that writes batches using SQL arrays.
+ * UNNEST-optimized implementation for PostgreSQL-compatible targets that writes batches using SQL arrays.
  * This approach can provide 5-10x performance improvement for bulk inserts/upserts.
  *
  * For batch statements (isBatchStatement=true), uses UNNEST with PreparedStatement.setArray().
@@ -49,22 +48,68 @@ public class UnnestRecordWriter extends DefaultRecordWriter {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(UnnestRecordWriter.class);
 
+    private enum BinaryBindingKind {
+        BYTES,
+        STRING,
+        OTHER
+    }
+
+    private record BinaryFieldBinding(String fieldName, boolean key, Class<?> jdbcType, BinaryBindingKind kind) {
+    }
+
+    private record BinaryBindingSignature(List<BinaryFieldBinding> fields) {
+    }
+
     public UnnestRecordWriter(SharedSessionContract session, QueryBinderResolver queryBinderResolver,
                               JdbcSinkConnectorConfig config, DatabaseDialect dialect, SinkProgressListener progressListener) {
         super(session, queryBinderResolver, config, dialect, progressListener);
     }
 
+    /**
+     * Splits records into contiguous groups with a consistent binary parameter shape. UNNEST derives
+     * its SQL array element types from the first record, so a group cannot mix raw byte arrays and
+     * encoded string arrays. Keeping groups contiguous preserves the input record order.
+     */
     @Override
-    public void write(TableDescriptor tableDescriptor, List<JdbcSinkRecord> records) {
-        // If it's a batch statement (UNNEST), use column-wise binding
-        // Otherwise delegate to parent's standard row-wise binding
-        SqlStatementInfo sqlStatementInfo = getSqlStatementInfo(tableDescriptor, records);
-        if (sqlStatementInfo.isBatchStatement()) {
-            writeUnnestBatch(tableDescriptor, sqlStatementInfo, records);
+    protected void performTableWrites(Connection conn, TableDescriptor table, List<JdbcSinkRecord> records) throws SQLException {
+        for (List<JdbcSinkRecord> group : partitionRecordsByBinaryBinding(table, records)) {
+            performTableWrite(conn, table, group);
         }
-        else {
-            super.write(tableDescriptor, records);
+    }
+
+    private List<List<JdbcSinkRecord>> partitionRecordsByBinaryBinding(TableDescriptor table, List<JdbcSinkRecord> records) {
+        final List<List<JdbcSinkRecord>> groups = new ArrayList<>();
+        BinaryBindingSignature previousSignature = null;
+
+        for (JdbcSinkRecord record : records) {
+            final BinaryBindingSignature signature = resolveBinaryBindingSignature(table, record);
+            if (!signature.equals(previousSignature)) {
+                groups.add(new ArrayList<>());
+                previousSignature = signature;
+            }
+            groups.get(groups.size() - 1).add(record);
         }
+        return groups;
+    }
+
+    private BinaryBindingSignature resolveBinaryBindingSignature(TableDescriptor table, JdbcSinkRecord record) {
+        final List<BinaryFieldBinding> fields = record.jdbcFields().values().stream()
+                .filter(field -> field.getSchema().type() == Schema.Type.BYTES)
+                .sorted(Comparator.comparing(JdbcFieldDescriptor::getName).thenComparing(JdbcFieldDescriptor::isKey))
+                .map(field -> {
+                    final JdbcType jdbcType = getDialect().getSchemaType(field.getSchema());
+                    final BinaryHandling.Resolution resolution = getDialect().resolveBinaryHandling(table, record, field);
+                    final BinaryBindingKind kind;
+                    if (!BinaryHandling.isRawBytesSchema(field.getSchema(), jdbcType)) {
+                        kind = BinaryBindingKind.OTHER;
+                    }
+                    else {
+                        kind = resolution.isEncoded() ? BinaryBindingKind.STRING : BinaryBindingKind.BYTES;
+                    }
+                    return new BinaryFieldBinding(field.getName(), field.isKey(), jdbcType.getClass(), kind);
+                })
+                .toList();
+        return new BinaryBindingSignature(fields);
     }
 
     @Override
@@ -76,26 +121,6 @@ public class UnnestRecordWriter extends DefaultRecordWriter {
         else {
             super.performTableWrite(conn, table, records);
         }
-    }
-
-    /**
-     * Write records using UNNEST approach with column-wise binding.
-     */
-    private void writeUnnestBatch(TableDescriptor table, SqlStatementInfo statementInfo, List<JdbcSinkRecord> records) {
-        Stopwatch writeStopwatch = Stopwatch.reusable();
-        writeStopwatch.start();
-        final Transaction transaction = getSession().beginTransaction();
-        try {
-            getSession().doWork(processUnnestBatch(table, statementInfo.statement(), records));
-            transaction.commit();
-            processMetrics(records, statementInfo);
-        }
-        catch (Exception e) {
-            transaction.rollback();
-            throw e;
-        }
-        writeStopwatch.stop();
-        LOGGER.trace("[PERF] Total UNNEST write execution time {}", writeStopwatch.durations());
     }
 
     void performUnnestBatch(Connection conn, TableDescriptor table, String sqlStatement, List<JdbcSinkRecord> records) throws SQLException {
@@ -122,16 +147,6 @@ public class UnnestRecordWriter extends DefaultRecordWriter {
             LOGGER.debug("UNNEST batch insert affected {} rows", updateCount);
             LOGGER.trace("[PERF] Execute UNNEST batch execution time {}", executeStopwatch.durations());
         }
-    }
-
-    /**
-     * Process a batch using UNNEST approach where each column's values are passed as a SQL array.
-     * Uses PreparedStatement.setArray() for optimal performance and query plan caching.
-     */
-    private Work processUnnestBatch(TableDescriptor table, String sqlStatement, List<JdbcSinkRecord> records) {
-        return conn -> {
-            performUnnestBatch(conn, table, sqlStatement, records);
-        };
     }
 
     /**
@@ -283,19 +298,20 @@ public class UnnestRecordWriter extends DefaultRecordWriter {
      */
     private String getSqlTypeName(TableDescriptor table, JdbcSinkRecord record, JdbcFieldDescriptor field) {
         // Encoded binary values use a text array to match the cast in the UNNEST statement.
-        if (JdbcSinkConnectorConfig.BinaryHandlingMode.BYTES != getDialect().resolveBinaryHandlingMode(table, record, field)) {
+        if (getDialect().resolveBinaryHandling(table, record, field).isEncoded()) {
             return "text";
         }
+
+        final Schema schema = field.getSchema();
+        final JdbcType type = getDialect().getSchemaType(schema);
 
         // The driver resolves the array element type by this name, so raw binary values must use
         // the canonical "bytea" name; dialect type names such as CockroachDB's "bytes" have no
         // corresponding server array type registered with the driver.
-        if (BinaryHandling.isPlainBytesSchema(field.getSchema())) {
+        if (BinaryHandling.isRawBytesSchema(schema, type)) {
             return "bytea";
         }
 
-        Schema schema = field.getSchema();
-        JdbcType type = getDialect().getSchemaType(schema);
         String typeName = type.getTypeName(schema, field.isKey());
 
         // Remove array brackets: text[][] -> text

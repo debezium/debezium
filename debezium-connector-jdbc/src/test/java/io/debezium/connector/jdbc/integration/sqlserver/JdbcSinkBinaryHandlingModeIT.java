@@ -36,4 +36,15 @@ public class JdbcSinkBinaryHandlingModeIT extends AbstractJdbcSinkBinaryHandling
     protected String binaryColumnType() {
         return "varbinary(16)";
     }
+
+    @Override
+    protected String largeCharacterColumnType() {
+        // ntext reports the LONGNVARCHAR JDBC type, exercising the national character stream binding
+        return "ntext";
+    }
+
+    @Override
+    protected String nationalCharacterColumnType() {
+        return "nvarchar(max)";
+    }
 }

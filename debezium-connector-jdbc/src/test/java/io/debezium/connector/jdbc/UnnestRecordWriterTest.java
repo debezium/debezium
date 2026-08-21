@@ -36,6 +36,7 @@ import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.field.JdbcFieldDescriptor;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
 import io.debezium.connector.jdbc.type.JdbcType;
+import io.debezium.connector.jdbc.util.BinaryHandling;
 import io.debezium.sink.spi.SinkProgressListener;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
 
@@ -141,8 +142,8 @@ class UnnestRecordWriterTest extends AbstractBaseJdbcSinkTest {
 
         when(dialect.getSchemaType(timestampSchema)).thenReturn(tsType);
         when(dialect.getSchemaType(dateSchema)).thenReturn(dateType);
-        when(dialect.resolveBinaryHandlingMode(any(), any(), any()))
-                .thenReturn(JdbcSinkConnectorConfig.BinaryHandlingMode.BYTES);
+        when(dialect.resolveBinaryHandling(any(), any(), any()))
+                .thenReturn(BinaryHandling.Resolution.bytes(null));
 
         LocalDateTime transformedTs = LocalDateTime.of(2024, 1, 15, 10, 30, 0);
         when(dialect.bindValue(any(JdbcFieldDescriptor.class), anyInt(), any()))
@@ -210,8 +211,8 @@ class UnnestRecordWriterTest extends AbstractBaseJdbcSinkTest {
         JdbcType geoType = mock(JdbcType.class);
         when(geoType.getTypeName(any(), any(Boolean.class))).thenReturn("geometry");
         when(dialect.getSchemaType(geometrySchema)).thenReturn(geoType);
-        when(dialect.resolveBinaryHandlingMode(any(), any(), any()))
-                .thenReturn(JdbcSinkConnectorConfig.BinaryHandlingMode.BYTES);
+        when(dialect.resolveBinaryHandling(any(), any(), any()))
+                .thenReturn(BinaryHandling.Resolution.bytes(null));
 
         // Geometry returns TWO ValueBindDescriptors (wkb bytes + srid)
         when(dialect.bindValue(any(JdbcFieldDescriptor.class), anyInt(), any()))

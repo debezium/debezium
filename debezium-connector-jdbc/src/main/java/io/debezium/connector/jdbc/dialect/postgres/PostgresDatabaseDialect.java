@@ -177,14 +177,14 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
             final io.debezium.sink.field.FieldDescriptor field = firstRecord.allFields().get(fieldName);
 
             // Encoded binary values use text arrays instead of the bytea type implied by the schema.
-            if (JdbcSinkConnectorConfig.BinaryHandlingMode.BYTES != resolveBinaryHandlingMode(table, firstRecord, field)) {
+            if (resolveBinaryHandling(table, firstRecord, field).isEncoded()) {
                 return "?::text[]";
             }
 
             // Raw binary values are always bound as bytea arrays; the canonical name keeps the cast
             // aligned with the array element type the driver binds, also on dialects whose BYTES
             // type name differs (e.g. CockroachDB's "bytes").
-            if (BinaryHandling.isPlainBytesSchema(field.getSchema())) {
+            if (BinaryHandling.isRawBytesSchema(field.getSchema(), getSchemaType(field.getSchema()))) {
                 return "?::bytea[]";
             }
 
@@ -217,10 +217,11 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
      * value of every row, so an array column would need an array of arrays, and the cast derived above
      * would be {@code ?::text[][]}, which {@code UNNEST} flattens into scalars the column rejects.
      */
-    private static boolean hasUnnestUnsupportedField(JdbcSinkRecord record) {
+    private boolean hasUnnestUnsupportedField(JdbcSinkRecord record) {
         return record.jdbcFields().values().stream()
                 .anyMatch(field -> field.getSchema().type() == Schema.Type.STRUCT
-                        || (field.getSchema().type() == Schema.Type.BYTES && !BinaryHandling.isPlainBytesSchema(field.getSchema()))
+                        || (field.getSchema().type() == Schema.Type.BYTES
+                                && !BinaryHandling.isRawBytesSchema(field.getSchema(), getSchemaType(field.getSchema())))
                         || field.getSchema().type() == Schema.Type.ARRAY
                         || Enum.LOGICAL_NAME.equals(field.getSchema().name()));
     }

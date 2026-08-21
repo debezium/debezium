@@ -8,10 +8,14 @@ package io.debezium.connector.jdbc.integration;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.ByteBuffer;
+import java.util.Base64;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 
@@ -44,6 +48,29 @@ public abstract class AbstractJdbcSinkBinaryHandlingModeTest extends AbstractJdb
      * The binary column type used for raw byte landings, e.g. {@code bytea} or {@code varbinary(16)}.
      */
     protected abstract String binaryColumnType();
+
+    /**
+     * The large character column type used to verify stream bindings. Dialects that return
+     * {@code null} do not run this test.
+     */
+    protected String largeCharacterColumnType() {
+        return null;
+    }
+
+    /**
+     * The national character column type, e.g. {@code nvarchar(max)} or {@code nvarchar2(64)}.
+     * Dialects that return {@code null} do not run this test.
+     */
+    protected String nationalCharacterColumnType() {
+        return null;
+    }
+
+    /**
+     * The fixed-length character column type used to verify landings that the destination pads.
+     */
+    protected String fixedLengthCharacterColumnType() {
+        return "char(16)";
+    }
 
     /**
      * DDL for a table with a single {@code data} column of the given type; override for dialects
@@ -94,6 +121,73 @@ public abstract class AbstractJdbcSinkBinaryHandlingModeTest extends AbstractJdb
     @FixFor("debezium/dbz#2468")
     public void testBytesFieldWithHexModeIsBoundAsStringToCharacterColumn(SinkRecordFactory factory) throws Exception {
         assertBytesLandsInCharacterColumn(factory, "hex", NON_UTF8_BYTES, "ffd8ffe0");
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("debezium/dbz#2468")
+    public void testNamedRawBytesFieldIsBoundAsStringToCharacterColumn(SinkRecordFactory factory) throws Exception {
+        final Schema namedBytesSchema = SchemaBuilder.bytes().name("com.example.Binary").optional().build();
+        assertBytesLandsInCharacterColumn(factory, "hex", namedBytesSchema, NON_UTF8_BYTES, "ffd8ffe0");
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("debezium/dbz#2468")
+    public void testBytesFieldIsBoundAsStringToNationalCharacterColumn(SinkRecordFactory factory) throws Exception {
+        final String nationalColumnType = nationalCharacterColumnType();
+        Assumptions.assumeTrue(nationalColumnType != null, "Dialect does not define a national character column type for this test");
+        assertBytesLandsInColumn(factory, "hex", nationalColumnType, Schema.OPTIONAL_BYTES_SCHEMA, NON_UTF8_BYTES, "ffd8ffe0", false);
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("debezium/dbz#2468")
+    public void testBytesFieldIsBoundAsStringToFixedLengthCharacterColumn(SinkRecordFactory factory) throws Exception {
+        // Whether the padding of a fixed-length column is returned varies per database, so the
+        // landed value is compared without its trailing padding; encoded values never end in spaces.
+        assertBytesLandsInColumn(factory, "hex", fixedLengthCharacterColumnType(), Schema.OPTIONAL_BYTES_SCHEMA, NON_UTF8_BYTES, "ffd8ffe0", true);
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("debezium/dbz#2468")
+    public void testLargeAndNullBytesValuesAreBoundToLargeCharacterColumn(SinkRecordFactory factory) throws Exception {
+        final String largeColumnType = largeCharacterColumnType();
+        Assumptions.assumeTrue(largeColumnType != null, "Dialect does not define a large character column type for this test");
+
+        final byte[] largeBytes = new byte[64 * 1024];
+        for (int index = 0; index < largeBytes.length; index++) {
+            largeBytes[index] = (byte) (index % 251);
+        }
+        final String expected = Base64.getEncoder().encodeToString(largeBytes);
+
+        final Map<String, String> properties = binaryHandlingSinkConfig("base64");
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server1", "schema", tableName);
+        final JdbcSinkConnectorConfig config = getConfig(properties);
+        final List<JdbcKafkaSinkRecord> records = List.of(
+                factory.createRecordWithSchemaValue(topicName, (byte) 1, "data", Schema.OPTIONAL_BYTES_SCHEMA, largeBytes, config),
+                factory.createRecordWithSchemaValue(topicName, (byte) 2, "data", Schema.OPTIONAL_BYTES_SCHEMA, null, config));
+
+        final String destinationTable = destinationTableName(records.get(0));
+        getSink().execute(singleDataColumnTableDdl(destinationTable, largeColumnType));
+
+        consume(records);
+
+        getSink().assertRows(destinationTable, rs -> {
+            final Map<Integer, String> rows = new HashMap<>();
+            do {
+                rows.put(rs.getInt(1), rs.getString(2));
+            } while (rs.next());
+            assertThat(rows).containsOnlyKeys(1, 2);
+            assertThat(rows.get(1)).isEqualTo(expected);
+            assertThat(rows.get(2)).isNull();
+            return null;
+        });
     }
 
     @ParameterizedTest
@@ -165,6 +259,16 @@ public abstract class AbstractJdbcSinkBinaryHandlingModeTest extends AbstractJdb
     }
 
     private void assertBytesLandsInCharacterColumn(SinkRecordFactory factory, String mode, Object value, String expected) throws Exception {
+        assertBytesLandsInCharacterColumn(factory, mode, Schema.OPTIONAL_BYTES_SCHEMA, value, expected);
+    }
+
+    private void assertBytesLandsInCharacterColumn(SinkRecordFactory factory, String mode, Schema fieldSchema, Object value, String expected) throws Exception {
+        assertBytesLandsInColumn(factory, mode, characterColumnType(), fieldSchema, value, expected, false);
+    }
+
+    private void assertBytesLandsInColumn(SinkRecordFactory factory, String mode, String columnType, Schema fieldSchema, Object value, String expected,
+                                          boolean ignoreTrailingPadding)
+            throws Exception {
         final Map<String, String> properties = binaryHandlingSinkConfig(mode);
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();
@@ -177,18 +281,19 @@ public abstract class AbstractJdbcSinkBinaryHandlingModeTest extends AbstractJdb
                 topicName,
                 (byte) 1,
                 "data",
-                Schema.OPTIONAL_BYTES_SCHEMA,
+                fieldSchema,
                 value,
                 config);
 
         final String destinationTable = destinationTableName(createRecord);
-        getSink().execute(singleDataColumnTableDdl(destinationTable, characterColumnType()));
+        getSink().execute(singleDataColumnTableDdl(destinationTable, columnType));
 
         consume(createRecord);
 
         getSink().assertRows(destinationTable, rs -> {
             assertThat(rs.getInt(1)).isEqualTo(1);
-            assertThat(rs.getString(2)).isEqualTo(expected);
+            final String landed = rs.getString(2);
+            assertThat(ignoreTrailingPadding ? landed.stripTrailing() : landed).isEqualTo(expected);
             return null;
         });
     }
