@@ -223,6 +223,11 @@ public class OracleValueConvertersTest {
         final OffsetDateTime bc = OffsetDateTime.of(-2017, 3, 27, 1, 34, 56, 7_890_000, ZoneOffset.ofHours(-11));
         final Object result = convertersUtf8.converter(column, field).convert(new TIMESTAMPTZ(bc));
         assertThat(result).isEqualTo("-2017-03-27T01:34:56.007890-11:00");
+
+        // The era-suffixed streaming representation, as mined with NLS_TIMESTAMP_TZ_FORMAT
+        final Object streamed = convertersUtf8.converter(column, field)
+                .convert("TO_TIMESTAMP_TZ('2018-03-27 01:34:56.007890000 -11:00 BC')");
+        assertThat(streamed).isEqualTo("-2017-03-27T01:34:56.007890-11:00");
     }
 
     @Test
