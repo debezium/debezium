@@ -13,6 +13,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -27,6 +28,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.connector.common.BaseSourceInfo;
+import io.debezium.doc.FixFor;
 import io.debezium.document.DocumentReader;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.CommonOffsetContext;
@@ -199,6 +201,43 @@ public class SignalProcessorTest {
                 .untilAsserted(() -> assertThat(called.intValue()).isEqualTo(5));
 
         signalProcess.stop();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2458")
+    public void shouldSkipProcessingWhenSemaphoreCannotBeAcquired() throws Exception {
+
+        final SignalChannelReader genericChannel = mock(SignalChannelReader.class);
+
+        when(genericChannel.name()).thenReturn("generic");
+        when(genericChannel.read()).thenReturn(
+                List.of(new SignalRecord("log1", "log", "{\"message\": \"signallog {}\"}", Map.of("channelOffset", -1L))),
+                List.of());
+
+        final LogInterceptor log = new LogInterceptor(Log.class);
+
+        signalProcess = new SignalProcessor<>(SourceConnector.class,
+                baseConfig(Map.of(CommonConnectorConfig.SIGNAL_PROCESSOR_SEMAPHORE_WAIT_MS.name(), 1L)),
+                Map.of(Log.NAME, new Log<>()),
+                List.of(genericChannel), documentReader, initialOffset);
+
+        // Hold the single permit so processing cannot acquire it within the configured wait and must skip
+        // the cycle rather than run the signal action without holding the lock.
+        final Semaphore semaphore = signalProcessorSemaphore(signalProcess);
+        semaphore.acquire();
+        try {
+            signalProcess.process();
+            assertThat(log.containsMessage("signallog {LSN=12345}")).isFalse();
+        }
+        finally {
+            semaphore.release();
+        }
+    }
+
+    private static Semaphore signalProcessorSemaphore(SignalProcessor<?, ?> processor) throws Exception {
+        final java.lang.reflect.Field field = SignalProcessor.class.getDeclaredField("semaphore");
+        field.setAccessible(true);
+        return (Semaphore) field.get(processor);
     }
 
     protected CommonConnectorConfig baseConfig() {
