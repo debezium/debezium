@@ -185,8 +185,20 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             // no longer match it. The chunk position returns to the window start and the whole
             // window is re-read (at-least-once); sendEvent advances lastEventKeySent before
             // dispatching, so reverting to it would skip a row.
-            deferChunkOnStaleSchema(new DebeziumException(
-                    "The schema of table '%s' was refreshed after the window was buffered".formatted(currentTable.id())));
+            try {
+                deferChunkOnStaleSchema(new DebeziumException(
+                        "The schema of table '%s' was refreshed after the window was buffered".formatted(currentTable.id())));
+            }
+            catch (DebeziumException e) {
+                // The deferral bound was exceeded; this runs on the signal processing path, so
+                // letting the exception escape would get it swallowed and stall the snapshot.
+                warnAndSkip(partition, offsetContext,
+                        SQL_EXCEPTION,
+                        "Error while emitting the incremental snapshot window of table '%s', skipping and continuing streaming"
+                                .formatted(context.currentDataCollectionId().getId()),
+                        e);
+                return;
+            }
             context.revertChunk();
             context.nextChunkPosition(windowStartPosition);
             return;
