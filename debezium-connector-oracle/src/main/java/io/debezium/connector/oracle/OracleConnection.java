@@ -14,6 +14,7 @@ import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -686,6 +687,12 @@ public class OracleConnection extends JdbcConnection {
     public Object getColumnValue(ResultSet rs, int columnIndex, Column column, Table table) throws SQLException {
         if (column.jdbcType() == OracleTypes.JSON || "JSON".equals(column.typeName())) {
             return rs.getObject(columnIndex, OracleJsonObject.class);
+        }
+        if ("DATE".equalsIgnoreCase(column.typeName())) {
+            // The driver maps DATE columns to java.sql.Timestamp, which is bound to the hybrid
+            // Julian/Gregorian calendar; that drops the era of BC values and day-shifts dates that
+            // precede the Gregorian cut-over in 1582, so fetch such columns as LocalDateTime.
+            return rs.getObject(columnIndex, LocalDateTime.class);
         }
         return super.getColumnValue(rs, columnIndex, column, table);
     }
