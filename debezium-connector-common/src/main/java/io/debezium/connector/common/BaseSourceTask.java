@@ -97,9 +97,9 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
             if (offset == null) {
                 if (snapshotter.shouldSnapshotOnSchemaError()) {
-                    // We are in schema only recovery mode, use the existing redo log position
-                    // would like to also verify redo log position exists, but it defaults to 0 which is technically valid
-                    throw new DebeziumException("Could not find existing redo log information while attempting schema only recovery snapshot");
+                    // We are in schema only recovery mode, use the existing transaction log position
+                    // would like to also verify transaction log position exists, but it defaults to 0 which is technically valid
+                    throw new DebeziumException("Could not find existing transaction log information while attempting schema only recovery snapshot");
                 }
                 LOGGER.info("Connector started with no previous offset for partition '{}'", partition);
                 if (schema.isHistorized()) {
