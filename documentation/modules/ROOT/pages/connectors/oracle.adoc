@@ -195,6 +195,13 @@ If you want the connector to capture data only from specific tables you can dire
 3. Obtain a `ROW SHARE MODE` lock on each of the captured tables to prevent structural changes from occurring during creation of the snapshot.
 +
 NOTE: {prodname} holds the locks for only a short time.
++
+[NOTE]
+====
+Because an Oracle transaction cannot span containers, when you configure the connector to capture changes from multiple pluggable databases through the xref:oracle-property-database-pdb-names[`database.pdb.names`] property, the connector opens a dedicated database connection for each pluggable database.
+Each connection holds the locks for its pluggable database's tables until the schema capture completes (Step 6), ensuring a consistent snapshot across all pluggable databases.
+The connector closes these additional connections after it releases the locks.
+====
 
 4. Read the current system change number (SCN) position from the server's redo log.
 
@@ -3597,7 +3604,7 @@ spec:
     database.user: c##dbzuser
     database.password: dbz
     database.dbname: ORCLCDB
-    database.pdb.name : ORCLPDB1,
+    database.pdb.names : ORCLPDB1,
     topic.prefix: inventory-connector-{context}
     schema.history.internal.kafka.bootstrap.servers: kafka:9092
     schema.history.internal.kafka.topic: schema-changes.inventory
@@ -3626,8 +3633,8 @@ The password for the Oracle user, as specified in xref:creating-users-for-the-co
 `database.dbname`::
 The name of the database to capture changes from.
 
-`database.pdb.name`::
-The name of the Oracle pluggable database that the connector captures changes from.
+`database.pdb.names`::
+The comma-separated list of names of the Oracle pluggable databases that the connector captures changes from.
 Used in container database (CDB) installations only.
 
 `topic.prefix`::
@@ -3675,7 +3682,7 @@ Optionally, you can ignore, mask, or truncate columns that contain sensitive dat
         "database.dbname" : "ORCLCDB",
         "topic.prefix" : "server1",
         "tasks.max" : "1",
-        "database.pdb.name" : "ORCLPDB1",
+        "database.pdb.names" : "ORCLPDB1",
         "schema.history.internal.kafka.bootstrap.servers" : "kafka:9092",
         "schema.history.internal.kafka.topic": "schema-changes.inventory"
     }
@@ -3711,8 +3718,8 @@ Topic prefix that identifies and provides a namespace for the Oracle database se
 `tasks.max`::
 The maximum number of tasks to create for this connector.
 
-`database.pdb.name`::
-The name of the Oracle pluggable database that the connector captures changes from.
+`database.pdb.names`::
+The comma-separated list of names of the Oracle pluggable databases that the connector captures changes from.
 Used in container database (CDB) installations only.
 
 `schema.history.internal.kafka.bootstrap.servers`::
@@ -3756,7 +3763,7 @@ The following JSON example shows the same configuration as in the preceding exam
         "database.password" : "dbz",
         "database.url": "jdbc:oracle:thin:@(DESCRIPTION=(ADDRESS_LIST=(LOAD_BALANCE=OFF)(FAILOVER=ON)(ADDRESS=(PROTOCOL=TCP)(HOST=<oracle ip 1>)(PORT=1521))(ADDRESS=(PROTOCOL=TCP)(HOST=<oracle ip 2>)(PORT=1521)))(CONNECT_DATA=SERVICE_NAME=)(SERVER=DEDICATED)))",
         "database.dbname" : "ORCLCDB",
-        "database.pdb.name" : "ORCLPDB1",
+        "database.pdb.names" : "ORCLPDB1",
         "schema.history.internal.kafka.bootstrap.servers" : "kafka:9092",
         "schema.history.internal.kafka.topic": "schema-changes.inventory"
     }
@@ -3828,7 +3835,7 @@ ifdef::community[]
         "database.user" : "c##dbzuser",
         "database.password" : "dbz",
         "database.dbname" : "ORCLCDB",
-        "database.pdb.name" : "ORCLPDB1",
+        "database.pdb.names" : "ORCLPDB1",
         "schema.history.internal.kafka.bootstrap.servers" : "kafka:9092",
         "schema.history.internal.kafka.topic": "schema-changes.inventory"
     }
@@ -3837,8 +3844,8 @@ ifdef::community[]
 
 [IMPORTANT]
 ====
-When you configure a {prodname} Oracle connector for use with an Oracle CDB, you must specify a value for the property `database.pdb.name`, which names the PDB that you want the connector to capture changes from.
-For non-CDB installation, do *not* specify the `database.pdb.name` property.
+When you configure a {prodname} Oracle connector for use with an Oracle CDB, you must specify a value for the property `database.pdb.names`, which names one or more PDBs that you want the connector to capture changes from.
+For non-CDB installation, do *not* specify the `database.pdb.names` property.
 ====
 
 .Example: {prodname} Oracle connector configuration for non-CDB deployments
@@ -4045,9 +4052,12 @@ In a container database environment, specify the name of the root container data
 |Specifies the raw database JDBC URL. Use this property to provide flexibility in defining that database connection.
 Valid values include raw TNS names and RAC connection strings.
 
-|[[oracle-property-database-pdb-name]]<<oracle-property-database-pdb-name, `+database.pdb.name+`>>
+|[[oracle-property-database-pdb-names]]<<oracle-property-database-pdb-names, `+database.pdb.names+`>>
 |No default
-|Name of the Oracle pluggable database to connect to. Use this property with container database (CDB) installations only.
+|Comma-separated list of the names of the Oracle pluggable databases to capture changes from. Use this property with container database (CDB) installations only. +
+The first name in the list designates the container that the connector uses for connector-managed objects, such as the LogMiner flush table and heartbeat action queries. +
+This property replaces the deprecated `database.pdb.name` property. If you specify `database.pdb.name`, the connector treats its value as a single-entry list. +
+When multiple names are specified, the connector opens one additional connection per pluggable database during the initial snapshot to hold schema locks while it creates a consistent snapshot.
 
 |[[oracle-property-topic-prefix]]<<oracle-property-topic-prefix, `+topic.prefix+`>>
 |No default
@@ -4205,7 +4215,7 @@ endif::community[]
 | All tables specified in the connector's xref:{context}-property-table-include-list[`table.include.list`] property.
 |An optional, comma-separated list of regular expressions that match the fully-qualified names (`__<databaseName>.____<schemaName>__.__<tableName>__`) of the tables to include in a snapshot.
 
-In a multitenant container database (CDB) environment, the regular expression must include the xref:oracle-property-database-pdb-name[pluggable database (PDB) name], using the format `__<pdbName>__.__<schemaName>__.__<tableName>__`.
+In a multitenant container database (CDB) environment, the regular expression must include the xref:oracle-property-database-pdb-names[pluggable database (PDB) name], using the format `__<pdbName>__.__<schemaName>__.__<tableName>__`.
 
 To match the name of a table, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
 That is, the specified expression is matched against the entire name string of the table; it does not match substrings that might be present in a table name.
@@ -5942,7 +5952,7 @@ In the example that follows, the following properties are added to the connector
         "database.user" : "c##dbzuser",
         "database.password" : "dbz",
         "database.dbname" : "ORCLCDB",
-        "database.pdb.name" : "ORCLPDB1",
+        "database.pdb.names" : "ORCLPDB1",
         "schema.history.internal.kafka.bootstrap.servers" : "kafka:9092",
         "schema.history.internal.kafka.topic": "schema-changes.inventory",
         "database.connection.adapter": "olr",
@@ -6338,7 +6348,7 @@ The following configuration example adds the properties `database.connection.ada
         "database.user" : "c##dbzuser",
         "database.password" : "dbz",
         "database.dbname" : "ORCLCDB",
-        "database.pdb.name" : "ORCLPDB1",
+        "database.pdb.names" : "ORCLPDB1",
         "schema.history.internal.kafka.bootstrap.servers" : "kafka:9092",
         "schema.history.internal.kafka.topic": "schema-changes.inventory",
         "database.connection.adapter": "xstream",

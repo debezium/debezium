@@ -28,7 +28,6 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
 import io.debezium.util.Clock;
-import io.debezium.util.Strings;
 
 /**
  * Base class to emit change data based on a single entry event.
@@ -82,8 +81,8 @@ public abstract class BaseChangeRecordEmitter<T> extends RelationalChangeRecordE
 
                 try (OracleConnection connection = new OracleConnection(connectorConfig, true)) {
                     final String query = getReselectQuery(reselectColumns, table, connection);
-                    if (!Strings.isNullOrBlank(connectorConfig.getPdbName())) {
-                        connection.setSessionToPdb(connectorConfig.getPdbName());
+                    if (connectorConfig.isUsingPluggableDatabase()) {
+                        connection.setSessionToPdb(table.id().catalog());
                     }
                     connection.prepareQuery(query,
                             ps -> prepareReselectQueryStatement(ps, table, newColumnValues),

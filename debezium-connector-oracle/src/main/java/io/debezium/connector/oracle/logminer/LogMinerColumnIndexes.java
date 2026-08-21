@@ -73,7 +73,7 @@ public final class LogMinerColumnIndexes {
 
     private final ResultSetValueResolver[] resolvers;
 
-    private final String catalogName;
+    private final String defaultCatalogName;
 
     /** Ordinal for {@code USERNAME}, or {@code null} when username tracking is disabled. */
     private final Integer usernameIndex;
@@ -85,6 +85,8 @@ public final class LogMinerColumnIndexes {
     private final Integer startTimestampIndex;
     /** Ordinal for {@code COMMIT_TIMESTAMP}, or {@code null} when commit-timestamp tracking is disabled. */
     private final Integer commitTimestampIndex;
+    /** Ordinal for {@code SRC_CON_NAME}, or {@code null} when a single catalog applies to all rows. */
+    private final Integer srcConNameIndex;
 
     /**
      * Computes all column ordinals from the given configuration flags.
@@ -93,13 +95,14 @@ public final class LogMinerColumnIndexes {
      * {@link AbstractLogMinerQueryBuilder#buildColumnList()} exactly: walk the columns in order,
      * assigning the next sequential 1-based position to each column that is included in the query.
      */
-    private LogMinerColumnIndexes(String catalogName,
+    private LogMinerColumnIndexes(String defaultCatalogName,
                                   boolean trackUsername,
                                   boolean trackRsId,
                                   boolean trackClientId,
                                   boolean trackStartTimestamp,
-                                  boolean trackCommitTimestamp) {
-        this.catalogName = catalogName;
+                                  boolean trackCommitTimestamp,
+                                  boolean multiplePdbNames) {
+        this.defaultCatalogName = defaultCatalogName;
 
         int pos = SEQUENCE;
 
@@ -108,6 +111,7 @@ public final class LogMinerColumnIndexes {
         rsIdIndex = trackRsId ? ++pos : null;
         usernameIndex = trackUsername ? ++pos : null;
         clientIdIndex = trackClientId ? ++pos : null;
+        srcConNameIndex = multiplePdbNames ? ++pos : null;
 
         this.resolvers = LogMinerEventRow.buildOptionalResolvers(this);
     }
@@ -121,12 +125,13 @@ public final class LogMinerColumnIndexes {
      */
     public static LogMinerColumnIndexes fromConfig(OracleConnectorConfig config) {
         return new LogMinerColumnIndexes(
-                config.getCatalogName(),
+                config.getDefaultCatalogName(),
                 config.isLogMiningBufferTrackUsername(),
                 config.isLogMiningBufferTrackRsId(),
                 config.isLogMiningBufferTrackClientId(),
                 config.isLogMiningBufferTrackStartTimestamp(),
-                config.isLogMiningBufferTrackCommitTimestamp());
+                config.isLogMiningBufferTrackCommitTimestamp(),
+                config.getPdbNames().size() > 1);
     }
 
     /**
@@ -147,9 +152,13 @@ public final class LogMinerColumnIndexes {
         return resolvers.length;
     }
 
-    /** Returns the catalog (database) name, used when constructing {@link io.debezium.relational.TableId}s. */
-    public String getCatalogName() {
-        return catalogName;
+    /**
+     * Returns the catalog used when constructing {@link io.debezium.relational.TableId}s and the row does
+     * not carry a {@code SRC_CON_NAME} value: the pluggable database when one is configured, or the
+     * database name when none are.
+     */
+    public String getDefaultCatalogName() {
+        return defaultCatalogName;
     }
 
     /**
@@ -190,6 +199,14 @@ public final class LogMinerColumnIndexes {
      */
     public Integer getCommitTimestampIndex() {
         return commitTimestampIndex;
+    }
+
+    /**
+     * Returns the 1-based ordinal for {@code SRC_CON_NAME}, or {@code null} if the column is absent
+     * from the query because a single catalog applies to all rows.
+     */
+    public Integer getSrcConNameIndex() {
+        return srcConNameIndex;
     }
 
 }
