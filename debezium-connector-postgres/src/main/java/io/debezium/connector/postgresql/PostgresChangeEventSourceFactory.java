@@ -103,7 +103,8 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
                     clock,
                     snapshotProgressListener,
                     dataChangeEventListener,
-                    notificationService));
+                    notificationService,
+                    connectionFactory.mainConnection()::isUndefinedColumnError));
         }
 
         // If no data collection id is provided, don't return an instance as the implementation requires
@@ -120,6 +121,7 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
                 clock,
                 snapshotProgressListener,
                 dataChangeEventListener,
-                notificationService));
+                notificationService,
+                connectionFactory.mainConnection()::isUndefinedColumnError));
     }
 }
