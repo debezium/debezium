@@ -120,7 +120,7 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
 
         this.connection = connectionFactory.mainConnection();
 
-        final Offsets<MariaDbPartition, MariaDbOffsetContext> previousOffsets = getPreviousOffsets(
+        final Offsets<MariaDbPartition, MariaDbOffsetContext> previousOffsets = getSinglePartitionPreviousOffsets(
                 new MariaDbPartition.Provider(connectorConfig, config),
                 new MariaDbOffsetContext.Loader(connectorConfig));
 
@@ -169,8 +169,6 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
             throw new DebeziumException(e);
         }
 
-        MariaDbOffsetContext previousOffset = previousOffsets.getTheOnlyOffset();
-
         validateSchemaHistory(connectorConfig, connection::validateLogPosition, previousOffsets, schema, snapshotter);
 
         LOGGER.info("Reconnecting after validating schema recovery");
@@ -194,14 +192,6 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
         }
         catch (SQLException e) {
             throw new DebeziumException("Failed to reconnect after schema recovery", e);
-        }
-
-        // If the binlog position is not available it is necessary to re-execute snapshot
-        if (previousOffset == null) {
-            LOGGER.info("No previous offset found");
-        }
-        else {
-            LOGGER.info("Found previous offset {}", previousOffset);
         }
 
         // Set up the task record queue ...
