@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.jdbc.dialect.mysql;
 
+import java.time.LocalDateTime;
+
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 
@@ -31,6 +33,17 @@ final class StructuredTemporalLiteral {
                 value.getInt8(StructuredTemporal.MINUTE_FIELD),
                 value.getInt8(StructuredTemporal.SECOND_FIELD),
                 (nanos == null ? 0 : nanos) / 1_000);
+    }
+
+    static String timestamp(LocalDateTime value) {
+        return String.format("%04d-%02d-%02d %02d:%02d:%02d.%06d",
+                value.getYear(),
+                value.getMonthValue(),
+                value.getDayOfMonth(),
+                value.getHour(),
+                value.getMinute(),
+                value.getSecond(),
+                value.getNano() / 1_000);
     }
 
     static String duration(Struct value) {

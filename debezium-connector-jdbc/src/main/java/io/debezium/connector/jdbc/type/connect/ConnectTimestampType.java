@@ -45,7 +45,7 @@ public class ConnectTimestampType extends AbstractTimestampType {
             return List.of(new ValueBindDescriptor(index, null));
         }
         if (value instanceof java.util.Date) {
-            final LocalDateTime localDateTime = DateTimeUtils.toLocalDateTimeFromDate((java.util.Date) value);
+            final LocalDateTime localDateTime = clampIfOutOfRange(DateTimeUtils.toLocalDateTimeFromDate((java.util.Date) value));
             if (getDialect().isTimeZoneSet()) {
                 return List.of(new ValueBindDescriptor(index,
                         localDateTime.atZone(getDatabaseTimeZone().toZoneId()).toLocalDateTime(),

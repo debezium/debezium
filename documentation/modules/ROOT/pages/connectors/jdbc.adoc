@@ -2176,6 +2176,17 @@ If the number of retries exceeds the retry value, the sink connector enters a _F
 When you set both the `flush.retry.delay.ms` and xref:jdbc-property-flush-max-retries[`flush.max.retries`] properties, it can affect the behavior of the Kafka link:https://kafka.apache.org/documentation/#consumerconfigs_max.poll.interval.ms[max.poll.interval.ms] property.
 To prevent the connector from rebalancing, set the total retry time (flush.retry.delay.ms * flush.max.retries) to a value that is less than the value of `max.poll.interval.ms` (default is 5 minutes).
 ====
+
+|[[jdbc-property-timestamp-clamp-out-of-range-values]]<<jdbc-property-timestamp-clamp-out-of-range-values, `+timestamp.clamp.out.of.range.values+`>>
+|`false`
+|Specifies whether the connector clamps temporal values that the target database cannot represent to the minimum or maximum timestamp that the database supports.
+
+Some source databases can store temporal values that exceed the range of the target database.
+For example, an Oracle source can emit BC-era timestamps, which cannot be stored in a MySQL `TIMESTAMP` column, whose range begins at the UNIX epoch, or in a SQL Server `datetime2` column, whose range begins at year 1.
+When this property is set to `true`, the connector replaces such values with the target database's minimum or maximum supported timestamp, mirroring the way that it converts the explicit `infinity` and `-infinity` markers that a PostgreSQL source emits.
+When this property is set to `false` (the default), the connector passes out-of-range values to the target database unchanged, which typically causes the write to fail.
+
+Clamping alters the stored value; enable this option only when a lossy representation of out-of-range timestamps is acceptable for downstream consumers.
 |===
 
 // Type: reference

@@ -73,7 +73,7 @@ public class DebeziumZonedTimestampType extends AbstractTimestampType {
     protected List<ValueBindDescriptor> normalTimestampValue(int index, Object value) {
 
         final ZonedDateTime zdt;
-        zdt = ZonedDateTime.parse((String) value, ZonedTimestamp.FORMATTER).withZoneSameInstant(getDatabaseTimeZone().toZoneId());
+        zdt = clampIfOutOfRange(ZonedDateTime.parse((String) value, ZonedTimestamp.FORMATTER)).withZoneSameInstant(getDatabaseTimeZone().toZoneId());
 
         return List.of(new ValueBindDescriptor(index, zdt.toOffsetDateTime(), getJdbcBindType()));
     }

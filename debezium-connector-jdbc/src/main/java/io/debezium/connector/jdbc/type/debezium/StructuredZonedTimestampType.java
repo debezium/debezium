@@ -54,7 +54,7 @@ public class StructuredZonedTimestampType extends AbstractTimestampType {
         if (value == null) {
             return List.of(new ValueBindDescriptor(index, null));
         }
-        final OffsetDateTime offsetDateTime = StructuredTemporalSupport.toOffsetDateTime(requireStruct(value));
+        final OffsetDateTime offsetDateTime = clampIfOutOfRange(StructuredTemporalSupport.toOffsetDateTime(requireStruct(value)));
         return List.of(new ValueBindDescriptor(index, offsetDateTime, getJdbcType()));
     }
 }
