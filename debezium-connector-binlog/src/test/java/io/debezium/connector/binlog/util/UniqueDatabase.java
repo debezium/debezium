@@ -47,6 +47,14 @@ import io.debezium.storage.file.history.FileSchemaHistory;
  */
 public abstract class UniqueDatabase {
 
+    /**
+     * System property that, when set to {@code true}, runs the testsuite with the binlog-metadata-based
+     * schema mode ({@link BinlogConnectorConfig#BINLOG_METADATA_BASED_SCHEMA}) enabled for every connector
+     * configuration built through this class, so the whole suite can be executed either with or without a
+     * schema history.
+     */
+    public static final String BINLOG_METADATA_BASED_SCHEMA_PROPERTY = "use.binlog.metadata.based.schema";
+
     private static final String DEFAULT_DATABASE = "mysql";
     private static final String[] CREATE_DATABASE_DDL = new String[]{
             "CREATE DATABASE `$DBNAME$`;",
@@ -140,6 +148,25 @@ public abstract class UniqueDatabase {
     }
 
     /**
+     * @return true when the testsuite runs with the binlog-metadata-based schema mode enabled
+     *         (see {@link #BINLOG_METADATA_BASED_SCHEMA_PROPERTY})
+     */
+    public static boolean isBinlogMetadataBasedSchemaTestsuite() {
+        return Boolean.getBoolean(BINLOG_METADATA_BASED_SCHEMA_PROPERTY);
+    }
+
+    /**
+     * The binlog-metadata-based schema mode requires {@code binlog_row_metadata=FULL}. The variable is
+     * dynamic, so enable it before the test tables are created; their {@code TABLE_MAP} events then always
+     * carry the FULL metadata.
+     */
+    private static void ensureFullBinlogRowMetadata(JdbcConnection connection) throws Exception {
+        if (isBinlogMetadataBasedSchemaTestsuite()) {
+            connection.execute("SET GLOBAL binlog_row_metadata = 'FULL'");
+        }
+    }
+
+    /**
      * Creates the database and populates it with initialization SQL script. To use multiline
      * statements for stored procedures definition use delimiter $$ to delimit statements in the procedure.
      * See fnDbz162 procedure in reqression_test.sql for example of usage.
@@ -161,6 +188,7 @@ public abstract class UniqueDatabase {
         assertNotNull(ddlTestFile, "Cannot locate " + ddlFile);
         try {
             try (JdbcConnection connection = forTestDatabase(DEFAULT_DATABASE, urlProperties)) {
+                ensureFullBinlogRowMetadata(connection);
                 final List<String> statements = readFileContents(ddlTestFile.toURI(), (data) -> Arrays.stream(
                         Stream.concat(
                                 Arrays.stream(charset != null ? CREATE_DATABASE_WITH_CHARSET_DDL : CREATE_DATABASE_DDL),
@@ -185,6 +213,7 @@ public abstract class UniqueDatabase {
 
     public void create(Map<String, Object> urlProperties) {
         try (JdbcConnection connection = forTestDatabase(DEFAULT_DATABASE, urlProperties)) {
+            ensureFullBinlogRowMetadata(connection);
             String[] ddl = charset != null ? CREATE_DATABASE_WITH_CHARSET_DDL : CREATE_DATABASE_DDL;
 
             String[] statements = Arrays.stream(ddl)
@@ -213,6 +242,7 @@ public abstract class UniqueDatabase {
         final URL ddlTestFile = UniqueDatabase.class.getClassLoader().getResource(ddlFile);
         assertNotNull(ddlTestFile, "Cannot locate " + ddlFile);
         try (JdbcConnection connection = forTestDatabase(DEFAULT_DATABASE, urlProperties)) {
+            ensureFullBinlogRowMetadata(connection);
             final List<String> statements = readFileContents(ddlTestFile.toURI(), (data) -> Arrays.stream(
                     Stream.concat(
                             Arrays.stream(new String[]{ "USE `$DBNAME$`;" }),
@@ -316,12 +346,19 @@ public abstract class UniqueDatabase {
      * database not filtered by default
      */
     public Configuration.Builder defaultConfigWithoutDatabaseFilter() {
-        return defaultJdbcConfigBuilder()
+        final Builder builder = defaultJdbcConfigBuilder()
                 .with(BinlogConnectorConfig.SERVER_ID, 18765)
                 .with(BinlogConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(BinlogConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
                 .with(BinlogConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER, 10_000)
                 .with(CommonConnectorConfig.TOPIC_PREFIX, getServerName());
+        if (isBinlogMetadataBasedSchemaTestsuite()) {
+            // Run the testsuite with the schema reconstructed from the binlog TABLE_MAP metadata instead
+            // of from the schema history, so that the suite verifies both modes are compatible. The schema
+            // history configured above is ignored by the connector in this mode.
+            builder.with(BinlogConnectorConfig.BINLOG_METADATA_BASED_SCHEMA, true);
+        }
+        return builder;
     }
 
     /**

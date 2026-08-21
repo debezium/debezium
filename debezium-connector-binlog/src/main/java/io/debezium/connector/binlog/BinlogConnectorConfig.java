@@ -21,6 +21,7 @@ import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
 import io.debezium.connector.binlog.gtid.GtidSet;
 import io.debezium.connector.binlog.gtid.GtidSetFactory;
+import io.debezium.connector.binlog.history.BinlogMetadataSchemaHistory;
 import io.debezium.jdbc.JdbcValueConverters.BigIntUnsignedMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.ColumnFilterMode;
@@ -28,6 +29,8 @@ import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
+import io.debezium.relational.history.SchemaHistory;
+import io.debezium.relational.history.SchemaHistoryListener;
 import io.debezium.schema.DefaultTopicNamingStrategy;
 import io.debezium.util.Collect;
 
@@ -454,6 +457,21 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
                     + "transaction in progress is going to be committed or rolled back. Use 0 to disable look-ahead "
                     + "buffering. Defaults to " + DEFAULT_BINLOG_BUFFER_SIZE + " (i.e. buffering is disabled.");
 
+    public static final Field BINLOG_METADATA_BASED_SCHEMA = Field.create("binlog.metadata.based.schema")
+            .withDisplayName("Reconstruct streaming schema from binlog metadata")
+            .withType(ConfigDef.Type.BOOLEAN)
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDefault(false)
+            .withValidation(Field::isBoolean)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
+            .withDescription("When 'true', the streaming table schema is reconstructed on the fly from the "
+                    + "column metadata carried by binlog TABLE_MAP events instead of from a persisted schema "
+                    + "history topic. This is an opt-in mode that requires the source server to run with "
+                    + "'binlog_row_metadata=FULL' so that column names, types, charsets, enum/set values and the "
+                    + "primary key are present in every TABLE_MAP event. When enabled, no external schema history "
+                    + "topic is created or required. Defaults to 'false'.");
+
     public static final Field TOPIC_NAMING_STRATEGY = Field.create("topic.naming.strategy")
             .withDisplayName("Topic naming strategy class")
             .withType(ConfigDef.Type.CLASS)
@@ -647,7 +665,8 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
             .group(Field.Group.CONNECTION_ADVANCED_SSL, SSL_KEYSTORE, SSL_KEYSTORE_PASSWORD, SSL_TRUSTSTORE, SSL_TRUSTSTORE_PASSWORD)
             .group(Field.Group.CONNECTOR, BIGINT_UNSIGNED_HANDLING_MODE, TIME_PRECISION_MODE, ENABLE_TIME_ADJUSTER, SCHEMA_NAME_ADJUSTMENT_MODE, GTID_SOURCE_INCLUDES,
                     GTID_SOURCE_EXCLUDES, GTID_SOURCE_FILTER_DML_EVENTS)
-            .group(Field.Group.CONNECTOR_ADVANCED, ROW_COUNT_FOR_STREAMING_RESULT_SETS, BUFFER_SIZE_FOR_BINLOG_READER, INCLUDE_SQL_QUERY, IGNORE_GTID_ON_RECOVERY)
+            .group(Field.Group.CONNECTOR_ADVANCED, ROW_COUNT_FOR_STREAMING_RESULT_SETS, BUFFER_SIZE_FOR_BINLOG_READER, INCLUDE_SQL_QUERY, IGNORE_GTID_ON_RECOVERY,
+                    BINLOG_METADATA_BASED_SCHEMA)
             .group(Field.Group.CONNECTOR_SNAPSHOT, SNAPSHOT_MODE, SNAPSHOT_QUERY_MODE, SNAPSHOT_QUERY_MODE_CUSTOM_NAME, INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
                     INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES)
             .group(Field.Group.FILTERS, TABLES_IGNORE_BUILTIN, DATABASE_INCLUDE_LIST, DATABASE_EXCLUDE_LIST)
@@ -798,6 +817,29 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
      */
     public boolean isSqlQueryIncluded() {
         return config.getBoolean(INCLUDE_SQL_QUERY);
+    }
+
+    /**
+     * @return whether the streaming table schema should be reconstructed from binlog TABLE_MAP metadata
+     *         (opt-in, requires {@code binlog_row_metadata=FULL}) instead of from a persisted schema history topic.
+     */
+    public boolean isBinlogMetadataBasedSchema() {
+        return config.getBoolean(BINLOG_METADATA_BASED_SCHEMA);
+    }
+
+    @Override
+    public SchemaHistory getSchemaHistory() {
+        if (!isBinlogMetadataBasedSchema()) {
+            return super.getSchemaHistory();
+        }
+        // In binlog-metadata-based schema mode the streaming schema is reconstructed from TABLE_MAP events,
+        // so no persistent schema history is used. The no-op history satisfies the historized lifecycle
+        // (the snapshot phase runs unchanged) without creating or requiring an external history topic, and
+        // without requiring any schema.history.internal.* connection settings.
+        final SchemaHistory schemaHistory = new BinlogMetadataSchemaHistory();
+        schemaHistory.configure(Configuration.empty(), getHistoryRecordComparator(),
+                SchemaHistoryListener.NOOP, useCatalogBeforeSchema());
+        return schemaHistory;
     }
 
     /**
