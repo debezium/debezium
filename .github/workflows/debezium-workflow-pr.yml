@@ -32,6 +32,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: debezium/dbz/.github/actions/check-hidden-files@main
+        with:
+          allowed-paths: ".asciidoctorconfig, .fmf, .packit.yaml, .run"
 
   # Checks for malicious or adversarial Unicode patterns in changed files
   check-unicode-safety:
