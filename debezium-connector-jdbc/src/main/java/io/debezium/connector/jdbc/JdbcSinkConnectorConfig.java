@@ -673,6 +673,14 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
     }
 
     /**
+     * Returns whether any binary handling configuration is active. When this returns {@code false},
+     * every field resolves to {@link BinaryHandlingMode#BYTES} and bindings cannot differ per record.
+     */
+    public boolean isBinaryHandlingEnabled() {
+        return BinaryHandlingMode.BYTES != binaryHandlingMode || !binaryHandlingSelectors.isEmpty();
+    }
+
+    /**
      * Resolves the mode for a field. Selectors are evaluated in the order {@code base64},
      * {@code base64-url-safe}, {@code hex}, and {@code bytes}. The first pattern that matches the
      * topic-qualified name or the plain field name takes precedence over the global mode. A field

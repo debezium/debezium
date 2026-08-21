@@ -8,10 +8,12 @@ package io.debezium.connector.jdbc.integration;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -225,6 +227,20 @@ public abstract class AbstractJdbcSinkBinaryHandlingModeTest extends AbstractJdb
     @ParameterizedTest
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
     @FixFor("debezium/dbz#2468")
+    public void testTopicQualifiedModesUseSeparateRowWiseBatchesWithEncodedRecordsFirst(SinkRecordFactory factory) throws Exception {
+        assertTopicQualifiedModesUseSeparateRowWiseBatches(factory, true);
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("debezium/dbz#2468")
+    public void testTopicQualifiedModesUseSeparateRowWiseBatchesWithRawRecordsFirst(SinkRecordFactory factory) throws Exception {
+        assertTopicQualifiedModesUseSeparateRowWiseBatches(factory, false);
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("debezium/dbz#2468")
     public void testSelectorsOverrideGlobalModePerField(SinkRecordFactory factory) throws Exception {
         final Map<String, String> properties = binaryHandlingSinkConfig("base64");
         properties.put(JdbcSinkConnectorConfig.BINARY_HANDLING_SELECTOR_HEX, "data_hex");
@@ -296,5 +312,58 @@ public abstract class AbstractJdbcSinkBinaryHandlingModeTest extends AbstractJdb
             assertThat(ignoreTrailingPadding ? landed.stripTrailing() : landed).isEqualTo(expected);
             return null;
         });
+    }
+
+    private void assertTopicQualifiedModesUseSeparateRowWiseBatches(SinkRecordFactory factory, boolean encodedRecordsFirst) throws Exception {
+        final String tableName = randomTableName();
+        final String encodedTopic = "encoded_" + tableName;
+        final String rawTopic = "raw_" + tableName;
+
+        final Map<String, String> properties = binaryHandlingSinkConfig("bytes");
+        properties.put(JdbcSinkConnectorConfig.COLLECTION_NAME_FORMAT, tableName);
+        properties.put(JdbcSinkConnectorConfig.BINARY_HANDLING_SELECTOR_HEX, Pattern.quote(encodedTopic) + ":data");
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, "false");
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final JdbcSinkConnectorConfig config = getConfig(properties);
+        final List<JdbcKafkaSinkRecord> encodedRecords = List.of(
+                createRecord(factory, encodedTopic, (byte) 1, new byte[]{ 0x01, 0x11 }, config),
+                createRecord(factory, encodedTopic, (byte) 2, new byte[]{ 0x02, 0x22 }, config));
+        final List<JdbcKafkaSinkRecord> rawRecords = List.of(
+                createRecord(factory, rawTopic, (byte) 3, new byte[]{ 0x41, 0x31 }, config),
+                createRecord(factory, rawTopic, (byte) 4, new byte[]{ 0x42, 0x32 }, config));
+        final List<JdbcKafkaSinkRecord> batch = new ArrayList<>();
+        if (encodedRecordsFirst) {
+            batch.addAll(encodedRecords);
+            batch.addAll(rawRecords);
+        }
+        else {
+            batch.addAll(rawRecords);
+            batch.addAll(encodedRecords);
+        }
+
+        final String destinationTable = getSink().formatTableName(tableName);
+        getSink().execute(singleDataColumnTableDdl(destinationTable, characterColumnType()));
+
+        consume(batch);
+
+        getSink().assertRows(destinationTable, rs -> {
+            final Map<Integer, String> rows = new HashMap<>();
+            do {
+                rows.put(rs.getInt(1), rs.getString(2));
+            } while (rs.next());
+            assertThat(rows).containsOnlyKeys(1, 2, 3, 4);
+            assertThat(rows.get(1)).isEqualTo("0111");
+            assertThat(rows.get(2)).isEqualTo("0222");
+            // Raw bytes targeting a character column retain the dialect's existing conversion behavior.
+            assertThat(rows.get(3)).isNotNull();
+            assertThat(rows.get(4)).isNotNull();
+            return null;
+        });
+    }
+
+    private JdbcKafkaSinkRecord createRecord(SinkRecordFactory factory, String topicName, byte key, byte[] value, JdbcSinkConnectorConfig config) {
+        return factory.createRecordWithSchemaValue(topicName, key, "data", Schema.OPTIONAL_BYTES_SCHEMA, value, config);
     }
 }
