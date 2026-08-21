@@ -83,6 +83,7 @@ import io.debezium.connector.jdbc.type.debezium.TimeType;
 import io.debezium.connector.jdbc.type.debezium.TimestampType;
 import io.debezium.connector.jdbc.type.debezium.VariableScaleDecimalType;
 import io.debezium.connector.jdbc.type.debezium.ZonedTimeType;
+import io.debezium.connector.jdbc.util.BinaryHandling;
 import io.debezium.data.vector.DoubleVector;
 import io.debezium.data.vector.FloatVector;
 import io.debezium.data.vector.SparseDoubleVector;
@@ -742,10 +743,22 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         }
     }
 
+    @Override
+    public JdbcSinkConnectorConfig.BinaryHandlingMode resolveBinaryHandlingMode(TableDescriptor table, JdbcSinkRecord record, FieldDescriptor field) {
+        final String columnName = resolveColumnName(field);
+        final ColumnDescriptor column = table.hasColumn(columnName) ? table.getColumnByName(columnName) : null;
+        return BinaryHandling.resolve(connectorConfig, record.topicName(), field, column);
+    }
+
     protected String columnQueryBindingFromField(String fieldName, TableDescriptor table, JdbcSinkRecord record) {
         final FieldDescriptor field = record.allFields().get(fieldName);
         final String columnName = resolveColumnName(field);
         final ColumnDescriptor column = table.getColumnByName(columnName);
+
+        if (JdbcSinkConnectorConfig.BinaryHandlingMode.BYTES != resolveBinaryHandlingMode(table, record, field)) {
+            // An encoded string must not use a binary-specific query binding.
+            return "?";
+        }
 
         final Object value;
         if (record.nonKeyFieldNames().contains(fieldName)) {
@@ -836,6 +849,10 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         final JdbcFieldDescriptor field = record.jdbcFields().get(fieldName);
         final String columnName = resolveColumnName(field);
         final ColumnDescriptor column = table.getColumnByName(columnName);
+        if (JdbcSinkConnectorConfig.BinaryHandlingMode.BYTES != resolveBinaryHandlingMode(table, record, field)) {
+            // An encoded string must not use a binary-specific query binding.
+            return toIdentifier(columnName) + "=?";
+        }
         return toIdentifier(columnName) + "=" + field.getQueryBinding(column, record.getPayload(), getSchemaType(field.getSchema()));
     }
 
