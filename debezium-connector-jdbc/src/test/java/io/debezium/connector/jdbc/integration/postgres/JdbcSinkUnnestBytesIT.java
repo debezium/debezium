@@ -27,10 +27,10 @@ import io.debezium.doc.FixFor;
 /**
  * UNNEST batch write tests for PostgreSQL with binary columns.
  *
- * <p>The UNNEST path binds each column with {@code Connection#createArrayOf}, which the PostgreSQL
- * driver cannot serve for {@code bytea} elements (it rejects {@code byte[]} nested inside
- * {@code Object[]}). Records with a BYTES field must therefore fall back to the row-wise path,
- * which this test verifies end to end.</p>
+ * <p>The UNNEST path binds each column with {@code Connection#createArrayOf}. The PostgreSQL driver
+ * rejects {@code byte[]} elements nested inside a generic {@code Object[]}, so the writer passes
+ * {@code bytea} columns as a typed {@code byte[][]} array, which engages the driver's dedicated
+ * {@code bytea} element encoder. This test verifies the binary landing end to end.</p>
  *
  * @author Virag Tripathi
  */
