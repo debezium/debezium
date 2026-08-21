@@ -111,7 +111,7 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
 
         connection = connectionFactory.mainConnection();
 
-        Offsets<MySqlPartition, MySqlOffsetContext> previousOffsets = getPreviousOffsets(
+        Offsets<MySqlPartition, MySqlOffsetContext> previousOffsets = getSinglePartitionPreviousOffsets(
                 new MySqlPartition.Provider(connectorConfig, config),
                 new MySqlOffsetContext.Loader(connectorConfig));
 
@@ -161,8 +161,6 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
             throw new DebeziumException(e);
         }
 
-        MySqlOffsetContext previousOffset = previousOffsets.getTheOnlyOffset();
-
         validateSchemaHistory(connectorConfig, connection::validateLogPosition, previousOffsets, schema, snapshotter);
 
         LOGGER.info("Reconnecting after validating schema recovery");
@@ -186,14 +184,6 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
         }
         catch (SQLException e) {
             throw new DebeziumException("Failed to reconnect after schema recovery", e);
-        }
-
-        // If the binlog position is not available it is necessary to re-execute snapshot
-        if (previousOffset == null) {
-            LOGGER.info("No previous offset found");
-        }
-        else {
-            LOGGER.info("Found previous offset {}", previousOffset);
         }
 
         // Set up the task record queue ...

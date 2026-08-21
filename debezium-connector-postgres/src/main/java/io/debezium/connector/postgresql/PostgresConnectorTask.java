@@ -153,10 +153,9 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
         schema = new PostgresSchema(taskContext, defaultValueConverter, topicNamingStrategy, valueConverter, customConverterRegistry);
         this.partitionProvider = new PostgresPartition.Provider(connectorConfig, config);
         this.offsetContextLoader = new PostgresOffsetContext.Loader(connectorConfig);
-        final Offsets<PostgresPartition, PostgresOffsetContext> previousOffsets = getPreviousOffsets(
+        final Offsets<PostgresPartition, PostgresOffsetContext> previousOffsets = getSinglePartitionPreviousOffsets(
                 this.partitionProvider, this.offsetContextLoader);
         final Clock clock = Clock.system();
-        final PostgresOffsetContext previousOffset = previousOffsets.getTheOnlyOffset();
 
         // Manual Bean Registration
         beanRegistryJdbcConnection = connectionFactory.newConnection();
@@ -191,13 +190,6 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
         validateSchemaHistory(connectorConfig, jdbcConnection::validateLogPosition, previousOffsets, schema, snapshotter);
 
         LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
-
-        if (previousOffset == null) {
-            LOGGER.info("No previous offset found");
-        }
-        else {
-            LOGGER.info("Found previous offset {}", previousOffset);
-        }
 
         try {
             SlotState slotInfo = getSlotState(connectorConfig);

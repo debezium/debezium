@@ -322,7 +322,6 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
 
             if (offset == null) {
                 LOGGER.info("Connector started for the first time.");
-                LOGGER.info("No previous offset has been found");
                 return;
             }
 
