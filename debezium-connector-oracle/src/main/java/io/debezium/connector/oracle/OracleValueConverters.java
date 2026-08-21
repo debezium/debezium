@@ -20,7 +20,6 @@ import java.sql.Clob;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.time.Instant;
-import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -670,11 +669,14 @@ public class OracleValueConverters extends JdbcValueConverters {
 
     protected Object fromOracleTimeClasses(Column column, Object data) {
         try {
+            // Conversions must use the java.time accessors; java.sql.Timestamp is bound to the hybrid
+            // Julian/Gregorian calendar, which drops the era of BC values and day-shifts dates that
+            // precede the Gregorian cut-over in 1582.
             if (data instanceof TIMESTAMP) {
-                data = ((TIMESTAMP) data).timestampValue();
+                data = ((TIMESTAMP) data).toLocalDateTime();
             }
             else if (data instanceof DATE) {
-                data = ((DATE) data).timestampValue();
+                data = ((DATE) data).toLocalDateTime();
             }
             else if (data instanceof TIMESTAMPTZ) {
                 final TIMESTAMPTZ ts = (TIMESTAMPTZ) data;
@@ -682,7 +684,7 @@ public class OracleValueConverters extends JdbcValueConverters {
             }
             else if (data instanceof TIMESTAMPLTZ) {
                 final TIMESTAMPLTZ ts = (TIMESTAMPLTZ) data;
-                data = ZonedDateTime.ofInstant(ts.timestampValue(connection.connection()).toInstant(), ZoneId.systemDefault()).withZoneSameInstant(ZoneOffset.UTC);
+                data = ts.zonedDateTimeValue(connection.connection()).withZoneSameInstant(ZoneOffset.UTC);
             }
         }
         catch (SQLException e) {
