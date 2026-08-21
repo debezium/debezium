@@ -28,6 +28,7 @@ import org.junit.jupiter.api.Test;
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
+import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.EqualityCheck;
@@ -107,6 +108,84 @@ public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
         assertRecordTransactionMetadata(records.get(1), beginTxId, 1, 1);
         assertRecordTransactionMetadata(records.get(2), beginTxId, 2, 1);
         assertEndTransaction(records.get(3), beginTxId, 2, Collect.hashMapOf("s1.a", 1, "s2.a", 1));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2004")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Logical decoding messages are only supported by the PGOUTPUT decoder")
+    void shouldEmitTransactionMetadataForTransactionContainingTransactionalLogicalMessage() throws Exception {
+        assertTransactionMetadataForTransactionContainingLogicalMessage(true);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2004")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Logical decoding messages are only supported by the PGOUTPUT decoder")
+    void shouldEmitTransactionMetadataForTransactionContainingNonTransactionalLogicalMessage() throws Exception {
+        assertTransactionMetadataForTransactionContainingLogicalMessage(false);
+    }
+
+    private void assertTransactionMetadataForTransactionContainingLogicalMessage(boolean transactional) throws Exception {
+        TestHelper.dropDefaultReplicationSlot();
+        TestHelper.execute(SETUP_TABLES_STMT);
+        final Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA.getValue())
+                .with(PostgresConnectorConfig.PROVIDE_TRANSACTION_METADATA, true)
+                .build();
+
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+        TestHelper.waitForDefaultReplicationSlotBeActive();
+        assertNoRecordsToConsume();
+
+        TestHelper.execute("BEGIN;" +
+                "INSERT INTO s1.a (aa) VALUES (2);" +
+                "SELECT pg_logical_emit_message(" + transactional + ", 'txn_foo', 'txn_bar');" +
+                "INSERT INTO s1.a (aa) VALUES (3);" +
+                "COMMIT;");
+
+        final List<SourceRecord> records = consumeRecordsByTopic(5).allRecordsInOrder();
+
+        final String transactionTopic = TestHelper.topicName("transaction");
+        final String tableTopic = TestHelper.topicName("s1.a");
+        final String messageTopic = TestHelper.topicName("message");
+
+        if (transactional) {
+            assertThat(records).extracting(SourceRecord::topic)
+                    .containsExactly(transactionTopic, tableTopic, messageTopic, tableTopic, transactionTopic);
+
+            final String beginTxId = assertBeginTransaction(records.get(0));
+            assertRecordTransactionMetadata(records.get(1), beginTxId, 1, 1);
+            assertRecordTransactionMetadata(records.get(2), beginTxId, 2, 1);
+            assertRecordTransactionMetadata(records.get(3), beginTxId, 3, 2);
+            assertEndTransactionMetadata(records.get(4), beginTxId, 3, 2);
+        }
+        else {
+            assertThat(records).extracting(SourceRecord::topic)
+                    .containsExactly(messageTopic, transactionTopic, tableTopic, tableTopic, transactionTopic);
+            assertThat(((Struct) records.get(0).value()).getStruct("transaction")).isNull();
+
+            final String beginTxId = assertBeginTransaction(records.get(1));
+            assertRecordTransactionMetadata(records.get(2), beginTxId, 1, 1);
+            assertRecordTransactionMetadata(records.get(3), beginTxId, 2, 2);
+            assertEndTransaction(records.get(4), beginTxId, 2, Collect.hashMapOf("s1.a", 2));
+        }
+    }
+
+    private void assertEndTransactionMetadata(SourceRecord record, String beginTxId, long expectedEventCount, int expectedDataCollectionCount) {
+        final Struct end = (Struct) record.value();
+        final Struct endKey = (Struct) record.key();
+        final Map<String, Object> offset = (Map<String, Object>) record.sourceOffset();
+        final String expectedId = toTransactionNumber(beginTxId);
+        final String expectedTxId = String.format("%s:%s", expectedId, offset.get("lsn"));
+
+        assertThat(end.getString("status")).isEqualTo("END");
+        assertThat(end.getString("id")).isEqualTo(expectedTxId);
+        assertThat(end.getInt64("event_count")).isEqualTo(expectedEventCount);
+        assertThat(endKey.getString("id")).isEqualTo(expectedTxId);
+        assertThat(end.getArray("data_collections")).hasSize(expectedDataCollectionCount);
+        assertThat(end.getArray("data_collections").stream().map(item -> ((Struct) item).getInt64("event_count")))
+                .containsExactlyInAnyOrder(1L, 2L);
+        assertThat(offset.get("transaction_id")).isEqualTo(expectedId);
     }
 
     @Test
