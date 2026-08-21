@@ -113,7 +113,7 @@ public class BaseSourceTaskSnapshotModesValidationTest {
 
         assertThatThrownBy(() -> baseSourceTask.validateSchemaHistory(commonConnectorConfig, logPositionValidator, previousOffsets, databaseSchema, snapshotter))
                 .isInstanceOf(DebeziumException.class)
-                .hasMessage("Could not find existing redo log information while attempting schema only recovery snapshot");
+                .hasMessage("Could not find existing transaction log information while attempting schema only recovery snapshot");
 
     }
 
