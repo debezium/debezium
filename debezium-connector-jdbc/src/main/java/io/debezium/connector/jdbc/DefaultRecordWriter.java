@@ -203,18 +203,17 @@ public class DefaultRecordWriter implements RecordWriter {
             throw e;
         }
         progressListener().tableCreated();
-        warnWhenBinaryHandlingDoesNotApply(record, record.allFields().keySet());
+        warnForSchemaEvolvedBinaryColumns(record, record.allFields().keySet());
 
         return readTable(collectionId);
     }
 
     /**
-     * Schema evolution derives column types from the record schema alone, so a {@code BYTES} field
-     * always produces a binary column, to which a textual binary handling mode never applies. Warns
-     * for such fields so that the silent mismatch is visible; encoded landings require a pre-created
-     * character column or the source connector's {@code binary.handling.mode}.
+     * Warns when schema evolution creates a binary column for a field configured with a textual
+     * binary handling mode. Schema evolution derives the column type from the record schema, while
+     * sink-side encoding applies only when an existing destination column is a character type.
      */
-    private void warnWhenBinaryHandlingDoesNotApply(JdbcSinkRecord record, Collection<String> fieldNames) {
+    private void warnForSchemaEvolvedBinaryColumns(JdbcSinkRecord record, Collection<String> fieldNames) {
         if (!config.isBinaryHandlingEnabled()) {
             return;
         }
@@ -225,8 +224,8 @@ public class DefaultRecordWriter implements RecordWriter {
             }
             final JdbcSinkConnectorConfig.BinaryHandlingMode mode = config.getBinaryHandlingMode(record.topicName(), field.getName());
             if (JdbcSinkConnectorConfig.BinaryHandlingMode.BYTES != mode) {
-                LOGGER.warn("Schema evolution created a binary column for field '{}' of topic '{}'; binary handling mode '{}' does not apply to binary columns. "
-                        + "Pre-create a character column, or use the source connector's binary.handling.mode for encoded landings.",
+                LOGGER.warn("Schema evolution created a binary column for field '{}' in topic '{}', so binary handling mode '{}' does not apply. "
+                        + "Pre-create a character column or configure binary.handling.mode on the source connector.",
                         field.getName(), record.topicName(), mode.getValue());
             }
         }
@@ -283,7 +282,7 @@ public class DefaultRecordWriter implements RecordWriter {
             throw e;
         }
         progressListener().tableAltered();
-        warnWhenBinaryHandlingDoesNotApply(record, missingFields);
+        warnForSchemaEvolvedBinaryColumns(record, missingFields);
 
         return readTable(collectionId);
     }

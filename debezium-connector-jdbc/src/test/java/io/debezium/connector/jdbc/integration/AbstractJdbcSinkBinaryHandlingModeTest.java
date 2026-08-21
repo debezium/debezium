@@ -21,12 +21,14 @@ import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 
+import io.debezium.connector.jdbc.DefaultRecordWriter;
 import io.debezium.connector.jdbc.JdbcKafkaSinkRecord;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.junit.jupiter.Sink;
 import io.debezium.connector.jdbc.junit.jupiter.SinkRecordFactoryArgumentsProvider;
 import io.debezium.connector.jdbc.util.SinkRecordFactory;
 import io.debezium.doc.FixFor;
+import io.debezium.junit.logging.LogInterceptor;
 
 /**
  * Common tests for {@code binary.handling.mode} and its per-field selectors.
@@ -72,14 +74,6 @@ public abstract class AbstractJdbcSinkBinaryHandlingModeTest extends AbstractJdb
      */
     protected String fixedLengthCharacterColumnType() {
         return "char(16)";
-    }
-
-    /**
-     * Whether the dialect runs the schema evolution interaction test; dialects without schema
-     * evolution test coverage upstream opt out.
-     */
-    protected boolean supportsSchemaEvolution() {
-        return true;
     }
 
     /**
@@ -145,8 +139,6 @@ public abstract class AbstractJdbcSinkBinaryHandlingModeTest extends AbstractJdb
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
     @FixFor("debezium/dbz#2468")
     public void testSchemaEvolutionCreatesBinaryColumnsThatKeepRawBytes(SinkRecordFactory factory) throws Exception {
-        Assumptions.assumeTrue(supportsSchemaEvolution(), "Dialect does not run schema evolution tests");
-
         final Map<String, String> properties = binaryHandlingSinkConfig("base64");
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.BASIC.getValue());
         startSinkConnector(properties);
@@ -155,9 +147,10 @@ public abstract class AbstractJdbcSinkBinaryHandlingModeTest extends AbstractJdb
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
         final JdbcSinkConnectorConfig config = getConfig(properties);
+        final LogInterceptor interceptor = new LogInterceptor(DefaultRecordWriter.class);
 
-        // Schema evolution derives column types from the record schema alone, so both the created
-        // and the altered-in BYTES columns are binary and the textual mode does not apply to them.
+        // Schema evolution derives types from the record schema, so it creates binary columns for
+        // both fields. The sink therefore keeps their values as raw bytes and logs the mismatch.
         final JdbcKafkaSinkRecord createRecord = factory.createRecordWithSchemaValue(
                 topicName, (byte) 1, "data", Schema.OPTIONAL_BYTES_SCHEMA, NON_UTF8_BYTES, config);
         consume(createRecord);
@@ -182,6 +175,11 @@ public abstract class AbstractJdbcSinkBinaryHandlingModeTest extends AbstractJdb
             assertThat(rows.get(2)[1]).isEqualTo(NON_UTF8_BYTES);
             return null;
         });
+
+        final String warningPrefix = "Schema evolution created a binary column for field";
+        assertThat(interceptor.countOccurrences(warningPrefix)).isEqualTo(2);
+        assertThat(interceptor.containsWarnMessage("field 'data' in topic '" + topicName + "'")).isTrue();
+        assertThat(interceptor.containsWarnMessage("field 'data2' in topic '" + topicName + "'")).isTrue();
     }
 
     @ParameterizedTest
