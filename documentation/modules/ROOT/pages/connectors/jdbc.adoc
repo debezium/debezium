@@ -506,6 +506,8 @@ Because CockroachDB supports the PostgreSQL communication protocol, it works wit
 As a sink target, CockroachDB supports idempotent writes through the same xref:jdbc-property-insert-mode[`insert.mode=upsert`] setting that the connector uses for other databases.
 For CockroachDB, the connector generates `INSERT ... ON CONFLICT ... DO UPDATE SET ...` statements.
 
+Because the CockroachDB dialect derives from the PostgreSQL dialect, the `UNNEST`-based batch write optimization that the xref:jdbc-property-dialect-postgres-unnest-insert-enabled[`dialect.postgres.unnest.insert.enabled`] property enables also applies to CockroachDB targets.
+
 CockroachDB uses the `SERIALIZABLE` transaction isolation level.
 As a result, if CockroachDB detects a conflict between concurrent transactions, it might temporarily abort one of the transactions and return SQLSTATE `40001`.
 The connector treats these conflicts as retriable and retries the flush according to the xref:jdbc-property-flush-max-retries[`flush.max.retries`] and xref:jdbc-property-flush-retry-delay-ms[`flush.retry.delay.ms`] settings.
@@ -2082,6 +2084,47 @@ During startup or topic partition assignment, the connector validates that resol
 The connector does not validate the table structure against incoming events.
 `basic`:: Specifies that basic evolution occurs.
 The connector adds missing columns to the table by comparing the incoming event's record schema to the database table structure.
+
+|[[jdbc-property-binary-handling-mode]]<<jdbc-property-binary-handling-mode, `+binary.handling.mode+`>>
+|`bytes`
+|Specifies how the connector binds fields that use the Kafka Connect `BYTES` schema when the corresponding destination column is a character type, for example, `CHAR`, `VARCHAR`, `TEXT`, or `CLOB`.
+The following options are available:
+
+`bytes`:: Specifies that the connector binds binary values as raw bytes.
+When raw bytes are written to a character column, the destination database determines whether to convert the value and which textual representation to use.
+Depending on the database, the write might fail instead.
+`base64`:: Specifies that the connector binds binary values as Base64-encoded strings.
+`base64-url-safe`:: Specifies that the connector binds binary values as URL-safe Base64-encoded strings.
+`hex`:: Specifies that the connector binds binary values as hexadecimal-encoded (base16) strings.
+
+This setting applies only to existing character columns.
+For binary destination columns, the connector always binds the original bytes.
+The setting does not change the column types that the connector creates or adds through schema evolution.
+
+|[[jdbc-property-binary-handling-selector-base64]]<<jdbc-property-binary-handling-selector-base64, `+binary.handling.selector.base64+`>>
+|No default
+|Specifies a comma-separated list of regular expressions that select fields to bind as Base64-encoded strings, overriding the xref:jdbc-property-binary-handling-mode[`binary.handling.mode`] setting.
+The connector matches each expression against the topic-qualified field name, in the form `_<topicName>_:_<fieldName>_`, and against the plain field name.
+Matching is case-insensitive and must cover the entire name.
+For example, `server1\.inventory\.orders:payload` matches the `payload` field only in the `server1.inventory.orders` topic.
+
+If a field matches multiple selector properties, the connector evaluates the properties in the following order: `base64`, `base64-url-safe`, `hex`, and `bytes`.
+The first matching property determines the mode, and the connector logs a warning for the field, because overlapping selectors usually indicate a configuration mistake.
+
+|[[jdbc-property-binary-handling-selector-base64-url-safe]]<<jdbc-property-binary-handling-selector-base64-url-safe, `+binary.handling.selector.base64-url-safe+`>>
+|No default
+|Specifies a comma-separated list of regular expressions that select fields to bind as URL-safe Base64-encoded strings, overriding the xref:jdbc-property-binary-handling-mode[`binary.handling.mode`] setting.
+For information about matching and selector precedence, see the description of the xref:jdbc-property-binary-handling-selector-base64[`binary.handling.selector.base64`] property.
+
+|[[jdbc-property-binary-handling-selector-hex]]<<jdbc-property-binary-handling-selector-hex, `+binary.handling.selector.hex+`>>
+|No default
+|Specifies a comma-separated list of regular expressions that select fields to bind as hexadecimal-encoded (base16) strings, overriding the xref:jdbc-property-binary-handling-mode[`binary.handling.mode`] setting.
+For information about matching and selector precedence, see the description of the xref:jdbc-property-binary-handling-selector-base64[`binary.handling.selector.base64`] property.
+
+|[[jdbc-property-binary-handling-selector-bytes]]<<jdbc-property-binary-handling-selector-bytes, `+binary.handling.selector.bytes+`>>
+|No default
+|Specifies a comma-separated list of regular expressions that select fields to bind as raw bytes, overriding the xref:jdbc-property-binary-handling-mode[`binary.handling.mode`] setting.
+For information about matching and selector precedence, see the description of the xref:jdbc-property-binary-handling-selector-base64[`binary.handling.selector.base64`] property.
 
 |[[jdbc-property-collection-name-format]]<<jdbc-property-collection-name-format, `+collection.name.format+`>>
 |`+${topic}+`
