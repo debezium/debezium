@@ -75,6 +75,14 @@ public abstract class AbstractJdbcSinkBinaryHandlingModeTest extends AbstractJdb
     }
 
     /**
+     * Whether the dialect runs the schema evolution interaction test; dialects without schema
+     * evolution test coverage upstream opt out.
+     */
+    protected boolean supportsSchemaEvolution() {
+        return true;
+    }
+
+    /**
      * DDL for a table with a single {@code data} column of the given type; override for dialects
      * with a non-standard {@code CREATE TABLE} syntax.
      */
@@ -131,6 +139,49 @@ public abstract class AbstractJdbcSinkBinaryHandlingModeTest extends AbstractJdb
     public void testNamedRawBytesFieldIsBoundAsStringToCharacterColumn(SinkRecordFactory factory) throws Exception {
         final Schema namedBytesSchema = SchemaBuilder.bytes().name("com.example.Binary").optional().build();
         assertBytesLandsInCharacterColumn(factory, "hex", namedBytesSchema, NON_UTF8_BYTES, "ffd8ffe0");
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("debezium/dbz#2468")
+    public void testSchemaEvolutionCreatesBinaryColumnsThatKeepRawBytes(SinkRecordFactory factory) throws Exception {
+        Assumptions.assumeTrue(supportsSchemaEvolution(), "Dialect does not run schema evolution tests");
+
+        final Map<String, String> properties = binaryHandlingSinkConfig("base64");
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.BASIC.getValue());
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server1", "schema", tableName);
+        final JdbcSinkConnectorConfig config = getConfig(properties);
+
+        // Schema evolution derives column types from the record schema alone, so both the created
+        // and the altered-in BYTES columns are binary and the textual mode does not apply to them.
+        final JdbcKafkaSinkRecord createRecord = factory.createRecordWithSchemaValue(
+                topicName, (byte) 1, "data", Schema.OPTIONAL_BYTES_SCHEMA, NON_UTF8_BYTES, config);
+        consume(createRecord);
+
+        final JdbcKafkaSinkRecord alterRecord = factory.createRecordWithSchemaValue(
+                topicName, (byte) 2,
+                List.of("data", "data2"),
+                List.of(Schema.OPTIONAL_BYTES_SCHEMA, Schema.OPTIONAL_BYTES_SCHEMA),
+                List.of(NON_UTF8_BYTES, NON_UTF8_BYTES),
+                config);
+        consume(alterRecord);
+
+        getSink().assertRows(destinationTableName(createRecord), rs -> {
+            final Map<Integer, byte[][]> rows = new HashMap<>();
+            do {
+                rows.put(rs.getInt(1), new byte[][]{ rs.getBytes(2), rs.getBytes(3) });
+            } while (rs.next());
+            assertThat(rows).containsOnlyKeys(1, 2);
+            assertThat(rows.get(1)[0]).isEqualTo(NON_UTF8_BYTES);
+            assertThat(rows.get(1)[1]).isNull();
+            assertThat(rows.get(2)[0]).isEqualTo(NON_UTF8_BYTES);
+            assertThat(rows.get(2)[1]).isEqualTo(NON_UTF8_BYTES);
+            return null;
+        });
     }
 
     @ParameterizedTest

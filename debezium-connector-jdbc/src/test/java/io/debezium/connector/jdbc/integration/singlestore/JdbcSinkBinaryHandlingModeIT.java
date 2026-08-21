@@ -41,4 +41,10 @@ public class JdbcSinkBinaryHandlingModeIT extends AbstractJdbcSinkBinaryHandling
     protected String largeCharacterColumnType() {
         return "longtext";
     }
+
+    @Override
+    protected boolean supportsSchemaEvolution() {
+        // Upstream has no schema evolution IT coverage for this dialect
+        return false;
+    }
 }

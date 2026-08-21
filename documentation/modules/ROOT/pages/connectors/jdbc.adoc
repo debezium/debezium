@@ -2102,6 +2102,9 @@ For binary destination columns, the connector always binds the original bytes.
 Named `BYTES` schemas that retain the raw binary JDBC mapping are also eligible for encoding.
 Logical types that use `BYTES` as their underlying schema type, such as `Decimal`, retain their logical JDBC mapping and are not affected.
 The setting does not change the column types that the connector creates or adds through schema evolution.
+Schema evolution derives column types from the record schema alone, so for a `BYTES` field it always creates a binary column, to which a textual mode does not apply; the connector logs a warning when this occurs.
+To combine encoded landings with automatic schema evolution, either pre-create the destination columns as character types, or set `binary.handling.mode` on the source connector instead, which emits the fields with a string schema so that schema evolution creates character columns.
+Use this sink-side setting when different sinks that consume the same topics require different representations.
 
 Ensure that the destination character column can hold the encoded value.
 Base64 encoding requires approximately four characters for every three input bytes, while hexadecimal encoding requires two characters for every input byte.

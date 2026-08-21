@@ -13,6 +13,7 @@ import java.sql.Statement;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -202,8 +203,33 @@ public class DefaultRecordWriter implements RecordWriter {
             throw e;
         }
         progressListener().tableCreated();
+        warnWhenBinaryHandlingDoesNotApply(record, record.allFields().keySet());
 
         return readTable(collectionId);
+    }
+
+    /**
+     * Schema evolution derives column types from the record schema alone, so a {@code BYTES} field
+     * always produces a binary column, to which a textual binary handling mode never applies. Warns
+     * for such fields so that the silent mismatch is visible; encoded landings require a pre-created
+     * character column or the source connector's {@code binary.handling.mode}.
+     */
+    private void warnWhenBinaryHandlingDoesNotApply(JdbcSinkRecord record, Collection<String> fieldNames) {
+        if (!config.isBinaryHandlingEnabled()) {
+            return;
+        }
+        for (String fieldName : fieldNames) {
+            final FieldDescriptor field = record.allFields().get(fieldName);
+            if (field == null || !BinaryHandling.isRawBytesSchema(field.getSchema(), dialect.getSchemaType(field.getSchema()))) {
+                continue;
+            }
+            final JdbcSinkConnectorConfig.BinaryHandlingMode mode = config.getBinaryHandlingMode(record.topicName(), field.getName());
+            if (JdbcSinkConnectorConfig.BinaryHandlingMode.BYTES != mode) {
+                LOGGER.warn("Schema evolution created a binary column for field '{}' of topic '{}'; binary handling mode '{}' does not apply to binary columns. "
+                        + "Pre-create a character column, or use the source connector's binary.handling.mode for encoded landings.",
+                        field.getName(), record.topicName(), mode.getValue());
+            }
+        }
     }
 
     private boolean hasTable(CollectionId collectionId) {
@@ -257,6 +283,7 @@ public class DefaultRecordWriter implements RecordWriter {
             throw e;
         }
         progressListener().tableAltered();
+        warnWhenBinaryHandlingDoesNotApply(record, missingFields);
 
         return readTable(collectionId);
     }
