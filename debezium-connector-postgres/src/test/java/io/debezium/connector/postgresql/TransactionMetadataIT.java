@@ -110,6 +110,63 @@ public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
+    void transactionMetadataContainsCommitLsn() throws InterruptedException {
+        // The commit LSN (pgoutput Begin.final_lsn) must be exposed on every event of a
+        // transaction: on the BEGIN and END transaction-metadata records, and on both the
+        // "transaction" block and the "source" block of each data change event. It must be
+        // identical across all events of the same transaction.
+        TestHelper.dropDefaultReplicationSlot();
+        TestHelper.execute(SETUP_TABLES_STMT);
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA.getValue())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                .with(PostgresConnectorConfig.PROVIDE_TRANSACTION_METADATA, true)
+                .build();
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+        TestHelper.waitForDefaultReplicationSlotBeActive();
+
+        waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
+        assertNoRecordsToConsume();
+
+        TestHelper.execute(INSERT_STMT);
+
+        // BEGIN, 2 * data, END
+        final List<SourceRecord> records = new ArrayList<>();
+        Awaitility.await("Skip empty transactions and find the data").atMost(Duration.ofSeconds(TestHelper.waitTimeForRecords() * 3L)).until(() -> {
+            final List<SourceRecord> candidate = consumeRecordsByTopic(2).allRecordsInOrder();
+            if (candidate.get(1).topic().contains("transaction")) {
+                return false;
+            }
+            records.addAll(candidate);
+            records.addAll(consumeRecordsByTopic(2).allRecordsInOrder());
+            return true;
+        });
+
+        assertThat(records).hasSize(4);
+
+        // BEGIN carries the commit LSN
+        final Long beginCommitLsn = ((Struct) records.get(0).value()).getInt64("commit_lsn");
+        assertThat(beginCommitLsn).as("commit_lsn missing on BEGIN event").isNotNull();
+
+        // Each data event carries the same commit LSN on both the transaction and the source block
+        for (SourceRecord dataRecord : Arrays.asList(records.get(1), records.get(2))) {
+            final Struct value = (Struct) dataRecord.value();
+            assertThat(value.getStruct("transaction").getInt64("commit_lsn"))
+                    .as("commit_lsn missing/mismatched on data transaction block")
+                    .isEqualTo(beginCommitLsn);
+            assertThat(value.getStruct("source").getInt64("commit_lsn"))
+                    .as("commit_lsn missing/mismatched on data source block")
+                    .isEqualTo(beginCommitLsn);
+        }
+
+        // END carries the same commit LSN
+        assertThat(((Struct) records.get(3).value()).getInt64("commit_lsn"))
+                .as("commit_lsn missing/mismatched on END event")
+                .isEqualTo(beginCommitLsn);
+    }
+
+    @Test
     @FixFor("debezium/dbz#633")
     public void shouldContinueTransactionEventCountersAfterRestartInMiddleOfTransaction() throws Exception {
         TestHelper.dropDefaultReplicationSlot();
