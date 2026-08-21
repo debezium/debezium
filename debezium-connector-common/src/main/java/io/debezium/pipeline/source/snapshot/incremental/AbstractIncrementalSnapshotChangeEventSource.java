@@ -187,7 +187,6 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             // dispatching, so reverting to it would skip a row.
             deferChunkOnStaleSchema(new DebeziumException(
                     "The schema of table '%s' was refreshed after the window was buffered".formatted(currentTable.id())));
-            window.clear();
             context.revertChunk();
             context.nextChunkPosition(windowStartPosition);
             return;
@@ -846,9 +845,13 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
      * the schema and closing the window lets the connector re-verify it (and streaming deliver
      * the pending DDL events) before the chunk is re-read. Consecutive deferrals are counted
      * against the same observed schema, so a DDL storm keeps making progress while a genuinely
-     * broken state (the refreshed schema never changes) still fails after the bound.
+     * broken state (the refreshed schema never changes) still fails after the bound. Any rows
+     * already buffered are discarded up front: a chunk read can fail mid {@code ResultSet}
+     * iteration, and the partial buffer must reach neither the window emission nor, on the
+     * bound-exceeded path, the skip handlers.
      */
     private void deferChunkOnStaleSchema(Exception cause) {
+        window.clear();
         if (lastStaleTable != null && currentTable != null && !currentTable.equals(lastStaleTable)) {
             staleSchemaDeferrals = 0;
         }
