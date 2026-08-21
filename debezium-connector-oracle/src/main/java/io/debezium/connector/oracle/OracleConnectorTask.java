@@ -116,7 +116,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         this.schema = new OracleDatabaseSchema(connectorConfig, valueConverters, defaultValueConverter, schemaNameAdjuster,
                 topicNamingStrategy, tableNameCaseSensitivity, extendedStringsSupported, customConverterRegistry, taskContext);
 
-        Offsets<OraclePartition, OracleOffsetContext> previousOffsets = getPreviousOffsets(partitionProvider, offsetContextLoader);
+        Offsets<OraclePartition, OracleOffsetContext> previousOffsets = getSinglePartitionPreviousOffsets(partitionProvider, offsetContextLoader);
 
         // The bean registry JDBC connection should always be pinned to the PDB
         // when the connector is configured to use a pluggable database
@@ -140,8 +140,6 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
 
         connectorConfig.getArchiveDestinationNameResolver().validate(jdbcConnection);
 
-        OracleOffsetContext previousOffset = previousOffsets.getTheOnlyOffset();
-
         // Validate guardrail limits for captured tables to prevent loading excessive table schemas into memory
         if (connectorConfig.getGuardrailCollectionsMax() <= 0) {
             LOGGER.info("Guardrail validation skipped");
@@ -151,14 +149,6 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         }
 
         validateSchemaHistory(connectorConfig, jdbcConnection::validateLogPosition, previousOffsets, schema, snapshotterService.getSnapshotter());
-
-        // If the redo log position is not available it is necessary to re-execute snapshot
-        if (previousOffset == null) {
-            LOGGER.info("No previous offset found");
-        }
-        else {
-            LOGGER.info("Found previous offset {}", previousOffset);
-        }
 
         Clock clock = Clock.system();
 
