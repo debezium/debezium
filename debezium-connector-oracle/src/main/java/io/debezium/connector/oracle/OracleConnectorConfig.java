@@ -364,7 +364,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDefault(true)
-            .withValidation(Field::isRequired)
+            .withValidation(Field::isRequired, OracleConnectorConfig::validateLogMiningBufferTrackClientId)
             .withDescription("This controls whether the 'CLIENT_ID' column values are tracked. " +
                     "When set to true (the default), the 'CLIENT_ID' values are buffered and provided in events when available. " +
                     "When set to false, the 'CLIENT_ID' column is excluded from the LogMiner query and its values are not buffered, " +
@@ -376,7 +376,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDefault(true)
-            .withValidation(Field::isRequired)
+            .withValidation(Field::isRequired, OracleConnectorConfig::validateLogMiningBufferTrackUsername)
             .withDescription("This controls whether the 'USERNAME' column values are tracked. " +
                     "When set to true (the default), the 'USERNAME' values are buffered and provided in events when available. " +
                     "When set to false, the 'USERNAME' column is excluded from the LogMiner query and its values are not buffered, " +
@@ -2509,6 +2509,26 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             if (includeList != null && excludeList != null) {
                 problems.accept(LOG_MINING_CLIENTID_EXCLUDE_LIST, excludeList,
                         String.format("\"%s\": is already specified", LOG_MINING_CLIENTID_INCLUDE_LIST.name()));
+                return 1;
+            }
+        }
+        return 0;
+    }
+
+    public static int validateLogMiningBufferTrackUsername(Configuration config, Field field, ValidationOutput problems) {
+        return validateTrackedAttributeFilters(config, field, problems, LOG_MINING_USERNAME_INCLUDE_LIST, LOG_MINING_USERNAME_EXCLUDE_LIST);
+    }
+
+    public static int validateLogMiningBufferTrackClientId(Configuration config, Field field, ValidationOutput problems) {
+        return validateTrackedAttributeFilters(config, field, problems, LOG_MINING_CLIENTID_INCLUDE_LIST, LOG_MINING_CLIENTID_EXCLUDE_LIST);
+    }
+
+    private static int validateTrackedAttributeFilters(Configuration config, Field field, ValidationOutput problems, Field includeList, Field excludeList) {
+        if (isLogMiner(config) && !config.getBoolean(field)) {
+            if (!Strings.isNullOrBlank(config.getString(includeList)) || !Strings.isNullOrBlank(config.getString(excludeList))) {
+                problems.accept(field, config.getBoolean(field), String.format(
+                        "The configuration property '%s' cannot be disabled when '%s' or '%s' is configured.",
+                        field.name(), includeList.name(), excludeList.name()));
                 return 1;
             }
         }
