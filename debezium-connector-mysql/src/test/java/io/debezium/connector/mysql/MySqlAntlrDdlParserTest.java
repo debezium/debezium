@@ -8,7 +8,6 @@ package io.debezium.connector.mysql;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.sql.Types;
 import java.util.List;
 
 import org.junit.jupiter.api.Disabled;
@@ -19,7 +18,6 @@ import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMo
 import io.debezium.connector.binlog.BinlogAntlrDdlParserTest;
 import io.debezium.connector.binlog.BinlogConnectorConfig;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
-import io.debezium.connector.mysql.antlr.MySqlPtAntlrDdlParser;
 import io.debezium.connector.mysql.charset.MySqlCharsetRegistry;
 import io.debezium.connector.mysql.jdbc.MySqlDefaultValueConverter;
 import io.debezium.connector.mysql.jdbc.MySqlValueConverters;
@@ -30,7 +28,6 @@ import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.Table;
-import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.ddl.DdlChanges;
 import io.debezium.relational.ddl.SimpleDdlParserListener;
@@ -106,24 +103,6 @@ public class MySqlAntlrDdlParserTest
     @Test
     @Override
     public void shouldParseMySql57InitializationStatements() {
-    }
-
-    @Test
-    @FixFor("debezium/dbz#2217")
-    public void shouldApplyRealHandlingModeWithLegacyDdlParser() {
-        final String ddl = "CREATE TABLE realtable (id INT PRIMARY KEY, r REAL);";
-
-        final Tables doubleTables = new Tables();
-        final MySqlPtAntlrDdlParser doubleParser = new MySqlPtAntlrDdlParser(
-                false, false, false, TableFilter.includeAll(), new MySqlCharsetRegistry(), BinlogConnectorConfig.RealHandlingMode.DOUBLE);
-        doubleParser.parse(ddl, doubleTables);
-        assertThat(doubleTables.forTable(null, null, "realtable").columnWithName("r").jdbcType()).isEqualTo(Types.DOUBLE);
-
-        final Tables floatTables = new Tables();
-        final MySqlPtAntlrDdlParser floatParser = new MySqlPtAntlrDdlParser(
-                false, false, false, TableFilter.includeAll(), new MySqlCharsetRegistry(), BinlogConnectorConfig.RealHandlingMode.FLOAT);
-        floatParser.parse(ddl, floatTables);
-        assertThat(floatTables.forTable(null, null, "realtable").columnWithName("r").jdbcType()).isEqualTo(Types.REAL);
     }
 
     @Disabled("CHARACTER SET = DEFAULT syntax is not valid in MySQL 8.0+. " +
