@@ -8,10 +8,15 @@ package io.debezium.connector.jdbc;
 import static io.debezium.sink.filter.FieldFilterFactory.FieldNameFilter;
 
 import java.time.Duration;
+import java.util.Base64;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
+import java.util.stream.Stream;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Type;
@@ -36,6 +41,7 @@ import io.debezium.connector.jdbc.naming.TemporaryBackwardCompatibleCollectionNa
 import io.debezium.sink.SinkConnectorConfig;
 import io.debezium.sink.filter.FieldFilterFactory;
 import io.debezium.sink.naming.CollectionNamingStrategy;
+import io.debezium.util.HexConverter;
 import io.debezium.util.Strings;
 
 /**
@@ -59,6 +65,11 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
     public static final String INSERT_MODE = "insert.mode";
     public static final String TRUNCATE_ENABLED = "truncate.enabled";
     public static final String SCHEMA_EVOLUTION = "schema.evolution";
+    public static final String BINARY_HANDLING_MODE = "binary.handling.mode";
+    public static final String BINARY_HANDLING_SELECTOR_BASE64 = "binary.handling.selector.base64";
+    public static final String BINARY_HANDLING_SELECTOR_BASE64_URL_SAFE = "binary.handling.selector.base64-url-safe";
+    public static final String BINARY_HANDLING_SELECTOR_HEX = "binary.handling.selector.hex";
+    public static final String BINARY_HANDLING_SELECTOR_BYTES = "binary.handling.selector.bytes";
     public static final String QUOTE_IDENTIFIERS = "quote.identifiers";
     public static final String COLUMN_NAMING_STRATEGY = "column.naming.strategy";
     public static final String COLLECTION_TABLE_FORMAT = "collection.table.format";
@@ -171,6 +182,64 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
             .withImportance(ConfigDef.Importance.LOW)
             .withDescription("When enabled, table, column, and other identifiers are quoted based on the database dialect. " +
                     "When disabled, only explicit cases where the dialect requires quoting will be used, such as names starting with an underscore.");
+
+    public static final Field BINARY_HANDLING_MODE_FIELD = Field.create(BINARY_HANDLING_MODE)
+            .withDisplayName("Binary handling mode for character columns")
+            .withEnum(BinaryHandlingMode.class, BinaryHandlingMode.BYTES)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR))
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDescription("Specifies how BYTES fields are bound when the destination column is a character type: "
+                    + "'bytes' (default) binds the original bytes and delegates conversion to the destination database; "
+                    + "'base64' binds a Base64-encoded string; "
+                    + "'base64-url-safe' binds a URL-safe Base64-encoded string; "
+                    + "'hex' binds a hex-encoded string. "
+                    + "Binary destination columns always receive the original bytes. "
+                    + "This setting does not affect table creation or schema evolution.");
+
+    public static final Field BINARY_HANDLING_SELECTOR_BASE64_FIELD = Field.create(BINARY_HANDLING_SELECTOR_BASE64)
+            .withDisplayName("Fields bound as Base64 strings to character-typed target columns")
+            .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
+            .withWidth(ConfigDef.Width.LONG)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withValidation(Field::isListOfRegex)
+            .withDescription("A comma-separated list of regular expressions that select BYTES fields to bind as "
+                    + "Base64-encoded strings when the destination column is a character type, overriding '"
+                    + BINARY_HANDLING_MODE + "'. Expressions match either '<topic>:<field>' or '<field>'.");
+
+    public static final Field BINARY_HANDLING_SELECTOR_BASE64_URL_SAFE_FIELD = Field.create(BINARY_HANDLING_SELECTOR_BASE64_URL_SAFE)
+            .withDisplayName("Fields bound as URL-safe Base64 strings to character-typed target columns")
+            .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
+            .withWidth(ConfigDef.Width.LONG)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withValidation(Field::isListOfRegex)
+            .withDescription("A comma-separated list of regular expressions that select BYTES fields to bind as "
+                    + "URL-safe Base64-encoded strings when the destination column is a character type, overriding '"
+                    + BINARY_HANDLING_MODE + "'. Expressions match either '<topic>:<field>' or '<field>'.");
+
+    public static final Field BINARY_HANDLING_SELECTOR_HEX_FIELD = Field.create(BINARY_HANDLING_SELECTOR_HEX)
+            .withDisplayName("Fields bound as hex strings to character-typed target columns")
+            .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
+            .withWidth(ConfigDef.Width.LONG)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withValidation(Field::isListOfRegex)
+            .withDescription("A comma-separated list of regular expressions that select BYTES fields to bind as "
+                    + "hex-encoded strings when the destination column is a character type, overriding '"
+                    + BINARY_HANDLING_MODE + "'. Expressions match either '<topic>:<field>' or '<field>'.");
+
+    public static final Field BINARY_HANDLING_SELECTOR_BYTES_FIELD = Field.create(BINARY_HANDLING_SELECTOR_BYTES)
+            .withDisplayName("Fields always bound as raw bytes")
+            .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
+            .withWidth(ConfigDef.Width.LONG)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withValidation(Field::isListOfRegex)
+            .withDescription("A comma-separated list of regular expressions that select BYTES fields to bind as the "
+                    + "original bytes, overriding '" + BINARY_HANDLING_MODE
+                    + "'. Expressions match either '<topic>:<field>' or '<field>'.");
 
     public static final String DEFAULT_TIME_ZONE = "UTC";
     public static final String USE_TIME_ZONE = "use.time.zone";
@@ -303,6 +372,11 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
                     PRIMARY_KEY_MODE_FIELD,
                     PRIMARY_KEY_FIELDS_FIELD,
                     SCHEMA_EVOLUTION_FIELD,
+                    BINARY_HANDLING_MODE_FIELD,
+                    BINARY_HANDLING_SELECTOR_BASE64_FIELD,
+                    BINARY_HANDLING_SELECTOR_BASE64_URL_SAFE_FIELD,
+                    BINARY_HANDLING_SELECTOR_HEX_FIELD,
+                    BINARY_HANDLING_SELECTOR_BYTES_FIELD,
                     QUOTE_IDENTIFIERS_FIELD,
                     COLLECTION_NAMING_STRATEGY_FIELD,
                     COLUMN_NAMING_STRATEGY_FIELD,
@@ -369,6 +443,67 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
     }
 
     /**
+     * Defines how {@code BYTES} values are bound to character destination columns.
+     */
+    public enum BinaryHandlingMode implements EnumeratedValue {
+        /**
+         * Bind the original bytes and delegate conversion to the destination database.
+         */
+        BYTES("bytes"),
+
+        /**
+         * The bytes are bound as a Base64-encoded string.
+         */
+        BASE64("base64"),
+
+        /**
+         * The bytes are bound as a URL-safe Base64-encoded string.
+         */
+        BASE64_URL_SAFE("base64-url-safe"),
+
+        /**
+         * The bytes are bound as a hex-encoded string.
+         */
+        HEX("hex");
+
+        private final String mode;
+
+        BinaryHandlingMode(String mode) {
+            this.mode = mode;
+        }
+
+        public static BinaryHandlingMode parse(String value) {
+            for (BinaryHandlingMode option : BinaryHandlingMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return BinaryHandlingMode.BYTES;
+        }
+
+        @Override
+        public String getValue() {
+            return mode;
+        }
+
+        /**
+         * Encodes the bytes in the textual representation for this mode.
+         */
+        public String encode(byte[] bytes) {
+            switch (this) {
+                case BASE64:
+                    return Base64.getEncoder().encodeToString(bytes);
+                case BASE64_URL_SAFE:
+                    return Base64.getUrlEncoder().encodeToString(bytes);
+                case HEX:
+                    return HexConverter.convertToHexString(bytes);
+                default:
+                    throw new IllegalStateException("Mode '" + mode + "' does not define a textual encoding");
+            }
+        }
+    }
+
+    /**
      * Different modes that the destination table's schema can be evolved.
      */
     public enum SchemaEvolutionMode implements EnumeratedValue {
@@ -432,6 +567,9 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
     private final Configuration config;
 
     private final InsertMode insertMode;
+    private final BinaryHandlingMode binaryHandlingMode;
+    private final List<BinaryHandlingSelector> binaryHandlingSelectors;
+    private final Map<String, BinaryHandlingMode> binaryHandlingModeByField = new ConcurrentHashMap<>();
     private final boolean deleteEnabled;
     private final boolean truncateEnabled;
     private final String collectionNameFormat;
@@ -459,6 +597,14 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
     public JdbcSinkConnectorConfig(Map<String, String> props) {
         config = Configuration.from(props);
         this.insertMode = InsertMode.parse(config.getString(INSERT_MODE));
+        this.binaryHandlingMode = BinaryHandlingMode.parse(config.getString(BINARY_HANDLING_MODE_FIELD));
+        this.binaryHandlingSelectors = Stream.of(
+                new BinaryHandlingSelector(BinaryHandlingMode.BASE64, selectorPatterns(config, BINARY_HANDLING_SELECTOR_BASE64_FIELD)),
+                new BinaryHandlingSelector(BinaryHandlingMode.BASE64_URL_SAFE, selectorPatterns(config, BINARY_HANDLING_SELECTOR_BASE64_URL_SAFE_FIELD)),
+                new BinaryHandlingSelector(BinaryHandlingMode.HEX, selectorPatterns(config, BINARY_HANDLING_SELECTOR_HEX_FIELD)),
+                new BinaryHandlingSelector(BinaryHandlingMode.BYTES, selectorPatterns(config, BINARY_HANDLING_SELECTOR_BYTES_FIELD)))
+                .filter(selector -> !selector.patterns().isEmpty())
+                .toList();
         this.deleteEnabled = config.getBoolean(DELETE_ENABLED_FIELD);
         this.truncateEnabled = config.getBoolean(TRUNCATE_ENABLED_FIELD);
         this.collectionNameFormat = config.getString(COLLECTION_NAME_FORMAT_FIELD);
@@ -516,6 +662,55 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
 
     public InsertMode getInsertMode() {
         return insertMode;
+    }
+
+    /**
+     * Returns the global mode without applying field selectors.
+     */
+    public BinaryHandlingMode getBinaryHandlingMode() {
+        return binaryHandlingMode;
+    }
+
+    /**
+     * Resolves the mode for a field. Selectors are evaluated in the order {@code base64},
+     * {@code base64-url-safe}, {@code hex}, and {@code bytes}. The first pattern that matches the
+     * topic-qualified name or the plain field name takes precedence over the global mode. A field
+     * that matches selectors of multiple modes is logged once as a likely misconfiguration.
+     */
+    public BinaryHandlingMode getBinaryHandlingMode(String topicName, String fieldName) {
+        if (binaryHandlingSelectors.isEmpty()) {
+            return binaryHandlingMode;
+        }
+        return binaryHandlingModeByField.computeIfAbsent(topicName + ":" + fieldName, qualifiedName -> {
+            final List<BinaryHandlingMode> matches = binaryHandlingSelectors.stream()
+                    .filter(selector -> selector.patterns().stream()
+                            .anyMatch(pattern -> pattern.matcher(qualifiedName).matches() || pattern.matcher(fieldName).matches()))
+                    .map(BinaryHandlingSelector::mode)
+                    .toList();
+            if (matches.isEmpty()) {
+                return binaryHandlingMode;
+            }
+            if (matches.size() > 1) {
+                LOGGER.warn("Field '{}' matches binary handling selectors for multiple modes {}; using '{}' by the fixed selector precedence",
+                        qualifiedName,
+                        matches.stream().map(BinaryHandlingMode::getValue).toList(),
+                        matches.get(0).getValue());
+            }
+            return matches.get(0);
+        });
+    }
+
+    private static Set<Pattern> selectorPatterns(Configuration config, Field field) {
+        try {
+            return Strings.setOfRegex(config.getString(field), Pattern.CASE_INSENSITIVE);
+        }
+        catch (PatternSyntaxException e) {
+            // Field validation reports the invalid expression together with its property name.
+            return Set.of();
+        }
+    }
+
+    private record BinaryHandlingSelector(BinaryHandlingMode mode, Set<Pattern> patterns) {
     }
 
     @Override
