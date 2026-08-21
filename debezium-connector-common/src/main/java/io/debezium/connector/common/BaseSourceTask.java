@@ -641,6 +641,19 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
     }
 
     /**
+     * Loads the connector's persistent offsets (if present) via the given loader, for
+     * connectors whose tasks are bound to exactly one partition.
+     *
+     * @throws DebeziumException if the provider yields anything other than one partition
+     */
+    protected Offsets<P, O> getSinglePartitionPreviousOffsets(Partition.Provider<P> provider, OffsetContext.Loader<O> loader) {
+        final Offsets<P, O> offsets = getPreviousOffsets(provider, loader);
+        // This simply triggers the internal exception if there isn't exactly 1 offset
+        offsets.getTheOnlyOffset();
+        return offsets;
+    }
+
+    /**
      * Sets the new state for the task. The caller must be holding {@link #stateLock} lock.
      *
      * @param newState
