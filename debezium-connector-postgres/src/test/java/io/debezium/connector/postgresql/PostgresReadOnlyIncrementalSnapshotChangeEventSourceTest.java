@@ -28,6 +28,7 @@ import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
+import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource.UndefinedColumnClassifier;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
@@ -69,7 +70,8 @@ public class PostgresReadOnlyIncrementalSnapshotChangeEventSourceTest {
         MockitoAnnotations.openMocks(this);
         source = new PostgresReadOnlyIncrementalSnapshotChangeEventSource<>(
                 config, jdbcConnection, dispatcher, schema, clock,
-                progressListener, dataChangeEventListener, notificationService);
+                progressListener, dataChangeEventListener, notificationService,
+                UndefinedColumnClassifier.NONE);
     }
 
     @Test

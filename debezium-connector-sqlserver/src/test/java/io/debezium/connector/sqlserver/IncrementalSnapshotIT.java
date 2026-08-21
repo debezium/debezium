@@ -346,4 +346,11 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
                     "You set a single data collection for a multi task connector. If you want to send signals for each database you need to provide a signal data collection per database."));
         }
     }
+
+    @Override
+    protected boolean expectsStaleSchemaDeferral() {
+        // Schema changes reach the connector through the CDC capture instances with a lag: the
+        // window typically closes against the old schema and the deferral is never needed.
+        return false;
+    }
 }

@@ -45,8 +45,10 @@ public class PostgresSignalBasedIncrementalSnapshotChangeEventSource
                                                                    Clock clock,
                                                                    SnapshotProgressListener<PostgresPartition> progressListener,
                                                                    DataChangeEventListener<PostgresPartition> dataChangeEventListener,
-                                                                   NotificationService<PostgresPartition, ? extends OffsetContext> notificationService) {
-        super(config, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener, notificationService);
+                                                                   NotificationService<PostgresPartition, ? extends OffsetContext> notificationService,
+                                                                   UndefinedColumnClassifier undefinedColumnClassifier) {
+        super(config, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener, notificationService,
+                undefinedColumnClassifier);
         this.jdbcConnection = (PostgresConnection) jdbcConnection;
         this.schema = (PostgresSchema) databaseSchema;
     }

@@ -80,8 +80,10 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource extends BinlogRea
                                                              Clock clock,
                                                              SnapshotProgressListener<MySqlPartition> progressListener,
                                                              DataChangeEventListener<MySqlPartition> dataChangeEventListener,
-                                                             NotificationService<MySqlPartition, MySqlOffsetContext> notificationService) {
-        super(config, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener, notificationService);
+                                                             NotificationService<MySqlPartition, MySqlOffsetContext> notificationService,
+                                                             UndefinedColumnClassifier undefinedColumnClassifier) {
+        super(config, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener, notificationService,
+                undefinedColumnClassifier);
         binlogConnectorConnection = jdbcConnection;
     }
 
