@@ -6,9 +6,8 @@
 package io.debezium.transforms;
 
 import java.util.HashMap;
-import java.util.LinkedHashSet;
+import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Set;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.components.Versioned;
@@ -41,8 +40,19 @@ import io.debezium.util.Strings;
  * scalar fields remain strongly typed while a schema-flexible field is written as JSON text. Fields
  * that are already strings, or that are absent, are left untouched.
  * <p>
- * Configuration: {@code fields} &mdash; a comma-separated list of top-level value field names to
- * serialize.
+ * Configuration: {@code fields} &mdash; a comma-separated list of value field names to serialize. A
+ * name may address a nested field with dot notation, for example {@code after.payload}, which lets
+ * the transformation reach into a change-event envelope without a prior flattening step. Each path
+ * segment except the last must resolve to a {@code STRUCT}; the final segment is the field whose
+ * value is retyped to a JSON string. A bare name such as {@code payload} targets a top-level field,
+ * so existing configurations keep working unchanged.
+ * <p>
+ * When a nested target lives inside a structure that is shared under more than one field of the same
+ * named schema &mdash; most notably a change-event envelope's {@code before} and {@code after}, which
+ * share one record schema &mdash; the same path must be configured under every such field (for
+ * example {@code after.payload} <em>and</em> {@code before.payload}). Otherwise the retyped and the
+ * original copies of that schema would carry the same name but different field types, which the
+ * Connect schema model does not allow.
  * <p>
  * If a targeted field cannot be serialized to JSON, the transformation logs the offending record's
  * context (field name, schema type and name, value class, and value) at {@code ERROR} level and
@@ -63,13 +73,19 @@ public class StringifyFields<R extends ConnectRecord<R>> implements Transformati
             .withType(ConfigDef.Type.LIST)
             .withImportance(ConfigDef.Importance.HIGH)
             .required()
-            .withDescription("Comma-separated list of value field names to serialize to a JSON string.");
+            .withDescription("Comma-separated list of value field names to serialize to a JSON string. "
+                    + "Use dot notation, such as 'after.payload', to target a nested field.");
 
-    private static final ConfigDef CONFIG_DEF = new ConfigDef().define(
-            FIELDS_CONFIG, ConfigDef.Type.LIST, ConfigDef.NO_DEFAULT_VALUE, ConfigDef.Importance.HIGH,
-            FIELDS_FIELD.description());
+    /**
+     * A node in the trie of configured field paths. {@link #target} marks a node whose field is
+     * itself serialized; {@link #children} holds the next path segment for deeper targets.
+     */
+    private static final class PathNode {
+        private boolean target;
+        private final Map<String, PathNode> children = new LinkedHashMap<>();
+    }
 
-    private Set<String> fields;
+    private PathNode root;
     private final JsonConverter jsonConverter = new JsonConverter();
 
     @Override
@@ -78,11 +94,20 @@ public class StringifyFields<R extends ConnectRecord<R>> implements Transformati
         final SmtManager<R> smtManager = new SmtManager<>(config);
         smtManager.validate(config, Field.setOf(FIELDS_FIELD));
 
-        this.fields = new LinkedHashSet<>();
-        for (String field : config.getList(FIELDS_FIELD)) {
-            if (!Strings.isNullOrBlank(field)) {
-                this.fields.add(field.trim());
+        this.root = new PathNode();
+        for (String path : config.getList(FIELDS_FIELD)) {
+            if (Strings.isNullOrBlank(path)) {
+                continue;
             }
+            PathNode node = root;
+            for (String segment : path.split("\\.", -1)) {
+                if (Strings.isNullOrBlank(segment)) {
+                    throw new ConnectException("Invalid field path '" + path + "' in '" + FIELDS_CONFIG
+                            + "': path segments must not be empty");
+                }
+                node = node.children.computeIfAbsent(segment.trim(), k -> new PathNode());
+            }
+            node.target = true;
         }
         // schemas.enable=false emits plain JSON without the Connect schema envelope.
         Map<String, Object> converterConfig = new HashMap<>();
@@ -97,33 +122,75 @@ public class StringifyFields<R extends ConnectRecord<R>> implements Transformati
             return record;
         }
         Struct value = (Struct) record.value();
-        Schema schema = value.schema();
-
-        // Build a new schema in which the targeted fields become STRING.
-        SchemaBuilder builder = SchemaBuilder.struct().name(schema.name()).version(schema.version());
-        for (org.apache.kafka.connect.data.Field field : schema.fields()) {
-            if (fields.contains(field.name())) {
-                builder.field(field.name(), field.schema().isOptional() ? Schema.OPTIONAL_STRING_SCHEMA : Schema.STRING_SCHEMA);
-            }
-            else {
-                builder.field(field.name(), field.schema());
-            }
-        }
-        Schema newSchema = builder.build();
-
-        Struct newValue = new Struct(newSchema);
-        for (org.apache.kafka.connect.data.Field field : schema.fields()) {
-            Object fieldValue = value.get(field);
-            if (fields.contains(field.name()) && fieldValue != null && !(fieldValue instanceof String)) {
-                newValue.put(field.name(), toJsonString(field.name(), field.schema(), fieldValue));
-            }
-            else {
-                newValue.put(field.name(), fieldValue);
-            }
-        }
+        Schema newSchema = retypeSchema(value.schema(), root, "");
+        Struct newValue = transformStruct(value, newSchema, root, "");
 
         return record.newRecord(record.topic(), record.kafkaPartition(), record.keySchema(), record.key(),
                 newSchema, newValue, record.timestamp(), record.headers());
+    }
+
+    /**
+     * Builds a copy of {@code schema} in which every targeted field is retyped to STRING, descending
+     * into nested structs for paths that reach deeper than the current level.
+     */
+    private Schema retypeSchema(Schema schema, PathNode node, String pathPrefix) {
+        SchemaBuilder builder = org.apache.kafka.connect.transforms.util.SchemaUtil.copySchemaBasics(schema, SchemaBuilder.struct());
+        if (schema.isOptional()) {
+            builder.optional();
+        }
+        for (org.apache.kafka.connect.data.Field field : schema.fields()) {
+            PathNode child = node.children.get(field.name());
+            if (child == null) {
+                builder.field(field.name(), field.schema());
+            }
+            else if (child.target) {
+                // A field that is itself a target is serialized whole; any deeper paths under it are
+                // subsumed by the JSON string and ignored.
+                builder.field(field.name(), field.schema().isOptional() ? Schema.OPTIONAL_STRING_SCHEMA : Schema.STRING_SCHEMA);
+            }
+            else {
+                String path = pathPrefix.isEmpty() ? field.name() : pathPrefix + "." + field.name();
+                if (field.schema().type() != Schema.Type.STRUCT) {
+                    throw new ConnectException("Field path '" + path + "' in '" + FIELDS_CONFIG
+                            + "' navigates into a non-struct field of type " + field.schema().type()
+                            + "; only struct fields can contain nested targets");
+                }
+                builder.field(field.name(), retypeSchema(field.schema(), child, path));
+            }
+        }
+        return builder.build();
+    }
+
+    /**
+     * Builds the transformed value for {@code value} against {@code newSchema}, serializing targeted
+     * fields and recursing into nested structs for deeper paths.
+     */
+    private Struct transformStruct(Struct value, Schema newSchema, PathNode node, String pathPrefix) {
+        Struct newValue = new Struct(newSchema);
+        for (org.apache.kafka.connect.data.Field field : value.schema().fields()) {
+            Object fieldValue = value.get(field);
+            PathNode child = node.children.get(field.name());
+            String path = pathPrefix.isEmpty() ? field.name() : pathPrefix + "." + field.name();
+            if (child == null) {
+                newValue.put(field.name(), fieldValue);
+            }
+            else if (child.target) {
+                if (fieldValue != null && !(fieldValue instanceof String)) {
+                    newValue.put(field.name(), toJsonString(path, field.schema(), fieldValue));
+                }
+                else {
+                    newValue.put(field.name(), fieldValue);
+                }
+            }
+            else if (fieldValue == null) {
+                newValue.put(field.name(), null);
+            }
+            else {
+                Schema childSchema = newSchema.field(field.name()).schema();
+                newValue.put(field.name(), transformStruct((Struct) fieldValue, childSchema, child, path));
+            }
+        }
+        return newValue;
     }
 
     /**
@@ -152,7 +219,9 @@ public class StringifyFields<R extends ConnectRecord<R>> implements Transformati
 
     @Override
     public ConfigDef config() {
-        return CONFIG_DEF;
+        final ConfigDef config = new ConfigDef();
+        Field.group(config, null, FIELDS_FIELD);
+        return config;
     }
 
     @Override
