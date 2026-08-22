@@ -9,6 +9,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.List;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.source.snapshot.CascadingOrBoundaryConditions;
 import io.debezium.relational.Column;
@@ -126,8 +127,11 @@ public class SnapshotChunkQueryBuilder {
     /**
      * Prepare a statement and bind chunk boundary parameters.
      */
-    public PreparedStatement prepareChunkStatement(SnapshotChunk chunk, List<Column> keyColumns, String sql) throws SQLException {
-        final PreparedStatement statement = jdbcConnection.connection().prepareStatement(sql);
+    public PreparedStatement prepareChunkStatement(CommonConnectorConfig connectorConfig, SnapshotChunk chunk, List<Column> keyColumns, String sql)
+            throws SQLException {
+        // Create the chunk statement via readTablePreparedStatement() so that the configured
+        // snapshot.fetch.size is applied, as done by the legacy and incremental snapshot paths
+        final PreparedStatement statement = jdbcConnection.readTablePreparedStatement(connectorConfig, sql, chunk.getEstimatedRowCount());
 
         if (!chunk.hasLowerBound() && !chunk.hasUpperBound()) {
             return statement;

@@ -996,7 +996,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         final String chunkQuery = queryBuilder.buildChunkQuery(chunk, keyColumns, chunk.getBaseSelectStatement());
         final Instant sourceTableSnapshotTimestamp = getSnapshotSourceTimestamp(jdbcConnection, offset, tableId);
 
-        try (PreparedStatement statement = queryBuilder.prepareChunkStatement(chunk, keyColumns, chunkQuery);
+        try (PreparedStatement statement = queryBuilder.prepareChunkStatement(connectorConfig, chunk, keyColumns, chunkQuery);
                 ResultSet rs = statement.executeQuery()) {
 
             final ColumnUtils.ColumnArray columnArray = ColumnUtils.toArray(rs, table);
