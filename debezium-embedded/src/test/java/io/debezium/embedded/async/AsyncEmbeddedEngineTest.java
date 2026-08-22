@@ -20,6 +20,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.Task;
@@ -543,6 +544,56 @@ public class AsyncEmbeddedEngineTest {
         assertThat(error).isNotNull();
         assertThat(error).isInstanceOf(IllegalStateException.class);
         assertThat(error.getMessage()).isEqualTo("Engine has been already shut down.");
+    }
+
+    @Test
+    void testTaskIsStoppedEvenWhenConsumerIsBlockedDuringShutdown() throws Exception {
+        final Properties props = new Properties();
+
+        props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
+        props.setProperty(ConnectorConfig.CONNECTOR_CLASS_CONFIG, DebeziumAsyncEngineTestUtils.StopTrackingConnector.class.getName());
+        props.setProperty(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
+        props.put(SimpleSourceConnector.BATCH_COUNT, 1);
+
+        // short timeout so the engine gives up on the starved stop callable quickly
+        props.setProperty(AsyncEngineConfig.TASK_MANAGEMENT_TIMEOUT_MS.name(), "1000");
+
+        DebeziumAsyncEngineTestUtils.StopTrackingTask.stopInvoked.set(false);
+
+        final ReentrantLock blockedSink = new ReentrantLock();
+
+        DebeziumEngine.Builder<SourceRecord> builder = new AsyncEmbeddedEngine.AsyncEngineBuilder<>();
+
+        engine = builder
+                .using(props)
+                .using(new TestEngineConnectorCallback())
+                .notifying((records, committer) -> {
+                    blockedSink.lock();
+                    blockedSink.unlock();
+                }).build();
+
+        blockedSink.lock();
+
+        try {
+            engineExecSrv.submit(() -> {
+                LoggingContext.forConnector(getClass().getSimpleName(), "", "engine");
+                engine.run();
+            });
+
+            // the engine must be blocked
+            Awaitility.await()
+                    .atMost(AbstractConnectorTest.waitTimeForEngine(), TimeUnit.SECONDS)
+                    .until(blockedSink::hasQueuedThreads);
+
+            engine.close();
+
+            assertThat(isEngineRunning.get()).isFalse();
+            assertThat(runningTasks.get()).isEqualTo(0);
+            assertThat(DebeziumAsyncEngineTestUtils.StopTrackingTask.stopInvoked.get()).isTrue();
+        }
+        finally {
+            blockedSink.unlock();
+        }
     }
 
     @Test
