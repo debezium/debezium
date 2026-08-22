@@ -184,6 +184,52 @@ public class AsyncEmbeddedEngineTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#1201")
+    void testTaskConfigurationIsLoggedWithMaskedPasswords() throws Exception {
+        final LogInterceptor logInterceptor = new LogInterceptor(AsyncEmbeddedEngine.class);
+        logInterceptor.setLoggerLevel(AsyncEmbeddedEngine.class, Level.DEBUG);
+
+        final Properties props = new Properties();
+        props.put(EmbeddedEngineConfig.ENGINE_NAME.name(), "testing-connector");
+        props.setProperty(CommonConnectorConfig.TASKS_MAX.name(), "1");
+        props.put(EmbeddedEngineConfig.CONNECTOR_CLASS.name(), SimpleSourceConnector.class.getName());
+        props.put(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
+        props.put(SimpleSourceConnector.BATCH_COUNT, 1);
+        props.setProperty("database.password", "this-should-be-masked");
+
+        final AtomicInteger recordsRead = new AtomicInteger(0);
+        DebeziumEngine.Builder<SourceRecord> builder = new AsyncEmbeddedEngine.AsyncEngineBuilder<>();
+        engine = builder
+                .using(props)
+                .notifying((records, committer) -> {
+                    for (SourceRecord record : records) {
+                        recordsRead.incrementAndGet();
+                        committer.markProcessed(record);
+                    }
+                })
+                .using(this.getClass().getClassLoader())
+                .build();
+
+        ExecutorService exec = Executors.newFixedThreadPool(1);
+        exec.execute(() -> {
+            LoggingContext.forConnector(getClass().getSimpleName(), "", "engine");
+            engine.run();
+        });
+
+        Awaitility.await()
+                .alias("Haven't read the record in time")
+                .pollInterval(100, TimeUnit.MILLISECONDS)
+                .atMost(AbstractConnectorTest.waitTimeForEngine(), TimeUnit.SECONDS)
+                .until(() -> recordsRead.get() >= 1);
+
+        stopEngine();
+
+        // The task configuration is logged at DEBUG level with passwords masked
+        assertThat(logInterceptor.containsMessage("Config #0")).isTrue();
+        assertThat(logInterceptor.containsMessage("this-should-be-masked")).isFalse();
+    }
+
+    @Test
     void testTasksAreStoppedIfSomeFailsToStart() {
         final int NUMBER_OF_TASKS = 10;
         final Properties props = new Properties();

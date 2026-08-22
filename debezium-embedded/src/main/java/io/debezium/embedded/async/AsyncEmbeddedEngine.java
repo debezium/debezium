@@ -392,7 +392,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Following task configurations will be used for creating tasks:");
             for (int i = 0; i < taskConfigs.size(); i++) {
-                LOGGER.debug("Config #{}: {}", i, taskConfigs.get(i));
+                LOGGER.debug("Config #{}: {}", i, Configuration.from(taskConfigs.get(i)).withMaskedPasswords());
             }
         }
 
