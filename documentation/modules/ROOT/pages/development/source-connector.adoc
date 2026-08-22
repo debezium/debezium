@@ -60,7 +60,7 @@ All of that still applies to a {prodname} connector; you still implement `start(
 
 | Envelope format
 | No envelope required
-| Standard {prodname} envelope (`op`, `before`, `after`, `source`, `ts_ms`)
+| Standard {prodname} envelope for data change events (`op`, `before`, `after`, `source`, `ts_ms`); other message types, such as heartbeats and schema change events, have their own envelope structures
 
 | Error handling
 | Entirely manual
@@ -68,7 +68,7 @@ All of that still applies to a {prodname} connector; you still implement `start(
 |===
 
 The runtime is not a differentiator.
-Kafka Connect runs any source connector, and xref:{link-debezium-server}[{prodname} Server] and the xref:{link-engine}[{prodname} Engine] embed the Kafka Connect API, so they can also run source connectors.
+A {prodname} source connector can run across various runtimes, such as Kafka Connect, xref:{link-debezium-server}[{prodname} Server], or xref:{link-engine}[{prodname} Engine].
 The practical benefit of implementing the {prodname} contracts is that your events carry the standard envelope, which makes them work with {prodname}'s converters, single message transformations, and sink ecosystem.
 
 == Architecture overview
@@ -86,6 +86,8 @@ MyConnector                                (BaseSourceConnector)
     ├── MyOffsetContext / .Loader          (CommonOffsetContext / OffsetContext.Loader)
     ├── MySourceInfo / MySourceInfoStructMaker (BaseSourceInfo / SourceInfoStructMaker)
     ├── MyDatabaseSchema                   (DatabaseSchema, e.g. via RelationalDatabaseSchema)
+    ├── MyConnection                       (JdbcConnection, relational connectors)
+    ├── MyValueConverters                  (JdbcValueConverters, relational connectors)
     ├── MyChangeEventSourceFactory         (ChangeEventSourceFactory)
     │   ├── MySnapshotChangeEventSource    (SnapshotChangeEventSource)
     │   └── MyStreamingChangeEventSource   (StreamingChangeEventSource)
@@ -106,8 +108,8 @@ At runtime, every {prodname} connector follows the same five-step flow:
 . Kafka Connect (or {prodname} Server) instantiates the connector class, validates the configuration, and creates the task configurations.
 . The task starts, loads previously persisted offsets through the `OffsetContext.Loader`, and builds the pipeline: schema, queue, dispatcher, and coordinator.
 . The `ChangeEventSourceCoordinator` asks the `Snapshotter` whether a snapshot is needed and, if so, runs the `SnapshotChangeEventSource`, which emits `READ` (`r`) events for existing data.
-. When the snapshot completes, the coordinator starts the `StreamingChangeEventSource` at the offset where the snapshot finished, and streaming emits `CREATE` (`c`), `UPDATE` (`u`), and `DELETE` (`d`) events from that point on.
-. Emitted events flow through the `ChangeEventQueue` into the Kafka Connect polling loop, and Kafka Connect periodically persists the offsets that your `OffsetContext.getOffset()` returns.
+. When the snapshot completes, the coordinator starts the `StreamingChangeEventSource` at the database position where the snapshot was taken, and streaming emits `CREATE` (`c`), `UPDATE` (`u`), and `DELETE` (`d`) events from that point on.
+. Emitted events flow through the `ChangeEventQueue` into the runtime's polling loop. Periodically, the runtime persists the offsets returned by your `OffsetContext.getOffset()`.
 
 The flow is identical for every connector; only the snapshot and streaming implementations are source-specific.
 
@@ -137,6 +139,10 @@ Example payload structure:
 
 You never assemble this structure by hand.
 The `Envelope` class provides `read(...)`, `create(...)`, `update(...)`, and `delete(...)` factory methods, and for relational connectors the `RelationalChangeRecordEmitter` base class calls them for you.
+
+This envelope applies to data change events.
+Other message types that a connector emits, such as heartbeat records, schema change events, and transaction metadata events, each have their own envelope structure.
+The framework defines those schemas (see `io.debezium.schema.SchemaFactory`), so you do not design them per connector.
 
 === Topic naming
 
@@ -307,6 +313,28 @@ public class MyConnectorConfig extends RelationalDatabaseConnectorConfig {
 `CommonConnectorConfig` already defines the connector-agnostic options that every {prodname} connector inherits: `topic.prefix`, `max.queue.size`, `max.batch.size`, `poll.interval.ms`, `tombstones.on.delete`, signal and notification channels, and more.
 The relational base adds `database.hostname`-style connection fields and the table/column include and exclude list machinery; the historized base adds the `schema.history.internal.*` configuration and a `HistoryRecordComparator`.
 
+Group the connector's fields with a `ConfigDefinition`.
+Each config base class exposes a `CONFIG_DEFINITION` that you extend, and the groups (`Field.Group.CONNECTION`, `CONNECTOR`, `CONNECTOR_SNAPSHOT`, and so on) drive the ordering in the Kafka Connect `ConfigDef` and the generated connector documentation:
+
+[source,java]
+----
+private static final ConfigDefinition CONFIG_DEFINITION = RelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
+        .name("My")
+        .group(Field.Group.CONNECTION, HOSTNAME, PORT, USER, PASSWORD)
+        .group(Field.Group.CONNECTOR, MY_PROPERTY, SOURCE_INFO_STRUCT_MAKER)
+        .group(Field.Group.CONNECTOR_SNAPSHOT, SNAPSHOT_MODE)
+        .create();
+
+public static final Field.Set ALL_FIELDS = Field.setOf(CONFIG_DEFINITION.all());
+
+public static ConfigDef configDef() {
+    return CONFIG_DEFINITION.configDef();
+}
+----
+
+`ALL_FIELDS` backs `validateAllFields(...)` in the connector class and `getAllConfigurationFields()` in the task, and `configDef()` backs the connector's `config()` method.
+See `SqlServerConnectorConfig` for a complete definition, including `excluding(...)` to drop inherited fields that do not apply.
+
 === SourceInfo and SourceInfoStructMaker
 
 Every change event carries a `source` struct that identifies where the event came from.
@@ -422,6 +450,37 @@ Non-relational sources implement `DatabaseSchema<I>` directly, as the MongoDB co
 
 If your source can change schemas while streaming, decide here how the connector notices: SQL Server detects a second capture instance for a table and switches at the right LSN; PostgreSQL compares each incoming message's columns with the cached table and refreshes from JDBC metadata on drift.
 
+=== The database connection and value converters
+
+Relational connectors route all database access through a `MyConnection` class extending `io.debezium.jdbc.JdbcConnection`.
+`JdbcConnection` provides connection handling, query helpers, and metadata reading; your subclass centralizes every connector-specific SQL statement (resolving the current log position, listing captured tables, fetching change data) so that the event sources stay free of raw SQL.
+`SqlServerConnection` and `PostgresConnection` show the pattern.
+
+Value conversion is the second relational-specific concern.
+A `MyValueConverters` class extending `io.debezium.jdbc.JdbcValueConverters` maps source column types to Kafka Connect schema types and implements the `decimal.handling.mode` and `time.precision.mode` semantics; you override only the types that the JDBC defaults do not cover:
+
+[source,java]
+----
+public class MyValueConverters extends JdbcValueConverters {
+
+    @Override
+    public SchemaBuilder schemaBuilder(Column column) {
+        // Return a SchemaBuilder for source-specific column types;
+        // fall back to super.schemaBuilder(column) for everything else.
+    }
+
+    @Override
+    public ValueConverter converter(Column column, Field fieldDefn) {
+        // Return a ValueConverter that turns raw column values into the
+        // schema's Java type; fall back to super.converter(column, fieldDefn).
+    }
+}
+----
+
+Its sibling `DefaultValueConverter` converts column default value metadata: it parses the default value literal read from the catalog (for example `getdate()` or `'0'`) into the Java type that matches the column's schema, so that generated schemas carry correct default values.
+See `SqlServerValueConverters` together with `SqlServerDefaultValueConverter` for a complete pair.
+Non-relational connectors convert values wherever they build their structs and do not need these classes.
+
 === The snapshot change event source
 
 The `SnapshotChangeEventSource` reads the current state of the source and emits one `READ` (`r`) event per existing record.
@@ -442,7 +501,7 @@ public SnapshotResult<MyOffsetContext> execute(ChangeEventSourceContext context,
     if (task.shouldSkipSnapshot()) {
         return SnapshotResult.skipped(offsetContext);
     }
-    for (SourceRow row : readCurrentState()) {                  // your source access
+    for (SourceRow row : readCurrentState()) {                
         offsetContext.advanceTo(row.position());
         dispatcher.dispatchSnapshotEvent(partition, collectionId(row),
                 new MyChangeRecordEmitter(partition, offsetContext, Operation.READ, row),
@@ -1049,8 +1108,8 @@ Use `DefaultChangeEventSourceMetricsFactory` unless you need custom metrics.
 
 | Value converters
 | Map source data types to Kafka Connect schema types, including the `decimal.handling.mode` and `time.precision.mode` semantics.
-Relational connectors extend `JdbcValueConverters`.
-| `SqlServerValueConverters`, `PostgresValueConverter`
+Relational connectors extend `JdbcValueConverters`; the sibling `DefaultValueConverter` converts column default value metadata.
+| `SqlServerValueConverters`, `PostgresValueConverter`, `SqlServerDefaultValueConverter`
 
 | `Module`
 | Reports the connector name, version (from a Maven-filtered `build.version` resource), and JMX/MDC context name.
