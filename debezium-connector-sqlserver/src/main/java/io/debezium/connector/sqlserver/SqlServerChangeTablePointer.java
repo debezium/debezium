@@ -139,9 +139,13 @@ public class SqlServerChangeTablePointer extends ChangeTableResultSet<SqlServerC
         final boolean[] maxColumns = new boolean[columnCount];
         boolean hasAnyMaxColumn = false;
         for (int i = 0; i < columnCount; ++i) {
-            resultColumns.add(rsmd.getColumnName(columnDataOffset + i));
+            final String columnName = rsmd.getColumnName(columnDataOffset + i);
+            resultColumns.add(columnName);
+            final Column column = columnMap.getSourceTableColumns().get(columnName);
             final int jdbcType = rsmd.getColumnType(columnDataOffset + i);
-            maxColumns[i] = SqlServerDatabaseSchema.isMaxColumnJdbcType(jdbcType);
+            maxColumns[i] = column != null
+                    ? SqlServerDatabaseSchema.isMaxColumn(column)
+                    : SqlServerDatabaseSchema.isMaxColumnJdbcType(jdbcType);
             if (maxColumns[i]) {
                 hasAnyMaxColumn = true;
             }
