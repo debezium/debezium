@@ -1736,6 +1736,8 @@ The following sections describe these mappings:
 * xref:db2-time-precision-mode-adaptive[`time.precision.mode=adaptive`]
 * xref:db2-time-precision-mode-connect[`time.precision.mode=connect`]
 * xref:db2-time-precision-mode-isostring[`time.precision.mode=isostring`]
+* xref:db2-time-precision-mode-microseconds[`time.precision.mode=microseconds`]
+* xref:db2-time-precision-mode-nanoseconds[`time.precision.mode=nanoseconds`]
 * xref:db2-time-precision-mode-structured[`time.precision.mode=structured`]
 
 [[db2-time-precision-mode-adaptive]]
@@ -1840,6 +1842,78 @@ Represents time values in UTC format, according to the ISO 8601 standard, for ex
 |`io.debezium.time.IsoTimestamp`
 
 Represents timestamp values in UTC format, according to the ISO 8601 standard, for example, `2019-07-09T02:28:57.123456Z`.
+
+|===
+
+[[db2-time-precision-mode-microseconds]]
+.`time.precision.mode=microseconds`
+Set the `time.precision.mode` property to `microseconds` to configure the connector to map all temporal values to microsecond-precision integers.
+All `DATE` values are represented as the number of days since the epoch, and all `TIME` and `TIMESTAMP` values are represented as the number of microseconds since the epoch or since midnight.
+
+.Mappings when `time.precision.mode` is `microseconds`
+[cols="25%a,20%a,55%a",options="header"]
+|===
+|Db2 data type |Literal type (schema type) |Semantic type (schema name) and Notes
+
+|`DATE`
+|`INT32`
+|`io.debezium.time.Date`
+
+Represents the number of days since the epoch.
+
+|`TIME([P])`
+|`INT64`
+|`io.debezium.time.MicroTime`
+
+Represents the number of microseconds past midnight, and does not include timezone information.
+Db2 allows `P` to be in the range 0-7.
+
+|`TIMESTAMP`
+|`INT64`
+|`io.debezium.time.MicroTimestamp`
+
+Represents the number of microseconds since the epoch, and does not include timezone information.
+
+|===
+
+[[db2-time-precision-mode-nanoseconds]]
+.`time.precision.mode=nanoseconds`
+Set the `time.precision.mode` property to `nanoseconds` to configure the connector to map all temporal values to nanosecond-precision integers.
+All `DATE` values are represented as the number of days since the epoch, and all `TIME` and `TIMESTAMP` values are represented as the number of nanoseconds since the epoch or since midnight.
+
+NOTE: Db2 `TIMESTAMP` supports up to 12 fractional digits (`TIMESTAMP(0-12)`), so `nanoseconds` mode provides additional precision over `microseconds` for `TIMESTAMP(7)` and above. Sub-nanosecond digits beyond position 9 are truncated.
+
+[IMPORTANT]
+====
+Nanoseconds since the Unix epoch are stored in a signed `INT64`, restricting the representable range to approximately *`1677-09-21T00:12:43Z` to `2262-04-11T23:47:16Z`*.
+Values outside this range cannot be represented and cause the connector to throw an `IllegalArgumentException` from the value converter.
+The exception is handled according to the `event.converting.failure.handling.mode` configuration: with `warn` (the default) or `skip`, the affected column value is emitted as `null` and the failure is logged; with `fail`, the connector stops.
+Use `time.precision.mode=microseconds` (or `isostring`) to avoid the limitation.
+====
+
+.Mappings when `time.precision.mode` is `nanoseconds`
+[cols="25%a,20%a,55%a",options="header"]
+|===
+|Db2 data type |Literal type (schema type) |Semantic type (schema name) and Notes
+
+|`DATE`
+|`INT32`
+|`io.debezium.time.Date`
+
+Represents the number of days since the epoch.
+
+|`TIME([P])`
+|`INT64`
+|`io.debezium.time.NanoTime`
+
+Represents the number of nanoseconds past midnight, and does not include timezone information.
+Db2 allows `P` to be in the range 0-7.
+
+|`TIMESTAMP`
+|`INT64`
+|`io.debezium.time.NanoTimestamp`
+
+Represents the number of nanoseconds since the epoch, and does not include timezone information.
 
 |===
 

@@ -1886,6 +1886,108 @@ Contains calendar and clock component fields, `offsetSeconds`, optional `zoneId`
 
 |===
 
+When the `time.precision.mode` configuration property is set to `microseconds`, the connector maps temporal values to microsecond-precision integers.
+All `TIME` values are represented as the number of microseconds past midnight, and all date-time values are represented as the number of microseconds past the epoch.
+
+[cols="30%a,25%a,45%a",options="header"]
+|===
+|SQL Server data type
+|Literal type (schema type)
+|Semantic type (schema name) and Notes
+
+|`DATE`
+|`INT32`
+|`io.debezium.time.Date`
+
+Represents the number of days since the epoch.
+
+|`TIME(0)`, `TIME(1)`, `TIME(2)`, `TIME(3)`, `TIME(4)`, `TIME(5)`, `TIME(6)`, `TIME(7)`
+|`INT64`
+|`io.debezium.time.MicroTime`
+
+Represents the number of microseconds past midnight, and does not include timezone information.
+
+|`DATETIME`
+|`INT64`
+|`io.debezium.time.MicroTimestamp`
+
+Represents the number of microseconds past the epoch, and does not include timezone information.
+
+|`SMALLDATETIME`
+|`INT64`
+|`io.debezium.time.MicroTimestamp`
+
+Represents the number of microseconds past the epoch, and does not include timezone information.
+
+|`DATETIME2(0)`, `DATETIME2(1)`, `DATETIME2(2)`, `DATETIME2(3)`, `DATETIME2(4)`, `DATETIME2(5)`, `DATETIME2(6)`, `DATETIME2(7)`
+|`INT64`
+|`io.debezium.time.MicroTimestamp`
+
+Represents the number of microseconds past the epoch, and does not include timezone information.
+
+|`DATETIMEOFFSET`
+|`STRING`
+|`io.debezium.time.ZonedTimestamp`
+
+A string representation of a timestamp with timezone information.
+
+|===
+
+When the `time.precision.mode` configuration property is set to `nanoseconds`, the connector maps temporal values to nanosecond-precision integers.
+All `TIME` values are represented as the number of nanoseconds past midnight, and all date-time values are represented as the number of nanoseconds past the epoch.
+
+[IMPORTANT]
+====
+Because nanoseconds since the Unix epoch are stored in a signed `INT64`, the representable range of `io.debezium.time.NanoTimestamp` is approximately *`1677-09-21T00:12:43Z` to `2262-04-11T23:47:16Z`*.
+Values outside this range, for example a `9999-12-31` end-of-time sentinel, cannot be represented and cause the connector to throw an `IllegalArgumentException` from the value converter.
+The exception is handled according to the `event.converting.failure.handling.mode` configuration: with `warn` (the default) or `skip`, the affected column value is emitted as `null` and the failure is logged; with `fail`, the connector stops.
+If a column may legitimately contain values outside the representable range, set `time.precision.mode=microseconds` or `time.precision.mode=isostring` to capture the value with lower precision or as an ISO 8601 string.
+====
+
+[cols="30%a,25%a,45%a",options="header"]
+|===
+|SQL Server data type
+|Literal type (schema type)
+|Semantic type (schema name) and Notes
+
+|`DATE`
+|`INT32`
+|`io.debezium.time.Date`
+
+Represents the number of days since the epoch.
+
+|`TIME(0)`, `TIME(1)`, `TIME(2)`, `TIME(3)`, `TIME(4)`, `TIME(5)`, `TIME(6)`, `TIME(7)`
+|`INT64`
+|`io.debezium.time.NanoTime`
+
+Represents the number of nanoseconds past midnight, and does not include timezone information.
+
+|`DATETIME`
+|`INT64`
+|`io.debezium.time.NanoTimestamp`
+
+Represents the number of nanoseconds past the epoch, and does not include timezone information.
+
+|`SMALLDATETIME`
+|`INT64`
+|`io.debezium.time.NanoTimestamp`
+
+Represents the number of nanoseconds past the epoch, and does not include timezone information.
+
+|`DATETIME2(0)`, `DATETIME2(1)`, `DATETIME2(2)`, `DATETIME2(3)`, `DATETIME2(4)`, `DATETIME2(5)`, `DATETIME2(6)`, `DATETIME2(7)`
+|`INT64`
+|`io.debezium.time.NanoTimestamp`
+
+Represents the number of nanoseconds past the epoch, and does not include timezone information.
+
+|`DATETIMEOFFSET`
+|`STRING`
+|`io.debezium.time.ZonedTimestamp`
+
+A string representation of a timestamp with timezone information.
+
+|===
+
 [[sql-server-timestamp-values]]
 ===== Timestamp values
 
