@@ -51,6 +51,7 @@ import io.debezium.connector.oracle.logminer.events.LobWriteEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 import io.debezium.connector.oracle.logminer.events.RedoSqlDmlEvent;
+import io.debezium.connector.oracle.logminer.events.RollbackToSavepointEvent;
 import io.debezium.connector.oracle.logminer.events.SelectLobLocatorEvent;
 import io.debezium.connector.oracle.logminer.events.XmlBeginEvent;
 import io.debezium.connector.oracle.logminer.events.XmlEndEvent;
@@ -529,6 +530,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
                 preProcessEvent(event);
 
                 switch (event.getEventType()) {
+                    case INTERNAL -> handleInternalEvent(event);
                     case MISSING_SCN -> handleMissingScnEvent(event);
                     case START -> handleStartEvent(event);
                     case COMMIT -> handleCommitEvent(event);
@@ -560,6 +562,10 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      */
     protected void preProcessEvent(LogMinerEventRow event) {
         getBatchMetrics().rowProcessed();
+    }
+
+    protected void handleInternalEvent(LogMinerEventRow event) throws InterruptedException {
+        // no-op
     }
 
     /**
@@ -637,7 +643,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      * @throws InterruptedException if the thread is interrupted
      */
     protected void handleDataChangeEvent(LogMinerEventRow event) throws SQLException, InterruptedException {
-        if (Strings.isNullOrBlank(event.getRedoSql())) {
+        if (!event.isRollbackFlag() && Strings.isNullOrBlank(event.getRedoSql())) {
             LOGGER.trace("Data event in transaction {} with SCN {} has empty redo SQL: {}",
                     event.getTransactionId(), event.getScn(), Loggings.maybeRedactSensitiveData(event));
             return;
@@ -673,7 +679,12 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         final Table table = getTableForDataEvent(event);
         if (table != null) {
             if (isDispatchAllowedForDataChangeEvent(event)) {
-                dispatchDataChangeEventInternal(event, table);
+                if (event.isRollbackFlag()) {
+                    enqueueEvent(event, new RollbackToSavepointEvent(event));
+                }
+                else {
+                    dispatchDataChangeEventInternal(event, table);
+                }
             }
         }
     }

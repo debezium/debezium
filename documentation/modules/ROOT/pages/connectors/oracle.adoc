@@ -4956,6 +4956,13 @@ ifdef::community[]
 This configuration is ignored when using the XStream or OpenLogReplicator adapters.
 endif::community[]
 
+|[[oracle-property-log-mining-include-internal-events]]<<oracle-property-log-mining-include-internal-events, `+log.mining.include.internal.events+`>>
+|`false`
+|Specifies whether the connector supports mining `INTERNAL` events.
+When set to `false`, the default, `INTERNAL` events are not captured.
+When `lob.enabled` is `true` and all LOB columns of an operation are stored out-of-line, `INTERNAL` events provide the `ROW_ID` values necessary for accurate `ROLLBACK TO SAVEPOINT` handling.
+Enabling this option might significantly increase the volume of events returned by LogMiner.
+
 |[[oracle-property-lob-enabled]]<<oracle-property-lob-enabled, `+lob.enabled+`>>
 |`false`
 |Controls whether or not large object (CLOB or BLOB) column values are emitted in change events.
