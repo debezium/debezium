@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.connector.binlog.junit.SkipWhenDatabaseIs;
 import io.debezium.connector.binlog.util.BinlogTestConnection;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
@@ -63,6 +64,50 @@ public abstract class BinlogReaderBufferIT<C extends SourceConnector> extends Ab
         finally {
             Files.delete(SCHEMA_HISTORY_PATH);
         }
+    }
+
+    @SkipWhenDatabaseIs(value = SkipWhenDatabaseIs.Type.MYSQL, reason = "MariaDB-specific GTID behavior")
+    @SkipWhenDatabaseIs(value = SkipWhenDatabaseIs.Type.PERCONA, reason = "MariaDB-specific GTID behavior")
+    @Test
+    @FixFor("debezium/dbz#2470")
+    void shouldPropagateGtidForStandaloneDdl() throws SQLException, InterruptedException {
+        config = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.HOSTNAME, System.getProperty("database.replica.hostname", "localhost"))
+                .with(BinlogConnectorConfig.PORT, System.getProperty("database.replica.port", "3306"))
+                .with(BinlogConnectorConfig.USER, "snapper")
+                .with(BinlogConnectorConfig.PASSWORD, "snapperpass")
+                .with(BinlogConnectorConfig.SERVER_ID, 18765)
+                .with(CommonConnectorConfig.TOPIC_PREFIX, DATABASE.getServerName())
+                .with(BinlogConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(BinlogConnectorConfig.DATABASE_INCLUDE_LIST, DATABASE.getDatabaseName())
+                .with(BinlogConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
+                .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                .with(BinlogConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER, 10_000)
+                .with(FileSchemaHistory.FILE_PATH, SCHEMA_HISTORY_PATH)
+                .build();
+
+        start(getConnectorClass(), config);
+        consumeRecordsByTopic(5 + 9 + 9 + 4 + 11 + 1);
+
+        final String currentGtidSet;
+        try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName());
+                JdbcConnection connection = db.connect()) {
+            connection.execute("ALTER TABLE products ADD COLUMN volume FLOAT");
+            currentGtidSet = connection.queryAndMap("SELECT @@GLOBAL.gtid_binlog_pos", rs -> {
+                if (rs.next()) {
+                    return rs.getString(1);
+                }
+                throw new IllegalStateException("Could not get GTID set");
+            });
+        }
+
+        final SourceRecords records = consumeRecordsByTopic(1);
+        final SourceRecord ddlRecord = records.recordsForTopic(DATABASE.getServerName()).get(0);
+        final Struct source = ((Struct) ddlRecord.value()).getStruct("source");
+        final String ddlGtid = source.getString(BinlogSourceInfo.GTID_KEY);
+
+        assertThat(ddlGtid).isNotNull();
+        assertThat(currentGtidSet.split(",")).contains(ddlGtid);
     }
 
     @Test
