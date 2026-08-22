@@ -1,0 +1,83 @@
+[id="stringify-fields"]
+= Stringify Fields
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+
+Use the Stringify Fields single message transformation (SMT) to convert selected fields from struct, array, or map values to JSON strings.
+
+Some sink systems store schema-flexible columns as JSON text and do not accept native struct, array, or map values.
+Examples include Databricks Delta `VARIANT` columns and PostgreSQL `JSON` or `JSONB` columns.
+
+The transformation serializes specified fields to their JSON string representation.
+
+The transformation does not modify fields that already contain string values.
+It also does not modify fields that are absent from a record.
+Fields that are not included in the configuration remain unchanged.
+As a result, scalar fields retain their original strongly typed schema.
+
+== Use cases
+
+Use the Stringify Fields SMT when a sink column stores JSON text but the source record contains nested fields as native data structures.
+
+After a document is flattened, for example, by the {link-prefix}:{link-mongodb-event-flattening}#mongodb-new-document-state-extraction[MongoDB new document state extraction] transformation, nested fields are represented as native structs and arrays.
+Columns that store JSON text cannot store these values directly.
+
+By applying the Stringify Fields SMT to selected nested fields, you can write schema-flexible content as JSON text while preserving the strongly typed schema of scalar fields.
+For example, you can serialize a field such as `properties` to JSON text and leave all other fields unchanged.
+
+== Configuration
+
+The following example shows how to configure the transformation to serialize the `properties` field:
+
+[source]
+----
+transforms=stringify
+transforms.stringify.type=io.debezium.transforms.StringifyFields
+transforms.stringify.fields=properties
+----
+
+To serialize more than one field, specify a comma-separated list, as in the following example:
+
+[source]
+----
+transforms.stringify.fields=properties,metadata
+----
+
+== Configuration options
+
+The following table lists the configuration options for the transformation.
+
+[cols="30%a,15%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[stringify-fields-fields]]<<stringify-fields-fields, `fields`>>
+|No default value.
+|A comma-separated list of the top-level value fields to serialize to a JSON string.
+
+|===
+
+== Error handling
+
+If the transformation cannot serialize a field that you specify, it logs the context of the record at `ERROR` level, and then throws an exception.
+The log entry contains information about the following fields:
+
+* Field name
+* Schema type
+* Schema name
+* Value class
+* Value
+
+The stream halts, and the offset is not committed past the record, so that no data is dropped silently.
+
+On Kafka Connect, if you prefer to have the transformation skip records that it cannot serialize, add the following entry to the configuration: `errors.tolerance=all`.
+The runtime then applies the setting to the transformation chain.
+
+Because {prodname} Server does not implement the Kafka Connect property `errors.tolerance=all`, if the Stringify Fields SMT cannot serialize an event message, event processing stops.
