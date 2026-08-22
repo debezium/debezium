@@ -996,7 +996,10 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         final String chunkQuery = queryBuilder.buildChunkQuery(chunk, keyColumns, chunk.getBaseSelectStatement());
         final Instant sourceTableSnapshotTimestamp = getSnapshotSourceTimestamp(jdbcConnection, offset, tableId);
 
-        try (PreparedStatement statement = jdbcConnection.connection().prepareStatement(chunkQuery)) {
+        // Create the chunk statement via readTablePreparedStatement() so that the configured
+        // snapshot.fetch.size is applied, as done by the legacy and incremental snapshot paths
+        try (PreparedStatement statement = jdbcConnection.readTablePreparedStatement(connectorConfig, chunkQuery,
+                chunk.getEstimatedRowCount())) {
 
             queryBuilder.prepareChunkStatement(statement, chunk, keyColumns);
             long rows = 0;
