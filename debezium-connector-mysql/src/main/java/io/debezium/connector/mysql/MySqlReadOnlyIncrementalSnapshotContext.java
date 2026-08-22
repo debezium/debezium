@@ -52,14 +52,14 @@ public class MySqlReadOnlyIncrementalSnapshotContext<T> extends BinlogReadOnlyIn
     @Override
     public boolean updateWindowState(OffsetContext offsetContext) {
         String currentGtid = getCurrentGtid(offsetContext);
-        if (!windowOpened && lowWatermark != null) {
+        if (!deduplicationNeeded() && lowWatermark != null) {
             boolean pastLowWatermark = !lowWatermark.contains(currentGtid);
             if (pastLowWatermark) {
                 LOGGER.debug("Current gtid {}, low watermark {}", currentGtid, lowWatermark);
-                windowOpened = true;
+                openWindow(currentChunkId());
             }
         }
-        if (windowOpened && highWatermark != null) {
+        if (deduplicationNeeded() && highWatermark != null) {
             boolean pastHighWatermark = !highWatermark.contains(currentGtid);
             if (pastHighWatermark) {
                 LOGGER.debug("Current gtid {}, high watermark {}", currentGtid, highWatermark);
@@ -95,7 +95,7 @@ public class MySqlReadOnlyIncrementalSnapshotContext<T> extends BinlogReadOnlyIn
 
     @Override
     public void closeWindow() {
-        windowOpened = false;
+        closeWindow(currentChunkId());
         previousHighWatermark = highWatermark;
         highWatermark = null;
         previousLowWatermark = lowWatermark;

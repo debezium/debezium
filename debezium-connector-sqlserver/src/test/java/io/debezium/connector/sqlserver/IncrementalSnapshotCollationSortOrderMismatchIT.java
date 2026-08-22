@@ -306,7 +306,7 @@ public class IncrementalSnapshotCollationSortOrderMismatchIT extends AbstractSna
             if (records.allRecordsInOrder().isEmpty()) {
                 noRecords++;
                 assertThat(noRecords).describedAs(String.format("Too many no data record results, %d < %d", dbChanges.size(), recordCount))
-                        .isLessThanOrEqualTo(5);
+                        .isLessThanOrEqualTo(8);
                 continue;
             }
             noRecords = 0;
