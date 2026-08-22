@@ -2409,6 +2409,735 @@ The connector provides the following features:
 |===
 
 
+==== Databricks Zerobus Ingest
+
+The {prodname} https://docs.databricks.com/aws/en/ingestion/zerobus[Databricks Zerobus Ingest] is a serverless, push-based ingestion service that writes change event records directly into Unity Catalog Delta tables.
+The service does not require an intermediate message broker.
+The sink uses OAuth to authenticate with a Databricks service principal and streams each event record to the Delta table that corresponds to the event destination.
+
+The sink uses one of the following routes to deliver event records, as specified by the xref:zerobus-type[`debezium.sink.type`] property:
+
+`zerobus`:: (recommended) Uses the Databricks Zerobus Java SDK over gRPC.
+`zerobus-rest`:: Uses the Zerobus REST API.
+This method accepts only one HTTP request per record.
+Select this option for environments that lack a persistent connection.
+
+`kafka`:: Reuses the built-in Kafka sink against the Zerobus Kafka-compatible endpoint.
+For more information, see <<zerobus-kafka-route, Kafka route>>.
+
+Because Zerobus accepts only JSON objects that match the target table schema, configure {prodname} to emit flat JSON by applying the {link-prefix}:{link-event-flattening}#new-record-state-extraction[`ExtractNewRecordState` SMT] with `schemas.enable=false`.
+Delivery uses an at-least-once guarantee.
+As a result, the sink might deliver the same record more than once.
+Configure downstream consumers to deduplicate records, for example, by using the source LSN that the record carries.
+To enable the service to write data to the target table, the following requirements apply:
+
+* The target table must be a Unity Catalog-managed Delta table.
+* The table must be in the same Databricks region as the workspace.
+* Change Data Feed and column mapping must be disabled.
+* The service principal must have the following permissions:
+** `USE CATALOG`
+** `USE SCHEMA`
+** `SELECT`
+** `MODIFY`
+
+===== gRPC route (`zerobus`)
+
+The following table describes the properties that control how Zerobus Ingest behaves when it uses gRPC streams to maintain connections between {prodname} and Zerobus endpoints.
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[zerobus-type]]<<zerobus-type, `debezium.sink.type`>>
+|No default value.
+|Must be set to `zerobus`.
+
+|[[zerobus-endpoint]]<<zerobus-endpoint, `debezium.sink.zerobus.endpoint`>>
+|No default value.
+|The Zerobus gRPC endpoint, for example `<workspace-id>.zerobus.<region>.cloud.databricks.com` (AWS) or `<workspace-id>.zerobus.<region>.azuredatabricks.net` (Azure).
+
+|[[zerobus-workspace-url]]<<zerobus-workspace-url, `debezium.sink.zerobus.workspace.url`>>
+|No default value.
+|The Databricks workspace URL, for example `https://dbc-xxxx.cloud.databricks.com`.
+
+|[[zerobus-client-id]]<<zerobus-client-id, `debezium.sink.zerobus.client.id`>>
+|No default value.
+|The OAuth client id (service principal application id).
+
+|[[zerobus-client-secret]]<<zerobus-client-secret, `debezium.sink.zerobus.client.secret`>>
+|No default value.
+|The OAuth client secret for the service principal.
+
+|[[zerobus-table]]<<zerobus-table, `debezium.sink.zerobus.table`>>
+|No default value.
+|(Optional) The fully qualified name of the default target table (`catalog.schema.table`).
+When this option is set, all events are written to this table; otherwise the mapped destination (topic) name is used as the fully qualified table name.
+
+|[[zerobus-payload-mode]]<<zerobus-payload-mode, `debezium.sink.zerobus.payload.mode`>>
+|`typed`
+|Specifies the structure of rows that the sink writes to the target table.
+
+Set one of the following values:
+
+`typed`::
+Writes the fields of each change event to columns by using the data types of the target table.
+For details about how source types map to target column types, see <<zerobus-data-type-mapping, Data type mapping>>.
+
+`envelope`::
+Writes each change event as a raw CDC envelope.
+Use this mode when a downstream process handles type casting and materialization.
+
+The two modes write different row schemas.
+The target table schema must match the selected mode; changing the mode without changing the target table schema causes ingestion to fail.
+
+[IMPORTANT]
+====
+If you set the value to `envelope`, do not apply the `ExtractNewRecordState` SMT.
+This transformation removes the `op` field of the change event, so the sink cannot determine the operation type and records every row with `operation=change`.
+Apply only routing transformations, such as `RegexRouter`, in this mode.
+====
+
+|[[zerobus-record-format]]<<zerobus-record-format, `debezium.sink.zerobus.record.format`>>
+|`json`
+|Specifies the wire encoding for records that use the <<zerobus-payload-mode, configured payload mode>>.
+
+Set one of the following values:
+
+`json`::
+Writes JSON records.
+This format supports the `typed` and `envelope` payload modes.
+
+`protobuf`::
+Writes schema-bound Protobuf records by using a descriptor that the sink supplies to Zerobus.
+Choose this format for envelope mode when you want Zerobus to use an explicit Protobuf schema instead of JSON encoding.
+This format supports only the `envelope` payload mode.
+The sink reports an error at start-up if you combine `protobuf` with the `typed` payload mode.
+
+|[[zerobus-max-record-bytes]]<<zerobus-max-record-bytes, `debezium.sink.zerobus.max.record.bytes`>>
+|`10000000`
+|Specifies the maximum encoded size, in bytes, of a JSON or Protobuf envelope record.
+The sink validates every record in a target-table group before it ingests any record in that group.
+If a record exceeds the limit, ingestion fails and the source offsets for the batch are not committed.
+
+|[[zerobus-json-flexible-fields-encoding]]<<zerobus-json-flexible-fields-encoding, `debezium.sink.zerobus.json.flexible.fields.encoding`>>
+|`string`
+|Specifies how JSON envelope mode writes the `key`, `value`, `source_position`, and `headers` fields.
+Set the value to `string` to write canonical JSON text, or to `object` to write nested JSON values.
+
+|[[zerobus-idempotency-mode]]<<zerobus-idempotency-mode, `debezium.sink.zerobus.idempotency.mode`>>
+|`source`
+|Specifies whether an envelope contains a deterministic `idempotency_key`.
+Set the value to `source` to write a `sha256:<64 hexadecimal characters>` identity derived from the source event, or to `none` to omit the identity.
+The readable source partition and offset remain available in `source_position` in both modes.
+
+|[[zerobus-tombstone-handling-mode]]<<zerobus-tombstone-handling-mode, `debezium.sink.zerobus.tombstone.handling.mode`>>
+|`event`
+|Specifies how envelope mode handles tombstone records.
+Set the value to `event` to write an envelope with `operation=tombstone`, the original key, and a null value.
+Set the value to `drop` to skip tombstones intentionally.
+
+|[[zerobus-filter-destination-regex]]<<zerobus-filter-destination-regex, `debezium.sink.zerobus.filter.destination.regex`>>
+|No default value.
+|An optional regular expression that the complete Debezium destination must match for the envelope to be ingested.
+
+|[[zerobus-filter-operations]]<<zerobus-filter-operations, `debezium.sink.zerobus.filter.operations`>>
+|No default value.
+|An optional comma-separated operation allowlist.
+The canonical Debezium codes are `c`, `r`, `u`, `d`, `t`, and `m`.
+The aliases `create`, `read`, `update`, `delete`, `truncate`, `message`, `change`, and `tombstone` are also accepted.
+
+|[[zerobus-filter-header-name]]<<zerobus-filter-header-name, `debezium.sink.zerobus.filter.header.name`>>
+|No default value.
+|The name of the record header to evaluate.
+Configure this property together with <<zerobus-filter-header-value-regex, `filter.header.value.regex`>>.
+
+|[[zerobus-filter-header-value-regex]]<<zerobus-filter-header-value-regex, `debezium.sink.zerobus.filter.header.value.regex`>>
+|No default value.
+|An optional regular expression that the complete value of the configured header must match.
+Configure this property together with <<zerobus-filter-header-name, `filter.header.name`>>.
+
+|[[zerobus-filter-value-json-pointer]]<<zerobus-filter-value-json-pointer, `debezium.sink.zerobus.filter.value.json.pointer`>>
+|No default value.
+|A JSON Pointer that selects a field from the serialized event value for filtering.
+The pointer must begin with `/`.
+Configure this property together with <<zerobus-filter-value-regex, `filter.value.regex`>>.
+
+|[[zerobus-filter-value-regex]]<<zerobus-filter-value-regex, `debezium.sink.zerobus.filter.value.regex`>>
+|No default value.
+|An optional regular expression that the complete value selected by the configured JSON Pointer must match.
+Configure this property together with <<zerobus-filter-value-json-pointer, `filter.value.json.pointer`>>.
+
+|[[zerobus-filter-malformed-mode]]<<zerobus-filter-malformed-mode, `debezium.sink.zerobus.filter.malformed.mode`>>
+|`fail`
+|Specifies how the sink handles an event value that it cannot parse or evaluate for value filtering.
+Set the value to `fail` to stop the batch, or to `drop` to skip the event.
+
+|[[zerobus-max-inflight]]<<zerobus-max-inflight, `debezium.sink.zerobus.max.inflight.records`>>
+|`50000`
+|Maximum number of un-acknowledged records per stream.
+
+|[[zerobus-max-open-streams]]<<zerobus-max-open-streams, `debezium.sink.zerobus.max.open.streams`>>
+|`100`
+|Specifies the maximum number of Zerobus streams that the sink keeps open at one time.
+Zerobus binds each stream to a single target table, and each stream holds a connection.
+Set this property to limit how many connections a source that captures many tables can hold at once.
+
+When the number of open streams exceeds the specified value, the sink flushes and closes the streams that have gone longest without receiving a record, and reopens them on demand when a record for that table arrives.
+Set the value to `0` to keep every stream open, so that the sink never closes a stream to stay within a limit.
+
+|[[zerobus-recovery]]<<zerobus-recovery, `debezium.sink.zerobus.recovery`>>
+|The SDK default.
+|Specifies whether the Zerobus SDK recovers a stream that fails with a retriable error by re-sending the records that the service has not acknowledged.
+
+Because the SDK tracks which records are unacknowledged, recovery re-sends only those records.
+The sink does not retry the entire batch.
+If the recovery process cannot resolve an error, the connector stops, and the offset does not advance.
+
+|[[zerobus-recovery-retries]]<<zerobus-recovery-retries, `debezium.sink.zerobus.recovery.retries`>>
+|The SDK default.
+|Specifies the maximum number of times that the SDK attempts to recover a failed stream.
+
+|[[zerobus-recovery-backoff-ms]]<<zerobus-recovery-backoff-ms, `debezium.sink.zerobus.recovery.backoff.ms`>>
+|The SDK default.
+|Specifies the delay, in milliseconds, between stream recovery attempts.
+
+|[[zerobus-recovery-timeout-ms]]<<zerobus-recovery-timeout-ms, `debezium.sink.zerobus.recovery.timeout.ms`>>
+|The SDK default.
+|Specifies the time, in milliseconds, after which the SDK abandons a stream recovery attempt.
+
+|[[zerobus-flush-timeout-ms]]<<zerobus-flush-timeout-ms, `debezium.sink.zerobus.flush.timeout.ms`>>
+|The SDK default.
+|Specifies the time, in milliseconds, that a flush waits for the records in the stream to be acknowledged.
+
+|[[zerobus-metrics-log-interval]]<<zerobus-metrics-log-interval, `debezium.sink.zerobus.metrics.log.interval`>>
+|`0`
+|Specifies the number of batches that the service processes before it emits a periodic `INFO` log line to summarize sink metrics.
+Set the value to `0` to disable periodic logging.
+This setting does not affect availability of metrics over JMX.
+For more information, see <<zerobus-monitoring, Monitoring>>.
+
+|===
+
+In the preceding table, several Zerobus sink properties list the default value `The SDK default`.
+The SDK default is the value defined by the version of the Zerobus SDK that is used by the current {prodname} Server instance.
+
+The SDK default applies only when the property is not specified in the {prodname} Server configuration.
+If the property is omitted, the sink uses the SDK-defined value, including any changes introduced by later SDK upgrades.
+If you specify a value for the property, the configured value takes precedence.
+
+[[zerobus-envelope-row-contract]]
+====== Envelope row contract
+
+Set <<zerobus-payload-mode, `debezium.sink.zerobus.payload.mode`>> to `envelope` to preserve the change event for downstream materialization instead of mapping it directly onto the target table columns.
+The `max.record.bytes`, `json.flexible.fields.encoding`, `idempotency.mode`, `tombstone.handling.mode`, and `filter.*` properties apply only to this payload mode.
+
+JSON and Protobuf envelope records expose the same logical fields:
+
+[cols="25%a,75%a",options="header"]
+|===
+|Field
+|Description
+
+|`target_table`
+|The fully qualified Unity Catalog table to which the sink routes the record.
+
+|`destination`
+|The original Debezium destination before the sink resolves the target table.
+
+|`partition`
+|The event partition, when one is present.
+
+|`operation`
+|One of `create`, `read`, `update`, `delete`, `truncate`, `message`, `change`, or `tombstone`.
+The sink uses `change` when the source value does not contain a recognized Debezium operation.
+
+|`idempotency_key`
+|A deterministic `sha256:<64 hexadecimal characters>` event identity when <<zerobus-idempotency-mode, `idempotency.mode`>> is `source`.
+Use this field to deduplicate records after an at-least-once replay.
+
+|`key`
+|The original serialized record key.
+
+|`value`
+|The original serialized Debezium change-event value.
+The value is null for a tombstone.
+
+|`source_position`
+|A map containing source partition and offset entries.
+Entry names use the `partition.` and `offset.` prefixes.
+
+|`headers`
+|The record headers, ordered by header name.
+|===
+
+For JSON records, <<zerobus-json-flexible-fields-encoding, `json.flexible.fields.encoding`>> controls whether `key`, `value`, `source_position`, and `headers` are canonical JSON strings or nested JSON values.
+For Protobuf records, the sink supplies the descriptor to Zerobus and encodes these flexible fields as canonical JSON strings.
+
+The sink applies configured include filters in the following order: destination, operation, header, and value.
+Every configured regular expression must match the complete selected value.
+An event that does not match is skipped and is considered processed when the rest of the batch succeeds.
+If <<zerobus-filter-operations, `filter.operations`>> is configured, a tombstone is ingested only when the allowlist includes `tombstone`, even if <<zerobus-tombstone-handling-mode, `tombstone.handling.mode`>> is `event`.
+
+The sink provides an at-least-once delivery guarantee.
+For each contiguous target-table group, the sink serializes and validates every record before ingestion, ingests the group, and waits for Zerobus to acknowledge the final record.
+The sink commits source offsets only after every target-table group in the batch succeeds.
+If a later group fails, an earlier acknowledged group can be replayed because the source batch remains uncommitted.
+Use `idempotency_key` to deduplicate such replays downstream.
+
+The following example configures the JSON envelope contract, deterministic identities, explicit tombstones, and an operation allowlist:
+
+[source,properties]
+----
+debezium.sink.type=zerobus
+debezium.sink.zerobus.endpoint=<workspace-id>.zerobus.<region>.cloud.databricks.com
+debezium.sink.zerobus.workspace.url=https://<workspace-host>
+debezium.sink.zerobus.client.id=<client-id>
+debezium.sink.zerobus.client.secret=<client-secret>
+
+debezium.sink.zerobus.payload.mode=envelope
+debezium.sink.zerobus.record.format=json
+debezium.sink.zerobus.max.record.bytes=10000000
+debezium.sink.zerobus.json.flexible.fields.encoding=string
+debezium.sink.zerobus.idempotency.mode=source
+debezium.sink.zerobus.tombstone.handling.mode=event
+debezium.sink.zerobus.filter.operations=c,r,u,d,t,m,tombstone
+----
+
+====== Injection points
+
+You can modify the behavior of the gRPC route by injecting custom logic that replaces a specific default implementation.
+When no alternative implementation is available, the sink uses the default.
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Interface
+|CDI classifier
+|Description
+
+|[[zerobus-ext-sdk]]<<zerobus-ext-sdk, `com.databricks.zerobus.ZerobusSdk`>>
+|`@CustomConsumerBuilder`
+|A customized instance of a `ZerobusSdk` that is configured for use in opening the streams that carry records to target tables.
+By default, the sink builds the instance from the <<zerobus-endpoint, `endpoint`>> and <<zerobus-workspace-url, `workspace.url`>> options.
+
+|===
+
+===== REST route (`zerobus-rest`)
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[zerobus-rest-type]]<<zerobus-rest-type, `debezium.sink.type`>>
+|No default value.
+|Must be set to `zerobus-rest`.
+
+|[[zerobus-rest-uri]]<<zerobus-rest-uri, `debezium.sink.zerobus-rest.uri`>>
+|No default value.
+|The Zerobus REST base URI, for example `https://<workspace-id>.zerobus.<region>.cloud.databricks.com`.
+
+|[[zerobus-rest-workspace-url]]<<zerobus-rest-workspace-url, `debezium.sink.zerobus-rest.workspace.url`>>
+|No default value.
+|The Databricks workspace URL.
+The service uses this value for OAuth and in the `unity-catalog-endpoint` header.
+
+|[[zerobus-rest-workspace-id]]<<zerobus-rest-workspace-id, `debezium.sink.zerobus-rest.workspace.id`>>
+|No default value.
+|The numeric workspace ID that the service uses to build the Zerobus token audience.
+
+|[[zerobus-rest-client-id]]<<zerobus-rest-client-id, `debezium.sink.zerobus-rest.client.id`>>
+|No default value.
+|The OAuth client ID (service principal application ID).
+
+|[[zerobus-rest-client-secret]]<<zerobus-rest-client-secret, `debezium.sink.zerobus-rest.client.secret`>>
+|No default value.
+|The OAuth client secret for the service principal.
+
+|[[zerobus-rest-table]]<<zerobus-rest-table, `debezium.sink.zerobus-rest.table`>>
+|No default value.
+|(Optional) A fully qualified default target table (`catalog.schema.table`). When not set, the mapped destination (topic) name is used.
+
+|[[zerobus-rest-metrics-log-interval]]<<zerobus-rest-metrics-log-interval, `debezium.sink.zerobus-rest.metrics.log.interval`>>
+|`0`
+|Specifies the number of batches that the service processes before it emits a periodic `INFO` log line to summarize sink metrics.
+Set the value to `0` to disable periodic logging.
+This setting does not affect availability of metrics over JMX.
+For more information, see <<zerobus-monitoring, Monitoring>>.
+
+|===
+
+[[zerobus-kafka-route]]
+===== Kafka route
+
+As an alternative to the `zerobus` and `zerobus-rest` routes, you can reuse the built-in `kafka` sink to write to the Zerobus Kafka-compatible endpoint.
+This route uses the standard Kafka producer with `SASL_SSL` and the `OAUTHBEARER` mechanism.
+Authentication is handled by `io.debezium.server.databricks.zerobus.ZerobusOAuthBearerLoginCallbackHandler`, which performs the OAuth token exchange and attaches the Unity Catalog authorization details that Zerobus requires.
+
+Because this route uses the generic `kafka` sink rather than the Zerobus sink, the data type normalization that the <<zerobus-data-type-mapping, Data type mapping>> section describes does not apply.
+Instead, the emitted JSON must match the target Delta table schema, which requires the source-side and format settings that the following sections describe.
+Zerobus is partitionless, and it ingests only the record value.
+It does not persist record keys, headers, partition assignments, or timestamps.
+
+The Kafka-compatible endpoint must be enabled for the workspace.
+If it is not enabled, authentication fails with `Access denied: feature "Zerobus Ingest Kafka Endpoint" is not enabled for workspace "<workspace-id>". Error Code: 4062`.
+
+To use this route, set `debezium.sink.type` to `kafka` and configure the following producer properties:
+
+[cols="55%a,45%a",options="header"]
+|===
+|Property
+|Description
+
+|`debezium.sink.kafka.producer.bootstrap.servers`
+|The Zerobus Kafka endpoint, for example `<workspace-id>.zerobus.<region>.cloud.databricks.com:9092`.
+
+|`debezium.sink.kafka.producer.security.protocol`
+|Must be set to `SASL_SSL`.
+
+|`debezium.sink.kafka.producer.sasl.mechanism`
+|Must be set to `OAUTHBEARER`.
+
+|`debezium.sink.kafka.producer.sasl.login.callback.handler.class`
+|Must be set to `io.debezium.server.databricks.zerobus.ZerobusOAuthBearerLoginCallbackHandler`.
+
+|`debezium.sink.kafka.producer.sasl.jaas.config`
+|The JAAS configuration for the `OAuthBearerLoginModule`, which supplies the OAuth options that the login callback handler reads.
+
+|`debezium.sink.kafka.producer.acks`
+|Must be set to `all`.
+
+|`debezium.sink.kafka.producer.enable.idempotence`
+|Must be set to `false`.
+Zerobus does not implement the transactional APIs, so it rejects the `InitProducerId` request that the Kafka producer sends when idempotence is enabled.
+The producer then fails with `UnsupportedVersionException: The node does not support INIT_PRODUCER_ID`.
+Because Kafka clients enable idempotence by default, you must set this property explicitly.
+
+|`debezium.sink.kafka.producer.compression.type`
+|Must be set to `none`.
+Zerobus rejects compressed record batches.
+|===
+
+The `sasl.jaas.config` entry accepts the following options:
+
+[cols="25%a,20%a,55%a",options="header"]
+|===
+|Option
+|Required
+|Description
+
+|`clientId`
+|Yes
+|The OAuth client id (service principal application id).
+
+|`clientSecret`
+|Yes
+|The OAuth client secret for the service principal.
+
+|`workspaceUrl`
+|Yes, unless `tokenEndpoint` is set.
+|The Databricks workspace URL.
+The token endpoint is derived as `<workspaceUrl>/oidc/v1/token`.
+
+|`workspaceId`
+|Yes, unless `audience` is set.
+|The numeric workspace id.
+The token audience is derived as `api://databricks/workspaces/<workspaceId>/zerobusDirectWriteApi`.
+
+|`tables`
+|Yes
+|A comma-separated list of fully qualified target tables (`catalog.schema.table`).
+The handler uses this list to build the OAuth Rich Authorization Requests (RFC 9396) authorization details, which grant the token the Unity Catalog privileges that Zerobus requires for the target tables.
+
+|`tokenEndpoint`
+|No
+|Overrides the OIDC token endpoint that is otherwise derived from `workspaceUrl`.
+
+|`audience`
+|No
+|Overrides the token audience that is otherwise derived from `workspaceId`.
+
+|`token`
+|No
+|A bearer token, such as a personal access token, to use without modification.
+If you set this option, the handler skips the OAuth exchange and uses this token directly.
+|===
+
+====== Record format for the Kafka route
+
+Zerobus accepts a record value only if it is a JSON object whose fields match the target Delta table schema.
+A record that does not match is rejected with `InvalidRecordException: This record has failed the validation on broker and hence will be rejected`.
+To satisfy the requirement, configure the following options in addition to the producer properties:
+
+[cols="55%a,45%a",options="header"]
+|===
+|Property
+|Description
+
+|`debezium.transforms`
+|Apply the {link-prefix}:{link-event-flattening}#new-record-state-extraction[`ExtractNewRecordState` SMT] so that the emitted record is a flat row rather than a change event envelope.
+Optionally apply the `RegexRouter` SMT to map the topic name to the fully qualified name of the target table.
+
+|`debezium.format.value.schemas.enable`
+|Must be set to `false`.
+Otherwise, the JSON converter wraps each value in a `{"schema": ..., "payload": ...}` envelope, which does not match the table schema.
+
+|`debezium.source.decimal.handling.mode`
+|Must be set to `string`.
+Zerobus rejects a JSON number for a `DECIMAL` column, and the default `precise` mode emits a Base64-encoded byte array.
+The `string` mode emits the exact decimal value as a JSON string, which Zerobus accepts.
+
+|`debezium.source.time.precision.mode`
+|Use the default `adaptive` mode, which emits a `TIMESTAMP` column as the number of microseconds since the epoch.
+Zerobus rejects an ISO-8601 string for a `TIMESTAMP` column, and it interprets a numeric value as microseconds.
+Because of the latter, the `connect` mode, which emits milliseconds, silently stores an incorrect instant.
+|===
+
+====== Tuning throughput on the Kafka route
+
+Throughput on the Kafka route is bound by network round trips rather than by local processing, because Zerobus acknowledges each request from the region in which the workspace runs.
+When the default producer settings are active, the number of records that the service ingests per second is approximately equal to the number of in-flight requests, multiplied by the number of records per request, and divided by the request latency.
+As a result, a pipeline that produces one record at a time spends most of its time waiting.
+
+You can modify the default behavior by configuring the producer properties in the following table.
+Optimal values for these settings depend on the latency between the service and the workspace.
+Use the values in the table as starting points and adjust them based on latency data.
+To find the request latency of a running pipeline, read the `request_latency_avg` attribute of the standard `kafka.producer:type=producer-metrics` MBean, and to confirm that batching takes effect, read `records_per_request_avg`.
+
+[cols="40%a,15%a,45%a",options="header"]
+|===
+|Property
+|Suggested value
+|Description
+
+|`debezium.sink.kafka.producer.linger.ms`
+|`100`
+|Specifies how long the producer waits to send requests.
+Requests accumulate until the configured interval passes.
+
+Set the value to `0` to remove the delay interval so that the producer sends each request as soon as possible.
+When the property is set to `0`, the producer sends requests even if they contain a small number of records.
+Because each request incurs the overhead of a full network round trip, when the producer has a high number of records to process, a `0` value can result in lower throughput.
+
+Set a value greater than `0` if you want the producer to wait between sending requests.
+Setting a value greater than `0` can improve throughput, because the producer batches more records per request.
+
+In a change data capture pipeline, the end-to-end latency is typically much greater than the delay introduced by this setting, so the additional wait is usually negligible.
+
+|`debezium.sink.kafka.producer.batch.size`
+|`1048576`
+|Specifies the maximum size, in bytes, of a single batch.
+If `linger.ms` is set, set this option if you want the producer to send batches after their size reaches the configured limit.
+This setting overrides the `linger.ms` setting to allow the producer to send batches before the end of the configured wait time.
+Zerobus rejects records larger than 10 MB, so a batch size of 1 MB leaves ample headroom.
+
+|`debezium.sink.kafka.producer.max.in.flight.requests.per.connection`
+|`10`
+|Specifies the maximum number of unacknowledged requests that the producer can send before it receives a response.
+Increasing the value can improve throughput by allowing the producer to send additional requests before it receives acknowledgements from earlier requests.
+However, increasing the value can also result in records being delivered out of order if requests are retried.
+
+Zerobus is partitionless and provides an at-least-once delivery guarantee, so strict record ordering is not guaranteed regardless of how you configure this property.
+|===
+
+[NOTE]
+====
+In standard Kafka environments where idempotence is enabled, `max.in.flight.requests.per.connection` must not exceed `5`, because the idempotent producer only guarantees ordering and exactly-once semantics for up to five in-flight requests.
+The Kafka route for the Databricks Zerobus Ingest sink requires `enable.idempotence=false`, so you can set this property to a value greater than `5`.
+====
+
+The following example shows a complete configuration for the Kafka route:
+
+[source,properties]
+----
+debezium.sink.type=kafka
+debezium.sink.kafka.producer.bootstrap.servers=<workspace-id>.zerobus.<region>.cloud.databricks.com:9092
+debezium.sink.kafka.producer.security.protocol=SASL_SSL
+debezium.sink.kafka.producer.sasl.mechanism=OAUTHBEARER
+debezium.sink.kafka.producer.sasl.login.callback.handler.class=io.debezium.server.databricks.zerobus.ZerobusOAuthBearerLoginCallbackHandler
+debezium.sink.kafka.producer.sasl.jaas.config=org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required \
+    workspaceUrl="https://<workspace-host>" \
+    workspaceId="<workspace-id>" \
+    clientId="<client-id>" \
+    clientSecret="<client-secret>" \
+    tables="<catalog>.<schema>.<table>" ;
+debezium.sink.kafka.producer.acks=all
+debezium.sink.kafka.producer.enable.idempotence=false
+debezium.sink.kafka.producer.compression.type=none
+debezium.sink.kafka.producer.linger.ms=100
+debezium.sink.kafka.producer.batch.size=1048576
+debezium.sink.kafka.producer.max.in.flight.requests.per.connection=10
+debezium.sink.kafka.producer.key.serializer=org.apache.kafka.common.serialization.StringSerializer
+debezium.sink.kafka.producer.value.serializer=org.apache.kafka.common.serialization.StringSerializer
+debezium.sink.kafka.producer.interceptor.classes=io.debezium.server.databricks.zerobus.metrics.ZerobusProducerInterceptor
+
+debezium.format.value=json
+debezium.format.value.schemas.enable=false
+debezium.source.decimal.handling.mode=string
+
+debezium.transforms=unwrap,route
+debezium.transforms.unwrap.type=io.debezium.transforms.ExtractNewRecordState
+debezium.transforms.unwrap.delete.tombstone.handling.mode=rewrite
+debezium.transforms.unwrap.add.fields=op,source.ts_ms
+debezium.transforms.unwrap.add.headers=op,source.ts_ms
+debezium.transforms.route.type=org.apache.kafka.connect.transforms.RegexRouter
+debezium.transforms.route.regex=<topic-prefix>\\.<schema>\\.<table>
+debezium.transforms.route.replacement=<catalog>.<schema>.<table>
+----
+
+[[zerobus-data-type-mapping]]
+===== Data type mapping
+
+When the sink maps data types, rather than converting values based on their serialized JSON representation, it uses Kafka Connect logical type information to normalize values to a format that is compatible with the target Delta column.
+By basing conversions on logical types rather than on the JSON encoding of values, the sink can accommodate different source-side serialization settings and avoid invalid-type ingestion errors without requiring users to tune source-side *.handling.mode options.
+
+The following table shows mappings between {prodname} logical types and Delta column types:
+
+[cols="45%a,55%a",options="header"]
+|===
+|Source / {prodname} logical type
+|Delta column type
+
+|Integer, floating point, boolean, string
+|`INT`/`BIGINT`, `DOUBLE`/`FLOAT`, `BOOLEAN`, `STRING`
+
+|`org.apache.kafka.connect.data.Decimal` (decimal / numeric / money)
+|`DECIMAL(p,s)` Emitted as an exact locale-independent string.
+
+|`io.debezium.time.Date` / Connect `Date`
+|`DATE` (epoch days)
+
+|`io.debezium.time.Timestamp` / `MicroTimestamp` / `NanoTimestamp` / Connect `Timestamp`
+|`TIMESTAMP` or `TIMESTAMP_NTZ` (normalized to epoch micros)
+
+|`io.debezium.time.ZonedTimestamp` (timestamp with time zone)
+|`STRING` (ISO-8601 with offset)
+
+|`io.debezium.time.Time` and other time-of-day types
+|`BIGINT` (Zerobus does not currently ingest the Delta `TIME` type)
+
+|Bytes / `io.debezium.data.Bits` (binary, blob, varbinary)
+|BINARY (encoded as Base64)
+
+|`io.debezium.data.Json` (JSON / JSONB)
+|`VARIANT`
+
+|Homogeneous array
+|`ARRAY<T>`
+
+|===
+
+[[zerobus-monitoring]]
+===== Monitoring
+
+You can use JMX metrics and connector log output to monitor the operational status and performance of the Debezium Databricks Zerobus Ingest sink.
+
+The {prodname} Databricks Zerobus Ingest sink supports the following delivery routes: zerobus (gRPC), zerobus-rest (REST), and the <<zerobus-kafka-route, Kafka route>>.
+All three routes expose sink metrics over JMX under the object name `debezium.zerobus:type=connector-metrics,context=sink,server=<route>,task=0`, where `<route>` is `grpc` for the `zerobus` route, `rest` for the `zerobus-rest` route, or `kafka` for the Kafka route.
+The metrics use the same JMX exposure model as the JDBC sink connector and {prodname} source connectors, so existing JMX monitoring tools such as JConsole, jmxterm, and Prometheus JMX Exporter can read them without any Zerobus-specific configuration.
+
+The sink registers the metrics when it starts, so no option is required to begin collecting them.
+Reading them from outside the process is a separate step: the service exposes JMX only after you set the `JMX_HOST` and `JMX_PORT` environment variables, and it starts the bundled Prometheus JMX Exporter only after you set `JMX_EXPORTER_PORT`.
+The {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[{prodname} monitoring documentation] provides details about how to expose metrics by using JMX.
+You can automate periodic metric logging by setting <<zerobus-metrics-log-interval, `debezium.sink.zerobus.metrics.log.interval`>> or <<zerobus-rest-metrics-log-interval, `debezium.sink.zerobus-rest.metrics.log.interval`>> to a positive value.
+After you enable either of these options, at the specified interval the connector writes an `INFO` log message that contains the same metric values that are available through JMX.
+
+The Kafka route is the exception to metrics being collected automatically: because it writes through the generic `kafka` sink, the Zerobus sink is never invoked and cannot instrument itself.
+On that route the metrics are not collected until you register the following producer interceptor, which reports the same attributes under `server=kafka`:
+
+[source,properties]
+----
+debezium.sink.kafka.producer.interceptor.classes=io.debezium.server.databricks.zerobus.metrics.ZerobusProducerInterceptor
+----
+
+The interceptor reads the operation and the source timestamp from the record headers, and falls back to scanning the serialized value when the headers are absent.
+Because the interceptor runs for every produced record, prefer the headers on a high-volume pipeline: configure the `ExtractNewRecordState` SMT with `add.headers=op,source.ts_ms` in addition to `add.fields`, as shown in <<zerobus-kafka-route, Kafka route>>.
+Zerobus does not persist record headers, so the metadata does not reach the target table, and reading it from a header rather than scanning the value makes the interceptor several times cheaper per record.
+To enable periodic metric logging on this route, set `debezium.sink.kafka.producer.zerobus.metrics.log.interval` to a positive value.
+The option is the counterpart of `debezium.sink.zerobus[rest].metrics.log.interval`, except that it counts records rather than batches, because a producer interceptor observes individual sends.
+Two attributes carry a route-specific meaning: `TotalFlushes` counts broker-acknowledged records, which is the durability boundary on this route, and `TotalRecordsSkipped` remains `0`, because the generic sink forwards every record that it receives.
+
+[NOTE]
+====
+On the Kafka route the interceptor times one in every 128 records rather than every record, so that `LastFlushDurationMillis` and `MaxFlushDurationMillis` describe a representative sample.
+Reading the system clock is significantly more expensive when the producer's network thread reads it concurrently, and on a high-volume pipeline that cost outweighs everything else the interceptor does.
+The first record is always timed, so the gauges report a value even on a pipeline that produces few records.
+All counters remain exact.
+====
+The standard `kafka.producer:type=producer-metrics` and `kafka.producer:type=producer-topic-metrics` MBeans remain available, and provide per-topic byte counts and request latencies that complement the sink metrics.
+
+The following attributes are available:
+
+[cols="40%a,60%a",options="header"]
+|===
+|Attribute
+|Description
+
+|`TotalRecordsIngested`
+|Total number of change events that Zerobus durably accepted, across all tables.
+On the gRPC route the sink counts a record only after the flush that covers it succeeds, so a batch that fails to flush never advances this metric.
+
+|`TotalInserts` / `TotalUpdates` / `TotalDeletes` / `TotalReads`
+|These metrics report the number of ingested events sorted by operation type (`c` / `u` / `d`, and snapshot reads `r`).
+
+|`TotalRecordsSkipped`
+|Number of records skipped without being forwarded (tombstones / null payloads, and events whose destination is not a fully qualified `catalog.schema.table`, such as schema-history or DDL events).
+The value remains `0` on the Kafka route, which forwards every record that it receives.
+
+|`TotalErrors`
+|Number of ingestion or flush failures observed.
+
+|`TotalFlushes`
+|The metric counts one of the following operations, depending on the route configuration:
+
+* Stream flush operations (gRPC route).
+* Successful record POST requests (REST route).
+* Broker-acknowledged records (Kafka route).
+
+For the REST and Kafka routes, a successful POST or acknowledgement indicates that the record has been durably accepted and is no longer at risk of loss due to a service failure.
+
+|`MilliSecondsBehindSource`
+|Indicates the age, in milliseconds, of the most recently processed event.
+The value is calculated as `current time - source.ts_ms`.
+The metric reports the value `-1` until after the Delta table ingests an event that contains a source timestamp.
+Values near `0` indicates that the sink is catching up to, or is synchronized with, the source.
+
+This metric is a primary indicator of pipeline freshness in a CDC-to-lakehouse deployment.
+
+|`MilliSecondsSinceLastEvent`
+|Indicates the time that elapsed since the sink last forwarded an event.
+The metric reports the value `-1` until the sink forwards the first event.
+
+Use this metric together with `MilliSecondsBehindSource`.
+Because `MilliSecondsBehindSource` reports the age of the last event that the sink processed, its value stops changing if the pipeline stops, and, as a result, an idle source cannot be distinguished from a stalled sink.
+By contrast, if the value of `MilliSecondsSinceLastEvent` grows while the source database is known to be receiving writes, the pipeline is stalled.
+
+|`LastFlushDurationMillis`
+|Duration of the most recent flush (gRPC), record POST (REST), or broker acknowledgement (Kafka) operation.
+On the Kafka route the value describes a sampled subset of records rather than every record, as the following note describes.
+
+|`MaxFlushDurationMillis`
+|Longest duration of any flush (gRPC), record POST (REST), or broker acknowledgement (Kafka) operation since the task started.
+On the Kafka route the value describes a sampled subset of records rather than every record, as the following note describes.
+
+|`ActiveStreams`
+|Number of currently open Zerobus streams (one per target table).
+For the REST and Kafka routes, which do not open persistent streams, this value is always `0`.
+
+|`Connected`
+|Indicates whether the sink currently holds a usable connection to Zerobus.
+On the gRPC route the value reflects the state of the SDK client, and on the REST route the state of the HTTP client.
+On the Kafka route the value is always `true` while metrics are reported, because a producer interceptor observes records rather than connection state.
+To monitor the connection on the Kafka route, use the standard `kafka.producer:type=producer-metrics` attributes.
+
+|`Route`
+|The delivery route these metrics belong to (`grpc`, `rest`, or `kafka`).
+
+|===
+
+
 == Extensions
 
 {prodname} Server uses the https://quarkus.io/[Quarkus framework] and relies on dependency injection to enable developer to extend its behaviour.
