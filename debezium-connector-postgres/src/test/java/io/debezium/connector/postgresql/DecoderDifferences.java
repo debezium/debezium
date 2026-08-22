@@ -6,9 +6,16 @@
 
 package io.debezium.connector.postgresql;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.Struct;
+
+import io.debezium.data.VariableScaleDecimal;
 
 /**
  * A class that contains assertions or expected values tailored to the behaviour of a concrete decoder plugin
@@ -53,6 +60,36 @@ public class DecoderDifferences {
                 .map(String::trim)
                 .map(Long::parseLong)
                 .collect(Collectors.toList());
+    }
+
+    public static List<Double> toastedValueDoublePlaceholder() {
+        return toastedValueNumbers().map(Double::parseDouble).collect(Collectors.toList());
+    }
+
+    public static List<Float> toastedValueFloatPlaceholder() {
+        return toastedValueNumbers().map(Float::parseFloat).collect(Collectors.toList());
+    }
+
+    public static List<Short> toastedValueSmallintPlaceholder() {
+        return toastedValueNumbers().map(Short::parseShort).collect(Collectors.toList());
+    }
+
+    public static List<BigDecimal> toastedValueDecimalPlaceholder(int scale) {
+        return toastedValueNumbers().map(number -> new BigDecimal(new BigInteger(number), scale)).collect(Collectors.toList());
+    }
+
+    public static List<Boolean> toastedValueBooleanPlaceholder() {
+        return toastedValueNumbers().map(number -> Integer.parseInt(number) != 0).collect(Collectors.toList());
+    }
+
+    public static List<Struct> toastedValueVariableScaleDecimalPlaceholder(Schema elementSchema) {
+        return toastedValueNumbers()
+                .map(number -> VariableScaleDecimal.fromLogical(elementSchema, new BigDecimal(number)))
+                .collect(Collectors.toList());
+    }
+
+    private static Stream<String> toastedValueNumbers() {
+        return Stream.of(TOASTED_VALUE_NUMBER_STRING.split(",")).map(String::trim);
     }
 
     public static boolean areDefaultValuesRefreshedEagerly() {
