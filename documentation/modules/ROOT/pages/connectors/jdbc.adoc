@@ -313,7 +313,7 @@ Set the value of the xref:jdbc-property-batch-size[`batch.size`] property to `1`
 +
 Some dialects and driver configurations process a batch in a single pass, rather than validating each row against the effects of the preceding rows in the same batch.
 For example, `MERGE`-based dialects can attempt two `INSERT` operations for the same primary key instead of an `INSERT` followed by an `UPDATE`.
-Similarly, when xref:jdbc-property-dialect-postgres-unnest-insert-enabled[`dialect.postgres.unnest.insert.enabled`] is set to `true`, PostgreSQL combines a batch into a single multi-row statement.
+Similarly, when xref:jdbc-property-dialect-postgres-unnest-insert-enabled[`dialect.postgres.unnest.insert.enabled`] is set to `true`, PostgreSQL and CockroachDB combine a batch into a single multi-row statement.
 In each of these cases, the batch fails.
 
 // Type: reference
@@ -505,6 +505,8 @@ Because CockroachDB supports the PostgreSQL communication protocol, it works wit
 
 As a sink target, CockroachDB supports idempotent writes through the same xref:jdbc-property-insert-mode[`insert.mode=upsert`] setting that the connector uses for other databases.
 For CockroachDB, the connector generates `INSERT ... ON CONFLICT ... DO UPDATE SET ...` statements.
+
+Because the CockroachDB dialect derives from the PostgreSQL dialect, the `UNNEST`-based batch write optimization that the xref:jdbc-property-dialect-postgres-unnest-insert-enabled[`dialect.postgres.unnest.insert.enabled`] property enables also applies to CockroachDB targets.
 
 CockroachDB uses the `SERIALIZABLE` transaction isolation level.
 As a result, if CockroachDB detects a conflict between concurrent transactions, it might temporarily abort one of the transactions and return SQLSTATE `40001`.
@@ -2083,6 +2085,56 @@ The connector does not validate the table structure against incoming events.
 `basic`:: Specifies that basic evolution occurs.
 The connector adds missing columns to the table by comparing the incoming event's record schema to the database table structure.
 
+|[[jdbc-property-binary-handling-mode]]<<jdbc-property-binary-handling-mode, `+binary.handling.mode+`>>
+|`bytes`
+|Specifies how the connector binds fields that use the Kafka Connect `BYTES` schema and resolve to a raw binary JDBC type when the corresponding destination column is a character type, for example, `CHAR`, `VARCHAR`, `TEXT`, or `CLOB`.
+The following options are available:
+
+`bytes`:: Specifies that the connector binds binary values as raw bytes.
+When raw bytes are written to a character column, the destination database determines whether to convert the value and which textual representation to use.
+Depending on the database, the write might fail instead.
+`base64`:: Specifies that the connector binds binary values as Base64-encoded strings.
+`base64-url-safe`:: Specifies that the connector binds binary values as URL-safe Base64-encoded strings.
+`hex`:: Specifies that the connector binds binary values as hexadecimal-encoded (base16) strings.
+
+This setting applies only to existing character columns.
+For binary destination columns, the connector always binds the original bytes.
+Named `BYTES` schemas that retain the raw binary JDBC mapping are also eligible for encoding.
+Logical types that use `BYTES` as their underlying schema type, such as `Decimal`, retain their logical JDBC mapping and are not affected.
+The setting does not change the column types that the connector creates or adds through schema evolution.
+For a `BYTES` field, schema evolution derives the destination type from the record schema and creates a binary column.
+Because textual modes apply only to existing character columns, the connector logs a warning when this occurs.
+For encoded landings, either pre-create the destination columns as character types or, when supported, configure `binary.handling.mode` on the source connector so that it emits fields with a string schema.
+The sink-side setting remains useful when sinks that consume the same topics require different representations.
+
+Ensure that the destination character column can hold the encoded value.
+Base64 encoding requires approximately four characters for every three input bytes, while hexadecimal encoding requires two characters for every input byte.
+
+|[[jdbc-property-binary-handling-selector-base64]]<<jdbc-property-binary-handling-selector-base64, `+binary.handling.selector.base64+`>>
+|No default
+|Specifies a comma-separated list of regular expressions that select fields to bind as Base64-encoded strings, overriding the xref:jdbc-property-binary-handling-mode[`binary.handling.mode`] setting.
+The connector matches each expression against the topic-qualified field name, in the form `_<topicName>_:_<fieldName>_`, and against the plain field name.
+Matching is case-insensitive and must cover the entire name.
+For example, `server1\.inventory\.orders:payload` matches the `payload` field only in the `server1.inventory.orders` topic.
+
+If a field matches multiple selector properties, the connector evaluates the properties in the following order: `base64`, `base64-url-safe`, `hex`, and `bytes`.
+The first matching property determines the mode, and the connector logs a warning for the field, because overlapping selectors usually indicate a configuration mistake.
+
+|[[jdbc-property-binary-handling-selector-base64-url-safe]]<<jdbc-property-binary-handling-selector-base64-url-safe, `+binary.handling.selector.base64-url-safe+`>>
+|No default
+|Specifies a comma-separated list of regular expressions that select fields to bind as URL-safe Base64-encoded strings, overriding the xref:jdbc-property-binary-handling-mode[`binary.handling.mode`] setting.
+For information about matching and selector precedence, see the description of the xref:jdbc-property-binary-handling-selector-base64[`binary.handling.selector.base64`] property.
+
+|[[jdbc-property-binary-handling-selector-hex]]<<jdbc-property-binary-handling-selector-hex, `+binary.handling.selector.hex+`>>
+|No default
+|Specifies a comma-separated list of regular expressions that select fields to bind as hexadecimal-encoded (base16) strings, overriding the xref:jdbc-property-binary-handling-mode[`binary.handling.mode`] setting.
+For information about matching and selector precedence, see the description of the xref:jdbc-property-binary-handling-selector-base64[`binary.handling.selector.base64`] property.
+
+|[[jdbc-property-binary-handling-selector-bytes]]<<jdbc-property-binary-handling-selector-bytes, `+binary.handling.selector.bytes+`>>
+|No default
+|Specifies a comma-separated list of regular expressions that select fields to bind as raw bytes, overriding the xref:jdbc-property-binary-handling-mode[`binary.handling.mode`] setting.
+For information about matching and selector precedence, see the description of the xref:jdbc-property-binary-handling-selector-base64[`binary.handling.selector.base64`] property.
+
 |[[jdbc-property-collection-name-format]]<<jdbc-property-collection-name-format, `+collection.name.format+`>>
 |`+${topic}+`
 |Specifies a string pattern that the connector uses to construct the names of destination tables.
@@ -2103,9 +2155,9 @@ The default is `public`; however, if the PostGIS extension was installed in anot
 
 |[[jdbc-property-dialect-postgres-unnest-insert-enabled]]<<jdbc-property-dialect-postgres-unnest-insert-enabled, `+dialect.postgres.unnest.insert.enabled+`>>
 |`false`
-|Specifies whether to enable `UNNEST`-based batch inserts for PostgreSQL.
+|Specifies whether to enable `UNNEST`-based batch inserts for PostgreSQL and CockroachDB targets.
 
-When enabled, uses PostgreSQL `UNNEST()` for batch inserts, which can significantly improve performance by reducing the number of SQL statements executed.
+When enabled, the connector uses PostgreSQL-compatible `UNNEST()` statements for batch inserts, which can significantly improve performance by reducing the number of SQL statements executed.
 This optimization is compatible with `INSERT` and `UPSERT` modes.
 
 For information about the performance benefits of enabling the UNNEST function, see link:https://www.tigerdata.com/blog/boosting-postgres-insert-performance["Boosting Postgres Insert Performance"^] in the Tiger Data blog.
