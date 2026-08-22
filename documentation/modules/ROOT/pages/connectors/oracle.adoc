@@ -2416,8 +2416,8 @@ A string representation of a timestamp in UTC.
 [IMPORTANT]
 ====
 Because nanoseconds since the Unix epoch are stored in a signed `INT64`, the representable range of `io.debezium.time.NanoTimestamp` is approximately *`1677-09-21T00:12:43Z` to `2262-04-11T23:47:16Z`*.
-Values outside this range — for example a `9999-12-31` end-of-time sentinel stored in a `TIMESTAMP(7 - 9)` column — cannot be represented and cause the connector to throw an `IllegalArgumentException` from the value converter.
-The exception is routed through the standard `event.processing.failure.handling.mode` configuration, so operators can choose `fail` (the default), `warn`, or `skip` per their requirements.
+Values outside this range, for example a `9999-12-31` end-of-time sentinel stored in a `TIMESTAMP(7 - 9)` column, cannot be represented and cause the connector to throw an `IllegalArgumentException` from the value converter.
+The exception is handled according to the `event.converting.failure.handling.mode` configuration: with `warn` (the default) or `skip`, the affected column value is emitted as `null` and the failure is logged; with `fail`, the connector stops.
 
 If a column may legitimately contain values outside the representable range, declare it with `TIMESTAMP(0 - 6)` so that Debezium emits `Timestamp` (millisecond) or `MicroTimestamp` (microsecond) instead, or set `time.precision.mode=isostring` to capture the value as an ISO 8601 string.
 ====
@@ -2616,8 +2616,8 @@ Oracle `DATE` and `TIMESTAMP` values are represented as the number of nanosecond
 [IMPORTANT]
 ====
 Because nanoseconds since the Unix epoch are stored in a signed `INT64`, the representable range of `io.debezium.time.NanoTimestamp` is approximately *`1677-09-21T00:12:43Z` to `2262-04-11T23:47:16Z`*.
-Values outside this range — for example a `9999-12-31` end-of-time sentinel stored in a `TIMESTAMP(7 - 9)` column — cannot be represented and cause the connector to throw an `IllegalArgumentException` from the value converter.
-The exception is routed through the standard `event.processing.failure.handling.mode` configuration, so operators can choose `fail` (the default), `warn`, or `skip` per their requirements.
+Values outside this range, for example a `9999-12-31` end-of-time sentinel stored in a `TIMESTAMP(7 - 9)` column, cannot be represented and cause the connector to throw an `IllegalArgumentException` from the value converter.
+The exception is handled according to the `event.converting.failure.handling.mode` configuration: with `warn` (the default) or `skip`, the affected column value is emitted as `null` and the failure is logged; with `fail`, the connector stops.
 
 If a column may legitimately contain values outside the representable range, set `time.precision.mode=microseconds` or `time.precision.mode=isostring` to capture the value with lower precision or as an ISO 8601 string.
 ====
