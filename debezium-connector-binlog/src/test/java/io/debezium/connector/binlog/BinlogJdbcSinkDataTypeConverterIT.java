@@ -55,7 +55,7 @@ public abstract class BinlogJdbcSinkDataTypeConverterIT<C extends SourceConnecto
     }
 
     @Test
-    @FixFor("DBZ-6225")
+    @FixFor({ "DBZ-6225", "debezium/dbz#2189" })
     public void testBooleanDataTypeMapping() throws Exception {
         final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase("booleanit", "boolean_test").withDbHistoryPath(SCHEMA_HISTORY_PATH);
         DATABASE.createAndInitialize();
@@ -116,17 +116,15 @@ public abstract class BinlogJdbcSinkDataTypeConverterIT<C extends SourceConnecto
         afterSchema = record.valueSchema().field("after").schema();
 
         // Assert how the BOOLEAN data type is mapped during the streaming phase.
-        // During streaming the DDL that gets parsed provides the column type as BOOLEAN and this is what gets passed
-        // into the Column's relational model and gets propagated. Despite being BOOLEAN, it should still be sent as
-        // an INT16 data type into Kafka. The sink connector should be able to deduce the type as TINYINT(1) when the
-        // column propagation is enabled because of type being BOOLEAN.
+        // During streaming the DDL parser normalizes BOOLEAN to TINYINT(1), matching the snapshot phase. The custom
+        // converter still emits an INT16 data type into Kafka, while the propagated source type remains TINYINT(1).
         assertThat(afterSchema.field("b1").schema().type()).isEqualTo(Schema.Type.INT16);
-        assertThat(afterSchema.field("b1").schema().parameters().get("__debezium.source.column.type")).isEqualTo("BOOLEAN");
-        assertThat(afterSchema.field("b1").schema().parameters().get("__debezium.source.column.length")).isNull();
+        assertThat(afterSchema.field("b1").schema().parameters().get("__debezium.source.column.type")).isEqualTo("TINYINT");
+        assertThat(afterSchema.field("b1").schema().parameters().get("__debezium.source.column.length")).isEqualTo("1");
         assertThat(after.get("b1")).isEqualTo((short) 1);
         assertThat(afterSchema.field("b2").schema().type()).isEqualTo(Schema.Type.INT16);
-        assertThat(afterSchema.field("b2").schema().parameters().get("__debezium.source.column.type")).isEqualTo("BOOLEAN");
-        assertThat(afterSchema.field("b2").schema().parameters().get("__debezium.source.column.length")).isNull();
+        assertThat(afterSchema.field("b2").schema().parameters().get("__debezium.source.column.type")).isEqualTo("TINYINT");
+        assertThat(afterSchema.field("b2").schema().parameters().get("__debezium.source.column.length")).isEqualTo("1");
         assertThat(after.get("b2")).isEqualTo((short) 0);
 
         stopConnector();

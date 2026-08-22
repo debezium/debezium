@@ -8,6 +8,7 @@ package io.debezium.connector.mysql;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.sql.Types;
 import java.util.List;
 
 import org.junit.jupiter.api.Disabled;
@@ -18,6 +19,7 @@ import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMo
 import io.debezium.connector.binlog.BinlogAntlrDdlParserTest;
 import io.debezium.connector.binlog.BinlogConnectorConfig;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
+import io.debezium.connector.mysql.antlr.MySqlPtAntlrDdlParser;
 import io.debezium.connector.mysql.charset.MySqlCharsetRegistry;
 import io.debezium.connector.mysql.jdbc.MySqlDefaultValueConverter;
 import io.debezium.connector.mysql.jdbc.MySqlValueConverters;
@@ -28,6 +30,7 @@ import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.Table;
+import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.ddl.DdlChanges;
 import io.debezium.relational.ddl.SimpleDdlParserListener;
@@ -171,6 +174,26 @@ public class MySqlAntlrDdlParserTest
         assertThat(eventRefTypeId.typeName()).isEqualTo("INTEGER");
         assertThat(eventRefId).isNotNull();
         assertThat(eventRefId.typeName()).isEqualTo("BIGINT");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2189")
+    public void shouldMapBooleanAliasesToTinyIntWithLegacyParser() {
+        final MySqlPtAntlrDdlParser legacyParser = new MySqlPtAntlrDdlParser();
+        final Tables legacyTables = new Tables();
+        legacyParser.parse(
+                "CREATE TABLE boolean_aliases (id INT PRIMARY KEY, created_bool BOOL);"
+                        + "ALTER TABLE boolean_aliases ADD COLUMN added_boolean BOOLEAN;",
+                legacyTables);
+
+        assertThat(legacyParser.getParsingExceptionsFromWalker()).isEmpty();
+        final Table table = legacyTables.forTable(null, null, "boolean_aliases");
+        assertThat(table.columnWithName("created_bool").typeName()).isEqualTo("TINYINT");
+        assertThat(table.columnWithName("created_bool").jdbcType()).isEqualTo(Types.TINYINT);
+        assertThat(table.columnWithName("created_bool").length()).isEqualTo(1);
+        assertThat(table.columnWithName("added_boolean").typeName()).isEqualTo("TINYINT");
+        assertThat(table.columnWithName("added_boolean").jdbcType()).isEqualTo(Types.TINYINT);
+        assertThat(table.columnWithName("added_boolean").length()).isEqualTo(1);
     }
 
     @Test
