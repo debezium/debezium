@@ -3048,10 +3048,12 @@ This connector captures changes only from the `inventory` table.
 Specifies the the connector uses `my-cluster-kafka-bootstrap:9092` as the Kafka broker for connecting to the database schema history topic when it writes or reads DDL statements.
 When a connector restarts, it recovers the database schemas that existed in the binlog at the point in time when the connector stopped.
 
-
-
-
-
+`schema.history.internal.kafka.topic::
+Specifies the name of the database schema history topic.
+This topic is for internal use only and should not be used by consumers.
+ifdef::community[]
+To learn more about the topic configuration requirements, see xref:install.html#configuring-debezium
+endif::community[]
 
 . Create your connector instance with Kafka Connect.
 For example, if you saved your `KafkaConnector` resource in the `inventory-connector.yaml` file, you would run the following command:
