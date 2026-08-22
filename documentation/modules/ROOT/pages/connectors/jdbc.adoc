@@ -2103,12 +2103,27 @@ The default is `public`; however, if the PostGIS extension was installed in anot
 
 |[[jdbc-property-dialect-postgres-unnest-insert-enabled]]<<jdbc-property-dialect-postgres-unnest-insert-enabled, `+dialect.postgres.unnest.insert.enabled+`>>
 |`false`
-|Specifies whether to enable `UNNEST`-based batch inserts for PostgreSQL.
+|Specifies whether to enable `UNNEST`-based batch inserts for PostgreSQL and CockroachDB.
 
-When enabled, uses PostgreSQL `UNNEST()` for batch inserts, which can significantly improve performance by reducing the number of SQL statements executed.
+Set the value to `true` to enable the connector to use `UNNEST()` for batch inserts.
+After you enable batching, instead of submitting multiple SQL statements to the target database, the connector accumulates multiple change events up to the `batch.size` limit, and then submits the events to the target database in a single SQL statement.
+Reducing the number of SQL statements in this way can improve performance for certain workloads.
 This optimization is compatible with `INSERT` and `UPSERT` modes.
 
-For information about the performance benefits of enabling the UNNEST function, see link:https://www.tigerdata.com/blog/boosting-postgres-insert-performance["Boosting Postgres Insert Performance"^] in the Tiger Data blog.
+For topics that receive a high volume of updates for the same primary key, you can further improve the effectiveness of batching by setting <<jdbc-property-use-reduction-buffer, `+use.reduction.buffer+`>> to `true`.
+This setting enables the connector to combine multiple events for a primary key into a single final operation before it writes to the database.
+
+If a batch includes multiple events for the same primary key while `use.reduction.buffer` is set to `false`, the attempt to combine statements fails, and the database returns the following error:
+
+`ON CONFLICT command cannot affect row a second time.`
+
+The task then stops.
+
+For more information about how the connector's use of the UNNEST function improves write performance for PostgreSQL and CockroachDB databases, see the following resources:
+
+* link:https://www.tigerdata.com/blog/boosting-postgres-insert-performance["Boosting Postgres Insert Performance"^] in the Tiger Data blog.
+
+* link:https://www.cockroachlabs.com/docs/stable/performance-best-practices-overview#use-multi-row-statements-instead-of-multiple-single-row-statements["Use multi-row statements instead of multiple single-row statements"^] in the CockroachDB documentation.
 
 |[[jdbc-property-dialect-sqlserver-identity-insert]]<<jdbc-property-dialect-sqlserver-identity-insert, `+dialect.sqlserver.identity.insert+`>>
 |`false`
