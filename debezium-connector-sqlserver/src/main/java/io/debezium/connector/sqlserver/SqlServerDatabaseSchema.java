@@ -34,6 +34,8 @@ import io.debezium.spi.topic.TopicNamingStrategy;
 public class SqlServerDatabaseSchema extends HistorizedRelationalDatabaseSchema {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerDatabaseSchema.class);
+    private static final int SQL_SERVER_MAX_BYTE_LENGTH = Integer.MAX_VALUE;
+    private static final int SQL_SERVER_MAX_NATIONAL_CHARACTER_LENGTH = Integer.MAX_VALUE / 2;
 
     public SqlServerDatabaseSchema(SqlServerConnectorConfig connectorConfig, SqlServerDefaultValueConverter defaultValueConverter,
                                    ValueConverterProvider valueConverter, TopicNamingStrategy<TableId> topicNamingStrategy,
@@ -89,7 +91,19 @@ public class SqlServerDatabaseSchema extends HistorizedRelationalDatabaseSchema 
      * @return {@code true} if the column is a max-type column
      */
     public static boolean isMaxColumn(Column column) {
-        return isMaxColumnJdbcType(column.jdbcType());
+        switch (column.jdbcType()) {
+            case Types.LONGVARCHAR:
+            case Types.LONGNVARCHAR:
+            case Types.LONGVARBINARY:
+                return true;
+            case Types.VARCHAR:
+            case Types.VARBINARY:
+                return column.length() == SQL_SERVER_MAX_BYTE_LENGTH;
+            case Types.NVARCHAR:
+                return column.length() == SQL_SERVER_MAX_NATIONAL_CHARACTER_LENGTH;
+            default:
+                return false;
+        }
     }
 
     /**
