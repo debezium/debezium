@@ -301,6 +301,12 @@ For more information see Redis https://redis.io/commands/wait/[WAIT] command.
 |If you configure {prodname} Server to store offsets in Redis, set this property to specify whether to use Redis Cluster mode.
 Set the value to `true` to configure {prodname} to use a https://redis.io/docs/latest/develop/clients/jedis/connect/#connect-to-a-redis-cluster[JedisCluster client] to route offset data to Redis nodes.
 
+|[[debezium-source-offset-redis-client-library]]<<debezium-source-offset-redis-client-library, `debezium.source.offset.storage.redis.client.library`>>
+|`jedis`
+|If using Redis to store offsets, specifies the Redis client driver library to use.
+Set the value to `jedis` (default) or `lettuce`.
+The `lettuce` driver supports single instance mode only and requires the optional `io.lettuce:lettuce-core` artifact on the runtime classpath.
+
 |[[debezium-source-database-history-class]]<<debezium-source-database-history-class, `debezium.source.schema.history.internal`>>
 |`io.debezium.storage.kafka.history.KafkaSchemaHistory`
 |Some of the connectors (e.g MySQL, SQL Server, Db2, Oracle) track the database schema evolution over time and stores this data in a database schema history.
@@ -406,6 +412,12 @@ For more information see Redis https://redis.io/commands/wait/[WAIT] command.
 |`false`
 |If you configure {prodname} Server to store schema history in Redis, set this property to specify whether to use Redis Cluster mode.
 Set the value to `true` to configure {prodname} to use a https://redis.io/docs/latest/develop/clients/jedis/connect/#connect-to-a-redis-cluster[JedisCluster client] to route history data to Redis nodes.
+
+|[[debezium-source-database-history-redis-client-library]]<<debezium-source-database-history-redis-client-library, `debezium.source.schema.history.internal.redis.client.library`>>
+|`jedis`
+|If using Redis to store schema history, specifies the Redis client driver library to use.
+Set the value to `jedis` (default) or `lettuce`.
+The `lettuce` driver supports single instance mode only and requires the optional `io.lettuce:lettuce-core` artifact on the runtime classpath.
 
 |[[schema-history-internal-rocketmq-topic]]<<schema-history-internal-rocketmq-topic, `debezium.source.schema.history.internal.rocketmq.topic`>>
 |
@@ -1332,6 +1344,12 @@ By default it is `0` (disabled).
 |`false`
 |Specifies whether {prodname} uses Redis Cluster mode for sink operations.
 Set the value to `true` to configure {prodname} to use a  https://redis.io/docs/latest/develop/clients/jedis/connect/#connect-to-a-redis-cluster[JedisCluster client] to connect to Redis.
+
+|[[redis-client-library]]<<redis-client-library, `debezium.sink.redis.client.library`>>
+|`jedis`
+|Specifies the Redis client driver library that {prodname} uses for sink operations.
+Set the value to `jedis` (default) or `lettuce`.
+The `lettuce` driver supports single instance mode only and requires the optional `io.lettuce:lettuce-core` artifact on the runtime classpath.
 
 |===
 

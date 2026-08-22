@@ -62,6 +62,16 @@
             <groupId>redis.clients</groupId>
             <artifactId>jedis</artifactId>
         </dependency>
+        <!--
+            Optional so that the default (Jedis) deployments do not pull in Lettuce and its Netty/Reactor
+            transitive dependencies. Users who set redis.client.library=lettuce must add lettuce-core to
+            the runtime classpath themselves.
+        -->
+        <dependency>
+            <groupId>io.lettuce</groupId>
+            <artifactId>lettuce-core</artifactId>
+            <optional>true</optional>
+        </dependency>
         <dependency>
             <groupId>io.smallrye.reactive</groupId>
             <artifactId>mutiny</artifactId>
