@@ -11,6 +11,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.math.BigInteger;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
@@ -812,6 +813,155 @@ public class CappedLogFileSessionSelectorTest {
         assertThat(result.logFiles()).extracting(LogFile::getFileName)
                 .containsExactly("arc1.log", "runt2.log", "runt3.log", "arc4.log", "arc5.log");
         assertThat(result.effectiveUpperBounds()).isEqualTo(Scn.valueOf(600));
+    }
+
+    @Test
+    @FixFor("dbz#2326")
+    void testStallGrowsLinearlyWhenBoundaryBarelyAhead() {
+        // Steady pin where the mined boundary sits just past the budget window: the derived
+        // width offers nothing beyond the +1 floor, so growth stays exactly linear
+        final LogInterceptor interceptor = new LogInterceptor(CappedLogFileSessionSelector.class);
+        interceptor.setLoggerLevel(CappedLogFileSessionSelector.class, Level.DEBUG);
+
+        List<LogFile> logs = List.of(
+                createArchiveLog("arc1.log", 100, 200, 1, 1, ONE_GB),
+                createArchiveLog("arc2.log", 200, 300, 2, 1, ONE_GB),
+                createArchiveLog("arc3.log", 300, 400, 3, 1, ONE_GB),
+                createRedoLog("redo1.log", 400, 4, 1));
+        LogFilesResult result = new LogFilesResult(logs, singleThreadOpen());
+
+        // Call 1: capped at arc1+arc2, mined up to 300
+        selector.selectLogsForSession(result, UPPER_BOUNDS);
+
+        // Call 2: stall; 2 GB lie below the mined boundary => derived 2, the floor grows to 3
+        SessionLogSelection second = selector.selectLogsForSession(result, UPPER_BOUNDS);
+        assertThat(second.logFiles()).extracting(LogFile::getFileName)
+                .containsExactly("arc1.log", "arc2.log", "arc3.log");
+        assertThat(second.effectiveUpperBounds()).isEqualTo(Scn.valueOf(400));
+        assertThat(interceptor.containsMessage("growing log count per redo thread to 3")).isTrue();
+    }
+
+    @Test
+    @FixFor("dbz#2326")
+    void testStallJumpsToDerivedCountInSingleStep() {
+        // A pin re-engages after an online pass recorded a far-ahead boundary: the first stall
+        // derives the full width to the mined ground in one step instead of climbing one log
+        // per session toward it
+        final LogInterceptor interceptor = new LogInterceptor(CappedLogFileSessionSelector.class);
+        interceptor.setLoggerLevel(CappedLogFileSessionSelector.class, Level.DEBUG);
+        CappedLogFileSessionSelector pinnedSelector = new CappedLogFileSessionSelector(1, ONE_GB, Scn.NULL);
+
+        // Call 1: online pass mining up to 500; boundary 500 recorded, growth baseline cleared
+        List<LogFile> onlineLogs = List.of(
+                createArchiveLog("arc0.log", 100, 150, 1, 1, ONE_GB / 2),
+                createRedoLog("redo1.log", 150, 2, 1));
+        pinnedSelector.selectLogsForSession(new LogFilesResult(onlineLogs, singleThreadOpen()), Scn.valueOf(500));
+
+        // Call 2: a burst left a pinned backlog; budget=1 => {arc1}, the extension pushes past 500
+        List<LogFile> backlogLogs = List.of(
+                createArchiveLog("arc1.log", 100, 200, 1, 1, ONE_GB),
+                createArchiveLog("arc2.log", 200, 300, 2, 1, ONE_GB),
+                createArchiveLog("arc3.log", 300, 400, 3, 1, ONE_GB),
+                createArchiveLog("arc4.log", 400, 500, 4, 1, ONE_GB),
+                createArchiveLog("arc5.log", 500, 600, 5, 1, ONE_GB),
+                createArchiveLog("arc6.log", 600, 700, 6, 1, ONE_GB),
+                createRedoLog("redo1.log", 700, 7, 1));
+        LogFilesResult backlogResult = new LogFilesResult(backlogLogs, singleThreadOpen());
+
+        SessionLogSelection second = pinnedSelector.selectLogsForSession(backlogResult, UPPER_BOUNDS);
+        assertThat(second.logFiles()).extracting(LogFile::getFileName)
+                .containsExactly("arc1.log", "arc2.log", "arc3.log", "arc4.log", "arc5.log");
+        assertThat(second.effectiveUpperBounds()).isEqualTo(Scn.valueOf(600));
+
+        // Call 3: stall; 5 GB lie below the mined boundary of 600 => budget jumps 1 -> 5 in one
+        // step (linear growth would have logged 2)
+        SessionLogSelection third = pinnedSelector.selectLogsForSession(backlogResult, UPPER_BOUNDS);
+        assertThat(third.logFiles()).extracting(LogFile::getFileName)
+                .containsExactly("arc1.log", "arc2.log", "arc3.log", "arc4.log", "arc5.log", "arc6.log");
+        assertThat(third.effectiveUpperBounds()).isEqualTo(Scn.valueOf(700));
+        assertThat(interceptor.containsMessage("growing log count per redo thread to 5")).isTrue();
+        assertThat(interceptor.containsMessage("growing log count per redo thread to 2")).isFalse();
+    }
+
+    @Test
+    @FixFor("dbz#2326")
+    void testStallGrowthClampedAtMaximumWhileBoundaryStillAdvances() {
+        // The derived width is clamped at the growth ceiling so a session's window stays within
+        // the query timeout; while clamped, the boundary still advances via the extension
+        final LogInterceptor interceptor = new LogInterceptor(CappedLogFileSessionSelector.class);
+        interceptor.setLoggerLevel(CappedLogFileSessionSelector.class, Level.DEBUG);
+        CappedLogFileSessionSelector pinnedSelector = new CappedLogFileSessionSelector(1, ONE_GB, Scn.NULL);
+        final Scn upperBounds = Scn.valueOf(5000);
+
+        // Call 1: online pass mining up to 1850
+        List<LogFile> onlineLogs = List.of(
+                createArchiveLog("arc0.log", 100, 150, 1, 1, ONE_GB / 2),
+                createRedoLog("redo1.log", 150, 2, 1));
+        pinnedSelector.selectLogsForSession(new LogFilesResult(onlineLogs, singleThreadOpen()), Scn.valueOf(1850));
+
+        // Call 2: a 25-archive pinned backlog; budget=1 => {arc1}, the extension pushes past
+        // 1850 => arc1..arc18, mined up to 1900
+        List<LogFile> backlogLogs = new ArrayList<>();
+        for (int i = 1; i <= 25; i++) {
+            backlogLogs.add(createArchiveLog("arc" + i + ".log", 100 * i, 100 * (i + 1), i, 1, ONE_GB));
+        }
+        backlogLogs.add(createRedoLog("redo1.log", 2600, 26, 1));
+        LogFilesResult backlogResult = new LogFilesResult(backlogLogs, singleThreadOpen());
+
+        SessionLogSelection second = pinnedSelector.selectLogsForSession(backlogResult, upperBounds);
+        assertThat(second.logFiles()).hasSize(18);
+        assertThat(second.effectiveUpperBounds()).isEqualTo(Scn.valueOf(1900));
+
+        // Call 3: stall; 18 GB lie below the mined boundary but the derived count clamps at 16;
+        // the budget covers arc1..arc16 and the extension adds arc17..arc19
+        SessionLogSelection third = pinnedSelector.selectLogsForSession(backlogResult, upperBounds);
+        assertThat(third.logFiles()).hasSize(19);
+        assertThat(third.effectiveUpperBounds()).isEqualTo(Scn.valueOf(2000));
+        assertThat(interceptor.containsMessage("growing log count per redo thread to 16")).isTrue();
+        assertThat(interceptor.containsMessage("growing log count per redo thread to 17")).isFalse();
+        assertThat(interceptor.containsMessage("growing log count per redo thread to 18")).isFalse();
+
+        // Call 4: still stalled; the budget holds at the ceiling yet the boundary advances
+        SessionLogSelection fourth = pinnedSelector.selectLogsForSession(backlogResult, upperBounds);
+        assertThat(fourth.logFiles()).hasSize(20);
+        assertThat(fourth.effectiveUpperBounds()).isEqualTo(Scn.valueOf(2100));
+        assertThat(interceptor.containsMessage("growing log count per redo thread to 17")).isFalse();
+    }
+
+    @Test
+    @FixFor("dbz#2326")
+    void testAllOnlineResetStillAppliesAfterDerivedGrowth() {
+        // The all-online reset must survive derived growth: once a grown budget reaches the
+        // online redo, the count resets to the minimum and the growth baseline clears
+        final LogInterceptor interceptor = new LogInterceptor(CappedLogFileSessionSelector.class);
+        interceptor.setLoggerLevel(CappedLogFileSessionSelector.class, Level.DEBUG);
+        CappedLogFileSessionSelector pinnedSelector = new CappedLogFileSessionSelector(1, ONE_GB, Scn.NULL);
+
+        // Call 1: online pass mining up to 500
+        List<LogFile> onlineLogs = List.of(
+                createArchiveLog("arc0.log", 100, 150, 1, 1, ONE_GB / 2),
+                createRedoLog("redo1.log", 150, 2, 1));
+        pinnedSelector.selectLogsForSession(new LogFilesResult(onlineLogs, singleThreadOpen()), Scn.valueOf(500));
+
+        // Calls 2-3: pinned backlog; budget climbs to the derived width of 5 as in the jump test
+        List<LogFile> backlogLogs = List.of(
+                createArchiveLog("arc1.log", 100, 200, 1, 1, ONE_GB),
+                createArchiveLog("arc2.log", 200, 300, 2, 1, ONE_GB),
+                createArchiveLog("arc3.log", 300, 400, 3, 1, ONE_GB),
+                createArchiveLog("arc4.log", 400, 500, 4, 1, ONE_GB),
+                createArchiveLog("arc5.log", 500, 600, 5, 1, ONE_GB),
+                createArchiveLog("arc6.log", 600, 700, 6, 1, ONE_GB),
+                createRedoLog("redo1.log", 700, 7, 1));
+        LogFilesResult backlogResult = new LogFilesResult(backlogLogs, singleThreadOpen());
+        pinnedSelector.selectLogsForSession(backlogResult, UPPER_BOUNDS);
+        pinnedSelector.selectLogsForSession(backlogResult, UPPER_BOUNDS);
+
+        // Call 4: stall again; the derived width of 6 reaches the online redo => all threads
+        // mine online, the count resets to the minimum
+        SessionLogSelection fourth = pinnedSelector.selectLogsForSession(backlogResult, UPPER_BOUNDS);
+        assertThat(fourth.logFiles()).containsExactlyInAnyOrderElementsOf(backlogLogs);
+        assertThat(fourth.effectiveUpperBounds()).isEqualTo(UPPER_BOUNDS);
+        assertThat(interceptor.containsMessage("resetting log count per redo thread to 1")).isTrue();
     }
 
     private static LogFile createArchiveLog(String name, long startScn, long endScn, int seq, int thread, long bytes) {
