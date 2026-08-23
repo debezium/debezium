@@ -91,16 +91,20 @@ public class SqlServerDatabaseSchema extends HistorizedRelationalDatabaseSchema 
      * @return {@code true} if the column is a max-type column
      */
     public static boolean isMaxColumn(Column column) {
-        switch (column.jdbcType()) {
+        return isMaxColumn(column.jdbcType(), column.length());
+    }
+
+    private static boolean isMaxColumn(int jdbcType, int length) {
+        switch (jdbcType) {
             case Types.LONGVARCHAR:
             case Types.LONGNVARCHAR:
             case Types.LONGVARBINARY:
                 return true;
             case Types.VARCHAR:
             case Types.VARBINARY:
-                return column.length() == SQL_SERVER_MAX_BYTE_LENGTH;
+                return length == SQL_SERVER_MAX_BYTE_LENGTH;
             case Types.NVARCHAR:
-                return column.length() == SQL_SERVER_MAX_NATIONAL_CHARACTER_LENGTH;
+                return length == SQL_SERVER_MAX_NATIONAL_CHARACTER_LENGTH;
             default:
                 return false;
         }
@@ -114,9 +118,7 @@ public class SqlServerDatabaseSchema extends HistorizedRelationalDatabaseSchema 
      * @return {@code true} if the JDBC type is a max-type
      */
     public static boolean isMaxColumnJdbcType(int jdbcType) {
-        return jdbcType == Types.LONGVARCHAR
-                || jdbcType == Types.LONGNVARCHAR
-                || jdbcType == Types.LONGVARBINARY;
+        return isMaxColumn(jdbcType, Column.UNSET_INT_VALUE);
     }
 
 }
