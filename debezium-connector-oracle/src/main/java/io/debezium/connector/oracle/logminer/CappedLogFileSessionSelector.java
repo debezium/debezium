@@ -28,6 +28,10 @@ import io.debezium.connector.oracle.logminer.LogFileCollector.LogFilesResult;
  */
 public class CappedLogFileSessionSelector implements LogFileSessionSelector {
 
+    // Hard ceiling for stall-driven budget growth; keeps a single mining session's window within
+    // the database query timeout no matter how far ahead the previously mined boundary lies.
+    private static final int MAX_LOGS_PER_REDO_THREAD = 16;
+
     private final Logger LOGGER = LoggerFactory.getLogger(CappedLogFileSessionSelector.class);
 
     private final int minimumLogsPerRedoThread;
@@ -79,7 +83,13 @@ public class CappedLogFileSessionSelector implements LogFileSessionSelector {
         Map<Integer, List<LogFile>> budgetLogsByThread = getThreadLogsCappedByBudget(logsByThread, (long) logsPerRedoThread * redoLogSizeInBytes);
 
         if (previousBudgetLogsByThread != null && budgetLogsByThread.equals(previousBudgetLogsByThread)) {
-            logsPerRedoThread++;
+            // Derive the window width from the stall distance so the budget covers the already mined
+            // ground in one step instead of one log per session. The +1 floor preserves the previous
+            // linear-growth guarantee; the cap keeps a session's window within the query timeout,
+            // yielding to a configured minimum above it.
+            final int derivedLogsPerRedoThread = deriveLogsPerRedoThread(logsByThread);
+            logsPerRedoThread = Math.min(Math.max(derivedLogsPerRedoThread, logsPerRedoThread + 1),
+                    Math.max(MAX_LOGS_PER_REDO_THREAD, minimumLogsPerRedoThread));
             LOGGER.debug("Capped log set unchanged, growing log count per redo thread to {}.", logsPerRedoThread);
             budgetLogsByThread = getThreadLogsCappedByBudget(logsByThread, (long) logsPerRedoThread * redoLogSizeInBytes);
         }
@@ -146,9 +156,9 @@ public class CappedLogFileSessionSelector implements LogFileSessionSelector {
     }
 
     private int deriveLogsPerRedoThread(Map<Integer, List<LogFile>> logsByThread) {
-        // The seeded boundary marks ground already mined before the restart; the per-thread byte
-        // span up to it re-expresses the window width the budget had grown to, so the first
-        // session resumes at that width rather than re-climbing from the minimum.
+        // The previously mined boundary marks ground already covered; the per-thread byte span up
+        // to it re-expresses the window width required to cover that ground, so a seeded restart
+        // or a stalled budget resumes at that width rather than re-climbing from the minimum.
         long maxThreadBytes = 0;
         for (List<LogFile> threadLogs : logsByThread.values()) {
             long threadBytes = 0;
