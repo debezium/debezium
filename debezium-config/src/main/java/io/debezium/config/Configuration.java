@@ -1039,7 +1039,7 @@ public interface Configuration {
     String getString(String key);
 
     default List<String> getList(Field field) {
-        return getList(field.name());
+        return getList(field, ",", Function.identity());
     }
 
     default List<String> getList(String key) {
@@ -1047,11 +1047,16 @@ public interface Configuration {
     }
 
     default <T> List<T> getList(Field field, String separator, Function<String, T> converter) {
-        return getList(field.name(), separator, converter);
+        // Resolve through getString(Field) so the field's default value (and deprecated aliases) are
+        // applied, consistent with getString(Field)/getInteger(Field)/etc.
+        return splitToList(getString(field), separator, converter);
     }
 
     default <T> List<T> getList(String key, String separator, Function<String, T> converter) {
-        var value = getString(key);
+        return splitToList(getString(key), separator, converter);
+    }
+
+    private static <T> List<T> splitToList(String value, String separator, Function<String, T> converter) {
         return value == null ? List.of()
                 : Arrays.stream(value.split(Pattern.quote(separator)))
                         .map(String::trim)
@@ -1133,7 +1138,13 @@ public interface Configuration {
      * @see String#split(String)
      */
     default List<String> getStrings(Field field, String regex) {
-        return getStrings(field.name(), regex);
+        // Resolve through getString(Field) so the field's default value (and deprecated aliases) are
+        // applied, consistent with getString(Field) and getList(Field).
+        String value = getString(field);
+        if (value == null) {
+            return null;
+        }
+        return Collect.arrayListOf(value.split(regex));
     }
 
     /**
