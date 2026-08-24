@@ -301,23 +301,29 @@ public class LogMinerDmlParser implements DmlParser {
 
         int columnIndex = 0;
         int sqlLength = sql.length();
-        StringBuilder collectedValue = null;
+        String collectedValue = null;
+        StringBuilder valueBuffer = null;
+        int valueStart = -1;
         for (; index < sqlLength; ++index) {
             char c = sql.charAt(index);
-            char lookAhead = (index + 1 < sqlLength) ? sql.charAt(index + 1) : 0;
 
             if (inQuote) {
                 if (c != '\'') {
-                    collectedValue.append(c);
+                    // part of the quoted value, collected in bulk when the segment or value ends
+                    continue;
                 }
-                else if (lookAhead == '\'') {
-                    collectedValue.append('\'');
+                char lookAhead = (index + 1 < sqlLength) ? sql.charAt(index + 1) : 0;
+                if (lookAhead == '\'') {
+                    // escaped single quote, collect the segment up to and including the quote character
+                    valueBuffer = appendValueSegment(valueBuffer, sql, valueStart, index + 1);
                     // In relaxed mode, '' before an end-of-value boundary means (lone ') + (closing ').
                     // Check whether the following after '' chars signal end-of-value.
                     lookAhead = (index + 2 < sqlLength) ? sql.charAt(index + 2) : 0;
                     if (useRelaxedQuotes && (lookAhead == ',' || lookAhead == ')')) {
+                        valueStart = index + 1;
                         continue;
                     }
+                    valueStart = index + 2;
                     index = index + 1;
                     continue;
                 }
@@ -328,27 +334,26 @@ public class LogMinerDmlParser implements DmlParser {
                     // signify the next value, or the end parenthesis to identify that being the last column value.
                     // Obviously if the text has "'," or "')" as the text sequence, this rule will fail, but there
                     // really is no other way to identify this.
-                    collectedValue.append(c);
                     continue;
                 }
+                inQuote = false;
+                collectedValue = collectValue(valueBuffer, sql, valueStart, index);
+                valueBuffer = null;
+                continue;
             }
 
-            if (c == '(' && !inQuote && !inValues) {
+            if (c == '(' && !inValues) {
                 inValues = true;
                 start = index + 1;
             }
-            else if (c == '(' && !inQuote) {
+            else if (c == '(') {
                 nested++;
             }
             else if (c == '\'') {
-                if (inQuote) {
-                    inQuote = false;
-                    continue;
-                }
                 inQuote = true;
-                collectedValue = new StringBuilder();
+                valueStart = index + 1;
             }
-            else if (!inQuote && (c == ',' || c == ')')) {
+            else if (c == ',' || c == ')') {
                 if (c == ')' && nested != 0) {
                     nested--;
                     continue;
@@ -364,9 +369,9 @@ public class LogMinerDmlParser implements DmlParser {
                 }
 
                 if (sql.charAt(start) == '\'' && sql.charAt(index - 1) == '\'') {
-                    // value is single-quoted at the start/end, substring without the quotes.
+                    // value is single-quoted at the start/end, use the collected value without the quotes.
                     int position = getColumnIndexByName(columnNames[columnIndex], table);
-                    values[position] = collectedValue.toString();
+                    values[position] = collectedValue;
                     collectedValue = null;
                 }
                 else {
@@ -417,31 +422,33 @@ public class LogMinerDmlParser implements DmlParser {
 
         int index = start;
         String currentColumnName = null;
-        StringBuilder collectedValue = null;
+        StringBuilder valueBuffer = null;
+        int valueStart = -1;
         for (; index < sql.length(); ++index) {
             char c = sql.charAt(index);
+            if (inSingleQuote && c != '\'') {
+                // part of the quoted value, collected in bulk when the segment or value ends
+                continue;
+            }
+
             char lookAhead = (index + 1 < sql.length()) ? sql.charAt(index + 1) : 0;
             char lookAhead2 = (index + 2 < sql.length()) ? sql.charAt(index + 2) : 0;
             char lookAhead3 = (index + 3 < sql.length()) ? sql.charAt(index + 3) : 0;
 
-            if (inSingleQuote) {
-                if (c != '\'') {
-                    collectedValue.append(c);
+            if (inSingleQuote && lookAhead == '\'') {
+                // escaped single quote, collect the segment up to and including the quote character
+                valueBuffer = appendValueSegment(valueBuffer, sql, valueStart, index + 1);
+                // In relaxed mode, '' before an end-of-value boundary means (lone ') + (closing ').
+                // Check whether the following after '' chars signal end-of-value.
+                if (useRelaxedQuotes && (sql.startsWith(", \"", index + 2) ||
+                        sql.startsWith(" where ", index + 2) ||
+                        (lookAhead2 == ';' && lookAhead3 == 0))) {
+                    valueStart = index + 1;
+                    continue;
                 }
-                else {
-                    if (lookAhead == '\'') {
-                        collectedValue.append('\'');
-                        // In relaxed mode, '' before an end-of-value boundary means (lone ') + (closing ').
-                        // Check whether the following after '' chars signal end-of-value.
-                        if (useRelaxedQuotes && (sql.startsWith(", \"", index + 2) ||
-                                sql.startsWith(" where ", index + 2) ||
-                                (lookAhead2 == ';' && lookAhead3 == 0))) {
-                            continue;
-                        }
-                        index = index + 1;
-                        continue;
-                    }
-                }
+                valueStart = index + 2;
+                index = index + 1;
+                continue;
             }
 
             if (c == '"' && inColumnName) {
@@ -492,8 +499,7 @@ public class LogMinerDmlParser implements DmlParser {
                         // reached end of the SQL
                     }
                     else {
-                        // found a solo single quote, treat it as part of value
-                        collectedValue.append(c);
+                        // found a solo single quote, treat it as part of value; it remains in the current segment
                         continue;
                     }
                 }
@@ -501,19 +507,20 @@ public class LogMinerDmlParser implements DmlParser {
                 if (inSingleQuote) {
                     inSingleQuote = false;
                     if (nested == 0) {
-                        setColumnValue(currentColumnName, collectedValue, table, newValues);
-                        collectedValue = null;
+                        setColumnValue(currentColumnName, collectValue(valueBuffer, sql, valueStart, index), table, newValues);
                         start = index + 1;
                         inColumnValue = false;
                         inColumnName = false;
                     }
+                    valueBuffer = null;
                     continue;
                 }
                 if (!inSpecial) {
                     start = index;
                 }
                 inSingleQuote = true;
-                collectedValue = new StringBuilder();
+                valueStart = index + 1;
+                valueBuffer = null;
             }
             else if (c == ',' && !inColumnValue && !inColumnName) {
                 // Set clause uses ', ' skip following space
@@ -625,21 +632,21 @@ public class LogMinerDmlParser implements DmlParser {
 
         int index = start;
         String currentColumnName = null;
-        StringBuilder collectedValue = null;
+        StringBuilder valueBuffer = null;
+        int valueStart = -1;
         for (; index < sql.length(); ++index) {
             char c = sql.charAt(index);
+            if (inSingleQuote && c != '\'') {
+                // part of the quoted value, collected in bulk when the segment or value ends
+                continue;
+            }
             char lookAhead = (index + 1 < sql.length()) ? sql.charAt(index + 1) : 0;
-            if (inSingleQuote) {
-                if (c != '\'') {
-                    collectedValue.append(c);
-                }
-                else {
-                    if (lookAhead == '\'') {
-                        collectedValue.append('\'');
-                        index = index + 1;
-                        continue;
-                    }
-                }
+            if (inSingleQuote && lookAhead == '\'') {
+                // escaped single quote, collect the segment up to and including the quote character
+                valueBuffer = appendValueSegment(valueBuffer, sql, valueStart, index + 1);
+                valueStart = index + 2;
+                index = index + 1;
+                continue;
             }
             if (c == '"' && inColumnName) {
                 // Where clause column names are double-quoted
@@ -676,19 +683,20 @@ public class LogMinerDmlParser implements DmlParser {
                 if (inSingleQuote) {
                     inSingleQuote = false;
                     if (nested == 0) {
-                        setColumnValue(currentColumnName, collectedValue, table, values);
-                        collectedValue = null;
+                        setColumnValue(currentColumnName, collectValue(valueBuffer, sql, valueStart, index), table, values);
                         start = index + 1;
                         inColumnValue = false;
                         inColumnName = false;
                     }
+                    valueBuffer = null;
                     continue;
                 }
                 if (!inSpecial) {
                     start = index;
                 }
                 inSingleQuote = true;
-                collectedValue = new StringBuilder();
+                valueStart = index + 1;
+                valueBuffer = null;
             }
             else if (inColumnValue && !inSingleQuote) {
                 if (!inSpecial) {
@@ -757,10 +765,38 @@ public class LogMinerDmlParser implements DmlParser {
         }
     }
 
-    private void setColumnValue(String columnName, StringBuilder columnValue, Table table, Object[] values) {
-        if (!ORA_ARCHIVE_STATE.equals(columnName)) {
-            int position = getColumnIndexByName(columnName, table);
-            values[position] = columnValue.toString();
+    /**
+     * Appends the SQL fragment between {@code start} (inclusive) and {@code end} (exclusive) to the
+     * buffer, materializing the buffer if it does not yet exist.  A buffer is only materialized when
+     * a quoted value contains an escape sequence; values without escapes are collected directly from
+     * the SQL text by {@link #collectValue(StringBuilder, String, int, int)} without intermediate copies.
+     *
+     * @param buffer the current value buffer, may be {@code null} if no escape has been seen yet
+     * @param sql the sql statement
+     * @param start the segment start index, inclusive
+     * @param end the segment end index, exclusive
+     * @return the buffer with the segment appended, never {@code null}
+     */
+    private static StringBuilder appendValueSegment(StringBuilder buffer, String sql, int start, int end) {
+        if (buffer == null) {
+            buffer = new StringBuilder(Math.max(16, (end - start) * 2));
         }
+        return buffer.append(sql, start, end);
+    }
+
+    /**
+     * Collects the final text of a quoted column value that ends at {@code end}, exclusive.
+     *
+     * @param buffer the current value buffer, {@code null} when the value contains no escape sequences
+     * @param sql the sql statement
+     * @param start the start index of the trailing value segment, inclusive
+     * @param end the end index of the trailing value segment, exclusive
+     * @return the collected column value, never {@code null}
+     */
+    private static String collectValue(StringBuilder buffer, String sql, int start, int end) {
+        if (buffer == null) {
+            return sql.substring(start, end);
+        }
+        return buffer.append(sql, start, end).toString();
     }
 }
