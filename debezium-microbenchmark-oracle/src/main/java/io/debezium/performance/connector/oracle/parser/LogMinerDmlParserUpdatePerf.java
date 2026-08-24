@@ -115,6 +115,74 @@ public class LogMinerDmlParserUpdatePerf {
         }
     }
 
+    @State(Scope.Thread)
+    public static class RelaxedParserState {
+
+        private static final int QUOTE_INTERVAL = 64;
+        private static final int COLUMN_COUNT = 10;
+        private static final long SEED = 42L;
+        private static final String CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 abcdefghijklmnopqrstuvwxyz";
+
+        public DmlParser dmlParser;
+        public Table table;
+        public String loneQuoteUpdateDml;
+
+        @Param({ "50", "4000", "32000" })
+        public int valueLength;
+
+        @Setup(Level.Trial)
+        public void doSetup() {
+            dmlParser = new LogMinerDmlParser(new OracleConnectorConfig(Configuration.create()
+                    .with(OracleConnectorConfig.LOG_MINING_SQL_RELAXED_QUOTE_DETECTION, "true")
+                    .build()));
+            table = createTable();
+            loneQuoteUpdateDml = updateStatement();
+            // fail fast during setup if the statement shape cannot be parsed
+            dmlParser.parse(loneQuoteUpdateDml, table);
+        }
+
+        private Table createTable() {
+            TableEditor editor = Table.editor()
+                    .tableId(TableId.parse("DEBEZIUM.TEST"))
+                    .addColumn(Column.editor().name("ID").create());
+
+            for (int i = 0; i < COLUMN_COUNT; ++i) {
+                editor.addColumn(Column.editor().name("COL" + i).create());
+            }
+
+            return editor.create();
+        }
+
+        private String updateStatement() {
+            final Random random = new Random(SEED);
+            final StringBuilder sb = new StringBuilder("update \"DEBEZIUM\".\"TEST\" set \"ID\" = '1'");
+            for (int i = 0; i < COLUMN_COUNT; ++i) {
+                sb.append(", \"COL").append(i).append("\" = '").append(getColumnValue(random)).append("'");
+            }
+            sb.append(" where \"ID\" = '1'");
+            for (int i = 0; i < COLUMN_COUNT; ++i) {
+                sb.append(" and \"COL").append(i).append("\" = '").append(getColumnValue(random)).append("'");
+            }
+            return sb.append(";").toString();
+        }
+
+        private String getColumnValue(Random random) {
+            final StringBuilder sb = new StringBuilder(valueLength + 16);
+            for (int i = 0; i < valueLength; ++i) {
+                if (i > 0 && i % QUOTE_INTERVAL == 0) {
+                    // an unescaped apostrophe followed by " w", the sequence that forces relaxed
+                    // quote detection to test whether the where-clause starts at this position;
+                    // the trailing "x" guarantees the value never contains a real " where " token
+                    sb.append("' wx");
+                }
+                else {
+                    sb.append(CHARS.charAt(random.nextInt(CHARS.length())));
+                }
+            }
+            return sb.toString();
+        }
+    }
+
     @Benchmark
     @BenchmarkMode(Mode.Throughput)
     @OutputTimeUnit(TimeUnit.SECONDS)
@@ -123,6 +191,16 @@ public class LogMinerDmlParserUpdatePerf {
     @Measurement(iterations = 5, time = 2, timeUnit = TimeUnit.SECONDS)
     public LogMinerDmlEntry testUpdateWithPlainValues(ParserState state) {
         return state.dmlParser.parse(state.plainValuesUpdateDml, state.table);
+    }
+
+    @Benchmark
+    @BenchmarkMode(Mode.Throughput)
+    @OutputTimeUnit(TimeUnit.SECONDS)
+    @Fork(value = 1)
+    @Warmup(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
+    @Measurement(iterations = 5, time = 2, timeUnit = TimeUnit.SECONDS)
+    public LogMinerDmlEntry testUpdateWithLoneQuoteRelaxedValues(RelaxedParserState state) {
+        return state.dmlParser.parse(state.loneQuoteUpdateDml, state.table);
     }
 
     @Benchmark
