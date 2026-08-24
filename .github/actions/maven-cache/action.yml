@@ -3,23 +3,40 @@ description: "Restores the Maven ~/.m2/repository cache"
 
 inputs:
   key:
-    description: "The maven cache key to use"
+    description: "The maven cache key to use, formatted as <prefix>-<pom-hash>"
     required: true
   save:
     description: "Whether to save the cache after the job completes"
     required: false
-    default: 'true'
+    default: 'false'
+
+outputs:
+  cache-hit:
+    description: "Whether an exact match was found for the cache key"
+    value: ${{ steps.cache-restore.outputs.cache-hit || steps.cache-check.outputs.cache-hit }}
 
 runs:
   using: "composite"
   steps:
+    # The final dash-separated element of the key is always a pom content hash; stripping
+    # it yields the reference cache prefix, e.g. maven-debezium-test-push-build-.  Restoring
+    # by prefix lets a build whose poms differ from the reference branch start from the
+    # closest available cache instead of an empty repository.
+    - name: Compute fallback restore key
+      id: cache-meta
+      shell: bash
+      env:
+        KEY: ${{ inputs.key }}
+      run: echo "restore-prefix=${KEY%-*}-" >> "${GITHUB_OUTPUT}"
+
     - name: Restore Maven Repository (read-only)
       if: ${{ inputs.save != 'true' }}
+      id: cache-restore
       uses: actions/cache/restore@v5
       with:
         path: ~/.m2/repository
         key: ${{ inputs.key }}
-        restore-keys: ${{ inputs.key }}
+        restore-keys: ${{ steps.cache-meta.outputs.restore-prefix }}
 
     - name: Cache Maven Repository
       if: ${{ inputs.save == 'true' }}
@@ -28,5 +45,25 @@ runs:
       with:
         path: ~/.m2/repository
         key: ${{ inputs.key }}
-        restore-keys: ${{ inputs.key }}
+        restore-keys: ${{ steps.cache-meta.outputs.restore-prefix }}
 
+    # Pull request runs never save caches; they restore the reference branch cache above
+    # and then overlay the dependency delta captured by the build_cache job earlier in
+    # this run, which contains any dependencies the PR added on top of the reference
+    # cache.  The download is tolerant: when no delta artifact exists (e.g. an expired
+    # artifact on a stale re-run), the build simply downloads what it is missing.
+    - name: Download PR dependency delta
+      if: ${{ github.event_name == 'pull_request' }}
+      id: delta
+      continue-on-error: true
+      uses: actions/download-artifact@v8
+      with:
+        name: maven-repo-delta-pr-${{ github.event.pull_request.number }}
+        path: ${{ runner.temp }}/maven-repo-delta
+
+    - name: Apply PR dependency delta
+      if: ${{ github.event_name == 'pull_request' && steps.delta.outcome == 'success' }}
+      shell: bash
+      run: |
+        mkdir -p ~/.m2/repository
+        tar -xzf "${RUNNER_TEMP}/maven-repo-delta/maven-repo-delta.tgz" -C ~/.m2/repository
