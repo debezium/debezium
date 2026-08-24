@@ -194,7 +194,7 @@ public class AsyncEmbeddedEngineTest {
 
         final Properties props = new Properties();
         props.put(EmbeddedEngineConfig.ENGINE_NAME.name(), "testing-connector");
-        props.setProperty(CommonConnectorConfig.TASKS_MAX.name(), "1");
+        props.setProperty("tasks.max", "1");
         props.put(EmbeddedEngineConfig.CONNECTOR_CLASS.name(), SimpleSourceConnector.class.getName());
         props.put(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
         props.put(SimpleSourceConnector.BATCH_COUNT, 1);
