@@ -54,7 +54,7 @@ You can see an example here:
       needs.file_changes.outputs.debezium-testing-changed == 'true' }}
     uses: ./.github/workflows/connector-mariadb-workflow.yml
     with:
-      maven-cache-key: maven-debezium-test-build
+      maven-cache-key: maven-debezium-test-push-build
 ```
 
 If the job does not require a matrix strategy, then you would define the job with an inline step that uses a defined action from the `.github/actions` directory.
@@ -74,7 +74,7 @@ You can see an example here:
         uses: actions/checkout@v4
       - uses: ./.github/actions/build-debezium-sqlserver
         with:
-          maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+          maven-cache-key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
 ```
 
 Conceptually, the idea is to drive as much down into a GitHub action in `.github/actions` as possible.

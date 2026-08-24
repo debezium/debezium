@@ -8,7 +8,7 @@ inputs:
   maven-cache-save:
     description: "Whether to save the Maven cache after the job completes"
     required: false
-    default: 'true'
+    default: 'false'
   only-build:
     description: "Only build without tests, checkstyle, and format"
     required: false

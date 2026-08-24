@@ -35,7 +35,7 @@ jobs:
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
-          restore-keys: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
+          restore-keys: maven-debezium-test-push-build-
       - name: Maven Build
         run: >
           ./mvnw clean install -B -pl debezium-bom,debezium-connector-sqlserver -am 
@@ -69,7 +69,7 @@ jobs:
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
-          restore-keys: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
+          restore-keys: maven-debezium-test-push-build-
       - name: Maven Build
         run: >
           ./mvnw clean install -B -pl debezium-bom,debezium-connector-mysql -am 
@@ -103,7 +103,7 @@ jobs:
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
-          restore-keys: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
+          restore-keys: maven-debezium-test-push-build-
       - name: Maven Build
         run: >
           ./mvnw clean install -B -pl debezium-bom,debezium-connector-postgres -am 
@@ -138,7 +138,7 @@ jobs:
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
-          restore-keys: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
+          restore-keys: maven-debezium-test-push-build-
       - name: Maven Build
         run: >
           ./mvnw clean install -B -pl debezium-bom,debezium-connector-mongodb -am 
@@ -173,7 +173,7 @@ jobs:
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
-          restore-keys: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
+          restore-keys: maven-debezium-test-push-build-
       # Intentionally does not use assembly profile.
       - name: Maven Build
         run: >
@@ -213,7 +213,7 @@ jobs:
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
-          restore-keys: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
+          restore-keys: maven-debezium-test-push-build-
       - name: Build Debezium Core
         run: >
           ./core/mvnw clean install -f core/pom.xml 
@@ -267,7 +267,7 @@ jobs:
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
-          restore-keys: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
+          restore-keys: maven-debezium-test-push-build-
       - name: Build Debezium Core
         run: >
           ./core/mvnw clean install -f core/pom.xml 
@@ -320,7 +320,7 @@ jobs:
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
-          restore-keys: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
+          restore-keys: maven-debezium-test-push-build-
       - name: Build Debezium Core
         run: >
           ./core/mvnw clean install -f core/pom.xml 
@@ -370,7 +370,7 @@ jobs:
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
-          restore-keys: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
+          restore-keys: maven-debezium-test-push-build-
       - name: Build Debezium Core
         run: >
           ./core/mvnw clean install -f core/pom.xml 
@@ -421,7 +421,7 @@ jobs:
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
-          restore-keys: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
+          restore-keys: maven-debezium-test-push-build-
       - name: Build Debezium Core
         run: >
           ./core/mvnw clean install -f core/pom.xml 
@@ -472,7 +472,7 @@ jobs:
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
-          restore-keys: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
+          restore-keys: maven-debezium-test-push-build-
       - name: Build Debezium Core
         run: >
           ./core/mvnw clean install -f core/pom.xml 
@@ -525,7 +525,7 @@ jobs:
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
-          restore-keys: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
+          restore-keys: maven-debezium-test-push-build-
       - name: Build Debezium Core
         run: >
           ./core/mvnw clean install -f core/pom.xml
@@ -579,7 +579,7 @@ jobs:
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
-          restore-keys: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
+          restore-keys: maven-debezium-test-push-build-
       - name: Build Debezium Core
         run: >
           ./core/mvnw clean install -f core/pom.xml
@@ -638,7 +638,7 @@ jobs:
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
-          restore-keys: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
+          restore-keys: maven-debezium-test-push-build-
       - name: Build (core)
         run: >
           ./core/mvnw clean install -f core/pom.xml
@@ -704,7 +704,7 @@ jobs:
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
-          restore-keys: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
+          restore-keys: maven-debezium-test-push-build-
       - name: Maven Build
         run: >
           ./mvnw clean install -B -pl debezium-bom,debezium-testing -am 
@@ -744,7 +744,7 @@ jobs:
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
-          restore-keys: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
+          restore-keys: maven-debezium-test-push-build-
       - name: Build Debezium Core
         run: >
           ./core/mvnw clean install -f core/pom.xml 
