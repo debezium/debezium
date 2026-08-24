@@ -321,7 +321,8 @@ To switch to a read-only implementation, set the value of the xref:postgres-prop
 
 ==== Ad hoc read-only incremental snapshots
 
-When the PostgreSQL connection is read-only, you can use any of the {link-prefix}:{link-signalling}#sending-signals-to-a-debezium-connector[available signaling channels] without the requirement to use the `source` channel.
+When a PostgreSQL connector uses a read-only connection, you can trigger incremental snapshots without using a signal data collection table.
+Instead, you can use any {link-prefix}:{link-signalling}#sending-signals-to-a-debezium-connector[available signaling channel].
 endif::community[]
 
 ifdef::community[]
@@ -1316,14 +1317,19 @@ If you do not want the connector to capture _truncate_ events, use the xref:post
 [[postgresql-message-events]]
 === _message_ events
 
+A *message* event captures a generic logical decoding message that is written directly to the WAL by using the `pg_logical_emit_message` function.
+The following examples show the event structure for transactional and non-transactional messages, and describe the fields in each.
+
+The message key is a `Struct` with a single field named `prefix`, carrying the prefix specified when inserting the message.
+The following JSON shows an example of a message value for a transactional message:
+
+ifdef::community[]
 [NOTE]
 ====
 This event type is only supported through the `pgoutput` plugin on Postgres 14+ (link:https://www.postgresql.org/docs/14/protocol-logicalrep-message-formats.html[Postgres Documentation])
 ====
+endif::community[]
 
-A  _message_ event signals that a generic logical decoding message has been inserted directly into the WAL typically with the `pg_logical_emit_message` function.
-The message key is a `Struct` with a single field named `prefix` in this case, carrying the prefix specified when inserting the message.
-The message value looks like this for transactional messages:
 
 [source,json,indent=0,subs="+attributes"]
 ----
@@ -2291,8 +2297,10 @@ The default `false` setting causes the custom converter to always return `null` 
 [[setting-up-postgresql]]
 == Setting up PostgreSQL
 
+Before running the {prodname} PostgreSQL connector, configure PostgreSQL to support logical replication, set up the required user permissions, and allow network access for the connector host.
+
 ifdef::community[]
-Before using the PostgreSQL connector to monitor the changes committed on a PostgreSQL server, decide which logical decoding plug-in you intend to use.
+Decide which logical decoding plug-in you intend to use.
 If you plan *not* to use the native `pgoutput` logical replication stream support, then you must install the logical decoding plug-in into the PostgreSQL server.
 Afterward, configure a user with sufficient privileges to perform replication.
 When the connector starts, it automatically creates the configured replication slot if the slot does not already exist.
@@ -2303,7 +2311,7 @@ If that is not an option, you are unable to use {prodname} with your database.
 endif::community[]
 
 ifdef::product[]
-To set up PostgreSQL so that the {prodname} connector can capture change events, you must configure the database to use the `pgoutput` logical replication plug-in, configure user permissions, and set up network access for replication.
+The {prodname} PostgreSQL connector requires the `pgoutput` logical replication plug-in.
 When the connector starts, it automatically creates the configured replication slot if the slot does not already exist.
 
 Details are in the following topics:
@@ -2421,6 +2429,8 @@ ifdef::community[]
 [[postgresql-in-the-cloud]]
 === PostgreSQL in the Cloud
 
+When you run PostgreSQL on a managed cloud platform such as Amazon RDS, Azure Database for PostgreSQL, Google Cloud SQL, or CrunchyBridge, additional steps are required to enable logical replication for {prodname}.
+
 [[postgresql-on-amazon-rds]]
 ==== PostgreSQL on Amazon RDS
 
@@ -2500,6 +2510,9 @@ If you use `all_tables`, which is the default value for `publication.autocreate.
 [[installing-postgresql-output-plugin]]
 === Installing the logical decoding output plug-in
 
+Install a logical decoding output plug-in on the PostgreSQL server so that the {prodname} connector can receive change events.
+The `pgoutput` plug-in is built into PostgreSQL and requires no installation; other plug-ins, such as `decoderbufs`, must be compiled and installed separately.
+
 [TIP]
 ====
 For more detailed instructions about setting up and testing logical decoding plug-ins, see xref:{link-postgresql-plugins}[Logical Decoding Output Plug-in Installation for PostgreSQL] .
@@ -2538,6 +2551,8 @@ endif::community[]
 // Type: procedure
 [id="debezium-postgresql-connector-specify-the-plugin-name"]
 === Specify the {prodname} `plugin.name`
+
+Set the `plugin.name` connector property to specify which logical decoding plug-in the connector uses to read change events from the PostgreSQL replication stream.
 
 ifdef::community[]
 In environments that require the connector to use the `pgoutput` logical decoding plug-in, such as Google Cloud SQL for PostgreSQL or PostgreSQL on Amazon RDS, you must explicitly set the value of the connector's `plugin.name` property to `pgoutput`.
@@ -2604,6 +2619,8 @@ ALTER USER existing_user WITH REPLICATION;
 // Title: Configure the PostgreSQL server for {prodname}
 [[postgresql-server-configuration]]
 === Configuring the PostgreSQL server
+
+Configure the PostgreSQL server to support logical decoding and to provide the replication parameters that the {prodname} connector requires to capture change events reliably.
 
 ifdef::community[]
 If you are using a xref:postgresql-output-plugin[logical decoding plug-in] other than pgoutput, after installing it, configure the PostgreSQL server as follows:
@@ -2742,15 +2759,16 @@ CREATE ROLE __<name>__ REPLICATION LOGIN;
 [[postgresql-replication-user-privileges]]
 === Setting privileges to enable {prodname} to create PostgreSQL publications when you use `pgoutput`
 
+When you use the `pgoutput` logical decoding plug-in, {prodname} streams change events from PostgreSQL publications.
+Grant the {prodname} database user the required privileges, and configure shared table ownership, so that the connector can create and manage publications for the tables it captures.
+
 ifdef::community[]
 If you use `pgoutput` as the logical decoding plugin, {prodname} must operate in the database as a user with specific privileges.
 endif::community[]
 
-{prodname} streams change events for PostgreSQL source tables from _publications_ that are created for the tables.
 Publications contain a filtered set of change events that are generated from one or more tables.
 The data in each publication is filtered based on the publication specification.
 The specification can be created by the PostgreSQL database administrator or by the {prodname} connector.
-To permit the {prodname} PostgreSQL connector to create publications and specify the data to replicate to them, the connector must operate with specific privileges in the database.
 
 There are several options for determining how publications are created.
 In general, it is best to manually create publications for the tables that you want to capture, before you set up the connector.
@@ -4973,6 +4991,9 @@ For information about failure cases in which a slot has been removed, see the ne
 
 [id="postgresql-cluster-failures"]
 === Cluster failures
+
+The behavior of the {prodname} PostgreSQL connector after a cluster failure depends on the PostgreSQL version.
+PostgreSQL 17 and later support failover replication slots for automatic recovery; earlier versions require manual intervention to resume event capture.
 
 .PostgreSQL 15 or earlier
 In a PostgreSQL 15 or earlier cluster, you can create a logical replication slot only on the primary server.
