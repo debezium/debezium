@@ -36,22 +36,27 @@ public class RedisConnection {
     public static final String DEBEZIUM_OFFSETS_CLIENT_NAME = "debezium:offsets";
     public static final String DEBEZIUM_SCHEMA_HISTORY = "debezium:schema_history";
     private static final String HOST_PORT_ERROR = "Invalid host:port format in '<...>.redis.address' property.";
+    private static final String LETTUCE_DRIVER_CLASS = "io.lettuce.core.RedisClient";
+    private static final String LETTUCE_DRIVER_ARTIFACT = "io.lettuce:lettuce-core";
 
-    private final String address;
-    private final int dbIndex;
-    private final String user;
-    private final String password;
-    private final int connectionTimeout;
-    private final int socketTimeout;
-    private final boolean sslEnabled;
-    private final boolean hostnameVerificationEnabled;
-    private final boolean clusterEnabled;
-    private final String truststorePath;
-    private final String truststorePassword;
-    private final String truststoreType;
-    private final String keystorePath;
-    private final String keystorePassword;
-    private final String keystoreType;
+    // Package private so that the driver-specific client factories in this package can read the
+    // connection settings without this class having to reference their (possibly absent) driver types.
+    final String address;
+    final int dbIndex;
+    final String user;
+    final String password;
+    final int connectionTimeout;
+    final int socketTimeout;
+    final boolean sslEnabled;
+    final boolean hostnameVerificationEnabled;
+    final boolean clusterEnabled;
+    final RedisClientLibrary clientLibrary;
+    final String truststorePath;
+    final String truststorePassword;
+    final String truststoreType;
+    final String keystorePath;
+    final String keystorePassword;
+    final String keystoreType;
 
     /**
      *
@@ -108,6 +113,14 @@ public class RedisConnection {
     public RedisConnection(String address, int dbIndex, String user, String password, int connectionTimeout, int socketTimeout, boolean sslEnabled,
                            boolean hostnameVerificationEnabled, String truststorePath, String truststorePassword, String truststoreType,
                            String keystorePath, String keystorePassword, String keystoreType, boolean clusterEnabled) {
+        this(address, dbIndex, user, password, connectionTimeout, socketTimeout, sslEnabled, hostnameVerificationEnabled,
+                truststorePath, truststorePassword, truststoreType, keystorePath, keystorePassword, keystoreType, clusterEnabled,
+                RedisClientLibrary.JEDIS);
+    }
+
+    public RedisConnection(String address, int dbIndex, String user, String password, int connectionTimeout, int socketTimeout, boolean sslEnabled,
+                           boolean hostnameVerificationEnabled, String truststorePath, String truststorePassword, String truststoreType,
+                           String keystorePath, String keystorePassword, String keystoreType, boolean clusterEnabled, RedisClientLibrary clientLibrary) {
         validateHostPort(address);
 
         this.address = address;
@@ -119,6 +132,7 @@ public class RedisConnection {
         this.sslEnabled = sslEnabled;
         this.hostnameVerificationEnabled = hostnameVerificationEnabled;
         this.clusterEnabled = clusterEnabled;
+        this.clientLibrary = clientLibrary;
         this.truststorePath = truststorePath;
         this.truststorePassword = truststorePassword;
         this.truststoreType = truststoreType;
@@ -149,7 +163,8 @@ public class RedisConnection {
                 config.getKeystorePath(),
                 config.getKeystorePassword(),
                 config.getKeystoreType(),
-                config.isClusterEnabled());
+                config.isClusterEnabled(),
+                config.getClientLibrary());
     }
 
     /**
@@ -167,6 +182,53 @@ public class RedisConnection {
             throw new DebeziumException("Redis client wait timeout should be positive");
         }
 
+        // Use config-driven driver selection; when 'lettuce' is requested, a Lettuce-backed client is created.
+        if (RedisClientLibrary.LETTUCE == this.clientLibrary) {
+            return createLettuceClient(clientName, waitEnabled, waitTimeout, waitRetry, waitRetryDelay);
+        }
+        return createJedisClient(clientName, waitEnabled, waitTimeout, waitRetry, waitRetryDelay);
+    }
+
+    /**
+     * Creates a Lettuce-backed client. {@code lettuce-core} is a provided dependency of this module, so
+     * every Lettuce type stays inside {@link LettuceClient}; this method must not reference any of them
+     * directly, otherwise loading this class would fail when the driver is absent.
+     */
+    private RedisClient createLettuceClient(String clientName, boolean waitEnabled, long waitTimeout, boolean waitRetry, long waitRetryDelay) {
+        if (this.clusterEnabled) {
+            throw new DebeziumException(
+                    "The Lettuce client does not yet support Redis Cluster mode; use the Jedis client (redis.client.library=jedis) for cluster mode.");
+        }
+
+        requireLettuceDriver(getClass().getClassLoader());
+
+        RedisClient lettuce = LettuceClient.create(this, clientName);
+        // Use WAIT wrapper only for standalone
+        RedisClient redisClient = waitEnabled ? new WaitReplicasRedisClient(lettuce, 1, waitTimeout, waitRetry, waitRetryDelay) : lettuce;
+        LOGGER.info("Using Redis client '{}'", redisClient);
+        return redisClient;
+    }
+
+    /**
+     * Fails fast with an actionable message when the Lettuce driver was requested but is not on the
+     * classpath, instead of letting a {@link NoClassDefFoundError} escape from deep inside
+     * {@link LettuceClient}. The distribution archive deliberately does not bundle the driver.
+     *
+     * <p>Package private, and taking the class loader as an argument, so that a test can supply one that
+     * hides the driver.
+     */
+    static void requireLettuceDriver(ClassLoader classLoader) {
+        try {
+            Class.forName(LETTUCE_DRIVER_CLASS, false, classLoader);
+        }
+        catch (ClassNotFoundException e) {
+            throw new DebeziumException("redis.client.library=lettuce requires '" + LETTUCE_DRIVER_ARTIFACT
+                    + "' on the runtime classpath, which the Debezium distribution does not bundle. Add it together with its "
+                    + "Netty and Reactor dependencies, or set redis.client.library=jedis.", e);
+        }
+    }
+
+    private RedisClient createJedisClient(String clientName, boolean waitEnabled, long waitTimeout, boolean waitRetry, long waitRetryDelay) {
         // Use config-driven cluster mode; when enabled, a JedisCluster client is created.
         boolean isCluster = this.clusterEnabled;
 

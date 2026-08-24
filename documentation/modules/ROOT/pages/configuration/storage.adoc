@@ -488,7 +488,15 @@ INSERT INTO %s(id, history_data, history_data_seq, record_insert_ts, record_inse
 
 == Redis
 
-{prodname} can use a https://redis.io/docs/latest/develop/clients/jedis/[Jedis client] to store data in a Redis cache.
+{prodname} can use a https://redis.io/docs/latest/develop/clients/jedis/[Jedis client] (default) or a https://github.com/redis/lettuce[Lettuce client] to store data in a Redis cache.
+To select the client driver, set the `redis.client.library` property to `jedis` or `lettuce`.
+
+The Lettuce driver is not part of a {prodname} distribution, because deployments that use the default Jedis driver would otherwise carry Lettuce and its Netty and Reactor dependencies without ever loading them.
+If you set `redis.client.library` to `lettuce`, add the `io.lettuce:lettuce-core` artifact and its dependencies to the runtime classpath yourself; otherwise the connector fails at startup with an error that names the missing artifact.
+Also be aware of the following differences from the Jedis driver:
+
+* Redis Cluster mode is not supported. For cluster mode, use the Jedis driver.
+* The `redis.ssl.truststore.type` and `redis.ssl.keystore.type` properties are ignored, because Lettuce determines the store type from the store file itself.
 
 {prodname} can use either a single Redis instance or use https://redis.io/docs/latest/operate/oss_and_stack/reference/cluster-spec/[Redis Cluster mode]:
 
@@ -604,6 +612,12 @@ If a data packet is not transferred with the specified interval, {prodname} clos
 |If you configure {prodname} Server to store offsets in Redis, set this property to specify whether to use Redis Cluster mode.
 Set the value to `true` to configure {prodname} to use a https://redis.io/docs/latest/develop/clients/jedis/connect/#connect-to-a-redis-cluster[JedisCluster client] to route offset data to Redis nodes.
 
+|[[offset-storage-redis-client-library]]<<offset-storage-redis-client-library, `offset.storage.redis.client.library`>>
+|jedis
+|Specifies the Redis client driver library that {prodname} uses to store offset data.
+Set the value to `jedis` (default) or `lettuce`.
+The `lettuce` driver supports single instance mode only and requires the optional `io.lettuce:lettuce-core` artifact on the runtime classpath.
+
 |===
 
 === Internal schema history store
@@ -710,6 +724,12 @@ If a data packet is not transferred with the specified interval, {prodname} clos
 |false
 |If you configure {prodname} Server to store schema history in Redis, set this property to specify whether to use Redis Cluster mode.
 Set the value to `true` to configure {prodname} to use a https://redis.io/docs/latest/develop/clients/jedis/connect/#connect-to-a-redis-cluster[JedisCluster client] to route history data to Redis nodes.
+
+|[[schema-history-internal-redis-client-library]]<<schema-history-internal-redis-client-library, `schema.history.internal.storage.redis.client.library`>>
+|jedis
+|Specifies the Redis client driver library that {prodname} uses to store schema history data.
+Set the value to `jedis` (default) or `lettuce`.
+The `lettuce` driver supports single instance mode only and requires the optional `io.lettuce:lettuce-core` artifact on the runtime classpath.
 
 |===
 
