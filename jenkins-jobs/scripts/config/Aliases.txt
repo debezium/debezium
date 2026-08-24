@@ -21,6 +21,7 @@ AleksejsSibanovs,Aleksejs Sibanovs
 Alex-pvl,Aleksandr Pavlyuk
 AlexMiroshnikov,Alexey Miroshnikov
 alisator,Alisa Houskova
+aloksingh24,Alok Singh
 AlvarVG,Alvar Viana
 alwaysbemark,Mark Bereznitsky
 alyelmorsy-dataengineer,Aly Ayman
