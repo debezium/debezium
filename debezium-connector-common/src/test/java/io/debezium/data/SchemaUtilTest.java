@@ -8,6 +8,8 @@ package io.debezium.data;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -66,5 +68,26 @@ public class SchemaUtilTest {
         var mapper = new ObjectMapper();
         var read = mapper.readValue(escapedText, String.class);
         assertThat(read).isEqualTo(originalText);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2492")
+    public void escapesStringsIdenticallyToObjectMapper() throws JsonProcessingException {
+        var samples = new ArrayList<>(List.of(
+                "",
+                "plain",
+                "quote\" backslash\\ slash/",
+                "café ✓ 🚀",
+                "lone surrogate: \ud800 end"));
+        var controlChars = new StringBuilder();
+        for (char c = 0; c < 0x20; c++) {
+            controlChars.append(c);
+        }
+        samples.add(controlChars.toString());
+
+        var mapper = new ObjectMapper();
+        for (String sample : samples) {
+            assertThat(SchemaUtil.asString(sample)).isEqualTo(mapper.writeValueAsString(sample));
+        }
     }
 }
