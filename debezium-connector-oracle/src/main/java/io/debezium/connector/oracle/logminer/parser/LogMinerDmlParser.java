@@ -493,7 +493,7 @@ public class LogMinerDmlParser implements DmlParser {
                     if (lookAhead == ',' && lookAhead2 == ' ' && (lookAhead3 == '\"' || lookAhead3 == 'w')) {
                         // reached end of value
                     }
-                    else if (lookAhead == ' ' && lookAhead2 == 'w' && sql.substring(index + 1).startsWith(" where ")) {
+                    else if (lookAhead == ' ' && lookAhead2 == 'w' && sql.startsWith(" where ", index + 1)) {
                         // reached each of set clause and moving onto where condition
                     }
                     else if (lookAhead == ';' && lookAhead2 == 0) {
