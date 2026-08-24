@@ -59,6 +59,15 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceIT exten
         stopConnector();
         if (connection != null) {
             TestHelper.dropTable(connection, "dbz3752");
+
+            if (connection.getOracleVersion().getMajor() == 21) {
+                // There are a number of Oracle RU for Oracle 21 that address shared memory fragmentation.
+                // These are not applied to our CI Oracle 21 image, so this leads to allocation failures,
+                // particularly with the XMLTYPE tests in this class. This is a workaround, to clear the
+                // shared memory pool per test.
+                TestHelper.flushSharedMemoryPool();
+            }
+
             connection.close();
         }
     }
