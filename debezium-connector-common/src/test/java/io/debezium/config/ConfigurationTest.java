@@ -73,6 +73,35 @@ public class ConfigurationTest {
         assertThat(config.getString("A")).isEqualTo("a");
     }
 
+    @Test
+    @FixFor("debezium/dbz#2493")
+    public void getListShouldFallBackToFieldDefault() {
+        final Field field = Field.create("list.field").withDefault("a,b,c");
+
+        // getList(Field) must apply the field's default when the key is absent, the same way
+        // getString(Field) and the other Field-based accessors do.
+        assertThat(Configuration.empty().getList(field)).containsExactly("a", "b", "c");
+        assertThat(Configuration.empty().getString(field)).isEqualTo("a,b,c");
+
+        // An explicitly configured value still takes precedence and is split and trimmed.
+        config = Configuration.create().with("list.field", "x, y").build();
+        assertThat(config.getList(field)).containsExactly("x", "y");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2493")
+    public void getStringsShouldFallBackToFieldDefault() {
+        final Field field = Field.create("strings.field").withDefault("a,b,c");
+
+        // getStrings(Field, regex) must apply the field's default when the key is absent, the same way
+        // getString(Field) and getList(Field) do.
+        assertThat(Configuration.empty().getStrings(field, ",")).containsExactly("a", "b", "c");
+
+        // An explicitly configured value still takes precedence.
+        config = Configuration.create().with("strings.field", "x,y").build();
+        assertThat(config.getStrings(field, ",")).containsExactly("x", "y");
+    }
+
     /**
      * Test verifying that a Configuration object cannot be modified after creation.
      */
