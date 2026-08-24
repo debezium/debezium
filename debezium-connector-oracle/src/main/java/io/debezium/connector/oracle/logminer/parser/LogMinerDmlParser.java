@@ -294,7 +294,7 @@ public class LogMinerDmlParser implements DmlParser {
         boolean inValues = false;
 
         // verify entering values-clause
-        if (sql.indexOf(VALUES, index) != index) {
+        if (!sql.startsWith(VALUES, index)) {
             throw new DebeziumException("Failed to parse DML: " + sql);
         }
         index += VALUES_LENGTH;
@@ -421,19 +421,18 @@ public class LogMinerDmlParser implements DmlParser {
         start += SET_LENGTH;
 
         int index = start;
+        int sqlLength = sql.length();
         String currentColumnName = null;
         StringBuilder valueBuffer = null;
         int valueStart = -1;
-        for (; index < sql.length(); ++index) {
+        for (; index < sqlLength; ++index) {
             char c = sql.charAt(index);
             if (inSingleQuote && c != '\'') {
                 // part of the quoted value, collected in bulk when the segment or value ends
                 continue;
             }
 
-            char lookAhead = (index + 1 < sql.length()) ? sql.charAt(index + 1) : 0;
-            char lookAhead2 = (index + 2 < sql.length()) ? sql.charAt(index + 2) : 0;
-            char lookAhead3 = (index + 3 < sql.length()) ? sql.charAt(index + 3) : 0;
+            char lookAhead = (index + 1 < sqlLength) ? sql.charAt(index + 1) : 0;
 
             if (inSingleQuote && lookAhead == '\'') {
                 // escaped single quote, collect the segment up to and including the quote character
@@ -442,7 +441,7 @@ public class LogMinerDmlParser implements DmlParser {
                 // Check whether the following after '' chars signal end-of-value.
                 if (useRelaxedQuotes && (sql.startsWith(", \"", index + 2) ||
                         sql.startsWith(" where ", index + 2) ||
-                        (lookAhead2 == ';' && lookAhead3 == 0))) {
+                        (index + 3 == sqlLength && sql.charAt(index + 2) == ';'))) {
                     valueStart = index + 1;
                     continue;
                 }
@@ -474,7 +473,7 @@ public class LogMinerDmlParser implements DmlParser {
             }
             else if (nested == 0 && c == '|' && lookAhead == '|' && !inSingleQuote) {
                 // Concatenation
-                for (int i = index + 2; i < sql.length(); ++i) {
+                for (int i = index + 2; i < sqlLength; ++i) {
                     if (sql.charAt(i) != ' ') {
                         // found next non-whitespace character
                         index = i - 1;
@@ -489,6 +488,8 @@ public class LogMinerDmlParser implements DmlParser {
                     continue;
                 }
                 if (useRelaxedQuotes && inSingleQuote && nested == 0) {
+                    char lookAhead2 = (index + 2 < sqlLength) ? sql.charAt(index + 2) : 0;
+                    char lookAhead3 = (index + 3 < sqlLength) ? sql.charAt(index + 3) : 0;
                     if (lookAhead == ',' && lookAhead2 == ' ' && (lookAhead3 == '\"' || lookAhead3 == 'w')) {
                         // reached end of value
                     }
@@ -528,20 +529,20 @@ public class LogMinerDmlParser implements DmlParser {
                 index += 1;
                 start = index;
             }
-            else if (c == '/' && lookAhead == '*' && lookAhead2 == ' ' && inColumnValue && !inSingleQuote) {
+            else if (c == '/' && lookAhead == '*' && index + 2 < sqlLength && sql.charAt(index + 2) == ' ' && inColumnValue && !inSingleQuote) {
                 // Handles special use cases of hints, e.g. '/* JSON */' in values
                 if (!inSpecial) {
                     start = index;
                     inSpecial = true;
                 }
-                for (int i = index + 2; i < sql.length() - 1; i++) {
+                for (int i = index + 2; i < sqlLength - 1; i++) {
                     if (sql.charAt(i) == '*' && sql.charAt(i + 1) == '/') {
                         index = i + 1;
                         break;
                     }
                 }
                 // Skip whitespace between comment and the actual value
-                while (index + 1 < sql.length() && sql.charAt(index + 1) == ' ') {
+                while (index + 1 < sqlLength && sql.charAt(index + 1) == ' ') {
                     index++;
                 }
             }
@@ -585,7 +586,7 @@ public class LogMinerDmlParser implements DmlParser {
                 }
             }
             else if (!inDoubleQuote && !inSingleQuote) {
-                if (c == 'w' && lookAhead == 'h' && sql.indexOf(WHERE, index - 1) == index - 1) {
+                if (c == 'w' && lookAhead == 'h' && sql.startsWith(WHERE, index - 1)) {
                     index -= 1;
                     break;
                 }
@@ -631,16 +632,17 @@ public class LogMinerDmlParser implements DmlParser {
         start += WHERE_LENGTH;
 
         int index = start;
+        int sqlLength = sql.length();
         String currentColumnName = null;
         StringBuilder valueBuffer = null;
         int valueStart = -1;
-        for (; index < sql.length(); ++index) {
+        for (; index < sqlLength; ++index) {
             char c = sql.charAt(index);
             if (inSingleQuote && c != '\'') {
                 // part of the quoted value, collected in bulk when the segment or value ends
                 continue;
             }
-            char lookAhead = (index + 1 < sql.length()) ? sql.charAt(index + 1) : 0;
+            char lookAhead = (index + 1 < sqlLength) ? sql.charAt(index + 1) : 0;
             if (inSingleQuote && lookAhead == '\'') {
                 // escaped single quote, collect the segment up to and including the quote character
                 valueBuffer = appendValueSegment(valueBuffer, sql, valueStart, index + 1);
@@ -667,7 +669,7 @@ public class LogMinerDmlParser implements DmlParser {
                 start = index + 1;
             }
             else if (c == 'I' && !inColumnName && !inColumnValue) {
-                if (sql.indexOf(IS_NULL, index) == index) {
+                if (sql.startsWith(IS_NULL, index)) {
                     index += 6;
                     start = index;
                     continue;
@@ -714,7 +716,7 @@ public class LogMinerDmlParser implements DmlParser {
                 }
                 else if (nested == 0 && c == '|' && lookAhead == '|') {
                     // Concatenation
-                    for (int i = index + 2; i < sql.length(); ++i) {
+                    for (int i = index + 2; i < sqlLength; ++i) {
                         if (sql.charAt(i) != ' ') {
                             // found next non-whitespace character
                             index = i - 1;
@@ -742,12 +744,12 @@ public class LogMinerDmlParser implements DmlParser {
                 }
             }
             else if (!inColumnValue && !inColumnName) {
-                if (c == 'a' && lookAhead == 'n' && sql.indexOf(AND, index) == index) {
+                if (c == 'a' && lookAhead == 'n' && sql.startsWith(AND, index)) {
                     index += 3;
                     start = index;
                     inColumnName = true;
                 }
-                else if (c == 'o' && lookAhead == 'r' && sql.indexOf(OR, index) == index) {
+                else if (c == 'o' && lookAhead == 'r' && sql.startsWith(OR, index)) {
                     index += 2;
                     start = index;
                     inColumnName = true;
