@@ -6,10 +6,13 @@
 package io.debezium.relational;
 
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.PackagePrivate;
 import io.debezium.util.Interner;
@@ -17,10 +20,12 @@ import io.debezium.util.Strings;
 
 final class TableImpl implements Table {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(TableImpl.class);
+
     private final TableId id;
     private final List<Column> columnDefs;
     private final List<String> pkColumnNames;
-    private final Map<String, Column> columnsByLowercaseName;
+    private final Map<String, Column> columnsByName;
     private final String defaultCharsetName;
     private final String comment;
     private final List<Attribute> attributes;
@@ -35,11 +40,15 @@ final class TableImpl implements Table {
         this.id = Interner.intern(id);
         this.columnDefs = Interner.intern(Collections.unmodifiableList(sortedColumns));
         this.pkColumnNames = pkColumnNames == null ? Collections.emptyList() : Interner.intern(Collections.unmodifiableList(pkColumnNames));
-        Map<String, Column> defsByLowercaseName = new LinkedHashMap<>();
+        Map<String, Column> defsByName = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
         for (Column def : this.columnDefs) {
-            defsByLowercaseName.put(Interner.intern(def.name().toLowerCase()), def);
+            final Column shadowed = defsByName.put(Interner.intern(def.name()), def);
+            if (shadowed != null) {
+                LOGGER.warn("Table '{}' defines columns '{}' and '{}' whose names differ only by case; lookups by column name will resolve to '{}'",
+                        this.id, shadowed.name(), def.name(), def.name());
+            }
         }
-        this.columnsByLowercaseName = Interner.intern(Collections.unmodifiableMap(defsByLowercaseName));
+        this.columnsByName = Interner.intern(Collections.unmodifiableMap(defsByName));
         this.defaultCharsetName = Interner.intern(defaultCharsetName);
         this.comment = Interner.intern(comment);
         this.attributes = attributes == null ? null : Interner.intern(Collections.unmodifiableList(attributes));
@@ -69,7 +78,7 @@ final class TableImpl implements Table {
 
     @Override
     public Column columnWithName(String name) {
-        return columnsByLowercaseName.get(name.toLowerCase());
+        return columnsByName.get(name);
     }
 
     @Override
