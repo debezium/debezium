@@ -1356,8 +1356,8 @@ endif::community[]
         "ts_us": 1559033904961621,
         "ts_ns": 1559033904961621379,
         "message": {
-            "prefix": "foo",
-            "content": "Ymfy"
+            "prefix": "example",
+            "content": "ZXhhbXBsZS1tZXNzYWdl"
         }
     }
 }
@@ -1390,8 +1390,8 @@ The message value looks like this for non-transactional messages:
         "ts_us": 1559033904961741,
         "ts_ns": 1559033904961741698,
         "message": {
-            "prefix": "foo",
-            "content": "Ymfy"
+            "prefix": "example",
+            "content": "ZXhhbXBsZS1tZXNzYWdl"
     }
 }
 ----
