@@ -893,4 +893,9 @@ public class TestHelper {
         };
     }
 
+    public static void flushSharedMemoryPool() throws SQLException {
+        try (OracleConnection admin = adminConnection(true)) {
+            admin.execute("ALTER SYSTEM FLUSH SHARED_POOL");
+        }
+    }
 }
