@@ -904,4 +904,10 @@ public class TestHelper {
             admin.execute("ALTER SYSTEM SET enable_goldengate_replication=TRUE SCOPE=BOTH");
         }
     }
+
+    public static void flushSharedMemoryPool() throws SQLException {
+        try (OracleConnection admin = adminConnection(true)) {
+            admin.execute("ALTER SYSTEM FLUSH SHARED_POOL");
+        }
+    }
 }
