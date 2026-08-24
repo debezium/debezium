@@ -83,7 +83,7 @@ public class JdbcSinkIdentityColumnIT extends AbstractJdbcSinkTest {
 
         final String topicName = topicName("server1", "schema", randomTableName());
 
-        final JdbcSinkConnectorConfig config = getConfig(properties);
+        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(getConfig(properties));
         final JdbcKafkaSinkRecord first = factory.createRecordWithSchemaValue(
                 topicName, (byte) 1, "data", Schema.OPTIONAL_STRING_SCHEMA, "a", config);
         final JdbcKafkaSinkRecord second = factory.createRecordWithSchemaValue(
