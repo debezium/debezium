@@ -12,9 +12,6 @@ inputs:
     description: "Only build without tests, checkstyle, and format"
     required: false
     default: 'false'
-  cache-hit:
-    required: false
-    default: 'false'
   profile:
     description: "The Informix build profile to use"
     required: false
@@ -28,7 +25,6 @@ runs:
   using: "composite"
   steps:
     - name: Build Debezium (Core)
-      if: inputs.cache-hit != 'true'
       shell: ${{ inputs.shell }}
       run: >
         ./${{ inputs.path-core }}/mvnw clean install -B -ntp -f ${{ inputs.path-core }}/pom.xml

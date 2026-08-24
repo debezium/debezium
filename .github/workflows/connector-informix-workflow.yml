@@ -49,5 +49,4 @@ jobs:
         with:
           path-core: core
           path-informix: informix
-          cache-hit: ${{ steps.cache-check.outputs.cache-hit }}
           profile: ${{ matrix.profile }}
