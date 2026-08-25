@@ -1136,7 +1136,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                     // This means that Oracle LogMiner found an event that should be undone but its corresponding
                     // undo entry was read in a prior mining session and the transaction's sequence could not be
                     // resolved.
-                    final String prefix = transactionId.substring(0, 8);
+                    final String prefix = transactionId.substring(0, ORACLE_TRANSACTION_ID_PREFIX_LENGTH);
                     LOGGER.debug("Undo change refers to a transaction that has no explicit sequence, '{}'", event.getTransactionId());
                     LOGGER.debug("Checking all transactions with prefix '{}'", prefix);
 
