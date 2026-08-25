@@ -100,6 +100,23 @@ public class RetryingSupplierTest {
     }
 
     @Test
+    void shouldRetryForCustomRetriableMessageOnCause() throws InterruptedException, SQLException {
+        assertThat(getTwoTimesFailingWithCustomRetriableMessage(10, ".*try again later.*").get()).isEqualTo(3);
+
+        assertThat(runs.get()).isEqualTo(3);
+        assertThat(heals.get()).isEqualTo(2);
+    }
+
+    @Test
+    void shouldNotRetryForNonMatchingCustomRetriableMessage() {
+        assertThatThrownBy(() -> getTwoTimesFailingWithCustomRetriableMessage(10, ".*unrelated pattern.*").get())
+                .isInstanceOf(SQLException.class);
+
+        assertThat(runs.get()).isEqualTo(1);
+        assertThat(heals.get()).isEqualTo(0);
+    }
+
+    @Test
     void shouldApplyDelayForEveryFailureWithoutAutoHeal() throws InterruptedException, SQLException {
         assertThat(RetryingSupplier.<Integer, SQLException> builder()
                 .retries(10)
@@ -182,6 +199,23 @@ public class RetryingSupplierTest {
                 .doAutoHeal(heals::incrementAndGet)
                 .delayStrategy(DelayStrategy.linear(Duration.ofMillis(100)))
                 .retriableExceptions(retriableExceptions)
+                .build();
+    }
+
+    private RetryingSupplier<Integer, SQLException> getTwoTimesFailingWithCustomRetriableMessage(int retries, String pattern) {
+        return RetryingSupplier.<Integer, SQLException> builder()
+                .retries(retries)
+                .doGet(() -> {
+                    int call = runs.incrementAndGet();
+                    if (call <= 2) {
+                        throw new SQLException(new IllegalStateException("Overloaded, try again later please"));
+                    }
+                    return call;
+                })
+                .doAutoHeal(heals::incrementAndGet)
+                .delayStrategy(DelayStrategy.linear(Duration.ofMillis(100)))
+                .retriableExceptions(retriableExceptions)
+                .customRetriableMessagePattern(pattern)
                 .build();
     }
 

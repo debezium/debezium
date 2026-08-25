@@ -36,6 +36,7 @@ public class RetryingSupplier<V, E extends Exception> {
     private final ThrowingRunnable<E> doAutoHeal;
     private final DelayStrategy delayStrategy;
     private final List<Class<? extends Exception>> retriableExceptions;
+    private final String customRetriableMessagePattern;
     private final String name;
     private final Logger logger;
 
@@ -45,6 +46,7 @@ public class RetryingSupplier<V, E extends Exception> {
         this.doAutoHeal = b.doAutoHeal;
         this.delayStrategy = b.delayStrategy;
         this.retriableExceptions = b.retriableExceptions;
+        this.customRetriableMessagePattern = b.customRetriableMessagePattern;
         this.name = b.name;
         this.logger = b.logger;
     }
@@ -150,6 +152,10 @@ public class RetryingSupplier<V, E extends Exception> {
                     return true;
                 }
             }
+            if (customRetriableMessagePattern != null && current.getMessage() != null
+                    && current.getMessage().matches(customRetriableMessagePattern)) {
+                return true;
+            }
             current = current.getCause();
             if (advanceSlow) {
                 slow = slow.getCause();
@@ -181,6 +187,7 @@ public class RetryingSupplier<V, E extends Exception> {
         private ThrowingRunnable<E> doAutoHeal;
         private DelayStrategy delayStrategy = DelayStrategy.none();
         private List<Class<? extends Exception>> retriableExceptions = new ArrayList<>();
+        private String customRetriableMessagePattern;
         private String name = "Operation";
         private Logger logger = LOGGER;
 
@@ -232,6 +239,17 @@ public class RetryingSupplier<V, E extends Exception> {
             this.retriableExceptions = (retriableExceptions == null)
                     ? new ArrayList<>()
                     : new ArrayList<>(retriableExceptions);
+            return this;
+        }
+
+        /**
+         * Sets a regular expression matched against the messages of the thrown exception and its causes;
+         * a match classifies the exception as retriable even when its type does not. This mirrors the
+         * semantics of the internal {@code custom.retriable.exception} connector option. A {@code null}
+         * pattern (the default) disables the message-based classification.
+         */
+        public Builder<V, E> customRetriableMessagePattern(String customRetriableMessagePattern) {
+            this.customRetriableMessagePattern = customRetriableMessagePattern;
             return this;
         }
 
