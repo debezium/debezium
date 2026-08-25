@@ -27,6 +27,7 @@ public class CommonEventMeter implements CommonEventMetricsMXBean {
     protected final AtomicLong totalNumberOfCreateEventsSeen = new AtomicLong();
     protected final AtomicLong totalNumberOfUpdateEventsSeen = new AtomicLong();
     protected final AtomicLong totalNumberOfDeleteEventsSeen = new AtomicLong();
+    protected final AtomicLong totalNumberOfReadEventsSeen = new AtomicLong();
     private final AtomicLong numberOfEventsFiltered = new AtomicLong();
     protected final AtomicLong numberOfErroneousEvents = new AtomicLong();
     protected final AtomicLong lastEventTimestamp = new AtomicLong(-1);
@@ -63,6 +64,9 @@ public class CommonEventMeter implements CommonEventMetricsMXBean {
                     break;
                 case DELETE:
                     totalNumberOfDeleteEventsSeen.incrementAndGet();
+                    break;
+                case READ:
+                    totalNumberOfReadEventsSeen.incrementAndGet();
                     break;
                 default:
                     break;
@@ -121,6 +125,11 @@ public class CommonEventMeter implements CommonEventMetricsMXBean {
     }
 
     @Override
+    public long getTotalNumberOfReadEventsSeen() {
+        return totalNumberOfReadEventsSeen.get();
+    }
+
+    @Override
     public long getNumberOfEventsFiltered() {
         return numberOfEventsFiltered.get();
     }
@@ -135,6 +144,7 @@ public class CommonEventMeter implements CommonEventMetricsMXBean {
         totalNumberOfCreateEventsSeen.set(0);
         totalNumberOfUpdateEventsSeen.set(0);
         totalNumberOfDeleteEventsSeen.set(0);
+        totalNumberOfReadEventsSeen.set(0);
         lastEventTimestamp.set(-1);
         numberOfEventsFiltered.set(0);
         numberOfErroneousEvents.set(0);

@@ -25,6 +25,10 @@ If the snapshot is interrupted, and the connector task restarts, the metric coun
 |`long`
 |The total number of events that this connector has seen since last started or reset.
 
+|[[connectors-snaps-metric-totalnumberofreadeventsseen_{context}]]<<connectors-snaps-metric-totalnumberofreadeventsseen_{context}, `TotalNumberOfReadEventsSeen`>>
+|`long`
+|The total number of read events that this connector has seen since last started or reset.
+
 |[[connectors-snaps-metric-numberofeventsfiltered_{context}]]<<connectors-snaps-metric-numberofeventsfiltered_{context}, `NumberOfEventsFiltered`>>
 |`long`
 | The number of events that have been filtered by include/exclude list filtering rules configured on the connector.
