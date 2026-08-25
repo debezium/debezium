@@ -112,7 +112,7 @@ public class EventBuffer<T extends BinlogStreamingChangeEventSource<P, O>, P ext
             // then we don't create a new transaction for this. This typically happens
             // for DDL operations which are always transaction scoped.
             MariadbGtidEventData gtidEventData = (MariadbGtidEventData) event.getData();
-            if ((gtidEventData.getFlags() & 0x01) != 0x01) {
+            if ((gtidEventData.getFlags() & MariadbGtidEventData.FL_STANDALONE) == 0) {
                 // signals a new transaction for MariaDB, treat like QUERY events with BEGIN
                 beginTransaction(partition, offsetContext, event);
             }
