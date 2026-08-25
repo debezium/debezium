@@ -114,7 +114,12 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
         LcrEventHandler eventHandler = new LcrEventHandler(connectorConfig, errorHandler, dispatcher, clock, schema,
                 partition, offsetContext, isTableCaseInsensitive(), this, streamingMetrics);
 
-        try (OracleConnection xsConnection = connectAndAttachWithRetries(getStartPosition(offsetContext))) {
+        try (OracleConnection xsConnection = connectAndAttachWithRetries(context, getStartPosition(offsetContext))) {
+            if (xsConnection == null) {
+                // The connector was stopped while attempting to attach to the outbound server.
+                LOGGER.info("Streaming stopped before the attach to outbound server {} completed.", xstreamOutboundServerName);
+                return;
+            }
             try {
                 // 2. receive events while running
                 while (context.isRunning()) {
@@ -192,10 +197,18 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
         return convertScnToPosition(offsetContext.getScn());
     }
 
-    private OracleConnection connectAndAttachWithRetries(byte[] startPosition) throws Exception {
+    private OracleConnection connectAndAttachWithRetries(ChangeEventSourceContext context, byte[] startPosition) throws Exception {
         OracleConnection connection = null;
         final DelayStrategy retryStrategy = DelayStrategy.exponential(Duration.ofSeconds(1), Duration.ofMinutes(1));
         for (int attempt = 1; attempt <= DEFAULT_MAX_ATTACH_RETRIES; attempt++) {
+            // The delay between attempts restores the thread's interrupt flag rather than propagating the
+            // interrupt, so both the running state and the interrupt flag must be checked here; otherwise
+            // the remaining attempts would be made back-to-back after a shutdown request.
+            if (!context.isRunning() || Thread.currentThread().isInterrupted()) {
+                LOGGER.info("Abandoning attach to outbound server {}, the connector is stopping.", xstreamOutboundServerName);
+                return null;
+            }
+
             XStreamOut out = null;
             try {
                 connection = connectionFactory.streamingConnectionFactory().newConnection();
