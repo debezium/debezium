@@ -9,12 +9,14 @@ import static io.debezium.connector.oracle.jdbc.OracleJdbcConfiguration.SECONDAR
 
 import java.math.BigInteger;
 import java.nio.file.Path;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.StringJoiner;
 import java.util.concurrent.TimeUnit;
 
 import org.awaitility.Awaitility;
@@ -387,6 +389,98 @@ public class TestHelper {
             connection.resetSessionToCdb();
         }
         return connection;
+    }
+
+    /**
+     * Queries and logs the state of the XStream outbound server and the components it depends on.
+     *
+     * <p>This exists to answer a question the connector logs cannot: when an attach fails with
+     * {@code ORA-26812}, is there genuinely a client session still attached to the outbound server,
+     * or does the server merely believe there is one after the client has cleanly detached? The two
+     * cases require different fixes and are indistinguishable from the connector side.
+     *
+     * <p>Every statement is read-only and each is isolated, so a view that is unavailable in a given
+     * database configuration is reported in place rather than hiding the remaining output. Failures
+     * are logged and never propagated; this is diagnostic only and must not influence test outcome.
+     *
+     * @param reason short description of what triggered the collection, included in the log output
+     */
+    public static void logXStreamOutboundServerDiagnostics(String reason) {
+        if (!isXStream()) {
+            return;
+        }
+
+        final StringBuilder report = new StringBuilder();
+        report.append("XStream outbound server diagnostics (").append(reason).append(')');
+
+        // The outbound server, its capture, and its apply all live in the root of a CDB.
+        try (OracleConnection admin = adminConnection(true)) {
+            appendQuery(admin, report, "V$XSTREAM_OUTBOUND_SERVER",
+                    "SELECT SERVER_NAME, STATE, STARTUP_TIME, TOTAL_MESSAGES_SENT, BYTES_SENT FROM V$XSTREAM_OUTBOUND_SERVER");
+
+            // Per Oracle's XStream Out monitoring documentation, the row whose XStream program name is
+            // 'TNS' is the attached client application's session. Its absence while ORA-26812 is being
+            // raised means no client is attached and the server state itself is stale.
+            appendQuery(admin, report, "V$SESSION (MODULE = 'XStream')",
+                    "SELECT SID, SERIAL#, USERNAME, STATUS, LAST_CALL_ET, "
+                            + "SUBSTR(PROGRAM, INSTR(PROGRAM, '(') + 1, 4) AS XSTREAM_PROCESS "
+                            + "FROM V$SESSION WHERE MODULE = 'XStream'");
+
+            appendQuery(admin, report, "DBA_CAPTURE",
+                    "SELECT CAPTURE_NAME, STATUS, ERROR_NUMBER, ERROR_MESSAGE FROM DBA_CAPTURE");
+
+            appendQuery(admin, report, "DBA_APPLY",
+                    "SELECT APPLY_NAME, APPLY_CAPTURED, STATUS, ERROR_NUMBER, ERROR_MESSAGE FROM DBA_APPLY");
+
+            // Shared and streams pool headroom; XStream capture and apply allocate from these, and an
+            // outbound server that cannot allocate while tearing down is one way to strand the session.
+            appendQuery(admin, report, "V$SGASTAT (free memory)",
+                    "SELECT POOL, NAME, BYTES FROM V$SGASTAT WHERE NAME = 'free memory'");
+
+            LOGGER.warn("{}", report);
+        }
+        catch (Exception e) {
+            LOGGER.warn("Failed to collect XStream outbound server diagnostics ({}){}{}",
+                    reason, System.lineSeparator(), report, e);
+        }
+    }
+
+    /**
+     * Runs a single diagnostic query and appends its result set to {@code report} as a text table.
+     * A failing query is recorded in the report rather than aborting the wider collection.
+     */
+    private static void appendQuery(OracleConnection connection, StringBuilder report, String label, String sql) {
+        final String newLine = System.lineSeparator();
+        report.append(newLine).append("  ").append(label).append(':');
+        try {
+            connection.query(sql, rs -> {
+                final ResultSetMetaData metaData = rs.getMetaData();
+                final int columnCount = metaData.getColumnCount();
+
+                final StringJoiner header = new StringJoiner(" | ");
+                for (int i = 1; i <= columnCount; i++) {
+                    header.add(metaData.getColumnLabel(i));
+                }
+                report.append(newLine).append("    ").append(header);
+
+                boolean empty = true;
+                while (rs.next()) {
+                    empty = false;
+                    final StringJoiner row = new StringJoiner(" | ");
+                    for (int i = 1; i <= columnCount; i++) {
+                        row.add(String.valueOf(rs.getString(i)));
+                    }
+                    report.append(newLine).append("    ").append(row);
+                }
+
+                if (empty) {
+                    report.append(newLine).append("    <no rows>");
+                }
+            });
+        }
+        catch (Exception e) {
+            report.append(newLine).append("    <query failed: ").append(e.getMessage()).append('>');
+        }
     }
 
     /**
