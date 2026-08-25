@@ -102,11 +102,11 @@
                 <configuration>
                     <!-- JDK 23+ no longer runs annotation processors found on the classpath implicitly;
                          declare the JMH processor explicitly so META-INF/BenchmarkList is generated -->
+                    <annotationProcessorPathsUseDepMgmt>true</annotationProcessorPathsUseDepMgmt>
                     <annotationProcessorPaths>
                         <path>
                             <groupId>org.openjdk.jmh</groupId>
                             <artifactId>jmh-generator-annprocess</artifactId>
-                            <version>${version.jmh}</version>
                         </path>
                     </annotationProcessorPaths>
                 </configuration>
