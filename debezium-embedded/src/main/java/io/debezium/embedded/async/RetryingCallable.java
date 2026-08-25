@@ -29,9 +29,15 @@ public abstract class RetryingCallable<V> implements Callable<V> {
     private static final Logger LOGGER = LoggerFactory.getLogger(RetryingCallable.class);
 
     private final int retries;
+    private final String customRetriableMessagePattern;
 
     public RetryingCallable(final int retries) {
+        this(retries, null);
+    }
+
+    public RetryingCallable(final int retries, final String customRetriableMessagePattern) {
         this.retries = retries;
+        this.customRetriableMessagePattern = customRetriableMessagePattern;
     }
 
     public abstract V doCall() throws Exception;
@@ -43,6 +49,7 @@ public abstract class RetryingCallable<V> implements Callable<V> {
                 .retries(retries)
                 .doGet(this::doCall)
                 .retriableExceptions(RetriableException.class)
+                .customRetriableMessagePattern(customRetriableMessagePattern)
                 .delayStrategy(delayStrategy())
                 .name("Callable")
                 .logger(LOGGER)
