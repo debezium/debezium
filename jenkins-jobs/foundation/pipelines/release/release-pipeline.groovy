@@ -91,7 +91,34 @@ properties([
 @Field final MAVEN_CENTRAL = 'https://repo1.maven.org/maven2'
 @Field final LOCAL_MAVEN_REPO = "$HOME_DIR/.m2/repository"
 
+@Field final PUBLISH_TIMEOUT_MINUTES = 90
+@Field final PUBLISH_POLL_INTERVAL_MS = 15000
+
 @Field final MAVEN_REPOSITORIES = [:]
+
+// Defines the release execution order for the 'Perform release' stage.
+// Tiers are executed sequentially. Within each tier repos are released sequentially.
+// After all uploads in a tier complete, the pipeline waits for Maven Central propagation
+// of every uploaded repo before moving to the next tier, ensuring dependencies are resolvable.
+//
+// Ordering constraints:
+//   - debezium (core) must be first — all other repos depend on it in the local Maven repo
+//   - connectors (tier 2) need debezium in the local Maven repo only, not yet in Maven Central
+//   - quarkus and operator need debezium available in Maven Central
+//   - server needs operator available in Maven Central
+//   - platform needs server and operator available in Maven Central
+//
+// To add a new repository:
+//   1. Add it to SOURCE_REPOSITORIES parameter in common_parameters.groovy
+//   2. Add it to the appropriate tier below (or add a new tier if it has new dependencies)
+//   The pipeline validates at startup that RELEASE_PLAN and SOURCE_REPOSITORIES are in sync.
+@Field final RELEASE_PLAN = [
+    ['debezium'],
+    ['cassandra', 'cockroachdb', 'db2', 'ibmi', 'informix', 'ingres', 'spanner', 'vitess', 'tidb', 'yashandb'],
+    ['quarkus', 'operator'],
+    ['server'],
+    ['platform'],
+]
 
 @Field DRY_RUN
 @Field FROM_SCRATCH
@@ -308,7 +335,7 @@ def operatorPostPerformSteps() {
 
 def releasePrepare(repoDir, repoName) {
     echo "Building current development version"
-    sh "./mvnw clean install -DskipTests -DskipITs -Passembly"
+    sh "./mvnw clean install -T 1C -DskipTests -DskipITs -Passembly"
 
     def ignoreSnaphots = FORCE_IGNORE_SNAPSHOTS.getOrDefault(repoDir, IGNORE_SNAPSHOTS)
 
@@ -323,23 +350,22 @@ def releasePrepare(repoDir, repoName) {
     gitPushCandidate(repoName)
 }
 
-def releasePerform(repoDir, repoName) {
+def releasePerformUpload(repoDir, repoName) {
     def buildArgs = buildArgsForRepo(repoDir)
 
     echo 'Executing release:perform'
     sendZulipNotification("Publishing version $RELEASE_VERSION of $repoDir")
 
-    executeShell('.', "env MAVEN_USERNAME=\${MAVEN_USERNAME} MAVEN_TOKEN=\${MAVEN_TOKEN} MAVEN_OPTS='-Xmx8g -Xms1g' ./mvnw release:perform -DstagingProgressTimeoutMinutes=60 -DlocalCheckout=$DRY_RUN -Dpublish.auto=${!DRY_RUN} -Dpublish.skip=${DRY_RUN} -Dpublish.wait.until=validated -DconnectionUrl=\"scm:git:https://\${GITHUB_USERNAME}:\${GITHUB_PASSWORD}@${repoName}\" -Darguments=\"-s \\\$HOME/.m2/settings-snapshots.xml -DstagingProgressTimeoutMinutes=60 -Dpublish.auto=${!DRY_RUN} -Dpublish.skip=${DRY_RUN} -Dpublish.wait.until=validated -Dgpg.homedir=\\\$WORKSPACE/$GPG_DIR -Dgpg.passphrase=\${GPG_PASSPHRASE} -DskipTests -DskipITs -Dschema.generator.output.dir=${DESCRIPTORS_OUTPUT_DIR} $buildArgs\" $buildArgs")
-    while (!artifactExists(repoDir)) {
-        sleep 60
-    }
+    executeShell('.', "env MAVEN_USERNAME=\${MAVEN_USERNAME} MAVEN_TOKEN=\${MAVEN_TOKEN} MAVEN_OPTS='-Xmx8g -Xms1g' ./mvnw release:perform -DstagingProgressTimeoutMinutes=60 -DlocalCheckout=$DRY_RUN -Dpublish.auto=${!DRY_RUN} -Dpublish.skip=${DRY_RUN} -Dpublish.wait.until=uploaded -DconnectionUrl=\"scm:git:https://\${GITHUB_USERNAME}:\${GITHUB_PASSWORD}@${repoName}\" -Darguments=\"-s \\\$HOME/.m2/settings-snapshots.xml -DstagingProgressTimeoutMinutes=60 -Dpublish.auto=${!DRY_RUN} -Dpublish.skip=${DRY_RUN} -Dpublish.wait.until=uploaded -Dgpg.homedir=\\\$WORKSPACE/$GPG_DIR -Dgpg.passphrase=\${GPG_PASSPHRASE} -DskipTests -DskipITs -Dschema.generator.output.dir=${DESCRIPTORS_OUTPUT_DIR} $buildArgs\" $buildArgs")
+}
 
-    sendZulipNotification("Published version $RELEASE_VERSION of $repoDir")
+def releasePerformPostSteps(repoDir, repoName) {
+    def buildArgs = buildArgsForRepo(repoDir)
 
     echo "Building new development version"
-    sh "env MAVEN_OPTS='-Xmx8g -Xms1g' ./mvnw clean install -DskipTests -DskipITs -Passembly $buildArgs"
+    sh "env MAVEN_OPTS='-Xmx8g -Xms1g' ./mvnw clean install -T 1C -DskipTests -DskipITs -Passembly $buildArgs"
 
-    echo 'Executing post-prepare steps'
+    echo 'Executing post-perform steps'
     POST_PERFORM_STEPS.getOrDefault(repoDir, this.&defaultPostPerformSteps)()
 
     gitPushCandidate(repoName)
@@ -575,8 +601,8 @@ node {
     }
     echo "Connectors to be released: $CONNECTORS"
 
-    // It is expected that repositories are ordered in the dependency order
-    // So core repository first, then connectors, Server, Operator and Platform
+    // Repositories are parsed from SOURCE_REPOSITORIES in the order they are listed.
+    // Ordering matters for 'Prepare release' which iterates MAVEN_REPOSITORIES directly.
     SOURCE_REPOSITORIES.split().each { item ->
         item.tokenize('#').with { parts ->
             switch(parts.size()) {
@@ -607,6 +633,13 @@ node {
             if (FROM_SCRATCH && fileExists(DEBEZIUM_DIR)) {
                 input message: 'Really start from scratch?', ok: 'yes', cancel: 'no'
             }
+
+            def planIds = RELEASE_PLAN.flatten().toSet()
+            def repoIds = MAVEN_REPOSITORIES.keySet()
+            def missing = repoIds - planIds
+            def extra = planIds - repoIds
+            if (missing) { error "RELEASE_PLAN is missing repositories: ${missing.sort()}" }
+            if (extra) { error "RELEASE_PLAN contains unknown repositories: ${extra.sort()}" }
         }
 
         stage('Initialize') {
@@ -728,7 +761,7 @@ EOF''')
                     echo "Preparing release for $id"
                     sh "git checkout -b $CANDIDATE_BRANCH"
 
-                    // Obtain dependecies not available in Maven Central (introduced for Cassandra Enterprise)
+                    // Obtain dependencies not available in Maven Central (introduced for Cassandra Enterprise)
                     if (fileExists(INSTALL_ARTIFACTS_SCRIPT)) {
                         sh "./$INSTALL_ARTIFACTS_SCRIPT"
                     }
@@ -759,16 +792,39 @@ EOF''')
         }
 
         stage('Perform release') {
-            MAVEN_REPOSITORIES.each { id, repo ->
-                dir("$id/${repo.subDir}") {
-                    if (artifactExists(id)) {
-                        return
+            RELEASE_PLAN.each { tier ->
+                // Upload repos in this tier for which release:perform has not yet been executed.
+                // release.properties is present before release:perform and removed by Maven on success.
+                def unpublished = []
+                tier.each { id ->
+                    def repo = MAVEN_REPOSITORIES[id]
+                    dir("$id/${repo.subDir}") {
+                        if (fileExists('release.properties') && !DRY_RUN) {
+                            releasePerformUpload(id, repo.git)
+                            unpublished << id
+                        }
                     }
-                    // Skip if release:perform was already executed, useful with resumed dry runs
-                    if (!fileExists('release.properties') && DRY_RUN) {
-                        return
+                }
+                // Wait for all uploaded repos in this tier to appear in Maven Central.
+                // Poll all remaining unpublished repos each iteration, notify and remove each as it appears.
+                // This also gates the next tier from starting before its dependencies are published.
+                timeout(time: PUBLISH_TIMEOUT_MINUTES, unit: 'MINUTES') {
+                    waitUntil(initialRecurrencePeriod: PUBLISH_POLL_INTERVAL_MS) {
+                        unpublished.removeAll { id ->
+                            if (!artifactExists(id)) {
+                                return false
+                            }
+                            sendZulipNotification("Published version $RELEASE_VERSION of $id")
+                            return true
+                        }
+                        unpublished.isEmpty()
                     }
-                    releasePerform(id, repo.git)
+                }
+                tier.each { id ->
+                    def repo = MAVEN_REPOSITORIES[id]
+                    dir("$id/${repo.subDir}") {
+                        releasePerformPostSteps(id, repo.git)
+                    }
                 }
             }
         }
@@ -853,7 +909,6 @@ EOF''')
         }
 
         stage('Commit changes to repositories') {
-            // Merge doc PRs
             dir(IMAGES_DIR) {
                 gitPushTag(IMAGES_REPOSITORY)
                 gitMergeAndDeleteCandidate(IMAGES_REPOSITORY, IMAGES_BRANCH)
