@@ -171,7 +171,8 @@ class NatsOffsetBackingStoreTest {
         Map<ByteBuffer, ByteBuffer> retrievedOffsets = getFuture.get(5, TimeUnit.SECONDS);
 
         assertThat(retrievedOffsets).hasSize(1);
-        assertEquals("value1", new String(retrievedOffsets.get(key).array(), StandardCharsets.UTF_8));
+        assertEquals("value1",
+                StandardCharsets.UTF_8.decode(retrievedOffsets.get(key).duplicate()).toString());
     }
 
     @Test

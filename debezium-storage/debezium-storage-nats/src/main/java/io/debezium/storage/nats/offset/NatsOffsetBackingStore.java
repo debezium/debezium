@@ -241,8 +241,8 @@ public class NatsOffsetBackingStore implements OffsetStore {
         Map<byte[], byte[]> serializableMap = new HashMap<>();
         for (Map.Entry<ByteBuffer, ByteBuffer> entry : data.entrySet()) {
             if (entry.getKey() != null) {
-                byte[] key = entry.getKey().array();
-                byte[] value = entry.getValue() != null ? entry.getValue().array() : null;
+                byte[] key = toByteArray(entry.getKey());
+                byte[] value = entry.getValue() != null ? toByteArray(entry.getValue()) : null;
                 serializableMap.put(key, value);
             }
         }
@@ -251,6 +251,20 @@ public class NatsOffsetBackingStore implements OffsetStore {
         oos.close();
 
         return baos.toByteArray();
+    }
+
+    /**
+     * Copy the remaining bytes of a buffer into a fresh byte array.
+     * <p>
+     * Unlike {@link ByteBuffer#array()}, this works for any buffer kind
+     * (direct, read-only, sliced, ...) and only copies the bytes between the
+     * buffer's position and limit.
+     */
+    private static byte[] toByteArray(ByteBuffer buffer) {
+        ByteBuffer duplicate = buffer.duplicate();
+        byte[] bytes = new byte[duplicate.remaining()];
+        duplicate.get(bytes);
+        return bytes;
     }
 
     /**
