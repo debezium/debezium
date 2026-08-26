@@ -18,7 +18,6 @@ import java.util.Map;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -121,15 +120,14 @@ class NatsStorageIntegrationTest {
         config.put("offset.storage." + NatsOffsetBackingStoreConfig.PROP_RETRY_ENABLED.name(), "true");
         config.put("offset.storage." + NatsOffsetBackingStoreConfig.PROP_MAX_RETRIES.name(), "3");
         config.put("offset.storage." + NatsOffsetBackingStoreConfig.PROP_RETRY_DELAY_MS.name(), "100");
-        // Required Kafka Connect configurations
-        config.put("key.converter", "org.apache.kafka.connect.json.JsonConverter");
-        config.put("value.converter", "org.apache.kafka.connect.json.JsonConverter");
-        config.put("offset.storage", "io.debezium.storage.nats.offset.NatsOffsetBackingStore");
-        config.put("offset.storage.file.filename", "/tmp/integration-offsets.dat");
+        // No longer required with the OffsetStore SPI (previously needed for StandaloneConfig)
+        // config.put("key.converter", "org.apache.kafka.connect.json.JsonConverter");
+        // config.put("value.converter", "org.apache.kafka.connect.json.JsonConverter");
+        // config.put("offset.storage", "io.debezium.storage.nats.offset.NatsOffsetBackingStore");
+        // config.put("offset.storage.file.filename", "/tmp/integration-offsets.dat");
 
         offsetStore = new NatsOffsetBackingStore();
-        StandaloneConfig workerConfig = new StandaloneConfig(config);
-        offsetStore.configure(workerConfig);
+        offsetStore.configure(Configuration.from(config));
         offsetStore.start();
     }
 

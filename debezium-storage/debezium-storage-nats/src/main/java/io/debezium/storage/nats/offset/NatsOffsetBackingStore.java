@@ -14,38 +14,41 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import org.apache.kafka.connect.runtime.WorkerConfig;
-import org.apache.kafka.connect.storage.MemoryOffsetBackingStore;
-import org.apache.kafka.connect.util.Callback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.Configuration;
+import io.debezium.spi.storage.DefaultOffsetStorageReader;
+import io.debezium.spi.storage.DefaultOffsetStorageWriter;
+import io.debezium.spi.storage.OffsetStorageReader;
+import io.debezium.spi.storage.OffsetStorageWriter;
+import io.debezium.spi.storage.OffsetStore;
 import io.debezium.storage.nats.NatsConnection;
 import io.nats.client.ObjectStore;
 import io.nats.client.api.ObjectInfo;
 
 /**
- * Implementation of OffsetBackingStore that saves to NATS Object Store.
+ * Implementation of OffsetStore that saves to NATS Object Store.
  * Uses Java serialization to store all offsets in a single Object Store entry.
  *
  * @author Nick Chomey
  */
-public class NatsOffsetBackingStore extends MemoryOffsetBackingStore {
+public class NatsOffsetBackingStore implements OffsetStore {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(NatsOffsetBackingStore.class);
     private static final String OFFSET_OBJECT_NAME = "debezium-offsets";
 
+    protected Map<ByteBuffer, ByteBuffer> data = new HashMap<>();
+    protected ExecutorService executor;
+
     private NatsOffsetBackingStoreConfig config;
     private NatsConnection natsConnection;
     private ObjectStore objectStore;
-    private ExecutorService executor;
 
     private void connect() {
         try {
@@ -59,30 +62,22 @@ public class NatsOffsetBackingStore extends MemoryOffsetBackingStore {
     }
 
     @Override
-    public void configure(WorkerConfig config) {
-        super.configure(config);
-        Configuration configuration = Configuration.from(config.originalsStrings());
-        this.config = new NatsOffsetBackingStoreConfig(configuration);
-        this.executor = Executors.newSingleThreadExecutor(r -> {
-            Thread t = new Thread(r, "nats-offset-backing-store");
-            t.setDaemon(true);
-            return t;
-        });
+    public void configure(Configuration config) {
+        this.config = new NatsOffsetBackingStoreConfig(config);
     }
 
     @VisibleForTesting
     public void configure(NatsOffsetBackingStoreConfig config) {
         this.config = config;
-        this.executor = Executors.newSingleThreadExecutor(r -> {
-            Thread t = new Thread(r, "nats-offset-backing-store");
-            t.setDaemon(true);
-            return t;
-        });
     }
 
     @Override
     public synchronized void start() {
-        super.start();
+        executor = Executors.newSingleThreadExecutor(r -> {
+            Thread t = new Thread(r, "nats-offset-backing-store");
+            t.setDaemon(true);
+            return t;
+        });
         LOGGER.info("Starting NatsOffsetBackingStore");
         connect();
         load();
@@ -90,7 +85,11 @@ public class NatsOffsetBackingStore extends MemoryOffsetBackingStore {
 
     @VisibleForTesting
     synchronized void startNoLoad() {
-        super.start();
+        executor = Executors.newSingleThreadExecutor(r -> {
+            Thread t = new Thread(r, "nats-offset-backing-store");
+            t.setDaemon(true);
+            return t;
+        });
         connect();
     }
 
@@ -103,7 +102,6 @@ public class NatsOffsetBackingStore extends MemoryOffsetBackingStore {
         if (natsConnection != null) {
             natsConnection.close();
         }
-        super.stop();
     }
 
     /**
@@ -145,7 +143,6 @@ public class NatsOffsetBackingStore extends MemoryOffsetBackingStore {
     /**
      * Save offsets to NATS Object Store
      */
-    @Override
     protected void save() {
         try {
             // Serialize the entire offset map using Java serialization
@@ -197,7 +194,7 @@ public class NatsOffsetBackingStore extends MemoryOffsetBackingStore {
     }
 
     @Override
-    public Future<Void> set(Map<ByteBuffer, ByteBuffer> values, Callback<Void> callback) {
+    public Future<Void> set(Map<ByteBuffer, ByteBuffer> values, OffsetStore.Callback<Void> callback) {
         return executor.submit(() -> {
             for (Map.Entry<ByteBuffer, ByteBuffer> entry : values.entrySet()) {
                 if (entry.getKey() == null) {
@@ -216,8 +213,13 @@ public class NatsOffsetBackingStore extends MemoryOffsetBackingStore {
     }
 
     @Override
-    public Set<Map<String, Object>> connectorPartitions(String connectorName) {
-        return null;
+    public OffsetStorageReader createReader(String namespace) {
+        return new DefaultOffsetStorageReader(this, namespace);
+    }
+
+    @Override
+    public OffsetStorageWriter createWriter(String namespace) {
+        return new DefaultOffsetStorageWriter(this, namespace);
     }
 
     private String fromByteBuffer(ByteBuffer data) {
