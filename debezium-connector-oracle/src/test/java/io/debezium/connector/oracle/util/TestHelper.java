@@ -433,7 +433,7 @@ public class TestHelper {
             // a non-idle class or a wait that keeps climbing, and BLOCKING_SESSION names any blocker.
             // DBA_APPLY cannot answer this, as its STATUS is configuration state, not liveness.
             appendQuery(admin, report, "V$SESSION (MODULE = 'XStream')",
-                    "SELECT SID, SERIAL#, USERNAME, STATUS, LAST_CALL_ET, "
+                    "SELECT SID, SERIAL#, USERNAME, STATUS, LOGON_TIME, LAST_CALL_ET, "
                             + "EVENT, WAIT_CLASS, SECONDS_IN_WAIT, BLOCKING_SESSION, "
                             + "SUBSTR(PROGRAM, INSTR(PROGRAM, '(') + 1, 4) AS XSTREAM_PROCESS "
                             + "FROM V$SESSION WHERE MODULE = 'XStream'");
@@ -454,6 +454,43 @@ public class TestHelper {
         catch (Exception e) {
             LOGGER.warn("Failed to collect XStream outbound server diagnostics ({}){}{}",
                     reason, System.lineSeparator(), report, e);
+        }
+    }
+
+    /**
+     * Returns a compact identity of the XStream outbound server's capture and apply sessions, as
+     * {@code PROCESS=SID/SERIAL#@LOGON_TIME} entries in a stable order.
+     *
+     * <p>This is the control for the observation that, in every wedge captured so far, those sessions
+     * date to the instant the connector detached. That is only meaningful if they do <em>not</em>
+     * restart on an ordinary detach, and the diagnostics dump cannot answer it because it only runs
+     * when an attach has already failed. Comparing this identity across successful test boundaries
+     * distinguishes the two.
+     *
+     * <p>{@code LOGON_TIME} is used rather than deriving a start time from {@code LAST_CALL_ET},
+     * because the latter merely tracks session age on an idle server and says nothing about restarts.
+     *
+     * @return the session identity, or {@code null} when not running against XStream; never throws
+     */
+    public static String getXStreamOutboundServerSessionIdentity() {
+        if (!isXStream()) {
+            return null;
+        }
+        try (OracleConnection admin = adminConnection(true)) {
+            final StringJoiner entries = new StringJoiner(", ");
+            admin.query("SELECT SUBSTR(PROGRAM, INSTR(PROGRAM, '(') + 1, 4) || '=' || SID || '/' || SERIAL# "
+                    + "|| '@' || TO_CHAR(LOGON_TIME, 'HH24:MI:SS') AS ENTRY "
+                    + "FROM V$SESSION WHERE MODULE = 'XStream' ORDER BY 1", rs -> {
+                        while (rs.next()) {
+                            entries.add(rs.getString(1));
+                        }
+                    });
+            return entries.length() == 0 ? "<none>" : entries.toString();
+        }
+        catch (Exception e) {
+            // Returned rather than thrown so a lookup failure shows up as a change in the tracked
+            // identity instead of silently dropping an observation or failing an unrelated test.
+            return "<unavailable: " + e.getMessage() + ">";
         }
     }
 
