@@ -22,6 +22,11 @@ import io.debezium.util.Collect;
  * For example: schema.history.internal.nats.url,
  * schema.history.internal.nats.stream.name, ...
  *
+ * <p>Note: the stream retention defaults (unlimited age and size) match the
+ * behavior of the file-based schema history. For long-running connectors,
+ * consider setting {@link #PROP_MAX_AGE_MS} or {@link #PROP_MAX_BYTES} to
+ * bound the growth of the stream.
+ *
  * @author Nick Babcock
  */
 public class NatsSchemaHistoryConfig extends NatsCommonConfig {
