@@ -10,17 +10,20 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.HashMap;
 import java.util.Map;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.relational.Tables;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.relational.history.SchemaHistoryException;
@@ -67,12 +70,17 @@ class NatsSchemaHistoryTest {
     }
 
     protected SchemaHistory createHistory() {
-        Map<String, String> config = Collect.hashMapOf(
-                SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + NatsCommonConfig.NATS_URL.name(), natsUrl,
-                SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + NatsSchemaHistoryConfig.PROP_STREAM_NAME.name(),
-                "test-schema-history",
-                SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + NatsSchemaHistoryConfig.PROP_SUBJECT.name(),
+        return createHistory(new HashMap<>());
+    }
+
+    protected SchemaHistory createHistory(Map<String, String> extraConfig) {
+        Map<String, String> config = new HashMap<>();
+        config.put(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + NatsCommonConfig.NATS_URL.name(), natsUrl);
+        config.put(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + NatsSchemaHistoryConfig.PROP_STREAM_NAME.name(),
+                "test-schema-history");
+        config.put(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + NatsSchemaHistoryConfig.PROP_SUBJECT.name(),
                 "test.schema.history");
+        config.putAll(extraConfig);
 
         Configuration configuration = Configuration.from(config);
         NatsSchemaHistory history = new NatsSchemaHistory();
@@ -203,5 +211,30 @@ class NatsSchemaHistoryTest {
 
         // Clear interrupt flag
         Thread.interrupted();
+    }
+
+    @Test
+    @Timeout(30)
+    @SuppressWarnings("deprecation")
+    public void shouldRecoverAllRecordsBeyondAttemptLimit() throws Exception {
+        // 300 records with a recovery attempt limit of 2 (100 msgs per fetch)
+        // must still recover everything; the attempt limit must not truncate
+        // the history.
+        Map<String, String> extraConfig = new HashMap<>();
+        extraConfig.put(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING
+                + NatsSchemaHistoryConfig.PROP_RECOVERY_ATTEMPTS.name(), "2");
+        extraConfig.put(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING
+                + NatsSchemaHistoryConfig.PROP_RECOVERY_POLL_INTERVAL_MS.name(), "10");
+        history = createHistory(extraConfig);
+
+        Map<String, Object> source = server("test-server");
+        for (int i = 0; i < 300; i++) {
+            history.record(source, position("test.log", i, 0), "testdb", "CREATE TABLE t" + i + " (id INT);");
+        }
+
+        Tables tables = new Tables();
+        history.recover(source, position("test.log", 299, 0), tables, new MySqlAntlrDdlParser());
+
+        assertThat(tables.size()).isEqualTo(300);
     }
 }
