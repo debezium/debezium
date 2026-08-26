@@ -50,7 +50,7 @@ can be generated with the `Release Notes` tool in JIRA on the version's detail p
 * https://github.com/debezium/debezium.github.io/blob/develop/releases/1.7/release-notes.asciidoc
 * https://github.com/debezium/debezium.github.io/blob/develop/_data/releases/1.7/series.yml
 
-JIRA issues that break backwards compatability for existing consumers, should be marked with the "add-to-upgrade-guide" label.
+JIRA issues that break backwards compatibility for existing consumers, should be marked with the "add-to-upgrade-guide" label.
 Search for them using [this query](https://issues.redhat.com/issues/?jql=labels%20%3D%20add-to-upgrade-guide) and describe the
 implications and required steps for upgrading in the changelog on the website.
 
