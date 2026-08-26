@@ -247,4 +247,49 @@ class NatsOffsetBackingStoreIT {
 
         assertThat(retrievedOffsets).isEmpty();
     }
+
+    @Test
+    @Timeout(10)
+    public void shouldNotClobberOffsetsFromAnotherStore() throws Exception {
+        // Two stores sharing the same bucket must not overwrite each other's
+        // keys: each offset is an independent object.
+        NatsOffsetBackingStore store2 = new NatsOffsetBackingStore();
+        store2.configure(Configuration.from(createConfig()));
+        store2.start();
+        try {
+            ByteBuffer key1 = ByteBuffer.wrap("store1-key".getBytes(StandardCharsets.UTF_8));
+            ByteBuffer value1 = ByteBuffer.wrap("store1-value".getBytes(StandardCharsets.UTF_8));
+            ByteBuffer key2 = ByteBuffer.wrap("store2-key".getBytes(StandardCharsets.UTF_8));
+            ByteBuffer value2 = ByteBuffer.wrap("store2-value".getBytes(StandardCharsets.UTF_8));
+
+            Map<ByteBuffer, ByteBuffer> offsets1 = new HashMap<>();
+            offsets1.put(key1, value1);
+            Map<ByteBuffer, ByteBuffer> offsets2 = new HashMap<>();
+            offsets2.put(key2, value2);
+
+            offsetStore.set(offsets1, null).get(5, TimeUnit.SECONDS);
+            store2.set(offsets2, null).get(5, TimeUnit.SECONDS);
+
+            // A fresh store must see both keys
+            NatsOffsetBackingStore store3 = new NatsOffsetBackingStore();
+            store3.configure(Configuration.from(createConfig()));
+            store3.start();
+            try {
+                Collection<ByteBuffer> keys = new ArrayList<>();
+                keys.add(key1);
+                keys.add(key2);
+                Map<ByteBuffer, ByteBuffer> all = store3.get(keys).get(5, TimeUnit.SECONDS);
+
+                assertThat(all).hasSize(2);
+                assertEquals(value1, all.get(key1));
+                assertEquals(value2, all.get(key2));
+            }
+            finally {
+                store3.stop();
+            }
+        }
+        finally {
+            store2.stop();
+        }
+    }
 }
