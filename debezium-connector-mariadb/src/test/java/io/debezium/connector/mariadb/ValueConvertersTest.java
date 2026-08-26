@@ -9,7 +9,6 @@ import java.time.temporal.TemporalAdjuster;
 
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode;
-import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.BinlogConnectorConfig;
 import io.debezium.connector.binlog.BinlogValueConvertersTest;
 import io.debezium.connector.binlog.jdbc.BinlogValueConverters;
@@ -39,11 +38,6 @@ public class ValueConvertersTest extends BinlogValueConvertersTest<MariaDbConnec
                 binaryHandlingMode,
                 temporalAdjuster,
                 eventConvertingFailureHandlingMode);
-    }
-
-    @Override
-    protected BinlogValueConverters getValueConverters(Configuration configuration) {
-        return new MariaDbValueConvertersFactory().create(configuration, x -> x);
     }
 
     @Override

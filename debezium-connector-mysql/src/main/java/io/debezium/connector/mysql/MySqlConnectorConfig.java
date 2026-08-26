@@ -365,6 +365,61 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
     public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
             .withDefault(MySqlSourceInfoStructMaker.class.getName());
 
+    /**
+     * Set of predefined JsonStringFormattingMode options.
+     */
+    public enum JsonStringFormattingMode implements EnumeratedValue {
+        /**
+         * Serializes {@code JSON} values read from the binlog without whitespace, e.g. {@code {"key":"value"}}.
+         */
+        LEGACY("legacy"),
+        /**
+         * Serializes {@code JSON} values read from the binlog as the database server does when the column is
+         * read via JDBC, e.g. {@code {"key": "value"}}.
+         */
+        DATABASE("database");
+
+        private final String value;
+
+        JsonStringFormattingMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static JsonStringFormattingMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (JsonStringFormattingMode option : JsonStringFormattingMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+    }
+
+    public static final Field JSON_STRING_FORMATTING_MODE = Field.create("json.string.formatting.mode")
+            .withDisplayName("JSON string formatting mode")
+            .withEnum(JsonStringFormattingMode.class, JsonStringFormattingMode.LEGACY)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Specify how JSON values read from the binlog are serialized in change events, including: "
+                    + "'legacy' (the default) uses a compact format without whitespace, e.g. {\"key\":\"value\"}; "
+                    + "'database' uses the format the database server produces when the column is read via JDBC, e.g. {\"key\": \"value\"}, "
+                    + "so that streamed values are consistent with snapshotted ones.");
+
     public static final Field DDL_PARSER_TYPE = Field.create("ddl.parser.type")
             .withDisplayName("DDL Parser Type")
             .withEnum(DdlParserType.class, DdlParserType.DEFAULT)
@@ -382,7 +437,7 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
             .group(Field.Group.CONNECTION, JDBC_DRIVER, JDBC_PROTOCOL)
             .group(Field.Group.CONNECTION_ADVANCED_SSL, SSL_MODE)
             .group(Field.Group.CONNECTOR_SNAPSHOT, SNAPSHOT_LOCKING_MODE)
-            .group(Field.Group.CONNECTOR, GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES, SOURCE_INFO_STRUCT_MAKER)
+            .group(Field.Group.CONNECTOR, GTID_SOURCE_INCLUDES, GTID_SOURCE_EXCLUDES, SOURCE_INFO_STRUCT_MAKER, JSON_STRING_FORMATTING_MODE)
             .create();
 
     protected static ConfigDef configDef() {
@@ -400,6 +455,7 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
     private final SnapshotLockingStrategy snapshotLockingStrategy;
     private final SecureConnectionMode secureConnectionMode;
     private final DdlParserType ddlParserType;
+    private final JsonStringFormattingMode jsonStringFormattingMode;
 
     public MySqlConnectorConfig(Configuration config) {
         super(MySqlConnector.class, config, DEFAULT_SNAPSHOT_FETCH_SIZE);
@@ -411,6 +467,8 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
         this.secureConnectionMode = MySqlSecureConnectionMode.parse(config.getString(SSL_MODE));
 
         this.ddlParserType = DdlParserType.parse(config.getString(DDL_PARSER_TYPE), DDL_PARSER_TYPE.defaultValueAsString());
+
+        this.jsonStringFormattingMode = JsonStringFormattingMode.parse(config.getString(JSON_STRING_FORMATTING_MODE));
 
         // Set up the GTID filter ...
         final String gtidSetIncludes = config.getString(GTID_SOURCE_INCLUDES);
@@ -481,6 +539,13 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
 
     public DdlParserType getDdlParserType() {
         return ddlParserType;
+    }
+
+    /**
+     * @return the {@code JSON} string formatting mode
+     */
+    public JsonStringFormattingMode getJsonStringFormattingMode() {
+        return jsonStringFormattingMode;
     }
 
     /**

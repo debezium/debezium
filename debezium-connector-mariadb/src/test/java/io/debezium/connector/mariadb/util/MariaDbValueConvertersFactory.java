@@ -28,7 +28,6 @@ public class MariaDbValueConvertersFactory implements BinlogValueConvertersFacto
                 connectorConfig.binaryHandlingMode(),
                 temporalAdjuster,
                 connectorConfig.getEventConvertingFailureHandlingMode(),
-                connectorConfig.getJsonStringFormattingMode(),
                 connectorConfig.getServiceRegistry());
     }
 }
