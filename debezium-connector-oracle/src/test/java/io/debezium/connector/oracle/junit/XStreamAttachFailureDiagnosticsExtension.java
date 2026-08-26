@@ -63,6 +63,13 @@ public class XStreamAttachFailureDiagnosticsExtension implements BeforeEachCallb
     private static final String ATTACH_FAILURE_MESSAGE = "Failed to attach to outbound server";
 
     /**
+     * How long {@code afterEach} waits for an in-flight collection. Generous, because it is only ever
+     * reached on a test that has already failed to attach, and the collection is a handful of short
+     * dictionary queries.
+     */
+    private static final long COLLECTION_TIMEOUT_MS = 30_000L;
+
+    /**
      * Attached to the streaming source's logger once and reused, since logback offers no way to detach
      * an appender and a per-test instance would accumulate over a run.
      */
@@ -98,6 +105,7 @@ public class XStreamAttachFailureDiagnosticsExtension implements BeforeEachCallb
 
         // Fallback only. Under normal operation the appender has already dumped, far closer to the
         // failure than this point; this covers the dump itself having failed.
+        appender.awaitCollection();
         if (appender.sawFailureWithoutDump()) {
             TestHelper.logXStreamOutboundServerDiagnostics("after " + context.getDisplayName()
                     + " (fallback, inline capture did not complete)");
@@ -118,24 +126,43 @@ public class XStreamAttachFailureDiagnosticsExtension implements BeforeEachCallb
     }
 
     /**
-     * Fires the diagnostics collection on the first failed attach of each test, from the thread that
-     * logged it, so the outbound server is observed while the connector is still retrying.
+     * Fires the diagnostics collection on the first failed attach of each test, so the outbound server
+     * is observed while the connector is still retrying rather than minutes later.
      */
     private static final class AttachFailureAppender extends AppenderBase<ILoggingEvent> {
 
         private final AtomicBoolean sawFailure = new AtomicBoolean();
         private final AtomicBoolean dumped = new AtomicBoolean();
         private volatile String testName = "<unknown test>";
+        private volatile Thread collector;
 
         void resetFor(String testName) {
             this.testName = testName;
             sawFailure.set(false);
             dumped.set(false);
+            collector = null;
         }
 
         /**
-         * @return whether this test saw an attach failure that the inline capture did not manage to
-         *         report, meaning the fallback should run
+         * Waits briefly for an in-flight collection so that {@link #sawFailureWithoutDump()} reflects
+         * its outcome rather than racing it.
+         */
+        void awaitCollection() {
+            final Thread inFlight = collector;
+            if (inFlight == null) {
+                return;
+            }
+            try {
+                inFlight.join(COLLECTION_TIMEOUT_MS);
+            }
+            catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+
+        /**
+         * @return whether this test saw an attach failure that the capture did not manage to report,
+         *         meaning the fallback should run
          */
         boolean sawFailureWithoutDump() {
             return sawFailure.get() && !dumped.get();
@@ -153,15 +180,25 @@ public class XStreamAttachFailureDiagnosticsExtension implements BeforeEachCallb
             if (!dumped.compareAndSet(false, true)) {
                 return;
             }
-            try {
-                TestHelper.logXStreamOutboundServerDiagnostics("at first failed attach during " + testName);
-            }
-            catch (Throwable t) {
-                // Never allow a diagnostic to break the connector thread that happened to log the
-                // failure; clearing the flag lets afterEach retry the capture.
-                dumped.set(false);
-                addError("Failed to collect XStream diagnostics inline", t);
-            }
+
+            // Deliberately not collected on the thread that logged the failure. That is the connector's
+            // streaming thread, and an attach failure is very often followed immediately by the test
+            // stopping the connector, which interrupts it. Opening a JDBC connection from an interrupted
+            // thread fails at once with ORA-17002 / InterruptedIOException, losing exactly the capture
+            // that matters. Clearing the interrupt to work around that is not an option either, since
+            // the attach retry loop reads that flag to decide whether to abandon.
+            //
+            // A plain thread rather than a pool: this runs at most once per test, and afterEach joins it.
+            final String test = testName;
+            final Thread thread = new Thread(() -> {
+                if (!TestHelper.logXStreamOutboundServerDiagnostics("at first failed attach during " + test)) {
+                    // Let afterEach try again rather than leaving the failure undescribed.
+                    dumped.set(false);
+                }
+            }, "xstream-attach-diagnostics");
+            thread.setDaemon(true);
+            collector = thread;
+            thread.start();
         }
     }
 }

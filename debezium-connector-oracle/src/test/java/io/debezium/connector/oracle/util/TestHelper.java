@@ -407,10 +407,13 @@ public class TestHelper {
      * are logged and never propagated; this is diagnostic only and must not influence test outcome.
      *
      * @param reason short description of what triggered the collection, included in the log output
+     * @return {@code true} if a report was collected and logged, {@code false} if the collection
+     *         itself failed and the caller should arrange another attempt; an individual query that
+     *         fails is reported in place and still counts as a successful collection
      */
-    public static void logXStreamOutboundServerDiagnostics(String reason) {
+    public static boolean logXStreamOutboundServerDiagnostics(String reason) {
         if (!isXStream()) {
-            return;
+            return false;
         }
 
         final StringBuilder report = new StringBuilder();
@@ -477,10 +480,12 @@ public class TestHelper {
                     "SELECT POOL, NAME, BYTES FROM V$SGASTAT WHERE NAME = 'free memory'");
 
             LOGGER.warn("{}", report);
+            return true;
         }
         catch (Exception e) {
             LOGGER.warn("Failed to collect XStream outbound server diagnostics ({}){}{}",
                     reason, System.lineSeparator(), report, e);
+            return false;
         }
     }
 
