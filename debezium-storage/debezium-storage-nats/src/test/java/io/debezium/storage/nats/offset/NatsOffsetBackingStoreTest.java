@@ -20,8 +20,6 @@ import java.util.Map;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
-import org.apache.kafka.connect.util.Callback;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -31,6 +29,8 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
+import io.debezium.config.Configuration;
+import io.debezium.spi.storage.OffsetStore;
 import io.debezium.storage.nats.NatsCommonConfig;
 
 /**
@@ -65,8 +65,7 @@ class NatsOffsetBackingStoreTest {
 
         offsetStore = new NatsOffsetBackingStore();
         Map<String, String> config = createConfig();
-        StandaloneConfig workerConfig = new StandaloneConfig(config);
-        offsetStore.configure(workerConfig);
+        offsetStore.configure(Configuration.from(config));
         offsetStore.start();
     }
 
@@ -88,11 +87,11 @@ class NatsOffsetBackingStoreTest {
         config.put("offset.storage." + NatsOffsetBackingStoreConfig.PROP_RETRY_ENABLED.name(), "true");
         config.put("offset.storage." + NatsOffsetBackingStoreConfig.PROP_MAX_RETRIES.name(), "3");
         config.put("offset.storage." + NatsOffsetBackingStoreConfig.PROP_RETRY_DELAY_MS.name(), "100");
-        // Required Kafka Connect configurations
-        config.put("key.converter", "org.apache.kafka.connect.json.JsonConverter");
-        config.put("value.converter", "org.apache.kafka.connect.json.JsonConverter");
-        config.put("offset.storage", "io.debezium.storage.nats.offset.NatsOffsetBackingStore");
-        config.put("offset.storage.file.filename", "/tmp/test-offsets.dat"); // Required for StandaloneConfig
+        // No longer required with the OffsetStore SPI (previously needed for StandaloneConfig)
+        // config.put("key.converter", "org.apache.kafka.connect.json.JsonConverter");
+        // config.put("value.converter", "org.apache.kafka.connect.json.JsonConverter");
+        // config.put("offset.storage", "io.debezium.storage.nats.offset.NatsOffsetBackingStore");
+        // config.put("offset.storage.file.filename", "/tmp/test-offsets.dat"); // Required for StandaloneConfig
         return config;
     }
 
@@ -172,8 +171,7 @@ class NatsOffsetBackingStoreTest {
 
         offsetStore = new NatsOffsetBackingStore();
         Map<String, String> config = createConfig();
-        StandaloneConfig workerConfig = new StandaloneConfig(config);
-        offsetStore.configure(workerConfig);
+        offsetStore.configure(Configuration.from(config));
         offsetStore.start();
 
         // Retrieve offsets after restart
@@ -198,8 +196,7 @@ class NatsOffsetBackingStoreTest {
 
         // Use callback to track completion
         final boolean[] callbackInvoked = { false };
-        Callback<Void> callback = new Callback<Void>() {
-            @Override
+        OffsetStore.Callback<Void> callback = new OffsetStore.Callback<Void>() {
             public void onCompletion(Throwable error, Void result) {
                 callbackInvoked[0] = true;
                 assertNull(error);
@@ -227,11 +224,5 @@ class NatsOffsetBackingStoreTest {
         Map<ByteBuffer, ByteBuffer> retrievedOffsets = getFuture.get(5, TimeUnit.SECONDS);
 
         assertThat(retrievedOffsets).isEmpty();
-    }
-
-    @Test
-    public void shouldReturnNullForConnectorPartitions() {
-        // This method is not implemented and should return null
-        assertNull(offsetStore.connectorPartitions("test-connector"));
     }
 }
