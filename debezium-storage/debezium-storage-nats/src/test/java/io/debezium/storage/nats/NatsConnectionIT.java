@@ -257,6 +257,27 @@ class NatsConnectionIT {
         }
     }
 
+    @Test
+    public void shouldNotShareConnectionAcrossDifferentTlsConfigs() {
+        // The connection cache key must include TLS settings: a plaintext and
+        // a TLS connection to the same URL must not share an instance.
+        NatsCommonConfig plain = new NatsCommonConfig(Configuration.from(Collect.hashMapOf(
+                "nats.url", natsUrl)), "");
+        NatsCommonConfig tls = new NatsCommonConfig(Configuration.from(Collect.hashMapOf(
+                "nats.url", natsUrl,
+                "nats.tls.enabled", "true")), "");
+
+        NatsConnection plainConn = NatsConnection.getInstance(plain, "tls-cache-test");
+        NatsConnection tlsConn = NatsConnection.getInstance(tls, "tls-cache-test");
+        try {
+            assertThat(plainConn).isNotSameAs(tlsConn);
+        }
+        finally {
+            plainConn.close();
+            tlsConn.close();
+        }
+    }
+
     private NatsCommonConfig createConfig() {
         Configuration config = Configuration.from(Collect.hashMapOf(
                 "nats.url", natsUrl,
