@@ -53,10 +53,66 @@ public class NatsCommonConfig {
             .withDescription("Time to wait between reconnection attempts in milliseconds")
             .withDefault(2000L);
 
+    public static final Field NATS_USER = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "user")
+            .withDescription("The username used to authenticate with the NATS server")
+            .withDefault("");
+
+    public static final Field NATS_PASSWORD = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "password")
+            .withDescription("The password used to authenticate with the NATS server")
+            .withDefault("");
+
+    public static final Field NATS_TOKEN = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "token")
+            .withDescription("The token used to authenticate with the NATS server")
+            .withDefault("");
+
+    public static final Field NATS_TLS_ENABLED = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "tls.enabled")
+            .withDescription("Whether to use TLS when connecting to the NATS server")
+            .withDefault(false);
+
+    public static final Field NATS_TLS_TRUSTSTORE_PATH = Field
+            .create(CONFIGURATION_FIELD_PREFIX_STRING + "tls.truststore.path")
+            .withDescription("The path to the trust store file used for TLS connections to the NATS server")
+            .withDefault("");
+
+    public static final Field NATS_TLS_TRUSTSTORE_PASSWORD = Field
+            .create(CONFIGURATION_FIELD_PREFIX_STRING + "tls.truststore.password")
+            .withDescription("The password for the trust store file used for TLS connections to the NATS server")
+            .withDefault("");
+
+    public static final Field NATS_TLS_TRUSTSTORE_TYPE = Field
+            .create(CONFIGURATION_FIELD_PREFIX_STRING + "tls.truststore.type")
+            .withDescription("The type of the trust store file used for TLS connections to the NATS server")
+            .withDefault("JKS");
+
+    public static final Field NATS_TLS_KEYSTORE_PATH = Field
+            .create(CONFIGURATION_FIELD_PREFIX_STRING + "tls.keystore.path")
+            .withDescription("The path to the key store file used for TLS connections to the NATS server")
+            .withDefault("");
+
+    public static final Field NATS_TLS_KEYSTORE_PASSWORD = Field
+            .create(CONFIGURATION_FIELD_PREFIX_STRING + "tls.keystore.password")
+            .withDescription("The password for the key store file used for TLS connections to the NATS server")
+            .withDefault("");
+
+    public static final Field NATS_TLS_KEYSTORE_TYPE = Field
+            .create(CONFIGURATION_FIELD_PREFIX_STRING + "tls.keystore.type")
+            .withDescription("The type of the key store file used for TLS connections to the NATS server")
+            .withDefault("JKS");
+
     private String natsUrl;
     private long connectionTimeoutMs;
     private int maxReconnects;
     private long reconnectWaitMs;
+    private String user;
+    private String password;
+    private String token;
+    private boolean tlsEnabled;
+    private String tlsTruststorePath;
+    private String tlsTruststorePassword;
+    private String tlsTruststoreType;
+    private String tlsKeystorePath;
+    private String tlsKeystorePassword;
+    private String tlsKeystoreType;
 
     protected final Configuration config; // subset view after prefix
 
@@ -88,7 +144,17 @@ public class NatsCommonConfig {
                 NATS_URL,
                 NATS_CONNECTION_TIMEOUT_MS,
                 NATS_MAX_RECONNECTS,
-                NATS_RECONNECT_WAIT_MS);
+                NATS_RECONNECT_WAIT_MS,
+                NATS_USER,
+                NATS_PASSWORD,
+                NATS_TOKEN,
+                NATS_TLS_ENABLED,
+                NATS_TLS_TRUSTSTORE_PATH,
+                NATS_TLS_TRUSTSTORE_PASSWORD,
+                NATS_TLS_TRUSTSTORE_TYPE,
+                NATS_TLS_KEYSTORE_PATH,
+                NATS_TLS_KEYSTORE_PASSWORD,
+                NATS_TLS_KEYSTORE_TYPE);
     }
 
     protected void init(Configuration c) {
@@ -96,6 +162,16 @@ public class NatsCommonConfig {
         this.connectionTimeoutMs = c.getLong(NATS_CONNECTION_TIMEOUT_MS);
         this.maxReconnects = c.getInteger(NATS_MAX_RECONNECTS);
         this.reconnectWaitMs = c.getLong(NATS_RECONNECT_WAIT_MS);
+        this.user = c.getString(NATS_USER);
+        this.password = c.getString(NATS_PASSWORD);
+        this.token = c.getString(NATS_TOKEN);
+        this.tlsEnabled = c.getBoolean(NATS_TLS_ENABLED);
+        this.tlsTruststorePath = c.getString(NATS_TLS_TRUSTSTORE_PATH);
+        this.tlsTruststorePassword = c.getString(NATS_TLS_TRUSTSTORE_PASSWORD);
+        this.tlsTruststoreType = c.getString(NATS_TLS_TRUSTSTORE_TYPE);
+        this.tlsKeystorePath = c.getString(NATS_TLS_KEYSTORE_PATH);
+        this.tlsKeystorePassword = c.getString(NATS_TLS_KEYSTORE_PASSWORD);
+        this.tlsKeystoreType = c.getString(NATS_TLS_KEYSTORE_TYPE);
     }
 
     public String getNatsUrl() {
@@ -112,6 +188,46 @@ public class NatsCommonConfig {
 
     public Duration getReconnectWait() {
         return Duration.ofMillis(reconnectWaitMs);
+    }
+
+    public String getUser() {
+        return user;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public String getToken() {
+        return token;
+    }
+
+    public boolean isTlsEnabled() {
+        return tlsEnabled;
+    }
+
+    public String getTlsTruststorePath() {
+        return tlsTruststorePath;
+    }
+
+    public String getTlsTruststorePassword() {
+        return tlsTruststorePassword;
+    }
+
+    public String getTlsTruststoreType() {
+        return tlsTruststoreType;
+    }
+
+    public String getTlsKeystorePath() {
+        return tlsKeystorePath;
+    }
+
+    public String getTlsKeystorePassword() {
+        return tlsKeystorePassword;
+    }
+
+    public String getTlsKeystoreType() {
+        return tlsKeystoreType;
     }
 
 }

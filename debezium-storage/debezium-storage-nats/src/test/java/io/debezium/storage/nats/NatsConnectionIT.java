@@ -194,6 +194,69 @@ class NatsConnectionIT {
         assertTrue(natsConnection.getConnection().getStatus() == Connection.Status.CONNECTED);
     }
 
+    @Test
+    public void shouldConnectWithUserPassword() throws Exception {
+        try (GenericContainer<?> authNats = new GenericContainer<>(DockerImageName.parse(NATS_CONTAINER_IMAGE))
+                .withExposedPorts(NATS_PORT)
+                .withCommand("--jetstream", "--user", "debezium", "--pass", "secret")) {
+            authNats.start();
+            String url = "nats://" + authNats.getHost() + ":" + authNats.getFirstMappedPort();
+
+            NatsCommonConfig natsConfig = new NatsCommonConfig(Configuration.from(Collect.hashMapOf(
+                    "nats.url", url,
+                    "nats.user", "debezium",
+                    "nats.password", "secret")), "");
+            NatsConnection conn = NatsConnection.getInstance(natsConfig, "auth-test");
+            try {
+                assertEquals(Connection.Status.CONNECTED, conn.getConnection().getStatus());
+            }
+            finally {
+                conn.close();
+            }
+        }
+    }
+
+    @Test
+    public void shouldConnectWithToken() throws Exception {
+        try (GenericContainer<?> authNats = new GenericContainer<>(DockerImageName.parse(NATS_CONTAINER_IMAGE))
+                .withExposedPorts(NATS_PORT)
+                .withCommand("--jetstream", "--auth", "tokensecret")) {
+            authNats.start();
+            String url = "nats://" + authNats.getHost() + ":" + authNats.getFirstMappedPort();
+
+            NatsCommonConfig natsConfig = new NatsCommonConfig(Configuration.from(Collect.hashMapOf(
+                    "nats.url", url,
+                    "nats.token", "tokensecret")), "");
+            NatsConnection conn = NatsConnection.getInstance(natsConfig, "auth-token-test");
+            try {
+                assertEquals(Connection.Status.CONNECTED, conn.getConnection().getStatus());
+            }
+            finally {
+                conn.close();
+            }
+        }
+    }
+
+    @Test
+    public void shouldFailToConnectWithoutCredentials() {
+        try (GenericContainer<?> authNats = new GenericContainer<>(DockerImageName.parse(NATS_CONTAINER_IMAGE))
+                .withExposedPorts(NATS_PORT)
+                .withCommand("--jetstream", "--user", "debezium", "--pass", "secret")) {
+            authNats.start();
+            String url = "nats://" + authNats.getHost() + ":" + authNats.getFirstMappedPort();
+
+            NatsCommonConfig natsConfig = new NatsCommonConfig(Configuration.from(Collect.hashMapOf(
+                    "nats.url", url)), "");
+            NatsConnection conn = NatsConnection.getInstance(natsConfig, "auth-fail-test");
+            try {
+                assertThrows(Exception.class, conn::getConnection);
+            }
+            finally {
+                conn.close();
+            }
+        }
+    }
+
     private NatsCommonConfig createConfig() {
         Configuration config = Configuration.from(Collect.hashMapOf(
                 "nats.url", natsUrl,

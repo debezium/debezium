@@ -5,10 +5,18 @@
  */
 package io.debezium.storage.nats;
 
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.security.KeyStore;
+import java.security.SecureRandom;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManagerFactory;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,9 +65,12 @@ public class NatsConnection {
     }
 
     public static NatsConnection getInstance(NatsCommonConfig config, String scopeKey) {
-        // Build a cache key from URL and a non-configurable scope identifier so
-        // offset and schema users can have independent lifecycles even on the same URL.
-        String key = config.getNatsUrl() + "|" + (scopeKey == null ? "default" : scopeKey);
+        // Build a cache key from URL, credentials and a non-configurable scope
+        // identifier so offset and schema users can have independent lifecycles
+        // even on the same URL, and connections with different credentials are
+        // never shared.
+        String key = config.getNatsUrl() + "|" + config.getUser() + "|" + config.getToken() + "|"
+                + (scopeKey == null ? "default" : scopeKey);
         synchronized (LOCK) {
             NatsConnection instance = instances.computeIfAbsent(key, k -> new NatsConnection(config, key));
             instance.refCount.incrementAndGet();
@@ -169,6 +180,25 @@ public class NatsConnection {
                 .maxReconnects(config.getMaxReconnects())
                 .reconnectWait(config.getReconnectWait());
 
+        if (config.getUser() != null && !config.getUser().isEmpty()) {
+            optionsBuilder.userInfo(config.getUser(), config.getPassword());
+        }
+        if (config.getToken() != null && !config.getToken().isEmpty()) {
+            optionsBuilder.token(config.getToken());
+        }
+        if (config.isTlsEnabled()) {
+            try {
+                optionsBuilder.secure();
+            }
+            catch (java.security.NoSuchAlgorithmException e) {
+                throw new RuntimeException("Failed to enable TLS for NATS connection", e);
+            }
+            SSLContext sslContext = buildSslContext();
+            if (sslContext != null) {
+                optionsBuilder.sslContext(sslContext);
+            }
+        }
+
         connection = Nats.connect(optionsBuilder.build());
 
         // Reset JetStream instances when reconnecting
@@ -213,6 +243,51 @@ public class NatsConnection {
         }
 
         LOGGER.info("Successfully connected to NATS server and JetStream is ready");
+    }
+
+    /**
+     * Build an {@link SSLContext} from the configured trust store and/or key
+     * store. Returns {@code null} when neither is configured, in which case
+     * the JVM default context is used.
+     */
+    private SSLContext buildSslContext() {
+        String truststorePath = config.getTlsTruststorePath();
+        String keystorePath = config.getTlsKeystorePath();
+        if ((truststorePath == null || truststorePath.isEmpty())
+                && (keystorePath == null || keystorePath.isEmpty())) {
+            return null;
+        }
+
+        try {
+            KeyStore trustStore = null;
+            if (truststorePath != null && !truststorePath.isEmpty()) {
+                trustStore = KeyStore.getInstance(config.getTlsTruststoreType());
+                try (InputStream in = new FileInputStream(truststorePath)) {
+                    trustStore.load(in, config.getTlsTruststorePassword().toCharArray());
+                }
+            }
+
+            KeyStore keyStore = null;
+            if (keystorePath != null && !keystorePath.isEmpty()) {
+                keyStore = KeyStore.getInstance(config.getTlsKeystoreType());
+                try (InputStream in = new FileInputStream(keystorePath)) {
+                    keyStore.load(in, config.getTlsKeystorePassword().toCharArray());
+                }
+            }
+
+            TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+            tmf.init(trustStore);
+
+            KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+            kmf.init(keyStore, config.getTlsKeystorePassword().toCharArray());
+
+            SSLContext sslContext = SSLContext.getInstance("TLS");
+            sslContext.init(kmf.getKeyManagers(), tmf.getTrustManagers(), new SecureRandom());
+            return sslContext;
+        }
+        catch (Exception e) {
+            throw new RuntimeException("Failed to build SSL context for NATS connection", e);
+        }
     }
 
     public void close() {
