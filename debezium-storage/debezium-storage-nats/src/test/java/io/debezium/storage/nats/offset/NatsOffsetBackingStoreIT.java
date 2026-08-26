@@ -39,7 +39,7 @@ import io.debezium.storage.nats.NatsCommonConfig;
  * @author Nick Chomey
  */
 @Testcontainers
-class NatsOffsetBackingStoreTest {
+class NatsOffsetBackingStoreIT {
 
     private static final String NATS_CONTAINER_IMAGE = "nats:2.12.0-alpine";
     private static final int NATS_PORT = 4222;
