@@ -8,6 +8,8 @@ package io.debezium.storage.nats.offset;
 import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
 import java.util.Collection;
 import java.util.HashMap;
@@ -40,6 +42,10 @@ import io.nats.client.api.ObjectInfo;
  * of changed offsets and lets multiple connectors share a bucket without
  * clobbering each other's offsets. A zero-byte object represents a null
  * offset value.
+ * <p>
+ * Keys whose encoded name would exceed the NATS object name limit (255
+ * characters) are stored under a SHA-256 hash of the key, with the original
+ * key embedded in the object payload.
  *
  * @author Nick Chomey
  */
@@ -48,6 +54,13 @@ public class NatsOffsetBackingStore implements OffsetStore {
     private static final Logger LOGGER = LoggerFactory.getLogger(NatsOffsetBackingStore.class);
     private static final Base64.Encoder OBJECT_NAME_ENCODER = Base64.getUrlEncoder().withoutPadding();
     private static final Base64.Decoder OBJECT_NAME_DECODER = Base64.getUrlDecoder();
+
+    /**
+     * Documented NATS object name limit. The prefix below is not part of the
+     * base64url alphabet, so names are unambiguous.
+     */
+    private static final int MAX_OBJECT_NAME_LENGTH = 255;
+    private static final String LONG_KEY_PREFIX = "long:";
 
     protected Map<ByteBuffer, ByteBuffer> data = new HashMap<>();
     protected ExecutorService executor;
@@ -132,12 +145,26 @@ public class NatsOffsetBackingStore implements OffsetStore {
             for (ObjectInfo info : objects) {
                 String objectName = info.getObjectName();
                 try {
-                    ByteBuffer key = ByteBuffer.wrap(OBJECT_NAME_DECODER.decode(objectName));
                     ByteArrayOutputStream baos = new ByteArrayOutputStream();
                     objectStore.get(objectName, baos);
-                    // A zero-byte object is a tombstone for a null value
-                    ByteBuffer value = baos.size() == 0 ? null : ByteBuffer.wrap(baos.toByteArray());
-                    data.put(key, value);
+                    byte[] payload = baos.toByteArray();
+                    if (objectName.startsWith(LONG_KEY_PREFIX)) {
+                        // Payload layout: 4-byte key length + key + value
+                        ByteBuffer buf = ByteBuffer.wrap(payload);
+                        int keyLength = buf.getInt();
+                        byte[] keyBytes = new byte[keyLength];
+                        buf.get(keyBytes);
+                        byte[] valueBytes = new byte[buf.remaining()];
+                        buf.get(valueBytes);
+                        data.put(ByteBuffer.wrap(keyBytes),
+                                valueBytes.length == 0 ? null : ByteBuffer.wrap(valueBytes));
+                    }
+                    else {
+                        ByteBuffer key = ByteBuffer.wrap(OBJECT_NAME_DECODER.decode(objectName));
+                        // A zero-byte object is a tombstone for a null value
+                        ByteBuffer value = payload.length == 0 ? null : ByteBuffer.wrap(payload);
+                        data.put(key, value);
+                    }
                 }
                 catch (Exception e) {
                     // Object may have been deleted concurrently; skip it
@@ -172,12 +199,16 @@ public class NatsOffsetBackingStore implements OffsetStore {
                     if (key == null) {
                         continue;
                     }
-                    String objectName = OBJECT_NAME_ENCODER.encodeToString(toByteArray(key));
+                    byte[] keyBytes = toByteArray(key);
+                    String objectName = objectNameFor(keyBytes);
                     byte[] valueBytes = data.get(key) != null ? toByteArray(data.get(key)) : new byte[0];
+                    byte[] payload = objectName.startsWith(LONG_KEY_PREFIX)
+                            ? payloadWithKey(keyBytes, valueBytes)
+                            : valueBytes;
                     try {
-                        objectStore.put(objectName, valueBytes);
+                        objectStore.put(objectName, payload);
                         LOGGER.trace("Stored offset object '{}' ({} bytes) in NATS Object Store",
-                                objectName, valueBytes.length);
+                                objectName, payload.length);
                     }
                     catch (Exception putEx) {
                         // The bucket (or its backing stream) may have been lost,
@@ -196,6 +227,47 @@ public class NatsOffsetBackingStore implements OffsetStore {
         catch (Exception e) {
             LOGGER.error("Failed to save offsets to NATS Object Store", e);
             throw new RuntimeException("Failed to save offsets", e);
+        }
+    }
+
+    /**
+     * Compute the object name for an offset key: the base64url encoding, or a
+     * SHA-256 hash with the {@link #LONG_KEY_PREFIX} prefix when the encoding
+     * would exceed the NATS object name limit.
+     */
+    private static String objectNameFor(byte[] keyBytes) {
+        String name = OBJECT_NAME_ENCODER.encodeToString(keyBytes);
+        if (name.length() > MAX_OBJECT_NAME_LENGTH) {
+            return LONG_KEY_PREFIX + sha256Hex(keyBytes);
+        }
+        return name;
+    }
+
+    /**
+     * Build the payload for a long key: 4-byte big-endian key length, the key
+     * bytes, then the value bytes (empty for a null value).
+     */
+    private static byte[] payloadWithKey(byte[] keyBytes, byte[] valueBytes) {
+        ByteBuffer buf = ByteBuffer.allocate(4 + keyBytes.length + valueBytes.length);
+        buf.putInt(keyBytes.length);
+        buf.put(keyBytes);
+        buf.put(valueBytes);
+        return buf.array();
+    }
+
+    private static String sha256Hex(byte[] bytes) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(bytes);
+            StringBuilder sb = new StringBuilder(hash.length * 2);
+            for (byte b : hash) {
+                sb.append(Character.forDigit((b >> 4) & 0xF, 16));
+                sb.append(Character.forDigit(b & 0xF, 16));
+            }
+            return sb.toString();
+        }
+        catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("SHA-256 not available", e);
         }
     }
 
