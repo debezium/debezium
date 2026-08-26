@@ -91,7 +91,18 @@ public class NatsSchemaHistory extends AbstractSchemaHistory {
         LOGGER.trace("Storing record into NATS schema history: {}", record);
         try {
             String recordString = writer.write(record.document());
-            jetStream.publish(config.getSubject(), recordString.getBytes());
+            try {
+                jetStream.publish(config.getSubject(), recordString.getBytes());
+            }
+            catch (Exception publishEx) {
+                // The stream may have been deleted out from under us (e.g. by
+                // an operator or a retention policy). Recreate it and retry
+                // once before giving up.
+                LOGGER.warn("Publishing schema history record failed, recreating stream '{}': {}",
+                        config.getStreamName(), publishEx.toString());
+                initializeStorage();
+                jetStream.publish(config.getSubject(), recordString.getBytes());
+            }
             LOGGER.debug("Stored schema history record in subject '{}'", config.getSubject());
         }
         catch (Exception e) {
