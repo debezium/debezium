@@ -116,6 +116,28 @@ class NatsConnectionTest {
     }
 
     @Test
+    public void shouldShareInstanceUntilAllUsersClose() {
+        // Refcount contract: the cached instance is shared while any user
+        // holds it, and a fresh instance is created once the last user closes.
+        NatsCommonConfig config = new NatsCommonConfig(Configuration.from(Collect.hashMapOf(
+                "nats.url", "nats://localhost:4222")), "");
+
+        NatsConnection first = NatsConnection.getInstance(config, "refcount-test");
+        NatsConnection second = NatsConnection.getInstance(config, "refcount-test");
+        assertThat(first).isSameAs(second);
+
+        first.close();
+        NatsConnection third = NatsConnection.getInstance(config, "refcount-test");
+        assertThat(first).isSameAs(third);
+
+        third.close();
+        second.close();
+        NatsConnection fourth = NatsConnection.getInstance(config, "refcount-test");
+        assertThat(first).isNotSameAs(fourth);
+        fourth.close();
+    }
+
+    @Test
     public void shouldCloseConnection() throws Exception {
         NatsCommonConfig config = createConfig();
         natsConnection = NatsConnection.getInstance(config, "test");
