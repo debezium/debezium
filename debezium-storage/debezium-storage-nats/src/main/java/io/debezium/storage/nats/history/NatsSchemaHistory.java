@@ -7,8 +7,6 @@ package io.debezium.storage.nats.history;
 
 import java.time.Duration;
 import java.util.UUID;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
 import org.slf4j.Logger;
@@ -54,7 +52,6 @@ public class NatsSchemaHistory extends AbstractSchemaHistory {
     private NatsConnection natsConnection;
     private JetStream jetStream;
     private JetStreamManagement jetStreamManagement;
-    private ExecutorService executor;
     private String dbHistoryName;
 
     @Override
@@ -63,11 +60,6 @@ public class NatsSchemaHistory extends AbstractSchemaHistory {
         super.configure(config, comparator, listener, useCatalogBeforeSchema);
         this.config = new NatsSchemaHistoryConfig(config);
         this.dbHistoryName = config.getString(SchemaHistory.NAME, UUID.randomUUID().toString());
-        this.executor = Executors.newSingleThreadExecutor(r -> {
-            Thread t = new Thread(r, "nats-schema-history-" + dbHistoryName);
-            t.setDaemon(true);
-            return t;
-        });
 
         LOGGER.info("Configured NATS schema history with stream '{}' and subject '{}'",
                 this.config.getStreamName(), this.config.getSubject());
@@ -109,9 +101,6 @@ public class NatsSchemaHistory extends AbstractSchemaHistory {
     @Override
     public void stop() {
         super.stop();
-        if (executor != null) {
-            executor.shutdown();
-        }
         if (natsConnection != null) {
             natsConnection.close();
         }
@@ -123,10 +112,11 @@ public class NatsSchemaHistory extends AbstractSchemaHistory {
         try {
             LOGGER.debug("Recovering schema history from NATS stream '{}'", config.getStreamName());
 
-            // Create a pull consumer to read all messages from the beginning
-            String consumerName = "schema-history-recovery-" + UUID.randomUUID().toString();
+            // Create an ephemeral pull consumer to read all messages from the
+            // beginning. Ephemeral (non-durable) is intentional: a durable
+            // consumer with a random name would leak consumer state in the
+            // stream on every recovery without ever being resumed.
             ConsumerConfiguration consumerConfig = ConsumerConfiguration.builder()
-                    .durable(consumerName)
                     .deliverPolicy(DeliverPolicy.All)
                     .build();
 
@@ -156,6 +146,10 @@ public class NatsSchemaHistory extends AbstractSchemaHistory {
                                 }
                                 message.ack();
                             }
+                            catch (InterruptedException e) {
+                                Thread.currentThread().interrupt();
+                                LOGGER.warn("Schema history recovery interrupted", e);
+                            }
                             catch (Exception e) {
                                 LOGGER.warn("Failed to process schema history record", e);
                             }
@@ -168,6 +162,13 @@ public class NatsSchemaHistory extends AbstractSchemaHistory {
                     LOGGER.debug("Reached end of schema history stream after {} attempts", recoveryAttempts);
                     break;
                 }
+            }
+
+            long numPending = subscription.getConsumerInfo().getNumPending();
+            if (numPending > 0) {
+                LOGGER.warn("Schema history recovery stopped after {} attempts with {} messages still pending; "
+                        + "the recovered history may be incomplete",
+                        maxRecoveryAttempts, numPending);
             }
 
             subscription.unsubscribe();

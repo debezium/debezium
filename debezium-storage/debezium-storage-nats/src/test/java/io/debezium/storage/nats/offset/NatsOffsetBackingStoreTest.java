@@ -87,11 +87,6 @@ class NatsOffsetBackingStoreTest {
         config.put("offset.storage." + NatsOffsetBackingStoreConfig.PROP_RETRY_ENABLED.name(), "true");
         config.put("offset.storage." + NatsOffsetBackingStoreConfig.PROP_MAX_RETRIES.name(), "3");
         config.put("offset.storage." + NatsOffsetBackingStoreConfig.PROP_RETRY_DELAY_MS.name(), "100");
-        // No longer required with the OffsetStore SPI (previously needed for StandaloneConfig)
-        // config.put("key.converter", "org.apache.kafka.connect.json.JsonConverter");
-        // config.put("value.converter", "org.apache.kafka.connect.json.JsonConverter");
-        // config.put("offset.storage", "io.debezium.storage.nats.offset.NatsOffsetBackingStore");
-        // config.put("offset.storage.file.filename", "/tmp/test-offsets.dat"); // Required for StandaloneConfig
         return config;
     }
 
