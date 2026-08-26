@@ -1,4 +1,5 @@
 Cobolbaby
+Aakash Mhatre
 Aaron Brady
 Aaron Rosenberg
 Abhishek Gupta
@@ -531,6 +532,7 @@ Nir Levy
 Nishant Singh
 Nitin Agarwal
 Nitin Chhabra
+Oladele Oluwaseun
 Olavi Mustanoja
 Ole-Martin Bratteng
 Oliver Weiler
@@ -539,6 +541,7 @@ Olivier Chédru
 Olivier Jacquemart
 Olivier Lemasle
 Omar Al-Safi
+Omkar Mehta
 Ondrej Babec
 Oren Elias
 Ori Popowski
@@ -596,6 +599,7 @@ René Rütter
 Robert Hana
 Robin Moffatt
 Rodolphe Quiedeville
+Rohith Devarshetty
 Roman Kuchar
 Roman Kudryashov
 Rophy Tsai
@@ -614,6 +618,7 @@ Ricardo Rosales
 Rich O'Connell
 Richard Harrington
 Richard Kolkovich
+Rick Bruins
 Rishabh Singh
 Robert Coup
 Robert Roldan
@@ -676,6 +681,7 @@ Stefan Miklosovic
 Stefano Linguerri
 Stephen Powis
 Steven Siahetiong
+Steven Jenkins De Haro
 Subodh Kant Chaturvedi
 Sun Xiao Jian
 Sungho Hwang

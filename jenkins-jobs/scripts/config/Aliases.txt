@@ -407,3 +407,5 @@ henm,Matthias Hengel
 mathewjustin,Justin Mathew
 surya-dl,Surya Dhaneshwar
 suryadanny,Surya Dhaneshwar
+Rohith,Rohith Devarshetty
+soepic1,Oladele Oluwaseun

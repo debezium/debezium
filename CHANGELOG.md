@@ -3,6 +3,111 @@
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
 
+## 3.7.0.Beta1
+August 26th 2026 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A3.7.0.Beta1)
+
+### New features since 3.7.0.ALpha2
+
+* Add support for BC time in Oracle connector [DBZ-7869] [debezium/dbz#1286](https://github.com/debezium/dbz/issues/1286)
+* Debezium Server - Allow WebIdentityTokens / IRSA roles for Kinesis sink [debezium/dbz#1738](https://github.com/debezium/dbz/issues/1738)
+* Use Adaptive polling in the Platform Stage UI in the resources listing pages. [debezium/dbz#1878](https://github.com/debezium/dbz/issues/1878)
+* Handle Connection when creating a pipeline via Debezium server configuration in the pipeline desinger [debezium/dbz#1906](https://github.com/debezium/dbz/issues/1906)
+* Add Databricks Zerobus Ingest sink adapter to Debezium Server [debezium/dbz#2279](https://github.com/debezium/dbz/issues/2279)
+* PostgreSQL snapshot resolves each column's type once per row instead of once per column (getColumnValue) [debezium/dbz#2350](https://github.com/debezium/dbz/issues/2350)
+* Enhance `debezium validate` with connector-native config validation [debezium/dbz#2363](https://github.com/debezium/dbz/issues/2363)
+* Add a native Databricks ZeroBus sink with acknowledgment-safe offset handling [debezium/dbz#2378](https://github.com/debezium/dbz/issues/2378)
+* Prometheus JMX Exporter mislabels sink connector metrics in Debezium Server [debezium/dbz#2380](https://github.com/debezium/dbz/issues/2380)
+* Add connector profiles to debezium-server-dist following debezium-server-native-dist pattern [debezium/dbz#2421](https://github.com/debezium/dbz/issues/2421)
+* Emit schema and table in the source info block [debezium/dbz#2432](https://github.com/debezium/dbz/issues/2432)
+* Support NOBLOB binlog_row_image mysql format [DBZ-3643] [debezium/dbz#473](https://github.com/debezium/dbz/issues/473)
+* Optionally commit intermediate consumer offsets to the Kafka group for observability [debezium/dbz#2472](https://github.com/debezium/dbz/issues/2472)
+* Support incremental snapshots on PostgreSQL read-only replica [DBZ-9389] [debezium/dbz#1080](https://github.com/debezium/dbz/issues/1080)
+* Replace Oracle-specific "redo log" terminology in BaseSourceTask with database-neutral wording [debezium/dbz#2481](https://github.com/debezium/dbz/issues/2481)
+* Treat oracle negative timestamp values as -infinity. [DBZ-8302] [debezium/dbz#1008](https://github.com/debezium/dbz/issues/1008)
+* Improve LogMinerDmlParser performance [debezium/dbz#2491](https://github.com/debezium/dbz/issues/2491)
+
+
+### Breaking changes since 3.7.0.ALpha2
+
+None
+
+
+### Fixes since 3.7.0.ALpha2
+
+* Debezium server logging doesn't mask password [DBZ-8343] [debezium/dbz#1201](https://github.com/debezium/dbz/issues/1201)
+* Postgres connector fails to transform colname by unquote twice [DBZ-9151] [debezium/dbz#1235](https://github.com/debezium/dbz/issues/1235)
+* The MySqlParser.g4 parser supports statement as field name [DBZ-8086] [debezium/dbz#1301](https://github.com/debezium/dbz/issues/1301)
+* Reduce duplicity of offset logging at startup [DBZ-9235] [debezium/dbz#1376](https://github.com/debezium/dbz/issues/1376)
+* time.precision.mode not fully documented [DBZ-9706] [debezium/dbz#1440](https://github.com/debezium/dbz/issues/1440)
+* bug: AbstractHistoryRecordComparator incorrectly evaluate to true every time. [debezium/dbz#1541](https://github.com/debezium/dbz/issues/1541)
+* Transactional pg_logical_emit_message() events are emitted twice after connector restart [debezium/dbz#2004](https://github.com/debezium/dbz/issues/2004)
+* PostgreSQL connector slow startup with many custom types [debezium/dbz#2041](https://github.com/debezium/dbz/issues/2041)
+* Connector task status is never set to failed even though it's not able to connector the DB or replication slot [debezium/dbz#2139](https://github.com/debezium/dbz/issues/2139)
+* DB2Connection - timestampOfLSN returns database current timestamp [debezium/dbz#2162](https://github.com/debezium/dbz/issues/2162)
+* Miss `BOOTSTRAP_SERVERS` in the tutorial when start Kafka Connect container? [debezium/dbz#2186](https://github.com/debezium/dbz/issues/2186)
+* PostgreSQL: snapshot reports serial/bigserial column type name while streaming reports int4/int8 [debezium/dbz#2232](https://github.com/debezium/dbz/issues/2232)
+* JDBC storage: RetriableConnection retries a failing operation forever without honoring max.retries [debezium/dbz#2244](https://github.com/debezium/dbz/issues/2244)
+* Incorrect span attribute mapping for type in debezium-quarkus-outbox [debezium/dbz#2286](https://github.com/debezium/dbz/issues/2286)
+* Incremental snapshot silently loses data on NUMERIC keys holding NaN or Infinity: special values degrade to null in chunk boundaries [debezium/dbz#2333](https://github.com/debezium/dbz/issues/2333)
+* Temporals.max/min compare against == 1, giving wrong results for sub-second Durations with equal whole seconds [debezium/dbz#2338](https://github.com/debezium/dbz/issues/2338)
+* DBZ server RedisOffsetIT fails [debezium/dbz#2343](https://github.com/debezium/dbz/issues/2343)
+* JDBC sink maps propagated SQL Server TINYINT to signed MySQL TINYINT [debezium/dbz#2352](https://github.com/debezium/dbz/issues/2352)
+* MySQL DDL parser rejects unquoted identifier `url` on MySQL 8.0.32+ (URL_SYMBOL missing from identifier rules) [debezium/dbz#2381](https://github.com/debezium/dbz/issues/2381)
+* Kinesis sink image (debezium/server:3.6.0.Final) missing AWS SDK `sts` module — IRSA/web-identity credentials fail [debezium/dbz#2386](https://github.com/debezium/dbz/issues/2386)
+* Failure during snapshotting of array-values with AWS Advanced JDBC driver for Postgres [debezium/dbz#2387](https://github.com/debezium/dbz/issues/2387)
+* Cassandra connector silently drops cdc=true change events bundled with cdc=false tables in the same Mutation [debezium/dbz#2388](https://github.com/debezium/dbz/issues/2388)
+* Pulsar OAuth2 private key that is not a data URI is silently truncated instead of rejected [debezium/dbz#2395](https://github.com/debezium/dbz/issues/2395)
+* JDBC sink cannot write a PostgreSQL numeric[] column that has no type modifier [debezium/dbz#2398](https://github.com/debezium/dbz/issues/2398)
+* Flaky MonitoringResourceIT: Prometheus panel tests intermittently return empty collection [debezium/dbz#2410](https://github.com/debezium/dbz/issues/2410)
+* Snapshot descriptors manifest.json is incomplete after Jenkins→GH Actions migration [debezium/dbz#2419](https://github.com/debezium/dbz/issues/2419)
+* SQL Server: `unavailable.value.placeholder` applies to `text` but not to `varchar(max)` / `nvarchar(max)` / `varbinary(max)` [debezium/dbz#2420](https://github.com/debezium/dbz/issues/2420)
+* read.only=true fails on PostgreSQL hot standby due to pg_current_xact_id() call [debezium/dbz#2431](https://github.com/debezium/dbz/issues/2431)
+* PostgreSQL connector incorrectly parses text defaults containing escaped single quotes [debezium/dbz#2440](https://github.com/debezium/dbz/issues/2440)
+* Failed label is incorreclt shown on the pipeline detail page [debezium/dbz#2445](https://github.com/debezium/dbz/issues/2445)
+* MathOps.add drops the first operand for BigInteger overloads (Document.increment returns 2×increment) [debezium/dbz#2446](https://github.com/debezium/dbz/issues/2446)
+* SQL syntax error on Oracle 11g during boundary queries due to unsupported OFFSET...FETCH clause [debezium/dbz#2448](https://github.com/debezium/dbz/issues/2448)
+* Kafka/Connect dependencies are included in installation packages [debezium/dbz#2457](https://github.com/debezium/dbz/issues/2457)
+* JDBC sink omits OVERRIDING SYSTEM VALUE, so a PostgreSQL target whose primary key is GENERATED ALWAYS AS IDENTITY fails the task [debezium/dbz#2459](https://github.com/debezium/dbz/issues/2459)
+* Changefeed reuse guard ignores paused jobs and creates a duplicate [debezium/dbz#2462](https://github.com/debezium/dbz/issues/2462)
+* NullPointerException in heartbeat error handlers when the driver reports no SQL state [debezium/dbz#2464](https://github.com/debezium/dbz/issues/2464)
+* Username/Client filters no-op when tracking disabled [debezium/dbz#2473](https://github.com/debezium/dbz/issues/2473)
+* Chunked parallel initial snapshot does not apply `snapshot.fetch.size` to chunk statements [debezium/dbz#2483](https://github.com/debezium/dbz/issues/2483)
+* Add ORA-02399 to allowed retriable exceptions [debezium/dbz#2487](https://github.com/debezium/dbz/issues/2487)
+* Spanner tests fails on Java 25 [debezium/dbz#2488](https://github.com/debezium/dbz/issues/2488)
+* Spanner tests fail with NPE [debezium/dbz#2489](https://github.com/debezium/dbz/issues/2489)
+* Alter table query are having issues while parsing [DBZ-2239] [debezium/dbz#332](https://github.com/debezium/dbz/issues/332)
+* Multiple issues in tagged GTID handling [debezium/dbz#2496](https://github.com/debezium/dbz/issues/2496)
+
+
+### Other changes since 3.7.0.ALpha2
+
+* Guard against malicious and unwanted files in PRs [debezium/dbz#2053](https://github.com/debezium/dbz/issues/2053)
+* Remove Kafka ConnectorTaskId and LoggingContext dependenct from Emebedded engine [debezium/dbz#2080](https://github.com/debezium/dbz/issues/2080)
+* Blog post about recent JDBC sink support in Debezium Server [debezium/dbz#2121](https://github.com/debezium/dbz/issues/2121)
+* Unify include/exclude property validation [debezium/dbz#2292](https://github.com/debezium/dbz/issues/2292)
+* Upgrade Hibernate to 7.2.19 [debezium/dbz#2331](https://github.com/debezium/dbz/issues/2331)
+* Upgrade MongoDB driver to 5.6.5 [debezium/dbz#2332](https://github.com/debezium/dbz/issues/2332)
+* Upgrade Quarkus to 3.33.2 [debezium/dbz#2344](https://github.com/debezium/dbz/issues/2344)
+* Milvus Source Connector: Add repository README.md [debezium/dbz#2346](https://github.com/debezium/dbz/issues/2346)
+* Milvus Source Connector: Add documentation [debezium/dbz#2347](https://github.com/debezium/dbz/issues/2347)
+* Document the Zerobus sink Kafka route as a dedicated topic with the full OAuth property list [debezium/dbz#2360](https://github.com/debezium/dbz/issues/2360)
+* Create GitHub Action to build and deploy daily snapshots [debezium/dbz#2361](https://github.com/debezium/dbz/issues/2361)
+* Create tutorial for plain Kafka container images [debezium/dbz#2382](https://github.com/debezium/dbz/issues/2382)
+* Clean up Ingres Connector tests to improve IT pass rates [debezium/dbz#2396](https://github.com/debezium/dbz/issues/2396)
+* Document secondary unique constraint limitations in the JDBC sink connector [debezium/dbz#2403](https://github.com/debezium/dbz/issues/2403)
+* Add storage module and transformation profiles to debezium-server-dist [debezium/dbz#2433](https://github.com/debezium/dbz/issues/2433)
+* Enable PostgreSQL GUC logical decoder support in PostgreSQL containers [debezium/dbz#2434](https://github.com/debezium/dbz/issues/2434)
+* Milvus Source Connector: Stalled Channel Watermarks Caused by Dropped or Mis-ordered Upserts and Missing Timeticks [debezium/dbz#2437](https://github.com/debezium/dbz/issues/2437)
+* Clarify schema history topic retention requirements in MySQL connector docs [debezium/dbz#2447](https://github.com/debezium/dbz/issues/2447)
+* Update MongoDB driver to 5.9.2 [debezium/dbz#2449](https://github.com/debezium/dbz/issues/2449)
+* README build badge references a nonexistent workflow name [debezium/dbz#2463](https://github.com/debezium/dbz/issues/2463)
+* Cleanup product dependencies in assembly [debezium/dbz#2467](https://github.com/debezium/dbz/issues/2467)
+* Upgrade Kafka to 4.3.1 [debezium/dbz#2474](https://github.com/debezium/dbz/issues/2474)
+* Automatically update debezium-examples to the latest stable version [debezium/dbz#2478](https://github.com/debezium/dbz/issues/2478)
+* Build: Microbenchmark modules produce empty JMH jars on JDK 23+ [debezium/dbz#2494](https://github.com/debezium/dbz/issues/2494)
+
+
+
 ## 3.7.0.Alpha2
 August 13rd 2026 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A3.7.0.Alpha2)
 
