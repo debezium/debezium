@@ -474,6 +474,7 @@ The connector then stops.
 
 
 
+ifdef::MYSQL[]
 [id="{context}-property-json-string-formatting-mode"]
 xref:{context}-property-json-string-formatting-mode[`json.string.formatting.mode`]::
 
@@ -490,6 +491,7 @@ The string representation of a value therefore depends on whether the connector 
 
 `database`:::: The connector uses the same format that the database server produces, for example, `{"key": "value"}`.
 Temporal scalars carry a six-digit fractional-seconds part, for example, `"2015-01-15 23:24:25.000000"`, and opaque binary scalars carry a `base64:typeNN:` prefix.
+endif::MYSQL[]
 
 
 

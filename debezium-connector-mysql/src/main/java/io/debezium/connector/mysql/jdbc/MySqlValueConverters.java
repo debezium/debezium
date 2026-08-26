@@ -5,18 +5,22 @@
  */
 package io.debezium.connector.mysql.jdbc;
 
+import java.io.IOException;
 import java.sql.Types;
 import java.time.OffsetDateTime;
 import java.time.temporal.TemporalAdjuster;
 import java.util.List;
 
+import org.apache.kafka.connect.data.Field;
+
 import com.github.shyiko.mysql.binlog.event.deserialization.AbstractRowsEventDataDeserializer;
+import com.github.shyiko.mysql.binlog.event.deserialization.json.JsonBinary;
 
 import io.debezium.annotation.Immutable;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode;
-import io.debezium.connector.binlog.BinlogConnectorConfig.JsonStringFormattingMode;
 import io.debezium.connector.binlog.jdbc.BinlogValueConverters;
+import io.debezium.connector.mysql.MySqlConnectorConfig.JsonStringFormattingMode;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
@@ -37,6 +41,8 @@ import io.debezium.service.spi.ServiceRegistry;
  */
 @Immutable
 public class MySqlValueConverters extends BinlogValueConverters {
+
+    private final JsonStringFormattingMode jsonStringFormattingMode;
 
     /**
      * Create a new instance that always uses UTC for the default time zone when converting values without timezone information
@@ -64,8 +70,28 @@ public class MySqlValueConverters extends BinlogValueConverters {
                                 JsonStringFormattingMode jsonStringFormattingMode,
                                 ServiceRegistry serviceRegistry,
                                 byte[] unavailableValuePlaceholder) {
-        super(decimalMode, temporalPrecisionMode, bigIntUnsignedMode, binaryMode, adjuster, eventConvertingFailureHandlingMode, jsonStringFormattingMode,
-                serviceRegistry, unavailableValuePlaceholder);
+        super(decimalMode, temporalPrecisionMode, bigIntUnsignedMode, binaryMode, adjuster, eventConvertingFailureHandlingMode, serviceRegistry,
+                unavailableValuePlaceholder);
+        this.jsonStringFormattingMode = jsonStringFormattingMode;
+    }
+
+    /**
+     * Renders a {@code JSON} column value read from the binlog the way the server renders it over JDBC when
+     * {@link JsonStringFormattingMode#DATABASE} is configured.
+     */
+    @Override
+    protected Object convertJson(Column column, Field fieldDefn, Object data) {
+        if (jsonStringFormattingMode == JsonStringFormattingMode.DATABASE && data instanceof byte[] && ((byte[]) data).length > 0) {
+            try {
+                final DatabaseJsonStringFormatter formatter = new DatabaseJsonStringFormatter();
+                JsonBinary.parse((byte[]) data, formatter);
+                return convertValue(column, fieldDefn, data, "{}", r -> r.deliver(formatter.getString()));
+            }
+            catch (IOException e) {
+                // Defer to the base implementation
+            }
+        }
+        return super.convertJson(column, fieldDefn, data);
     }
 
     @Override
