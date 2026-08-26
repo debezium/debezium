@@ -25,6 +25,7 @@ import org.testcontainers.utility.DockerImageName;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
+import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.relational.history.SchemaHistoryException;
@@ -315,6 +316,9 @@ class NatsSchemaHistoryIT {
 
         Tables tables = new Tables();
         history.recover(source, position("test.log", 2, 0), tables, new MySqlAntlrDdlParser());
-        assertThat(tables.size()).isEqualTo(2);
+        // The first record lived in the deleted stream and is gone; the new
+        // record must be present and recoverable.
+        assertThat(tables.size()).isEqualTo(1);
+        assertThat(tables.forTable(new TableId("testdb", null, "t2"))).isNotNull();
     }
 }
