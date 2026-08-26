@@ -776,7 +776,7 @@ NATS is useful in deployments where Kafka is not available or where a lightweigh
 
 |[[offset-storage-nats-bucket-name]]<<offset-storage-nats-bucket-name, `offset.storage.nats.bucket.name`>>
 |debezium-offsets
-|The name of the NATS Object Store bucket where {prodname} stores offsets. Each offset is stored as an individual object, named by the encoded offset key.
+|The name of the NATS Object Store bucket where {prodname} stores offsets. Each offset is stored as an individual object, named by the encoded offset key. Keys whose encoded name would exceed the NATS object name limit are stored under a hash of the key.
 
 |[[offset-storage-nats-connection-timeout-ms]]<<offset-storage-nats-connection-timeout-ms, `offset.storage.nats.connection.timeout.ms`>>
 |5000

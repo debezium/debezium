@@ -83,7 +83,6 @@ class NatsOffsetBackingStoreIT {
         Map<String, String> config = new HashMap<>();
         config.put("offset.storage." + NatsCommonConfig.NATS_URL.name(), natsUrl);
         config.put("offset.storage." + NatsOffsetBackingStoreConfig.PROP_BUCKET_NAME.name(), "test-offsets");
-        // single object name used; no per-key prefix
         config.put("offset.storage." + NatsOffsetBackingStoreConfig.PROP_RETRY_ENABLED.name(), "true");
         config.put("offset.storage." + NatsOffsetBackingStoreConfig.PROP_MAX_RETRIES.name(), "3");
         config.put("offset.storage." + NatsOffsetBackingStoreConfig.PROP_RETRY_DELAY_MS.name(), "100");
