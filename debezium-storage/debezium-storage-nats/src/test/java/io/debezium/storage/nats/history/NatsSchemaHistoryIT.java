@@ -289,4 +289,32 @@ class NatsSchemaHistoryIT {
             conn.close();
         }
     }
+
+    @Test
+    @Timeout(30)
+    @SuppressWarnings("deprecation")
+    public void shouldRecreateStreamAfterDeletion() throws Exception {
+        // If the stream is deleted out from under the history (e.g. by an
+        // operator or a retention policy), the next record() must recreate it
+        // and succeed rather than fail.
+        Map<String, Object> source = server("test-server");
+        history.record(source, position("test.log", 1, 0), "testdb", "CREATE TABLE t1 (id INT);");
+
+        NatsCommonConfig connConfig = new NatsCommonConfig(Configuration.from(Collect.hashMapOf(
+                NatsCommonConfig.NATS_URL.name(), natsUrl)), "");
+        NatsConnection conn = NatsConnection.getInstance(connConfig, "stream-delete-check");
+        try {
+            conn.getJetStreamManagement().deleteStream("test-schema-history");
+        }
+        finally {
+            conn.close();
+        }
+
+        // Must not throw: the stream should be recreated and the record stored
+        history.record(source, position("test.log", 2, 0), "testdb", "CREATE TABLE t2 (id INT);");
+
+        Tables tables = new Tables();
+        history.recover(source, position("test.log", 2, 0), tables, new MySqlAntlrDdlParser());
+        assertThat(tables.size()).isEqualTo(2);
+    }
 }
