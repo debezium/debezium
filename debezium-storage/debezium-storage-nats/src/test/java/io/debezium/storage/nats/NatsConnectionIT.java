@@ -31,7 +31,7 @@ import io.nats.client.JetStreamManagement;
  * @author Nick Chomey
  */
 @Testcontainers
-class NatsConnectionTest {
+class NatsConnectionIT {
 
     private static final String NATS_CONTAINER_IMAGE = "nats:2.12.0-alpine";
     private static final int NATS_PORT = 4222;
