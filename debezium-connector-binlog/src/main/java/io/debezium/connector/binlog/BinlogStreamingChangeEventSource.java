@@ -476,6 +476,13 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         client.setKeepAlive(configuration.getBoolean(BinlogConnectorConfig.KEEP_ALIVE));
         client.setKeepAliveInterval(keepAliveInterval);
 
+        final int keepAliveMaxReconnectAttempts = connectorConfig.getKeepAliveMaxReconnectAttempts();
+        client.setKeepAliveMaxReconnectAttempts(keepAliveMaxReconnectAttempts);
+        if (keepAliveMaxReconnectAttempts > 0) {
+            LOGGER.info("Binlog client will fail the connector after {} consecutive failed reconnect attempts",
+                    keepAliveMaxReconnectAttempts);
+        }
+
         // Considering heartbeatInterval should be less than keepAliveInterval, use the heartbeatIntervalFactor
         // multiply by keepAliveInterval and set the result value to heartbeatInterval. The default value of
         // heartbeatIntervalFactor is 0.0, and we believe the left time (0.2 * keepAliveInterval) is enough
@@ -1520,6 +1527,16 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
                 LOGGER.debug("Exception while closing client", e);
             }
             errorHandler.setProducerThrowable(wrap(ex));
+        }
+
+        @Override
+        public void onReconnectAbandoned(BinaryLogClient client, Throwable cause, int failedAttempts) {
+            // The keep alive thread has stopped, so nothing will restore the connection any more. Unlike a
+            // communication failure this arrives after onDisconnect and on the keep alive thread itself, so the
+            // client is already torn down and must not be disconnected again from here.
+            LOGGER.error("Binlog client gave up restoring the connection after {} failed attempt(s)", failedAttempts, cause);
+            logStreamingSourceState();
+            errorHandler.setProducerThrowable(wrap(cause));
         }
 
         @Override
