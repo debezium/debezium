@@ -50,20 +50,23 @@ MAJOR_MINOR=$(echo "$VERSION" | grep -oP '^\d+\.\d+')
 # ---------------------------------------------------------------------------
 # Derive PREVIOUS_VERSION
 # ---------------------------------------------------------------------------
+# Tags have the form vMAJOR.MINOR.MICRO.Qualifier (e.g. v3.7.0.Beta1).
+# ltrimstr("refs/tags/v") strips both the ref prefix and the v in one step.
+# Sort fields: k1=MAJOR k2=MINOR k3=MICRO k4=Qualifier (lexicographic, Alpha<Beta<Final).
 PREVIOUS_VERSION=$(gh api \
   "repos/debezium/debezium/git/refs/tags" \
-  --jq '.[].ref | ltrimstr("refs/tags/")' \
+  --jq '.[].ref | ltrimstr("refs/tags/v")' \
   | grep -P "^${MAJOR_MINOR//./\\.}\." \
   | grep -v "^${VERSION}$" \
-  | sort -t. -k1,1n -k2,2n -k3,3n -k4,4 -k5,5n \
+  | sort -t. -k1,1n -k2,2n -k3,3n -k4,4 \
   | tail -1)
 
 if [ -z "$PREVIOUS_VERSION" ]; then
     PREVIOUS_VERSION=$(gh api \
       "repos/debezium/debezium/git/refs/tags" \
-      --jq '.[].ref | ltrimstr("refs/tags/")' \
+      --jq '.[].ref | ltrimstr("refs/tags/v")' \
       | grep -v "^${VERSION}$" \
-      | sort -t. -k1,1n -k2,2n -k3,3n -k4,4 -k5,5n \
+      | sort -t. -k1,1n -k2,2n -k3,3n -k4,4 \
       | tail -1)
 fi
 
@@ -74,7 +77,8 @@ read -r -p "Press Enter to confirm or Ctrl-C to abort and set manually: "
 # Read POM versions
 # ---------------------------------------------------------------------------
 pom_property() {
-    xmllint --xpath "string(//properties/${2})" "${1}"
+    # Strip leading/trailing whitespace that xmllint may emit
+    xmllint --xpath "string(//properties/${2})" "${1}" | tr -d '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
 }
 
 KAFKA_VERSION=$(pom_property debezium/pom.xml version.kafka)
@@ -169,10 +173,12 @@ cd ..
 # ---------------------------------------------------------------------------
 cd debezium
 while IFS='|' read -r _tag name email repo commit; do
-    real_name=$(gh api "users/$name" --jq '.name // empty' 2>/dev/null)
+    real_name=$(gh api "users/$name" --jq '.name // empty' 2>/dev/null | tr -d '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
     if [ -n "$real_name" ]; then
         echo "$real_name" >> COPYRIGHT.txt
-        echo "$name,$real_name" >> jenkins-jobs/scripts/config/Aliases.txt
+        # Escape any commas in the display name so the CSV stays valid
+        safe_name="${real_name//,/}"
+        echo "$name,$safe_name" >> jenkins-jobs/scripts/config/Aliases.txt
     else
         echo "# PLACEHOLDER — verify: $name | $email | $repo | $commit" >> COPYRIGHT.txt
     fi
@@ -213,6 +219,11 @@ syntax, no newlines — just the raw semicolon-separated text value that will be
 Changelog:
 ${CHANGELOG_CONTENT}")
 
+# Sanitise: collapse any newlines/carriage-returns to a single space, strip
+# leading/trailing whitespace, and escape any double-quote characters so the
+# value is safe to embed as a quoted YAML scalar.
+RELEASE_SUMMARY=$(echo "$RELEASE_SUMMARY" | tr '\r\n' '  ' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//;s/"/\\"/g')
+
 # ---------------------------------------------------------------------------
 # Create VERSION.yml
 # ---------------------------------------------------------------------------
@@ -222,7 +233,7 @@ cat > "debezium.github.io/_data/releases/${MAJOR_MINOR}/${VERSION}.yml" <<EOF
 date: $(date +%Y-%m-%d)
 version: "${VERSION}"
 stable: ${STABLE}
-summary: ${RELEASE_SUMMARY}
+summary: "${RELEASE_SUMMARY}"
 #announcement_url:
 EOF
 
@@ -231,6 +242,10 @@ EOF
 # ---------------------------------------------------------------------------
 RNFILE="debezium.github.io/releases/${MAJOR_MINOR}/release-notes.asciidoc"
 INSERT_LINE=$(grep -n '^\[\[release-' "$RNFILE" | head -1 | cut -d: -f1)
+if [[ -z "$INSERT_LINE" ]]; then
+    echo "ERROR: could not find an existing [[release-...]] anchor in ${RNFILE}" >&2
+    exit 1
+fi
 { head -n $((INSERT_LINE - 1)) "$RNFILE"; cat /tmp/release-notes-fragment.adoc; tail -n +"${INSERT_LINE}" "$RNFILE"; } \
     > /tmp/release-notes.new && mv /tmp/release-notes.new "$RNFILE"
 
