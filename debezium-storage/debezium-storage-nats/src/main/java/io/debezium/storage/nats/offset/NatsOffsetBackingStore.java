@@ -7,12 +7,12 @@ package io.debezium.storage.nats.offset;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -21,6 +21,10 @@ import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.Configuration;
@@ -35,7 +39,8 @@ import io.nats.client.api.ObjectInfo;
 
 /**
  * Implementation of OffsetStore that saves to NATS Object Store.
- * Uses Java serialization to store all offsets in a single Object Store entry.
+ * Stores all offsets as a single JSON document (base64-encoded keys and
+ * values) in one Object Store entry.
  *
  * @author Nick Chomey
  */
@@ -43,6 +48,7 @@ public class NatsOffsetBackingStore implements OffsetStore {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(NatsOffsetBackingStore.class);
     private static final String OFFSET_OBJECT_NAME = "debezium-offsets";
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     protected Map<ByteBuffer, ByteBuffer> data = new HashMap<>();
     protected ExecutorService executor;
@@ -229,28 +235,24 @@ public class NatsOffsetBackingStore implements OffsetStore {
     }
 
     /**
-     * Serialize all offsets using Java serialization for storage in NATS Object
+     * Serialize all offsets as a JSON document for storage in NATS Object
      * Store.
-     * This is much simpler than JSON and handles ByteBuffers natively.
+     * <p>
+     * Keys and values are base64-encoded so arbitrary bytes round-trip
+     * losslessly; null values are preserved as JSON null.
      */
     private byte[] serializeOffsets() throws Exception {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        ObjectOutputStream oos = new ObjectOutputStream(baos);
-
-        // Create a serializable map from the data
-        Map<byte[], byte[]> serializableMap = new HashMap<>();
+        ObjectNode root = MAPPER.createObjectNode();
         for (Map.Entry<ByteBuffer, ByteBuffer> entry : data.entrySet()) {
             if (entry.getKey() != null) {
-                byte[] key = toByteArray(entry.getKey());
-                byte[] value = entry.getValue() != null ? toByteArray(entry.getValue()) : null;
-                serializableMap.put(key, value);
+                String key = Base64.getEncoder().encodeToString(toByteArray(entry.getKey()));
+                String value = entry.getValue() != null
+                        ? Base64.getEncoder().encodeToString(toByteArray(entry.getValue()))
+                        : null;
+                root.put(key, value);
             }
         }
-
-        oos.writeObject(serializableMap);
-        oos.close();
-
-        return baos.toByteArray();
+        return MAPPER.writeValueAsBytes(root);
     }
 
     /**
@@ -268,21 +270,19 @@ public class NatsOffsetBackingStore implements OffsetStore {
     }
 
     /**
-     * Deserialize offsets from Java serialization and populate the data map.
+     * Deserialize offsets from the JSON document stored in NATS Object Store.
      */
-    @SuppressWarnings("unchecked")
     private void deserializeOffsets(byte[] offsetData) throws Exception {
-        ByteArrayInputStream bais = new ByteArrayInputStream(offsetData);
-        ObjectInputStream ois = new ObjectInputStream(bais);
-
-        Map<byte[], byte[]> serializableMap = (Map<byte[], byte[]>) ois.readObject();
-        ois.close();
-
-        // Convert back to ByteBuffer map
+        ObjectNode root = (ObjectNode) MAPPER.readTree(offsetData);
         data.clear();
-        for (Map.Entry<byte[], byte[]> entry : serializableMap.entrySet()) {
-            ByteBuffer key = ByteBuffer.wrap(entry.getKey());
-            ByteBuffer value = entry.getValue() != null ? ByteBuffer.wrap(entry.getValue()) : null;
+        Iterator<Map.Entry<String, JsonNode>> fields = root.fields();
+        while (fields.hasNext()) {
+            Map.Entry<String, JsonNode> field = fields.next();
+            ByteBuffer key = ByteBuffer.wrap(Base64.getDecoder().decode(field.getKey()));
+            JsonNode valueNode = field.getValue();
+            ByteBuffer value = valueNode.isNull()
+                    ? null
+                    : ByteBuffer.wrap(Base64.getDecoder().decode(valueNode.asText()));
             data.put(key, value);
         }
     }
