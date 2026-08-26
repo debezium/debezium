@@ -109,6 +109,27 @@ class NatsSchemaHistoryTest {
     }
 
     @Test
+    public void shouldBeIdempotentOnInitializeStorage() {
+        // The stream already exists (created by createHistory() with the
+        // default file storage). Re-initializing with a different stream
+        // configuration (memory storage) must not hard-fail; the existing
+        // stream should be reused.
+        Map<String, String> config = new HashMap<>();
+        config.put(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + NatsCommonConfig.NATS_URL.name(), natsUrl);
+        config.put(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + NatsSchemaHistoryConfig.PROP_STREAM_NAME.name(),
+                "test-schema-history");
+        config.put(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + NatsSchemaHistoryConfig.PROP_SUBJECT.name(),
+                "test.schema.history");
+        config.put(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + NatsSchemaHistoryConfig.PROP_STORAGE_TYPE.name(),
+                "memory");
+
+        NatsSchemaHistory reconfigured = new NatsSchemaHistory();
+        reconfigured.configure(Configuration.from(config), null, SchemaHistoryListener.NOOP, true);
+        reconfigured.initializeStorage();
+        reconfigured.stop();
+    }
+
+    @Test
     public void shouldDetectExistenceAfterStoringRecord() throws InterruptedException {
         assertFalse(history.exists());
 
