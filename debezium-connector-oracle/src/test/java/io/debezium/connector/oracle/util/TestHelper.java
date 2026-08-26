@@ -421,8 +421,20 @@ public class TestHelper {
             // Per Oracle's XStream Out monitoring documentation, the row whose XStream program name is
             // 'TNS' is the attached client application's session. Its absence while ORA-26812 is being
             // raised means no client is attached and the server state itself is stale.
+            //
+            // LAST_CALL_ET dates each session back to the start of its current call, which is useful for
+            // correlating the capture and apply processes against connector activity. It says nothing
+            // about health: on an idle outbound server it simply tracks session age, so a large value is
+            // expected rather than a sign of a hang.
+            //
+            // Liveness comes from EVENT, WAIT_CLASS and SECONDS_IN_WAIT. A healthy idle 19c server sits
+            // on 'rdbms ipc message', 'REPL Capture/Apply: messages' or 'LogMiner reader: redo (idle)'
+            // with WAIT_CLASS 'Idle' and SECONDS_IN_WAIT cycling within a few seconds; a stuck one shows
+            // a non-idle class or a wait that keeps climbing, and BLOCKING_SESSION names any blocker.
+            // DBA_APPLY cannot answer this, as its STATUS is configuration state, not liveness.
             appendQuery(admin, report, "V$SESSION (MODULE = 'XStream')",
                     "SELECT SID, SERIAL#, USERNAME, STATUS, LAST_CALL_ET, "
+                            + "EVENT, WAIT_CLASS, SECONDS_IN_WAIT, BLOCKING_SESSION, "
                             + "SUBSTR(PROGRAM, INSTR(PROGRAM, '(') + 1, 4) AS XSTREAM_PROCESS "
                             + "FROM V$SESSION WHERE MODULE = 'XStream'");
 
@@ -432,8 +444,8 @@ public class TestHelper {
             appendQuery(admin, report, "DBA_APPLY",
                     "SELECT APPLY_NAME, APPLY_CAPTURED, STATUS, ERROR_NUMBER, ERROR_MESSAGE FROM DBA_APPLY");
 
-            // Shared and streams pool headroom; XStream capture and apply allocate from these, and an
-            // outbound server that cannot allocate while tearing down is one way to strand the session.
+            // Shared and streams pool headroom, included as a control rather than a lead: capture and
+            // apply allocate from these, so a healthy reading here rules memory out at a glance.
             appendQuery(admin, report, "V$SGASTAT (free memory)",
                     "SELECT POOL, NAME, BYTES FROM V$SGASTAT WHERE NAME = 'free memory'");
 
