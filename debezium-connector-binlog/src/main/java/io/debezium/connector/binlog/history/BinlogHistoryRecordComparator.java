@@ -143,9 +143,9 @@ public abstract class BinlogHistoryRecordComparator extends HistoryRecordCompara
         }
 
         // With the filenames the same, compare positions
-        final int recordedPosition = getBinlogPosition(recorded);
-        final int desiredPosition = getBinlogPosition(desired);
-        final int positionCheck = recordedPosition - desiredPosition;
+        final long recordedPosition = getBinlogPosition(recorded);
+        final long desiredPosition = getBinlogPosition(desired);
+        final int positionCheck = Long.compare(recordedPosition, desiredPosition);
         if (positionCheck != 0) {
             return positionCheck < 0;
         }
@@ -191,8 +191,10 @@ public abstract class BinlogHistoryRecordComparator extends HistoryRecordCompara
      * @param document the document to inspect, should not be null
      * @return the unique server identifier
      */
-    protected int getServerId(Document document) {
-        return document.getInteger(BinlogSourceInfo.SERVER_ID_KEY, 0);
+    protected long getServerId(Document document) {
+        // server_id is a 32-bit unsigned value, so identifiers above Integer.MAX_VALUE are
+        // legitimate and must be read as a long for the same reason as the binlog position
+        return document.getLong(BinlogSourceInfo.SERVER_ID_KEY, 0);
     }
 
     /**
@@ -231,8 +233,11 @@ public abstract class BinlogHistoryRecordComparator extends HistoryRecordCompara
      * @param document the document to inspect, should not be null
      * @return the binlog position value
      */
-    protected int getBinlogPosition(Document document) {
-        return document.getInteger(BinlogSourceInfo.BINLOG_POSITION_OFFSET_KEY, -1);
+    protected long getBinlogPosition(Document document) {
+        // Positions are unsigned and a binlog file can exceed Integer.MAX_VALUE bytes, so the
+        // value must be read as a long; Document#getInteger would return null for such values,
+        // silently turning every large position into the default
+        return document.getLong(BinlogSourceInfo.BINLOG_POSITION_OFFSET_KEY, -1);
     }
 
     /**
