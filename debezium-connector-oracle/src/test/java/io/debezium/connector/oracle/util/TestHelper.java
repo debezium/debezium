@@ -397,7 +397,10 @@ public class TestHelper {
      * <p>This exists to answer a question the connector logs cannot: when an attach fails with
      * {@code ORA-26812}, is there genuinely a client session still attached to the outbound server,
      * or does the server merely believe there is one after the client has cleanly detached? The two
-     * cases require different fixes and are indistinguishable from the connector side.
+     * cases require different fixes and are indistinguishable from the connector side. Captured
+     * within a fraction of a second of the first refusal, it is the latter: no client session is
+     * present at any point, so the follow-on question is what the server's own capture and apply
+     * pipeline is doing while it refuses, which the {@code V$XSTREAM_} runtime views below report.
      *
      * <p>Every statement is read-only and each is isolated, so a view that is unavailable in a given
      * database configuration is reported in place rather than hiding the remaining output. Failures
@@ -417,6 +420,30 @@ public class TestHelper {
         try (OracleConnection admin = adminConnection(true)) {
             appendQuery(admin, report, "V$XSTREAM_OUTBOUND_SERVER",
                     "SELECT SERVER_NAME, STATE, STARTUP_TIME, TOTAL_MESSAGES_SENT, BYTES_SENT FROM V$XSTREAM_OUTBOUND_SERVER");
+
+            // V$XSTREAM_OUTBOUND_SERVER above is empty unless a client is attached, and the DBA_ views
+            // below report configuration rather than runtime state, so neither describes what the
+            // outbound server is actually doing while an attach is being refused. These four do: they
+            // were confirmed to populate on a 19c server with no client attached, and are the only
+            // runtime view of the capture and apply pipeline available in that state.
+            //
+            // STATE is the column of interest in each. A healthy idle capture reads 'WAITING FOR
+            // TRANSACTION' or 'CAPTURING CHANGES'; 'PAUSED FOR FLOW CONTROL' means the apply side has
+            // stopped draining, which is a documented XStream stall and would not surface anywhere else
+            // in this dump. STATE_CHANGED_TIME dates the current state directly, rather than leaving it
+            // to be inferred from session logon times.
+            appendQuery(admin, report, "V$XSTREAM_CAPTURE",
+                    "SELECT CAPTURE_NAME, STATE, TOTAL_MESSAGES_CAPTURED, TOTAL_MESSAGES_ENQUEUED, "
+                            + "STATE_CHANGED_TIME FROM V$XSTREAM_CAPTURE");
+
+            appendQuery(admin, report, "V$XSTREAM_APPLY_READER",
+                    "SELECT APPLY_NAME, STATE, TOTAL_MESSAGES_DEQUEUED FROM V$XSTREAM_APPLY_READER");
+
+            appendQuery(admin, report, "V$XSTREAM_APPLY_COORDINATOR",
+                    "SELECT APPLY_NAME, STATE, TOTAL_RECEIVED, TOTAL_APPLIED FROM V$XSTREAM_APPLY_COORDINATOR");
+
+            appendQuery(admin, report, "V$XSTREAM_APPLY_SERVER",
+                    "SELECT APPLY_NAME, SERVER_ID, STATE FROM V$XSTREAM_APPLY_SERVER ORDER BY SERVER_ID");
 
             // Per Oracle's XStream Out monitoring documentation, the row whose XStream program name is
             // 'TNS' is the attached client application's session. Its absence while ORA-26812 is being
