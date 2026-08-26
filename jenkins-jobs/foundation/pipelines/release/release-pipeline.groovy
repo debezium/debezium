@@ -20,7 +20,9 @@ properties([
         booleanParam(name: 'FROM_SCRATCH'),
         booleanParam(name: 'IGNORE_SNAPSHOTS'),
         booleanParam(name: 'CHECK_BACKPORTS'),
-        booleanParam(name: 'LATEST_SERIES')
+        booleanParam(name: 'LATEST_SERIES'),
+        string(name: 'DBZ_PR_URL'),
+        string(name: 'WEBSITE_PR_URL')
     ])
 ])
 
@@ -47,6 +49,7 @@ properties([
 @Field final GPG_DIR = 'gpg'
 
 @Field final DEBEZIUM_DIR = 'debezium'
+@Field final WEBSITE_DIR = 'website'
 @Field final DESCRIPTORS_REPO_DIR = 'debezium-descriptors-registry'
 @Field final IMAGES_DIR = 'images'
 @Field final PLATFORM_STAGE_DIR = 'platform'
@@ -137,6 +140,8 @@ properties([
 @Field POSTGRES_DECODER_BRANCH
 @Field POSTGRES_DECODER_REPOSITORY
 @Field DESCRIPTORS_OUTPUT_DIR
+@Field DBZ_PR_URL
+@Field WEBSITE_PR_URL
 
 @Field CONNECTORS
 
@@ -185,6 +190,51 @@ def sendZulipNotification(message) {
       "$ZULIP_URL/messages"
 """
     )
+}
+
+/**
+ * Runs all pre-release content checks against the provided text strings and appends
+ * human-readable issue descriptions to the supplied {@code issues} list.
+ *
+ * @param dbzContent         contents of debezium/CHANGELOG.md
+ * @param copyrightContent   contents of debezium/COPYRIGHT.txt
+ * @param releaseNotesContent contents of debezium.github.io releases/.../release-notes.asciidoc
+ * @param versionYmlContent  contents of debezium.github.io _data/releases/.../${RELEASE_VERSION}.yml
+ * @param issues             mutable list to which issue strings are appended
+ * @param logPrefix          prefix for log lines: "WARNING" for pre-merge inspection, "ERROR" for post-merge check
+ */
+def checkPreReleaseContent(String dbzContent, String copyrightContent, String releaseNotesContent, String versionYmlContent, List issues, String logPrefix) {
+    // Check COPYRIGHT.txt for unresolved placeholders
+    copyrightContent.readLines().findAll { it.contains('# PLACEHOLDER') }.each {
+        issues << "COPYRIGHT.txt: unresolved placeholder: ${it.trim()}"
+        echo "$logPrefix: COPYRIGHT.txt unresolved placeholder: ${it.trim()}"
+    }
+
+    // Check CHANGELOG.md contains RELEASE_VERSION
+    if (!dbzContent.contains(RELEASE_VERSION)) {
+        issues << "CHANGELOG.md: does not contain $RELEASE_VERSION"
+        echo "$logPrefix: CHANGELOG.md does not contain $RELEASE_VERSION"
+    }
+
+    // Check release-notes.asciidoc contains RELEASE_VERSION
+    if (!releaseNotesContent.contains(RELEASE_VERSION)) {
+        issues << "release-notes.asciidoc: does not contain $RELEASE_VERSION"
+        echo "$logPrefix: release-notes.asciidoc does not contain $RELEASE_VERSION"
+    }
+
+    // Check release-notes.asciidoc for unresolved breaking-changes placeholders
+    releaseNotesContent.readLines().findAll { it.contains('[Placeholder for Breaking changes text]') }.each {
+        issues << "release-notes.asciidoc: unresolved breaking-changes placeholder: ${it.trim()}"
+        echo "$logPrefix: release-notes.asciidoc unresolved breaking-changes placeholder: ${it.trim()}"
+    }
+
+    // Check VERSION.yml summary field is not empty or a placeholder
+    def summaryLine = versionYmlContent.readLines().find { it.startsWith('summary:') }
+    def summaryValue = summaryLine ? summaryLine.replaceFirst(/^summary:\s*/, '').trim() : ''
+    if (!summaryValue || summaryValue.contains('PLACEHOLDER')) {
+        issues << "Version YAML: summary field is empty or a placeholder"
+        echo "$logPrefix: ${RELEASE_VERSION}.yml summary field is empty or a placeholder"
+    }
 }
 
 @Field final BUILD_ARGS = [
@@ -559,7 +609,9 @@ node {
         !params.IMAGES_REPOSITORY ||
         !params.IMAGES_BRANCH ||
         !params.POSTGRES_DECODER_REPOSITORY ||
-        !params.POSTGRES_DECODER_BRANCH
+        !params.POSTGRES_DECODER_BRANCH ||
+        !params.DBZ_PR_URL ||
+        !params.WEBSITE_PR_URL
     ) {
         error 'Input parameters not provided'
     }
@@ -586,6 +638,8 @@ node {
     POSTGRES_DECODER_BRANCH = params.POSTGRES_DECODER_BRANCH
     POSTGRES_DECODER_REPOSITORY = params.POSTGRES_DECODER_REPOSITORY
     ZULIP_TO = params.ZULIP_TO
+    DBZ_PR_URL = params.DBZ_PR_URL
+    WEBSITE_PR_URL = params.WEBSITE_PR_URL
 
     VERSION_TAG = "v$RELEASE_VERSION"
     VERSION_PARTS = RELEASE_VERSION.split('\\.')
@@ -705,6 +759,64 @@ EOF''')
             }
         }
 
+        stage('Await pre-release PRs') {
+            if (DRY_RUN || !FROM_SCRATCH) {
+                return
+            }
+
+            def issues = []
+
+            withSecrets(config: ONE_PASSWORD_CONFIG, secrets: SECRETS) {
+                // Fetch DBZ PR head ref as owner/repo/branch
+                def dbzRef = sh(
+                    script: """GH_TOKEN=\${GITHUB_PASSWORD} gh pr view $DBZ_PR_URL \
+--json headRefName,headRepositoryOwner,headRepository \
+-q '[.headRepositoryOwner.login,.headRepository.name,.headRefName] | join("/")'""",
+                    returnStdout: true
+                ).trim().tokenize('/')
+                def (dbzOwner, dbzRepo, dbzBranch) = dbzRef
+
+                // Fetch WEBSITE PR head ref as owner/repo/branch
+                def webRef = sh(
+                    script: """GH_TOKEN=\${GITHUB_PASSWORD} gh pr view $WEBSITE_PR_URL \
+--json headRefName,headRepositoryOwner,headRepository \
+-q '[.headRepositoryOwner.login,.headRepository.name,.headRefName] | join("/")'""",
+                    returnStdout: true
+                ).trim().tokenize('/')
+                def (webOwner, webRepo, webBranch) = webRef
+
+                def rawUrl = { owner, repo, branch, path ->
+                    "https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}"
+                }
+
+                def changelog    = new URL(rawUrl(dbzOwner, dbzRepo, dbzBranch, 'CHANGELOG.md')).text
+                def copyright    = new URL(rawUrl(dbzOwner, dbzRepo, dbzBranch, 'COPYRIGHT.txt')).text
+                def releaseNotes = new URL(rawUrl(webOwner, webRepo, webBranch, "releases/$VERSION_MAJOR_MINOR/release-notes.asciidoc")).text
+                def versionYml   = new URL(rawUrl(webOwner, webRepo, webBranch, "_data/releases/$VERSION_MAJOR_MINOR/${RELEASE_VERSION}.yml")).text
+
+                checkPreReleaseContent(changelog, copyright, releaseNotes, versionYml, issues, 'WARNING')
+            }
+
+            def issuesSummary = issues ? issues.collect { "  - $it" }.join('\n') : '  No issues found — ready to merge'
+            sendZulipNotification("""\
+Release $RELEASE_VERSION pre-release PRs are pending review.
+  debezium PR:            $DBZ_PR_URL
+  debezium.github.io PR:  $WEBSITE_PR_URL
+Issues found:
+${issuesSummary}
+  Jenkins input URL:      $BUILD_URL/input""")
+            input(
+                message: """\
+Review and merge both pre-release PRs before continuing.
+Issues found:
+${issuesSummary}
+
+  $DBZ_PR_URL
+  $WEBSITE_PR_URL""",
+                ok: 'Both PRs are merged, continue'
+            )
+        }
+
         stage('Check Contributors') {
             if (!DRY_RUN) {
                 dir(DEBEZIUM_DIR) {
@@ -727,16 +839,60 @@ EOF''')
         }
 
         stage('Check changelog') {
-/*
             if (!DRY_RUN) {
-                if (!new URL("https://raw.githubusercontent.com/debezium/debezium/$DEBEZIUM_BRANCH/CHANGELOG.md").text.contains(RELEASE_VERSION) ||
-                        !new URL("https://raw.githubusercontent.com/debezium/debezium.github.io/develop/_data/releases/$VERSION_MAJOR_MINOR/${RELEASE_VERSION}.yml").text.contains('summary:') ||
-                        !new URL("https://raw.githubusercontent.com/debezium/debezium.github.io/develop/releases/$VERSION_MAJOR_MINOR/release-notes.asciidoc").text.contains(RELEASE_VERSION)
-                ) {
-                    error 'Changelog was not modified to include release information'
+                def failures = []
+
+                withSecrets(config: ONE_PASSWORD_CONFIG, secrets: SECRETS) {
+                    // Check DBZ PR is merged
+                    def dbzState = sh(
+                        script: "GH_TOKEN=\${GITHUB_PASSWORD} gh pr view $DBZ_PR_URL --json state -q .state",
+                        returnStdout: true
+                    ).trim()
+                    if (dbzState != 'MERGED') {
+                        echo "ERROR: DBZ PR $DBZ_PR_URL is not merged (state: $dbzState)"
+                        failures << "DBZ PR is not merged (state: $dbzState)"
+                    }
+
+                    // Check WEBSITE PR is merged
+                    def webState = sh(
+                        script: "GH_TOKEN=\${GITHUB_PASSWORD} gh pr view $WEBSITE_PR_URL --json state -q .state",
+                        returnStdout: true
+                    ).trim()
+                    if (webState != 'MERGED') {
+                        echo "ERROR: WEBSITE PR $WEBSITE_PR_URL is not merged (state: $webState)"
+                        failures << "WEBSITE PR is not merged (state: $webState)"
+                    }
+
+                    // Pull latest debezium repo to surface merged content on SOURCE_BRANCH
+                    dir(DEBEZIUM_DIR) {
+                        sh "git pull https://\${GITHUB_USERNAME}:\${GITHUB_PASSWORD}@github.com/debezium/debezium.git $SOURCE_BRANCH"
+                    }
+
+                    // Clone or pull debezium.github.io into WEBSITE_DIR
+                    if (!fileExists(WEBSITE_DIR)) {
+                        sh "git clone --depth=1 -b develop https://\${GITHUB_USERNAME}:\${GITHUB_PASSWORD}@github.com/debezium/debezium.github.io.git $WEBSITE_DIR"
+                    } else {
+                        dir(WEBSITE_DIR) {
+                            sh "git pull https://\${GITHUB_USERNAME}:\${GITHUB_PASSWORD}@github.com/debezium/debezium.github.io.git develop"
+                        }
+                    }
+
+                    // Run shared content checks against locally checked-out files
+                    def changelogContent     = readFile("$DEBEZIUM_DIR/CHANGELOG.md")
+                    def copyrightContent     = readFile("$DEBEZIUM_DIR/COPYRIGHT.txt")
+                    def releaseNotesContent  = readFile("$WEBSITE_DIR/releases/$VERSION_MAJOR_MINOR/release-notes.asciidoc")
+                    def versionYmlContent    = readFile("$WEBSITE_DIR/_data/releases/$VERSION_MAJOR_MINOR/${RELEASE_VERSION}.yml")
+
+                    checkPreReleaseContent(changelogContent, copyrightContent, releaseNotesContent, versionYmlContent, failures, 'ERROR')
+                }
+
+                if (failures) {
+                    sendZulipNotification("""\
+Release $RELEASE_VERSION changelog checks FAILED:
+${failures.collect { "  - $it" }.join('\n')}""")
+                    error("Changelog checks failed — see build log for details.")
                 }
             }
-*/
         }
 
         stage('Dockerfiles present') {
