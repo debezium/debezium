@@ -292,4 +292,41 @@ class NatsOffsetBackingStoreIT {
             store2.stop();
         }
     }
+
+    @Test
+    @Timeout(10)
+    public void shouldHandleKeysExceedingObjectNameLimit() throws Exception {
+        // NATS object names are embedded in subjects, which are bounded by
+        // the server's control line limit (4096 bytes). A key whose base64url
+        // encoding approaches that limit must still round-trip.
+        // 3000 bytes -> 4000 base64url chars, beyond the control line limit
+        byte[] longKeyBytes = new byte[3000];
+        for (int i = 0; i < longKeyBytes.length; i++) {
+            longKeyBytes[i] = (byte) i;
+        }
+        ByteBuffer longKey = ByteBuffer.wrap(longKeyBytes);
+        ByteBuffer value = ByteBuffer.wrap("long-key-value".getBytes(StandardCharsets.UTF_8));
+
+        Map<ByteBuffer, ByteBuffer> offsets = new HashMap<>();
+        offsets.put(longKey, value);
+
+        Future<Void> setFuture = offsetStore.set(offsets, null);
+        setFuture.get(5, TimeUnit.SECONDS);
+
+        Collection<ByteBuffer> keys = new ArrayList<>();
+        keys.add(longKey);
+        Map<ByteBuffer, ByteBuffer> retrieved = offsetStore.get(keys).get(5, TimeUnit.SECONDS);
+        assertThat(retrieved).hasSize(1);
+        assertEquals(value, retrieved.get(longKey));
+
+        // Must also survive a restart (load path)
+        offsetStore.stop();
+        offsetStore = new NatsOffsetBackingStore();
+        offsetStore.configure(Configuration.from(createConfig()));
+        offsetStore.start();
+
+        Map<ByteBuffer, ByteBuffer> afterRestart = offsetStore.get(keys).get(5, TimeUnit.SECONDS);
+        assertThat(afterRestart).hasSize(1);
+        assertEquals(value, afterRestart.get(longKey));
+    }
 }
