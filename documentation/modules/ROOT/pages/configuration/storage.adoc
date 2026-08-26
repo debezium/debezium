@@ -776,7 +776,7 @@ NATS is useful in deployments where Kafka is not available or where a lightweigh
 
 |[[offset-storage-nats-bucket-name]]<<offset-storage-nats-bucket-name, `offset.storage.nats.bucket.name`>>
 |debezium-offsets
-|The name of the NATS Object Store bucket where {prodname} stores offsets. The entire offset map is stored as a single object.
+|The name of the NATS Object Store bucket where {prodname} stores offsets. Each offset is stored as an individual object, named by the encoded offset key.
 
 |[[offset-storage-nats-connection-timeout-ms]]<<offset-storage-nats-connection-timeout-ms, `offset.storage.nats.connection.timeout.ms`>>
 |5000
@@ -789,6 +789,46 @@ NATS is useful in deployments where Kafka is not available or where a lightweigh
 |[[offset-storage-nats-reconnect-wait-ms]]<<offset-storage-nats-reconnect-wait-ms, `offset.storage.nats.reconnect.wait.ms`>>
 |2000
 |Specifies the time, in milliseconds, that {prodname} waits between reconnection attempts after a connection failure.
+
+|[[offset-storage-nats-user]]<<offset-storage-nats-user, `offset.storage.nats.user`>>
+|No default
+|(Optional) The username that {prodname} uses to authenticate with the NATS server for offset storage.
+
+|[[offset-storage-nats-password]]<<offset-storage-nats-password, `offset.storage.nats.password`>>
+|No default
+|(Optional) The password for the user specified by xref:offset-storage-nats-user[`offset.storage.nats.user`].
+
+|[[offset-storage-nats-token]]<<offset-storage-nats-token, `offset.storage.nats.token`>>
+|No default
+|(Optional) The token that {prodname} uses to authenticate with the NATS server for offset storage.
+
+|[[offset-storage-nats-tls-enabled]]<<offset-storage-nats-tls-enabled, `offset.storage.nats.tls.enabled`>>
+|false
+|Specifies whether {prodname} uses TLS when communicating with the NATS server for offset storage.
+
+|[[offset-storage-nats-tls-truststore-path]]<<offset-storage-nats-tls-truststore-path, `offset.storage.nats.tls.truststore.path`>>
+|No default
+|(Optional) The path to the trust store file used for TLS connections to the NATS server for offset storage.
+
+|[[offset-storage-nats-tls-truststore-password]]<<offset-storage-nats-tls-truststore-password, `offset.storage.nats.tls.truststore.password`>>
+|No default
+|(Optional) The password for the trust store file used for TLS connections to the NATS server for offset storage.
+
+|[[offset-storage-nats-tls-truststore-type]]<<offset-storage-nats-tls-truststore-type, `offset.storage.nats.tls.truststore.type`>>
+|JKS
+|The type of the trust store file used for TLS connections to the NATS server for offset storage.
+
+|[[offset-storage-nats-tls-keystore-path]]<<offset-storage-nats-tls-keystore-path, `offset.storage.nats.tls.keystore.path`>>
+|No default
+|(Optional) The path to the key store file used for TLS connections to the NATS server for offset storage.
+
+|[[offset-storage-nats-tls-keystore-password]]<<offset-storage-nats-tls-keystore-password, `offset.storage.nats.tls.keystore.password`>>
+|No default
+|(Optional) The password for the key store file used for TLS connections to the NATS server for offset storage.
+
+|[[offset-storage-nats-tls-keystore-type]]<<offset-storage-nats-tls-keystore-type, `offset.storage.nats.tls.keystore.type`>>
+|JKS
+|The type of the key store file used for TLS connections to the NATS server for offset storage.
 
 |[[offset-storage-nats-retry-enabled]]<<offset-storage-nats-retry-enabled, `offset.storage.nats.retry.enabled`>>
 |true
@@ -852,6 +892,46 @@ offset.storage.nats.bucket.name=debezium-offsets
 |[[schema-history-internal-nats-reconnect-wait-ms]]<<schema-history-internal-nats-reconnect-wait-ms, `schema.history.internal.nats.reconnect.wait.ms`>>
 |2000
 |Specifies the time, in milliseconds, that {prodname} waits between reconnection attempts after a connection failure.
+
+|[[schema-history-internal-nats-user]]<<schema-history-internal-nats-user, `schema.history.internal.nats.user`>>
+|No default
+|(Optional) The username that {prodname} uses to authenticate with the NATS server for schema history storage.
+
+|[[schema-history-internal-nats-password]]<<schema-history-internal-nats-password, `schema.history.internal.nats.password`>>
+|No default
+|(Optional) The password for the user specified by xref:schema-history-internal-nats-user[`schema.history.internal.nats.user`].
+
+|[[schema-history-internal-nats-token]]<<schema-history-internal-nats-token, `schema.history.internal.nats.token`>>
+|No default
+|(Optional) The token that {prodname} uses to authenticate with the NATS server for schema history storage.
+
+|[[schema-history-internal-nats-tls-enabled]]<<schema-history-internal-nats-tls-enabled, `schema.history.internal.nats.tls.enabled`>>
+|false
+|Specifies whether {prodname} uses TLS when communicating with the NATS server for schema history storage.
+
+|[[schema-history-internal-nats-tls-truststore-path]]<<schema-history-internal-nats-tls-truststore-path, `schema.history.internal.nats.tls.truststore.path`>>
+|No default
+|(Optional) The path to the trust store file used for TLS connections to the NATS server for schema history storage.
+
+|[[schema-history-internal-nats-tls-truststore-password]]<<schema-history-internal-nats-tls-truststore-password, `schema.history.internal.nats.tls.truststore.password`>>
+|No default
+|(Optional) The password for the trust store file used for TLS connections to the NATS server for schema history storage.
+
+|[[schema-history-internal-nats-tls-truststore-type]]<<schema-history-internal-nats-tls-truststore-type, `schema.history.internal.nats.tls.truststore.type`>>
+|JKS
+|The type of the trust store file used for TLS connections to the NATS server for schema history storage.
+
+|[[schema-history-internal-nats-tls-keystore-path]]<<schema-history-internal-nats-tls-keystore-path, `schema.history.internal.nats.tls.keystore.path`>>
+|No default
+|(Optional) The path to the key store file used for TLS connections to the NATS server for schema history storage.
+
+|[[schema-history-internal-nats-tls-keystore-password]]<<schema-history-internal-nats-tls-keystore-password, `schema.history.internal.nats.tls.keystore.password`>>
+|No default
+|(Optional) The password for the key store file used for TLS connections to the NATS server for schema history storage.
+
+|[[schema-history-internal-nats-tls-keystore-type]]<<schema-history-internal-nats-tls-keystore-type, `schema.history.internal.nats.tls.keystore.type`>>
+|JKS
+|The type of the key store file used for TLS connections to the NATS server for schema history storage.
 
 |[[schema-history-internal-nats-replicas]]<<schema-history-internal-nats-replicas, `schema.history.internal.nats.replicas`>>
 |1
