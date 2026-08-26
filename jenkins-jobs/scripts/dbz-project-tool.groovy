@@ -504,10 +504,7 @@ def generateReleaseNotes() {
     def otherChanges = issues.findAll { it.type == IssueType.Task && !(LABEL_RELEASE_NOTES in it.labels) }
     def breakingChanges = issues.findAll { LABEL_RELEASE_NOTES in it.labels }
 
-    println """
-================================================================================
-                               CHANGELOG.md
-================================================================================
+    println """---CHANGELOG-START---
 ## $iterationTitle
 ${today()} [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A${iterationTitle})
 """
@@ -516,11 +513,8 @@ ${today()} [Detailed release notes](https://github.com/orgs/debezium/projects/5/
     markdownSection('Breaking changes', breakingChanges)
     markdownSection('Fixes', fixes)
     markdownSection('Other changes', otherChanges)
-    println """
-================================================================================
-================================================================================
-                               release-notes.asciidoc
-================================================================================
+    println """---CHANGELOG-END---
+---RELEASE-NOTES-START---
 [[release-${iterationTitle.toLowerCase().reverse().replaceFirst('\\.', '-').reverse()}]]
 == *Release $iterationTitle* _(${today()})_
 
@@ -549,7 +543,7 @@ If you are using our container images, then please do not forget to pull them fr
     asciidocSection('New features', newFeatures)
     asciidocSection('Fixes', fixes)
     asciidocSection('Other changes', otherChanges)
-    println '\n================================================================================'
+    println "---RELEASE-NOTES-END---"
 }
 
 def setNewIteration() {
