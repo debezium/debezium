@@ -55,10 +55,10 @@ public class NatsSchemaHistoryConfig extends NatsCommonConfig {
             .withDescription("Interval for polling during schema history recovery in milliseconds")
             .withDefault(100L);
 
-    public static final Field PROP_RECOVERY_ATTEMPTS = Field
-            .create(CONFIGURATION_FIELD_PREFIX_STRING + "recovery.attempts")
-            .withDescription("Maximum number of attempts for schema history recovery")
-            .withDefault(100);
+    public static final Field PROP_RECOVERY_TIMEOUT_MS = Field
+            .create(CONFIGURATION_FIELD_PREFIX_STRING + "recovery.timeout.ms")
+            .withDescription("Maximum time to spend recovering the schema history in milliseconds")
+            .withDefault(60000L);
 
     private String streamName;
     private String subject;
@@ -67,7 +67,7 @@ public class NatsSchemaHistoryConfig extends NatsCommonConfig {
     private long maxAgeMs;
     private long maxBytes;
     private long recoveryPollIntervalMs;
-    private int recoveryAttempts;
+    private long recoveryTimeoutMs;
 
     public NatsSchemaHistoryConfig(Configuration config) {
         super(config, SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING);
@@ -83,7 +83,7 @@ public class NatsSchemaHistoryConfig extends NatsCommonConfig {
         this.maxAgeMs = c.getLong(PROP_MAX_AGE_MS);
         this.maxBytes = c.getLong(PROP_MAX_BYTES);
         this.recoveryPollIntervalMs = c.getLong(PROP_RECOVERY_POLL_INTERVAL_MS);
-        this.recoveryAttempts = c.getInteger(PROP_RECOVERY_ATTEMPTS);
+        this.recoveryTimeoutMs = c.getLong(PROP_RECOVERY_TIMEOUT_MS);
     }
 
     @Override
@@ -96,7 +96,7 @@ public class NatsSchemaHistoryConfig extends NatsCommonConfig {
                 PROP_MAX_AGE_MS,
                 PROP_MAX_BYTES,
                 PROP_RECOVERY_POLL_INTERVAL_MS,
-                PROP_RECOVERY_ATTEMPTS);
+                PROP_RECOVERY_TIMEOUT_MS);
         fields.addAll(super.getAllConfigurationFields());
         return fields;
     }
@@ -129,8 +129,8 @@ public class NatsSchemaHistoryConfig extends NatsCommonConfig {
         return recoveryPollIntervalMs;
     }
 
-    public int getRecoveryAttempts() {
-        return recoveryAttempts;
+    public long getRecoveryTimeoutMs() {
+        return recoveryTimeoutMs;
     }
 
     // Non-configurable scope used to distinguish this component in shared NATS

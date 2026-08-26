@@ -127,10 +127,10 @@ public class NatsSchemaHistory extends AbstractSchemaHistory {
             JetStreamSubscription subscription = jetStream.subscribe(config.getSubject(), pullOptions);
 
             int recoveryAttempts = 0;
-            int maxRecoveryAttempts = config.getRecoveryAttempts();
             long pollInterval = config.getRecoveryPollIntervalMs();
+            long deadline = System.currentTimeMillis() + config.getRecoveryTimeoutMs();
 
-            while (recoveryAttempts < maxRecoveryAttempts) {
+            while (System.currentTimeMillis() < deadline) {
                 checkForInterruption();
 
                 // Fetch messages in batches
@@ -168,7 +168,7 @@ public class NatsSchemaHistory extends AbstractSchemaHistory {
             if (numPending > 0) {
                 LOGGER.warn("Schema history recovery stopped after {} attempts with {} messages still pending; "
                         + "the recovered history may be incomplete",
-                        maxRecoveryAttempts, numPending);
+                        recoveryAttempts, numPending);
             }
 
             subscription.unsubscribe();

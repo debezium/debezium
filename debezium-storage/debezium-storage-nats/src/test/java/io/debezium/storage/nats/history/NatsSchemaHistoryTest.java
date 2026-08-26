@@ -11,6 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.AfterEach;
@@ -29,7 +30,9 @@ import io.debezium.relational.history.SchemaHistory;
 import io.debezium.relational.history.SchemaHistoryException;
 import io.debezium.relational.history.SchemaHistoryListener;
 import io.debezium.storage.nats.NatsCommonConfig;
+import io.debezium.storage.nats.NatsConnection;
 import io.debezium.util.Collect;
+import io.nats.client.api.ConsumerInfo;
 
 /**
  * Tests for NATS-based schema history storage.
@@ -217,12 +220,11 @@ class NatsSchemaHistoryTest {
     @Timeout(30)
     @SuppressWarnings("deprecation")
     public void shouldRecoverAllRecordsBeyondAttemptLimit() throws Exception {
-        // 300 records with a recovery attempt limit of 2 (100 msgs per fetch)
-        // must still recover everything; the attempt limit must not truncate
-        // the history.
+        // 300 records with a short recovery deadline must still recover
+        // everything; recovery must drain the stream rather than truncate.
         Map<String, String> extraConfig = new HashMap<>();
         extraConfig.put(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING
-                + NatsSchemaHistoryConfig.PROP_RECOVERY_ATTEMPTS.name(), "2");
+                + NatsSchemaHistoryConfig.PROP_RECOVERY_TIMEOUT_MS.name(), "5000");
         extraConfig.put(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING
                 + NatsSchemaHistoryConfig.PROP_RECOVERY_POLL_INTERVAL_MS.name(), "10");
         history = createHistory(extraConfig);
@@ -236,5 +238,34 @@ class NatsSchemaHistoryTest {
         history.recover(source, position("test.log", 299, 0), tables, new MySqlAntlrDdlParser());
 
         assertThat(tables.size()).isEqualTo(300);
+    }
+
+    @Test
+    @Timeout(30)
+    @SuppressWarnings("deprecation")
+    public void shouldNotLeakDurableConsumersAfterRecovery() throws Exception {
+        // Recovery must use an ephemeral consumer; durable consumers with
+        // random names would accumulate in the stream on every recovery.
+        Map<String, Object> source = server("test-server");
+        for (int i = 0; i < 10; i++) {
+            history.record(source, position("test.log", i, 0), "testdb", "CREATE TABLE t" + i + " (id INT);");
+        }
+
+        Tables tables = new Tables();
+        history.recover(source, position("test.log", 9, 0), tables, new MySqlAntlrDdlParser());
+        assertThat(tables.size()).isEqualTo(10);
+
+        NatsCommonConfig connConfig = new NatsCommonConfig(Configuration.from(Collect.hashMapOf(
+                NatsCommonConfig.NATS_URL.name(), natsUrl)), "");
+        NatsConnection conn = NatsConnection.getInstance(connConfig, "consumer-leak-check");
+        try {
+            List<ConsumerInfo> consumers = conn.getJetStreamManagement()
+                    .getConsumers("test-schema-history");
+            assertThat(consumers)
+                    .noneMatch(c -> c.getName().startsWith("schema-history-recovery-"));
+        }
+        finally {
+            conn.close();
+        }
     }
 }
