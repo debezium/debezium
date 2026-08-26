@@ -45,7 +45,7 @@ import io.debezium.util.Collect;
  * @author Nick Chomey
  */
 @Testcontainers
-class NatsStorageIntegrationTest {
+class NatsStorageIT {
 
     private static final String NATS_CONTAINER_IMAGE = "nats:2.12.0-alpine";
     private static final int NATS_PORT = 4222;
