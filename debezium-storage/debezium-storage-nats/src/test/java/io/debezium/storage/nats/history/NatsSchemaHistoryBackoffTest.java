@@ -91,9 +91,8 @@ class NatsSchemaHistoryBackoffTest {
         config.put(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + NatsSchemaHistoryConfig.PROP_REPLICAS.name(), "1");
         config.put(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING
                 + NatsSchemaHistoryConfig.PROP_RECOVERY_POLL_INTERVAL_MS.name(), "100");
-        config.put(
-                SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + NatsSchemaHistoryConfig.PROP_RECOVERY_ATTEMPTS.name(),
-                "10");
+        config.put(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING
+                + NatsSchemaHistoryConfig.PROP_RECOVERY_TIMEOUT_MS.name(), "5000");
 
         Configuration configuration = Configuration.from(config);
         schemaHistory = new NatsSchemaHistory();
