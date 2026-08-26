@@ -71,6 +71,24 @@ Description:::
 A Boolean value that specifies whether a separate thread should be used to ensure that the connection to the {connector-name} server or cluster is kept alive.
 
 
+[id="{context}-property-connect-keep-alive-max-reconnect-attempts"]
+xref:{context}-property-connect-keep-alive-max-reconnect-attempts[`connect.keep.alive.max.reconnect.attempts`]::
+
+Default value::: `0`
+
+Description:::
+The number of consecutive attempts that the keep alive thread makes to restore a lost binlog connection before the connector fails.
+A value of `0` means that the keep alive thread retries indefinitely.
++
+If a connection can never be restored, for example because the {connector-name} session ended while the TCP connection remained established, retrying indefinitely leaves the connector in the `RUNNING` state without emitting any change events.
+Set this property to fail the connector task instead, so that it can be restarted with a fresh connection.
++
+Each attempt is separated by `connect.keep.alive.interval.ms`, so the connector tolerates an outage of approximately `connect.keep.alive.max.reconnect.attempts` multiplied by `connect.keep.alive.interval.ms` before it fails.
+Set a value that exceeds the length of any planned maintenance window, to avoid failing the task during a routine restart of the database.
++
+This property has no effect when `connect.keep.alive` is set to `false`.
+
+
 [id="{context}-property-converters"]
 xref:{context}-property-converters[`converters`]::
 
