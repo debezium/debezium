@@ -16,7 +16,6 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import io.debezium.annotation.Immutable;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode;
-import io.debezium.connector.binlog.BinlogConnectorConfig.JsonStringFormattingMode;
 import io.debezium.connector.binlog.jdbc.BinlogValueConverters;
 import io.debezium.connector.mariadb.antlr.MariaDbAntlrDdlParser;
 import io.debezium.data.Uuid;
@@ -52,8 +51,6 @@ public class MariaDbValueConverters extends BinlogValueConverters {
      * @param binaryHandlingMode how binary columns should be treated
      * @param adjuster a temporal adjuster to make a database specific time before conversion
      * @param eventConvertingFailureHandlingMode how to handle conversion failures
-     * @param jsonStringFormattingMode how {@code JSON} values read from the binlog are serialized; may be null,
-     *            which is treated as {@link JsonStringFormattingMode#LEGACY}
      * @param serviceRegistry the service registry, should not be {@code null}
      */
     public MariaDbValueConverters(DecimalMode decimalMode,
@@ -62,10 +59,8 @@ public class MariaDbValueConverters extends BinlogValueConverters {
                                   BinaryHandlingMode binaryHandlingMode,
                                   TemporalAdjuster adjuster,
                                   EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode,
-                                  JsonStringFormattingMode jsonStringFormattingMode,
                                   ServiceRegistry serviceRegistry) {
-        super(decimalMode, temporalPrecisionMode, bigIntUnsignedMode, binaryHandlingMode, adjuster, eventConvertingFailureHandlingMode, jsonStringFormattingMode,
-                serviceRegistry, null);
+        super(decimalMode, temporalPrecisionMode, bigIntUnsignedMode, binaryHandlingMode, adjuster, eventConvertingFailureHandlingMode, serviceRegistry);
     }
 
     @Override
