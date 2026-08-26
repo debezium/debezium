@@ -35,6 +35,14 @@ public class NatsConnection {
 
     private static final ConcurrentMap<String, NatsConnection> instances = new ConcurrentHashMap<>();
 
+    /**
+     * Guards the {@link #instances} cache and the per-instance refcount so
+     * that {@link #getInstance} and {@link #close} are atomic with respect to
+     * each other. Without it, a close() racing with getInstance() could
+     * remove an instance from the cache while another thread is acquiring it.
+     */
+    private static final Object LOCK = new Object();
+
     private final NatsCommonConfig config;
     private Connection connection;
     private JetStream jetStream;
@@ -52,9 +60,11 @@ public class NatsConnection {
         // Build a cache key from URL and a non-configurable scope identifier so
         // offset and schema users can have independent lifecycles even on the same URL.
         String key = config.getNatsUrl() + "|" + (scopeKey == null ? "default" : scopeKey);
-        NatsConnection instance = instances.computeIfAbsent(key, k -> new NatsConnection(config, key));
-        instance.refCount.incrementAndGet();
-        return instance;
+        synchronized (LOCK) {
+            NatsConnection instance = instances.computeIfAbsent(key, k -> new NatsConnection(config, key));
+            instance.refCount.incrementAndGet();
+            return instance;
+        }
     }
 
     public synchronized Connection getConnection() throws IOException, InterruptedException {
@@ -205,40 +215,42 @@ public class NatsConnection {
         LOGGER.info("Successfully connected to NATS server and JetStream is ready");
     }
 
-    public synchronized void close() {
-        // Decrement reference count; only close the underlying connection when
-        // there are no more users of this shared instance.
-        int remaining = refCount.decrementAndGet();
-        if (remaining > 0) {
-            LOGGER.debug("NATS connection release: {} remaining users for URL {}", remaining, config.getNatsUrl());
-            return;
-        }
-
-        if (remaining < 0) {
-            // Guard against accidental extra close() calls
-            refCount.compareAndSet(remaining, 0);
-        }
-
-        if (connection != null) {
-            try {
-                connection.close();
-                LOGGER.info("NATS connection closed (last user) for URL {}", config.getNatsUrl());
+    public void close() {
+        synchronized (LOCK) {
+            // Decrement reference count; only close the underlying connection when
+            // there are no more users of this shared instance.
+            int remaining = refCount.decrementAndGet();
+            if (remaining > 0) {
+                LOGGER.debug("NATS connection release: {} remaining users for URL {}", remaining, config.getNatsUrl());
+                return;
             }
-            catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                LOGGER.warn("Interrupted while closing NATS connection", e);
-            }
-            finally {
-                connection = null;
-                jetStream = null;
-                jetStreamManagement = null;
-            }
-        }
 
-        // Remove from cache so a future user can create a fresh instance.
-        // This must happen even when the connection was never established,
-        // otherwise the cache entry would leak.
-        instances.remove(cacheKey, this);
+            if (remaining < 0) {
+                // Guard against accidental extra close() calls
+                refCount.compareAndSet(remaining, 0);
+            }
+
+            if (connection != null) {
+                try {
+                    connection.close();
+                    LOGGER.info("NATS connection closed (last user) for URL {}", config.getNatsUrl());
+                }
+                catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    LOGGER.warn("Interrupted while closing NATS connection", e);
+                }
+                finally {
+                    connection = null;
+                    jetStream = null;
+                    jetStreamManagement = null;
+                }
+            }
+
+            // Remove from cache so a future user can create a fresh instance.
+            // This must happen even when the connection was never established,
+            // otherwise the cache entry would leak.
+            instances.remove(cacheKey, this);
+        }
     }
 
     private void warmUpObjectStore(ObjectStore os) {
