@@ -24,6 +24,7 @@ import io.debezium.relational.history.SchemaHistoryException;
 import io.debezium.relational.history.SchemaHistoryListener;
 import io.debezium.storage.nats.NatsConnection;
 import io.nats.client.JetStream;
+import io.nats.client.JetStreamApiException;
 import io.nats.client.JetStreamManagement;
 import io.nats.client.JetStreamSubscription;
 import io.nats.client.PullSubscribeOptions;
@@ -238,8 +239,22 @@ public class NatsSchemaHistory extends AbstractSchemaHistory {
                 streamBuilder.maxBytes(config.getMaxBytes());
             }
 
-            jetStreamManagement.addStream(streamBuilder.build());
-            LOGGER.info("Successfully created NATS stream '{}'", config.getStreamName());
+            try {
+                jetStreamManagement.addStream(streamBuilder.build());
+                LOGGER.info("Successfully created NATS stream '{}'", config.getStreamName());
+            }
+            catch (JetStreamApiException e) {
+                if (e.getApiErrorCode() == 10058) {
+                    // Stream already exists, possibly with a different
+                    // configuration (e.g. after a config change or a racing
+                    // connector). Reuse it rather than failing hard.
+                    LOGGER.warn("NATS stream '{}' already exists with a different configuration; "
+                            + "reusing the existing stream", config.getStreamName());
+                }
+                else {
+                    throw e;
+                }
+            }
 
         }
         catch (Exception e) {
