@@ -5,14 +5,13 @@
  */
 package io.debezium.storage.nats.offset;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -21,10 +20,6 @@ import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.Configuration;
@@ -39,16 +34,20 @@ import io.nats.client.api.ObjectInfo;
 
 /**
  * Implementation of OffsetStore that saves to NATS Object Store.
- * Stores all offsets as a single JSON document (base64-encoded keys and
- * values) in one Object Store entry.
+ * <p>
+ * Each offset is stored as an individual object in the bucket, named by the
+ * base64url-encoded offset key. This keeps writes proportional to the number
+ * of changed offsets and lets multiple connectors share a bucket without
+ * clobbering each other's offsets. A zero-byte object represents a null
+ * offset value.
  *
  * @author Nick Chomey
  */
 public class NatsOffsetBackingStore implements OffsetStore {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(NatsOffsetBackingStore.class);
-    private static final String OFFSET_OBJECT_NAME = "debezium-offsets";
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final Base64.Encoder OBJECT_NAME_ENCODER = Base64.getUrlEncoder().withoutPadding();
+    private static final Base64.Decoder OBJECT_NAME_DECODER = Base64.getUrlDecoder();
 
     protected Map<ByteBuffer, ByteBuffer> data = new HashMap<>();
     protected ExecutorService executor;
@@ -127,25 +126,24 @@ public class NatsOffsetBackingStore implements OffsetStore {
     void load() {
         try {
             LOGGER.debug("Loading offsets from NATS Object Store bucket: {}", config.getBucketName());
+            data.clear();
 
-            try {
-                // Try to get the serialized offset data from Object Store
-                ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                ObjectInfo info = objectStore.get(OFFSET_OBJECT_NAME, baos);
-
-                if (info != null && baos.size() > 0) {
-                    // Deserialize the offset map using Java serialization
-                    byte[] offsetData = baos.toByteArray();
-                    deserializeOffsets(offsetData);
-                    LOGGER.debug("Loaded {} offsets from NATS Object Store", data.size());
+            List<ObjectInfo> objects = objectStore.getList();
+            for (ObjectInfo info : objects) {
+                String objectName = info.getObjectName();
+                try {
+                    ByteBuffer key = ByteBuffer.wrap(OBJECT_NAME_DECODER.decode(objectName));
+                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                    objectStore.get(objectName, baos);
+                    // A zero-byte object is a tombstone for a null value
+                    ByteBuffer value = baos.size() == 0 ? null : ByteBuffer.wrap(baos.toByteArray());
+                    data.put(key, value);
                 }
-                else {
-                    LOGGER.debug("No existing offsets found in NATS Object Store");
+                catch (Exception e) {
+                    // Object may have been deleted concurrently; skip it
+                    LOGGER.debug("Failed to load object '{}' from NATS Object Store: {}", objectName,
+                            e.toString());
                 }
-            }
-            catch (Exception e) {
-                // Object doesn't exist yet - this is normal for first run
-                LOGGER.debug("No existing offsets found in NATS Object Store (object not found)");
             }
 
             LOGGER.info("Loaded {} offsets from NATS Object Store", data.size());
@@ -160,29 +158,40 @@ public class NatsOffsetBackingStore implements OffsetStore {
      * Save offsets to NATS Object Store
      */
     protected void save() {
-        try {
-            // Serialize the entire offset map using Java serialization
-            byte[] offsetData = serializeOffsets();
+        save(data.keySet());
+    }
 
+    /**
+     * Save the given offset keys to NATS Object Store, one object per key.
+     * A null value is stored as a zero-byte object (tombstone).
+     */
+    private void save(Collection<ByteBuffer> keys) {
+        try {
             executeWithRetry(() -> {
-                try {
-                    ByteArrayInputStream bais = new ByteArrayInputStream(offsetData);
-                    LOGGER.debug("Putting offsets object to NATS Object Store bucket='{}'", config.getBucketName());
-                    objectStore.put(OFFSET_OBJECT_NAME, bais);
-                    LOGGER.trace("Stored {} bytes of offset data to NATS Object Store", offsetData.length);
-                }
-                catch (Exception putEx) {
-                    // The bucket (or its backing stream) may have been lost,
-                    // e.g. after a server restart. Probe and (re)create it,
-                    // then let the retry loop attempt the put again.
-                    LOGGER.debug("ObjectStore put failed, probing bucket '{}': {}", config.getBucketName(),
-                            putEx.toString());
-                    objectStore = natsConnection.getOrCreateObjectStore(config.getBucketName());
-                    throw putEx;
+                for (ByteBuffer key : keys) {
+                    if (key == null) {
+                        continue;
+                    }
+                    String objectName = OBJECT_NAME_ENCODER.encodeToString(toByteArray(key));
+                    byte[] valueBytes = data.get(key) != null ? toByteArray(data.get(key)) : new byte[0];
+                    try {
+                        objectStore.put(objectName, valueBytes);
+                        LOGGER.trace("Stored offset object '{}' ({} bytes) in NATS Object Store",
+                                objectName, valueBytes.length);
+                    }
+                    catch (Exception putEx) {
+                        // The bucket (or its backing stream) may have been lost,
+                        // e.g. after a server restart. Probe and (re)create it,
+                        // then let the retry loop attempt the put again.
+                        LOGGER.debug("ObjectStore put failed, probing bucket '{}': {}", config.getBucketName(),
+                                putEx.toString());
+                        objectStore = natsConnection.getOrCreateObjectStore(config.getBucketName());
+                        throw putEx;
+                    }
                 }
             });
 
-            LOGGER.debug("Successfully saved {} offsets to NATS Object Store", data.size());
+            LOGGER.debug("Successfully saved {} offsets to NATS Object Store", keys.size());
         }
         catch (Exception e) {
             LOGGER.error("Failed to save offsets to NATS Object Store", e);
@@ -212,7 +221,10 @@ public class NatsOffsetBackingStore implements OffsetStore {
                         fromByteBuffer(entry.getKey()), fromByteBuffer(entry.getValue()));
                 data.put(entry.getKey(), entry.getValue());
             }
-            save();
+            // Only the changed keys are written; the engine batches changed
+            // offsets into set(), so this keeps writes proportional to the
+            // number of changed offsets rather than the whole map.
+            save(values.keySet());
             if (callback != null) {
                 callback.onCompletion(null, null);
             }
@@ -235,27 +247,6 @@ public class NatsOffsetBackingStore implements OffsetStore {
     }
 
     /**
-     * Serialize all offsets as a JSON document for storage in NATS Object
-     * Store.
-     * <p>
-     * Keys and values are base64-encoded so arbitrary bytes round-trip
-     * losslessly; null values are preserved as JSON null.
-     */
-    private byte[] serializeOffsets() throws Exception {
-        ObjectNode root = MAPPER.createObjectNode();
-        for (Map.Entry<ByteBuffer, ByteBuffer> entry : data.entrySet()) {
-            if (entry.getKey() != null) {
-                String key = Base64.getEncoder().encodeToString(toByteArray(entry.getKey()));
-                String value = entry.getValue() != null
-                        ? Base64.getEncoder().encodeToString(toByteArray(entry.getValue()))
-                        : null;
-                root.put(key, value);
-            }
-        }
-        return MAPPER.writeValueAsBytes(root);
-    }
-
-    /**
      * Copy the remaining bytes of a buffer into a fresh byte array.
      * <p>
      * Unlike {@link ByteBuffer#array()}, this works for any buffer kind
@@ -267,24 +258,6 @@ public class NatsOffsetBackingStore implements OffsetStore {
         byte[] bytes = new byte[duplicate.remaining()];
         duplicate.get(bytes);
         return bytes;
-    }
-
-    /**
-     * Deserialize offsets from the JSON document stored in NATS Object Store.
-     */
-    private void deserializeOffsets(byte[] offsetData) throws Exception {
-        ObjectNode root = (ObjectNode) MAPPER.readTree(offsetData);
-        data.clear();
-        Iterator<Map.Entry<String, JsonNode>> fields = root.fields();
-        while (fields.hasNext()) {
-            Map.Entry<String, JsonNode> field = fields.next();
-            ByteBuffer key = ByteBuffer.wrap(Base64.getDecoder().decode(field.getKey()));
-            JsonNode valueNode = field.getValue();
-            ByteBuffer value = valueNode.isNull()
-                    ? null
-                    : ByteBuffer.wrap(Base64.getDecoder().decode(valueNode.asText()));
-            data.put(key, value);
-        }
     }
 
     private void executeWithRetry(NatsOperation operation) throws Exception {
