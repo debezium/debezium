@@ -869,9 +869,9 @@ offset.storage.nats.bucket.name=debezium-offsets
 |100
 |Specifies the interval, in milliseconds, that {prodname} waits between polling requests for persisted data during recovery.
 
-|[[schema-history-internal-nats-recovery-attempts]]<<schema-history-internal-nats-recovery-attempts, `schema.history.internal.nats.recovery.attempts`>>
-|100
-|Specifies the number of consecutive unsuccessful attempts to retrieve schema history data before recovery stops.
+|[[schema-history-internal-nats-recovery-timeout-ms]]<<schema-history-internal-nats-recovery-timeout-ms, `schema.history.internal.nats.recovery.timeout.ms`>>
+|60000
+|Specifies the maximum time, in milliseconds, that {prodname} spends recovering the schema history before recovery stops.
 
 |===
 
