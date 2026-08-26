@@ -13,5 +13,7 @@ return { parametersContext ->
         booleanParam('CHECK_BACKPORTS', false, 'When checked the back ports between the two provided versions will be compared')
         stringParam('BACKPORT_FROM_TAG', 'vx.y.z.Final', 'Tag where back port checks begin - e.g. v1.8.0.Final')
         stringParam('BACKPORT_TO_TAG', 'vx.y.z.Final', 'Tag where back port checks end - e.g. v1.8.1.Final')
+        stringParam('DBZ_PR_URL', '', 'URL of the pre-release PR in debezium/debezium (changelog, antora, copyright) — created by pre-release.sh')
+        stringParam('WEBSITE_PR_URL', '', 'URL of the pre-release PR in debezium/debezium.github.io (release notes, version YAML) — created by pre-release.sh')
     }
 }
