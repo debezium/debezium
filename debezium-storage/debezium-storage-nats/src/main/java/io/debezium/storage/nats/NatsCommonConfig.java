@@ -128,8 +128,10 @@ public class NatsCommonConfig {
         Configuration subset = prefix == null || prefix.isEmpty() ? config : config.subset(prefix, true);
         this.config = subset;
 
+        // Mask passwords, secrets and tokens (the default password pattern
+        // does not cover "token")
         LOGGER.info("Configuration for '{}' with prefix '{}': {}", getClass().getSimpleName(), prefix,
-                subset.withMaskedPasswords());
+                subset.withMasked(".*password$|.*secret$|.*token$"));
         if (!subset.validateAndRecord(getAllConfigurationFields(),
                 error -> LOGGER.error("Validation error for property with prefix '{}': {}", prefix, error))) {
             throw new DebeziumException(String.format(

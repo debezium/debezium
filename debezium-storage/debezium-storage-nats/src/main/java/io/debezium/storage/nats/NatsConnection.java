@@ -65,11 +65,12 @@ public class NatsConnection {
     }
 
     public static NatsConnection getInstance(NatsCommonConfig config, String scopeKey) {
-        // Build a cache key from URL, credentials and a non-configurable scope
-        // identifier so offset and schema users can have independent lifecycles
-        // even on the same URL, and connections with different credentials are
-        // never shared.
+        // Build a cache key from URL, credentials, TLS settings and a
+        // non-configurable scope identifier so offset and schema users can
+        // have independent lifecycles even on the same URL, and connections
+        // with different credentials or TLS settings are never shared.
         String key = config.getNatsUrl() + "|" + config.getUser() + "|" + config.getToken() + "|"
+                + config.isTlsEnabled() + "|" + config.getTlsTruststorePath() + "|" + config.getTlsKeystorePath() + "|"
                 + (scopeKey == null ? "default" : scopeKey);
         synchronized (LOCK) {
             NatsConnection instance = instances.computeIfAbsent(key, k -> new NatsConnection(config, key));
