@@ -150,6 +150,32 @@ class NatsOffsetBackingStoreTest {
 
     @Test
     @Timeout(10)
+    public void shouldHandleNonArrayBackedBuffers() throws Exception {
+        // Direct (non-array-backed) buffers must round-trip through the store
+        ByteBuffer key = ByteBuffer.allocateDirect(4);
+        key.put("key1".getBytes(StandardCharsets.UTF_8));
+        key.flip();
+        ByteBuffer value = ByteBuffer.allocateDirect(6);
+        value.put("value1".getBytes(StandardCharsets.UTF_8));
+        value.flip();
+
+        Map<ByteBuffer, ByteBuffer> offsets = new HashMap<>();
+        offsets.put(key, value);
+
+        Future<Void> setFuture = offsetStore.set(offsets, null);
+        setFuture.get(5, TimeUnit.SECONDS);
+
+        Collection<ByteBuffer> keys = new ArrayList<>();
+        keys.add(key);
+        Future<Map<ByteBuffer, ByteBuffer>> getFuture = offsetStore.get(keys);
+        Map<ByteBuffer, ByteBuffer> retrievedOffsets = getFuture.get(5, TimeUnit.SECONDS);
+
+        assertThat(retrievedOffsets).hasSize(1);
+        assertEquals("value1", new String(retrievedOffsets.get(key).array(), StandardCharsets.UTF_8));
+    }
+
+    @Test
+    @Timeout(10)
     public void shouldPersistOffsetsAcrossRestarts() throws Exception {
         // Store initial offsets
         ByteBuffer key = ByteBuffer.wrap("persistKey".getBytes(StandardCharsets.UTF_8));
