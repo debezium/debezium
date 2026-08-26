@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -98,6 +99,15 @@ public class NatsOffsetBackingStore implements OffsetStore {
         LOGGER.info("Stopping NatsOffsetBackingStore");
         if (executor != null) {
             executor.shutdown();
+            try {
+                // Give in-flight offset writes a chance to complete before
+                // closing the connection underneath them
+                executor.awaitTermination(30, TimeUnit.SECONDS);
+            }
+            catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            executor = null;
         }
         if (natsConnection != null) {
             natsConnection.close();
@@ -149,29 +159,21 @@ public class NatsOffsetBackingStore implements OffsetStore {
             byte[] offsetData = serializeOffsets();
 
             executeWithRetry(() -> {
-                // Ensure the underlying ObjectStore stream exists (OBJ_<bucket>)
                 try {
-                    String objStreamName = "OBJ_" + config.getBucketName();
-                    natsConnection.getJetStreamManagement().getStreamInfo(objStreamName);
-                    // Also ensure the ObjectStore handle is alive
-                    objectStore.getStatus();
+                    ByteArrayInputStream bais = new ByteArrayInputStream(offsetData);
+                    LOGGER.debug("Putting offsets object to NATS Object Store bucket='{}'", config.getBucketName());
+                    objectStore.put(OFFSET_OBJECT_NAME, bais);
+                    LOGGER.trace("Stored {} bytes of offset data to NATS Object Store", offsetData.length);
                 }
-                catch (Exception probeEx) {
-                    // (Re)create the object store bucket if probe fails
-                    LOGGER.debug("ObjectStore probe failed before put, attempting (re)create: {}", probeEx.toString());
+                catch (Exception putEx) {
+                    // The bucket (or its backing stream) may have been lost,
+                    // e.g. after a server restart. Probe and (re)create it,
+                    // then let the retry loop attempt the put again.
+                    LOGGER.debug("ObjectStore put failed, probing bucket '{}': {}", config.getBucketName(),
+                            putEx.toString());
                     objectStore = natsConnection.getOrCreateObjectStore(config.getBucketName());
-                    try {
-                        objectStore.getStatus();
-                    }
-                    catch (Exception statusEx) {
-                        LOGGER.debug("ObjectStore status still failing after (re)create: {}", statusEx.toString());
-                    }
+                    throw putEx;
                 }
-
-                ByteArrayInputStream bais = new ByteArrayInputStream(offsetData);
-                LOGGER.debug("Putting offsets object to NATS Object Store bucket='{}'", config.getBucketName());
-                objectStore.put(OFFSET_OBJECT_NAME, bais);
-                LOGGER.trace("Stored {} bytes of offset data to NATS Object Store", offsetData.length);
             });
 
             LOGGER.debug("Successfully saved {} offsets to NATS Object Store", data.size());

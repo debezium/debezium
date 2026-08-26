@@ -232,10 +232,13 @@ public class NatsConnection {
                 connection = null;
                 jetStream = null;
                 jetStreamManagement = null;
-                // Remove from cache so a future user can create a fresh instance
-                instances.remove(cacheKey, this);
             }
         }
+
+        // Remove from cache so a future user can create a fresh instance.
+        // This must happen even when the connection was never established,
+        // otherwise the cache entry would leak.
+        instances.remove(cacheKey, this);
     }
 
     private void warmUpObjectStore(ObjectStore os) {
