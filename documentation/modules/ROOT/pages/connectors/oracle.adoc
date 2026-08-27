@@ -1373,9 +1373,9 @@ For the connector to use the `heartbeat.action.query` with tables that are not o
 === Capturing large object data
 
 Oracle stores several data types by using internal large object (LOB) mechanisms in the redo logs.
-To permit {prodname} to capture changes to LOB data, you must set the xref:oracle-property-lob-enabled[`lob.enabled`] connector configuration property to `true`.
+To enable {prodname} to capture changes to LOB data, you must set the xref:oracle-property-lob-enabled[`lob.enabled`] connector configuration property to `true`.
 
-Set `lob.enabled` to `true` if you want the connector to capture the following data types:
+With this property enabled, the connector can capture the following data types:
 
 `CLOB`:: Character large objects.
 `NCLOB`:: National character set large objects.
