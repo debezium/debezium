@@ -77,7 +77,10 @@ public class CappedLogFileSessionSelector implements LogFileSessionSelector {
 
         if (deriveLogCountFromSeed) {
             deriveLogCountFromSeed = false;
-            logsPerRedoThread = deriveLogsPerRedoThread(logsByThread);
+            // The seeded boundary alone preserves the pre-restart window via the extension, so
+            // clamping the derived count costs no coverage; it bounds the slice width carried into
+            // catch-up when the pin clears before any stall can apply the growth ceiling.
+            logsPerRedoThread = clampToGrowthCeiling(deriveLogsPerRedoThread(logsByThread));
         }
 
         Map<Integer, List<LogFile>> budgetLogsByThread = getThreadLogsCappedByBudget(logsByThread, (long) logsPerRedoThread * redoLogSizeInBytes);
@@ -85,11 +88,9 @@ public class CappedLogFileSessionSelector implements LogFileSessionSelector {
         if (previousBudgetLogsByThread != null && budgetLogsByThread.equals(previousBudgetLogsByThread)) {
             // Derive the window width from the stall distance so the budget covers the already mined
             // ground in one step instead of one log per session. The +1 floor preserves the previous
-            // linear-growth guarantee; the cap keeps a session's window within the query timeout,
-            // yielding to a configured minimum above it.
+            // linear-growth guarantee.
             final int derivedLogsPerRedoThread = deriveLogsPerRedoThread(logsByThread);
-            logsPerRedoThread = Math.min(Math.max(derivedLogsPerRedoThread, logsPerRedoThread + 1),
-                    Math.max(MAX_LOGS_PER_REDO_THREAD, minimumLogsPerRedoThread));
+            logsPerRedoThread = clampToGrowthCeiling(Math.max(derivedLogsPerRedoThread, logsPerRedoThread + 1));
             LOGGER.debug("Capped log set unchanged, growing log count per redo thread to {}.", logsPerRedoThread);
             budgetLogsByThread = getThreadLogsCappedByBudget(logsByThread, (long) logsPerRedoThread * redoLogSizeInBytes);
         }
@@ -153,6 +154,23 @@ public class CappedLogFileSessionSelector implements LogFileSessionSelector {
                         .flatMap(entry -> entry.getValue().stream())
                         .toList(),
                 effectiveUpperBoundary);
+    }
+
+    /**
+     * Clamps a candidate log count per redo thread to the growth ceiling.
+     *
+     * The ceiling bounds how wide the budget may grow, whether from stall growth or from the count
+     * derived off a seeded boundary on restart, keeping the budget's contribution to a single
+     * mining session predictable. A configured minimum above the ceiling wins, so the count never
+     * drops below the user's configuration. The mined window itself may still exceed the ceiling
+     * when extending past the previously mined boundary, as that ground must be re-covered
+     * regardless of the budget.
+     *
+     * @param logCount the candidate log count per redo thread
+     * @return the log count, never greater than the growth ceiling
+     */
+    private int clampToGrowthCeiling(int logCount) {
+        return Math.min(logCount, Math.max(MAX_LOGS_PER_REDO_THREAD, minimumLogsPerRedoThread));
     }
 
     private int deriveLogsPerRedoThread(Map<Integer, List<LogFile>> logsByThread) {
