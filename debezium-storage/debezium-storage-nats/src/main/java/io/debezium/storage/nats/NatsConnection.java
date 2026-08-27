@@ -23,6 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.function.ThrowingRunnable;
 import io.debezium.util.DelayStrategy;
 import io.debezium.util.RetryingRunnable;
 import io.debezium.util.Strings;
@@ -49,10 +50,10 @@ public class NatsConnection {
     private static final ConcurrentMap<String, NatsConnection> instances = new ConcurrentHashMap<>();
 
     /**
-     * Number of retries for object store probes (backing stream visibility and
-     * warm-up), at 100ms intervals, i.e. up to ~2s.
+     * Delay between probe retries (JetStream readiness, object store backing
+     * stream visibility and warm-up).
      */
-    private static final int OBJECT_STORE_PROBE_RETRIES = 20;
+    private static final Duration PROBE_DELAY = Duration.ofMillis(100);
 
     /**
      * Guards the {@link #instances} cache and the per-instance refcount so
@@ -63,6 +64,7 @@ public class NatsConnection {
     private static final Object LOCK = new Object();
 
     private final NatsCommonConfig config;
+    private final int probeRetries;
     private Connection connection;
     private JetStream jetStream;
     private final AtomicInteger refCount = new AtomicInteger(0);
@@ -73,6 +75,23 @@ public class NatsConnection {
     private NatsConnection(NatsCommonConfig config, String cacheKey) {
         this.config = config;
         this.cacheKey = cacheKey;
+        // Probe retries are derived from the reconnect wait: the more patient
+        // the user is with connection reconnects, the more patient we are with
+        // JetStream and object store readiness probes. The default reconnect
+        // wait of 2000ms yields 20 retries at 100ms intervals (~2s).
+        this.probeRetries = (int) Math.max(2000, config.getReconnectWait().toMillis()) / 100;
+    }
+
+    /**
+     * Build a retry loop for a readiness probe, using the shared probe retry
+     * budget derived from the reconnect wait.
+     */
+    private RetryingRunnable<Exception> probeRunnable(ThrowingRunnable<Exception> action) {
+        return RetryingRunnable.<Exception> builder()
+                .retries(probeRetries)
+                .delayStrategy(DelayStrategy.constant(PROBE_DELAY))
+                .doRun(action)
+                .build();
     }
 
     public static NatsConnection getInstance(NatsCommonConfig config, String scopeKey) {
@@ -149,18 +168,13 @@ public class NatsConnection {
         // subjects. Creation is async on some server versions, so retry the
         // probe briefly rather than sleeping once and giving up.
         try {
-            RetryingRunnable<Exception> retrying = RetryingRunnable.<Exception> builder()
-                    .retries(OBJECT_STORE_PROBE_RETRIES)
-                    .delayStrategy(DelayStrategy.constant(Duration.ofMillis(100)))
-                    .doRun(() -> {
-                        JetStreamManagement jsm = conn.jetStreamManagement();
-                        String streamName = "OBJ_" + bucketName;
-                        io.nats.client.api.StreamInfo si = jsm.getStreamInfo(streamName); // throws if not present yet
-                        LOGGER.debug("Created ObjectStore backing stream: {}, subjects={}", streamName,
-                                si.getConfiguration().getSubjects());
-                    })
-                    .build();
-            retrying.run();
+            probeRunnable(() -> {
+                JetStreamManagement jsm = conn.jetStreamManagement();
+                String streamName = "OBJ_" + bucketName;
+                io.nats.client.api.StreamInfo si = jsm.getStreamInfo(streamName); // throws if not present yet
+                LOGGER.debug("Created ObjectStore backing stream: {}, subjects={}", streamName,
+                        si.getConfiguration().getSubjects());
+            }).run();
         }
         catch (InterruptedException ie) {
             Thread.currentThread().interrupt();
@@ -220,27 +234,21 @@ public class NatsConnection {
         // Wait for JetStream to be responsive to avoid race conditions right
         // after server start. We ping the JetStream management API with
         // retries for a short period.
-        int retries = (int) Math.max(2000, config.getReconnectWait().toMillis()) / 100;
         try {
-            RetryingRunnable<Exception> retrying = RetryingRunnable.<Exception> builder()
-                    .retries(retries)
-                    .delayStrategy(DelayStrategy.constant(Duration.ofMillis(100)))
-                    .doRun(() -> {
-                        JetStreamManagement jsm = connection.jetStreamManagement();
-                        // Probe by requesting a non-existent stream; a
-                        // JetStreamApiException indicates JS responded and is
-                        // therefore ready.
-                        try {
-                            jsm.getStreamInfo("_dbz_js_probe_nonexistent_");
-                        }
-                        catch (JetStreamApiException expected) {
-                            // Expected since the stream doesn't exist; JS is responsive.
-                        }
-                        jetStreamManagement = jsm;
-                        jetStream = connection.jetStream();
-                    })
-                    .build();
-            retrying.run();
+            probeRunnable(() -> {
+                JetStreamManagement jsm = connection.jetStreamManagement();
+                // Probe by requesting a non-existent stream; a
+                // JetStreamApiException indicates JS responded and is
+                // therefore ready.
+                try {
+                    jsm.getStreamInfo("_dbz_js_probe_nonexistent_");
+                }
+                catch (JetStreamApiException expected) {
+                    // Expected since the stream doesn't exist; JS is responsive.
+                }
+                jetStreamManagement = jsm;
+                jetStream = connection.jetStream();
+            }).run();
         }
         catch (InterruptedException ie) {
             throw ie;
@@ -339,19 +347,14 @@ public class NatsConnection {
         final String key = "__dbz_os_warmup__";
         byte[] payload = new byte[]{ 1 };
         try {
-            RetryingRunnable<Exception> retrying = RetryingRunnable.<Exception> builder()
-                    .retries(OBJECT_STORE_PROBE_RETRIES)
-                    .delayStrategy(DelayStrategy.constant(Duration.ofMillis(100)))
-                    .doRun(() -> {
-                        os.put(key, new java.io.ByteArrayInputStream(payload));
-                        try {
-                            os.delete(key);
-                        }
-                        catch (Exception ignore) {
-                        }
-                    })
-                    .build();
-            retrying.run();
+            probeRunnable(() -> {
+                os.put(key, new java.io.ByteArrayInputStream(payload));
+                try {
+                    os.delete(key);
+                }
+                catch (Exception ignore) {
+                }
+            }).run();
         }
         catch (InterruptedException ie) {
             Thread.currentThread().interrupt();
