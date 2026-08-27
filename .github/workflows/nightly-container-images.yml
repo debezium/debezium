@@ -59,6 +59,7 @@ on:
 jobs:
   build-nightly-images:
     name: Build and Push Nightly Images
+    if: github.repository == 'debezium/debezium'
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
