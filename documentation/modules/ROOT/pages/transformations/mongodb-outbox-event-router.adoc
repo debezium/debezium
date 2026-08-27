@@ -15,13 +15,14 @@
 toc::[]
 
 
+The outbox pattern provides a way to safely and reliably exchange data between multiple microservices.
+An outbox pattern implementation ensures that the data that a service stores in its database remains consistent with the data that {prodname} publishes for other services to consume.
+
 [NOTE]
 ====
 This SMT is for use with the {prodname} MongoDB connector only.
 For information about using the outbox event router SMT for relational databases, see {link-prefix}:{link-outbox-event-router}#outbox-event-router[Outbox event router].
 ====
-
-The outbox pattern is a way to safely and reliably exchange data between multiple (micro) services. An outbox pattern implementation avoids inconsistencies between a service's internal state (as typically persisted in its database) and state in events consumed by services that need the same data.
 
 To implement the outbox pattern in a {prodname} application, configure a {prodname} connector to:
 
