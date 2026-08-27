@@ -72,6 +72,7 @@ public class SqlServerConnection extends JdbcConnection {
     private static final String DATABASE_NAME_PLACEHOLDER = "#db";
     private static final String TABLE_NAME_PLACEHOLDER = "#table";
     private static final String FUNCTION_NAME_PLACEHOLDER = "#function";
+    private static final String PREFIX_CDC_DATA = "[cdc_data].";
     private static final String GET_ALL_CHANGES_FUNCTION_PREFIX = "fn_cdc_get_all_changes_";
     private static final String GET_MAX_LSN = "SELECT #db.sys.fn_cdc_get_max_lsn()";
     private static final String GET_MAX_TRANSACTION_LSN = "SELECT MAX(start_lsn) FROM #db.cdc.lsn_time_mapping WHERE tran_id <> 0x00";
@@ -82,7 +83,7 @@ public class SqlServerConnection extends JdbcConnection {
     private static final String LOCK_TABLE = "SELECT * FROM #table WITH (TABLOCKX)";
     private static final String INCREMENT_LSN = "SELECT #db.sys.fn_cdc_increment_lsn(?)";
     protected static final String LSN_TIMESTAMP_SELECT_STATEMENT = "TODATETIMEOFFSET(#db.sys.fn_cdc_map_lsn_to_time([__$start_lsn]), DATEPART(TZOFFSET, SYSDATETIMEOFFSET()))";
-    private static final String LSN_TIMESTAMP_SELECT_STATEMENT_JOIN = "TODATETIMEOFFSET(ltm.tran_begin_time, DATEPART(TZOFFSET, SYSDATETIMEOFFSET()))";
+    private static final String LSN_TIMESTAMP_SELECT_STATEMENT_JOIN = "TODATETIMEOFFSET(ltm.tran_end_time, DATEPART(TZOFFSET, SYSDATETIMEOFFSET()))";
     private static final String GET_ALL_CHANGES_FOR_TABLE_SELECT = "SELECT [__$start_lsn], [__$seqval], [__$operation], [__$update_mask], #, "
             + LSN_TIMESTAMP_SELECT_STATEMENT;
     private static final String GET_ALL_CHANGES_FOR_TABLE_SELECT_DIRECT = "SELECT cdc_data.[__$start_lsn], cdc_data.[__$seqval], cdc_data.[__$operation], cdc_data.[__$update_mask], cdc_data.[__$command_id], #, "
@@ -247,7 +248,7 @@ public class SqlServerConnection extends JdbcConnection {
                         break;
                 }
             });
-            String colPrefix = isDirectMode ? "[cdc_data]." : "";
+            String colPrefix = isDirectMode ? PREFIX_CDC_DATA : "";
             where.add(colPrefix + "[__$operation] NOT IN (" + String.join(",", skippedOps) + ")");
         }
 
@@ -435,7 +436,9 @@ public class SqlServerConnection extends JdbcConnection {
                                         Integer commandIdFrom, Lsn intervalToLsn, int maxRows)
             throws SQLException {
         String databaseName = changeTable.getSourceTableId().catalog();
+        boolean isDirectMode = config.getDataQueryMode() == SqlServerConnectorConfig.DataQueryMode.DIRECT;
         String capturedColumns = changeTable.getCapturedColumns().stream().map(this::quoteIdentifier)
+                .map(column -> isDirectMode ? PREFIX_CDC_DATA + column : column)
                 .collect(Collectors.joining(", "));
 
         String query = replaceDatabaseNamePlaceholder(getAllChangesForTable, databaseName)
