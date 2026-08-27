@@ -570,8 +570,13 @@ Set one of the following options:
 `avro_unicode`:: Similar to `avro`, but replaces invalid characters with their Unicode equivalent (e.g., `_u0031` for a leading `1`).
 |===
 
+// Type: reference
+// Title: Known limitations of the MongoDB event flattening SMT
+// ModuleID: mongodb-event-flattening-smt-known-limitations
 [id="debezium-event-flattening-smt-for-mongodb-known-limitations"]
 == Known limitations
+
+Because MongoDB is schemaless and sink connectors require specific message formats, the following constraints apply when you configure the MongoDB event flattening transformation.
 
 * Because MongoDB is a schemaless database, to ensure consistent column definitions when you use {prodname} to stream changes to a schema-based data relational database, fields within a collection that have the same name must store the same type of data.
 
