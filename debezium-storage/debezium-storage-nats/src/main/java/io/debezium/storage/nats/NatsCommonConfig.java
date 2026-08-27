@@ -15,6 +15,7 @@ import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.util.Collect;
+import io.debezium.util.Strings;
 
 /**
  * Common configuration for NATS-based storage implementations.
@@ -125,13 +126,11 @@ public class NatsCommonConfig {
     }
 
     public NatsCommonConfig(Configuration config, String prefix) {
-        Configuration subset = prefix == null || prefix.isEmpty() ? config : config.subset(prefix, true);
+        Configuration subset = Strings.isNullOrBlank(prefix) ? config : config.subset(prefix, true);
         this.config = subset;
 
-        // Mask passwords, secrets and tokens (the default password pattern
-        // does not cover "token")
         LOGGER.info("Configuration for '{}' with prefix '{}': {}", getClass().getSimpleName(), prefix,
-                subset.withMasked(".*password$|.*secret$|.*token$"));
+                subset.withMaskedPasswords());
         if (!subset.validateAndRecord(getAllConfigurationFields(),
                 error -> LOGGER.error("Validation error for property with prefix '{}': {}", prefix, error))) {
             throw new DebeziumException(String.format(

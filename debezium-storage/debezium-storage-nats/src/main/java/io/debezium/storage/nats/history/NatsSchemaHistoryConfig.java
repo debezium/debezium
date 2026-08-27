@@ -8,6 +8,7 @@ package io.debezium.storage.nats.history;
 import java.util.List;
 
 import io.debezium.config.Configuration;
+import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.storage.nats.NatsCommonConfig;
@@ -31,6 +32,25 @@ import io.debezium.util.Collect;
  */
 public class NatsSchemaHistoryConfig extends NatsCommonConfig {
 
+    /**
+     * The JetStream storage type for the schema history stream.
+     */
+    public enum StorageType implements EnumeratedValue {
+        FILE("file"),
+        MEMORY("memory");
+
+        private final String value;
+
+        StorageType(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+    }
+
     public static final Field PROP_STREAM_NAME = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "stream.name")
             .withDescription("The name of the NATS JetStream stream to store schema history")
             .withDefault("debezium-schema-history");
@@ -41,7 +61,7 @@ public class NatsSchemaHistoryConfig extends NatsCommonConfig {
 
     public static final Field PROP_STORAGE_TYPE = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "storage.type")
             .withDescription("The storage type for the JetStream stream (file or memory)")
-            .withDefault("file");
+            .withEnum(StorageType.class, StorageType.FILE);
 
     public static final Field PROP_REPLICAS = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "replicas")
             .withDescription("Number of replicas for the JetStream stream")
@@ -67,7 +87,7 @@ public class NatsSchemaHistoryConfig extends NatsCommonConfig {
 
     private String streamName;
     private String subject;
-    private String storageType;
+    private StorageType storageType;
     private int replicas;
     private long maxAgeMs;
     private long maxBytes;
@@ -83,7 +103,7 @@ public class NatsSchemaHistoryConfig extends NatsCommonConfig {
         super.init(c);
         this.streamName = c.getString(PROP_STREAM_NAME);
         this.subject = c.getString(PROP_SUBJECT);
-        this.storageType = c.getString(PROP_STORAGE_TYPE);
+        this.storageType = StorageType.valueOf(c.getString(PROP_STORAGE_TYPE).toUpperCase());
         this.replicas = c.getInteger(PROP_REPLICAS);
         this.maxAgeMs = c.getLong(PROP_MAX_AGE_MS);
         this.maxBytes = c.getLong(PROP_MAX_BYTES);
@@ -114,7 +134,7 @@ public class NatsSchemaHistoryConfig extends NatsCommonConfig {
         return subject;
     }
 
-    public String getStorageType() {
+    public StorageType getStorageType() {
         return storageType;
     }
 

@@ -6,7 +6,6 @@
 package io.debezium.storage.nats.history;
 
 import java.time.Duration;
-import java.util.UUID;
 import java.util.function.Consumer;
 
 import org.slf4j.Logger;
@@ -23,6 +22,7 @@ import io.debezium.relational.history.SchemaHistory;
 import io.debezium.relational.history.SchemaHistoryException;
 import io.debezium.relational.history.SchemaHistoryListener;
 import io.debezium.storage.nats.NatsConnection;
+import io.debezium.util.Strings;
 import io.nats.client.JetStream;
 import io.nats.client.JetStreamApiException;
 import io.nats.client.JetStreamManagement;
@@ -30,7 +30,6 @@ import io.nats.client.JetStreamSubscription;
 import io.nats.client.PullSubscribeOptions;
 import io.nats.client.api.ConsumerConfiguration;
 import io.nats.client.api.DeliverPolicy;
-import io.nats.client.api.StorageType;
 import io.nats.client.api.StreamConfiguration;
 import io.nats.client.api.StreamInfo;
 
@@ -53,14 +52,12 @@ public class NatsSchemaHistory extends AbstractSchemaHistory {
     private NatsConnection natsConnection;
     private JetStream jetStream;
     private JetStreamManagement jetStreamManagement;
-    private String dbHistoryName;
 
     @Override
     public void configure(Configuration config, HistoryRecordComparator comparator, SchemaHistoryListener listener,
                           boolean useCatalogBeforeSchema) {
         super.configure(config, comparator, listener, useCatalogBeforeSchema);
         this.config = new NatsSchemaHistoryConfig(config);
-        this.dbHistoryName = config.getString(SchemaHistory.NAME, UUID.randomUUID().toString());
 
         LOGGER.info("Configured NATS schema history with stream '{}' and subject '{}'",
                 this.config.getStreamName(), this.config.getSubject());
@@ -151,7 +148,7 @@ public class NatsSchemaHistory extends AbstractSchemaHistory {
                             try {
                                 checkForInterruption();
                                 String recordString = new String(message.getData());
-                                if (recordString != null && !recordString.trim().isEmpty()) {
+                                if (!Strings.isNullOrBlank(recordString)) {
                                     HistoryRecord record = new HistoryRecord(reader.read(recordString));
                                     LOGGER.trace("Recovered schema history record: {}", record);
                                     records.accept(record);
@@ -234,7 +231,9 @@ public class NatsSchemaHistory extends AbstractSchemaHistory {
 
             LOGGER.info("Creating NATS stream '{}' for schema history storage", config.getStreamName());
 
-            StorageType storageType = "memory".equals(config.getStorageType()) ? StorageType.Memory : StorageType.File;
+            io.nats.client.api.StorageType storageType = config.getStorageType() == NatsSchemaHistoryConfig.StorageType.MEMORY
+                    ? io.nats.client.api.StorageType.Memory
+                    : io.nats.client.api.StorageType.File;
 
             StreamConfiguration.Builder streamBuilder = StreamConfiguration.builder()
                     .name(config.getStreamName())
