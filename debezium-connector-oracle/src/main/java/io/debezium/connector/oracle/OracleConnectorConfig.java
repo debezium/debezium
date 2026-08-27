@@ -259,6 +259,18 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDescription("Specifies the minimum number of logs to mine per redo thread. " +
                     "Setting this to 0 disables the cap, and all available logs are mined in a single pass.");
 
+    public static final Field LOG_MINING_LOG_COUNT_GROWTH_MAX = Field.create("log.mining.log.count.growth.max")
+            .withDisplayName("Maximum automatic growth of the log count per redo thread")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(4)
+            .withValidation(Field::isPositiveInteger)
+            .withDescription("Specifies the maximum number of logs per redo thread the mining window grows to automatically " +
+                    "when a long-running transaction holds the window start in place. Defaults to 4. " +
+                    "A 'log.mining.log.count.min' above this value takes precedence. " +
+                    "The mining window may exceed this count when re-covering previously mined logs; the value bounds automatic growth, not the window itself.");
+
     public static final Field LOG_MINING_BATCH_SIZE_MAX = Field.create("log.mining.batch.size.max")
             .withDisplayName("Maximum batch size for reading redo/archive logs.")
             .withType(Type.LONG)
@@ -965,7 +977,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_SQL_RELAXED_QUOTE_DETECTION, LOG_MINING_CLIENTID_INCLUDE_LIST, LOG_MINING_CLIENTID_EXCLUDE_LIST, LOG_MINING_RESUME_POSITION_INTERVAL_MS,
                     LOG_MINING_BUFFER_DEFERRED_TRANSACTION_START, LOG_MINING_BUFFER_DEFERRED_TRANSACTION_RETENTION_MS, LOG_MINING_PATH_DICTIONARY,
                     LOG_MINING_USE_CTE_QUERY,
-                    LOG_MINING_REDO_THREAD_SCN_ADJUSTMENT, LOG_MINING_HASH_AREA_SIZE, LOG_MINING_SORT_AREA_SIZE, LOG_MINING_LOG_COUNT_MIN)
+                    LOG_MINING_REDO_THREAD_SCN_ADJUSTMENT, LOG_MINING_HASH_AREA_SIZE, LOG_MINING_SORT_AREA_SIZE, LOG_MINING_LOG_COUNT_MIN,
+                    LOG_MINING_LOG_COUNT_GROWTH_MAX)
             .group(Field.Group.CONNECTOR, INTERVAL_HANDLING_MODE, UNAVAILABLE_VALUE_PLACEHOLDER, BINARY_HANDLING_MODE, SCHEMA_NAME_ADJUSTMENT_MODE,
                     LEGACY_DECIMAL_HANDLING_STRATEGY)
             .group(Field.Group.CONNECTOR_ADVANCED, QUERY_FETCH_SIZE, OBJECT_ID_CACHE_SIZE)
@@ -1060,6 +1073,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final boolean logMiningDeferredTransactionStart;
     private final Duration logMiningDeferredTransactionRetention;
     private final Integer logMiningMinimumLogCount;
+    private final Integer logMiningLogCountGrowthMax;
 
     private final String openLogReplicatorSource;
     private final String openLogReplicatorHostname;
@@ -1163,6 +1177,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningDeferredTransactionStart = config.getBoolean(LOG_MINING_BUFFER_DEFERRED_TRANSACTION_START);
         this.logMiningDeferredTransactionRetention = Duration.ofMillis(config.getLong(LOG_MINING_BUFFER_DEFERRED_TRANSACTION_RETENTION_MS));
         this.logMiningMinimumLogCount = config.getInteger(LOG_MINING_LOG_COUNT_MIN);
+        this.logMiningLogCountGrowthMax = config.getInteger(LOG_MINING_LOG_COUNT_GROWTH_MAX);
 
         this.logMiningEhCacheConfiguration = config.subset("log.mining.buffer.ehcache", false);
 
@@ -1942,6 +1957,10 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     public Integer getLogMiningMinimumLogCount() {
         return logMiningMinimumLogCount;
+    }
+
+    public Integer getLogMiningLogCountGrowthMax() {
+        return logMiningLogCountGrowthMax;
     }
 
     /**
