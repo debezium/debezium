@@ -28,13 +28,10 @@ import io.debezium.connector.oracle.logminer.LogFileCollector.LogFilesResult;
  */
 public class CappedLogFileSessionSelector implements LogFileSessionSelector {
 
-    // Hard ceiling for stall-driven budget growth; keeps a single mining session's window within
-    // the database query timeout no matter how far ahead the previously mined boundary lies.
-    private static final int MAX_LOGS_PER_REDO_THREAD = 16;
-
     private final Logger LOGGER = LoggerFactory.getLogger(CappedLogFileSessionSelector.class);
 
     private final int minimumLogsPerRedoThread;
+    private final int maximumLogsPerRedoThread;
     private final long redoLogSizeInBytes;
 
     private int logsPerRedoThread;
@@ -52,11 +49,13 @@ public class CappedLogFileSessionSelector implements LogFileSessionSelector {
      * to translate the span into a per-thread log count.
      *
      * @param minimumLogsPerRedoThread minimum number of logs to mine per redo thread
+     * @param maximumLogsPerRedoThread growth ceiling for the log count per redo thread; a minimum above it takes precedence
      * @param redoLogSizeInBytes maximum size of an online redo log in bytes
      * @param previouslyMinedBoundary lower bound on the previously mined upper boundary; ignored when null or none
      */
-    public CappedLogFileSessionSelector(int minimumLogsPerRedoThread, long redoLogSizeInBytes, Scn previouslyMinedBoundary) {
+    public CappedLogFileSessionSelector(int minimumLogsPerRedoThread, int maximumLogsPerRedoThread, long redoLogSizeInBytes, Scn previouslyMinedBoundary) {
         this.minimumLogsPerRedoThread = minimumLogsPerRedoThread;
+        this.maximumLogsPerRedoThread = maximumLogsPerRedoThread;
         this.redoLogSizeInBytes = redoLogSizeInBytes;
         this.logsPerRedoThread = minimumLogsPerRedoThread;
         if (previouslyMinedBoundary != null && !previouslyMinedBoundary.isNull()) {
@@ -170,7 +169,7 @@ public class CappedLogFileSessionSelector implements LogFileSessionSelector {
      * @return the log count, never greater than the growth ceiling
      */
     private int clampToGrowthCeiling(int logCount) {
-        return Math.min(logCount, Math.max(MAX_LOGS_PER_REDO_THREAD, minimumLogsPerRedoThread));
+        return Math.min(logCount, Math.max(maximumLogsPerRedoThread, minimumLogsPerRedoThread));
     }
 
     private int deriveLogsPerRedoThread(Map<Integer, List<LogFile>> logsByThread) {
