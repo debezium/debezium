@@ -817,6 +817,85 @@ public class CappedLogFileSessionSelectorTest {
 
     @Test
     @FixFor("dbz#2326")
+    void testSeededCountClampedAtCeilingWhileWindowStillReachesBoundary() {
+        // Restart mid-pin with 19 logs of mined ground: the derived count clamps at the growth
+        // ceiling while the extension still carries the first window past the seeded boundary, so
+        // the clamp costs no coverage; when the pin then clears with no stall having fired, the
+        // catch-up slice honors the ceiling instead of the unclamped derivation
+        final LogInterceptor interceptor = new LogInterceptor(CappedLogFileSessionSelector.class);
+        interceptor.setLoggerLevel(CappedLogFileSessionSelector.class, Level.DEBUG);
+        CappedLogFileSessionSelector seededSelector = new CappedLogFileSessionSelector(1, ONE_GB, Scn.valueOf(2000));
+        final Scn upperBounds = Scn.valueOf(5000);
+
+        List<LogFile> pinnedLogs = new ArrayList<>();
+        for (int i = 1; i <= 20; i++) {
+            pinnedLogs.add(createArchiveLog("arc" + i + ".log", 100 * i, 100 * (i + 1), i, 1, ONE_GB));
+        }
+        pinnedLogs.add(createRedoLog("redo1.log", 2100, 21, 1));
+
+        // Call 1: 19 GB lie below the seeded boundary => derived 19, clamped to 16; the budget
+        // window tops at arc16 and the extension carries it past the boundary to arc1..arc20
+        SessionLogSelection first = seededSelector.selectLogsForSession(
+                new LogFilesResult(pinnedLogs, singleThreadOpen()), upperBounds);
+        assertThat(first.logFiles()).hasSize(20);
+        assertThat(first.effectiveUpperBounds()).isEqualTo(Scn.valueOf(2100));
+        assertThat(interceptor.containsMessage("Derived log count per redo thread 19")).isTrue();
+
+        // Call 2: the pinned transaction committed within the first window and the watermark
+        // advanced past it; no stall fires, and the catch-up slice is 16 logs, not 19
+        List<LogFile> catchUpLogs = new ArrayList<>();
+        for (int i = 21; i <= 40; i++) {
+            catchUpLogs.add(createArchiveLog("arc" + i + ".log", 100 * i, 100 * (i + 1), i, 1, ONE_GB));
+        }
+        catchUpLogs.add(createRedoLog("redo1.log", 4100, 41, 1));
+
+        SessionLogSelection second = seededSelector.selectLogsForSession(
+                new LogFilesResult(catchUpLogs, singleThreadOpen()), upperBounds);
+        assertThat(second.logFiles()).hasSize(16);
+        assertThat(second.logFiles()).extracting(LogFile::getFileName)
+                .startsWith("arc21.log")
+                .endsWith("arc36.log");
+        assertThat(second.effectiveUpperBounds()).isEqualTo(Scn.valueOf(3700));
+    }
+
+    @Test
+    @FixFor("dbz#2326")
+    void testSeededCountClampYieldsToConfiguredMinimumAboveCeiling() {
+        // A configured minimum above the growth ceiling wins on the seed path just as it does on
+        // the stall path: the derived count of 19 clamps to the minimum of 18, never below it
+        CappedLogFileSessionSelector seededSelector = new CappedLogFileSessionSelector(18, ONE_GB, Scn.valueOf(2000));
+        final Scn upperBounds = Scn.valueOf(5000);
+
+        List<LogFile> pinnedLogs = new ArrayList<>();
+        for (int i = 1; i <= 20; i++) {
+            pinnedLogs.add(createArchiveLog("arc" + i + ".log", 100 * i, 100 * (i + 1), i, 1, ONE_GB));
+        }
+        pinnedLogs.add(createRedoLog("redo1.log", 2100, 21, 1));
+
+        // Call 1: the budget window tops at arc18 and the extension carries it to arc1..arc20
+        SessionLogSelection first = seededSelector.selectLogsForSession(
+                new LogFilesResult(pinnedLogs, singleThreadOpen()), upperBounds);
+        assertThat(first.logFiles()).hasSize(20);
+        assertThat(first.effectiveUpperBounds()).isEqualTo(Scn.valueOf(2100));
+
+        // Call 2: the catch-up slice is the configured minimum of 18 logs, not the ceiling of 16
+        List<LogFile> catchUpLogs = new ArrayList<>();
+        for (int i = 21; i <= 40; i++) {
+            catchUpLogs.add(createArchiveLog("arc" + i + ".log", 100 * i, 100 * (i + 1), i, 1, ONE_GB));
+        }
+        catchUpLogs.add(createRedoLog("redo1.log", 4100, 41, 1));
+
+        SessionLogSelection second = seededSelector.selectLogsForSession(
+                new LogFilesResult(catchUpLogs, singleThreadOpen()), upperBounds);
+        assertThat(second.logFiles()).hasSize(18);
+        assertThat(second.logFiles()).extracting(LogFile::getFileName)
+                .startsWith("arc21.log")
+                .endsWith("arc38.log");
+        assertThat(second.effectiveUpperBounds()).isEqualTo(Scn.valueOf(3900));
+    }
+
+    @Test
+    @FixFor("dbz#2326")
     void testStallGrowsLinearlyWhenBoundaryBarelyAhead() {
         // Steady pin where the mined boundary sits just past the budget window: the derived
         // width offers nothing beyond the +1 floor, so growth stays exactly linear
