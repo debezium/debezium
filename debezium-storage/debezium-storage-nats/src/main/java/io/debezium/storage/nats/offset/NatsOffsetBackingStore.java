@@ -10,6 +10,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Duration;
 import java.util.Base64;
 import java.util.Collection;
 import java.util.HashMap;
@@ -32,6 +33,8 @@ import io.debezium.spi.storage.OffsetStorageReader;
 import io.debezium.spi.storage.OffsetStorageWriter;
 import io.debezium.spi.storage.OffsetStore;
 import io.debezium.storage.nats.NatsConnection;
+import io.debezium.util.DelayStrategy;
+import io.debezium.util.RetryingRunnable;
 import io.nats.client.ObjectStore;
 import io.nats.client.api.ObjectInfo;
 
@@ -195,35 +198,44 @@ public class NatsOffsetBackingStore implements OffsetStore {
      */
     private void save(Collection<ByteBuffer> keys) {
         try {
-            executeWithRetry(() -> {
-                for (ByteBuffer key : keys) {
-                    if (key == null) {
-                        continue;
-                    }
-                    byte[] keyBytes = toByteArray(key);
-                    String objectName = objectNameFor(keyBytes);
-                    byte[] valueBytes = data.get(key) != null ? toByteArray(data.get(key)) : new byte[0];
-                    byte[] payload = objectName.startsWith(LONG_KEY_PREFIX)
-                            ? payloadWithKey(keyBytes, valueBytes)
-                            : valueBytes;
-                    try {
-                        objectStore.put(objectName, payload);
-                        LOGGER.trace("Stored offset object '{}' ({} bytes) in NATS Object Store",
-                                objectName, payload.length);
-                    }
-                    catch (Exception putEx) {
-                        // The bucket (or its backing stream) may have been lost,
-                        // e.g. after a server restart. Probe and (re)create it,
-                        // then let the retry loop attempt the put again.
-                        LOGGER.debug("ObjectStore put failed, probing bucket '{}': {}", config.getBucketName(),
-                                putEx.toString());
-                        objectStore = natsConnection.getOrCreateObjectStore(config.getBucketName());
-                        throw putEx;
-                    }
-                }
-            });
+            RetryingRunnable<Exception> retrying = RetryingRunnable.<Exception> builder()
+                    .retries(config.isRetryEnabled() ? config.getMaxRetries() : 0)
+                    .delayStrategy(DelayStrategy.constant(Duration.ofMillis(config.getRetryDelayMs())))
+                    .doRun(() -> {
+                        for (ByteBuffer key : keys) {
+                            if (key == null) {
+                                continue;
+                            }
+                            byte[] keyBytes = toByteArray(key);
+                            String objectName = objectNameFor(keyBytes);
+                            byte[] valueBytes = data.get(key) != null ? toByteArray(data.get(key)) : new byte[0];
+                            byte[] payload = objectName.startsWith(LONG_KEY_PREFIX)
+                                    ? payloadWithKey(keyBytes, valueBytes)
+                                    : valueBytes;
+                            try {
+                                objectStore.put(objectName, payload);
+                                LOGGER.trace("Stored offset object '{}' ({} bytes) in NATS Object Store",
+                                        objectName, payload.length);
+                            }
+                            catch (Exception putEx) {
+                                // The bucket (or its backing stream) may have been lost,
+                                // e.g. after a server restart. Probe and (re)create it,
+                                // then let the retry loop attempt the put again.
+                                LOGGER.debug("ObjectStore put failed, probing bucket '{}': {}", config.getBucketName(),
+                                        putEx.toString());
+                                objectStore = natsConnection.getOrCreateObjectStore(config.getBucketName());
+                                throw putEx;
+                            }
+                        }
+                    })
+                    .build();
+            retrying.run();
 
             LOGGER.debug("Successfully saved {} offsets to NATS Object Store", keys.size());
+        }
+        catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            throw new DebeziumException("Interrupted while saving offsets", ie);
         }
         catch (Exception e) {
             LOGGER.error("Failed to save offsets to NATS Object Store", e);
@@ -331,45 +343,5 @@ public class NatsOffsetBackingStore implements OffsetStore {
         byte[] bytes = new byte[duplicate.remaining()];
         duplicate.get(bytes);
         return bytes;
-    }
-
-    private void executeWithRetry(NatsOperation operation) throws Exception {
-        Exception lastException = null;
-        int attempts = 0;
-        int maxRetries = config.isRetryEnabled() ? config.getMaxRetries() : 0;
-
-        while (attempts <= maxRetries) {
-            try {
-                operation.execute();
-                return;
-            }
-            catch (Exception e) {
-                lastException = e;
-                attempts++;
-
-                if (attempts <= maxRetries) {
-                    LOGGER.warn("NATS operation failed (attempt {}/{}), retrying in {}ms",
-                            attempts, maxRetries + 1, config.getRetryDelayMs(), e);
-
-                    try {
-                        Thread.sleep(config.getRetryDelayMs());
-                    }
-                    catch (InterruptedException ie) {
-                        Thread.currentThread().interrupt();
-                        throw new DebeziumException("Interrupted during retry delay", ie);
-                    }
-                }
-                else {
-                    LOGGER.error("NATS operation failed after {} attempts", attempts, e);
-                }
-            }
-        }
-
-        throw lastException;
-    }
-
-    @FunctionalInterface
-    private interface NatsOperation {
-        void execute() throws Exception;
     }
 }

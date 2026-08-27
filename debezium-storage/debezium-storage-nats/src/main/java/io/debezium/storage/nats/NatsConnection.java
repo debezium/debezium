@@ -49,6 +49,12 @@ public class NatsConnection {
     private static final ConcurrentMap<String, NatsConnection> instances = new ConcurrentHashMap<>();
 
     /**
+     * Number of retries for object store probes (backing stream visibility and
+     * warm-up), at 100ms intervals, i.e. up to ~2s.
+     */
+    private static final int OBJECT_STORE_PROBE_RETRIES = 20;
+
+    /**
      * Guards the {@link #instances} cache and the per-instance refcount so
      * that {@link #getInstance} and {@link #close} are atomic with respect to
      * each other. Without it, a close() racing with getInstance() could
@@ -139,28 +145,28 @@ public class NatsConnection {
         ObjectStoreManagement osm = conn.objectStoreManagement();
         osm.create(osConfig);
 
-        // Ensure the backing stream exists and JetStream has registered its subjects
+        // Ensure the backing stream exists and JetStream has registered its
+        // subjects. Creation is async on some server versions, so retry the
+        // probe briefly rather than sleeping once and giving up.
         try {
-            JetStreamManagement jsm = conn.jetStreamManagement();
-            String streamName = "OBJ_" + bucketName;
-            io.nats.client.api.StreamInfo si = jsm.getStreamInfo(streamName); // throws if not present yet
-            LOGGER.debug("Created ObjectStore backing stream: {}, subjects={}", streamName,
-                    si.getConfiguration().getSubjects());
+            RetryingRunnable<Exception> retrying = RetryingRunnable.<Exception> builder()
+                    .retries(OBJECT_STORE_PROBE_RETRIES)
+                    .delayStrategy(DelayStrategy.constant(Duration.ofMillis(100)))
+                    .doRun(() -> {
+                        JetStreamManagement jsm = conn.jetStreamManagement();
+                        String streamName = "OBJ_" + bucketName;
+                        io.nats.client.api.StreamInfo si = jsm.getStreamInfo(streamName); // throws if not present yet
+                        LOGGER.debug("Created ObjectStore backing stream: {}, subjects={}", streamName,
+                                si.getConfiguration().getSubjects());
+                    })
+                    .build();
+            retrying.run();
+        }
+        catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
         }
         catch (Exception ex) {
-            // A brief delay and re-probe; creation is async on some server versions
-            try {
-                Thread.sleep(100);
-            }
-            catch (InterruptedException ie) {
-                Thread.currentThread().interrupt();
-            }
-            try {
-                conn.jetStreamManagement().getStreamInfo("OBJ_" + bucketName);
-            }
-            catch (Exception ex2) {
-                LOGGER.debug("ObjectStore backing stream not immediately visible for bucket '{}'", bucketName, ex2);
-            }
+            LOGGER.debug("ObjectStore backing stream not immediately visible for bucket '{}'", bucketName, ex);
         }
 
         ObjectStore os = conn.objectStore(bucketName);
@@ -334,7 +340,7 @@ public class NatsConnection {
         byte[] payload = new byte[]{ 1 };
         try {
             RetryingRunnable<Exception> retrying = RetryingRunnable.<Exception> builder()
-                    .retries(20) // up to ~2s warm-up at 100ms intervals
+                    .retries(OBJECT_STORE_PROBE_RETRIES)
                     .delayStrategy(DelayStrategy.constant(Duration.ofMillis(100)))
                     .doRun(() -> {
                         os.put(key, new java.io.ByteArrayInputStream(payload));
