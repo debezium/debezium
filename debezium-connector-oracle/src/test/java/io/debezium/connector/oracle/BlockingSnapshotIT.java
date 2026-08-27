@@ -119,11 +119,6 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest<OracleConne
     }
 
     @Override
-    protected String signalExcludingColumnIncludeList() {
-        return "DEBEZIUM.A.PK,DEBEZIUM.A.AA";
-    }
-
-    @Override
     protected Configuration.Builder config() {
         return TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.SNAPSHOT_MODE, OracleConnectorConfig.SnapshotMode.INITIAL)
