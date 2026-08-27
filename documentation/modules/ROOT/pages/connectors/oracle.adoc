@@ -4842,7 +4842,7 @@ This configuration property has no effect when using xref:#oracle-property-log-m
 |[[oracle-property-log-mining-log-count-growth-max]]<<oracle-property-log-mining-log-count-growth-max, `+log.mining.log.count.growth.max+`>>
 |`4`
 |The maximum number of transaction logs per redo thread that the mining window grows to automatically when a long-running transaction prevents the window start from advancing.
-Worst-case work in a single mining step is approximately this count multiplied by the online redo log size.
+The growth budget contributes at most approximately this count multiplied by the online redo log size to a single mining step.
 
 A xref:#oracle-property-log-mining-log-count-min[`log.mining.log.count.min`] value above this maximum takes precedence.
 The mining window can exceed this count when the connector re-reads previously mined logs, such as after a restart or while a transaction remains in progress; the value bounds automatic growth, not the window itself.

@@ -265,7 +265,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDefault(4)
-            .withValidation(Field::isPositiveInteger)
+            .withValidation(Field::isPositiveInteger, OracleConnectorConfig::validateLogMiningLogCountGrowthMax)
             .withDescription("Specifies the maximum number of logs per redo thread the mining window grows to automatically " +
                     "when a long-running transaction holds the window start in place. Defaults to 4. " +
                     "A 'log.mining.log.count.min' above this value takes precedence. " +
@@ -2502,6 +2502,22 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                 final Set<String> racNodes = Strings.setOf(config.getString(RAC_NODES), String::new);
                 if (!racNodes.isEmpty()) {
                     LOGGER.warn("The property '{}' is set, but is ignored due to using read-only mode.", RAC_NODES.name());
+                }
+            }
+        }
+        return 0;
+    }
+
+    public static int validateLogMiningLogCountGrowthMax(Configuration config, Field field, ValidationOutput problems) {
+        if (isLogMiner(config)) {
+            final int minimumLogCount = config.getInteger(LOG_MINING_LOG_COUNT_MIN);
+            final LogMiningStrategy strategy = LogMiningStrategy.parse(config.getString(LOG_MINING_STRATEGY));
+            if (minimumLogCount > 0 && (LogMiningStrategy.HYBRID.equals(strategy) || LogMiningStrategy.ONLINE_CATALOG.equals(strategy))) {
+                final int growthMax = config.getInteger(field);
+                if (minimumLogCount >= growthMax) {
+                    LOGGER.warn("The configured '{}' of {} meets or exceeds '{}' of {}; automatic log count growth is disabled " +
+                            "and each mining step targets the configured minimum.",
+                            LOG_MINING_LOG_COUNT_MIN.name(), minimumLogCount, LOG_MINING_LOG_COUNT_GROWTH_MAX.name(), growthMax);
                 }
             }
         }
