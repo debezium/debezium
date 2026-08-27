@@ -10,8 +10,8 @@ jobs:
   notify_pr_author:
     name: "Notify PR Author"
     runs-on: ubuntu-latest
-    # Only run if the triggering workflow was for a pull request
-    if: github.event.workflow_run.event == 'pull_request'
+    # Only run on the upstream repository and if the triggering workflow was for a pull request
+    if: github.repository == 'debezium/debezium' && github.event.workflow_run.event == 'pull_request'
 
     steps:
       - name: Checkout repository

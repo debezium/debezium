@@ -15,9 +15,20 @@ env:
 
 jobs:
 
+  # Gate the whole workflow so it only runs on the upstream repository, never on forks.
+  # Every build job depends on this, so on a fork all jobs are skipped instead of run.
+  guard:
+    name: Guard (upstream only)
+    if: github.repository == 'debezium/debezium'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Confirm upstream repository
+        run: echo "Running on ${{ github.repository }}"
+
   build_cassandra:
     name: Cassandra
     runs-on: ubuntu-latest
+    needs: guard
     steps:
       - name: Checkout Action (Core)
         uses: actions/checkout@v7
@@ -52,6 +63,7 @@ jobs:
   build_db2:
     name: Db2
     runs-on: ubuntu-latest
+    needs: guard
     steps:
       - name: Checkout Action (Core)
         uses: actions/checkout@v7
@@ -86,6 +98,7 @@ jobs:
   build_ibmi:
     name: IBMi
     runs-on: ubuntu-latest
+    needs: guard
     steps:
       - name: Checkout Action (Core)
         uses: actions/checkout@v7
@@ -120,6 +133,7 @@ jobs:
   build_ingres:
     name: Ingres
     runs-on: ubuntu-latest
+    needs: guard
     steps:
       - name: Checkout Action (Core)
         uses: actions/checkout@v7
@@ -154,6 +168,7 @@ jobs:
   build_informix:
     name: Informix
     runs-on: ubuntu-latest
+    needs: guard
     steps:
       - name: Checkout Action (Core)
         uses: actions/checkout@v7
@@ -188,6 +203,7 @@ jobs:
   build_vitess:
     name: Vitess
     runs-on: ubuntu-latest
+    needs: guard
     steps:
       - name: Checkout Action (Core)
         uses: actions/checkout@v7
@@ -222,6 +238,7 @@ jobs:
   build_spanner:
     name: Spanner
     runs-on: ubuntu-latest
+    needs: guard
     steps:
       - name: Checkout Action (Core)
         uses: actions/checkout@v7
@@ -256,6 +273,7 @@ jobs:
   build_cockroachdb:
     name: CockroachDB
     runs-on: ubuntu-latest
+    needs: guard
     steps:
       - name: Checkout Action (Core)
         uses: actions/checkout@v7
@@ -290,6 +308,7 @@ jobs:
   build_server:
     name: "Debezium Server"
     runs-on: ubuntu-latest
+    needs: guard
     steps:
       - name: Checkout Action (Core)
         uses: actions/checkout@v7
@@ -324,6 +343,7 @@ jobs:
   build_core:
     name: "Debezium Core"
     runs-on: ubuntu-latest
+    needs: guard
     steps:
       - name: Checkout Action (Core)
         uses: actions/checkout@v7
@@ -360,6 +380,7 @@ jobs:
   build_storage:
     name: "Storage"
     runs-on: ubuntu-latest
+    needs: guard
     steps:
       - name: Checkout Action
         uses: actions/checkout@v7
@@ -381,6 +402,7 @@ jobs:
   build_openlineage:
     name: "OpenLineage"
     runs-on: ubuntu-latest
+    needs: guard
     steps:
       - name: Checkout Action
         uses: actions/checkout@v7
@@ -402,6 +424,7 @@ jobs:
   build_ai:
     name: "AI"
     runs-on: ubuntu-latest
+    needs: guard
     steps:
       - name: Checkout Action
         uses: actions/checkout@v7
@@ -423,6 +446,7 @@ jobs:
   build_schema_generator:
     name: "Schema Generator"
     runs-on: ubuntu-latest
+    needs: guard
     steps:
       - name: Checkout Action
         uses: actions/checkout@v7
@@ -444,6 +468,7 @@ jobs:
   build_testing:
     name: "Testing"
     runs-on: ubuntu-latest
+    needs: guard
     steps:
       - name: Checkout Action
         uses: actions/checkout@v7
@@ -465,6 +490,7 @@ jobs:
   build_mysql:
     name: "MySQL"
     runs-on: ubuntu-latest
+    needs: guard
     steps:
       - name: Checkout Action
         uses: actions/checkout@v7
@@ -486,6 +512,7 @@ jobs:
   build_postgres:
     name: "PostgreSQL"
     runs-on: ubuntu-latest
+    needs: guard
     steps:
       - name: Checkout Action
         uses: actions/checkout@v7
@@ -507,6 +534,7 @@ jobs:
   build_oracle:
     name: "Oracle"
     runs-on: ubuntu-latest
+    needs: guard
     steps:
       - name: Checkout Action
         uses: actions/checkout@v7
@@ -528,6 +556,7 @@ jobs:
   build_sqlserver:
     name: "SQL Server"
     runs-on: ubuntu-latest
+    needs: guard
     steps:
       - name: Checkout Action
         uses: actions/checkout@v7
@@ -549,6 +578,7 @@ jobs:
   build_mongodb:
     name: "MongoDB"
     runs-on: ubuntu-latest
+    needs: guard
     steps:
       - name: Checkout Action
         uses: actions/checkout@v7
@@ -570,6 +600,7 @@ jobs:
   build_mariadb:
     name: "MariaDB"
     runs-on: ubuntu-latest
+    needs: guard
     steps:
       - name: Checkout Action
         uses: actions/checkout@v7
@@ -591,6 +622,7 @@ jobs:
   build_jdbc:
     name: "JDBC"
     runs-on: ubuntu-latest
+    needs: guard
     steps:
       - name: Checkout Action
         uses: actions/checkout@v7

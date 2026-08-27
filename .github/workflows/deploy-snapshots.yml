@@ -46,6 +46,7 @@ concurrency:
 jobs:
   deploy_snapshots:
     name: Build and deploy snapshots
+    if: github.repository == 'debezium/debezium'
     runs-on: ubuntu-latest
     permissions:
       contents: write
