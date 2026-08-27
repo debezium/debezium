@@ -79,7 +79,6 @@
         <dependency>
             <groupId>io.nats</groupId>
             <artifactId>jnats</artifactId>
-            <version>2.26.2</version>
         </dependency>
 
         <!-- Testing -->
