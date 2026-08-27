@@ -832,6 +832,18 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDescription("Specifies the minimum number of logs to mine per redo thread. " +
                     "Setting this to 0 disables the cap, and all available logs are mined in a single pass.");
 
+    public static final Field LOG_MINING_LOG_COUNT_GROWTH_MAX = Field.create("log.mining.log.count.growth.max")
+            .withDisplayName("Maximum automatic growth of the log count per redo thread")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(4)
+            .withValidation(Field::isPositiveInteger)
+            .withDescription("Specifies the maximum number of logs per redo thread the mining window grows to automatically " +
+                    "when a long-running transaction holds the window start in place. Defaults to 4. " +
+                    "A 'log.mining.log.count.min' above this value takes precedence. " +
+                    "The mining window may exceed this count when re-covering previously mined logs; the value bounds automatic growth, not the window itself.");
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("Oracle")
             .excluding(
@@ -926,7 +938,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_REDO_THREAD_SCN_ADJUSTMENT,
                     LOG_MINING_HASH_AREA_SIZE,
                     LOG_MINING_SORT_AREA_SIZE,
-                    LOG_MINING_LOG_COUNT_MIN)
+                    LOG_MINING_LOG_COUNT_MIN,
+                    LOG_MINING_LOG_COUNT_GROWTH_MAX)
             .events(SOURCE_INFO_STRUCT_MAKER,
                     SIGNAL_DATA_COLLECTION)
             .create();
@@ -1001,6 +1014,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final Long logMiningHashAreaSize;
     private final Long logMiningSortAreaSize;
     private final Integer logMiningMinimumLogCount;
+    private final Integer logMiningLogCountGrowthMax;
     private final ArchiveDestinationNameResolver destinationNameResolver;
     private final boolean logMiningBufferTrackRsId;
     private final boolean logMiningBufferTrackClientId;
@@ -1096,6 +1110,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningHashAreaSize = config.getLong(LOG_MINING_HASH_AREA_SIZE);
         this.logMiningSortAreaSize = config.getLong(LOG_MINING_SORT_AREA_SIZE);
         this.logMiningMinimumLogCount = config.getInteger(LOG_MINING_LOG_COUNT_MIN);
+        this.logMiningLogCountGrowthMax = config.getInteger(LOG_MINING_LOG_COUNT_GROWTH_MAX);
         this.logMiningBufferTrackRsId = config.getBoolean(LOG_MINING_BUFFER_TRACK_RS_ID);
         this.logMiningBufferTrackClientId = config.getBoolean(LOG_MINING_BUFFER_TRACK_CLIENT_ID);
         this.logMiningBufferTrackUsername = config.getBoolean(LOG_MINING_BUFFER_TRACK_USERNAME);
@@ -2255,6 +2270,10 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      */
     public Integer getLogMiningMinimumLogCount() {
         return logMiningMinimumLogCount;
+    }
+
+    public Integer getLogMiningLogCountGrowthMax() {
+        return logMiningLogCountGrowthMax;
     }
 
     @Override
