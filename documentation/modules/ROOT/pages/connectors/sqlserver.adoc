@@ -142,9 +142,11 @@ endif::product[]
 [[sqlserver-default-workflow-for-performing-an-initial-snapshot]]
 ==== Default workflow that the {prodname} SQL Server connector uses to perform an initial snapshot
 
+The {prodname} SQL Server connector performs an initial snapshot to capture the current state of the database before it begins streaming change events.
+You can customize the snapshot workflow by changing the value of the `snapshot.mode` configuration property.
+
 The following workflow lists the steps that {prodname} takes to create a snapshot.
 These steps describe the process for a snapshot when the xref:{context}-property-snapshot-mode[`snapshot.mode`] configuration property is set to its default value, which is `initial`.
-You can customize the way that the connector creates snapshots by changing the value of the `snapshot.mode` property.
 If you configure a different snapshot mode, the connector completes the snapshot by using a modified version of this workflow.
 
 1.  Establish a connection to the database.
@@ -259,6 +261,9 @@ For more information, see xref:sqlserver-property-snapshot-mode[`snapshot.mode`]
 [id="understanding-why-initial-snapshots-capture-the-schema-history-for-all-tables"]
 ==== Understanding why initial snapshots capture the schema history for all tables
 
+By default, the initial snapshot captures schema information for every table in the database, not only tables that are designated for capture.
+Understanding this behavior helps you control snapshot scope and avoid schema history errors when you add tables to the capture set later.
+
 The initial snapshot that a connector runs captures two types of information:
 
 Table data::
@@ -267,8 +272,6 @@ Schema data::
 DDL statements that describe the structural changes that are applied to tables.
 Schema data is persisted to both the internal schema history topic, and to the connector's schema change topic, if one is configured.
 
-After you run an initial snapshot, you might notice that the snapshot captures schema information for tables that are not designated for capture.
-By default, initial snapshots are designed to capture schema information for every table that is present in the database, not only from tables that are designated for capture.
 Connectors require that the table's schema is present in the schema history topic before they can capture a table.
 By enabling the initial snapshot to capture schema data for tables that are not part of the original capture set, {prodname} prepares the connector to readily capture event data from these tables should that later become necessary.
 If the initial snapshot does not capture a table's schema, you must add the schema to the history topic before the connector can capture data from the table.
@@ -418,19 +421,23 @@ include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.ado
 [id="sqlserver-incremental-snapshots"]
 === Incremental snapshots
 
-.SQL Server collations
-[WARNING]
-====
-Each SQL Server server or database is configured to use a specific https://learn.microsoft.com/en-us/sql/relational-databases/collations/collation-and-unicode-support?view=sql-server-ver16#Collation_Defn[collation], which determines how character data is stored, sorted, compared, and displayed.
-The sorting rules for some collation sets, such as the https://learn.microsoft.com/en-us/sql/relational-databases/collations/collation-and-unicode-support?view=sql-server-ver16#SQL-collations[SQL Server collations (SQL_*)] are not compatible with the Unicode sorting algorithm.
+include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+1]
+
+// Type: concept
+[id="sqlserver-collation-considerations"]
+==== SQL Server collation considerations
+
+Each SQL Server server or database is configured to use a specific collation, which determines how the database stores, sorts, compares, and displays character data.
+The sorting rules for some SQL Server collation sets, such as (SQL_*), are not compatible with the Unicode sorting algorithm.
 In some cases, the incompatible sorting rules can lead to lost data when the connector runs an ad hoc snapshot.
 For example, if SQL Server is configured to send strings as Unicode (that is, the connection property `sendStringParametersAsUnicode` is set to `true`), the connector can skip records during the snapshot.
 To protect against lost data during an ad hoc snapshot, set the value of the `driver.sendStringParametersAsUnicode` connection string property to `false`.
 
-For more information about using the `sendStringParametersAsUnicode` property, see the https://learn.microsoft.com/en-us/sql/connect/jdbc/setting-the-connection-properties?view=sql-server-ver16[SQL Server connection properties documentation].
-====
+.Additional resources
 
-include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+1]
+* https://learn.microsoft.com/en-us/sql/relational-databases/collations/collation-and-unicode-support?view=sql-server-ver16#Collation_Defn[Collations].
+* https://learn.microsoft.com/en-us/sql/connect/jdbc/setting-the-connection-properties?view=sql-server-ver16[SQL Server connection properties documentation].
+
 
 [WARNING]
 ====
@@ -504,34 +511,51 @@ The connector is able to detect whether CDC is enabled or disabled for included 
 // Title: No maximum LSN recorded in the database
 === No maximum LSN recorded in the database
 
-There may be situations when no maximum LSN is recorded in the database because:
+The {prodname} SQL Server connector cannot begin streaming if no maximum LSN is recorded in the database.
+The most likely reason for a missing LSN is that the SQL Server Agent is not running.
 
-1. SQL Server Agent is not running
-2. No changes are recorded in the change table yet
-3. Database has low activity and the cdc clean up job periodically clears entries from the cdc tables
+The maximum LSN can be omitted due to any of the following reasons:
 
-Out of these possibilities, since a running SQL Server Agent is a prerequisite, No 1. is a real problem (while No 2. and 3. are normal).
+* The SQL Server Agent is not running.
+* No changes are recorded in the change table yet.
+* The database has low activity, and the CDC cleanup job has periodically cleared entries from the CDC tables.
 
-In order to mitigate this issue and differentiate between No 1. and the others, a check for the status of the SQL Server Agent is done through the following query `"SELECT CASE WHEN dss.[status]=4 THEN 1 ELSE 0 END AS isRunning FROM [#db].sys.dm_server_services dss WHERE dss.[servicename] LIKE N'SQL Server Agent (%';"`.
-If the SQL Server Agent is not running, an ERROR is written in the log: "No maximum LSN recorded in the database; SQL Server Agent is not running".
+Of these reasons, a stopped SQL Server Agent is the only true error condition, because a running SQL Server Agent is a prerequisite for the connector to function.
+The other two conditions are normal.
+To differentiate a stopped agent from normal conditions, the connector queries the SQL Server Agent status.
+If the SQL Server Agent is not running, the connector writes an ERROR to the log: "No maximum LSN recorded in the database; SQL Server Agent is not running".
+
+To help diagnose the issue, run the following query to check the status of the SQL Server Agent:
+
+`"SELECT CASE WHEN dss.[status]=4 THEN 1 ELSE 0 END AS isRunning FROM [#db].sys.dm_server_services dss WHERE dss.[servicename] LIKE N'SQL Server Agent (%';"`
 
 [IMPORTANT]
 ====
-The SQL Server Agent running status query requires `VIEW SERVER STATE` server permission.
-If you don't want to grant this permission to the configured user, you can choose to configure your own query through the `database.sqlserver.agent.status.query` property.
-You can define a function which returns true or 1 if SQL Server Agent is running (false or 0 otherwise) and safely use High-Level permissions without granting them as explained
-here link:https://dba.stackexchange.com/questions/62230/what-minimum-permissions-do-i-need-to-provide-to-a-user-so-that-it-can-check-the/103275#103275[What minimum permissions do I need to provide to a user so that it can check the status of SQL Server Agent Service?]
-or here link:https://sqlquantumleap.com/2018/02/15/safely-and-easily-use-high-level-permissions-without-granting-them-to-anyone-server-level/[Safely and Easily Use High-Level Permissions Without Granting Them to Anyone: Server-level].
-The configuration of the query property would look like: `database.sqlserver.agent.status.query=SELECT [#db].func_is_sql_server_agent_running()` - you need to use `[#db]` as placeholder for the database name.
+Running the preceding query to check the running status of the SQL Server Agent requires `VIEW SERVER STATE` permission.
+`VIEW SERVER STATE` is an instance-wide permission, and granting it provides a user with visibility into every database hosted on the instance.
+As an alternative to granting this permission, you can configure the `database.sqlserver.agent.status.query` property to run a custom query.
+
+For example, `database.sqlserver.agent.status.query=SELECT [#db].func_is_sql_server_agent_running()`
+`[#db]` represents a placeholder for the database name.
+
+Define a function that returns `true` or `1` if the SQL Server Agent is running, or `false` or `0` otherwise.
+By configuring a property to run the function, you can safely use high-level permissions without granting `VIEW SERVER STATE` permission to any user.
 ====
+
+.Additional resources
+
+* https://dba.stackexchange.com/questions/62230/what-minimum-permissions-do-i-need-to-provide-to-a-user-so-that-it-can-check-the/103275#103275[Minimum permissions required to check the status of the SQL Server Agent Service (Stack Exchange)^].
+* https://sqlquantumleap.com/2018/02/15/safely-and-easily-use-high-level-permissions-without-granting-them-to-anyone-server-level/[Safely and easily using high-level permissions without granting them to anyone: server-level (Sql Quantum Leap)^].
+
 
 // Type: concept
 // ModuleID: limitations-sql-server-connector
 // Title: Limitations of {prodname} SQL Server connector
 === Limitations
 
-SQL Server specifically requires the base object to be a table in order to create a change capture instance.
-As consequence, capturing changes from indexed views (aka. materialized views) is not supported by SQL Server and hence {prodname} SQL Server connector.
+The {prodname} SQL Server connector does not support change capture for all SQL Server database object types.
+Indexed views, also known as materialized views, are not supported because SQL Server CDC requires the base object of a capture instance to be a table.
+
 
 // Type: concept
 // ModuleID: default-names-of-kafka-topics-that-receive-debezium-sql-server-change-event-records
@@ -569,23 +593,21 @@ For more information about using the logical topic routing SMT to customize topi
 [[sqlserver-schema-history-topic]]
 === Schema history topic
 
-When a database client queries a database, the client uses the database’s current schema.
-However, the database schema can be changed at any time, which means that the connector must be able to identify what the schema was at the time each insert, update, or delete operation was recorded.
-Also, a connector cannot necessarily apply the current schema to every event.
-If an event is relatively old, it's possible that it was recorded before the current schema was applied.
+The {prodname} SQL Server connector uses an internal schema history topic to store a record of schema changes, enabling it to apply the correct schema to change events regardless of when they were captured.
+The schema history topic is for internal connector use only and is not intended for consuming applications.
+
+Because the database schema can change at any time, the connector must be able to identify the schema that was in effect when each change event was captured.
 
 To ensure correct processing of change events that occur after a schema change, the {prodname} SQL Server connector stores a snapshot of the new schema based on the structure in the SQL Server change tables, which mirror the structure of their associated data tables.
-The connector stores the table schema information, together with the LSN of operations the result in schema changes, in the database schema history Kafka topic.
 The connector uses the stored schema representation to produce change events that correctly mirror the structure of tables at the time of each insert, update, or delete operation.
 
 When the connector restarts after either a crash or a graceful stop, it resumes reading entries in the SQL Server CDC tables from the last position that it read.
 Based on the schema information that the connector reads from the database schema history topic, the connector applies the table structures that existed at the position where the connector restarts.
 
-If you update the schema of a SQL Server table that is in capture mode, it's important that you also update the schema of the corresponding change table.
+If you update the schema of a SQL Server table that is in capture mode, you must also update the schema of the corresponding change table.
 You must be a SQL Server database administrator with elevated privileges to update database schema.
 For more information about updating SQL Server database schema in {prodname} environments, see xref:sqlserver-schema-evolution[Database schema evolution].
 
-The database schema history topic is for internal connector use only.
 Optionally, the connector can also xref:about-the-debezium-sqlserver-connector-schema-change-topic[emit schema change events to a different topic that is intended for consumer applications].
 
 .Additional resources
@@ -1013,7 +1035,10 @@ endif::community[]
 [[sqlserver-change-event-values]]
 ==== Change event values
 
-The value in a change event is a bit more complicated than the key. Like the key, the value has a `schema` section and a `payload` section. The `schema` section contains the schema that describes the `Envelope` structure of the `payload` section, including its nested fields. Change events for operations that create, update or delete data all have a value payload with an envelope structure.
+Every {prodname} SQL Server change event value contains a schema section and a payload section.
+The payload uses an envelope structure that captures the state of a row before and after each `INSERT`, `UPDATE`, or `DELETE` operation.
+
+The `schema` section describes the `Envelope` structure of the `payload` section, including its nested fields.
 
 Consider the same sample table that was used to show an example of a change event key:
 
@@ -1040,7 +1065,9 @@ endif::product[]
 [[sqlserver-create-events]]
 ===== _create_ events
 
-The following example shows the value portion of a change event that the connector generates for an operation that creates data in the `customers` table:
+The connector emits a _create_ event whenever a row is inserted into a captured table.
+The event payload contains the full state of the new row in the `after` field, and the `before` field is null.
+
 
 [source,json,indent=0,subs="+attributes"]
 ----
@@ -1975,7 +2002,9 @@ endif::product[]
 
 === Encrypting connections
 
-By default, JDBC connections to Microsoft SQL Server are protected by SSL encryption.
+By default, JDBC connections to Microsoft SQL Server use SSL encryption.
+Configure SSL encryption settings using JDBC pass-through properties to enforce certificate validation, or to disable encryption in environments where SQL Server does not use SSL.
+
 If SSL is not enabled for a SQL Server database, or if you want to connect to the database without using SSL, you can disable SSL by setting the value of the `driver.encrypt` property in connector configuration to `false`.
 
 .Procedure
@@ -2131,7 +2160,9 @@ ifdef::community[]
 [[sqlserver-on-azure]]
 === SQL Server on Azure
 
-The {prodname} SQL Server connector can be used with SQL Server on Azure.
+You can use the {prodname} SQL Server connector with SQL Server on Azure.
+Enable CDC on the Azure SQL database and configure the connector to connect to the Azure SQL endpoint.
+
 Refer to https://learn.microsoft.com/en-us/samples/azure-samples/azure-sql-db-change-stream-debezium/azure-sql%2D%2Dsql-server-change-stream-with-debezium/[this example] for configuring CDC for SQL Server on Azure and using it with {prodname}.
 
 
@@ -2156,6 +2187,9 @@ endif::community[]
 // ModuleID: effect-of-sql-server-capture-job-agent-configuration-on-server-load-and-latency
 === Effect of SQL Server capture job agent configuration on server load and latency
 
+The SQL Server capture job agent processes change event records from the transaction log, and its polling frequency directly affects both database CPU load and the latency of change events available to {prodname}.
+Tuning agent parameters can help you balance performance and responsiveness for your workload.
+
 When a database administrator enables change data capture for a source table, the capture job agent begins to run.
 The agent reads new change event records from the transaction log and replicates the event records to a change data table.
 Between the time that a change is committed in the source table, and the time that the change appears in the corresponding change table, there is always a small latency interval.
@@ -2176,8 +2210,10 @@ If you notice performance problems, there are SQL Server capture agent settings 
 // ModuleID: sql-server-capture-job-agent-configuration-parameters
 === SQL Server capture job agent configuration parameters
 
-On SQL Server, parameters that control the behavior of the capture job agent are defined in the SQL Server table link:https://docs.microsoft.com/en-us/sql/relational-databases/system-tables/dbo-cdc-jobs-transact-sql?view=latest[`msdb.dbo.cdc_jobs`].
-If you experience performance issues while running the capture job agent, adjust capture jobs settings to reduce CPU load by running the link:https://docs.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sys-sp-cdc-change-job-transact-sql?view=latest[`sys.sp_cdc_change_job`] stored procedure and supplying new values.
+The SQL Server `msdb.dbo.cdc_jobs` table defines the parameters that control capture job agent behavior.
+Use these parameters together with the `sys.sp_cdc_change_job` stored procedure to tune polling frequency and transaction batch sizes to balance database server load and event latency.
+
+If you experience performance issues while running the capture job agent, adjust capture job settings to reduce CPU load by running the `sys.sp_cdc_change_job` stored procedure and supplying new values.
 
 [NOTE]
 ====
@@ -2206,6 +2242,8 @@ If the `continuous` parameter is set to `1`, the job pauses for the length of ti
 
 .Additional resources
 * For more information about capture agent parameters, see the SQL Server documentation.
+* https://docs.microsoft.com/en-us/sql/relational-databases/system-tables/dbo-cdc-jobs-transact-sql?view=latest[`msdb.dbo.cdc_jobs`]
+* https://docs.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sys-sp-cdc-change-job-transact-sql?view=latest[`sys.sp_cdc_change_job`]
 
 // Type: assembly
 // ModuleID: deployment-of-debezium-sql-server-connectors
@@ -2491,11 +2529,8 @@ ifdef::community[]
 [[sqlserver-example-configuration]]
 === SQL Server connector configuration example
 
-Following is an example of the configuration for a connector instance that captures data from a SQL Server server at port 1433 on 192.168.99.100, which we logically name `fullfillment`.
-Typically, you configure the {prodname} SQL Server connector in a JSON file by setting the configuration properties that are available for the connector.
-
-You can choose to produce events for a subset of the schemas and tables in a database.
-Optionally, you can ignore, mask, or truncate columns that contain sensitive data, that are larger than a specified size, or that you do not need.
+Configure a {prodname} SQL Server connector by setting properties in a JSON file that specifies the database connection, topic prefix, table capture list, and schema history topic.
+You can optionally filter, mask, or truncate column values to control what data the connector captures and emits.
 
 [source,json]
 ----
@@ -2620,6 +2655,9 @@ Information about the properties is organized as follows:
 
 [id="sqlserver-required-connector-configuration-properties"]
 ==== Required {prodname} SQL Server connector configuration properties
+
+The required configuration properties establish the database connection and define the basic identity and scope of the connector.
+You must set these properties before the connector can start.
 
 The following configuration properties are _required_ unless a default value is available.
 
@@ -3617,10 +3655,12 @@ include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-databas
 [[sqlserver-schema-evolution]]
 == Database schema evolution
 
-When change data capture is enabled for a SQL Server table, as changes occur in the table, event records are persisted to a capture table on the server.
-If you introduce a change in the structure of the source table change, for example, by adding a new column, that change is not dynamically reflected in the change table.
+When you change the schema of a SQL Server table that has CDC enabled, you must update the corresponding capture table before the connector can continue to emit change events with the correct structure.
+The procedures in this section describe how to refresh capture tables after a schema change.
+
+For SQL Server tables that have change data capture enabled, event records are persisted to a capture table on the server as changes occur.
+If you introduce a change in the structure of the source table, for example, by adding a new column, that change is not dynamically reflected in the change table.
 For as long as the capture table continues to use the outdated schema, the {prodname} connector is unable to emit data change events for the table correctly.
-You must intervene to refresh the capture table to enable the connector to resume processing change events.
 
 Because of the way that CDC is implemented in SQL Server, you cannot use {prodname} to update capture tables.
 To refresh capture tables, one must be a SQL Server database operator with elevated privileges.
@@ -3797,6 +3837,9 @@ GO
 // Title: Status notifications that the {prodname} SQL Server connector emits after a schema change.
 [[sqlserver-notifications]]
 == Notifications
+
+The {prodname} SQL Server connector can emit notification events to report on significant connector state changes, such as the completion of a schema evolution change.
+You can configure notifications to monitor connector activity and trigger downstream workflows.
 
 If you enable notifications for the connector, after you make a schema change, the connector emits a notification to report the status of the change.
 For more information about notifications and how to enable them, see the {link-prefix}:{link-notification}#debezium-notification[{prodname} notifications documentation].
