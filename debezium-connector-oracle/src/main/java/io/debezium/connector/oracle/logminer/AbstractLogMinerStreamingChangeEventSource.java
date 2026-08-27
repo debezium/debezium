@@ -2152,7 +2152,11 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
                     // capped window sizing that would otherwise collapse to the minimum log count.
                     final CommitScn commitScn = getOffsetContext().getCommitScn();
                     final Scn minedBoundary = commitScn != null ? commitScn.getMaxCommittedScn() : Scn.NULL;
-                    return new CappedLogFileSessionSelector(minimumLogCountPerThread, maximumRedoLogFileSize, minedBoundary);
+                    return new CappedLogFileSessionSelector(
+                            minimumLogCountPerThread,
+                            connectorConfig.getLogMiningLogCountGrowthMax(),
+                            maximumRedoLogFileSize,
+                            minedBoundary);
                 }
             }
         }
