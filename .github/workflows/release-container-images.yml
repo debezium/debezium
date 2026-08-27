@@ -69,6 +69,7 @@ on:
 jobs:
   setup-parameters:
     name: Setup Parameters
+    if: github.repository == 'debezium/debezium'
     runs-on: ubuntu-latest
     outputs:
       debezium_repository: ${{ steps.params.outputs.debezium_repository }}
