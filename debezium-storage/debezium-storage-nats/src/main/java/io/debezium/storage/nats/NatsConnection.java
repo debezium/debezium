@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.security.KeyStore;
 import java.security.SecureRandom;
+import java.time.Duration;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -21,6 +22,10 @@ import javax.net.ssl.TrustManagerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
+import io.debezium.util.DelayStrategy;
+import io.debezium.util.RetryingRunnable;
+import io.debezium.util.Strings;
 import io.nats.client.Connection;
 import io.nats.client.JetStream;
 import io.nats.client.JetStreamApiException;
@@ -181,10 +186,10 @@ public class NatsConnection {
                 .maxReconnects(config.getMaxReconnects())
                 .reconnectWait(config.getReconnectWait());
 
-        if (config.getUser() != null && !config.getUser().isEmpty()) {
+        if (!Strings.isNullOrBlank(config.getUser())) {
             optionsBuilder.userInfo(config.getUser(), config.getPassword());
         }
-        if (config.getToken() != null && !config.getToken().isEmpty()) {
+        if (!Strings.isNullOrBlank(config.getToken())) {
             optionsBuilder.token(config.getToken());
         }
         if (config.isTlsEnabled()) {
@@ -192,7 +197,7 @@ public class NatsConnection {
                 optionsBuilder.secure();
             }
             catch (java.security.NoSuchAlgorithmException e) {
-                throw new RuntimeException("Failed to enable TLS for NATS connection", e);
+                throw new DebeziumException("Failed to enable TLS for NATS connection", e);
             }
             SSLContext sslContext = buildSslContext();
             if (sslContext != null) {
@@ -206,41 +211,37 @@ public class NatsConnection {
         jetStream = null;
         jetStreamManagement = null;
 
-        // Wait for JetStream to be responsive to avoid race conditions right after
-        // server start.
-        // We ping the JetStream management API with retries for a short period.
-        long deadlineMs = System.currentTimeMillis() + Math.max(2000, (int) config.getReconnectWait().toMillis());
-        Exception lastJsException = null;
-        while (System.currentTimeMillis() < deadlineMs) {
-            try {
-                JetStreamManagement jsm = connection.jetStreamManagement();
-                // Probe by requesting a non-existent stream; a JetStreamApiException
-                // indicates JS responded and is therefore ready.
-                try {
-                    jsm.getStreamInfo("_dbz_js_probe_nonexistent_");
-                }
-                catch (JetStreamApiException expected) {
-                    // Expected since the stream doesn't exist; JS is responsive.
-                }
-                jetStreamManagement = jsm;
-                jetStream = connection.jetStream();
-                lastJsException = null;
-                break;
-            }
-            catch (Exception e) { // JetStream not ready yet (e.g., 503 No Responders)
-                lastJsException = e;
-                try {
-                    Thread.sleep(100);
-                }
-                catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    throw ie;
-                }
-            }
+        // Wait for JetStream to be responsive to avoid race conditions right
+        // after server start. We ping the JetStream management API with
+        // retries for a short period.
+        int retries = (int) Math.max(2000, config.getReconnectWait().toMillis()) / 100;
+        try {
+            RetryingRunnable<Exception> retrying = RetryingRunnable.<Exception> builder()
+                    .retries(retries)
+                    .delayStrategy(DelayStrategy.constant(Duration.ofMillis(100)))
+                    .doRun(() -> {
+                        JetStreamManagement jsm = connection.jetStreamManagement();
+                        // Probe by requesting a non-existent stream; a
+                        // JetStreamApiException indicates JS responded and is
+                        // therefore ready.
+                        try {
+                            jsm.getStreamInfo("_dbz_js_probe_nonexistent_");
+                        }
+                        catch (JetStreamApiException expected) {
+                            // Expected since the stream doesn't exist; JS is responsive.
+                        }
+                        jetStreamManagement = jsm;
+                        jetStream = connection.jetStream();
+                    })
+                    .build();
+            retrying.run();
         }
-        if (lastJsException != null) {
+        catch (InterruptedException ie) {
+            throw ie;
+        }
+        catch (Exception e) {
             // Surface a clear error if JS never became ready within the wait window
-            throw new IOException("JetStream management API not ready after connection", lastJsException);
+            throw new IOException("JetStream management API not ready after connection", e);
         }
 
         LOGGER.info("Successfully connected to NATS server and JetStream is ready");
@@ -254,14 +255,13 @@ public class NatsConnection {
     private SSLContext buildSslContext() {
         String truststorePath = config.getTlsTruststorePath();
         String keystorePath = config.getTlsKeystorePath();
-        if ((truststorePath == null || truststorePath.isEmpty())
-                && (keystorePath == null || keystorePath.isEmpty())) {
+        if (Strings.isNullOrBlank(truststorePath) && Strings.isNullOrBlank(keystorePath)) {
             return null;
         }
 
         try {
             KeyStore trustStore = null;
-            if (truststorePath != null && !truststorePath.isEmpty()) {
+            if (!Strings.isNullOrBlank(truststorePath)) {
                 trustStore = KeyStore.getInstance(config.getTlsTruststoreType());
                 try (InputStream in = new FileInputStream(truststorePath)) {
                     trustStore.load(in, config.getTlsTruststorePassword().toCharArray());
@@ -269,7 +269,7 @@ public class NatsConnection {
             }
 
             KeyStore keyStore = null;
-            if (keystorePath != null && !keystorePath.isEmpty()) {
+            if (!Strings.isNullOrBlank(keystorePath)) {
                 keyStore = KeyStore.getInstance(config.getTlsKeystoreType());
                 try (InputStream in = new FileInputStream(keystorePath)) {
                     keyStore.load(in, config.getTlsKeystorePassword().toCharArray());
@@ -287,7 +287,7 @@ public class NatsConnection {
             return sslContext;
         }
         catch (Exception e) {
-            throw new RuntimeException("Failed to build SSL context for NATS connection", e);
+            throw new DebeziumException("Failed to build SSL context for NATS connection", e);
         }
     }
 
@@ -332,31 +332,26 @@ public class NatsConnection {
     private void warmUpObjectStore(ObjectStore os) {
         final String key = "__dbz_os_warmup__";
         byte[] payload = new byte[]{ 1 };
-        long deadline = System.currentTimeMillis() + 2_000; // up to 2s warm-up
-        Exception last = null;
-        while (System.currentTimeMillis() < deadline) {
-            try {
-                os.put(key, new java.io.ByteArrayInputStream(payload));
-                try {
-                    os.delete(key);
-                }
-                catch (Exception ignore) {
-                }
-                return; // success
-            }
-            catch (Exception e) {
-                last = e;
-                try {
-                    Thread.sleep(100);
-                }
-                catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    break;
-                }
-            }
+        try {
+            RetryingRunnable<Exception> retrying = RetryingRunnable.<Exception> builder()
+                    .retries(20) // up to ~2s warm-up at 100ms intervals
+                    .delayStrategy(DelayStrategy.constant(Duration.ofMillis(100)))
+                    .doRun(() -> {
+                        os.put(key, new java.io.ByteArrayInputStream(payload));
+                        try {
+                            os.delete(key);
+                        }
+                        catch (Exception ignore) {
+                        }
+                    })
+                    .build();
+            retrying.run();
         }
-        if (last != null) {
-            LOGGER.debug("ObjectStore warm-up did not confirm readiness: {}", last.toString());
+        catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+        }
+        catch (Exception e) {
+            LOGGER.debug("ObjectStore warm-up did not confirm readiness: {}", e.toString());
         }
     }
 

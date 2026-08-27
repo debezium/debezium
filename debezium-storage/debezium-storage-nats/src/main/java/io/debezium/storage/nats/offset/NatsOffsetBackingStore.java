@@ -23,6 +23,7 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.Configuration;
 import io.debezium.spi.storage.DefaultOffsetStorageReader;
@@ -76,7 +77,7 @@ public class NatsOffsetBackingStore implements OffsetStore {
             LOGGER.info("Connected to NATS Object Store bucket: {}", config.getBucketName());
         }
         catch (Exception e) {
-            throw new RuntimeException("Failed to connect to NATS Object Store", e);
+            throw new DebeziumException("Failed to connect to NATS Object Store", e);
         }
     }
 
@@ -177,7 +178,7 @@ public class NatsOffsetBackingStore implements OffsetStore {
         }
         catch (Exception e) {
             LOGGER.error("Failed to load offsets from NATS Object Store", e);
-            throw new RuntimeException("Failed to load offsets", e);
+            throw new DebeziumException("Failed to load offsets", e);
         }
     }
 
@@ -226,7 +227,7 @@ public class NatsOffsetBackingStore implements OffsetStore {
         }
         catch (Exception e) {
             LOGGER.error("Failed to save offsets to NATS Object Store", e);
-            throw new RuntimeException("Failed to save offsets", e);
+            throw new DebeziumException("Failed to save offsets", e);
         }
     }
 
@@ -267,7 +268,7 @@ public class NatsOffsetBackingStore implements OffsetStore {
             return sb.toString();
         }
         catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("SHA-256 not available", e);
+            throw new DebeziumException("SHA-256 not available", e);
         }
     }
 
@@ -355,7 +356,7 @@ public class NatsOffsetBackingStore implements OffsetStore {
                     }
                     catch (InterruptedException ie) {
                         Thread.currentThread().interrupt();
-                        throw new RuntimeException("Interrupted during retry delay", ie);
+                        throw new DebeziumException("Interrupted during retry delay", ie);
                     }
                 }
                 else {
