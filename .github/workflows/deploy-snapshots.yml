@@ -19,6 +19,7 @@ on:
           spanner#debezium/debezium-connector-spanner#main
           vitess#debezium/debezium-connector-vitess#main
           yashandb#debezium/debezium-connector-yashandb#main
+          sqlite#debezium/debezium-connector-sqlite#main
           quarkus#debezium/debezium-quarkus#main
           server#debezium/debezium-server#main
           operator#debezium/debezium-operator#main
@@ -63,6 +64,7 @@ jobs:
         spanner#debezium/debezium-connector-spanner#main
         vitess#debezium/debezium-connector-vitess#main
         yashandb#debezium/debezium-connector-yashandb#main
+        sqlite#debezium/debezium-connector-sqlite#main
         quarkus#debezium/debezium-quarkus#main
         server#debezium/debezium-server#main
         operator#debezium/debezium-operator#main
