@@ -50,6 +50,11 @@ public abstract class RetryingCallable<V> implements Callable<V> {
                 .doGet(this::doCall)
                 .retriableExceptions(RetriableException.class)
                 .customRetriableMessagePattern(customRetriableMessagePattern)
+                // A terminal failure can wrap a retriable one on purpose (ErrorHandler wraps a
+                // retriable whose connector-side retries are exhausted in a ConnectException, which
+                // ChangeEventQueue raises from poll() to stop the task): examining the thrown
+                // exception alone preserves that contract.
+                .walkCauseChain(false)
                 .delayStrategy(delayStrategy())
                 .name("Callable")
                 .logger(LOGGER)

@@ -41,6 +41,7 @@ public class RetryingSupplier<V, E extends Exception> {
     private final List<Class<? extends Exception>> retriableExceptions;
     private final Predicate<Exception> retriableWhen;
     private final String customRetriableMessagePattern;
+    private final boolean walkCauseChain;
     private final String name;
     private final Logger logger;
 
@@ -52,6 +53,7 @@ public class RetryingSupplier<V, E extends Exception> {
         this.retriableExceptions = b.retriableExceptions;
         this.retriableWhen = b.retriableWhen;
         this.customRetriableMessagePattern = b.customRetriableMessagePattern;
+        this.walkCauseChain = b.walkCauseChain;
         this.name = b.name;
         this.logger = b.logger;
     }
@@ -183,6 +185,9 @@ public class RetryingSupplier<V, E extends Exception> {
                     && current.getMessage().matches(customRetriableMessagePattern)) {
                 return true;
             }
+            if (!walkCauseChain) {
+                return false;
+            }
             current = current.getCause();
             if (advanceSlow) {
                 slow = slow.getCause();
@@ -216,6 +221,7 @@ public class RetryingSupplier<V, E extends Exception> {
         private List<Class<? extends Exception>> retriableExceptions = new ArrayList<>();
         private Predicate<Exception> retriableWhen;
         private String customRetriableMessagePattern;
+        private boolean walkCauseChain = true;
         private String name = "Operation";
         private Logger logger = LOGGER;
 
@@ -271,13 +277,26 @@ public class RetryingSupplier<V, E extends Exception> {
         }
 
         /**
-         * Sets a regular expression matched against the messages of the thrown exception and its causes;
-         * a match classifies the exception as retriable even when its type does not. This mirrors the
-         * semantics of the internal {@code custom.retriable.exception} connector option. A {@code null}
-         * pattern (the default) disables the message-based classification.
+         * Sets a regular expression matched against the messages of the thrown exception and, subject to
+         * {@link #walkCauseChain(boolean)}, its causes; a match classifies the exception as retriable even
+         * when its type does not. This mirrors the semantics of the internal
+         * {@code custom.retriable.exception} connector option. A {@code null} pattern (the default)
+         * disables the message-based classification.
          */
         public Builder<V, E> customRetriableMessagePattern(String customRetriableMessagePattern) {
             this.customRetriableMessagePattern = customRetriableMessagePattern;
+            return this;
+        }
+
+        /**
+         * Whether the retriability classification walks the exception cause chain (the default) or
+         * examines the thrown exception alone. Callers whose failure contract distinguishes a
+         * retriable exception from a terminal one that merely wraps it, such as the engine polling
+         * loop where {@code ChangeEventQueue} raises a {@code ConnectException} to stop the task,
+         * should disable the walk to keep that distinction.
+         */
+        public Builder<V, E> walkCauseChain(boolean walkCauseChain) {
+            this.walkCauseChain = walkCauseChain;
             return this;
         }
 
