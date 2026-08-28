@@ -140,19 +140,19 @@ public class PostgresSchema extends RelationalDatabaseSchema {
         }
 
         var updatedTable = temp.forTable(tableId);
-        // The Postgres JDBC driver does not surface IS_GENERATEDCOLUMN, so populate it here before
-        // any consumer (including the removeGeneratedColumns branch below) inspects isGenerated().
-        // Also refresh the side map used by incremental-snapshot projection: refreshFromIncrementalSnapshot
-        // may prune generated columns from the Table, but buildProjection still needs to know they exist.
-        final List<String> generatedColumnNames = readGeneratedColumnNames(connection, tableId);
-        tableIdToGeneratedColumns.put(tableId, Collections.unmodifiableList(generatedColumnNames));
-        updatedTable = applyGeneratedColumnFlags(updatedTable, generatedColumnNames);
-        if (removeGeneratedColumns) {
-            var editor = updatedTable.edit();
-            final var notGeneratedColumns = updatedTable.filterColumns(x -> !x.isGenerated());
-            LOGGER.debug("Removing generated columns, the new column list is '{}'", notGeneratedColumns);
-            editor.setColumns(notGeneratedColumns);
-            updatedTable = editor.create();
+        // DBZ-2020: only pgoutput prunes generated columns and needs them tracked; other decoders keep
+        // the column (and its value) in the Table, so leave them untouched here.
+        if (tracksGeneratedColumns()) {
+            final List<String> generatedColumnNames = readGeneratedColumnNames(connection, tableId);
+            tableIdToGeneratedColumns.put(tableId, Collections.unmodifiableList(generatedColumnNames));
+            updatedTable = applyGeneratedColumnFlags(updatedTable, generatedColumnNames);
+            if (removeGeneratedColumns) {
+                var editor = updatedTable.edit();
+                final var notGeneratedColumns = updatedTable.filterColumns(x -> !x.isGenerated());
+                LOGGER.debug("Removing generated columns, the new column list is '{}'", notGeneratedColumns);
+                editor.setColumns(notGeneratedColumns);
+                updatedTable = editor.create();
+            }
         }
 
         // overwrite (add or update) or views of the tables
@@ -255,20 +255,14 @@ public class PostgresSchema extends RelationalDatabaseSchema {
     }
 
     /**
-     * Reads the set of generated columns for {@code tableId} from {@code pg_attribute.attgenerated} and
-     * updates the in-memory {@link Table} so that {@link Column#isGenerated()} reflects the database state.
-     * The Postgres JDBC driver does not populate {@code IS_GENERATEDCOLUMN}, which is why we do this
-     * server-side.
-     *
-     * <p>{@code attgenerated} is a single character: {@code ''} for regular columns, {@code 's'} for
-     * {@code STORED} generated columns (PostgreSQL 12+) and {@code 'v'} for {@code VIRTUAL} generated
-     * columns (PostgreSQL 18+). Any non-empty value is treated as generated.</p>
-     *
-     * <p>Also stores the names in {@link #tableIdToGeneratedColumns} so incremental-snapshot projection
-     * can still detect generated columns after {@link #refreshFromIncrementalSnapshot} has pruned them
-     * from the Table for pgoutput.</p>
+     * Populates {@link Column#isGenerated()} from {@code pg_attribute.attgenerated} (the Postgres JDBC
+     * driver does not surface {@code IS_GENERATEDCOLUMN}) and records the names in
+     * {@link #tableIdToGeneratedColumns}. Runs for pgoutput only; see {@link #tracksGeneratedColumns()}.
      */
     private void refreshGeneratedColumnsMap(PostgresConnection connection, TableId tableId) {
+        if (!tracksGeneratedColumns()) {
+            return;
+        }
         final Table current = tables().forTable(tableId);
         if (current == null) {
             return;
@@ -352,11 +346,19 @@ public class PostgresSchema extends RelationalDatabaseSchema {
     }
 
     /**
-     * Generated column names for {@code tableId}, including those that may have been pruned from the
-     * in-memory {@link Table} by {@link #refreshFromIncrementalSnapshot} for pgoutput.
+     * Generated column names for {@code tableId}, including any pruned from the {@link Table} for
+     * pgoutput. Empty for other decoders; see {@link #tracksGeneratedColumns()}.
      */
     public List<String> getGeneratedColumnsForTableId(TableId tableId) {
         return tableIdToGeneratedColumns.getOrDefault(tableId, Collections.emptyList());
+    }
+
+    /**
+     * Only pgoutput prunes generated columns from the {@link Table}, so only pgoutput needs them tracked
+     * for the incremental-snapshot projection; other decoders keep the column and its value (DBZ-2020).
+     */
+    private boolean tracksGeneratedColumns() {
+        return connectorConfig.plugin() == LogicalDecoder.PGOUTPUT;
     }
 
     /**
