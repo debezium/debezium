@@ -32,8 +32,9 @@ endif::product[]
 [id="debezium-openlineage-about-data-lineage-and-openlineage"]
 == About Data Lineage and OpenLineage
 
-Data lineage tracks the flow of data through various systems, transformations, and processes.
-This information provides you with visibility into where data originates, how it moves, and what dependencies exist in the data pipeline.
+Data lineage tracks where data originates, how it moves between systems, and what transformations it undergoes.
+OpenLineage is the open standard that {prodname} uses to emit and share that lineage metadata across your data pipeline.
+
 Insights into data lineage is crucial for the following activities:
 
 * Data governance and compliance
@@ -80,11 +81,14 @@ But different processes are needed to configure the integration and to install d
 [id="debezium-openlineage-how-debezium-integrates-with-openlineage"]
 == How {prodname} integrates with OpenLineage
 
-To integrate with OpenLineage, {prodname} maps events in its lifecycle to artifacts in the OpenLineage data model.
+{prodname} maps its internal objects and events to the OpenLineage data model, representing connectors as Jobs and database tables or Kafka topics as Datasets.
+The following sections describe how those mappings work for source connectors, sink connectors, and the connector lifecycle.
 
 // Type: concept
 [id="debezium-openlineage-job-mapping"]
 === OpenLineage job mapping
+
+Each {prodname} connector instance is represented as an OpenLineage Job, which captures the connector's identity, version, and full configuration to support lineage tracing and pipeline debugging.
 
 The {prodname} connector is mapped to an OpenLineage *Job*, which includes the following elements:
 
@@ -97,6 +101,8 @@ Job metadata:: Description, tags, and owners.
 // Type: concept
 [id="debezium-openlineage-dataset-mapping-for-source-connectors"]
 === Dataset mapping for source connectors
+
+For source connectors, {prodname} maps the database tables it monitors to OpenLineage input datasets and the Kafka topics it produces to output datasets, capturing schema information for both.
 
 The following dataset mappings are possible:
 
@@ -165,6 +171,8 @@ Path: integrations/openlineage.adoc
 // Title: Prepare to deploy the {prodname} OpenLineage integration
 [id="debezium-openlineage-preparing-to-deploy-the-integration"]
 == Preparing to deploy the {prodname} OpenLineage integration
+
+Before you can use the {prodname} OpenLineage integration, install the required dependencies for your deployment type — either Kafka Connect or {prodname} Server.
 
 // Type: concept
 [id="debezium-openlineage-required-dependencies"]
@@ -646,6 +654,8 @@ JDBC output dataset (PostgreSQL)::
 [id="debezium-openlineage-monitoring-and-troubleshooting"]
 == Monitoring and Troubleshooting
 
+You can verify that the {prodname} OpenLineage integration is working correctly and diagnose problems by inspecting connector logs, reviewing OpenLineage events, and resolving common configuration issues.
+
 // Type: procedure
 [id="debezium-openlineage-verifying-the-integration"]
 === Verifying the integration
@@ -666,6 +676,8 @@ transport:
 // Type: reference
 [id="debezium-openlineage-common-issues"]
 === Common issues
+
+The following reference describes common problems that can prevent the OpenLineage integration from working correctly, along with steps to resolve them.
 
 Integration not working::
 * Verify that `openlineage.integration.enabled` is set to `true`.
