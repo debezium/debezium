@@ -468,6 +468,22 @@ public class TestHelper {
                             + "SUBSTR(PROGRAM, INSTR(PROGRAM, '(') + 1, 4) AS XSTREAM_PROCESS "
                             + "FROM V$SESSION WHERE MODULE = 'XStream'");
 
+            // The query above is the sole basis for concluding that no client is attached, and it is
+            // only as good as its filter: MODULE = 'XStream' matches the outbound server's own
+            // background processes and a client that is attached right now. A session left behind by a
+            // previous test would not necessarily still carry that module, and would then be invisible
+            // there while remaining exactly the orphan ORA-26812 claims exists. So the same question is
+            // asked again without the filter, over every session belonging to the connector user.
+            //
+            // An empty result, or only sessions belonging to the test in flight, confirms the reading
+            // taken so far. A session that outlives the test that opened it is the missing client.
+            final String connectorUser = getConnectorUserName();
+            appendQuery(admin, report, "V$SESSION (USERNAME = '" + connectorUser + "')",
+                    "SELECT SID, SERIAL#, STATUS, MODULE, PROGRAM, LOGON_TIME, LAST_CALL_ET, "
+                            + "EVENT, WAIT_CLASS, SECONDS_IN_WAIT "
+                            + "FROM V$SESSION WHERE UPPER(USERNAME) = UPPER('" + connectorUser + "') "
+                            + "ORDER BY LOGON_TIME");
+
             appendQuery(admin, report, "DBA_CAPTURE",
                     "SELECT CAPTURE_NAME, STATUS, ERROR_NUMBER, ERROR_MESSAGE FROM DBA_CAPTURE");
 
