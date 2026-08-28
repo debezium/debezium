@@ -1,4 +1,5 @@
-For more advanced uses, you can fine-tune control of the snapshot by implementing one of the following interfaces:
+To customize snapshot behavior beyond what is available in the standard snapshot modes, you can implement one or more of the {prodname} snapshotter SPI interfaces.
+These interfaces can control whether a snapshot runs, how data is queried, and whether tables are locked.
 
 `io.debezium.snapshot.spi.Snapshotter`:: Controls whether the connector takes a snapshot.
 `io.debezium.snapshot.spi.SnapshotQuery`:: Controls how data is queried during a snapshot.

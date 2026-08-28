@@ -1,4 +1,4 @@
-The following list describes advanced {connector-name} connector configuration properties.
+The following list describes the advanced configuration properties for the {connector-name} connector that let you fine-tune behavior for specific environments, including schema history handling, signal channels, event filtering, and custom transformations.
 The default values for these properties rarely require changes.
 Therefore, you do not need to specify them in the connector configuration.
 
