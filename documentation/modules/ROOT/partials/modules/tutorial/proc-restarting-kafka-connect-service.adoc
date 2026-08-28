@@ -6,17 +6,12 @@
 [id="restarting-kafka-connect-service"]
 = Restarting the Kafka Connect service
 
-Now that you have seen how the {prodname} MySQL connector captures _create_, _update_, and _delete_ events,
-you will now see how it can capture change events even when it is not running.
+When the Kafka Connect service goes offline and restarts, {prodname} resumes capturing database changes from the point where it stopped, without missing any events.
 
 The Kafka Connect service automatically manages tasks for its registered connectors.
 Therefore, if it goes offline, when it restarts, it will start any non-running tasks.
 This means that even if {prodname} is not running,
 it can still report changes in a database.
-
-In this procedure, you will stop Kafka Connect,
-change some data in the database,
-and then restart Kafka Connect to see the change events.
 
 .Procedure
 

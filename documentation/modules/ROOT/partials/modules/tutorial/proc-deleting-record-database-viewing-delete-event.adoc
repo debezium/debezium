@@ -1,11 +1,7 @@
 [id="deleting-record-database-viewing-delete-event"]
 = Deleting a record in the database and viewing the _delete_ event
 
-Now that you have seen how the {prodname} MySQL connector captured the _create_ and _update_ events in the `inventory` database,
-you will now delete one of the records and see how the connector captures it.
-
-By completing this procedure, you will learn how to find details about _delete_ events,
-and how Kafka uses _log compaction_ to reduce the number of _delete_ events while still enabling consumers to get all of the events.
+By deleting a record in the database and observing the change event that the {prodname} MySQL connector captures, you can learn how {prodname} represents deletions and how Kafka log compaction handles tombstone events.
 
 .Procedure
 
