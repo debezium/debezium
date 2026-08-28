@@ -2,11 +2,7 @@
 [id="updating-database-viewing-update-event"]
 = Updating the database and viewing the _update_ event
 
-Now that you have seen how the {prodname} MySQL connector captured the _create_ events in the `inventory` database,
-you will now change one of the records and see how the connector captures it.
-
-By completing this procedure, you will learn how to find details about what changed in a database commit,
-and how you can compare change events to determine when the change occurred in relation to other changes.
+By updating a record in the database and observing the change event that the {prodname} MySQL connector captures, you can learn how to identify what changed in a commit and compare events to determine their sequence.
 
 .Procedure
 
