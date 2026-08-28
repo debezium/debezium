@@ -100,6 +100,50 @@ public class RetryingSupplierTest {
     }
 
     @Test
+    void shouldNotWalkCauseChainWhenDisabled() {
+        assertThatThrownBy(() -> RetryingSupplier.<Integer, SQLException> builder()
+                .retries(10)
+                .doGet(() -> {
+                    int call = runs.incrementAndGet();
+                    if (call <= 2) {
+                        throw new DebeziumException(new SQLRecoverableException("Nested but the walk is off"));
+                    }
+                    return call;
+                })
+                .doAutoHeal(heals::incrementAndGet)
+                .delayStrategy(DelayStrategy.linear(Duration.ofMillis(100)))
+                .retriableExceptions(retriableExceptions)
+                .walkCauseChain(false)
+                .build()
+                .get()).isInstanceOf(DebeziumException.class);
+
+        assertThat(runs.get()).isEqualTo(1);
+        assertThat(heals.get()).isEqualTo(0);
+    }
+
+    @Test
+    void shouldStillRetryTopLevelExceptionWhenWalkDisabled() throws InterruptedException, SQLException {
+        assertThat(RetryingSupplier.<Integer, SQLException> builder()
+                .retries(10)
+                .doGet(() -> {
+                    int call = runs.incrementAndGet();
+                    if (call <= 2) {
+                        throw new SQLRecoverableException("Top-level retriable");
+                    }
+                    return call;
+                })
+                .doAutoHeal(heals::incrementAndGet)
+                .delayStrategy(DelayStrategy.linear(Duration.ofMillis(100)))
+                .retriableExceptions(retriableExceptions)
+                .walkCauseChain(false)
+                .build()
+                .get()).isEqualTo(3);
+
+        assertThat(runs.get()).isEqualTo(3);
+        assertThat(heals.get()).isEqualTo(2);
+    }
+
+    @Test
     void shouldRetryForCustomRetriableMessageOnCause() throws InterruptedException, SQLException {
         assertThat(getTwoTimesFailingWithCustomRetriableMessage(10, ".*try again later.*").get()).isEqualTo(3);
 
