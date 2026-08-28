@@ -19,6 +19,10 @@ This feature is currently in incubating state, i.e. exact semantics, configurati
 ====
 
 == Datatype Conversion
+
+By default, {prodname} connectors map source data types to Kafka Connect schema types using built-in type mappings.
+You can override these defaults by developing and deploying a custom converter when your downstream application requires a different data format.
+
 endif::community[]
 
 ifdef::product[]
@@ -138,7 +142,10 @@ endif::community[]
 [id="debezium-custom-converter-example"]
 === {prodname} custom converter example
 
-The following example implements a simple converter that performs the following operations:
+The following example shows how to implement a converter that maps source columns of type `isbn` to Kafka Connect `STRING` schema values.
+Use this example as a model for writing converters that handle custom or non-standard column types in your source database.
+
+The converter in the example performs the following operations:
 
 * Runs the `configure` method, which configures the converter based on the value of the `schema.name` property that is specified in the connector configuration.
 The converter configuration is specific to each instance.
@@ -220,6 +227,8 @@ You cannot configure either the {prodname} MongoDB connector, or the {prodname} 
 // Type: procedure
 [id="deploying-a-debezium-custom-converter"]
 === Deploying a custom converter
+
+To use a custom converter with a {prodname} connector, export the converter as a JAR file and place it in the connector's plug-in directory.
 
 .Prerequisites
 * You have a custom converter Java program.
