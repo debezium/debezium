@@ -1,5 +1,4 @@
-With earlier versions of {kafka-streams}, to deploy {ProductName} connectors on OpenShift, you were required to first build a Kafka Connect image for the connector.
-The current preferred method for deploying connectors on OpenShift is to use a build configuration in {kafka-streams} to automatically build a Kafka Connect container image that includes the {prodname} connector plug-ins that you want to use.
+You can deploy a {prodname} connector on OpenShift by using {StreamsName} to automatically build a Kafka Connect container image that includes the connector plug-in, without having to manually build the image first.
 
 During the build process, the {kafka-streams} Operator transforms input parameters in a `KafkaConnect` custom resource, including {prodname} connector definitions, into a Kafka Connect container image.
 The build downloads the necessary artifacts from the Red Hat Maven repository or from another configured HTTP server.

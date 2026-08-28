@@ -1,6 +1,5 @@
-Snapshot metrics are not exposed unless a snapshot operation is active, or if a snapshot has occurred since the last connector start.
-
-The following table lists the snapshot metrics that are available.
+The following table lists the JMX metrics that are available for monitoring {prodname} snapshot operations, including row counts, table progress, duration, and queue capacity.
+Snapshot metrics are not exposed unless a snapshot operation is active, or a snapshot has occurred since the last connector start.
 
 [cols="35%a,20%a,45%a",options="header"]
 |===
