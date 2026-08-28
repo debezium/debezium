@@ -1,4 +1,4 @@
-You can send a signal message to the {link-prefix}:{link-signalling}#debezium-signaling-enabling-kafka-signaling-channel[configured Kafka signaling topic] to stop an ad hoc incremental snapshot.
+To stop an in-progress incremental snapshot using the Kafka signaling channel, send a `stop-snapshot` message to the configured Kafka signaling topic.
 
 The key of the Kafka message must match the value of the `topic.prefix` connector configuration option.
 
