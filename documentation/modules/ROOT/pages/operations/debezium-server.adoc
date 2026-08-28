@@ -1378,7 +1378,11 @@ By default the same name is used.
 
 ==== Redis Configuration Examples
 
+The following examples show complete `application.properties` configurations for connecting {prodname} Server to a Redis sink in both single-instance and cluster deployment modes.
+
 ===== Single Instance Mode
+
+Use the following configuration when connecting to a single Redis instance for sink, offset storage, and schema history.
 
 [source,properties]
 ----
@@ -1402,6 +1406,8 @@ debezium.source.schema.history.internal.redis.cluster.enabled=false
 ----
 
 ===== Cluster Mode
+
+Use the following configuration when connecting {prodname} Server to a Redis Cluster, specifying multiple node addresses for sink, offset storage, and schema history.
 
 [source,properties]
 ----
@@ -2433,6 +2439,8 @@ Typical examples are fine tuning of the target client setup, the destination nam
 See an example of a custom https://github.com/debezium/debezium-examples/tree/main/debezium-server-name-mapper[topic naming policy] implementation for further details.
 
 == Cassandra connector
+
+The {prodname} Cassandra connector requires additional JVM options at startup and a specific `application.properties` configuration when run with {prodname} Server.
 
 === Running {prodname} Server with Cassandra connector
 
