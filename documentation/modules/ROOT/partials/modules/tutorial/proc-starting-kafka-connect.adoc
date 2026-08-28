@@ -6,9 +6,12 @@
 [id="starting-kafka-connect"]
 = Starting Kafka Connect
 
-After starting MySQL and connecting to the `inventory` database with the MySQL command line client,
-you start the Kafka Connect service.
-This service exposes a REST API to manage the {prodname} MySQL connector.
+Start the Kafka Connect service, which exposes a REST API that you use to manage the {prodname} MySQL connector and monitor its status.
+
+.Prerequisites
+
+* Kafka and MySQL are running.
+* You have connected to the `inventory` database with the MySQL command line client.
 
 .Procedure
 
