@@ -142,4 +142,26 @@ public class PostgresChunkQueryBuilderTest {
         assertThat(chunkQueryBuilder.buildChunkQuery(new SignalBasedIncrementalSnapshotContext<>(), table, Optional.empty()))
                 .isEqualTo("SELECT \"pk1\", \"val1\" FROM \"s1\".\"table1\" ORDER BY \"pk1\" LIMIT 1024");
     }
+
+    @Test
+    @FixFor("DBZ-2020")
+    public void shouldExcludeAllSideMapGeneratedColumnsWhenMultiplePresent() {
+        // The side map is a List<String>; make sure every entry is excluded from the projection, not
+        // just the first one found.
+        final TableId tableId = new TableId(null, "s1", "table1");
+        when(schema.getGeneratedColumnsForTableId(tableId)).thenReturn(List.of("gen1", "gen2"));
+
+        final ChunkQueryBuilder<TableId> chunkQueryBuilder = new PostgresChunkQueryBuilder<>(
+                config(), new JdbcConnection(config().getJdbcConfig(), c -> null, "\"", "\""), schema);
+        final Column pk1 = Column.editor().name("pk1").optional(false).create();
+        final Column val1 = Column.editor().name("val1").create();
+        final Table prunedTable = Table.editor().tableId(tableId)
+                .addColumn(pk1)
+                .addColumn(val1)
+                .setPrimaryKeyNames("pk1")
+                .create();
+
+        assertThat(chunkQueryBuilder.buildChunkQuery(new SignalBasedIncrementalSnapshotContext<>(), prunedTable, Optional.empty()))
+                .isEqualTo("SELECT \"pk1\", \"val1\" FROM \"s1\".\"table1\" ORDER BY \"pk1\" LIMIT 1024");
+    }
 }
