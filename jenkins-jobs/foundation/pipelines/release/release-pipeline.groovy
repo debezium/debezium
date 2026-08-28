@@ -117,11 +117,7 @@ properties([
 //   The pipeline validates at startup that RELEASE_PLAN and SOURCE_REPOSITORIES are in sync.
 @Field final RELEASE_PLAN = [
     ['debezium'],
-<<<<<<< HEAD
-    ['cassandra', 'cockroachdb', 'db2', 'ibmi', 'informix', 'ingres', 'spanner', 'vitess', 'tidb', 'yashandb', 'milvus'],
-=======
-    ['cassandra', 'cockroachdb', 'db2', 'ibmi', 'informix', 'ingres', 'spanner', 'vitess', 'tidb', 'yashandb', 'sqlite'],
->>>>>>> 9f5aeeca1b (debezium/dbz#2516 Debezium SQLite Source Connector: add to snapshot and release pipeline)
+    ['cassandra', 'cockroachdb', 'db2', 'ibmi', 'informix', 'ingres', 'milvus' ,'spanner', 'sqlite', 'vitess', 'tidb', 'yashandb']`,
     ['quarkus', 'operator'],
     ['server'],
     ['platform'],

@@ -16,10 +16,12 @@ on:
           ibmi#debezium/debezium-connector-ibmi#main
           informix#debezium/debezium-connector-informix#main
           ingres#debezium/debezium-connector-ingres#main
+          milvus#debezium/debezium-connector-milvus#main
           spanner#debezium/debezium-connector-spanner#main
+          sqlite#debezium/debezium-connector-sqlite#main
+          tidb#debezium/debezium-connector-tidb#main
           vitess#debezium/debezium-connector-vitess#main
           yashandb#debezium/debezium-connector-yashandb#main
-          milvus#debezium/debezium-connector-milvus#main
           quarkus#debezium/debezium-quarkus#main
           server#debezium/debezium-server#main
           operator#debezium/debezium-operator#main
@@ -62,10 +64,12 @@ jobs:
         ibmi#debezium/debezium-connector-ibmi#main
         informix#debezium/debezium-connector-informix#main
         ingres#debezium/debezium-connector-ingres#main
+        milvus#debezium/debezium-connector-milvus#main
         spanner#debezium/debezium-connector-spanner#main
+        sqlite#debezium/debezium-connector-sqlite#main
+        tidb#debezium/debezium-connector-tidb#main
         vitess#debezium/debezium-connector-vitess#main
         yashandb#debezium/debezium-connector-yashandb#main
-        milvus#debezium/debezium-connector-milvus#main
         quarkus#debezium/debezium-quarkus#main
         server#debezium/debezium-server#main
         operator#debezium/debezium-operator#main
