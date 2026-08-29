@@ -210,6 +210,18 @@ public class ConnectionIT implements Testing {
         }
     }
 
+    @Test
+    @FixFor("debezium/dbz#2521")
+    public void shouldReturnUnknownTypeForNullOrBlankTypeName() {
+        final TypeRegistry typeRegistry = TestHelper.getTypeRegistry();
+
+        assertThat(typeRegistry.get((String) null)).isSameAs(PostgresType.UNKNOWN);
+        assertThat(typeRegistry.get("")).isSameAs(PostgresType.UNKNOWN);
+        assertThat(typeRegistry.get("   ")).isSameAs(PostgresType.UNKNOWN);
+        assertThat(typeRegistry.get("public", null)).isSameAs(PostgresType.UNKNOWN);
+        assertThat(typeRegistry.get("public", "")).isSameAs(PostgresType.UNKNOWN);
+    }
+
     private void assertEmptyEnumType(TypeRegistry typeRegistry) {
         PostgresType emptyEnum = typeRegistry.get("dbz2525", "empty_enum");
         assertThat(emptyEnum).isNotEqualTo(PostgresType.UNKNOWN);
