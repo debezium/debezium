@@ -16,6 +16,7 @@ import org.testcontainers.utility.DockerImageName;
 
 import io.debezium.connector.jdbc.junit.PostgresExtensionUtils;
 import io.debezium.connector.jdbc.junit.TestHelper;
+import io.debezium.testing.testcontainers.ImageNames;
 
 /**
  * An implementation of {@link AbstractSinkDatabaseContextProvider} for PostgreSQL.
@@ -26,8 +27,7 @@ public class PostgresSinkDatabaseContextProvider extends AbstractSinkDatabaseCon
 
     // We explicitly use debezium/postgres which has the POSTGIS extension available.
     // The standard postgres image does not ship with POSTGIS available by default.
-    private static final DockerImageName IMAGE_NAME = DockerImageName.parse("quay.io/debezium/postgres:17")
-            .asCompatibleSubstituteFor("postgres");
+    private static final DockerImageName IMAGE_NAME = ImageNames.POSTGRES_17_IMAGE_NAME;
 
     @SuppressWarnings("resource")
     public PostgresSinkDatabaseContextProvider() {

@@ -31,7 +31,7 @@ import io.debezium.embedded.async.AsyncEmbeddedEngine;
 import io.debezium.heartbeat.DatabaseHeartbeatImpl;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConfiguration;
-import io.debezium.testing.testcontainers.util.ContainerImageVersions;
+import io.debezium.testing.testcontainers.ImageNames;
 
 /**
  * Integration test for {@link PostgresConnector} using an {@link AsyncEmbeddedEngine} and Testcontainers infrastructure for when Postgres is shutdown during streaming
@@ -45,7 +45,7 @@ public class PostgresShutdownIT extends AbstractAsyncEngineConnectorTest {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PostgresShutdownIT.class);
 
-    private static final String POSTGRES_IMAGE = ContainerImageVersions.getStableImage("quay.io/debezium/example-postgres");
+    private static final String POSTGRES_IMAGE = ImageNames.POSTGRES_EXAMPLE_IMAGE;
 
     private static final String INSERT_STMT = "INSERT INTO s1.a (aa) VALUES (1);" +
             "INSERT INTO s2.a (aa) VALUES (1);";

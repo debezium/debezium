@@ -23,7 +23,7 @@ import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
 public class SchemaRegistryTestResourceLifecycleManager implements QuarkusTestResourceLifecycleManager {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SchemaRegistryTestResourceLifecycleManager.class);
-    private static final String defaultImage = "quay.io/debezium/confluentinc-cp-kafka:7.2.10";
+    private static final String defaultImage = ImageNames.KAFKA_IMAGE;
 
     private static final Network network = Network.newNetwork();
     private static final Integer PORT = 8081;

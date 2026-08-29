@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 
 import io.debezium.data.Envelope;
 import io.debezium.junit.SkipLongRunning;
+import io.debezium.testing.testcontainers.ImageNames;
 
 import ai.docling.testcontainers.serve.DoclingServeContainer;
 import ai.docling.testcontainers.serve.config.DoclingServeContainerConfig;
@@ -32,7 +33,7 @@ import ai.docling.testcontainers.serve.config.DoclingServeContainerConfig;
  */
 @SkipLongRunning("Downloading Docling container takes too long")
 public class DoclingSmtIT {
-    private static final String DOCLING_IMAGE_NAME = "quay.io/docling-project/docling-serve:v1.15.0";
+    private static final String DOCLING_IMAGE_NAME = ImageNames.DOCLING_1_15_IMAGE;
 
     public static final Schema VALUE_SCHEMA = SchemaBuilder.struct()
             .name("mysql.inventory.products.Value")
