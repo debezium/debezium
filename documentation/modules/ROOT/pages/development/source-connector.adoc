@@ -20,7 +20,7 @@ In exchange, the framework provides the same change data capture pipeline that a
 
 Each connector reads from its data source in its own way, so there is no single global rule for where the framework ends and connector-specific logic begins.
 Instead, the framework defines a set of contracts, and each connector decides how much of the provided base implementation it can reuse.
-This guide maps those contracts to the concrete classes that you provide, using a generic connector (`MyConnector`) for the code snippets and the connectors in the main {prodname} repository as production references, in particular:
+This guide maps those contracts to the concrete classes that you provide, using a fictional source named AcmeDB (`AcmeDbConnector` and its companion classes) for the code snippets and the connectors in the main {prodname} repository as production references, in particular:
 
 * The xref:{link-sqlserver-connector}[SQL Server connector], a relational connector that polls change tables and relies on a database schema history.
 * The xref:{link-postgresql-connector}[PostgreSQL connector], a relational connector that consumes a pushed logical replication stream and rebuilds schema from the live catalog.
@@ -67,7 +67,7 @@ All of that still applies to a {prodname} connector; you still implement `start(
 | Still implemented by the connector, with `ErrorHandler` as a helper that classifies retriable versus fatal failures and drives task restarts
 |===
 
-The runtime is not a differentiator.
+Both kinds of connector run on the same runtimes.
 A {prodname} source connector can run across various runtimes, such as Kafka Connect, xref:{link-debezium-server}[{prodname} Server], or xref:{link-engine}[{prodname} Engine].
 The practical benefit of implementing the {prodname} contracts is that your events carry the standard envelope, which makes them work with {prodname}'s converters, single message transformations, and sink ecosystem.
 
@@ -79,20 +79,20 @@ The diagram below shows every class you will create, together with the framework
 Later sections of this guide build these classes one by one, so you may want to refer back to this tree as you read.
 
 ....
-MyConnector                                (BaseSourceConnector)
-└── MyConnectorTask                        (BaseSourceTask<MyPartition, MyOffsetContext>)
-    ├── MyConnectorConfig                  (CommonConnectorConfig)
-    ├── MyPartition / MyPartition.Provider (Partition / Partition.Provider)
-    ├── MyOffsetContext / .Loader          (CommonOffsetContext / OffsetContext.Loader)
-    ├── MySourceInfo / MySourceInfoStructMaker (BaseSourceInfo / SourceInfoStructMaker)
-    ├── MyDatabaseSchema                   (DatabaseSchema, e.g. via RelationalDatabaseSchema)
-    ├── MyConnection                       (JdbcConnection, relational connectors)
-    ├── MyValueConverters                  (JdbcValueConverters, relational connectors)
-    ├── MyChangeEventSourceFactory         (ChangeEventSourceFactory)
-    │   ├── MySnapshotChangeEventSource    (SnapshotChangeEventSource)
-    │   └── MyStreamingChangeEventSource   (StreamingChangeEventSource)
-    ├── MyChangeRecordEmitter              (ChangeRecordEmitter)
-    ├── MyErrorHandler                     (ErrorHandler)
+AcmeDbConnector                                        (BaseSourceConnector)
+└── AcmeDbConnectorTask                                (BaseSourceTask<AcmeDbPartition, AcmeDbOffsetContext>)
+    ├── AcmeDbConnectorConfig                          (CommonConnectorConfig)
+    ├── AcmeDbPartition / AcmeDbPartition.Provider     (Partition / Partition.Provider)
+    ├── AcmeDbOffsetContext / .Loader                  (CommonOffsetContext / OffsetContext.Loader)
+    ├── AcmeDbSourceInfo / AcmeDbSourceInfoStructMaker (BaseSourceInfo / SourceInfoStructMaker)
+    ├── AcmeDbDatabaseSchema                           (DatabaseSchema, e.g. via RelationalDatabaseSchema)
+    ├── AcmeDbConnection                               (JdbcConnection, relational connectors)
+    ├── AcmeDbValueConverters                          (JdbcValueConverters, relational connectors)
+    ├── AcmeDbChangeEventSourceFactory                 (ChangeEventSourceFactory)
+    │   ├── AcmeDbSnapshotChangeEventSource            (SnapshotChangeEventSource)
+    │   └── AcmeDbStreamingChangeEventSource           (StreamingChangeEventSource)
+    ├── AcmeDbChangeRecordEmitter                      (ChangeRecordEmitter)
+    ├── AcmeDbErrorHandler                             (ErrorHandler)
     └── Framework services instantiated in the task:
         ChangeEventQueue, EventDispatcher, ChangeEventSourceCoordinator,
         SignalProcessor, NotificationService, SnapshotterService
@@ -132,7 +132,7 @@ Example payload structure:
     "op": "u",
     "before": { "id": 1, "name": "Alice" },
     "after": { "id": 1, "name": "Alice2" },
-    "source": { "db": "mydb", "table": "users", "lsn": 12345, "snapshot": "false" },
+    "source": { "db": "inventory", "table": "customers", "lsn": 12345, "snapshot": "false" },
     "ts_ms": 1713801600000
 }
 ----
@@ -250,7 +250,15 @@ Two resource conventions matter:
 == Implementation walkthrough
 
 This section builds each contract in dependency order.
-Every subsection states the contract, shows a short generic snippet, and points at the SQL Server and PostgreSQL implementations for the production-grade details.
+Every subsection states the contract, shows a short AcmeDB snippet, and points at the SQL Server and PostgreSQL implementations for the production-grade details.
+
+[NOTE]
+====
+{prodname} connectors prefix the classes that implement a framework contract with the name of the source, for example `SqlServerConnector`, `SqlServerConnectorTask`, and `SqlServerOffsetContext`, or `PostgresConnector` and `PostgresOffsetContext`.
+The snippets in this guide follow the same convention for a fictional source named AcmeDB: `AcmeDbConnector`, `AcmeDbConnectorTask`, `AcmeDbOffsetContext`, and so on, in the package `io.debezium.connector.acmedb`.
+A few helper classes, such as `SourceInfo` and `Module`, are conventionally left unprefixed.
+Replace `AcmeDb` with the name of your source throughout.
+====
 
 === The connector class
 
@@ -259,11 +267,11 @@ It extends `io.debezium.connector.common.BaseSourceConnector`, which adds a sing
 
 [source,java]
 ----
-public class MyConnector extends BaseSourceConnector {
+public class AcmeDbConnector extends BaseSourceConnector {
 
     @Override
     public Class<? extends Task> taskClass() {
-        return MyConnectorTask.class;
+        return AcmeDbConnectorTask.class;
     }
 
     @Override
@@ -274,7 +282,7 @@ public class MyConnector extends BaseSourceConnector {
 
     @Override
     protected Map<String, ConfigValue> validateAllFields(Configuration config) {
-        return config.validate(MyConnectorConfig.ALL_FIELDS);
+        return config.validate(AcmeDbConnectorConfig.ALL_FIELDS);
     }
 }
 ----
@@ -295,9 +303,9 @@ Which base class you extend is the first consequence of the design decision from
 
 [source,java]
 ----
-public class MyConnectorConfig extends RelationalDatabaseConnectorConfig {
+public class AcmeDbConnectorConfig extends RelationalDatabaseConnectorConfig {
 
-    public static final Field MY_PROPERTY = Field.create("my.property")
+    public static final Field ACMEDB_PROPERTY = Field.create("acmedb.property")
             .withType(ConfigDef.Type.STRING)
             .withImportance(ConfigDef.Importance.HIGH)
             .withDescription("Description shown in the Connect UI and generated docs.")
@@ -305,7 +313,7 @@ public class MyConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     @Override
     protected SourceInfoStructMaker<?> getSourceInfoStructMaker(Version version) {
-        return new MySourceInfoStructMaker();
+        return new AcmeDbSourceInfoStructMaker();
     }
 }
 ----
@@ -319,9 +327,9 @@ Each config base class exposes a `CONFIG_DEFINITION` that you extend, and the gr
 [source,java]
 ----
 private static final ConfigDefinition CONFIG_DEFINITION = RelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
-        .name("My")
+        .name("AcmeDB")
         .group(Field.Group.CONNECTION, HOSTNAME, PORT, USER, PASSWORD)
-        .group(Field.Group.CONNECTOR, MY_PROPERTY, SOURCE_INFO_STRUCT_MAKER)
+        .group(Field.Group.CONNECTOR, ACMEDB_PROPERTY, SOURCE_INFO_STRUCT_MAKER)
         .group(Field.Group.CONNECTOR_SNAPSHOT, SNAPSHOT_MODE)
         .create();
 
@@ -342,7 +350,7 @@ You model the mutable state in a `SourceInfo` class extending `io.debezium.conne
 
 [source,java]
 ----
-public class MySourceInfoStructMaker extends AbstractSourceInfoStructMaker<MySourceInfo> {
+public class AcmeDbSourceInfoStructMaker extends AbstractSourceInfoStructMaker<AcmeDbSourceInfo> {
 
     private Schema schema;
 
@@ -350,7 +358,7 @@ public class MySourceInfoStructMaker extends AbstractSourceInfoStructMaker<MySou
     public void init(String connector, String version, CommonConnectorConfig config) {
         super.init(connector, version, config);
         schema = commonSchemaBuilder()
-                .name("io.debezium.connector.my.Source")
+                .name("io.debezium.connector.acmedb.Source")
                 .field("position", Schema.INT64_SCHEMA)   // your position fields
                 .build();
     }
@@ -361,13 +369,16 @@ public class MySourceInfoStructMaker extends AbstractSourceInfoStructMaker<MySou
     }
 
     @Override
-    public Struct struct(MySourceInfo sourceInfo) {
+    public Struct struct(AcmeDbSourceInfo sourceInfo) {
         return commonStruct(sourceInfo).put("position", sourceInfo.getPosition());
     }
 }
 ----
 
+[NOTE]
+====
 For comparison, SQL Server's `SourceInfo` carries `change_lsn`, `commit_lsn`, and `event_serial_no`, and PostgreSQL's carries `lsn`, `txId`, and `xmin`.
+====
 
 === Partition and Partition.Provider
 
@@ -376,7 +387,7 @@ Most connectors have exactly one partition per task, keyed by the logical server
 
 [source,java]
 ----
-public class MyPartition implements Partition {
+public class AcmeDbPartition implements Partition {
 
     @Override
     public Map<String, String> getSourcePartition() {
@@ -389,7 +400,11 @@ public class MyPartition implements Partition {
 ----
 
 The nested `Partition.Provider` returns the set of partitions the task must process, typically a singleton set.
+
+[NOTE]
+====
 SQL Server is the instructive production example: its `SqlServerPartition.Provider` returns one partition per configured database (`{"server": ..., "database": ...}`), which is what enables its multi-database mode.
+====
 
 === OffsetContext and OffsetContext.Loader
 
@@ -398,7 +413,7 @@ Extend `io.debezium.pipeline.CommonOffsetContext`, which already implements the 
 
 [source,java]
 ----
-public class MyOffsetContext extends CommonOffsetContext<MySourceInfo> {
+public class AcmeDbOffsetContext extends CommonOffsetContext<AcmeDbSourceInfo> {
 
     @Override
     public Map<String, ?> getOffset() {
@@ -418,11 +433,11 @@ The `Loader` is the inverse: it rehydrates the context from the persisted map on
 
 [source,java]
 ----
-public static class Loader implements OffsetContext.Loader<MyOffsetContext> {
+public static class Loader implements OffsetContext.Loader<AcmeDbOffsetContext> {
 
     @Override
-    public MyOffsetContext load(Map<String, ?> offset) {
-        return new MyOffsetContext(config,
+    public AcmeDbOffsetContext load(Map<String, ?> offset) {
+        return new AcmeDbOffsetContext(config,
                 Position.valueOf((String) offset.get("position")),
                 loadSnapshot(offset).orElse(null), loadSnapshotCompleted(offset));
     }
@@ -452,16 +467,16 @@ If your source can change schemas while streaming, decide here how the connector
 
 === The database connection and value converters
 
-Relational connectors route all database access through a `MyConnection` class extending `io.debezium.jdbc.JdbcConnection`.
+Relational connectors route all database access through an `AcmeDbConnection` class extending `io.debezium.jdbc.JdbcConnection`.
 `JdbcConnection` provides connection handling, query helpers, and metadata reading; your subclass centralizes every connector-specific SQL statement (resolving the current log position, listing captured tables, fetching change data) so that the event sources stay free of raw SQL.
 `SqlServerConnection` and `PostgresConnection` show the pattern.
 
 Value conversion is the second relational-specific concern.
-A `MyValueConverters` class extending `io.debezium.jdbc.JdbcValueConverters` maps source column types to Kafka Connect schema types and implements the `decimal.handling.mode` and `time.precision.mode` semantics; you override only the types that the JDBC defaults do not cover:
+An `AcmeDbValueConverters` class extending `io.debezium.jdbc.JdbcValueConverters` maps source column types to Kafka Connect schema types and implements the `decimal.handling.mode` and `time.precision.mode` semantics; you override only the types that the JDBC defaults do not cover:
 
 [source,java]
 ----
-public class MyValueConverters extends JdbcValueConverters {
+public class AcmeDbValueConverters extends JdbcValueConverters {
 
     @Override
     public SchemaBuilder schemaBuilder(Column column) {
@@ -489,22 +504,22 @@ Its two responsibilities are deciding whether a snapshot is needed and executing
 [source,java]
 ----
 @Override
-public SnapshottingTask getSnapshottingTask(MyPartition partition, MyOffsetContext offsetContext) {
+public SnapshottingTask getSnapshottingTask(AcmeDbPartition partition, AcmeDbOffsetContext offsetContext) {
     boolean snapshotData = snapshotterService.getSnapshotter()
             .shouldSnapshotData(offsetContext != null, offsetContext != null && offsetContext.isInitialSnapshotRunning());
     return new SnapshottingTask(false, snapshotData, List.of(), Map.of(), false);
 }
 
 @Override
-public SnapshotResult<MyOffsetContext> execute(ChangeEventSourceContext context, MyPartition partition,
-                                               MyOffsetContext offsetContext, SnapshottingTask task) {
+public SnapshotResult<AcmeDbOffsetContext> execute(ChangeEventSourceContext context, AcmeDbPartition partition,
+                                               AcmeDbOffsetContext offsetContext, SnapshottingTask task) {
     if (task.shouldSkipSnapshot()) {
         return SnapshotResult.skipped(offsetContext);
     }
     for (SourceRow row : readCurrentState()) {                
         offsetContext.advanceTo(row.position());
         dispatcher.dispatchSnapshotEvent(partition, collectionId(row),
-                new MyChangeRecordEmitter(partition, offsetContext, Operation.READ, row),
+                new AcmeDbChangeRecordEmitter(partition, offsetContext, Operation.READ, row),
                 snapshotReceiver);
     }
     return SnapshotResult.completed(offsetContext);             // streaming starts at this offset
@@ -528,7 +543,10 @@ protected abstract Optional<String> getSnapshotSelect(RelationalSnapshotContext<
 protected abstract O copyOffset(RelationalSnapshotContext<P, O> snapshotContext);
 ----
 
+[NOTE]
+====
 See `SqlServerSnapshotChangeEventSource` and `PostgresSnapshotChangeEventSource` for complete implementations of these methods.
+====
 
 *Snapshot modes and the Snapshotter SPI.*
 Whether a snapshot runs is decided by the `Snapshotter` (SPI in `debezium-api`), selected by the `snapshot.mode` property.
@@ -543,13 +561,13 @@ Its `execute(...)` method must loop until `context.isRunning()` turns false:
 [source,java]
 ----
 @Override
-public void execute(ChangeEventSourceContext context, MyPartition partition, MyOffsetContext offsetContext)
+public void execute(ChangeEventSourceContext context, AcmeDbPartition partition, AcmeDbOffsetContext offsetContext)
         throws InterruptedException {
     while (context.isRunning()) {
         for (SourceChange change : pollChanges(offsetContext.position())) {   // your source access
             offsetContext.advanceTo(change.position());
             dispatcher.dispatchDataChangeEvent(partition, change.collectionId(),
-                    new MyChangeRecordEmitter(partition, offsetContext, change));
+                    new AcmeDbChangeRecordEmitter(partition, offsetContext, change));
         }
         pauseUntilNewChanges();   // poll interval, watch API, blocking read, ...
     }
@@ -558,13 +576,19 @@ public void execute(ChangeEventSourceContext context, MyPartition partition, MyO
 
 Dispatching goes through the framework's `EventDispatcher`, never directly to the queue.
 The dispatcher applies the collection filter, looks up the schema, runs your emitter, and enqueues the resulting `SourceRecord` into the `ChangeEventQueue`, which applies backpressure when Kafka or the sink is slow.
+The following diagram shows the path of a single change from your streaming source to the runtime:
 
+image::source-connector-dispatch-flow.svg[Change event dispatch flow from the streaming source through the EventDispatcher and ChangeEventQueue to the runtime]
+
+[NOTE]
+====
 For production examples of the two streaming styles, read these two classes side by side:
 
 * `SqlServerStreamingChangeEventSource` (pull): implements `executeIteration(...)` instead of a loop in `execute(...)`, computes an LSN window per iteration, opens a `SqlServerChangeTablePointer` per captured change table, and merge-sorts rows across tables so events are emitted in commit order.
 * `PostgresStreamingChangeEventSource` (push): attaches to a logical replication slot, reads `ReplicationMessage`s decoded by the plugin, and implements `commitOffset(...)` to flush the confirmed LSN back to the replication slot so that the database can recycle WAL.
 
 Ordering matters in both styles: preserve the source's commit order, and if the source provides transaction boundaries, dispatch them through the `TransactionMonitor` so that transaction metadata topics stay consistent.
+====
 
 === The change record emitter
 
@@ -612,7 +636,7 @@ Without table semantics you call the `Envelope` factory methods yourself:
 [source,java]
 ----
 @Override
-public void emitChangeRecords(DataCollectionSchema schema, Receiver<MyPartition> receiver)
+public void emitChangeRecords(DataCollectionSchema schema, Receiver<AcmeDbPartition> receiver)
         throws InterruptedException {
     Envelope envelope = schema.getEnvelopeSchema();
     Struct source = offsetContext.getSourceInfo();
@@ -638,18 +662,18 @@ The factory is plain glue code: the coordinator asks it for the snapshot and str
 
 [source,java]
 ----
-public class MyChangeEventSourceFactory implements ChangeEventSourceFactory<MyPartition, MyOffsetContext> {
+public class AcmeDbChangeEventSourceFactory implements ChangeEventSourceFactory<AcmeDbPartition, AcmeDbOffsetContext> {
 
     @Override
-    public SnapshotChangeEventSource<MyPartition, MyOffsetContext> getSnapshotChangeEventSource(
-            SnapshotProgressListener<MyPartition> progressListener,
-            NotificationService<MyPartition, MyOffsetContext> notificationService) {
-        return new MySnapshotChangeEventSource(config, schema, dispatcher, progressListener);
+    public SnapshotChangeEventSource<AcmeDbPartition, AcmeDbOffsetContext> getSnapshotChangeEventSource(
+            SnapshotProgressListener<AcmeDbPartition> progressListener,
+            NotificationService<AcmeDbPartition, AcmeDbOffsetContext> notificationService) {
+        return new AcmeDbSnapshotChangeEventSource(config, schema, dispatcher, progressListener);
     }
 
     @Override
-    public StreamingChangeEventSource<MyPartition, MyOffsetContext> getStreamingChangeEventSource() {
-        return new MyStreamingChangeEventSource(config, schema, dispatcher);
+    public StreamingChangeEventSource<AcmeDbPartition, AcmeDbOffsetContext> getStreamingChangeEventSource() {
+        return new AcmeDbStreamingChangeEventSource(config, schema, dispatcher);
     }
 }
 ----
@@ -672,12 +696,12 @@ It extends `BaseSourceTask<P, O>`, whose Kafka Connect lifecycle methods (`start
 [source,java]
 ----
 @Override
-protected ChangeEventSourceCoordinator<MyPartition, MyOffsetContext> start(Configuration configuration) {
+protected ChangeEventSourceCoordinator<AcmeDbPartition, AcmeDbOffsetContext> start(Configuration configuration) {
     // 1. Load previous offsets; seed a default context on first start.
-    Offsets<MyPartition, MyOffsetContext> previousOffsets = getPreviousOffsets(
-            new MyPartition.Provider(connectorConfig), new MyOffsetContext.Loader(connectorConfig));
+    Offsets<AcmeDbPartition, AcmeDbOffsetContext> previousOffsets = getPreviousOffsets(
+            new AcmeDbPartition.Provider(connectorConfig), new AcmeDbOffsetContext.Loader(connectorConfig));
     if (previousOffsets.getTheOnlyOffset() == null) {
-        previousOffsets = Offsets.of(new MyPartition(serverName), MyOffsetContext.initial(connectorConfig));
+        previousOffsets = Offsets.of(new AcmeDbPartition(serverName), AcmeDbOffsetContext.initial(connectorConfig));
     }
 
     // 2. Queue, error handler, dispatcher.
@@ -686,16 +710,16 @@ protected ChangeEventSourceCoordinator<MyPartition, MyOffsetContext> start(Confi
             .maxBatchSize(connectorConfig.getMaxBatchSize())
             .maxQueueSize(connectorConfig.getMaxQueueSize())
             .build();
-    errorHandler = new MyErrorHandler(connectorConfig, queue, errorHandler);
-    EventDispatcher<MyPartition, TableId> dispatcher = new EventDispatcher<>(
+    errorHandler = new AcmeDbErrorHandler(connectorConfig, queue, errorHandler);
+    EventDispatcher<AcmeDbPartition, TableId> dispatcher = new EventDispatcher<>(
             connectorConfig, topicNamingStrategy, schema, queue, dataCollectionFilter,
             DataChangeEvent::new, metadataProvider, connectorConfig.schemaNameAdjuster(),
             signalProcessor, headerProducer);
 
     // 3. Coordinator: orchestrates the snapshot -> streaming handover.
-    ChangeEventSourceCoordinator<MyPartition, MyOffsetContext> coordinator =
-            new ChangeEventSourceCoordinator<>(previousOffsets, errorHandler, MyConnector.class,
-                    connectorConfig, new MyChangeEventSourceFactory(...), metricsFactory,
+    ChangeEventSourceCoordinator<AcmeDbPartition, AcmeDbOffsetContext> coordinator =
+            new ChangeEventSourceCoordinator<>(previousOffsets, errorHandler, AcmeDbConnector.class,
+                    connectorConfig, new AcmeDbChangeEventSourceFactory(...), metricsFactory,
                     dispatcher, schema, signalProcessor, notificationService, snapshotterService);
     coordinator.start(taskContext, queue, metadataProvider);
     return coordinator;
@@ -795,7 +819,7 @@ services:
       - OFFSET_STORAGE_TOPIC=my_connect_offsets
       - STATUS_STORAGE_TOPIC=my_connect_status
     volumes:
-      - ./target/my-connector:/kafka/connect/my-connector
+      - ./target/acmedb-connector:/kafka/connect/acmedb-connector
 ----
 
 . Register the connector through the REST API:
@@ -803,12 +827,12 @@ services:
 [source,json]
 ----
 {
-    "name": "my-connector",
+    "name": "acmedb-connector",
     "config": {
-        "connector.class": "io.debezium.connector.my.MyConnector",
+        "connector.class": "io.debezium.connector.acmedb.AcmeDbConnector",
         "tasks.max": "1",
-        "topic.prefix": "myserver",
-        "my.property": "value"
+        "topic.prefix": "acmedb",
+        "acmedb.property": "value"
     }
 }
 ----
@@ -816,7 +840,7 @@ services:
 [source,bash]
 ----
 curl -i -X POST -H "Accept:application/json" -H "Content-Type:application/json" \
-  http://localhost:8083/connectors/ -d @register-my-connector.json
+  http://localhost:8083/connectors/ -d @register-acmedb-connector.json
 ----
 
 === Deploying to {prodname} Server
@@ -830,9 +854,9 @@ Connector options keep their names, prefixed with `debezium.source.`:
 +
 [source,properties]
 ----
-debezium.source.connector.class=io.debezium.connector.my.MyConnector
-debezium.source.topic.prefix=myserver
-debezium.source.my.property=value
+debezium.source.connector.class=io.debezium.connector.acmedb.AcmeDbConnector
+debezium.source.topic.prefix=acmedb
+debezium.source.acmedb.property=value
 debezium.source.offset.storage.file.filename=data/offsets.dat
 debezium.source.offset.flush.interval.ms=1000
 
@@ -883,15 +907,15 @@ Extend its async binding, `AbstractAsyncEngineConnectorTest`, and write tests in
 ----
 @Test
 public void shouldSnapshotAndStream() throws Exception {
-    start(MyConnector.class, config());
+    start(AcmeDbConnector.class, config());
     assertConnectorIsRunning();
 
     SourceRecords snapshot = consumeRecordsByTopic(EXISTING_ROWS);
-    VerifyRecord.isValidRead(snapshot.recordsForTopic("myserver.db.table").get(0), "id", 1);
+    VerifyRecord.isValidRead(snapshot.recordsForTopic("acmedb.inventory.customers").get(0), "id", 1);
 
     insertSourceRow();                                   // act on the source
     SourceRecords streamed = consumeRecordsByTopic(1);
-    VerifyRecord.isValidInsert(streamed.recordsForTopic("myserver.db.table").get(0), "id", 2);
+    VerifyRecord.isValidInsert(streamed.recordsForTopic("acmedb.inventory.customers").get(0), "id", 2);
 
     stopConnector();
 }
@@ -940,7 +964,7 @@ A connector test suite extends them and implements only small adapter methods (c
 | `connectorClass()`, `config()`, `connector()`, `server()`, expected counts
 |===
 
-This is exactly how the production connectors are tested.
+This is how the production connectors are tested.
 SQL Server's `IncrementalSnapshotIT` is a good template; it inherits every scenario and supplies only configuration and dialect:
 
 [source,java]
@@ -969,7 +993,11 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
 }
 ----
 
+[NOTE]
+====
 Postgres's `BlockingSnapshotIT` and `PostgresChunkedSnapshotIT` show the same pattern for the other bases.
+====
+
 Plan your test suite around these classes from the start: implement the adapter methods once, and your connector is exercised against the same snapshot, restart, and signal scenarios as SQL Server and PostgreSQL.
 
 === What to assert beyond the scenarios
@@ -1025,7 +1053,7 @@ Retries are budgeted by `errors.max.retries`.
 A connector restart during an incomplete snapshot re-runs the snapshot from scratch (the offset context marks the snapshot as incomplete).
 During development, keep test datasets small; for real deployments, that is what incremental snapshots are for.
 
-When in doubt, compare against the reference implementations: run the SQL Server or PostgreSQL connector with the same runtime configuration and diff the logged startup sequence against yours; divergence usually shows exactly which pipeline piece is miswired.
+When in doubt, compare against the reference implementations: run the SQL Server or PostgreSQL connector with the same runtime configuration and diff the logged startup sequence against yours; divergence usually shows which pipeline piece is miswired.
 
 == Reference
 
