@@ -10,6 +10,7 @@ import org.testcontainers.containers.Network;
 import org.testcontainers.utility.DockerImageName;
 
 import io.debezium.connector.jdbc.junit.TestHelper;
+import io.debezium.testing.testcontainers.ImageNames;
 
 /**
  * An implementation of {@link AbstractSinkDatabaseContextProvider} for CockroachDB.
@@ -19,8 +20,7 @@ import io.debezium.connector.jdbc.junit.TestHelper;
 public class CockroachDbSinkDatabaseContextProvider extends AbstractSinkDatabaseContextProvider {
 
     // Registry-qualified so the image name is not rewritten by the configured image name substitutor.
-    private static final DockerImageName IMAGE_NAME = DockerImageName.parse("docker.io/cockroachdb/cockroach:v25.4.12")
-            .asCompatibleSubstituteFor("cockroachdb/cockroach");
+    private static final DockerImageName IMAGE_NAME = ImageNames.COCKROACHDB_25_4_12_IMAGE_NAME;
 
     @SuppressWarnings("resource")
     public CockroachDbSinkDatabaseContextProvider() {

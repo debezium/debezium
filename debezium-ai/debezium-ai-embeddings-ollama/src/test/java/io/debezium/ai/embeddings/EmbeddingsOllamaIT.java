@@ -22,13 +22,15 @@ import org.junit.jupiter.api.Test;
 import org.testcontainers.ollama.OllamaContainer;
 import org.testcontainers.utility.DockerImageName;
 
+import io.debezium.testing.testcontainers.ImageNames;
+
 /**
  * Integrations tests for {@link FieldToEmbedding} SMT which uses {@link OllamaModelFactory}.
  *
  * @author vjuranek
  */
 public class EmbeddingsOllamaIT {
-    private static final String OLLAMA_IMAGE_NAME = "mirror.gcr.io/ollama/ollama:0.6.2";
+    private static final String OLLAMA_IMAGE_NAME = ImageNames.OLLAMA_0_6_2_IMAGE;
     private static final String OLLAMA_TEST_MODEL = "all-minilm";
 
     private static final OllamaContainer ollama = new OllamaContainer(
