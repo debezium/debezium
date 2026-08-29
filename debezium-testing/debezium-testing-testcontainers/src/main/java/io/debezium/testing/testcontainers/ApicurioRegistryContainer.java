@@ -17,7 +17,7 @@ public class ApicurioRegistryContainer extends GenericContainer<ApicurioRegistry
     private static final String APICURIO_VERSION = getApicurioVersion();
     private static final Integer APICURIO_PORT = 8080;
     private static final String TEST_PROPERTY_PREFIX = "debezium.test.";
-    public static final String APICURIO_REGISTRY_IMAGE = "quay.io/apicurio/apicurio-registry";
+    public static final String APICURIO_REGISTRY_IMAGE = ImageNames.APICURIO_IMAGE;
 
     public ApicurioRegistryContainer() {
         super(APICURIO_REGISTRY_IMAGE + ":" + APICURIO_VERSION);

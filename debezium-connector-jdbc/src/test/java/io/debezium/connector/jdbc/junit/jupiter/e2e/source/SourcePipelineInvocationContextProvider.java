@@ -58,6 +58,7 @@ import io.debezium.connector.jdbc.junit.jupiter.e2e.WithTemporalPrecisionMode;
 import io.debezium.connector.jdbc.util.RandomTableNameGenerator;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.testing.testcontainers.DebeziumContainer;
+import io.debezium.testing.testcontainers.ImageNames;
 import io.strimzi.test.container.StrimziKafkaCluster;
 
 /**
@@ -73,18 +74,18 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SourcePipelineInvocationContextProvider.class);
 
-    private static final String MYSQL_IMAGE_NAME = "container-registry.oracle.com/mysql/community-server:9.0";
+    private static final String MYSQL_IMAGE_NAME = ImageNames.MYSQL_9_IMAGE;
     private static final String MYSQL_USERNAME = "mysqluser";
     private static final String MYSQL_PASSWORD = "debezium";
 
-    private static final String POSTGRES_IMAGE_NAME = "quay.io/debezium/example-postgres";
+    private static final String POSTGRES_IMAGE_NAME = ImageNames.POSTGRES_EXAMPLE_IMAGE;
     private static final String POSTGRES_USERNAME = "postgres";
     private static final String POSTGRES_PASSWORD = "postgres";
 
-    private static final String SQLSERVER_IMAGE_NAME = "mcr.microsoft.com/mssql/server:2022-latest";
+    private static final String SQLSERVER_IMAGE_NAME = ImageNames.SQLSERVER_22_IMAGE;
     private static final String SQLSERVER_PASSWORD = "Debezium1!";
 
-    private static final String ORACLE_IMAGE_NAME = "quay.io/rh_integration/dbz-oracle:19.3.0";
+    private static final String ORACLE_IMAGE_NAME = ImageNames.ORACLE_DBZ_19_3_0_IMAGE;
     private static final String ORACLE_USERNAME = "debezium";
     private static final String ORACLE_PASSWORD = "dbz";
 
