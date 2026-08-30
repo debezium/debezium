@@ -456,6 +456,7 @@ Mark Bereznitsky
 Mark Drilling
 Mark Ducommun
 Mark Lambert
+Mark McDonald
 Markus Kull
 Maros Orsak
 Micro Huang
@@ -585,6 +586,7 @@ Raf Liwoch
 Rafael Câmara
 Rafael Rain
 Raghava Ponnam
+Raghuvansh Rastogi
 Rajendra Dangwal
 Ram Satish
 Ramesh Reddy

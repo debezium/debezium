@@ -57,4 +57,11 @@ public class PostgresSignalBasedIncrementalSnapshotChangeEventSource
         schema.refreshFromIncrementalSnapshot(jdbcConnection, table.id());
         return schema.tableFor(table.id());
     }
+
+    @Override
+    protected Table readSchemaForTable(TableId tableId) throws SQLException {
+        LOGGER.debug("Reading schema for table '{}' during incremental snapshot.", tableId);
+        schema.refreshFromIncrementalSnapshot(jdbcConnection, tableId);
+        return schema.tableFor(tableId);
+    }
 }
