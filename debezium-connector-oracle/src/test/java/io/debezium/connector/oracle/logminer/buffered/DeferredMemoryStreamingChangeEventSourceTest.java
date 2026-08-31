@@ -213,6 +213,62 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
     }
 
     @Test
+    public void testPartialRollbackWithMultipleDeferredMatchesRollsBackLatestAndPrunesStale() throws Exception {
+        final String staleTransactionId = "12345678aaaaaaaa";
+        final String activeTransactionId = "12345678bbbbbbbb";
+
+        try (var source = getChangeEventSource(getConfig().build())) {
+            source.processEvent(getStartLogMinerEventRow(10, staleTransactionId));
+            source.processEvent(getStartLogMinerEventRow(20, activeTransactionId));
+
+            assertThat(source.getDeferredTransactionCount()).isEqualTo(2);
+
+            source.processEvent(getRollbackLogMinerEventRow(30, "12345678ffffffff"));
+
+            assertThat(source.getDeferredTransactionCount()).isZero();
+            assertThat(source.getOldestDeferredTransactionStartScn()).isEqualTo(Scn.NULL);
+            assertThat(source.getTransactionCache().isEmpty()).isTrue();
+        }
+    }
+
+    @Test
+    public void testPartialRollbackWithCachedAndDeferredMatchesRollsBackLatestCachedAndPrunesStaleDeferred() throws Exception {
+        final String staleTransactionId = "12345678aaaaaaaa";
+        final String activeTransactionId = "12345678bbbbbbbb";
+
+        try (var source = getChangeEventSource(getConfig().build())) {
+            source.processEvent(getStartLogMinerEventRow(10, staleTransactionId));
+            source.processEvent(getStartLogMinerEventRow(20, activeTransactionId));
+            source.processEvent(getInsertLogMinerEventRow(21, activeTransactionId));
+
+            assertThat(source.getDeferredTransactionCount()).isEqualTo(1);
+            assertThat(source.getTransactionCache().containsTransaction(activeTransactionId)).isTrue();
+
+            source.processEvent(getRollbackLogMinerEventRow(30, "12345678ffffffff"));
+
+            assertThat(source.getTransactionCache().isEmpty()).isTrue();
+            assertThat(source.getDeferredTransactionCount()).isZero();
+        }
+    }
+
+    @Test
+    public void testPartialRollbackWithLatestDeferredMatchDoesNotTouchOlderCachedTransaction() throws Exception {
+        final String cachedTransactionId = "12345678aaaaaaaa";
+        final String deferredTransactionId = "12345678bbbbbbbb";
+
+        try (var source = getChangeEventSource(getConfig().build())) {
+            source.processEvent(getStartLogMinerEventRow(10, cachedTransactionId));
+            source.processEvent(getInsertLogMinerEventRow(11, cachedTransactionId));
+            source.processEvent(getStartLogMinerEventRow(20, deferredTransactionId));
+
+            source.processEvent(getRollbackLogMinerEventRow(30, "12345678ffffffff"));
+
+            assertThat(source.getDeferredTransactionCount()).isZero();
+            assertThat(source.getTransactionCache().containsTransaction(cachedTransactionId)).isTrue();
+        }
+    }
+
+    @Test
     public void testCacheIsEmptyWhenDeferredTransactionIsCommittedAfterDml() throws Exception {
         try (var source = getChangeEventSource(getConfig().build())) {
             source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
