@@ -6,11 +6,15 @@
 package io.debezium.connector.postgresql.transforms.timescaledb;
 
 import java.io.IOException;
+import java.net.SocketException;
 import java.sql.SQLException;
+import java.sql.SQLRecoverableException;
+import java.sql.SQLTransientException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
+import org.apache.kafka.connect.errors.RetriableException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -96,7 +100,37 @@ public class QueryInformationSchemaMetadata extends AbstractTimescaleDbMetadata 
             });
         }
         catch (SQLException e) {
+            if (isRetriable(e)) {
+                try {
+                    connection.close();
+                }
+                catch (Exception closeError) {
+                    LOGGER.debug("Failed to close broken connection before reconnect", closeError);
+                }
+                try {
+                    connection.reconnect();
+                }
+                catch (SQLException reconnectError) {
+                    LOGGER.debug("Failed to reconnect after a retriable TimescaleDB metadata error", reconnectError);
+                }
+                throw new RetriableException("Failed to read TimescaleDB metadata", e);
+            }
             throw new DebeziumException("Failed to read TimescaleDB metadata", e);
         }
+    }
+
+    static boolean isRetriable(Throwable throwable) {
+        Throwable current = throwable;
+        while (current != null) {
+            if (current instanceof SQLTransientException
+                    || current instanceof SQLRecoverableException) {
+                return true;
+            }
+            if (current instanceof SocketException) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 }
