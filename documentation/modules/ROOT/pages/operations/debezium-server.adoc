@@ -1,3 +1,6 @@
+// Category: debezium-using
+// Type: assembly
+// Title: {prodname} Server
 [id="debezium-server"]
 = {prodname} Server
 
@@ -18,6 +21,9 @@ Also please reach out if you have requirements for specific sinks to be supporte
 {prodname} provides a ready-to-use application that streams change events from a source database to messaging infrastructure like Amazon Kinesis, Google Cloud Pub/Sub, Apache Pulsar, Redis (Stream), or NATS JetStream.
 For streaming change events to Apache Kafka, it is recommended to deploy the {prodname} connectors via Kafka Connect.
 
+// Type: procedure
+// Title: Installing {prodname} Server
+[id="installing-debezium-server"]
 == Installation
 
 To install the server download and unpack the server distribution archive:
@@ -56,6 +62,9 @@ In case of using the Oracle connector you will have to add to the `lib` director
 explained here: xref:{link-oracle-connector}#obtaining-oracle-jdbc-driver-and-xstreams-api-files[Obtaining the Oracle JDBC driver and XStream API files]
 ====
 
+// Type: concept
+// Title: {prodname} Server configuration
+[id="debezium-server-configuration"]
 == Configuration
 
 {prodname} Server uses https://github.com/eclipse/microprofile-config[MicroProfile Configuration] for configuration.
@@ -198,6 +207,9 @@ __  ____  __  _____   ___  __ ____  ______
 2020-05-15 11:33:12,911 INFO  [io.quarkus] (main) Installed features: [cdi, smallrye-health]
 ----
 
+// Type: reference
+// ModuleID: debezium-server-source-configuration-properties
+// Title: {prodname} Server source configuration properties
 [id="debezium-source-configuration-properties"]
 === Source configuration
 
@@ -467,6 +479,9 @@ Should not be set together with `debezium.source.schema.history.internal.azure.s
 
 |===
 
+// Type: reference
+// ModuleID: debezium-server-format-configuration-options
+// Title: {prodname} Server format configuration options
 [id="debezium-format-configuration-options"]
 === Format configuration
 
@@ -505,6 +520,9 @@ By default the output is in JSON format but an arbitrary implementation of Kafka
 
 |===
 
+// Type: reference
+// ModuleID: debezium-server-transformation-configuration-options
+// Title: {prodname} Server transformation configuration options
 [id="debezium-transformations-configuration-options"]
 === Transformation configuration
 
@@ -545,6 +563,9 @@ The configuration will need to contain the list of transformations, implementati
 
 |===
 
+// Type: reference
+// ModuleID: debezium-server-predicates-configuration-options
+// Title: {prodname} Server predicates configuration options
 [id="debezium-predicates-configuration-options"]
 === Predicates configuration
 
@@ -575,6 +596,9 @@ The configuration will need to contain the list of predicates, implementation cl
 
 |===
 
+// Type: reference
+// ModuleID: debezium-server-asynchronous-engine-properties
+// Title: {prodname} Server asynchronous engine properties
 [id="debezium-async-engine-properties"]
 === Asynchronous Engine Properties
 
@@ -604,6 +628,9 @@ To use all available cores on given machine, set the placeholder value, `AVAILAB
 |Time, in milliseconds, that the engine waits for a task's lifecycle management operations (starting and stopping) to complete.
 |===
 
+// Type: reference
+// ModuleID: debezium-server-additional-configuration-options
+// Title: {prodname} Server additional configuration options
 [id="debezium-additional-configuration-options"]
 === Additional configuration
 
@@ -636,6 +663,9 @@ The most frequent used are:
 
 JSON logging can be disabled by setting `quarkus.log.console.json=false` in the _config/application.properties_ file, as demonstrated in the _config/application.properties.example_ file.
 
+// Type: procedure
+// Title: Enabling message filtering in {prodname} Server
+[id="debezium-server-enabling-message-filtering"]
 ==== Enabling message filtering
 
 {prodname} Server provides filter SMTs (Single Message Transformations) capability. See xref:transformations/filtering.adoc[Message Filtering] for more details.
@@ -644,6 +674,9 @@ To enable it, set environment variable `ENABLE_DEBEZIUM_SCRIPTING` to `true`.
 This will add `debezium-scripting` jar file and https://jcp.org/en/jsr/detail?id=223[JSR 223] implementations (currently Groovy and graalvm.js) jar files into the server class path.
 These jar files are contained in `opt_lib` directory of the {prodname} Server distribution.
 
+// Type: assembly
+// Title: {prodname} Server sink configuration
+[id="debezium-server-sink-configuration"]
 === Sink configuration
 
 Sink configuration is specific for each sink type.
@@ -651,6 +684,9 @@ Sink configuration is specific for each sink type.
 The sink is selected by configuration property `debezium.sink.type`.
 
 
+// Type: reference
+// Title: Amazon Kinesis sink configuration
+[id="debezium-server-amazon-kinesis-sink-configuration"]
 ==== Amazon Kinesis
 
 Amazon Kinesis is an implementation of data streaming system with support for stream sharding and other techniques for high scalability.
@@ -687,6 +723,9 @@ So this string will be used as message key for messages from tables without prim
 |===
 
 
+// Type: reference
+// Title: Amazon Kinesis sink injection points
+[id="debezium-server-amazon-kinesis-injection-points"]
 ===== Injection points
 
 The Kinesis sink behaviour can be modified by a custom logic providing alternative implementations for specific functionalities.
@@ -710,6 +749,9 @@ By default the same name is used.
 |===
 
 
+// Type: reference
+// Title: Google Cloud Pub/Sub sink configuration
+[id="debezium-server-google-cloud-pubsub-sink-configuration"]
 ==== Google Cloud Pub/Sub
 
 Google Cloud Pub/Sub is an implementation of messaging/eventing system designed for scalable batch and stream processing applications.
@@ -817,6 +859,9 @@ Unless this value is set, debezium-server will connect to a cloud pubsub instanc
 |===
 
 
+// Type: reference
+// Title: Google Cloud Pub/Sub sink injection points
+[id="debezium-server-google-cloud-pubsub-injection-points"]
 ===== Injection points
 
 The Pub/Sub sink behaviour can be modified by a custom logic providing alternative implementations for specific functionalities.
@@ -839,6 +884,9 @@ When the alternative implementations are not available then the default ones are
 |===
 
 
+// Type: reference
+// Title: Pub/Sub Lite sink configuration
+[id="debezium-server-pubsub-lite-sink-configuration"]
 ==== Pub/Sub Lite
 
 Google Cloud Pub/Sub Lite is a cost-effective alternative to Google Cloud Pub/Sub.
@@ -878,6 +926,9 @@ This is not supported by Pub/Sub Lite so a surrogate key must be used.
 
 |===
 
+// Type: reference
+// Title: Pub/Sub Lite sink injection points
+[id="debezium-server-pubsub-lite-injection-points"]
 ===== Injection points
 
 The Pub/Sub Lite sink behaviour can be modified by a custom logic providing alternative implementations for specific functionalities.
@@ -899,6 +950,9 @@ When the alternative implementations are not available then the default ones are
 |===
 
 
+// Type: reference
+// Title: HTTP Client sink configuration
+[id="debezium-server-http-client-sink-configuration"]
 ==== HTTP Client
 
 The HTTP Client will stream changes to any HTTP Server for additional processing with the original design goal to have
@@ -1022,6 +1076,9 @@ Supports one of the following options:
 
 |===
 
+// Type: reference
+// Title: Apache Pulsar sink configuration
+[id="debezium-server-apache-pulsar-sink-configuration"]
 ==== Apache Pulsar
 
 https://pulsar.apache.org/[Apache Pulsar] is high-performance, low-latency server for server-to-server messaging.
@@ -1075,6 +1132,9 @@ This is not supported by Pulsar so a surrogate key must be used.
 
 |===
 
+// Type: reference
+// Title: Apache Pulsar sink injection points
+[id="debezium-server-apache-pulsar-injection-points"]
 ===== Injection points
 
 The Pulsar sink behaviour can be modified by a custom logic providing alternative implementations for specific functionalities.
@@ -1093,6 +1153,9 @@ When the alternative implementations are not available then the default ones are
 |===
 
 
+// Type: reference
+// Title: Azure Event Hubs sink configuration
+[id="debezium-server-azure-event-hubs-sink-configuration"]
 ==== Azure Event Hubs
 
 https://docs.microsoft.com/azure/event-hubs/event-hubs-about[Azure Event Hubs] is a big data streaming platform and event ingestion service that can receive and process millions of events per second. Data sent to an event hub can be transformed and stored by using any real-time analytics provider or batching/storage adapters.
@@ -1155,6 +1218,9 @@ Specify one of the following values:
 
 |===
 
+// Type: concept
+// Title: Using partitions in Azure Event Hubs
+[id="debezium-server-azure-event-hubs-using-partitions"]
 ===== Using partitions in EventHubs
 
 By default, when neither of the optional <<partition-id, `debezium.sink.eventhubs.partitionid`>> or <<partition-key, `debezium.sink.eventhubs.partitionkey`>> properties are defined, the EventHubs sink will send events round-robin to all available partitions.
@@ -1172,6 +1238,9 @@ debezium.transforms.PartitionRouter.partition.payload.fields=source.db
 debezium.transforms.PartitionRouter.partition.topic.num=5
 ----
 
+// Type: reference
+// Title: Azure Event Hubs sink injection points
+[id="debezium-server-azure-event-hubs-injection-points"]
 ===== Injection points
 
 The default sink behaviour can be modified by a custom logic providing alternative implementations for specific functionalities.
@@ -1189,6 +1258,9 @@ When the alternative implementations are not available then the default ones are
 
 |===
 
+// Type: reference
+// Title: Redis (Stream) sink configuration
+[id="debezium-server-redis-stream-sink-configuration"]
 ==== Redis (Stream)
 
 Redis is an open source (BSD licensed) in-memory data structure store, used as a database, cache and message broker.
@@ -1335,6 +1407,9 @@ Set the value to `true` to configure {prodname} to use a  https://redis.io/docs/
 
 |===
 
+// Type: reference
+// ModuleID: debezium-server-redis-stream-message-format
+// Title: Redis (Stream) sink message format
 [id="p-redis-message-format"]
 ===== Message Format
 We have seen xref:#redis-message-format[above] the `debezium.sink.redis.message.format` property which configures the message format in two ways which look like this in Redis:
@@ -1358,6 +1433,9 @@ We have seen xref:#redis-message-format[above] the `debezium.sink.redis.message.
 ----
 You can read more about Redis Streams https://redis.io/docs/data-types/streams/[here].
 
+// Type: reference
+// Title: Redis (Stream) sink injection points
+[id="debezium-server-redis-stream-injection-points"]
 ===== Injection points
 
 The Redis sink behavior can be modified by a custom logic providing alternative implementations for specific functionalities.
@@ -1376,10 +1454,16 @@ By default the same name is used.
 
 |===
 
+// Type: reference
+// Title: Redis sink configuration examples
+[id="debezium-server-redis-configuration-examples"]
 ==== Redis Configuration Examples
 
 The following examples show complete `application.properties` configurations for connecting {prodname} Server to a Redis sink in both single-instance and cluster deployment modes.
 
+// Type: reference
+// Title: Redis sink single instance mode configuration
+[id="debezium-server-redis-single-instance-mode"]
 ===== Single Instance Mode
 
 Use the following configuration when connecting to a single Redis instance for sink, offset storage, and schema history.
@@ -1405,6 +1489,9 @@ debezium.source.schema.history.internal.redis.password=password
 debezium.source.schema.history.internal.redis.cluster.enabled=false
 ----
 
+// Type: reference
+// Title: Redis sink cluster mode configuration
+[id="debezium-server-redis-cluster-mode"]
 ===== Cluster Mode
 
 Use the following configuration when connecting {prodname} Server to a Redis Cluster, specifying multiple node addresses for sink, offset storage, and schema history.
@@ -1435,6 +1522,9 @@ ensure that your Redis Cluster is properly configured and accessible.
 The {prodname} Server instance must be able to communicate with the cluster nodes.
 
 
+// Type: reference
+// Title: NATS Streaming sink configuration
+[id="debezium-server-nats-streaming-sink-configuration"]
 ==== NATS Streaming
 
 https://docs.nats.io/nats-streaming-concepts/intro[NATS Streaming] is a data streaming system powered by NATS, and written in the Go programming language.
@@ -1464,6 +1554,9 @@ https://docs.nats.io/nats-streaming-concepts/intro[NATS Streaming] is a data str
 |===
 
 
+// Type: reference
+// Title: NATS Streaming sink injection points
+[id="debezium-server-nats-streaming-injection-points"]
 ===== Injection points
 
 The NATS Streaming sink behavior can be modified by a custom logic providing alternative implementations for specific functionalities.
@@ -1486,6 +1579,9 @@ By default the same name is used.
 
 |===
 
+// Type: reference
+// Title: NATS JetStream sink configuration
+[id="debezium-server-nats-jetstream-sink-configuration"]
 ==== NATS JetStream
 NATS has a built-in distributed persistence system called https://docs.nats.io/nats-concepts/jetstream[JetStream] which enables new functionalities and higher qualities of service on top of the base 'Core NATS' functionalities and qualities of service.
 
@@ -1567,6 +1663,9 @@ During asynchronous processing, each message is published with a timeout specifi
 
 If you need a more configurable stream, it can be created with nats cli. More about streams at: https://docs.nats.io/nats-concepts/jetstream/streams
 
+// Type: reference
+// Title: NATS JetStream sink injection points
+[id="debezium-server-nats-jetstream-injection-points"]
 ===== Injection points
 
 The NATS JetStream sink behavior can be modified by a custom logic providing alternative implementations for specific functionalities.
@@ -1589,6 +1688,9 @@ By default the same name is used.
 
 |===
 
+// Type: reference
+// Title: Apache Fluss sink configuration
+[id="debezium-server-apache-fluss-sink-configuration"]
 ==== Apache Fluss
 
 https://fluss.apache.org/[Apache Fluss] is a streaming storage built for real-time analytics, providing unified streaming and batch processing capabilities with high performance, low latency, and strong consistency guarantees.
@@ -1647,6 +1749,9 @@ Apache Fluss requires connectors to be configured with schemas enabled. Schemale
 
 |===
 
+// Type: reference
+// Title: Apache Fluss sink injection points
+[id="debezium-server-apache-fluss-injection-points"]
 ===== Injection points
 
 The Fluss sink behavior can be modified by a custom logic providing alternative implementations for specific functionalities.
@@ -1666,6 +1771,9 @@ By default the same name is used.
 |===
 
 
+// Type: reference
+// Title: Apache Kafka sink configuration
+[id="debezium-server-apache-kafka-sink-configuration"]
 ==== Apache Kafka
 
 https://kafka.apache.org/[Apache Kafka] is a popular open-source platform for distributed event streaming. {prodname} Server supports publishing captured change events to a configured Kafka message broker.
@@ -1693,6 +1801,9 @@ The specified timeout also governs the interval that the server waits for Kafka 
 Set the value to `0` to disable the timeout.
 |===
 
+// Type: reference
+// Title: Apache Kafka sink injection points
+[id="debezium-server-apache-kafka-injection-points"]
 ===== Injection points
 
 The Kafka sink behaviour can be modified by a custom logic providing alternative implementations for specific functionalities.
@@ -1708,6 +1819,9 @@ When the alternative implementations are not available then the default ones are
 |Custom implementation maps the original destination (topic) name into another Kafka topic. By default, the same name is used.
 |===
 
+// Type: reference
+// Title: Pravega sink configuration
+[id="debezium-server-pravega-sink-configuration"]
 ==== Pravega
 
 https://pravega.io/[Pravega] is a cloud-native storage system for event streams and data streams. This sink offers two modes: non-transactional and transactional. The non-transactional mode individually writes each event in a {prodname} batch to Pravega. The transactional mode writes the {prodname} batch to a Pravega transaction that commits when the batch is completed.
@@ -1738,6 +1852,9 @@ The Pravega sink expects destination scope and streams to already be created.
 
 |===
 
+// Type: reference
+// Title: Pravega sink injection points
+[id="debezium-server-pravega-injection-points"]
 ===== Injection points
 
 Pravega sink behavior can be modified by custom logic providing alternative implementations for specific functionalities.
@@ -1756,6 +1873,9 @@ By default the same name is used.
 
 |===
 
+// Type: reference
+// Title: Infinispan sink configuration
+[id="debezium-server-infinispan-sink-configuration"]
 ==== Infinispan
 
 https://infinispan.org/[Infinispan] is open-source in-memory data grid that offers rich set of caches types as well as cache stores.
@@ -1795,6 +1915,9 @@ The Infinispan sink expects that the destination cache is already defined and cr
 
 |===
 
+// Type: reference
+// Title: Infinispan sink injection points
+[id="debezium-server-infinispan-injection-points"]
 ===== Injection points
 
 The Infinispan sink behaviour can be modified by a custom logic providing alternative implementations for specific functionalities.
@@ -1811,6 +1934,9 @@ When the alternative implementations are not available then the default ones are
 |Custom instance of https://docs.jboss.org/infinispan/14.0/apidocs/org/infinispan/client/hotrod/RemoteCache.html[Hot Rod cache] which will be used for connecting and sending events to the Infinspan cluster.
 |===
 
+// Type: reference
+// Title: Apache RocketMQ sink configuration
+[id="debezium-server-apache-rocketmq-sink-configuration"]
 ==== Apache RocketMQ
 
 https://rocketmq.apache.org/[Apache RocketMQ] is a distributed messaging and streaming platform with low latency, high
@@ -1858,6 +1984,9 @@ proper value based on the actual application to avoid long thread blocking time.
 
 |===
 
+// Type: reference
+// Title: Apache RocketMQ sink injection points
+[id="debezium-server-apache-rocketmq-injection-points"]
 ===== Injection points
 
 The RocketMQ sink behaviour can be modified by a custom logic providing alternative implementations for specific
@@ -1880,6 +2009,9 @@ When the alternative implementations are not available then the default ones are
 By default the same name is used.
 |===
 
+// Type: reference
+// Title: RabbitMQ Stream sink configuration
+[id="debezium-server-rabbitmq-stream-sink-configuration"]
 ==== RabbitMQ Stream
 
 https://www.rabbitmq.com/[RabbitMQ] is an open source message broker, supporting multiple messaging protocols and can be deployed in distributed and federated configurations to meet high-scale, high-availability requirements.
@@ -1956,6 +2088,9 @@ So this string will be used as value for records without a payload.
 |===
 
 
+// Type: reference
+// Title: RabbitMQ Stream sink injection points
+[id="debezium-server-rabbitmq-stream-injection-points"]
 ===== Injection points
 
 RabbitMQ sink behavior can be modified by custom logic providing alternative implementations for specific functionalities.
@@ -1973,6 +2108,9 @@ When the alternative implementations are not available then the default ones are
 By default the same name is used.
 |===
 
+// Type: reference
+// Title: RabbitMQ Native Stream sink configuration
+[id="debezium-server-rabbitmq-native-stream-sink-configuration"]
 ==== RabbitMQ Native Stream
 
 Since https://www.rabbitmq.com/[RabbitMQ 3.9], https://www.rabbitmq.com/streams.html[Streams] were introduced to RabbitMQ, utilizing a new blazingly-fast protocol that can be used alongside AMQP 0.9.1.
@@ -2013,6 +2151,9 @@ So this string will be used as value for records without a payload.
 |===
 
 
+// Type: reference
+// Title: Milvus sink configuration
+[id="debezium-server-milvus-sink-configuration"]
 ==== Milvus
 
 Milvus is an open-source vector database designed for similarity search and the retrieval of high-dimensional data, such as embeddings from machine learning models (for example. text, images, and audio).
@@ -2044,6 +2185,9 @@ Must be set to `milvus`.
 |===
 
 
+// Type: reference
+// Title: Milvus sink injection points
+[id="debezium-server-milvus-injection-points"]
 ===== Injection points
 
 You can modify the behavior of the Milvus sink connector by applying custom logic that provides alternative implementations for specific functions.
@@ -2067,6 +2211,9 @@ By default, dots in a name are replaced with underscores.
 |===
 
 
+// Type: reference
+// Title: Qdrant sink configuration
+[id="debezium-server-qdrant-sink-configuration"]
 ==== Qdrant Sink
 
 Qdrant is an open-source vector database optimized for vector similarity search and extended with powerful filtering capabilities.
@@ -2140,6 +2287,9 @@ If you specify implementations that are not available, the connector uses the de
 |===
 
 
+// Type: reference
+// Title: InstructLab sink configuration
+[id="debezium-server-instructlab-sink-configuration"]
 ==== InstructLab
 
 InstructLab is a community-driven project for augmenting large language models (LLMs) for use in generative artificial intelligence applications.
@@ -2193,6 +2343,9 @@ For example, a value of `a/b` and a base path of `/taxonomy` represents `/taxono
 
 |===
 
+// Type: reference
+// ModuleID: debezium-server-instructlab-mapping-definition
+// Title: InstructLab sink mapping definition
 [id="instructlab-mapping-definition"]
 ===== Mapping definition
 
@@ -2218,6 +2371,9 @@ If the mapping definition does not include the `header:` or `value:` prefixes, w
 Use this option when you want to map the value of a specific static constant to an attribute in the `qna.yml` file.
 
 
+// Type: reference
+// Title: JDBC sink configuration
+[id="debezium-server-jdbc-sink-configuration"]
 ==== JDBC
 
 The JDBC sink writes change events directly to a relational database using JDBC.
@@ -2272,6 +2428,9 @@ debezium.sink.jdbc.delete.enabled=true
 ----
 
 
+// Type: reference
+// Title: Apache Iceberg sink configuration
+[id="debezium-server-apache-iceberg-sink-configuration"]
 ==== Apache Iceberg
 
 The {prodname} Apache Iceberg connector is a sink that runs in {prodname} Server. It consumes database change events from a source {prodname} connector and writes them to Apache Iceberg tables.
@@ -2415,6 +2574,9 @@ The connector provides the following features:
 |===
 
 
+// Type: assembly
+// Title: Databricks Zerobus Ingest sink configuration
+[id="debezium-server-databricks-zerobus-ingest-sink-configuration"]
 ==== Databricks Zerobus Ingest
 
 The {prodname} https://docs.databricks.com/aws/en/ingestion/zerobus[Databricks Zerobus Ingest] is a serverless, push-based ingestion service that writes change event records directly into Unity Catalog Delta tables.
@@ -2446,6 +2608,9 @@ To enable the service to write data to the target table, the following requireme
 ** `SELECT`
 ** `MODIFY`
 
+// Type: reference
+// Title: Databricks Zerobus Ingest gRPC route configuration properties
+[id="debezium-server-zerobus-grpc-route-configuration"]
 ===== gRPC route (`zerobus`)
 
 The following table describes the properties that control how Zerobus Ingest behaves when it uses gRPC streams to maintain connections between {prodname} and Zerobus endpoints.
@@ -2633,6 +2798,8 @@ The SDK default applies only when the property is not specified in the {prodname
 If the property is omitted, the sink uses the SDK-defined value, including any changes introduced by later SDK upgrades.
 If you specify a value for the property, the configured value takes precedence.
 
+// Type: concept
+// Title: Databricks Zerobus Ingest envelope row contract
 [[zerobus-envelope-row-contract]]
 ====== Envelope row contract
 
@@ -2711,6 +2878,9 @@ debezium.sink.zerobus.tombstone.handling.mode=event
 debezium.sink.zerobus.filter.operations=c,r,u,d,t,m,tombstone
 ----
 
+// Type: reference
+// Title: Databricks Zerobus Ingest gRPC route injection points
+[id="debezium-server-zerobus-grpc-injection-points"]
 ====== Injection points
 
 You can modify the behavior of the gRPC route by injecting custom logic that replaces a specific default implementation.
@@ -2729,6 +2899,9 @@ By default, the sink builds the instance from the <<zerobus-endpoint, `endpoint`
 
 |===
 
+// Type: reference
+// Title: Databricks Zerobus Ingest REST route configuration properties
+[id="debezium-server-zerobus-rest-route-configuration"]
 ===== REST route (`zerobus-rest`)
 
 [cols="35%a,10%a,55%a",options="header"]
@@ -2775,6 +2948,8 @@ For more information, see <<zerobus-monitoring, Monitoring>>.
 
 |===
 
+// Type: assembly
+// Title: Databricks Zerobus Ingest Kafka route
 [[zerobus-kafka-route]]
 ===== Kafka route
 
@@ -2871,6 +3046,9 @@ The handler uses this list to build the OAuth Rich Authorization Requests (RFC 9
 If you set this option, the handler skips the OAuth exchange and uses this token directly.
 |===
 
+// Type: reference
+// Title: Record format for the Databricks Zerobus Ingest Kafka route
+[id="debezium-server-zerobus-kafka-route-record-format"]
 ====== Record format for the Kafka route
 
 Zerobus accepts a record value only if it is a JSON object whose fields match the target Delta table schema.
@@ -2901,6 +3079,9 @@ Zerobus rejects an ISO-8601 string for a `TIMESTAMP` column, and it interprets a
 Because of the latter, the `connect` mode, which emits milliseconds, silently stores an incorrect instant.
 |===
 
+// Type: reference
+// Title: Tuning throughput on the Databricks Zerobus Ingest Kafka route
+[id="debezium-server-zerobus-kafka-route-tuning-throughput"]
 ====== Tuning throughput on the Kafka route
 
 Throughput on the Kafka route is bound by network round trips rather than by local processing, because Zerobus acknowledges each request from the region in which the workspace runs.
@@ -2993,6 +3174,8 @@ debezium.transforms.route.regex=<topic-prefix>\\.<schema>\\.<table>
 debezium.transforms.route.replacement=<catalog>.<schema>.<table>
 ----
 
+// Type: reference
+// Title: Databricks Zerobus Ingest data type mapping
 [[zerobus-data-type-mapping]]
 ===== Data type mapping
 
@@ -3035,6 +3218,8 @@ The following table shows mappings between {prodname} logical types and Delta co
 
 |===
 
+// Type: reference
+// Title: Monitoring the Databricks Zerobus Ingest sink
 [[zerobus-monitoring]]
 ===== Monitoring
 
@@ -3144,6 +3329,9 @@ To monitor the connection on the Kafka route, use the standard `kafka.producer:t
 |===
 
 
+// Type: concept
+// Title: {prodname} Server extensions
+[id="debezium-server-extensions"]
 == Extensions
 
 {prodname} Server uses the https://quarkus.io/[Quarkus framework] and relies on dependency injection to enable developer to extend its behaviour.
@@ -3153,6 +3341,9 @@ The server can be extended in two ways by providing a custom logic:
 * implementation of a new sink
 * customization of an existing sink - i.e. non-standard configuration
 
+// Type: concept
+// Title: Implementing a new {prodname} Server sink
+[id="debezium-server-implementing-a-new-sink"]
 === Implementation of a new sink
 
 The new sink can be implemented as a CDI bean implementing interface `DebeziumEngine.ChangeConsumer` and with annotation `@Named` and unique name and scope `@Dependent`.
@@ -3164,6 +3355,9 @@ The execution path must pass the messages into the target system and regularly c
 See the https://github.com/debezium/debezium-server/blob/main/debezium-server-kinesis/src/main/java/io/debezium/server/kinesis/KinesisChangeConsumer.java[Kinesis sink] implementation for further details.
 
 
+// Type: concept
+// Title: Customizing an existing {prodname} Server sink
+[id="debezium-server-customizing-an-existing-sink"]
 === Customization of an existing sink
 
 Some of the sinks exposes dependency injections points that enable users to provide its own bean that would modify the behaviour of the sink.
@@ -3171,10 +3365,16 @@ Typical examples are fine tuning of the target client setup, the destination nam
 
 See an example of a custom https://github.com/debezium/debezium-examples/tree/main/debezium-server-name-mapper[topic naming policy] implementation for further details.
 
+// Type: assembly
+// Title: Running the {prodname} Cassandra connector with {prodname} Server
+[id="debezium-server-cassandra-connector"]
 == Cassandra connector
 
 The {prodname} Cassandra connector requires additional JVM options at startup and a specific `application.properties` configuration when run with {prodname} Server.
 
+// Type: procedure
+// Title: Running {prodname} Server with the Cassandra connector
+[id="debezium-server-running-with-cassandra-connector"]
 === Running {prodname} Server with Cassandra connector
 
 Running with java 11+ requires setting the following java options at startup trough the JDK_JAVA_OPTIONS environment variable or equivalent:
@@ -3183,6 +3383,9 @@ Running with java 11+ requires setting the following java options at startup tro
 JDK_JAVA_OPTIONS="--add-exports java.base/jdk.internal.misc=ALL-UNNAMED --add-exports java.base/jdk.internal.ref=ALL-UNNAMED --add-exports java.base/sun.nio.ch=ALL-UNNAMED --add-exports java.management.rmi/com.sun.jmx.remote.internal.rmi=ALL-UNNAMED --add-exports java.rmi/sun.rmi.registry=ALL-UNNAMED --add-exports java.rmi/sun.rmi.server=ALL-UNNAMED --add-exports java.sql/java.sql=ALL-UNNAMED  --add-opens java.base/java.lang.module=ALL-UNNAMED --add-opens java.base/jdk.internal.loader=ALL-UNNAMED --add-opens java.base/jdk.internal.ref=ALL-UNNAMED --add-opens java.base/jdk.internal.reflect=ALL-UNNAMED --add-opens java.base/jdk.internal.math=ALL-UNNAMED --add-opens java.base/jdk.internal.module=ALL-UNNAMED --add-opens java.base/jdk.internal.util.jar=ALL-UNNAMED --add-opens jdk.management/com.sun.management.internal=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens java.base/sun.nio.ch=ALL-UNNAMED"
 ```
 
+// Type: reference
+// Title: Sample `application.properties` for running the Cassandra connector with Redis sink
+[id="debezium-server-cassandra-connector-sample-application-properties"]
 === Sample of basic `application.properties` for running Cassandra connector with Redis sink
 
 ```
@@ -3204,6 +3407,9 @@ debezium.source.topic.prefix=sample_prefix
 debezium.source.http.port=8040
 ```
 
+// Type: reference
+// Title: Cassandra connector transformation for operation code
+[id="debezium-server-cassandra-connector-transformation-for-operation-code"]
 === Transformation for Operation Code
 
 By default, Cassandra connector has it's own Operation Codes which are not entirely compatible with {prodname} Operation Codes.
