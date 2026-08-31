@@ -4593,17 +4593,21 @@ The schema and table configuration include/exclude lists can safely specify regu
 |`2`
 |The minimum number of transaction logs to read per redo thread in each mining step.
 
-This configuration property has no effect when using xref:#oracle-property-log-mining-strategy[`log.mining.strategy`] is set to `redo_log_catalog`.
+This property does not apply if `log.mining.strategy` is set to `redo_log_catalog`.
 
 |[[oracle-property-log-mining-log-count-growth-max]]<<oracle-property-log-mining-log-count-growth-max, `+log.mining.log.count.growth.max+`>>
 |`4`
-|The maximum number of transaction logs per redo thread that the mining window grows to automatically when a long-running transaction prevents the window start from advancing.
-The growth budget contributes at most approximately this count multiplied by the online redo log size to a single mining step.
+|Specifies the maximum number of redo logs per redo thread that the connector can add to the mining window when a long-running transaction prevents the window from advancing.
 
-A xref:#oracle-property-log-mining-log-count-min[`log.mining.log.count.min`] value above this maximum takes precedence.
-The mining window can exceed this count when the connector re-reads previously mined logs, such as after a restart or while a transaction remains in progress; the value bounds automatic growth, not the window itself.
+During a mining cycle, the connector can expand the window to a size that is approximately equal to the configured number of logs multiplied by the size of each online redo log.
 
-This configuration property has no effect when using xref:#oracle-property-log-mining-strategy[`log.mining.strategy`] is set to `redo_log_catalog`.
+If you set a value that is less than the value of the xref:oracle-property-log-mining-log-count-min[`log.mining.log.count.min`] property, the connector applies the larger value from that property to this property.
+That is, the connector effectively raises this maximum to satisfy that minimum.
+
+The specified limit applies to automatic mining window growth, not to the absolute count of the logs per thread that can populate the mining window.
+When the connector re-reads previously mined logs, as can occur after a restart, or while a transaction remains in progress, the count can exceed this value.
+
+This property does not apply if `log.mining.strategy` is set to `redo_log_catalog`.
 
 |[[oracle-property-log-mining-buffer-type]]<<oracle-property-log-mining-buffer-type, `+log.mining.buffer.type+`>>
 |`memory`
