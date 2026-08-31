@@ -436,6 +436,18 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                 LOGGER.debug("Transaction {} was deferred with no DML events, removing on commit.", transactionId);
                 removedDeferredTransaction = true;
             }
+            else if (!Strings.isNullOrEmpty(transactionId) && transactionId.endsWith(NO_SEQUENCE_TRX_ID_SUFFIX)) {
+                // LogMiner could not resolve the commit's transaction sequence because the transaction
+                // was read in a prior mining session. There is no cached transaction to apply, but
+                // deferred entries with the same undo segment and slot prefix must still be cleaned
+                // up: the most recently started one is the transaction this commit terminates, and
+                // any older one's slot has since been reused, proving it already ended. Leaving them
+                // behind pins the offset SCN low watermark until the deferred transaction retention
+                // expires. Removal is safe because deferred entries hold no events. Cached
+                // transactions are intentionally not resolved by prefix here, since committing a
+                // guessed transaction would emit its events.
+                removedDeferredTransaction = removeDeferredTransactionsByPrefix(transactionId, "commit");
+            }
 
             if (!getOffsetContext().getCommitScn().hasEventScnBeenHandled(row)) {
                 LOGGER.debug("Transaction {} not found in cache with SCN {}, no events to commit.", transactionId, row.getScn());
@@ -667,13 +679,48 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                     }
                 }
                 else {
-                    // Multiple matches - ambiguous, cannot determine which to rollback
-                    // TODO: Investigate whether this scenario is possible and if so, how to disambiguate
-                    LOGGER.warn("Unable to match partial transaction '{}' to a single transaction. Found {} transactions " +
-                            "with prefix '{}'. Cannot determine which transaction to rollback. " +
-                            "Manual investigation required. Transactions: {}",
-                            transactionId, matchingTransactions.size(), prefix,
-                            matchingTransactions.stream().map(MatchedTransaction::transactionId).collect(Collectors.joining(", ")));
+                    // Multiple candidates share the rollback's undo segment and slot prefix. Oracle
+                    // reuses an undo slot only after the transaction that previously occupied it has
+                    // ended, so of all candidates only the one with the highest start SCN can still
+                    // be in progress, and it is the one this rollback terminates.
+                    final MatchedTransaction matched = matchingTransactions.stream()
+                            .max(Comparator.comparing(MatchedTransaction::startScn))
+                            .orElseThrow();
+
+                    LOGGER.warn("Matched partial transaction '{}' to the most recent of {} transactions with prefix '{}', " +
+                            "the {} transaction '{}' (startScn={}, changeTime={}). Rolling back the matched transaction.",
+                            transactionId,
+                            matchingTransactions.size(),
+                            prefix,
+                            matched.deferred() ? "deferred" : "cached",
+                            matched.transactionId(),
+                            matched.startScn(),
+                            matched.changeTime());
+
+                    if (matched.deferred()) {
+                        removeDeferredTransaction(matched.transactionId());
+                    }
+                    else {
+                        finalizeTransaction(matched.transactionId(), event.getScn(), true);
+                        getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
+                        getMetrics().setBufferedEventCount(getTransactionCache().getTransactionEvents());
+                    }
+
+                    // Any older candidate's undo slot has since been reused, which proves that its
+                    // transaction already ended and that its terminal event was never matched. Stale
+                    // deferred entries would otherwise pin the offset SCN low watermark until the
+                    // deferred transaction retention expires; removing them is safe because a deferred
+                    // entry holds no events and a later DML event recreates the transaction. Cached
+                    // candidates are intentionally left untouched because they may carry events.
+                    for (MatchedTransaction candidate : matchingTransactions) {
+                        if (candidate != matched && candidate.deferred() && removeDeferredTransaction(candidate.transactionId())) {
+                            LOGGER.warn("Removed stale deferred transaction '{}' (startScn={}, changeTime={}) whose undo " +
+                                    "slot was reused; its terminal event was never matched.",
+                                    candidate.transactionId(),
+                                    candidate.startScn(),
+                                    candidate.changeTime());
+                        }
+                    }
                 }
             }
 
@@ -690,6 +737,24 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
     private boolean removeDeferredTransaction(String transactionId) {
         return !Strings.isNullOrEmpty(transactionId) && deferredTransactions.remove(transactionId) != null;
+    }
+
+    private boolean removeDeferredTransactionsByPrefix(String partialTransactionId, String terminalEventName) {
+        final String prefix = partialTransactionId.substring(0, ORACLE_TRANSACTION_ID_PREFIX_LENGTH);
+        final List<DeferredTransaction> matches = deferredTransactions.values().stream()
+                .filter(t -> t.transactionId().startsWith(prefix))
+                .toList();
+        for (DeferredTransaction match : matches) {
+            deferredTransactions.remove(match.transactionId());
+            LOGGER.warn("Matched partial transaction '{}' {} to deferred transaction '{}' (startScn={}, changeTime={}); " +
+                    "removed the deferred entry.",
+                    partialTransactionId,
+                    terminalEventName,
+                    match.transactionId(),
+                    match.startScn(),
+                    match.changeTime());
+        }
+        return !matches.isEmpty();
     }
 
     private List<MatchedTransaction> getMatchingTransactionsByPrefix(String prefix) {
