@@ -12,19 +12,21 @@
 
 toc::[]
 
+{prodname} Server is a ready-to-use application that streams change events from a source database directly to messaging and storage systems without requiring Apache Kafka.
+You configure a source connector and a sink to define where events come from and where they are delivered.
+
 [NOTE]
 ====
 Please let us know if you encounter any problems while using this feature.
 Also please reach out if you have requirements for specific sinks to be supported by {prodname} Server or even would be interested in contributing the required implementation.
 ====
 
-{prodname} provides a ready-to-use application that streams change events from a source database to messaging infrastructure like Amazon Kinesis, Google Cloud Pub/Sub, Apache Pulsar, Redis (Stream), or NATS JetStream.
-For streaming change events to Apache Kafka, it is recommended to deploy the {prodname} connectors via Kafka Connect.
-
 // Type: procedure
 // Title: Installing {prodname} Server
 [id="installing-debezium-server"]
 == Installation
+
+Download and unpack the {prodname} Server distribution to install the server on your system.
 
 To install the server download and unpack the server distribution archive:
 
@@ -212,6 +214,8 @@ __  ____  __  _____   ___  __ ____  ______
 // Title: {prodname} Server source configuration properties
 [id="debezium-source-configuration-properties"]
 === Source configuration
+
+Source configuration properties control which connector {prodname} Server runs and how it stores offsets and schema history outside of Kafka Connect.
 
 The source configuration uses the same configuration properties that are described on the specific connector documentation pages (just with `debezium.source` prefix), together with few more specific ones, necessary for running outside of Kafka Connect:
 
@@ -1223,6 +1227,9 @@ Specify one of the following values:
 [id="debezium-server-azure-event-hubs-using-partitions"]
 ===== Using partitions in EventHubs
 
+Azure Event Hubs supports multiple partition routing strategies that control how {prodname} distributes change events across partitions.
+You can specify fixed partition IDs, partition keys, or the Partition Routing transformer to match the throughput and ordering requirements in your deployment.
+
 By default, when neither of the optional <<partition-id, `debezium.sink.eventhubs.partitionid`>> or <<partition-key, `debezium.sink.eventhubs.partitionkey`>> properties are defined, the EventHubs sink will send events round-robin to all available partitions.
 
 You can enforce all messages to be sent to a single, fixed, partition by setting the <<partition-id, `debezium.sink.eventhubs.partitionid`>> property. Alternatively, you can use the <<partition-key, `debezium.sink.eventhubs.partitionkey`>> property to specify a fixed partition key that EventHubs will use to route all events to a specific partition.
@@ -1262,6 +1269,9 @@ When the alternative implementations are not available then the default ones are
 // Title: Redis (Stream) sink configuration
 [id="debezium-server-redis-stream-sink-configuration"]
 ==== Redis (Stream)
+
+The Redis sink stores change events as entries in a Redis stream, supporting both single-instance and cluster deployments.
+You configure the sink by setting the `debezium.sink.type` property to `redis` and specifying connection, authentication, and storage options.
 
 Redis is an open source (BSD licensed) in-memory data structure store, used as a database, cache and message broker.
 The Stream is a data type which models a _log data structure_ in a more abstract way. It implements powerful operations to overcome the limitations of a log file.
@@ -1412,7 +1422,10 @@ Set the value to `true` to configure {prodname} to use a  https://redis.io/docs/
 // Title: Redis (Stream) sink message format
 [id="p-redis-message-format"]
 ===== Message Format
-We have seen xref:#redis-message-format[above] the `debezium.sink.redis.message.format` property which configures the message format in two ways which look like this in Redis:
+
+The Redis sink supports two message formats, `compact` and `extended`, that differ in how the key and value are stored within a Redis stream entry.
+
+Set the `redis.message.format` property to specify which format to use when sending message to a Redis sink.
 
 - the `extended` format, using two pairs {1), 2)}={"key", "message key"} and {3), 4)}={"value", "message value"}:
 [source]
@@ -1520,6 +1533,7 @@ debezium.source.schema.history.internal.redis.cluster.enabled=true
 NOTE: If you configure {prodname} to use Redis Cluster mode,
 ensure that your Redis Cluster is properly configured and accessible.
 The {prodname} Server instance must be able to communicate with the cluster nodes.
+
 
 
 // Type: reference
@@ -2904,6 +2918,9 @@ By default, the sink builds the instance from the <<zerobus-endpoint, `endpoint`
 [id="debezium-server-zerobus-rest-route-configuration"]
 ===== REST route (`zerobus-rest`)
 
+The `zerobus-rest` route delivers change event records to Databricks Zerobus Ingest by using the Zerobus REST API, sending one HTTP request per record.
+In environments that do not have persistent gRPC connections, set the following properties to specify how {prodname} Server uses the REST route to delivers event records to a target table.
+
 [cols="35%a,10%a,55%a",options="header"]
 |===
 |Property
@@ -3377,7 +3394,10 @@ The {prodname} Cassandra connector requires additional JVM options at startup an
 [id="debezium-server-running-with-cassandra-connector"]
 === Running {prodname} Server with Cassandra connector
 
-Running with java 11+ requires setting the following java options at startup trough the JDK_JAVA_OPTIONS environment variable or equivalent:
+{prodname} Server requires specific JVM options to run the Cassandra connector on Java 11 and later.
+Set these options through the `JDK_JAVA_OPTIONS` environment variable before starting the server.
+
+Set the `JDK_JAVA_OPTIONS` environment variable to the following options before starting {prodname} Server:
 
 ```
 JDK_JAVA_OPTIONS="--add-exports java.base/jdk.internal.misc=ALL-UNNAMED --add-exports java.base/jdk.internal.ref=ALL-UNNAMED --add-exports java.base/sun.nio.ch=ALL-UNNAMED --add-exports java.management.rmi/com.sun.jmx.remote.internal.rmi=ALL-UNNAMED --add-exports java.rmi/sun.rmi.registry=ALL-UNNAMED --add-exports java.rmi/sun.rmi.server=ALL-UNNAMED --add-exports java.sql/java.sql=ALL-UNNAMED  --add-opens java.base/java.lang.module=ALL-UNNAMED --add-opens java.base/jdk.internal.loader=ALL-UNNAMED --add-opens java.base/jdk.internal.ref=ALL-UNNAMED --add-opens java.base/jdk.internal.reflect=ALL-UNNAMED --add-opens java.base/jdk.internal.math=ALL-UNNAMED --add-opens java.base/jdk.internal.module=ALL-UNNAMED --add-opens java.base/jdk.internal.util.jar=ALL-UNNAMED --add-opens jdk.management/com.sun.management.internal=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens java.base/sun.nio.ch=ALL-UNNAMED"
@@ -3387,6 +3407,8 @@ JDK_JAVA_OPTIONS="--add-exports java.base/jdk.internal.misc=ALL-UNNAMED --add-ex
 // Title: Sample `application.properties` for running the Cassandra connector with Redis sink
 [id="debezium-server-cassandra-connector-sample-application-properties"]
 === Sample of basic `application.properties` for running Cassandra connector with Redis sink
+
+The following `application.properties` example shows the minimum configuration required to run the {prodname} Cassandra connector with a Redis sink.
 
 ```
 # Sink
