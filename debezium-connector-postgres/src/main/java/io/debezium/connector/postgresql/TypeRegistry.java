@@ -625,20 +625,16 @@ public class TypeRegistry {
 
         int elementTypeOid = 0;
         if (CATEGORY_ENUM.equals(category)) {
-            builder = builder.enumValues(readEnumValues(rs.getArray("enum_values")));
+            final Array enumValuesArray = rs.getArray("enum_values");
+            builder = builder.enumValues(enumValuesArray == null
+                    ? Collections.emptyList()
+                    : Arrays.asList((String[]) enumValuesArray.getArray()));
         }
         else if (CATEGORY_ARRAY.equals(category)) {
             elementTypeOid = (int) rs.getLong("element");
             builder = builder.elementType(elementTypeOid);
         }
         return new TypeBuilderWithSchema(builder.parentType(parentTypeOid), schemaName, oid, parentTypeOid, elementTypeOid);
-    }
-
-    @VisibleForTesting
-    static List<String> readEnumValues(Array enumValuesArray) throws SQLException {
-        return enumValuesArray == null
-                ? Collections.emptyList()
-                : Arrays.asList((String[]) enumValuesArray.getArray());
     }
 
     private PostgresType resolveUnknownType(String name) {
