@@ -157,14 +157,10 @@ public class ConnectionIT implements Testing {
 
         try {
             Configuration config = TestHelper.defaultJdbcConfig();
-            TypeRegistry typeRegistry = PostgresConnection.createTypeRegistry(
-                    JdbcConfiguration.adapt(config),
-                    Set.of("dbz2525"));
+            JdbcConfiguration jdbcConfig = JdbcConfiguration.adapt(config);
 
-            PostgresType emptyEnum = typeRegistry.get("dbz2525", "empty_enum");
-            assertThat(emptyEnum).isNotEqualTo(PostgresType.UNKNOWN);
-            assertThat(emptyEnum.isEnumType()).isTrue();
-            assertThat(emptyEnum.getEnumValues()).isEmpty();
+            assertEmptyEnumType(PostgresConnection.createTypeRegistry(jdbcConfig));
+            assertEmptyEnumType(PostgresConnection.createTypeRegistry(jdbcConfig, Set.of("dbz2525")));
         }
         finally {
             try (PostgresConnection conn = TestHelper.create()) {
@@ -212,6 +208,13 @@ public class ConnectionIT implements Testing {
                 conn.execute("DROP SCHEMA IF EXISTS dbz2041 CASCADE");
             }
         }
+    }
+
+    private void assertEmptyEnumType(TypeRegistry typeRegistry) {
+        PostgresType emptyEnum = typeRegistry.get("dbz2525", "empty_enum");
+        assertThat(emptyEnum).isNotEqualTo(PostgresType.UNKNOWN);
+        assertThat(emptyEnum.isEnumType()).isTrue();
+        assertThat(emptyEnum.getEnumValues()).isEmpty();
     }
 
     /**
