@@ -12,6 +12,7 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 import org.postgresql.util.PSQLException;
@@ -138,6 +139,36 @@ public class ConnectionIT implements Testing {
         finally {
             try (PostgresConnection conn = TestHelper.create()) {
                 conn.execute("DROP SCHEMA IF EXISTS dbz2350 CASCADE");
+            }
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2525")
+    void shouldRegisterEnumTypeWithNoLabels() throws SQLException {
+        try (PostgresConnection conn = TestHelper.create()) {
+            conn.connect();
+            conn.execute(
+                    "DROP SCHEMA IF EXISTS dbz2525 CASCADE",
+                    "CREATE SCHEMA dbz2525",
+                    "CREATE TYPE dbz2525.empty_enum AS ENUM ()",
+                    "CREATE TABLE dbz2525.empty_enum_test (id int4 NOT NULL, value dbz2525.empty_enum, PRIMARY KEY (id))");
+        }
+
+        try {
+            Configuration config = TestHelper.defaultJdbcConfig();
+            TypeRegistry typeRegistry = PostgresConnection.createTypeRegistry(
+                    JdbcConfiguration.adapt(config),
+                    Set.of("dbz2525"));
+
+            PostgresType emptyEnum = typeRegistry.get("dbz2525", "empty_enum");
+            assertThat(emptyEnum).isNotEqualTo(PostgresType.UNKNOWN);
+            assertThat(emptyEnum.isEnumType()).isTrue();
+            assertThat(emptyEnum.getEnumValues()).isEmpty();
+        }
+        finally {
+            try (PostgresConnection conn = TestHelper.create()) {
+                conn.execute("DROP SCHEMA IF EXISTS dbz2525 CASCADE");
             }
         }
     }
