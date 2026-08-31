@@ -4,6 +4,7 @@
 [id="debezium-server"]
 = {prodname} Server
 
+ifdef::community[]
 :linkattrs:
 :icons: font
 :toc:
@@ -11,15 +12,18 @@
 :toc-placement: macro
 
 toc::[]
+endif::community[]
 
 {prodname} Server is a ready-to-use application that streams change events from a source database directly to messaging and storage systems without requiring Apache Kafka.
 You configure a source connector and a sink to define where events come from and where they are delivered.
 
+ifdef::community[]
 [NOTE]
 ====
 Please let us know if you encounter any problems while using this feature.
 Also please reach out if you have requirements for specific sinks to be supported by {prodname} Server or even would be interested in contributing the required implementation.
 ====
+endif::community[]
 
 // Type: procedure
 // Title: Installing {prodname} Server
@@ -688,6 +692,7 @@ Sink configuration is specific for each sink type.
 The sink is selected by configuration property `debezium.sink.type`.
 
 
+ifdef::community[]
 // Type: reference
 // Title: Amazon Kinesis sink configuration
 [id="debezium-server-amazon-kinesis-sink-configuration"]
@@ -753,6 +758,9 @@ By default the same name is used.
 |===
 
 
+endif::community[]
+
+ifdef::community[]
 // Type: reference
 // Title: Google Cloud Pub/Sub sink configuration
 [id="debezium-server-google-cloud-pubsub-sink-configuration"]
@@ -888,6 +896,9 @@ When the alternative implementations are not available then the default ones are
 |===
 
 
+endif::community[]
+
+ifdef::community[]
 // Type: reference
 // Title: Pub/Sub Lite sink configuration
 [id="debezium-server-pubsub-lite-sink-configuration"]
@@ -953,6 +964,8 @@ When the alternative implementations are not available then the default ones are
 |Custom implementation maps the planned destination (topic) name into a physical Pub/Sub Lite topic name. By default the same name is used.
 |===
 
+
+endif::community[]
 
 // Type: reference
 // Title: HTTP Client sink configuration
@@ -1080,6 +1093,7 @@ Supports one of the following options:
 
 |===
 
+ifdef::community[]
 // Type: reference
 // Title: Apache Pulsar sink configuration
 [id="debezium-server-apache-pulsar-sink-configuration"]
@@ -1157,6 +1171,9 @@ When the alternative implementations are not available then the default ones are
 |===
 
 
+endif::community[]
+
+ifdef::community[]
 // Type: reference
 // Title: Azure Event Hubs sink configuration
 [id="debezium-server-azure-event-hubs-sink-configuration"]
@@ -1265,6 +1282,9 @@ When the alternative implementations are not available then the default ones are
 
 |===
 
+endif::community[]
+
+ifdef::community[]
 // Type: reference
 // Title: Redis (Stream) sink configuration
 [id="debezium-server-redis-stream-sink-configuration"]
@@ -1535,7 +1555,9 @@ ensure that your Redis Cluster is properly configured and accessible.
 The {prodname} Server instance must be able to communicate with the cluster nodes.
 
 
+endif::community[]
 
+ifdef::community[]
 // Type: reference
 // Title: NATS Streaming sink configuration
 [id="debezium-server-nats-streaming-sink-configuration"]
@@ -1593,6 +1615,9 @@ By default the same name is used.
 
 |===
 
+endif::community[]
+
+ifdef::community[]
 // Type: reference
 // Title: NATS JetStream sink configuration
 [id="debezium-server-nats-jetstream-sink-configuration"]
@@ -1702,6 +1727,9 @@ By default the same name is used.
 
 |===
 
+endif::community[]
+
+ifdef::community[]
 // Type: reference
 // Title: Apache Fluss sink configuration
 [id="debezium-server-apache-fluss-sink-configuration"]
@@ -1785,6 +1813,8 @@ By default the same name is used.
 |===
 
 
+endif::community[]
+
 // Type: reference
 // Title: Apache Kafka sink configuration
 [id="debezium-server-apache-kafka-sink-configuration"]
@@ -1833,6 +1863,7 @@ When the alternative implementations are not available then the default ones are
 |Custom implementation maps the original destination (topic) name into another Kafka topic. By default, the same name is used.
 |===
 
+ifdef::community[]
 // Type: reference
 // Title: Pravega sink configuration
 [id="debezium-server-pravega-sink-configuration"]
@@ -1887,6 +1918,9 @@ By default the same name is used.
 
 |===
 
+endif::community[]
+
+ifdef::community[]
 // Type: reference
 // Title: Infinispan sink configuration
 [id="debezium-server-infinispan-sink-configuration"]
@@ -1948,6 +1982,9 @@ When the alternative implementations are not available then the default ones are
 |Custom instance of https://docs.jboss.org/infinispan/14.0/apidocs/org/infinispan/client/hotrod/RemoteCache.html[Hot Rod cache] which will be used for connecting and sending events to the Infinspan cluster.
 |===
 
+endif::community[]
+
+ifdef::community[]
 // Type: reference
 // Title: Apache RocketMQ sink configuration
 [id="debezium-server-apache-rocketmq-sink-configuration"]
@@ -2023,6 +2060,9 @@ When the alternative implementations are not available then the default ones are
 By default the same name is used.
 |===
 
+endif::community[]
+
+ifdef::community[]
 // Type: reference
 // Title: RabbitMQ Stream sink configuration
 [id="debezium-server-rabbitmq-stream-sink-configuration"]
@@ -2165,6 +2205,9 @@ So this string will be used as value for records without a payload.
 |===
 
 
+endif::community[]
+
+ifdef::community[]
 // Type: reference
 // Title: Milvus sink configuration
 [id="debezium-server-milvus-sink-configuration"]
@@ -2225,6 +2268,9 @@ By default, dots in a name are replaced with underscores.
 |===
 
 
+endif::community[]
+
+ifdef::community[]
 // Type: reference
 // Title: Qdrant sink configuration
 [id="debezium-server-qdrant-sink-configuration"]
@@ -2301,6 +2347,9 @@ If you specify implementations that are not available, the connector uses the de
 |===
 
 
+endif::community[]
+
+ifdef::community[]
 // Type: reference
 // Title: InstructLab sink configuration
 [id="debezium-server-instructlab-sink-configuration"]
@@ -2385,6 +2434,9 @@ If the mapping definition does not include the `header:` or `value:` prefixes, w
 Use this option when you want to map the value of a specific static constant to an attribute in the `qna.yml` file.
 
 
+endif::community[]
+
+ifdef::community[]
 // Type: reference
 // Title: JDBC sink configuration
 [id="debezium-server-jdbc-sink-configuration"]
@@ -2442,6 +2494,9 @@ debezium.sink.jdbc.delete.enabled=true
 ----
 
 
+endif::community[]
+
+ifdef::community[]
 // Type: reference
 // Title: Apache Iceberg sink configuration
 [id="debezium-server-apache-iceberg-sink-configuration"]
@@ -2588,6 +2643,9 @@ The connector provides the following features:
 |===
 
 
+endif::community[]
+
+ifdef::community[]
 // Type: assembly
 // Title: Databricks Zerobus Ingest sink configuration
 [id="debezium-server-databricks-zerobus-ingest-sink-configuration"]
@@ -3346,6 +3404,8 @@ To monitor the connection on the Kafka route, use the standard `kafka.producer:t
 |===
 
 
+endif::community[]
+
 // Type: concept
 // Title: {prodname} Server extensions
 [id="debezium-server-extensions"]
@@ -3382,6 +3442,7 @@ Typical examples are fine tuning of the target client setup, the destination nam
 
 See an example of a custom https://github.com/debezium/debezium-examples/tree/main/debezium-server-name-mapper[topic naming policy] implementation for further details.
 
+ifdef::community[]
 // Type: assembly
 // Title: Running the {prodname} Cassandra connector with {prodname} Server
 [id="debezium-server-cassandra-connector"]
@@ -3450,3 +3511,4 @@ UPDATE "u"          -> UPDATE "u"
 DELETE "d"          -> DELETE "d"
 RANGE_TOMBSTONE "r" -> TRUNCATE "t"
 ```
+endif::community[]
