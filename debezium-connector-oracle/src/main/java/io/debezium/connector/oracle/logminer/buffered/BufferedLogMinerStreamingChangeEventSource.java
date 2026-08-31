@@ -436,6 +436,18 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                 LOGGER.debug("Transaction {} was deferred with no DML events, removing on commit.", transactionId);
                 removedDeferredTransaction = true;
             }
+            else if (!Strings.isNullOrEmpty(transactionId) && transactionId.endsWith(NO_SEQUENCE_TRX_ID_SUFFIX)) {
+                // LogMiner could not resolve the commit's transaction sequence because the transaction
+                // was read in a prior mining session. There is no cached transaction to apply, but
+                // deferred entries with the same undo segment and slot prefix must still be cleaned
+                // up: the most recently started one is the transaction this commit terminates, and
+                // any older one's slot has since been reused, proving it already ended. Leaving them
+                // behind pins the offset SCN low watermark until the deferred transaction retention
+                // expires. Removal is safe because deferred entries hold no events. Cached
+                // transactions are intentionally not resolved by prefix here, since committing a
+                // guessed transaction would emit its events.
+                removedDeferredTransaction = removeDeferredTransactionsByPrefix(transactionId, "commit");
+            }
 
             if (!getOffsetContext().getCommitScn().hasEventScnBeenHandled(row)) {
                 LOGGER.debug("Transaction {} not found in cache with SCN {}, no events to commit.", transactionId, row.getScn());
@@ -725,6 +737,24 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
     private boolean removeDeferredTransaction(String transactionId) {
         return !Strings.isNullOrEmpty(transactionId) && deferredTransactions.remove(transactionId) != null;
+    }
+
+    private boolean removeDeferredTransactionsByPrefix(String partialTransactionId, String terminalEventName) {
+        final String prefix = partialTransactionId.substring(0, ORACLE_TRANSACTION_ID_PREFIX_LENGTH);
+        final List<DeferredTransaction> matches = deferredTransactions.values().stream()
+                .filter(t -> t.transactionId().startsWith(prefix))
+                .toList();
+        for (DeferredTransaction match : matches) {
+            deferredTransactions.remove(match.transactionId());
+            LOGGER.warn("Matched partial transaction '{}' {} to deferred transaction '{}' (startScn={}, changeTime={}); " +
+                    "removed the deferred entry.",
+                    partialTransactionId,
+                    terminalEventName,
+                    match.transactionId(),
+                    match.startScn(),
+                    match.changeTime());
+        }
+        return !matches.isEmpty();
     }
 
     private List<MatchedTransaction> getMatchingTransactionsByPrefix(String prefix) {
