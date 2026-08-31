@@ -84,6 +84,7 @@ danastott,Dana Stott
 Day-dreamer0,Rajender Passi
 ddsr-ops,ddsr-ops
 debjeetsarkar,Debjeet Sarkar
+denizozogularas,Deniz Ozogul
 divyanshu_Kumar,Divyanshu Kumar
 dleibovic,David Leibovic
 DLiseichykau,Victar Malinouski
