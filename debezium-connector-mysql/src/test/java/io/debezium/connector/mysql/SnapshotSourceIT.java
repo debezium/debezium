@@ -20,11 +20,14 @@ import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Field;
 import io.debezium.connector.binlog.BinlogConnectorConfig;
+import io.debezium.connector.binlog.BinlogSnapshotChangeEventSource;
 import io.debezium.connector.binlog.BinlogSnapshotSourceIT;
 import io.debezium.data.KeyValueStore;
 import io.debezium.data.SchemaChangeHistory;
 import io.debezium.data.VerifyRecord;
+import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.junit.logging.LogInterceptor;
 
 /**
  * @author Randall Hauch
@@ -71,6 +74,54 @@ public class SnapshotSourceIT extends BinlogSnapshotSourceIT<MySqlConnector> imp
         final int recordCount = 9 + 9 + 4 + 5 + 1;
         SourceRecords sourceRecords = consumeRecordsByTopic(recordCount);
         assertThat(sourceRecords.allRecordsInOrder()).hasSize(recordCount);
+        connection.connection().close();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1236")
+    public void snapshotWithInstanceBackupLockShouldNotWaitForReads() throws Exception {
+        if (isMySQL5()) {
+            return; // LOCK INSTANCE FOR BACKUP requires MySQL 8.0+
+        }
+
+        // the init scripts grant the dynamic BACKUP_ADMIN privilege to 'cloud' on MySQL 8.0+
+        config = simpleConfig()
+                .with(MySqlConnectorConfig.USER, "cloud")
+                .with(MySqlConnectorConfig.PASSWORD, "cloudpass")
+                .with(MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE, MySqlConnectorConfig.SnapshotLockingMode.MINIMAL_INSTANCE)
+                .build();
+
+        final LogInterceptor logInterceptor = new LogInterceptor(BinlogSnapshotChangeEventSource.class);
+
+        final MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());
+        final JdbcConnection connection = db.connect();
+        final CountDownLatch latch = new CountDownLatch(1);
+        Thread t = new Thread() {
+            @Override
+            public void run() {
+                try {
+                    connection.executeWithoutCommitting("SELECT *, SLEEP(20) FROM products_on_hand WHERE product_id=101");
+                    latch.countDown();
+                }
+                catch (Exception e) {
+                    // Do nothing.
+                }
+            }
+        };
+        t.start();
+
+        latch.await(10, TimeUnit.SECONDS);
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+        waitForSnapshotToBeCompleted("mysql", DATABASE.getServerName());
+
+        // Poll for records ...
+        final int recordCount = 9 + 9 + 4 + 5 + 1;
+        SourceRecords sourceRecords = consumeRecordsByTopic(recordCount);
+        assertThat(sourceRecords.allRecordsInOrder()).hasSize(recordCount);
+
+        // The instance backup lock must have been acquired without falling back to table-level locks
+        assertThat(logInterceptor.containsMessage("Unable to flush and acquire global read lock")).isFalse();
         connection.connection().close();
     }
 
