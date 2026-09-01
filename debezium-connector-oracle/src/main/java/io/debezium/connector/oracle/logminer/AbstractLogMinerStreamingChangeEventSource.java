@@ -2034,16 +2034,21 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      * @param scn the system change number
      * @return {@code true} if the code should continue, {@code false} if the code should end.
      * @throws SQLException if a database exception occurred
-     * @throws InterruptedException if the pause between checks is interrupted
      */
-    private boolean waitForScnInArchiveLogs(Scn scn) throws SQLException, InterruptedException {
+    private boolean waitForScnInArchiveLogs(Scn scn) throws SQLException {
         boolean showMessage = true;
         while (context.isRunning() && !logCollector.isScnInArchiveLogs(scn)) {
             if (showMessage) {
                 LOGGER.warn("SCN {} is not yet in archive logs, waiting for log switch.", scn);
                 showMessage = false;
             }
-            Metronome.sleeper(connectorConfig.getArchiveLogOnlyScnPollTime(), getClock()).pause();
+            try {
+                Metronome.sleeper(connectorConfig.getArchiveLogOnlyScnPollTime(), getClock()).pause();
+            }
+            catch (InterruptedException e) {
+                // Safe to ignore, connector was simply waiting
+                Thread.currentThread().interrupt();
+            }
         }
 
         // If the loop broke because the context is no longer running, shutdown is requested
