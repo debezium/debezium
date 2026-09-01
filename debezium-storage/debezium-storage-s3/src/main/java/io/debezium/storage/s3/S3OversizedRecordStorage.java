@@ -48,7 +48,7 @@ public class S3OversizedRecordStorage implements OversizedRecordStorage {
 
         URI basePath = parseBasePath(config.getString(BASE_PATH_CONFIG));
         String regionName = config.getString(REGION_CONFIG);
-        if (regionName == null || regionName.isBlank()) {
+        if (Strings.isNullOrBlank(regionName)) {
             throw new DebeziumException("Configuration '" + REGION_CONFIG + "' is required for " + getClass().getSimpleName());
         }
 
