@@ -257,6 +257,7 @@ Liaoyuxing,leoloel
 iankko,Jan Lieskovsky
 CliffordCheefoon,Clifford Cheefoon
 Fr0z3Nn,Ivanov Sergey Vasilevich
+Bue-Von-Hon,Bue Von Hun
 Bue-Von-Hun,Bue Von Hun
 nrkeli,Emil Lindström
 akulapid,Akula
@@ -406,3 +407,7 @@ henm,Matthias Hengel
 mathewjustin,Justin Mathew
 surya-dl,Surya Dhaneshwar
 suryadanny,Surya Dhaneshwar
+Rohith,Rohith Devarshetty
+soepic1,Oladele Oluwaseun
+ragulshanmugam,Ragul Shanmugam
+denizozogularas,Deniz Ozogularas

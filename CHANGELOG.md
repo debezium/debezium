@@ -1,6 +1,69 @@
 # Change log
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
+## 3.6.2.Final
+September 1st 2026 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A3.6.2.Final)
+
+### New features since 3.6.1.Final
+
+* BoundedConcurrentHashMap batch eviction never drains on put-heavy workloads and uses O(n) ConcurrentLinkedQueue.size() per access [debezium/dbz#2255](https://github.com/debezium/dbz/issues/2255)
+* Support incremental snapshots on PostgreSQL read-only replica [DBZ-9389] [debezium/dbz#1080](https://github.com/debezium/dbz/issues/1080)
+
+
+### Breaking changes since 3.6.1.Final
+
+None
+
+
+### Fixes since 3.6.1.Final
+
+* Debezium server logging doesn't mask password [DBZ-8343] [debezium/dbz#1201](https://github.com/debezium/dbz/issues/1201)
+* Unicode charset can not be parsed [DBZ-7625] [debezium/dbz#1272](https://github.com/debezium/dbz/issues/1272)
+* JDBC storage: RetriableConnection retries a failing operation forever without honoring max.retries [debezium/dbz#2244](https://github.com/debezium/dbz/issues/2244)
+* OpenLineage SMT never emits dataset metadata for schema changes on known topics and writes to its dedup caches on every record [debezium/dbz#2262](https://github.com/debezium/dbz/issues/2262)
+* If connection was closed from MySQL side no incremental snapshots working anymore [debezium/dbz#2275](https://github.com/debezium/dbz/issues/2275)
+* Incorrect span attribute mapping for type in debezium-quarkus-outbox [debezium/dbz#2286](https://github.com/debezium/dbz/issues/2286)
+* PostgreSQL parallel snapshot: pooled connections are not pinned to the exported snapshot, giving inconsistent reads across connections [debezium/dbz#2330](https://github.com/debezium/dbz/issues/2330)
+* Incremental snapshot silently loses data on NUMERIC keys holding NaN or Infinity: special values degrade to null in chunk boundaries [debezium/dbz#2333](https://github.com/debezium/dbz/issues/2333)
+* Temporals.max/min compare against == 1, giving wrong results for sub-second Durations with equal whole seconds [debezium/dbz#2338](https://github.com/debezium/dbz/issues/2338)
+* Client ID exclude list not accounting for nulls [debezium/dbz#2348](https://github.com/debezium/dbz/issues/2348)
+* ExtendedStringParser fails on table alias [debezium/dbz#2366](https://github.com/debezium/dbz/issues/2366)
+* Duplicated extended string and XML values [debezium/dbz#2368](https://github.com/debezium/dbz/issues/2368)
+* MySQL DDL parser rejects unquoted identifier `url` on MySQL 8.0.32+ (URL_SYMBOL missing from identifier rules) [debezium/dbz#2381](https://github.com/debezium/dbz/issues/2381)
+* Failure during snapshotting of array-values with AWS Advanced JDBC driver for Postgres [debezium/dbz#2387](https://github.com/debezium/dbz/issues/2387)
+* Aggregate functions should be allowed as ids [DBZ-2437] [debezium/dbz#360](https://github.com/debezium/dbz/issues/360)
+* MySQL executable comments are not supported [DBZ-5621] [debezium/dbz#690](https://github.com/debezium/dbz/issues/690)
+* Oracle: ALTER TABLE ADD with column and constraint incorrectly parses CONSTRAINT as a column [debezium/dbz#2405](https://github.com/debezium/dbz/issues/2405)
+* Oracle Alter Range Partition with Index-Clause fails [debezium/dbz#2407](https://github.com/debezium/dbz/issues/2407)
+* Config validation errors are lost in HTTP 500 NPE [debezium/dbz#2415](https://github.com/debezium/dbz/issues/2415)
+* SQL Server: `unavailable.value.placeholder` applies to `text` but not to `varchar(max)` / `nvarchar(max)` / `varbinary(max)` [debezium/dbz#2420](https://github.com/debezium/dbz/issues/2420)
+* read.only=true fails on PostgreSQL hot standby due to pg_current_xact_id() call [debezium/dbz#2431](https://github.com/debezium/dbz/issues/2431)
+* PostgreSQL connector incorrectly parses text defaults containing escaped single quotes [debezium/dbz#2440](https://github.com/debezium/dbz/issues/2440)
+* MathOps.add drops the first operand for BigInteger overloads (Document.increment returns 2×increment) [debezium/dbz#2446](https://github.com/debezium/dbz/issues/2446)
+* SQL syntax error on Oracle 11g during boundary queries due to unsupported OFFSET...FETCH clause [debezium/dbz#2448](https://github.com/debezium/dbz/issues/2448)
+* Kafka/Connect dependencies are included in installation packages [debezium/dbz#2457](https://github.com/debezium/dbz/issues/2457)
+* JDBC sink omits OVERRIDING SYSTEM VALUE, so a PostgreSQL target whose primary key is GENERATED ALWAYS AS IDENTITY fails the task [debezium/dbz#2459](https://github.com/debezium/dbz/issues/2459)
+* NullPointerException in heartbeat error handlers when the driver reports no SQL state [debezium/dbz#2464](https://github.com/debezium/dbz/issues/2464)
+* Username/Client filters no-op when tracking disabled [debezium/dbz#2473](https://github.com/debezium/dbz/issues/2473)
+* Chunked parallel initial snapshot does not apply `snapshot.fetch.size` to chunk statements [debezium/dbz#2483](https://github.com/debezium/dbz/issues/2483)
+* Add ORA-02399 to allowed retriable exceptions [debezium/dbz#2487](https://github.com/debezium/dbz/issues/2487)
+* Multiple issues in tagged GTID handling [debezium/dbz#2496](https://github.com/debezium/dbz/issues/2496)
+* Informix: Error processing CDC data stream with CLOB after [L|N]VARCHAR [debezium/dbz#2502](https://github.com/debezium/dbz/issues/2502)
+
+
+### Other changes since 3.6.1.Final
+
+* Oracle examples do not include `capture.mode` where needed [debezium/dbz#2258](https://github.com/debezium/dbz/issues/2258)
+* Upgrade Hibernate to 7.2.19 [debezium/dbz#2331](https://github.com/debezium/dbz/issues/2331)
+* Upgrade MongoDB driver to 5.6.5 [debezium/dbz#2332](https://github.com/debezium/dbz/issues/2332)
+* Upgrade Quarkus to 3.33.2 [debezium/dbz#2344](https://github.com/debezium/dbz/issues/2344)
+* Bump PostgreSQL JDBC driver to 42.7.13 for CVE-2026-54291 [debezium/dbz#2400](https://github.com/debezium/dbz/issues/2400)
+* Document secondary unique constraint limitations in the JDBC sink connector [debezium/dbz#2403](https://github.com/debezium/dbz/issues/2403)
+* Enable PostgreSQL GUC logical decoder support in PostgreSQL containers [debezium/dbz#2434](https://github.com/debezium/dbz/issues/2434)
+* Update MongoDB driver to 5.9.2 [debezium/dbz#2449](https://github.com/debezium/dbz/issues/2449)
+* Cleanup product dependencies in assembly [debezium/dbz#2467](https://github.com/debezium/dbz/issues/2467)
+
+
 
 
 ## 3.6.1.Final
