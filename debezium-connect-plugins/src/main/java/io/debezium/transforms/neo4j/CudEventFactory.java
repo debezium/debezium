@@ -86,7 +86,7 @@ public class CudEventFactory {
         final var to = new CudRelationshipEvent.Endpoint(
                 List.of(relMapping.targetLabel()), targetIds, relMapping.targetNodeOp());
 
-        final var relProps = extractRelationshipProperties(data, relMapping);
+        final var relProps = cudOp == Operation.DELETE ? null : extractRelationshipProperties(data, relMapping);
 
         if (relMapping.direction() == RelationshipMapping.Direction.INCOMING) {
             return new CudRelationshipEvent(cudOp, relMapping.type(), to, from, relProps);
@@ -145,7 +145,7 @@ public class CudEventFactory {
         final var to = new CudRelationshipEvent.Endpoint(List.of(toMapping.targetLabel()), toIds, endpointOp);
 
         final var fkColumns = mapping.fkColumns();
-        final var relProps = extractNonFkProperties(data, fkColumns, fromMapping);
+        final var relProps = cudOp == Operation.DELETE ? null : extractNonFkProperties(data, fkColumns, fromMapping);
 
         // Endpoint roles are fixed by direction (outgoing = source, incoming = target), so the relationship
         // always runs from -> to; the type and properties come from the outgoing (source) mapping.
