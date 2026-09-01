@@ -106,16 +106,16 @@ class PostgresValueConverterTest {
 
     @FixFor("debezium/dbz#2524")
     @Test
-    public void shouldMatchPositiveAndNegativeInfinityInstantWithMillis() {
-        final Instant expectedPositiveInstant = Conversions.toInstantFromMillis(PGStatement.DATE_POSITIVE_INFINITY);
-        final Instant expectedNegativeInstant = Conversions.toInstantFromMillis(PGStatement.DATE_NEGATIVE_INFINITY);
+    public void shouldMatchPositiveAndNegativeInfinityInstantAndOffsetDateTime() {
+        final Instant expectedPositiveInstant = Conversions.toInstantFromMicros(PGStatement.DATE_POSITIVE_INFINITY);
+        final Instant expectedNegativeInstant = Conversions.toInstantFromMicros(PGStatement.DATE_NEGATIVE_INFINITY);
 
         assertThat(PostgresValueConverter.POSITIVE_INFINITY_INSTANT).isEqualTo(expectedPositiveInstant);
         assertThat(PostgresValueConverter.NEGATIVE_INFINITY_INSTANT).isEqualTo(expectedNegativeInstant);
-        assertThat(PostgresValueConverter.POSITIVE_INFINITY_INSTANT)
-                .isEqualTo(PostgresValueConverter.POSITIVE_INFINITY_OFFSET_DATE_TIME.toInstant());
-        assertThat(PostgresValueConverter.NEGATIVE_INFINITY_INSTANT)
-                .isEqualTo(PostgresValueConverter.NEGATIVE_INFINITY_OFFSET_DATE_TIME.toInstant());
+        assertThat(PostgresValueConverter.POSITIVE_INFINITY_OFFSET_DATE_TIME.toInstant())
+                .isEqualTo(PostgresValueConverter.POSITIVE_INFINITY_INSTANT);
+        assertThat(PostgresValueConverter.NEGATIVE_INFINITY_OFFSET_DATE_TIME.toInstant())
+                .isEqualTo(PostgresValueConverter.NEGATIVE_INFINITY_INSTANT);
     }
 
     @FixFor("debezium/dbz#2524")
