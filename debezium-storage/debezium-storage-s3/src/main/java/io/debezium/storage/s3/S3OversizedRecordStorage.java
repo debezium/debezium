@@ -14,9 +14,12 @@ import io.debezium.config.Configuration;
 import io.debezium.spi.storage.OversizedRecord;
 import io.debezium.spi.storage.OversizedRecordReference;
 import io.debezium.spi.storage.OversizedRecordStorage;
+import io.debezium.util.Strings;
 
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -35,6 +38,8 @@ public class S3OversizedRecordStorage implements OversizedRecordStorage {
     public static final String REGION_CONFIG = "region";
     public static final String ENDPOINT_CONFIG = "endpoint";
     public static final String FORCE_PATH_STYLE_CONFIG = "force.path.style";
+    public static final String ACCESS_KEY_ID_CONFIG = "access.key.id";
+    public static final String SECRET_ACCESS_KEY_CONFIG = "secret.access.key";
 
     private static final String STORAGE_NAME = "s3";
 
@@ -57,7 +62,7 @@ public class S3OversizedRecordStorage implements OversizedRecordStorage {
         S3Client configuredClient = createS3Client(
                 config,
                 Region.of(regionName),
-                DefaultCredentialsProvider.create());
+                createCredentialsProvider(config));
 
         bucket = configuredBucket;
         prefix = configuredPrefix;
@@ -71,10 +76,19 @@ public class S3OversizedRecordStorage implements OversizedRecordStorage {
                 .forcePathStyle(config.getBoolean(FORCE_PATH_STYLE_CONFIG, false));
 
         String endpoint = config.getString(ENDPOINT_CONFIG);
-        if (endpoint != null && !endpoint.isBlank()) {
+        if (!Strings.isNullOrBlank(endpoint)) {
             builder.endpointOverride(parseAbsoluteUri(ENDPOINT_CONFIG, endpoint));
         }
         return builder.build();
+    }
+
+    private static AwsCredentialsProvider createCredentialsProvider(Configuration config) {
+        String accessKeyId = config.getString(ACCESS_KEY_ID_CONFIG);
+        String secretAccessKey = config.getString(SECRET_ACCESS_KEY_CONFIG);
+        if (!Strings.isNullOrBlank(accessKeyId) && !Strings.isNullOrBlank(secretAccessKey)) {
+            return StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKeyId, secretAccessKey));
+        }
+        return DefaultCredentialsProvider.create();
     }
 
     @Override
@@ -111,13 +125,13 @@ public class S3OversizedRecordStorage implements OversizedRecordStorage {
     }
 
     private static URI parseBasePath(String value) {
-        if (value == null || value.isBlank()) {
+        if (Strings.isNullOrBlank(value)) {
             throw new DebeziumException("Configuration '" + BASE_PATH_CONFIG + "' is required for "
                     + S3OversizedRecordStorage.class.getSimpleName());
         }
 
         URI uri = parseAbsoluteUri(BASE_PATH_CONFIG, value);
-        if (!STORAGE_NAME.equalsIgnoreCase(uri.getScheme()) || uri.getHost() == null || uri.getHost().isBlank()
+        if (!STORAGE_NAME.equalsIgnoreCase(uri.getScheme()) || Strings.isNullOrBlank(uri.getHost())
                 || uri.getUserInfo() != null || uri.getPort() != -1 || uri.getQuery() != null || uri.getFragment() != null) {
             throw new DebeziumException("Configuration '" + BASE_PATH_CONFIG
                     + "' must be an S3 URI in the form s3://bucket/optional-prefix");
@@ -139,7 +153,7 @@ public class S3OversizedRecordStorage implements OversizedRecordStorage {
     }
 
     private static String normalizePrefix(String path) {
-        if (path == null || path.isBlank() || "/".equals(path)) {
+        if (Strings.isNullOrBlank(path) || "/".equals(path)) {
             return "";
         }
         String normalized = path;

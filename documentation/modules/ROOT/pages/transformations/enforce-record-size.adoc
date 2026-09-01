@@ -48,8 +48,8 @@ When this configuration is active, if the estimated serialized size of a record 
 == Storing oversized records by using the claim-check strategy
 
 Use the `claim_check` strategy when downstream consumers require the complete value and truncation would cause data loss.
-When an event exceeds `max.bytes`, the SMT serializes the complete source record, including its source partition and offset, key, and value, and writes it through an `OversizedRecordStorage` implementation.
-After the storage implementation acknowledges the write, the SMT copies the event and replaces each configured non-null string or bytes column in its `before` and `after` sections with a claim-check marker.
+When an event exceeds `max.bytes`, the SMT serializes the complete source record, including its source partition and offset, headers, key, and value, and writes it through an `OversizedRecordStorage` implementation.
+After the storage implementation acknowledges the write, the SMT copies the event and replaces each configured non-null string or unnamed bytes column in its `before` and `after` sections with a claim-check marker.
 
 The following example stores oversized records in Amazon S3:
 
@@ -65,10 +65,12 @@ transforms.EnforceRecordSize.claim.check.storage.base.path=s3://my-bucket/debezi
 transforms.EnforceRecordSize.claim.check.storage.region=us-west-1
 ----
 
-The S3 implementation uses the AWS default credentials provider chain.
+By default, the S3 implementation uses the AWS default credentials provider chain, including web identity credentials for IAM roles for service accounts (IRSA).
+To use static credentials for local development, set both `claim.check.storage.access.key.id` and `claim.check.storage.secret.access.key`.
+When both properties are present, the S3 implementation uses them instead of the default provider chain.
 To use it, make the `debezium-storage-s3` artifact and its dependencies available on the same Kafka Connect plugin path as the connector.
 
-The marker is a JSON value that retains the column's original string or bytes schema.
+The marker is a JSON value that retains the column's original string or unnamed bytes schema.
 For example:
 
 [source,json]
@@ -221,7 +223,7 @@ For S3, set the value to `io.debezium.storage.s3.S3OversizedRecordStorage`.
 
 |[[enforce-record-size-claim-check-columns]]<<enforce-record-size-claim-check-columns, `claim.check.columns.include.list`>>
 |No default value.
-|A comma-separated list of string or bytes columns to replace with claim-check markers.
+|A comma-separated list of string or unnamed bytes columns to replace with claim-check markers.
 You can specify an unqualified column name, such as `payload`, or a qualified name, such as `inventory.customers.payload`.
 Required when `strategy` is set to `claim_check`.
 
@@ -232,6 +234,16 @@ Required when `strategy` is set to `claim_check`.
 |[[enforce-record-size-claim-check-s3-region]]<<enforce-record-size-claim-check-s3-region, `claim.check.storage.region`>>
 |No default value.
 |For `S3OversizedRecordStorage`, the AWS region in which the bucket is located.
+
+|[[enforce-record-size-claim-check-s3-access-key-id]]<<enforce-record-size-claim-check-s3-access-key-id, `claim.check.storage.access.key.id`>>
+|No default value.
+|Optional access key ID for `S3OversizedRecordStorage`.
+When this property and `claim.check.storage.secret.access.key` are both set, the S3 implementation uses static credentials.
+
+|[[enforce-record-size-claim-check-s3-secret-access-key]]<<enforce-record-size-claim-check-s3-secret-access-key, `claim.check.storage.secret.access.key`>>
+|No default value.
+|Optional secret access key for `S3OversizedRecordStorage`.
+When this property and `claim.check.storage.access.key.id` are both set, the S3 implementation uses static credentials.
 
 |[[enforce-record-size-claim-check-s3-endpoint]]<<enforce-record-size-claim-check-s3-endpoint, `claim.check.storage.endpoint`>>
 |No default value.

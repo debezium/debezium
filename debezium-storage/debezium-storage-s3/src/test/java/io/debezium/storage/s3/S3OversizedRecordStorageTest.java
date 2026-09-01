@@ -31,6 +31,9 @@ import io.debezium.config.Configuration;
 import io.debezium.spi.storage.OversizedRecord;
 import io.debezium.spi.storage.OversizedRecordReference;
 
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -82,7 +85,36 @@ class S3OversizedRecordStorageTest {
                 URI.create("s3://claim-check-bucket/debezium/oversized/inventory.customers/offset-123-sha256-abc.json"),
                 reference.uri());
         assertEquals(payload.length, reference.sizeBytes());
-        verify(storage).createS3Client(any(), org.mockito.ArgumentMatchers.eq(Region.US_WEST_1), any());
+        ArgumentCaptor<AwsCredentialsProvider> credentialsProviderCaptor = ArgumentCaptor.forClass(AwsCredentialsProvider.class);
+        verify(storage).createS3Client(any(), org.mockito.ArgumentMatchers.eq(Region.US_WEST_1), credentialsProviderCaptor.capture());
+        assertTrue(credentialsProviderCaptor.getValue() instanceof DefaultCredentialsProvider);
+    }
+
+    @Test
+    void shouldUseConfiguredStaticCredentials() {
+        Map<String, Object> properties = new LinkedHashMap<>(configurationProperties());
+        properties.put(S3OversizedRecordStorage.ACCESS_KEY_ID_CONFIG, "access-key-id");
+        properties.put(S3OversizedRecordStorage.SECRET_ACCESS_KEY_CONFIG, "secret-access-key");
+
+        storage.configure(Configuration.from(properties));
+
+        ArgumentCaptor<AwsCredentialsProvider> credentialsProviderCaptor = ArgumentCaptor.forClass(AwsCredentialsProvider.class);
+        verify(storage).createS3Client(any(), org.mockito.ArgumentMatchers.eq(Region.US_WEST_1), credentialsProviderCaptor.capture());
+        assertTrue(credentialsProviderCaptor.getValue() instanceof StaticCredentialsProvider);
+        assertEquals("access-key-id", credentialsProviderCaptor.getValue().resolveCredentials().accessKeyId());
+        assertEquals("secret-access-key", credentialsProviderCaptor.getValue().resolveCredentials().secretAccessKey());
+    }
+
+    @Test
+    void shouldUseDefaultCredentialsWhenStaticCredentialsAreIncomplete() {
+        Map<String, Object> properties = new LinkedHashMap<>(configurationProperties());
+        properties.put(S3OversizedRecordStorage.ACCESS_KEY_ID_CONFIG, "access-key-id");
+
+        storage.configure(Configuration.from(properties));
+
+        ArgumentCaptor<AwsCredentialsProvider> credentialsProviderCaptor = ArgumentCaptor.forClass(AwsCredentialsProvider.class);
+        verify(storage).createS3Client(any(), org.mockito.ArgumentMatchers.eq(Region.US_WEST_1), credentialsProviderCaptor.capture());
+        assertTrue(credentialsProviderCaptor.getValue() instanceof DefaultCredentialsProvider);
     }
 
     @Test
@@ -151,7 +183,11 @@ class S3OversizedRecordStorageTest {
     }
 
     private static Configuration configuration() {
-        return Configuration.from(Map.of(
+        return Configuration.from(configurationProperties());
+    }
+
+    private static Map<String, Object> configurationProperties() {
+        return Map.of(
                 S3OversizedRecordStorage.BASE_PATH_CONFIG, "s3://claim-check-bucket/debezium/oversized",
                 S3OversizedRecordStorage.REGION_CONFIG, "us-west-1"));
     }

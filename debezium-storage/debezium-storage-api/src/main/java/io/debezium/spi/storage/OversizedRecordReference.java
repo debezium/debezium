@@ -9,6 +9,7 @@ import java.net.URI;
 import java.util.Objects;
 
 import io.debezium.common.annotation.Incubating;
+import io.debezium.util.Strings;
 
 /**
  * Durable reference returned after an oversized record is stored.
@@ -23,7 +24,8 @@ import io.debezium.common.annotation.Incubating;
 public record OversizedRecordReference(String storage, URI uri, long sizeBytes) {
 
     public OversizedRecordReference {
-        if (Objects.requireNonNull(storage, "storage must not be null").isBlank()) {
+        Objects.requireNonNull(storage, "storage must not be null");
+        if (Strings.isNullOrBlank(storage)) {
             throw new IllegalArgumentException("storage must not be blank");
         }
         Objects.requireNonNull(uri, "uri must not be null");
