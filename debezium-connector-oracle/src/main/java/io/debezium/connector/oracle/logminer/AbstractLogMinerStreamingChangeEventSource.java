@@ -2045,7 +2045,13 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
                 LOGGER.warn("SCN {} is not yet in archive logs, waiting for log switch.", scn);
                 showMessage = false;
             }
-            Metronome.sleeper(connectorConfig.getArchiveLogOnlyScnPollTime(), getClock()).pause();
+            try {
+                Metronome.sleeper(connectorConfig.getArchiveLogOnlyScnPollTime(), getClock()).pause();
+            }
+            catch (InterruptedException e) {
+                // Safe to ignore, connector was simply waiting
+                Thread.currentThread().interrupt();
+            }
         }
 
         // If the loop broke because the context is no longer running, shutdown is requested
