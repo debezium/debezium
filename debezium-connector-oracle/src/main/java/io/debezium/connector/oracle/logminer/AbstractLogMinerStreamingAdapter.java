@@ -218,7 +218,8 @@ public abstract class AbstractLogMinerStreamingAdapter
     protected Scn getOldestScnAvailableInLogs(OracleConnectorConfig config, OracleConnection connection) throws SQLException {
         final Duration archiveLogRetention = config.getArchiveLogRetention();
         final List<String> archiveLogDestinationNames = config.getArchiveDestinationNameResolver().getDestinationNames(connection);
-        return connection.queryAndMap(SqlUtils.oldestFirstChangeQuery(archiveLogRetention, archiveLogDestinationNames),
+        final boolean autonomousMode = connection.isAutonomous();
+        return connection.queryAndMap(SqlUtils.oldestFirstChangeQuery(archiveLogRetention, archiveLogDestinationNames, autonomousMode),
                 rs -> {
                     if (rs.next()) {
                         final String value = rs.getString(1);
@@ -231,7 +232,9 @@ public abstract class AbstractLogMinerStreamingAdapter
     }
 
     protected List<LogFile> getOrderedLogsFromScn(OracleConnectorConfig config, Scn sinceScn, OracleConnection connection) throws SQLException {
-        final LogFileCollector collector = new LogFileCollector(config, connection);
+        final LogFileCollector collector = connection.isAutonomous()
+                ? new AutonomousLogFileCollector(config, connection)
+                : new LogFileCollector(config, connection);
         return collector.getLogs(sinceScn).logFiles()
                 .stream()
                 .sorted(Comparator.comparing(LogFile::getSequence))
@@ -241,9 +244,13 @@ public abstract class AbstractLogMinerStreamingAdapter
     protected void getPendingTransactionsFromLogs(OracleConnection connection, Scn currentScn, Map<String, Scn> pendingTransactions) throws SQLException {
         final Scn oldestScn = getOldestScnAvailableInLogs(connectorConfig, connection);
         final List<LogFile> logFiles = getOrderedLogsFromScn(connectorConfig, oldestScn, connection);
+        final boolean autonomousMode = connection.isAutonomous();
         if (!logFiles.isEmpty()) {
             try (var context = new LogMinerSessionContext(connection, LogMiningStrategy.ONLINE_CATALOG, connectorConfig.getLogMiningPathToDictionary())) {
-                context.addLogFiles(getMostRecentLogFilesForSearch(logFiles));
+                if (!autonomousMode) {
+                    // ADBs will implicitly add log files, they cannot be added manually
+                    context.addLogFiles(getMostRecentLogFilesForSearch(logFiles));
+                }
                 context.startSession(Scn.NULL, Scn.NULL, false);
 
                 LOGGER.info("\tQuerying transaction logs, please wait...");

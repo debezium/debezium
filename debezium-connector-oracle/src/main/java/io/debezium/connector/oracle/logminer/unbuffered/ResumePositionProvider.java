@@ -89,9 +89,10 @@ public class ResumePositionProvider implements AutoCloseable {
                 sessionContext = new LogMinerSessionContext(connection, LogMiningStrategy.ONLINE_CATALOG, connectorConfig.getLogMiningPathToDictionary());
             }
 
-            sessionContext.removeAllLogFilesFromSession();
-
-            sessionContext.addLogFiles(logFiles);
+            if (!connection.isAutonomous()) {
+                sessionContext.removeAllLogFilesFromSession();
+                sessionContext.addLogFiles(logFiles);
+            }
 
             sessionContext.startSession(currentResumeScn, Scn.NULL, false);
 

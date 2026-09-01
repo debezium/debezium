@@ -93,6 +93,7 @@ public class OracleConnection extends JdbcConnection {
     private static final String QUOTED_CHARACTER = "\"";
 
     private final int queryFetchSize;
+    private final boolean isAutonomousMode;
     private OracleDatabaseVersion databaseVersion;
 
     public OracleConnection(OracleConnectorConfig connectorConfig, boolean autoCommit) {
@@ -121,6 +122,12 @@ public class OracleConnection extends JdbcConnection {
         super(config, connectionFactory, initialOperations(autoCommit), QUOTED_CHARACTER, QUOTED_CHARACTER);
         LOGGER.trace("JDBC connection string: " + connectionString(config));
         this.queryFetchSize = queryFetchSize;
+        try {
+            this.isAutonomousMode = getIsAutonomous();
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Error while determining whether the database is Oracle Autonomous", e);
+        }
     }
 
     private static Operations initialOperations(boolean autoCommit) {
@@ -406,8 +413,7 @@ public class OracleConnection extends JdbcConnection {
      * @throws DebeziumException if the oldest system change number cannot be found due to no logs available
      */
     public Optional<Scn> getFirstScnInLogs(Duration archiveLogRetention, List<String> archiveDestinationNames) throws SQLException {
-
-        final String oldestFirstChangeQuery = SqlUtils.oldestFirstChangeQuery(archiveLogRetention, archiveDestinationNames);
+        final String oldestFirstChangeQuery = SqlUtils.oldestFirstChangeQuery(archiveLogRetention, archiveDestinationNames, isAutonomous());
         final String oldestScn = singleOptionalValue(oldestFirstChangeQuery, rs -> rs.getString(1));
 
         if (oldestScn == null) {
@@ -614,6 +620,16 @@ public class OracleConnection extends JdbcConnection {
     }
 
     /**
+     * Returns whether this connection is to an Oracle Autonomous Database. This value is cached on connection
+     * construction and does not reach out to the database.
+     *
+     * @return {@code true} when connected to an Autonomous Database, {@code false} otherwise
+     */
+    public boolean isAutonomous() {
+        return isAutonomousMode;
+    }
+
+    /**
      * Determines whether this connection is to an Oracle Autonomous Database (OA), i.e. one of the
      * managed cloud services (Autonomous Transaction Processing, Data Warehouse, or JSON Database).
      * On such deployments Oracle owns and hides parts of the data dictionary — notably the archive
@@ -622,7 +638,7 @@ public class OracleConnection extends JdbcConnection {
      * @return {@code true} when connected to an Autonomous Database, {@code false} otherwise
      * @throws SQLException if a database exception occurred
      */
-    public boolean isAutonomous() throws SQLException {
+    private boolean getIsAutonomous() throws SQLException {
         // CLOUD_SERVICE is set only on Autonomous Database; its values are OLTP (ATP), DWCS (ADW)
         // and JDCS (AJD). It is null/absent on self-managed Oracle.
         final String cloudService = singleOptionalValue(
