@@ -39,6 +39,7 @@ public class SqlServerOffsetContext extends CommonOffsetContext<SourceInfo> {
 
         sourceInfo.setCommitLsn(position.getCommitLsn());
         sourceInfo.setChangeLsn(position.getInTxLsn());
+        sourceInfo.setCommandId(position.getCommandId());
         sourceInfoSchema = sourceInfo.schema();
 
         if (this.snapshotCompleted) {
@@ -69,6 +70,7 @@ public class SqlServerOffsetContext extends CommonOffsetContext<SourceInfo> {
         offset.put(SourceInfo.CHANGE_LSN_KEY,
                 sourceInfo.getChangeLsn() == null ? null : sourceInfo.getChangeLsn().toString());
         offset.put(SourceInfo.EVENT_SERIAL_NO_KEY, eventSerialNo);
+        offset.put(SourceInfo.COMMAND_ID_KEY, sourceInfo.getCommandId());
         return sourceInfo.isSnapshot() ? offset : incrementalSnapshotContext.store(transactionContext.store(offset));
     }
 
@@ -78,7 +80,7 @@ public class SqlServerOffsetContext extends CommonOffsetContext<SourceInfo> {
     }
 
     public TxLogPosition getChangePosition() {
-        return TxLogPosition.valueOf(sourceInfo.getCommitLsn(), sourceInfo.getChangeLsn());
+        return TxLogPosition.valueOf(sourceInfo.getCommitLsn(), sourceInfo.getChangeLsn(), 0, sourceInfo.getCommandId());
     }
 
     public long getEventSerialNo() {
@@ -86,7 +88,7 @@ public class SqlServerOffsetContext extends CommonOffsetContext<SourceInfo> {
     }
 
     public void setChangePosition(TxLogPosition position, int eventCount) {
-        if (getChangePosition().equals(position)) {
+        if (shouldUpdateEventSerialNo(position)) {
             eventSerialNo += eventCount;
         }
         else {
@@ -94,6 +96,7 @@ public class SqlServerOffsetContext extends CommonOffsetContext<SourceInfo> {
         }
         sourceInfo.setCommitLsn(position.getCommitLsn());
         sourceInfo.setChangeLsn(position.getInTxLsn());
+        sourceInfo.setCommandId(position.getCommandId());
         sourceInfo.setEventSerialNo(eventSerialNo);
     }
 
@@ -115,6 +118,10 @@ public class SqlServerOffsetContext extends CommonOffsetContext<SourceInfo> {
             final Lsn commitLsn = Lsn.valueOf((String) offset.get(SourceInfo.COMMIT_LSN_KEY));
             final SnapshotType snapshot = loadSnapshot(offset).orElse(null);
             final boolean snapshotCompleted = loadSnapshotCompleted(offset);
+            // A committed offset comes back as a Long, so casting straight to Integer fails
+            // the task on restart.
+            final Number storedCommandId = (Number) offset.get(SourceInfo.COMMAND_ID_KEY);
+            final Integer commandId = storedCommandId == null ? null : storedCommandId.intValue();
 
             // only introduced in 0.10.Beta1, so it might be not present when upgrading from earlier versions
             Long eventSerialNo = ((Long) offset.get(SourceInfo.EVENT_SERIAL_NO_KEY));
@@ -122,7 +129,9 @@ public class SqlServerOffsetContext extends CommonOffsetContext<SourceInfo> {
                 eventSerialNo = Long.valueOf(0);
             }
 
-            return new SqlServerOffsetContext(connectorConfig, TxLogPosition.valueOf(commitLsn, changeLsn), snapshot, snapshotCompleted, eventSerialNo,
+            return new SqlServerOffsetContext(connectorConfig,
+                    TxLogPosition.valueOf(commitLsn, changeLsn, 0, commandId),
+                    snapshot, snapshotCompleted, eventSerialNo,
                     TransactionContext.load(offset), SqlServerIncrementalSnapshotContext.load(offset));
         }
     }
@@ -155,5 +164,20 @@ public class SqlServerOffsetContext extends CommonOffsetContext<SourceInfo> {
 
     public Instant getSourceTime() {
         return sourceInfo.timestamp();
+    }
+
+    private boolean shouldUpdateEventSerialNo(TxLogPosition position) {
+        // On mode switch from direct to function, commandId would be not-null in sourceInfo and null in the position
+        // On mode switch from function to direct, commandId would be null in sourceInfo and not-null in the position
+        if ((position.getCommandId() == null && sourceInfo.getCommandId() != null)
+                || position.getCommandId() != null && sourceInfo.getCommandId() == null) {
+            return false;
+        }
+
+        // for adjacent insert/delete coming from same operation, command_id will be different so its skipped from event_serial_no increment check
+        TxLogPosition lastPosition = TxLogPosition.valueOf(sourceInfo.getCommitLsn(), sourceInfo.getChangeLsn(), null);
+        TxLogPosition currentPosition = TxLogPosition.valueOf(position.getCommitLsn(), position.getInTxLsn(), null);
+
+        return lastPosition.equals(currentPosition);
     }
 }

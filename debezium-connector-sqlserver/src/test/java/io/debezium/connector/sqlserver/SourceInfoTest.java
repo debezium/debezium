@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.SnapshotRecord;
+import io.debezium.doc.FixFor;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaFactory;
 
@@ -67,6 +68,15 @@ public class SourceInfoTest {
     @Test
     void eventSerialNoIsPresent() {
         assertThat(source.struct().getInt64(SourceInfo.EVENT_SERIAL_NO_KEY)).isEqualTo(30L);
+    }
+
+    @Test
+    @FixFor("dbz#2012")
+    void commandIdIsRecordedButNotExposedInTheSourceBlock() {
+        source.setCommandId(6);
+
+        assertThat(source.getCommandId()).isEqualTo(6);
+        assertThat(source.struct().schema().field(SourceInfo.COMMAND_ID_KEY)).isNull();
     }
 
     @Test
