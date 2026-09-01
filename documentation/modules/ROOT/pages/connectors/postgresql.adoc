@@ -4654,6 +4654,12 @@ For example to request the publisher to send all changes, that is, changes that 
 If the setting of `unavailable.value.placeholder` starts with the `hex:` prefix it is expected that the rest of the string represents hexadecimally encoded octets.
 For more information, see xref:postgresql-toasted-values[toasted values].
 
+|[[postgresql-property-column-propagate-unavailable-value-placeholder]]<<postgresql-property-column-propagate-unavailable-value-placeholder, `+column.propagate.unavailable.value.placeholder+`>>
+|`false`
+|Specifies whether the connector declares the exact placeholder representation that each column carries in the `__debezium.unavailable.value.placeholder` schema parameter of the column's field schema.
+Consumers such as the reselect columns post processor use the declared representation to recognize placeholder values without inferring them from the value shape.
+Enabling this option changes the registered schemas of captured tables.
+
 |[[postgresql-property-provide-transaction-metadata]]<<postgresql-property-provide-transaction-metadata, `+provide.transaction.metadata+`>>
 |`false`
 |Determines whether the connector generates events with transaction boundaries and enriches change event envelopes with transaction metadata.

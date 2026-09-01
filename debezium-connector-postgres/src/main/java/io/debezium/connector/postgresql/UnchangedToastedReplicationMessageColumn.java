@@ -43,7 +43,7 @@ public class UnchangedToastedReplicationMessageColumn extends AbstractReplicatio
 
     public UnchangedToastedReplicationMessageColumn(String columnName, PostgresType type, String typeWithModifiers, boolean optional) {
         super(columnName, type, typeWithModifiers, optional);
-        setUnchangedToastValue(typeWithModifiers);
+        unchangedToastValue = markerForType(typeWithModifiers);
     }
 
     @Override
@@ -69,7 +69,10 @@ public class UnchangedToastedReplicationMessageColumn extends AbstractReplicatio
         return unchangedToastValue;
     }
 
-    private void setUnchangedToastValue(String typeWithModifiers) {
+    /**
+     * Returns the marker object used for an unchanged toasted column of the given type.
+     */
+    public static Object markerForType(String typeWithModifiers) {
         typeWithModifiers = removeSizeModifierFromArrayTypes(typeWithModifiers);
         switch (typeWithModifiers) {
             case "text[]":
@@ -82,39 +85,33 @@ public class UnchangedToastedReplicationMessageColumn extends AbstractReplicatio
             case "_json":
             case "jsonb[]":
             case "_jsonb":
-                unchangedToastValue = UNCHANGED_TEXT_ARRAY_TOAST_VALUE;
-                break;
+                return UNCHANGED_TEXT_ARRAY_TOAST_VALUE;
             case "bytea[]":
             case "_bytea":
-                unchangedToastValue = UNCHANGED_BINARY_ARRAY_TOAST_VALUE;
-                break;
+                return UNCHANGED_BINARY_ARRAY_TOAST_VALUE;
             case "integer[]":
             case "_int4":
             case "date[]":
             case "_date":
-                unchangedToastValue = UNCHANGED_INT_ARRAY_TOAST_VALUE;
-                break;
+                return UNCHANGED_INT_ARRAY_TOAST_VALUE;
             case "bigint[]":
             case "_int8":
-                unchangedToastValue = UNCHANGED_BIGINT_ARRAY_TOAST_VALUE;
-                break;
+                return UNCHANGED_BIGINT_ARRAY_TOAST_VALUE;
             case "hstore":
-                unchangedToastValue = UNCHANGED_HSTORE_TOAST_VALUE;
-                break;
+                return UNCHANGED_HSTORE_TOAST_VALUE;
             case "uuid[]":
             case "_uuid":
-                unchangedToastValue = UNCHANGED_UUID_TOAST_VALUE;
-                break;
+                return UNCHANGED_UUID_TOAST_VALUE;
             default:
-                unchangedToastValue = UNCHANGED_TOAST_VALUE;
+                return UNCHANGED_TOAST_VALUE;
         }
     }
 
-    private boolean isArrayType(String typeWithModifiers) {
+    private static boolean isArrayType(String typeWithModifiers) {
         return typeWithModifiers.startsWith(TYPE_ARRAY_PREFIX) || typeWithModifiers.endsWith(TYPE_ARRAY_SUFFIX);
     }
 
-    protected String removeSizeModifierFromArrayTypes(String typeWithModifiers) {
+    protected static String removeSizeModifierFromArrayTypes(String typeWithModifiers) {
         // Removing the size for type like _varchar(2000, 0)
         if (isArrayType(typeWithModifiers)) {
             final int leftParenthesis = typeWithModifiers.indexOf("(");
