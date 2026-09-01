@@ -526,6 +526,33 @@ class Neo4jCudConverterTest {
             assertThat(events).hasSize(1);
             assertThat(events.get(0).get("type")).isEqualTo("relationship");
             assertThat(events.get(0).get("op")).isEqualTo("delete");
+            // The Neo4j CUD format forbids a properties block on relationship deletes; the key must be absent.
+            assertThat(events.get(0)).doesNotContainKey("properties");
+
+            transform.close();
+        }
+
+        @Test
+        @DisplayName("DELETE in single output mode omits properties on the relationship")
+        void joinTableDeleteSingleMode() throws Exception {
+            final var transform = configureOrderItemTransform("single");
+            final var before = orderItemAfter();
+            final var envelope = Envelope.defineSchema()
+                    .withName("test.Envelope")
+                    .withRecord(ORDER_ITEM_SCHEMA)
+                    .withSource(SOURCE_SCHEMA)
+                    .build();
+            final var source = createSource("order_items");
+            final var payload = envelope.delete(before, source, Instant.now());
+            final var record = new SourceRecord(new HashMap<>(), new HashMap<>(), "test.order_items",
+                    envelope.schema(), payload);
+
+            final var result = transform.apply(record);
+
+            final var parsed = OBJECT_MAPPER.readValue((String) result.value(), Map.class);
+            assertThat(parsed.get("type")).isEqualTo("relationship");
+            assertThat(parsed.get("op")).isEqualTo("delete");
+            assertThat(parsed).doesNotContainKey("properties");
 
             transform.close();
         }

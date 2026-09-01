@@ -111,6 +111,23 @@ class CudEventSerializerTest {
             assertThat(asMap(parsed, "from")).containsEntry("op", "merge");
             assertThat(asMap(parsed, "to")).containsEntry("op", "match");
         }
+
+        @Test
+        @DisplayName("Serializes a delete relationship with no properties")
+        void serializeDeleteRelationship() throws Exception {
+            final var from = new CudRelationshipEvent.Endpoint(
+                    List.of("Order"), Map.of("id", 5001L), Operation.MATCH);
+            final var to = new CudRelationshipEvent.Endpoint(
+                    List.of("Product"), Map.of("id", 201L), Operation.MATCH);
+            final var event = new CudRelationshipEvent(Operation.DELETE, "CONTAINS", from, to, null);
+
+            final var json = serializer.serializeSingle(event);
+
+            final var parsed = parseJson(json);
+            assertThat(parsed.get("type")).isEqualTo("relationship");
+            assertThat(parsed.get("op")).isEqualTo("delete");
+            assertThat(parsed).doesNotContainKey("properties");
+        }
     }
 
     @Nested

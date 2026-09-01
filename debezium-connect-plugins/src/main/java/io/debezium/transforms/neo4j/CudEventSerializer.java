@@ -61,7 +61,9 @@ public class CudEventSerializer {
         map.put("rel_type", rel.relType());
         map.put("from", toEndpointMap(rel.from()));
         map.put("to", toEndpointMap(rel.to()));
-        map.put("properties", toPropertyValues(rel.properties()));
+        if (rel.properties() != null) {
+            map.put("properties", toPropertyValues(rel.properties()));
+        }
         return map;
     }
 
