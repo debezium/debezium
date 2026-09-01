@@ -189,6 +189,6 @@ class S3OversizedRecordStorageTest {
     private static Map<String, Object> configurationProperties() {
         return Map.of(
                 S3OversizedRecordStorage.BASE_PATH_CONFIG, "s3://claim-check-bucket/debezium/oversized",
-                S3OversizedRecordStorage.REGION_CONFIG, "us-west-1"));
+                S3OversizedRecordStorage.REGION_CONFIG, "us-west-1");
     }
 }
