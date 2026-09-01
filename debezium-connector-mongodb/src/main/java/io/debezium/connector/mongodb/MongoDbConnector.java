@@ -23,6 +23,7 @@ import org.slf4j.LoggerFactory;
 import com.mongodb.MongoCommandException;
 import com.mongodb.MongoException;
 import com.mongodb.client.MongoClient;
+import com.mongodb.connection.ClusterType;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
@@ -161,13 +162,7 @@ public class MongoDbConnector extends BaseSourceConnector implements ConfigDescr
                         }
                     }
 
-                    // For RS clusters check that replica set name is present
-                    // Java driver is smart enough to work without it but the specs says it should be set
-                    if (!connectionContext.hasReplicaSetNameIfRequired()) {
-                        var type = connectionContext.getClusterType();
-                        LOGGER.warn("Replica set not specified in connection string for {} cluster.", type);
-                        connectionStringValidation.addErrorMessage("Replica set not specified in connection string for " + type + " cluster.");
-                    }
+                    validateClusterTopology(connectionContext, connectionStringValidation);
                 }
                 catch (MongoException e) {
                     connectionStringValidation.addErrorMessage("Unable to connect: " + e.getMessage());
@@ -179,6 +174,27 @@ public class MongoDbConnector extends BaseSourceConnector implements ConfigDescr
         }
         catch (Exception e) {
             connectionStringValidation.addErrorMessage("Error during connection validation: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Validates that the connected cluster topology is one the connector can capture changes from.
+     */
+    static void validateClusterTopology(MongoDbConnectionContext connectionContext, ConfigValue connectionStringValidation) {
+        // For RS clusters check that replica set name is present
+        // Java driver is smart enough to work without it but the specs says it should be set
+        if (!connectionContext.hasReplicaSetNameIfRequired()) {
+            var type = connectionContext.getClusterType();
+            LOGGER.warn("Replica set not specified in connection string for {} cluster.", type);
+            connectionStringValidation.addErrorMessage("Replica set not specified in connection string for " + type + " cluster.");
+        }
+
+        // Standalone servers have no oplog and reject change streams (server error 40573), so the
+        // connector would pass validation here only to fail once streaming starts
+        if (connectionContext.getClusterType() == ClusterType.STANDALONE) {
+            LOGGER.warn("Connection points to a standalone MongoDB server which does not support change streams.");
+            connectionStringValidation.addErrorMessage("MongoDB deployed as a standalone server is not supported: "
+                    + "change streams require a replica set or sharded cluster (a single-node replica set is sufficient)");
         }
     }
 
