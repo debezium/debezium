@@ -714,6 +714,7 @@ public class SqlServerConnectionIT {
                 Properties configProps = new Properties();
                 configProps.setProperty(SqlServerConnectorConfig.SNAPSHOT_MODE_PROPERTY_NAME, SqlServerConnectorConfig.SnapshotMode.WHEN_NEEDED.getValue());
                 SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(Configuration.from(configProps));
+                boolean directMode = connectorConfig.getDataQueryMode() == SqlServerConnectorConfig.DataQueryMode.DIRECT;
 
                 // Query min LSN
                 final String[] minLsn = { null };
@@ -727,7 +728,7 @@ public class SqlServerConnectionIT {
 
                 boolean validated = connection.validateLogPosition(
                         new SqlServerPartition("server1", "testDB1"),
-                        new SqlServerOffsetContext(connectorConfig, TxLogPosition.valueOf(Lsn.valueOf(minLsn[0])), SnapshotType.INITIAL, true),
+                        new SqlServerOffsetContext(connectorConfig, TxLogPosition.valueOf(Lsn.valueOf(minLsn[0]), directMode ? -1 : null), SnapshotType.INITIAL, true),
                         connectorConfig);
 
                 Testing.print("Valid log position: " + validated);

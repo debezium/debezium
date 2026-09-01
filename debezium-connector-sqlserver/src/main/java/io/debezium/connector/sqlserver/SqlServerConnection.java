@@ -85,10 +85,10 @@ public class SqlServerConnection extends JdbcConnection {
     private static final String LSN_TIMESTAMP_SELECT_STATEMENT_JOIN = "TODATETIMEOFFSET(ltm.tran_begin_time, DATEPART(TZOFFSET, SYSDATETIMEOFFSET()))";
     private static final String GET_ALL_CHANGES_FOR_TABLE_SELECT = "SELECT [__$start_lsn], [__$seqval], [__$operation], [__$update_mask], #, "
             + LSN_TIMESTAMP_SELECT_STATEMENT;
-    private static final String GET_ALL_CHANGES_FOR_TABLE_SELECT_DIRECT = "SELECT cdc_data.[__$start_lsn], cdc_data.[__$seqval], cdc_data.[__$operation], cdc_data.[__$update_mask], #, "
+    private static final String GET_ALL_CHANGES_FOR_TABLE_SELECT_DIRECT = "SELECT cdc_data.[__$start_lsn], cdc_data.[__$seqval], cdc_data.[__$operation], cdc_data.[__$update_mask], cdc_data.[__$command_id], #, "
             + LSN_TIMESTAMP_SELECT_STATEMENT_JOIN;
     private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_FUNCTION = "FROM #db.cdc.#function(?, ?, N'all update old')";
-    private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_DIRECT = "FROM #db.cdc.#table AS cdc_data LEFT JOIN #db.cdc.lsn_time_mapping ltm ON ltm.start_lsn = cdc_data.[__$start_lsn]";
+    private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_DIRECT = "FROM #db.cdc.#table AS cdc_data WITH (NOLOCK) LEFT JOIN #db.cdc.lsn_time_mapping ltm ON ltm.start_lsn = cdc_data.[__$start_lsn]";
     private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_FUNCTION_ORDER_BY = "ORDER BY [__$start_lsn] ASC, [__$seqval] ASC, [__$operation] ASC";
     private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_DIRECT_ORDER_BY = "ORDER BY cdc_data.[__$start_lsn] ASC, cdc_data.[__$command_id] ASC, cdc_data.[__$seqval] ASC, cdc_data.[__$operation] ASC";
     private static final String GET_CDC_JOB_INFO = "{call sys.sp_cdc_help_jobs}";
@@ -211,10 +211,16 @@ public class SqlServerConnection extends JdbcConnection {
         }
 
         if (isDirectMode) {
-            where.add("(([cdc_data].[__$start_lsn] = ? AND [cdc_data].[__$seqval] = ? AND [cdc_data].[__$operation] > ?) " +
-                    "OR ([cdc_data].[__$start_lsn] = ? AND [cdc_data].[__$seqval] > ?) " +
+            // The seqval condition is a safeguard. Every command id observed so far maps to exactly one
+            // seqval but that is not documented and the branch keeps the keyset correct if it ever stops holding.
+            where.add("(([cdc_data].[__$start_lsn] = ? AND [cdc_data].[__$command_id] = ? AND [cdc_data].[__$seqval] = ? AND [cdc_data].[__$operation] > ?) " +
+                    "OR ([cdc_data].[__$start_lsn] = ? AND [cdc_data].[__$command_id] = ? AND [cdc_data].[__$seqval] > ?) " +
+                    "OR ([cdc_data].[__$start_lsn] = ? AND [cdc_data].[__$command_id] > ?) " +
                     "OR ([cdc_data].[__$start_lsn] > ?))");
             where.add("[cdc_data].[__$start_lsn] <= ?");
+            // This branch is added for performance. Bounding the seek on both sides keeps it a range seek on the change table's
+            // clustered index instead of a full table scan from the lower bound.
+            where.add("[cdc_data].[__$start_lsn] >= ?");
         }
         else {
             where.add("(([__$start_lsn] = ? AND [__$seqval] = ? AND [__$operation] > ?) " +
@@ -420,12 +426,13 @@ public class SqlServerConnection extends JdbcConnection {
      * @param intervalFromLsn - closed lower bound of interval of changes to be provided
      * @param seqvalFromLsn - in-transaction sequence value to start after, pass {@link Lsn#ZERO} to fetch all sequence values
      * @param operationFrom - operation number to start after, pass 0 to fetch all operations
+     * @param commandIdFrom - in-transaction command id to start after. Only used in {@code direct} mode;
      * @param intervalToLsn  - closed upper bound of interval  of changes to be provided
      * @param maxRows - the max number of rows to return, pass 0 for no limit
      * @throws SQLException
      */
     public ResultSet getChangesForTable(SqlServerChangeTable changeTable, Lsn intervalFromLsn, Lsn seqvalFromLsn, int operationFrom,
-                                        Lsn intervalToLsn, int maxRows)
+                                        Integer commandIdFrom, Lsn intervalToLsn, int maxRows)
             throws SQLException {
         String databaseName = changeTable.getSourceTableId().catalog();
         String capturedColumns = changeTable.getCapturedColumns().stream().map(this::quoteIdentifier)
@@ -448,8 +455,8 @@ public class SqlServerConnection extends JdbcConnection {
         // If the table was added in the middle of queried buffer we need
         // to adjust from to the first LSN available
         final Lsn fromLsn = getFromLsn(changeTable, intervalFromLsn);
-        LOGGER.trace("Getting {} changes for table {} in range [{}-{}-{}, {}]", maxRows > 0 ? "top " + maxRows : "", changeTable, fromLsn, seqvalFromLsn, operationFrom,
-                intervalToLsn);
+        LOGGER.trace("Getting {} changes for table {} in range [{}-{}-{}-{}, {}]", maxRows > 0 ? "top " + maxRows : "", changeTable, fromLsn, commandIdFrom,
+                seqvalFromLsn, operationFrom, intervalToLsn);
 
         PreparedStatement statement = connection().prepareStatement(query);
         statement.closeOnCompletion();
@@ -462,24 +469,49 @@ public class SqlServerConnection extends JdbcConnection {
         if (config.getDataQueryMode() == SqlServerConnectorConfig.DataQueryMode.FUNCTION) {
             statement.setBytes(paramIndex++, fromLsn.getBinary());
             statement.setBytes(paramIndex++, intervalToLsn.getBinary());
+            statement.setBytes(paramIndex++, fromLsn.getBinary());
+            statement.setBytes(paramIndex++, seqvalFromLsn.getBinary());
+            statement.setInt(paramIndex++, operationFrom);
+            statement.setBytes(paramIndex++, fromLsn.getBinary());
+            statement.setBytes(paramIndex++, seqvalFromLsn.getBinary());
+            statement.setBytes(paramIndex++, fromLsn.getBinary());
+            statement.setBytes(paramIndex++, intervalToLsn.getBinary());
         }
-        statement.setBytes(paramIndex++, fromLsn.getBinary());
-        statement.setBytes(paramIndex++, seqvalFromLsn.getBinary());
-        statement.setInt(paramIndex++, operationFrom);
-        statement.setBytes(paramIndex++, fromLsn.getBinary());
-        statement.setBytes(paramIndex++, seqvalFromLsn.getBinary());
-        statement.setBytes(paramIndex++, fromLsn.getBinary());
-        statement.setBytes(paramIndex++, intervalToLsn.getBinary());
+        else {
+            if (commandIdFrom == null) {
+                throw new IllegalStateException("command_id must not be null in direct mode");
+            }
+
+            // (start_lsn = ? AND command_id = ? AND seqval = ? AND operation > ?)
+            statement.setBytes(paramIndex++, fromLsn.getBinary());
+            statement.setInt(paramIndex++, commandIdFrom);
+            statement.setBytes(paramIndex++, seqvalFromLsn.getBinary());
+            statement.setInt(paramIndex++, operationFrom);
+            // OR (start_lsn = ? AND command_id = ? AND seqval > ?)
+            statement.setBytes(paramIndex++, fromLsn.getBinary());
+            statement.setInt(paramIndex++, commandIdFrom);
+            statement.setBytes(paramIndex++, seqvalFromLsn.getBinary());
+            // OR (start_lsn = ? AND command_id > ?)
+            statement.setBytes(paramIndex++, fromLsn.getBinary());
+            statement.setInt(paramIndex++, commandIdFrom);
+            // OR (start_lsn > ?)
+            statement.setBytes(paramIndex++, fromLsn.getBinary());
+            // AND start_lsn <= ? AND start_lsn >= ?
+            statement.setBytes(paramIndex++, intervalToLsn.getBinary());
+            statement.setBytes(paramIndex++, fromLsn.getBinary());
+        }
 
         return statement.executeQuery();
     }
 
-    public ResultSet getChangesForTable(SqlServerChangeTable changeTable, Lsn intervalFromLsn, Lsn intervalToLsn, int maxRows) throws SQLException {
-        return getChangesForTable(changeTable, intervalFromLsn, Lsn.ZERO, 0, intervalToLsn, maxRows);
+    public ResultSet getChangesForTable(SqlServerChangeTable changeTable, Lsn intervalFromLsn, Lsn seqvalFromLsn, int operationFrom,
+                                        Lsn intervalToLsn, int maxRows)
+            throws SQLException {
+        return getChangesForTable(changeTable, intervalFromLsn, seqvalFromLsn, operationFrom, null, intervalToLsn, maxRows);
     }
 
-    public ResultSet getChangesForTable(SqlServerChangeTable changeTable, Lsn intervalFromLsn, Lsn intervalToLsn) throws SQLException {
-        return getChangesForTable(changeTable, intervalFromLsn, intervalToLsn, 0);
+    public ResultSet getChangesForTable(SqlServerChangeTable changeTable, Lsn intervalFromLsn, Lsn intervalToLsn, int maxRows) throws SQLException {
+        return getChangesForTable(changeTable, intervalFromLsn, Lsn.ZERO, 0, null, intervalToLsn, maxRows);
     }
 
     private Lsn getFromLsn(SqlServerChangeTable changeTable, Lsn intervalFromLsn) throws SQLException {
