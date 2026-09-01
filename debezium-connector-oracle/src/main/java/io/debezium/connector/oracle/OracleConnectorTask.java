@@ -89,14 +89,6 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
     @Override
     public ChangeEventSourceCoordinator<OraclePartition, OracleOffsetContext> start(Configuration config) {
 
-        connectorAdapter = connectorConfig.getConnectorAdapter();
-        partitionProvider = new OraclePartition.Provider(connectorConfig);
-        offsetContextLoader = connectorConfig.getAdapter().getOffsetContextLoader();
-
-        TopicNamingStrategy<TableId> topicNamingStrategy = connectorConfig.getTopicNamingStrategy(CommonConnectorConfig.TOPIC_NAMING_STRATEGY);
-        SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
-
-        final JdbcConfiguration jdbcConfig = connectorConfig.getJdbcConfig();
         final OracleConnectionFactory connectionFactory = OracleConnectionFactoryProvider.create(connectorConfig);
 
         jdbcConnection = connectionFactory.mainConnection();
@@ -106,9 +98,20 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         // Validate Autonomous Database configuration
         if (jdbcConnection.isAutonomousDatabase()) {
             if (!connectorConfig.isArchiveLogOnlyMode()) {
-                throw new DebeziumException(
-                        "Oracle Autonomous Database does not support online redo logs and requires archive-log-only mode. " +
-                                "Please set 'log.mining.archive.log.only.mode=true' in the connector configuration.");
+                if (config.hasKey(OracleConnectorConfig.LOG_MINING_ARCHIVE_LOG_ONLY_MODE)) {
+                    throw new DebeziumException(
+                            "Oracle Autonomous Database does not support online redo logs and requires archive-log-only mode, " +
+                                    "but 'log.mining.archive.log.only.mode' is explicitly set to 'false'. " +
+                                    "Please remove the property or set it to 'true'.");
+                }
+
+                LOGGER.info("Oracle Autonomous Database detected, enabling archive-log-only mode");
+
+                // The taskContext created in preStart still references the original configuration; that
+                // instance is only used for metrics tags and thread naming, neither of which consumes
+                // the archive-log-only flag, so it is safe to leave it as-is.
+                connectorConfig = new OracleConnectorConfig(
+                        config.edit().with(OracleConnectorConfig.LOG_MINING_ARCHIVE_LOG_ONLY_MODE, true).build());
             }
 
             if (!Strings.isNullOrBlank(connectorConfig.getPdbName())) {
@@ -128,6 +131,15 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
 
             LOGGER.info("Oracle Autonomous Database detected, using archive-log-only mode with {} adapter", adapter.getValue());
         }
+
+        connectorAdapter = connectorConfig.getConnectorAdapter();
+        partitionProvider = new OraclePartition.Provider(connectorConfig);
+        offsetContextLoader = connectorConfig.getAdapter().getOffsetContextLoader();
+
+        TopicNamingStrategy<TableId> topicNamingStrategy = connectorConfig.getTopicNamingStrategy(CommonConnectorConfig.TOPIC_NAMING_STRATEGY);
+        SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
+
+        final JdbcConfiguration jdbcConfig = connectorConfig.getJdbcConfig();
 
         final boolean extendedStringsSupported = jdbcConnection.hasExtendedStringSupport();
 
