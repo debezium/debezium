@@ -1857,8 +1857,14 @@ Because the `source` channel must be enabled to permit connectors to process inc
 
 |[[mongodb-property-capture-target]]<<mongodb-property-capture-target, `+capture.target+`>>
 |
-| Specifies the database that the connector monitors for changes.
-This property applies only if the xref:mongodb-property-capture-scope[`capture.scope`] is set to `database`.
+| Specifies the database or collection that the connector monitors for changes, depending on the xref:mongodb-property-capture-scope[`capture.scope`] value:
+
+* If `capture.scope` is set to `database`, set this property to the name of the database to capture, for example, `inventory`.
+* If `capture.scope` is set to `collection`, set this property to the fully-qualified name of the single collection to capture, in the form `_databaseName_._collectionName_`, for example, `inventory.orders`.
+With this scope, the connector captures only the collection that `capture.target` specifies; the xref:mongodb-property-collection-include-list[`collection.include.list`] property cannot widen the capture to other collections.
+
+This property is required when `capture.scope` is set to `database` or `collection`; the connector fails validation if the property is not set.
+The property is ignored when `capture.scope` is set to `deployment`.
 
 |[[mongodb-property-field-exclude-list]]<<mongodb-property-field-exclude-list, `+field.exclude.list+`>>
 |_empty string_
