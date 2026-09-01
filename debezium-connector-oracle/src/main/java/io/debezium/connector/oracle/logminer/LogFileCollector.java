@@ -186,7 +186,7 @@ public class LogFileCollector {
     @VisibleForTesting
     public List<LogFile> getDeletedLogsForOffsetScn(Scn offsetScn) throws SQLException {
         return connection.queryAndMap(
-                SqlUtils.deletedArchiveLogsQuery(offsetScn, archiveLogDestinationNames),
+                SqlUtils.deletedArchiveLogsQuery(offsetScn, archiveLogDestinationNames, connection.isAutonomousDatabase()),
                 rs -> {
                     final List<LogFile> logs = new ArrayList<>();
                     while (rs.next()) {

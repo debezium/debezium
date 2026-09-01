@@ -260,6 +260,29 @@ public class SqlUtilsTest {
 
     @Test
     @FixFor("debezium/dbz#1106")
+    void testDeletedArchiveLogsQueryAdbMode() {
+        String result = SqlUtils.deletedArchiveLogsQuery(Scn.valueOf(12345L), Collections.emptyList(), true);
+        assertThat(result).isEqualTo(
+                "SELECT A.NAME AS FILE_NAME, A.FIRST_CHANGE# FIRST_CHANGE, A.NEXT_CHANGE# NEXT_CHANGE, " +
+                        "A.SEQUENCE# AS SEQ, A.THREAD# AS THREAD " +
+                        "FROM V$ARCHIVED_LOG A, V$DATABASE D " +
+                        "WHERE A.NAME IS NOT NULL " +
+                        "AND A.ARCHIVED = 'YES' " +
+                        "AND A.STATUS = 'D' " +
+                        "AND A.FIRST_CHANGE# <= 12345 " +
+                        "AND A.NEXT_CHANGE# > 12345 " +
+                        "AND A.DEST_ID IN (" +
+                        "SELECT DISTINCT DEST_ID FROM V$ARCHIVED_LOG WHERE STATUS='A' AND (NAME LIKE '+%' OR NAME LIKE '/%')) " +
+                        "AND A.RESETLOGS_CHANGE# = D.RESETLOGS_CHANGE# " +
+                        "AND A.RESETLOGS_TIME = D.RESETLOGS_TIME");
+
+        // When destination names are available, ADB mode uses the standard destination filtering
+        result = SqlUtils.deletedArchiveLogsQuery(Scn.valueOf(12345L), Collections.singletonList("LOG_ARCHIVE_DEST_1"), true);
+        assertThat(result).isEqualTo(SqlUtils.deletedArchiveLogsQuery(Scn.valueOf(12345L), Collections.singletonList("LOG_ARCHIVE_DEST_1")));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1106")
     void testOldestFirstArchiveLogChangeSqlAdbMode() {
         final String sqlStemAdb = "SELECT MIN(FIRST_CHANGE#) " +
                 "FROM (" +
@@ -285,6 +308,7 @@ public class SqlUtilsTest {
         result = SqlUtils.oldestFirstChangeQuery(Duration.ofHours(0L), Collections.singletonList("LOG_ARCHIVE_DEST_3"), true);
         assertThat(result).isEqualTo(SqlUtils.oldestFirstChangeQuery(Duration.ofHours(0L), Collections.singletonList("LOG_ARCHIVE_DEST_3")));
     }
+
     @Test
     @FixFor("debezium/dbz#1106")
     void testAllRedoThreadArchiveLogsSqlAdbMode() {
@@ -306,6 +330,7 @@ public class SqlUtilsTest {
         result = SqlUtils.allRedoThreadArchiveLogs(2, Collections.singletonList("LOG_ARCHIVE_DEST_5"), true);
         assertThat(result).isEqualTo(SqlUtils.allRedoThreadArchiveLogs(2, Collections.singletonList("LOG_ARCHIVE_DEST_5")));
     }
+
     @Test
     @FixFor("debezium/dbz#1106")
     void testAllMinableLogsSqlAdbMode() {
