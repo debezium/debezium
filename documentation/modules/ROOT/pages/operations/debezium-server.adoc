@@ -1,6 +1,6 @@
 // Category: debezium-using
 // Type: assembly
-// Title: {prodname} Server
+// Title: {prodname} Server (Technology Preview)
 [id="debezium-server"]
 = {prodname} Server
 
@@ -16,6 +16,17 @@ endif::community[]
 
 {prodname} Server is a ready-to-use application that streams change events from a source database directly to messaging and storage systems without requiring Apache Kafka.
 You configure a source connector and a sink to define where events come from and where they are delivered.
+
+ifdef::product[]
+[IMPORTANT]
+====
+{prodname} Server is a Technology Preview feature.
+Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
+Red Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+endif::product[]
 
 ifdef::community[]
 [NOTE]
