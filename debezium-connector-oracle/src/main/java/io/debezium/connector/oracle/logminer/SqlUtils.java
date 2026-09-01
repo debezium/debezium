@@ -58,8 +58,8 @@ public class SqlUtils {
         // This prevents duplicate sequence numbers from being returned.
         if (autonomousMode) {
             return "SELECT 'TOTAL', COUNT(1) FROM V$ARCHIVED_LOG " +
-                    "WHERE FIRST_TIME > TRUNC(SYSDATE)" +
-                    "AND STATUS = 'A'" +
+                    "WHERE FIRST_TIME > TRUNC(SYSDATE) " +
+                    "AND STATUS = 'A' " +
                     "AND (NAME LIKE '+%' OR NAME LIKE '/%')";
         }
 
