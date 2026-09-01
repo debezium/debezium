@@ -882,8 +882,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     public static final List<String> EXCLUDED_SCHEMAS = Collections.unmodifiableList(Arrays.asList("appqossys", "audsys",
-            "ctxsys", "dvsys", "dbsfwuser", "dbsnmp", "ggsharedcap", "gsmadmin_internal", "lbacsys", "mdsys", "ojvmsys", "olapsys",
-            "orddata", "ordsys", "outln", "sys", "system", "vecsys", "wmsys", "xdb"));
+            "ctxsys", "dvsys", "dbsfwuser", "dbsnmp", "ggsharedcap", "gsmadmin_internal", "lbacsys", "mdsys", "mpack_oee", "ojvmsys",
+            "olapsys", "orddata", "ordsys", "outln", "sys", "system", "vecsys", "wmsys", "xdb"));
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OracleConnectorConfig.class);
 

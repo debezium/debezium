@@ -3002,6 +3002,8 @@ If this value returns `OLTP`, `DWCS`, or `JDCS`, the connector operates in Auton
 When operating in Autonomous Database mode, the connector automatically:
 
 * Enables archive-log-only mode (`log.mining.archive.log.only.mode=true`), because ADB does not provide access to online redo logs.
+* Excludes tables owned by Oracle-maintained schemas during table discovery.
+ADB instances are pre-provisioned with many internal schemas, such as APEX, ORDS, and Graph Studio, that cannot be captured; the connector skips schemas flagged as `ORACLE_MAINTAINED` in `ALL_USERS`.
 * Uses `DBA_SUPPLEMENTAL_LOGGING` view instead of `V$DATABASE` columns for checking supplemental logging configuration.
 * Queries `V$ARCHIVED_LOG` for archive log destination IDs instead of `V$ARCHIVE_DEST_STATUS`.
 * Skips calls to `DBMS_LOGMNR.ADD_LOGFILE` and `DBMS_LOGMNR.REMOVE_LOGFILE`, relying on LogMiner's automatic log discovery.
@@ -3100,6 +3102,7 @@ When the {prodname} Oracle connector captures tables, it automatically excludes 
 * `qsmadmin_internal`
 * `lbacsys`
 * `mdsys`
+* `mpack_oee` (Oracle Autonomous Database)
 * `ojvmsys`
 * `olapsys`
 * `orddata`

@@ -196,7 +196,7 @@ public class OracleConnection extends JdbcConnection {
      */
     @Override
     public Set<TableId> getAllTableIds(String catalogName) throws SQLException {
-        final String query = "select owner, table_name from all_tables " +
+        String query = "select owner, table_name from all_tables " +
         // filter special spatial tables
                 "where table_name NOT LIKE 'MDRT_%' " +
                 "and table_name NOT LIKE 'MDRS_%' " +
@@ -207,6 +207,14 @@ public class OracleConnection extends JdbcConnection {
                 "and nested = 'NO'" +
                 // filter parent tables of nested tables
                 "and table_name not in (select PARENT_TABLE_NAME from ALL_NESTED_TABLES)";
+
+        if (isAutonomousDatabase()) {
+            // Autonomous Databases are pre-provisioned with many Oracle-managed schemas, such as
+            // APEX, ORDS, Graph Studio, and the cloud service's own management schemas, none of
+            // which can be captured. These schemas carry version-dependent names, so rather than
+            // relying on a static exclusion list, filter on the flag Oracle maintains for them.
+            query += " and owner not in (select username from all_users where oracle_maintained = 'Y')";
+        }
 
         Set<TableId> tableIds = new HashSet<>();
         query(query, (rs) -> {

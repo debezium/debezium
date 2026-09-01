@@ -356,6 +356,10 @@
                     <skipTests>${skipITs}</skipTests>
                     <enableAssertions>true</enableAssertions>
                     <forkCount>0</forkCount>
+                    <!-- The Autonomous Database tests only run with the oracle-adb profile -->
+                    <excludes>
+                        <exclude>**/io/debezium/connector/oracle/adb/**</exclude>
+                    </excludes>
                     <argLine>-Djava.library.path=${instantclient.dir} -Ddebezium.embedded.shutdown.pause.before.interrupt.ms=20000</argLine>
                     <systemPropertyVariables>
                         <database.connection.adapter>${adapter.name}</database.connection.adapter>
@@ -498,6 +502,46 @@
             <activation>
                 <activeByDefault>false</activeByDefault>
             </activation>
+        </profile>
+        <!--
+        Profile: oracle-adb
+        This profile should be used to run the test suite against an Oracle Autonomous Database,
+        combined with the oracle-tests profile to enable integration test execution. Only the
+        curated tests in the io.debezium.connector.oracle.adb package are executed; the rest of
+        the test suite assumes changes are immediately visible in the online redo logs, which is
+        not the case on an Autonomous Database where changes only become visible once archived.
+        -->
+        <profile>
+            <id>oracle-adb</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <excludes combine.self="override" />
+                            <includes>
+                                <include>**/io/debezium/connector/oracle/adb/*IT.java</include>
+                            </includes>
+                            <systemPropertyVariables>
+                                <oracle.adb>true</oracle.adb>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <systemPropertyVariables combine.children="append">
+                                <oracle.adb>true</oracle.adb>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
         <!-- Enables all sources, useful for IDE build or releases -->
         <profile>
