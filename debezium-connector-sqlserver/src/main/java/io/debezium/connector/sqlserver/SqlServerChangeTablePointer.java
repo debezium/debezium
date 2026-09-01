@@ -44,7 +44,9 @@ public class SqlServerChangeTablePointer extends ChangeTableResultSet<SqlServerC
     private static final int COL_ROW_LSN = 2;
     private static final int COL_OPERATION = 3;
     private static final int COL_UPDATE_MASK = 4;
-    private static final int COL_DATA = 5;
+    private static final int COL_COMMAND_ID = 5;
+    private static final int COL_DATA_FUNCTION_MODE = 5;
+    private static final int COL_DATA_DIRECT_MODE = 6;
 
     private ResultSetMapper<Object[]> resultSetMapper;
     private final int columnDataOffset;
@@ -52,14 +54,20 @@ public class SqlServerChangeTablePointer extends ChangeTableResultSet<SqlServerC
     private final Lsn fromLsn;
     private final Lsn toLsn;
     private final int maxRowsPerResultSet;
+    private final boolean directMode;
+    private final TxLogPosition resumeFromPosition;
 
-    public SqlServerChangeTablePointer(SqlServerChangeTable changeTable, SqlServerConnection connection, Lsn fromLsn, Lsn toLsn, int maxRowsPerResultSet) {
-        super(changeTable, COL_DATA, maxRowsPerResultSet);
+    public SqlServerChangeTablePointer(SqlServerChangeTable changeTable, SqlServerConnection connection, Lsn fromLsn, Lsn toLsn,
+                                       TxLogPosition resumeFromPosition, int maxRowsPerResultSet,
+                                       SqlServerConnectorConfig.DataQueryMode dataQueryMode) {
+        super(changeTable, dataQueryMode == SqlServerConnectorConfig.DataQueryMode.DIRECT ? COL_DATA_DIRECT_MODE : COL_DATA_FUNCTION_MODE, maxRowsPerResultSet);
+        this.directMode = dataQueryMode == SqlServerConnectorConfig.DataQueryMode.DIRECT;
         // Store references to these because we can't get them from our superclass
-        this.columnDataOffset = COL_DATA;
+        this.columnDataOffset = this.directMode ? COL_DATA_DIRECT_MODE : COL_DATA_FUNCTION_MODE;
         this.connection = connection;
         this.fromLsn = fromLsn;
         this.toLsn = toLsn;
+        this.resumeFromPosition = resumeFromPosition;
         this.maxRowsPerResultSet = maxRowsPerResultSet;
     }
 
@@ -78,11 +86,12 @@ public class SqlServerChangeTablePointer extends ChangeTableResultSet<SqlServerC
 
     @Override
     protected TxLogPosition getNextChangePosition(ResultSet resultSet) throws SQLException {
-        return isCompleted() ? TxLogPosition.NULL
+        return isCompleted() ? (directMode ? TxLogPosition.NULL : TxLogPosition.NULL_LEGACY)
                 : TxLogPosition.valueOf(
                         Lsn.valueOf(resultSet.getBytes(COL_COMMIT_LSN)),
                         Lsn.valueOf(resultSet.getBytes(COL_ROW_LSN)),
-                        resultSet.getInt(COL_OPERATION));
+                        resultSet.getInt(COL_OPERATION),
+                        directMode ? resultSet.getInt(COL_COMMAND_ID) : null);
     }
 
     /**
@@ -97,13 +106,30 @@ public class SqlServerChangeTablePointer extends ChangeTableResultSet<SqlServerC
 
     @Override
     protected ResultSet getNextResultSet(TxLogPosition lastPositionSeen) throws SQLException {
-        if (lastPositionSeen == null || lastPositionSeen.equals(TxLogPosition.NULL)) {
-            return connection.getChangesForTable(getChangeTable(), fromLsn, toLsn, maxRowsPerResultSet);
+        if (!directMode) {
+            if (lastPositionSeen == null || lastPositionSeen.equals(TxLogPosition.NULL_LEGACY)) {
+                return connection.getChangesForTable(getChangeTable(), fromLsn, toLsn, maxRowsPerResultSet);
+            }
+            else {
+                return connection.getChangesForTable(getChangeTable(), lastPositionSeen.getCommitLsn(), lastPositionSeen.getInTxLsn(), lastPositionSeen.getOperation(),
+                        toLsn, maxRowsPerResultSet);
+            }
         }
-        else {
-            return connection.getChangesForTable(getChangeTable(), lastPositionSeen.getCommitLsn(), lastPositionSeen.getInTxLsn(), lastPositionSeen.getOperation(),
-                    toLsn, maxRowsPerResultSet);
+
+        // next page in a running connector
+        if (lastPositionSeen != null && !lastPositionSeen.equals(TxLogPosition.NULL)) {
+            return connection.getChangesForTable(getChangeTable(), lastPositionSeen.getCommitLsn(), lastPositionSeen.getInTxLsn(),
+                    lastPositionSeen.getOperation(), lastPositionSeen.getCommandId(), toLsn, maxRowsPerResultSet);
         }
+
+        // restarted connector which has not seen any position yet
+        if (resumeFromPosition != null && fromLsn.equals(resumeFromPosition.getCommitLsn())) {
+            return connection.getChangesForTable(getChangeTable(), fromLsn, resumeFromPosition.getInTxLsn(), 0,
+                    resumeFromPosition.getCommandId(), toLsn, maxRowsPerResultSet);
+        }
+
+        // running connector with new range.
+        return connection.getChangesForTable(getChangeTable(), fromLsn, Lsn.ZERO, 0, -1, toLsn, maxRowsPerResultSet);
     }
 
     @Override
