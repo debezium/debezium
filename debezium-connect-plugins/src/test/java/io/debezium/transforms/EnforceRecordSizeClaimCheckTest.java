@@ -8,6 +8,7 @@ package io.debezium.transforms;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.math.BigDecimal;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -16,6 +17,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -86,6 +88,23 @@ class EnforceRecordSizeClaimCheckTest {
 
         assertThat(after(sourceRecord).getString("payload")).isEqualTo(payload);
         assertThat(RecordingStorage.configuredBasePath).isEqualTo("test://claim-check");
+    }
+
+    @Test
+    void shouldSerializeHeadersInOrder() throws Exception {
+        transform.configure(claimCheckConfig("payload"));
+        SourceRecord sourceRecord = createStringRecord("x".repeat(5_000), sourceOffset(100L));
+        sourceRecord.headers().addString("trace-id", "first");
+        sourceRecord.headers().addBytes("trace-id", new byte[]{ 1, 2, 3 });
+
+        transform.apply(sourceRecord);
+
+        JsonNode headers = OBJECT_MAPPER.readTree(RecordingStorage.records.get(0).payload()).path("headers");
+        assertThat(headers.size()).isEqualTo(2);
+        assertThat(headers.get(0).path("key").asText()).isEqualTo("trace-id");
+        assertThat(headers.get(0).path("value").asText()).isEqualTo("first");
+        assertThat(headers.get(1).path("key").asText()).isEqualTo("trace-id");
+        assertThat(headers.get(1).path("value").asText()).isEqualTo("AQID");
     }
 
     @Test
@@ -170,7 +189,27 @@ class EnforceRecordSizeClaimCheckTest {
         assertThatThrownBy(() -> transform.apply(sourceRecord))
                 .isInstanceOf(ConnectException.class)
                 .hasMessageContaining("payload")
-                .hasMessageContaining("only STRING and BYTES");
+                .hasMessageContaining("only STRING and unnamed BYTES");
+        assertThat(RecordingStorage.records).isEmpty();
+    }
+
+    @Test
+    void shouldRejectNamedBytesColumnsBeforeWriting() {
+        transform.configure(claimCheckConfig("amount"));
+        Schema recordSchema = SchemaBuilder.struct()
+                .field("amount", Decimal.builder(2).optional().build())
+                .field("large", Schema.OPTIONAL_STRING_SCHEMA)
+                .optional()
+                .build();
+        Struct after = new Struct(recordSchema)
+                .put("amount", new BigDecimal("42.00"))
+                .put("large", "x".repeat(5_000));
+        SourceRecord sourceRecord = createRecord(recordSchema, after, sourceOffset(100L));
+
+        assertThatThrownBy(() -> transform.apply(sourceRecord))
+                .isInstanceOf(ConnectException.class)
+                .hasMessageContaining("amount")
+                .hasMessageContaining("unnamed BYTES");
         assertThat(RecordingStorage.records).isEmpty();
     }
 

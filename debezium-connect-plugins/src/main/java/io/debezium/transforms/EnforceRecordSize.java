@@ -40,6 +40,7 @@ import io.debezium.spi.storage.OversizedRecord;
 import io.debezium.spi.storage.OversizedRecordReference;
 import io.debezium.spi.storage.OversizedRecordStorage;
 import io.debezium.util.ApproximateStructSizeCalculator;
+import io.debezium.util.Strings;
 
 /**
  * A Single Message Transform that enforces a maximum record size.
@@ -347,13 +348,16 @@ public class EnforceRecordSize<R extends ConnectRecord<R>> implements Transforma
             return;
         }
         for (org.apache.kafka.connect.data.Field field : sectionField.schema().fields()) {
-            if (claimCheckColumns.contains(field.name())
-                    && field.schema().type() != Schema.Type.STRING
-                    && field.schema().type() != Schema.Type.BYTES) {
+            if (claimCheckColumns.contains(field.name()) && !isSupportedClaimCheckSchema(field.schema())) {
                 throw new ConnectException("Claim-check column '" + field.name() + "' has schema type "
-                        + field.schema().type() + "; only STRING and BYTES columns are supported");
+                        + field.schema().type() + "; only STRING and unnamed BYTES columns are supported");
             }
         }
+    }
+
+    private static boolean isSupportedClaimCheckSchema(Schema schema) {
+        return schema.type() == Schema.Type.STRING
+                || (schema.type() == Schema.Type.BYTES && schema.name() == null);
     }
 
     private static void collectSectionColumns(Struct envelope, String sectionName, Set<String> columns) {
@@ -539,15 +543,15 @@ public class EnforceRecordSize<R extends ConnectRecord<R>> implements Transforma
 
     private void configureClaimCheck(AbstractConfig config, Map<String, ?> props) {
         String storageClass = config.getString(CLAIM_CHECK_STORAGE_CLASS_CONF);
-        if (storageClass == null || storageClass.isBlank()) {
+        if (Strings.isNullOrBlank(storageClass)) {
             throw new ConfigException(CLAIM_CHECK_STORAGE_CLASS_CONF, storageClass,
                     "Must be set when strategy is 'claim_check'");
         }
 
         List<String> configuredColumns = config.getList(CLAIM_CHECK_COLUMNS_CONF);
         this.claimCheckColumns = configuredColumns.stream()
+                .filter(column -> !Strings.isNullOrBlank(column))
                 .map(String::trim)
-                .filter(column -> !column.isEmpty())
                 .map(EnforceRecordSize::unqualifiedColumnName)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
         if (claimCheckColumns.isEmpty()) {

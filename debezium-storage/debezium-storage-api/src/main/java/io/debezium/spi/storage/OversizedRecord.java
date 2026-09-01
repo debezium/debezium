@@ -8,6 +8,7 @@ package io.debezium.spi.storage;
 import java.util.Objects;
 
 import io.debezium.common.annotation.Incubating;
+import io.debezium.util.Strings;
 
 /**
  * A serialized source record that exceeds the configured inline message size.
@@ -22,14 +23,16 @@ import io.debezium.common.annotation.Incubating;
 public record OversizedRecord(String key, byte[] payload, String contentType) {
 
     public OversizedRecord {
-        if (Objects.requireNonNull(key, "key must not be null").isBlank()) {
+        Objects.requireNonNull(key, "key must not be null");
+        if (Strings.isNullOrBlank(key)) {
             throw new IllegalArgumentException("key must not be blank");
         }
         payload = Objects.requireNonNull(payload, "payload must not be null").clone();
         if (payload.length == 0) {
             throw new IllegalArgumentException("payload must not be empty");
         }
-        if (Objects.requireNonNull(contentType, "contentType must not be null").isBlank()) {
+        Objects.requireNonNull(contentType, "contentType must not be null");
+        if (Strings.isNullOrBlank(contentType)) {
             throw new IllegalArgumentException("contentType must not be blank");
         }
     }

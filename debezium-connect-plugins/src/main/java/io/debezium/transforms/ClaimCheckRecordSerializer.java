@@ -19,12 +19,14 @@ import java.util.TreeMap;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.source.SourceRecord;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.debezium.DebeziumException;
+import io.debezium.util.Strings;
 
 final class ClaimCheckRecordSerializer {
 
@@ -39,6 +41,7 @@ final class ClaimCheckRecordSerializer {
         payload.put("topic", record.topic());
         payload.put("sourcePartition", canonicalMap(record.sourcePartition()));
         payload.put("sourceOffset", canonicalMap(record.sourceOffset()));
+        payload.put("headers", serializeHeaders(record));
         payload.put("key", connectValue(record.keySchema(), record.key()));
         payload.put("value", connectValue(record.valueSchema(), record.value()));
 
@@ -56,6 +59,17 @@ final class ClaimCheckRecordSerializer {
         catch (JsonProcessingException e) {
             throw new DebeziumException("Failed to serialize oversized record to JSON", e);
         }
+    }
+
+    private static List<Map<String, Object>> serializeHeaders(SourceRecord record) {
+        List<Map<String, Object>> headers = new ArrayList<>();
+        for (Header header : record.headers()) {
+            Map<String, Object> serializedHeader = new LinkedHashMap<>();
+            serializedHeader.put("key", header.key());
+            serializedHeader.put("value", connectValue(header.schema(), header.value()));
+            headers.add(serializedHeader);
+        }
+        return headers;
     }
 
     @SuppressWarnings("unchecked")
@@ -143,7 +157,7 @@ final class ClaimCheckRecordSerializer {
     }
 
     private static String sanitize(String value) {
-        String candidate = value == null || value.isBlank() ? "unknown-topic" : value;
+        String candidate = Strings.isNullOrBlank(value) ? "unknown-topic" : value;
         return candidate.replaceAll("[^A-Za-z0-9_.=-]", "_");
     }
 
