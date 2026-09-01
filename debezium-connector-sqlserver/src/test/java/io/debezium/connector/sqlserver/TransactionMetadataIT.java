@@ -151,7 +151,7 @@ public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
                             final Lsn minLsn = connection.getMinLsn(TestHelper.TEST_DATABASE_1, tableName);
                             final Lsn maxLsn = connection.getMaxLsn(TestHelper.TEST_DATABASE_1);
                             final AtomicReference<Boolean> found = new AtomicReference<>(false);
-                            try (ResultSet rs = connection.getChangesForTable(ct, minLsn, maxLsn)) {
+                            try (ResultSet rs = connection.getChangesForTable(ct, minLsn, Lsn.ZERO, 0, -1, maxLsn, 0)) {
                                 while (rs.next()) {
                                     if (rs.getInt("id") == -1) {
                                         found.set(true);
