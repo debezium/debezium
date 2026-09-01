@@ -92,7 +92,9 @@ class EnforceRecordSizeClaimCheckTest {
 
     @Test
     void shouldSerializeHeadersInOrder() throws Exception {
-        transform.configure(claimCheckConfig("payload"));
+        Map<String, Object> config = claimCheckConfig("payload");
+        config.put(EnforceRecordSize.MAX_BYTES_CONF, "2000");
+        transform.configure(config);
         SourceRecord sourceRecord = createStringRecord("x".repeat(5_000), sourceOffset(100L));
         sourceRecord.headers().addString("trace-id", "first");
         sourceRecord.headers().addBytes("trace-id", new byte[]{ 1, 2, 3 });
