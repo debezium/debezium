@@ -119,7 +119,7 @@ Run the {prodname} Server startup script to begin streaming change events from y
 .Procedure
 
 . Open a command prompt or terminal window.
-. Change to the `{ServerInstallDirectory}/debezium-server` directory.
+. Change to the `_<ServerInstallDirectory>_/debezium-server` directory.
 . Start {prodname} Server:
 +
 ** On Linux, run the `run.sh` script:
