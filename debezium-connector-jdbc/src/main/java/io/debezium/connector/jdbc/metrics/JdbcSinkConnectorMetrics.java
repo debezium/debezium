@@ -10,7 +10,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 
-import org.apache.kafka.common.utils.Sanitizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,6 +17,7 @@ import io.debezium.DebeziumException;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.pipeline.JmxUtils;
 import io.debezium.sink.spi.SinkProgressListener;
+import io.debezium.util.Sanitizer;
 
 /**
  * JMX metrics for the JDBC sink connector. Counters are updated on the record-processing path and

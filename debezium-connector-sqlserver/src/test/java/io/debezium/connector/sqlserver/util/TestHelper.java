@@ -26,7 +26,6 @@ import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 
-import org.apache.kafka.common.utils.Sanitizer;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
 import org.slf4j.Logger;
@@ -49,6 +48,7 @@ import io.debezium.relational.TableId;
 import io.debezium.storage.file.history.FileSchemaHistory;
 import io.debezium.util.Collect;
 import io.debezium.util.IoUtil;
+import io.debezium.util.Sanitizer;
 import io.debezium.util.Strings;
 import io.debezium.util.Testing;
 
