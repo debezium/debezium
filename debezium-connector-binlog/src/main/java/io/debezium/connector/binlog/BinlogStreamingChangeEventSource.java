@@ -1373,6 +1373,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
                 for (int rowIndex = startingRowNumber; rowIndex != numRows; ++rowIndex) {
                     U row = rows.get(rowIndex);
                     changeEventValidator.validate(tableId, row);
+                    offsetContext.markSourceEventStarted();
                     offsetContext.setRowNumber(rowIndex, numRows);
                     offsetContext.event(tableId, eventTimestamp);
                     changeEmitter.emit(tableId, row);
