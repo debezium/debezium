@@ -2,8 +2,8 @@ name: Nightly Build Size Check
 
 on:
   schedule:
-    # Run at 2 AM UTC every day
-    - cron: '0 2 * * *'
+    # Run at 2 AM UTC every Monday
+    - cron: '0 2 * * 1'
   workflow_dispatch: # Allow manual trigger
 
 env:
