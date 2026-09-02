@@ -833,7 +833,11 @@ public class SqlServerConnection extends JdbcConnection {
     public boolean isAgentRunning(String databaseName) throws SQLException {
         final String query = replaceDatabaseNamePlaceholder(config().getString(AGENT_STATUS_QUERY), databaseName);
         return queryAndMap(query,
-                singleResultMapper(rs -> rs.getBoolean(1), "SQL Server Agent running status query must return exactly one value"));
+                singleResultMapper(rs -> rs.getBoolean(1), true,
+                        "Configured SQL Server Agent status query \"" + query + "\" "
+                                + "did not return the expected single row indicating whether the SQL Server Agent is running. "
+                                + "If this query is not applicable to your SQL Server deployment, override 'database.sqlserver.agent.status.query' "
+                                + "with a query appropriate for your deployment."));
     }
 
     @Override
