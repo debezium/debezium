@@ -11,7 +11,6 @@ import java.util.stream.Collectors;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 
-import org.apache.kafka.common.utils.Sanitizer;
 import org.apache.kafka.connect.errors.ConnectException;
 
 import io.debezium.annotation.ThreadSafe;
@@ -19,6 +18,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.pipeline.JmxUtils;
 import io.debezium.util.Collect;
+import io.debezium.util.Sanitizer;
 
 /**
  * Base for metrics implementations.
