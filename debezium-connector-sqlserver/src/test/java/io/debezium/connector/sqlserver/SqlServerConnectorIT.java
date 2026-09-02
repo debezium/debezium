@@ -68,6 +68,7 @@ import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.embedded.async.RetryingCallable;
 import io.debezium.heartbeat.DatabaseHeartbeatImpl;
+import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.Flaky;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.spi.Offsets;
@@ -2518,6 +2519,35 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
 
         final String message = "Streaming is disabled for snapshot mode initial_only";
         stopConnector(value -> assertThat(logInterceptor.containsMessage(message)).isTrue());
+    }
+
+    @Test
+    @FixFor("dbz#2551")
+    public void connectorShouldKeepRunningWhenAgentStatusQueryReturnsNoRowsOnIdleDatabase() throws Exception {
+        final Configuration config = TestHelper.defaultConfig()
+                .with("database.sqlserver.agent.status.query", "SELECT 1 WHERE 1 = 0")
+                .build();
+
+        final LogInterceptor logInterceptor = new LogInterceptor(JdbcConnection.class);
+
+        start(SqlServerConnector.class, config);
+        assertConnectorIsRunning();
+
+        // Wait for snapshot completion so streaming has started
+        consumeRecordsByTopic(1);
+
+        // Simulate the CDC clean up job emptying lsn_time_mapping on an idle database, so the next
+        // poll sees no maximum LSN and falls into the Agent status check.
+        connection.execute("DELETE FROM cdc.lsn_time_mapping");
+
+        Awaitility.await()
+                .atMost(TestHelper.waitTimeForLogEntries(), TimeUnit.SECONDS)
+                .untilAsserted(() -> assertThat(logInterceptor.containsWarnMessage(
+                        "did not return the expected single row indicating whether the SQL Server Agent is running")).isTrue());
+
+        assertConnectorIsRunning();
+
+        stopConnector();
     }
 
     @Test
