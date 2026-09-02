@@ -37,14 +37,15 @@ Also please reach out if you have requirements for specific sinks to be supporte
 endif::community[]
 
 // Type: procedure
-// Title: Installing {prodname} Server
+// Title: {prodname} Server installation
+// ModuleID: debezium-server-installation
 [id="installing-debezium-server"]
 == Installation
 
 Download and unpack the {prodname} Server distribution to install the server on your system.
 
-To install the server download and unpack the server distribution archive:
-
+.Procedure
+ifdef::community[]
 ifeval::['{page-version}' == 'master']
 * {link-server-snapshot}[{prodname} Server distribution]
 
@@ -54,9 +55,17 @@ endif::[]
 ifeval::['{page-version}' != 'master']
 * https://repo1.maven.org/maven2/io/debezium/debezium-server-dist/{debezium-version}/debezium-server-dist-{debezium-version}.tar.gz[{prodname} Server distribution]
 endif::[]
+endif::community[]
 
-A directory named `debezium-server` will be created with these contents:
+ifdef::product[]
+. Open the link:{LinkDebeziumDownloads}[*{NameDebeziumDownloads}*] page on the {companyname} Customer Portal.
+. From the *Releases* tab, locate *{prodname} {ProductVersion} {prodname} Server* and click *Download Now* to download the ZIP file.
+. Extract the contents of the archive to the directory in which you want to install {prodname}.
+endif::product[]
 
+A directory named `debezium-server` is created with the following contents:
+
+ifdef::community[]
 [source,subs="verbatim,attributes"]
 ----
 debezium-server/
@@ -71,21 +80,78 @@ debezium-server/
 |-- README.md
 `-- run.sh
 ----
+endif::community[]
 
-The server is started using `run.sh` script, dependencies are stored in the `lib` directory, and the directory `config` contains configuration files.
+ifdef::product[]
+[source,subs="verbatim,attributes"]
+----
+debezium-server-dist-{debezium-version}-redhat-{debezium-build-number}/
+└── debezium-server
+    ├── config
+    ├── debezium-server-dist-{debezium-version}-redhat-{debezium-build-number}-runner.jar
+    ├── jmx
+    ├── lib
+    ├── lib_metrics
+    ├── lib_opt
+    ├── run.bat
+    └── run.sh
+----
+endif::product[]
+
+The `lib` directory stores dependencies, and the `config` directory contains configuration files.
+The `run.bat` or `run.sh` file starts the server.
+
+Before you start the server, specify the source for the change events that you want to stream and the sink destination for those events. 
+For details about how to configure {prodname} Server, see the xref:debezium-server-configuration[Configuration] section.
+
+
+// Type: procedure
+// ModuleID: debezium-server-start-the-server
+[id="start-the-server"]
+=== Start the server
+
+Run the {prodname} Server startup script to begin streaming change events from your configured source connector to the configured sink.
+
+.Prerequisites
+
+* Configure {prodname} Server as described in xref:debezium-server-configuration[{prodname} Server configuration].
+
+.Procedure
+
+. Open a command prompt or terminal window.
+. Change to the `{ServerInstallDirectory}/debezium-server` directory.
+. Start {prodname} Server:
++
+** On Linux, run the `run.sh` script:
++
+[source,bash]
+----
+./run.sh
+----
+ifdef::product[]
++
+** On Windows, run the `run.bat` script:
++
+[source,batch]
+----
+run.bat
+----
+endif::product[]
+
 [NOTE]
 ====
-In case of using the Oracle connector you will have to add to the `lib` directory the ORACLE JDBC driver (if using XStream also the XStream API files),
-explained here: xref:{link-oracle-connector}#obtaining-oracle-jdbc-driver-and-xstreams-api-files[Obtaining the Oracle JDBC driver and XStream API files]
+To use the Oracle connector, copy the Oracle JDBC driver to the `lib` directory before you start the server.
+
+If you use Oracle XStream, also copy the required XStream API files to the `lib` directory.
+For more information, see xref:{link-oracle-connector}#obtaining-oracle-jdbc-driver-and-xstreams-api-files[Obtaining the Oracle JDBC driver and XStream API files].
 ====
 
 // Type: concept
-// Title: {prodname} Server configuration
 [id="debezium-server-configuration"]
-== Configuration
+== {prodname} Server configuration
 
 {prodname} Server uses https://github.com/eclipse/microprofile-config[MicroProfile Configuration] for configuration.
-This means that the application can be configured from disparate sources like configuration files, environment variables, system properties etc.
+MicroProfile configuration is a standard for supplying configuration values to Java applications from multiple sources, including configuration files, environment variables, and system properties.
 
 [NOTE]
 ====
@@ -105,11 +171,17 @@ There are multiple sections configured:
 * `debezium.transforms` is for the configuration of message transformations
 * `debezium.predicates` is for the configuration of message transformation predicates
 
-An example configuration file can look like so:
+The following example shows an excerpt from a configuration file:
 
 ----
+ifdef::community[]
 debezium.sink.type=kinesis
 debezium.sink.kinesis.region=eu-central-1
+endif::community[]
+ifdef::product[]
+debezium.sink.type=http
+debezium.sink.http.url=https://example.com/events
+endif::product[]
 debezium.source.connector.class=io.debezium.connector.postgresql.PostgresConnector
 debezium.source.offset.storage.file.filename=data/offsets.dat
 debezium.source.offset.flush.interval.ms=0
@@ -122,18 +194,21 @@ debezium.source.topic.prefix=tutorial
 debezium.source.schema.include.list=inventory
 ----
 
-In this configuration file example:
+The configuration file in the preceding example specifies the following settings:
 
-* The sink is setup for AWS Kinesis in region `eu-central-1`
-* The source connector is setup for PostgreSQL using the default {prodname} https://github.com/debezium/postgres-decoderbufs[decoderbufs] plugin.
+ifdef::community[]
+* The sink is set up for AWS Kinesis in region `eu-central-1`
+* The source connector is set up for PostgreSQL using the default {prodname} https://github.com/debezium/postgres-decoderbufs[decoderbufs] plugin.
 If using PostgreSQL's built-in `pgoutput` plugin, set `debezium.source.plugin.name=pgoutput`
-* The source connector is set to capture events from a schema named `inventory`.
+endif::community[]
+
+* The source connector captures events from a schema named `inventory`.
 If you want to capture all changes in the database, remove this line.
 Otherwise, update this line to correspond to your preferred schema or tables.
-* The source offset will be stored in a file named `offsets.dat` in the `data` directory.
-Note that you might need to create this directory to prevent an error on startup.
+* The source offset is stored in a file named `offsets.dat` in the `data` directory.
+To prevent startup errors, the directory that you specify must exists before you start the server. 
 
-When the server is started it generates a seqeunce of log messages like this:
+After the server starts, it generates a sequence of log messages similar to the following example:
 
 ----
 __  ____  __  _____   ___  __ ____  ______
