@@ -58,6 +58,26 @@ public interface OffsetContext {
 
     Map<String, ?> getOffset();
 
+    /**
+     * Captures the offset immediately before processing the next source event.
+     * <p>
+     * Connectors should invoke this before advancing their offset context to a source event that is about to be
+     * dispatched. The captured offset can then be used for records that do not complete processing of that source
+     * event, such as the delete and tombstone records produced for a primary key update.
+     */
+    default void markSourceEventStarted() {
+    }
+
+    /**
+     * Returns an offset from which the current source event will be replayed after a restart.
+     *
+     * @return the offset captured before the current source event, or the current offset if the connector does not
+     *         provide one
+     */
+    default Map<String, ?> getOffsetForIncompleteEvent() {
+        return getOffset();
+    }
+
     Schema getSourceInfoSchema();
 
     Struct getSourceInfo();

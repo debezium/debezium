@@ -7,6 +7,7 @@ package io.debezium.pipeline.txmetadata;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
@@ -15,6 +16,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,6 +27,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -113,7 +116,7 @@ public class TransactionMonitorTest {
     public void shouldBeginNewTransactionWhenStartEventHasDifferentTransactionId() throws Exception {
         when(connectorConfig.shouldProvideTransactionMetadata()).thenReturn(true);
         when(partition.getSourcePartition()).thenReturn(Map.of());
-        when(offsetContext.getOffset()).thenReturn(Map.of());
+        doReturn(Map.of("position", 1L)).when(offsetContext).getOffset();
 
         final TransactionContext transactionContext = new TransactionContext();
         transactionContext.beginTransaction(new DefaultTransactionInfo("tx-1"));
@@ -124,6 +127,7 @@ public class TransactionMonitorTest {
 
         assertThat(sentRecords).hasSize(1);
         final Struct begin = (Struct) sentRecords.get(0).value();
+        assertThat(sentRecords.get(0).sourceOffset()).isEqualTo(Map.of("position", 1L));
         assertThat(begin.getString(TransactionStructMaker.DEBEZIUM_TRANSACTION_STATUS_KEY)).isEqualTo(TransactionStatus.BEGIN.name());
         assertThat(begin.getString(TransactionStructMaker.DEBEZIUM_TRANSACTION_ID_KEY)).isEqualTo("tx-2");
         assertThat(transactionContext.getTransactionId()).isEqualTo("tx-2");
@@ -134,7 +138,7 @@ public class TransactionMonitorTest {
     public void shouldBeginTransactionWhenNoTransactionIsInProgress() throws Exception {
         when(connectorConfig.shouldProvideTransactionMetadata()).thenReturn(true);
         when(partition.getSourcePartition()).thenReturn(Map.of());
-        when(offsetContext.getOffset()).thenReturn(Map.of());
+        doReturn(Map.of("position", 1L)).when(offsetContext).getOffset();
 
         final TransactionContext transactionContext = new TransactionContext();
         when(offsetContext.getTransactionContext()).thenReturn(transactionContext);
@@ -143,8 +147,34 @@ public class TransactionMonitorTest {
 
         assertThat(sentRecords).hasSize(1);
         final Struct begin = (Struct) sentRecords.get(0).value();
+        assertThat(sentRecords.get(0).sourceOffset()).isEqualTo(Map.of("position", 1L));
         assertThat(begin.getString(TransactionStructMaker.DEBEZIUM_TRANSACTION_STATUS_KEY)).isEqualTo(TransactionStatus.BEGIN.name());
         assertThat(begin.getString(TransactionStructMaker.DEBEZIUM_TRANSACTION_ID_KEY)).isEqualTo("tx-1");
         assertThat(transactionContext.getTransactionId()).isEqualTo("tx-1");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2549")
+    public void shouldUseIncompleteOffsetWhenDataEventStartsTransaction() throws Exception {
+        when(connectorConfig.shouldProvideTransactionMetadata()).thenReturn(true);
+        when(partition.getSourcePartition()).thenReturn(Map.of());
+        doReturn(Map.of("position", 1L)).when(offsetContext).getOffsetForIncompleteEvent();
+
+        final TransactionContext transactionContext = new TransactionContext();
+        final Struct value = new Struct(SchemaBuilder.struct()
+                .field(Envelope.FieldName.TRANSACTION, DefaultTransactionStructMaker.TRANSACTION_BLOCK_SCHEMA)
+                .build());
+        when(offsetContext.getTransactionContext()).thenReturn(transactionContext);
+        when(eventMetadataProvider.getTransactionId(TABLE_A, offsetContext, "key", value)).thenReturn("tx-1");
+        when(eventMetadataProvider.getTransactionInfo(TABLE_A, offsetContext, "key", value)).thenReturn(new DefaultTransactionInfo("tx-1"));
+        when(eventMetadataProvider.getEventTimestamp(TABLE_A, offsetContext, "key", value)).thenReturn(Instant.ofEpochMilli(1_000));
+
+        monitor.dataEvent(partition, TABLE_A, offsetContext, "key", value);
+
+        assertThat(sentRecords).hasSize(1);
+        assertThat(sentRecords.get(0).sourceOffset()).isEqualTo(Map.of("position", 1L));
+        final Struct begin = (Struct) sentRecords.get(0).value();
+        assertThat(begin.getString(TransactionStructMaker.DEBEZIUM_TRANSACTION_STATUS_KEY)).isEqualTo(TransactionStatus.BEGIN.name());
+        assertThat(begin.getString(TransactionStructMaker.DEBEZIUM_TRANSACTION_ID_KEY)).isEqualTo("tx-1");
     }
 }
