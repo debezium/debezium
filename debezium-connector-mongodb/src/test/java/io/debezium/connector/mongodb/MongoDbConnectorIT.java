@@ -1147,6 +1147,57 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
+    @FixFor("debezium/dbz#2549")
+    void shouldReplayDeleteWhenStoppedBeforeTombstoneIsCommitted() throws Exception {
+        final String collectionName = "delete_restart";
+        final String topicName = "mongo.dbit." + collectionName;
+
+        config = TestHelper.getConfiguration(mongo).edit()
+                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit." + collectionName)
+                .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.NO_DATA)
+                .with(MongoDbConnectorConfig.MAX_BATCH_SIZE, 1)
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                .build();
+
+        context = new MongoDbTaskContext(config);
+        TestHelper.cleanDatabase(mongo, "dbit");
+
+        start(MongoDbConnector.class, config, record -> topicName.equals(record.topic()) && record.value() == null);
+        waitForStreamingRunning("mongodb", "mongo");
+
+        insertDocuments("dbit", collectionName, new Document("_id", 1).append("value", "before-delete"));
+
+        final SourceRecord createRecord = consumeRecord();
+        verifyCreateOperation(createRecord);
+
+        deleteDocuments("dbit", collectionName, new Document("_id", 1));
+
+        final SourceRecord deleteBeforeStop = consumeRecord();
+        assertThat(deleteBeforeStop.key()).isEqualTo(createRecord.key());
+        verifyDeleteOperation(deleteBeforeStop);
+
+        waitForEngineShutdown();
+        stopConnector();
+
+        start(MongoDbConnector.class, config);
+        waitForStreamingRunning("mongodb", "mongo");
+
+        insertDocuments("dbit", collectionName, new Document("_id", 2).append("value", "restart-marker"));
+
+        final SourceRecord replayedDelete = consumeRecord();
+        assertThat(replayedDelete.key()).isEqualTo(createRecord.key());
+        verifyDeleteOperation(replayedDelete);
+
+        final SourceRecord replayedTombstone = consumeRecord();
+        assertThat(replayedTombstone.key()).isEqualTo(createRecord.key());
+        assertThat(replayedTombstone.value()).isNull();
+
+        final SourceRecord markerCreate = consumeRecord();
+        verifyCreateOperation(markerCreate);
+    }
+
+    @Test
     @FixFor("DBZ-1168")
     public void shouldConsumeAllEventsFromDatabaseWithCustomAuthSource() throws InterruptedException, IOException {
 
