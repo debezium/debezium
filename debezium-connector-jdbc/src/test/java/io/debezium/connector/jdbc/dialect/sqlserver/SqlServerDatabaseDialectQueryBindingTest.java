@@ -32,6 +32,7 @@ import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.data.Xml;
 import io.debezium.sink.column.ColumnDescriptor;
 
+
 @Tag("UnitTests")
 class SqlServerDatabaseDialectQueryBindingTest {
 
@@ -77,7 +78,7 @@ class SqlServerDatabaseDialectQueryBindingTest {
 
         final JdbcType type = dialect.getSchemaType(Schema.STRING_SCHEMA);
 
-        assertThat(type.getQueryBinding(column, Schema.STRING_SCHEMA, "hello")).isEqualTo("cast(? as varchar)");
+        assertThat(type.getQueryBinding(column, Schema.STRING_SCHEMA, "hello")).isEqualTo("cast(? as varchar(max))");
     }
 
     @Test
