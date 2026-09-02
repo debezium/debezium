@@ -305,9 +305,12 @@ __  ____  __  _____   ___  __ ____  ______
 [id="debezium-source-configuration-properties"]
 === Source configuration
 
-Source configuration properties control which connector {prodname} Server runs and how it stores offsets and schema history outside of Kafka Connect.
+Source configuration properties specify which connector {prodname} Server runs and configure offset and schema history storage outside of Kafka Connect.
 
-The source configuration uses the same configuration properties that are described on the specific connector documentation pages (just with `debezium.source` prefix), together with few more specific ones, necessary for running outside of Kafka Connect:
+Most source configuration properties correspond to properties that are documented for individual connectors. 
+To use these properties in {prodname} Server, prepend the `debezium.source.` prefix to the connector property name. 
+{prodname} Server also provides additional source configuration properties for settings that Kafka Connect normally handles automatically.
+For example, `debezium.source.offset.storage` and `debezium.source.offset.storage.file.filename` to configure file-based offset storage.
 
 [cols="35%a,10%a,55%a",options="header"]
 |===
@@ -337,6 +340,7 @@ Available options
 |
 |Defines how frequently the offsets are flushed into the file.
 
+ifdef::community[]
 |[[debezium-source-offset-redis-address]]<<debezium-source-offset-redis-address, `debezium.source.offset.storage.redis.address`>>
 |
 |(Optional) If using Redis to store offsets, an address, formatted as `host:port`, at which the Redis target streams are provided. If not supplied, will attempt to read `debezium.sink.redis.address`
@@ -406,6 +410,7 @@ For more information see Redis https://redis.io/commands/wait/[WAIT] command.
 |`false`
 |If you configure {prodname} Server to store offsets in Redis, set this property to specify whether to use Redis Cluster mode.
 Set the value to `true` to configure {prodname} to use a https://redis.io/docs/latest/develop/clients/jedis/connect/#connect-to-a-redis-cluster[JedisCluster client] to route offset data to Redis nodes.
+endif::community[]
 
 |[[debezium-source-database-history-class]]<<debezium-source-database-history-class, `debezium.source.schema.history.internal`>>
 |`io.debezium.storage.kafka.history.KafkaSchemaHistory`
@@ -427,6 +432,7 @@ There are also other options available
 |
 |The Redis host:port to connect to if using `RedisSchemaHistory`.
 
+ifdef::community[]
 |[[debezium-source-database-history-redis-user]]<<debezium-source-database-history-redis-user, `debezium.source.schema.history.internal.redis.user`>>
 |
 |The Redis user to use if using `RedisSchemaHistory`.
@@ -570,7 +576,7 @@ Should not be set together with `debezium.source.schema.history.internal.azure.s
 |[[schema-history-internal-azure-storage-blob-name]]<<schema-history-internal-azure-storage-blob-name,`debezium.source.schema.history.internal.azure.storage.blob.name`>>
 |
 |Azure Blob Storage blob name that persists schema history data.
-
+endif::community[]
 |===
 
 // Type: reference
@@ -579,8 +585,8 @@ Should not be set together with `debezium.source.schema.history.internal.azure.s
 [id="debezium-format-configuration-options"]
 === Format configuration
 
-The message output format can be configured for both key and value separately.
-By default the output is in JSON format but an arbitrary implementation of Kafka Connect's `Converter` can be used.
+Configure how {prodname} Server serializes message keys and values. 
+You can configure key and value formats independently by using either the default JSON format or a custom Kafka Connect `Converter` implementation.
 
 [cols="35%a,10%a,55%a",options="header"]
 |===
@@ -620,9 +626,10 @@ By default the output is in JSON format but an arbitrary implementation of Kafka
 [id="debezium-transformations-configuration-options"]
 === Transformation configuration
 
-Before the messages are delivered to the sink, they can run through a sequence of transformations.
+Configure Kafka Connect Single Message Transformations (SMTs) that {prodname} Server applies to messages before it delivers them to the sink. 
+Specify the transformations to apply and the configuration options for each transformation.
+
 The server supports https://cwiki.apache.org/confluence/display/KAFKA/KIP-66%3A+Single+Message+Transforms+for+Kafka+Connect[single message transformations] defined by Kafka Connect.
-The configuration will need to contain the list of transformations, implementation class for each transformation and configuration options for each of the transformations.
 
 [cols="35%a,10%a,55%a",options="header"]
 |===
@@ -663,9 +670,9 @@ The configuration will need to contain the list of transformations, implementati
 [id="debezium-predicates-configuration-options"]
 === Predicates configuration
 
-A Predicate can be associated with a transformation in order to make the transformation optional.
-The server supports https://cwiki.apache.org/confluence/display/KAFKA/KIP-585%3A+Filter+and+Conditional+SMTs[Filter and Conditional SMTs] defined by Kafka Connect.
-The configuration will need to contain the list of predicates, implementation class for each predicate and configuration options for each of the predicates.
+Configure predicates that evaluate messages and determine when {prodname} Server applies message transformations.
+{prodname} Server supports the Kafka Connect https://cwiki.apache.org/confluence/display/KAFKA/KIP-585%3A+Filter+and+Conditional+SMTs[predicate framework for conditional Single Message Transformations (SMTs)].
+Predicate properties specify the predicates to use, their implementation classes, and their configuration options.
 
 [cols="35%a,10%a,55%a",options="header"]
 |===
@@ -690,14 +697,31 @@ The configuration will need to contain the list of predicates, implementation cl
 
 |===
 
+// Type: concept
+// Title: Enabling message filtering in {prodname} Server
+[id="debezium-server-enabling-message-filtering"]
+=== Enabling message filtering
+
+You can enable the filter SMT in {prodname} Server to selectively pass or discard change events based on expression-based conditions that you define.
+
+Because filter expressions are evaluated by a scripting engine running inside the {prodname} Server process, this feature is only safe to enable in environments where access to the server configuration is restricted to authorized operators.
+Scripting support is therefore disabled by default and must be explicitly enabled.
+
+To enable message filtering, set the environment variable `ENABLE_DEBEZIUM_SCRIPTING` to `true` before starting {prodname} Server.
+When yhou enable this setting, the startup script adds the `debezium-scripting` JAR and the https://jcp.org/en/jsr/detail?id=223[JSR 223] script engine implementations (Groovy and GraalVM JavaScript) from the `opt_lib` directory of the {prodname} Server distribution to the server classpath.
+These libraries are kept in `opt_lib` rather than on the default classpath precisely so that scripting is never available unless an operator makes a conscious decision to include them.
+
+.Additional resources
+* link:{link-filtering}#message-filtering[{prodname} message filtering SMT].
+
 // Type: reference
 // ModuleID: debezium-server-asynchronous-engine-properties
 // Title: {prodname} Server asynchronous engine properties
 [id="debezium-async-engine-properties"]
 === Asynchronous Engine Properties
 
-By default, {prodname} server uses the asynchronous embedded engine (`AsyncEmbeddedEngine`) as its processing engine.
-You can configure the following options for the asynchronous embedded engine:
+By default, {prodname} Server uses the asynchronous embedded engine (`AsyncEmbeddedEngine`) to process change events. 
+Use the following properties to configure record-processing threads, task lifecycle management, and engine shutdown behavior.
 
 [cols="35%a,10%a,55%a"]
 |===
@@ -723,14 +747,14 @@ To use all available cores on given machine, set the placeholder value, `AVAILAB
 |===
 
 // Type: reference
-// ModuleID: debezium-server-additional-configuration-options
-// Title: {prodname} Server additional configuration options
+// ModuleID: debezium-server-quarkus-runtime-configuration-properties
+// Title: {prodname} Server Quarkus runtime configuration properties
 [id="debezium-additional-configuration-options"]
 === Additional configuration
 
-{prodname} Server runs on top of the Quarkus framework.
-All configuration options exposed by Quarkus are available in {prodname} Server too.
-The most frequent used are:
+{prodname} Server runs on the Quarkus framework.
+All configuration properties that Quarkus exposes are available in {prodname} Server.
+The following table lists commonly used Quarkus properties for configuring HTTP endpoint access and logging behavior.
 
 [cols="35%a,10%a,55%a",options="header"]
 |===
@@ -755,27 +779,17 @@ The most frequent used are:
 
 |===
 
-JSON logging can be disabled by setting `quarkus.log.console.json=false` in the _config/application.properties_ file, as demonstrated in the _config/application.properties.example_ file.
-
-// Type: procedure
-// Title: Enabling message filtering in {prodname} Server
-[id="debezium-server-enabling-message-filtering"]
-==== Enabling message filtering
-
-{prodname} Server provides filter SMTs (Single Message Transformations) capability. See xref:transformations/filtering.adoc[Message Filtering] for more details.
-However, for security reasons it's not enabled by default and has to be explicitly enabled when {prodname} Server is started.
-To enable it, set environment variable `ENABLE_DEBEZIUM_SCRIPTING` to `true`.
-This will add `debezium-scripting` jar file and https://jcp.org/en/jsr/detail?id=223[JSR 223] implementations (currently Groovy and graalvm.js) jar files into the server class path.
-These jar files are contained in `opt_lib` directory of the {prodname} Server distribution.
+You can disable JSON logging by setting `quarkus.log.console.json=false` in the `config/application.properties` file.
+For details, see the example in the file.
 
 // Type: assembly
 // Title: {prodname} Server sink configuration
 [id="debezium-server-sink-configuration"]
 === Sink configuration
 
-Sink configuration is specific for each sink type.
-
-The sink is selected by configuration property `debezium.sink.type`.
+{prodname} Server supports implementations for delivering change events to different sink destinations.
+Configure the destination to which {prodname} Server delivers change events.
+Set the `debezium.sink.type` property to specify the sink implementation, and then configure the properties that apply to the selected sink.
 
 
 ifdef::community[]
@@ -1058,11 +1072,10 @@ endif::community[]
 [id="debezium-server-http-client-sink-configuration"]
 ==== HTTP Client
 
-The HTTP Client will stream changes to any HTTP Server for additional processing with the original design goal to have
-{prodname} act as a https://knative.dev/docs/eventing/sources/[Knative Event Source].  The HTTP Client sink supports
-optional https://en.wikipedia.org/wiki/JSON_Web_Token[JSON Web Token (JWT) authentication],
-https://oauth.net/2/client-credentials/[OAuth2 client credentials] authentication, and batch mode for sending multiple
-events in a single HTTP request.
+Configure the HTTP Client sink to deliver change events from {prodname} Server to an HTTP endpoint for downstream processing.
+The HTTP Client sink supports optional JWT and OAuth 2.0 client credentials authentication, and provides options for configuring batched event delivery.
+
+You can use the HTTP Client sink to integrate {prodname} Server with Knative and enable it to act as a Knative Event Source.
 
 [cols="35%a,10%a,55%a",options="header"]
 |===
@@ -1076,7 +1089,8 @@ events in a single HTTP request.
 
 |[[httpclient-url]]<<httpclient-url, `debezium.sink.http.url` >>
 |
-|The HTTP Server URL to stream events to. This can also be set by defining the `K_SINK` environment variable, which is used by the Knative source framework.
+|The HTTP Server URL to stream events to. 
+This can also be set by defining the `K_SINK` environment variable, which is used by the Knative source framework.
 
 |[[httpclient-timeout]]<<httpclient-timeout, `debezium.sink.http.timeout.ms` >>
 |60000
@@ -1127,7 +1141,8 @@ If you omit this property, the HTTP client sink does not use authentication head
 
 |[[httpclient-authentication-jwt-url]]<<httpclient-authentication-jwt-url, `debezium.sink.http.authentication.jwt.url` >>
 |
-|Specifies the base URL (e.g., `http://myserver:8000/`) for JWT authentication.  The paths `auth/authenticate` and `auth/refreshToken` are appended for the JWT initial and authentication REST requests.
+|Specifies the base URL (e.g., `http://myserver:8000/`) for JWT authentication. 
+The paths `auth/authenticate` and `auth/refreshToken` are appended for the JWT initial and authentication REST requests.
 
 |[[httpclient-authentication-jwt-token-expiration]]<<httpclient-authentication-jwt-token-expiration, `debezium.sink.http.authentication.jwt.token_expiration` >>
 |
@@ -1170,11 +1185,15 @@ Supports one of the following options:
 
 |[[httpclient-authentication-oauth2-http-method]]<<httpclient-authentication-oauth2-http-method, `debezium.sink.http.authentication.oauth2.token_url.http_method` >>
 |POST
-|The HTTP method to use for token requests. The OAuth2 specification requires `POST`, but some providers accept `GET` with query parameters. Set to `GET` only for providers that do not support the standard `POST` method.
+|The HTTP method to use for token requests. 
+The OAuth2 specification requires `POST`, but some providers accept `GET` with query parameters.
+Set to `GET` only for providers that do not support the standard `POST` method.
 
 |[[httpclient-authentication-oauth2-params]]<<httpclient-authentication-oauth2-params, `debezium.sink.http.authentication.oauth2.params.*` >>
 |
-|Optional additional parameters to include in the token request. For example, some providers require an `audience` or `resource` parameter. Set these using the `params.` prefix, e.g. `debezium.sink.http.authentication.oauth2.params.audience=\https://my-api.example.com`.
+|Optional additional parameters to include in the token request. 
+For example, some providers require an `audience` or `resource` parameter. 
+Set these using the `params.` prefix, for example, `debezium.sink.http.authentication.oauth2.params.audience=\https://my-api.example.com`.
 
 
 |===
@@ -1906,7 +1925,8 @@ endif::community[]
 [id="debezium-server-apache-kafka-sink-configuration"]
 ==== Apache Kafka
 
-https://kafka.apache.org/[Apache Kafka] is a popular open-source platform for distributed event streaming. {prodname} Server supports publishing captured change events to a configured Kafka message broker.
+Configure the Apache Kafka sink to publish change events from {prodname} Server to Kafka topics.
+Use the sink properties to specify broker connection details and other Kafka-specific settings.
 
 [cols="35%a,10%a,55%a",options="header"]
 |===
@@ -1936,8 +1956,9 @@ Set the value to `0` to disable the timeout.
 [id="debezium-server-apache-kafka-injection-points"]
 ===== Injection points
 
-The Kafka sink behaviour can be modified by a custom logic providing alternative implementations for specific functionalities.
-When the alternative implementations are not available then the default ones are used.
+Customize Kafka sink behavior by providing implementations of supported extension points.
+For example, you can implement a custom `StreamNameMapper` to control how {prodname} Server maps source streams to Kafka topics.
+If you do not provide a custom implementation, {prodname} Server uses the default implementation.
 
 [cols="35%a,10%a,55%a",options="header"]
 |===
@@ -3489,7 +3510,77 @@ To monitor the connection on the Kafka route, use the standard `kafka.producer:t
 
 |===
 
+endif::community[]
 
+ifdef::community[]
+// Type: assembly
+// Title: Cassandra connector configuration notes
+[id="debezium-server-cassandra-connector"]
+=== Cassandra connector configuration notes
+
+The {prodname} Cassandra connector requires additional JVM options at startup and a specific `application.properties` configuration when run with {prodname} Server.
+
+// Type: procedure
+// Title: Running {prodname} Server with the Cassandra connector
+[id="debezium-server-running-with-cassandra-connector"]
+==== Running {prodname} Server with Cassandra connector
+
+{prodname} Server requires specific JVM options to run the Cassandra connector on Java 11 and later.
+Set these options through the `JDK_JAVA_OPTIONS` environment variable before starting the server.
+
+Set the `JDK_JAVA_OPTIONS` environment variable to the following options before starting {prodname} Server:
+
+```
+JDK_JAVA_OPTIONS="--add-exports java.base/jdk.internal.misc=ALL-UNNAMED --add-exports java.base/jdk.internal.ref=ALL-UNNAMED --add-exports java.base/sun.nio.ch=ALL-UNNAMED --add-exports java.management.rmi/com.sun.jmx.remote.internal.rmi=ALL-UNNAMED --add-exports java.rmi/sun.rmi.registry=ALL-UNNAMED --add-exports java.rmi/sun.rmi.server=ALL-UNNAMED --add-exports java.sql/java.sql=ALL-UNNAMED  --add-opens java.base/java.lang.module=ALL-UNNAMED --add-opens java.base/jdk.internal.loader=ALL-UNNAMED --add-opens java.base/jdk.internal.ref=ALL-UNNAMED --add-opens java.base/jdk.internal.reflect=ALL-UNNAMED --add-opens java.base/jdk.internal.math=ALL-UNNAMED --add-opens java.base/jdk.internal.module=ALL-UNNAMED --add-opens java.base/jdk.internal.util.jar=ALL-UNNAMED --add-opens jdk.management/com.sun.management.internal=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens java.base/sun.nio.ch=ALL-UNNAMED"
+```
+
+// Type: reference
+// Title: Sample `application.properties` for running the Cassandra connector with Redis sink
+[id="debezium-server-cassandra-connector-sample-application-properties"]
+==== Sample of basic `application.properties` for running Cassandra connector with Redis sink
+
+The following `application.properties` example shows the minimum configuration required to run the {prodname} Cassandra connector with a Redis sink.
+
+```
+# Sink
+debezium.sink.type=redis
+debezium.sink.redis.address=localhost:6379
+
+# Connector
+debezium.source.connector.class=io.debezium.connector.cassandra.Cassandra4Connector
+## node.id must be unique per each connector running on each Cassandra node
+debezium.source.cassandra.node.id=sample_node_01
+debezium.source.cassandra.hosts=127.0.0.1
+debezium.source.cassandra.port=9042
+debezium.source.cassandra.config=/opt/cassandra/conf/cassandra.yaml
+debezium.source.commit.log.relocation.dir=cassandra/relocdir
+debezium.source.offset.storage=io.debezium.server.redis.RedisOffsetBackingStore
+debezium.source.topic.prefix=sample_prefix
+## internal Cassandra http port
+debezium.source.http.port=8040
+```
+
+// Type: reference
+// Title: Cassandra connector transformation for operation code
+[id="debezium-server-cassandra-connector-transformation-for-operation-code"]
+==== Transformation for Operation Code
+
+By default, Cassandra connector has it's own Operation Codes which are not entirely compatible with {prodname} Operation Codes.
+If needed, a specific transform can be defined in {prodname} Server's `application.properties` to enable the conversion:
+
+```
+debezium.transforms=EnvelopeTransformation
+debezium.transforms.EnvelopeTransformation.type=io.debezium.connector.cassandra.transforms.EnvelopeTransformation
+```
+
+This will convert Operation Codes as follows:
+
+```
+INSERT "i"          -> CREATE "c"
+UPDATE "u"          -> UPDATE "u"
+DELETE "d"          -> DELETE "d"
+RANGE_TOMBSTONE "r" -> TRUNCATE "t"
+```
 endif::community[]
 
 // Type: concept
@@ -3528,73 +3619,3 @@ Typical examples are fine tuning of the target client setup, the destination nam
 
 See an example of a custom https://github.com/debezium/debezium-examples/tree/main/debezium-server-name-mapper[topic naming policy] implementation for further details.
 
-ifdef::community[]
-// Type: assembly
-// Title: Running the {prodname} Cassandra connector with {prodname} Server
-[id="debezium-server-cassandra-connector"]
-== Cassandra connector
-
-The {prodname} Cassandra connector requires additional JVM options at startup and a specific `application.properties` configuration when run with {prodname} Server.
-
-// Type: procedure
-// Title: Running {prodname} Server with the Cassandra connector
-[id="debezium-server-running-with-cassandra-connector"]
-=== Running {prodname} Server with Cassandra connector
-
-{prodname} Server requires specific JVM options to run the Cassandra connector on Java 11 and later.
-Set these options through the `JDK_JAVA_OPTIONS` environment variable before starting the server.
-
-Set the `JDK_JAVA_OPTIONS` environment variable to the following options before starting {prodname} Server:
-
-```
-JDK_JAVA_OPTIONS="--add-exports java.base/jdk.internal.misc=ALL-UNNAMED --add-exports java.base/jdk.internal.ref=ALL-UNNAMED --add-exports java.base/sun.nio.ch=ALL-UNNAMED --add-exports java.management.rmi/com.sun.jmx.remote.internal.rmi=ALL-UNNAMED --add-exports java.rmi/sun.rmi.registry=ALL-UNNAMED --add-exports java.rmi/sun.rmi.server=ALL-UNNAMED --add-exports java.sql/java.sql=ALL-UNNAMED  --add-opens java.base/java.lang.module=ALL-UNNAMED --add-opens java.base/jdk.internal.loader=ALL-UNNAMED --add-opens java.base/jdk.internal.ref=ALL-UNNAMED --add-opens java.base/jdk.internal.reflect=ALL-UNNAMED --add-opens java.base/jdk.internal.math=ALL-UNNAMED --add-opens java.base/jdk.internal.module=ALL-UNNAMED --add-opens java.base/jdk.internal.util.jar=ALL-UNNAMED --add-opens jdk.management/com.sun.management.internal=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens java.base/sun.nio.ch=ALL-UNNAMED"
-```
-
-// Type: reference
-// Title: Sample `application.properties` for running the Cassandra connector with Redis sink
-[id="debezium-server-cassandra-connector-sample-application-properties"]
-=== Sample of basic `application.properties` for running Cassandra connector with Redis sink
-
-The following `application.properties` example shows the minimum configuration required to run the {prodname} Cassandra connector with a Redis sink.
-
-```
-# Sink
-debezium.sink.type=redis
-debezium.sink.redis.address=localhost:6379
-
-# Connector
-debezium.source.connector.class=io.debezium.connector.cassandra.Cassandra4Connector
-## node.id must be unique per each connector running on each Cassandra node
-debezium.source.cassandra.node.id=sample_node_01
-debezium.source.cassandra.hosts=127.0.0.1
-debezium.source.cassandra.port=9042
-debezium.source.cassandra.config=/opt/cassandra/conf/cassandra.yaml
-debezium.source.commit.log.relocation.dir=cassandra/relocdir
-debezium.source.offset.storage=io.debezium.server.redis.RedisOffsetBackingStore
-debezium.source.topic.prefix=sample_prefix
-## internal Cassandra http port
-debezium.source.http.port=8040
-```
-
-// Type: reference
-// Title: Cassandra connector transformation for operation code
-[id="debezium-server-cassandra-connector-transformation-for-operation-code"]
-=== Transformation for Operation Code
-
-By default, Cassandra connector has it's own Operation Codes which are not entirely compatible with {prodname} Operation Codes.
-If needed, a specific transform can be defined in {prodname} Server's `application.properties` to enable the conversion:
-
-```
-debezium.transforms=EnvelopeTransformation
-debezium.transforms.EnvelopeTransformation.type=io.debezium.connector.cassandra.transforms.EnvelopeTransformation
-```
-
-This will convert Operation Codes as follows:
-
-```
-INSERT "i"          -> CREATE "c"
-UPDATE "u"          -> UPDATE "u"
-DELETE "d"          -> DELETE "d"
-RANGE_TOMBSTONE "r" -> TRUNCATE "t"
-```
-endif::community[]
