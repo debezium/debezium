@@ -522,5 +522,5 @@ jobs:
             ORACLE_VERSION: 23.9.0-adb
             ORACLE_REGISTRY: "quay.io/rh_integration/dbz-oracle"
             ORACLE_PROFILE_ARGS: "-Poracle-adb"
-            ORACLE_ARG: "-Poracle-adb -Ddatabase.pdb.name= -Doracle.adb=true"
+            ORACLE_ARG: "-Ddatabase.pdb.name= -Ddatabase.user=GGADMIN"
             TEST_PROFILE: oracle
