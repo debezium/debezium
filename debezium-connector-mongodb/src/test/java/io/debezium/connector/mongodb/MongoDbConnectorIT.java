@@ -12,6 +12,7 @@ import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 import static java.time.temporal.ChronoUnit.MILLIS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -60,6 +61,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.FiltersMatchMode;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.FullUpdateType;
+import io.debezium.connector.mongodb.connection.ConnectionStrings;
 import io.debezium.connector.mongodb.events.BufferingChangeStreamCursor;
 import io.debezium.converters.CloudEventsConverterTest;
 import io.debezium.data.Envelope;
@@ -70,6 +72,8 @@ import io.debezium.heartbeat.Heartbeat;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.schema.DatabaseSchema;
+import io.debezium.testing.testcontainers.MongoDbContainer;
+import io.debezium.testing.testcontainers.MongoDbReplicaSet;
 import io.debezium.util.Collect;
 import io.debezium.util.IoUtil;
 import io.debezium.util.Testing;
@@ -132,6 +136,79 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         Config result = connector.validate(config.asMap());
 
         assertConfigurationErrors(result, MongoDbConnectorConfig.CONNECTION_STRING, 2);
+    }
+
+    @Test
+    void shouldReopenPrimaryChangeStreamAfterElection() throws InterruptedException {
+        var replicaSet = requireThreeMemberReplicaSet();
+        var previousPrimary = replicaSet.tryPrimary().orElseThrow();
+
+        startReadPreferenceTestConnector("primary");
+        assertReadPreferenceTestDocument(1);
+
+        replicaSet.stepDown();
+        awaitPrimaryChange(replicaSet, previousPrimary);
+        awaitReadPreferenceReopen();
+
+        assertReadPreferenceTestDocument(2);
+    }
+
+    @Test
+    void shouldKeepConnectorRunningWhileWaitingForExactReadPreference() throws InterruptedException {
+        var replicaSet = requireThreeMemberReplicaSet();
+        var previousPrimary = replicaSet.tryPrimary().orElseThrow();
+        var secondaryMembers = replicaSet.getMembers().stream()
+                .filter(member -> member != previousPrimary)
+                .toList();
+
+        startReadPreferenceTestConnector("primary");
+        assertReadPreferenceTestDocument(1);
+
+        try {
+            secondaryMembers.forEach(member -> member.eval("db.adminCommand({ replSetFreeze: 30 })"));
+            previousPrimary.eval("db.adminCommand({ replSetStepDown: 30, force: true })");
+
+            awaitReadPreferencePause();
+            assertConnectorIsRunning();
+
+            var replacementPrimary = secondaryMembers.get(0);
+            replacementPrimary.eval("db.adminCommand({ replSetFreeze: 0 })");
+            replacementPrimary.eval("db.adminCommand({ replSetStepUp: 1 })");
+            awaitPrimary(replicaSet, replacementPrimary);
+            awaitReadPreferenceResume();
+
+            assertConnectorIsRunning();
+            assertReadPreferenceTestDocument(2);
+        }
+        finally {
+            var currentPrimary = replicaSet.tryPrimary().orElse(null);
+            replicaSet.getMembers().stream()
+                    .filter(member -> member != currentPrimary)
+                    .forEach(member -> member.eval("db.adminCommand({ replSetFreeze: 0 })"));
+        }
+    }
+
+    @Test
+    void shouldReopenSecondaryChangeStreamAfterElection() throws InterruptedException {
+        var replicaSet = requireThreeMemberReplicaSet();
+        var previousPrimary = replicaSet.tryPrimary().orElseThrow();
+        var secondaryMembers = replicaSet.getMembers().stream()
+                .filter(member -> member != previousPrimary)
+                .toList();
+
+        startReadPreferenceTestConnector("secondary");
+        assertReadPreferenceTestDocument(1);
+
+        for (var secondary : secondaryMembers) {
+            secondary.eval("db.adminCommand({ replSetStepUp: 1 })");
+            awaitPrimary(replicaSet, secondary);
+            if (awaitReadPreferenceReopen(5)) {
+                break;
+            }
+        }
+        awaitReadPreferenceReopen();
+
+        assertReadPreferenceTestDocument(2);
     }
 
     @Test
@@ -3212,6 +3289,88 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         MongoDbConnector connector = new MongoDbConnector();
         Config result = connector.validate(config.asMap());
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.CONNECTION_STRING);
+    }
+
+    private MongoDbReplicaSet requireThreeMemberReplicaSet() {
+        assumeTrue(mongo instanceof MongoDbReplicaSet, "Read preference election tests require a Docker replica set");
+        var replicaSet = (MongoDbReplicaSet) mongo;
+        assumeTrue(replicaSet.getMembers().size() >= 3, "Read preference election tests require at least three members");
+        return replicaSet;
+    }
+
+    private void startReadPreferenceTestConnector(String readPreference) throws InterruptedException {
+        var connectionString = ConnectionStrings.appendParameter(mongo.getConnectionString(), "readPreference", readPreference);
+        config = TestHelper.getConfiguration(connectionString).edit()
+                .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.NO_DATA)
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.read_preference")
+                .with(MongoDbConnectorConfig.HEARTBEAT_FREQUENCY_MS, 500)
+                .with(MongoDbConnectorConfig.CURSOR_MAX_AWAIT_TIME_MS, 500)
+                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                .build();
+
+        context = new MongoDbTaskContext(config);
+        logInterceptor = new LogInterceptor(MongoDbStreamingChangeEventSource.class);
+        start(MongoDbConnector.class, config);
+        waitForStreamingRunning("mongodb", "mongo");
+    }
+
+    private void assertReadPreferenceTestDocument(int id) throws InterruptedException {
+        insertDocuments("dbit", "read_preference", new Document("_id", id));
+        var records = consumeRecordsByTopic(1).allRecordsInOrder();
+
+        assertThat(records).hasSize(1);
+        var value = (Struct) records.get(0).value();
+        assertThat(Document.parse(value.getString(Envelope.FieldName.AFTER)).getInteger("_id")).isEqualTo(id);
+    }
+
+    private void awaitPrimaryChange(MongoDbReplicaSet replicaSet, MongoDbContainer previousPrimary) {
+        Awaitility.await()
+                .atMost(30, TimeUnit.SECONDS)
+                .pollInterval(100, TimeUnit.MILLISECONDS)
+                .ignoreExceptions()
+                .until(() -> replicaSet.tryPrimary()
+                        .filter(primary -> primary != previousPrimary)
+                        .isPresent());
+    }
+
+    private void awaitPrimary(MongoDbReplicaSet replicaSet, MongoDbContainer expectedPrimary) {
+        Awaitility.await()
+                .atMost(30, TimeUnit.SECONDS)
+                .pollInterval(100, TimeUnit.MILLISECONDS)
+                .ignoreExceptions()
+                .until(() -> replicaSet.tryPrimary()
+                        .filter(primary -> primary == expectedPrimary)
+                        .isPresent());
+    }
+
+    private void awaitReadPreferenceReopen() {
+        Awaitility.await()
+                .atMost(30, TimeUnit.SECONDS)
+                .until(() -> logInterceptor.containsMessage("no longer matches read preference"));
+    }
+
+    private void awaitReadPreferencePause() {
+        Awaitility.await()
+                .atMost(30, TimeUnit.SECONDS)
+                .until(() -> logInterceptor.containsMessage("no eligible server is available"));
+    }
+
+    private void awaitReadPreferenceResume() {
+        Awaitility.await()
+                .atMost(30, TimeUnit.SECONDS)
+                .until(() -> logInterceptor.containsMessage("An eligible server for read preference"));
+    }
+
+    private boolean awaitReadPreferenceReopen(long timeoutSeconds) throws InterruptedException {
+        var deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(timeoutSeconds);
+        while (System.nanoTime() < deadline) {
+            if (logInterceptor.containsMessage("no longer matches read preference")) {
+                return true;
+            }
+            Thread.sleep(100);
+        }
+        return logInterceptor.containsMessage("no longer matches read preference");
     }
 
     /**
