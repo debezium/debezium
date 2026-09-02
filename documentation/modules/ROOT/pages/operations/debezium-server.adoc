@@ -86,15 +86,15 @@ ifdef::product[]
 [source,subs="verbatim,attributes"]
 ----
 debezium-server-dist-{debezium-version}-redhat-{debezium-build-number}/
-└── debezium-server
-    ├── config
-    ├── debezium-server-dist-{debezium-version}-redhat-{debezium-build-number}-runner.jar
-    ├── jmx
-    ├── lib
-    ├── lib_metrics
-    ├── lib_opt
-    ├── run.bat
-    └── run.sh
+|-- debezium-server
+    |-- config
+    |-- debezium-server-dist-{debezium-version}-redhat-{debezium-build-number}-runner.jar
+    |-- jmx
+    |-- lib
+    |-- lib_metrics
+    |-- lib_opt
+    |-- run.bat
+    |-- run.sh
 ----
 endif::product[]
 
