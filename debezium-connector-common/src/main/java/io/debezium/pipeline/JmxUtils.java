@@ -16,13 +16,13 @@ import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 
-import org.apache.kafka.common.utils.Sanitizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
+import io.debezium.util.Sanitizer;
 
 public class JmxUtils {
 
