@@ -109,11 +109,21 @@ You specify the replica member that the connector reads from by configuring the 
 If you do not specify a read preference, the driver default of `primary` applies, and the connector streams changes from the primary node.
 
 To reduce the load on the primary, it's possible to configure the connector to read from a secondary node, by setting `readPreference=secondaryPreferred`.
-Under normal operating conditions, configuring the connector to read from a secondary node does not significantly increase data-capture latency. 
+Under normal operating conditions, configuring the connector to read from a secondary node does not significantly increase data-capture latency.
 However, events captured from a secondary can arrive later than they would from the primary due to resource contention or network latency.
-Additional latency can also occur because change streams emit events only after changes are majority committed. 
-A change is majority committed when a majority of voting replica set members confirm that they have written the change to their journals. 
+Additional latency can also occur because change streams emit events only after changes are majority committed.
+A change is majority committed when a majority of voting replica set members confirm that they have written the change to their journals.
 As a result, a secondary node can emit an event only after it receives confirmation that the change has been majority committed.
+
+When the connection string identifies a replica set and does not set `directConnection=true`, the connector periodically verifies that the member serving the change stream still satisfies the configured read preference.
+The verification interval is controlled by xref:mongodb-property-mongodb-heartbeat-frequency-ms[`mongodb.heartbeat.frequency.ms`], so the connector does not detect role changes instantaneously.
+After a replica set election, the MongoDB driver's topology view must be updated and the next verification must run before the connector detects that the member's role changed.
+During this interval, the connector might continue to receive change stream events from that member.
+If a replica set election causes that member to stop satisfying the read preference, the connector closes the change stream and resumes it on an eligible member from the last processed offset.
+For the exact `primary` and `secondary` modes, if no eligible member is available, change stream consumption waits while the connector task remains running.
+Consumption resumes from the last processed offset when an eligible member becomes available.
+The `primaryPreferred` and `secondaryPreferred` modes continue to use the fallback behavior defined by the MongoDB driver.
+When the connector connects to a sharded cluster, `mongos` is responsible for applying the read preference to the members of each shard.
 
 // Type: assembly
 // ModuleID: how-debezium-mongodb-connectors-work
