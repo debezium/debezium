@@ -148,6 +148,11 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                             var cursorAddress = cursor.getCurrentServerAddress();
                             if (cursorAddress.isPresent()) {
                                 nextAction = readPreferenceMonitor.evaluate(client.getClusterDescription(), cursorAddress.get());
+                                if (nextAction == MongoDbReadPreferenceMonitor.Status.UNVERIFIED) {
+                                    LOGGER.debug("Unable to verify whether change stream server '{}' satisfies read preference '{}'; "
+                                            + "the topology will be checked again at the next monitoring interval",
+                                            cursorAddress.get(), readPreferenceMonitor.getReadPreference());
+                                }
                                 if (nextAction == MongoDbReadPreferenceMonitor.Status.RELOCATE) {
                                     LOGGER.info("Change stream server '{}' no longer matches read preference '{}'; reopening from offset '{}'",
                                             cursorAddress.get(), readPreferenceMonitor.getReadPreference(), effectiveOffset.getOffset());
