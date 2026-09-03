@@ -11,14 +11,13 @@ import java.util.function.Consumer;
 import io.debezium.DebeziumException;
 import io.debezium.connector.binlog.BinlogReadOnlyIncrementalSnapshotChangeEventSource;
 import io.debezium.connector.binlog.gtid.GtidSet;
+import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
 import io.debezium.connector.mariadb.gtid.MariaDbGtidSet;
-import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.relational.TableId;
-import io.debezium.schema.DatabaseSchema;
 import io.debezium.util.Clock;
 
 /**
@@ -29,9 +28,9 @@ public class MariaDbReadOnlyIncrementalSnapshotChangeEventSource
         extends BinlogReadOnlyIncrementalSnapshotChangeEventSource<MariaDbPartition, MariaDbOffsetContext> {
 
     public MariaDbReadOnlyIncrementalSnapshotChangeEventSource(MariaDbConnectorConfig connectorConfig,
-                                                               JdbcConnection jdbcConnection,
+                                                               BinlogConnectorConnection jdbcConnection,
                                                                EventDispatcher<MariaDbPartition, TableId> dispatcher,
-                                                               DatabaseSchema<?> databaseSchema,
+                                                               MariaDbDatabaseSchema databaseSchema,
                                                                Clock clock,
                                                                SnapshotProgressListener<MariaDbPartition> progressListener,
                                                                DataChangeEventListener<MariaDbPartition> dataChangeEventListener,
