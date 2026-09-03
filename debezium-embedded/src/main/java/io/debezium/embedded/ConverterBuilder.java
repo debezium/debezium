@@ -141,20 +141,27 @@ public class ConverterBuilder<R> {
         return (record) -> ((EmbeddedEngineChangeEvent<?, ?, ?>) record).sourceRecord();
     }
 
-    private static boolean isFormat(Class<? extends SerializationFormat<?>> format1, Class<? extends SerializationFormat<?>> format2) {
-        return format1 == format2;
+    @SafeVarargs
+    private static boolean isFormat(Class<? extends SerializationFormat<?>> format,
+                                    Class<? extends SerializationFormat<?>>... candidates) {
+        for (final var candidate : candidates) {
+            if (format == candidate) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean shouldConvertKeyToString() {
-        return isFormat(formatKey, Json.class) || isFormat(formatKey, SimpleString.class);
+        return isFormat(formatKey, Json.class, SimpleString.class);
     }
 
     private boolean shouldConvertValueToString() {
-        return isFormat(formatValue, Json.class) || isFormat(formatValue, SimpleString.class) || isFormat(formatValue, CloudEvents.class);
+        return isFormat(formatValue, Json.class, SimpleString.class, CloudEvents.class);
     }
 
     private boolean shouldConvertHeadersToString() {
-        return isFormat(formatHeader, Json.class);
+        return isFormat(formatHeader, Json.class, SimpleString.class);
     }
 
     private List<Header<byte[]>> convertHeaders(org.apache.kafka.common.header.Headers recordHeaders) {
@@ -174,8 +181,11 @@ public class ConverterBuilder<R> {
                 .with("converter.type", "header")
                 .build();
 
-        if (isFormat(format, Json.class) || isFormat(format, JsonByteArray.class)) {
+        if (isFormat(format, Json.class, JsonByteArray.class)) {
             converterConfig = converterConfig.edit().withDefault(FIELD_CLASS, "org.apache.kafka.connect.json.JsonConverter").build();
+        }
+        else if (isFormat(format, SimpleString.class)) {
+            converterConfig = converterConfig.edit().withDefault(FIELD_CLASS, "org.apache.kafka.connect.storage.StringConverter").build();
         }
         else if (isFormat(format, ClientProvided.class)) {
             if (converterConfig.getString(FIELD_CLASS) == null) {
@@ -197,7 +207,7 @@ public class ConverterBuilder<R> {
         final Configuration commonConverterConfig = config.subset(CONVERTER_PREFIX, true);
         converterConfig = commonConverterConfig.edit().with(converterConfig).build();
 
-        if (isFormat(format, Json.class) || isFormat(format, JsonByteArray.class)) {
+        if (isFormat(format, Json.class, JsonByteArray.class)) {
             if (converterConfig.hasKey(APICURIO_SCHEMA_REGISTRY_URL_CONFIG)) {
                 converterConfig = converterConfig.edit().withDefault(FIELD_CLASS, "io.apicurio.registry.utils.converter.ExtJsonConverter").build();
             }
