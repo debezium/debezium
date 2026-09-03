@@ -910,6 +910,67 @@ public class EmbeddedEngineTest extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2520")
+    void shouldConvertHeadersToStringWhenSimpleStringFormat() {
+        final Properties props = new Properties();
+        props.setProperty("converter.schemas.enable", "false");
+
+        final ConverterBuilder<ChangeEvent<String, String>> converterBuilder = new ConverterBuilder<ChangeEvent<String, String>>()
+                .using(KeyValueHeaderChangeEventFormat.of(SimpleString.class, SimpleString.class, SimpleString.class))
+                .using(props);
+
+        final ConnectHeaders connectHeaders = new ConnectHeaders();
+        connectHeaders.addString("headerKey", "headerValue");
+
+        final SourceRecord record = new SourceRecord(
+                null, null, "topic", 0,
+                null, null,
+                null, null,
+                System.currentTimeMillis(), connectHeaders);
+
+        final HeaderConverter headerConverter = converterBuilder.headerConverter();
+        final Function<SourceRecord, ChangeEvent<String, String>> toFormat = converterBuilder.toFormat(headerConverter);
+
+        final ChangeEvent<String, String> event = assertDoesNotThrow(() -> toFormat.apply(record));
+        assertThat(event.headers()).hasSize(1);
+        // SimpleString format must produce String headers, not byte[]
+        final Header<?> header = event.headers().get(0);
+        assertThat(header.getKey()).isEqualTo("headerKey");
+        assertThat(header.getValue()).isInstanceOf(String.class);
+        assertThat(header.getValue()).isEqualTo("headerValue");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2520")
+    void shouldKeepHeadersAsByteArrayWhenJsonByteArrayFormat() {
+        final Properties props = new Properties();
+        props.setProperty("converter.schemas.enable", "false");
+
+        final ConverterBuilder<ChangeEvent<byte[], byte[]>> converterBuilder = new ConverterBuilder<ChangeEvent<byte[], byte[]>>()
+                .using(KeyValueHeaderChangeEventFormat.of(JsonByteArray.class, JsonByteArray.class, JsonByteArray.class))
+                .using(props);
+
+        final ConnectHeaders connectHeaders = new ConnectHeaders();
+        connectHeaders.addString("headerKey", "headerValue");
+
+        final SourceRecord record = new SourceRecord(
+                null, null, "topic", 0,
+                null, null,
+                null, null,
+                System.currentTimeMillis(), connectHeaders);
+
+        final HeaderConverter headerConverter = converterBuilder.headerConverter();
+        final Function<SourceRecord, ChangeEvent<byte[], byte[]>> toFormat = converterBuilder.toFormat(headerConverter);
+
+        final ChangeEvent<byte[], byte[]> event = assertDoesNotThrow(() -> toFormat.apply(record));
+        assertThat(event.headers()).hasSize(1);
+        // JsonByteArray format must produce byte[] headers
+        final Header<?> header = event.headers().get(0);
+        assertThat(header.getKey()).isEqualTo("headerKey");
+        assertThat(header.getValue()).isInstanceOf(byte[].class);
+    }
+
+    @Test
     @FixFor("DBZ-8072")
     void shouldSkipNullValueReturnedByHeaderConverter() {
         final Properties props = new Properties();
