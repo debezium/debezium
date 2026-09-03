@@ -384,7 +384,7 @@ __  ____  __  _____   ___  __ ____  ______
 2020-05-15 11:33:12,839 INFO  [io.deb.con.com.BaseSourceTask] (pool-3-thread-1)    topic.prefix = tutorial
 2020-05-15 11:33:12,839 INFO  [io.deb.con.com.BaseSourceTask] (pool-3-thread-1)    database.port = 5432
 2020-05-15 11:33:12,839 INFO  [io.deb.con.com.BaseSourceTask] (pool-3-thread-1)    schema.include.list = inventory
-2020-05-15 11:33:12,908 INFO  [io.quarkus] (main) debezium-server 1.2.0-SNAPSHOT (powered by Quarkus 1.4.1.Final) started in 1.198s. Listening on: http://0.0.0.0:8080
+2020-05-15 11:33:12,908 INFO  [io.quarkus] (main) debezium-server {debezium-version} (powered by Quarkus 3.33.2) started in 1.198s. Listening on: http://0.0.0.0:8080
 2020-05-15 11:33:12,911 INFO  [io.quarkus] (main) Profile prod activated.
 2020-05-15 11:33:12,911 INFO  [io.quarkus] (main) Installed features: [cdi, smallrye-health]
 ----
