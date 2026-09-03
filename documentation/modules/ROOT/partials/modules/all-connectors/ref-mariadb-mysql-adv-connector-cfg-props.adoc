@@ -652,6 +652,16 @@ During the next phase of the snapshot, the connector releases the lock as it sel
 To perform the SELECT operation in a consistent fashion, the connector uses a REPEATABLE READ transaction.
 Although the release of the global read lock permits other {connector-name} clients to update the database, use of REPEATABLE READ isolation ensures a consistent snapshot, because the connector continues to read the same data for the duration of  the transaction.
 
+ifdef::MYSQL[]
+`minimal_instance`:::: The connector holds an instance-level backup lock (`LOCK INSTANCE FOR BACKUP`) during the initial phase of the snapshot while it reads the database schemas and other metadata.
+This mode is available for MySQL 8.0 and later and requires the `BACKUP_ADMIN` privilege.
+The backup lock permits concurrent DML while preventing operations that could result in an inconsistent snapshot.
+After the connector releases the backup lock, it uses a REPEATABLE READ transaction to read table data consistently.
+Because the backup lock does not block concurrent writes to non-transactional tables, such as MyISAM tables, those tables might not be captured consistently.
+If the connector cannot acquire the backup lock, it falls back to table-level locks, which require the `LOCK TABLES` privilege.
+For more information, see the link:https://dev.mysql.com/doc/refman/8.0/en/lock-instance-for-backup.html[MySQL documentation].
+endif::MYSQL[]
+
 `extended`:::: Blocks all write operations for the duration of the snapshot.
 Use this setting if clients submit concurrent operations that are incompatible with the REPEATABLE READ isolation level in {connector-name}.
 
