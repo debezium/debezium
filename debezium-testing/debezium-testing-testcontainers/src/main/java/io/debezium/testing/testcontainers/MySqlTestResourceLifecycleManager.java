@@ -25,7 +25,7 @@ public class MySqlTestResourceLifecycleManager implements QuarkusTestResourceLif
     public static final String PRIVILEGED_PASSWORD = "mysqlpassword";
     public static final String ROOT_PASSWORD = "debezium";
     public static final String DBNAME = "inventory";
-    public static final String IMAGE = ImageNames.MYSQL_EXAMPLE_IMAGE;
+    public static final String IMAGE = ImageNames.MYSQL_EXAMPLE_PRIMARY_IMAGE;
     public static final String HOST = "localhost";
     public static final Integer PORT = 3306;
 

@@ -82,7 +82,7 @@ public class TestInfrastructureHelper {
             .withNetworkAliases("postgres");
 
     private static final MySQLContainer<?> MYSQL_CONTAINER = new MySQLContainer<>(
-            DockerImageName.parse(ImageNames.MYSQL_EXAMPLE_IMAGE + ":" + DEBEZIUM_CONTAINER_IMAGE_VERSION_LATEST).asCompatibleSubstituteFor("mysql"))
+            DockerImageName.parse(ImageNames.MYSQL_EXAMPLE_PRIMARY_IMAGE + ":" + DEBEZIUM_CONTAINER_IMAGE_VERSION_LATEST).asCompatibleSubstituteFor("mysql"))
             .withImagePullPolicy(PullPolicy.ageBased(Duration.ofHours(8)))
             .withNetwork(NETWORK)
             .withUsername("mysqluser")
