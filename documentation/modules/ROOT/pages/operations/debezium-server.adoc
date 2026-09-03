@@ -3175,7 +3175,7 @@ By default, the sink builds the instance from the <<zerobus-endpoint, `endpoint`
 ===== REST route (`zerobus-rest`)
 
 The `zerobus-rest` route delivers change event records to Databricks Zerobus Ingest by using the Zerobus REST API, sending one HTTP request per record.
-In environments that do not have persistent gRPC connections, set the following properties to specify how {prodname} Server uses the REST route to delivers event records to a target table.
+In environments that do not have persistent gRPC connections, set the following properties to specify how {prodname} Server uses the REST route to deliver event records to a target table.
 
 [cols="35%a,10%a,55%a",options="header"]
 |===
