@@ -6,6 +6,8 @@
 package io.debezium.connector.sqlserver.metrics;
 
 import java.util.Collection;
+import java.util.Collections;
+import java.util.stream.Collectors;
 
 import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.common.CdcSourceTaskContext;
@@ -14,6 +16,8 @@ import io.debezium.pipeline.meters.ConnectionMeter;
 import io.debezium.pipeline.metrics.CapturedTablesSupplier;
 import io.debezium.pipeline.metrics.StreamingChangeEventSourceMetrics;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
+import io.debezium.relational.TableId;
+import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Collect;
 
 class SqlServerStreamingTaskMetrics extends AbstractSqlServerTaskMetrics<SqlServerStreamingPartitionMetrics>
@@ -34,7 +38,7 @@ class SqlServerStreamingTaskMetrics extends AbstractSqlServerTaskMetrics<SqlServ
                                 "context", "streaming",
                                 "database", partition.getDatabaseName()),
                         metadataProvider,
-                        capturedTablesSupplier));
+                        scopedTo(capturedTablesSupplier, partition)));
         connectionMeter = new ConnectionMeter();
     }
 
@@ -51,5 +55,21 @@ class SqlServerStreamingTaskMetrics extends AbstractSqlServerTaskMetrics<SqlServ
     @Override
     public void onUnchangedEventSkipped(SqlServerPartition partition) {
         onPartitionEvent(partition, SqlServerStreamingPartitionMetrics::onUnchangedEventSkipped);
+    }
+
+    static CapturedTablesSupplier scopedTo(CapturedTablesSupplier supplier, SqlServerPartition partition) {
+        if (supplier == null) {
+            return Collections::emptyList;
+        }
+        return () -> supplier.getCapturedTables().stream()
+                .filter(id -> isTableInPartition(id, partition))
+                .collect(Collectors.toList());
+    }
+
+    private static boolean isTableInPartition(DataCollectionId dataCollectionId, SqlServerPartition partition) {
+        if (dataCollectionId instanceof TableId tableId) {
+            return partition.getDatabaseName() != null && partition.getDatabaseName().equalsIgnoreCase(tableId.catalog());
+        }
+        return false;
     }
 }
