@@ -453,8 +453,18 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
      * Returns the address of the server hosting the underlying cursor, if the fetcher has opened it.
      */
     public Optional<ServerAddress> getCurrentServerAddress() {
-        return Optional.ofNullable(fetcher.cursorRef.get())
-                .map(MongoChangeStreamCursor::getServerAddress);
+        final var cursor = fetcher.cursorRef.get();
+        if (cursor == null) {
+            return Optional.empty();
+        }
+
+        try {
+            return Optional.ofNullable(cursor.getServerAddress());
+        }
+        catch (IllegalStateException e) {
+            // The fetcher closed the cursor concurrently; the address is simply unavailable.
+            return Optional.empty();
+        }
     }
 
     @Override
