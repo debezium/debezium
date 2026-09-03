@@ -18,6 +18,8 @@ import org.junit.jupiter.api.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.doc.FixFor;
+import io.debezium.pipeline.txmetadata.TransactionContext;
 
 /**
  * Unit tests for {@link MongoDbOffsetContext} and its {@link MongoDbOffsetContext.Loader}.
@@ -79,6 +81,20 @@ public class MongoDbOffsetContextTest {
         assertThat(context.isInitialSnapshotRunning())
                 .as("Normal offset (no initsync) should not be flagged as snapshot running")
                 .isFalse();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2549")
+    public void loaderShouldRestoreTransactionContextFromOffset() {
+        final Map<String, Object> offset = new HashMap<>();
+        offset.put(SourceInfo.TIMESTAMP, 1666193824);
+        offset.put(SourceInfo.ORDER, 1);
+        offset.put(SourceInfo.RESUME_TOKEN, "someBase64Token");
+        offset.put(TransactionContext.OFFSET_TRANSACTION_ID, "tx-1");
+
+        final MongoDbOffsetContext context = loader.load(offset);
+
+        assertThat(context.getTransactionContext().getTransactionId()).isEqualTo("tx-1");
     }
 
     /**

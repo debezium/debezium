@@ -230,7 +230,7 @@ public class TransactionMonitorTest {
         final TransactionContext currentOffsetTransaction = TransactionContext.load(eventOffsetContext.getOffset());
         assertThat(currentOffsetTransaction.getTransactionId()).isEqualTo("tx-2");
         assertThat(currentOffsetTransaction.getTotalEventCount()).isEqualTo(1L);
-        assertThat(currentOffsetTransaction.getPerTableEventCount()).containsExactlyEntry(TABLE_A.toString(), 1L);
+        assertThat(currentOffsetTransaction.getPerTableEventCount()).containsExactlyInAnyOrderEntriesOf(Map.of(TABLE_A.toString(), 1L));
     }
 
     private static class TestOffsetContext extends CommonOffsetContext<BaseSourceInfo> {

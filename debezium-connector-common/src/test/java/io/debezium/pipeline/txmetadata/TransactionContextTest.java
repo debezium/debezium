@@ -57,7 +57,7 @@ public class TransactionContextTest {
         currentContext.endTransaction();
         currentContext.store(offsets);
 
-        assertThat(offsets).containsExactlyEntry("position", 1L);
+        assertThat(offsets).containsExactlyInAnyOrderEntriesOf(Map.of("position", 1L));
     }
 
     @Test
