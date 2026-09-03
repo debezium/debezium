@@ -13,6 +13,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import io.debezium.doc.FixFor;
 import io.debezium.time.Date;
 import io.debezium.time.MicroTime;
 import io.debezium.time.MicroTimestamp;
@@ -136,5 +137,56 @@ class CudEventFactoryTemporalTest {
     @DisplayName("Returns the value unchanged when the schema is null")
     void passesThroughWhenSchemaNull() {
         assertThat(CudEventFactory.normalizeTemporal(42, null)).isEqualTo(42);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2566")
+    @DisplayName("Converts a connect-mode Date from java.sql.Date to an ISO date string")
+    void convertsConnectDateFromSqlDate() {
+        final var value = new java.sql.Date(Instant.parse("2024-01-01T00:00:00Z").toEpochMilli());
+        assertThat(CudEventFactory.normalizeTemporal(value, org.apache.kafka.connect.data.Date.SCHEMA))
+                .isEqualTo("2024-01-01");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2566")
+    @DisplayName("Converts a connect-mode Date from numeric epoch days to an ISO date string")
+    void convertsConnectDateFromNumericEpochDays() {
+        assertThat(CudEventFactory.normalizeTemporal(19723, org.apache.kafka.connect.data.Date.SCHEMA))
+                .isEqualTo("2024-01-01");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2566")
+    @DisplayName("Converts a connect-mode Time from java.sql.Time to a UTC ISO time string")
+    void convertsConnectTimeFromSqlTime() {
+        final var value = new java.sql.Time(Instant.parse("1970-01-01T12:30:45.123Z").toEpochMilli());
+        assertThat(CudEventFactory.normalizeTemporal(value, org.apache.kafka.connect.data.Time.SCHEMA))
+                .isEqualTo("12:30:45.123Z");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2566")
+    @DisplayName("Converts a connect-mode Time from numeric millis since midnight to a UTC ISO time string")
+    void convertsConnectTimeFromNumericMillis() {
+        assertThat(CudEventFactory.normalizeTemporal(45045123, org.apache.kafka.connect.data.Time.SCHEMA))
+                .isEqualTo("12:30:45.123Z");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2566")
+    @DisplayName("Converts a connect-mode Timestamp from java.sql.Timestamp to a UTC ISO datetime string")
+    void convertsConnectTimestampFromSqlTimestamp() {
+        final var value = new java.sql.Timestamp(Instant.parse("2024-01-01T12:30:45.123Z").toEpochMilli());
+        assertThat(CudEventFactory.normalizeTemporal(value, org.apache.kafka.connect.data.Timestamp.SCHEMA))
+                .isEqualTo("2024-01-01T12:30:45.123Z");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2566")
+    @DisplayName("Converts a connect-mode Timestamp from numeric epoch millis to a UTC ISO datetime string")
+    void convertsConnectTimestampFromNumericEpochMillis() {
+        assertThat(CudEventFactory.normalizeTemporal(1704112245123L, org.apache.kafka.connect.data.Timestamp.SCHEMA))
+                .isEqualTo("2024-01-01T12:30:45.123Z");
     }
 }
