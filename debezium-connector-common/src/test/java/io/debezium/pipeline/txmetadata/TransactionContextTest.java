@@ -38,6 +38,29 @@ public class TransactionContextTest {
     }
 
     @Test
+    public void shouldReplacePreviousTransactionStateWhenStoring() {
+        final TransactionContext previousContext = new TransactionContext();
+        previousContext.beginTransaction(new DefaultTransactionInfo("tx-1"));
+        previousContext.event(new TableId("catalog", "schema", "table1"));
+        previousContext.event(new TableId("catalog", "schema", "table2"));
+        final Map<String, Object> offsets = previousContext.store(new HashMap<>());
+        offsets.put("position", 1L);
+
+        final TransactionContext currentContext = new TransactionContext();
+        currentContext.beginTransaction(new DefaultTransactionInfo("tx-2"));
+        currentContext.store(offsets);
+
+        assertThat(offsets).containsExactlyInAnyOrderEntriesOf(Map.of(
+                "position", 1L,
+                TransactionContext.OFFSET_TRANSACTION_ID, "tx-2"));
+
+        currentContext.endTransaction();
+        currentContext.store(offsets);
+
+        assertThat(offsets).containsExactlyEntry("position", 1L);
+    }
+
+    @Test
     public void load() {
         String expectedId = "foo";
         Map offsets = Map.of(TransactionContext.OFFSET_TRANSACTION_ID, expectedId);
