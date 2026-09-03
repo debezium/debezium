@@ -800,7 +800,7 @@ Scripting support is therefore disabled by default and must be explicitly enable
 
 To enable message filtering, set the environment variable `ENABLE_DEBEZIUM_SCRIPTING` to `true` before starting {prodname} Server.
 When you enable this setting, the startup script adds the `debezium-scripting` JAR and the https://jcp.org/en/jsr/detail?id=223[JSR 223] script engine implementations (Groovy and GraalVM JavaScript) from the `lib_opt` directory of the {prodname} Server distribution to the server classpath.
-These libraries are kept in `opt_lib` rather than on the default classpath precisely so that scripting is never available unless an operator makes a conscious decision to include them.
+These libraries are kept in `lib_opt` rather than on the default classpath precisely so that scripting is never available unless an operator makes a conscious decision to include them.
 
 .Additional resources
 * link:{link-filtering}#message-filtering[{prodname} message filtering SMT].
