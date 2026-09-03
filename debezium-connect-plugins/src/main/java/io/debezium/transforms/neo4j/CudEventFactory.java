@@ -6,6 +6,7 @@
 package io.debezium.transforms.neo4j;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
@@ -198,12 +199,41 @@ public class CudEventFactory {
             case Timestamp.SCHEMA_NAME -> IsoTimestamp.toIsoString(((Number) value).longValue(), null);
             case MicroTimestamp.SCHEMA_NAME -> IsoTimestamp.toIsoString(Conversions.toInstantFromMicros(((Number) value).longValue()), null);
             case NanoTimestamp.SCHEMA_NAME -> IsoTimestamp.toIsoString(Conversions.toInstantFromNanos(((Number) value).longValue()), null);
-            case org.apache.kafka.connect.data.Date.LOGICAL_NAME -> ((java.util.Date) value).toInstant().atOffset(ZoneOffset.UTC).toLocalDate().toString();
-            case org.apache.kafka.connect.data.Time.LOGICAL_NAME ->
-                IsoTime.toIsoString(((java.util.Date) value).toInstant().atOffset(ZoneOffset.UTC).toLocalTime(), false);
-            case org.apache.kafka.connect.data.Timestamp.LOGICAL_NAME -> IsoTimestamp.toIsoString(((java.util.Date) value).toInstant(), null);
+            case org.apache.kafka.connect.data.Date.LOGICAL_NAME -> normalizeConnectDate(value);
+            case org.apache.kafka.connect.data.Time.LOGICAL_NAME -> normalizeConnectTime(value);
+            case org.apache.kafka.connect.data.Timestamp.LOGICAL_NAME -> normalizeConnectTimestamp(value);
             default -> value;
         };
+    }
+
+    private static Object normalizeConnectDate(Object value) {
+        if (value instanceof java.util.Date d) {
+            return Instant.ofEpochMilli(d.getTime()).atOffset(ZoneOffset.UTC).toLocalDate().toString();
+        }
+        else if (value instanceof Number n) {
+            return LocalDate.ofEpochDay(n.longValue()).toString();
+        }
+        return value;
+    }
+
+    private static Object normalizeConnectTime(Object value) {
+        if (value instanceof java.util.Date d) {
+            return IsoTime.toIsoString(Instant.ofEpochMilli(d.getTime()).atOffset(ZoneOffset.UTC).toLocalTime(), false);
+        }
+        else if (value instanceof Number n) {
+            return IsoTime.toIsoString(Duration.ofMillis(n.longValue()), false);
+        }
+        return value;
+    }
+
+    private static Object normalizeConnectTimestamp(Object value) {
+        if (value instanceof java.util.Date d) {
+            return IsoTimestamp.toIsoString(Instant.ofEpochMilli(d.getTime()), null);
+        }
+        else if (value instanceof Number n) {
+            return IsoTimestamp.toIsoString(n.longValue(), null);
+        }
+        return value;
     }
 
     private Map<String, Object> extractProperties(Struct data, Set<String> excluded, TableMappingConfig mapping) {
