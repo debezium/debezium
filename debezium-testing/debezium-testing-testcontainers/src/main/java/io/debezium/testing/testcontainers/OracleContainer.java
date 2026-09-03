@@ -17,7 +17,7 @@ public class OracleContainer extends org.testcontainers.containers.OracleContain
 
     private static final String FALLBACK_ORACLE_SERVER_VERSION = "21.3.0";
     public static final String DEFAULT_TAG = parameterWithDefault(System.getProperty("version.oracle.server"), FALLBACK_ORACLE_SERVER_VERSION);
-    public static final DockerImageName DEFAULT_IMAGE_NAME = ImageNames.DBZ_ORACLE_IMAGE_NAME;
+    public static final DockerImageName DEFAULT_IMAGE_NAME = ImageNames.ORACLE_DBZ_IMAGE_NAME;
     public final String ORACLE_DBNAME = parameterWithDefault(System.getProperty("database.dbname"), "ORCLCDB");
     public final String ORACLE_PDB_NAME = parameterWithDefault(System.getProperty("database.pdb.name"), "ORCLPDB1");
     private static final String ORACLE_USERNAME = parameterWithDefault(System.getProperty("database.username"), "debezium");

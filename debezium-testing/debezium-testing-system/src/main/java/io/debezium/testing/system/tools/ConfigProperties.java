@@ -31,10 +31,10 @@ public final class ConfigProperties {
 
     // DockerConfiguration configuration
     public static final String DOCKER_IMAGE_KAFKA_RHEL = System.getProperty("test.docker.image.kc");
-    public static final String DOCKER_IMAGE_MYSQL = System.getProperty("test.docker.image.mysql", ImageNames.MYSQL_LATEST_IMAGE);
-    public static final String DOCKER_IMAGE_MYSQL_REPLICA = System.getProperty("test.docker.image.mysql.replica", ImageNames.MYSQL_REPLICA_IMAGE);
+    public static final String DOCKER_IMAGE_MYSQL = System.getProperty("test.docker.image.mysql", ImageNames.MYSQL_EXAMPLE_PRIMARY_IMAGE);
+    public static final String DOCKER_IMAGE_MYSQL_REPLICA = System.getProperty("test.docker.image.mysql.replica", ImageNames.MYSQL_EXAMPLE_REPLICA_IMAGE);
 
-    public static final String DOCKER_IMAGE_POSTGRESQL = System.getProperty("test.docker.image.postgresql", ImageNames.POSTGRES_EXAMPLE_LATEST_IMAGE);
+    public static final String DOCKER_IMAGE_POSTGRESQL = System.getProperty("test.docker.image.postgresql", ImageNames.POSTGRES_EXAMPLE_IMAGE);
     public static final String DOCKER_IMAGE_MONGO = System.getProperty("test.docker.image.mongo", ImageNames.MONGO_EXAMPLE_IMAGE);
     public static final String DOCKER_IMAGE_MONGO_SHARDED = System.getProperty("test.docker.image.mongo.sharded", ImageNames.MONGO_EXAMPLE_IMAGE);
     public static final String DOCKER_IMAGE_SQLSERVER = System.getProperty("test.docker.image.sqlserver", ImageNames.SQLSERVER_2019_IMAGE);
