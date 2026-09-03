@@ -904,6 +904,7 @@ Zoran Regvart
 Đỗ Ngọc Sơn
 حمود سمبول
 刘镕通
+<<<<<<< HEAD
 合龙 张
 崔世杰
 张展业
@@ -916,3 +917,11 @@ Zoran Regvart
 陆杰
 魏南
 민규 김
+Sundong Kim
+Timur Rakhmatullin
+skdus531
+Junsu Lee
+Björn Bärtschi
+Raju Surarapu
+dingqianwen
+Surya Dhaneshwar
