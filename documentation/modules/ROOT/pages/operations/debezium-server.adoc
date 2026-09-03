@@ -206,7 +206,7 @@ endif::community[]
 If you want to capture all changes in the database, remove this line.
 Otherwise, update this line to correspond to your preferred schema or tables.
 * The source offset is stored in a file named `offsets.dat` in the `data` directory.
-To prevent startup errors, the directory that you specify must exists before you start the server. 
+To prevent startup errors, the directory that you specify must exist before you start the server.
 
 After the server starts, it generates a sequence of log messages similar to the following example:
 
