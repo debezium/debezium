@@ -123,6 +123,51 @@ public class MongoDataConverterTest {
                 .build());
     }
 
+    @Test
+    @FixFor("debezium/dbz#2560")
+    void shouldProcessJavaScriptWithScope() {
+        val = BsonDocument.parse("""
+                {
+                    "function": {
+                        "$code": "function() { return x; }",
+                        "$scope": {
+                            "x": { "$numberInt": "1" },
+                            "nested": { "value": "test" }
+                        }
+                    }
+                }
+                """);
+        builder = SchemaBuilder.struct().name("javascript");
+
+        final Map<String, Map<Object, BsonType>> schemaMap = converter.parseBsonDocument(val);
+        converter.buildSchema(schemaMap, builder);
+
+        final Schema finalSchema = builder.build();
+        final Struct struct = new Struct(finalSchema);
+        for (final Map.Entry<String, BsonValue> entry : val.entrySet()) {
+            converter.buildStruct(entry, finalSchema, struct);
+        }
+
+        final Schema functionSchema = finalSchema.field("function").schema();
+        assertThat(functionSchema.name()).isEqualTo("javascript.function");
+        assertThat(functionSchema.fields()).extracting("name").containsExactly("code", "scope");
+        assertThat(functionSchema.field("code").schema()).isEqualTo(Schema.OPTIONAL_STRING_SCHEMA);
+
+        final Schema scopeSchema = functionSchema.field("scope").schema();
+        assertThat(scopeSchema.name()).isEqualTo("javascript.function.scope");
+        assertThat(scopeSchema.fields()).extracting("name").containsExactly("x", "nested");
+        assertThat(scopeSchema.field("x").schema()).isEqualTo(Schema.OPTIONAL_INT32_SCHEMA);
+
+        final Schema nestedSchema = scopeSchema.field("nested").schema();
+        assertThat(nestedSchema.name()).isEqualTo("javascript.function.scope.nested");
+        assertThat(nestedSchema.field("value").schema()).isEqualTo(Schema.OPTIONAL_STRING_SCHEMA);
+
+        final Struct function = struct.getStruct("function");
+        assertThat(function.getString("code")).isEqualTo("function() { return x; }");
+        assertThat(function.getStruct("scope").getInt32("x")).isEqualTo(1);
+        assertThat(function.getStruct("scope").getStruct("nested").getString("value")).isEqualTo("test");
+    }
+
     private String getFile(final String fileName) throws IOException, URISyntaxException {
         final URL jsonResource = getClass().getClassLoader().getResource(fileName);
         return new String(
