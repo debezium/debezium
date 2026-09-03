@@ -45,7 +45,7 @@ benw-at-birdie,Ben White
 bep7520,Blake Peno
 BetaCat,合龙 张
 Bhagyashree,Bhagyashree Goyal
-bhuvan-somisetty,bhuvan-somisetty
+bhuvan-somisetty,Bhuvan Somisetty
 BigGillyStyle,Andy Pickler
 Binayak490-cyber,Binayak Das
 BinLi1988,Bin Li
