@@ -18,7 +18,6 @@ import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.relational.TableId;
-import io.debezium.schema.DatabaseSchema;
 import io.debezium.util.Clock;
 
 /**
@@ -76,7 +75,7 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource extends BinlogRea
     public MySqlReadOnlyIncrementalSnapshotChangeEventSource(MySqlConnectorConfig config,
                                                              BinlogConnectorConnection jdbcConnection,
                                                              EventDispatcher<MySqlPartition, TableId> dispatcher,
-                                                             DatabaseSchema<?> databaseSchema,
+                                                             MySqlDatabaseSchema databaseSchema,
                                                              Clock clock,
                                                              SnapshotProgressListener<MySqlPartition> progressListener,
                                                              DataChangeEventListener<MySqlPartition> dataChangeEventListener,
