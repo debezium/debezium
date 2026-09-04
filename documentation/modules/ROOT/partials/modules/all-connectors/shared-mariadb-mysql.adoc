@@ -2727,14 +2727,7 @@ You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and Ope
 endif::community[]
 
 ifdef::product[]
-You can use either of the following methods to deploy a {prodname} {connector-name} connector:
-
-* xref:openshift-streams-{context}-connector-deployment[Use {StreamsName} to automatically create an image that includes the connector plug-in].
-+
-This is the preferred method.
-* xref:deploying-debezium-{context}-connectors[Build a custom Kafka Connect container image from a Containerfile]. +
-This Containerfile deployment method is deprecated.
-The instructions for this method are scheduled for removal in future versions of the documentation.
+To deploy a {prodname} {connector-name} connector, use {StreamsName} to automatically create a Kafka Connect image that includes the connector plug-in.
 
 .Additional resources
 
@@ -2746,38 +2739,7 @@ end::deployment[]
 
 
 
-=== Deploying connectors by building a custom Kafka Connect container image from a Containerfile
-
 tag::deploy-via-dockerfile[]
-To deploy a {prodname} {connector-name} connector, you must build a custom Kafka Connect container image that contains the {prodname} connector archive, and then push this container image to a container registry.
-You then need to create the following custom resources (CRs):
-
-* A `KafkaConnect` CR that defines your Kafka Connect instance.
-The `image` property in the CR specifies the name of the container image that you create to run your {prodname} connector.
-You apply this CR to the OpenShift instance where link:https://access.redhat.com/products/red-hat-amq#streams[Red Hat {StreamsName}] is deployed.
-{StreamsName} offers operators and images that bring Apache Kafka to OpenShift.
-
-* A `KafkaConnector` CR that defines your {prodname} {connector-name} connector.
-Apply this CR to the same OpenShift instance where you apply the `KafkaConnect` CR.
-
-.Prerequisites
-
-* {connector-name} is running and you completed the steps to xref:setting-up-{context}-to-run-a-debezium-connector[set up {connector-name} to work with a {prodname} connector].
-
-* {StreamsName} is deployed on OpenShift and is running Apache Kafka and Kafka Connect.
-For more information, see link:{LinkDeployManageStreamsOpenShift}[{NameDeployManageStreamsOpenShift}].
-
-* Podman or Docker is installed.
-
-* You have an account and permissions to create and manage containers in the container registry (such as `quay.io` or `docker.io`) to which you plan to add the container that will run your Debezium connector.
-
-.Procedure
-
-. Create the {prodname} {connector-name} container for Kafka Connect:
-
-.. Create a Containerfile that uses `{DockerKafkaConnect}` as the base image.
-For example, from a terminal window, enter the following command to create a Containerfile with the name `debezium-container-for-{context}.yaml` in a specified directory:
-+
 =====================================================================
 
 [source,shell,subs="+attributes,+quotes"]
@@ -2952,6 +2914,7 @@ oc apply -f inventory-connector.yaml
 +
 The preceding command registers `inventory-connector` and the connector starts to run against the `inventory` database as defined in the `KafkaConnector` CR.
 
+=======
 end::deploy-via-dockerfile[]
 
 tag::connector-config-example[]
