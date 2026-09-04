@@ -2002,6 +2002,54 @@ Debezium Server is enhanced to support publishing captured change events to nati
 |The RabbitMQ module supports pass-through configuration.
 The connection https://github.com/rabbitmq/rabbitmq-java-client/blob/main/src/main/java/com/rabbitmq/client/ConnectionFactoryConfigurator.java[configuration properties] are passed to the RabbitMQ client with the prefix removed.
 
+|[[rabbitmqstream-tls-enable]]<<rabbitmqstream-tls-enable, `debezium.sink.rabbitmqstream.tls.enable`>>
+|`false`
+|Enables a TLS connection to the RabbitMQ Stream broker.
+
+|[[rabbitmqstream-tls-key-store-type]]<<rabbitmqstream-tls-key-store-type, `debezium.sink.rabbitmqstream.tls.keyStore.type`>>
+|
+|Type of the client key store used to present a client certificate for mutual TLS (mTLS): `PEM`, `PKCS12`, or `JKS`.
+If set to `PEM`, both `tls.keyStore.certificateFilePath` and `tls.keyStore.keyFilePath` must also be set.
+If set to `PKCS12` or `JKS`, `tls.keyStore.filePath` must also be set.
+
+|[[rabbitmqstream-tls-key-store-certificate-file-path]]<<rabbitmqstream-tls-key-store-certificate-file-path, `debezium.sink.rabbitmqstream.tls.keyStore.certificateFilePath`>>
+|
+|Path to the client certificate PEM file.
+Used only when `tls.keyStore.type` is `PEM`.
+
+|[[rabbitmqstream-tls-key-store-key-file-path]]<<rabbitmqstream-tls-key-store-key-file-path, `debezium.sink.rabbitmqstream.tls.keyStore.keyFilePath`>>
+|
+|Path to the client private key PEM file.
+Used only when `tls.keyStore.type` is `PEM`.
+
+|[[rabbitmqstream-tls-key-store-file-path]]<<rabbitmqstream-tls-key-store-file-path, `debezium.sink.rabbitmqstream.tls.keyStore.filePath`>>
+|
+|Path to the client key store file.
+Used only when `tls.keyStore.type` is `PKCS12` or `JKS`.
+
+|[[rabbitmqstream-tls-key-store-password]]<<rabbitmqstream-tls-key-store-password, `debezium.sink.rabbitmqstream.tls.keyStore.password`>>
+|
+|Password for the key store (`PKCS12`/`JKS`), or passphrase for the private key file (`PEM`), if any.
+
+|[[rabbitmqstream-tls-trust-store-type]]<<rabbitmqstream-tls-trust-store-type, `debezium.sink.rabbitmqstream.tls.trustStore.type`>>
+|
+|Type of the trust store used to trust a private or internal certificate authority: `PEM`, `PKCS12`, or `JKS`.
+`tls.trustStore.filePath` must also be set whenever this property is set.
+
+|[[rabbitmqstream-tls-trust-store-file-path]]<<rabbitmqstream-tls-trust-store-file-path, `debezium.sink.rabbitmqstream.tls.trustStore.filePath`>>
+|
+|Path to the trust store file: a CA certificate bundle when `tls.trustStore.type` is `PEM`, or a key store file when it is `PKCS12` or `JKS`.
+
+|[[rabbitmqstream-tls-trust-store-password]]<<rabbitmqstream-tls-trust-store-password, `debezium.sink.rabbitmqstream.tls.trustStore.password`>>
+|
+|Password for the trust store.
+Only relevant when `tls.trustStore.type` is `PKCS12` or `JKS`.
+
+|[[rabbitmqstream-tls-verify-hostname]]<<rabbitmqstream-tls-verify-hostname, `debezium.sink.rabbitmqstream.tls.verify.hostname`>>
+|`false`
+|Verifies that the broker's certificate matches the host being connected to.
+Defaults to `false` to preserve behavior for existing deployments that enabled TLS before this property was introduced.
+
 |[[rabbitmqstream-ack-timeout]]<<rabbitmqstream-ack-timeout, `debezium.sink.rabbitmqstream.ackTimeout`>>
 | 30000
 | Defines the maximum time in milliseconds to wait a confirm from the broker after publishing a message.
