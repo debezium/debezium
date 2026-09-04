@@ -12,6 +12,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.sql.Types;
 import java.time.Instant;
 import java.util.List;
@@ -207,6 +211,22 @@ public class JdbcSchemaHistoryTest {
         assertEquals(tables2.size(), 3);
         assertEquals(tables2.forTable(tableIdLarge), tableLarge);
         assertEquals(tables2.forTable(tableId2), table2);
+    }
+
+    @Test
+    public void shouldNotLeaveTransactionOpenAfterRecovery() throws SQLException, InterruptedException {
+        history.record(source, position, databaseName, schemaName, ddl, tableChanges, currentInstant);
+
+        Tables tables = new Tables();
+        history.recover(source, position, tables, ddlParser);
+        assertEquals(tables.size(), 1);
+
+        try (Connection other = DriverManager.getConnection("jdbc:sqlite:" + dbFile);
+                Statement stmt = other.createStatement()) {
+            // This will fail with SQLITE_BUSY if the recovery tx is still open
+            stmt.execute("CREATE TABLE transaction_probe (id INT)");
+            stmt.execute("DROP TABLE transaction_probe");
+        }
     }
 
 }
