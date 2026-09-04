@@ -50,8 +50,8 @@ can be generated with the `Release Notes` tool in JIRA on the version's detail p
 * https://github.com/debezium/debezium.github.io/blob/develop/releases/1.7/release-notes.asciidoc
 * https://github.com/debezium/debezium.github.io/blob/develop/_data/releases/1.7/series.yml
 
-JIRA issues that break backwards compatability for existing consumers, should be marked with the "add-to-upgrade-guide" label.
-Search for them using [this query](https://issues.redhat.com/issues/?jql=labels%20%3D%20add-to-upgrade-guide) and describe the
+GitHub issues that break backward compatibility for existing consumers should be marked with "backward-incompatible" label.
+Search for them using [this query](https://github.com/debezium/dbz/issues?q=is%3Aissue%20state%3Aopen%20label%3Abackward-incompatible) and describe the
 implications and required steps for upgrading in the changelog on the website.
 
 ### Update antora.yml and series.yml
