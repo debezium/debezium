@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.transforms.neo4j.Neo4jCudConverterConfig.FieldMissingBehavior;
 import io.debezium.transforms.neo4j.Neo4jCudConverterConfig.NodeMode;
 import io.debezium.transforms.neo4j.Neo4jCudConverterConfig.OutputMode;
 
@@ -119,6 +120,49 @@ class Neo4jCudConfigParserTest {
                     "tombstones.enabled", "false");
 
             assertThat(parse(props).tombstonesEnabled()).isFalse();
+        }
+
+        @Test
+        @DisplayName("Defaults field.missing.behavior to warn")
+        void defaultsFieldMissingBehaviorToWarn() {
+            final var props = Map.of(
+                    "table.customers.node.labels", "Customer",
+                    "table.customers.node.id.properties", "id");
+
+            assertThat(parse(props).fieldMissingBehavior()).isEqualTo(FieldMissingBehavior.WARN);
+        }
+
+        @Test
+        @DisplayName("Parses field.missing.behavior=fail as a global setting")
+        void parsesFieldMissingBehaviorFail() {
+            final var props = Map.of(
+                    "table.customers.node.labels", "Customer",
+                    "table.customers.node.id.properties", "id",
+                    "field.missing.behavior", "fail");
+
+            assertThat(parse(props).fieldMissingBehavior()).isEqualTo(FieldMissingBehavior.FAIL);
+        }
+
+        @Test
+        @DisplayName("Parses field.missing.behavior=ignore as a global setting")
+        void parsesFieldMissingBehaviorIgnore() {
+            final var props = Map.of(
+                    "table.customers.node.labels", "Customer",
+                    "table.customers.node.id.properties", "id",
+                    "field.missing.behavior", "ignore");
+
+            assertThat(parse(props).fieldMissingBehavior()).isEqualTo(FieldMissingBehavior.IGNORE);
+        }
+
+        @Test
+        @DisplayName("Falls back to warn for an unrecognized field.missing.behavior value")
+        void fallsBackForUnknownFieldMissingBehavior() {
+            final var props = Map.of(
+                    "table.customers.node.labels", "Customer",
+                    "table.customers.node.id.properties", "id",
+                    "field.missing.behavior", "bogus");
+
+            assertThat(parse(props).fieldMissingBehavior()).isEqualTo(FieldMissingBehavior.WARN);
         }
 
         @Test
