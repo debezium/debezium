@@ -39,11 +39,8 @@ public class ZonedTimestampType extends DebeziumZonedTimestampType {
     @Override
     protected List<ValueBindDescriptor> normalTimestampValue(int index, Object value) {
 
-        final ZonedDateTime zdt = clampIfOutOfRange(ZonedDateTime.parse((String) value, ZonedTimestamp.FORMATTER)).withZoneSameInstant(getDatabaseTimeZone().toZoneId());
+        final ZonedDateTime zdt = ZonedDateTime.parse((String) value, ZonedTimestamp.FORMATTER).withZoneSameInstant(getDatabaseTimeZone().toZoneId());
 
-        // Bind the wall-clock in the database time zone rather than the instant; Timestamp.from
-        // relabels pre-Gregorian instants through the hybrid Julian calendar and the JVM zone,
-        // corrupting values clamped to the dialect's year-1 minimum.
-        return List.of(new ValueBindDescriptor(index, Timestamp.valueOf(zdt.toLocalDateTime())));
+        return List.of(new ValueBindDescriptor(index, Timestamp.from(zdt.toInstant())));
     }
 }

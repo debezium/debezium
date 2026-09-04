@@ -17,11 +17,9 @@ import java.sql.Clob;
 import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.time.ZoneId;
@@ -288,7 +286,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
     }
 
     @TestTemplate
-    @FixFor({ "debezium/dbz#2235", "debezium/dbz#2352" })
+    @FixFor("debezium/dbz#2235")
     @SkipWhenSource(value = { SourceType.POSTGRES, SourceType.ORACLE }, reason = "No TINYINT data type support")
     public void testTinyIntDataType(Source source, Sink sink) throws Exception {
         assertDataType(source,
@@ -296,12 +294,9 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 "tinyint",
                 List.of(10, 12),
                 (record) -> {
-                    // A signed MySQL TINYINT is emitted as INT8 and maps to tinyint. SQL Server's
-                    // unsigned TINYINT is emitted as INT16 and maps to smallint, even when column
-                    // type propagation is enabled, so it can hold the full 0-255 range.
                     final boolean mysqlSource = source.getType().is(SourceType.MYSQL);
                     assertColumn(sink, record, "id", mysqlSource ? getInt8Type() : getInt16Type());
-                    assertColumn(sink, record, "data", mysqlSource ? getInt8Type() : getInt16Type());
+                    assertColumn(sink, record, "data", mysqlSource || source.getOptions().isColumnTypePropagated() ? getInt8Type() : getInt16Type());
                 },
                 ResultSet::getInt);
     }
@@ -2869,132 +2864,6 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
     }
 
     @TestTemplate
-    @ForSource(value = { SourceType.ORACLE }, reason = "Only the Oracle source emits BC-era timestamp values")
-    // ISOSTRING values are stored as strings and have no range to clamp;
-    // NANOSECONDS cannot represent BC-era values as they exceed the range of io.debezium.time.NanoTimestamp
-    @WithTemporalPrecisionMode(exclude = { TemporalPrecisionMode.ISOSTRING, TemporalPrecisionMode.NANOSECONDS })
-    public void testTimestampDataTypeWithBcEraValueClamped(Source source, Sink sink) throws Exception {
-
-        final Properties sinkProperties = new Properties();
-        sinkProperties.put(JdbcSinkConnectorConfig.TIMESTAMP_CLAMP_OUT_OF_RANGE_VALUES, "true");
-
-        // 2018 BC (Oracle year -2018, ISO proleptic year -2017)
-        setUtcReadSessionTimeZone(sink);
-        try {
-            assertDataTypesNonKeyOnly(source,
-                    sink,
-                    List.of("timestamp(6)"),
-                    List.of("TO_TIMESTAMP('-2018-03-27 12:34:56', 'SYYYY-MM-DD HH24:MI:SS')"),
-                    List.of(getExpectedBcEraLocalDateTime(sink, LocalDateTime.of(-2017, 3, 27, 12, 34, 56))),
-                    null,
-                    sinkProperties,
-                    (record) -> assertColumn(sink, record, "data0", getTimestampType(source, false, 6)),
-                    (rs, index) -> readLocalDateTimeEraSafe(sink, rs, index));
-        }
-        finally {
-            resetReadSessionTimeZone(sink);
-        }
-    }
-
-    @TestTemplate
-    @ForSource(value = { SourceType.ORACLE }, reason = "Only the Oracle source emits BC-era timestamp values")
-    // ISOSTRING values are stored as strings and have no range to clamp;
-    // NANOSECONDS cannot represent BC-era values as they exceed the range of io.debezium.time.NanoTimestamp
-    @WithTemporalPrecisionMode(exclude = { TemporalPrecisionMode.ISOSTRING, TemporalPrecisionMode.NANOSECONDS })
-    public void testTimestampWithTimeZoneDataTypeWithBcEraValueClamped(Source source, Sink sink) throws Exception {
-
-        final Properties sinkProperties = new Properties();
-        sinkProperties.put(JdbcSinkConnectorConfig.TIMESTAMP_CLAMP_OUT_OF_RANGE_VALUES, "true");
-
-        // 2018 BC (Oracle year -2018, ISO proleptic year -2017), instant -2017-03-27T12:34:56Z
-        setUtcReadSessionTimeZone(sink);
-        try {
-            assertDataTypesNonKeyOnly(source,
-                    sink,
-                    List.of("timestamp(6) with time zone"),
-                    List.of("TO_TIMESTAMP_TZ('-2018-03-27 01:34:56 -11:00', 'SYYYY-MM-DD HH24:MI:SS TZH:TZM')"),
-                    List.of(getExpectedBcEraZonedDateTime(sink, ZonedDateTime.of(-2017, 3, 27, 12, 34, 56, 0, ZoneOffset.UTC))),
-                    null,
-                    sinkProperties,
-                    (record) -> assertColumn(sink, record, "data0", getTimestampWithTimezoneType(source, false, 6)),
-                    (rs, index) -> readZonedDateTimeEraSafe(sink, rs, index));
-        }
-        finally {
-            resetReadSessionTimeZone(sink);
-        }
-    }
-
-    private static LocalDateTime getExpectedBcEraLocalDateTime(Sink sink, LocalDateTime bcValue) {
-        return getExpectedBcEraZonedDateTime(sink, bcValue.atZone(ZoneOffset.UTC)).toLocalDateTime();
-    }
-
-    private static ZonedDateTime getExpectedBcEraZonedDateTime(Sink sink, ZonedDateTime bcValue) {
-        if (sink.getType().is(SinkType.MYSQL)) {
-            return ZonedDateTime.of(1970, 1, 1, 0, 0, 1, 0, ZoneOffset.UTC);
-        }
-        else if (sink.getType().is(SinkType.SQLSERVER) || sink.getType().is(SinkType.DB2) || sink.getType().is(SinkType.DB2I)) {
-            return ZonedDateTime.of(1, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC);
-        }
-        // Oracle represents BC values natively and PostgreSQL has no finite clamp bounds
-        return bcValue;
-    }
-
-    private static boolean isBcEraCapableSink(Sink sink) {
-        return sink.getType().is(SinkType.ORACLE) || sink.getType().is(SinkType.POSTGRES) || sink.getType().is(SinkType.COCKROACHDB);
-    }
-
-    /**
-     * The PostgreSQL driver defaults the read session's time zone to the JVM default. CockroachDB
-     * renders BC-era {@code timestamptz} text inconsistently for region-based zones, pairing a wall
-     * clock computed at the zone's historic local-mean-time offset with the modern offset label, which
-     * corrupts the value on read. Pin the verification session to UTC around BC-era assertions only,
-     * so that other tests continue to read with the driver's default session behavior.
-     */
-    private static void setUtcReadSessionTimeZone(Sink sink) throws Exception {
-        if (sink.getType().is(SinkType.POSTGRES) || sink.getType().is(SinkType.COCKROACHDB)) {
-            try (Statement statement = sink.getConnection().createStatement()) {
-                statement.execute("SET TIME ZONE 'UTC'");
-            }
-        }
-    }
-
-    private static void resetReadSessionTimeZone(Sink sink) throws Exception {
-        if (sink.getType().is(SinkType.POSTGRES) || sink.getType().is(SinkType.COCKROACHDB)) {
-            try (Statement statement = sink.getConnection().createStatement()) {
-                statement.execute("RESET timezone");
-            }
-        }
-    }
-
-    /**
-     * Reads temporal columns through the driver's {@code java.time} accessors rather than
-     * {@link java.sql.Timestamp}: the hybrid Julian/Gregorian calendar of {@code java.sql.Timestamp}
-     * cannot faithfully represent BC-era values, and its wall-clock/instant conversions depend on the
-     * reading JVM's default time zone, which would make the absolute expectations of the BC-era tests
-     * dependent on the machine running the tests.
-     */
-    private static LocalDateTime readLocalDateTimeEraSafe(Sink sink, ResultSet rs, int index) throws Exception {
-        if (sink.getType().is(SinkType.DB2) || sink.getType().is(SinkType.DB2I)) {
-            // The JCC and JT400 drivers do not support the JDBC 4.2 java.time conversions. Their
-            // TIMESTAMP type is zoneless so the java.sql.Timestamp wall-clock round trip is
-            // symmetric regardless of the JVM's zone, and these sinks clamp BC values to an AD
-            // minimum, so the era hazard cannot arise.
-            return rs.getTimestamp(index).toLocalDateTime();
-        }
-        return rs.getObject(index, LocalDateTime.class);
-    }
-
-    private static ZonedDateTime readZonedDateTimeEraSafe(Sink sink, ResultSet rs, int index) throws Exception {
-        if (isBcEraCapableSink(sink) || sink.getType().is(SinkType.SQLSERVER)) {
-            // These sinks store the time zone with the value
-            return rs.getObject(index, OffsetDateTime.class).atZoneSameInstant(ZoneOffset.UTC);
-        }
-        // The remaining sinks store the value as a wall clock in the sink connector's configured
-        // use.time.zone, so reattach that zone to recover the instant
-        return readLocalDateTimeEraSafe(sink, rs, index).atZone(SINK_ZONE_ID).withZoneSameInstant(ZoneOffset.UTC);
-    }
-
-    @TestTemplate
     @ForSource(value = SourceType.POSTGRES, reason = "The SPARSEVEC data type only applies to PostgreSQL")
     @SkipWhenSink(value = SinkType.POSTGRES, reason = "This mapping is not designed to fail for PostgreSQL sinks")
     @WithPostgresExtension("vector")
@@ -3836,13 +3705,6 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                                                     ConfigurationAdjuster configAdjuster, DataTypeColumnAssert columnAssert,
                                                     ColumnReader<U> columnReader)
             throws Exception {
-        assertDataTypesNonKeyOnly(source, sink, typeNames, values, expectedValues, configAdjuster, new Properties(), columnAssert, columnReader);
-    }
-
-    protected <T, U> void assertDataTypesNonKeyOnly(Source source, Sink sink, List<String> typeNames, List<T> values, List<U> expectedValues,
-                                                    ConfigurationAdjuster configAdjuster, Properties additionalSinkProperties,
-                                                    DataTypeColumnAssert columnAssert, ColumnReader<U> columnReader)
-            throws Exception {
         final String tableName = source.randomTableName();
 
         final String createSql = createTableFromTypes(source, tableName, false, typeNames, values);
@@ -3854,7 +3716,6 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
         sinkProperties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
         sinkProperties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.NONE.getValue());
         sinkProperties.put(JdbcSinkConnectorConfig.INSERT_MODE, InsertMode.INSERT.getValue());
-        sinkProperties.putAll(additionalSinkProperties);
         startSink(source, sinkProperties, tableName);
 
         consumeAndAssert(sink, columnAssert, expectedValues, columnReader);

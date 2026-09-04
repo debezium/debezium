@@ -1,4 +1,4 @@
-The following list describes the configuration properties that are required to deploy the {connector-name} connector, unless a default value is specified.
+The following configuration properties are _required_ unless a default value is available.
 
 [id="{context}-property-bigint-unsigned-handling-mode"]
 xref:{context}-property-bigint-unsigned-handling-mode[`bigint.unsigned.handling.mode`]::

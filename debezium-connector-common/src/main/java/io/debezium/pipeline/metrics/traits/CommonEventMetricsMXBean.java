@@ -22,8 +22,6 @@ public interface CommonEventMetricsMXBean {
 
     long getTotalNumberOfDeleteEventsSeen();
 
-    long getTotalNumberOfReadEventsSeen();
-
     long getNumberOfEventsFiltered();
 
     long getNumberOfErroneousEvents();

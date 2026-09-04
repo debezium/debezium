@@ -111,7 +111,7 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
 
         connection = connectionFactory.mainConnection();
 
-        Offsets<MySqlPartition, MySqlOffsetContext> previousOffsets = getSinglePartitionPreviousOffsets(
+        Offsets<MySqlPartition, MySqlOffsetContext> previousOffsets = getPreviousOffsets(
                 new MySqlPartition.Provider(connectorConfig, config),
                 new MySqlOffsetContext.Loader(connectorConfig));
 
@@ -161,6 +161,8 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
             throw new DebeziumException(e);
         }
 
+        MySqlOffsetContext previousOffset = previousOffsets.getTheOnlyOffset();
+
         validateSchemaHistory(connectorConfig, connection::validateLogPosition, previousOffsets, schema, snapshotter);
 
         LOGGER.info("Reconnecting after validating schema recovery");
@@ -186,6 +188,14 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
             throw new DebeziumException("Failed to reconnect after schema recovery", e);
         }
 
+        // If the binlog position is not available it is necessary to re-execute snapshot
+        if (previousOffset == null) {
+            LOGGER.info("No previous offset found");
+        }
+        else {
+            LOGGER.info("Found previous offset {}", previousOffset);
+        }
+
         // Set up the task record queue ...
         this.queue = new ChangeEventQueue.Builder<DataChangeEvent>()
                 .pollInterval(connectorConfig.getPollInterval())
@@ -209,8 +219,7 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
                 previousOffsets);
 
         final Configuration heartbeatConfig = config;
-        final DebeziumHeaderProducer debeziumHeaderProducer = connectorConfig.getServiceRegistry().tryGetService(
-                DebeziumHeaderProducer.class);
+
         final EventDispatcher<MySqlPartition, TableId> dispatcher = new EventDispatcher<>(
                 connectorConfig,
                 topicNamingStrategy,
@@ -227,9 +236,7 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
                                 MySqlFieldReaderResolver.resolve(connectorConfig)),
                         new BinlogHeartbeatErrorHandler(),
                         queue),
-                schemaNameAdjuster,
-                signalProcessor,
-                debeziumHeaderProducer);
+                schemaNameAdjuster, signalProcessor, connectorConfig.getServiceRegistry().tryGetService(DebeziumHeaderProducer.class));
 
         // Create the binary log client that will be used for streaming change events
         final BinaryLogClient binaryLogClient = new BinaryLogClient(
@@ -286,8 +293,7 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
                 configuration.binaryHandlingMode(),
                 configuration.isTimeAdjustedEnabled() ? MySqlValueConverters::adjustTemporal : x -> x,
                 configuration.getEventConvertingFailureHandlingMode(),
-                configuration.getServiceRegistry(),
-                configuration.getUnavailableValuePlaceholder());
+                configuration.getServiceRegistry());
     }
 
     @Override

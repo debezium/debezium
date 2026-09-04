@@ -37,6 +37,7 @@ import io.debezium.relational.TableSchema;
 import io.debezium.schema.DataCollectionSchema;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
+import io.debezium.util.Strings;
 
 /**
  * Emits change data based on a logical decoding event coming as protobuf or JSON message.
@@ -213,8 +214,8 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter<P
         Object[] values = new Object[Math.max(schemaColumns.size(), columnsWithoutToasted)];
 
         for (ReplicationMessage.Column column : columns) {
-            // Decoders deliver the name unquoted; unquoting again mangles names that look quoted
-            final String columnName = column.getName();
+            // DBZ-298 Quoted column names will be sent like that in messages, but stored unquoted in the column names
+            final String columnName = Strings.unquoteIdentifierPart(column.getName());
 
             int position = getPosition(columnName, table, values);
             if (position != -1) {

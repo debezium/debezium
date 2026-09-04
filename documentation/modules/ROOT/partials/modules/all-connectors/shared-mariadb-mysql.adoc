@@ -1100,9 +1100,6 @@ end::event-keys[]
 === Change event values
 
 tag::event-values[]
-A change event value contains the full row state before and after an operation,
-along with source metadata and operation type, structured as a Kafka Connect `Envelope`.
-
 The value in a change event is a bit more complicated than the key. Like the key, the value has a `schema` section and a `payload` section. The `schema` section contains the schema that describes the `Envelope` structure of the `payload` section, including its nested fields. Change events for operations that create, update or delete data all have a value payload with an envelope structure.
 
 Consider the same sample table that was used to show an example of a change event key:
@@ -1134,9 +1131,6 @@ end::event-values[]
 === _create_ events
 
 tag::create-events[]
-
-A _create_ event contains the full row data for an `INSERT` operation,
-capturing the state of the new row in the `after` field of the event value payload.
 
 The following example shows the value portion of a change event that the connector generates for an operation that creates data in the `customers` table:
 
@@ -2071,79 +2065,15 @@ Represents the datetime value in UTC format, according to the ISO 8601 standard,
 
 |===
 
-time.precision.mode=microseconds::
-The {connector-name} connector maps all temporal values to microsecond-precision integers.
-All `DATE` values are represented as the number of days since the epoch, and all `TIME` and `DATETIME` values are represented as the number of microseconds since the epoch or since midnight.
-+
-.Mappings when `time.precision.mode=microseconds`
-[cols="25%a,20%a,55%a",options="header",subs="+attributes"]
-|===
-|{connector-name} type |Literal type |Semantic type
-
-|`DATE`
-|`INT32`
-a|`io.debezium.time.Date`
-Represents the number of days since the epoch.
-
-|`TIME[(fsp)]`
-|`INT64`
-a|`io.debezium.time.MicroTime`
-Represents the time value in microseconds since midnight and does not include time zone information.
-{connector-name} allows the fractional seconds precision `fsp` to be in the range of `0-6`.
-
-|`DATETIME[(fsp)]`
-|`INT64`
-a|`io.debezium.time.MicroTimestamp`
-Represents the number of microseconds since the epoch and does not include time zone information.
-
-|`TIMESTAMP[(fsp)]`
-|`STRING`
-a|`io.debezium.time.ZonedTimestamp`
-Represents the timestamp with time zone information.
-
-|===
-
-time.precision.mode=nanoseconds::
-The {connector-name} connector maps all temporal values to nanosecond-precision integers.
-All `DATE` values are represented as the number of days since the epoch, and all `TIME` and `DATETIME` values are represented as the number of nanoseconds since the epoch or since midnight.
-+
-NOTE: {connector-name} `DATETIME` and `TIME` columns are limited to microsecond precision (`DATETIME(0-6)`, `TIME(0-6)`), so `nanoseconds` does not provide additional precision beyond what `microseconds` already offers.
-+
 [IMPORTANT]
 ====
-Nanoseconds since the Unix epoch are stored in a signed `INT64`, restricting the representable range to approximately *`1677-09-21T00:12:43Z` to `2262-04-11T23:47:16Z`*.
-Values outside this range, for example a `9999-12-31` end-of-time sentinel, cannot be represented and cause the connector to throw an `IllegalArgumentException` from the value converter.
-The exception is handled according to the `event.converting.failure.handling.mode` configuration: with `warn` (the default) or `skip`, the affected column value is emitted as `null` and the failure is logged; with `fail`, the connector stops.
+The `time.precision.mode` connector property also accepts the values `microseconds` and `nanoseconds`, although these modes are not currently illustrated in the mapping tables above.
+{connector-name} `DATETIME` and `TIME` columns are limited to microsecond precision (`DATETIME(0 - 6)`, `TIME(0 - 6)`), so `nanoseconds` does not provide additional precision beyond what `microseconds` already offers.
+If you set `time.precision.mode=nanoseconds`, be aware that nanoseconds since the Unix epoch are stored in a signed `INT64`, restricting the representable range to approximately *`1677-09-21T00:12:43Z` to `2262-04-11T23:47:16Z`*.
+Values outside this range — for example a `9999-12-31` end-of-time sentinel — cannot be represented and cause the connector to throw an `IllegalArgumentException` from the value converter.
+The exception is routed through the standard `event.processing.failure.handling.mode` configuration, so operators can choose `fail` (the default), `warn`, or `skip`.
 Use `time.precision.mode=microseconds` (or `isostring`) to avoid the limitation.
 ====
-+
-.Mappings when `time.precision.mode=nanoseconds`
-[cols="25%a,20%a,55%a",options="header",subs="+attributes"]
-|===
-|{connector-name} type |Literal type |Semantic type
-
-|`DATE`
-|`INT32`
-a|`io.debezium.time.Date`
-Represents the number of days since the epoch.
-
-|`TIME[(fsp)]`
-|`INT64`
-a|`io.debezium.time.NanoTime`
-Represents the time value in nanoseconds since midnight and does not include time zone information.
-{connector-name} allows the fractional seconds precision `fsp` to be in the range of `0-6`.
-
-|`DATETIME[(fsp)]`
-|`INT64`
-a|`io.debezium.time.NanoTimestamp`
-Represents the number of nanoseconds since the epoch and does not include time zone information.
-
-|`TIMESTAMP[(fsp)]`
-|`STRING`
-a|`io.debezium.time.ZonedTimestamp`
-Represents the timestamp with time zone information.
-
-|===
 
 time.precision.mode=structured::
 The {connector-name} connector represents temporal values as Kafka Connect structs with separate calendar and clock components.
@@ -2488,10 +2418,6 @@ Details are in the following sections:
 
 * xref:creating-a-{context}-user-for-a-debezium-connector[]
 * xref:enabling-the-{context}-binlog-for-debezium[]
-ifdef::community[]
-* xref:enabling-innodb-binlog-for-debezium[]
-endif::community[]
-
 * xref:enabling-{context}-gtids-for-debezium[]
 * xref:configuring-{context}-session-timeouts-for-debezium[]
 * xref:enabling-query-log-events-for-debezium-{context}-connectors[]
@@ -2548,9 +2474,6 @@ end::creating-a-db-user[]
 
 
 tag::permissions-explained[]
-The following table describes the {connector-name} permissions that you must grant to the {prodname} connector user account,
-with an explanation of why each permission is required.
-
 .Descriptions of user permissions
 [cols="3,7",options="header",subs="+attributes"]
 |===
@@ -2629,60 +2552,7 @@ endif::community[]
 end::enabling-binlog[]
 
 
-=== Enabling the InnoDB-based binary log (MariaDB 12.3 and later)
-
-
-tag::enabling-innodb-binlog[]
-ifdef::community[]
-In MariaDB versions 12.3 and later, you can configure the database to store the binary log in InnoDB-managed, page-structured files (`.ibb`), instead of traditional flat files.
-If you configure the database to store the binary log in InnoDB files, it does not enforce the two-phase commit (2PC) protocol between the binary log and InnoDB, resulting in improved commit latency and simplified crash recovery.
-
-When the database uses InnoDB to store the binary log, the following considerations apply:
-
-* This feature is mutually exclusive with the traditional file-based binlog.
-The server uses the InnoDB-based format to store all entries.
-* Galera Cluster is not supported.
-* Semi-synchronous replication is not supported.
-* The `sync_binlog` option is no longer required and is effectively ignored.
-
-.Prerequisites
-
-* MariaDB version 12.3 or later.
-* GTID-based replication is enabled.
-
-.Procedure
-
-. Add the following options to your MariaDB configuration file:
-+
-[source,properties]
-----
-log_bin
-binlog_storage_engine=innodb
-binlog_format=ROW
-binlog_row_image=FULL
-----
-+
-The `log_bin` property must be present in the configuration, but it cannot contain a value.
-The `binlog_storage_engine=innodb` setting enables the database to use InnoDB to store the binary log.
-
-. Verify the binlog format by connecting to the server and running the following SQL command:
-+
-[source,sql]
-----
-SHOW BINARY LOGS;
-----
-+
-Files are named with an `.ibb` extension (for example, `binlog-000000.ibb`).
-
-For more information about the InnoDB-based binary log, see the https://mariadb.com/docs/server/server-management/server-monitoring-logs/binary-log/innodb-based-binary-log/[MariaDB documentation].
-
-endif::community[]
-end::enabling-innodb-binlog[]
-
-
 tag::binlog-config-props[]
-The following table describes the {connector-name} server configuration properties that you must set to enable and configure the binary log for use with the {prodname} connector.
-
 .Descriptions of {connector-name} binlog configuration properties
 [cols="1,4",options="header",subs="+attributes"]
 |===
@@ -2693,23 +2563,6 @@ The following table describes the {connector-name} server configuration properti
 
 |`log_bin`
 |The value of `log_bin` is the base name of the sequence of binlog files.
-ifdef::MARIADB[]
-ifdef::community[]
-If the MariaDB server uses link:https://mariadb.com/docs/server/server-management/server-monitoring-logs/binary-log/innodb-based-binary-log/[InnoDB to store the binary log], add an empty `log_bin` property to the MariaDB configuration.
-That is, list the property in the configuration, but do not specify a value.
-endif::community[]
-endif::MARIADB[]
-
-ifdef::MARIADB[]
-ifdef::community[]
-|`binlog_storage_engine`
-|Specifies the storage engine that manages the binary log.
-Set the value to `innodb` to enable the https://mariadb.com/docs/server/server-management/server-monitoring-logs/binary-log/innodb-based-binary-log/[InnoDB-based binary log]
-feature in MariaDB 12.3 and later.
-When set to `innodb`, the `log_bin` option must be specified with no value, and replication must use GTID-based positioning.
-If you do not set this property, the database uses the default value, `file`, and stores log data in standard flat file format.
-endif::community[]
-endif::MARIADB[]
 
 |`binlog_format`
 |The `binlog-format` must be set to `ROW` or `row`.
@@ -3115,9 +2968,6 @@ When a connector restarts, it recovers the database schemas that existed in the 
 `schema.history.internal.kafka.topic::
 Specifies the name of the database schema history topic.
 This topic is for internal use only and should not be used by consumers.
-ifdef::community[]
-To learn more about the topic configuration requirements, see xref:install.html#configuring-debezium
-endif::community[]
 
 . Create your connector instance with Kafka Connect.
 For example, if you saved your `KafkaConnector` resource in the `inventory-connector.yaml` file, you would run the following command:
@@ -3195,9 +3045,6 @@ Specifies the Kafka brokers that the connector uses to write and recover DDL sta
 `schema.history.internal.kafka.topic`::
 Specifies the name of the database schema history topic.
 This topic is for internal use only and should not be used by consumers.
-ifdef::community[]
-To learn more about the topic configuration requirements, see xref:install.html#configuring-debezium
-endif::community[]
 
 `include.schema.changes`::
 Specifies whether the connector should generate events for DDL changes and emit them to the `fulfillment` schema change topic for use by consumers.

@@ -7,6 +7,8 @@ package io.debezium.engine.source;
 
 import java.util.Map;
 
+import org.apache.kafka.connect.util.ConnectorTaskId;
+
 import io.debezium.common.annotation.Incubating;
 import io.debezium.embedded.Transformations;
 import io.debezium.engine.spi.OffsetCommitPolicy;
@@ -52,7 +54,7 @@ public interface DebeziumSourceTaskContext {
     Transformations transformations();
 
     /**
-     * Gets the {@link EngineTaskId} of this SourceTask.
+     * Gets the {@link ConnectorTaskId} of this SourceTask.
      */
-    EngineTaskId connectorTaskId();
+    ConnectorTaskId connectorTaskId();
 }

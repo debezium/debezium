@@ -104,7 +104,7 @@
         <version.build-helper.plugin>3.6.1</version.build-helper.plugin>
 
         <!-- Kafka and it's dependencies MUST reflect what the Kafka version uses -->
-        <version.kafka>4.3.1</version.kafka>
+        <version.kafka>4.3.0</version.kafka>
         <!--// NOTE: align strimzi-test-container with version.testcontainers below too -->
         <version.strimzi-test-container>0.115.0</version.strimzi-test-container>
         <!-- NOTE: These two versions are maintained separately due to decoupling jackson and databind for downstream -->
@@ -129,22 +129,20 @@
         <!-- Version used in Debezium Server, Operator, etc., usually a LTS version -->
         <!-- Must be aligned with Apicurio version below -->
         <!-- Debezium Server Pravega must use the same Netty version as the one used by Quarkus -->
-        <!-- The properties are intentionally separated as Quarkus testing module is not productized -->
-        <quarkus.version.runtime>3.33.2</quarkus.version.runtime>
-        <quarkus.version.test>3.33.2</quarkus.version.test>
+        <quarkus.version.runtime>3.33.1.1</quarkus.version.runtime>
 
         <!-- Apicurio -->
         <version.apicurio>3.2.5</version.apicurio>
         <!-- hibernate -->
-        <version.hibernate>7.2.19.Final</version.hibernate>
+        <version.hibernate>7.2.6.Final</version.hibernate>
 
         <!-- Database drivers, should align with databases -->
-        <version.postgresql.driver>42.7.13</version.postgresql.driver>
+        <version.postgresql.driver>42.7.11</version.postgresql.driver>
         <version.mysql.driver>9.1.0</version.mysql.driver>
-        <version.mysql.binlog>0.41.3</version.mysql.binlog>
+        <version.mysql.binlog>0.41.0</version.mysql.binlog>
         <version.singlestore.driver>1.2.11</version.singlestore.driver>
         <version.starrocks.driver>1.1.1</version.starrocks.driver>
-        <version.mongo.driver>5.9.2</version.mongo.driver>
+        <version.mongo.driver>5.6.2</version.mongo.driver>
         <version.sqlserver.driver>12.4.2.jre8</version.sqlserver.driver>
         <version.db2.driver>11.5.0.0</version.db2.driver>
         <version.informix.driver>15.0.1.4</version.informix.driver>

@@ -8,7 +8,6 @@ package io.debezium.connector.binlog;
 import static io.debezium.util.Strings.isNullOrEmpty;
 
 import java.io.IOException;
-import java.io.Serializable;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
@@ -19,14 +18,10 @@ import java.security.cert.X509Certificate;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.AbstractMap;
-import java.util.ArrayList;
-import java.util.BitSet;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -84,16 +79,12 @@ import io.debezium.connector.binlog.event.StopEventDataDeserializer;
 import io.debezium.connector.binlog.event.TransactionPayloadDeserializer;
 import io.debezium.connector.binlog.gtid.GtidSet;
 import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
-import io.debezium.connector.binlog.jdbc.BinlogValueConverters;
 import io.debezium.connector.binlog.metrics.BinlogStreamingChangeEventSourceMetrics;
-import io.debezium.connector.binlog.util.RowImageUtils;
 import io.debezium.data.Envelope;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
-import io.debezium.pipeline.monitor.OffsetActivityMonitor;
-import io.debezium.pipeline.monitor.OffsetActivityMonitorService;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -153,12 +144,10 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
     private final SnapshotterService snapshotterService;
     private final Predicate<String> gtidDmlSourceFilter;
     private final boolean isGtidModeEnabled;
-    private final boolean isBinlogRowImageNoblob;
     private final AtomicLong totalRecordCounter = new AtomicLong();
     private final Map<String, Thread> binaryLogClientThreads = new ConcurrentHashMap<>(4);
     private final EnumMap<EventType, BlockingConsumer<Event>> eventHandlers = new EnumMap<>(EventType.class);
     private final float heartbeatIntervalFactor = 0.8f;
-    private final OffsetActivityMonitorService offsetActivityMonitorService;
 
     private int startingRowNumber = 0;
     private long initialEventsToSkip = 0L;
@@ -166,7 +155,6 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
     private boolean ignoreDmlEventByGtidSource = false;
     private volatile Map<String, ?> lastOffset = null;
     private O effectiveOffsetContext;
-    private OffsetActivityMonitor<P, O> offsetActivityMonitor;
 
     @SingleThreadAccess("binlog client thread")
     protected Instant eventTimestamp;
@@ -197,8 +185,6 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         configureBinaryLogClient(client, connectorConfig, binaryLogClientThreads, connection);
         this.gtidDmlSourceFilter = getGtidDmlSourceFilter();
         this.isGtidModeEnabled = connection.isGtidModeEnabled();
-        this.isBinlogRowImageNoblob = connection.isBinlogRowImageNoblob();
-        this.offsetActivityMonitorService = OffsetActivityMonitorService.lookup(connectorConfig.getServiceRegistry());
     }
 
     @Override
@@ -403,14 +389,6 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         return effectiveOffsetContext;
     }
 
-    @Override
-    public Optional<OffsetActivityMonitor<P, O>> getOffsetActivityMonitor() {
-        if (offsetActivityMonitor == null) {
-            offsetActivityMonitor = new BinlogOffsetActivityMonitor<>(connectorConfig.getOffsetActivityMonitorInterval());
-        }
-        return Optional.of(offsetActivityMonitor);
-    }
-
     protected void setEffectiveOffsetContext(O offsetContext) {
         this.effectiveOffsetContext = offsetContext;
     }
@@ -475,13 +453,6 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
 
         client.setKeepAlive(configuration.getBoolean(BinlogConnectorConfig.KEEP_ALIVE));
         client.setKeepAliveInterval(keepAliveInterval);
-
-        final int keepAliveMaxReconnectAttempts = connectorConfig.getKeepAliveMaxReconnectAttempts();
-        client.setKeepAliveMaxReconnectAttempts(keepAliveMaxReconnectAttempts);
-        if (keepAliveMaxReconnectAttempts > 0) {
-            LOGGER.info("Binlog client will fail the connector after {} consecutive failed reconnect attempts",
-                    keepAliveMaxReconnectAttempts);
-        }
 
         // Considering heartbeatInterval should be less than keepAliveInterval, use the heartbeatIntervalFactor
         // multiply by keepAliveInterval and set the result value to heartbeatInterval. The default value of
@@ -676,10 +647,6 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
 
             // update last offset used for logging
             lastOffset = offsetContext.getOffset();
-
-            // Invoked on the binlog client thread; the monitor is registered on the coordinator
-            // thread before the client is connected, so it is safely published by the thread start
-            offsetActivityMonitorService.pulse(partition, offsetContext);
 
             if (skipEvent) {
                 // We're in the mode of skipping events and we just skipped this one, so decrement our skip count ...
@@ -1041,14 +1008,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
     protected void handleInsert(P partition, O offsetContext, Event event) throws InterruptedException {
         handleChange(partition, offsetContext, event, Envelope.Operation.CREATE, WriteRowsEventData.class,
                 x -> schema.getTableId(x.getTableId()),
-                x -> {
-                    final Table table = tableForEvent(x.getTableId());
-                    final List<Serializable[]> rows = new ArrayList<>(x.getRows().size());
-                    for (Serializable[] row : x.getRows()) {
-                        rows.add(alignRowToTable(table, x.getIncludedColumns(), row));
-                    }
-                    return rows;
-                },
+                WriteRowsEventData::getRows,
                 (tableId, row) -> eventDispatcher.dispatchDataChangeEvent(partition, tableId,
                         new BinlogChangeRecordEmitter<>(partition, offsetContext, clock, Envelope.Operation.CREATE, null, row, connectorConfig)),
                 (tableId, row) -> validateChangeEventWithTable(schema.tableFor(tableId), null, row));
@@ -1064,16 +1024,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
     protected void handleUpdate(P partition, O offsetContext, Event event) throws InterruptedException {
         handleChange(partition, offsetContext, event, Envelope.Operation.UPDATE, UpdateRowsEventData.class,
                 x -> schema.getTableId(x.getTableId()),
-                x -> {
-                    final Table table = tableForEvent(x.getTableId());
-                    final List<Map.Entry<Serializable[], Serializable[]>> rows = new ArrayList<>(x.getRows().size());
-                    for (Map.Entry<Serializable[], Serializable[]> row : x.getRows()) {
-                        rows.add(new AbstractMap.SimpleEntry<>(
-                                alignRowToTable(table, x.getIncludedColumnsBeforeUpdate(), row.getKey()),
-                                alignRowToTable(table, x.getIncludedColumns(), row.getValue())));
-                    }
-                    return rows;
-                },
+                UpdateRowsEventData::getRows,
                 (tableId, row) -> eventDispatcher.dispatchDataChangeEvent(partition, tableId,
                         new BinlogChangeRecordEmitter<>(partition, offsetContext, clock, Envelope.Operation.UPDATE, row.getKey(), row.getValue(),
                                 connectorConfig)),
@@ -1090,14 +1041,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
     protected void handleDelete(P partition, O offsetContext, Event event) throws InterruptedException {
         handleChange(partition, offsetContext, event, Envelope.Operation.DELETE, DeleteRowsEventData.class,
                 x -> schema.getTableId(x.getTableId()),
-                x -> {
-                    final Table table = tableForEvent(x.getTableId());
-                    final List<Serializable[]> rows = new ArrayList<>(x.getRows().size());
-                    for (Serializable[] row : x.getRows()) {
-                        rows.add(alignRowToTable(table, x.getIncludedColumns(), row));
-                    }
-                    return rows;
-                },
+                DeleteRowsEventData::getRows,
                 (tableId, row) -> eventDispatcher.dispatchDataChangeEvent(partition, tableId,
                         new BinlogChangeRecordEmitter<>(partition, offsetContext, clock, Envelope.Operation.DELETE, row, null, connectorConfig)),
                 (tableId, row) -> validateChangeEventWithTable(schema.tableFor(tableId), row, null));
@@ -1286,47 +1230,6 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
     private void informAboutUnknownTableIfRequired(P partition, O offsetContext, Event event, TableId tableId)
             throws InterruptedException {
         informAboutUnknownTableIfRequired(partition, offsetContext, event, tableId, null);
-    }
-
-    /**
-     * Resolves the relational table for a binlog table number, or {@code null} when the table is
-     * unknown or filtered.
-     *
-     * @param tableNumber the binlog table number from the row event
-     * @return the table, or {@code null} if not known
-     */
-    private Table tableForEvent(long tableNumber) {
-        final TableId tableId = schema.getTableId(tableNumber);
-        return tableId != null ? schema.tableFor(tableId) : null;
-    }
-
-    /**
-     * Expands a row image that omits columns, e.g. when the database runs with
-     * {@code binlog_row_image=NOBLOB}, to the full table width using the event's included-columns
-     * bitmap. Missing BLOB/TEXT columns are filled with the configured unavailable-value
-     * placeholder so that downstream consumers receive a consistent record shape; other missing
-     * columns are left null. Rows that already match the table width are returned unchanged.
-     *
-     * @param table the table the row belongs to; may be null
-     * @param includedColumns the bitmap of columns present in the row image; may be null
-     * @param row the row image values, containing only the included columns; may be null
-     * @return the row expanded to the full table width, or the original row if no expansion applies
-     */
-    private Serializable[] alignRowToTable(Table table, BitSet includedColumns, Serializable[] row) {
-        if (!isBinlogRowImageNoblob || table == null || row == null || includedColumns == null || row.length >= table.columns().size()) {
-            return row;
-        }
-        final Serializable[] aligned = new Serializable[table.columns().size()];
-        int sourceIndex = 0;
-        for (int i = 0; i < aligned.length; i++) {
-            if (includedColumns.get(i) && sourceIndex < row.length) {
-                aligned[i] = row[sourceIndex++];
-            }
-            else if (RowImageUtils.isBlobOrTextColumn(table.columns().get(i))) {
-                aligned[i] = BinlogValueConverters.UNAVAILABLE_VALUE;
-            }
-        }
-        return aligned;
     }
 
     private void validateChangeEventWithTable(Table table, Object[] before, Object[] after) {
@@ -1527,16 +1430,6 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
                 LOGGER.debug("Exception while closing client", e);
             }
             errorHandler.setProducerThrowable(wrap(ex));
-        }
-
-        @Override
-        public void onReconnectAbandoned(BinaryLogClient client, Throwable cause, int failedAttempts) {
-            // The keep alive thread has stopped, so nothing will restore the connection any more. Unlike a
-            // communication failure this arrives after onDisconnect and on the keep alive thread itself, so the
-            // client is already torn down and must not be disconnected again from here.
-            LOGGER.error("Binlog client gave up restoring the connection after {} failed attempt(s)", failedAttempts, cause);
-            logStreamingSourceState();
-            errorHandler.setProducerThrowable(wrap(cause));
         }
 
         @Override

@@ -12,7 +12,6 @@ import static io.debezium.pipeline.notification.IncrementalSnapshotNotificationS
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -715,24 +714,21 @@ public class MongoDbIncrementalSnapshotChangeEventSource
             case STRING:
                 key = documentId.asString().getValue();
                 break;
-            case DATE_TIME:
-                key = new Date(documentId.asDateTime().getValue());
-                break;
             case BINARY:
                 var subtype = documentId.asBinary().getType();
                 if (!BsonBinarySubType.isUuid(subtype)) {
-                    throw new IllegalStateException("Unsupported binary subtype of document id: " + subtype);
+                    throw new IllegalStateException("Unsupported type of document id");
                 }
 
                 if (BsonBinarySubType.UUID_STANDARD.getValue() == subtype) {
                     key = documentId.asBinary().asUuid(UuidRepresentation.STANDARD);
                 }
                 else {
-                    throw new IllegalStateException("Unsupported subtype of UUID document id: " + subtype);
+                    throw new IllegalStateException("Unsupported subtype of UUID document id");
                 }
                 break;
             default:
-                throw new IllegalStateException("Unsupported type of document id: " + documentId.getBsonType());
+                throw new IllegalStateException("Unsupported type of document id");
         }
 
         return new Object[]{ key };

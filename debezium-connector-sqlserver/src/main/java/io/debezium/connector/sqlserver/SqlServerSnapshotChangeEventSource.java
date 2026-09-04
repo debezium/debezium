@@ -155,10 +155,9 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
             return;
         }
 
-        boolean directMode = connectorConfig.getDataQueryMode() == SqlServerConnectorConfig.DataQueryMode.DIRECT;
         ctx.offset = new SqlServerOffsetContext(
                 connectorConfig,
-                TxLogPosition.valueOf(jdbcConnection.getMaxLsn(ctx.partition.getDatabaseName()), directMode ? -1 : null),
+                TxLogPosition.valueOf(jdbcConnection.getMaxLsn(ctx.partition.getDatabaseName())),
                 null,
                 false);
     }

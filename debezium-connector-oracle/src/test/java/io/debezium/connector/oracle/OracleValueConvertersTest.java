@@ -8,7 +8,6 @@ package io.debezium.connector.oracle;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.Types;
-import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -23,7 +22,6 @@ import org.mockito.Mockito;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.util.TestHelper;
-import io.debezium.doc.FixFor;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
 import io.debezium.time.StructuredDuration;
@@ -33,7 +31,6 @@ import io.debezium.time.StructuredZonedTimestamp;
 
 import oracle.jdbc.OracleTypes;
 import oracle.sql.CharacterSet;
-import oracle.sql.DATE;
 import oracle.sql.INTERVALDS;
 import oracle.sql.INTERVALYM;
 import oracle.sql.TIMESTAMP;
@@ -170,79 +167,6 @@ public class OracleValueConvertersTest {
     }
 
     @Test
-    @FixFor("debezium/dbz#1286")
-    public void shouldConvertBcTimestampPreservingEra() {
-        final Column column = Column.editor()
-                .name("TS")
-                .type("TIMESTAMP")
-                .jdbcType(Types.TIMESTAMP)
-                .scale(6)
-                .optional(true)
-                .create();
-        final Field field = adaptiveFieldFor(column);
-
-        // Oracle year -2018 (2018 BC) is ISO proleptic year -2017
-        final LocalDateTime bc = LocalDateTime.of(-2017, 3, 27, 12, 34, 56, 7_890_000);
-        final Object result = convertersUtf8.converter(column, field).convert(new TIMESTAMP(bc));
-        assertThat(result).isEqualTo(toEpochMicros(bc));
-    }
-
-    @Test
-    @FixFor("debezium/dbz#1286")
-    public void shouldConvertBcDatePreservingEra() throws Exception {
-        final Column column = dateColumn();
-        final Field field = adaptiveFieldFor(column);
-
-        final LocalDateTime bc = LocalDateTime.of(-2017, 3, 27, 0, 0);
-        assertThat(convertersUtf8.converter(column, field).convert(new DATE(bc)))
-                .isEqualTo(bc.toInstant(ZoneOffset.UTC).toEpochMilli());
-
-        // 1 BC (Oracle year -1) is ISO proleptic year 0
-        final LocalDateTime oneBc = LocalDateTime.of(0, 12, 31, 23, 59, 59);
-        assertThat(convertersUtf8.converter(column, field).convert(new DATE(oneBc)))
-                .isEqualTo(oneBc.toInstant(ZoneOffset.UTC).toEpochMilli());
-
-        // Oracle's minimum date, 4712 BC
-        final LocalDateTime minimum = LocalDateTime.of(-4711, 1, 1, 0, 0);
-        assertThat(convertersUtf8.converter(column, field).convert(new DATE(minimum)))
-                .isEqualTo(minimum.toInstant(ZoneOffset.UTC).toEpochMilli());
-    }
-
-    @Test
-    @FixFor("debezium/dbz#1286")
-    public void shouldConvertBcTimestampWithTimeZonePreservingEra() throws Exception {
-        final Column column = Column.editor()
-                .name("TSTZ")
-                .type("TIMESTAMP WITH TIME ZONE")
-                .jdbcType(OracleTypes.TIMESTAMPTZ)
-                .scale(6)
-                .optional(true)
-                .create();
-        final Field field = adaptiveFieldFor(column);
-
-        final OffsetDateTime bc = OffsetDateTime.of(-2017, 3, 27, 1, 34, 56, 7_890_000, ZoneOffset.ofHours(-11));
-        final Object result = convertersUtf8.converter(column, field).convert(new TIMESTAMPTZ(bc));
-        assertThat(result).isEqualTo("-2017-03-27T01:34:56.007890-11:00");
-
-        // The era-suffixed streaming representation, as mined with NLS_TIMESTAMP_TZ_FORMAT
-        final Object streamed = convertersUtf8.converter(column, field)
-                .convert("TO_TIMESTAMP_TZ('2018-03-27 01:34:56.007890000 -11:00 BC')");
-        assertThat(streamed).isEqualTo("-2017-03-27T01:34:56.007890-11:00");
-    }
-
-    @Test
-    @FixFor("debezium/dbz#1286")
-    public void shouldConvertPreGregorianCutoverDateWithoutDayShift() throws Exception {
-        final Column column = dateColumn();
-        final Field field = adaptiveFieldFor(column);
-
-        // java.sql.Timestamp interprets this date in the Julian calendar, shifting it by 10 days
-        final LocalDateTime preCutover = LocalDateTime.of(1500, 3, 1, 0, 0);
-        assertThat(convertersUtf8.converter(column, field).convert(new DATE(preCutover)))
-                .isEqualTo(preCutover.toInstant(ZoneOffset.UTC).toEpochMilli());
-    }
-
-    @Test
     public void shouldPreserveStructuredTimestampBeyondNanoTimestampRange() {
         final Column column = Column.editor()
                 .name("TS")
@@ -341,25 +265,5 @@ public class OracleValueConvertersTest {
     private Field fieldFor(Column column) {
         final Schema schema = convertersStructured.schemaBuilder(column).optional().build();
         return new Field(column.name(), 0, schema);
-    }
-
-    private Field adaptiveFieldFor(Column column) {
-        final Schema schema = convertersUtf8.schemaBuilder(column).optional().build();
-        return new Field(column.name(), 0, schema);
-    }
-
-    private static Column dateColumn() {
-        return Column.editor()
-                .name("VAL_DATE")
-                .type("DATE")
-                .jdbcType(Types.TIMESTAMP)
-                .scale(0)
-                .optional(true)
-                .create();
-    }
-
-    private static long toEpochMicros(LocalDateTime dateTime) {
-        final Instant instant = dateTime.toInstant(ZoneOffset.UTC);
-        return instant.getEpochSecond() * 1_000_000 + instant.getNano() / 1_000;
     }
 }

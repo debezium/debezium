@@ -7,6 +7,8 @@ package io.debezium.engine.source;
 
 import java.util.Map;
 
+import org.apache.kafka.connect.util.ConnectorTaskId;
+
 import io.debezium.embedded.Transformations;
 import io.debezium.engine.spi.OffsetCommitPolicy;
 import io.debezium.spi.storage.OffsetStorageReader;
@@ -25,7 +27,7 @@ public class EngineSourceTaskContext implements DebeziumSourceTaskContext {
     private final OffsetCommitPolicy offsetCommitPolicy;
     private final io.debezium.util.Clock clock;
     private final Transformations transformations;
-    private final EngineTaskId connectorTaskId;
+    private final ConnectorTaskId connectorTaskId;
 
     public EngineSourceTaskContext(
                                    final Map<String, String> config,
@@ -34,7 +36,7 @@ public class EngineSourceTaskContext implements DebeziumSourceTaskContext {
                                    final OffsetCommitPolicy offsetCommitPolicy,
                                    final io.debezium.util.Clock clock,
                                    final Transformations transformations,
-                                   final EngineTaskId connectorTaskId) {
+                                   final ConnectorTaskId connectorTaskId) {
         this.config = config;
         this.offsetReader = offsetReader;
         this.offsetWriter = offsetWriter;
@@ -75,7 +77,7 @@ public class EngineSourceTaskContext implements DebeziumSourceTaskContext {
     }
 
     @Override
-    public EngineTaskId connectorTaskId() {
+    public ConnectorTaskId connectorTaskId() {
         return connectorTaskId;
     }
 }

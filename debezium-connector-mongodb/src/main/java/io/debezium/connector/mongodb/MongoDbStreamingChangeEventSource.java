@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.mongodb;
 
-import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 import org.bson.BsonDocument;
@@ -29,8 +28,6 @@ import io.debezium.connector.mongodb.recordemitter.MongoDbChangeRecordEmitter;
 import io.debezium.function.BlockingRunnable;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
-import io.debezium.pipeline.monitor.OffsetActivityMonitor;
-import io.debezium.pipeline.monitor.OffsetActivityMonitorService;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.snapshot.SnapshotterService;
 import io.debezium.util.Clock;
@@ -50,9 +47,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
     private final MongoDbTaskContext taskContext;
     private final MongoDbStreamingChangeEventSourceMetrics streamingMetrics;
     private final SnapshotterService snapshotterService;
-    private final OffsetActivityMonitorService offsetActivityMonitorService;
     private MongoDbOffsetContext effectiveOffset;
-    private OffsetActivityMonitor<MongoDbPartition, MongoDbOffsetContext> offsetActivityMonitor;
 
     public MongoDbStreamingChangeEventSource(MongoDbConnectorConfig connectorConfig, MongoDbTaskContext taskContext,
                                              EventDispatcher<MongoDbPartition, CollectionId> dispatcher,
@@ -65,7 +60,6 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         this.taskContext = taskContext;
         this.streamingMetrics = streamingMetrics;
         this.snapshotterService = snapshotterService;
-        this.offsetActivityMonitorService = OffsetActivityMonitorService.lookup(connectorConfig.getServiceRegistry());
     }
 
     @Override
@@ -103,14 +97,6 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         return effectiveOffset;
     }
 
-    @Override
-    public Optional<OffsetActivityMonitor<MongoDbPartition, MongoDbOffsetContext>> getOffsetActivityMonitor() {
-        if (offsetActivityMonitor == null) {
-            offsetActivityMonitor = new MongoDbOffsetActivityMonitor(connectorConfig.getOffsetActivityMonitorInterval());
-        }
-        return Optional.of(offsetActivityMonitor);
-    }
-
     private void readChangeStream(MongoClient client, ChangeEventSourceContext context, MongoDbPartition partition) {
         LOGGER.info("Reading change stream");
         final SplitEventHandler<BsonDocument> splitHandler = new SplitEventHandler<>();
@@ -120,17 +106,17 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             while (context.isRunning()) {
                 waitWhenStreamingPaused(context, cursor);
                 var resumableEvent = cursor.tryNext();
-                if (resumableEvent != null) {
-                    var result = resumableEvent.document
-                            .map(doc -> processChangeStreamDocument(doc, splitHandler, partition, effectiveOffset))
-                            .orElseGet(() -> errorHandled(() -> dispatchHeartbeatEvent(resumableEvent, partition, effectiveOffset)));
-
-                    if (result == StreamStatus.ERROR) {
-                        return;
-                    }
+                if (resumableEvent == null) {
+                    continue;
                 }
 
-                offsetActivityMonitorService.pulse(partition, effectiveOffset);
+                var result = resumableEvent.document
+                        .map(doc -> processChangeStreamDocument(doc, splitHandler, partition, effectiveOffset))
+                        .orElseGet(() -> errorHandled(() -> dispatchHeartbeatEvent(resumableEvent, partition, effectiveOffset)));
+
+                if (result == StreamStatus.ERROR) {
+                    return;
+                }
             }
         }
         catch (MongoException e) {

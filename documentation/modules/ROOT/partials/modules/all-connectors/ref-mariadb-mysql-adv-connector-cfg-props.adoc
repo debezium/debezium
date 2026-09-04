@@ -1,4 +1,4 @@
-The following list describes the advanced configuration properties for the {connector-name} connector that let you fine-tune behavior for specific environments, including schema history handling, signal channels, event filtering, and custom transformations.
+The following list describes advanced {connector-name} connector configuration properties.
 The default values for these properties rarely require changes.
 Therefore, you do not need to specify them in the connector configuration.
 
@@ -69,24 +69,6 @@ Default value::: `true`
 
 Description:::
 A Boolean value that specifies whether a separate thread should be used to ensure that the connection to the {connector-name} server or cluster is kept alive.
-
-
-[id="{context}-property-connect-keep-alive-max-reconnect-attempts"]
-xref:{context}-property-connect-keep-alive-max-reconnect-attempts[`connect.keep.alive.max.reconnect.attempts`]::
-
-Default value::: `0`
-
-Description:::
-The number of consecutive attempts that the keep alive thread makes to restore a lost binlog connection before the connector fails.
-A value of `0` means that the keep alive thread retries indefinitely.
-+
-If a connection can never be restored, for example because the {connector-name} session ended while the TCP connection remained established, retrying indefinitely leaves the connector in the `RUNNING` state without emitting any change events.
-Set this property to fail the connector task instead, so that it can be restarted with a fresh connection.
-+
-Each attempt is separated by `connect.keep.alive.interval.ms`, so the connector tolerates an outage of approximately `connect.keep.alive.max.reconnect.attempts` multiplied by `connect.keep.alive.interval.ms` before it fails.
-Set a value that exceeds the length of any planned maintenance window, to avoid failing the task during a routine restart of the database.
-+
-This property has no effect when `connect.keep.alive` is set to `false`.
 
 
 [id="{context}-property-converters"]
@@ -206,7 +188,6 @@ Specify a password only if the xref:{context}-property-database-ssl-keystore[`da
 [id="{context}-property-database-ssl-mode"]
 xref:{context}-property-database-ssl-mode[`database.ssl.mode`]::
 
-ifdef::MYSQL[]
 Default value::: `preferred`
 
 Description:::
@@ -226,23 +207,6 @@ If it is unable to establish an encrypted connection, the connector fails.
 If the server TLS certificate does not match any valid CA certificates, the connector fails.
 
 `verify_identity`:::: The connector behaves as when you set the `verify_ca` option, but it also verifies that the server certificate matches the host of the remote connection.
-endif::MYSQL[]
-ifdef::MARIADB[]
-Default value::: `disable`
-
-Description:::
-Specifies whether the connector uses an encrypted connection.
-+
-The following settings are available:
-
-`disable`:::: Do not use SSL/TLS.
-
-`trust`:::: Only use SSL/TLS for encryption. Do not perform certificate or hostname verification.
-
-`verify-ca`:::: Use SSL/TLS for encryption and perform certificates verification, but do not perform hostname verification.
-
-`verify-full`:::: Use SSL/TLS for encryption, certificate verification, and hostname verification. This is the standard TLS behavior.
-endif::MARIADB[]
 
 [id="{context}-property-database-ssl-truststore"]
 xref:{context}-property-database-ssl-truststore[`database.ssl.truststore`]::

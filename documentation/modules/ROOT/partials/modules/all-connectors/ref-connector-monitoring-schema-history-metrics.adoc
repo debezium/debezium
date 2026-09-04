@@ -1,5 +1,5 @@
 
-The following table lists the JMX metrics that are available for monitoring the connector's schema history process, including recovery status, the number of schema changes applied, and timestamps for the most recent changes.
+The following table lists the schema history metrics that are available.
 
 [cols="45%a,25%a,30%a",options="header"]
 |===

@@ -4,7 +4,8 @@ Also used in the downstream OCP installation guide (proc-installing-debezium-wit
 A module with the same name is used in the downstream Getting Started guide, but it is not single-sourced, and that version is slightly modified to fit the context.
 ////
 
-After deploying a {prodname} connector to {StreamsName} on OpenShift, verify that the connector is running correctly by checking the connector status, confirming that Kafka topics were created, and reviewing the initial snapshot events.
+If the connector starts correctly without errors, it creates a topic for each table that the connector is configured to capture.
+Downstream applications can subscribe to these topics to retrieve information events that occur in the source database.
 
 To verify that the connector is running, you perform the following operations from the OpenShift Container Platform web console, or through the OpenShift CLI tool (oc):
 

@@ -838,7 +838,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                                                               SnapshotReceiver<P> snapshotReceiver, Table table, boolean firstTable, boolean lastTable, int tableOrder,
                                                               int tableCount, String selectStatement, OptionalLong rowCount, Set<TableId> rowCountTablesKeySet,
                                                               Queue<JdbcConnection> connectionPool, Queue<O> offsets) {
-        return createPooledResourceCallable(snapshotContext, connectionPool, offsets,
+        return createPooledResourceCallable(connectionPool, offsets,
                 (connection, offset) -> {
                     LoggingContext.PreviousContext previousLoggingContext = LoggingContext.forConnector(
                             connectorConfig.getContextName(), connectorConfig.getLogicalName(), null, "snapshot", snapshotContext.partition);
@@ -863,7 +863,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                                                                      SnapshotReceiver<P> snapshotReceiver, SnapshotChunk chunk,
                                                                      Map<TableId, TableChunkProgress> progressMap, SnapshotProgress snapshotProgress,
                                                                      Queue<JdbcConnection> connectionPool, Queue<O> offsets) {
-        return createPooledResourceCallable(snapshotContext, connectionPool, offsets,
+        return createPooledResourceCallable(connectionPool, offsets,
                 (connection, offset) -> {
                     LoggingContext.PreviousContext previousLoggingContext = LoggingContext.forConnector(
                             connectorConfig.getContextName(), connectorConfig.getLogicalName(), null, "snapshot", snapshotContext.partition);
@@ -996,10 +996,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         final String chunkQuery = queryBuilder.buildChunkQuery(chunk, keyColumns, chunk.getBaseSelectStatement());
         final Instant sourceTableSnapshotTimestamp = getSnapshotSourceTimestamp(jdbcConnection, offset, tableId);
 
-        // Create the chunk statement via readTablePreparedStatement() so that the configured
-        // snapshot.fetch.size is applied, as done by the legacy and incremental snapshot paths
-        try (PreparedStatement statement = jdbcConnection.readTablePreparedStatement(connectorConfig, chunkQuery,
-                chunk.getEstimatedRowCount())) {
+        try (PreparedStatement statement = jdbcConnection.connection().prepareStatement(chunkQuery)) {
 
             queryBuilder.prepareChunkStatement(statement, chunk, keyColumns);
             long rows = 0;
@@ -1412,8 +1409,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
      * @return a Callable wrapping the resource management
      */
     @SuppressWarnings("SameParameterValue")
-    private Callable<Void> createPooledResourceCallable(RelationalSnapshotContext<P, O> snapshotContext,
-                                                        Queue<JdbcConnection> connectionPool,
+    private Callable<Void> createPooledResourceCallable(Queue<JdbcConnection> connectionPool,
                                                         Queue<O> offsetPool,
                                                         PooledWork<O> work,
                                                         Runnable errorHandler) {
@@ -1424,10 +1420,6 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                 LOGGER.warn("Snapshot pool connection is no longer valid, attempting reconnect. Snapshot consistency for subsequent tables may be affected.");
                 connection.reconnect();
                 initializePooledConnection(connection);
-                // Re-apply the connector-specific pin (e.g. Oracle PDB, PostgreSQL exported snapshot) that
-                // createConnectionPool applies at pool creation, so a reconnected connection is not left with
-                // only the isolation level copied by initializePooledConnection.
-                connectionPoolConnectionCreated(snapshotContext, connection);
             }
             try {
                 work.execute(connection, offset);

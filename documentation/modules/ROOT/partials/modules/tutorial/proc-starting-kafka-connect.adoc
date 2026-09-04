@@ -6,12 +6,9 @@
 [id="starting-kafka-connect"]
 = Starting Kafka Connect
 
-Start the Kafka Connect service, which exposes a REST API that you use to manage the {prodname} MySQL connector and monitor its status.
-
-.Prerequisites
-
-* Kafka and MySQL are running.
-* You have connected to the `inventory` database with the MySQL command line client.
+After starting MySQL and connecting to the `inventory` database with the MySQL command line client,
+you start the Kafka Connect service.
+This service exposes a REST API to manage the {prodname} MySQL connector.
 
 .Procedure
 
@@ -22,7 +19,7 @@ The following command runs a new container using the {debezium-docker-label} ver
 
 [source,shell,options="nowrap",subs="+attributes"]
 ----
-$ docker run -it --rm --name connect -p 8083:8083 -e GROUP_ID=1 -e BOOTSTRAP_SERVERS=kafka:9092 -e CONFIG_STORAGE_TOPIC=my_connect_configs -e OFFSET_STORAGE_TOPIC=my_connect_offsets -e STATUS_STORAGE_TOPIC=my_connect_statuses --link kafka:kafka --link mysql:mysql quay.io/debezium/connect:{debezium-docker-label}
+$ docker run -it --rm --name connect -p 8083:8083 -e GROUP_ID=1 -e CONFIG_STORAGE_TOPIC=my_connect_configs -e OFFSET_STORAGE_TOPIC=my_connect_offsets -e STATUS_STORAGE_TOPIC=my_connect_statuses --link kafka:kafka --link mysql:mysql quay.io/debezium/connect:{debezium-docker-label}
 ----
 
 `-it`:: The container is interactive,
@@ -31,7 +28,6 @@ which means the terminal's standard input and output are attached to the contain
 `--name connect`:: The name of the container.
 `-p 8083:8083`:: Maps port `8083` in the container to the same port on the Docker host.
 This enables applications outside of the container to use Kafka Connect's REST API to set up and manage new container instances.
-`-e BOOTSTRAP_SERVERS=kafka:9092`:: Specifies the Kafka broker that Kafka Connect uses to bootstrap itself.
 `-e CONFIG_STORAGE_TOPIC=my_connect_configs -e OFFSET_STORAGE_TOPIC=my_connect_offsets -e STATUS_STORAGE_TOPIC=my_connect_statuses`:: Sets environment variables required by the {prodname} image.
 `--link kafka:kafka --link mysql:mysql`:: Links the container to the containers that are running Kafka and the MySQL server.
 --
@@ -42,7 +38,7 @@ ifdef::community[]
 If you use Podman, run the following command:
 [source,shell,options="nowrap",subs="+attributes"]
 ----
-$ podman run -it --rm --name connect --pod dbz -e GROUP_ID=1 -e BOOTSTRAP_SERVERS=kafka:9092 -e CONFIG_STORAGE_TOPIC=my_connect_configs -e OFFSET_STORAGE_TOPIC=my_connect_offsets -e STATUS_STORAGE_TOPIC=my_connect_statuses quay.io/debezium/connect:{debezium-docker-label}
+$ podman run -it --rm --name connect --pod dbz -e GROUP_ID=1 -e CONFIG_STORAGE_TOPIC=my_connect_configs -e OFFSET_STORAGE_TOPIC=my_connect_offsets -e STATUS_STORAGE_TOPIC=my_connect_statuses quay.io/debezium/connect:{debezium-docker-label}
 ----
 ====
 +

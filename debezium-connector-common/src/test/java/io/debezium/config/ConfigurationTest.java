@@ -14,7 +14,6 @@ import static io.debezium.relational.RelationalDatabaseConnectorConfig.HOSTNAME;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -24,7 +23,6 @@ import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.StreamSupport;
 
-import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -71,35 +69,6 @@ public class ConfigurationTest {
         props.setProperty("A ", "a");
         config = Configuration.from(props);
         assertThat(config.getString("A")).isEqualTo("a");
-    }
-
-    @Test
-    @FixFor("debezium/dbz#2493")
-    public void getListShouldFallBackToFieldDefault() {
-        final Field field = Field.create("list.field").withDefault("a,b,c");
-
-        // getList(Field) must apply the field's default when the key is absent, the same way
-        // getString(Field) and the other Field-based accessors do.
-        assertThat(Configuration.empty().getList(field)).containsExactly("a", "b", "c");
-        assertThat(Configuration.empty().getString(field)).isEqualTo("a,b,c");
-
-        // An explicitly configured value still takes precedence and is split and trimmed.
-        config = Configuration.create().with("list.field", "x, y").build();
-        assertThat(config.getList(field)).containsExactly("x", "y");
-    }
-
-    @Test
-    @FixFor("debezium/dbz#2493")
-    public void getStringsShouldFallBackToFieldDefault() {
-        final Field field = Field.create("strings.field").withDefault("a,b,c");
-
-        // getStrings(Field, regex) must apply the field's default when the key is absent, the same way
-        // getString(Field) and getList(Field) do.
-        assertThat(Configuration.empty().getStrings(field, ",")).containsExactly("a", "b", "c");
-
-        // An explicitly configured value still takes precedence.
-        config = Configuration.create().with("strings.field", "x,y").build();
-        assertThat(config.getStrings(field, ",")).containsExactly("x", "y");
     }
 
     /**
@@ -611,53 +580,5 @@ public class ConfigurationTest {
 
         // XStream field should not be validated when LogMiner is selected
         assertThat(validationResult.get("xstream.server.name").errorMessages()).isEmpty();
-    }
-
-    @Test
-    @FixFor("debezium/dbz#2415")
-    public void shouldReturnConfigValuesForDeprecatedAliases() {
-        Field fieldWithAlias = Field.create("canonical.name")
-                .withType(ConfigDef.Type.STRING)
-                .withWidth(ConfigDef.Width.MEDIUM)
-                .withImportance(ConfigDef.Importance.HIGH)
-                .withDescription("A field with a deprecated alias")
-                .withDeprecatedAliases("old.name");
-
-        Field requiredField = Field.create("required.field")
-                .withType(ConfigDef.Type.STRING)
-                .withWidth(ConfigDef.Width.MEDIUM)
-                .withImportance(ConfigDef.Importance.HIGH)
-                .withDescription("A required field")
-                .required();
-
-        Field.Set fields = Field.setOf(fieldWithAlias, requiredField);
-
-        ConfigDef configDef = new ConfigDef();
-        Field.group(configDef, "test-group", fieldWithAlias, requiredField);
-
-        Configuration config = Configuration.create()
-                .with("canonical.name", "some-value")
-                .build();
-
-        Map<String, ConfigValue> results = config.validate(fields);
-
-        // ConfigDef includes both the canonical name and the deprecated alias
-        assertThat(configDef.configKeys()).containsKey("canonical.name");
-        assertThat(configDef.configKeys()).containsKey("old.name");
-
-        // Verify that validate() returns a ConfigValue for every key in ConfigDef,
-        // including deprecated aliases. Kafka Connect's AbstractHerder iterates
-        // all ConfigDef keys and calls configValue.errors() on each matching
-        // ConfigValue; a missing entry causes an NPE (DBZ-2415).
-        List<String> missingKeys = new ArrayList<>();
-        for (String configKey : configDef.configKeys().keySet()) {
-            if (!results.containsKey(configKey)) {
-                missingKeys.add(configKey);
-            }
-        }
-        assertThat(missingKeys)
-                .as("Every ConfigDef key must have a corresponding ConfigValue from validate(), "
-                        + "otherwise Kafka Connect's AbstractHerder will throw an NPE")
-                .isEmpty();
     }
 }

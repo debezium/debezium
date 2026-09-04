@@ -54,6 +54,7 @@ import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.util.HexConverter;
+import io.debezium.util.Strings;
 
 /**
  * Decodes messages from the PG logical replication plug-in ("pgoutput").
@@ -146,9 +147,6 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                     break;
                 default:
                     // call super.shouldMessageBeSkipped for rest of the types
-            }
-            if (type == MessageType.LOGICAL_DECODING_MESSAGE && walPosition.skipProcessedLogicalMessage(lastReceivedLsn)) {
-                return true;
             }
             final boolean candidateForSkipping = super.shouldMessageBeSkipped(buffer, lastReceivedLsn, startLsn, walPosition);
             switch (type) {
@@ -337,7 +335,6 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         // Perform several out-of-bands database metadata queries
         Map<String, Optional<String>> columnDefaults;
         Map<String, Boolean> columnOptionality;
-        Map<String, String> columnTypeNames;
         List<String> primaryKeyColumns;
 
         final DatabaseMetaData databaseMetadata = connection.connection().getMetaData();
@@ -350,7 +347,6 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                 .collect(toMap(io.debezium.relational.Column::name, io.debezium.relational.Column::defaultValueExpression));
 
         columnOptionality = readColumns.stream().collect(toMap(io.debezium.relational.Column::name, io.debezium.relational.Column::isOptional));
-        columnTypeNames = readColumns.stream().collect(toMap(io.debezium.relational.Column::name, io.debezium.relational.Column::typeName));
         primaryKeyColumns = connection.readPrimaryKeyNames(databaseMetadata, tableId);
         if (primaryKeyColumns == null || primaryKeyColumns.isEmpty()) {
             LOGGER.warn("Primary keys are not defined for table '{}', defaulting to unique indices", tableName);
@@ -362,8 +358,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         Set<String> seenLowercaseColumnNames = new HashSet<>();
         for (short i = 0; i < columnCount; ++i) {
             byte flags = buffer.get();
-            // pgoutput sends column names unquoted
-            String columnName = readString(buffer);
+            String columnName = Strings.unquoteIdentifierPart(readString(buffer));
             int columnType = buffer.getInt();
             int attypmod = buffer.getInt();
 
@@ -391,8 +386,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
             final boolean hasDefault = columnDefaults.containsKey(columnName);
             final String defaultValueExpression = columnDefaults.getOrDefault(columnName, Optional.empty()).orElse(null);
 
-            columns.add(new ColumnMetaData(columnName, postgresType, key, optional, hasDefault, defaultValueExpression, attypmod,
-                    columnTypeNames.get(columnName)));
+            columns.add(new ColumnMetaData(columnName, postgresType, key, optional, hasDefault, defaultValueExpression, attypmod));
             columnNames.add(columnName);
         }
 
@@ -696,7 +690,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                     .jdbcType(columnMetadata.getPostgresType().getRootType().getJdbcId())
                     .nativeType(columnMetadata.getPostgresType().getRootType().getOid())
                     .optional(columnMetadata.isOptional())
-                    .type(columnMetadata.getDriverTypeName(), columnMetadata.getTypeName())
+                    .type(columnMetadata.getPostgresType().getName(), columnMetadata.getTypeName())
                     .length(columnMetadata.getLength())
                     .scale(columnMetadata.getScale());
 

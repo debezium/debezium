@@ -1118,8 +1118,6 @@ The payload of each event value varies according to the event type:
 [[informix-create-events]]
 === _create_ events
 
-A create event represents a row-level INSERT operation, capturing the full state of the newly inserted row in the 1after` field of the event payload.
-
 The following example shows the value portion of a change event that the connector generates for an operation that creates data in the `customers` table:
 
 [source,json,indent=0,subs="+attributes"]
@@ -1392,8 +1390,6 @@ The timestamp (in nanoseconds since the Unix epoch) when the connector processed
 [[informix-update-events]]
 === _update_ events
 
-An update event represents a row-level UPDATE operation, capturing both the row state before the change in the `before` field and the new row state after the change in the `after` field.
-
 The value of a change event for an update in the sample `customers` table has the same schema as a _create_ event for that table.
 Similarly, the payload of the value of an _update_ event has a structure that is mirrors the structure of the value payload in a _create_ event.
 However, the `value` payloads of_update_ events and _create_ events do not include the same values.
@@ -1487,8 +1483,6 @@ After a key change, {prodname} emits the following events:
 
 [[informix-delete-events]]
 === _delete_ events
-
-A delete event represents a row-level DELETE operation, capturing the final state of the deleted row in the `before` field so that consumers can identify and process the removal.
 
 The `value` in a _delete_ change event for a table has a `schema` portion that is similar to the `schema` element in _create_ and _update_ events for the same table.
 After a user performs a _delete_ operation in the sample `customers` table, {prodname} emits an event message such as the one in the following example:
@@ -1721,8 +1715,6 @@ The following sections describe these mappings:
 * xref:informix-time-precision-mode-adaptive[`time.precision.mode=adaptive`]
 * xref:informix-time-precision-mode-connect[`time.precision.mode=connect`]
 * xref:informix-time-precision-mode-isostring[`time.precision.mode=isostring`]
-* xref:informix-time-precision-mode-microseconds[`time.precision.mode=microseconds`]
-* xref:informix-time-precision-mode-nanoseconds[`time.precision.mode=nanoseconds`]
 
 [[informix-time-precision-mode-adaptive]]
 .`time.precision.mode=adaptive`
@@ -1796,60 +1788,6 @@ Represents timestamp values in UTC format, according to the ISO 8601 standard, f
 
 |===
 
-[[informix-time-precision-mode-microseconds]]
-.`time.precision.mode=microseconds`
-Set the `time.precision.mode` property to `microseconds` to configure the connector to map all temporal values to microsecond-precision integers.
-
-.Mappings when `time.precision.mode` is `microseconds`
-[cols="25%a,20%a,55%a",options="header"]
-|===
-|Informix data type |Literal type (schema type) |Semantic type (schema name) and Notes
-
-|`DATE`
-|`INT32`
-|`io.debezium.time.Date`
-
-Represents the number of days since the epoch.
-
-|`DATETIME`
-|`INT64`
-|`io.debezium.time.MicroTimestamp`
-
-Represents the number of microseconds since the epoch, and does not include timezone information.
-
-|===
-
-[[informix-time-precision-mode-nanoseconds]]
-.`time.precision.mode=nanoseconds`
-Set the `time.precision.mode` property to `nanoseconds` to configure the connector to map all temporal values to nanosecond-precision integers.
-
-[IMPORTANT]
-====
-Nanoseconds since the Unix epoch are stored in a signed `INT64`, restricting the representable range to approximately *`1677-09-21T00:12:43Z` to `2262-04-11T23:47:16Z`*.
-Values outside this range cannot be represented and cause the connector to throw an `IllegalArgumentException` from the value converter.
-The exception is handled according to the `event.converting.failure.handling.mode` configuration: with `warn` (the default) or `skip`, the affected column value is emitted as `null` and the failure is logged; with `fail`, the connector stops.
-Use `time.precision.mode=microseconds` (or `isostring`) to avoid the limitation.
-====
-
-.Mappings when `time.precision.mode` is `nanoseconds`
-[cols="25%a,20%a,55%a",options="header"]
-|===
-|Informix data type |Literal type (schema type) |Semantic type (schema name) and Notes
-
-|`DATE`
-|`INT32`
-|`io.debezium.time.Date`
-
-Represents the number of days since the epoch.
-
-|`DATETIME`
-|`INT64`
-|`io.debezium.time.NanoTimestamp`
-
-Represents the number of nanoseconds since the epoch, and does not include timezone information.
-
-|===
-
 .INTERVAL
 The `INTERVAL` type is not supported by the Informix Change Stream client.
 
@@ -1864,8 +1802,6 @@ The timezone of the JVM running Kafka Connect and {prodname} does not affect thi
 
 [[informix-decimal-types]]
 === Decimal types
-
-The following table describes how the connector maps Informix decimal data types to Kafka Connect literal types and semantic types in change event fields.
 
 [cols="27%a,18%a,55%a",options="header"]
 |===
@@ -1952,8 +1888,6 @@ You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and Ope
 endif::community[]
 
 ifdef::product[]
-To deploy a {prodname} Informix connector, you create a `KafkaConnect` custom resource that defines the Kafka Connect image build and a `KafkaConnector` custom resource that configures the connector and connects it to the source database.
-
 // Type: concept
 [id="openshift-streams-informix-connector-deployment"]
 === {prodname} Informix connector deployment using {StreamsName}

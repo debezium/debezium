@@ -329,15 +329,6 @@ include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloff
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=enabling-binlog]
 
-ifdef::community[]
-// Type: procedure
-// ModuleID: enabling-innodb-binlog-for-debezium
-// Title: Enabling the InnoDB-based binary log for {prodname}
-[[enable-innodb-binlog]]
-=== Enabling the InnoDB-based binary log
-
-include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=enabling-innodb-binlog]
-endif::community[]
 [id="binlog-configuration-properties-mariadb-connector"]
 ==== Descriptions of MariaDB binlog configuration properties
 

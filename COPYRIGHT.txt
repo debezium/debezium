@@ -1,5 +1,4 @@
 Cobolbaby
-Aakash Mhatre
 Aaron Brady
 Aaron Rosenberg
 Abhishek Gupta
@@ -63,7 +62,6 @@ Ant Kutschera
 Anton Kondratev
 Anton Martynov
 Anton Repin
-Antonio Marino
 Aravind Pedapudi
 Aravind Gm
 Archie David
@@ -291,7 +289,6 @@ Jordan Pittier
 Juan Fiallo
 Juanma Barea
 Julien Roy
-Jun Wang
 Jun Zhao
 Hady Willi
 Hagar Yasser
@@ -385,7 +382,6 @@ Judah Rand
 Jun Du
 Jure Kajzer
 Justin Hiza
-Justin Mathew
 Kanha Gupta
 Kanthi Subramanian
 Kartik Angiras
@@ -443,7 +439,6 @@ Maciej Bryński
 Mans Singh
 MaoXiang Pan
 Marc Zbyszynski
-Marcel Bruhn
 Marcelo Avancini
 Marci
 Marcin Piatek
@@ -476,7 +471,6 @@ Matt Vance
 Matteo Capitanio
 Mathieu Rozieres
 Matthias Crauwels
-Matthias Hengel
 Matthias Wessendorf
 Mauricio Scheffer
 Max Kaplan
@@ -532,7 +526,6 @@ Nir Levy
 Nishant Singh
 Nitin Agarwal
 Nitin Chhabra
-Oladele Oluwaseun
 Olavi Mustanoja
 Ole-Martin Bratteng
 Oliver Weiler
@@ -541,7 +534,6 @@ Olivier Chédru
 Olivier Jacquemart
 Olivier Lemasle
 Omar Al-Safi
-Omkar Mehta
 Ondrej Babec
 Oren Elias
 Ori Popowski
@@ -552,7 +544,6 @@ Oskar Polak
 P. Aum
 Pablo Ugarte
 Patrick Chu
-Pavel Ivanovskii
 Pavel Strashkin
 Paul Cheung
 Paul Mellor
@@ -585,7 +576,6 @@ Raf Liwoch
 Rafael Câmara
 Rafael Rain
 Raghava Ponnam
-Ragul Shanmugam
 Rajendra Dangwal
 Ram Satish
 Ramesh Reddy
@@ -600,7 +590,6 @@ René Rütter
 Robert Hana
 Robin Moffatt
 Rodolphe Quiedeville
-Rohith Devarshetty
 Roman Kuchar
 Roman Kudryashov
 Rophy Tsai
@@ -619,7 +608,6 @@ Ricardo Rosales
 Rich O'Connell
 Richard Harrington
 Richard Kolkovich
-Rick Bruins
 Rishabh Singh
 Robert Coup
 Robert Roldan
@@ -682,7 +670,6 @@ Stefan Miklosovic
 Stefano Linguerri
 Stephen Powis
 Steven Siahetiong
-Steven Jenkins De Haro
 Subodh Kant Chaturvedi
 Sun Xiao Jian
 Sungho Hwang
@@ -727,7 +714,6 @@ Tova Cohen
 Travis Elnicky
 Troy Gaines
 Tudor Plugaru
-Tushar Saini
 V K
 Vadzim Ramanenka
 Vaibhav Kushwaha
@@ -745,7 +731,6 @@ Vivek Wassan
 Vladimir Osin
 Vojtech Juranek
 Vojtěch Juránek
-Wagner Santos
 Wang Min Chao
 Wang-Yu-Chao
 WenChao Ke
@@ -874,7 +859,3 @@ Sundong Kim
 Timur Rakhmatullin
 skdus531
 Junsu Lee
-Björn Bärtschi
-Raju Surarapu
-dingqianwen
-Surya Dhaneshwar

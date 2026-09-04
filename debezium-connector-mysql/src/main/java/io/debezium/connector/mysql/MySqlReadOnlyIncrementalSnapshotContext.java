@@ -79,12 +79,13 @@ public class MySqlReadOnlyIncrementalSnapshotContext<T> extends BinlogReadOnlyIn
             return true;
         }
         final MySqlGtid gtid = MySqlGtid.fromString(currentGtid);
-        MySqlGtidSet.UUIDSet uuidSet = getUuidSet(gtid.getServerId().toString(), gtid.getTag());
+        MySqlGtidSet.UUIDSet uuidSet = getUuidSet(gtid.getServerId().toString());
         if (uuidSet != null) {
-            final java.util.OptionalLong maxTransactionId = uuidSet.getIntervals().stream()
+            long maxTransactionId = uuidSet.getIntervals().stream()
                     .mapToLong(MySqlGtidSet.Interval::getEnd)
-                    .max();
-            if (maxTransactionId.isPresent() && maxTransactionId.getAsLong() <= gtid.getTransactionId()) {
+                    .max()
+                    .getAsLong();
+            if (maxTransactionId <= gtid.getTransactionId()) {
                 LOGGER.debug("Gtid {} reached high watermark {}", currentGtid, highWatermark);
                 return true;
             }
@@ -106,9 +107,8 @@ public class MySqlReadOnlyIncrementalSnapshotContext<T> extends BinlogReadOnlyIn
         return !previousLowWatermark.equals(lowWatermark) || !previousHighWatermark.equals(highWatermark);
     }
 
-    private MySqlGtidSet.UUIDSet getUuidSet(String serverId, String tag) {
-        final MySqlGtidSet wm = highWatermark.getUUIDSets().isEmpty() ? lowWatermark : highWatermark;
-        return wm.forServerWithIdAndTag(serverId, tag);
+    private MySqlGtidSet.UUIDSet getUuidSet(String serverId) {
+        return highWatermark.getUUIDSets().isEmpty() ? lowWatermark.forServerWithId(serverId) : highWatermark.forServerWithId(serverId);
     }
 
     private boolean serverUuidChanged() {

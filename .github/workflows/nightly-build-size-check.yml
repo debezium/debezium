@@ -2,8 +2,8 @@ name: Nightly Build Size Check
 
 on:
   schedule:
-    # Run at 2 AM UTC every Monday
-    - cron: '0 2 * * 1'
+    # Run at 2 AM UTC every day
+    - cron: '0 2 * * *'
   workflow_dispatch: # Allow manual trigger
 
 env:
@@ -15,20 +15,9 @@ env:
 
 jobs:
 
-  # Gate the whole workflow so it only runs on the upstream repository, never on forks.
-  # Every build job depends on this, so on a fork all jobs are skipped instead of run.
-  guard:
-    name: Guard (upstream only)
-    if: github.repository == 'debezium/debezium'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Confirm upstream repository
-        run: echo "Running on ${{ github.repository }}"
-
   build_cassandra:
     name: Cassandra
     runs-on: ubuntu-latest
-    needs: guard
     steps:
       - name: Checkout Action (Core)
         uses: actions/checkout@v7
@@ -44,7 +33,6 @@ jobs:
       - uses: ./core/.github/actions/maven-cache
         with:
           key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
-          save: 'false'
       - uses: ./core/.github/actions/build-debezium-cassandra
         with:
           path-core: core
@@ -63,7 +51,6 @@ jobs:
   build_db2:
     name: Db2
     runs-on: ubuntu-latest
-    needs: guard
     steps:
       - name: Checkout Action (Core)
         uses: actions/checkout@v7
@@ -79,7 +66,6 @@ jobs:
       - uses: ./core/.github/actions/maven-cache
         with:
           key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
-          save: 'false'
       - uses: ./core/.github/actions/build-debezium-db2
         with:
           path-core: core
@@ -98,7 +84,6 @@ jobs:
   build_ibmi:
     name: IBMi
     runs-on: ubuntu-latest
-    needs: guard
     steps:
       - name: Checkout Action (Core)
         uses: actions/checkout@v7
@@ -114,7 +99,6 @@ jobs:
       - uses: ./core/.github/actions/maven-cache
         with:
           key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
-          save: 'false'
       - uses: ./core/.github/actions/build-debezium-ibmi
         with:
           path-core: core
@@ -133,7 +117,6 @@ jobs:
   build_ingres:
     name: Ingres
     runs-on: ubuntu-latest
-    needs: guard
     steps:
       - name: Checkout Action (Core)
         uses: actions/checkout@v7
@@ -149,7 +132,6 @@ jobs:
       - uses: ./core/.github/actions/maven-cache
         with:
           key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
-          save: 'false'
       - uses: ./core/.github/actions/build-debezium-ingres
         with:
           path-core: core
@@ -168,7 +150,6 @@ jobs:
   build_informix:
     name: Informix
     runs-on: ubuntu-latest
-    needs: guard
     steps:
       - name: Checkout Action (Core)
         uses: actions/checkout@v7
@@ -184,7 +165,6 @@ jobs:
       - uses: ./core/.github/actions/maven-cache
         with:
           key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
-          save: 'false'
       - uses: ./core/.github/actions/build-debezium-informix
         with:
           path-core: core
@@ -203,7 +183,6 @@ jobs:
   build_vitess:
     name: Vitess
     runs-on: ubuntu-latest
-    needs: guard
     steps:
       - name: Checkout Action (Core)
         uses: actions/checkout@v7
@@ -219,7 +198,6 @@ jobs:
       - uses: ./core/.github/actions/maven-cache
         with:
           key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
-          save: 'false'
       - uses: ./core/.github/actions/build-debezium-vitess
         with:
           path-core: core
@@ -238,7 +216,6 @@ jobs:
   build_spanner:
     name: Spanner
     runs-on: ubuntu-latest
-    needs: guard
     steps:
       - name: Checkout Action (Core)
         uses: actions/checkout@v7
@@ -254,7 +231,6 @@ jobs:
       - uses: ./core/.github/actions/maven-cache
         with:
           key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
-          save: 'false'
       - uses: ./core/.github/actions/build-debezium-spanner
         with:
           path-core: core
@@ -273,7 +249,6 @@ jobs:
   build_cockroachdb:
     name: CockroachDB
     runs-on: ubuntu-latest
-    needs: guard
     steps:
       - name: Checkout Action (Core)
         uses: actions/checkout@v7
@@ -289,7 +264,6 @@ jobs:
       - uses: ./core/.github/actions/maven-cache
         with:
           key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
-          save: 'false'
       - uses: ./core/.github/actions/build-debezium-cockroachdb
         with:
           path-core: core
@@ -308,7 +282,6 @@ jobs:
   build_server:
     name: "Debezium Server"
     runs-on: ubuntu-latest
-    needs: guard
     steps:
       - name: Checkout Action (Core)
         uses: actions/checkout@v7
@@ -324,7 +297,6 @@ jobs:
       - uses: ./core/.github/actions/maven-cache
         with:
           key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
-          save: 'false'
       - uses: ./core/.github/actions/build-debezium-server
         with:
           path-core: core
@@ -343,7 +315,6 @@ jobs:
   build_core:
     name: "Debezium Core"
     runs-on: ubuntu-latest
-    needs: guard
     steps:
       - name: Checkout Action (Core)
         uses: actions/checkout@v7
@@ -354,7 +325,6 @@ jobs:
       - uses: ./core/.github/actions/maven-cache
         with:
           key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
-          save: 'false'
       - name: Build Debezium (Core)
         shell: bash
         run: >
@@ -380,7 +350,6 @@ jobs:
   build_storage:
     name: "Storage"
     runs-on: ubuntu-latest
-    needs: guard
     steps:
       - name: Checkout Action
         uses: actions/checkout@v7
@@ -388,7 +357,6 @@ jobs:
         with:
           only-build: 'true'
           maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
-          maven-cache-save: 'false'
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -402,7 +370,6 @@ jobs:
   build_openlineage:
     name: "OpenLineage"
     runs-on: ubuntu-latest
-    needs: guard
     steps:
       - name: Checkout Action
         uses: actions/checkout@v7
@@ -410,7 +377,6 @@ jobs:
         with:
           only-build: 'true'
           maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
-          maven-cache-save: 'false'
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -424,7 +390,6 @@ jobs:
   build_ai:
     name: "AI"
     runs-on: ubuntu-latest
-    needs: guard
     steps:
       - name: Checkout Action
         uses: actions/checkout@v7
@@ -432,7 +397,6 @@ jobs:
         with:
           only-build: 'true'
           maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
-          maven-cache-save: 'false'
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -446,7 +410,6 @@ jobs:
   build_schema_generator:
     name: "Schema Generator"
     runs-on: ubuntu-latest
-    needs: guard
     steps:
       - name: Checkout Action
         uses: actions/checkout@v7
@@ -454,7 +417,6 @@ jobs:
         with:
           only-build: 'true'
           maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
-          maven-cache-save: 'false'
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -468,7 +430,6 @@ jobs:
   build_testing:
     name: "Testing"
     runs-on: ubuntu-latest
-    needs: guard
     steps:
       - name: Checkout Action
         uses: actions/checkout@v7
@@ -476,7 +437,6 @@ jobs:
         with:
           only-build: 'true'
           maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
-          maven-cache-save: 'false'
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -490,7 +450,6 @@ jobs:
   build_mysql:
     name: "MySQL"
     runs-on: ubuntu-latest
-    needs: guard
     steps:
       - name: Checkout Action
         uses: actions/checkout@v7
@@ -498,7 +457,6 @@ jobs:
         with:
           only-build: 'true'
           maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
-          maven-cache-save: 'false'
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -512,7 +470,6 @@ jobs:
   build_postgres:
     name: "PostgreSQL"
     runs-on: ubuntu-latest
-    needs: guard
     steps:
       - name: Checkout Action
         uses: actions/checkout@v7
@@ -520,7 +477,6 @@ jobs:
         with:
           only-build: 'true'
           maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
-          maven-cache-save: 'false'
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -534,7 +490,6 @@ jobs:
   build_oracle:
     name: "Oracle"
     runs-on: ubuntu-latest
-    needs: guard
     steps:
       - name: Checkout Action
         uses: actions/checkout@v7
@@ -542,7 +497,6 @@ jobs:
         with:
           only-build: 'true'
           maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
-          maven-cache-save: 'false'
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -556,7 +510,6 @@ jobs:
   build_sqlserver:
     name: "SQL Server"
     runs-on: ubuntu-latest
-    needs: guard
     steps:
       - name: Checkout Action
         uses: actions/checkout@v7
@@ -564,7 +517,6 @@ jobs:
         with:
           only-build: 'true'
           maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
-          maven-cache-save: 'false'
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -578,7 +530,6 @@ jobs:
   build_mongodb:
     name: "MongoDB"
     runs-on: ubuntu-latest
-    needs: guard
     steps:
       - name: Checkout Action
         uses: actions/checkout@v7
@@ -586,7 +537,6 @@ jobs:
         with:
           only-build: 'true'
           maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
-          maven-cache-save: 'false'
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -600,7 +550,6 @@ jobs:
   build_mariadb:
     name: "MariaDB"
     runs-on: ubuntu-latest
-    needs: guard
     steps:
       - name: Checkout Action
         uses: actions/checkout@v7
@@ -608,7 +557,6 @@ jobs:
         with:
           only-build: 'true'
           maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
-          maven-cache-save: 'false'
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -622,7 +570,6 @@ jobs:
   build_jdbc:
     name: "JDBC"
     runs-on: ubuntu-latest
-    needs: guard
     steps:
       - name: Checkout Action
         uses: actions/checkout@v7
@@ -630,7 +577,6 @@ jobs:
         with:
           only-build: 'true'
           maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
-          maven-cache-save: 'false'
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
         with:

@@ -219,42 +219,6 @@ public class MySqlGtidSetTest {
         assertThat(interval.removeAll(intervalsToRemove)).isEqualTo(diff);
     }
 
-    @Test
-    void toStringShouldPlaceUntaggedIntervalBeforeTaggedIntervalsForSameUuid() {
-        // Both entries share the same UUID, so toString() emits them as a single
-        // colon-delimited group: uuid:10-20:sometag:1-5
-        // Put the tagged interval first in the input string to exercise the sort.
-        final String tag = "sometag";
-        final String gtidStr = UUID1 + ":" + tag + ":1-5," + UUID1 + ":10-20";
-        gtids = new MySqlGtidSet(gtidStr);
-
-        final String result = gtids.toString();
-
-        // Untagged intervals have no tag prefix; tagged ones start with "<tag>:".
-        // After the sort, the untagged segment "10-20" must come before the tagged segment "sometag:1-5".
-        final int untaggedPos = result.indexOf("10-20");
-        final int taggedPos = result.indexOf(tag + ":1-5");
-        assertThat(untaggedPos).as("untagged intervals must precede tagged intervals in toString()").isGreaterThanOrEqualTo(0);
-        assertThat(taggedPos).as("tagged intervals must be present in toString()").isGreaterThanOrEqualTo(0);
-        assertThat(untaggedPos).as("untagged entry must appear before tagged entry").isLessThan(taggedPos);
-    }
-
-    @Test
-    void toStringShouldPreserveUntaggedFirstWhenAlreadyFirst() {
-        // Same expectation — input already has untagged first; sort must be a no-op.
-        final String tag = "sometag";
-        final String gtidStr = UUID1 + ":10-20," + UUID1 + ":" + tag + ":1-5";
-        gtids = new MySqlGtidSet(gtidStr);
-
-        final String result = gtids.toString();
-
-        final int untaggedPos = result.indexOf("10-20");
-        final int taggedPos = result.indexOf(tag + ":1-5");
-        assertThat(untaggedPos).as("untagged intervals must precede tagged intervals in toString()").isGreaterThanOrEqualTo(0);
-        assertThat(taggedPos).as("tagged intervals must be present in toString()").isGreaterThanOrEqualTo(0);
-        assertThat(untaggedPos).as("untagged entry must appear before tagged entry").isLessThan(taggedPos);
-    }
-
     protected void asertIntervalCount(String uuid, int count) {
         UUIDSet set = gtids.forServerWithId(uuid);
         assertThat(set.getIntervals().size()).isEqualTo(count);

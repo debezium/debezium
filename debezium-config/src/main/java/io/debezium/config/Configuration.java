@@ -1039,7 +1039,7 @@ public interface Configuration {
     String getString(String key);
 
     default List<String> getList(Field field) {
-        return getList(field, ",", Function.identity());
+        return getList(field.name());
     }
 
     default List<String> getList(String key) {
@@ -1047,16 +1047,11 @@ public interface Configuration {
     }
 
     default <T> List<T> getList(Field field, String separator, Function<String, T> converter) {
-        // Resolve through getString(Field) so the field's default value (and deprecated aliases) are
-        // applied, consistent with getString(Field)/getInteger(Field)/etc.
-        return splitToList(getString(field), separator, converter);
+        return getList(field.name(), separator, converter);
     }
 
     default <T> List<T> getList(String key, String separator, Function<String, T> converter) {
-        return splitToList(getString(key), separator, converter);
-    }
-
-    private static <T> List<T> splitToList(String value, String separator, Function<String, T> converter) {
+        var value = getString(key);
         return value == null ? List.of()
                 : Arrays.stream(value.split(Pattern.quote(separator)))
                         .map(String::trim)
@@ -1138,13 +1133,7 @@ public interface Configuration {
      * @see String#split(String)
      */
     default List<String> getStrings(Field field, String regex) {
-        // Resolve through getString(Field) so the field's default value (and deprecated aliases) are
-        // applied, consistent with getString(Field) and getList(Field).
-        String value = getString(field);
-        if (value == null) {
-            return null;
-        }
-        return Collect.arrayListOf(value.split(regex));
+        return getStrings(field.name(), regex);
     }
 
     /**
@@ -2038,12 +2027,7 @@ public interface Configuration {
     default Map<String, ConfigValue> validate(Field.Set fields) {
         // Create a map of configuration values for each field ...
         Map<String, ConfigValue> configValuesByFieldName = new HashMap<>();
-        fields.forEach(field -> {
-            configValuesByFieldName.put(field.name(), new ConfigValue(field.name()));
-            for (String alias : field.deprecatedAliases()) {
-                configValuesByFieldName.put(alias, new ConfigValue(alias));
-            }
-        });
+        fields.forEach(field -> configValuesByFieldName.put(field.name(), new ConfigValue(field.name())));
 
         // If any dependents don't exist ...
         fields.forEachMissingDependent(missingDependent -> {

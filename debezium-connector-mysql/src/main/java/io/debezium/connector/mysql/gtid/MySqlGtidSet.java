@@ -9,7 +9,6 @@ import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -170,7 +169,7 @@ public class MySqlGtidSet implements GtidSet {
                 .orElse(null);
     }
 
-    public UUIDSet forServerWithIdAndTag(String uuid, String tag) {
+    private UUIDSet forServerWithIdAndTag(String uuid, String tag) {
         return uuidSetsByServerId.get(tsidKey(uuid, tag));
     }
 
@@ -201,8 +200,6 @@ public class MySqlGtidSet implements GtidSet {
         for (UUIDSet uuidSet : uuidSetsByServerId.values()) {
             uuidSets.computeIfAbsent(uuidSet.getUUID(), uuid -> new ArrayList<>()).add(uuidSet);
         }
-        // Ensure untagged entry always appears first within each UUID group.
-        uuidSets.values().forEach(list -> list.sort(Comparator.comparing(u -> u.getTag() == null ? "" : u.getTag())));
 
         final List<String> gtids = new ArrayList<>();
         for (Map.Entry<String, List<UUIDSet>> entry : uuidSets.entrySet()) {

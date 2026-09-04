@@ -22,23 +22,7 @@ toc::[]
 endif::community[]
 
 The {prodname} JDBC connector is a Kafka Connect sink connector implementation that can consume events from multiple source topics, and then write those events to a relational database by using a JDBC driver.
-You can use this connector with a range of databases.
-It provides support for the following database dialects:
-
-ifdef::community[]
-* CockroachDB
-endif::community[]
-* Db2
-* MySQL
-* Oracle
-* PostgreSQL
-ifdef::community[]
-* SingleStore
-endif::community[]
-* SQL Server
-ifdef::community[]
-* StarRocks
-endif::community[]
+This connector supports a wide variety of database dialects, including CockroachDB, Db2, MySQL, Oracle, PostgreSQL, SingleStore, SQL Server, and StarRocks.
 
 // Type: assembly
 // ModuleID: debezium-jdbc-connector-how-the-debezium-connector-works
@@ -60,12 +44,94 @@ The {prodname} JDBC connector provides the following features:
 * xref:jdbc-delete-mode[Delete mode]
 * xref:jdbc-idempotent-writes[Idempotent writes]
 * xref:jdbc-schema-evolution[Schema evolution]
-* xref:jdbc-quoting-case-sensitivity[JDBC quoting and case-sensitivity]
-* xref:jdbc-connection-idle-timeouts[Connection idle timeouts]
-ifdef::community
 * xref:jdbc-singlestore-targets[SingleStore sink targets]
 * xref:jdbc-starrocks-targets[StarRocks sink targets]
+ifdef::community[]
 * xref:jdbc-cockroachdb-targets[CockroachDB sink targets]
+endif::community[]
+* xref:jdbc-quoting-case-sensitivity[JDBC quoting and case-sensitivity]
+* xref:jdbc-connection-idle-timeouts[Connection idle timeouts]
+
+// Type: concept
+// Title: Using SingleStore as a sink target
+// ModuleID: debezium-jdbc-connector-using-singlestore-as-a-sink-target
+[[jdbc-singlestore-targets]]
+=== SingleStore sink targets
+
+To write to SingleStore, configure xref:jdbc-property-connection-url[`connection.url`] with a SingleStore JDBC URL, for example, `jdbc:singlestore://<_host_>:3306/<_database_>`.
+The SingleStore JDBC driver is included in the {prodname} JDBC connector archive, so Kafka Connect deployments that use the connector archive do not require an additional SingleStore driver JAR.
+
+SingleStore targets support idempotent writes through the same xref:jdbc-property-insert-mode[`insert.mode=upsert`] setting that the connector uses for other databases.
+For SingleStore, the connector generates `INSERT ... ON DUPLICATE KEY UPDATE ...` statements.
+
+If xref:jdbc-property-schema-evolution[`schema.evolution`] is set to `basic`, the connector can create or alter destination tables from event schemas.
+Automatic table creation does not expose SingleStore-specific shard key, sort key, or other table option settings.
+If the target table requires explicit shard keys, sort keys, or other SingleStore table options, create the destination table in SingleStore before the connector writes to it.
+
+For SingleStore targets, {prodname} maps {prodname} `io.debezium.data.Json` logical values and Kafka Connect `ARRAY` and `MAP` schema values to the SingleStore `JSON` column type.
+The connector maps {prodname} `io.debezium.data.geometry.Geometry` and `io.debezium.data.geometry.Geography` logical values to the SingleStore `GEOGRAPHY` column type, and `io.debezium.data.geometry.Point` logical values to the SingleStore `GEOGRAPHYPOINT` column type.
+SingleStore supports a subset of WKT geospatial values.
+The connector writes `POINT`, `LINESTRING`, and `POLYGON` WKB values to SingleStore as WKT strings.
+
+// Type: concept
+// Title: Using StarRocks as a sink target
+// ModuleID: debezium-jdbc-connector-using-starrocks-as-a-sink-target
+[[jdbc-starrocks-targets]]
+=== StarRocks sink targets
+
+To write to StarRocks, configure xref:jdbc-property-connection-url[`connection.url`] with a StarRocks JDBC URL, for example, `jdbc:starrocks://<_host_>:9030/<_database_>`.
+The StarRocks JDBC driver is included in the {prodname} JDBC connector archive, so Kafka Connect deployments that use the connector archive do not require an additional StarRocks driver JAR.
+The connector automatically detects a StarRocks target from the driver, so no dialect configuration is required.
+To write to a database in a catalog other than `default_catalog`, specify a fully qualified `<_catalog_>.<_database_>` path in the connection URL, or set the xref:jdbc-property-dialect-starrocks-catalog-name[`dialect.starrocks.catalog.name`] property.
+
+StarRocks targets support idempotent writes through the same xref:jdbc-property-insert-mode[`insert.mode=upsert`] setting that the connector uses for other databases.
+StarRocks executes `INSERT` statements against PRIMARY KEY tables as upserts, so the connector generates plain `INSERT` statements; `INSERT ... ON DUPLICATE KEY UPDATE ...` is not supported by StarRocks.
+Upsert and delete operations require the destination table to be a StarRocks PRIMARY KEY table.
+Tables that the connector creates automatically from events with key fields are always PRIMARY KEY tables.
+
+If xref:jdbc-property-schema-evolution[`schema.evolution`] is set to `basic`, the connector can create or alter destination tables from event schemas.
+Tables that the connector creates use `PRIMARY KEY (...) DISTRIBUTED BY HASH (...)` clauses based on the record key fields.
+StarRocks limits the encoded size of all primary key column values of a PRIMARY KEY table to 128 bytes and does not permit `FLOAT`, `DOUBLE`, or `DECIMAL` key columns.
+Automatic table creation does not expose StarRocks-specific distribution, partitioning, or other table option settings.
+If the target table requires explicit table options, create the destination table in StarRocks before the connector writes to it.
+StarRocks applies `ALTER TABLE` schema changes asynchronously; writes that arrive while a schema change is still running can fail transiently and are retried by the connector.
+
+StarRocks has no `TIME` data type.
+The connector writes {prodname} `io.debezium.time.Time`, `io.debezium.time.MicroTime`, and `io.debezium.time.NanoTime` logical values, and Kafka Connect `Time` values, to `VARCHAR` columns as `HH:mm:ss.ffffff` formatted strings.
+MySQL `TIME` values outside of the 24-hour clock range retain the MySQL `[-]HHH:mm:ss.ffffff` notation, and `io.debezium.time.ZonedTime` values are stored verbatim with their original offset.
+`io.debezium.time.ZonedTimestamp` values are normalized to the database time zone and written to `DATETIME` columns; the original offset is not preserved.
+StarRocks `DATETIME` columns do not accept a precision argument; StarRocks retains fractional seconds up to microsecond precision.
+Note that the StarRocks JDBC driver reports `DATETIME` columns without fractional second precision, so although values are stored with microsecond precision, reading them through the JDBC driver truncates the fraction unless the value is explicitly cast, for example, to `VARCHAR`.
+StarRocks `VARCHAR` lengths are byte lengths rather than character lengths, so the connector multiplies propagated character lengths by four, up to the maximum length of 1048576; `CHAR` columns whose scaled length exceeds the 255 byte `CHAR` maximum are promoted to `VARCHAR`.
+`BYTES` values are written to `VARBINARY` columns, which are limited to the same 1048576 byte maximum.
+`DECIMAL` columns support a maximum precision of 38; the connector caps larger propagated precisions at 38, and values that exceed the capped precision fail on write.
+When column type propagation is enabled, `BIGINT UNSIGNED` source columns map to `LARGEINT` columns, preserving the full unsigned 64-bit range.
+{prodname} `io.debezium.data.Json` logical values and Kafka Connect `MAP` schema values map to the StarRocks `JSON` column type, `ENUM` and `SET` values map to `STRING` columns, and `YEAR` values map to `INT` columns.
+The StarRocks dialect does not support geospatial or vector logical types, and Kafka Connect `ARRAY` and `STRUCT` schema types are not mapped to the StarRocks `ARRAY` and `STRUCT` column types.
+
+ifdef::community[]
+[[jdbc-cockroachdb-targets]]
+=== CockroachDB sink targets
+
+To enable the JDBC connector to write to CockroachDB, you must specify a PostgreSQL JDBC URL in the connector's xref:jdbc-property-connection-url[`connection.url`] property, for example, `jdbc:postgresql://<_host_>:26257/<_database_>`.
+Because CockroachDB supports the PostgreSQL communication protocol, it works with the PostgreSQL JDBC driver that is included in the {prodname} JDBC connector archive.
+
+As a sink target, CockroachDB supports idempotent writes through the same xref:jdbc-property-insert-mode[`insert.mode=upsert`] setting that the connector uses for other databases.
+For CockroachDB, the connector generates `INSERT ... ON CONFLICT ... DO UPDATE SET ...` statements.
+
+CockroachDB uses the `SERIALIZABLE` transaction isolation level.
+As a result, if CockroachDB detects a conflict between concurrent transactions, it might temporarily abort one of the transactions and return SQLSTATE `40001`.
+The connector treats these conflicts as retriable and retries the flush according to the xref:jdbc-property-flush-max-retries[`flush.max.retries`] and xref:jdbc-property-flush-retry-delay-ms[`flush.retry.delay.ms`] settings.
+Setting `flush.max.retries` to `0` disables the retries so that a conflicting flush fails immediately.
+
+For CockroachDB targets, {prodname} uses PostgreSQL-compatible mappings for most data types, with the following exceptions:
+
+* `io.debezium.data.Json` logical values and Kafka Connect `MAP` schema values are written to the CockroachDB `jsonb` column type.
+* `io.debezium.data.Xml` logical values and propagated range, `macaddr`, and `cidr` column types are written as `text`, because CockroachDB does not provide those types.
+* Propagated `money` column types are written as `decimal(19,2)` types.
+* `io.debezium.data.geometry.Geometry`, `io.debezium.data.geometry.Geography`, and `io.debezium.data.geometry.Point` logical values are written to the built-in CockroachDB `geometry` and `geography` types; no PostGIS extension schema is required.
+* `io.debezium.data.FloatVector` logical values are written to the CockroachDB `vector` column type, because CockroachDB has no `halfvec` type.
+* `io.debezium.data.SparseDoubleVector` is not supported.
 endif::community[]
 
 // Type: concept
@@ -193,8 +259,8 @@ Consult your specific database vendor's documentation for what data types are an
 [[jdbc-delete-mode]]
 === Delete mode
 
-By default, when the connector consumes `DELETE` or tombstone events, it does not delete the corresponding row in the sink database.
-You might want the connector to remove rows when you need to maintain data parity between the source and sink databases, so that deletions in the source are also reflected in the sink.
+The {prodname} JDBC sink connector can delete rows in the destination database when a `DELETE` or _tombstone_ event is consumed.
+By default, the JDBC sink connector does not enable delete mode.
 
 If you want to the connector to remove rows, you must explicitly set `delete.enabled=true` in the connector configuration.
 To use this mode you must also set xref:jdbc-property-primary-key-fields[`primary.key.fields`] to a value other than `none`.
@@ -206,8 +272,7 @@ The preceding configuration is necessary, because deletes are executed based on 
 [[jdbc-idempotent-writes]]
 === Idempotent writes
 
-In an at-least-once delivery pipeline, the connector can receive the same event more than once after a restart or rebalance.
-Configure the connector to use `upsert` mode so that data written to the sink database is idempotent, and replaying an event always produces the same final row state.
+The {prodname} JDBC sink connector can perform idempotent writes, enabling it to replay the same records repeatedly and not change the final database state.
 
 To enable the connector to perform idempotent writes, you must be explicitly set the `insert.mode` for the connector to `upsert`.
 An `upsert` operation is applied as either an `update` or an `insert`, depending on whether the specified primary key already exists.
@@ -216,105 +281,36 @@ If the primary key value already exists, the operation updates values in the row
 If the specified primary key value doesn't exist, an `insert` adds a new row.
 
 Each database dialect handles idempotent writes differently, because there is no SQL standard for _upsert_ operations.
-The following table shows, for each database dialect that {prodname} supports, the upsert DML syntax and the constraints that trigger an update action during an upsert operation.
+The following table shows the `upsert` DML syntax for the database dialects that {prodname} supports:
 
 |===
-|Dialect |Upsert Syntax |Constraint that triggers the update action
+|Dialect |Upsert Syntax
 
-ifdef::community[]
 |CockroachDB
 |`INSERT ... ON CONFLICT ... DO UPDATE SET ...`
-|Configured primary key only
-endif::community[]
 
 |Db2
 |`MERGE ...`
-|Configured primary key only
-
-|MariaDB
-|`INSERT ... ON DUPLICATE KEY UPDATE ...`
-|Any unique index
 
 |MySQL
 |`INSERT ... ON DUPLICATE KEY UPDATE ...`
-|Any unique index
 
 |Oracle
 |`MERGE ...`
-|Configured primary key only
 
 |PostgreSQL
 |`INSERT ... ON CONFLICT ... DO UPDATE SET ...`
-|Configured primary key only
 
-ifdef::community[]
 |SingleStore
 |`INSERT ... ON DUPLICATE KEY UPDATE ...`
-|Any unique index
-endif::community[]
 
 |SQL Server
 |`MERGE ...`
-|Configured primary key only
 
-ifdef::community[]
 |StarRocks
 |`INSERT ...` (PRIMARY KEY tables execute inserts as upserts)
-|Table primary key
-endif::community[]
 
 |===
-
-[WARNING]
-====
-Secondary unique constraints can create ordering dependencies.
-For more information about their use, see xref:sink-connector-secondary-unique-constraints[secondary unique constraints].
-====
-
-// Type: concept
-// ModuleID: debezium-jdbc-connector-secondary-unique-constraints
-[id="sink-connector-secondary-unique-constraints"]
-=== Secondary unique constraints in sink connectors
-
-Secondary unique constraints can create ordering dependencies between records that have different primary keys.
-Kafka guarantees record order only within a partition, and the connector batches and reduces events based only on the configured primary key.
-For these reasons, you should avoid defining secondary unique constraints or secondary unique indexes on destination tables.
-If a uniqueness rule is required, enforce the rule in the source database, and omit the constraint from the destination table.
-
-If dependent records are routed to different partitions, the sink connector might apply records out of source order, which can lead to inconsistent results.
-The following table shows how different database dialects handle conflicts involving secondary unique constraints:
-
-.Dialect-specific behavior when secondary unique constraint conflicts occur
-|===
-|Dialect |Behavior
-
-|Dialects that use `INSERT ... ON DUPLICATE KEY UPDATE`
-|Consider conflicts on any unique index, not only the configured primary key.
-A conflict involving a secondary unique constraint can therefore update an existing row whose primary key differs from the incoming record, causing silent data inconsistency.
-
-|Dialects that use `INSERT ... ON CONFLICT` or `MERGE`
-|Consider conflicts only on the configured primary key.
-A conflict involving a secondary unique constraint causes the write operation to fail with a constraint violation error rather than updating a different row.
-|===
-
-To prevent data inconsistencies when a destination table includes a secondary unique constraint, the data pipeline must meet all of the following requirements:
-
-Dependent events routed through the same partition::
-Route all dependent events through the same Kafka partition, and preserve the source event order.
-For a table with dependencies between arbitrary rows, use a single partition for its Kafka topic.
-Setting `tasks.max=1` is not sufficient to restore ordering between records that are already in different partitions.
-
-Reduction buffering disabled::
-Retain the default value (`false`) of the xref:jdbc-property-use-reduction-buffer[`use.reduction.buffer`] property.
-Reduction by primary key can remove intermediate row states that are required to satisfy secondary unique constraints.
-
-Batch size set to `1`::
-Set the value of the xref:jdbc-property-batch-size[`batch.size`] property to `1` if any batches might contain multiple events for a primary key that is not defined in the destination table.
-+
-Some dialects and driver configurations process a batch in a single pass, rather than validating each row against the effects of the preceding rows in the same batch.
-For example, `MERGE`-based dialects can attempt two `INSERT` operations for the same primary key instead of an `INSERT` followed by an `UPDATE`.
-Similarly, when xref:jdbc-property-dialect-postgres-unnest-insert-enabled[`dialect.postgres.unnest.insert.enabled`] is set to `true`, PostgreSQL combines a batch into a single multi-row statement.
-In each of these cases, the batch fails.
 
 // Type: reference
 // Title: Schema evolution modes for the {prodname} JDBC connector
@@ -322,8 +318,7 @@ In each of these cases, the batch fails.
 [[jdbc-schema-evolution]]
 === Schema evolution
 
-The `schema.evolution` property controls whether the connector automatically creates or alters destination tables when event schemas change.
-The following table describes the available modes, from no evolution (`none`) through startup validation (`validate-only`) to automatic table creation and column addition (`basic`).
+You can use the following schema evolution modes with the {prodname} JDBC sink connector:
 
 |===
 |Mode |Description
@@ -365,13 +360,11 @@ The schema also defines the default values for each column.
 If the connector attempts to create a table with a nullability setting or a default value that don't want, you must either create the table manually, ahead of time, or adjust the schema of the associated field before the sink connector processes the event.
 To adjust nullability settings or default values, you can introduce a custom single message transformation that applies changes in the pipeline, or modifies the column state defined in the source database.
 
-ifdef::community[]
 For SingleStore targets, automatic table creation does not configure SingleStore-specific shard keys, sort keys, or other table options.
 For more information, see xref:jdbc-singlestore-targets[].
 
 For StarRocks targets, automatic table creation creates PRIMARY KEY tables from the record key fields, and does not configure StarRocks-specific distribution, partitioning, or other table options.
 For more information, see xref:jdbc-starrocks-targets[].
-endif::community[]
 
 A field's data type is resolved based on a predefined set of mappings.
 For more information, see xref:jdbc-field-types[JDBC field types].
@@ -408,9 +401,6 @@ Enabling quoting results in the same behavior when the connector creates column 
 [[jdbc-connection-idle-timeouts]]
 === Connection Idle Timeouts
 
-Connections held idle in the pool can time out if they remain inactive beyond the database's configured threshold, causing subsequent write operations to fail.
-Set the `hibernate.agroal.idleValidation` property to enable periodic validation of pooled connections and prevent idle timeout errors.
-
 The JDBC sink connector for {prodname} leverages a connection pool to enhance performance.
 Connection pools are engineered to establish an initial set of connections, maintain a specified number of connections, and efficiently allocate connections to the application as required.
 However, a challenge arises when connections linger idle in the pool, potentially triggering timeouts if they remain inactive beyond the configured idle timeout threshold of the database.
@@ -435,92 +425,6 @@ The {prodname} JDBC sink connector uses the Hibernate Agroal connection pool.
 You can customize the Agroal connection pool by setting properties in the `hibernate.agroal.*` configuration namespace.
 In the preceding example, the setting of the hibernate.agroal.idleValidation property configures the connection pool to perform idle timeout tests every 300 seconds.
 After you apply the configuration, the connection pool begins to assess unused connections every five minutes.
-
-ifdef::community[]
-[[jdbc-singlestore-targets]]
-=== SingleStore sink targets
-
-To write to SingleStore, configure xref:jdbc-property-connection-url[`connection.url`] with a SingleStore JDBC URL, for example, `jdbc:singlestore://<_host_>:3306/<_database_>`.
-The SingleStore JDBC driver is included in the {prodname} JDBC connector archive, so Kafka Connect deployments that use the connector archive do not require an additional SingleStore driver JAR.
-
-SingleStore targets support idempotent writes through the same xref:jdbc-property-insert-mode[`insert.mode=upsert`] setting that the connector uses for other databases.
-For SingleStore, the connector generates `INSERT ... ON DUPLICATE KEY UPDATE ...` statements.
-
-If xref:jdbc-property-schema-evolution[`schema.evolution`] is set to `basic`, the connector can create or alter destination tables from event schemas.
-Automatic table creation does not expose SingleStore-specific shard key, sort key, or other table option settings.
-If the target table requires explicit shard keys, sort keys, or other SingleStore table options, create the destination table in SingleStore before the connector writes to it.
-
-For SingleStore targets, {prodname} maps {prodname} `io.debezium.data.Json` logical values and Kafka Connect `MAP` schema values to the SingleStore `JSON` column type.
-The connector maps {prodname} `io.debezium.data.geometry.Geometry` and `io.debezium.data.geometry.Geography` logical values to the SingleStore `GEOGRAPHY` column type, and `io.debezium.data.geometry.Point` logical values to the SingleStore `GEOGRAPHYPOINT` column type.
-SingleStore supports a subset of WKT geospatial values.
-The connector writes `POINT`, `LINESTRING`, and `POLYGON` WKB values to SingleStore as WKT strings.
-
-[[jdbc-starrocks-targets]]
-=== StarRocks sink targets
-
-To write to StarRocks, configure xref:jdbc-property-connection-url[`connection.url`] with a StarRocks JDBC URL, for example, `jdbc:starrocks://<_host_>:9030/<_database_>`.
-The StarRocks JDBC driver is included in the {prodname} JDBC connector archive, so Kafka Connect deployments that use the connector archive do not require an additional StarRocks driver JAR.
-The connector automatically detects a StarRocks target from the driver, so no dialect configuration is required.
-To write to a database in a catalog other than `default_catalog`, specify a fully qualified `<_catalog_>.<_database_>` path in the connection URL, or set the xref:jdbc-property-dialect-starrocks-catalog-name[`dialect.starrocks.catalog.name`] property.
-
-StarRocks targets support idempotent writes through the same xref:jdbc-property-insert-mode[`insert.mode=upsert`] setting that the connector uses for other databases.
-StarRocks executes `INSERT` statements against PRIMARY KEY tables as upserts, so the connector generates plain `INSERT` statements; `INSERT ... ON DUPLICATE KEY UPDATE ...` is not supported by StarRocks.
-Upsert and delete operations require the destination table to be a StarRocks PRIMARY KEY table.
-Tables that the connector creates automatically from events with key fields are always PRIMARY KEY tables.
-
-If xref:jdbc-property-schema-evolution[`schema.evolution`] is set to `basic`, the connector can create or alter destination tables from event schemas.
-Tables that the connector creates use `PRIMARY KEY (...) DISTRIBUTED BY HASH (...)` clauses based on the record key fields.
-
-StarRocks limits the encoded size of all primary key column values of a PRIMARY KEY table to 128 bytes and does not permit `FLOAT`, `DOUBLE`, or `DECIMAL` key columns.
-Automatic table creation does not expose StarRocks-specific distribution, partitioning, or other table option settings.
-If the target table requires explicit table options, create the destination table in StarRocks before the connector writes to it.
-StarRocks applies `ALTER TABLE` schema changes asynchronously; writes that arrive while a schema change is still running can fail transiently and are retried by the connector.
-
-StarRocks has no `TIME` data type.
-The connector writes {prodname} `io.debezium.time.Time`, `io.debezium.time.MicroTime`, and `io.debezium.time.NanoTime` logical values, and Kafka Connect `Time` values, to `VARCHAR` columns as `HH:mm:ss.ffffff` formatted strings.
-
-MySQL `TIME` values outside of the 24-hour clock range retain the MySQL `[-]HHH:mm:ss.ffffff` notation, and `io.debezium.time.ZonedTime` values are stored verbatim with their original offset.
-
-`io.debezium.time.ZonedTimestamp` values are normalized to the database time zone and written to `DATETIME` columns; the original offset is not preserved.
-S
-tarRocks `DATETIME` columns do not accept a precision argument; StarRocks retains fractional seconds up to microsecond precision.
-
-Note that the StarRocks JDBC driver reports `DATETIME` columns without fractional second precision, so although values are stored with microsecond precision, reading them through the JDBC driver truncates the fraction unless the value is explicitly cast, for example, to `VARCHAR`.
-
-StarRocks `VARCHAR` lengths are byte lengths rather than character lengths, so the connector multiplies propagated character lengths by four, up to the maximum length of 1048576; `CHAR` columns whose scaled length exceeds the 255 byte `CHAR` maximum are promoted to `VARCHAR`.
-
-`BYTES` values are written to `VARBINARY` columns, which are limited to the same 1048576 byte maximum.
-
-`DECIMAL` columns support a maximum precision of 38; the connector caps larger propagated precisions at 38, and values that exceed the capped precision fail on write.
-When column type propagation is enabled, `BIGINT UNSIGNED` source columns map to `LARGEINT` columns, preserving the full unsigned 64-bit range.
-
-{prodname} `io.debezium.data.Json` logical values and Kafka Connect `MAP` schema values map to the StarRocks `JSON` column type, `ENUM` and `SET` values map to `STRING` columns, and `YEAR` values map to `INT` columns.
-The StarRocks dialect does not support geospatial or vector logical types, and Kafka Connect `ARRAY` and `STRUCT` schema types are not mapped to the StarRocks `ARRAY` and `STRUCT` column types.
-
-[[jdbc-cockroachdb-targets]]
-=== CockroachDB sink targets
-
-To enable the JDBC connector to write to CockroachDB, you must specify a PostgreSQL JDBC URL in the connector's xref:jdbc-property-connection-url[`connection.url`] property, for example, `jdbc:postgresql://<_host_>:26257/<_database_>`.
-Because CockroachDB supports the PostgreSQL communication protocol, it works with the PostgreSQL JDBC driver that is included in the {prodname} JDBC connector archive.
-
-As a sink target, CockroachDB supports idempotent writes through the same xref:jdbc-property-insert-mode[`insert.mode=upsert`] setting that the connector uses for other databases.
-For CockroachDB, the connector generates `INSERT ... ON CONFLICT ... DO UPDATE SET ...` statements.
-
-CockroachDB uses the `SERIALIZABLE` transaction isolation level.
-As a result, if CockroachDB detects a conflict between concurrent transactions, it might temporarily abort one of the transactions and return SQLSTATE `40001`.
-The connector treats these conflicts as retriable and retries the flush according to the xref:jdbc-property-flush-max-retries[`flush.max.retries`] and xref:jdbc-property-flush-retry-delay-ms[`flush.retry.delay.ms`] settings.
-Setting `flush.max.retries` to `0` disables the retries so that a conflicting flush fails immediately.
-
-For CockroachDB targets, {prodname} uses PostgreSQL-compatible mappings for most data types, with the following exceptions:
-
-* `io.debezium.data.Json` logical values and Kafka Connect `MAP` schema values are written to the CockroachDB `jsonb` column type.
-* `io.debezium.data.Xml` logical values and propagated range, `macaddr`, and `cidr` column types are written as `text`, because CockroachDB does not provide those types.
-* Propagated `money` column types are written as `decimal(19,2)` types.
-* `io.debezium.data.geometry.Geometry`, `io.debezium.data.geometry.Geography`, and `io.debezium.data.geometry.Point` logical values are written to the built-in CockroachDB `geometry` and `geography` types; no PostGIS extension schema is required.
-* `io.debezium.data.FloatVector` logical values are written to the CockroachDB `vector` column type, because CockroachDB has no `halfvec` type.
-* `io.debezium.data.SparseDoubleVector` is not supported.
-endif::community[]
-
 
 [[jdbc-error-handling-and-dead-letter-queues]]
 === Error handling and dead letter queues
@@ -654,8 +558,6 @@ The actual final column type varies with for each database type.
 [[jdbc-kafka-connect-primitive-mappings]]
 === Kafka Connect primitive data type mappings
 
-The following table maps each Kafka Connect primitive type to its corresponding JDBC SQL type, which the {prodname} JDBC sink connector uses when creating or altering columns in the destination database.
-
 .Mappings between Kafka Connect primitive data types and column data types
 |===
 |Primitive Type |JDBC SQL Type
@@ -703,8 +605,6 @@ As a workaround, if you need a BOOLEAN data type for an Oracle 23 sink, add the 
 [[jdbc-kafka-connect-logical-mappings]]
 === Kafka Connect logical data type mappings
 
-The following table maps each Kafka Connect logical type to its corresponding JDBC SQL type, which the {prodname} JDBC sink connector uses when writing structured data such as dates, times, and decimals to the destination database.
-
 .Mappings between Kafka Connect logical data types and column data types
 |===
 |Logical Type |JDBC SQL Type
@@ -727,8 +627,6 @@ The following table maps each Kafka Connect logical type to its corresponding JD
 // Title: Mappings between {prodname} logical data types and JDBC column types
 [[jdbc-debezium-logical-mappings]]
 === {prodname} logical data type mappings
-
-The following table maps {prodname} logical types to their corresponding JDBC SQL types, which the connector uses when writing {prodname} change event fields — such as timestamps, durations, and variable-scale decimals — to the destination database.
 
 .Mappings between {prodname} logical types and column data types
 |===
@@ -796,8 +694,6 @@ If the database does not support time or timestamps with time zones, the mapping
 [[jdbc-debezium-logical-mappings-dialect-specific]]
 === {prodname} dialect-specific data type mappings
 
-The following table maps {prodname} logical types to dialect-specific column types for each supported database, which you can use to understand how the connector resolves fields such as JSON, geospatial data, and bit strings when targeting a specific database dialect.
-
 .Mappings between {prodname} dialect-specific logical types and column data types
 [cols="as,as,as,as,as,as",options="header"]
 |===
@@ -807,7 +703,6 @@ The following table maps {prodname} logical types to dialect-specific column typ
 |`blob`
 |`bit(n)`
 |`bit varying`
-
 `bit(n)`^1^
 |`blob`
 |`varbinary(n)`
@@ -851,9 +746,7 @@ The following table maps {prodname} logical types to dialect-specific column typ
 |`varchar(128)`
 |`time`
 |`interval`
-
-|`interval year to month`
-
+|`interval year to month` +
 `interval day to second`
 |`varchar(128)`
 
@@ -861,7 +754,6 @@ The following table maps {prodname} logical types to dialect-specific column typ
 |`clob`
 `varchar(n)`^1^
 |`longtext`
-
 `varchar`^1^
 |`ltree`
 |`clob`
@@ -870,27 +762,21 @@ The following table maps {prodname} logical types to dialect-specific column typ
 
 |io.debezium.data.Uuid
 |`clob`
-
 `varchar(n)`^1^
 |`uuid`
 |`text`
-
 `varchar(n)`^1^
 |`clob`
-
 `varchar2(n)`^1^
 |`varchar`
 
 |io.debezium.data.Tsvector
 |`clob`
-
 `varchar(n)`^1^
 |`longtext`
-
 `varchar`^1^
 |`tsvector`
 |`clob`
-
 `varchar2(n)`^1^
 |`varchar`
 
@@ -935,14 +821,11 @@ The following table maps {prodname} logical types to dialect-specific column typ
 ^1^ When a logical type maps to more than one type, the {prodname} JDBC connector defaults to the first more generalized data type.
 If the connector consumes change events from topics that are populated by a {prodname} source connector, the JDBC connector can use stricter, more concrete data types when it sends data to some targets.
 To enable the use of these stricter data type conversions, set the `column.propagate.source.type` or `datatype.propagate.source.type` properties in the source connector configuration.
-
 When these properties are set in the source connector, the events that it generates include additional column metadata that the JDBC connector then uses to construct columns with a stricter concrete data type.
 In the preceding table, where a second entry, marked with an asterisk, appears in a table cell, it represents the stricter data type.
-ifdef::community[]
 
 For SingleStore targets, {prodname} uses MySQL/MariaDB-compatible mappings for most dialect-specific logical types.
 SingleStore maps {prodname} `io.debezium.data.Json` logical values to `json`.
-
 Kafka Connect `MAP` schema values are also written to SingleStore `json` columns.
 {prodname} `io.debezium.data.geometry.Geometry` and `io.debezium.data.geometry.Geography` logical values are written to SingleStore `geography` columns, and `io.debezium.data.geometry.Point` logical values are written to SingleStore `geographypoint` columns.
 
@@ -956,7 +839,6 @@ For example, the connector uses the following mappings:
 The SingleStore dialect writes supported `POINT`, `LINESTRING`, and `POLYGON` WKB values as WKT strings.
 
 For StarRocks targets, see xref:jdbc-starrocks-targets[] for the dialect-specific type mappings, including the string-based representation that the dialect uses for time types.
-endif::community[]
 
 // Type: reference
 // Title: Mappings between {prodname} vector data types and RDBMS column types
@@ -984,13 +866,10 @@ Sink databases must meet the following requirements to support direct mapping of
 * MariaDB version 11.7 or later
 * MySQL version 9.0 or later
 * PostgreSQL requires the pgvector extension
-ifdef::community[]
 * SingleStore requires the native `VECTOR` data type
-endif::community[]
 
-The connector cannot correctly map logical vector types directly to other sink targets.
+Earlier versions of MariaDB or MySQL, PostgreSQL without pgvector, and SingleStore deployments without the native `VECTOR` data type do not support special vector types.
 
-ifdef::community[]
 For SingleStore, `FloatVector` maps to `vector(n, F32)` and `DoubleVector` maps to `vector(n, F64)`.
 If the source column length is unavailable, the connector uses default dimensions of `2048` for `FloatVector` and `16383` for `DoubleVector`.
 
@@ -1023,37 +902,6 @@ If the source column length is unavailable, the connector uses default dimension
 |Unsupported
 
 |===
-
-endif::community[]
-
-ifdef::product[]
-.Mappings between {prodname} Vector Types and Column Data Types
-|===
-|Logical Type |Db2 |MySQL |PostgreSQL |Oracle |SQL Server
-
-|io.debezium.data.DoubleVector
-|Unsupported
-|'vector'
-|`vector`
-|Unsupported
-|Unsupported
-
-|io.debezium.data.FloatVector
-|Unsupported
-|'vector'
-|`halfvec`
-|Unsupported
-|Unsupported
-
-|io.debezium.data.SparseVector
-|Unsupported
-|Unsupported
-|`sparsevec`
-|Unsupported
-|Unsupported
-
-|===
-endif::product[]
 
 [NOTE]
 ====
@@ -1233,7 +1081,7 @@ After you apply the SMT to an event that includes a field with the name `ID`, th
 == Deployment
 
 ifdef::community[]
-To deploy the {prodname} JDBC sink connector, install the connector archive in your Kafka Connect environment, configure the connector properties, and register the connector with Kafka Connect.
+To deploy a {prodname} JDBC connector, you install the {prodname} JDBC connector archive, configure the connector, and start the connector by adding its configuration to Kafka Connect.
 
 .Prerequisites
 * link:http://kafka.apache.org/[Apache Kafka] and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
@@ -1251,11 +1099,8 @@ To deploy the {prodname} JDBC sink connector, install the connector archive in y
 Drivers for Oracle and Db2 are not included with the JDBC sink connector.
 You must download the drivers and install them manually.
 ====
-ifdef::community[]
 +
 The SingleStore JDBC driver is included with the JDBC connector archive.
-endif::community[]
-
 . Add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`]. Make sure that the path where you install the JDBC sink connector is part of the {link-kafka-docs}/#connectconfigs[Kafka Connect `plugin.path`].
 . Restart the Kafka Connect process to pick up the new JAR files.
 endif::community[]
@@ -1353,64 +1198,64 @@ kind: KafkaConnect
 metadata:
   name: debezium-kafka-connect-cluster
   annotations:
-    strimzi.io/use-connector-resources: "true"
+    strimzi.io/use-connector-resources: "true"  //  <1>
 spec:
   version: {debezium-kafka-version}
   replicas: 1
   bootstrapServers: debezium-kafka-cluster-kafka-bootstrap:9093
-  build:
-    output:
-      type: imagestream
+  build:  // <2>
+    output:  // <3>
+      type: imagestream  // <4>
       image: debezium-streams-connect:latest
-    plugins:
+    plugins:   // <5>
       - name: debezium-jdbc-connector
         artifacts:
-          - type: zip
-            url: {red-hat-maven-repository}debezium/debezium-connector-{connector-file}/{debezium-version}-redhat-{debezium-build-number}/debezium-connector-{connector-file}-{debezium-version}-redhat-{debezium-build-number}-plugin.zip
+          - type: zip  // <6>
+            url: {red-hat-maven-repository}debezium/debezium-connector-{connector-file}/{debezium-version}-redhat-{debezium-build-number}/debezium-connector-{connector-file}-{debezium-version}-redhat-{debezium-build-number}-plugin.zip  // <7>
           - type: jar
-            url: https://repo1.maven.org/maven2/com/oracle/ojdbc/ojdbc11/{ojdbc-version}/ojdbc11-{ojdbc-version}.jar
+            url: https://repo1.maven.org/maven2/com/oracle/ojdbc/ojdbc11/{ojdbc-version}/ojdbc11-{ojdbc-version}.jar  // <8>
   ...
 ----
 +
-The following list describes select fields in the preceding `KafkaConnect` custom resource example:
+.Descriptions of Kafka Connect configuration settings
+[cols="1,7",options="header",subs="+attributes"]
+|===
+|Item |Description
 
-`metadata.annotations` (`strimzi.io/use-connector-resources`)::
-Sets the `strimzi.io/use-connector-resources` annotation to `true` to enable the Cluster Operator to use `KafkaConnector` resources to configure connectors in this Kafka Connect cluster.
+|1
+|Sets the `strimzi.io/use-connector-resources` annotation to `"true"` to enable the Cluster Operator to use `KafkaConnector` resources to configure connectors in this Kafka Connect cluster.
 
-`spec.build`::
-Specifies where to store the build image and lists the plug-ins to include in the image, along with the location of the plug-in artifacts.
+|2
+|The `spec.build` configuration specifies where to store the build image and lists the plug-ins to include in the image, along with the location of the plug-in artifacts.
 
-`build.output`::
-Specifies the registry in which the newly built image is stored.
+|3
+|The `build.output` specifies the registry in which the newly built image is stored.
 
-`output.type`::
-Specifies the name and image name for the image output.
-Valid values are `docker` to push into a container registry such as Quay, or `imagestream` to push the image to an internal OpenShift ImageStream.
+|4
+|Specifies the name and image name for the image output.
+Valid values for `output.type` are `docker` to push into a container registry such as Quay, or `imagestream` to push the image to an internal OpenShift ImageStream.
 To use an ImageStream, an ImageStream resource must be deployed to the cluster.
-For more information about specifying the `build.output` in the KafkaConnect configuration, see the link:{LinkStreamsAPIReference}#type-Build-reference[Build schema reference] in the {NameStreamsAPIReference}.
+For more information about specifying the `build.output` in the KafkaConnect configuration, see the link:{LinkConfiguringStreamsOpenShift}#type-Build-reference[{StreamsName} Build schema reference] in {NameConfiguringStreamsOpenShift}.
 
-//     Future changes to the Streams content or structure could break this link in future releases.
-//     Consider removing it.
-
-`spec.plugins`::
-Lists all of the connectors that you want to include in the Kafka Connect image.
-For each entry in the list, specify a plug-in `name`, and information about the artifacts that are required to build the connector.
+|5
+|The `plugins` configuration lists all of the connectors that you want to include in the Kafka Connect image.
+For each entry in the list, specify a plug-in `name`, and information for about the artifacts that are required to build the connector.
 Optionally, for each connector plug-in, you can include other components that you want to be available for use with the connector.
 For example, you can add Service Registry artifacts, or the {prodname} scripting component.
 
-`artifacts.type`::
-Specifies the file type of the artifact specified in the `artifacts.url`.
+|6
+|The value of `artifacts.type` specifies the file type of the artifact specified in the `artifacts.url`.
 Valid types are `zip`, `tgz`, or `jar`.
-{prodname} provides connector archives in .zip file format.
+{prodname} connector archives are provided in `.zip` file format.
 JDBC driver files are in `.jar` format.
-The type value of the artifact must match the extension of the file that is referenced in the `url` field.
+The `type` value must match the type of the file that is referenced in the `url` field.
 
-`artifacts.url` (connector archive)::
-Specifies the address of an HTTP server, such as a Maven repository, that stores the file for the connector artifact.
+|7
+|The value of `artifacts.url` specifies the address of an HTTP server, such as a Maven repository, that stores the file for the connector artifact.
 The OpenShift cluster must have access to the specified server.
 
-`artifacts.url` (JDBC driver)::
-(For Db2 or Oracle sinks only) Specifies the location of the {connector-name} JDBC driver in Maven Central.
+|8
+|(For Db2 or Oracle sinks only) Specifies the location of the {connector-name} JDBC driver in Maven Central.
 The drivers that are required for {prodname} to connect to these databases are not included in the {prodname} connector archives.
 
 The example provides the Maven URL for the Oracle Database JDBC driver.
@@ -1440,55 +1285,56 @@ For example, create the following `KafkaConnector` CR, and save it as `orders-to
 apiVersion: kafka.strimzi.io/v1beta2
 kind: KafkaConnector
 metadata:
-  name: orders-topic-to-postgresql-via-jdbc-sink-connector
+  name: orders-topic-to-postgresql-via-jdbc-sink-connector // <1>
   labels: strimzi.io/cluster: debezium-kafka-connect-cluster
 spec:
-  class: io.debezium.connector.jdbc.JdbcSinkConnector
-  tasksMax: 1
-   config:
-    connection.url: jdbc://postgresql://<host>:<port>/<database-name>
-    connection.username: <database-user>
-    connection.password: <database-pwd>
+  class: io.debezium.connector.jdbc.JdbcSinkConnector  // <2>
+  tasksMax: 1  // <3>
+   config:  // <4>
+    connection.url: jdbc://postgresql://<host>:<port>/<database-name> // <5>
+    connection.username: <database-user>  // <6>
+    connection.password: <database-pwd>  // <7>
     insert.mode: upsert
     delete.enabled: true
-    topics: orders
+    topics: orders // <8>
     primary.key.mode: record_key
     schema.evolution: basic
     use.time.zone: UTC
 ----
 +
-The following list describes select fields in the preceding `KafkaConnector` configuration example:
+.Descriptions of connector configuration settings
+[cols="1,7",options="header",subs="+attributes"]
+|===
+|Item |Description
 
-`metadata.name`::
-The name of the Kafka connector instance that {StreamsName} creates in Kafka Connect.
+|1
+|The name of the connector to register with the Kafka Connect cluster.
 
-`metadata.labels: strimzi.io/cluster`::
-Identifies the KafkaConnect cluster resource that hosts the connector.
-{StreamsName} uses this label to associate the KafkaConnector with a specific KafkaConnect deployment.
+|2
+|The name of the connector class.
 
-`spec.class`::
-The name of the connector class.
+|3
+|The number of tasks that can operate concurrently.
 
-`spec.tasksMax`::
-The number of tasks that can operate concurrently.
+|4
+|The connector’s configuration.
 
-`spec.config`::
-The connector's configuration.
-
-`connection.url`::
-The JDBC connection URL for the sink database.
+|5
+|The JDBC connection URL for the sink database.
 The URL specifies the port number and any authentication properties that are required to connect to the database.
 For example, `jdbc:oracle:thin:@myhost.example.com:1521/myservice`
 
-`connection.username`::
-The name of the account that {prodname} uses to connect to the database.
+|6
+|The name of the account that {prodname} uses to connect to the database.
 
-`connection.password`::
-The password that {prodname} uses to connect to the database user account.
+|7
+|The password that {prodname} uses to connect to the database user account.
 
-`topics`::
-Specifies a comma-separated list of Kafka topics that the connector reads.
+|8
+|Specifies a comma-separated list of Kafka topics that the connector reads.
 Events from each topic are streamed to tables with the same name in the sink database.
+
+|===
 
 5. Create the connector resource by running the following command:
 +
@@ -1551,10 +1397,10 @@ For example, from a terminal window, enter the following command:
 
 [source,shell,subs="+attributes,+quotes"]
 ----
-cat <<EOF >debezium-jdbc-connector-container.yaml
+cat <<EOF >debezium-jdbc-connector-container.yaml // <1>
 FROM {DockerKafkaConnect}
 USER root:root
-RUN mkdir -p /opt/kafka/plugins/debezium
+RUN mkdir -p /opt/kafka/plugins/debezium // <2>
 RUN cd /opt/kafka/plugins/debezium/ \
 && curl -O {red-hat-maven-repository}debezium/debezium-connector-{connector-file}/{debezium-version}-redhat-{debezium-build-number}/debezium-connector-{connector-file}-{debezium-version}-redhat-{debezium-build-number}-plugin.zip \
 && unzip debezium-connector-{connector-file}-{debezium-version}-redhat-{debezium-build-number}-plugin.zip \
@@ -1566,15 +1412,19 @@ EOF
 ----
 =====================================================================
 +
-The following list describes the purpose of select lines in the preceding command:
+.Descriptions of Containerfile settings for building a custom Kafka Connect container image
+[cols="1,7",options="header"]
+|===
+|Item |Description
 
-`debezium-jdbc-connector-container.yaml`::
-Defines the name for the Containerfile.
-You can specify any file name that you want.
+|1
+|You can specify any file name that you want.
 
-`/opt/kafka/plugins/debezium`::
-Specifies the path to your Kafka Connect plug-ins directory.
+|2
+|Specifies the path to your Kafka Connect plug-ins directory.
 If your Kafka Connect plug-ins directory is in a different location, replace this path with the actual path of your directory.
+
+|===
 +
 The command creates a Containerfile with the name `debezium-jdbc-connector-container.yaml` in the current directory.
 
@@ -1618,22 +1468,26 @@ kind: KafkaConnect
 metadata:
   name: debezium-kafka-connect-cluster
   annotations:
-    strimzi.io/use-connector-resources: "true"
+    strimzi.io/use-connector-resources: "true" // <1>
 spec:
-  image: debezium-jdbc-connector-container
+  image: debezium-jdbc-connector-container // <2>
 
   ...
 ----
 =====================================================================
 +
-The following list describes select fields in the preceding `KafkaConnect` custom resource example:
+[cols="1,7",options="header"]
+|===
+|Item |Description
 
-`metadata.annotations` (`strimzi.io/use-connector-resources`)::
-You must set `metadata.annotations` to `true` to permit the Cluster Operator to use `KafkaConnector` resources to configure {prodname} connectors in the cluster.
+|1
+|You must set `metadata.annotations` to `true` to permit the Cluster Operator to use `KafkaConnector` resources to configure {prodname} connectors in the cluster.
 
-`spec.image`::
-Specifies the name of the image that you created to run your {prodname} connector.
+|2
+|`spec.image` specifies the name of the image that you created to run your {prodname} connector.
 This property overrides the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable in the Cluster Operator.
+
+|===
 
 .. Apply the `KafkaConnect` CR to the OpenShift Kafka Connect environment by entering the following command:
 +
@@ -1661,45 +1515,49 @@ apiVersion: {KafkaConnectApiVersion}
 kind: KafkaConnector
 metadata:
   labels:
-  strimzi.io/cluster: my-connect-cluster
-  name: orders-topic-to-postgresql-via-jdbc-sink-connector
+  strimzi.io/cluster: my-connect-cluster // <1>
+  name: orders-topic-to-postgresql-via-jdbc-sink-connector // <2>
 ...
 spec:
-  class: io.debezium.connector.jdbc.JdbcSinkConnector
+  class: io.debezium.connector.jdbc.JdbcSinkConnector // <3>
 ...
   config:
-    connection.url: jdbc:<_{context}_>://<_database-host_>:5432/<_database-name_>
-    connection.username: "<_database-user_>"
-    connection.password: "<_database-password_>"
-    topics: orders
+    connection.url: jdbc:<_{context}_>://<_database-host_>:5432/<_database-name_>  // <4>
+    connection.username: "<_database-user_>" // <5>
+    connection.password: "<_database-password_>" // <6>
+    topics: orders // <7>
 
 ----
 =====================================================================
 +
-The following list describes select fields in the preceding `KafkaConnector` configuration example:
+.Descriptions of connector configuration settings
+[cols="1,7",options="header",subs="+attributes"]
+|===
+|Item |Description
 
-`metadata.labels` (`strimzi.io/cluster`)::
-Identifies the KafkaConnect cluster resource that hosts the connector.
-{StreamsName} uses this label associate the KafkaConnector with a specific KafkaConnect deployment.
+|1
+|The connector name that is registered with the Kafka Connect service.
 
-`metadata.name`::
-The connector name that is registered with the Kafka Connect service.
+|2
+|The name of the {StreamsName} cluster.
 
-`spec.class`::
-The name of the {prodname} JDBC connector class.
+|3
+|The name of the {prodname} JDBC connector class.
 
-`connection.url`::
-The JDBC address of the sink database.
+|4
+|The JDBC address of the sink database.
 
-`connection.username`::
-The name of the account that {prodname} uses to connect to the database.
+|5
+|The name of the account that {prodname} uses to connect to the database.
 
-`connection.password`::
-The password that {prodname} uses to authenticate to the database user account.
+|6
+|The password that {prodname} uses to authenticate to the database user account.
 
-`topics`::
-Specifies a comma-separated list of Kafka topics that the connector reads.
+|7
+|Specifies a comma-separated list of Kafka topics that the connector reads.
 Events from each topic are streamed to tables with the same name in the sink database.
+
+|===
 
 . Create your connector instance with Kafka Connect.
   For example, if you saved your `KafkaConnector` resource in the `jdbc-connector.yaml` file, you would run the following command:
@@ -1726,65 +1584,68 @@ The following example shows a JSON request for registering an instance of the {p
 [source,json,indent=0,subs="+quotes"]
 ----
 {
-    "name": "jdbc-connector",
+    "name": "jdbc-connector",  // <1>
     "config": {
-        "connector.class": "io.debezium.connector.jdbc.JdbcSinkConnector",
-        "tasks.max": "1",
-        "connection.url": "jdbc:postgresql://localhost/db",
-        "connection.username": "pguser",
-        "connection.password": "pgpassword",
-        "insert.mode": "upsert",
-        "delete.enabled": "true",
-        "primary.key.mode": "record_key",
-        "schema.evolution": "basic",
-        "use.time.zone": "UTC",
-        "topics": "orders"
+        "connector.class": "io.debezium.connector.jdbc.JdbcSinkConnector",  // <2>
+        "tasks.max": "1",  // <3>
+        "connection.url": "jdbc:postgresql://localhost/db",  // <4>
+        "connection.username": "pguser",  // <5>
+        "connection.password": "pgpassword",  // <6>
+        "insert.mode": "upsert",  // <7>
+        "delete.enabled": "true",  // <8>
+        "primary.key.mode": "record_key",  // <9>
+        "schema.evolution": "basic",  // <10>
+        "use.time.zone": "UTC",  // <11>
+        "topics": "orders" // <12>
     }
 }
 ----
+Descriptions of JDBC connector configuration settings
+[cols="1,7",options="header",subs="+attributes"]
+|===
+|Item |Description
 
-The following list describes select fields in the preceding connector configuration example:
+|1
+|The name that is assigned to the connector when you register it with Kafka Connect service.
 
-`name`::
-The name that is assigned to the connector when you register it with Kafka Connect service.
+|2
+|The name of the JDBC sink connector class.
 
-`connector.class`::
-The name of the JDBC sink connector class.
+|3
+|The maximum number of tasks to create for this connector.
 
-`tasks.max`::
-The maximum number of tasks to create for this connector.
+|4
+|The JDBC URL that the connector uses to connect to the sink database that it writes to.
 
-`connection.url`::
-The JDBC URL that the connector uses to connect to the sink database that it writes to.
+|5
+|The name of the database user that is used for authentication.
 
-`connection.username`::
-The name of the database user that is used for authentication.
+|6
+|The password of the database user used for authentication.
 
-`connection.password`::
-The password of the database user used for authentication.
+|7
+|The xref:jdbc-property-insert-mode[insert.mode] that the connector uses.
 
-`insert.mode`::
-The xref:jdbc-property-insert-mode[insert.mode] that the connector uses.
-
-`delete.enabled`::
-Enables the deletion of records in the database.
+|8
+|Enables the deletion of records in the database.
 For more information, see the xref:jdbc-property-delete-enabled[delete.enabled] configuration property.
 
-`primary.key.mode`::
-Specifies the method used to resolve primary key columns.
+|9
+|Specifies the method used to resolve primary key columns.
 For more information, see the xref:jdbc-property-primary-key-mode[primary.key.mode] configuration property.
 
-`schema.evolution`::
-Enables the connector to evolve the destination database's schema.
+|10
+|Enables the connector to evolve the destination database's schema.
 For more information, see the xref:jdbc-property-schema-evolution[schema.evolution] configuration property.
 
-`use.time.zone`::
-Specifies the timezone used when writing temporal field types.
+|11
+|Specifies the timezone used when writing temporal field types.
 
-`topics`::
-List of topics to consume, separated by commas.
+|12
+|List of topics to consume, separated by commas.
 
-ifdef::community[]
+|===
+
 For a SingleStore sink, set `connection.url` to a SingleStore JDBC URL.
 For example:
 
@@ -1797,7 +1658,6 @@ For example:
     "connection.password": "<_password_>"
 }
 ----
-endif::community[]
 
 For a complete list of configuration properties that you can set for the {prodname} JDBC connector, see xref:jdbc-connector-properties[JDBC connector properties].
 
@@ -1892,8 +1752,6 @@ Information about the properties is organized as follows:
 [[jdbc-connector-properties-kafka-consumer]]
 === JDBC connector Kafka consumer properties
 
-The following table describes the Kafka consumer properties that control how the {prodname} JDBC sink connector identifies itself to Kafka Connect and specifies the topics it consumes.
-
 [cols="30%a,25%a,45%a"]
 |===
 |Property |Default |Description
@@ -1938,8 +1796,6 @@ Do not use this property in combination with the xref:jdbc-property-connection-t
 // Type: reference
 [[jdbc-connector-properties-connection]]
 === JDBC connector connection properties
-
-The following table describes the properties that control how the {prodname} JDBC sink connector connects to and authenticates with the destination database, including connection pool settings.
 
 [cols="30%a,25%a,45%a"]
 |===
@@ -1992,8 +1848,6 @@ Use with caution where strong data consistency is required.
 // Type: reference
 [[jdbc-connector-properties-runtime]]
 === JDBC connector runtime properties
-
-The following table describes the runtime properties that control how the {prodname} JDBC sink connector processes events and writes data to the destination database, including insert mode, primary key resolution, schema evolution, and batching behavior.
 
 [cols="30%a,25%a,45%a"]
 |===
@@ -2115,14 +1969,12 @@ For information about the performance benefits of enabling the UNNEST function, 
 |Specifies whether the connector automatically sets an `IDENTITY_INSERT` before an `INSERT` or `UPSERT` operation into the identity column of SQL Server tables, and then unsets it immediately after the operation.
 When the default setting (`false`) is in effect, an `INSERT` or `UPSERT` operation into the `IDENTITY` column of a table results in a SQL exception.
 
-ifdef::community[]
 |[[jdbc-property-dialect-starrocks-catalog-name]]<<jdbc-property-dialect-starrocks-catalog-name, `+dialect.starrocks.catalog.name+`>>
 |No default
 |Specifies the name of the StarRocks catalog that the connector writes into.
 When this property is set, the connector executes `SET CATALOG <_name_>` on every new connection before any session work.
 The value must be a valid StarRocks catalog name, that is, it may contain only letters, digits, and underscores, and must not start with a digit; other values are rejected during configuration validation.
 The StarRocks JDBC driver also supports specifying the catalog directly in the connection URL, for example, `jdbc:starrocks://<_host_>:9030/<_catalog_>.<_database_>`.
-endif::community[]
 
 |[[jdbc-property-batch-size]]<<jdbc-property-batch-size, `+batch.size+`>>
 |`500`
@@ -2144,8 +1996,6 @@ Choose one of the following settings:
 `true`:: The connector uses the reduction buffer to reduce change events before it writes them to the sink database.
 That is, if multiple events refer to the same primary key, the connector consolidates the SQL queries and writes only a single logical SQL change, based on the row state that is reported in the most recent offset record.
 Choose this option to reduce the SQL load on the target database.
-Do not enable the reduction buffer if destination constraints create dependencies between records with different primary keys.
-Reduction by primary key can remove intermediate row states that are required to satisfy secondary unique constraints.
 
 To optimize query processing in a PostgreSQL sink database when the reduction buffer is enabled, you must also enable the database to execute the batched queries by adding the `reWriteBatchedInserts` parameter to the JDBC connection URL.
 
@@ -2176,24 +2026,11 @@ If the number of retries exceeds the retry value, the sink connector enters a _F
 When you set both the `flush.retry.delay.ms` and xref:jdbc-property-flush-max-retries[`flush.max.retries`] properties, it can affect the behavior of the Kafka link:https://kafka.apache.org/documentation/#consumerconfigs_max.poll.interval.ms[max.poll.interval.ms] property.
 To prevent the connector from rebalancing, set the total retry time (flush.retry.delay.ms * flush.max.retries) to a value that is less than the value of `max.poll.interval.ms` (default is 5 minutes).
 ====
-
-|[[jdbc-property-timestamp-clamp-out-of-range-values]]<<jdbc-property-timestamp-clamp-out-of-range-values, `+timestamp.clamp.out.of.range.values+`>>
-|`false`
-|Specifies whether the connector clamps temporal values that the target database cannot represent to the minimum or maximum timestamp that the database supports.
-
-Some source databases can store temporal values that exceed the range of the target database.
-For example, an Oracle source can emit BC-era timestamps, which cannot be stored in a MySQL `TIMESTAMP` column, whose range begins at the UNIX epoch, or in a SQL Server `datetime2` column, whose range begins at year 1.
-When this property is set to `true`, the connector replaces such values with the target database's minimum or maximum supported timestamp, mirroring the way that it converts the explicit `infinity` and `-infinity` markers that a PostgreSQL source emits.
-When this property is set to `false` (the default), the connector passes out-of-range values to the target database unchanged, which typically causes the write to fail.
-
-Clamping alters the stored value; enable this option only when a lossy representation of out-of-range timestamps is acceptable for downstream consumers.
 |===
 
 // Type: reference
 [[jdbc-connector-properties-extendable]]
 === JDBC connector extendable properties
-
-The following table describes the properties that allow you to customize the naming strategies the {prodname} JDBC sink connector uses to resolve destination table names and column names from incoming event data.
 
 [cols="30%a,25%a,45%a"]
 |===
@@ -2233,8 +2070,6 @@ For example, to assist Hibernate in resolving the type and version of the target
 // Title: JDBC connector frequently asked questions
 [[jdbc-faq]]
 == Frequently asked questions
-
-The following questions and answers address common decisions and scenarios when you configure and operate the {prodname} JDBC sink connector, including event transformation requirements, schema evolution limitations, data type mapping, and table naming options.
 
 *Is the* `ExtractNewRecordState` *single message transformation required?*::
 No, that is actually one of the differentiating factors of the {prodname} JDBC connector from other implementations.

@@ -214,9 +214,10 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
         int expected = decoderPlugin() == PostgresConnectorConfig.LogicalDecoder.PGOUTPUT ? 6 : 7;
         assertThat(runningEvents).hasSize(expected);
 
+        String pkValue = decoderPlugin() == PostgresConnectorConfig.LogicalDecoder.PGOUTPUT ? "int4" : "serial";
         assertCorrectInputDataset(runningEvents.get(1).getInputs(), "postgres.s1.a", List.of("pk;serial", "aa;int4"));
         assertCorrectInputDataset(runningEvents.get(2).getInputs(), "postgres.s2.a", List.of("pk;serial", "aa;int4"));
-        assertCorrectInputDataset(runningEvents.get(5).getInputs(), "postgres.s1.a", List.of("pk;serial", "aa;int4", "bb;varchar"));
+        assertCorrectInputDataset(runningEvents.get(5).getInputs(), "postgres.s1.a", List.of("pk;" + pkValue, "aa;int4", "bb;varchar"));
     }
 
     @Test

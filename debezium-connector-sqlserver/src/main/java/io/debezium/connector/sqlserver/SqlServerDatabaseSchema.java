@@ -34,8 +34,6 @@ import io.debezium.spi.topic.TopicNamingStrategy;
 public class SqlServerDatabaseSchema extends HistorizedRelationalDatabaseSchema {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SqlServerDatabaseSchema.class);
-    private static final int SQL_SERVER_MAX_BYTE_LENGTH = Integer.MAX_VALUE;
-    private static final int SQL_SERVER_MAX_NATIONAL_CHARACTER_LENGTH = Integer.MAX_VALUE / 2;
 
     public SqlServerDatabaseSchema(SqlServerConnectorConfig connectorConfig, SqlServerDefaultValueConverter defaultValueConverter,
                                    ValueConverterProvider valueConverter, TopicNamingStrategy<TableId> topicNamingStrategy,
@@ -91,23 +89,7 @@ public class SqlServerDatabaseSchema extends HistorizedRelationalDatabaseSchema 
      * @return {@code true} if the column is a max-type column
      */
     public static boolean isMaxColumn(Column column) {
-        return isMaxColumn(column.jdbcType(), column.length());
-    }
-
-    private static boolean isMaxColumn(int jdbcType, int length) {
-        switch (jdbcType) {
-            case Types.LONGVARCHAR:
-            case Types.LONGNVARCHAR:
-            case Types.LONGVARBINARY:
-                return true;
-            case Types.VARCHAR:
-            case Types.VARBINARY:
-                return length == SQL_SERVER_MAX_BYTE_LENGTH;
-            case Types.NVARCHAR:
-                return length == SQL_SERVER_MAX_NATIONAL_CHARACTER_LENGTH;
-            default:
-                return false;
-        }
+        return isMaxColumnJdbcType(column.jdbcType());
     }
 
     /**
@@ -118,7 +100,9 @@ public class SqlServerDatabaseSchema extends HistorizedRelationalDatabaseSchema 
      * @return {@code true} if the JDBC type is a max-type
      */
     public static boolean isMaxColumnJdbcType(int jdbcType) {
-        return isMaxColumn(jdbcType, Column.UNSET_INT_VALUE);
+        return jdbcType == Types.LONGVARCHAR
+                || jdbcType == Types.LONGNVARCHAR
+                || jdbcType == Types.LONGVARBINARY;
     }
 
 }

@@ -49,7 +49,7 @@
         <version.jedis>6.0.0</version.jedis>
 
         <!-- S3 -->
-        <version.s3>2.53.1</version.s3>
+        <version.s3>2.26.30</version.s3>
 
         <!-- Blob Storage -->
         <version.azure.blob>12.29.0</version.azure.blob>
@@ -142,7 +142,7 @@
                 <version>${version.hibernate}</version>
             </dependency>
             <dependency>
-                <groupId>org.hibernate.orm</groupId>
+                <groupId>org.hibernate</groupId>
                 <artifactId>hibernate-agroal</artifactId>
                 <version>${version.hibernate}</version>
             </dependency>

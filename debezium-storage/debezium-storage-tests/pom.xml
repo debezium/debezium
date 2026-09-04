@@ -14,8 +14,6 @@
     <properties>
         <!-- S3 -->
         <version.s3mock>3.10.0</version.s3mock>
-        <!-- Apache HttpClient 4, no longer provided transitively by AWS SDK apache-client (v2.53+ uses HttpClient 5) -->
-        <version.httpclient>4.5.14</version.httpclient>
 
         <!-- Azurite -->
         <version.azurite>3.33.0</version.azurite>
@@ -117,12 +115,6 @@
         <dependency>
             <groupId>com.adobe.testing</groupId>
             <artifactId>s3mock-testcontainers</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.httpcomponents</groupId>
-            <artifactId>httpclient</artifactId>
-            <version>${version.httpclient}</version>
             <scope>test</scope>
         </dependency>
 

@@ -48,7 +48,7 @@ public class StructuredTimestampType extends AbstractTimestampType {
         if (value == null) {
             return List.of(new ValueBindDescriptor(index, null));
         }
-        final LocalDateTime localDateTime = clampIfOutOfRange(StructuredTemporalSupport.toLocalDateTime(requireStruct(value)));
+        final LocalDateTime localDateTime = StructuredTemporalSupport.toLocalDateTime(requireStruct(value));
         return List.of(new ValueBindDescriptor(index, localDateTime, getJdbcType()));
     }
 }

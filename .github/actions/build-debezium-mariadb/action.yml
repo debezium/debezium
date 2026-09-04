@@ -5,10 +5,6 @@ inputs:
   maven-cache-key:
     description: "The maven build cache key"
     required: true
-  maven-cache-save:
-    description: "Whether to save the Maven cache after the job completes"
-    required: false
-    default: 'true'
   only-build:
     description: "Only build without tests, checkstyle, and format"
     required: false
@@ -16,7 +12,7 @@ inputs:
   version-mariadb-server:
     description: "The MariaDB server version to use"
     required: false
-    default: "11.4"
+    default: "11.4.3"
   profile:
     description: "The MariaDB build profile to use"
     required: false
@@ -34,7 +30,6 @@ runs:
     - uses: ./.github/actions/maven-cache
       with:
         key: ${{ inputs.maven-cache-key }}
-        save: ${{ inputs.maven-cache-save }}
 
     - name: Build MariaDB connector (MariaDB ${{ inputs.version-mariadb-server }} - ${{ inputs.profile }})
       shell: ${{ inputs.shell }}

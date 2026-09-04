@@ -692,7 +692,7 @@ public final class MathOps {
     }
 
     public static Number add(BigInteger first, BigInteger second) {
-        return first.add(second);
+        return second.add(second);
     }
 
     public static Number add(BigInteger first, AtomicInteger second) {
@@ -779,7 +779,7 @@ public final class MathOps {
     }
 
     public static Number add(BigDecimal first, BigInteger second) {
-        return first.add(new BigDecimal(second));
+        return second.add(second);
     }
 
     public static Number add(BigDecimal first, AtomicInteger second) {

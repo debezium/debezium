@@ -6,22 +6,14 @@
 package io.debezium.connector.mongodb;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.mock;
 
 import java.util.Arrays;
-import java.util.List;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.ConfigKey;
 import org.apache.kafka.common.config.ConfigDef.Type;
-import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.connector.Connector;
 import org.junit.jupiter.api.Test;
-
-import com.mongodb.connection.ClusterType;
-
-import io.debezium.connector.mongodb.connection.MongoDbConnectionContext;
 
 /**
  * @author Randall Hauch
@@ -62,41 +54,6 @@ public class MongoDbConnectorTest {
             assertThat(key.validator).isNull();
             assertThat(key.recommender).isNull();
         });
-    }
-
-    @Test
-    void validateClusterTopologyShouldRejectStandaloneServer() {
-        assertThat(validateTopology(ClusterType.STANDALONE, true))
-                .hasSize(1)
-                .element(0).asString()
-                .contains("standalone")
-                .contains("replica set or sharded cluster");
-    }
-
-    @Test
-    void validateClusterTopologyShouldAcceptSupportedTopologies() {
-        assertThat(validateTopology(ClusterType.REPLICA_SET, true)).isEmpty();
-        assertThat(validateTopology(ClusterType.SHARDED, true)).isEmpty();
-        assertThat(validateTopology(ClusterType.LOAD_BALANCED, true)).isEmpty();
-        assertThat(validateTopology(ClusterType.UNKNOWN, true)).isEmpty();
-    }
-
-    @Test
-    void validateClusterTopologyShouldRequireReplicaSetName() {
-        assertThat(validateTopology(ClusterType.REPLICA_SET, false))
-                .hasSize(1)
-                .element(0).asString()
-                .contains("Replica set not specified");
-    }
-
-    private static List<String> validateTopology(ClusterType clusterType, boolean hasReplicaSetNameIfRequired) {
-        var connectionContext = mock(MongoDbConnectionContext.class);
-        given(connectionContext.getClusterType()).willReturn(clusterType);
-        given(connectionContext.hasReplicaSetNameIfRequired()).willReturn(hasReplicaSetNameIfRequired);
-
-        var validation = new ConfigValue(MongoDbConnectorConfig.CONNECTION_STRING.name());
-        MongoDbConnector.validateClusterTopology(connectionContext, validation);
-        return validation.errorMessages();
     }
 
 }

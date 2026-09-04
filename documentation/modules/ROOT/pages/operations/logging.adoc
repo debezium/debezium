@@ -62,35 +62,40 @@ Because each appender delegates message formatting to an associated Layout, you 
 
 If you are running {prodname} connectors in a Kafka Connect process,
 then Kafka Connect uses the Log4j configuration file (for example, `/opt/kafka/config/connect-log4j.properties`) in the Kafka installation.
-The following block shows an example of a default configuration in `connect-log4j.properties`:
+By default, this file contains the following configuration:
 
+.Default configuration in `connect-log4j.properties`
 ====
 [source,properties,options="nowrap"]
 ----
-log4j.rootLogger=INFO, stdout
+log4j.rootLogger=INFO, stdout  // <1>
 
-log4j.appender.stdout=org.apache.log4j.ConsoleAppender
-log4j.appender.stdout.layout=org.apache.log4j.PatternLayout
-log4j.appender.stdout.layout.ConversionPattern=[%d] %p %m (%c)%n
+log4j.appender.stdout=org.apache.log4j.ConsoleAppender  // <2>
+log4j.appender.stdout.layout=org.apache.log4j.PatternLayout  // <3>
+log4j.appender.stdout.layout.ConversionPattern=[%d] %p %m (%c)%n  // <4>
 ...
 ----
 ====
+.Descriptions of default `connect-log4j.properties` settings
+[cols="1,7",options="header",subs="+attributes"]
+|===
+|Property |Description
 
-The following list describes select fields in the preceding `connect-log4j.properties` configuration:
-
-`log4j.rootLogger`::
-The root logger, which defines the default logger configuration.
+|1
+|The root logger, which defines the default logger configuration.
 By default, loggers include `INFO`, `WARN`, and `ERROR` messages.
 These log messages are written to the `stdout` appender.
 
-`log4j.appender.stdout`::
-Directs the `stdout` appender to write log messages to the console, as opposed to a file.
+|2
+|Directs the `stdout` appender to write log messages to the console, as opposed to a file.
 
-`log4j.appender.stdout.layout`::
-Specifies that the `stdout` appender uses a pattern matching algorithm to format log messages.
+|3
+|Specifies that the `stdout` appender uses a pattern matching algorithm to format log messages.
 
-`log4j.appender.stdout.layout.ConversionPattern`::
-The pattern that the `stdout` appender uses (see the https://logging.apache.org/log4j/1.2/apidocs/org/apache/log4j/PatternLayout.html[Log4j documentation] for details).
+|4
+|The pattern that the `stdout` appender uses (see the https://logging.apache.org/log4j/1.2/apidocs/org/apache/log4j/PatternLayout.html[Log4j documentation] for details).
+
+|===
 
 Unless you configure other loggers,
 all of the loggers that {prodname} uses inherit the `rootLogger` configuration.
@@ -134,32 +139,39 @@ This means that you can control all of the log messages for a specific class or 
 
 . Configure a logger for the connector.
 +
-The following example shows a possible `connect-log4j.properties` configuration to enable loggers for a MySQL connector to monitor the connector's database schema history implementation at a `DEBUG` log level: 
+The following example configures loggers for the MySQL connector and for the database schema history implementation used by the connector,
+and sets them to log `DEBUG` level messages:
 +
+.connect-log4j.properties configuration to enable loggers and set the log level to `DEBUG`
 ====
 [source,properties,options="nowrap"]
 ----
 ...
-log4j.logger.io.debezium.connector.mysql=DEBUG, stdout
-log4j.logger.io.debezium.relational.history=DEBUG, stdout
+log4j.logger.io.debezium.connector.mysql=DEBUG, stdout  // <1>
+log4j.logger.io.debezium.relational.history=DEBUG, stdout  // <2>
 
-log4j.additivity.io.debezium.connector.mysql=false
+log4j.additivity.io.debezium.connector.mysql=false  // <3>
 log4j.additivity.io.debezium.storage.kafka.history=false
 ...
 ----
 ====
 +
-The following list describes select fields in the preceding `connect-log4j.properties` configuration:
+.Descriptions of `connect-log4j.properties` settings for enabling loggers and setting the log level
+[cols="1,7",options="header",subs="+attributes"]
+|===
+|Property |Description
 
-`log4j.logger.io.debezium.connector.mysql`::
-Configures the logger named `io.debezium.connector.mysql` to send `DEBUG`, `INFO`, `WARN`, and `ERROR` messages to the `stdout` appender.
+|1
+|Configures the logger named `io.debezium.connector.mysql` to send `DEBUG`, `INFO`, `WARN`, and `ERROR` messages to the `stdout` appender.
 
-`log4j.logger.io.debezium.relational.history`::
-Configures the logger named `io.debezium.relational.history` to send `DEBUG`, `INFO`, `WARN`, and `ERROR` messages to the `stdout` appender.
+|2
+|Configures the logger named `io.debezium.relational.history` to send `DEBUG`, `INFO`, `WARN`, and `ERROR` messages to the `stdout` appender.
 
-`log4j.additivity.io.debezium.connector.mysql`::
-This pair of `log4j.additivity.io` entries disable https://logging.apache.org/log4j/2.x/manual/configuration.html#additivity[additivity].
+|3
+|This pair of `log4j.additivity.io` entries disable https://logging.apache.org/log4j/2.x/manual/configuration.html#additivity[additivity].
 If you use multiple appenders, set `additivity` values to `false` to prevent duplicate log messages from being sent to the appenders of the parent loggers.
+
+|===
 
 . If necessary, change the logging level for a specific subset of the classes within the connector.
 +

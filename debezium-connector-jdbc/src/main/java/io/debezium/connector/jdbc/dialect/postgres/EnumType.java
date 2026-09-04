@@ -13,7 +13,6 @@ import io.debezium.connector.jdbc.type.AbstractType;
 import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.connector.jdbc.type.connect.ConnectStringType;
 import io.debezium.data.Enum;
-import io.debezium.sink.column.ColumnDescriptor;
 
 /**
  * An implementation of {@link JdbcType} for {@link Enum} column types.
@@ -29,23 +28,6 @@ class EnumType extends AbstractType {
     @Override
     public String[] getRegistrationKeys() {
         return new String[]{ Enum.LOGICAL_NAME };
-    }
-
-    @Override
-    public String getQueryBinding(ColumnDescriptor column, Schema schema, Object value) {
-        return "cast(? as %s)".formatted(quoteTypeName(column.getTypeName()));
-    }
-
-    /**
-     * Quotes the column's type name for use in a cast. The driver reports the name qualified and quoted
-     * only for a type that is not on the search path; otherwise it reports {@code pg_type.typname}
-     * verbatim, which PostgreSQL would fold to lower case unless it is quoted here.
-     */
-    private static String quoteTypeName(String typeName) {
-        if (typeName.startsWith("\"")) {
-            return typeName;
-        }
-        return "\"" + typeName.replace("\"", "\"\"") + "\"";
     }
 
     @Override

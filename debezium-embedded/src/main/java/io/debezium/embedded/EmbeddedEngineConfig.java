@@ -8,6 +8,8 @@ package io.debezium.embedded;
 import java.time.Duration;
 
 import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.connect.runtime.distributed.DistributedConfig;
+import org.apache.kafka.connect.runtime.standalone.StandaloneConfig;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Field;
@@ -55,7 +57,7 @@ public interface EmbeddedEngineConfig {
      *
      * @see #OFFSET_STORAGE
      */
-    Field OFFSET_STORAGE_FILE_FILENAME = Field.create("offset.storage.file.filename")
+    Field OFFSET_STORAGE_FILE_FILENAME = Field.create(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG)
             .withDescription("The file where offsets are to be stored. Required when "
                     + "'offset.storage' is set to the " + FILE_OFFSET_BACKING_STORE_CLASS + " class.")
             .withDefault("");
@@ -65,7 +67,7 @@ public interface EmbeddedEngineConfig {
      *
      * @see #OFFSET_STORAGE
      */
-    Field OFFSET_STORAGE_KAFKA_TOPIC = Field.create("offset.storage.topic")
+    Field OFFSET_STORAGE_KAFKA_TOPIC = Field.create(DistributedConfig.OFFSET_STORAGE_TOPIC_CONFIG)
             .withDescription("The name of the Kafka topic where offsets are to be stored. "
                     + "Required with other properties when 'offset.storage' is set to the "
                     + KAFKA_OFFSET_BACKING_STORE_CLASS + " class.")
@@ -76,7 +78,7 @@ public interface EmbeddedEngineConfig {
      *
      * @see #OFFSET_STORAGE
      */
-    Field OFFSET_STORAGE_KAFKA_PARTITIONS = Field.create("offset.storage.partitions")
+    Field OFFSET_STORAGE_KAFKA_PARTITIONS = Field.create(DistributedConfig.OFFSET_STORAGE_PARTITIONS_CONFIG)
             .withType(ConfigDef.Type.INT)
             .withDescription("The number of partitions used when creating the offset storage topic. "
                     + "Required with other properties when 'offset.storage' is set to the "
@@ -87,7 +89,7 @@ public interface EmbeddedEngineConfig {
      *
      * @see #OFFSET_STORAGE
      */
-    Field OFFSET_STORAGE_KAFKA_REPLICATION_FACTOR = Field.create("offset.storage.replication.factor")
+    Field OFFSET_STORAGE_KAFKA_REPLICATION_FACTOR = Field.create(DistributedConfig.OFFSET_STORAGE_REPLICATION_FACTOR_CONFIG)
             .withType(ConfigDef.Type.SHORT)
             .withDescription("Replication factor used when creating the offset storage topic. "
                     + "Required with other properties when 'offset.storage' is set to the "

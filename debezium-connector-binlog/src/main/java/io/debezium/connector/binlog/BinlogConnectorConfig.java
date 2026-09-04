@@ -396,19 +396,6 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
             .withDescription("Interval for connection checking if keep alive thread is used, given in milliseconds "
                     + "Defaults to 1 minute (60,000 ms).");
 
-    public static final Field KEEP_ALIVE_MAX_RECONNECT_ATTEMPTS = Field.create("connect.keep.alive.max.reconnect.attempts")
-            .withDisplayName("Keep alive maximum reconnect attempts")
-            .withType(ConfigDef.Type.INT)
-            .withWidth(ConfigDef.Width.SHORT)
-            .withImportance(ConfigDef.Importance.LOW)
-            .withDefault(0)
-            .withValidation(Field::isNonNegativeInteger)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED))
-            .withDescription("Number of consecutive attempts the keep alive thread makes to restore a lost binlog "
-                    + "connection before the connector fails. A connection that can never be restored otherwise "
-                    + "leaves the connector running without emitting any change events. Defaults to 0, meaning the "
-                    + "keep alive thread retries indefinitely.");
-
     public static final Field USE_NONGRACEFUL_DISCONNECT = Field.create("use.nongraceful.disconnect")
             .withDisplayName("Use Non-graceful Disconnect")
             .withType(ConfigDef.Type.BOOLEAN)
@@ -656,7 +643,7 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
                     RelationalDatabaseConnectorConfig.DATABASE_NAME)
             .group(Field.Group.CONNECTION, HOSTNAME, PORT, USER, PASSWORD, QUERY_TIMEOUT_MS, SERVER_ID)
             .group(Field.Group.CONNECTION_ADVANCED, ON_CONNECT_STATEMENTS, SERVER_ID_OFFSET, CONNECTION_TIMEOUT_MS, KEEP_ALIVE, KEEP_ALIVE_INTERVAL_MS,
-                    KEEP_ALIVE_MAX_RECONNECT_ATTEMPTS, USE_NONGRACEFUL_DISCONNECT, BINLOG_NET_WRITE_TIMEOUT, BINLOG_NET_READ_TIMEOUT)
+                    USE_NONGRACEFUL_DISCONNECT, BINLOG_NET_WRITE_TIMEOUT, BINLOG_NET_READ_TIMEOUT)
             .group(Field.Group.CONNECTION_ADVANCED_SSL, SSL_KEYSTORE, SSL_KEYSTORE_PASSWORD, SSL_TRUSTSTORE, SSL_TRUSTSTORE_PASSWORD)
             .group(Field.Group.CONNECTOR, BIGINT_UNSIGNED_HANDLING_MODE, TIME_PRECISION_MODE, ENABLE_TIME_ADJUSTER, SCHEMA_NAME_ADJUSTMENT_MODE, GTID_SOURCE_INCLUDES,
                     GTID_SOURCE_EXCLUDES, GTID_SOURCE_FILTER_DML_EVENTS)
@@ -963,13 +950,5 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
      */
     public long getBinlogNetReadTimeout() {
         return config.getLong(BINLOG_NET_READ_TIMEOUT);
-    }
-
-    /**
-     * @return the number of consecutive failed reconnect attempts after which the connector fails,
-     *         0 means the keep alive thread reconnects indefinitely
-     */
-    public int getKeepAliveMaxReconnectAttempts() {
-        return config.getInteger(KEEP_ALIVE_MAX_RECONNECT_ATTEMPTS);
     }
 }

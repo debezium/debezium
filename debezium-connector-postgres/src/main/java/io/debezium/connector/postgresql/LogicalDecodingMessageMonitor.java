@@ -108,7 +108,7 @@ public class LogicalDecodingMessageMonitor {
         sender.accept(new SourceRecord(partition.getSourcePartition(), offsetContext.getOffset(), topicName,
                 keySchema, key, value.schema(), value));
 
-        if (!message.isTransactional()) {
+        if (message.isLastEventForLsn()) {
             offsetContext.getTransactionContext().endTransaction();
         }
     }

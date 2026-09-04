@@ -1,5 +1,6 @@
-The following table lists the JMX metrics that are available for monitoring {prodname} snapshot operations, including row counts, table progress, duration, and queue capacity.
-Snapshot metrics are not exposed unless a snapshot operation is active, or a snapshot has occurred since the last connector start.
+Snapshot metrics are not exposed unless a snapshot operation is active, or if a snapshot has occurred since the last connector start.
+
+The following table lists the snapshot metrics that are available.
 
 [cols="35%a,20%a,45%a",options="header"]
 |===
@@ -24,10 +25,6 @@ If the snapshot is interrupted, and the connector task restarts, the metric coun
 |[[connectors-snaps-metric-totalnumberofeventsseen_{context}]]<<connectors-snaps-metric-totalnumberofeventsseen_{context}, `TotalNumberOfEventsSeen`>>
 |`long`
 |The total number of events that this connector has seen since last started or reset.
-
-|[[connectors-snaps-metric-totalnumberofreadeventsseen_{context}]]<<connectors-snaps-metric-totalnumberofreadeventsseen_{context}, `TotalNumberOfReadEventsSeen`>>
-|`long`
-|The total number of read events that this connector has seen since last started or reset.
 
 |[[connectors-snaps-metric-numberofeventsfiltered_{context}]]<<connectors-snaps-metric-numberofeventsfiltered_{context}, `NumberOfEventsFiltered`>>
 |`long`

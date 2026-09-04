@@ -26,27 +26,11 @@ jobs:
     steps:
       - uses: debezium/dbz/.github/actions/check-dco@main
 
-  # Checks that the PR does not add or modify hidden files or directories outside the allow list
-  check-hidden-files:
-    name: "Check for hidden files"
-    runs-on: ubuntu-latest
-    steps:
-      - uses: debezium/dbz/.github/actions/check-hidden-files@main
-        with:
-          allowed-paths: ".asciidoctorconfig, .fmf, .packit.yaml, .run"
-
-  # Checks for malicious or adversarial Unicode patterns in changed files
-  check-unicode-safety:
-    name: "Check for malicious Unicode"
-    runs-on: ubuntu-latest
-    steps:
-      - uses: debezium/dbz/.github/actions/check-unicode-safety@main
-
   # This job is responsible for inspecting the changes in the repository and setting specific output variables
   # that subsequent jobs can use to determine whether a particular job should be skipped or included.
   file_changes:
     name: "Detect repository changes"
-    needs: [ check-signed-commits, check-hidden-files, check-unicode-safety ]
+    needs: [ check-signed-commits ]
     runs-on: ubuntu-latest
     outputs:
       ai-changed: ${{ steps.changed-files-ai.outputs.any_changed }}
@@ -694,4 +678,134 @@ jobs:
 
 
 
+  notify_pr_author:
+    name: "Notify PR Author"
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - check_style
+      - build_core
+      - build_cassandra
+      - build_db2
+      - build_ingres
+      - build_ibmi
+      - build_informix
+      - build_jdbc
+      - build_mariadb
+      - build_mongodb
+      - build_mysql
+      - build_oracle
+      - build_postgresql
+      - build_sqlserver
+      - build_spanner
+      - build_vitess
+      - build_cockroachdb
+      - apicurio_checks
+      - build_ai
+      - build_openlineage
+      - build_server
+      - build_schema_generator
+      - build_storage
+      - build_testing
+      - build_platform_conductor
 
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          sparse-checkout: |
+            .github/config/zulip-user-mapping.txt
+          sparse-checkout-cone-mode: false
+
+      - name: Determine overall result
+        id: result
+        run: |
+          # Check results of all jobs
+          RESULTS='${{ toJSON(needs) }}'
+          echo "Job results: $RESULTS"
+
+          # Count job statuses
+          SUCCESS_COUNT=$(echo "$RESULTS" | jq '[.[] | select(.result == "success")] | length')
+          FAILURE_COUNT=$(echo "$RESULTS" | jq '[.[] | select(.result == "failure")] | length')
+          CANCELLED_COUNT=$(echo "$RESULTS" | jq '[.[] | select(.result == "cancelled")] | length')
+          SKIPPED_COUNT=$(echo "$RESULTS" | jq '[.[] | select(.result == "skipped")] | length')
+
+          echo "success_count=$SUCCESS_COUNT" >> $GITHUB_OUTPUT
+          echo "failure_count=$FAILURE_COUNT" >> $GITHUB_OUTPUT
+          echo "cancelled_count=$CANCELLED_COUNT" >> $GITHUB_OUTPUT
+          echo "skipped_count=$SKIPPED_COUNT" >> $GITHUB_OUTPUT
+
+          # Determine overall status
+          if [ "$FAILURE_COUNT" -gt 0 ]; then
+            echo "overall_status=failed" >> $GITHUB_OUTPUT
+            echo "status_emoji=❌" >> $GITHUB_OUTPUT
+          elif [ "$CANCELLED_COUNT" -gt 0 ]; then
+            echo "overall_status=cancelled" >> $GITHUB_OUTPUT
+            echo "status_emoji=⚠️" >> $GITHUB_OUTPUT
+          else
+            echo "overall_status=success" >> $GITHUB_OUTPUT
+            echo "status_emoji=✅" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Read user mapping configuration
+        id: read-mapping
+        run: |
+          MAPPING_FILE=".github/config/zulip-user-mapping.txt"
+
+          if [ ! -f "$MAPPING_FILE" ]; then
+            echo "Mapping file not found: $MAPPING_FILE"
+            echo "user_found=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Get PR author's GitHub handle
+          GITHUB_HANDLE="${{ github.event.pull_request.user.login }}"
+          echo "PR author GitHub handle: $GITHUB_HANDLE"
+
+          # Parse text file format: github_handle,zulip_user_id
+          # Skip lines starting with # (comments) and empty lines
+          ZULIP_USER_ID=$(grep -v "^#" "$MAPPING_FILE" | grep -v "^$" | grep "^${GITHUB_HANDLE}," | cut -d',' -f2 | tr -d '[:space:]')
+
+          if [ -z "$ZULIP_USER_ID" ]; then
+            echo "No Zulip mapping found for GitHub user: $GITHUB_HANDLE"
+            echo "user_found=false" >> $GITHUB_OUTPUT
+          else
+            echo "Found Zulip user ID: $ZULIP_USER_ID"
+            echo "user_found=true" >> $GITHUB_OUTPUT
+            echo "zulip_user_id=$ZULIP_USER_ID" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Send Zulip private message
+        if: steps.read-mapping.outputs.user_found == 'true'
+        uses: zulip/github-actions-zulip/send-message@v2
+        with:
+          api-key: ${{ secrets.ZULIP_TOKEN }}
+          email: ${{ secrets.ZULIP_TOKEN_EMAIL_ADDRESS }}
+          organization-url: "https://debezium.zulipchat.com"
+          type: "private"
+          to: '[${{ steps.read-mapping.outputs.zulip_user_id }}]'
+          content: |
+            ${{ steps.result.outputs.status_emoji }} **PR Build Completed**
+
+            **PR Title:** ${{ github.event.pull_request.title }}
+            **PR Number:** #${{ github.event.pull_request.number }}
+            **Repository:** ${{ github.repository }}
+            **PR URL:** ${{ github.event.pull_request.html_url }}
+
+            **Build Results:**
+            - Overall Status: **${{ steps.result.outputs.overall_status }}**
+            - ✅ Successful: ${{ steps.result.outputs.success_count }}
+            - ❌ Failed: ${{ steps.result.outputs.failure_count }}
+            - ⚠️ Cancelled: ${{ steps.result.outputs.cancelled_count }}
+            - ⏭️ Skipped: ${{ steps.result.outputs.skipped_count }}
+
+            **Workflow Run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+      - name: Log notification status
+        run: |
+          if [ "${{ steps.read-mapping.outputs.user_found }}" = "true" ]; then
+            echo "✅ Zulip notification sent successfully to user ID: ${{ steps.read-mapping.outputs.zulip_user_id }}"
+            echo "Overall status: ${{ steps.result.outputs.overall_status }}"
+          else
+            echo "ℹ️ No Zulip notification sent - user not found in mapping file"
+          fi

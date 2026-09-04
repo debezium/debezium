@@ -30,7 +30,6 @@ import com.mongodb.ConnectionString;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
-import io.debezium.config.ConnectorConfigValidationHelper;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
@@ -49,6 +48,9 @@ import io.debezium.util.Strings;
 public class MongoDbConnectorConfig extends CommonConnectorConfig implements SharedMongoDbConnectorConfig {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbConnectorConfig.class);
+
+    protected static final String COLLECTION_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"collection.include.list\" is already specified";
+    protected static final String DATABASE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG = "\"database.include.list\" is already specified";
 
     protected static final Pattern PATTERN_SPILT = Pattern.compile(",");
 
@@ -1101,8 +1103,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
                     CURSOR_MAX_AWAIT_TIME_MS)
             .group(Field.Group.FILTERS, DATABASE_INCLUDE_LIST, DATABASE_EXCLUDE_LIST, COLLECTION_INCLUDE_LIST, COLLECTION_EXCLUDE_LIST, FIELD_EXCLUDE_LIST, FIELD_RENAMES,
                     SNAPSHOT_FILTER_QUERY_BY_COLLECTION)
-            .group(Field.Group.CONNECTOR, TOPIC_PREFIX, SNAPSHOT_MODE, CAPTURE_MODE, CAPTURE_SCOPE, CAPTURE_TARGET, JSON_SERIALIZATION_MODE, SCHEMA_NAME_ADJUSTMENT_MODE,
-                    SOURCE_INFO_STRUCT_MAKER)
+            .group(Field.Group.CONNECTOR, TOPIC_PREFIX, SNAPSHOT_MODE, CAPTURE_MODE, JSON_SERIALIZATION_MODE, SCHEMA_NAME_ADJUSTMENT_MODE, SOURCE_INFO_STRUCT_MAKER)
             .create();
 
     /**
@@ -1277,45 +1278,39 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
     }
 
     private static int validateCollectionExcludeList(Configuration config, Field field, ValidationOutput problems) {
-        return ConnectorConfigValidationHelper.validateExcludeField(config, COLLECTION_INCLUDE_LIST, COLLECTION_EXCLUDE_LIST, problems);
+        String includeList = config.getString(COLLECTION_INCLUDE_LIST);
+        String excludeList = config.getString(COLLECTION_EXCLUDE_LIST);
+        if (includeList != null && excludeList != null) {
+            problems.accept(COLLECTION_EXCLUDE_LIST, excludeList, COLLECTION_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
+            return 1;
+        }
+        return 0;
     }
 
     private static int validateDatabaseExcludeList(Configuration config, Field field, ValidationOutput problems) {
-        return ConnectorConfigValidationHelper.validateExcludeField(config, DATABASE_INCLUDE_LIST, DATABASE_EXCLUDE_LIST, problems);
+        String includeList = config.getString(DATABASE_INCLUDE_LIST);
+        String excludeList = config.getString(DATABASE_EXCLUDE_LIST);
+        if (includeList != null && excludeList != null) {
+            problems.accept(DATABASE_EXCLUDE_LIST, excludeList, DATABASE_INCLUDE_LIST_ALREADY_SPECIFIED_ERROR_MSG);
+            return 1;
+        }
+        return 0;
     }
 
     private static int validateCaptureTarget(Configuration config, Field field, ValidationOutput problems) {
         var value = config.getString(field);
-        var scope = CaptureScope.parse(config.getString(CAPTURE_SCOPE), CAPTURE_SCOPE.defaultValueAsString());
+        var scope = config.getString(MongoDbConnectorConfig.CAPTURE_SCOPE);
 
-        if (scope == null) {
-            // An invalid capture.scope value is reported by the capture.scope field validation
-            return 0;
+        if (value != null && CaptureScope.DEPLOYMENT.value.equals(scope)) {
+            LOGGER.warn("Config property '{}' will be ignored due to {}={}", field.name(), CAPTURE_SCOPE.name(), scope);
         }
 
-        switch (scope) {
-            case DEPLOYMENT:
-                if (value != null) {
-                    LOGGER.warn("Config property '{}' will be ignored due to {}={}", field.name(), CAPTURE_SCOPE.name(), scope.getValue());
-                }
-                return 0;
-            case DATABASE:
-                if (value == null) {
-                    problems.accept(field, null, "The '" + field.name() + "' property must be set to a database name when '"
-                            + CAPTURE_SCOPE.name() + "' is '" + scope.getValue() + "'");
-                    return 1;
-                }
-                return 0;
-            case COLLECTION:
-            default:
-                final String[] parts = value == null ? null : value.split("\\.");
-                if (parts == null || parts.length != 2 || parts[0].isBlank() || parts[1].isBlank()) {
-                    problems.accept(field, value, "The '" + field.name() + "' property must be set to '<databaseName>.<collectionName>' when '"
-                            + CAPTURE_SCOPE.name() + "' is '" + scope.getValue() + "'");
-                    return 1;
-                }
-                return 0;
+        if (value == null) {
+            problems.accept(field, null, field.name() + "property is missing");
+            return 1;
         }
+
+        return 0;
     }
 
     public SnapshotMode getSnapshotMode() {

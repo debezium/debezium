@@ -39,8 +39,6 @@ import io.debezium.connector.oracle.olr.client.payloads.Values;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
-import io.debezium.pipeline.monitor.OffsetActivityMonitor;
-import io.debezium.pipeline.monitor.OffsetActivityMonitorService;
 import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotContext;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.pipeline.txmetadata.TransactionContext;
@@ -69,12 +67,10 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
     private final OracleDatabaseSchema schema;
     private final OpenLogReplicatorStreamingChangeEventSourceMetrics streamingMetrics;
     private final SnapshotterService snapshotterService;
-    private final OffsetActivityMonitorService offsetActivityMonitorService;
 
     private OlrNetworkClient client;
     private OraclePartition partition;
     private OracleOffsetContext offsetContext;
-    private OffsetActivityMonitor<OraclePartition, OracleOffsetContext> offsetActivityMonitor;
     private boolean transactionEvents = false;
     /**
      * The position the connector had emitted up to when it last stopped.
@@ -100,7 +96,6 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
         this.schema = schema;
         this.streamingMetrics = streamingMetrics;
         this.snapshotterService = snapshotterService;
-        this.offsetActivityMonitorService = OffsetActivityMonitorService.lookup(connectorConfig.getServiceRegistry());
     }
 
     @Override
@@ -111,16 +106,6 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
     @Override
     public OracleOffsetContext getOffsetContext() {
         return this.offsetContext;
-    }
-
-    @Override
-    public Optional<OffsetActivityMonitor<OraclePartition, OracleOffsetContext>> getOffsetActivityMonitor() {
-        if (offsetActivityMonitor == null) {
-            offsetActivityMonitor = new OpenLogReplicatorOffsetActivityMonitor(
-                    connectorConfig.getOffsetActivityMonitorInterval(),
-                    streamingMetrics);
-        }
-        return Optional.of(offsetActivityMonitor);
     }
 
     private OracleOffsetContext emptyContext() {
@@ -164,8 +149,6 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
                         if (event != null) {
                             onEvent(event);
                         }
-
-                        offsetActivityMonitorService.pulse(partition, offsetContext);
 
                         if (context.isPaused()) {
                             LOGGER.info("Streaming will now pause");

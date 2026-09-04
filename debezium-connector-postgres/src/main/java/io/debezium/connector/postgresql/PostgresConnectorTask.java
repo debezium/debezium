@@ -116,9 +116,6 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
             typeRegistrySchemaFilter = buildTypeRegistrySchemaFilter(connectorConfig, tempConnection);
         }
         catch (DebeziumException e) {
-            if (PostgresErrorHandler.isPermanentError(e)) {
-                throw new ConnectException("Non-retriable failure obtaining database encoding; failing task.", e);
-            }
             throw new RetriableException("Couldn't obtain encoding for database", e);
         }
 
@@ -153,9 +150,10 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
         schema = new PostgresSchema(taskContext, defaultValueConverter, topicNamingStrategy, valueConverter, customConverterRegistry);
         this.partitionProvider = new PostgresPartition.Provider(connectorConfig, config);
         this.offsetContextLoader = new PostgresOffsetContext.Loader(connectorConfig);
-        final Offsets<PostgresPartition, PostgresOffsetContext> previousOffsets = getSinglePartitionPreviousOffsets(
+        final Offsets<PostgresPartition, PostgresOffsetContext> previousOffsets = getPreviousOffsets(
                 this.partitionProvider, this.offsetContextLoader);
         final Clock clock = Clock.system();
+        final PostgresOffsetContext previousOffset = previousOffsets.getTheOnlyOffset();
 
         // Manual Bean Registration
         beanRegistryJdbcConnection = connectionFactory.newConnection();
@@ -190,6 +188,13 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
         validateSchemaHistory(connectorConfig, jdbcConnection::validateLogPosition, previousOffsets, schema, snapshotter);
 
         LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
+
+        if (previousOffset == null) {
+            LOGGER.info("No previous offset found");
+        }
+        else {
+            LOGGER.info("Found previous offset {}", previousOffset);
+        }
 
         try {
             SlotState slotInfo = getSlotState(connectorConfig);
@@ -237,13 +242,6 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                             () -> new PostgresConnection(connectorConfig.getJdbcConfig(), PostgresConnection.CONNECTION_GENERAL),
                             exception -> {
                                 String sqlErrorId = exception.getSQLState();
-                                if (sqlErrorId == null) {
-                                    // The driver reported no SQL state, which typically indicates a
-                                    // connection-level failure rather than an error response from the
-                                    // server. There is nothing to classify; leave it to the caller to
-                                    // log the exception.
-                                    return;
-                                }
                                 switch (sqlErrorId) {
                                     case "57P01":
                                         // Postgres error admin_shutdown, see https://www.postgresql.org/docs/12/errcodes-appendix.html

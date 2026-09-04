@@ -140,53 +140,6 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
 
     @ParameterizedTest
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
-    @FixFor("debezium/dbz#2352")
-    public void testShouldWritePropagatedTinyIntColumnTypes(SinkRecordFactory factory) throws Exception {
-        final Map<String, String> properties = getDefaultSinkConfig();
-        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.BASIC.getValue());
-        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
-        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
-        startSinkConnector(properties);
-        assertSinkConnectorIsRunning();
-
-        final String tableName = randomTableName();
-        final String topicName = topicName("server2", "schema", tableName);
-        // A signed MySQL TINYINT propagates an INT8 schema and maps to a signed tinyint.
-        final Schema signedTinyIntSchema = SchemaBuilder.int8()
-                .optional()
-                .parameter("__debezium.source.column.type", "TINYINT")
-                .build();
-        // An unsigned SQL Server TINYINT (0-255) propagates an INT16 schema and must widen to
-        // smallint so it can hold values above 127.
-        final Schema unsignedTinyIntSchema = SchemaBuilder.int16()
-                .optional()
-                .parameter("__debezium.source.column.type", "TINYINT")
-                .build();
-
-        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
-        final JdbcKafkaSinkRecord createRecord = factory.createRecordWithSchemaValue(
-                topicName,
-                (byte) 1,
-                List.of("signed_data", "unsigned_data"),
-                List.of(signedTinyIntSchema, unsignedTinyIntSchema),
-                List.of((byte) 100, (short) 255),
-                config);
-
-        final String destinationTable = destinationTableName(createRecord);
-
-        consume(createRecord);
-
-        getSink().assertColumn(destinationTable, "signed_data", "TINYINT");
-        getSink().assertColumn(destinationTable, "unsigned_data", "SMALLINT");
-        getSink().assertRows(destinationTable, rs -> {
-            assertThat(rs.getInt(2)).isEqualTo(100);
-            assertThat(rs.getInt(3)).isEqualTo(255);
-            return null;
-        });
-    }
-
-    @ParameterizedTest
-    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
     @FixFor("debezium/dbz#2102")
     public void testShouldCreateAndWriteMultiByteBitColumnType(SinkRecordFactory factory) throws Exception {
         final Map<String, String> properties = getDefaultSinkConfig();

@@ -1,4 +1,4 @@
-A blocking snapshot lets you capture a complete, consistent snapshot of a {data-collection} on demand while the connector is running, temporarily pausing streaming until the snapshot completes.
+To provide more flexibility in managing snapshots, {prodname} includes a supplementary ad hoc snapshot mechanism, known as a _blocking snapshot_.
 Blocking snapshots rely on the {prodname} mechanism for {link-prefix}:{link-signalling}#sending-signals-to-a-debezium-connector[sending signals to a {prodname} connector].
 
 A blocking snapshot behaves just like an _initial snapshot_, except that you can trigger it at run time.

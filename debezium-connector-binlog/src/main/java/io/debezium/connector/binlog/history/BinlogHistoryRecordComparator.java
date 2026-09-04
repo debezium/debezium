@@ -110,9 +110,8 @@ public abstract class BinlogHistoryRecordComparator extends HistoryRecordCompara
             return false;
         }
 
-        // Both positions are missing GTIDs, compare servers. A missing server id is not a different server:
-        // snapshot offsets never carry one, as there is no way to tell which primary of a topology wrote the change.
-        if (hasServerId(recorded) && hasServerId(desired) && getServerId(recorded) != getServerId(desired)) {
+        // Both positions are missing GTIDs, compare servers
+        if (getServerId(recorded) != getServerId(desired)) {
             // These are from different servers.
             // Their binlog coordinates are not related, so the only thing that is possible is to compare
             // timestamps, and assume that the server timestamps can be compared.
@@ -143,9 +142,9 @@ public abstract class BinlogHistoryRecordComparator extends HistoryRecordCompara
         }
 
         // With the filenames the same, compare positions
-        final long recordedPosition = getBinlogPosition(recorded);
-        final long desiredPosition = getBinlogPosition(desired);
-        final int positionCheck = Long.compare(recordedPosition, desiredPosition);
+        final int recordedPosition = getBinlogPosition(recorded);
+        final int desiredPosition = getBinlogPosition(desired);
+        final int positionCheck = recordedPosition - desiredPosition;
         if (positionCheck != 0) {
             return positionCheck < 0;
         }
@@ -176,25 +175,13 @@ public abstract class BinlogHistoryRecordComparator extends HistoryRecordCompara
     }
 
     /**
-     * Get whether the position carries a server unique identifier.
-     *
-     * @param document the document to inspect, should not be null
-     * @return true if the document has a server identifier, false otherwise
-     */
-    protected boolean hasServerId(Document document) {
-        return document.has(BinlogSourceInfo.SERVER_ID_KEY);
-    }
-
-    /**
      * Get the server unique identifier.
      *
      * @param document the document to inspect, should not be null
      * @return the unique server identifier
      */
-    protected long getServerId(Document document) {
-        // server_id is a 32-bit unsigned value, so identifiers above Integer.MAX_VALUE are
-        // legitimate and must be read as a long for the same reason as the binlog position
-        return document.getLong(BinlogSourceInfo.SERVER_ID_KEY, 0);
+    protected int getServerId(Document document) {
+        return document.getInteger(BinlogSourceInfo.SERVER_ID_KEY, 0);
     }
 
     /**
@@ -211,10 +198,10 @@ public abstract class BinlogHistoryRecordComparator extends HistoryRecordCompara
      * Get the timestamp.
      *
      * @param document the document to inspect, should not be null
-     * @return the timestamp value, in seconds
+     * @return the timestamp value
      */
     protected long getTimestamp(Document document) {
-        return document.getLong(BinlogOffsetContext.TIMESTAMP_KEY, 0);
+        return document.getLong(BinlogSourceInfo.TIMESTAMP_KEY, 0);
     }
 
     /**
@@ -233,11 +220,8 @@ public abstract class BinlogHistoryRecordComparator extends HistoryRecordCompara
      * @param document the document to inspect, should not be null
      * @return the binlog position value
      */
-    protected long getBinlogPosition(Document document) {
-        // Positions are unsigned and a binlog file can exceed Integer.MAX_VALUE bytes, so the
-        // value must be read as a long; Document#getInteger would return null for such values,
-        // silently turning every large position into the default
-        return document.getLong(BinlogSourceInfo.BINLOG_POSITION_OFFSET_KEY, -1);
+    protected int getBinlogPosition(Document document) {
+        return document.getInteger(BinlogSourceInfo.BINLOG_POSITION_OFFSET_KEY, -1);
     }
 
     /**

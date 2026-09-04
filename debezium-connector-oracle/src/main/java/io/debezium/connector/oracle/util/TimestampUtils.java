@@ -11,7 +11,6 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.ResolverStyle;
-import java.time.format.TextStyle;
 import java.time.temporal.ChronoField;
 import java.util.Locale;
 import java.util.Objects;
@@ -32,11 +31,7 @@ public final class TimestampUtils {
             .appendPattern(".")
             .appendFraction(ChronoField.NANO_OF_SECOND, 0, 9, false)
             .optionalEnd()
-            .optionalStart()
-            .appendLiteral(' ')
-            .appendText(ChronoField.ERA, TextStyle.SHORT)
-            .optionalEnd()
-            .toFormatter(Locale.ENGLISH);
+            .toFormatter();
 
     private static final DateTimeFormatter TIMESTAMP_AM_PM_SHORT_FORMATTER = new DateTimeFormatterBuilder()
             .parseCaseInsensitive()
@@ -87,9 +82,6 @@ public final class TimestampUtils {
             String text = timestampMatcher.group(1);
             if (text.indexOf(" AM") > 0 || text.indexOf(" PM") > 0) {
                 return "TO_TIMESTAMP('" + text + "', 'YYYY-MM-DD HH24:MI:SS.FF A')";
-            }
-            if (text.endsWith(" AD") || text.endsWith(" BC")) {
-                return "TO_TIMESTAMP('" + text + "', 'YYYY-MM-DD HH24:MI:SS.FF AD')";
             }
             return "TO_TIMESTAMP('" + text + "', 'YYYY-MM-DD HH24:MI:SS.FF')";
         }

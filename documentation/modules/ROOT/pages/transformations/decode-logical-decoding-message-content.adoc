@@ -54,7 +54,7 @@ Event key before the SMT processes the record::
 [source,json]
 ----
 {
-	"prefix": "test-prefix"
+	"prefix": "test-prefix"   // <1>
 }
 ----
 
@@ -63,7 +63,7 @@ Event value before the SMT processes the record::
 [source,json]
 ----
 {
-	"op": "m",
+	"op": "m",  // <2>
 	"ts_ms": 1723115240065,
 	"source": {
 		"version": "3.0.0-SNAPSHOT",
@@ -81,7 +81,7 @@ Event value before the SMT processes the record::
 		"lsn": 26997904,
 		"xmin": null
 	},
-	"message": {
+	"message": {     // <3>
 		"prefix": "test-prefix",
 		"content": "eyJpZCI6IDEsICJpdGVtIjogIkRlYmV6aXVtIGluIEFjdGlvbiIsICJzdGF0dXMiOiAiRU5URVJFRCIsICJxdWFudGl0eSI6IDIsICJ0b3RhbFByaWNlIjogMzkuOTh9"
 	}
@@ -95,7 +95,7 @@ Event value before the SMT processes the record::
 Event key after the SMT processes the record::
 [source,json]
 ----
-null
+null  // <1>
 ----
 
 Event value after the SMT processes the record::
@@ -103,7 +103,7 @@ Event value after the SMT processes the record::
 [source,json]
 ----
 {
-	"op": "c",
+	"op": "c",   // <2>
 	"ts_ms": 1723115415729,
 	"source": {
 		"version": "3.0.0-SNAPSHOT",
@@ -121,7 +121,7 @@ Event value after the SMT processes the record::
 		"lsn": 26717576,
 		"xmin": null
 	},
-	"after": {
+	"after": {     // <3>
 		"id": 1,
 		"item": "Debezium in Action",
 		"status": "ENTERED",
@@ -131,12 +131,11 @@ Event value after the SMT processes the record::
 }
 ----
 
-
 In the preceding example, the SMT applies the following changes to the original event record:
 
-* Removes the key that contained the `prefix` field in the original logical decoding message (`"prefix": "test-prefix"`).
-* Converts the value of the `op` field from `m` (message) to `c` (create), effectively changing the event type from `message` to `INSERT`.
-* Replaces the `message` field with an `after` field that contains the decoded content of a logical decoding message.
+. Removes the key that contained the `prefix` field in the original logical decoding message (`"prefix": "test-prefix"`).
+. Converts the value of the `op` field from an `m` (message) to a `c` (create), effectively changing the event type from `message` to `INSERT`.
+. Replaces the `message` field with an `after` field that contains the decoded content of a logical decoding message.
 
 
 After the SMT applies these changes, the record can be more easily processed by downstream consumers or by other SMTs, such as the {prodname} Outbox Event Router.

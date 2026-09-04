@@ -10,6 +10,7 @@ import java.nio.charset.Charset;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
@@ -813,14 +814,12 @@ public class PostgresConnection extends JdbcConnection {
     @Override
     public Object getColumnValue(ResultSet rs, int columnIndex, Column column, Table table) throws SQLException {
         try {
-            // Resolve the column's type from the relational model's OID (captured once at schema discovery) rather
-            // than re-deriving it from ResultSetMetaData#getColumnTypeName on every column of every row. Postgres
-            // collapses scalar domains to their base type on the wire, so this matches the ResultSetMetaData
-            // resolution for everything the logic below distinguishes -- array-ness and the built-in base-type OIDs.
-            final PostgresType type = getTypeRegistry().get(column.nativeType());
+            final ResultSetMetaData metaData = rs.getMetaData();
+            final String columnTypeName = metaData.getColumnTypeName(columnIndex);
+            final PostgresType type = getTypeRegistry().get(columnTypeName);
 
             LOGGER.trace("Type of incoming data is: {}", type.getOid());
-            LOGGER.trace("ColumnTypeName is: {}", type.getName());
+            LOGGER.trace("ColumnTypeName is: {}", columnTypeName);
             LOGGER.trace("Type is: {}", type);
 
             if (type.isArrayType()) {

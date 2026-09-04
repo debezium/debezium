@@ -113,14 +113,4 @@ public class PostgresDefaultValueConverterIT {
         Assertions.assertEquals(nonNumericalConvertedValue, Optional.of(" 1 "));
     }
 
-    @Test
-    public void shouldParseTextDefaultValueWithEscapedQuote() {
-        final Column textColumn = Column.editor().type("text").jdbcType(Types.VARCHAR).defaultValueExpression("'can''t'::text").create();
-        final Optional<Object> convertedValue = postgresDefaultValueConverter.parseDefaultValue(
-                textColumn,
-                textColumn.defaultValueExpression().orElse(null));
-
-        Assertions.assertEquals(Optional.of("can't"), convertedValue);
-    }
-
 }

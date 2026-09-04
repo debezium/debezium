@@ -14,12 +14,9 @@ We currently have the following connectors:
 * xref:connectors/db2.adoc[Db2]
 * xref:connectors/cassandra.adoc[Cassandra]
 * xref:connectors/vitess.adoc[Vitess] (Incubating)
-* xref:connectors/spanner.adoc[Spanner] (Incubating)
+* xref:connectors/spanner.adoc[Spanner]
 * xref:connectors/informix.adoc[Informix] (Incubating)
 * xref:connectors/cockroachdb.adoc[CockroachDB] (Incubating)
-* xref:connectors/yashandb.adoc[YashanDB] (Incubating)
-* xref:connectors/ingres.adoc[Ingres] (Incubating)
-* xref:connectors/milvus.adoc[Milvus] (Incubating)
 
 [NOTE]
 ====

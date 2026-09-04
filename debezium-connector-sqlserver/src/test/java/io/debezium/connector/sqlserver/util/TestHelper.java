@@ -18,7 +18,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import javax.management.InstanceNotFoundException;
@@ -26,6 +25,7 @@ import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 
+import org.apache.kafka.common.utils.Sanitizer;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
 import org.slf4j.Logger;
@@ -48,7 +48,6 @@ import io.debezium.relational.TableId;
 import io.debezium.storage.file.history.FileSchemaHistory;
 import io.debezium.util.Collect;
 import io.debezium.util.IoUtil;
-import io.debezium.util.Sanitizer;
 import io.debezium.util.Strings;
 import io.debezium.util.Testing;
 
@@ -269,17 +268,6 @@ public class TestHelper {
                 .build();
 
         return testConnection(config);
-    }
-
-    /**
-     * Returns a connection to the given database whose connector config carries the additional options applied by the
-     * supplied customizer, e.g. {@code internal.capture.instance.exclude.list}.
-     */
-    public static SqlServerConnection testConnection(String databaseName, Consumer<Configuration.Builder> customizer) {
-        Configuration.Builder builder = defaultConnectorConfig()
-                .with(ConfigurationNames.DATABASE_CONFIG_PREFIX + JdbcConfiguration.ON_CONNECT_STATEMENTS, "USE [" + databaseName + "]");
-        customizer.accept(builder);
-        return testConnection(builder.build());
     }
 
     public static SqlServerConnection testConnection(Configuration config) {
@@ -667,7 +655,7 @@ public class TestHelper {
                                     final Lsn minLsn = connection.getMinLsn(TEST_DATABASE_1, ctTableName);
                                     final Lsn maxLsn = connection.getMaxLsn(TEST_DATABASE_1);
                                     final CdcRecordFoundBlockingResultSetConsumer consumer = new CdcRecordFoundBlockingResultSetConsumer(handler);
-                                    try (ResultSet resultSet = connection.getChangesForTable(ct, minLsn, Lsn.ZERO, 0, -1, maxLsn, 0)) {
+                                    try (ResultSet resultSet = connection.getChangesForTable(ct, minLsn, maxLsn)) {
                                         consumer.accept(resultSet);
                                     }
                                     return consumer.isFound();
@@ -723,7 +711,7 @@ public class TestHelper {
                                     final Lsn minLsn = connection.getMinLsn(TEST_DATABASE_1, ctTableName);
                                     final Lsn maxLsn = connection.getMaxLsn(TEST_DATABASE_1);
                                     final CdcRecordFoundBlockingResultSetConsumer consumer = new CdcRecordFoundBlockingResultSetConsumer(handler);
-                                    try (ResultSet resultSet = connection.getChangesForTable(ct, minLsn, Lsn.ZERO, 0, -1, maxLsn, 0)) {
+                                    try (ResultSet resultSet = connection.getChangesForTable(ct, minLsn, maxLsn)) {
                                         consumer.accept(resultSet);
                                     }
                                     return consumer.isFound();

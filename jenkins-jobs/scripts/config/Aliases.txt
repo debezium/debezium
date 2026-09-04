@@ -257,7 +257,6 @@ Liaoyuxing,leoloel
 iankko,Jan Lieskovsky
 CliffordCheefoon,Clifford Cheefoon
 Fr0z3Nn,Ivanov Sergey Vasilevich
-Bue-Von-Hon,Bue Von Hun
 Bue-Von-Hun,Bue Von Hun
 nrkeli,Emil Lindström
 akulapid,Akula
@@ -397,17 +396,3 @@ prathit06,Malik Prathit
 LucjanoC,Luciano Capo
 Chaitanya-030,Chaitanya Sheth
 pugarte7,Pablo Ugarte
-MarBruhn,Marcel Bruhn
-antonio0,Antonio Marino
-JunWang222,Jun Wang
-nickchomey,Nick Chomey
-bisbeb,Björn Bärtschi
-rajusurarapu149,Raju Surarapu
-henm,Matthias Hengel
-mathewjustin,Justin Mathew
-surya-dl,Surya Dhaneshwar
-suryadanny,Surya Dhaneshwar
-Rohith,Rohith Devarshetty
-soepic1,Oladele Oluwaseun
-ragulshanmugam,Ragul Shanmugam
-tusharsaini18899,Tushar Saini

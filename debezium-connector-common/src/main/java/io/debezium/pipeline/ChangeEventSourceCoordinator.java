@@ -34,7 +34,6 @@ import io.debezium.discriminator.ConnectorDiscriminator;
 import io.debezium.pipeline.metrics.SnapshotChangeEventSourceMetrics;
 import io.debezium.pipeline.metrics.StreamingChangeEventSourceMetrics;
 import io.debezium.pipeline.metrics.spi.ChangeEventSourceMetricsFactory;
-import io.debezium.pipeline.monitor.OffsetActivityMonitorService;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.signal.actions.SignalActionProvider;
@@ -361,7 +360,6 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
         eventDispatcher.setEventListener(streamingMetrics);
         streamingConnected(true);
         streamingSource.init(offsetContext);
-        registerOffsetActivityMonitor();
 
         getSignalProcessor(previousOffsets).ifPresent(s -> s.setContext(Offsets.of(partition, streamingSource.getOffsetContext())));
 
@@ -369,20 +367,6 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
                 .getIncrementalSnapshotChangeEventSource(offsetContext, snapshotMetrics, snapshotMetrics, notificationService);
         eventDispatcher.setIncrementalSnapshotChangeEventSource(incrementalSnapshotChangeEventSource);
         incrementalSnapshotChangeEventSource.ifPresent(x -> x.init(partition, offsetContext));
-    }
-
-    /**
-     * Registers the streaming source's offset activity monitor, if one is provided, with the
-     * {@link OffsetActivityMonitorService}.
-     */
-    private void registerOffsetActivityMonitor() {
-        streamingSource.getOffsetActivityMonitor().ifPresent(monitor -> {
-            final OffsetActivityMonitorService offsetActivityMonitorService = connectorConfig.getServiceRegistry()
-                    .tryGetService(OffsetActivityMonitorService.class);
-            if (offsetActivityMonitorService != null) {
-                offsetActivityMonitorService.register(monitor);
-            }
-        });
     }
 
     public void commitOffset(Map<String, ?> partition, Map<String, ?> offset) {

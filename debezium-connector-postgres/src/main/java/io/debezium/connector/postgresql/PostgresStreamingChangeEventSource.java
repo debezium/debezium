@@ -10,7 +10,6 @@ import static io.debezium.connector.postgresql.PostgresConnectorConfig.LsnFlushT
 import java.sql.SQLException;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -37,8 +36,6 @@ import io.debezium.connector.postgresql.connection.ReplicationStream;
 import io.debezium.connector.postgresql.connection.WalPositionLocator;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.pipeline.ErrorHandler;
-import io.debezium.pipeline.monitor.OffsetActivityMonitor;
-import io.debezium.pipeline.monitor.OffsetActivityMonitorService;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.relational.TableId;
 import io.debezium.snapshot.SnapshotterService;
@@ -101,8 +98,6 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     private long numberOfEventsSinceLastEventSentOrWalGrowingWarning = 0;
     private Lsn lastCompletelyProcessedLsn;
     private PostgresOffsetContext effectiveOffset;
-    private final OffsetActivityMonitorService offsetActivityMonitorService;
-    private OffsetActivityMonitor<PostgresPartition, PostgresOffsetContext> offsetActivityMonitor;
 
     private ElapsedTimeStrategy refreshXmin;
     private Long lastXmin;
@@ -125,7 +120,6 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         if (connectorConfig.xminFetchInterval().toMillis() > 0) {
             this.refreshXmin = ElapsedTimeStrategy.constant(Clock.SYSTEM, connectorConfig.xminFetchInterval().toMillis());
         }
-        this.offsetActivityMonitorService = OffsetActivityMonitorService.lookup(connectorConfig.getServiceRegistry());
     }
 
     @Override
@@ -281,9 +275,6 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                     pauseNoMessage.sleepWhen(true);
                 }
             }
-
-            offsetActivityMonitorService.pulse(partition, offsetContext);
-
             if (!isInPreSnapshotCatchUpStreaming(offsetContext)) {
                 // During catch up streaming, the streaming phase needs to hold a transaction open so that
                 // the phase can stream event up to a specific lsn and the snapshot that occurs after the catch up
@@ -367,13 +358,12 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             maybeWarnAboutGrowingWalBacklog(true);
         }
         else if (message.getOperation() == Operation.MESSAGE) {
-            final LogicalDecodingMessage logicalMessage = (LogicalDecodingMessage) message;
-            offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, logicalMessage.getCommitTime(), toLong(logicalMessage.getTransactionId()),
+            offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), toLong(message.getTransactionId()),
                     getSlotXmin(),
-                    logicalMessage.getOperation());
+                    message.getOperation());
 
             // non-transactional message that will not be followed by a COMMIT message
-            if (!logicalMessage.isTransactional()) {
+            if (message.isLastEventForLsn()) {
                 offsetContext.resetLsnEventsProcessed();
                 commitMessage(partition, offsetContext, lsn);
             }
@@ -382,7 +372,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                     partition,
                     offsetContext,
                     clock.currentTimeAsInstant().toEpochMilli(),
-                    logicalMessage);
+                    (LogicalDecodingMessage) message);
 
             maybeWarnAboutGrowingWalBacklog(true);
         }
@@ -627,14 +617,6 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     @Override
     public PostgresOffsetContext getOffsetContext() {
         return effectiveOffset;
-    }
-
-    @Override
-    public Optional<OffsetActivityMonitor<PostgresPartition, PostgresOffsetContext>> getOffsetActivityMonitor() {
-        if (offsetActivityMonitor == null) {
-            offsetActivityMonitor = new PostgresOffsetActivityMonitor(connectorConfig.getOffsetActivityMonitorInterval());
-        }
-        return Optional.of(offsetActivityMonitor);
     }
 
     /**

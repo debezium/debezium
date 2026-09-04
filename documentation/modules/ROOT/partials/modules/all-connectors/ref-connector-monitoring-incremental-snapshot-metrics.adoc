@@ -1,4 +1,4 @@
-The following table lists the additional JMX metrics that are available when a connector runs an incremental snapshot, including chunk and table boundary identifiers that you can use to track snapshot progress.
+The connector also provides the following additional snapshot metrics when an incremental snapshot is executed:
 
 [cols="45%a,25%a,30%a",options="header"]
 |===

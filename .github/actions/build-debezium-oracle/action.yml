@@ -5,10 +5,6 @@ inputs:
   maven-cache-key:
     description: "The maven build cache key"
     required: true
-  maven-cache-save:
-    description: "Whether to save the Maven cache after the job completes"
-    required: false
-    default: 'true'
   only-build:
     description: "Only build without tests, checkstyle, and format"
     required: false
@@ -30,7 +26,6 @@ runs:
     - uses: ./.github/actions/maven-cache
       with:
         key: ${{ inputs.maven-cache-key }}
-        save: ${{ inputs.maven-cache-save }}
 
     # We intentionally do not run the integration tests here because the runner does not have adequate space
     # for the docker container and pull requests are not permitted to fetch the container image.

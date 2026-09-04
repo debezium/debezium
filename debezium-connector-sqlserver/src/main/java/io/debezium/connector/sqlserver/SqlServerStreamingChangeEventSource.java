@@ -33,8 +33,6 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
-import io.debezium.pipeline.monitor.OffsetActivityMonitor;
-import io.debezium.pipeline.monitor.OffsetActivityMonitorService;
 import io.debezium.pipeline.notification.Notification;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.spi.ChangeTableResultSet;
@@ -98,7 +96,6 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
     private final Duration endTransactionTimerDelay;
     private final SnapshotterService snapshotterService;
     private final SqlServerConnectorConfig connectorConfig;
-    private final boolean directMode;
 
     private final ElapsedTimeStrategy pauseBetweenCommits;
     private final Map<SqlServerPartition, SqlServerStreamingExecutionContext> streamingExecutionContexts;
@@ -108,8 +105,6 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
     private boolean checkAgent;
     private SqlServerOffsetContext effectiveOffset;
     private final NotificationService<SqlServerPartition, SqlServerOffsetContext> notificationService;
-    private final OffsetActivityMonitorService offsetActivityMonitorService;
-    private OffsetActivityMonitor<SqlServerPartition, SqlServerOffsetContext> offsetActivityMonitor;
 
     public SqlServerStreamingChangeEventSource(SqlServerConnectorConfig connectorConfig, SqlServerConnection dataConnection,
                                                SqlServerConnection metadataConnection,
@@ -129,7 +124,6 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         this.endTransactionTimerDelay = metadataConnection.getCdcCapturePollingInterval()
                 .multipliedBy(INTERVAL_BETWEEN_TRANSACTION_END_CHECKS_BASED_ON_CDC_CAPTURE_POLL_FACTOR);
         this.snapshotterService = snapshotterService;
-        this.directMode = connectorConfig.getDataQueryMode() == SqlServerConnectorConfig.DataQueryMode.DIRECT;
         final Duration intervalBetweenCommitsBasedOnPoll = this.pollInterval.multipliedBy(INTERVAL_BETWEEN_COMMITS_BASED_ON_POLL_FACTOR);
         this.pauseBetweenCommits = ElapsedTimeStrategy.constant(clock,
                 DEFAULT_INTERVAL_BETWEEN_COMMITS.compareTo(intervalBetweenCommitsBasedOnPoll) > 0
@@ -137,33 +131,16 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                         : intervalBetweenCommitsBasedOnPoll.toMillis());
         this.streamingExecutionContexts = new HashMap<>();
         this.checkAgent = true;
-        this.offsetActivityMonitorService = OffsetActivityMonitorService.lookup(connectorConfig.getServiceRegistry());
     }
 
     @Override
     public void init(SqlServerOffsetContext offsetContext) {
-        this.effectiveOffset = offsetContext == null
-                ? new SqlServerOffsetContext(connectorConfig, directMode ? TxLogPosition.NULL : TxLogPosition.NULL_LEGACY, null, false)
-                : offsetContext;
+        this.effectiveOffset = offsetContext == null ? new SqlServerOffsetContext(connectorConfig, TxLogPosition.NULL, null, false) : offsetContext;
     }
 
     @Override
     public void execute(ChangeEventSourceContext context, SqlServerPartition partition, SqlServerOffsetContext offsetContext) throws InterruptedException {
         throw new UnsupportedOperationException("Currently unsupported by the SQL Server connector");
-    }
-
-    private TxLogPosition resumePosition(TxLogPosition position) {
-        final boolean commandIdExists = position.getCommandId() != null;
-
-        // direct and function mode orders change events differently hence a mode change contains a risk of data loss.
-        // To prevent data loss, we re-read the last transaction in full if the mode changes.
-        if ((directMode && commandIdExists) || (!directMode && !commandIdExists)) {
-            return position;
-        }
-
-        LOGGER.info("Offset {} and query mode {} indicates a change in mode, so the last transaction is streamed again", position,
-                connectorConfig.getDataQueryMode());
-        return TxLogPosition.valueOf(position.getCommitLsn(), directMode ? -1 : null);
     }
 
     @Override
@@ -189,16 +166,14 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                             // otherwise we might skip an incomplete transaction after restart
                             offsetContext.isSnapshotCompleted()));
 
-            TxLogPosition lastProcessedPositionOnStart = offsetContext.getChangePosition();
-
             if (!streamingExecutionContexts.containsKey(partition)) {
                 streamingExecutionContexts.put(partition, streamingExecutionContext);
                 LOGGER.info("Last position recorded in offsets is {}[{}]", offsetContext.getChangePosition(), offsetContext.getEventSerialNo());
-                lastProcessedPositionOnStart = resumePosition(lastProcessedPositionOnStart);
             }
 
             final Queue<SqlServerChangeTable> schemaChangeCheckpoints = streamingExecutionContext.getSchemaChangeCheckpoints();
             final AtomicReference<SqlServerChangeTable[]> tablesSlot = streamingExecutionContext.getTablesSlot();
+            final TxLogPosition lastProcessedPositionOnStart = offsetContext.getChangePosition();
             final long lastProcessedEventSerialNoOnStart = offsetContext.getEventSerialNo();
             final AtomicBoolean changesStoppedBeingMonotonic = streamingExecutionContext.getChangesStoppedBeingMonotonic();
             final int maxTransactionsPerIteration = connectorConfig.getMaxTransactionsPerIteration();
@@ -282,8 +257,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                     changeTables = new SqlServerChangeTablePointer[tables.length];
 
                     for (int i = 0; i < tables.length; i++) {
-                        changeTables[i] = new SqlServerChangeTablePointer(tables[i], dataConnection, fromLsn, toLsn, lastProcessedPositionOnStart,
-                                connectorConfig.getStreamingFetchSize(), connectorConfig.getDataQueryMode());
+                        changeTables[i] = new SqlServerChangeTablePointer(tables[i], dataConnection, fromLsn, toLsn, connectorConfig.getStreamingFetchSize());
                         changeTables[i].next();
                     }
 
@@ -390,11 +364,11 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                                                 connectorConfig));
                         tableWithSmallestLsn.next();
                     }
-                    streamingExecutionContext.setLastProcessedPosition(TxLogPosition.valueOf(toLsn, directMode ? -1 : null));
+                    streamingExecutionContext.setLastProcessedPosition(TxLogPosition.valueOf(toLsn));
                     // Terminate the transaction otherwise CDC could not be disabled for tables
                     dataConnection.rollback();
                     if (!anyData) {
-                        offsetContext.setChangePosition(TxLogPosition.valueOf(toLsn, directMode ? -1 : null), 0);
+                        offsetContext.setChangePosition(TxLogPosition.valueOf(toLsn), 0);
                         dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
                     }
                 }
@@ -409,21 +383,8 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
         catch (Exception e) {
             errorHandler.setProducerThrowable(e);
         }
-        finally {
-            offsetActivityMonitorService.pulse(partition, offsetContext);
-        }
 
         return true;
-    }
-
-    @Override
-    public Optional<OffsetActivityMonitor<SqlServerPartition, SqlServerOffsetContext>> getOffsetActivityMonitor() {
-        if (offsetActivityMonitor == null) {
-            offsetActivityMonitor = new SqlServerOffsetActivityMonitor(
-                    connectorConfig.getOffsetActivityMonitorInterval(),
-                    connectorConfig.getTaskId());
-        }
-        return Optional.of(offsetActivityMonitor);
     }
 
     @Override

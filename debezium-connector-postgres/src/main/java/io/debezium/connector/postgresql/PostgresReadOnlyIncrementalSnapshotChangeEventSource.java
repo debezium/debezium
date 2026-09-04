@@ -70,7 +70,7 @@ public class PostgresReadOnlyIncrementalSnapshotChangeEventSource<P extends Post
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PostgresReadOnlyIncrementalSnapshotChangeEventSource.class);
 
-    private static final String FORCE_NEW_TRANSACTION = "SELECT (CASE pg_is_in_recovery() WHEN 't' THEN NULL::xid8 ELSE pg_current_xact_id() END) AS txid;";
+    private static final String FORCE_NEW_TRANSACTION = "SELECT * FROM pg_current_xact_id();";
     private static final String CURRENT_SNAPSHOT = "SELECT * FROM pg_current_snapshot();";
 
     private final PostgresConnection jdbcConnection;
@@ -234,13 +234,7 @@ public class PostgresReadOnlyIncrementalSnapshotChangeEventSource<P extends Post
         try {
             jdbcConnection.query(FORCE_NEW_TRANSACTION, rs -> {
                 if (rs.next()) {
-                    String txId = rs.getString(1);
-                    if (txId != null) {
-                        LOGGER.trace("Created new transaction ID {}", txId);
-                    }
-                    else {
-                        LOGGER.trace("Skipping transaction ID assignment on hot standby");
-                    }
+                    LOGGER.trace("Created new transaction ID {}", rs.getString(1));
                 }
             });
         }

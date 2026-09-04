@@ -99,7 +99,6 @@ import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.relational.RelationalChangeRecordEmitter;
-import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -4979,48 +4978,6 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
             assertEquals(topicName, record.topic());
             VerifyRecord.isValidInsert(record, PK_FIELD, stopAtPk + i);
         }
-    }
-
-    @Test
-    @FixFor("debezium/dbz#1235")
-    public void shouldStreamColumnWhoseNameIsItselfQuoted() throws Exception {
-        TestHelper.execute(
-                "DROP TABLE IF EXISTS quoted_column_table;",
-                "CREATE TABLE quoted_column_table (pk SERIAL, \"'quoted'\" TEXT, PRIMARY KEY(pk));");
-        startConnector();
-        consumer = testConsumer(1);
-
-        executeAndWait("INSERT INTO quoted_column_table (\"'quoted'\") VALUES ('some text');");
-
-        assertRecordSchemaAndValues(
-                Collections.singletonList(new SchemaAndValueField("'quoted'", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "some text")),
-                consumer.remove(),
-                Envelope.FieldName.AFTER);
-    }
-
-    @Test
-    @FixFor("debezium/dbz#2232")
-    public void shouldPropagateSerialTypeNamesWhileStreaming() throws Exception {
-        TestHelper.execute(
-                "DROP TABLE IF EXISTS serial_table;",
-                "CREATE TABLE serial_table (pk SERIAL, small SMALLSERIAL, big BIGSERIAL, plain INT, PRIMARY KEY(pk));");
-
-        startConnector(config -> config
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
-                .with(RelationalDatabaseConnectorConfig.PROPAGATE_COLUMN_SOURCE_TYPE, ".*"), false);
-
-        waitForStreamingToStart();
-
-        consumer = testConsumer(1);
-        executeAndWait("INSERT INTO serial_table (plain) VALUES (1);");
-
-        // Streaming must not fall back to the int2/int4/int8 the column OID carries, or a consumer keyed
-        // on the type name sees the column change type once the snapshot ends.
-        final Schema after = assertRecordInserted("public.serial_table", PK_FIELD, 1).valueSchema().field("after").schema();
-        assertThat(after.field("pk").schema().parameters()).contains(entry(TYPE_NAME_PARAMETER_KEY, "SERIAL"));
-        assertThat(after.field("small").schema().parameters()).contains(entry(TYPE_NAME_PARAMETER_KEY, "SMALLSERIAL"));
-        assertThat(after.field("big").schema().parameters()).contains(entry(TYPE_NAME_PARAMETER_KEY, "BIGSERIAL"));
-        assertThat(after.field("plain").schema().parameters()).contains(entry(TYPE_NAME_PARAMETER_KEY, "INT4"));
     }
 
     private String getMessagePrefix(SourceRecord record) {

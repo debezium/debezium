@@ -12,7 +12,6 @@ import static io.debezium.pipeline.notification.IncrementalSnapshotNotificationS
 import static io.debezium.pipeline.notification.IncrementalSnapshotNotificationService.TableScanCompletionStatus.UNKNOWN_SCHEMA;
 import static io.debezium.util.Loggings.maybeRedactSensitiveData;
 
-import java.math.BigDecimal;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -34,7 +33,6 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.annotation.NotThreadSafe;
-import io.debezium.data.SpecialValueDecimal;
 import io.debezium.data.ValueWrapper;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
@@ -783,6 +781,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         return Threads.timer(clock, RelationalSnapshotChangeEventSource.LOG_INTERVAL);
     }
 
+    @SuppressWarnings("unchecked")
     private Object[] keyFromRow(Object[] row) {
         if (row == null) {
             return null;
@@ -790,24 +789,11 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         final List<Column> keyColumns = chunkQueryBuilder.getQueryColumns(context, currentTable);
         final Object[] key = new Object[keyColumns.size()];
         for (int i = 0; i < keyColumns.size(); i++) {
-            key[i] = unwrapKeyValue(row[keyColumns.get(i).position() - 1]);
+            final Object fieldValue = row[keyColumns.get(i).position() - 1];
+            key[i] = fieldValue instanceof ValueWrapper<?> ? ((ValueWrapper<Object>) fieldValue).getWrappedValue()
+                    : fieldValue;
         }
         return key;
-    }
-
-    @SuppressWarnings("unchecked")
-    static Object unwrapKeyValue(Object fieldValue) {
-        if (fieldValue instanceof SpecialValueDecimal specialValueDecimal) {
-            final Optional<BigDecimal> decimalValue = specialValueDecimal.getDecimalValue();
-            if (decimalValue.isPresent()) {
-                return decimalValue.get();
-            }
-            // NaN and the infinities have no BigDecimal form: getWrappedValue() would degrade them to null,
-            // which the chunk query cannot bind. Their double form stays bindable and PostgreSQL orders it
-            // consistently with the numeric column (NaN above everything).
-            return specialValueDecimal.toDouble();
-        }
-        return fieldValue instanceof ValueWrapper<?> ? ((ValueWrapper<Object>) fieldValue).getWrappedValue() : fieldValue;
     }
 
     protected void setContext(IncrementalSnapshotContext<T> context) {

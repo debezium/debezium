@@ -23,7 +23,6 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
-import io.debezium.config.ConnectorConfigValidationHelper;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.connector.AbstractSourceInfo;
@@ -1612,8 +1611,15 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     }
 
     private static int validateLogicalDecodingMessageExcludeList(Configuration config, Field field, Field.ValidationOutput problems) {
-        return ConnectorConfigValidationHelper.validateExcludeField(
-                config, LOGICAL_DECODING_MESSAGE_PREFIX_INCLUDE_LIST, LOGICAL_DECODING_MESSAGE_PREFIX_EXCLUDE_LIST, problems);
+        String includeList = config.getString(LOGICAL_DECODING_MESSAGE_PREFIX_INCLUDE_LIST);
+        String excludeList = config.getString(LOGICAL_DECODING_MESSAGE_PREFIX_EXCLUDE_LIST);
+
+        if (includeList != null && excludeList != null) {
+            problems.accept(LOGICAL_DECODING_MESSAGE_PREFIX_EXCLUDE_LIST, excludeList,
+                    "\"logical_decoding_message.prefix.include.list\" is already specified");
+            return 1;
+        }
+        return 0;
     }
 
     private LsnFlushMode resolveLsnFlushMode(Configuration config) {

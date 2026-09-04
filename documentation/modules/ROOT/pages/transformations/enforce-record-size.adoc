@@ -103,18 +103,21 @@ To make all string and bytes fields eligible for truncation, set `min.field.size
 [[enforce-record-size-behavior]]
 == Behavior details
 
-The enforce record size SMT evaluates only {prodname} change event records and applies truncation to the `before` and `after` fields of the event envelope.
-Size estimates are approximate; the actual serialized size depends on the converter you use.
-
+* The SMT only processes records whose value is a {prodname} change event envelope (a `Struct` with `before` and/or `after` fields).
+  Non-envelope records (such as schema change events or tombstones) pass through unchanged.
+* Truncation is applied to both the `before` and `after` sections of the envelope.
+  The excess is distributed between the two sections in proportion to their truncatable content.
+* The SMT does not guarantee that the final serialized record will be exactly at or below `max.bytes`.
+  The size estimate is approximate, and actual serialized size depends on the converter (JSON, Avro, Protobuf) and its overhead.
 During processing, the enforce record size transformation applies the following constraints and behaviors.
 
-* The SMT processes only records whose value contains a {prodname} change event envelope, that is, a Struct with `before` and `after` fields.
+* The SMT processes only records whose value contains a {prodname} change event envelope, that is, a Struct with `before` and `after` fields. 
 It passes non-envelope records, such as schema change events or tombstones, unchanged.
 
 * The SMT applies truncation to both the `before` and `after` sections of the envelope and distributes the excess between the two sections in proportion to their truncatable content.
 
-* The SMT does not guarantee that the final serialized record is exactly at or below `max.bytes`, because it estimates size approximately and the actual serialized size depends on the converter (JSON, Avro, or Protobuf) and its associated overhead.
-To provide a safety margin, configure a conservative `max.bytes` value or adjust the `compression.ratio` setting.
+* The SMT does not guarantee that the final serialized record is exactly at or below max.bytes, because it estimates size approximately and the actual serialized size depends on the converter (JSON, Avro, or Protobuf) and its associated overhead. 
+To provide a safety margin, configure a conservative max.bytes value or adjust the compression.ratio setting.
 
 // Type: reference
 // ModuleID: options-for-configuring-the-enforce-record-size-transformation

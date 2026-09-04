@@ -67,10 +67,10 @@ public abstract class BinlogSourceTask<P extends Partition, O extends OffsetCont
                         + "required for this connector to work properly. Change the database configuration to use a "
                         + "binlog_format=ROW and restart the connector.");
             }
-            if (!connection.isBinlogRowImageFullOrNoblob()) {
+            if (!connection.isBinlogRowImageFull()) {
                 throw new DebeziumException("The database server is not configured to use a FULL binlog_row_image, which is "
                         + "required for this connector to work properly. Change the database configuration to use a "
-                        + "binlog_row_image=FULL|NOBLOB and restart the connector.");
+                        + "binlog_row_image=FULL and restart the connector.");
             }
         }
     }
@@ -82,11 +82,6 @@ public abstract class BinlogSourceTask<P extends Partition, O extends OffsetCont
         @Override
         public void onError(SQLException exception) throws RuntimeException {
             final String sqlErrorId = exception.getSQLState();
-            if (sqlErrorId == null) {
-                // The driver reported no SQL state, which typically indicates a connection-level
-                // failure, returning to the caller to log the exception.
-                return;
-            }
             switch (sqlErrorId) {
                 case "42000":
                     // error_er_dbaccess_denied_error, see https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_er_dbaccess_denied_error

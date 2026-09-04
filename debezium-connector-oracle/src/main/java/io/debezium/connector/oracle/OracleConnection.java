@@ -14,7 +14,6 @@ import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -488,29 +487,6 @@ public class OracleConnection extends JdbcConnection {
     @Override
     public String buildSelectPrimaryKeyBoundaries(TableId tableId, long size, String projection, String orderBy, String condition) {
         final TableId truncatedTableId = new TableId(null, tableId.schema(), tableId.table());
-        // Oracle 11g and earlier
-        if (getOracleVersion().getMajor() < 12) {
-            StringBuilder innerSql = new StringBuilder("SELECT ")
-                    .append(projection)
-                    .append(", ROWNUM AS RNUM FROM (SELECT ")
-                    .append(projection)
-                    .append(" FROM ")
-                    .append(quotedTableIdString(truncatedTableId));
-            if (!Strings.isNullOrBlank(condition)) {
-                innerSql.append(" WHERE ").append(condition);
-            }
-            innerSql.append(" ORDER BY ").append(orderBy).append(")");
-            // Target row index corresponds to OFFSET size FETCH NEXT 1 (1-based index)
-            long targetRow = size + 1;
-            return new StringBuilder("SELECT ")
-                    .append(projection)
-                    .append(" FROM (")
-                    .append(innerSql)
-                    .append(") WHERE RNUM = ")
-                    .append(targetRow)
-                    .toString();
-        }
-        // Oracle 12c+
         StringBuilder sql = new StringBuilder("SELECT ")
                 .append(projection)
                 .append(" FROM ")
@@ -687,12 +663,6 @@ public class OracleConnection extends JdbcConnection {
     public Object getColumnValue(ResultSet rs, int columnIndex, Column column, Table table) throws SQLException {
         if (column.jdbcType() == OracleTypes.JSON || "JSON".equals(column.typeName())) {
             return rs.getObject(columnIndex, OracleJsonObject.class);
-        }
-        if ("DATE".equalsIgnoreCase(column.typeName())) {
-            // The driver maps DATE columns to java.sql.Timestamp, which is bound to the hybrid
-            // Julian/Gregorian calendar; that drops the era of BC values and day-shifts dates that
-            // precede the Gregorian cut-over in 1582, so fetch such columns as LocalDateTime.
-            return rs.getObject(columnIndex, LocalDateTime.class);
         }
         return super.getColumnValue(rs, columnIndex, column, table);
     }

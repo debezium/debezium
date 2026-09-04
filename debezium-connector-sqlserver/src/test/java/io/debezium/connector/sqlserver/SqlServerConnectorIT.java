@@ -68,7 +68,6 @@ import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.embedded.async.RetryingCallable;
 import io.debezium.heartbeat.DatabaseHeartbeatImpl;
-import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.Flaky;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.spi.Offsets;
@@ -303,66 +302,6 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
             final Struct tombstoneValue = (Struct) tombstoneRecord.value();
             assertNull(tombstoneValue);
         }
-
-        stopConnector();
-    }
-
-    @Test
-    @FixFor("dbz#2511")
-    void shouldStreamFunctionModeWhenCapturedColumnCollidesWithLsnTimeMappingColumn() throws Exception {
-        assertStreamingWorksWhenCapturedColumnCollidesWithLsnTimeMappingColumn(SqlServerConnectorConfig.DataQueryMode.FUNCTION);
-    }
-
-    @Test
-    @FixFor("dbz#2511")
-    void shouldStreamDirectModeWhenCapturedColumnCollidesWithLsnTimeMappingColumn() throws Exception {
-        assertStreamingWorksWhenCapturedColumnCollidesWithLsnTimeMappingColumn(SqlServerConnectorConfig.DataQueryMode.DIRECT);
-    }
-
-    private void assertStreamingWorksWhenCapturedColumnCollidesWithLsnTimeMappingColumn(
-                                                                                        SqlServerConnectorConfig.DataQueryMode dataQueryMode)
-            throws Exception {
-        connection.execute(
-                "CREATE TABLE lsn_column_collision (id INT NOT NULL PRIMARY KEY, description VARCHAR(100), "
-                        + "start_lsn VARCHAR(100), tran_begin_time VARCHAR(100), tran_id VARCHAR(100),"
-                        + " tran_end_time VARCHAR(100))");
-        TestHelper.enableTableCdc(connection, "lsn_column_collision");
-
-        final Configuration config = TestHelper.defaultConfig()
-                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
-                .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.lsn_column_collision")
-                .with(SqlServerConnectorConfig.DATA_QUERY_MODE, dataQueryMode)
-                .build();
-
-        start(SqlServerConnector.class, config);
-        assertConnectorIsRunning();
-        TestHelper.waitForSnapshotToBeCompleted();
-
-        connection.execute("INSERT INTO lsn_column_collision VALUES (1, 'normal column', 'a', 'b', 'c', 'd')");
-
-        final SourceRecords records = consumeRecordsByTopic(1);
-        final List<SourceRecord> recordsForTopic = records.recordsForTopic("server1.testDB1.dbo.lsn_column_collision");
-        assertThat(recordsForTopic).hasSize(1);
-
-        final Struct value = (Struct) recordsForTopic.get(0).value();
-        final List<SchemaAndValueField> expectedRow = Arrays.asList(
-                new SchemaAndValueField("id", Schema.INT32_SCHEMA, 1),
-                new SchemaAndValueField("description", Schema.OPTIONAL_STRING_SCHEMA, "normal column"),
-                new SchemaAndValueField("start_lsn", Schema.OPTIONAL_STRING_SCHEMA, "a"),
-                new SchemaAndValueField("tran_begin_time", Schema.OPTIONAL_STRING_SCHEMA, "b"),
-                new SchemaAndValueField("tran_id", Schema.OPTIONAL_STRING_SCHEMA, "c"),
-                new SchemaAndValueField("tran_end_time", Schema.OPTIONAL_STRING_SCHEMA, "d"));
-        assertRecord((Struct) value.get("after"), expectedRow);
-
-        final long tsMs = value.getStruct("source").getInt64("ts_ms");
-        final String commitLsnHex = "0x" + value.getStruct("source").getString("commit_lsn").replace(":", "");
-        final Instant expectedSourceTimestamp = connection.queryAndMap(
-                "SELECT TODATETIMEOFFSET(sys.fn_cdc_map_lsn_to_time(" + commitLsnHex + "), DATEPART(TZOFFSET, SYSDATETIMEOFFSET()))",
-                rs -> {
-                    rs.next();
-                    return rs.getTimestamp(1).toInstant();
-                });
-        assertThat(Instant.ofEpochMilli(tsMs)).isEqualTo(expectedSourceTimestamp);
 
         stopConnector();
     }
@@ -975,7 +914,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
                         final Lsn minLsn = connection.getMinLsn(TestHelper.TEST_DATABASE_1, tableName);
                         final Lsn maxLsn = connection.getMaxLsn(TestHelper.TEST_DATABASE_1);
                         final List<Integer> ids = new ArrayList<>();
-                        try (ResultSet rs = connection.getChangesForTable(ct, minLsn, Lsn.ZERO, 0, -1, maxLsn, 0)) {
+                        try (ResultSet rs = connection.getChangesForTable(ct, minLsn, maxLsn)) {
                             while (rs.next()) {
                                 ids.add(rs.getInt("id"));
                             }
@@ -2579,35 +2518,6 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
 
         final String message = "Streaming is disabled for snapshot mode initial_only";
         stopConnector(value -> assertThat(logInterceptor.containsMessage(message)).isTrue());
-    }
-
-    @Test
-    @FixFor("dbz#2551")
-    public void connectorShouldKeepRunningWhenAgentStatusQueryReturnsNoRowsOnIdleDatabase() throws Exception {
-        final Configuration config = TestHelper.defaultConfig()
-                .with("database.sqlserver.agent.status.query", "SELECT 1 WHERE 1 = 0")
-                .build();
-
-        final LogInterceptor logInterceptor = new LogInterceptor(JdbcConnection.class);
-
-        start(SqlServerConnector.class, config);
-        assertConnectorIsRunning();
-
-        // Wait for snapshot completion so streaming has started
-        consumeRecordsByTopic(1);
-
-        // Simulate the CDC clean up job emptying lsn_time_mapping on an idle database, so the next
-        // poll sees no maximum LSN and falls into the Agent status check.
-        connection.execute("DELETE FROM cdc.lsn_time_mapping");
-
-        Awaitility.await()
-                .atMost(TestHelper.waitTimeForLogEntries(), TimeUnit.SECONDS)
-                .untilAsserted(() -> assertThat(logInterceptor.containsWarnMessage(
-                        "did not return the expected single row indicating whether the SQL Server Agent is running")).isTrue());
-
-        assertConnectorIsRunning();
-
-        stopConnector();
     }
 
     @Test

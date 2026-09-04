@@ -1,4 +1,4 @@
-The following table lists the JMX metrics that are available for monitoring {prodname} streaming operations, including event counts by type, lag behind the source, queue capacity, and connection status.
+The following table lists the streaming metrics that are available.
 
 [cols="35%a,20%a,45%a",options="header"]
 |===

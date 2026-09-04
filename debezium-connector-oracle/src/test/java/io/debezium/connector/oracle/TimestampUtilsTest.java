@@ -54,45 +54,4 @@ public class TimestampUtilsTest {
         final Instant expected = LocalDateTime.of(0, 1, 2, 0, 0, 0, 123456789).toInstant(ZoneOffset.UTC);
         assertThat(TimestampUtils.convertTimestampNoZoneToInstant(value)).isEqualTo(expected);
     }
-
-    @Test
-    @FixFor("debezium/dbz#1286")
-    public void testEraSuffixedDate() {
-        // 2018 BC (Oracle year -2018) is ISO proleptic year -2017
-        final String bc = "TO_DATE('2018-03-27 12:34:56 BC', 'YYYY-MM-DD HH24:MI:SS AD')";
-        assertThat(TimestampUtils.convertTimestampNoZoneToInstant(bc))
-                .isEqualTo(LocalDateTime.of(-2017, 3, 27, 12, 34, 56).toInstant(ZoneOffset.UTC));
-
-        final String ad = "TO_DATE('2018-03-27 12:34:56 AD', 'YYYY-MM-DD HH24:MI:SS AD')";
-        assertThat(TimestampUtils.convertTimestampNoZoneToInstant(ad))
-                .isEqualTo(LocalDateTime.of(2018, 3, 27, 12, 34, 56).toInstant(ZoneOffset.UTC));
-    }
-
-    @Test
-    @FixFor("debezium/dbz#1286")
-    public void testEraSuffixedTimestamp() {
-        final String bc = "TO_TIMESTAMP('2018-03-27 12:34:56.007890000 BC')";
-        assertThat(TimestampUtils.convertTimestampNoZoneToInstant(bc))
-                .isEqualTo(LocalDateTime.of(-2017, 3, 27, 12, 34, 56, 7_890_000).toInstant(ZoneOffset.UTC));
-
-        final String ad = "TO_TIMESTAMP('2018-03-27 12:34:56.007890000 AD')";
-        assertThat(TimestampUtils.convertTimestampNoZoneToInstant(ad))
-                .isEqualTo(LocalDateTime.of(2018, 3, 27, 12, 34, 56, 7_890_000).toInstant(ZoneOffset.UTC));
-
-        // 1 BC (Oracle year -1) is ISO proleptic year 0
-        final String oneBc = "TO_TIMESTAMP('0001-12-31 23:59:59 BC')";
-        assertThat(TimestampUtils.convertTimestampNoZoneToInstant(oneBc))
-                .isEqualTo(LocalDateTime.of(0, 12, 31, 23, 59, 59).toInstant(ZoneOffset.UTC));
-    }
-
-    @Test
-    @FixFor("debezium/dbz#1286")
-    public void testEraSuffixedSqlCompliantFunctionCall() {
-        assertThat(TimestampUtils.toSqlCompliantFunctionCall("TO_TIMESTAMP('2018-03-27 12:34:56.00789 BC')"))
-                .isEqualTo("TO_TIMESTAMP('2018-03-27 12:34:56.00789 BC', 'YYYY-MM-DD HH24:MI:SS.FF AD')");
-        assertThat(TimestampUtils.toSqlCompliantFunctionCall("TO_TIMESTAMP('2018-03-27 12:34:56.00789 AD')"))
-                .isEqualTo("TO_TIMESTAMP('2018-03-27 12:34:56.00789 AD', 'YYYY-MM-DD HH24:MI:SS.FF AD')");
-        assertThat(TimestampUtils.toSqlCompliantFunctionCall("TO_TIMESTAMP('2018-03-27 12:34:56.00789')"))
-                .isEqualTo("TO_TIMESTAMP('2018-03-27 12:34:56.00789', 'YYYY-MM-DD HH24:MI:SS.FF')");
-    }
 }

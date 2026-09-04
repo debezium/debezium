@@ -27,7 +27,6 @@ import org.slf4j.LoggerFactory;
 import io.debezium.DebeziumException;
 import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.Configuration;
-import io.debezium.connector.oracle.CommitScn;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnection.NonRelationalTableException;
 import io.debezium.connector.oracle.OracleConnectorConfig;
@@ -74,8 +73,6 @@ import io.debezium.connector.oracle.logminer.parser.XmlWriteParser;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
-import io.debezium.pipeline.monitor.OffsetActivityMonitor;
-import io.debezium.pipeline.monitor.OffsetActivityMonitorService;
 import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotContext;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.pipeline.txmetadata.TransactionContext;
@@ -105,6 +102,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
 
     private static final int MINING_START_RETRIES = 5;
     private static final int MAXIMUM_NAME_LENGTH = 30;
+    private static final int MAX_ITERATIONS_BEFORE_OFFSET_STALE = 25;
     private static final Long SMALL_REDO_LOG_WARNING = 524_288_000L;
 
     private final OracleConnectorConfig connectorConfig;
@@ -117,6 +115,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     private final OracleDatabaseSchema schema;
     private final LogMinerStreamingChangeEventSourceMetrics metrics;
     private final JdbcConfiguration jdbcConfiguration;
+    private final boolean useContinuousMining;
     private final LogFileCollector logCollector;
     private final LogMinerSessionContext sessionContext;
     private final LogMinerDmlParser dmlParser;
@@ -127,7 +126,6 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     private final Tables.TableFilter tableFilter;
     private final List<String> archiveDestinationNames;
     private final LogMinerColumnIndexes columnIndexes;
-    private final OffsetActivityMonitorService offsetActivityMonitorService;
 
     private boolean sequenceUnavailable = false;
     private List<LogFile> currentLogFiles;
@@ -140,7 +138,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     private OraclePartition partition;
     private ChangeEventSourceContext context;
     private long currentSleepTime;
-    private OffsetActivityMonitor<OraclePartition, OracleOffsetContext> offsetActivityMonitor;
+    private OffsetActivityMonitor offsetActivityMonitor;
 
     public AbstractLogMinerStreamingChangeEventSource(OracleConnectorConfig connectorConfig,
                                                       OracleConnectionFactory connectionFactory,
@@ -159,8 +157,9 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         this.schema = schema;
         this.metrics = metrics;
         this.jdbcConfiguration = JdbcConfiguration.adapt(jdbcConfig);
+        this.useContinuousMining = connectorConfig.isLogMiningContinuousMining(streamingConnection.getOracleVersion());
         this.logCollector = new LogFileCollector(connectorConfig, streamingConnection);
-        this.sessionContext = new LogMinerSessionContext(streamingConnection, connectorConfig.getLogMiningStrategy(),
+        this.sessionContext = new LogMinerSessionContext(streamingConnection, useContinuousMining, connectorConfig.getLogMiningStrategy(),
                 connectorConfig.getLogMiningPathToDictionary());
         this.dmlParser = new LogMinerDmlParser(connectorConfig);
         this.reconstructColumnDmlParser = new LogMinerColumnResolverDmlParser(connectorConfig);
@@ -170,7 +169,6 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         this.tableFilter = connectorConfig.getTableFilters().dataCollectionFilter();
         this.archiveDestinationNames = connectorConfig.getArchiveDestinationNameResolver().getDestinationNames(streamingConnection);
         this.columnIndexes = LogMinerColumnIndexes.fromConfig(connectorConfig);
-        this.offsetActivityMonitorService = OffsetActivityMonitorService.lookup(connectorConfig.getServiceRegistry());
     }
 
     @Override
@@ -191,6 +189,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             this.effectiveOffset = offsetContext;
             this.partition = partition;
             this.context = context;
+            this.offsetActivityMonitor = new OffsetActivityMonitor(MAX_ITERATIONS_BEFORE_OFFSET_STALE, getOffsetContext(), getMetrics());
             this.logFileSessionSelector = resolveLogFileSessionSelector(connectorConfig, streamingConnection);
 
             // perform various pre-streaming initialization steps
@@ -212,7 +211,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             }
 
             // Fail-fast check: makes sure the offset SCN is still available in the logs
-            if (offsetScn.compareTo(firstScn.subtract(Scn.ONE)) < 0) {
+            if (!useContinuousMining && offsetScn.compareTo(firstScn.subtract(Scn.ONE)) < 0) {
                 // offsetScn is the exclusive lower bound, so must be >= (firstScn - 1)
                 throw new DebeziumException("Online REDO LOG files or archive log files do not contain the offset scn " +
                         offsetScn + ". Please perform a new snapshot.");
@@ -337,15 +336,8 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         return sessionLogFiles;
     }
 
-    @Override
-    public Optional<OffsetActivityMonitor<OraclePartition, OracleOffsetContext>> getOffsetActivityMonitor() {
-        if (offsetActivityMonitor == null) {
-            offsetActivityMonitor = new LogMinerOffsetActivityMonitor(
-                    connectorConfig.getOffsetActivityMonitorInterval(),
-                    getMetrics(),
-                    this::getActiveTransactionIds);
-        }
-        return Optional.of(offsetActivityMonitor);
+    protected OffsetActivityMonitor getOffsetActivityMonitor() {
+        return offsetActivityMonitor;
     }
 
     protected void executeBlockingSnapshot() throws InterruptedException {
@@ -439,10 +431,9 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
 
             getBatchMetrics().updateStreamingMetrics();
 
-            // This is purposely buried inside this method so that the initial delay waiting for
-            // archive log only mode to advanced into the streaming loop does not create any
-            // false-positive on the first mining iteration.
-            offsetActivityMonitorService.pulse(partition, getOffsetContext());
+            if (getBatchMetrics().hasProcessedAnyTransactions()) {
+                getOffsetActivityMonitor().checkForStaleOffsets(this::getActiveTransactionIds);
+            }
 
             LOGGER.debug("{}.", getBatchMetrics());
             LOGGER.debug("Processed in {} ms. Lag {}. Active Transactions: {}. Offsets: {}",
@@ -1144,16 +1135,19 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
 
         detectRedoThreadTransitions(logFilesResult.redoThreadState());
 
-        SessionLogSelection sessionLogSelection = logFileSessionSelector.selectLogsForSession(logFilesResult, upperBoundsScn);
+        Scn upperBoundaryScn = upperBoundsScn;
+        if (!useContinuousMining) {
+            SessionLogSelection sessionLogSelection = logFileSessionSelector.selectLogsForSession(logFilesResult, upperBoundsScn);
 
-        sessionLogFilesChanged = !sessionLogSelection.logFiles().equals(sessionLogFiles);
-        sessionLogFiles = sessionLogSelection.logFiles();
+            sessionLogFilesChanged = !sessionLogSelection.logFiles().equals(sessionLogFiles);
+            sessionLogFiles = sessionLogSelection.logFiles();
 
-        if (sessionLogFilesChanged) {
-            LOGGER.trace("LogMiner session log files list changed, forcing a new mining session.");
+            if (sessionLogFilesChanged) {
+                LOGGER.trace("LogMiner session log files list changed, forcing a new mining session.");
+            }
+
+            upperBoundaryScn = sessionLogSelection.effectiveUpperBounds();
         }
-
-        Scn upperBoundaryScn = sessionLogSelection.effectiveUpperBounds();
 
         metrics.setRedoLogStatuses(streamingConnection.queryAndMap(
                 SqlUtils.redoLogStatusQuery(),
@@ -1173,19 +1167,23 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      * @throws SQLException if a database exception occurs
      */
     protected void applyLogsToSession() throws SQLException {
-        sessionContext.removeAllLogFilesFromSession();
+        if (!useContinuousMining) {
+            sessionContext.removeAllLogFilesFromSession();
+        }
 
-        sessionContext.addLogFiles(sessionLogFiles);
+        if (!useContinuousMining) {
+            sessionContext.addLogFiles(sessionLogFiles);
 
-        // These need to be updated when we prepare the session so that log switch check works
-        currentRedoLogSequences = currentLogFiles.stream()
-                .filter(LogFile::isCurrent)
-                .map(LogFile::getSequence)
-                .toList();
+            // These need to be updated when we prepare the session so that log switch check works
+            currentRedoLogSequences = currentLogFiles.stream()
+                    .filter(LogFile::isCurrent)
+                    .map(LogFile::getSequence)
+                    .toList();
 
-        metrics.setMinedLogFileNames(sessionLogFiles.stream()
-                .map(LogFile::getFileName)
-                .collect(Collectors.toSet()));
+            metrics.setMinedLogFileNames(sessionLogFiles.stream()
+                    .map(LogFile::getFileName)
+                    .collect(Collectors.toSet()));
+        }
 
         metrics.setCurrentLogFileNames(currentLogFiles.stream()
                 .filter(LogFile::isCurrent)
@@ -1754,14 +1752,11 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      * @throws SQLException if a database exception occurred
      */
     private void setNlsSessionParameters() throws SQLException {
-        // The era suffix is required so that BC values remain distinguishable from AD values in the
-        // redo SQL; NLS_DATE_LANGUAGE pins the era markers to "AD"/"BC" regardless of database locale.
         final String NLS_SESSION_PARAMETERS = "ALTER SESSION SET "
-                + "  NLS_DATE_FORMAT = 'YYYY-MM-DD HH24:MI:SS AD'"
-                + "  NLS_TIMESTAMP_FORMAT = 'YYYY-MM-DD HH24:MI:SS.FF9 AD'"
-                + "  NLS_TIMESTAMP_TZ_FORMAT = 'YYYY-MM-DD HH24:MI:SS.FF9 TZH:TZM AD'"
-                + "  NLS_NUMERIC_CHARACTERS = '.,'"
-                + "  NLS_DATE_LANGUAGE = 'AMERICAN'";
+                + "  NLS_DATE_FORMAT = 'YYYY-MM-DD HH24:MI:SS'"
+                + "  NLS_TIMESTAMP_FORMAT = 'YYYY-MM-DD HH24:MI:SS.FF9'"
+                + "  NLS_TIMESTAMP_TZ_FORMAT = 'YYYY-MM-DD HH24:MI:SS.FF9 TZH:TZM'"
+                + "  NLS_NUMERIC_CHARACTERS = '.,'";
         streamingConnection.executeWithoutCommitting(NLS_SESSION_PARAMETERS);
 
         // This is necessary so that TIMESTAMP WITH LOCAL TIME ZONE is returned in UTC
@@ -2147,16 +2142,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             switch (connectorConfig.getLogMiningStrategy()) {
                 case HYBRID, ONLINE_CATALOG: {
                     final long maximumRedoLogFileSize = connection.getMaximumRedoLogFileSize();
-                    // The maximum committed SCN across redo threads is a lower bound on the upper
-                    // boundary of the last mining session before a restart; seeding it restores the
-                    // capped window sizing that would otherwise collapse to the minimum log count.
-                    final CommitScn commitScn = getOffsetContext().getCommitScn();
-                    final Scn minedBoundary = commitScn != null ? commitScn.getMaxCommittedScn() : Scn.NULL;
-                    return new CappedLogFileSessionSelector(
-                            minimumLogCountPerThread,
-                            connectorConfig.getLogMiningLogCountGrowthMax(),
-                            maximumRedoLogFileSize,
-                            minedBoundary);
+                    return new CappedLogFileSessionSelector(minimumLogCountPerThread, maximumRedoLogFileSize);
                 }
             }
         }

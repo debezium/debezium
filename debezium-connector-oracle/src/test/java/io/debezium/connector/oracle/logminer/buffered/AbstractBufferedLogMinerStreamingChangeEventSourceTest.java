@@ -52,6 +52,7 @@ import io.debezium.connector.oracle.jdbc.OracleConnectionFactory;
 import io.debezium.connector.oracle.jdbc.StandardOracleConnectionFactory;
 import io.debezium.connector.oracle.logminer.AbstractLogMinerStreamingChangeEventSource;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
+import io.debezium.connector.oracle.logminer.OffsetActivityMonitor;
 import io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerStreamingChangeEventSource.ProcessResult;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
@@ -991,6 +992,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     protected static class BufferedStreamingChangeEventSource extends BufferedLogMinerStreamingChangeEventSource {
 
         private final ChangeEventSourceContext context;
+        private final OffsetActivityMonitor offsetActivityMonitor;
 
         public BufferedStreamingChangeEventSource(
                                                   OracleConnectorConfig connectorConfig,
@@ -1002,12 +1004,19 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
                                                   OracleOffsetContext offsetContext) {
             super(connectorConfig, connectionFactory, dispatcher, null, Clock.SYSTEM, schema, connectorConfig.getJdbcConfig(), metrics);
             this.context = context;
+            this.offsetActivityMonitor = new OffsetActivityMonitor(25, offsetContext, metrics);
         }
 
         @Override
         protected ChangeEventSourceContext getContext() {
             // Necessary for mock purposes only
             return context;
+        }
+
+        @Override
+        protected OffsetActivityMonitor getOffsetActivityMonitor() {
+            // Necessary for mock purposes only
+            return offsetActivityMonitor;
         }
 
         @Override

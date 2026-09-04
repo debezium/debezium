@@ -67,11 +67,6 @@ abstract public class AbstractSqlServerPartitionMetrics extends Metrics implemen
     }
 
     @Override
-    public long getTotalNumberOfReadEventsSeen() {
-        return commonEventMeter.getTotalNumberOfReadEventsSeen();
-    }
-
-    @Override
     public long getNumberOfEventsFiltered() {
         return commonEventMeter.getNumberOfEventsFiltered();
     }

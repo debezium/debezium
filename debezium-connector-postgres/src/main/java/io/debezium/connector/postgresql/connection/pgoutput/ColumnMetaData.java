@@ -27,7 +27,6 @@ public class ColumnMetaData {
     private final int length;
     private final int scale;
     private final String typeName;
-    private final String driverTypeName;
 
     /**
      * Create a metadata structure representing a column.
@@ -39,10 +38,9 @@ public class ColumnMetaData {
      * @param hasDefaultValue {@code true} if the column has a default value specified, {@code false} otherwise
      * @param defaultValueExpression the parsed default value literal for the column
      * @param typeModifier the attribute type modifier
-     * @param driverTypeName the type name the JDBC driver reports for the column, {@code null} when unavailable
      */
     ColumnMetaData(String columnName, PostgresType postgresType, boolean key, boolean optional, boolean hasDefaultValue, String defaultValueExpression,
-                   int typeModifier, String driverTypeName) {
+                   int typeModifier) {
         this.columnName = columnName;
         this.postgresType = postgresType;
         this.key = key;
@@ -70,12 +68,8 @@ public class ColumnMetaData {
             scale = postgresType.getDefaultScale();
         }
 
-        // A serial column carries the OID of its underlying int2/int4/int8 type, so a name taken from the
-        // OID loses the serial nature that the driver reports during snapshot (debezium/dbz#2232).
-        this.driverTypeName = driverTypeName != null ? driverTypeName : postgresType.getName();
-
         // Constructs a fully qualified type name, including dimensions if applicable
-        String type = this.driverTypeName;
+        String type = postgresType.getName();
         if (postgresType.isVector()) {
             // pgvector uses a single dimension modifier, e.g. vector(3) rather than vector(3,0)
             if (length != Column.UNSET_INT_VALUE) {
@@ -122,9 +116,5 @@ public class ColumnMetaData {
 
     public String getTypeName() {
         return typeName;
-    }
-
-    public String getDriverTypeName() {
-        return driverTypeName;
     }
 }

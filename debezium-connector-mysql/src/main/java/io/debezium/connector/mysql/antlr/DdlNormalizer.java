@@ -18,8 +18,7 @@ import java.util.regex.Pattern;
  * text represents identifiers and must not be converted. In that case, callers
  * should pass {@code ansiQuotesMode=true} to skip the conversion.
  *
- * Also adds backticks around keywords that the grammar cannot parse as unquoted
- * identifiers (see {@code KEYWORDS_REQUIRING_BACKTICKS}) when they are used as identifiers.
+ * Also adds backticks around reserved keywords when used as identifiers.
  *
  * @author Debezium Authors
  */
@@ -39,128 +38,33 @@ public class DdlNormalizer {
      * - Group 4: Backtick identifiers   {@code `identifier`}
      *
      */
-    private static final Pattern QUOTED_LITERAL_PATTERN = Pattern.compile("""
-            (--[^\\n]*|#[^\\n]*|/\\*(?!!).*?\\*/)\
-            |('(?:''|[^'\\\\]|\\\\.)*')\
-            |"((?:[^"\\\\]|\\\\.|"")*)"\
-            |(`(?:``|[^`])*`)""",
+    private static final Pattern QUOTED_LITERAL_PATTERN = Pattern.compile(
+            "(--[^\\n]*|#[^\\n]*|/\\*(?!!).*?\\*/)|(\'(?:\'\'|[^\'\\\\]|\\\\.)*\')|\"((?:[^\"\\\\]|\\\\.|\"\")*)\"|(`(?:``|[^`])*`)",
             Pattern.DOTALL);
 
     /**
-     * Window function keywords (plus JSON_TABLE): reserved words since MySQL 8.0, but valid
-     * unquoted identifiers on MySQL 5.7 and older, so DDL using them as identifiers can still
-     * reach the parser (older sources, schema history). Missing from
-     * {@code identifierKeywordsUnambiguous} in the migrated grammar.
+     * Reserved keywords that need backticks when used as identifiers.
      */
-    private static final String WINDOW_FUNCTION_KEYWORDS = "CUME_DIST|DENSE_RANK|FIRST_VALUE|JSON_TABLE|LAG|LAST_VALUE|LEAD|NTH_VALUE|NTILE|PERCENT_RANK|RANK|ROW_NUMBER";
-
-    /**
-     * Version-gated keywords introduced by MySQL 8.0.32+ (URL) and 8.2.0+/9.x lexer gates:
-     * mostly nonreserved keywords (URL, AUTO, MANUAL, PARALLEL, VECTOR) or not keywords at all
-     * (ONLINE, OFFLINE) on real servers, so MySQL accepts them as unquoted identifiers — only
-     * QUALIFY and TABLESAMPLE are reserved, from 8.2 on. Their tokens are missing from
-     * {@code identifierKeywordsUnambiguous}, so the grammar rejects them in identifier
-     * positions (debezium/dbz#2381). The upstream Oracle grammar in antlr/grammars-v4 has the
-     * same omission; this group can be removed once the upstream fix (antlr/grammars-v4#4963)
-     * is synced into the Debezium grammar.
-     */
-    private static final String VERSION_GATED_KEYWORDS = "AUTO|MANUAL|OFFLINE|ONLINE|PARALLEL|QUALIFY|TABLESAMPLE|URL|VECTOR";
-
-    /**
-     * All keywords the grammar cannot parse as unquoted identifiers; they are backtick-quoted
-     * when they appear in identifier positions.
-     */
-    private static final String KEYWORDS_REQUIRING_BACKTICKS = WINDOW_FUNCTION_KEYWORDS + "|" + VERSION_GATED_KEYWORDS;
-
-    private static final Pattern KEYWORDS_REQUIRING_BACKTICKS_PATTERN = Pattern.compile(
-            "\\b(" + KEYWORDS_REQUIRING_BACKTICKS + ")\\b",
-            Pattern.CASE_INSENSITIVE);
-
-    /**
-     * Table name positions: after CREATE/ALTER/DROP/RENAME/TRUNCATE TABLE (including
-     * TEMPORARY and IF [NOT] EXISTS variants), FROM, JOIN, INTO, REFERENCES,
-     * ON ({@code CREATE INDEX ... ON t}, {@code CREATE TRIGGER ... ON t}),
-     * LIKE ({@code CREATE TABLE t2 LIKE t}),
-     * and after TO ({@code RENAME TABLE ... TO t}, {@code RENAME COLUMN ... TO c}).
-     */
-    private static final String TABLE_NAME_ANCHORS = """
-            CREATE\\s+(?:TEMPORARY\\s+)?TABLE(?:\\s+IF\\s+NOT\\s+EXISTS)?\
-            |ALTER\\s+TABLE|DROP\\s+(?:TEMPORARY\\s+)?TABLE(?:\\s+IF\\s+EXISTS)?\
-            |RENAME\\s+TABLE|TRUNCATE(?:\\s+TABLE)?\
-            |REFERENCES|FROM|JOIN|INTO|TO|ON|LIKE""";
-
-    /**
-     * Column clause positions: ADD/CHANGE/MODIFY/ALTER/DROP [COLUMN] (the COLUMN word is
-     * optional in all of them, e.g. {@code ALTER TABLE t DROP url}), RENAME COLUMN,
-     * and AFTER ({@code ADD COLUMN c INT AFTER c2}).
-     */
-    private static final String COLUMN_CLAUSE_ANCHORS = "ADD(?:\\s+COLUMN)?|CHANGE(?:\\s+COLUMN)?|MODIFY(?:\\s+COLUMN)?|ALTER(?:\\s+COLUMN)?|DROP(?:\\s+COLUMN)?|RENAME\\s+COLUMN|AFTER";
-
-    /**
-     * Column definitions: keyword directly followed by a data type.
-     */
-    private static final Pattern COLUMN_DEFINITION_CONTEXT_PATTERN = Pattern.compile(
-            "\\b(" + KEYWORDS_REQUIRING_BACKTICKS + ")\\s+(" + """
-                    (?:VAR)?CHAR|CHARACTER|NCHAR|NVARCHAR|NATIONAL|(?:TINY|SMALL|MEDIUM|BIG)?INT|INTEGER|INT[12348]|MIDDLEINT\
-                    |DECIMAL|DEC|FIXED|NUMERIC|FLOAT|FLOAT[48]|DOUBLE|REAL|SERIAL\
-                    |JSON|(?:TINY|MEDIUM|LONG)?TEXT|(?:TINY|MEDIUM|LONG)?BLOB|LONG|DATE|DATETIME|TIMESTAMP|TIME|YEAR\
-                    |ENUM|SET|BINARY|VARBINARY|BIT|BOOL|BOOLEAN|VECTOR\
-                    |GEOMETRY|GEOMETRYCOLLECTION|POINT|LINESTRING|POLYGON|MULTIPOINT|MULTILINESTRING|MULTIPOLYGON""" + ")\\b",
-            Pattern.CASE_INSENSITIVE);
-
-    /**
-     * Index and constraint name positions: [ADD] [UNIQUE|FULLTEXT|SPATIAL] INDEX/KEY,
-     * CREATE [UNIQUE|FULLTEXT|SPATIAL] INDEX, DROP INDEX, [ADD] CONSTRAINT,
-     * DROP/ALTER CHECK.
-     */
-    private static final String INDEX_OR_CONSTRAINT_ANCHORS = """
-            (?:ADD\\s+)?(?:UNIQUE\\s+|FULLTEXT\\s+|SPATIAL\\s+)?(?:INDEX|KEY)\
-            |CREATE\\s+(?:UNIQUE\\s+|FULLTEXT\\s+|SPATIAL\\s+)?INDEX|DROP\\s+INDEX\
-            |(?:ADD\\s+)?CONSTRAINT|(?:DROP|ALTER)\\s+CHECK""";
-
-    /**
-     * Non-table schema object name positions: DATABASE/SCHEMA/VIEW/TRIGGER/PROCEDURE/
-     * FUNCTION/EVENT (including IF [NOT] EXISTS variants), USE, and PARTITION names.
-     * The anchor word always directly precedes the name, so leading verbs
-     * ({@code CREATE OR REPLACE VIEW}, {@code REORGANIZE PARTITION}) need no handling.
-     */
-    private static final String OBJECT_NAME_ANCHORS = "(?:DATABASE|SCHEMA|VIEW|TRIGGER|PROCEDURE|FUNCTION|EVENT)(?:\\s+IF(?:\\s+NOT)?\\s+EXISTS)?|USE|PARTITION";
-
-    /**
-     * All identifier-position anchors above, combined into a single alternation: they share
-     * the same {@code anchor <keyword>} shape and the same replacement, so one scan covers
-     * table names, column clauses, index/constraint names and schema object names.
-     */
-    private static final Pattern IDENTIFIER_CONTEXT_PATTERN = Pattern.compile(
-            "\\b(" + TABLE_NAME_ANCHORS + "|" + COLUMN_CLAUSE_ANCHORS + "|" + INDEX_OR_CONSTRAINT_ANCHORS + "|" + OBJECT_NAME_ANCHORS + ")\\s+("
-                    + KEYWORDS_REQUIRING_BACKTICKS + ")\\b",
-            Pattern.CASE_INSENSITIVE);
-
-    /**
-     * Labels in stored routines: {@code <keyword>:}.
-     */
-    private static final Pattern LABEL_CONTEXT_PATTERN = Pattern.compile(
-            "\\b(" + KEYWORDS_REQUIRING_BACKTICKS + ")\\s*:",
+    private static final Pattern RESERVED_KEYWORD_PATTERN = Pattern.compile(
+            "\\b(CUME_DIST|DENSE_RANK|FIRST_VALUE|JSON_TABLE|LAG|LAST_VALUE|LEAD|NTH_VALUE|NTILE|PERCENT_RANK|RANK|ROW_NUMBER)\\b",
             Pattern.CASE_INSENSITIVE);
 
     /**
      * Normalizes MySQL DDL by converting double-quoted strings to single-quoted strings
-     * while preserving backtick-quoted identifiers, and adding backticks around
-     * grammar-restricted keywords used as identifiers. Assumes the server is NOT in
-     * ANSI_QUOTES mode.
+     * while preserving backtick-quoted identifiers, and adding backticks around reserved
+     * keywords when used as identifiers. Assumes the server is NOT in ANSI_QUOTES mode.
      *
      * @param ddlContent The DDL statement to normalize
      * @return Normalized DDL with double-quoted strings converted to single quotes
-     *         and grammar-restricted keywords backtick-quoted, or the original input
-     *         if null or empty
+     *         and reserved keywords backtick-quoted, or the original input if null or empty
      */
     public static String normalize(String ddlContent) {
         return normalize(ddlContent, false);
     }
 
     /**
-     * Normalizes MySQL DDL by adding backticks around grammar-restricted keywords used
-     * as identifiers. When {@code ansiQuotesMode} is false, also converts double-quoted
+     * Normalizes MySQL DDL by adding backticks around reserved keywords when used as
+     * identifiers. When {@code ansiQuotesMode} is false, also converts double-quoted
      * strings to single-quoted strings (for servers using the default sql_mode where
      * double quotes delimit string literals). When {@code ansiQuotesMode} is true,
      * double-quoted text is left as-is because it represents identifiers.
@@ -221,22 +125,28 @@ public class DdlNormalizer {
     }
 
     /**
-     * Adds backticks around the {@code KEYWORDS_REQUIRING_BACKTICKS} entries when used as
-     * identifiers (not as keywords).
-     * Targets specific contexts: table names, column clauses, column definitions,
-     * index/constraint names, schema object names (database, view, trigger, routine,
-     * event, partition) and labels.
+     * Adds backticks around reserved keywords when used as identifiers (not as keywords).
+     * Targets specific contexts: table names, column names, aliases, labels.
      * Only ever invoked on the plain SQL segments between comments, string literals and
      * quoted identifiers, so their content is never rewritten.
      */
     private static String addBackticksToReservedKeywords(String ddl) {
-        if (!KEYWORDS_REQUIRING_BACKTICKS_PATTERN.matcher(ddl).find()) {
-            return ddl;
-        }
+        String result = ddl;
 
-        String result = IDENTIFIER_CONTEXT_PATTERN.matcher(ddl).replaceAll("$1 `$2`");
-        result = COLUMN_DEFINITION_CONTEXT_PATTERN.matcher(result).replaceAll("`$1` $2");
-        result = LABEL_CONTEXT_PATTERN.matcher(result).replaceAll("`$1`:");
+        // Pattern for table names after CREATE TABLE, ALTER TABLE, DROP TABLE, FROM, JOIN, etc.
+        result = result.replaceAll(
+                "(?i)\\b(CREATE\\s+TABLE|ALTER\\s+TABLE|DROP\\s+TABLE|FROM|JOIN|LEFT\\s+JOIN|RIGHT\\s+JOIN|INNER\\s+JOIN|OUTER\\s+JOIN|INTO)\\s+(CUME_DIST|DENSE_RANK|FIRST_VALUE|JSON_TABLE|LAG|LAST_VALUE|LEAD|NTH_VALUE|NTILE|PERCENT_RANK|RANK|ROW_NUMBER)\\b",
+                "$1 `$2`");
+
+        // Pattern for column names in column definitions
+        result = result.replaceAll(
+                "(?i)\\b(CUME_DIST|DENSE_RANK|FIRST_VALUE|JSON_TABLE|LAG|LAST_VALUE|LEAD|NTH_VALUE|NTILE|PERCENT_RANK|RANK|ROW_NUMBER)\\s+((?:VAR)?CHAR|INT|BIGINT|DECIMAL|NUMERIC|FLOAT|DOUBLE|JSON|TEXT|BLOB|DATE|DATETIME|TIMESTAMP|TIME|YEAR|ENUM|SET|BINARY|VARBINARY|BIT|BOOL|BOOLEAN)\\b",
+                "`$1` $2");
+
+        // Pattern for labels in stored procedures: <keyword>:
+        result = result.replaceAll(
+                "(?i)\\b(CUME_DIST|DENSE_RANK|FIRST_VALUE|JSON_TABLE|LAG|LAST_VALUE|LEAD|NTH_VALUE|NTILE|PERCENT_RANK|RANK|ROW_NUMBER)\\s*:",
+                "`$1`:");
 
         return result;
     }

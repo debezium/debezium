@@ -72,8 +72,7 @@ endif::product[]
 [[mongodb-sink-architecture]]
 == Architecture and how it works
 
-The {prodname} MongoDB sink connector mirrors the state of tables in a relational source database to collections in a MongoDB database by consuming {prodname} change events from Kafka topics and applying them as document-level operations.
-
+Use the {prodname} MongoDB sink connector to stream change data capture (CDC) event records from Kafka topics to a MongoDB sink database.
 The connector subscribes to Kafka topics that are populated with event messages produced by {prodname} relational database source connectors.
 Each event message describes a database operation (insert, update, or delete) in a structured format that captures the details of the event.
 The connector transforms incoming change event records into MongoDB document format, and then writes the resulting documents into the target MongoDB collection.
@@ -284,9 +283,6 @@ If you include this property in the configuration, do not set the `field.include
 // ModuleID: example-configuration-of-debezium-mongodb-sink-connector
 [[mongodb-sink-examples]]
 == Example configuration
-
-The following example demonstrates a connector configuration that reads change events from specific topics in a relational database and writes the resulting documents to a MongoDB sink database.
-The example configures the connector to capture change events from the `dbserver1.inventory.customers`, `dbserver1.inventory.orders`, and `dbserver1.inventory.products` topics and writes the data to documents in a `debezium` collection in the MongoDB sink database.
 
 The following example shows how you might configure the connector to read change events from three specific topics from the `dbserver1.inventory` database to modify a collection in the MongoDB sink database named `debezium`.
 

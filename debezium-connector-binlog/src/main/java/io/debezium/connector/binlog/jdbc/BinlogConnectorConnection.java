@@ -301,29 +301,6 @@ public abstract class BinlogConnectorConnection extends JdbcConnection {
      * @return {@code true} if the {@code binlog_row_image} is set to {@code FULL}, {@code false} otherwise
      */
     public boolean isBinlogRowImageFull() {
-        return isBinlogRowImage("FULL");
-    }
-
-    /**
-     * Determines whether the binlog format used by the database server is {@code binlog_row_image='NOBLOB'}.
-     *
-     * @return {@code true} if the {@code binlog_row_image} is set to {@code NOBLOB}, {@code false} otherwise
-     */
-    public boolean isBinlogRowImageNoblob() {
-        return isBinlogRowImage("NOBLOB");
-    }
-
-    /**
-     * Determines whether the binlog format used by the database server is {@code binlog_row_image='FULL'} or
-     * {@code binlog_row_image='NOBLOB'}.
-     *
-     * @return {@code true} if the {@code binlog_row_image} is set to {@code FULL} or {@code NOBLOB}, {@code false} otherwise
-     */
-    public boolean isBinlogRowImageFullOrNoblob() {
-        return isBinlogRowImageFull() || isBinlogRowImageNoblob();
-    }
-
-    protected boolean isBinlogRowImage(String expectedType) {
         try {
             final String rowImage = queryAndMap("SHOW GLOBAL VARIABLES LIKE 'binlog_row_image'", rs -> {
                 if (rs.next()) {
@@ -334,7 +311,7 @@ public abstract class BinlogConnectorConnection extends JdbcConnection {
                 return "FULL";
             });
             LOGGER.debug("binlog_row_image={}", rowImage);
-            return expectedType.equalsIgnoreCase(rowImage);
+            return "FULL".equalsIgnoreCase(rowImage);
         }
         catch (SQLException e) {
             throw new DebeziumException("Unexpected error while connecting to the database and looking at BINLOG_ROW_IMAGE mode: ", e);

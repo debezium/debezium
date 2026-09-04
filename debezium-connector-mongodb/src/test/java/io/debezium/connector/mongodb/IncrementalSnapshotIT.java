@@ -13,7 +13,6 @@ import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -438,13 +437,6 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
     @Test
     void snapshotOnlyUUID() throws Exception {
         snapshotOnly(UUID.randomUUID(), k -> UUID.randomUUID());
-    }
-
-    @Test
-    @FixFor("debezium/dbz#765")
-    void snapshotOnlyDate() throws Exception {
-        Date firstKey = new Date();
-        snapshotOnly(firstKey, k -> new Date(k.getTime() + 1000));
     }
 
     @Test

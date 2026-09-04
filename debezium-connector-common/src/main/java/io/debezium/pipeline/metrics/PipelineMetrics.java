@@ -116,11 +116,6 @@ public abstract class PipelineMetrics<P extends Partition> extends Metrics
     }
 
     @Override
-    public long getTotalNumberOfReadEventsSeen() {
-        return commonEventMeter.getTotalNumberOfReadEventsSeen();
-    }
-
-    @Override
     public long getNumberOfEventsFiltered() {
         return commonEventMeter.getNumberOfEventsFiltered();
     }

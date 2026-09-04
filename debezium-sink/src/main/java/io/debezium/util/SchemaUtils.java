@@ -10,8 +10,6 @@ import java.util.Optional;
 
 import org.apache.kafka.connect.data.Schema;
 
-import io.debezium.data.VariableScaleDecimal;
-
 public class SchemaUtils {
     private static final String SCHEMA_PARAMETER_COLUMN_TYPE = "__debezium.source.column.type";
     private static final String SCHEMA_PARAMETER_COLUMN_SIZE = "__debezium.source.column.length";
@@ -32,10 +30,6 @@ public class SchemaUtils {
 
     public static Optional<String> getSourceColumnName(Schema schema) {
         return getSchemaParameter(schema, SCHEMA_PARAMETER_COLUMN_NAME);
-    }
-
-    public static boolean isVariableScaleDecimal(Schema schema) {
-        return VariableScaleDecimal.LOGICAL_NAME.equals(schema.name());
     }
 
     public static Optional<String> getSchemaParameter(Schema schema, String parameterName) {

@@ -45,14 +45,12 @@ do
             if test -z "$NAME"; then
               COMMIT=`git --git-dir=../"$REPO"/.git log --pretty=format:"%H" --author "$LINE" | head -1`
               if ! grep -qi "$COMMIT" "$FILTERED_COMMITS"; then
-                echo "Commit $COMMIT in $REPO: Did not find [$LINE] with email [$EMAIL]." >&2
-                echo "UNKNOWN_CONTRIBUTOR|${LINE}|${EMAIL}|${REPO}|${COMMIT}"
+                echo "Commit $COMMIT in $REPO: Did not find [$LINE] with email [$EMAIL]."
                 rc=1
               fi
             else
                 if ! grep -qi "$NAME" $COPYRIGHT; then
-                    echo "Found [$LINE] (translated to [$NAME]) but the name wasn't in the COPYRIGHT.txt file." >&2
-                    echo "UNKNOWN_CONTRIBUTOR|${NAME}|${EMAIL}|${REPO}|"
+                    echo "Found [$LINE] (translated to [$NAME]) but the name wasn't in the COPYRIGHT.txt file."
                     rc=1
                 fi
             fi

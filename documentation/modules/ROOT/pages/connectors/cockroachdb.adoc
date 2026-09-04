@@ -126,8 +126,6 @@ Only ongoing changes after the changefeed is created are captured.
 |`when_needed`
 |`yes` on first start, `no` on restart
 |Same as `initial`, but if the stored offset is no longer valid, the connector performs a new initial snapshot.
-The snapshot re-emits rows that still exist, which can result in duplicate events.
-It cannot recover delete events for rows that were deleted while the connector was offline.
 |===
 
 [[cockroachdb-streaming-changes]]
@@ -237,19 +235,6 @@ You can use incremental snapshots to perform the following tasks:
 * Repopulate a downstream consumer that lost data.
 * Backfill a newly added sink or topic.
 * Verify source-target consistency by re-snapshotting and comparing.
-
-[IMPORTANT]
-====
-The connector evaluates `table.include.list` and `table.exclude.list` and discovers the captured tables only when the connector task starts.
-The table set in the running CockroachDB changefeed does not change automatically.
-As a result, the connector does not capture a table that is created later, even if its name matches an include-list regular expression.
-
-Restart the connector to discover and add the table.
-An `execute-snapshot` signal cannot add a table to the running changefeed.
-If a signal requests a table outside the running capture set, the connector logs a warning.
-Restart the connector, and then reissue the signal so that the snapshot runs and subsequent changes are streamed.
-This behavior applies to both `kafka` and `sinkless` delivery modes.
-====
 
 [id="cockroachdb-prepare-to-use-incremental-snapshots"]
 ==== Prepare to use incremental snapshots
@@ -1499,8 +1484,6 @@ That is, it generates change event records for all database changes that were ma
 The CockroachDB link:https://www.cockroachlabs.com/docs/stable/configure-replication-zones#gc-ttlseconds[garbage collection TTL] (default: 4 hours) limits how far back in time a changefeed can be started.
 If the connector is stopped for longer than the configured TTL interval, the stored offset may no longer be valid.
 In this case, use `snapshot.mode=when_needed` to automatically re-snapshot when the offset has expired.
-The new snapshot re-emits rows that still exist, which can result in duplicate events.
-It cannot recover delete events for rows that were deleted while the connector was offline.
 
 [id="cockroachdb-debugging"]
 === Enabling debug logging

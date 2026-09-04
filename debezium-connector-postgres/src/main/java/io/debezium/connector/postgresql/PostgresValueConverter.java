@@ -13,7 +13,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.sql.Array;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -1558,7 +1557,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
                         .map(elementConverter::convert)
                         .collect(Collectors.toList()));
             }
-            else if (data instanceof Array array) {
+            else if (data instanceof PgArray array) {
                 try {
                     final List<Object> converted;
                     if (elementType.getOid() == PgOid.TIMETZ) {
@@ -1580,7 +1579,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
         });
     }
 
-    private List<Object> convertTimeWithTimeZoneArray(Array data, PostgresType elementType, ValueConverter elementConverter) throws SQLException {
+    private List<Object> convertTimeWithTimeZoneArray(PgArray data, PostgresType elementType, ValueConverter elementConverter) throws SQLException {
         final List<Object> converted = new ArrayList<>();
         try (ResultSet values = data.getResultSet()) {
             while (values.next()) {

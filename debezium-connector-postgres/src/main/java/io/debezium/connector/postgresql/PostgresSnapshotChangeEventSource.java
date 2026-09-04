@@ -21,7 +21,6 @@ import io.debezium.connector.postgresql.connection.Lsn;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.spi.SlotCreationResult;
 import io.debezium.connector.postgresql.spi.SlotState;
-import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
@@ -107,26 +106,6 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
         if (snapshotterService.getSnapshotter().shouldStreamEventsStartingFromSnapshot() && startingSlotInfo == null) {
             setSnapshotTransactionIsolationLevel(snapshotContext.onDemand);
         }
-    }
-
-    @Override
-    protected void connectionPoolConnectionCreated(RelationalSnapshotContext<PostgresPartition, PostgresOffsetContext> snapshotContext,
-                                                   JdbcConnection connection)
-            throws SQLException {
-        // The exported-snapshot pin that connectionCreated() sets on the main connection is not shared by the
-        // extra connections created when snapshot.max.threads > 1. Without importing the same exported snapshot
-        // here, each of those connections reads under its own MVCC snapshot, so a parallel snapshot is not
-        // consistent across connections. Import the exported snapshot on every pooled connection, under the same
-        // conditions the main connection uses to set it.
-        if (slotCreatedInfo == null
-                || snapshotContext.onDemand
-                || !snapshotterService.getSnapshotter().shouldStreamEventsStartingFromSnapshot()
-                || startingSlotInfo != null) {
-            return;
-        }
-        // SET TRANSACTION SNAPSHOT must be the first statement of a fresh transaction.
-        connection.rollback();
-        connection.executeWithoutCommitting(snapshotTransactionIsolationLevelStatement(slotCreatedInfo, snapshotContext.onDemand));
     }
 
     @Override

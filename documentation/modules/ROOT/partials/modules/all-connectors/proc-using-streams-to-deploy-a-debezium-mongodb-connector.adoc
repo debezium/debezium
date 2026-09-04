@@ -1,4 +1,5 @@
-You can deploy a {prodname} connector on OpenShift by using {StreamsName} to automatically build a Kafka Connect container image that includes the connector plug-in, without having to manually build the image first.
+With earlier versions of {kafka-streams}, to deploy {ProductName} connectors on OpenShift, you were required to first build a Kafka Connect image for the connector.
+The current preferred method for deploying connectors on OpenShift is to use a build configuration in {kafka-streams} to automatically build a Kafka Connect container image that includes the {prodname} connector plug-ins that you want to use.
 
 During the build process, the {kafka-streams} Operator transforms input parameters in a `KafkaConnect` custom resource, including {prodname} connector definitions, into a Kafka Connect container image.
 The build downloads the necessary artifacts from the Red Hat Maven repository or another configured HTTP server.
@@ -58,50 +59,54 @@ kind: KafkaConnector
 metadata:
   labels:
     strimzi.io/cluster: debezium-kafka-connect-cluster
-  name: inventory-connector-{context}
+  name: inventory-connector-{context} // <1>
 spec:
-  class: io.debezium.connector.{context}.{connector-class}Connector
-  tasksMax: 1
-  config:
-    mongodb.hosts: rs0/192.168.99.100:27017
-    mongodb.user: debezium
-    mongodb.password: dbz
-    topic.prefix: inventory-connector-{context}
-    collection.include.list: inventory[.]*
+  class: io.debezium.connector.{context}.{connector-class}Connector // <2>
+  tasksMax: 1  // <3>
+  config:  // <4>
+    mongodb.hosts: rs0/192.168.99.100:27017 // <5>
+    mongodb.user: debezium  // <6>
+    mongodb.password: dbz  // <7>
+    topic.prefix: inventory-connector-{context} // <8>
+    collection.include.list: inventory[.]*  // <9>
 ----
 =====================================================================
 +
-The preceding connector configuration includes the following properties:
+.Descriptions of connector configuration settings
+[cols="1,7",options="header",subs="+attributes"]
+|===
+|Item |Description
 
-`metadata.name`::
-The name of the connector to register with the Kafka Connect cluster.
+|1
+|The name of the connector to register with the Kafka Connect cluster.
 
-`spec.class`::
-The name of the connector class.
+|2
+|The name of the connector class.
 
-`spec.tasksMax`::
-The number of tasks that can operate concurrently.
+|3
+|The number of tasks that can operate concurrently.
 
-`spec.config`::
-The connector's configuration.
+|4
+|The connector’s configuration.
 
-`mongodb.hosts`::
-The address and port number of the host database instance.
+|5
+|The address and port number of the host database instance.
 
-`mongodb.user`::
-The name of the account that {prodname} uses to connect to the database.
+|7
+|The name of the account that {prodname} uses to connect to the database.
 
-`mongodb.password`::
-The password that {prodname} uses to connect to the database user account.
+|8
+|The password that {prodname} uses to connect to the database user account.
 
-`topic.prefix`::
-The topic prefix for the database instance or cluster.
+|8
+a|The topic prefix for the database instance or cluster.
 The specified name must be formed only from alphanumeric characters or underscores.
 Because the topic prefix is used as the prefix for any Kafka topics that receive change events from this connector, the name must be unique among the connectors in the cluster.
 This namespace is also used in the names of related Kafka Connect schemas, and the namespaces of a corresponding Avro schema if you integrate the connector with the {link-prefix}:{link-avro-serialization}#avro-serialization[Avro connector].
 
-`collection.include.list`::
-The names of the {data-collection}s that the connector captures changes from.
+|9
+|The names of the {data-collection}s that the connector captures changes from.
+|===
 
 . Create the connector resource by running the following command:
 +

@@ -27,14 +27,6 @@
 
                 <!-- Exclude dependencies with incorrect scope -->
                 <exclude>org.checkerframework:checker-qual:*</exclude>
-
-                <!-- Exclude Kafka runtime dependencies that should be provided by the runtime -->
-                <exclude>org.apache.kafka:kafka-clients:*</exclude>
-                <exclude>org.apache.kafka:connect-api:*</exclude>
-                <exclude>org.apache.kafka:connect-runtime:*</exclude>
-                <exclude>org.apache.kafka:connect-json:*</exclude>
-                <exclude>org.slf4j:slf4j-api:*</exclude>
-                <exclude>com.github.luben:zstd-jni:*</exclude>
             </excludes>
         </dependencySet>
         <dependencySet>

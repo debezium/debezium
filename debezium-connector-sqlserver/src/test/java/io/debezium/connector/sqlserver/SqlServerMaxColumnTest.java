@@ -74,48 +74,6 @@ public class SqlServerMaxColumnTest {
     }
 
     @Test
-    @FixFor("dbz#2420")
-    void shouldIdentifyMaxColumnFromSqlServerMaxLengthColumnModel() {
-        final var varcharMax = Column.editor()
-                .name("col_varchar_max")
-                .jdbcType(Types.VARCHAR)
-                .length(Integer.MAX_VALUE)
-                .create();
-        final var nvarcharMax = Column.editor()
-                .name("col_nvarchar_max")
-                .jdbcType(Types.NVARCHAR)
-                .length(Integer.MAX_VALUE / 2)
-                .create();
-        final var varbinaryMax = Column.editor()
-                .name("col_varbinary_max")
-                .jdbcType(Types.VARBINARY)
-                .length(Integer.MAX_VALUE)
-                .create();
-        final var varchar100 = Column.editor()
-                .name("col_varchar")
-                .jdbcType(Types.VARCHAR)
-                .length(100)
-                .create();
-        final var nvarchar100 = Column.editor()
-                .name("col_nvarchar")
-                .jdbcType(Types.NVARCHAR)
-                .length(100)
-                .create();
-        final var varbinary100 = Column.editor()
-                .name("col_varbinary")
-                .jdbcType(Types.VARBINARY)
-                .length(100)
-                .create();
-
-        assertThat(SqlServerDatabaseSchema.isMaxColumn(varcharMax)).isTrue();
-        assertThat(SqlServerDatabaseSchema.isMaxColumn(nvarcharMax)).isTrue();
-        assertThat(SqlServerDatabaseSchema.isMaxColumn(varbinaryMax)).isTrue();
-        assertThat(SqlServerDatabaseSchema.isMaxColumn(varchar100)).isFalse();
-        assertThat(SqlServerDatabaseSchema.isMaxColumn(nvarchar100)).isFalse();
-        assertThat(SqlServerDatabaseSchema.isMaxColumn(varbinary100)).isFalse();
-    }
-
-    @Test
     @FixFor("dbz#1164")
     void shouldConvertUnavailableValueToPlaceholderString() {
         final var converters = new SqlServerValueConverters(

@@ -3463,39 +3463,6 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     }
 
     @Test
-    @FixFor("debezium/dbz#1301")
-    public void shouldParseStatementAsColumnName() {
-        String ddl = "CREATE TABLE t1301 (id INT PRIMARY KEY, statement VARCHAR(100));"
-                + "ALTER TABLE t1301 ADD COLUMN statement2 VARCHAR(100) AFTER statement;";
-        parser.parse(ddl, tables);
-        assertThat(parser.getParsingExceptionsFromWalker()).isEmpty();
-
-        Table table = tables.forTable(new TableId(null, null, "t1301"));
-        assertThat(table).isNotNull();
-        assertThat(table.columns()).hasSize(3);
-        assertColumn(table, "statement", "VARCHAR", Types.VARCHAR, 100, -1, true, false, false);
-        assertColumn(table, "statement2", "VARCHAR", Types.VARCHAR, 100, -1, true, false, false);
-        assertThat(table.columnWithName("statement2").position()).isEqualTo(3);
-    }
-
-    @Test
-    @FixFor("debezium/dbz#332")
-    public void shouldParseAlterTableRenameIndexWithDollarSignIdentifiers() {
-        String ddl = "CREATE TABLE testtbl (id INT PRIMARY KEY, col INT, INDEX t$testtbl$tbl$id (id), INDEX testtbl$t$col (col));"
-                + "ALTER TABLE testtbl RENAME INDEX t$testtbl$tbl$id TO testtbl$tbl$id;"
-                + "ALTER TABLE testtbl RENAME INDEX testtbl$t$col TO testtbl$col;"
-                + "ALTER TABLE testtbl RENAME INDEX testtbl$col TO testtbl$t$post$col;";
-        parser.parse(ddl, tables);
-        assertThat(parser.getParsingExceptionsFromWalker()).isEmpty();
-        assertThat(tables.size()).isEqualTo(1);
-
-        Table table = tables.forTable(new TableId(null, null, "testtbl"));
-        assertThat(table).isNotNull();
-        assertThat(table.retrieveColumnNames()).containsExactly("id", "col");
-        assertThat(table.primaryKeyColumnNames()).containsExactly("id");
-    }
-
-    @Test
     @FixFor("dbz#1504")
     public void shouldProcessAlterConvertToCharset() {
 

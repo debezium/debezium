@@ -20,13 +20,12 @@ import java.sql.Clob;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
-import java.time.format.TextStyle;
 import java.time.temporal.ChronoField;
-import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -92,18 +91,10 @@ public class OracleValueConverters extends JdbcValueConverters {
             .appendFraction(ChronoField.NANO_OF_SECOND, 0, 9, false)
             .optionalEnd()
             .optionalStart()
-            .appendLiteral(' ')
-            .appendText(ChronoField.ERA, TextStyle.SHORT)
-            .optionalEnd()
-            .optionalStart()
             .appendPattern(" ")
             .optionalEnd()
             .appendOffset("+HH:MM", "")
-            .optionalStart()
-            .appendLiteral(' ')
-            .appendText(ChronoField.ERA, TextStyle.SHORT)
-            .optionalEnd()
-            .toFormatter(Locale.ENGLISH);
+            .toFormatter();
 
     private static final Pattern TO_TIMESTAMP_TZ = Pattern.compile("TO_TIMESTAMP_TZ\\('(.*)'\\)", Pattern.CASE_INSENSITIVE);
     private static final BigDecimal MICROSECONDS_PER_SECOND = new BigDecimal(1_000_000);
@@ -679,14 +670,11 @@ public class OracleValueConverters extends JdbcValueConverters {
 
     protected Object fromOracleTimeClasses(Column column, Object data) {
         try {
-            // Conversions must use the java.time accessors; java.sql.Timestamp is bound to the hybrid
-            // Julian/Gregorian calendar, which drops the era of BC values and day-shifts dates that
-            // precede the Gregorian cut-over in 1582.
             if (data instanceof TIMESTAMP) {
-                data = ((TIMESTAMP) data).toLocalDateTime();
+                data = ((TIMESTAMP) data).timestampValue();
             }
             else if (data instanceof DATE) {
-                data = ((DATE) data).toLocalDateTime();
+                data = ((DATE) data).timestampValue();
             }
             else if (data instanceof TIMESTAMPTZ) {
                 final TIMESTAMPTZ ts = (TIMESTAMPTZ) data;
@@ -694,7 +682,7 @@ public class OracleValueConverters extends JdbcValueConverters {
             }
             else if (data instanceof TIMESTAMPLTZ) {
                 final TIMESTAMPLTZ ts = (TIMESTAMPLTZ) data;
-                data = ts.zonedDateTimeValue(connection.connection()).withZoneSameInstant(ZoneOffset.UTC);
+                data = ZonedDateTime.ofInstant(ts.timestampValue(connection.connection()).toInstant(), ZoneId.systemDefault()).withZoneSameInstant(ZoneOffset.UTC);
             }
         }
         catch (SQLException e) {

@@ -509,6 +509,12 @@
       <artifactId>debezium-connector-jdbc</artifactId>
       <type>jar</type>
       <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.debezium</groupId>
+      <artifactId>debezium-connector-jdbc</artifactId>
+      <type>jar</type>
+      <scope>test</scope>
       <version>${version.debezium.connector}</version>
     </dependency>
 
@@ -526,7 +532,7 @@
     <dependency>
       <groupId>org.bouncycastle</groupId>
       <artifactId>bcpkix-jdk18on</artifactId>
-      <version>1.84</version>
+      <version>1.82</version>
     </dependency>
   </dependencies>
 

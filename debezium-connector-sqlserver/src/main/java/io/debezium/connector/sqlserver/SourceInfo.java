@@ -24,12 +24,10 @@ public class SourceInfo extends BaseSourceInfo {
     public static final String CHANGE_LSN_KEY = "change_lsn";
     public static final String COMMIT_LSN_KEY = "commit_lsn";
     public static final String EVENT_SERIAL_NO_KEY = "event_serial_no";
-    public static final String COMMAND_ID_KEY = "command_id";
 
     private Lsn changeLsn;
     private Lsn commitLsn;
     private Long eventSerialNo;
-    private Integer commandId;
     private Instant sourceTime;
     private TableId tableId;
 
@@ -70,14 +68,6 @@ public class SourceInfo extends BaseSourceInfo {
         this.eventSerialNo = eventSerialNo;
     }
 
-    public Integer getCommandId() {
-        return commandId;
-    }
-
-    public void setCommandId(Integer commandId) {
-        this.commandId = commandId;
-    }
-
     /**
      * @param instant a time at which the transaction commit was executed
      */
@@ -103,7 +93,6 @@ public class SourceInfo extends BaseSourceInfo {
                 ", changeLsn=" + changeLsn +
                 ", commitLsn=" + commitLsn +
                 ", eventSerialNo=" + eventSerialNo +
-                ", commandId=" + commandId +
                 ", snapshot=" + snapshotRecord +
                 ", sourceTime=" + sourceTime +
                 "]";

@@ -553,25 +553,6 @@ public abstract class BinlogSourceInfoTest<S extends BinlogSourceInfo, O extends
     }
 
     @Test
-    @FixFor("debezium/dbz#2506")
-    void shouldComparePositionsWithoutGtidsBeyondIntegerRange() {
-        // Binlog positions are unsigned and a single file can exceed Integer.MAX_VALUE bytes,
-        // e.g. when one transaction is larger than max_binlog_size; positions must not be read
-        // back or compared through int
-        long fourGiB = 4_294_967_296L;
-
-        // schema history records stay at small positions while the restart offset is far into the file
-        assertPositionWithoutGtids("fn.01", 5_000, 0, 0).isBefore(positionWithoutGtids("fn.01", 9_886_193_806L, 0, 0));
-        assertPositionWithoutGtids("fn.01", 100, 0, 0).isBefore(positionWithoutGtids("fn.01", 4_000_000_000L, 0, 0));
-        assertPositionWithoutGtids("fn.01", 4_000_000_000L, 0, 0).isAfter(positionWithoutGtids("fn.01", 100, 0, 0));
-
-        // both positions beyond Integer.MAX_VALUE keep their ordering
-        assertPositionWithoutGtids("fn.01", fourGiB, 0, 0).isBefore(positionWithoutGtids("fn.01", fourGiB + 100, 0, 0));
-        assertPositionWithoutGtids("fn.01", fourGiB + 100, 0, 0).isAfter(positionWithoutGtids("fn.01", fourGiB, 0, 0));
-        assertPositionWithoutGtids("fn.01", fourGiB, 0, 0).isAt(positionWithoutGtids("fn.01", fourGiB, 0, 0));
-    }
-
-    @Test
     void shouldComparePositionsWithDifferentFields() {
         Document history = positionWith("mysql-bin.000008", 380941551, "01261278-6ade-11e6-b36a-42010af00790:1-378422946,"
                 + "4d1a4918-44ba-11e6-bf12-42010af0040b:1-11002284,"
@@ -612,51 +593,6 @@ public abstract class BinlogSourceInfoTest<S extends BinlogSourceInfo, O extends
                 .isAtOrBefore(positionWithoutGtids("binlog.000002", 200, 0, 0));
         assertThatDocument(positionWithoutGtids("binlog.000002", 200, 0, 0))
                 .isAtOrBefore(positionWithoutGtids("mysql-bin.000010", 100, 0, 0));
-    }
-
-    @Test
-    @FixFor("debezium/dbz#1541")
-    void shouldCompareTimestampsOfPositionsFromDifferentServers() {
-        // The comparator has to read the timestamp key the offset is written with, or every position compares as 0.
-        assertThatDocument(positionWithServerId("mysql-bin.000003", 900, 223344, 1_000))
-                .isAtOrBefore(positionWithServerId("mysql-bin.000007", 154, 223345, 2_000));
-        assertThatDocument(positionWithServerId("mysql-bin.000003", 900, 223344, 2_000))
-                .isAfter(positionWithServerId("mysql-bin.000007", 154, 223345, 1_000));
-
-        // The same server keeps comparing by coordinates, even when the timestamps disagree.
-        assertThatDocument(positionWithServerId("mysql-bin.000003", 900, 223344, 2_000))
-                .isAtOrBefore(positionWithServerId("mysql-bin.000007", 154, 223344, 1_000));
-    }
-
-    @Test
-    @FixFor("debezium/dbz#2506")
-    void shouldCompareServerIdsBeyondIntegerRange() {
-        // server_id is a 32-bit unsigned value, so identifiers above Integer.MAX_VALUE are
-        // legitimate; they must not collapse to the default when read back, which would make
-        // two different servers look like the same one. The file names are ordered against the
-        // timestamps so a positional comparison would give the opposite answer.
-        assertThatDocument(positionWithServerId("mysql-bin.000007", 900, 3_000_000_000L, 1_000))
-                .isAtOrBefore(positionWithServerId("mysql-bin.000003", 154, 3_500_000_000L, 2_000));
-        assertThatDocument(positionWithServerId("mysql-bin.000003", 900, 3_000_000_000L, 2_000))
-                .isAfter(positionWithServerId("mysql-bin.000007", 154, 3_500_000_000L, 1_000));
-
-        // The same large identifier still compares by coordinates.
-        assertThatDocument(positionWithServerId("mysql-bin.000003", 900, 3_000_000_000L, 2_000))
-                .isAtOrBefore(positionWithServerId("mysql-bin.000007", 154, 3_000_000_000L, 1_000));
-    }
-
-    @Test
-    @FixFor("debezium/dbz#1541")
-    void shouldNotTreatPositionWithoutServerIdAsDifferentServer() {
-        // Streaming records a server id, but the restart position rebuilt by the offset loaders carries none.
-        // That pair must not take the different-servers branch: it is compared by coordinates, which here
-        // contradict the timestamps.
-        final Document withoutServerId = positionWithoutGtids("mysql-bin.000003", 154, 0, 0)
-                .set(BinlogOffsetContext.TIMESTAMP_KEY, 2_000);
-        final Document withServerId = positionWithServerId("mysql-bin.000003", 900, 223344, 1_000);
-
-        assertThatDocument(withoutServerId).isAtOrBefore(withServerId);
-        assertThatDocument(withServerId).isAfter(withoutServerId);
     }
 
     @Test
@@ -781,15 +717,15 @@ public abstract class BinlogSourceInfoTest<S extends BinlogSourceInfo, O extends
         return Document.create(BinlogOffsetContext.GTID_SET_KEY, gtids);
     }
 
-    protected Document positionWithoutGtids(String filename, long position, int event, int row) {
+    protected Document positionWithoutGtids(String filename, int position, int event, int row) {
         return positionWithoutGtids(filename, position, event, row, false);
     }
 
-    protected Document positionWithoutGtids(String filename, long position, int event, int row, boolean snapshot) {
+    protected Document positionWithoutGtids(String filename, int position, int event, int row, boolean snapshot) {
         return positionWith(filename, position, null, event, row, snapshot);
     }
 
-    protected Document positionWith(String filename, long position, String gtids, int event, int row, boolean snapshot) {
+    protected Document positionWith(String filename, int position, String gtids, int event, int row, boolean snapshot) {
         Document pos = Document.create(BinlogSourceInfo.BINLOG_FILENAME_OFFSET_KEY, filename,
                 BinlogSourceInfo.BINLOG_POSITION_OFFSET_KEY, position);
         if (row >= 0) {
@@ -807,12 +743,6 @@ public abstract class BinlogSourceInfoTest<S extends BinlogSourceInfo, O extends
         return pos;
     }
 
-    protected Document positionWithServerId(String filename, long position, long serverId, long timestamp) {
-        return positionWithoutGtids(filename, position, 0, 0)
-                .set(BinlogSourceInfo.SERVER_ID_KEY, serverId)
-                .set(BinlogOffsetContext.TIMESTAMP_KEY, timestamp);
-    }
-
     protected PositionAssert assertThatDocument(Document position) {
         return new PositionAssert(position, this::getHistoryRecordComparator);
     }
@@ -825,11 +755,11 @@ public abstract class BinlogSourceInfoTest<S extends BinlogSourceInfo, O extends
         return assertThatDocument(positionWithGtids(gtids, snapshot));
     }
 
-    protected PositionAssert assertPositionWithoutGtids(String filename, long position, int event, int row) {
+    protected PositionAssert assertPositionWithoutGtids(String filename, int position, int event, int row) {
         return assertPositionWithoutGtids(filename, position, event, row, false);
     }
 
-    protected PositionAssert assertPositionWithoutGtids(String filename, long position, int event, int row, boolean snapshot) {
+    protected PositionAssert assertPositionWithoutGtids(String filename, int position, int event, int row, boolean snapshot) {
         return assertThatDocument(positionWithoutGtids(filename, position, event, row, snapshot));
     }
 

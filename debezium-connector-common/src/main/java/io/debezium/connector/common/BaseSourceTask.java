@@ -50,7 +50,6 @@ import io.debezium.openlineage.DebeziumOpenLineageEmitter;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
-import io.debezium.pipeline.monitor.OffsetActivityMonitorServiceProvider;
 import io.debezium.pipeline.notification.channels.NotificationChannel;
 import io.debezium.pipeline.signal.channels.SignalChannelReader;
 import io.debezium.pipeline.signal.channels.process.SignalChannelWriter;
@@ -97,9 +96,9 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
             if (offset == null) {
                 if (snapshotter.shouldSnapshotOnSchemaError()) {
-                    // We are in schema only recovery mode, use the existing transaction log position
-                    // would like to also verify transaction log position exists, but it defaults to 0 which is technically valid
-                    throw new DebeziumException("Could not find existing transaction log information while attempting schema only recovery snapshot");
+                    // We are in schema only recovery mode, use the existing redo log position
+                    // would like to also verify redo log position exists, but it defaults to 0 which is technically valid
+                    throw new DebeziumException("Could not find existing redo log information while attempting schema only recovery snapshot");
                 }
                 LOGGER.info("Connector started with no previous offset for partition '{}'", partition);
                 if (schema.isHistorized()) {
@@ -641,19 +640,6 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
     }
 
     /**
-     * Loads the connector's persistent offsets (if present) via the given loader, for
-     * connectors whose tasks are bound to exactly one partition.
-     *
-     * @throws DebeziumException if the provider yields anything other than one partition
-     */
-    protected Offsets<P, O> getSinglePartitionPreviousOffsets(Partition.Provider<P> provider, OffsetContext.Loader<O> loader) {
-        final Offsets<P, O> offsets = getPreviousOffsets(provider, loader);
-        // This simply triggers the internal exception if there isn't exactly 1 offset
-        offsets.getTheOnlyOffset();
-        return offsets;
-    }
-
-    /**
      * Sets the new state for the task. The caller must be holding {@link #stateLock} lock.
      *
      * @param newState
@@ -686,6 +672,5 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         serviceRegistry.registerServiceProvider(new DebeziumHeaderProducerProvider());
         serviceRegistry.registerServiceProvider(new CustomConverterServiceProvider());
         serviceRegistry.registerServiceProvider(new QueueProviderServiceProvider());
-        serviceRegistry.registerServiceProvider(new OffsetActivityMonitorServiceProvider());
     }
 }
