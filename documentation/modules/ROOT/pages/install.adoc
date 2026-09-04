@@ -36,12 +36,12 @@ ifeval::['{page-version}' == 'master']
 * {link-db2-plugin-snapshot}[Db2 Connector plugin archive]
 * {link-cassandra-4-plugin-snapshot}[Cassandra 4.x plugin archive]
 * {link-cassandra-5-plugin-snapshot}[Cassandra 5.x plugin archive]
+* {link-cockroachdb-plugin-snapshot}[CockroachDB plugin archive]
 * {link-jdbc-plugin-snapshot}[JDBC sink plugin archive]
 * {link-spanner-plugin-snapshot}[Spanner plugin archive] (incubating)
 * {link-vitess-plugin-snapshot}[Vitess plugin archive] (incubating)
 * {link-informix-plugin-snapshot}[Informix plugin archive] (incubating)
 * {link-ingres-plugin-snapshot}[Ingres plugin archive] (incubating)
-* {link-cockroachdb-plugin-snapshot}[CockroachDB plugin archive] (incubating)
 * {link-milvus-plugin-snapshot}[Milvus plugin archive] (incubating)
 * {link-yashandb-plugin-snapshot}[YashanDB plugin archive] (incubating)
 
@@ -57,12 +57,12 @@ ifeval::['{page-version}' != 'master']
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-db2/{debezium-version}/debezium-connector-db2-{debezium-version}-plugin.tar.gz[Db2 Connector plugin archive]
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-cassandra-4/{debezium-version}/debezium-connector-cassandra-4-{debezium-version}-plugin.tar.gz[Cassandra 4.x plugin archive]
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-cassandra-5/{debezium-version}/debezium-connector-cassandra-5-{debezium-version}-plugin.tar.gz[Cassandra 5.x plugin archive]
+* https://repo1.maven.org/maven2/io/debezium/debezium-connector-cockroachdb/{debezium-version}/debezium-connector-cockroachdb-{debezium-version}-plugin.tar.gz[CockroachDB plugin archive]
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-jdbc/{debezium-version}/debezium-connector-jdbc-{debezium-version}-plugin.tar.gz[JDBC sink plugin archive]
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-spanner/{debezium-version}/debezium-connector-spanner-{debezium-version}-plugin.tar.gz[Spanner plugin archive] (incubating)
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-vitess/{debezium-version}/debezium-connector-vitess-{debezium-version}-plugin.tar.gz[Vitess plugin archive] (incubating)
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-informix/{debezium-version}/debezium-connector-informix-{debezium-version}-plugin.tar.gz[Informix plugin archive] (incubating)
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-ingres/{debezium-version}/debezium-connector-ingres-{debezium-version}-plugin.tar.gz[Ingres plugin archive] (incubating)
-* https://repo1.maven.org/maven2/io/debezium/debezium-connector-cockroachdb/{debezium-version}/debezium-connector-cockroachdb-{debezium-version}-plugin.tar.gz[CockroachDB plugin archive] (incubating)
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-milvus/{debezium-version}/debezium-connector-milvus-{debezium-version}-plugin.tar.gz[Milvus plugin archive] (incubating)
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-yashandb/{debezium-version}/debezium-connector-yashandb-{debezium-version}-plugin.tar.gz[YashanDB plugin archive] (incubating)
 endif::[]

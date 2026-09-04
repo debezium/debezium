@@ -16,12 +16,6 @@ The {prodname} CockroachDB connector captures row-level changes from a link:http
 CockroachDB link:https://www.cockroachlabs.com/docs/stable/change-data-capture-overview[changefeeds] detects data changes in the database -- inserts, updates, and deletes -- in near-real-time.
 The connector creates a link:https://www.cockroachlabs.com/docs/stable/create-changefeed[changefeed] that publishes events to an intermediate Kafka cluster, then consumes those events, transforms them into the standard {prodname} envelope format, and produces them to the output Kafka topics that downstream consumers subscribe to.
 
-[NOTE]
-====
-The CockroachDB connector is an incubating connector.
-An incubating connector is one that has been released for preview purposes and is subject to changes that may not always be backward compatible.
-====
-
 [[cockroachdb-overview]]
 == Overview
 
