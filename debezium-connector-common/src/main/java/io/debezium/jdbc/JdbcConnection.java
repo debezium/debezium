@@ -1246,6 +1246,7 @@ public class JdbcConnection implements AutoCloseable {
         final Set<TableId> tableIds = new HashSet<>();
 
         Map<TableId, List<Attribute>> attributesByTable = new HashMap<>();
+        Map<TableId, String> commentsByTable = new HashMap<>();
 
         int totalTables = 0;
         String schemaNamePattern = createPatternFromName(schemaName, metadata.getSearchStringEscape());
@@ -1261,6 +1262,7 @@ public class JdbcConnection implements AutoCloseable {
                     if (tableFilter == null || tableFilter.isIncluded(tableId)) {
                         tableIds.add(tableId);
                         attributesByTable.putAll(getAttributeDetails(tableId, tableType));
+                        commentsByTable.put(tableId, readTableComment(rs));
                     }
                 }
                 else {
@@ -1302,7 +1304,8 @@ public class JdbcConnection implements AutoCloseable {
             Collections.sort(columns);
             String defaultCharsetName = null; // JDBC does not expose character sets
             List<Attribute> attributes = attributesByTable.getOrDefault(tableEntry.getKey(), Collections.emptyList());
-            tables.overwriteTable(tableEntry.getKey(), columns, pkColumnNames, defaultCharsetName, attributes);
+            String comment = commentsByTable.get(tableEntry.getKey());
+            tables.overwriteTable(tableEntry.getKey(), columns, pkColumnNames, defaultCharsetName, comment, attributes);
         }
 
         if (removeTablesNotFoundInJdbc) {
@@ -1318,6 +1321,10 @@ public class JdbcConnection implements AutoCloseable {
 
     protected boolean isTableType(String tableType) {
         return "TABLE".equals(tableType);
+    }
+
+    protected String readTableComment(ResultSet tableMetadata) throws SQLException {
+        return null;
     }
 
     protected String resolveCatalogName(String catalogName) {
