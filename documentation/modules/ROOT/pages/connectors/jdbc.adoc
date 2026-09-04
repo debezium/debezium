@@ -62,7 +62,7 @@ The {prodname} JDBC connector provides the following features:
 * xref:jdbc-schema-evolution[Schema evolution]
 * xref:jdbc-quoting-case-sensitivity[JDBC quoting and case-sensitivity]
 * xref:jdbc-connection-idle-timeouts[Connection idle timeouts]
-ifdef::community
+ifdef::community[]
 * xref:jdbc-singlestore-targets[SingleStore sink targets]
 * xref:jdbc-starrocks-targets[StarRocks sink targets]
 * xref:jdbc-cockroachdb-targets[CockroachDB sink targets]
