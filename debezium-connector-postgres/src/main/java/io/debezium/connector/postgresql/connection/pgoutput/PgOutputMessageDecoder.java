@@ -338,6 +338,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         Map<String, Optional<String>> columnDefaults;
         Map<String, Boolean> columnOptionality;
         Map<String, String> columnTypeNames;
+        Map<String, String> columnComments;
         List<String> primaryKeyColumns;
 
         final DatabaseMetaData databaseMetadata = connection.connection().getMetaData();
@@ -345,12 +346,16 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
 
         final List<io.debezium.relational.Column> readColumns = connection.getTableColumnsForDecoder(
                 tableId, decoderContext.getConfig().getColumnFilter());
+        final String tableComment = connection.getTableCommentForDecoder(tableId);
         columnDefaults = readColumns.stream()
                 .filter(io.debezium.relational.Column::hasDefaultValue)
                 .collect(toMap(io.debezium.relational.Column::name, io.debezium.relational.Column::defaultValueExpression));
 
         columnOptionality = readColumns.stream().collect(toMap(io.debezium.relational.Column::name, io.debezium.relational.Column::isOptional));
         columnTypeNames = readColumns.stream().collect(toMap(io.debezium.relational.Column::name, io.debezium.relational.Column::typeName));
+        columnComments = readColumns.stream()
+                .filter(column -> column.comment() != null)
+                .collect(toMap(io.debezium.relational.Column::name, io.debezium.relational.Column::comment));
         primaryKeyColumns = connection.readPrimaryKeyNames(databaseMetadata, tableId);
         if (primaryKeyColumns == null || primaryKeyColumns.isEmpty()) {
             LOGGER.warn("Primary keys are not defined for table '{}', defaulting to unique indices", tableName);
@@ -391,7 +396,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
             final boolean hasDefault = columnDefaults.containsKey(columnName);
             final String defaultValueExpression = columnDefaults.getOrDefault(columnName, Optional.empty()).orElse(null);
 
-            columns.add(new ColumnMetaData(columnName, postgresType, key, optional, hasDefault, defaultValueExpression, attypmod,
+            columns.add(new ColumnMetaData(columnName, postgresType, key, optional, hasDefault, defaultValueExpression, columnComments.get(columnName), attypmod,
                     columnTypeNames.get(columnName)));
             columnNames.add(columnName);
         }
@@ -413,7 +418,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         // to reflect the actual primary key state at time `t0`.
         primaryKeyColumns.retainAll(columnNames);
 
-        Table table = resolveRelationFromMetadata(new PgOutputRelationMetaData(relationId, schemaName, tableName, columns, primaryKeyColumns));
+        Table table = resolveRelationFromMetadata(new PgOutputRelationMetaData(relationId, schemaName, tableName, tableComment, columns, primaryKeyColumns));
         decoderContext.getSchema().applySchemaChangesForTable(relationId, table);
     }
 
@@ -688,7 +693,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
      * @param metadata The relation metadata collected from previous 'R' replication stream messages
      * @return table based on a prior replication relation message
      */
-    private Table resolveRelationFromMetadata(PgOutputRelationMetaData metadata) {
+    static Table resolveRelationFromMetadata(PgOutputRelationMetaData metadata) {
         List<io.debezium.relational.Column> columns = new ArrayList<>();
         for (ColumnMetaData columnMetadata : metadata.getColumns()) {
             ColumnEditor editor = io.debezium.relational.Column.editor()
@@ -698,7 +703,8 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                     .optional(columnMetadata.isOptional())
                     .type(columnMetadata.getDriverTypeName(), columnMetadata.getTypeName())
                     .length(columnMetadata.getLength())
-                    .scale(columnMetadata.getScale());
+                    .scale(columnMetadata.getScale())
+                    .comment(columnMetadata.getComment());
 
             if (columnMetadata.hasDefaultValue()) {
                 editor.defaultValueExpression(columnMetadata.getDefaultValueExpression());
@@ -711,6 +717,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                 .addColumns(columns)
                 .setPrimaryKeyNames(metadata.getPrimaryKeyNames())
                 .tableId(metadata.getTableId())
+                .setComment(metadata.getComment())
                 .create();
 
         LOGGER.trace("Resolved '{}' as '{}'", table.id(), table);

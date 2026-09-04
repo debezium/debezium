@@ -24,6 +24,7 @@ public class ColumnMetaData {
     private final boolean optional;
     private final boolean hasDefaultValue;
     private final String defaultValueExpression;
+    private final String comment;
     private final int length;
     private final int scale;
     private final String typeName;
@@ -38,17 +39,19 @@ public class ColumnMetaData {
      * @param optional {@code true} if the column is considered optional, {@code false} otherwise
      * @param hasDefaultValue {@code true} if the column has a default value specified, {@code false} otherwise
      * @param defaultValueExpression the parsed default value literal for the column
+    * @param comment the column comment, or {@code null} if comments are not included or no comment is defined
      * @param typeModifier the attribute type modifier
      * @param driverTypeName the type name the JDBC driver reports for the column, {@code null} when unavailable
      */
     ColumnMetaData(String columnName, PostgresType postgresType, boolean key, boolean optional, boolean hasDefaultValue, String defaultValueExpression,
-                   int typeModifier, String driverTypeName) {
+                   String comment, int typeModifier, String driverTypeName) {
         this.columnName = columnName;
         this.postgresType = postgresType;
         this.key = key;
         this.optional = optional;
         this.hasDefaultValue = hasDefaultValue;
         this.defaultValueExpression = defaultValueExpression;
+        this.comment = comment;
 
         // todo: investigate whether this can be removed and PostgresType updated to always delegate
         // Currently PostgresType only delegates calls to length and scale with an attribute modifier
@@ -110,6 +113,10 @@ public class ColumnMetaData {
 
     public String getDefaultValueExpression() {
         return defaultValueExpression;
+    }
+
+    public String getComment() {
+        return comment;
     }
 
     public int getLength() {
