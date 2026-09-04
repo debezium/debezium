@@ -497,3 +497,30 @@ jobs:
             ORACLE_PROFILE_ARGS: "-Poracle-26,oracle-xstream"
             ORACLE_ARG: "-Poracle-xstream,oracle-26"
             TEST_PROFILE: oracle
+
+
+  ###############################################################################################
+  - job: tests
+    trigger: pull_request
+    # Suffix for job name
+    identifier: "oracle-adb"
+    targets:
+      centos-stream-8-x86_64:
+        distros: [ "debezium-tf-2390-adb" ]
+    skip_build: true
+    manual_trigger: true
+    labels:
+      - oracle
+      - oracle-adb
+      - oracle-logminer
+    tf_extra_params:
+      test:
+        tmt:
+          name: oracle
+      environments:
+        - variables:
+            ORACLE_VERSION: 23.9.0-adb
+            ORACLE_REGISTRY: "quay.io/rh_integration/dbz-oracle"
+            ORACLE_PROFILE_ARGS: "-Poracle-adb"
+            ORACLE_ARG: "-Ddatabase.pdb.name= -Ddatabase.user=GGADMIN"
+            TEST_PROFILE: oracle

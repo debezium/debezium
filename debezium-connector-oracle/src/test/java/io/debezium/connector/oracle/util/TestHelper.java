@@ -42,9 +42,6 @@ import io.debezium.embedded.async.AsyncEmbeddedEngine;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.storage.file.history.FileSchemaHistory;
-import io.debezium.testing.testcontainers.ConnectorConfiguration;
-import io.debezium.testing.testcontainers.OracleContainer;
-import io.debezium.testing.testcontainers.testhelper.TestInfrastructureHelper;
 import io.debezium.util.DelayStrategy;
 import io.debezium.util.Strings;
 import io.debezium.util.Testing;
@@ -57,15 +54,9 @@ public class TestHelper {
 
     public static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-connect.txt").toAbsolutePath();
 
-    public static final String CONNECTOR_USER = "c##dbzuser";
     public static final String CONNECTOR_NAME = "oracle";
     public static final String SERVER_NAME = "server1";
-    public static final String CONNECTOR_USER_PASS = "dbz";
     public static final String HOST = "localhost";
-    public static final String SCHEMA_USER = "debezium";
-    public static final String SCHEMA_PASS = "dbz";
-    public static final String DATABASE = "ORCLPDB1";
-    public static final String DATABASE_CDB = "ORCLCDB";
     public static final int PORT = 1521;
 
     public static final int INFINISPAN_HOTROD_PORT = ConfigurationProperties.DEFAULT_HOTROD_PORT;
@@ -109,27 +100,152 @@ public class TestHelper {
     }
 
     /**
-     * Get the name of the connector user, the default is {@link TestHelper#CONNECTOR_USER}.
+     * The database topologies the test suite can run against.
+     * <p>
+     * Each mode supplies the default connection values for that topology; any explicitly provided
+     * {@code -Ddatabase.*}, {@code -Ddatabase.admin.*}, or {@code -Dschema.*} property overrides
+     * the mode's default.
+     */
+    public enum DatabaseMode {
+        /** A container database, capturing from a pluggable database; the historical default. */
+        CDB_PDB("cdb", "c##dbzuser", "dbz", "sys as sysdba", "top_secret", "ORCLCDB", "ORCLPDB1", "dbz", true),
+
+        /** A non-container database topology; the database name matches the single database instance. */
+        NON_CDB("non-cdb", "c##dbzuser", "dbz", "sys as sysdba", "top_secret", "ORCLCDB", "ORCLCDB", "dbz", false),
+
+        /** An Oracle Autonomous Database, e.g. the adb-free container. */
+        AUTONOMOUS("adb", "GGADMIN", "Welcome_1234", "ADMIN", "Welcome_1234", "MYATP", "MYATP", "Dbz_Adb_Tests_2026", false);
+
+        private final String label;
+        private final String connectorUser;
+        private final String connectorPassword;
+        private final String adminUser;
+        private final String adminPassword;
+        private final String connectorDatabase;
+        private final String databaseName;
+        private final String schemaPassword;
+        private final boolean usesPdb;
+
+        DatabaseMode(String label, String connectorUser, String connectorPassword, String adminUser, String adminPassword,
+                     String connectorDatabase, String databaseName, String schemaPassword, boolean usesPdb) {
+            this.label = label;
+            this.connectorUser = connectorUser;
+            this.connectorPassword = connectorPassword;
+            this.adminUser = adminUser;
+            this.adminPassword = adminPassword;
+            this.connectorDatabase = connectorDatabase;
+            this.databaseName = databaseName;
+            this.schemaPassword = schemaPassword;
+            this.usesPdb = usesPdb;
+        }
+
+        public String getConnectorUser() {
+            return connectorUser;
+        }
+
+        public String getConnectorPassword() {
+            return connectorPassword;
+        }
+
+        public String getAdminUser() {
+            return adminUser;
+        }
+
+        public String getAdminPassword() {
+            return adminPassword;
+        }
+
+        public String getConnectorDatabase() {
+            return connectorDatabase;
+        }
+
+        public String getDatabaseName() {
+            return databaseName;
+        }
+
+        public String getSchemaPassword() {
+            return schemaPassword;
+        }
+
+        public boolean isUsesPdb() {
+            return usesPdb;
+        }
+
+        static DatabaseMode parse(String value) {
+            for (DatabaseMode mode : values()) {
+                if (mode.label.equalsIgnoreCase(value) || mode.name().equalsIgnoreCase(value)) {
+                    return mode;
+                }
+            }
+            throw new IllegalArgumentException(String.format(
+                    "Unknown test.database.mode '%s', expected one of: cdb, non-cdb, adb", value));
+        }
+    }
+
+    /**
+     * Resolves the database topology the test suite runs against.
+     * <p>
+     * The {@code test.database.mode} system property ({@code cdb}, {@code non-cdb}, or {@code adb}) selects
+     * the mode explicitly. When it is absent, the mode is inferred from the legacy signals for backward
+     * compatibility:
+     * <ul>
+     *     <li>{@code -Doracle.adb=true} selects {@link DatabaseMode#AUTONOMOUS}</li>
+     *     <li>{@code -Ddatabase.pdb.name} present but empty selects {@link DatabaseMode#NON_CDB}</li>
+     *     <li>Otherwise uses {@link DatabaseMode#CDB_PDB}</li>
+     * </ul>
+     */
+    public static DatabaseMode getDatabaseMode() {
+        final String mode = System.getProperty("test.database.mode");
+        if (!Strings.isNullOrEmpty(mode)) {
+            return DatabaseMode.parse(mode);
+        }
+
+        if (Boolean.parseBoolean(System.getProperty("oracle.adb", "false"))) {
+            return DatabaseMode.AUTONOMOUS;
+        }
+
+        final Map<String, String> properties = Configuration.fromSystemProperties(DATABASE_PREFIX).asMap();
+        if (properties.containsKey(PDB_NAME) && Strings.isNullOrEmpty(properties.get(PDB_NAME))) {
+            return DatabaseMode.NON_CDB;
+        }
+
+        return DatabaseMode.CDB_PDB;
+    }
+
+    /**
+     * Get the name of the connector user.
      */
     public static String getConnectorUserName() {
         final String userName = getDatabaseConfig(DATABASE_PREFIX).getString(JdbcConfiguration.USER.name());
-        return Strings.isNullOrEmpty(userName) ? CONNECTOR_USER : userName;
+        return Strings.isNullOrEmpty(userName) ? getDatabaseMode().getConnectorUser() : userName;
     }
 
     /**
-     * Get the password of the connector user, the default is {@link TestHelper#CONNECTOR_USER_PASS}.
+     * Get the password of the connector user.
      */
     private static String getConnectorUserPassword() {
         final String password = getDatabaseConfig(DATABASE_PREFIX).getString(JdbcConfiguration.PASSWORD.name());
-        return Strings.isNullOrEmpty(password) ? CONNECTOR_USER_PASS : password;
+        return Strings.isNullOrEmpty(password) ? getDatabaseMode().getConnectorPassword() : password;
     }
 
     /**
-     * Get the database name, the default is {@link TestHelper#DATABASE}.
+     * Get the database name, defaulting to the value supplied by the {@link DatabaseMode}.
      */
     public static String getDatabaseName() {
         final String databaseName = getDatabaseConfig(DATABASE_PREFIX).getString(JdbcConfiguration.DATABASE);
-        return Strings.isNullOrEmpty(databaseName) ? DATABASE : databaseName;
+        return Strings.isNullOrEmpty(databaseName) ? getDatabaseMode().getDatabaseName() : databaseName;
+    }
+
+    /**
+     * The test schema username is a suite-wide invariant. It appears as a literal in table include lists
+     * and topic name assertions throughout the tests and is deliberately not overridable.
+     */
+    public static String getSchemaUserName() {
+        return "DEBEZIUM";
+    }
+
+    public static String getSchemaPassword() {
+        return System.getProperty("schema.password", getDatabaseMode().getSchemaPassword());
     }
 
     /**
@@ -142,7 +258,7 @@ public class TestHelper {
                 .withDefault(JdbcConfiguration.PORT, PORT)
                 .withDefault(JdbcConfiguration.USER, getConnectorUserName())
                 .withDefault(JdbcConfiguration.PASSWORD, getConnectorUserPassword())
-                .withDefault(JdbcConfiguration.DATABASE, DATABASE_CDB)
+                .withDefault(JdbcConfiguration.DATABASE, getDatabaseMode().getConnectorDatabase())
                 .build();
     }
 
@@ -213,7 +329,7 @@ public class TestHelper {
         // the environment wishes to use non-CDB mode, the database.pdb.name setting should be
         // given but without a value.
         if (isUsingPdb()) {
-            builder.withDefault(OracleConnectorConfig.PDB_NAME, DATABASE);
+            builder.withDefault(OracleConnectorConfig.PDB_NAME, getDatabaseMode().getDatabaseName());
         }
 
         return builder.with(CommonConnectorConfig.TOPIC_PREFIX, SERVER_NAME)
@@ -270,9 +386,9 @@ public class TestHelper {
         return JdbcConfiguration.copy(getDatabaseConfig(DATABASE_PREFIX))
                 .withDefault(JdbcConfiguration.HOSTNAME, HOST)
                 .withDefault(JdbcConfiguration.PORT, PORT)
-                .with(JdbcConfiguration.USER, SCHEMA_USER)
-                .with(JdbcConfiguration.PASSWORD, SCHEMA_PASS)
-                .withDefault(JdbcConfiguration.DATABASE, DATABASE)
+                .with(JdbcConfiguration.USER, getSchemaUserName())
+                .with(JdbcConfiguration.PASSWORD, getSchemaPassword())
+                .withDefault(JdbcConfiguration.DATABASE, getDatabaseName())
                 .build();
     }
 
@@ -283,8 +399,8 @@ public class TestHelper {
         return JdbcConfiguration.copy(getDatabaseConfig(DATABASE_ADMIN_PREFIX))
                 .withDefault(JdbcConfiguration.HOSTNAME, HOST)
                 .withDefault(JdbcConfiguration.PORT, PORT)
-                .withDefault(JdbcConfiguration.USER, "sys as sysdba")
-                .withDefault(JdbcConfiguration.PASSWORD, "top_secret")
+                .withDefault(JdbcConfiguration.USER, getDatabaseMode().getAdminUser())
+                .withDefault(JdbcConfiguration.PASSWORD, getDatabaseMode().getAdminPassword())
                 .withDefault(JdbcConfiguration.DATABASE, getDatabaseName())
                 .build();
     }
@@ -457,6 +573,102 @@ public class TestHelper {
         }
     }
 
+    /**
+     * Returns whether the test suite targets an Oracle Autonomous Database, see {@link #getDatabaseMode()}.
+     * <p>
+     * Maven {@code oracle-adb} profile selects this mode automatically; IDE runs should pass the
+     * {@code -Doracle.adb=true} argument or {@code -Dtest.database.mode=adb}.
+     * <p>
+     * The mode is not derived from the database itself, as the connection defaults depend on result of
+     * this method, and doing so would create a cyclic dependency.
+     */
+    public static boolean isAutonomousDatabase() {
+        return getDatabaseMode() == DatabaseMode.AUTONOMOUS;
+    }
+
+    /**
+     * Forces pending changes to become visible to the streaming engine.
+     * <p>
+     * On an Autonomous Database, changes only become visible to LogMiner once the current online redo log
+     * has been archived, and no privileged path exists to trigger archive. The ADB service blocks any type
+     * of {@code ALTER SYSTEM} through lockdown, and the ADB Free container denies all OS-authenticated
+     * administrative logons while the database is open, shipping without a password file or {@code orapwd}
+     * utility. This is done to emulate the Oracle Cloud Infrastructure ADB deployment.
+     * <p>
+     * Instead, the archive is provoked without any special privileges by generating enough throwaway redo
+     * through the test schema connection to fill the current online redo log, which causes the database
+     * to switch and archive it. The redo is rolled back, so there is no visible-changes, just a rollback
+     * transaction that the connector ignores. The generated volume is bounded and stops as soon as an
+     * archive log is observed.
+     * <p>
+     * If this were used on a non-Autonomous database, this method is a no-op, as changes in the online redo
+     * logs are immediately visible to Debezium.
+     */
+    public static void forceStreamingVisibility() {
+        if (!isAutonomousDatabase()) {
+            return;
+        }
+
+        try {
+            generateRedoUntilLogArchived();
+        }
+        catch (Exception e) {
+            LOGGER.warn("Unable to provoke a redo log archive; relying on the database's natural log switch cadence", e);
+        }
+    }
+
+    private static void generateRedoUntilLogArchived() throws SQLException {
+        // Roughly 6MB of row data per chunk; with undo the redo generated per chunk is larger.
+        // The adb-free container uses 20MB online redo logs, so a handful of chunks suffices.
+        final int maxChunks = 10;
+        final String redoChunkBlock = "DECLARE l_data VARCHAR2(4000) := RPAD('x', 4000, 'x');" +
+                " BEGIN" +
+                "   FOR i IN 1..1500 LOOP" +
+                "     INSERT INTO " + getSchemaUserName() + ".adb_redo_pump (data) VALUES (l_data);" +
+                "   END LOOP;" +
+                "   ROLLBACK;" +
+                " END;";
+
+        try (OracleConnection admin = defaultConnection(); OracleConnection schema = testConnection()) {
+            final long startSequence = maxArchivedLogSequence(admin);
+
+            try {
+                schema.execute("CREATE TABLE adb_redo_pump (data varchar2(4000))");
+            }
+            catch (SQLException e) {
+                // ORA-00955 - the pump table already exists
+                if (e.getErrorCode() != 955) {
+                    throw e;
+                }
+            }
+
+            for (int chunk = 0; chunk < maxChunks; chunk++) {
+                schema.execute(redoChunkBlock);
+                if (maxArchivedLogSequence(admin) > startSequence) {
+                    return;
+                }
+            }
+
+            // The redo generated may still be in flight to the archiver; give it a moment
+            final long deadline = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(10);
+            while (System.currentTimeMillis() < deadline) {
+                if (maxArchivedLogSequence(admin) > startSequence) {
+                    return;
+                }
+                Awaitility.await().pollDelay(Duration.ofMillis(500)).timeout(Duration.ofSeconds(1)).until(() -> true);
+            }
+
+            LOGGER.warn("No newly archived log was observed after generating redo; streaming visibility is not guaranteed");
+        }
+    }
+
+    private static long maxArchivedLogSequence(OracleConnection connection) throws SQLException {
+        return connection.queryAndMap("SELECT NVL(MAX(SEQUENCE#), 0) FROM V$ARCHIVED_LOG", rs -> {
+            rs.next();
+            return rs.getLong(1);
+        });
+    }
+
     public static void dropTable(OracleConnection connection, String table) {
         final DelayStrategy strategy = DelayStrategy.exponential(Duration.ofSeconds(1), Duration.ofSeconds(30));
         final int maxAttempts = 10;
@@ -545,7 +757,7 @@ public class TestHelper {
     }
 
     /**
-     * Grants the specified role to the {@link TestHelper#SCHEMA_USER} or the user configured using the
+     * Grants the specified role to the schema username or the user configured using the
      * configuration option {@code database.user}, whichever has precedence.  If the configuration uses
      * PDB, the grant will be performed in the PDB and not the CDB database.
      *
@@ -557,7 +769,7 @@ public class TestHelper {
     }
 
     /**
-     * Grants the specified roles to the {@link TestHelper#SCHEMA_USER} or the user configured using the
+     * Grants the specified roles to the schema username or the user configured using the
      * configuration option {@code database.user}, which has precedence, on the specified object.  If
      * the configuration uses PDB, the grant will be performed int he PDB and not the CDB database.
      *
@@ -586,7 +798,7 @@ public class TestHelper {
     }
 
     /**
-     * Revokes the specified role from the {@link TestHelper#SCHEMA_USER} or the user configured using
+     * Revokes the specified role from the schema username or the user configured using
      * the configuration option {@code database.user}, whichever has precedence. If the configuration
      * uses PDB, the revoke will be performed in the PDB and not the CDB instance.
      *
@@ -659,7 +871,7 @@ public class TestHelper {
     }
 
     /**
-     * Drops all tables visible to user {@link #SCHEMA_USER}.
+     * Drops all tables visible to schema username.
      */
     public static void dropAllTables() {
         try (OracleConnection connection = testConnection()) {
@@ -673,7 +885,7 @@ public class TestHelper {
                     if (isQuoteRequired(tableName)) {
                         tableName = "\"" + tableName + "\"";
                     }
-                    dropTable(connection, String.format("%s.%s", SCHEMA_USER, tableName));
+                    dropTable(connection, String.format("%s.%s", getSchemaUserName(), tableName));
                 }
             });
         }
@@ -789,8 +1001,8 @@ public class TestHelper {
             // if the property is specified and is not null/empty, we are using PDB mode.
             return !Strings.isNullOrEmpty(properties.get(PDB_NAME));
         }
-        // if the property is not specified, we default to using PDB mode.
-        return Strings.isNullOrEmpty(properties.get(PDB_NAME));
+        // if the property is not specified, the database mode decides.
+        return getDatabaseMode().isUsesPdb();
     }
 
     /**
@@ -816,49 +1028,6 @@ public class TestHelper {
                 admin.resetSessionToCdb();
             }
             return admin.getCurrentScn();
-        }
-    }
-
-    // Below are test helper methods for integration tests using the Testcointainers based OracleContainer instance:
-
-    private static Configuration getTestConnectionConfiguration(ConnectorConfiguration config) {
-        var connectionConfiguration = Configuration.from(config.asProperties()).subset(ConfigurationNames.DATABASE_CONFIG_PREFIX, true);
-        var dbName = Strings.isNullOrEmpty(connectionConfiguration.getString(PDB_NAME))
-                ? connectionConfiguration.getString(JdbcConfiguration.DATABASE)
-                : connectionConfiguration.getString(PDB_NAME);
-        return connectionConfiguration.edit()
-                .with(JdbcConfiguration.HOSTNAME.name(), "localhost")
-                .with(JdbcConfiguration.PORT, TestInfrastructureHelper.getOracleContainer().getMappedPort(OracleContainer.ORACLE_PORT))
-                .with(JdbcConfiguration.DATABASE, dbName)
-                .build();
-    }
-
-    private static void patchConnectorConfigurationForContainer(ConnectorConfiguration connectorConfiguration, OracleContainer oracleContainer) {
-        var oracleImageName = oracleContainer.getDockerImageName();
-        if (!oracleImageName.startsWith(OracleContainer.DEFAULT_IMAGE_NAME.getUnversionedPart())) {
-            return;
-        }
-        String imageTag = "latest";
-        String imageTagSuffix = "";
-        if (oracleImageName.contains(":")) {
-            imageTag = oracleImageName.split(":")[1];
-        }
-        if (imageTag.contains("-")) {
-            imageTagSuffix = imageTag.substring(imageTag.lastIndexOf("-") + 1);
-        }
-        String pdbName = connectorConfiguration.asProperties().getProperty(OracleConnectorConfig.PDB_NAME.name());
-        if (!imageTag.contains("-") || "xs".equals(imageTagSuffix)) {
-            if (!Strings.isNullOrEmpty(pdbName)) {
-                connectorConfiguration.with(OracleConnectorConfig.DATABASE_NAME.name(), pdbName);
-            }
-        }
-        else if ("noncdb".equals(imageTagSuffix)) {
-            if (!Strings.isNullOrEmpty(pdbName)) {
-                connectorConfiguration.remove(OracleConnectorConfig.PDB_NAME.name());
-            }
-        }
-        else {
-            throw new RuntimeException("Invalid or unknown image tag '" + imageTagSuffix + "' for Oracle container image: " + oracleImageName);
         }
     }
 

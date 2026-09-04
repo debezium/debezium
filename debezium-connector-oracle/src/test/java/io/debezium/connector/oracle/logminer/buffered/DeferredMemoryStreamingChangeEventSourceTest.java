@@ -169,7 +169,7 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
             assertThat(transaction).isNotNull();
             assertThat(transaction.getStartScn()).isEqualTo(Scn.valueOf(10));
             assertThat(transaction.getChangeTime()).isEqualTo(startTime);
-            assertThat(transaction.getUserName()).isEqualTo(TestHelper.SCHEMA_USER);
+            assertThat(transaction.getUserName()).isEqualTo(TestHelper.getSchemaUserName());
             assertThat(transaction.getClientId()).isNull();
             assertThat(transaction.getRedoThreadId()).isEqualTo(1);
         }
@@ -512,7 +512,7 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
         Mockito.when(row.getTransactionId()).thenReturn(transactionId);
         Mockito.when(row.getScn()).thenReturn(Scn.valueOf(scn));
         Mockito.when(row.getChangeTime()).thenReturn(changeTime);
-        Mockito.when(row.getUserName()).thenReturn(TestHelper.SCHEMA_USER);
+        Mockito.when(row.getUserName()).thenReturn(TestHelper.getSchemaUserName());
         Mockito.when(row.getClientId()).thenReturn(null);
         Mockito.when(row.getThread()).thenReturn(1);
         return row;
@@ -559,7 +559,7 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
         Mockito.when(row.getRedoSql()).thenReturn("insert into \"DEBEZIUM\".\"%s\"(\"ID\",\"DATA\") values ('1',%s);".formatted(tableName, dataValue));
         Mockito.when(row.getRsId()).thenReturn("A.B.C");
         Mockito.when(row.getTablespaceName()).thenReturn("DEBEZIUM");
-        Mockito.when(row.getUserName()).thenReturn(TestHelper.SCHEMA_USER);
+        Mockito.when(row.getUserName()).thenReturn(TestHelper.getSchemaUserName());
         Mockito.when(row.getClientId()).thenReturn(null);
         Mockito.when(row.getThread()).thenReturn(1);
         return row;

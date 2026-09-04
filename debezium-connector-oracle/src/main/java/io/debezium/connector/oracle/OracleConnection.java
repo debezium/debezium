@@ -94,6 +94,7 @@ public class OracleConnection extends JdbcConnection {
 
     private final int queryFetchSize;
     private OracleDatabaseVersion databaseVersion;
+    private Boolean autonomousDatabaseMode;
 
     public OracleConnection(OracleConnectorConfig connectorConfig, boolean autoCommit) {
         this(connectorConfig.getJdbcConfig(), connectorConfig.getQueryFetchSize(), autoCommit);
@@ -195,7 +196,7 @@ public class OracleConnection extends JdbcConnection {
      */
     @Override
     public Set<TableId> getAllTableIds(String catalogName) throws SQLException {
-        final String query = "select owner, table_name from all_tables " +
+        String query = "select owner, table_name from all_tables " +
         // filter special spatial tables
                 "where table_name NOT LIKE 'MDRT_%' " +
                 "and table_name NOT LIKE 'MDRS_%' " +
@@ -206,6 +207,14 @@ public class OracleConnection extends JdbcConnection {
                 "and nested = 'NO'" +
                 // filter parent tables of nested tables
                 "and table_name not in (select PARENT_TABLE_NAME from ALL_NESTED_TABLES)";
+
+        if (isAutonomousDatabase()) {
+            // Autonomous Databases are pre-provisioned with many Oracle-managed schemas, such as
+            // APEX, ORDS, Graph Studio, and the cloud service's own management schemas, none of
+            // which can be captured. These schemas carry version-dependent names, so rather than
+            // relying on a static exclusion list, filter on the flag Oracle maintains for them.
+            query += " and owner not in (select username from all_users where oracle_maintained = 'Y')";
+        }
 
         Set<TableId> tableIds = new HashSet<>();
         query(query, (rs) -> {
@@ -406,8 +415,11 @@ public class OracleConnection extends JdbcConnection {
      * @throws DebeziumException if the oldest system change number cannot be found due to no logs available
      */
     public Optional<Scn> getFirstScnInLogs(Duration archiveLogRetention, List<String> archiveDestinationNames) throws SQLException {
+        return getFirstScnInLogs(archiveLogRetention, archiveDestinationNames, false);
+    }
 
-        final String oldestFirstChangeQuery = SqlUtils.oldestFirstChangeQuery(archiveLogRetention, archiveDestinationNames);
+    public Optional<Scn> getFirstScnInLogs(Duration archiveLogRetention, List<String> archiveDestinationNames, boolean autonomousDatabaseMode) throws SQLException {
+        final String oldestFirstChangeQuery = SqlUtils.oldestFirstChangeQuery(archiveLogRetention, archiveDestinationNames, autonomousDatabaseMode);
         final String oldestScn = singleOptionalValue(oldestFirstChangeQuery, rs -> rs.getString(1));
 
         if (oldestScn == null) {
@@ -421,11 +433,12 @@ public class OracleConnection extends JdbcConnection {
     public boolean validateLogPosition(Partition partition, OffsetContext offset, CommonConnectorConfig config) {
         final OracleConnectorConfig connectorConfig = (OracleConnectorConfig) config;
         final Duration archiveLogRetention = connectorConfig.getArchiveLogRetention();
+        final boolean autonomousDatabaseMode = isAutonomousDatabase();
         final List<String> archiveDestinationNames = connectorConfig.getArchiveDestinationNameResolver().getDestinationNames(this);
         final Scn storedOffset = ((OracleConnectorConfig) config).getAdapter().getOffsetScn((OracleOffsetContext) offset);
 
         try {
-            Optional<Scn> firstAvailableScn = getFirstScnInLogs(archiveLogRetention, archiveDestinationNames);
+            Optional<Scn> firstAvailableScn = getFirstScnInLogs(archiveLogRetention, archiveDestinationNames, autonomousDatabaseMode);
             return firstAvailableScn.filter(isLessThanOrEqualTo(storedOffset)).isPresent();
         }
         catch (SQLException e) {
@@ -969,6 +982,26 @@ public class OracleConnection extends JdbcConnection {
     public String getDatabaseParameterValue(String parameterName) throws SQLException {
         final String query = "SELECT VALUE FROM V$PARAMETER WHERE UPPER(NAME) = UPPER(?)";
         return prepareQueryAndMap(query, ps -> ps.setString(1, parameterName), rs -> rs.next() ? rs.getString(1) : null);
+    }
+
+    /**
+     * Detects whether the connection is to an Oracle Autonomous Database (ADB).
+     * The result is cached after the first call.
+     *
+     * @return true if connected to an Autonomous Database, false otherwise
+     */
+    public boolean isAutonomousDatabase() {
+        if (autonomousDatabaseMode == null) {
+            try {
+                autonomousDatabaseMode = isAutonomous();
+                LOGGER.info("Oracle autonomous database mode: {}", autonomousDatabaseMode);
+            }
+            catch (SQLException e) {
+                LOGGER.warn("Failed to check CLOUD_SERVICE context, defaulting to non-autonomous mode", e);
+                autonomousDatabaseMode = false;
+            }
+        }
+        return autonomousDatabaseMode;
     }
 
     private static Scn readScnColumnAsScn(ResultSet rs, String columnName) throws SQLException {
