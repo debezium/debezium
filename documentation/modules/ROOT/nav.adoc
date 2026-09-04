@@ -55,6 +55,7 @@
 ** xref:transformations/neo4j-cud-converter.adoc[Neo4j CUD Converter]
 ** xref:transformations/enforce-record-size.adoc[Enforce Record Size]
 ** xref:transformations/swap-geometry-coordinates.adoc[Swap Geometry Coordinates]
+** xref:transformations/stringify-fields.adoc[Stringify Fields]
 * Post Processors
 ** xref:post-processors/index.adoc[Overview]
 ** xref:post-processors/reselect-columns.adoc[Reselect Columns]
