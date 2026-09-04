@@ -72,7 +72,11 @@ public class OcpArtifactServerController {
     }
 
     public Optional<HttpUrl> geArtifactUrl(String name) {
-        return Optional.ofNullable(artifacts.get(name));
+        Optional<HttpUrl> artifactUrl = Optional.ofNullable(artifacts.get(name));
+        if (artifactUrl.isEmpty()) {
+            LOGGER.warn("Artifact {} has no associated URL", name);
+        }
+        return artifactUrl;
     }
 
     public Optional<String> getArtifactUrlAsString(String name) {
@@ -96,7 +100,7 @@ public class OcpArtifactServerController {
     public Plugin createPlugin(String name, List<String> artifacts) {
         List<Artifact> pluginArtifacts = artifacts.stream()
                 .map(this::getArtifactUrlAsString)
-                .map(a -> a.orElseThrow(() -> new IllegalStateException("Missing artifact for plugin'" + name + "'")))
+                .map(a -> a.orElseThrow(() -> new IllegalStateException("Missing artifact " + a + " for plugin'" + name + "'")))
                 .map(this::createArtifact)
                 .collect(toList());
 
@@ -131,6 +135,7 @@ public class OcpArtifactServerController {
             artifactsStream = Stream.concat(artifactsStream, apicurio.stream());
         }
         List<String> artifacts = artifactsStream.collect(toList());
+        LOGGER.info("Creating plugin from following artifacts {}", artifacts);
         return createPlugin("debezium-connector-" + database, artifacts);
     }
 
@@ -176,5 +181,6 @@ public class OcpArtifactServerController {
                 .withName(deployment.getMetadata().getName())
                 .waitUntilCondition(WaitConditions::deploymentAvailableCondition, scaled(5), TimeUnit.MINUTES);
         this.artifacts = listArtifacts();
+        LOGGER.info("Read following artifact list: {}", this.artifacts);
     }
 }
