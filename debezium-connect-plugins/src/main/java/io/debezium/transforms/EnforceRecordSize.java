@@ -13,6 +13,8 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Predicate;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.AbstractConfig;
@@ -35,6 +37,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.config.Instantiator;
+import io.debezium.function.Predicates;
 import io.debezium.metadata.ConfigDescriptor;
 import io.debezium.spi.storage.OversizedRecord;
 import io.debezium.spi.storage.OversizedRecordReference;
@@ -150,8 +153,9 @@ public class EnforceRecordSize<R extends ConnectRecord<R>> implements Transforma
             .withType(ConfigDef.Type.LIST)
             .withDefault("")
             .withImportance(ConfigDef.Importance.HIGH)
-            .withDescription("Comma-separated columns to replace with claim-check markers. Qualified column names are accepted; " +
-                    "matching uses the final column-name segment. Required when strategy is 'claim_check'.");
+            .withDescription("Comma-separated regular expressions that match columns to replace with claim-check markers. " +
+                    "Each expression is evaluated against the column name and the topic-qualified column name. " +
+                    "Required when strategy is 'claim_check'.");
 
     private static final ConfigDef CONFIG_DEF = new ConfigDef()
             .define(MAX_BYTES_CONF,
@@ -190,7 +194,8 @@ public class EnforceRecordSize<R extends ConnectRecord<R>> implements Transforma
     private double compressionRatio;
     private int minFieldSize;
     private Strategy strategy = Strategy.TRUNCATE;
-    private Set<String> claimCheckColumns = Set.of();
+    private List<String> claimCheckColumns = List.of();
+    private List<Predicate<String>> claimCheckColumnSelectors = List.of();
     private OversizedRecordStorage claimCheckStorage;
 
     @Override
@@ -251,7 +256,7 @@ public class EnforceRecordSize<R extends ConnectRecord<R>> implements Transforma
     private R applyClaimCheck(R record) {
         SourceRecord sourceRecord = (SourceRecord) record;
         Struct value = (Struct) sourceRecord.value();
-        List<ClaimCheckField> fields = findClaimCheckFields(value);
+        List<ClaimCheckField> fields = findClaimCheckFields(value, sourceRecord.topic());
 
         validateClaimCheckFields(value, fields, sourceRecord.topic());
 
@@ -295,14 +300,14 @@ public class EnforceRecordSize<R extends ConnectRecord<R>> implements Transforma
         return replacement;
     }
 
-    private List<ClaimCheckField> findClaimCheckFields(Struct envelope) {
+    private List<ClaimCheckField> findClaimCheckFields(Struct envelope, String topic) {
         List<ClaimCheckField> fields = new ArrayList<>();
-        collectClaimCheckFields(envelope, "before", fields);
-        collectClaimCheckFields(envelope, "after", fields);
+        collectClaimCheckFields(envelope, "before", topic, fields);
+        collectClaimCheckFields(envelope, "after", topic, fields);
         return fields;
     }
 
-    private void collectClaimCheckFields(Struct envelope, String sectionName, List<ClaimCheckField> fields) {
+    private void collectClaimCheckFields(Struct envelope, String sectionName, String topic, List<ClaimCheckField> fields) {
         org.apache.kafka.connect.data.Field sectionField = envelope.schema().field(sectionName);
         if (sectionField == null) {
             return;
@@ -313,7 +318,7 @@ public class EnforceRecordSize<R extends ConnectRecord<R>> implements Transforma
         }
 
         for (org.apache.kafka.connect.data.Field field : section.schema().fields()) {
-            if (!claimCheckColumns.contains(field.name())) {
+            if (!isClaimCheckColumn(topic, field.name())) {
                 continue;
             }
             Object fieldValue = section.getWithoutDefault(field.name());
@@ -328,9 +333,15 @@ public class EnforceRecordSize<R extends ConnectRecord<R>> implements Transforma
         collectSectionColumns(envelope, "before", availableColumns);
         collectSectionColumns(envelope, "after", availableColumns);
 
-        Set<String> missingColumns = claimCheckColumns.stream()
-                .filter(column -> !availableColumns.contains(column))
-                .collect(Collectors.toCollection(LinkedHashSet::new));
+        Set<String> missingColumns = new LinkedHashSet<>();
+        for (int index = 0; index < claimCheckColumns.size(); index++) {
+            Predicate<String> selector = claimCheckColumnSelectors.get(index);
+            boolean matched = availableColumns.stream()
+                    .anyMatch(availableColumn -> matchesClaimCheckColumn(selector, topic, availableColumn));
+            if (!matched) {
+                missingColumns.add(claimCheckColumns.get(index));
+            }
+        }
         if (!missingColumns.isEmpty()) {
             throw new ConnectException("Claim-check columns " + missingColumns + " were not found in record for topic " + topic);
         }
@@ -338,17 +349,17 @@ public class EnforceRecordSize<R extends ConnectRecord<R>> implements Transforma
             throw new ConnectException("Claim-check columns are present but null in record for topic " + topic);
         }
 
-        validateClaimCheckColumnSchemas(envelope, "before");
-        validateClaimCheckColumnSchemas(envelope, "after");
+        validateClaimCheckColumnSchemas(envelope, "before", topic);
+        validateClaimCheckColumnSchemas(envelope, "after", topic);
     }
 
-    private void validateClaimCheckColumnSchemas(Struct envelope, String sectionName) {
+    private void validateClaimCheckColumnSchemas(Struct envelope, String sectionName, String topic) {
         org.apache.kafka.connect.data.Field sectionField = envelope.schema().field(sectionName);
         if (sectionField == null || sectionField.schema().type() != Schema.Type.STRUCT) {
             return;
         }
         for (org.apache.kafka.connect.data.Field field : sectionField.schema().fields()) {
-            if (claimCheckColumns.contains(field.name()) && !isSupportedClaimCheckSchema(field.schema())) {
+            if (isClaimCheckColumn(topic, field.name()) && !isSupportedClaimCheckSchema(field.schema())) {
                 throw new ConnectException("Claim-check column '" + field.name() + "' has schema type "
                         + field.schema().type() + "; only STRING and unnamed BYTES columns are supported");
             }
@@ -366,6 +377,16 @@ public class EnforceRecordSize<R extends ConnectRecord<R>> implements Transforma
             return;
         }
         sectionField.schema().fields().forEach(field -> columns.add(field.name()));
+    }
+
+    private boolean isClaimCheckColumn(String topic, String fieldName) {
+        return claimCheckColumnSelectors.stream()
+                .anyMatch(selector -> matchesClaimCheckColumn(selector, topic, fieldName));
+    }
+
+    private static boolean matchesClaimCheckColumn(Predicate<String> selector, String topic, String fieldName) {
+        return selector.test(fieldName)
+                || (!Strings.isNullOrBlank(topic) && selector.test(topic + "." + fieldName));
     }
 
     private static Struct copyStruct(Struct value) {
@@ -537,7 +558,8 @@ public class EnforceRecordSize<R extends ConnectRecord<R>> implements Transforma
             configureClaimCheck(config, props);
         }
         else {
-            this.claimCheckColumns = Set.of();
+            this.claimCheckColumns = List.of();
+            this.claimCheckColumnSelectors = List.of();
         }
     }
 
@@ -552,12 +574,14 @@ public class EnforceRecordSize<R extends ConnectRecord<R>> implements Transforma
         this.claimCheckColumns = configuredColumns.stream()
                 .filter(column -> !Strings.isNullOrBlank(column))
                 .map(String::trim)
-                .map(EnforceRecordSize::unqualifiedColumnName)
-                .collect(Collectors.toCollection(LinkedHashSet::new));
+                .collect(Collectors.toList());
         if (claimCheckColumns.isEmpty()) {
             throw new ConfigException(CLAIM_CHECK_COLUMNS_CONF, configuredColumns,
                     "Must contain at least one column when strategy is 'claim_check'");
         }
+        this.claimCheckColumnSelectors = claimCheckColumns.stream()
+                .map(column -> Predicates.includes(column, Pattern.CASE_INSENSITIVE))
+                .collect(Collectors.toList());
 
         Object storage;
         try {
@@ -586,11 +610,6 @@ public class EnforceRecordSize<R extends ConnectRecord<R>> implements Transforma
             oversizedRecordStorage.close();
             throw new ConfigException("Unable to configure claim-check storage class " + storageClass, e);
         }
-    }
-
-    private static String unqualifiedColumnName(String columnName) {
-        int lastDot = columnName.lastIndexOf('.');
-        return lastDot == -1 ? columnName : columnName.substring(lastDot + 1);
     }
 
     @Override

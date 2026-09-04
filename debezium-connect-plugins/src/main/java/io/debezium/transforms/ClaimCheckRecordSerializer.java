@@ -26,6 +26,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.debezium.DebeziumException;
+import io.debezium.util.HexConverter;
 import io.debezium.util.Strings;
 
 final class ClaimCheckRecordSerializer {
@@ -164,11 +165,7 @@ final class ClaimCheckRecordSerializer {
     static String sha256Hex(byte[] data) {
         try {
             byte[] digest = MessageDigest.getInstance("SHA-256").digest(data);
-            StringBuilder hex = new StringBuilder(digest.length * 2);
-            for (byte value : digest) {
-                hex.append(String.format("%02x", value));
-            }
-            return hex.toString();
+            return HexConverter.convertToHexString(digest);
         }
         catch (NoSuchAlgorithmException e) {
             throw new DebeziumException("SHA-256 is not available", e);

@@ -50,6 +50,8 @@ When this configuration is active, if the estimated serialized size of a record 
 Use the `claim_check` strategy when downstream consumers require the complete value and truncation would cause data loss.
 When an event exceeds `max.bytes`, the SMT serializes the complete source record, including its source partition and offset, headers, key, and value, and writes it through an `OversizedRecordStorage` implementation.
 After the storage implementation acknowledges the write, the SMT copies the event and replaces each configured non-null string or unnamed bytes column in its `before` and `after` sections with a claim-check marker.
+The `claim.check.columns.include.list` entries are case-insensitive regular expressions that match either an unqualified column name, such as `payload`, or a topic-qualified name, such as `inventory.customers.payload`.
+Use a topic-qualified expression to scope claim-check replacement to a single topic.
 
 The following example stores oversized records in Amazon S3:
 
@@ -59,7 +61,7 @@ transforms=EnforceRecordSize
 transforms.EnforceRecordSize.type=io.debezium.transforms.EnforceRecordSize
 transforms.EnforceRecordSize.max.bytes=1048576
 transforms.EnforceRecordSize.strategy=claim_check
-transforms.EnforceRecordSize.claim.check.columns.include.list=inventory.customers.payload
+transforms.EnforceRecordSize.claim.check.columns.include.list=inventory[.]customers[.]payload
 transforms.EnforceRecordSize.claim.check.storage.class=io.debezium.storage.s3.S3OversizedRecordStorage
 transforms.EnforceRecordSize.claim.check.storage.base.path=s3://my-bucket/debezium/oversized
 transforms.EnforceRecordSize.claim.check.storage.region=us-west-1
@@ -223,8 +225,9 @@ For S3, set the value to `io.debezium.storage.s3.S3OversizedRecordStorage`.
 
 |[[enforce-record-size-claim-check-columns]]<<enforce-record-size-claim-check-columns, `claim.check.columns.include.list`>>
 |No default value.
-|A comma-separated list of string or unnamed bytes columns to replace with claim-check markers.
-You can specify an unqualified column name, such as `payload`, or a qualified name, such as `inventory.customers.payload`.
+|A comma-separated list of case-insensitive regular expressions that match string or unnamed bytes columns to replace with claim-check markers.
+Each expression is evaluated against the unqualified column name, such as `payload`, and the topic-qualified column name, such as `inventory.customers.payload`.
+To scope a column to a topic, use an expression such as `inventory[.]customers[.]payload`.
 Required when `strategy` is set to `claim_check`.
 
 |[[enforce-record-size-claim-check-s3-base-path]]<<enforce-record-size-claim-check-s3-base-path, `claim.check.storage.base.path`>>
