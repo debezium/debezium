@@ -47,6 +47,7 @@
 
         <!-- Redis -->
         <version.jedis>6.0.0</version.jedis>
+        <version.lettuce>6.7.1.RELEASE</version.lettuce>
 
         <!-- S3 -->
         <version.s3>2.53.1</version.s3>
@@ -575,6 +576,11 @@
                 <groupId>redis.clients</groupId>
                 <artifactId>jedis</artifactId>
                 <version>${version.jedis}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.lettuce</groupId>
+                <artifactId>lettuce-core</artifactId>
+                <version>${version.lettuce}</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.rocketmq</groupId>
