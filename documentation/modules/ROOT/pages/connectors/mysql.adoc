@@ -612,11 +612,6 @@ include::{partialsdir}/modules/all-connectors/con-connector-streams-deployment.a
 
 include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-mysql-sqlserver-connector.adoc[leveloffset=+1]
 
-// Type: procedure
-// ModuleID: deploying-debezium-mysql-connectors
-=== Deploying {prodname} MySQL connectors by building a custom Kafka Connect container image from a Dockerfile
-
-include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=deploy-via-dockerfile]
 endif::product[]
 
 ifdef::community[]
