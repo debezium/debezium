@@ -37,18 +37,33 @@ public class Neo4jCudConverterConfig {
             .withImportance(ConfigDef.Importance.LOW)
             .withDescription("Whether to pass through tombstone records.");
 
+    public static final Field FIELD_MISSING_BEHAVIOR = Field.create("field.missing.behavior")
+            .withDisplayName("Missing field behavior")
+            .withType(ConfigDef.Type.STRING)
+            .withDefault(FieldMissingBehavior.WARN.getValue())
+            .withEnum(FieldMissingBehavior.class)
+            .withImportance(ConfigDef.Importance.MEDIUM)
+            .withDescription("How to react when a change event is missing a column that the mapping needs to build a "
+                    + "CUD event (an id property, a foreign key, or the before/after image): 'fail' throws so the "
+                    + "record is routed by the connector's error handling; 'warn' logs and skips the affected event "
+                    + "(or the whole record when nothing can be built); 'ignore' skips silently. A node whose entire "
+                    + "id key resolves to empty is never emitted regardless of this setting, because an unkeyed MERGE "
+                    + "would collapse every row into a single node.");
+
     // Only the global keys are statically declared. Per-table mapping keys (table.<name>.*) are
     // dynamic and parsed directly from the raw properties, like relationship.<fk>.* subkeys.
-    public static final Field.Set ALL_FIELDS = Field.setOf(OUTPUT_MODE, TOMBSTONES_ENABLED);
+    public static final Field.Set ALL_FIELDS = Field.setOf(OUTPUT_MODE, TOMBSTONES_ENABLED, FIELD_MISSING_BEHAVIOR);
 
     private final OutputMode outputMode;
     private final boolean tombstonesEnabled;
+    private final FieldMissingBehavior fieldMissingBehavior;
     private final Map<String, TableMappingConfig> tableMappings;
 
-    Neo4jCudConverterConfig(OutputMode outputMode, boolean tombstonesEnabled,
+    Neo4jCudConverterConfig(OutputMode outputMode, boolean tombstonesEnabled, FieldMissingBehavior fieldMissingBehavior,
                             Map<String, TableMappingConfig> tableMappings) {
         this.outputMode = outputMode;
         this.tombstonesEnabled = tombstonesEnabled;
+        this.fieldMissingBehavior = fieldMissingBehavior;
         this.tableMappings = tableMappings;
 
         validate();
@@ -71,6 +86,10 @@ public class Neo4jCudConverterConfig {
 
     public boolean tombstonesEnabled() {
         return tombstonesEnabled;
+    }
+
+    public FieldMissingBehavior fieldMissingBehavior() {
+        return fieldMissingBehavior;
     }
 
     public Map<String, TableMappingConfig> tableMappings() {
@@ -102,6 +121,27 @@ public class Neo4jCudConverterConfig {
 
         public static NodeMode parse(String value) {
             return EnumeratedValue.parse(NodeMode.class, value, NODE.value);
+        }
+    }
+
+    public enum FieldMissingBehavior implements EnumeratedValue {
+        FAIL("fail"),
+        WARN("warn"),
+        IGNORE("ignore");
+
+        private final String value;
+
+        FieldMissingBehavior(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        public static FieldMissingBehavior parse(String value) {
+            return EnumeratedValue.parse(FieldMissingBehavior.class, value, WARN.value);
         }
     }
 
