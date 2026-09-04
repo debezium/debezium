@@ -12,6 +12,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.postgresql.PostgresOffsetContext;
+import io.debezium.connector.postgresql.connection.Lsn;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -37,23 +38,31 @@ public class PostgresTransactionMonitor extends TransactionMonitor {
 
     @Override
     protected Struct prepareTxBeginValue(OffsetContext offsetContext, Instant timestamp) {
-        return adjustTxId(super.prepareTxBeginValue(offsetContext, timestamp), offsetContext);
+        return addCommitLsn(adjustTxId(super.prepareTxBeginValue(offsetContext, timestamp), offsetContext), offsetContext);
     }
 
     @Override
     protected Struct prepareTxEndValue(OffsetContext offsetContext, Instant timestamp) {
-        return adjustTxId(super.prepareTxEndValue(offsetContext, timestamp), offsetContext);
+        return addCommitLsn(adjustTxId(super.prepareTxEndValue(offsetContext, timestamp), offsetContext), offsetContext);
     }
 
     @Override
     protected Struct prepareTxStruct(OffsetContext offsetContext, long dataCollectionEventOrder, Struct value) {
-        return adjustTxId(super.prepareTxStruct(offsetContext, dataCollectionEventOrder, value), offsetContext);
+        return addCommitLsn(adjustTxId(super.prepareTxStruct(offsetContext, dataCollectionEventOrder, value), offsetContext), offsetContext);
     }
 
     private Struct adjustTxId(Struct txStruct, OffsetContext offsetContext) {
         final String lsn = Long.toString(((PostgresOffsetContext) offsetContext).asOffsetState().lastSeenLsn().asLong());
         final String txId = offsetContext.getTransactionContext().getTransactionId();
         txStruct.put(DEBEZIUM_TRANSACTION_ID_KEY, String.format("%s:%s", txId, lsn));
+        return txStruct;
+    }
+
+    private Struct addCommitLsn(Struct txStruct, OffsetContext offsetContext) {
+        final Lsn commitLsn = ((PostgresOffsetContext) offsetContext).getCurrentTransactionCommitLsn();
+        if (commitLsn != null && commitLsn.isValid()) {
+            txStruct.put(PostgresTransactionStructMaker.DEBEZIUM_TRANSACTION_COMMIT_LSN_KEY, commitLsn.asLong());
+        }
         return txStruct;
     }
 }
