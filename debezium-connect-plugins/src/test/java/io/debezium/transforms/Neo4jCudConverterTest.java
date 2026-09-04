@@ -120,31 +120,227 @@ class Neo4jCudConverterTest {
     }
 
     @Nested
-    @DisplayName("Missing column or typo handling")
+    @DisplayName("Missing field behavior")
     class MissingColumnHandling {
 
         @Test
-        @DisplayName("A configured column absent from the record schema due to a typo is skipped")
-        void typoedIdColumnDoesNotThrow() throws Exception {
+        @DisplayName("Empty id key (typo) drops the record under the default 'warn' behavior")
+        void emptyIdKeyIsDroppedByDefault() {
             final var transform = configureTransform(Map.of(
                     "table.customers.node.labels", "Customer",
                     "table.customers.node.id.properties", "custmer_id"));
+            final var record = createCustomerRecord("c", customerAfter());
+
+            // An unkeyed MERGE would collapse every row into one node, so the record is never emitted.
+            assertThat(transform.apply(record)).isNull();
+
+            transform.close();
+        }
+
+        @Test
+        @DisplayName("Empty id key fails when field.missing.behavior=fail")
+        void emptyIdKeyFailsWhenConfigured() {
+            final var transform = configureTransform(Map.of(
+                    "table.customers.node.labels", "Customer",
+                    "table.customers.node.id.properties", "custmer_id",
+                    "field.missing.behavior", "fail"));
+            final var record = createCustomerRecord("c", customerAfter());
+
+            assertThatThrownBy(() -> transform.apply(record))
+                    .isInstanceOf(DataException.class)
+                    .hasMessageContaining("custmer_id");
+
+            transform.close();
+        }
+
+        @Test
+        @DisplayName("A missing foreign key in node mode drops only the relationship, keeping the node")
+        void missingFkInNodeModeSkipsRelationship() throws Exception {
+            final var transform = configureOrderTransform();
+
+            final var nullableSchema = SchemaBuilder.struct()
+                    .field("id", Schema.INT32_SCHEMA)
+                    .field("customer_id", Schema.OPTIONAL_INT32_SCHEMA)
+                    .field("total", Schema.FLOAT64_SCHEMA)
+                    .field("status", Schema.STRING_SCHEMA)
+                    .build();
+            final var after = new Struct(nullableSchema);
+            after.put("id", 5001);
+            after.put("customer_id", null);
+            after.put("total", 99.95);
+            after.put("status", "pending");
+
+            final var envelope = Envelope.defineSchema()
+                    .withName("test.Envelope")
+                    .withRecord(nullableSchema)
+                    .withSource(SOURCE_SCHEMA)
+                    .build();
+            final var record = new SourceRecord(new HashMap<>(), new HashMap<>(), "test.orders",
+                    envelope.schema(), envelope.create(after, createSource("orders"), Instant.now()));
+
+            final var events = parseArray(transform.apply(record));
+
+            assertThat(events).hasSize(1);
+            assertThat(events.get(0).get("type")).isEqualTo("node");
+            assertThat(asMap(events.get(0), "ids")).containsEntry("id", 5001);
+
+            transform.close();
+        }
+
+        @Test
+        @DisplayName("A missing foreign key in node mode fails when field.missing.behavior=fail")
+        void missingFkInNodeModeFailsWhenConfigured() {
+            final var props = new HashMap<String, String>();
+            props.put("table.orders.node.labels", "Order");
+            props.put("table.orders.node.id.properties", "id");
+            props.put("table.orders.relationship.customer_id.type", "PLACED_BY");
+            props.put("table.orders.relationship.customer_id.target.label", "Customer");
+            props.put("table.orders.relationship.customer_id.target.id", "id");
+            props.put("field.missing.behavior", "fail");
+            final var transform = configureTransform(props);
+
+            final var nullableSchema = SchemaBuilder.struct()
+                    .field("id", Schema.INT32_SCHEMA)
+                    .field("customer_id", Schema.OPTIONAL_INT32_SCHEMA)
+                    .field("total", Schema.FLOAT64_SCHEMA)
+                    .field("status", Schema.STRING_SCHEMA)
+                    .build();
+            final var after = new Struct(nullableSchema);
+            after.put("id", 5001);
+            after.put("customer_id", null);
+            after.put("total", 99.95);
+            after.put("status", "pending");
+
+            final var envelope = Envelope.defineSchema()
+                    .withName("test.Envelope")
+                    .withRecord(nullableSchema)
+                    .withSource(SOURCE_SCHEMA)
+                    .build();
+            final var record = new SourceRecord(new HashMap<>(), new HashMap<>(), "test.orders",
+                    envelope.schema(), envelope.create(after, createSource("orders"), Instant.now()));
+
+            assertThatThrownBy(() -> transform.apply(record))
+                    .isInstanceOf(DataException.class)
+                    .hasMessageContaining("customer_id");
+
+            transform.close();
+        }
+
+        @Test
+        @DisplayName("A null foreign key in relationship mode drops the record under the default 'warn' behavior")
+        void nullFkInRelationshipModeIsDroppedByDefault() {
+            final var transform = configureOrderItemTransform("array");
+            final var record = orderItemWithNullOrderId();
+
+            assertThat(transform.apply(record)).isNull();
+
+            transform.close();
+        }
+
+        @Test
+        @DisplayName("A null foreign key in relationship mode fails with a clear error when configured")
+        void nullFkInRelationshipModeFailsWhenConfigured() {
+            final var props = new HashMap<String, String>();
+            props.put("table.order_items.node.mode", "relationship");
+            props.put("output.mode", "array");
+            props.put("table.order_items.relationship.order_id.direction", "outgoing");
+            props.put("table.order_items.relationship.order_id.type", "CONTAINS");
+            props.put("table.order_items.relationship.order_id.target.label", "Order");
+            props.put("table.order_items.relationship.order_id.target.id", "id");
+            props.put("table.order_items.relationship.product_id.direction", "incoming");
+            props.put("table.order_items.relationship.product_id.type", "CONTAINS");
+            props.put("table.order_items.relationship.product_id.target.label", "Product");
+            props.put("table.order_items.relationship.product_id.target.id", "id");
+            props.put("field.missing.behavior", "fail");
+            final var transform = configureTransform(props);
+
+            assertThatThrownBy(() -> transform.apply(orderItemWithNullOrderId()))
+                    .isInstanceOf(DataException.class)
+                    .hasMessageContaining("order_id");
+
+            transform.close();
+        }
+
+        @Test
+        @DisplayName("A delete with no before image drops the record under the default 'warn' behavior")
+        void deleteWithoutBeforeImageIsDropped() {
+            final var transform = configureCustomerTransform();
+            final var envelope = customerEnvelope();
+            final var record = new SourceRecord(new HashMap<>(), new HashMap<>(), "test.customers",
+                    envelope.schema(), envelope.delete(null, createSource("customers"), Instant.now()));
+
+            assertThat(transform.apply(record)).isNull();
+
+            transform.close();
+        }
+
+        @Test
+        @DisplayName("A delete with no before image fails when field.missing.behavior=fail")
+        void deleteWithoutBeforeImageFailsWhenConfigured() {
+            final var transform = configureTransform(Map.of(
+                    "table.customers.node.labels", "Customer",
+                    "table.customers.node.id.properties", "id",
+                    "field.missing.behavior", "fail"));
+            final var envelope = customerEnvelope();
+            final var record = new SourceRecord(new HashMap<>(), new HashMap<>(), "test.customers",
+                    envelope.schema(), envelope.delete(null, createSource("customers"), Instant.now()));
+
+            assertThatThrownBy(() -> transform.apply(record))
+                    .isInstanceOf(DataException.class)
+                    .hasMessageContaining("before");
+
+            transform.close();
+        }
+
+        @Test
+        @DisplayName("An empty id key is dropped silently when field.missing.behavior=ignore")
+        void emptyIdKeyDroppedSilentlyWhenIgnored() {
+            final var transform = configureTransform(Map.of(
+                    "table.customers.node.labels", "Customer",
+                    "table.customers.node.id.properties", "custmer_id",
+                    "field.missing.behavior", "ignore"));
+            final var record = createCustomerRecord("c", customerAfter());
+
+            assertThat(transform.apply(record)).isNull();
+
+            transform.close();
+        }
+
+        @Test
+        @DisplayName("A partial composite id key still emits the node under the default 'warn' behavior")
+        void partialCompositeKeyEmitsNode() throws Exception {
+            final var transform = configureTransform(Map.of(
+                    "table.customers.node.labels", "Customer",
+                    "table.customers.node.id.properties", "id, tenant_id"));
             final var record = createCustomerRecord("c", customerAfter());
 
             final var events = parseArray(transform.apply(record));
 
             assertThat(events).hasSize(1);
             assertThat(events.get(0).get("type")).isEqualTo("node");
-            assertThat(asMap(events.get(0), "ids")).isEmpty();
+            // 'tenant_id' is absent from the record, so only the resolvable part of the key is emitted.
+            assertThat(asMap(events.get(0), "ids")).containsOnlyKeys("id");
 
             transform.close();
         }
 
         @Test
-        @DisplayName("A null foreign key in relationship mode fails with a clear error, not a Map NPE")
-        void nullFkInRelationshipModeThrows() {
-            final var transform = configureOrderItemTransform("array");
+        @DisplayName("A partial composite id key fails when field.missing.behavior=fail")
+        void partialCompositeKeyFailsWhenConfigured() {
+            final var transform = configureTransform(Map.of(
+                    "table.customers.node.labels", "Customer",
+                    "table.customers.node.id.properties", "id, tenant_id",
+                    "field.missing.behavior", "fail"));
+            final var record = createCustomerRecord("c", customerAfter());
 
+            assertThatThrownBy(() -> transform.apply(record))
+                    .isInstanceOf(DataException.class)
+                    .hasMessageContaining("tenant_id");
+
+            transform.close();
+        }
+
+        private SourceRecord orderItemWithNullOrderId() {
             final var nullableSchema = SchemaBuilder.struct()
                     .field("order_id", Schema.OPTIONAL_INT32_SCHEMA)
                     .field("product_id", Schema.INT32_SCHEMA)
@@ -160,14 +356,8 @@ class Neo4jCudConverterTest {
                     .withRecord(nullableSchema)
                     .withSource(SOURCE_SCHEMA)
                     .build();
-            final var record = new SourceRecord(new HashMap<>(), new HashMap<>(), "test.order_items",
+            return new SourceRecord(new HashMap<>(), new HashMap<>(), "test.order_items",
                     envelope.schema(), envelope.create(after, createSource("order_items"), Instant.now()));
-
-            assertThatThrownBy(() -> transform.apply(record))
-                    .isInstanceOf(DataException.class)
-                    .hasMessageContaining("order_id");
-
-            transform.close();
         }
     }
 
@@ -693,8 +883,8 @@ class Neo4jCudConverterTest {
         }
 
         @Test
-        @DisplayName("Truncate operation passes through unchanged")
-        void truncatePassthrough() {
+        @DisplayName("Truncate on a mapped table is dropped, not leaked as a raw envelope")
+        void truncateOnMappedTableIsDropped() {
             final var transform = configureCustomerTransform();
             final var envelope = customerEnvelope();
             final var source = createSource("customers");
@@ -703,9 +893,25 @@ class Neo4jCudConverterTest {
             final var record = new SourceRecord(new HashMap<>(), new HashMap<>(), "test",
                     envelope.schema(), payload);
 
-            final var result = transform.apply(record);
+            // The CUD format has no label-scoped bulk delete and the event carries no row keys, so there
+            // is no CUD event to emit; the record is dropped rather than passed through to the Neo4j sink.
+            assertThat(transform.apply(record)).isNull();
 
-            assertThat(result).isSameAs(record);
+            transform.close();
+        }
+
+        @Test
+        @DisplayName("Truncate on an unmapped table passes through unchanged")
+        void truncateOnUnmappedTablePassthrough() {
+            final var transform = configureCustomerTransform();
+            final var envelope = customerEnvelope();
+            final var source = createSource("products");
+            source.put("lsn", 1234);
+            final var payload = envelope.truncate(source, Instant.now());
+            final var record = new SourceRecord(new HashMap<>(), new HashMap<>(), "test",
+                    envelope.schema(), payload);
+
+            assertThat(transform.apply(record)).isSameAs(record);
 
             transform.close();
         }
