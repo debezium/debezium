@@ -2739,8 +2739,6 @@ end::deployment[]
 
 
 
-tag::deploy-via-dockerfile[]
-=====================================================================
 tag::connector-config-example[]
 ifdef::community[]
 The following example shows the configuration for a connector instance that captures data from a {connector-name} database server on port 3306 at 192.168.99.100, which we logically name `fullfillment`.
