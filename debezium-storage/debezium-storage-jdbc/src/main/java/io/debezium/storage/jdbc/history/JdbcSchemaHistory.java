@@ -195,6 +195,8 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
                                 }
                             }
                         }
+                        // RetriableConnection opens connections with autoCommit=false
+                        conn.commit();
                     }, "recover history records", false);
                 }
                 else {
@@ -220,8 +222,9 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
                     if (tableExists.next()) {
                         exists = true;
                     }
-                    return exists;
                 }
+                conn.commit();
+                return exists;
             }, "history storage exists", false);
         }
         catch (SQLException e) {
@@ -245,8 +248,9 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
                     while (rs.next()) {
                         isExists = true;
                     }
-                    return isExists;
                 }
+                conn.commit();
+                return isExists;
             }, "history records exist check", false);
         }
         catch (SQLException e) {
