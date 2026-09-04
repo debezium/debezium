@@ -91,6 +91,37 @@ class EnforceRecordSizeClaimCheckTest {
     }
 
     @Test
+    void shouldScopeQualifiedClaimCheckColumnsToTheConfiguredTopic() throws Exception {
+        transform.configure(claimCheckConfig("inventory[.]customers[.]payload"));
+
+        SourceRecord matchingRecord = createStringRecord("x".repeat(5_000), sourceOffset(100L));
+        SourceRecord matchingResult = transform.apply(matchingRecord);
+
+        assertThat(marker(matchingResult, "payload").path("__debezium_claim_check").asBoolean()).isTrue();
+        assertThat(RecordingStorage.records).hasSize(1);
+
+        SourceRecord nonMatchingRecord = createStringRecord("x".repeat(5_000), sourceOffset(101L), "inventory.orders");
+
+        assertThatThrownBy(() -> transform.apply(nonMatchingRecord))
+                .isInstanceOf(ConnectException.class)
+                .hasMessageContaining("inventory[.]customers[.]payload")
+                .hasMessageContaining("not found");
+        assertThat(RecordingStorage.records).hasSize(1);
+    }
+
+    @Test
+    void shouldSerializeNullKeys() throws Exception {
+        transform.configure(claimCheckConfig("payload"));
+        SourceRecord sourceRecord = createStringRecord("x".repeat(5_000), sourceOffset(100L), "inventory.customers", null);
+
+        SourceRecord result = transform.apply(sourceRecord);
+
+        JsonNode storedJson = OBJECT_MAPPER.readTree(RecordingStorage.records.get(0).payload());
+        assertThat(storedJson.path("key").isNull()).isTrue();
+        assertThat(result.key()).isNull();
+    }
+
+    @Test
     void shouldSerializeHeadersInOrder() throws Exception {
         Map<String, Object> config = claimCheckConfig("payload");
         config.put(EnforceRecordSize.MAX_BYTES_CONF, "2000");
@@ -275,6 +306,14 @@ class EnforceRecordSizeClaimCheckTest {
     }
 
     private static SourceRecord createStringRecord(String value, Map<String, ?> offset) {
+        return createStringRecord(value, offset, "inventory.customers");
+    }
+
+    private static SourceRecord createStringRecord(String value, Map<String, ?> offset, String topic) {
+        return createStringRecord(value, offset, topic, new Struct(KEY_SCHEMA).put("id", 1));
+    }
+
+    private static SourceRecord createStringRecord(String value, Map<String, ?> offset, String topic, Object key) {
         Schema recordSchema = SchemaBuilder.struct()
                 .field("payload", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("id", Schema.INT32_SCHEMA)
@@ -283,7 +322,7 @@ class EnforceRecordSizeClaimCheckTest {
         Struct after = new Struct(recordSchema)
                 .put("payload", value)
                 .put("id", 1);
-        return createRecord(recordSchema, after, offset);
+        return createRecord(recordSchema, after, offset, topic, key);
     }
 
     private static SourceRecord createBytesRecord(byte[] value, Map<String, ?> offset) {
@@ -299,6 +338,10 @@ class EnforceRecordSizeClaimCheckTest {
     }
 
     private static SourceRecord createRecord(Schema recordSchema, Struct after, Map<String, ?> offset) {
+        return createRecord(recordSchema, after, offset, "inventory.customers", new Struct(KEY_SCHEMA).put("id", 1));
+    }
+
+    private static SourceRecord createRecord(Schema recordSchema, Struct after, Map<String, ?> offset, String topic, Object key) {
         Schema envelopeSchema = SchemaBuilder.struct()
                 .field("before", recordSchema)
                 .field("after", recordSchema)
@@ -312,10 +355,10 @@ class EnforceRecordSizeClaimCheckTest {
         return new SourceRecord(
                 Map.of("server", "inventory"),
                 offset,
-                "inventory.customers",
+                topic,
                 0,
                 KEY_SCHEMA,
-                new Struct(KEY_SCHEMA).put("id", 1),
+                key,
                 envelopeSchema,
                 envelope);
     }
