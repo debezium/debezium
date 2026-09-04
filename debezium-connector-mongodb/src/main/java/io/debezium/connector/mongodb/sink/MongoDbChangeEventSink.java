@@ -31,6 +31,7 @@ import io.debezium.DebeziumException;
 import io.debezium.connector.common.DebeziumTaskState;
 import io.debezium.connector.mongodb.sink.converters.SinkDocument;
 import io.debezium.connector.mongodb.sink.eventhandler.relational.RelationalEventHandler;
+import io.debezium.data.Envelope;
 import io.debezium.dlq.ErrorReporter;
 import io.debezium.metadata.CollectionId;
 import io.debezium.openlineage.ConnectorContext;
@@ -163,14 +164,30 @@ final class MongoDbChangeEventSink implements ChangeEventSink, AutoCloseable {
     }
 
     private DatasetMetadata extractDatasetMetadata(SinkDocument sinkDocument, String collectionId) {
+        final BsonDocument keyDocument = sinkDocument.getKeyDoc().orElseGet(BsonDocument::new);
+        final BsonDocument valueDocument = sinkDocument.getValueDoc().orElseGet(BsonDocument::new);
+        BsonDocument metadataValueDocument = valueDocument;
 
-        BsonDocument changeEvent = RelationalEventHandler.generateUpsertOrReplaceDoc(sinkDocument.getKeyDoc().get(), sinkDocument.getValueDoc().get(),
+        if (!hasNonEmptyDocument(valueDocument, Envelope.FieldName.AFTER)) {
+            if (!hasNonEmptyDocument(valueDocument, Envelope.FieldName.BEFORE)) {
+                return new DatasetMetadata(collectionId, OUTPUT, TABLE_DATASET_TYPE, DATABASE, List.of());
+            }
+            metadataValueDocument = new BsonDocument(Envelope.FieldName.AFTER, valueDocument.get(Envelope.FieldName.BEFORE));
+        }
+
+        BsonDocument changeEvent = RelationalEventHandler.generateUpsertOrReplaceDoc(keyDocument, metadataValueDocument,
                 new BsonDocument(), sinkConfig.getColumnNamingStrategy());
 
         List<DatasetMetadata.FieldDefinition> fieldDefinitions = changeEvent.entrySet().stream()
                 .map((entry) -> new DatasetMetadata.FieldDefinition(entry.getKey(), entry.getValue().getBsonType().toString(), ""))
                 .toList();
         return new DatasetMetadata(collectionId, OUTPUT, TABLE_DATASET_TYPE, DATABASE, fieldDefinitions);
+    }
+
+    private boolean hasNonEmptyDocument(BsonDocument document, String fieldName) {
+        return document.containsKey(fieldName)
+                && document.get(fieldName).isDocument()
+                && !document.getDocument(fieldName).isEmpty();
     }
 
     @Override

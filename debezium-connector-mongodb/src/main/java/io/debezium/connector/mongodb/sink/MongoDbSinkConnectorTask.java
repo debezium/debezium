@@ -110,8 +110,14 @@ public class MongoDbSinkConnectorTask extends SinkTask {
                     List.of(new DatasetMetadata(record.topic(), INPUT, STREAM_DATASET_TYPE, KAFKA, datasetDataExtractor.extract(record)))));
             mongoSink.execute(records);
         }
-        catch (Exception e) {
-            DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.RESTARTING, e);
+        catch (RuntimeException e) {
+            try {
+                DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.RESTARTING, e);
+            }
+            catch (RuntimeException emissionException) {
+                e.addSuppressed(emissionException);
+            }
+            throw e;
         }
     }
 
