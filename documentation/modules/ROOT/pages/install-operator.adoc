@@ -1,0 +1,47 @@
+[id="installing-debezium-operator"]
+= Installing the {prodname} Operator
+
+:toc:
+:toc-placement: macro
+:sectanchors:
+:linkattrs:
+:icons: font
+
+toc::[]
+
+== Overview
+
+The {prodname} Operator can be installed via Helm or standard Kubernetes manifests (using `kubectl`). It is the recommended way to deploy and manage {prodname} Server on Kubernetes and OpenShift.
+
+== Installing via Helm (Recommended)
+
+The recommended way to install the {prodname} Operator is using its official Helm chart.
+
+1. Add the {prodname} Helm repository:
++
+[source,shell]
+----
+helm repo add debezium https://charts.debezium.io
+helm repo update
+----
+
+2. Install the Operator:
++
+[source,shell]
+----
+helm install debezium-operator debezium/debezium-operator --namespace debezium --create-namespace
+----
+
+== Installing via kubectl (Advanced)
+
+For advanced users, or for previewing changes not yet included in a release, you can apply the Kubernetes manifests directly from the https://github.com/debezium/debezium-operator/tree/main/k8[debezium-operator repository]:
+
+[source,shell]
+----
+kubectl create namespace debezium
+kubectl apply -f https://raw.githubusercontent.com/debezium/debezium-operator/main/k8/kubernetes.yml -n debezium
+----
+
+== Next Steps
+
+Once the {prodname} Operator is running, you can create a `DebeziumServer` custom resource to deploy a {prodname} Server instance. For more details on configuring the operator and deploying server instances, see the xref:operations/debezium-operator.adoc[Operator Documentation].

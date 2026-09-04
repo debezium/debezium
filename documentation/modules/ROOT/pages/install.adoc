@@ -12,7 +12,7 @@ There are several ways to install and use {prodname}, depending on your architec
 == Installation Methods
 
 * xref:install-kafka-connect.adoc[Installing Kafka Connect Connectors] - Deploy {prodname} connectors via Apache Kafka Connect.
-* Debezium Operator (Coming soon)
+* xref:install-operator.adoc[Installing the Debezium Operator] - Deploy {prodname} using the Kubernetes Operator and Helm.
 * Debezium Server (Coming soon)
 * Debezium CLI (Coming soon)
 
