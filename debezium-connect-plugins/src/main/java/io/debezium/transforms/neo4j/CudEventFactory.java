@@ -22,6 +22,8 @@ import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.time.Conversions;
 import io.debezium.time.Date;
@@ -34,17 +36,27 @@ import io.debezium.time.NanoTimestamp;
 import io.debezium.time.Time;
 import io.debezium.time.Timestamp;
 import io.debezium.transforms.neo4j.CudEvent.Operation;
+import io.debezium.transforms.neo4j.Neo4jCudConverterConfig.FieldMissingBehavior;
 import io.debezium.transforms.neo4j.Neo4jCudConverterConfig.NodeMode;
 import io.debezium.transforms.neo4j.Neo4jCudConverterConfig.OutputMode;
 
 public class CudEventFactory {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(CudEventFactory.class);
+
     private final Neo4jCudConverterConfig config;
+    private final FieldMissingBehavior fieldMissingBehavior;
 
     public CudEventFactory(Neo4jCudConverterConfig config) {
         this.config = config;
+        this.fieldMissingBehavior = config.fieldMissingBehavior();
     }
 
+    /**
+     * Builds the CUD events for a single change-event record. Returns an empty list when the record
+     * cannot be converted into any valid event and the configured {@link FieldMissingBehavior} says to
+     * skip rather than fail; the caller drops such records.
+     */
     public List<CudEvent> buildEvents(Struct data, Operation cudOp, TableMappingConfig mapping) {
         if (mapping.nodeMode() == NodeMode.NODE) {
             return buildNodeModeEvents(data, cudOp, mapping);
@@ -53,21 +65,32 @@ public class CudEventFactory {
     }
 
     private List<CudEvent> buildNodeModeEvents(Struct data, Operation cudOp, TableMappingConfig mapping) {
+        final var ids = extractIdProperties(data, mapping);
+        if (!keyUsable(ids, mapping, cudOp)) {
+            return Collections.emptyList();
+        }
+
         final List<CudEvent> events = new ArrayList<>();
-        events.add(buildNodeEvent(data, cudOp, mapping));
+        events.add(buildNodeEvent(data, cudOp, mapping, ids));
 
         if (cudOp != Operation.DELETE) {
             for (final var relMapping : mapping.relationships()) {
-                columnValue(data, relMapping.fkColumn()).ifPresent(fkValue -> events.add(
-                        buildRelationshipForNodeMode(data, cudOp, mapping, relMapping, fkValue)));
+                final var fkValue = columnValue(data, relMapping.fkColumn());
+                if (fkValue.isPresent()) {
+                    events.add(buildRelationshipForNodeMode(data, cudOp, mapping, relMapping, fkValue.get(), ids));
+                }
+                else {
+                    onMissingField(String.format(
+                            "Foreign key column '%s' for relationship '%s' on table '%s' is missing or null",
+                            relMapping.fkColumn(), relMapping.type(), mapping.tableName()),
+                            "skipping this relationship");
+                }
             }
         }
         return events;
     }
 
-    private CudNodeEvent buildNodeEvent(Struct data, Operation cudOp, TableMappingConfig mapping) {
-        final var ids = extractIdProperties(data, mapping);
-
+    private CudNodeEvent buildNodeEvent(Struct data, Operation cudOp, TableMappingConfig mapping, Map<String, Object> ids) {
         if (cudOp == Operation.DELETE) {
             return new CudNodeEvent(cudOp, mapping.nodeLabels(), ids, null, mapping.deleteDetach());
         }
@@ -78,8 +101,7 @@ public class CudEventFactory {
     }
 
     private CudRelationshipEvent buildRelationshipForNodeMode(Struct data, Operation cudOp, TableMappingConfig mapping,
-                                                              RelationshipMapping relMapping, Object fkValue) {
-        final var sourceIds = extractIdProperties(data, mapping);
+                                                              RelationshipMapping relMapping, Object fkValue, Map<String, Object> sourceIds) {
         final var targetIds = Map.<String, Object> of(relMapping.targetId(), fkValue);
 
         final var from = new CudRelationshipEvent.Endpoint(mapping.nodeLabels(), sourceIds, Operation.MERGE);
@@ -98,8 +120,19 @@ public class CudEventFactory {
         final var mappings = mapping.relationships();
         final var fromMapping = endpointFor(mappings, RelationshipMapping.Direction.OUTGOING);
         final var toMapping = endpointFor(mappings, RelationshipMapping.Direction.INCOMING);
-        final var fromFkValue = requiredFkValue(data, fromMapping, mapping);
-        final var toFkValue = requiredFkValue(data, toMapping, mapping);
+        final var fromFk = columnValue(data, fromMapping.fkColumn());
+        final var toFk = columnValue(data, toMapping.fkColumn());
+        if (fromFk.isEmpty() || toFk.isEmpty()) {
+            final var missing = fromFk.isEmpty() ? fromMapping.fkColumn() : toMapping.fkColumn();
+            onMissingField(String.format(
+                    "Table '%s' is mapped as a relationship, but its foreign key column '%s' is missing or null; "
+                            + "cannot build the relationship endpoint",
+                    mapping.tableName(), missing),
+                    "skipping record");
+            return Collections.emptyList();
+        }
+        final var fromFkValue = fromFk.get();
+        final var toFkValue = toFk.get();
         final List<CudEvent> events = new ArrayList<>();
         final var isArray = config.outputMode() == OutputMode.ARRAY;
 
@@ -121,12 +154,44 @@ public class CudEventFactory {
                 .orElseThrow(() -> new IllegalStateException("No relationship mapping with direction " + direction));
     }
 
-    private Object requiredFkValue(Struct data, RelationshipMapping relMapping, TableMappingConfig mapping) {
-        return columnValue(data, relMapping.fkColumn())
-                .orElseThrow(() -> new DataException(String.format(
-                        "Table '%s' is mapped as a relationship, but its foreign key column '%s' is missing "
-                                + "from the record or has a null value; cannot build the relationship endpoint",
-                        mapping.tableName(), relMapping.fkColumn())));
+    /**
+     * Decides whether a node can be emitted given the id key resolved from the record.
+     * A completely empty key is never usable: an unkeyed MERGE would collapse every row of the table
+     * into one node, so such records are always dropped (and, unless behavior is {@code ignore}, reported).
+     * A partial key is emitted as a best effort, but reported unless behavior is {@code ignore}.
+     */
+    private boolean keyUsable(Map<String, Object> ids, TableMappingConfig mapping, Operation cudOp) {
+        final var expected = mapping.nodeIdProperties().size();
+        if (ids.size() == expected) {
+            return true;
+        }
+        if (ids.isEmpty()) {
+            onMissingField(String.format(
+                    "Record for table '%s' (op=%s) has none of the configured id properties %s present",
+                    mapping.tableName(), cudOp.value(), mapping.nodeIdProperties()),
+                    "skipping record, because an unkeyed MERGE would collapse all rows into one node");
+            return false;
+        }
+        onMissingField(String.format(
+                "Record for table '%s' (op=%s) is missing some configured id properties; resolved key %s of %s",
+                mapping.tableName(), cudOp.value(), ids.keySet(), mapping.nodeIdProperties()),
+                "emitting node with a partial key");
+        return true;
+    }
+
+    /**
+     * Applies the configured {@link FieldMissingBehavior} to a record that references a column absent from
+     * (or null in) the change event: {@code fail} throws, {@code warn} logs, {@code ignore} is silent.
+     *
+     * @param problem what is missing, phrased as a statement
+     * @param action what the SMT does about it under the non-failing behaviors
+     */
+    private void onMissingField(String problem, String action) {
+        switch (fieldMissingBehavior) {
+            case FAIL -> throw new DataException(problem + "; failing record (field.missing.behavior=fail)");
+            case WARN -> LOGGER.warn("{}; {} (field.missing.behavior=warn)", problem, action);
+            case IGNORE -> LOGGER.debug("{}; {} (field.missing.behavior=ignore)", problem, action);
+        }
     }
 
     private CudNodeEvent mergeNodeForEndpoint(RelationshipMapping mapping, Object fkValue) {

@@ -166,6 +166,68 @@ The choice depends on what is already available in your infrastructure:
 |Flink job
 |===
 
+[[neo4j-cud-converter-schema-changes]]
+== Schema changes and DDL
+
+The `Neo4jCudConverter` transforms *data* change events only (the {prodname} envelope with an operation of `c`, `r`, `u`, or `d`).
+It does not translate schema changes (DDL) such as `CREATE TABLE`, `ALTER TABLE`, `DROP TABLE`, or `TRUNCATE` into graph operations.
+There are two reasons for this:
+
+* {prodname} publishes DDL to a dedicated schema change topic (for connectors that support one), not to the per-table data topics that feed the Neo4j sink connector, so schema change events never reach the SMT.
+* Relational DDL has no single, safe mapping onto a graph model. For example, dropping a table does not imply the graph nodes should be deleted, and renaming a column does not imply the corresponding Neo4j property should be renamed in place.
+
+`TRUNCATE` and message events, which *can* appear on a data topic, are also not translated: the CUD format has no label-scoped bulk delete and these events carry no row keys, so there is no CUD event that could represent them.
+For a table that is mapped, such records are dropped (rather than passed through as a raw envelope, which would break the downstream split step and Neo4j sink); for an unmapped table they pass through unchanged like any other unmapped record.
+
+As a result, structural changes are a coordinated, manual operation.
+The subsections below describe how the SMT behaves for each kind of change and what you must do to keep the graph consistent.
+
+=== Column changes
+
+The SMT reads column values by name from each record according to your per-table mapping, so column-level changes are absorbed silently in most cases, but not always:
+
+[cols="30%a,70%a",options="header"]
+|===
+|Change
+|Behavior and required action
+
+|Add a column
+|No effect until you map it. With no `node.properties.include` filter, a new column is automatically emitted as a node property; with an include filter, it is ignored until you add it. Add the column to `table.<table_name>.node.properties.include` (or to `relationship.<fk_column>.properties`) and restart the connector if you want it. Existing nodes are not backfilled.
+
+|Drop a column
+|A dropped column simply stops appearing in the output. Remove it from any `node.properties.include`, `node.properties.exclude`, or `relationship.<fk_column>.properties` list to keep the configuration clean. Values already written to Neo4j remain and must be removed with Cypher (for example `MATCH (n:Label) REMOVE n.prop`) if you want them gone.
+
+|Rename a column
+|Treated as a drop of the old name plus an add of the new name. The impact depends on the column's role (see below). Update the affected mapping keys to the new name and restart the connector.
+|===
+
+[WARNING]
+====
+When a renamed or dropped column is referenced by a mapping, the SMT reacts according to the xref:neo4j-field-missing-behavior[`field.missing.behavior`] setting (default `warn`):
+
+* If an `id` property (`node.id.properties`) is missing, the resolved key is incomplete. A node whose *entire* key resolves to empty is always dropped (an unkeyed MERGE would collapse every row into one node); a *partial* key is emitted as a best effort. Both cases are reported unless the behavior is `ignore`, and both throw when it is `fail`. Always update `node.id.properties` in lockstep with a rename of a key column.
+* A foreign key column that is missing or null causes only that relationship to be skipped in `node.mode=node` (the node is still emitted), or the whole record to be skipped in `node.mode=relationship` (the relationship is the only event). With `field.missing.behavior=fail`, either case throws a `DataException` naming the column.
+
+Set `field.missing.behavior=fail` if you would rather have these situations surface immediately (through the connector's `errors.tolerance` handling) than be logged and skipped.
+====
+
+=== Table changes
+
+`DROP TABLE`:: {prodname} stops producing change events for the table; it does *not* emit delete events for the rows that existed. The corresponding Neo4j nodes and relationships are therefore left in place (orphaned). To reconcile the graph, delete them with Cypher (for example `MATCH (n:Label) DETACH DELETE n`) and remove the table's `table.<table_name>.*` mapping from the SMT configuration.
+
+`TRUNCATE`:: The SMT skips truncate events, so a source truncate does not remove anything from Neo4j. Clear the affected nodes with Cypher if required.
+
+`RENAME TABLE`:: The SMT dispatches on the bare `source.table` name, so records for the renamed table no longer match the old `table.<old_name>.*` mapping and pass through unchanged. Add a `table.<new_name>.*` mapping (and remove the old one) and restart the connector.
+
+=== Recommended workflow for a schema change
+
+Because the pipeline does not propagate DDL automatically, treat a schema change as a migration performed alongside the streaming pipeline:
+
+. Apply the DDL at the source database.
+. Update the SMT per-table mappings to match the new schema (add, rename, or remove columns and tables), then restart the connector.
+. Run any one-off Cypher needed to reconcile data already in Neo4j: rename properties after a column rename, or delete orphaned nodes after a `DROP TABLE` or `TRUNCATE`.
+
+
 [[neo4j-cud-converter-type-mapping]]
 == Type mapping
 
@@ -418,6 +480,17 @@ a|Controls the output format:
 |`true`
 |low
 |Whether to pass through tombstone records (null value) emitted after delete events for Kafka log compaction.
+
+|[[neo4j-field-missing-behavior]]<<neo4j-field-missing-behavior, `field.missing.behavior`>>
+|`warn`
+|medium
+a|How to react when a change event is missing a column the mapping needs to build a CUD event (an id property, a foreign key, or the required before/after image):
+
+* `fail`: throw a `DataException` and let Kafka Connect's error handling take over. The outcome is governed by the connector's `errors.tolerance`: with the default `errors.tolerance=none` the task fails, while `errors.tolerance=all` skips the offending record and continues (logged when `errors.log.enable=true`).
+* `warn`: log a warning and skip the affected event (a single relationship in `node.mode=node`) or the whole record when nothing can be built.
+* `ignore`: skip silently (logged at debug level).
+
+A node whose entire id key resolves to empty is never emitted, regardless of this setting, because an unkeyed MERGE would collapse every row into a single node.
 |===
 
 [[example-neo4j-cud-converter]]

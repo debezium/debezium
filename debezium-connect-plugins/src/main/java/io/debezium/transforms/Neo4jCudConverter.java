@@ -73,7 +73,8 @@ public class Neo4jCudConverter<R extends ConnectRecord<R>> implements Transforma
         // only the global output settings are statically declared here.
         Field.group(config, null,
                 Neo4jCudConverterConfig.OUTPUT_MODE,
-                Neo4jCudConverterConfig.TOMBSTONES_ENABLED);
+                Neo4jCudConverterConfig.TOMBSTONES_ENABLED,
+                Neo4jCudConverterConfig.FIELD_MISSING_BEHAVIOR);
         return config;
     }
 
@@ -103,12 +104,27 @@ public class Neo4jCudConverter<R extends ConnectRecord<R>> implements Transforma
 
         final var op = resolveOperation(message);
         if (op == null) {
-            return record;
+            // A non-DML op (truncate/message) on a mapped table: there is no CUD event that can represent
+            // it (the CUD format has no label-scoped bulk delete, and these events carry no row keys), so
+            // drop it rather than pass the raw envelope through to the Neo4j sink.
+            LOGGER.warn("Dropping unsupported operation '{}' for mapped table '{}'; the Neo4j CUD format "
+                    + "cannot represent it (no label-scoped bulk delete and the event carries no row keys)",
+                    message.getString(Envelope.FieldName.OPERATION), table);
+            return null;
         }
 
         final var data = resolveData(message, op);
+        if (data == null) {
+            return handleMissingImage(record, table, op);
+        }
+
         final var cudOp = op == Envelope.Operation.DELETE ? CudEvent.Operation.DELETE : CudEvent.Operation.MERGE;
         final var events = eventFactory.buildEvents(data, cudOp, mapping);
+        if (events.isEmpty()) {
+            // The record matched a mapping but produced no CUD event (skipped per field.missing.behavior);
+            // drop it rather than pass the raw envelope through to the Neo4j sink.
+            return null;
+        }
 
         final var serializedContent = converterConfig.outputMode() == OutputMode.ARRAY
                 ? serializer.serializeArray(events)
@@ -141,7 +157,7 @@ public class Neo4jCudConverter<R extends ConnectRecord<R>> implements Transforma
         final var op = Envelope.Operation.forCode(envelope.getString(Envelope.FieldName.OPERATION));
 
         if (op == Envelope.Operation.TRUNCATE || op == Envelope.Operation.MESSAGE) {
-            LOGGER.debug("Skipping non-DML operation: {}", envelope.getString(Envelope.FieldName.OPERATION));
+            // Not a DML op; the caller drops the record and logs it (it has the table name for context).
             return null;
         }
         return op;
@@ -152,6 +168,25 @@ public class Neo4jCudConverter<R extends ConnectRecord<R>> implements Transforma
             return envelope.getStruct(Envelope.FieldName.BEFORE);
         }
         return envelope.getStruct(Envelope.FieldName.AFTER);
+    }
+
+    /**
+     * Handles a change event whose required row image is absent (for example a delete emitted without a
+     * before image because the source lacks a full replica identity), according to
+     * {@code field.missing.behavior}: {@code fail} throws, {@code warn} logs and drops the record,
+     * {@code ignore} drops it silently.
+     */
+    private R handleMissingImage(R record, String table, Envelope.Operation op) {
+        final var image = op == Envelope.Operation.DELETE ? "before" : "after";
+        final var problem = String.format(
+                "Change event for table '%s' (op=%s) has no '%s' image; cannot build a CUD event",
+                table, op.code(), image);
+        switch (converterConfig.fieldMissingBehavior()) {
+            case FAIL -> throw new DataException(problem + "; failing record (field.missing.behavior=fail)");
+            case WARN -> LOGGER.warn("{}; dropping record (field.missing.behavior=warn)", problem);
+            case IGNORE -> LOGGER.debug("{}; dropping record (field.missing.behavior=ignore)", problem);
+        }
+        return null;
     }
 
     private String getTableFromSource(Struct envelope) {
