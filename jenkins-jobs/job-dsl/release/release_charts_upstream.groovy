@@ -9,6 +9,9 @@ pipelineJob('release/release-debezium-charts-upstream') {
     displayName('Debezium Charts Release')
     description('Packages helm charts push into Quay.io and create Github release')
 
+    // Moved to GH actions
+    disabled()
+
     properties {
         githubProjectUrl('https://github.com/debezium/debezium')
     }
