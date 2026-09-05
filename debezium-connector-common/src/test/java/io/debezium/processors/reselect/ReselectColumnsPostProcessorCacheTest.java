@@ -20,6 +20,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -30,10 +31,12 @@ import org.mockito.invocation.InvocationOnMock;
 
 import io.debezium.bean.StandardBeanNames;
 import io.debezium.bean.spi.BeanRegistry;
+import io.debezium.config.Configuration;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.data.Envelope;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.JdbcConnection.ResultSetConsumer;
+import io.debezium.processors.reselect.cache.ReselectColumnCache;
 import io.debezium.relational.Column;
 import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
@@ -242,6 +245,75 @@ public class ReselectColumnsPostProcessorCacheTest {
         processor.apply(buildKey(), read);
 
         verify(jdbcConnection, never()).reselectColumns(any(Table.class), anyList(), anyList(), anyList(), any(Struct.class), any(ResultSetConsumer.class));
+    }
+
+    @Test
+    public void rowCacheIsClosedOncePerApply() throws Exception {
+        RecordingCache.reset();
+        final ReselectColumnsPostProcessor processor = new ReselectColumnsPostProcessor();
+        final Map<String, Object> props = new HashMap<>();
+        props.put("reselect.null.values", "false");
+        props.put("reselect.unavailable.values", "true");
+        props.put("reselect.cache.enabled", "true");
+        props.put("reselect.cache.type", RecordingCache.class.getName());
+        processor.configure(props);
+        processor.injectBeanRegistry(beanRegistry);
+        processor.injectServiceRegistry(serviceRegistry);
+
+        // One event that re-selects and one that requires no re-selection (early return); the row cache
+        // must be closed exactly once per event either way, giving batching backends their flush signal.
+        processor.apply(buildKey(), placeholderEvent(true, false));
+        processor.apply(buildKey(), placeholderEvent(false, false));
+
+        assertThat(RecordingCache.ROWS_RESOLVED.get()).isEqualTo(2);
+        assertThat(RecordingCache.ROWS_CLOSED.get()).isEqualTo(2);
+    }
+
+    /**
+     * A no-op cache that records how many row caches were resolved and closed; instantiated reflectively
+     * via {@code reselect.cache.type}, so it must be public static with a no-arg constructor.
+     */
+    public static class RecordingCache implements ReselectColumnCache {
+
+        static final AtomicInteger ROWS_RESOLVED = new AtomicInteger();
+        static final AtomicInteger ROWS_CLOSED = new AtomicInteger();
+
+        static void reset() {
+            ROWS_RESOLVED.set(0);
+            ROWS_CLOSED.set(0);
+        }
+
+        @Override
+        public void configure(Configuration config) {
+        }
+
+        @Override
+        public RowCache forRow(Struct messageKey) {
+            ROWS_RESOLVED.incrementAndGet();
+            return new RowCache() {
+                @Override
+                public Optional<Hit> get(String column) {
+                    return Optional.empty();
+                }
+
+                @Override
+                public void put(String column, Schema schema, Object value) {
+                }
+
+                @Override
+                public void invalidate(String column) {
+                }
+
+                @Override
+                public void close() {
+                    ROWS_CLOSED.incrementAndGet();
+                }
+            };
+        }
+
+        @Override
+        public void close() {
+        }
     }
 
     // -------------------------------------------------------------------------
