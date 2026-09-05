@@ -322,18 +322,13 @@ public class MongoDataConverter {
                 break;
 
             case JAVASCRIPT_WITH_SCOPE:
-                SchemaBuilder jsWithScope = SchemaBuilder.struct().name(builder.name() + "." + key);
+                final SchemaBuilder jsWithScope = SchemaBuilder.struct().name(builder.name() + "." + key);
                 jsWithScope.field("code", Schema.OPTIONAL_STRING_SCHEMA);
-                SchemaBuilder scope = SchemaBuilder.struct().name(jsWithScope.name() + "." + key + ".scope").optional();
+                final SchemaBuilder scope = SchemaBuilder.struct().name(jsWithScope.name() + ".scope").optional();
+                final BsonDocument scopeDocument = ((BsonValue) obj).asJavaScriptWithScope().getScope();
+                buildSchema(parseBsonDocument(scopeDocument), scope);
 
-                for (Entry<?, ?> jwsDoc : ((Map<?, ?>) obj).entrySet()) {
-                    String fieldName = fieldNamer.fieldNameFor(jwsDoc.getKey().toString());
-                    Object value = jwsDoc.getValue();
-                    schema(fieldName, (Entry<Object, BsonType>) value, scope);
-                }
-
-                Schema scopeBuild = scope.build();
-                jsWithScope.field("scope", scopeBuild).build();
+                jsWithScope.field("scope", scope.build());
                 builder.field(key, jsWithScope);
                 break;
 
@@ -677,14 +672,15 @@ public class MongoDataConverter {
 
         switch (type) {
             case JAVASCRIPT_WITH_SCOPE:
-                Struct jsStruct = new Struct(schema.field(key).schema());
-                Struct jsScopeStruct = new Struct(
-                        schema.field(key).schema().field("scope").schema());
+                final Schema jsSchema = schema.field(key).schema();
+                final Struct jsStruct = new Struct(jsSchema);
+                final Schema scopeSchema = jsSchema.field("scope").schema();
+                final Struct jsScopeStruct = new Struct(scopeSchema);
                 jsStruct.put("code", value.asJavaScriptWithScope().getCode());
-                BsonDocument jwsDoc = value.asJavaScriptWithScope().getScope().asDocument();
+                final BsonDocument scopeDocument = value.asJavaScriptWithScope().getScope();
 
-                for (Entry<String, BsonValue> entry : jwsDoc.entrySet()) {
-                    buildStruct(entry, schema.field(key).schema().field(key).schema(), jsScopeStruct);
+                for (final Entry<String, BsonValue> entry : scopeDocument.entrySet()) {
+                    buildStruct(entry, scopeSchema, jsScopeStruct);
                 }
 
                 jsStruct.put("scope", jsScopeStruct);
