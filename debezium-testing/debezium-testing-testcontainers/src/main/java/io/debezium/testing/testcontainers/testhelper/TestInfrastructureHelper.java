@@ -32,6 +32,7 @@ import org.testcontainers.lifecycle.Startable;
 import org.testcontainers.utility.DockerImageName;
 
 import io.debezium.testing.testcontainers.DebeziumContainer;
+import io.debezium.testing.testcontainers.ImageNames;
 import io.debezium.testing.testcontainers.OracleContainer;
 import io.debezium.testing.testcontainers.util.MoreStartables;
 import io.strimzi.test.container.StrimziKafkaCluster;
@@ -75,13 +76,13 @@ public class TestInfrastructureHelper {
     private static DebeziumContainer DEBEZIUM_CONTAINER = null;
 
     private static final PostgreSQLContainer<?> POSTGRES_CONTAINER = new PostgreSQLContainer<>(
-            DockerImageName.parse("quay.io/debezium/example-postgres:" + DEBEZIUM_CONTAINER_IMAGE_VERSION_LATEST).asCompatibleSubstituteFor("postgres"))
+            DockerImageName.parse(ImageNames.POSTGRES_EXAMPLE_IMAGE + ":" + DEBEZIUM_CONTAINER_IMAGE_VERSION_LATEST).asCompatibleSubstituteFor("postgres"))
             .withImagePullPolicy(PullPolicy.ageBased(Duration.ofHours(8)))
             .withNetwork(NETWORK)
             .withNetworkAliases("postgres");
 
     private static final MySQLContainer<?> MYSQL_CONTAINER = new MySQLContainer<>(
-            DockerImageName.parse("quay.io/debezium/example-mysql:" + DEBEZIUM_CONTAINER_IMAGE_VERSION_LATEST).asCompatibleSubstituteFor("mysql"))
+            DockerImageName.parse(ImageNames.MYSQL_EXAMPLE_PRIMARY_IMAGE + ":" + DEBEZIUM_CONTAINER_IMAGE_VERSION_LATEST).asCompatibleSubstituteFor("mysql"))
             .withImagePullPolicy(PullPolicy.ageBased(Duration.ofHours(8)))
             .withNetwork(NETWORK)
             .withUsername("mysqluser")
@@ -90,7 +91,7 @@ public class TestInfrastructureHelper {
             .withNetworkAliases("mysql");
 
     private static final MariaDBContainer<?> MARIADB_CONTAINER = new MariaDBContainer<>(
-            DockerImageName.parse("quay.io/debezium/example-mariadb:" + DEBEZIUM_CONTAINER_IMAGE_VERSION_LATEST).asCompatibleSubstituteFor("mariadb"))
+            DockerImageName.parse(ImageNames.MARIADB_IMAGE + ":" + DEBEZIUM_CONTAINER_IMAGE_VERSION_LATEST).asCompatibleSubstituteFor("mariadb"))
             .withImagePullPolicy(PullPolicy.ageBased(Duration.ofHours(8)))
             .withNetwork(NETWORK)
             .withUsername("mariadbuser")
@@ -98,7 +99,7 @@ public class TestInfrastructureHelper {
             .withEnv("MARIADB_ROOT_PASSWORD", "debezium")
             .withNetworkAliases("mariadb");
 
-    private static final MSSQLServerContainer<?> SQL_SERVER_CONTAINER = new MSSQLServerContainer<>(DockerImageName.parse("mcr.microsoft.com/mssql/server:2019-latest"))
+    private static final MSSQLServerContainer<?> SQL_SERVER_CONTAINER = new MSSQLServerContainer<>(ImageNames.SQLSERVER_2019_IMAGE_NAME)
             .withImagePullPolicy(PullPolicy.ageBased(Duration.ofHours(8)))
             .withNetwork(NETWORK)
             .withNetworkAliases("sqlserver")

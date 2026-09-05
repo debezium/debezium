@@ -53,7 +53,7 @@ public class DebeziumContainerIT {
 
     private static StrimziKafkaCluster kafkaCluster;
 
-    public static PostgreSQLContainer<?> postgresContainer = new PostgreSQLContainer<>(ImageNames.POSTGRES_DOCKER_IMAGE_NAME)
+    public static PostgreSQLContainer<?> postgresContainer = new PostgreSQLContainer<>(ImageNames.POSTGRES_15_IMAGE_NAME)
             .withNetwork(network)
             .withNetworkAliases("postgres");
 

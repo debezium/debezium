@@ -40,6 +40,7 @@ import io.debezium.config.Configuration;
 import io.debezium.storage.redis.RedisClient;
 import io.debezium.storage.redis.RedisClientConnectionException;
 import io.debezium.storage.redis.RedisConnection;
+import io.debezium.testing.testcontainers.ImageNames;
 import io.debezium.util.Testing;
 
 @Testcontainers
@@ -53,7 +54,7 @@ class RedisOffsetBackingStoreIT {
     public static ComposeContainer redisCluster;
 
     private static final String PROP_PREFIX = "offset.storage.redis.";
-    private static final String REDIS_CONTAINER_IMAGE = "redis:5.0.3-alpine";
+    private static final String REDIS_CONTAINER_IMAGE = ImageNames.REDIS_ALPINE_IMAGE;
     private static final String NEW_LINE = "\n";
 
     // Cluster configuration constants
