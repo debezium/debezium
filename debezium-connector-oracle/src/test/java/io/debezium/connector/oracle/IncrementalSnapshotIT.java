@@ -5,17 +5,24 @@
  */
 package io.debezium.connector.oracle;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
+
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.kafka.connect.data.Struct;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.util.TestHelper;
+import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotTest;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
@@ -228,15 +235,49 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Oracl
         connection.execute("CREATE TABLE a (pk numeric(9,0) primary key, aa numeric(9,0))");
         connection.execute("CREATE TABLE b (pk numeric(9,0) primary key, aa numeric(9,0))");
         connection.execute("CREATE TABLE a42 (pk1 numeric(9,0), pk2 numeric(9,0), pk3 numeric(9,0), pk4 numeric(9,0), aa numeric(9,0))");
+        // cc is a virtual (generated) column; DBZ-2020 must keep it in the incremental snapshot.
+        connection.execute("CREATE TABLE gencol (pk numeric(9,0) primary key, aa numeric(9,0), cc numeric(9,0) GENERATED ALWAYS AS (aa + 1) VIRTUAL)");
         TestHelper.streamTable(connection, "a");
         TestHelper.streamTable(connection, "b");
         TestHelper.streamTable(connection, "a42");
+        TestHelper.streamTable(connection, "gencol");
     }
 
     private void dropTables() throws Exception {
         TestHelper.dropTable(connection, "a");
         TestHelper.dropTable(connection, "b");
         TestHelper.dropTable(connection, "a42");
+        TestHelper.dropTable(connection, "gencol");
+    }
+
+    @Test
+    @FixFor("DBZ-2020")
+    public void incrementalSnapshotKeepsVirtualGeneratedColumnValue() throws Exception {
+        // DBZ-2020: Oracle keeps the virtual column in the Table, so its computed value (aa + 1) must
+        // appear in the incremental snapshot rather than NULL.
+        connection.execute("INSERT INTO gencol (pk, aa) VALUES (1, 1)");
+        connection.execute("INSERT INTO gencol (pk, aa) VALUES (2, 2)");
+        connection.commit();
+
+        startConnector(x -> x.with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.GENCOL"));
+        waitForConnectorToStart();
+
+        sendAdHocSnapshotSignal(TestHelper.getDatabaseName() + ".DEBEZIUM.GENCOL");
+
+        final String topicName = "server1.DEBEZIUM.GENCOL";
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(
+                2,
+                x -> true,
+                k -> k.getInt32("PK"),
+                record -> {
+                    final Struct after = ((Struct) record.value()).getStruct("after");
+                    assertThat(after.schema().field("CC")).isNotNull();
+                    assertThat(after.getInt32("CC")).isEqualTo(after.getInt32("AA") + 1);
+                    return after.getInt32("AA");
+                },
+                topicName,
+                null);
+        assertThat(dbChanges).containsExactly(entry(1, 1), entry(2, 2));
     }
 
     @Override

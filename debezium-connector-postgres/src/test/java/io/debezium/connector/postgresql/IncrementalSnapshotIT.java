@@ -30,6 +30,7 @@ import org.junit.jupiter.api.Test;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
+import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot.DecoderPluginName;
 import io.debezium.converters.CloudEventsConverterTest;
@@ -598,6 +599,164 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
         final var data = records.recordsForTopic(topicName);
         assertThat(data).hasSize(1);
         assertThat(data.get(0).valueSchema().field("gencol")).isNull();
+    }
+
+    @Test
+    @FixFor("DBZ-2020")
+    @SkipWhenDecoderPluginNameIsNot(value = DecoderPluginName.PGOUTPUT, reason = "Only pgoutput prunes generated columns from the in-memory Table")
+    public void incrementalSnapshotSkipsGeneratedColumnWithoutColumnExcludeList() throws Exception {
+        // Regression for DBZ-2020: without column.exclude.list, pgoutput incremental snapshot must
+        // omit STORED generated columns from the chunk SELECT. Otherwise SELECT * returns them while
+        // the pruned Table does not, and ColumnUtils fails with "Column 'X' not found in result set".
+        final String setup = "CREATE TABLE s1.gencol_isnap (pk int PRIMARY KEY, aa integer,"
+                + " gencol varchar(10) GENERATED ALWAYS AS ('aa') STORED, bb varchar(2));";
+        TestHelper.execute(setup);
+
+        try (JdbcConnection connection = databaseConnection()) {
+            connection.execute("INSERT INTO s1.gencol_isnap (pk, aa, bb) VALUES (1, 1, 'a')");
+            connection.execute("INSERT INTO s1.gencol_isnap (pk, aa, bb) VALUES (2, 2, 'b')");
+        }
+
+        startConnector(x -> x
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.gencol_isnap")
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA.getValue()));
+        waitForConnectorToStart();
+
+        sendAdHocSnapshotSignal("s1.gencol_isnap");
+
+        final String topicName = "test_server.s1.gencol_isnap";
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(
+                2,
+                x -> true,
+                k -> k.getInt32("pk"),
+                record -> {
+                    final Struct after = ((Struct) record.value()).getStruct("after");
+                    assertThat(after.schema().field("gencol")).isNull();
+                    return after.getInt32("aa");
+                },
+                topicName,
+                null);
+        assertThat(dbChanges).containsExactly(entry(1, 1), entry(2, 2));
+    }
+
+    @Test
+    @FixFor("DBZ-2020")
+    @SkipWhenDecoderPluginNameIs(value = SkipWhenDecoderPluginNameIs.DecoderPluginName.PGOUTPUT, reason = "decoderbufs does not prune generated columns; the computed value must stay in the incremental snapshot")
+    public void incrementalSnapshotKeepsGeneratedColumnValueForDecoderbufs() throws Exception {
+        // DBZ-2020: decoderbufs keeps the generated column in the Table, so its computed value must
+        // appear in the incremental snapshot rather than NULL.
+        final String setup = "CREATE TABLE s1.gencol_isnap_db (pk int PRIMARY KEY, aa integer,"
+                + " gencol varchar(10) GENERATED ALWAYS AS ('aa') STORED, bb varchar(2));";
+        TestHelper.execute(setup);
+
+        try (JdbcConnection connection = databaseConnection()) {
+            connection.execute("INSERT INTO s1.gencol_isnap_db (pk, aa, bb) VALUES (1, 1, 'a')");
+            connection.execute("INSERT INTO s1.gencol_isnap_db (pk, aa, bb) VALUES (2, 2, 'b')");
+        }
+
+        startConnector(x -> x
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.gencol_isnap_db")
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA.getValue()));
+        waitForConnectorToStart();
+
+        sendAdHocSnapshotSignal("s1.gencol_isnap_db");
+
+        final String topicName = "test_server.s1.gencol_isnap_db";
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(
+                2,
+                x -> true,
+                k -> k.getInt32("pk"),
+                record -> {
+                    final Struct after = ((Struct) record.value()).getStruct("after");
+                    assertThat(after.schema().field("gencol")).isNotNull();
+                    assertThat(after.getString("gencol")).isEqualTo("aa");
+                    return after.getInt32("aa");
+                },
+                topicName,
+                null);
+        assertThat(dbChanges).containsExactly(entry(1, 1), entry(2, 2));
+    }
+
+    @Test
+    @FixFor("DBZ-2020")
+    @SkipWhenDecoderPluginNameIsNot(value = DecoderPluginName.PGOUTPUT, reason = "Only pgoutput prunes generated columns from the in-memory Table")
+    public void incrementalSnapshotSkipsMultipleGeneratedColumns() throws Exception {
+        // DBZ-2020: the side map is a List<String>; make sure every generated column is excluded from
+        // the chunk projection, not just the first one found.
+        final String setup = "CREATE TABLE s1.gencol_multi (pk int PRIMARY KEY, aa integer,"
+                + " gencol1 varchar(10) GENERATED ALWAYS AS ('aa') STORED,"
+                + " gencol2 varchar(10) GENERATED ALWAYS AS ('bb') STORED, bb varchar(2));";
+        TestHelper.execute(setup);
+
+        try (JdbcConnection connection = databaseConnection()) {
+            connection.execute("INSERT INTO s1.gencol_multi (pk, aa, bb) VALUES (1, 1, 'a')");
+            connection.execute("INSERT INTO s1.gencol_multi (pk, aa, bb) VALUES (2, 2, 'b')");
+        }
+
+        startConnector(x -> x
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.gencol_multi")
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA.getValue()));
+        waitForConnectorToStart();
+
+        sendAdHocSnapshotSignal("s1.gencol_multi");
+
+        final String topicName = "test_server.s1.gencol_multi";
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(
+                2,
+                x -> true,
+                k -> k.getInt32("pk"),
+                record -> {
+                    final Struct after = ((Struct) record.value()).getStruct("after");
+                    assertThat(after.schema().field("gencol1")).isNull();
+                    assertThat(after.schema().field("gencol2")).isNull();
+                    return after.getInt32("aa");
+                },
+                topicName,
+                null);
+        assertThat(dbChanges).containsExactly(entry(1, 1), entry(2, 2));
+    }
+
+    @Test
+    @FixFor("DBZ-2020")
+    @SkipWhenDecoderPluginNameIsNot(value = DecoderPluginName.PGOUTPUT, reason = "Only pgoutput prunes generated columns from the in-memory Table")
+    public void incrementalSnapshotWithGeneratedPrimaryKeyColumn() throws Exception {
+        // DBZ-2020 follow-up: Postgres allows a STORED generated column to also be the primary key.
+        // Pruning it like any other generated column removes it from the in-memory Table while its
+        // primary key reference remains, which TableEditorImpl rejects as an invalid table definition,
+        // silently failing the incremental snapshot. Such columns must stay in both the Table and the
+        // chunk projection, with their computed value present, the same way non-pgoutput decoders
+        // already treat them.
+        final String setup = "CREATE TABLE s1.gencol_pk (id int NOT NULL,"
+                + " pk int GENERATED ALWAYS AS (id) STORED, bb varchar(2), PRIMARY KEY(pk));";
+        TestHelper.execute(setup);
+
+        try (JdbcConnection connection = databaseConnection()) {
+            connection.execute("INSERT INTO s1.gencol_pk (id, bb) VALUES (1, 'a')");
+            connection.execute("INSERT INTO s1.gencol_pk (id, bb) VALUES (2, 'b')");
+        }
+
+        startConnector(x -> x
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.gencol_pk")
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA.getValue()));
+        waitForConnectorToStart();
+
+        sendAdHocSnapshotSignal("s1.gencol_pk");
+
+        final String topicName = "test_server.s1.gencol_pk";
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(
+                2,
+                x -> true,
+                k -> k.getInt32("pk"),
+                record -> {
+                    final Struct after = ((Struct) record.value()).getStruct("after");
+                    // the generated PK column must be kept, with its computed value equal to "id".
+                    assertThat(after.schema().field("pk")).isNotNull();
+                    assertThat(after.getInt32("pk")).isEqualTo(after.getInt32("id"));
+                    return after.getInt32("id");
+                },
+                topicName,
+                null);
+        assertThat(dbChanges).containsExactly(entry(1, 1), entry(2, 2));
     }
 
     @Test
