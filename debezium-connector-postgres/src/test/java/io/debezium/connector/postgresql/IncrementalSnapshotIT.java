@@ -720,11 +720,12 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
     @FixFor("DBZ-2020")
     @SkipWhenDecoderPluginNameIsNot(value = DecoderPluginName.PGOUTPUT, reason = "Only pgoutput prunes generated columns from the in-memory Table")
     public void incrementalSnapshotWithGeneratedPrimaryKeyColumn() throws Exception {
-        // DBZ-2020 edge case: Postgres allows a STORED generated column to be the primary key.
-        // If it is pruned from the in-memory Table like any other generated column, the incremental
-        // snapshot's chunk-boundary logic (which reads primary key columns from the Table) may break.
-        // This test records the actual observed behavior for review; it is not asserting the "correct"
-        // outcome, since that has not been discussed on Zulip.
+        // DBZ-2020 follow-up: Postgres allows a STORED generated column to also be the primary key.
+        // Pruning it like any other generated column removes it from the in-memory Table while its
+        // primary key reference remains, which TableEditorImpl rejects as an invalid table definition,
+        // silently failing the incremental snapshot. Such columns must stay in both the Table and the
+        // chunk projection, with their computed value present, the same way non-pgoutput decoders
+        // already treat them.
         final String setup = "CREATE TABLE s1.gencol_pk (id int NOT NULL,"
                 + " pk int GENERATED ALWAYS AS (id) STORED, bb varchar(2), PRIMARY KEY(pk));";
         TestHelper.execute(setup);
@@ -748,6 +749,9 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
                 k -> k.getInt32("pk"),
                 record -> {
                     final Struct after = ((Struct) record.value()).getStruct("after");
+                    // the generated PK column must be kept, with its computed value equal to "id".
+                    assertThat(after.schema().field("pk")).isNotNull();
+                    assertThat(after.getInt32("pk")).isEqualTo(after.getInt32("id"));
                     return after.getInt32("id");
                 },
                 topicName,
