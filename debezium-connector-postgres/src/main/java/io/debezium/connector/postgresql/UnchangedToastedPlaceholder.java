@@ -5,13 +5,20 @@
  */
 package io.debezium.connector.postgresql;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.IntFunction;
+
+import org.apache.kafka.connect.data.Decimal;
+import org.apache.kafka.connect.data.Schema;
+
+import io.debezium.data.Uuid;
+import io.debezium.data.VariableScaleDecimal;
 
 /**
  * Helper that returns placeholder values for unchanged toasted columns.
@@ -40,25 +47,65 @@ public class UnchangedToastedPlaceholder {
         toastPlaceholderString = new String(toastPlaceholderBinary);
         toastPlaceholderUuid = UUID.nameUUIDFromBytes(toastPlaceholderBinary).toString();
         placeholderValues.put(UnchangedToastedReplicationMessageColumn.UNCHANGED_TOAST_VALUE, toastPlaceholderString);
-        placeholderValues.put(UnchangedToastedReplicationMessageColumn.UNCHANGED_TEXT_ARRAY_TOAST_VALUE,
-                Arrays.asList(toastPlaceholderString));
-        placeholderValues.put(UnchangedToastedReplicationMessageColumn.UNCHANGED_BINARY_ARRAY_TOAST_VALUE,
-                Arrays.asList(toastPlaceholderBinary));
-        final List<Integer> toastedIntArrayPlaceholder = new ArrayList<>(toastPlaceholderBinary.length);
-        final List<Long> toastedLongArrayPlaceholder = new ArrayList<>(toastPlaceholderBinary.length);
-        for (byte b : toastPlaceholderBinary) {
-            toastedIntArrayPlaceholder.add((int) b);
-            toastedLongArrayPlaceholder.add((long) b);
-        }
-        placeholderValues.put(UnchangedToastedReplicationMessageColumn.UNCHANGED_INT_ARRAY_TOAST_VALUE, toastedIntArrayPlaceholder);
-        placeholderValues.put(UnchangedToastedReplicationMessageColumn.UNCHANGED_BIGINT_ARRAY_TOAST_VALUE, toastedLongArrayPlaceholder);
         toastPlaceholderHstore.put(toastPlaceholderString, toastPlaceholderString);
         placeholderValues.put(UnchangedToastedReplicationMessageColumn.UNCHANGED_HSTORE_TOAST_VALUE, toastPlaceholderHstore);
-        placeholderValues.put(UnchangedToastedReplicationMessageColumn.UNCHANGED_UUID_TOAST_VALUE, Arrays.asList(toastPlaceholderUuid));
     }
 
     public Optional<Object> getValue(Object obj) {
         return Optional.ofNullable(placeholderValues.get(obj));
+    }
+
+    /**
+     * Returns the placeholder for an array column, expressed in the array's element type.
+     * <p>
+     * Text-like elements carry the placeholder as a single element, every other element type carries one
+     * element per placeholder byte, which is how the {@code integer[]} and {@code bigint[]} placeholders
+     * have always been built. An empty result means the element type has no placeholder representation
+     * yet, in which case the caller keeps the existing behaviour.
+     * <p>
+     * <b>NOTE:</b> a new element type has to be recognized by
+     * {@link io.debezium.processors.reselect.ReselectColumnsPostProcessor} as well, otherwise the column
+     * is no longer re-selected.
+     *
+     * @param elementSchema schema of the array's elements; never null
+     */
+    public Optional<List<Object>> getArrayValue(Schema elementSchema) {
+        switch (elementSchema.type()) {
+            case STRING:
+                return Optional.of(List.of(Uuid.LOGICAL_NAME.equals(elementSchema.name()) ? toastPlaceholderUuid : toastPlaceholderString));
+            case BYTES:
+                if (Decimal.LOGICAL_NAME.equals(elementSchema.name())) {
+                    return Optional.of(placeholderBytesAs(b -> Decimal.toLogical(elementSchema, new byte[]{ (byte) b })));
+                }
+                return Optional.of(List.of(toastPlaceholderBinary));
+            case INT16:
+                return Optional.of(placeholderBytesAs(b -> (short) b));
+            case INT32:
+                return Optional.of(placeholderBytesAs(b -> b));
+            case INT64:
+                return Optional.of(placeholderBytesAs(b -> (long) b));
+            case FLOAT32:
+                return Optional.of(placeholderBytesAs(b -> (float) b));
+            case FLOAT64:
+                return Optional.of(placeholderBytesAs(b -> (double) b));
+            case BOOLEAN:
+                return Optional.of(placeholderBytesAs(b -> b != 0));
+            case STRUCT:
+                if (VariableScaleDecimal.LOGICAL_NAME.equals(elementSchema.name())) {
+                    return Optional.of(placeholderBytesAs(b -> VariableScaleDecimal.fromLogical(elementSchema, BigDecimal.valueOf(b))));
+                }
+                return Optional.empty();
+            default:
+                return Optional.empty();
+        }
+    }
+
+    private List<Object> placeholderBytesAs(IntFunction<Object> elementMapper) {
+        final List<Object> placeholder = new ArrayList<>(toastPlaceholderBinary.length);
+        for (byte b : toastPlaceholderBinary) {
+            placeholder.add(elementMapper.apply(b));
+        }
+        return placeholder;
     }
 
     public byte[] getToastPlaceholderBinary() {
