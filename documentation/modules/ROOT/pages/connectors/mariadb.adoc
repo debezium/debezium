@@ -167,6 +167,10 @@ endif::community[]
 
 include::{partialsdir}/modules/all-connectors/con-connector-blocking-snapshot.adoc[leveloffset=+3]
 
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=set-binlog-position]
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=set-binlog-position-gtid-mariadb]
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=set-binlog-position-restart]
+
 // Type: concept
 // Title: Default names of Kafka topics that receive {prodname} MariaDB change event records
 [[mariadb-topic-names]]
