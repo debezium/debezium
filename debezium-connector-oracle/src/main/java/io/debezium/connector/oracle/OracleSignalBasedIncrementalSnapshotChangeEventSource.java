@@ -6,6 +6,7 @@
 package io.debezium.connector.oracle;
 
 import java.sql.SQLException;
+import java.util.List;
 
 import io.debezium.DebeziumException;
 import io.debezium.jdbc.JdbcConnection;
@@ -25,7 +26,7 @@ import io.debezium.util.Clock;
  */
 public class OracleSignalBasedIncrementalSnapshotChangeEventSource extends SignalBasedIncrementalSnapshotChangeEventSource<OraclePartition, TableId> {
 
-    private final String pdbName;
+    private final List<String> pdbNames;
     private final OracleConnection connection;
 
     public OracleSignalBasedIncrementalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig config,
@@ -37,7 +38,7 @@ public class OracleSignalBasedIncrementalSnapshotChangeEventSource extends Signa
                                                                  DataChangeEventListener<OraclePartition> dataChangeEventListener,
                                                                  NotificationService<OraclePartition, OracleOffsetContext> notificationService) {
         super(config, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener, notificationService);
-        this.pdbName = ((OracleConnectorConfig) config).getPdbName();
+        this.pdbNames = ((OracleConnectorConfig) config).getPdbNames();
         this.connection = (OracleConnection) jdbcConnection;
     }
 
@@ -51,8 +52,8 @@ public class OracleSignalBasedIncrementalSnapshotChangeEventSource extends Signa
     protected void preReadChunk(IncrementalSnapshotContext<TableId> context) {
         super.preReadChunk(context);
 
-        if (pdbName != null) {
-            connection.setSessionToPdb(pdbName);
+        if (!pdbNames.isEmpty()) {
+            connection.setSessionToPdb(resolvePdbName(context));
         }
     }
 
@@ -60,9 +61,26 @@ public class OracleSignalBasedIncrementalSnapshotChangeEventSource extends Signa
     protected void postReadChunk(IncrementalSnapshotContext<TableId> context) {
         super.postReadChunk(context);
 
-        if (pdbName != null) {
+        if (!pdbNames.isEmpty()) {
             connection.resetSessionToCdb();
         }
+    }
+
+    /**
+     * Resolves the pluggable database that should be current for the chunk read, preferring the
+     * catalog of the current data collection when multiple pluggable databases are configured.
+     *
+     * @param context the incremental snapshot context, should not be {@code null}
+     * @return the pluggable database name, never {@code null}
+     */
+    private String resolvePdbName(IncrementalSnapshotContext<TableId> context) {
+        if (pdbNames.size() > 1 && context.currentDataCollectionId() != null) {
+            final TableId tableId = context.currentDataCollectionId().getId();
+            if (tableId.catalog() != null && pdbNames.contains(tableId.catalog())) {
+                return tableId.catalog();
+            }
+        }
+        return pdbNames.get(0);
     }
 
     @Override

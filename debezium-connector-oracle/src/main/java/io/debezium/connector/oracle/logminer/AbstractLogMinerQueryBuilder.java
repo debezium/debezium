@@ -132,6 +132,9 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
         if (connectorConfig.isLogMiningBufferTrackClientId()) {
             columns.add("CLIENT_ID");
         }
+        if (connectorConfig.getPdbNames().size() > 1) {
+            columns.add("SRC_CON_NAME");
+        }
 
         return String.join(", ", columns) + " ";
     }
@@ -145,19 +148,28 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
     protected abstract String getPredicates(boolean isCteQuery);
 
     /**
-     * Get the multi-tenant predicate based on the configured pluggable database name.
+     * Get the multi-tenant predicate based on the configured pluggable database names.
      *
      * @return multi-tenant predicate, may be an empty string if multi-tenancy is not enabled
      */
     protected String getMultiTenantPredicate() {
-        if (!Strings.isNullOrEmpty(connectorConfig.getPdbName())) {
-            String pdbName = connectorConfig.getPdbName();
-            if (pdbName.startsWith("\"") && pdbName.endsWith("\"") && pdbName.length() > 2) {
-                pdbName = pdbName.substring(1, pdbName.length() - 1);
-            }
-            return "SRC_CON_NAME = '" + pdbName + "'";
+        final List<String> pdbNames = connectorConfig.getPdbNames().stream()
+                .map(AbstractLogMinerQueryBuilder::unquoteObjectName)
+                .collect(Collectors.toList());
+        if (pdbNames.isEmpty()) {
+            return EMPTY;
         }
-        return EMPTY;
+        else if (pdbNames.size() == 1) {
+            return "SRC_CON_NAME = '" + pdbNames.get(0) + "'";
+        }
+        return pdbNames.stream().collect(Collectors.joining("','", "SRC_CON_NAME IN ('", "')"));
+    }
+
+    private static String unquoteObjectName(String objectName) {
+        if (objectName.startsWith("\"") && objectName.endsWith("\"") && objectName.length() > 2) {
+            return objectName.substring(1, objectName.length() - 1);
+        }
+        return objectName;
     }
 
     /**

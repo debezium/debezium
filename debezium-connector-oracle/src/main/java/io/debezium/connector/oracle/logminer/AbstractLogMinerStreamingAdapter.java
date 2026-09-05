@@ -103,7 +103,7 @@ public abstract class AbstractLogMinerStreamingAdapter
         // such a connection, the use of commit/rollback by LogMiner will drop/invalidate the save
         // point as well. A separate connection is necessary to preserve the save point.
         try (OracleConnection conn = new OracleConnection(connectorConfig, connection.config(), false)) {
-            if (!Strings.isNullOrEmpty(connectorConfig.getPdbName())) {
+            if (connectorConfig.isUsingPluggableDatabase()) {
                 // The next stage cannot be run within the PDB, reset the connection to the CDB.
                 conn.resetSessionToCdb();
             }

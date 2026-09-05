@@ -24,7 +24,6 @@ import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.util.Clock;
 import io.debezium.util.HexConverter;
-import io.debezium.util.Strings;
 import io.debezium.util.Threads;
 import io.debezium.util.Threads.Timer;
 
@@ -82,7 +81,7 @@ public class ResumePositionProvider implements AutoCloseable {
                 connection = new OracleConnection(connectorConfig, jdbcConfig, false);
 
                 // LogMiner must be run in the CDB
-                if (!Strings.isNullOrEmpty(connectorConfig.getPdbName())) {
+                if (connectorConfig.isUsingPluggableDatabase()) {
                     connection.resetSessionToCdb();
                 }
 

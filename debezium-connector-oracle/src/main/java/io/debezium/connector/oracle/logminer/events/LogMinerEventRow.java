@@ -70,6 +70,7 @@ public class LogMinerEventRow {
     private Instant startTime;
     private Instant commitTime;
     private Long transactionSequence;
+    private String srcConName;
 
     public Scn getScn() {
         return scn;
@@ -216,6 +217,10 @@ public class LogMinerEventRow {
             final int pos = indexes.getCommitTimestampIndex();
             resolvers.add((row, rs) -> row.commitTime = getTime(rs, pos));
         }
+        if (indexes.getSrcConNameIndex() != null) {
+            final int pos = indexes.getSrcConNameIndex();
+            resolvers.add((row, rs) -> row.srcConName = rs.getString(pos));
+        }
 
         return resolvers.toArray(new ResultSetValueResolver[0]);
     }
@@ -280,11 +285,12 @@ public class LogMinerEventRow {
         this.redoSql = getSqlRedo(resultSet);
 
         if (this.tableName != null) {
+            final String catalogName = srcConName != null ? srcConName : indexes.getDefaultCatalogName();
             if (schema != null) {
-                this.tableId = schema.resolveTableId(indexes.getCatalogName(), tablespaceName, tableName);
+                this.tableId = schema.resolveTableId(catalogName, tablespaceName, tableName);
             }
             else {
-                this.tableId = new TableId(indexes.getCatalogName(), tablespaceName, tableName);
+                this.tableId = new TableId(catalogName, tablespaceName, tableName);
             }
         }
     }

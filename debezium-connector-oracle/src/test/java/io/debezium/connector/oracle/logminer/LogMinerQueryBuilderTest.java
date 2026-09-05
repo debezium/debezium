@@ -11,7 +11,7 @@ import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFF
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_QUERY_FILTER_MODE;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_USERNAME_EXCLUDE_LIST;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_USERNAME_INCLUDE_LIST;
-import static io.debezium.connector.oracle.OracleConnectorConfig.PDB_NAME;
+import static io.debezium.connector.oracle.OracleConnectorConfig.PDB_NAMES;
 import static io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerQueryBuilder.IN_CLAUSE_MAX_ELEMENTS;
 import static io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig.STORE_ONLY_CAPTURED_TABLES_DDL;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.SCHEMA_EXCLUDE_LIST;
@@ -71,21 +71,27 @@ public class LogMinerQueryBuilderTest {
     @FixFor("DBZ-5648")
     public void testLogMinerQueryWithLobDisabled() {
         assertQuery(TestHelper.defaultConfig().build());
-        assertQuery(TestHelper.defaultConfig().with(PDB_NAME, "").build());
+        assertQuery(TestHelper.defaultConfig().with(PDB_NAMES, "").build());
     }
 
     @Test
     @FixFor("DBZ-7473")
     public void testLogMinerQueryWithLobDisabledAndPersistentBuffer() {
         assertQuery(TestHelper.defaultConfig().with(LOG_MINING_BUFFER_TYPE, OracleConnectorConfig.LogMiningBufferType.INFINISPAN_EMBEDDED).build());
-        assertQuery(TestHelper.defaultConfig().with(PDB_NAME, "").build());
+        assertQuery(TestHelper.defaultConfig().with(PDB_NAMES, "").build());
     }
 
     @Test
     @FixFor("DBZ-5648")
     public void testLogMinerQueryWithLobEnabled() {
         assertQuery(TestHelper.defaultConfig().with(LOB_ENABLED, true).build());
-        assertQuery(TestHelper.defaultConfig().with(PDB_NAME, "").with(LOB_ENABLED, true).build());
+        assertQuery(TestHelper.defaultConfig().with(PDB_NAMES, "").with(LOB_ENABLED, true).build());
+    }
+
+    @Test
+    @FixFor("debezium/dbz#478")
+    public void testLogMinerQueryWithMultiplePdbNames() {
+        assertQuery(TestHelper.defaultConfig().with(OracleConnectorConfig.PDB_NAMES, "ORCLPDB1,ORCLPDB2").build());
     }
 
     @Test
@@ -258,6 +264,9 @@ public class LogMinerQueryBuilderTest {
         if (config.isLogMiningBufferTrackClientId()) {
             columns.add("CLIENT_ID");
         }
+        if (config.getPdbNames().size() > 1) {
+            columns.add("SRC_CON_NAME");
+        }
 
         return String.join(", ", columns) + " ";
     }
@@ -297,8 +306,12 @@ public class LogMinerQueryBuilderTest {
     }
 
     private String getPdbPredicate(OracleConnectorConfig config) {
-        if (!Strings.isNullOrEmpty(config.getPdbName())) {
-            return " AND SRC_CON_NAME = '" + config.getPdbName() + "'";
+        final List<String> pdbNames = config.getPdbNames();
+        if (pdbNames.size() == 1) {
+            return " AND SRC_CON_NAME = '" + pdbNames.get(0) + "'";
+        }
+        else if (pdbNames.size() > 1) {
+            return pdbNames.stream().collect(Collectors.joining("','", " AND SRC_CON_NAME IN ('", "')"));
         }
         return "";
     }

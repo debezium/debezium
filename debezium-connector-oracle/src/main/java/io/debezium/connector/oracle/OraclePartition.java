@@ -6,6 +6,7 @@
 package io.debezium.connector.oracle;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -13,7 +14,6 @@ import java.util.Set;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.AbstractPartition;
 import io.debezium.util.Collect;
-import io.debezium.util.Strings;
 
 public class OraclePartition extends AbstractPartition implements Partition {
     private static final String SERVER_PARTITION_KEY = "server";
@@ -61,9 +61,10 @@ public class OraclePartition extends AbstractPartition implements Partition {
 
         @Override
         public Set<OraclePartition> getPartitions() {
-            final String databaseName = Strings.isNullOrBlank(connectorConfig.getPdbName())
+            final List<String> pdbNames = connectorConfig.getPdbNames();
+            final String databaseName = pdbNames.isEmpty()
                     ? connectorConfig.getDatabaseName()
-                    : connectorConfig.getPdbName();
+                    : String.join(",", pdbNames);
             return Collections.singleton(new OraclePartition(connectorConfig.getLogicalName(), databaseName));
         }
     }

@@ -13,6 +13,7 @@ import java.text.DecimalFormat;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -306,7 +307,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     }
 
     protected boolean isUsingPluggableDatabase() {
-        return !Strings.isNullOrBlank(connectorConfig.getPdbName());
+        return connectorConfig.isUsingPluggableDatabase();
     }
 
     /**
@@ -1711,7 +1712,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         // Given that the current connection is used for processing the event data, a separate connection is needed
         try (OracleConnection connection = new OracleConnection(getConfig(), false)) {
             if (isUsingPluggableDatabase()) {
-                connection.setSessionToPdb(getConfig().getPdbName());
+                connection.setSessionToPdb(tableId.catalog());
             }
 
             getBatchMetrics().tableMetadataQueryObserved();
@@ -1797,49 +1798,16 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         final Instant start = Instant.now();
         LOGGER.trace("Checking database and table state, this may take time depending on the size of your schema.");
         try {
-            if (isUsingPluggableDatabase()) {
-                connectionFactory.mainConnection().setSessionToPdb(connectorConfig.getPdbName());
-            }
-
-            // Check if ALL supplemental logging is enabled at the database
-            if (!isDatabaseAllSupplementalLoggingEnabled()) {
-                // Check if MIN supplemental logging is enabled at the database
-                if (!isDatabaseMinSupplementalLoggingEnabled()) {
-                    throw new DebeziumException("Supplemental logging not properly configured. "
-                            + "Use: ALTER DATABASE ADD SUPPLEMENTAL LOG DATA");
-                }
-
-                // Check if ALL COLUMNS supplemental logging is enabled for each captured table
-                for (TableId tableId : schema.tableIds()) {
-                    if (!connectionFactory.mainConnection().isTableExists(tableId)) {
-                        LOGGER.warn("Database table '{}' no longer exists, supplemental log check skipped", tableId);
-                    }
-                    else if (!isTableAllColumnsSupplementalLoggingEnabled(tableId)) {
-                        LOGGER.warn("Database table '{}' not configured with supplemental logging \"(ALL) COLUMNS\"; " +
-                                "only explicitly changed columns will be captured. " +
-                                "Use: ALTER TABLE {}.{} ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS", tableId, tableId.schema(), tableId.table());
-                    }
-                    final Table table = schema.tableFor(tableId);
-                    if (table == null) {
-                        // This should never happen; however in the event something would cause it we can
-                        // at least get the table identifier thrown in the error to debug from rather
-                        // than an erroneous NPE
-                        throw new DebeziumException("Unable to find table in relational model: " + tableId);
-                    }
-                    checkTableColumnNameLengths(table);
-                }
+            final List<String> pdbNames = connectorConfig.getPdbNames();
+            if (pdbNames.isEmpty()) {
+                checkDatabaseAndTableStateForContainer(schema.tableIds());
             }
             else {
-                // ALL supplemental logging is enabled, now check table/column lengths
-                for (TableId tableId : schema.tableIds()) {
-                    final Table table = schema.tableFor(tableId);
-                    if (table == null) {
-                        // This should never happen; however in the event something would cause it we can
-                        // at least get the table identifier thrown in the error to debug from rather
-                        // than an erroneous NPE
-                        throw new DebeziumException("Unable to find table in relational model: " + tableId);
-                    }
-                    checkTableColumnNameLengths(table);
+                for (String pdbName : pdbNames) {
+                    connectionFactory.mainConnection().setSessionToPdb(pdbName);
+                    checkDatabaseAndTableStateForContainer(schema.tableIds().stream()
+                            .filter(tableId -> pdbName.equalsIgnoreCase(tableId.catalog()))
+                            .collect(Collectors.toList()));
                 }
             }
         }
@@ -1849,6 +1817,57 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             }
         }
         LOGGER.trace("Database and table state check finished after {} ms", Duration.between(start, Instant.now()).toMillis());
+    }
+
+    /**
+     * Checks and validates the supplemental logging configuration as well as the lengths of the table
+     * and column names for the specified tables within the connection's current container.
+     *
+     * @param tableIds the tables to be checked, should not be {@code null}
+     * @throws SQLException if a database exception occurred
+     */
+    private void checkDatabaseAndTableStateForContainer(Collection<TableId> tableIds) throws SQLException {
+        // Check if ALL supplemental logging is enabled at the database
+        if (!isDatabaseAllSupplementalLoggingEnabled()) {
+            // Check if MIN supplemental logging is enabled at the database
+            if (!isDatabaseMinSupplementalLoggingEnabled()) {
+                throw new DebeziumException("Supplemental logging not properly configured. "
+                        + "Use: ALTER DATABASE ADD SUPPLEMENTAL LOG DATA");
+            }
+
+            // Check if ALL COLUMNS supplemental logging is enabled for each captured table
+            for (TableId tableId : tableIds) {
+                if (!connectionFactory.mainConnection().isTableExists(tableId)) {
+                    LOGGER.warn("Database table '{}' no longer exists, supplemental log check skipped", tableId);
+                }
+                else if (!isTableAllColumnsSupplementalLoggingEnabled(tableId)) {
+                    LOGGER.warn("Database table '{}' not configured with supplemental logging \"(ALL) COLUMNS\"; " +
+                            "only explicitly changed columns will be captured. " +
+                            "Use: ALTER TABLE {}.{} ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS", tableId, tableId.schema(), tableId.table());
+                }
+                final Table table = schema.tableFor(tableId);
+                if (table == null) {
+                    // This should never happen; however in the event something would cause it we can
+                    // at least get the table identifier thrown in the error to debug from rather
+                    // than an erroneous NPE
+                    throw new DebeziumException("Unable to find table in relational model: " + tableId);
+                }
+                checkTableColumnNameLengths(table);
+            }
+        }
+        else {
+            // ALL supplemental logging is enabled, now check table/column lengths
+            for (TableId tableId : tableIds) {
+                final Table table = schema.tableFor(tableId);
+                if (table == null) {
+                    // This should never happen; however in the event something would cause it we can
+                    // at least get the table identifier thrown in the error to debug from rather
+                    // than an erroneous NPE
+                    throw new DebeziumException("Unable to find table in relational model: " + tableId);
+                }
+                checkTableColumnNameLengths(table);
+            }
+        }
     }
 
     /**

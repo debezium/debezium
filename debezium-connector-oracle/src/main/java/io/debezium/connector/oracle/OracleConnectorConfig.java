@@ -75,14 +75,17 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withNoValidation()
             .withValidation(OracleConnectorConfig::requiredWhenNoUrl);
 
-    public static final Field PDB_NAME = Field.create(ConfigurationNames.DATABASE_CONFIG_PREFIX + "pdb.name")
-            .withDisplayName("PDB name")
-            .withType(Type.STRING)
+    public static final Field PDB_NAMES = Field.create(ConfigurationNames.DATABASE_CONFIG_PREFIX + "pdb.names")
+            .withDisplayName("PDB names")
+            .withType(Type.LIST)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.HIGH)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION))
-            .withDescription("Name of the pluggable database when working with a multi-tenant set-up. "
-                    + "The CDB name must be given via " + DATABASE_NAME.name() + " in this case.");
+            .withDescription("Comma-separated list of the pluggable database names when working with a multi-tenant set-up. "
+                    + "The CDB name must be given via " + DATABASE_NAME.name() + " in this case. "
+                    + "The first name in the list is used as the container for connector-managed objects, "
+                    + "such as the LogMiner flush table and heartbeat action queries.")
+            .withDeprecatedAliases(ConfigurationNames.DATABASE_CONFIG_PREFIX + "pdb.name");
 
     /**
      * @deprecated to be removed in Debezium 4.0
@@ -844,7 +847,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN,
                     CommonConnectorConfig.QUERY_FETCH_SIZE,
                     CommonConnectorConfig.SIGNAL_DATA_COLLECTION)
-            .group(Field.Group.CONNECTION, HOSTNAME, PORT, USER, PASSWORD, DATABASE_NAME, QUERY_TIMEOUT_MS, PDB_NAME, XSTREAM_SERVER_NAME)
+            .group(Field.Group.CONNECTION, HOSTNAME, PORT, USER, PASSWORD, DATABASE_NAME, QUERY_TIMEOUT_MS, PDB_NAMES, XSTREAM_SERVER_NAME)
             .group(Field.Group.CONNECTION, RAC_NODES, URL, SECONDARY_DATABASE, SECONDARY_HOSTNAME, SECONDARY_PORT, SECONDARY_URL)
             .group(Field.Group.CONNECTION_ADVANCED, CONNECTOR_ADAPTER, LOG_MINING_STRATEGY, CAPTURE_MODE, ARCHIVE_LOG_HOURS, LOG_MINING_TRANSACTION_RETENTION_MS,
                     LOG_MINING_ARCHIVE_LOG_ONLY_MODE, LOB_ENABLED, LOG_MINING_USERNAME_INCLUDE_LIST, LOG_MINING_USERNAME_EXCLUDE_LIST, ARCHIVE_DESTINATION_NAME,
@@ -888,7 +891,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private static final Logger LOGGER = LoggerFactory.getLogger(OracleConnectorConfig.class);
 
     private final String databaseName;
-    private final String pdbName;
+    private final List<String> pdbNames;
     private final String xstreamOutboundServerName;
     private final IntervalHandlingMode intervalHandlingMode;
     private final SnapshotMode snapshotMode;
@@ -968,7 +971,10 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                 false);
 
         this.databaseName = OracleUtils.getObjectName(config.getString(DATABASE_NAME));
-        this.pdbName = OracleUtils.getObjectName(config.getString(PDB_NAME));
+        this.pdbNames = Strings.listOfTrimmed(config.getString(PDB_NAMES), String::new).stream()
+                .filter(name -> !Strings.isNullOrBlank(name))
+                .map(OracleUtils::getObjectName)
+                .collect(Collectors.toUnmodifiableList());
         this.xstreamOutboundServerName = config.getString(XSTREAM_SERVER_NAME);
         this.intervalHandlingMode = IntervalHandlingMode.parse(config.getString(INTERVAL_HANDLING_MODE));
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE));
@@ -1062,12 +1068,28 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         return databaseName;
     }
 
-    public String getPdbName() {
-        return pdbName;
+    public List<String> getPdbNames() {
+        return pdbNames;
     }
 
-    public String getCatalogName() {
-        return pdbName != null ? pdbName : databaseName;
+    public boolean isUsingPluggableDatabase() {
+        return !pdbNames.isEmpty();
+    }
+
+    public List<String> getCatalogNames() {
+        return pdbNames.isEmpty() ? List.of(databaseName) : pdbNames;
+    }
+
+    /**
+     * Get the catalog that applies when a single catalog governs all captured tables: the pluggable
+     * database when exactly one is configured, or the database name when none are. With multiple
+     * pluggable databases no single catalog applies and the first is returned only as a fallback;
+     * each table's actual catalog is carried by its {@link io.debezium.relational.TableId}.
+     *
+     * @return the default catalog name, never {@code null}
+     */
+    public String getDefaultCatalogName() {
+        return getCatalogNames().get(0);
     }
 
     public String getXStreamOutboundServerName() {
