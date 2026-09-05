@@ -45,8 +45,10 @@ public abstract class BinlogReadOnlyIncrementalSnapshotChangeEventSource<P exten
                                                               Clock clock,
                                                               SnapshotProgressListener<P> progressListener,
                                                               DataChangeEventListener<P> dataChangeEventListener,
-                                                              NotificationService<P, O> notificationService) {
-        super(connectorConfig, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener, notificationService);
+                                                              NotificationService<P, O> notificationService,
+                                                              UndefinedColumnClassifier undefinedColumnClassifier) {
+        super(connectorConfig, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener, notificationService,
+                undefinedColumnClassifier);
         this.gtidSetFactory = connectorConfig.getGtidSetFactory();
     }
 
