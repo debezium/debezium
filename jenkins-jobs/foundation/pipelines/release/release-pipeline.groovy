@@ -119,8 +119,8 @@ properties([
     ['debezium'],
     ['cassandra', 'cockroachdb', 'db2', 'ibmi', 'informix', 'ingres', 'spanner', 'vitess', 'tidb', 'yashandb'],
     ['quarkus', 'operator'],
-    ['server'],
-    ['platform'],
+    ['server', 'jbang-catalog'],
+    ['platform']
 ]
 
 @Field DRY_RUN
@@ -257,7 +257,8 @@ def buildArgsForRepo(repoDir) {
     'server': 'debezium-server',
     'operator': 'debezium-operator',
     'platform': 'debezium-platform-conductor',
-    'quarkus': 'debezium-quarkus-extensions-parent'
+    'quarkus': 'debezium-quarkus-extensions-parent',
+    'jbang-catalog': 'debezium-jbang-catalog',
 ]
 
 def artifactExists(repoDir) {
