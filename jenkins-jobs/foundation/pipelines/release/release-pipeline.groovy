@@ -21,6 +21,7 @@ properties([
         booleanParam(name: 'IGNORE_SNAPSHOTS'),
         booleanParam(name: 'CHECK_BACKPORTS'),
         booleanParam(name: 'LATEST_SERIES'),
+        booleanParam(name: 'IGNORE_RELEASE_PLAN_INCONSISTENCIES'),
         string(name: 'DBZ_PR_URL'),
         string(name: 'WEBSITE_PR_URL')
     ])
@@ -128,6 +129,7 @@ properties([
 @Field IGNORE_SNAPSHOTS
 @Field CHECK_BACKPORTS
 @Field LATEST_SERIES
+@Field IGNORE_RELEASE_PLAN_INCONSISTENCIES
 
 @Field RELEASE_VERSION
 @Field DEVELOPMENT_VERSION
@@ -267,21 +269,36 @@ def artifactExists(repoDir) {
     sh(script: "curl -sSfI ${url} >/dev/null", returnStatus: true) == 0
 }
 
+// Commit messages written by the post-perform step functions below.
+// The grep pattern in postPerformCommitExists() is derived from these constants
+// update both together if a message ever changes.
+@Field final POST_PERFORM_COMMIT_DEFAULT = '[release] New parent %s for development'
+@Field final POST_PERFORM_COMMIT_DEBEZIUM = '[release] Development version for testing module deps'
+@Field final POST_PERFORM_COMMIT_PATTERN = '\\[release\\] (New parent .+ for development|Development version for testing module deps)'
+
 def branchExists(branchName) {
     sh(script: "git show-ref --verify --quiet refs/heads/${branchName}", returnStatus: true) == 0
+}
+
+def postPerformCommitExists() {
+    sh(script: "git log --oneline | grep -qE '${POST_PERFORM_COMMIT_PATTERN}'", returnStatus: true) == 0
 }
 
 def gitPushCandidate(repoName) {
     if (!DRY_RUN) {
         echo "Pushing candidate branch to repository $repoName"
-        executeShell('.', "git push \"https://\${GITHUB_USERNAME}:\${GITHUB_PASSWORD}@${repoName}\" HEAD:${CANDIDATE_BRANCH} --follow-tags")
+        withSecrets(config: ONE_PASSWORD_CONFIG, secrets: SECRETS) {
+            sh "git push \"https://\${GITHUB_USERNAME}:\${GITHUB_PASSWORD}@${repoName}\" HEAD:${CANDIDATE_BRANCH} --follow-tags"
+        }
     }
 }
 
 def gitPushTag(repoName) {
     if (!DRY_RUN) {
         echo "Pushing tag $VERSION_TAG to repository to $repoName"
-        executeShell('.', "git tag $VERSION_TAG && git push \"https://\${GITHUB_USERNAME}:\${GITHUB_PASSWORD}@${repoName}\" $VERSION_TAG")
+        withSecrets(config: ONE_PASSWORD_CONFIG, secrets: SECRETS) {
+            sh "git tag $VERSION_TAG && git push \"https://\${GITHUB_USERNAME}:\${GITHUB_PASSWORD}@${repoName}\" $VERSION_TAG"
+        }
     }
 }
 
@@ -294,7 +311,7 @@ def gitMergeAndDeleteCandidate(repoName, repoBranch) {
             git pull --rebase \"https://\${GITHUB_USERNAME}:\${GITHUB_PASSWORD}@$repoName\" $repoBranch && \\
             git checkout $repoBranch && \\
             git rebase $CANDIDATE_BRANCH && \\
-            git push --force-with-lease \"https://\${GITHUB_USERNAME}:\${GITHUB_PASSWORD}@$repoName\" HEAD:$repoBranch && \\
+            git push --force \"https://\${GITHUB_USERNAME}:\${GITHUB_PASSWORD}@$repoName\" HEAD:$repoBranch && \\
             git push --delete \"https://\${GITHUB_USERNAME}:\${GITHUB_PASSWORD}@$repoName\" $CANDIDATE_BRANCH
         """
          )
@@ -350,14 +367,14 @@ def defaultPostPerformSteps() {
         it.replaceFirst('<version>.+</version>\n    </parent>', "<version>$DEVELOPMENT_VERSION</version>\n    </parent>")
     }
 
-    sh "git commit -a -m '[release] New parent $DEVELOPMENT_VERSION for development'"
+    sh "git commit -a -m \"${String.format(POST_PERFORM_COMMIT_DEFAULT, DEVELOPMENT_VERSION)}\""
 }
 
 def debeziumPostPerformSteps() {
     fileUtils.modifyFile('debezium-testing/debezium-testing-system/pom.xml') {
         it.replaceFirst('<version.debezium.connector>.+</version.debezium.connector>', '<version.debezium.connector>\\${project.version}</version.debezium.connector>')
     }
-    sh "git commit -a -m '[release] Development version for testing module deps'"
+    sh "git commit -a -m \"${POST_PERFORM_COMMIT_DEBEZIUM}\""
 }
 
 def serverPostPerformSteps() {
@@ -374,7 +391,7 @@ def operatorPostPerformSteps() {
 
     // For operator, we need to build with k8update profile to update manifests back to dev version
     sh "./mvnw clean package -Pk8update -DskipTests -DskipITs"
-    sh "git commit -a -m '[release] New parent $DEVELOPMENT_VERSION for development'"
+    sh "git commit -a -m \"${String.format(POST_PERFORM_COMMIT_DEFAULT, DEVELOPMENT_VERSION)}\""
 }
 
 @Field final POST_PERFORM_STEPS = [
@@ -621,11 +638,13 @@ node {
     IGNORE_SNAPSHOTS = common.getBooleanParameter(params.IGNORE_SNAPSHOTS)
     CHECK_BACKPORTS = common.getBooleanParameter(params.CHECK_BACKPORTS)
     LATEST_SERIES = common.getBooleanParameter(params.LATEST_SERIES)
+    IGNORE_RELEASE_PLAN_INCONSISTENCIES = common.getBooleanParameter(params.IGNORE_RELEASE_PLAN_INCONSISTENCIES)
 
     echo "Ignore snapshots: ${IGNORE_SNAPSHOTS}"
     echo "Check backports: ${CHECK_BACKPORTS}"
     echo "From scratch: ${FROM_SCRATCH}"
     echo "Latest series: ${LATEST_SERIES}"
+    echo "Ignore release plan inconsistencies: ${IGNORE_RELEASE_PLAN_INCONSISTENCIES}"
 
     RELEASE_VERSION = params.RELEASE_VERSION
     DEVELOPMENT_VERSION = params.DEVELOPMENT_VERSION
@@ -692,8 +711,12 @@ node {
             def repoIds = MAVEN_REPOSITORIES.keySet()
             def missing = repoIds - planIds
             def extra = planIds - repoIds
-            if (missing) { error "RELEASE_PLAN is missing repositories: ${missing.sort()}" }
-            if (extra) { error "RELEASE_PLAN contains unknown repositories: ${extra.sort()}" }
+            if (!IGNORE_RELEASE_PLAN_INCONSISTENCIES) {
+                if (missing) { error "RELEASE_PLAN is missing repositories: ${missing.sort()}" }
+                if (extra) { error "RELEASE_PLAN contains unknown repositories: ${extra.sort()}" }
+            } else if (missing || extra) {
+                echo "WARNING: Ignoring release plan inconsistencies — missing: ${missing.sort()}, extra: ${extra.sort()}"
+            }
         }
 
         stage('Initialize') {
@@ -767,7 +790,7 @@ EOF''')
             def issues = []
 
             withSecrets(config: ONE_PASSWORD_CONFIG, secrets: SECRETS) {
-                // Fetch DBZ PR head ref as owner/repo/branch
+                // Fetch DBZ PR head ref as owner/repo/branch (pre-merge: content lives on the PR branch)
                 def dbzRef = sh(
                     script: """GH_TOKEN=\${GITHUB_PASSWORD} gh pr view $DBZ_PR_URL \
 --json headRefName,headRepositoryOwner,headRepository \
@@ -776,7 +799,7 @@ EOF''')
                 ).trim().tokenize('/')
                 def (dbzOwner, dbzRepo, dbzBranch) = dbzRef
 
-                // Fetch WEBSITE PR head ref as owner/repo/branch
+                // Fetch WEBSITE PR head ref as owner/repo/branch (pre-merge: content lives on the PR branch)
                 def webRef = sh(
                     script: """GH_TOKEN=\${GITHUB_PASSWORD} gh pr view $WEBSITE_PR_URL \
 --json headRefName,headRepositoryOwner,headRepository \
@@ -789,10 +812,20 @@ EOF''')
                     "https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}"
                 }
 
-                def changelog    = new URL(rawUrl(dbzOwner, dbzRepo, dbzBranch, 'CHANGELOG.md')).text
-                def copyright    = new URL(rawUrl(dbzOwner, dbzRepo, dbzBranch, 'COPYRIGHT.txt')).text
-                def releaseNotes = new URL(rawUrl(webOwner, webRepo, webBranch, "releases/$VERSION_MAJOR_MINOR/release-notes.asciidoc")).text
-                def versionYml   = new URL(rawUrl(webOwner, webRepo, webBranch, "_data/releases/$VERSION_MAJOR_MINOR/${RELEASE_VERSION}.yml")).text
+                def changelogUrl    = rawUrl(dbzOwner, dbzRepo, dbzBranch, 'CHANGELOG.md')
+                def copyrightUrl    = rawUrl(dbzOwner, dbzRepo, dbzBranch, 'COPYRIGHT.txt')
+                def releaseNotesUrl = rawUrl(webOwner, webRepo, webBranch, "releases/$VERSION_MAJOR_MINOR/release-notes.asciidoc")
+                def versionYmlUrl   = rawUrl(webOwner, webRepo, webBranch, "_data/releases/$VERSION_MAJOR_MINOR/${RELEASE_VERSION}.yml")
+
+                echo "Checking CHANGELOG.md at:        $changelogUrl"
+                echo "Checking COPYRIGHT.txt at:       $copyrightUrl"
+                echo "Checking release-notes at:       $releaseNotesUrl"
+                echo "Checking version YAML at:        $versionYmlUrl"
+
+                def changelog    = new URL(changelogUrl).text
+                def copyright    = new URL(copyrightUrl).text
+                def releaseNotes = new URL(releaseNotesUrl).text
+                def versionYml   = new URL(versionYmlUrl).text
 
                 checkPreReleaseContent(changelog, copyright, releaseNotes, versionYml, issues, 'WARNING')
             }
@@ -815,6 +848,22 @@ ${issuesSummary}
   $WEBSITE_PR_URL""",
                 ok: 'Both PRs are merged, continue'
             )
+
+            withSecrets(config: ONE_PASSWORD_CONFIG, secrets: SECRETS) {
+                // Re-fetch main repo to pick up merged PR changes
+                dir(DEBEZIUM_DIR) {
+                    sh "git pull https://\${GITHUB_USERNAME}:\${GITHUB_PASSWORD}@github.com/debezium/debezium.git $SOURCE_BRANCH"
+                }
+
+                // Re-fetch docs repo to pick up merged PR changes
+                if (!fileExists(WEBSITE_DIR)) {
+                    sh "git clone --depth=1 -b develop https://\${GITHUB_USERNAME}:\${GITHUB_PASSWORD}@github.com/debezium/debezium.github.io.git $WEBSITE_DIR"
+                } else {
+                    dir(WEBSITE_DIR) {
+                        sh "git pull https://\${GITHUB_USERNAME}:\${GITHUB_PASSWORD}@github.com/debezium/debezium.github.io.git develop"
+                    }
+                }
+            }
         }
 
         stage('Check Contributors') {
@@ -976,10 +1025,18 @@ ${failures.collect { "  - $it" }.join('\n')}""")
                         unpublished.isEmpty()
                     }
                 }
+                // Run post-perform steps for every repo in this tier unless a development-version
+                // commit already exists in the local history, which means the steps completed in a
+                // prior run.  Using the git log as the marker is durable across job restarts,
+                // unlike the in-memory unpublished list which is rebuilt from scratch each run.
                 tier.each { id ->
                     def repo = MAVEN_REPOSITORIES[id]
                     dir("$id/${repo.subDir}") {
-                        releasePerformPostSteps(id, repo.git)
+                        if (!postPerformCommitExists()) {
+                            releasePerformPostSteps(id, repo.git)
+                        } else {
+                            echo "Post-perform commit already exists for $id, skipping"
+                        }
                     }
                 }
             }
