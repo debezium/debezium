@@ -70,7 +70,8 @@ public class MySqlDatabaseSchema extends BinlogDatabaseSchema<MySqlPartition, My
                 false,
                 connectorConfig.isSchemaCommentsHistoryEnabled(),
                 getTableFilter(),
-                connectorConfig.getServiceRegistry().getService(BinlogCharsetRegistry.class));
+                connectorConfig.getServiceRegistry().getService(BinlogCharsetRegistry.class),
+                connectorConfig.getRealHandlingMode());
     }
 
     private DdlParser createLegacyPtParser(BinlogConnectorConfig connectorConfig) {
@@ -79,7 +80,8 @@ public class MySqlDatabaseSchema extends BinlogDatabaseSchema<MySqlPartition, My
                 false,
                 connectorConfig.isSchemaCommentsHistoryEnabled(),
                 getTableFilter(),
-                connectorConfig.getServiceRegistry().getService(BinlogCharsetRegistry.class));
+                connectorConfig.getServiceRegistry().getService(BinlogCharsetRegistry.class),
+                connectorConfig.getRealHandlingMode());
     }
 
 }

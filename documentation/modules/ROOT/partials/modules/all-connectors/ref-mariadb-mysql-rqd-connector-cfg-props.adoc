@@ -521,6 +521,31 @@ If you attempt to use the same name to register multiple connectors, registratio
 This property is required by all Kafka Connect connectors.
 
 
+[id="{context}-property-real-handling-mode"]
+xref:{context}-property-real-handling-mode[`real.handling.mode`]::
+
+Default value::: `double`
+
+Description:::
+Specifies how the connector interprets the `REAL` type name when it parses DDL from a snapshot, the schema history, or the binlog.
+Set one of the following options:
+
+`double`:::: Represents `REAL` values as double-precision (`FLOAT64`) values.
+This default matches the default {connector-name} behavior, in which `REAL` is a synonym for `DOUBLE`.
+
+`float`:::: Represents `REAL` values as single-precision (`FLOAT32`) values.
+Use this option when the source server uses the `REAL_AS_FLOAT` SQL mode, or to retain an existing `FLOAT32` schema contract.
+
+The setting does not change the mapping of columns that are explicitly declared as `FLOAT` or `DOUBLE`.
++
+[IMPORTANT]
+====
+The default `double` mode changes the schema of `REAL` columns from `FLOAT32` to `FLOAT64` when the connector parses a `REAL` type name from the schema history or the binlog.
+Before upgrading an existing connector, verify that downstream schema compatibility rules permit this change.
+To retain the previous `FLOAT32` mapping, explicitly set `real.handling.mode` to `float`.
+====
+
+
 [id="{context}-property-schema-name-adjustment-mode"]
 xref:{context}-property-schema-name-adjustment-mode[`schema.name.adjustment.mode`]::
 
