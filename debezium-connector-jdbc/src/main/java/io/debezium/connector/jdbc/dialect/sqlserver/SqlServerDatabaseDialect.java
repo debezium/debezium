@@ -7,6 +7,7 @@ package io.debezium.connector.jdbc.dialect.sqlserver;
 
 import java.util.Optional;
 
+import org.apache.kafka.connect.data.Schema;
 import org.hibernate.SessionFactory;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.dialect.SQLServerDialect;
@@ -19,6 +20,8 @@ import io.debezium.connector.jdbc.dialect.GeneralDatabaseDialect;
 import io.debezium.connector.jdbc.dialect.SqlStatementBuilder;
 import io.debezium.connector.jdbc.dialect.sqlserver.connect.ConnectTimeType;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
+import io.debezium.connector.jdbc.type.JdbcType;
+import io.debezium.sink.column.ColumnDescriptor;
 
 /**
  * A {@link DatabaseDialect} implementation for SQL Server.
@@ -128,6 +131,26 @@ public class SqlServerDatabaseDialect extends GeneralDatabaseDialect {
     @Override
     public String getTimestampNegativeInfinityValue() {
         return "0001-01-01T00:00:00+00:00";
+    }
+
+    @Override
+    public String getQueryBindingWithValueCast(ColumnDescriptor column, Schema schema, JdbcType type) {
+        if (schema.type() == Schema.Type.STRING) {
+            final String typeName = column.getTypeName().toLowerCase();
+
+            if ("varchar".equals(typeName)) {
+                final int precision = column.getPrecision();
+                final String precisionString;
+                if (precision > getMaxVarcharLengthInKey() || precision <= 0) {
+                    precisionString = "max";
+                }
+                else {
+                    precisionString = Integer.toString(precision);
+                }
+                return "cast(? as varchar(" + precisionString + "))";
+            }
+        }
+        return super.getQueryBindingWithValueCast(column, schema, type);
     }
 
     @Override
