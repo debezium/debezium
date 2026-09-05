@@ -175,7 +175,7 @@ public class JdbcSinkPipelineToSqlServerIT extends AbstractJdbcSinkPipelineIT {
 
     @Override
     protected String getUuidType(Source source, boolean key) {
-        return getStringType(source, key, false);
+        return "uniqueidentifier";
     }
 
     @Override
