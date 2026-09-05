@@ -12,6 +12,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.errors.ConnectException;
@@ -143,12 +144,16 @@ public class PostgresSchema extends RelationalDatabaseSchema {
         // DBZ-2020: only pgoutput prunes generated columns and needs them tracked; other decoders keep
         // the column (and its value) in the Table, so leave them untouched here.
         if (tracksGeneratedColumns()) {
-            final List<String> generatedColumnNames = readGeneratedColumnNames(connection, tableId);
+            final List<String> generatedColumnNames = trackedGeneratedColumnNames(updatedTable, connection, tableId);
             tableIdToGeneratedColumns.put(tableId, Collections.unmodifiableList(generatedColumnNames));
             updatedTable = applyGeneratedColumnFlags(updatedTable, generatedColumnNames);
             if (removeGeneratedColumns) {
+                // DBZ-2020: never prune a primary key column, generated or not; removing it here would
+                // leave a dangling PK reference and TableEditorImpl would reject the table.
+                final List<String> primaryKeyColumnNames = updatedTable.primaryKeyColumnNames();
                 var editor = updatedTable.edit();
-                final var notGeneratedColumns = updatedTable.filterColumns(x -> !x.isGenerated());
+                final var notGeneratedColumns = updatedTable.filterColumns(
+                        x -> !x.isGenerated() || primaryKeyColumnNames.contains(x.name()));
                 LOGGER.debug("Removing generated columns, the new column list is '{}'", notGeneratedColumns);
                 editor.setColumns(notGeneratedColumns);
                 updatedTable = editor.create();
@@ -267,12 +272,30 @@ public class PostgresSchema extends RelationalDatabaseSchema {
         if (current == null) {
             return;
         }
-        final List<String> generatedColumnNames = readGeneratedColumnNames(connection, tableId);
+        final List<String> generatedColumnNames = trackedGeneratedColumnNames(current, connection, tableId);
         tableIdToGeneratedColumns.put(tableId, Collections.unmodifiableList(generatedColumnNames));
         final Table updated = applyGeneratedColumnFlags(current, generatedColumnNames);
         if (updated != current) {
             tables().overwriteTable(updated);
         }
+    }
+
+    /**
+     * Returns the generated-column names of {@code table} to track in {@link #tableIdToGeneratedColumns}
+     * and prune from the incremental snapshot chunk projection.
+     *
+     * <p>DBZ-2020: a generated column that is also the primary key is excluded, so it stays in both the
+     * {@link Table} and the chunk projection instead of being pruned as generated.</p>
+     */
+    private List<String> trackedGeneratedColumnNames(Table table, PostgresConnection connection, TableId tableId) {
+        final List<String> allGeneratedColumnNames = readGeneratedColumnNames(connection, tableId);
+        final List<String> primaryKeyColumnNames = table.primaryKeyColumnNames();
+        if (primaryKeyColumnNames.isEmpty()) {
+            return allGeneratedColumnNames;
+        }
+        return allGeneratedColumnNames.stream()
+                .filter(name -> !primaryKeyColumnNames.contains(name))
+                .collect(Collectors.toList());
     }
 
     /**
