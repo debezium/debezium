@@ -251,33 +251,60 @@ jobs:
 
       - uses: ./core/.github/actions/setup-java
 
-      # GitHub actions seem to struggle returning actions/cache cache-hit
-      # Directly use the cache action here to control whether to fetch dependencies
+      # Pull request builds never save caches; they restore the reference cache saved by
+      # the push workflow.  GitHub scopes cache reads to the PR's target branch and the
+      # default branch, so the restore resolves to:
+      #   1. An exact match when the PR does not change any pom
+      #   2. The latest reference cache visible to the target branch otherwise
+      # Dependencies a PR adds on top of the reference cache are captured below as a
+      # short-lived artifact and overlaid by the other jobs of this run as well as by
+      # subsequent runs of the same PR.
       - id: maven-cache-check
-        uses: actions/cache@v6
+        uses: actions/cache/restore@v6
         with:
           path: ~/.m2/repository
-          key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
-          # Caches should be restored based on a logical order to minimize the build and test
-          # execution time. Here the logic is as follows:
-          #   1. Restore this PR's cache if the PR has previously been built
-          #   2. Restore the latest main cache if the core pom has not changed
-          #   3. Restore the latest main cache available
-          # This should minimize the download time required for updating dependencies
+          key: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
           restore-keys: |
-            maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
-            maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
             maven-debezium-test-push-build-
+
+      # Any file in the local Maven repository that is newer than this marker was added
+      # (or updated) on top of the reference cache and belongs in this run's delta.
+      - name: Mark restored cache contents
+        run: |
+          mkdir -p ~/.m2/repository
+          touch "${RUNNER_TEMP}/maven-cache-marker"
+
+      # Restore the dependency delta captured by the most recent previous run of this PR
+      # so that a pom change only pays the full download cost once per day (the delta
+      # artifact retention).  Extraction refreshes file times (-m) so the restored files
+      # stay newer than the marker and are re-captured into this run's delta, keeping the
+      # delta cumulative across runs.  This step is tolerant by design: without a usable
+      # delta the build below simply downloads whatever is missing.
+      - name: Restore dependency delta from previous run
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_NAME: maven-repo-delta-pr-${{ github.event.pull_request.number }}
+        run: |
+          url=$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${ARTIFACT_NAME}&per_page=10" \
+            --jq '[.artifacts[] | select(.expired == false)] | first | .archive_download_url // empty')
+          if [ -z "${url}" ]; then
+            echo "No previous dependency delta found for this pull request"
+            exit 0
+          fi
+          gh api "${url#https://api.github.com/}" > "${RUNNER_TEMP}/maven-repo-delta.zip"
+          unzip -o "${RUNNER_TEMP}/maven-repo-delta.zip" -d "${RUNNER_TEMP}/maven-repo-delta-prev"
+          tar -xmzf "${RUNNER_TEMP}/maven-repo-delta-prev/maven-repo-delta.tgz" -C ~/.m2/repository
 
       # This step is responsible for pulling down artifacts
       # Unfortunately due to the nature of how some of the maven workflows work, the only reliable way
       # to guarantee fully seeding the maven cache is to run a full build. This step does not execute
       # tests, formatting, checkstyle, nor import sorts.
       #
-      # This check is conditioned so that if the cache-key was not found, we will execute this step.
-      # If the cache-key was found, this means we cannot update the cache and therefore we should
-      # not need to explicitly run this step. This should improve response of format/checkstyle
-      # errors to users faster.
+      # This check is conditioned so that if the exact cache-key was not found, we will execute
+      # this step. An exact hit means the PR does not change any pom and the reference cache
+      # already contains every dependency, so the step can be skipped. This should improve
+      # response of format/checkstyle errors to users faster.
       #
       # This job also explicitly excludes the "debezium-microbenchmark-oracle" module temporarily.
       # There is a dependency on xstream.jar for this module that should be fixed and made to not
@@ -312,6 +339,24 @@ jobs:
           -DskipTests=true
           -DskipITs=true
 
+      # Everything newer than the marker is a dependency this PR added on top of the
+      # reference cache (including the restored delta from a previous run, kept newer by
+      # the -m extraction above).  The delta may legitimately be empty.
+      - name: Capture dependency delta
+        run: |
+          cd ~/.m2/repository
+          find . -type f -newer "${RUNNER_TEMP}/maven-cache-marker" -print0 \
+            | tar -czf "${RUNNER_TEMP}/maven-repo-delta.tgz" --null -T -
+          echo "Dependency delta contains $(tar -tzf "${RUNNER_TEMP}/maven-repo-delta.tgz" | wc -l) files"
+
+      - name: Upload dependency delta
+        uses: actions/upload-artifact@v7
+        with:
+          name: maven-repo-delta-pr-${{ github.event.pull_request.number }}
+          path: ${{ runner.temp }}/maven-repo-delta.tgz
+          retention-days: 1
+          overwrite: true
+
   # Approx 1m
   check_style:
     name: "Checkstyle and Formatting"
@@ -323,7 +368,7 @@ jobs:
 
       - uses: ./.github/actions/checkstyle-format
         with:
-          maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+          maven-cache-key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
 
   ########################################################################################
   ## CONNECTORS
@@ -339,7 +384,7 @@ jobs:
         uses: actions/checkout@v7
       - uses: ./.github/actions/build-debezium-core
         with:
-          maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+          maven-cache-key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
           only-build: ${{ needs.file_changes.outputs.common-changed != 'true' }}
 
   build_cassandra:
@@ -361,7 +406,7 @@ jobs:
       - uses: ./core/.github/actions/setup-java
       - uses: ./core/.github/actions/maven-cache
         with:
-          key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
+          key: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
       - uses: ./core/.github/actions/build-debezium-cassandra
         with:
           path-core: core
@@ -386,7 +431,7 @@ jobs:
       - uses: ./core/.github/actions/setup-java
       - uses: ./core/.github/actions/maven-cache
         with:
-          key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
+          key: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
       - uses: ./core/.github/actions/build-debezium-db2
         with:
           path-core: core
@@ -411,7 +456,7 @@ jobs:
       - uses: ./core/.github/actions/setup-java
       - uses: ./core/.github/actions/maven-cache
         with:
-          key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
+          key: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
       - uses: ./core/.github/actions/build-debezium-ingres
         with:
           path-core: core
@@ -436,7 +481,7 @@ jobs:
       - uses: ./core/.github/actions/setup-java
       - uses: ./core/.github/actions/maven-cache
         with:
-          key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
+          key: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
       - uses: ./core/.github/actions/build-debezium-ibmi
         with:
           path-core: core
@@ -448,7 +493,7 @@ jobs:
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
     uses: ./.github/workflows/connector-informix-workflow.yml
     with:
-      maven-cache-key: maven-debezium-test-build
+      maven-cache-key: maven-debezium-test-push-build
       # Needed because sibling repository
       checkout-ref: ${{ github.event.pull_request.base.ref }}
 
@@ -458,7 +503,7 @@ jobs:
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mysql-changed == 'true' || needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' || needs.file_changes.outputs.mariadb-changed == 'true' || needs.file_changes.outputs.postgresql-changed == 'true' || needs.file_changes.outputs.sqlserver-changed == 'true' || needs.file_changes.outputs.sqlserver-changed == 'true' || needs.file_changes.outputs.db2-changed == 'true' || needs.file_changes.outputs.jdbc-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
     uses: ./.github/workflows/connector-jdbc-workflow.yml
     with:
-      maven-cache-key: maven-debezium-test-build
+      maven-cache-key: maven-debezium-test-push-build
 
   build_mariadb:
     name: MariaDB
@@ -466,7 +511,7 @@ jobs:
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mariadb-changed == 'true' || needs.file_changes.outputs.mariadb-ddl-parser-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
     uses: ./.github/workflows/connector-mariadb-workflow.yml
     with:
-      maven-cache-key: maven-debezium-test-build
+      maven-cache-key: maven-debezium-test-push-build
 
   build_mongodb:
     name: MongoDB
@@ -474,7 +519,7 @@ jobs:
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mongodb-changed == 'true' || needs.file_changes.outputs.debezium-testing-mongodb-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
     uses: ./.github/workflows/connector-mongodb-workflow.yml
     with:
-      maven-cache-key: maven-debezium-test-build
+      maven-cache-key: maven-debezium-test-push-build
 
   build_mysql:
     name: MySQL
@@ -482,7 +527,7 @@ jobs:
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mysql-changed == 'true' || needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
     uses: ./.github/workflows/connector-mysql-workflow.yml
     with:
-      maven-cache-key: maven-debezium-test-build
+      maven-cache-key: maven-debezium-test-push-build
 
   build_oracle:
     name: Oracle
@@ -490,7 +535,7 @@ jobs:
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.oracle-changed == 'true' || needs.file_changes.outputs.oracle-ddl-parser-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
     uses: ./.github/workflows/connector-oracle-workflow.yml
     with:
-      maven-cache-key: maven-debezium-test-build
+      maven-cache-key: maven-debezium-test-push-build
 
   build_postgresql:
     name: PostgreSQL
@@ -498,7 +543,7 @@ jobs:
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.postgresql-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
     uses: ./.github/workflows/connector-postgresql-workflow.yml
     with:
-      maven-cache-key: maven-debezium-test-build
+      maven-cache-key: maven-debezium-test-push-build
 
   build_sqlserver:
     name: SQL Server
@@ -510,7 +555,7 @@ jobs:
         uses: actions/checkout@v7
       - uses: ./.github/actions/build-debezium-sqlserver
         with:
-          maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+          maven-cache-key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
 
   build_spanner:
     name: Spanner
@@ -531,7 +576,7 @@ jobs:
       - uses: ./core/.github/actions/setup-java
       - uses: ./core/.github/actions/maven-cache
         with:
-          key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
+          key: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
       - uses: ./core/.github/actions/build-debezium-spanner
         with:
           path-core: core
@@ -556,7 +601,7 @@ jobs:
       - uses: ./core/.github/actions/setup-java
       - uses: ./core/.github/actions/maven-cache
         with:
-          key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
+          key: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
       - uses: ./core/.github/actions/build-debezium-vitess
         with:
           path-core: core
@@ -581,7 +626,7 @@ jobs:
       - uses: ./core/.github/actions/setup-java
       - uses: ./core/.github/actions/maven-cache
         with:
-          key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
+          key: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
       - uses: ./core/.github/actions/build-debezium-cockroachdb
         with:
           path-core: core
@@ -597,7 +642,7 @@ jobs:
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mongodb-changed == 'true' || needs.file_changes.outputs.mysql-changed == 'true' || needs.file_changes.outputs.postgresql-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' || needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' }}
     uses: ./.github/workflows/apicurio-check-workflow.yml
     with:
-      maven-cache-key: maven-debezium-test-build
+      maven-cache-key: maven-debezium-test-push-build
 
   build_ai:
     name: "Debezium AI module"
@@ -609,7 +654,7 @@ jobs:
         uses: actions/checkout@v7
       - uses: ./.github/actions/build-debezium-ai
         with:
-          maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+          maven-cache-key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
 
   build_openlineage:
     name: "Debezium OpenLineage module"
@@ -621,7 +666,7 @@ jobs:
         uses: actions/checkout@v7
       - uses: ./.github/actions/build-debezium-openlineage
         with:
-          maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+          maven-cache-key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
 
   build_server:
     name: "Debezium Server"
@@ -642,7 +687,7 @@ jobs:
       - uses: ./core/.github/actions/setup-java
       - uses: ./core/.github/actions/maven-cache
         with:
-          key: maven-debezium-test-build-${{ hashFiles('core/**/pom.xml') }}
+          key: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
       - uses: ./core/.github/actions/build-debezium-server
         with:
           path-core: core
@@ -658,7 +703,7 @@ jobs:
         uses: actions/checkout@v7
       - uses: ./.github/actions/build-debezium-schema-generator
         with:
-          maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+          maven-cache-key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
 
   build_storage:
     name: "Storage"
@@ -670,7 +715,7 @@ jobs:
         uses: actions/checkout@v7
       - uses: ./.github/actions/build-debezium-storage
         with:
-          maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+          maven-cache-key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
 
   build_testing:
     name: "Testing Module"
@@ -682,7 +727,7 @@ jobs:
         uses: actions/checkout@v7
       - uses: ./.github/actions/build-debezium-testing
         with:
-          maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+          maven-cache-key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
 
   build_platform_conductor:
     name: "Debezium Platform - conductor"
@@ -690,7 +735,7 @@ jobs:
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mongodb-changed == 'true' || needs.file_changes.outputs.mariadb-changed == 'true' || needs.file_changes.outputs.mysql-changed == 'true' || needs.file_changes.outputs.postgresql-changed == 'true' || needs.file_changes.outputs.oracle-changed == 'true' || needs.file_changes.outputs.sqlserver-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
     uses: ./.github/workflows/platform-conductor-workflow.yml
     with:
-      maven-cache-key: maven-debezium-test-build
+      maven-cache-key: maven-debezium-test-push-build
 
 
 

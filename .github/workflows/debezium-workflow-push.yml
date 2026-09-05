@@ -56,7 +56,7 @@ jobs:
         with:
           path: ~/.m2/repository
           key: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
-          restore-keys: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
+          restore-keys: maven-debezium-test-push-build-
 
       # This step is responsible for pulling down artifacts
       # Unfortunately due to the nature of how some of the maven workflows work, the only reliable way

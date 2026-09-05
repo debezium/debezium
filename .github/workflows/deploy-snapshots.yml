@@ -140,7 +140,7 @@ jobs:
       - name: Restore Maven cache
         uses: ./workflow-repo/.github/actions/maven-cache
         with:
-          key: maven-deploy-snapshots-${{ hashFiles('workflow-repo/**/pom.xml') }}
+          key: maven-debezium-test-push-build-${{ hashFiles('workflow-repo/**/pom.xml') }}
 
       - name: Configure Maven Central credentials
         shell: bash
