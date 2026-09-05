@@ -450,7 +450,7 @@ If xref:jdbc-property-schema-evolution[`schema.evolution`] is set to `basic`, th
 Automatic table creation does not expose SingleStore-specific shard key, sort key, or other table option settings.
 If the target table requires explicit shard keys, sort keys, or other SingleStore table options, create the destination table in SingleStore before the connector writes to it.
 
-For SingleStore targets, {prodname} maps {prodname} `io.debezium.data.Json` logical values and Kafka Connect `MAP` schema values to the SingleStore `JSON` column type.
+For SingleStore targets, {prodname} maps {prodname} `io.debezium.data.Json` logical values and Kafka Connect `ARRAY` and `MAP` schema values to the SingleStore `JSON` column type.
 The connector maps {prodname} `io.debezium.data.geometry.Geometry` and `io.debezium.data.geometry.Geography` logical values to the SingleStore `GEOGRAPHY` column type, and `io.debezium.data.geometry.Point` logical values to the SingleStore `GEOGRAPHYPOINT` column type.
 SingleStore supports a subset of WKT geospatial values.
 The connector writes `POINT`, `LINESTRING`, and `POLYGON` WKB values to SingleStore as WKT strings.

@@ -464,6 +464,10 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
 
     @Override
     public JdbcType getSchemaType(Schema schema) {
+        if (schema == null) {
+            throw new DebeziumException("Schema is null");
+        }
+
         if (!Objects.isNull(schema.name())) {
             final JdbcType type = typeRegistry.get(schema.name());
             if (!Objects.isNull(type)) {
