@@ -189,6 +189,11 @@ public abstract class BinlogIncrementalSnapshotIT<C extends SourceConnector>
     }
 
     @Override
+    protected String signalExcludingColumnIncludeList() {
+        return tableDataCollectionId() + "\\." + pkFieldName() + "," + tableDataCollectionId() + "\\." + valueFieldName();
+    }
+
+    @Override
     protected String noPKTableDataCollectionId() {
         return tableNameId("a42").toString();
     }
