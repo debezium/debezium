@@ -204,7 +204,7 @@ public class LogFileCollector {
                 });
     }
 
-    private LogFile createLogFileFromResultSetRow(ResultSet rs) throws SQLException {
+    protected LogFile createLogFileFromResultSetRow(ResultSet rs) throws SQLException {
         final String fileName = rs.getString(1);
         final Scn firstScn = getScnFromString(rs.getString(2));
         final Scn nextScn = getScnFromString(rs.getString(3));

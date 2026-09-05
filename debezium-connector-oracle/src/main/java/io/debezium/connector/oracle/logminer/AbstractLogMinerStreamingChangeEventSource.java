@@ -159,7 +159,9 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         this.schema = schema;
         this.metrics = metrics;
         this.jdbcConfiguration = JdbcConfiguration.adapt(jdbcConfig);
-        this.logCollector = new LogFileCollector(connectorConfig, streamingConnection);
+        this.logCollector = streamingConnection.isAutonomous()
+                ? new AutonomousLogFileCollector(connectorConfig, streamingConnection)
+                : new LogFileCollector(connectorConfig, streamingConnection);
         this.sessionContext = new LogMinerSessionContext(streamingConnection, connectorConfig.getLogMiningStrategy(),
                 connectorConfig.getLogMiningPathToDictionary());
         this.dmlParser = new LogMinerDmlParser(connectorConfig);
@@ -1122,7 +1124,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             currentRedoLogSequences = sequences;
 
             metrics.setSwitchCount(streamingConnection.queryAndMap(
-                    SqlUtils.switchHistoryQuery(archiveDestinationNames),
+                    SqlUtils.switchHistoryQuery(archiveDestinationNames, streamingConnection.isAutonomous()),
                     rs -> rs.next() ? rs.getInt(2) : 0));
 
             return true;
@@ -1173,9 +1175,10 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      * @throws SQLException if a database exception occurs
      */
     protected void applyLogsToSession() throws SQLException {
-        sessionContext.removeAllLogFilesFromSession();
-
-        sessionContext.addLogFiles(sessionLogFiles);
+        if (!streamingConnection.isAutonomous()) {
+            sessionContext.removeAllLogFilesFromSession();
+            sessionContext.addLogFiles(sessionLogFiles);
+        }
 
         // These need to be updated when we prepare the session so that log switch check works
         currentRedoLogSequences = currentLogFiles.stream()
@@ -1858,7 +1861,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      * @throws SQLException if a database exception occurred
      */
     private boolean isDatabaseAllSupplementalLoggingEnabled() throws SQLException {
-        return connectionFactory.mainConnection().queryAndMap(SqlUtils.databaseSupplementalLoggingAllCheckQuery(), rs -> {
+        return connectionFactory.mainConnection().queryAndMap(SqlUtils.databaseSupplementalLoggingAllCheckQuery(streamingConnection.isAutonomous()), rs -> {
             while (rs.next()) {
                 if ("YES".equalsIgnoreCase(rs.getString(2))) {
                     return true;
@@ -1875,7 +1878,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      * @throws SQLException if a database exception occurred
      */
     private boolean isDatabaseMinSupplementalLoggingEnabled() throws SQLException {
-        return connectionFactory.mainConnection().queryAndMap(SqlUtils.databaseSupplementalLoggingMinCheckQuery(), rs -> {
+        return connectionFactory.mainConnection().queryAndMap(SqlUtils.databaseSupplementalLoggingMinCheckQuery(streamingConnection.isAutonomous()), rs -> {
             while (rs.next()) {
                 final String value = rs.getString(2);
                 // YES - ADD SUPPLEMENTAL LOG DATA
@@ -2031,16 +2034,21 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      * @param scn the system change number
      * @return {@code true} if the code should continue, {@code false} if the code should end.
      * @throws SQLException if a database exception occurred
-     * @throws InterruptedException if the pause between checks is interrupted
      */
-    private boolean waitForScnInArchiveLogs(Scn scn) throws SQLException, InterruptedException {
+    private boolean waitForScnInArchiveLogs(Scn scn) throws SQLException {
         boolean showMessage = true;
         while (context.isRunning() && !logCollector.isScnInArchiveLogs(scn)) {
             if (showMessage) {
                 LOGGER.warn("SCN {} is not yet in archive logs, waiting for log switch.", scn);
                 showMessage = false;
             }
-            Metronome.sleeper(connectorConfig.getArchiveLogOnlyScnPollTime(), getClock()).pause();
+            try {
+                Metronome.sleeper(connectorConfig.getArchiveLogOnlyScnPollTime(), getClock()).pause();
+            }
+            catch (InterruptedException e) {
+                // Safe to ignore, connector was simply waiting
+                Thread.currentThread().interrupt();
+            }
         }
 
         // If the loop broke because the context is no longer running, shutdown is requested

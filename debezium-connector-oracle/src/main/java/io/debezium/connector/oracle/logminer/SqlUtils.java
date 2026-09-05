@@ -41,12 +41,28 @@ public class SqlUtils {
     private static final String ARCHIVED_LOG_VIEW = "V$ARCHIVED_LOG";
     private static final String ARCHIVE_DEST_STATUS_VIEW = "V$ARCHIVE_DEST_STATUS";
     private static final String ALL_LOG_GROUPS = "ALL_LOG_GROUPS";
+    private static final String DBA_SUPPLEMENTAL_LOGGING = "DBA_SUPPLEMENTAL_LOGGING";
 
     public static String redoLogStatusQuery() {
         return String.format("SELECT F.MEMBER, R.STATUS FROM %s F, %s R WHERE F.GROUP# = R.GROUP# ORDER BY 2", LOGFILE_VIEW, LOG_VIEW);
     }
 
     public static String switchHistoryQuery(List<String> archiveDestinationNames) {
+        return switchHistoryQuery(archiveDestinationNames, false);
+    }
+
+    public static String switchHistoryQuery(List<String> archiveDestinationNames, boolean autonomousMode) {
+        // In ADB, V$ARCHIVE_DEST_STATUS returns empty results since ADB manages archiving automatically.
+        // We query for DEST_IDs that have actual archive log files (NAME starts with '+' or '/'),
+        // excluding shipping/standby destinations that don't have physical files (e.g., 'oracle.rfs.shipping').
+        // This prevents duplicate sequence numbers from being returned.
+        if (autonomousMode) {
+            return "SELECT 'TOTAL', COUNT(1) FROM V$ARCHIVED_LOG " +
+                    "WHERE FIRST_TIME > TRUNC(SYSDATE) " +
+                    "AND STATUS = 'A' " +
+                    "AND (NAME LIKE '+%' OR NAME LIKE '/%')";
+        }
+
         if (archiveDestinationNames.isEmpty()) {
             throw new DebeziumException("At least one destination name is expected");
         }
@@ -76,11 +92,29 @@ public class SqlUtils {
     }
 
     public static String databaseSupplementalLoggingAllCheckQuery() {
-        return String.format("SELECT 'KEY', SUPPLEMENTAL_LOG_DATA_ALL FROM %s", DATABASE_VIEW);
+        return databaseSupplementalLoggingAllCheckQuery(false);
+    }
+
+    public static String databaseSupplementalLoggingAllCheckQuery(boolean isAutonomous) {
+        if (isAutonomous) {
+            return String.format("SELECT 'KEY', ALL_COLUMN FROM %s", DBA_SUPPLEMENTAL_LOGGING);
+        }
+        else {
+            return String.format("SELECT 'KEY', SUPPLEMENTAL_LOG_DATA_ALL FROM %s", DATABASE_VIEW);
+        }
     }
 
     public static String databaseSupplementalLoggingMinCheckQuery() {
-        return String.format("SELECT 'KEY', SUPPLEMENTAL_LOG_DATA_MIN FROM %s", DATABASE_VIEW);
+        return databaseSupplementalLoggingMinCheckQuery(false);
+    }
+
+    public static String databaseSupplementalLoggingMinCheckQuery(boolean isAutonomous) {
+        if (isAutonomous) {
+            return String.format("SELECT 'KEY', MINIMAL FROM %s", DBA_SUPPLEMENTAL_LOGGING);
+        }
+        else {
+            return String.format("SELECT 'KEY', SUPPLEMENTAL_LOG_DATA_MIN FROM %s", DATABASE_VIEW);
+        }
     }
 
     public static String tableSupplementalLoggingCheckQuery() {
@@ -88,19 +122,39 @@ public class SqlUtils {
     }
 
     public static String oldestFirstChangeQuery(Duration archiveLogRetention, List<String> archiveDestinationNames) {
+        return oldestFirstChangeQuery(archiveLogRetention, archiveDestinationNames, false);
+    }
+
+    public static String oldestFirstChangeQuery(Duration archiveLogRetention, List<String> archiveDestinationNames, boolean isAutonomous) {
         final StringBuilder sb = new StringBuilder();
-        sb.append("SELECT MIN(FIRST_CHANGE#) FROM (SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# ");
-        sb.append("FROM ").append(LOG_VIEW).append(" ");
-        sb.append("UNION SELECT MIN(A.FIRST_CHANGE#) AS FIRST_CHANGE# ");
-        sb.append("FROM ");
-        sb.append(ARCHIVED_LOG_VIEW).append(" A, ");
-        sb.append(DATABASE_VIEW).append(" D, ");
-        sb.append(ARCHIVE_DEST_STATUS_VIEW).append(" DS ");
-        sb.append("WHERE A.DEST_ID = DS.DEST_ID ");
-        sb.append("AND ").append(destinationNamesPredicate("DS.DEST_NAME", archiveDestinationNames)).append(" ");
-        sb.append("AND A.STATUS='A' ");
-        sb.append("AND A.RESETLOGS_CHANGE# = D.RESETLOGS_CHANGE# ");
-        sb.append("AND A.RESETLOGS_TIME = D.RESETLOGS_TIME");
+
+        if (isAutonomous) {
+            sb.append("SELECT MIN(FIRST_CHANGE#) FROM (SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# ");
+            sb.append("FROM ").append(LOG_VIEW).append(" ");
+            sb.append("UNION SELECT MIN(A.FIRST_CHANGE#) AS FIRST_CHANGE# ");
+            sb.append("FROM ");
+            sb.append(ARCHIVED_LOG_VIEW).append(" A, ");
+            sb.append(DATABASE_VIEW).append(" D ");
+            sb.append("WHERE A.NAME IS NOT NULL ");
+            sb.append("AND (A.NAME LIKE '+%' OR A.NAME LIKE '/%') ");
+            sb.append("AND A.STATUS='A' ");
+            sb.append("AND A.RESETLOGS_CHANGE# = D.RESETLOGS_CHANGE# ");
+            sb.append("AND A.RESETLOGS_TIME = D.RESETLOGS_TIME");
+        }
+        else {
+            sb.append("SELECT MIN(FIRST_CHANGE#) FROM (SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# ");
+            sb.append("FROM ").append(LOG_VIEW).append(" ");
+            sb.append("UNION SELECT MIN(A.FIRST_CHANGE#) AS FIRST_CHANGE# ");
+            sb.append("FROM ");
+            sb.append(ARCHIVED_LOG_VIEW).append(" A, ");
+            sb.append(DATABASE_VIEW).append(" D, ");
+            sb.append(ARCHIVE_DEST_STATUS_VIEW).append(" DS ");
+            sb.append("WHERE A.DEST_ID = DS.DEST_ID ");
+            sb.append("AND ").append(destinationNamesPredicate("DS.DEST_NAME", archiveDestinationNames)).append(" ");
+            sb.append("AND A.STATUS='A' ");
+            sb.append("AND A.RESETLOGS_CHANGE# = D.RESETLOGS_CHANGE# ");
+            sb.append("AND A.RESETLOGS_TIME = D.RESETLOGS_TIME");
+        }
 
         if (!archiveLogRetention.isNegative() && !archiveLogRetention.isZero()) {
             sb.append(" AND A.FIRST_TIME >= SYSDATE - (").append(archiveLogRetention.toHours()).append("/24)");
@@ -137,6 +191,11 @@ public class SqlUtils {
      * @return the query string to obtain minable log files
      */
     public static String allMinableLogsQuery(Scn scn, Duration archiveLogRetention, boolean archiveLogOnlyMode, List<String> archiveDestinationNames) {
+        return allMinableLogsQuery(scn, archiveLogRetention, archiveLogOnlyMode, archiveDestinationNames, false);
+    }
+
+    public static String allMinableLogsQuery(Scn scn, Duration archiveLogRetention, boolean archiveLogOnlyMode, List<String> archiveDestinationNames,
+                                             boolean isAutonomous) {
         // The generated query performs a union in order to obtain a list of all archive logs that should be mined
         // combined with a list of redo logs that should be mined.
         //
@@ -154,7 +213,8 @@ public class SqlUtils {
         // already been archived and has a matching redo log SCN range in the archive logs view. This allows
         // the database to de-duplicate logs between redo and archive based on SCN ranges so we don't need to do
         // this in Java and avoids the need to execute two separate queries that could introduce some state
-        // change between them by Oracle.
+        // change between them by Oracle. As Autonomous DB does not support redo logs, this part of the query will not
+        // be constructed when running in Autonomous mode.
         //
         // The second part of the union query:
         //
@@ -175,6 +235,10 @@ public class SqlUtils {
         // only fetch the local/valid instances. The last predicate is optional and is meant to restrict the
         // archive logs to only those in the past X hours if log.mining.archive.log.hours is greater than 0.
         //
+        // In the case of Autonomous DB, access to the V$ARCHIVED_DEST_STATUS view has been removed. The database itself
+        // manages the log file lifecycle. As a result, we must cheat a little to check if a log is local by matching the
+        // name to either '+%' or '/%'.
+        //
         // Lastly the query applies "ORDER BY 7" to order the results by SEQ (sequence number). Each Oracle log
         // is assigned a unique sequence. This order has no technical impact on LogMiner but its used mainly as
         // a way to make it easier when looking at debug logs to identify gaps in the log sequences when several
@@ -194,21 +258,39 @@ public class SqlUtils {
             sb.append("GROUP BY F.GROUP#, L.FIRST_CHANGE#, L.NEXT_CHANGE#, L.STATUS, L.ARCHIVED, L.SEQUENCE#, L.THREAD#, L.BYTES ");
             sb.append("UNION ");
         }
-        sb.append("SELECT A.NAME AS FILE_NAME, A.FIRST_CHANGE# FIRST_CHANGE, A.NEXT_CHANGE# NEXT_CHANGE, 'YES', ");
-        sb.append("NULL, 'ARCHIVED', A.SEQUENCE# AS SEQ, A.DICTIONARY_BEGIN, A.DICTIONARY_END, A.THREAD# AS THREAD, ");
-        sb.append("A.BLOCKS*A.BLOCK_SIZE, DS.DEST_NAME ");
-        sb.append("FROM ");
-        sb.append(ARCHIVED_LOG_VIEW).append(" A, ");
-        sb.append(DATABASE_VIEW).append(" D, ");
-        sb.append(ARCHIVE_DEST_STATUS_VIEW).append(" DS ");
-        sb.append("WHERE A.NAME IS NOT NULL ");
-        sb.append("AND A.ARCHIVED = 'YES' ");
-        sb.append("AND A.STATUS = 'A' ");
-        sb.append("AND A.NEXT_CHANGE# > ").append(scn).append(" ");
-        sb.append("AND A.DEST_ID = DS.DEST_ID ");
-        sb.append("AND ").append(destinationNamesPredicate("DS.DEST_NAME", archiveDestinationNames)).append(" ");
-        sb.append("AND A.RESETLOGS_CHANGE# = D.RESETLOGS_CHANGE# ");
-        sb.append("AND A.RESETLOGS_TIME = D.RESETLOGS_TIME ");
+
+        if (isAutonomous) {
+            sb.append("SELECT A.NAME AS FILE_NAME, A.FIRST_CHANGE# FIRST_CHANGE, A.NEXT_CHANGE# NEXT_CHANGE, 'YES', ");
+            sb.append("NULL, 'ARCHIVED', A.SEQUENCE# AS SEQ, A.DICTIONARY_BEGIN, A.DICTIONARY_END, A.THREAD# AS THREAD, ");
+            sb.append("A.BLOCKS*A.BLOCK_SIZE, DS.DEST_ID ");
+            sb.append("FROM ");
+            sb.append(ARCHIVED_LOG_VIEW).append(" A, ");
+            sb.append(DATABASE_VIEW).append(" D ");
+            sb.append("WHERE A.NAME IS NOT NULL ");
+            sb.append("AND (A.NAME LIKE '+%' OR A.NAME LIKE '/%') ");
+            sb.append("AND A.ARCHIVED = 'YES' ");
+            sb.append("AND A.STATUS = 'A' ");
+            sb.append("AND A.NEXT_CHANGE# > ").append(scn).append(" ");
+            sb.append("AND A.RESETLOGS_CHANGE# = D.RESETLOGS_CHANGE# ");
+            sb.append("AND A.RESETLOGS_TIME = D.RESETLOGS_TIME ");
+        }
+        else {
+            sb.append("SELECT A.NAME AS FILE_NAME, A.FIRST_CHANGE# FIRST_CHANGE, A.NEXT_CHANGE# NEXT_CHANGE, 'YES', ");
+            sb.append("NULL, 'ARCHIVED', A.SEQUENCE# AS SEQ, A.DICTIONARY_BEGIN, A.DICTIONARY_END, A.THREAD# AS THREAD, ");
+            sb.append("A.BLOCKS*A.BLOCK_SIZE, DS.DEST_NAME ");
+            sb.append("FROM ");
+            sb.append(ARCHIVED_LOG_VIEW).append(" A, ");
+            sb.append(DATABASE_VIEW).append(" D, ");
+            sb.append(ARCHIVE_DEST_STATUS_VIEW).append(" DS ");
+            sb.append("WHERE A.NAME IS NOT NULL ");
+            sb.append("AND A.ARCHIVED = 'YES' ");
+            sb.append("AND A.STATUS = 'A' ");
+            sb.append("AND A.NEXT_CHANGE# > ").append(scn).append(" ");
+            sb.append("AND A.DEST_ID = DS.DEST_ID ");
+            sb.append("AND ").append(destinationNamesPredicate("DS.DEST_NAME", archiveDestinationNames)).append(" ");
+            sb.append("AND A.RESETLOGS_CHANGE# = D.RESETLOGS_CHANGE# ");
+            sb.append("AND A.RESETLOGS_TIME = D.RESETLOGS_TIME ");
+        }
 
         if (!archiveLogRetention.isNegative() && !archiveLogRetention.isZero()) {
             sb.append("AND A.FIRST_TIME >= SYSDATE - (").append(archiveLogRetention.toHours()).append("/24) ");
