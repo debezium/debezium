@@ -31,7 +31,8 @@ public class UnchangedToastedPlaceholder {
     /**
      * Provides different representations of a placeholder value.<br>
      *
-     * <b>NOTE:</b> Adding new types might require an update in {@link io.debezium.processors.reselect.ReselectColumnsPostProcessor}.
+     * <b>NOTE:</b> Adding new types might require an update in {@link io.debezium.processors.reselect.ReselectColumnsPostProcessor},
+     * unless the placeholder is declared as a schema parameter via {@code column.propagate.unavailable.value.placeholder}.
      *
      * @param connectorConfig
      */

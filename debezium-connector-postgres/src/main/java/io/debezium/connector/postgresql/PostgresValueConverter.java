@@ -74,6 +74,7 @@ import io.debezium.data.Bits;
 import io.debezium.data.Json;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.data.TsVector;
+import io.debezium.data.UnavailableValuePlaceholderParameter;
 import io.debezium.data.Uuid;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.geometry.Circle;
@@ -187,6 +188,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
     private final UnchangedToastedPlaceholder unchangedToastedPlaceholder;
     private final int moneyFractionDigits;
+    private final boolean declareUnavailableValuePlaceholderParameter;
 
     public static PostgresValueConverter of(PostgresConnectorConfig connectorConfig, Charset databaseCharset, TypeRegistry typeRegistry) {
         return new PostgresValueConverter(
@@ -201,14 +203,16 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 connectorConfig.binaryHandlingMode(),
                 connectorConfig.intervalHandlingMode(),
                 new UnchangedToastedPlaceholder(connectorConfig),
-                connectorConfig.moneyFractionDigits());
+                connectorConfig.moneyFractionDigits(),
+                connectorConfig.isUnavailableValuePlaceholderPropagated());
     }
 
     protected PostgresValueConverter(Charset databaseCharset, DecimalMode decimalMode,
                                      TemporalPrecisionMode temporalPrecisionMode, ZoneOffset defaultOffset,
                                      BigIntUnsignedMode bigIntUnsignedMode, boolean includeUnknownDatatypes, TypeRegistry typeRegistry,
                                      HStoreHandlingMode hStoreMode, BinaryHandlingMode binaryMode, IntervalHandlingMode intervalMode,
-                                     UnchangedToastedPlaceholder unchangedToastedPlaceholder, int moneyFractionDigits) {
+                                     UnchangedToastedPlaceholder unchangedToastedPlaceholder, int moneyFractionDigits,
+                                     boolean declareUnavailableValuePlaceholderParameter) {
         super(decimalMode, temporalPrecisionMode, defaultOffset, null, bigIntUnsignedMode, binaryMode);
         this.databaseCharset = databaseCharset;
         this.jsonFactory = new JsonFactory();
@@ -218,10 +222,49 @@ public class PostgresValueConverter extends JdbcValueConverters {
         this.intervalMode = intervalMode;
         this.moneyFractionDigits = moneyFractionDigits;
         this.unchangedToastedPlaceholder = unchangedToastedPlaceholder;
+        this.declareUnavailableValuePlaceholderParameter = declareUnavailableValuePlaceholderParameter;
     }
 
     @Override
     public SchemaBuilder schemaBuilder(Column column) {
+        final SchemaBuilder builder = columnSchemaBuilder(column);
+        if (builder == null || !declareUnavailableValuePlaceholderParameter) {
+            return builder;
+        }
+        return declareUnavailableValuePlaceholder(column, builder);
+    }
+
+    /**
+     * Declares the unavailable value placeholder representation of the column as a schema parameter.
+     *
+     * <p>The representation is computed by running the column's own value converter over the unchanged
+     * toast marker the streaming source would supply, so the declared representation is by construction
+     * the value the connector emits at runtime. Columns whose placeholder conversion does not yield a
+     * value valid for the column's schema (e.g. fixed-width types that can never be toasted) get no
+     * parameter.
+     */
+    private SchemaBuilder declareUnavailableValuePlaceholder(Column column, SchemaBuilder builder) {
+        try {
+            final Field field = new Field(column.name(), 0, builder.build());
+            final ValueConverter converter = converter(column, field);
+            if (converter == null) {
+                return builder;
+            }
+            final Object placeholder = converter.convert(UnchangedToastedReplicationMessageColumn.markerForType(column.typeName()));
+            final String serialized = UnavailableValuePlaceholderParameter.serialize(field.schema(), placeholder);
+            if (serialized != null) {
+                builder.parameter(UnavailableValuePlaceholderParameter.SCHEMA_PARAMETER_KEY, serialized);
+            }
+        }
+        catch (RuntimeException e) {
+            // Expected for a non-optional column whose type cannot hold the marker, i.e. one that is never
+            // toasted; declaring no parameter is always safe, so this must not fail schema construction
+            logger.debug("Column {} cannot carry an unavailable value placeholder: {}", column.name(), e.getMessage());
+        }
+        return builder;
+    }
+
+    private SchemaBuilder columnSchemaBuilder(Column column) {
         int oidValue = column.nativeType();
         switch (oidValue) {
             case PgOid.BIT:
@@ -474,7 +517,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 .length(column.length())
                 .create();
 
-        return schemaBuilder(elementColumn);
+        // The placeholder parameter is declared on the field schema only, never on element schemas
+        return columnSchemaBuilder(elementColumn);
     }
 
     @Override
@@ -649,7 +693,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 .length(column.length())
                 .create();
 
-        SchemaBuilder elementSchemaBuilder = schemaBuilder(elementColumn);
+        SchemaBuilder elementSchemaBuilder = columnSchemaBuilder(elementColumn);
         if (elementSchemaBuilder == null) {
             return null;
         }

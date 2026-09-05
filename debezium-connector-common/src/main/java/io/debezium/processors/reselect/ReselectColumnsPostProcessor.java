@@ -37,7 +37,9 @@ import io.debezium.config.Instantiator;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.data.Envelope;
 import io.debezium.data.Json;
+import io.debezium.data.SchemaUtil;
 import io.debezium.data.SpecialValueDecimal;
+import io.debezium.data.UnavailableValuePlaceholderParameter;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.function.Predicates;
 import io.debezium.jdbc.JdbcConnection;
@@ -441,6 +443,12 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
     }
 
     private boolean isUnavailableValueHolder(org.apache.kafka.connect.data.Field field, Object value) {
+        final Optional<String> declaredPlaceholder = SchemaUtil.getSchemaParameter(field.schema(), UnavailableValuePlaceholderParameter.SCHEMA_PARAMETER_KEY);
+        if (declaredPlaceholder.isPresent()) {
+            // The connector declared the exact placeholder representation this column carries, so
+            // compare against the declaration instead of inferring the placeholder by value shape.
+            return UnavailableValuePlaceholderParameter.matches(field.schema(), value, declaredPlaceholder.get());
+        }
         if (unavailableValuePlaceholder != null) {
             if (field.schema().type() == Schema.Type.ARRAY && value != null) {
                 // Special use case to inspect by element
