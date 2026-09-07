@@ -35,8 +35,11 @@ public class PreparedStatementQueryBinder implements QueryBinder {
                 switch (valueBindDescriptor.getTargetSqlType()) {
                     case Types.ARRAY -> {
                         LOGGER.trace("Binding parameter #{} as ARRAY", valueBindDescriptor.getIndex());
-                        Collection<Object> collection = (Collection<Object>) valueBindDescriptor.getValue();
-                        Array array = binder.getConnection().createArrayOf(valueBindDescriptor.getElementTypeName(), collection.toArray());
+                        final Object value = valueBindDescriptor.getValue();
+                        // A typed array (e.g. byte[][] for bytea[]) is passed as-is: converting it through a
+                        // generic collection would lose the component type the driver selects its encoder by.
+                        final Object[] elements = value instanceof Collection<?> collection ? collection.toArray() : (Object[]) value;
+                        Array array = binder.getConnection().createArrayOf(valueBindDescriptor.getElementTypeName(), elements);
                         binder.setArray(valueBindDescriptor.getIndex(), array);
                     }
                     case Types.CLOB -> {
