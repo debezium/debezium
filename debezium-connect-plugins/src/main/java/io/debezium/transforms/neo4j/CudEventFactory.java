@@ -206,9 +206,8 @@ public class CudEventFactory {
         };
     }
 
-    // Connect logical Date/Time/Timestamp values normally arrive as java.util.Date, but java.sql.Date and
-    // java.sql.Time (from JDBC-based converters) are also java.util.Date subclasses that override toInstant()
-    // to throw UnsupportedOperationException; going through getTime() instead avoids that for all of them.
+    // getTime() is used instead of toInstant() because java.sql.Date and java.sql.Time, which JDBC-based
+    // converters commonly produce here, override toInstant() to throw UnsupportedOperationException.
     private static Object normalizeConnectDate(Object value) {
         if (value instanceof Number n) {
             return LocalDate.ofEpochDay(n.longValue()).toString();
