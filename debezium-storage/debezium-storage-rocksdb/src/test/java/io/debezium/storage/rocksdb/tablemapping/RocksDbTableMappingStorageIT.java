@@ -29,6 +29,7 @@ import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.testing.testcontainers.ImageNames;
 import io.debezium.util.Testing;
 
 /**
@@ -47,7 +48,7 @@ public class RocksDbTableMappingStorageIT extends AbstractAsyncEngineConnectorTe
     private static final String PRIVILEGED_USER = "mysqluser";
     private static final String PRIVILEGED_PASSWORD = "mysqlpw";
     private static final String ROOT_PASSWORD = PRIVILEGED_PASSWORD;
-    private static final DockerImageName IMAGE = DockerImageName.parse("quay.io/debezium/example-mysql")
+    private static final DockerImageName IMAGE = ImageNames.MYSQL_EXAMPLE_IMAGE_NAME
             .asCompatibleSubstituteFor("mysql");
 
     private static final MySQLContainer container = new MySQLContainer(IMAGE)

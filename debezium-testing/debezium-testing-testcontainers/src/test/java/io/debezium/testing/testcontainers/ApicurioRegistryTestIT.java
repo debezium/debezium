@@ -65,7 +65,7 @@ public class ApicurioRegistryTestIT {
 
     private static StrimziKafkaCluster kafkaCluster;
 
-    public static final PostgreSQLContainer<?> postgresContainer = new PostgreSQLContainer<>(ImageNames.POSTGRES_DOCKER_IMAGE_NAME)
+    public static final PostgreSQLContainer<?> postgresContainer = new PostgreSQLContainer<>(ImageNames.POSTGRES_15_IMAGE_NAME)
             .withNetwork(NETWORK)
             .withNetworkAliases("postgres");
 

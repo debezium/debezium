@@ -10,6 +10,7 @@ import org.testcontainers.containers.OracleContainer;
 import org.testcontainers.utility.DockerImageName;
 
 import io.debezium.connector.jdbc.junit.TestHelper;
+import io.debezium.testing.testcontainers.ImageNames;
 
 /**
  * An implementation of {@link AbstractSinkDatabaseContextProvider} for Oracle.
@@ -18,7 +19,7 @@ import io.debezium.connector.jdbc.junit.TestHelper;
  */
 public class OracleSinkDatabaseContextProvider extends AbstractSinkDatabaseContextProvider {
 
-    private static final DockerImageName IMAGE_NAME = DockerImageName.parse("quay.io/rh_integration/dbz-oracle:19.3.0")
+    private static final DockerImageName IMAGE_NAME = ImageNames.ORACLE_DBZ_19_3_0_IMAGE_NAME
             .asCompatibleSubstituteFor("gvenzl/oracle-xe");
 
     @SuppressWarnings("resource")
