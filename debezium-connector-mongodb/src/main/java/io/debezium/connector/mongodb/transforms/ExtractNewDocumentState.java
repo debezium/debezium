@@ -26,6 +26,7 @@ import org.apache.kafka.connect.transforms.ExtractField;
 import org.apache.kafka.connect.transforms.Flatten;
 import org.bson.BsonBoolean;
 import org.bson.BsonDocument;
+import org.bson.BsonNull;
 import org.bson.BsonType;
 import org.bson.BsonValue;
 import org.slf4j.Logger;
@@ -236,6 +237,7 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends Abstrac
         // insert || replace || update with capture.mode="change_streams_update_full" or "change_streams_update_full_with_pre_image"
         if (newRecord.value() != null) {
             valueDocument = getFullDocument(newRecord, keyDocument);
+            applyRemovedFields(valueDocument, updateDescriptionRecord);
         }
 
         // update
@@ -374,7 +376,9 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends Abstrac
 
         if (removed != null) {
             for (String field : removed) {
-                valueDocument.keySet().remove(field);
+                // A field removed by $unset is represented with an explicit null value, so consumers
+                // (and relational sinks) can clear the previous value.
+                valueDocument.append(field, BsonNull.VALUE);
             }
         }
 
@@ -393,6 +397,40 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends Abstrac
 
     private BsonDocument getFullDocument(R record, BsonDocument key) {
         return BsonDocument.parse(record.value().toString());
+    }
+
+    /**
+     * Represents each field listed in {@code updateDescription.removedFields} with an explicit null
+     * value: a full document no longer contains a field removed by {@code $unset}, so without this
+     * the field would silently disappear from the emitted record instead of being nulled out.
+     */
+    private void applyRemovedFields(BsonDocument valueDocument, R updateDescriptionRecord) {
+        if (updateDescriptionRecord.value() == null) {
+            return;
+        }
+        final Struct updateDescription = requireStruct(updateDescriptionRecord.value(), MongoDbFieldName.UPDATE_DESCRIPTION);
+        final List<String> removed = updateDescription.getArray(MongoDbFieldName.REMOVED_FIELDS);
+        if (removed == null) {
+            return;
+        }
+        for (String path : removed) {
+            setRemovedFieldToNull(valueDocument, path);
+        }
+    }
+
+    private static void setRemovedFieldToNull(BsonDocument document, String path) {
+        final String[] segments = path.split("\\.");
+        BsonDocument current = document;
+        for (int i = 0; i < segments.length - 1; i++) {
+            final BsonValue parent = current.get(segments[i]);
+            if (parent == null || !parent.isDocument()) {
+                // The enclosing document was itself removed or the path points into an array
+                // element; there is no remaining field to represent with a null value.
+                return;
+            }
+            current = parent.asDocument();
+        }
+        current.put(segments[segments.length - 1], BsonNull.VALUE);
     }
 
     @Override
