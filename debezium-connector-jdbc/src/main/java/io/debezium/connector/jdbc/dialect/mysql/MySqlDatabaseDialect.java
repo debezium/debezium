@@ -120,6 +120,7 @@ public class MySqlDatabaseDialect extends GeneralDatabaseDialect {
         registerType(YearType.INSTANCE);
         registerType(JsonType.INSTANCE);
         registerType(MapToJsonType.INSTANCE);
+        registerType(StructToJsonType.INSTANCE);
         registerType(GeometryType.INSTANCE);
         registerType(PointType.INSTANCE);
         registerType(ZonedTimestampType.INSTANCE);
