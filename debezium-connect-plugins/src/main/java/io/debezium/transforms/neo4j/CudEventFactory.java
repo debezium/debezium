@@ -206,6 +206,9 @@ public class CudEventFactory {
         };
     }
 
+    // java.sql.Date and java.sql.Time are subclasses of java.util.Date, so the instanceof checks below
+    // also match them; we deliberately go through getTime() instead of toInstant(), since java.sql.Date
+    // and java.sql.Time override toInstant() to throw UnsupportedOperationException.
     private static Object normalizeConnectDate(Object value) {
         if (value instanceof java.util.Date d) {
             return Instant.ofEpochMilli(d.getTime()).atOffset(ZoneOffset.UTC).toLocalDate().toString();
