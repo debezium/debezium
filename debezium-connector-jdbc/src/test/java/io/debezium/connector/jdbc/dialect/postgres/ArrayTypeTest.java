@@ -8,9 +8,11 @@ package io.debezium.connector.jdbc.dialect.postgres;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
 
+import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.junit.jupiter.api.DisplayName;
@@ -109,6 +111,41 @@ class ArrayTypeTest {
     void testPassesOtherElementsThrough() {
         final Schema arraySchema = SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build();
         final List<Object> elements = List.of("a", "b");
+
+        assertThat(ArrayType.unwrapElements(arraySchema, elements)).isSameAs(elements);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2571")
+    @DisplayName("Should convert plain BYTES elements to a typed byte[][]")
+    void testConvertsBytesElementsToTypedArray() {
+        // Connection#createArrayOf rejects a byte[] element inside a generic Object[].
+        final Schema arraySchema = SchemaBuilder.array(Schema.OPTIONAL_BYTES_SCHEMA).optional().build();
+        final List<Object> elements = Arrays.asList(
+                new byte[]{ 1, 2, 3 },
+                ByteBuffer.wrap(new byte[]{ 4, 5, 6 }),
+                null);
+
+        assertThat(ArrayType.unwrapElements(arraySchema, elements))
+                .isEqualTo(new byte[][]{ { 1, 2, 3 }, { 4, 5, 6 }, null });
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2571")
+    @DisplayName("Should convert an empty BYTES array to an empty byte[][]")
+    void testConvertsEmptyBytesArray() {
+        final Schema arraySchema = SchemaBuilder.array(Schema.OPTIONAL_BYTES_SCHEMA).optional().build();
+
+        assertThat(ArrayType.unwrapElements(arraySchema, List.of())).isEqualTo(new byte[0][]);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2571")
+    @DisplayName("Should pass logical BYTES elements through untouched")
+    void testPassesLogicalBytesElementsThrough() {
+        // Decimal is BYTES-based but its elements arrive as already converted BigDecimal values.
+        final Schema arraySchema = SchemaBuilder.array(Decimal.schema(2)).optional().build();
+        final List<Object> elements = List.of(new BigDecimal("1.25"));
 
         assertThat(ArrayType.unwrapElements(arraySchema, elements)).isSameAs(elements);
     }
