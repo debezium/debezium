@@ -24,6 +24,7 @@ import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Queue;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletionService;
 import java.util.concurrent.ConcurrentHashMap;
@@ -157,7 +158,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
             // Note that there's a minor race condition here: a new table matching the filters could be created between
             // this call and the determination of the initial snapshot position below; this seems acceptable, though
-            determineCapturedTables(ctx, dataCollectionsToBeSnapshotted, snapshottingTask);
+            determineCapturedTables(ctx, previousOffset, dataCollectionsToBeSnapshotted, snapshottingTask);
             snapshotProgressListener.monitoredDataCollectionsDetermined(snapshotContext.partition, ctx.capturedTables);
             // Init jdbc connection pool for reading table schema and data
             connectionPool = createConnectionPool(ctx);
@@ -377,7 +378,8 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                 .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
-    private void determineCapturedTables(RelationalSnapshotContext<P, O> ctx, Set<Pattern> dataCollectionsToBeSnapshotted, SnapshottingTask snapshottingTask)
+    private void determineCapturedTables(RelationalSnapshotContext<P, O> ctx, O previousOffset, Set<Pattern> dataCollectionsToBeSnapshotted,
+                                         SnapshottingTask snapshottingTask)
             throws Exception {
 
         Set<TableId> allTableIds = getAllTableIds(ctx);
@@ -402,6 +404,8 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                 LOGGER.trace("Ignoring table {} for data snapshotting as it's not included in the filter configuration", tableId);
             }
         }
+
+        notificationService.initialSnapshotNotificationService().notifyDataCollectionsResolved(ctx.partition, previousOffset, new TreeSet<>(capturedTables));
 
         ctx.capturedTables = addSignalingCollectionAndSort(capturedTables);
         ctx.capturedSchemaTables = snapshottingTask.isOnDemand() ? ctx.capturedTables
