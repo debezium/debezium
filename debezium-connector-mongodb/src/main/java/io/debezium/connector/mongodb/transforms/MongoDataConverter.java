@@ -28,6 +28,7 @@ import org.bson.BsonValue;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState.ArrayEncoding;
+import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState.BsonTimestampHandlingMode;
 import io.debezium.schema.FieldNameSelector;
 import io.debezium.schema.FieldNameSelector.FieldNamer;
 import io.debezium.schema.SchemaNameAdjuster;
@@ -41,6 +42,20 @@ import io.debezium.schema.SchemaNameAdjuster;
  */
 public class MongoDataConverter {
     public static final String SCHEMA_NAME_REGEX = "io.debezium.mongodb.regex";
+    public static final String SCHEMA_NAME_TIMESTAMP = "io.debezium.mongodb.timestamp";
+
+    /**
+     * Schema used by {@link BsonTimestampHandlingMode#STRUCT} to keep both components of a BSON
+     * Timestamp; the default {@link BsonTimestampHandlingMode#CONNECT} representation retains only
+     * the time component.
+     */
+    public static final Schema BSON_TIMESTAMP_STRUCT_SCHEMA = SchemaBuilder.struct()
+            .name(SCHEMA_NAME_TIMESTAMP)
+            .optional()
+            .field("time", Schema.OPTIONAL_INT64_SCHEMA)
+            .field("increment", Schema.OPTIONAL_INT32_SCHEMA)
+            .build();
+
     private final ArrayEncoding arrayEncoding;
     private final FieldNamer<String> fieldNamer;
 
@@ -49,10 +64,18 @@ public class MongoDataConverter {
      */
     private final boolean sanitizeValue;
 
-    public MongoDataConverter(ArrayEncoding arrayEncoding, FieldNamer<String> fieldNamer, boolean sanitizeValue) {
+    private final BsonTimestampHandlingMode bsonTimestampHandlingMode;
+
+    public MongoDataConverter(ArrayEncoding arrayEncoding, FieldNamer<String> fieldNamer, boolean sanitizeValue,
+                              BsonTimestampHandlingMode bsonTimestampHandlingMode) {
         this.arrayEncoding = arrayEncoding;
         this.fieldNamer = fieldNamer;
         this.sanitizeValue = sanitizeValue;
+        this.bsonTimestampHandlingMode = bsonTimestampHandlingMode;
+    }
+
+    public MongoDataConverter(ArrayEncoding arrayEncoding, FieldNamer<String> fieldNamer, boolean sanitizeValue) {
+        this(arrayEncoding, fieldNamer, sanitizeValue, BsonTimestampHandlingMode.CONNECT);
     }
 
     public MongoDataConverter(ArrayEncoding arrayEncoding) {
@@ -316,8 +339,11 @@ public class MongoDataConverter {
                 break;
 
             case DATE_TIME:
-            case TIMESTAMP:
                 builder.field(key, Timestamp.builder().optional().build());
+                break;
+
+            case TIMESTAMP:
+                builder.field(key, timestampSchema());
                 break;
 
             case BOOLEAN:
@@ -613,6 +639,12 @@ public class MongoDataConverter {
         map.values().iterator().next();
     }
 
+    private Schema timestampSchema() {
+        return bsonTimestampHandlingMode == BsonTimestampHandlingMode.STRUCT
+                ? BSON_TIMESTAMP_STRUCT_SCHEMA
+                : Timestamp.builder().optional().build();
+    }
+
     /**
      * Returns the schema for a given BsonType
      */
@@ -641,6 +673,8 @@ public class MongoDataConverter {
                 return Schema.OPTIONAL_INT64_SCHEMA;
 
             case TIMESTAMP:
+                return timestampSchema();
+
             case DATE_TIME:
                 return Timestamp.builder().optional().build();
 
@@ -824,6 +858,15 @@ public class MongoDataConverter {
                 break;
 
             case TIMESTAMP:
+                if (bsonTimestampHandlingMode == BsonTimestampHandlingMode.STRUCT) {
+                    // The BSON components are unsigned 32-bit values; time is widened so post-2038
+                    // values stay exact, increment is an ordinal that fits the signed range.
+                    Struct timestampStruct = new Struct(BSON_TIMESTAMP_STRUCT_SCHEMA);
+                    timestampStruct.put("time", Integer.toUnsignedLong(value.asTimestamp().getTime()));
+                    timestampStruct.put("increment", value.asTimestamp().getInc());
+                    colValue = timestampStruct;
+                    break;
+                }
                 colValue = new Date(1000L * value.asTimestamp().getTime());
                 break;
 

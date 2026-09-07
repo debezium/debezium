@@ -104,6 +104,41 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends Abstrac
         }
     }
 
+    public enum BsonTimestampHandlingMode implements EnumeratedValue {
+        CONNECT("connect"),
+        STRUCT("struct");
+
+        private final String value;
+
+        BsonTimestampHandlingMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static BsonTimestampHandlingMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (BsonTimestampHandlingMode option : BsonTimestampHandlingMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+    }
+
     private static final Logger LOGGER = LoggerFactory.getLogger(ExtractNewDocumentState.class);
 
     private static final Field ARRAY_ENCODING = Field.create("array.encoding")
@@ -114,6 +149,15 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends Abstrac
             .withDescription("The arrays can be encoded using 'array' schema type (the default) or as a 'document' (similar to how BSON encodes arrays). "
                     + "'array' is easier to consume but requires all elements in the array to be of the same type. "
                     + "Use 'document' if the arrays in data source mix different types together.");
+
+    private static final Field BSON_TIMESTAMP_HANDLING_MODE = Field.create("bson.timestamp.handling.mode")
+            .withDisplayName("BSON timestamp handling mode")
+            .withEnum(BsonTimestampHandlingMode.class, BsonTimestampHandlingMode.CONNECT)
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDescription("How BSON Timestamp values are represented. 'connect' (the default) converts the value to a Kafka Connect Timestamp, "
+                    + "discarding the BSON increment component. 'struct' emits a struct with 'time' and 'increment' fields, "
+                    + "preserving both components of the BSON value.");
 
     private static final Field FLATTEN_STRUCT = Field.create("flatten.struct")
             .withDisplayName("Flatten struct")
@@ -149,7 +193,7 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends Abstrac
     private String delimiter;
     private boolean rewriteTombstoneDeletesWithId;
     private SchemaNameAdjuster schemaNameAdjuster;
-    private final Field.Set configFields = CONFIG_FIELDS.with(ARRAY_ENCODING, FLATTEN_STRUCT, DELIMITER);
+    private final Field.Set configFields = CONFIG_FIELDS.with(ARRAY_ENCODING, BSON_TIMESTAMP_HANDLING_MODE, FLATTEN_STRUCT, DELIMITER);
 
     @Override
     public void configure(final Map<String, ?> configs) {
@@ -177,7 +221,8 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends Abstrac
         converter = new MongoDataConverter(
                 ArrayEncoding.parse(config.getString(ARRAY_ENCODING)),
                 FieldNameSelector.defaultNonRelationalSelector(fieldNameAdjuster),
-                fieldNameAdjustmentMode != FieldNameAdjustmentMode.NONE);
+                fieldNameAdjustmentMode != FieldNameAdjustmentMode.NONE,
+                BsonTimestampHandlingMode.parse(config.getString(BSON_TIMESTAMP_HANDLING_MODE)));
 
         flattenStruct = config.getBoolean(FLATTEN_STRUCT);
         delimiter = config.getString(DELIMITER);

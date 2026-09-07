@@ -13,6 +13,8 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Date;
+import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
 
@@ -27,7 +29,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState.ArrayEncoding;
+import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState.BsonTimestampHandlingMode;
 import io.debezium.doc.FixFor;
+import io.debezium.schema.FieldNameSelector;
+import io.debezium.schema.SchemaNameAdjuster;
 
 /**
  * Unit test for {@code MongoDataConverter}.
@@ -317,6 +322,93 @@ public class MongoDataConverterTest {
                         + "_id=symbol-array-1,"
                         + "symbols=[a, b]"
                         + "}");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2570")
+    public void shouldPreserveBsonTimestampComponentsInStructMode() {
+        val = BsonDocument.parse("{\n" +
+                "    \"_id\" : \"timestamp-1\",\n" +
+                "    \"ts_a\" : { \"$timestamp\" : { \"t\": 1710000000, \"i\": 7 } },\n" +
+                "    \"ts_b\" : { \"$timestamp\" : { \"t\": 1710000000, \"i\": 8 } }\n" +
+                "}");
+        builder = SchemaBuilder.struct().name("withtimestamp");
+        converter = new MongoDataConverter(ArrayEncoding.ARRAY,
+                FieldNameSelector.defaultNonRelationalSelector(SchemaNameAdjuster.NO_OP), false,
+                BsonTimestampHandlingMode.STRUCT);
+
+        Map<String, Map<Object, BsonType>> entry = converter.parseBsonDocument(val);
+        converter.buildSchema(entry, builder);
+
+        final Schema finalSchema = builder.build();
+        final Struct struct = new Struct(finalSchema);
+        for (Map.Entry<String, BsonValue> bsonValueEntry : val.entrySet()) {
+            converter.buildStruct(bsonValueEntry, finalSchema, struct);
+        }
+
+        assertThat(finalSchema.field("ts_a").schema().name()).isEqualTo(MongoDataConverter.SCHEMA_NAME_TIMESTAMP);
+        final Struct tsA = (Struct) struct.get("ts_a");
+        final Struct tsB = (Struct) struct.get("ts_b");
+        assertThat(tsA.get("time")).isEqualTo(1710000000L);
+        assertThat(tsA.get("increment")).isEqualTo(7);
+        assertThat(tsB.get("time")).isEqualTo(1710000000L);
+        assertThat(tsB.get("increment")).isEqualTo(8);
+        // Two BSON values with the same time and a different increment must stay distinguishable
+        assertThat(tsA).isNotEqualTo(tsB);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2570")
+    public void shouldPreserveBsonTimestampComponentsInArraysInStructMode() {
+        val = BsonDocument.parse("{\n" +
+                "    \"_id\" : \"timestamp-array-1\",\n" +
+                "    \"ts_values\" : [ { \"$timestamp\" : { \"t\": 1710000000, \"i\": 7 } }, { \"$timestamp\" : { \"t\": 1710000000, \"i\": 8 } } ]\n" +
+                "}");
+        builder = SchemaBuilder.struct().name("withtimestamparray");
+        converter = new MongoDataConverter(ArrayEncoding.ARRAY,
+                FieldNameSelector.defaultNonRelationalSelector(SchemaNameAdjuster.NO_OP), false,
+                BsonTimestampHandlingMode.STRUCT);
+
+        Map<String, Map<Object, BsonType>> entry = converter.parseBsonDocument(val);
+        converter.buildSchema(entry, builder);
+
+        final Schema finalSchema = builder.build();
+        final Struct struct = new Struct(finalSchema);
+        for (Map.Entry<String, BsonValue> bsonValueEntry : val.entrySet()) {
+            converter.buildStruct(bsonValueEntry, finalSchema, struct);
+        }
+
+        @SuppressWarnings("unchecked")
+        final List<Struct> timestamps = (List<Struct>) struct.get("ts_values");
+        assertThat(timestamps).hasSize(2);
+        assertThat(timestamps.get(0).get("increment")).isEqualTo(7);
+        assertThat(timestamps.get(1).get("increment")).isEqualTo(8);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2570")
+    public void shouldConvertBsonTimestampToConnectTimestampByDefault() {
+        val = BsonDocument.parse("{\n" +
+                "    \"_id\" : \"timestamp-2\",\n" +
+                "    \"ts_a\" : { \"$timestamp\" : { \"t\": 1710000000, \"i\": 7 } },\n" +
+                "    \"ts_b\" : { \"$timestamp\" : { \"t\": 1710000000, \"i\": 8 } }\n" +
+                "}");
+        builder = SchemaBuilder.struct().name("withtimestampdefault");
+        converter = new MongoDataConverter(ArrayEncoding.ARRAY);
+
+        Map<String, Map<Object, BsonType>> entry = converter.parseBsonDocument(val);
+        converter.buildSchema(entry, builder);
+
+        final Schema finalSchema = builder.build();
+        final Struct struct = new Struct(finalSchema);
+        for (Map.Entry<String, BsonValue> bsonValueEntry : val.entrySet()) {
+            converter.buildStruct(bsonValueEntry, finalSchema, struct);
+        }
+
+        assertThat(finalSchema.field("ts_a").schema()).isEqualTo(Timestamp.builder().optional().build());
+        assertThat(struct.get("ts_a")).isEqualTo(new Date(1710000000000L));
+        // The default representation retains only the time component
+        assertThat(struct.get("ts_a")).isEqualTo(struct.get("ts_b"));
     }
 
     @Test
