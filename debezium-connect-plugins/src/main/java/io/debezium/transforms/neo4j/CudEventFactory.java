@@ -206,37 +206,28 @@ public class CudEventFactory {
         };
     }
 
-    // java.sql.Date and java.sql.Time are subclasses of java.util.Date, so the instanceof checks below
-    // also match them; we deliberately go through getTime() instead of toInstant(), since java.sql.Date
-    // and java.sql.Time override toInstant() to throw UnsupportedOperationException.
+    // Connect logical Date/Time/Timestamp values normally arrive as java.util.Date, but java.sql.Date and
+    // java.sql.Time (from JDBC-based converters) are also java.util.Date subclasses that override toInstant()
+    // to throw UnsupportedOperationException; going through getTime() instead avoids that for all of them.
     private static Object normalizeConnectDate(Object value) {
-        if (value instanceof java.util.Date d) {
-            return Instant.ofEpochMilli(d.getTime()).atOffset(ZoneOffset.UTC).toLocalDate().toString();
-        }
-        else if (value instanceof Number n) {
+        if (value instanceof Number n) {
             return LocalDate.ofEpochDay(n.longValue()).toString();
         }
-        return value;
+        return Instant.ofEpochMilli(((java.util.Date) value).getTime()).atOffset(ZoneOffset.UTC).toLocalDate().toString();
     }
 
     private static Object normalizeConnectTime(Object value) {
-        if (value instanceof java.util.Date d) {
-            return IsoTime.toIsoString(Instant.ofEpochMilli(d.getTime()).atOffset(ZoneOffset.UTC).toLocalTime(), false);
-        }
-        else if (value instanceof Number n) {
+        if (value instanceof Number n) {
             return IsoTime.toIsoString(Duration.ofMillis(n.longValue()), false);
         }
-        return value;
+        return IsoTime.toIsoString(Instant.ofEpochMilli(((java.util.Date) value).getTime()).atOffset(ZoneOffset.UTC).toLocalTime(), false);
     }
 
     private static Object normalizeConnectTimestamp(Object value) {
-        if (value instanceof java.util.Date d) {
-            return IsoTimestamp.toIsoString(Instant.ofEpochMilli(d.getTime()), null);
-        }
-        else if (value instanceof Number n) {
+        if (value instanceof Number n) {
             return IsoTimestamp.toIsoString(n.longValue(), null);
         }
-        return value;
+        return IsoTimestamp.toIsoString(Instant.ofEpochMilli(((java.util.Date) value).getTime()), null);
     }
 
     private Map<String, Object> extractProperties(Struct data, Set<String> excluded, TableMappingConfig mapping) {
