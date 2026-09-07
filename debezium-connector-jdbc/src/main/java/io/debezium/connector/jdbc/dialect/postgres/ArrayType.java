@@ -16,6 +16,7 @@ import org.apache.kafka.connect.data.Struct;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.AbstractType;
 import io.debezium.connector.jdbc.type.JdbcType;
+import io.debezium.connector.jdbc.util.ByteArrayUtils;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
 import io.debezium.util.SchemaUtils;
@@ -91,15 +92,31 @@ public class ArrayType extends AbstractType {
 
     /**
      * Unwraps {@link VariableScaleDecimal} elements to their {@code BigDecimal} value, which is what
-     * {@link java.sql.Connection#createArrayOf} can encode. Every other element type is passed through.
+     * {@link java.sql.Connection#createArrayOf} can encode. Plain {@code BYTES} elements are converted
+     * to a typed {@code byte[][]}: the driver rejects a {@code byte[]} element inside a generic
+     * {@code Object[]} but encodes a {@code byte[][]} as a {@code bytea[]} value. Every other element
+     * type is passed through.
      */
     static Object unwrapElements(Schema schema, Object value) {
-        if (!SchemaUtils.isVariableScaleDecimal(schema.valueSchema())) {
-            return value;
+        if (SchemaUtils.isVariableScaleDecimal(schema.valueSchema())) {
+            return ((Collection<?>) value).stream()
+                    .map(element -> element == null ? null : VariableScaleDecimal.toLogical((Struct) element).getDecimalValue().orElseThrow())
+                    .toList();
         }
-        return ((Collection<?>) value).stream()
-                .map(element -> element == null ? null : VariableScaleDecimal.toLogical((Struct) element).getDecimalValue().orElseThrow())
-                .toList();
+        if (isPlainBytes(schema.valueSchema())) {
+            return ((Collection<?>) value).stream()
+                    .map(element -> element == null ? null : ByteArrayUtils.getByteArrayFromValue(element))
+                    .toArray(byte[][]::new);
+        }
+        return value;
+    }
+
+    /**
+     * Logical BYTES types (e.g. {@code Decimal}) arrive as their converted Java value, so only a
+     * schema-less BYTES element represents raw binary data destined for {@code bytea}.
+     */
+    private static boolean isPlainBytes(Schema elementSchema) {
+        return elementSchema.type() == Schema.Type.BYTES && elementSchema.name() == null;
     }
 
     /**
