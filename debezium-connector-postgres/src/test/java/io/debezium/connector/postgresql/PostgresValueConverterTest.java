@@ -13,17 +13,22 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.sql.Array;
 import java.sql.Types;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.junit.jupiter.api.Test;
+import org.postgresql.PGStatement;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.doc.FixFor;
 import io.debezium.relational.Column;
 import io.debezium.relational.ValueConverter;
+import io.debezium.time.Conversions;
 
 class PostgresValueConverterTest {
 
@@ -97,5 +102,41 @@ class PostgresValueConverterTest {
                             throw new UnsupportedOperationException(method.getName());
                     }
                 });
+    }
+
+    @FixFor("debezium/dbz#2524")
+    @Test
+    public void shouldMatchPositiveAndNegativeInfinityInstantAndOffsetDateTime() {
+        final Instant expectedPositiveInstant = Conversions.toInstantFromMicros(PGStatement.DATE_POSITIVE_INFINITY);
+        final Instant expectedNegativeInstant = Conversions.toInstantFromMicros(PGStatement.DATE_NEGATIVE_INFINITY);
+
+        assertThat(PostgresValueConverter.POSITIVE_INFINITY_INSTANT).isEqualTo(expectedPositiveInstant);
+        assertThat(PostgresValueConverter.NEGATIVE_INFINITY_INSTANT).isEqualTo(expectedNegativeInstant);
+        assertThat(PostgresValueConverter.POSITIVE_INFINITY_OFFSET_DATE_TIME.toInstant())
+                .isEqualTo(PostgresValueConverter.POSITIVE_INFINITY_INSTANT);
+        assertThat(PostgresValueConverter.NEGATIVE_INFINITY_OFFSET_DATE_TIME.toInstant())
+                .isEqualTo(PostgresValueConverter.NEGATIVE_INFINITY_INSTANT);
+    }
+
+    @FixFor("debezium/dbz#2524")
+    @Test
+    public void shouldMatchPositiveAndNegativeInfinityLocalDate() {
+        assertThat(PostgresValueConverter.POSITIVE_INFINITY_LOCAL_DATE.getYear()).isPositive();
+        assertThat(PostgresValueConverter.POSITIVE_INFINITY_LOCAL_DATE).isEqualTo(LocalDate.parse("+5877611-06-21"));
+        assertThat(PostgresValueConverter.NEGATIVE_INFINITY_LOCAL_DATE.getYear()).isNegative();
+        assertThat(PostgresValueConverter.NEGATIVE_INFINITY_LOCAL_DATE).isEqualTo(LocalDate.parse("-5877611-06-22"));
+    }
+
+    @FixFor("debezium/dbz#2524")
+    @Test
+    public void shouldConvertInfinityTimestampsToEpochNanos() {
+        assertThat(converter.convertTimestampToEpochNanos(null, null, PostgresValueConverter.POSITIVE_INFINITY_INSTANT))
+                .isEqualTo(Long.MAX_VALUE);
+        assertThat(converter.convertTimestampToEpochNanos(null, null, PostgresValueConverter.NEGATIVE_INFINITY_INSTANT))
+                .isEqualTo(Long.MIN_VALUE);
+        assertThat(converter.convertTimestampToEpochNanos(null, null, PostgresValueConverter.POSITIVE_INFINITY_LOCAL_DATE_TIME))
+                .isEqualTo(Long.MAX_VALUE);
+        assertThat(converter.convertTimestampToEpochNanos(null, null, PostgresValueConverter.NEGATIVE_INFINITY_LOCAL_DATE_TIME))
+                .isEqualTo(Long.MIN_VALUE);
     }
 }
