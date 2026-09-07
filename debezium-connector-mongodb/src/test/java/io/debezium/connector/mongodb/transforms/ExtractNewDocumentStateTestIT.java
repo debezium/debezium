@@ -252,7 +252,8 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
 
         assertThat(transformedUnsetUpdate.valueSchema().field("_id").schema()).isEqualTo(Schema.OPTIONAL_INT32_SCHEMA);
         assertThat(transformedUnsetUpdateValue.get("_id")).isEqualTo(1);
-        assertThat(transformedUnsetUpdateValue.schema().field("newStr")).isNull();
+        assertThat(transformedUnsetUpdate.valueSchema().field("newStr").schema()).isEqualTo(Schema.OPTIONAL_STRING_SCHEMA);
+        assertThat(transformedUnsetUpdateValue.get("newStr")).isNull();
 
         // Test FullUpdate
         try (var client = connect()) {
@@ -744,9 +745,11 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         // and then assert value and its schema
         assertThat(value.schema()).isSameAs(transformed.valueSchema());
         assertThat(value.get("name")).isEqualTo("Sally");
-        assertThat(value.schema().field("phone")).isNull();
-        assertThat(value.schema().field("active")).isNull();
-        assertThat(value.schema().fields()).hasSize(2);
+        assertThat(value.schema().field("phone")).isNotNull();
+        assertThat(value.get("phone")).isNull();
+        assertThat(value.schema().field("active")).isNotNull();
+        assertThat(value.get("active")).isNull();
+        assertThat(value.schema().fields()).hasSize(4);
     }
 
     @Test
@@ -855,8 +858,11 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         // and then assert value and its schema
         assertThat(value.schema()).isSameAs(transformed.valueSchema());
         assertThat(value.get("name")).isEqualTo("Sally");
-        assertThat(value.schema().field("phone")).isNull();
-        assertThat(value.schema().fields()).hasSize(2);
+        assertThat(value.schema().field("phone")).isNotNull();
+        assertThat(value.get("phone")).isNull();
+        assertThat(value.schema().field("active")).isNotNull();
+        assertThat(value.get("active")).isNull();
+        assertThat(value.schema().fields()).hasSize(4);
     }
 
     @Test
@@ -906,8 +912,11 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
 
         // and then assert value and its schema
         assertThat(value.schema()).isSameAs(transformed.valueSchema());
-        assertThat(value.schema().field("phone")).isNull();
-        assertThat(value.schema().fields()).hasSize(2);
+        assertThat(value.schema().field("phone")).isNotNull();
+        assertThat(value.get("phone")).isNull();
+        assertThat(value.schema().field("active")).isNotNull();
+        assertThat(value.get("active")).isNull();
+        assertThat(value.schema().fields()).hasSize(4);
     }
 
     @Test
