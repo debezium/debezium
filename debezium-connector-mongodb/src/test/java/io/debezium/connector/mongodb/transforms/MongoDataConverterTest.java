@@ -254,6 +254,72 @@ public class MongoDataConverterTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2569")
+    public void shouldProcessSymbolMinKeyAndMaxKeyValues() {
+        val = BsonDocument.parse("{\n" +
+                "    \"_id\" : \"symbol-1\",\n" +
+                "    \"symbol_value\" : { \"$symbol\" : \"symbolic\" },\n" +
+                "    \"min_key_value\" : { \"$minKey\" : 1 },\n" +
+                "    \"max_key_value\" : { \"$maxKey\" : 1 }\n" +
+                "}");
+        builder = SchemaBuilder.struct().name("withsymbol");
+        converter = new MongoDataConverter(ArrayEncoding.ARRAY);
+
+        Map<String, Map<Object, BsonType>> entry = converter.parseBsonDocument(val);
+        converter.buildSchema(entry, builder);
+
+        final Schema finalSchema = builder.build();
+        final Struct struct = new Struct(finalSchema);
+        for (Map.Entry<String, BsonValue> bsonValueEntry : val.entrySet()) {
+            converter.buildStruct(bsonValueEntry, finalSchema, struct);
+        }
+        assertThat(finalSchema).isEqualTo(
+                SchemaBuilder.struct().name("withsymbol")
+                        .field("_id", Schema.OPTIONAL_STRING_SCHEMA)
+                        .field("symbol_value", Schema.OPTIONAL_STRING_SCHEMA)
+                        .field("min_key_value", Schema.OPTIONAL_STRING_SCHEMA)
+                        .field("max_key_value", Schema.OPTIONAL_STRING_SCHEMA)
+                        .build());
+        assertThat(struct.toString()).isEqualTo(
+                "Struct{"
+                        + "_id=symbol-1,"
+                        + "symbol_value=symbolic,"
+                        + "min_key_value=MinKey,"
+                        + "max_key_value=MaxKey"
+                        + "}");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2569")
+    public void shouldProcessSymbolArray() {
+        val = BsonDocument.parse("{\n" +
+                "    \"_id\" : \"symbol-array-1\",\n" +
+                "    \"symbols\" : [ { \"$symbol\" : \"a\" }, { \"$symbol\" : \"b\" } ]\n" +
+                "}");
+        builder = SchemaBuilder.struct().name("withsymbolarray");
+        converter = new MongoDataConverter(ArrayEncoding.ARRAY);
+
+        Map<String, Map<Object, BsonType>> entry = converter.parseBsonDocument(val);
+        converter.buildSchema(entry, builder);
+
+        final Schema finalSchema = builder.build();
+        final Struct struct = new Struct(finalSchema);
+        for (Map.Entry<String, BsonValue> bsonValueEntry : val.entrySet()) {
+            converter.buildStruct(bsonValueEntry, finalSchema, struct);
+        }
+        assertThat(finalSchema).isEqualTo(
+                SchemaBuilder.struct().name("withsymbolarray")
+                        .field("_id", Schema.OPTIONAL_STRING_SCHEMA)
+                        .field("symbols", SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build())
+                        .build());
+        assertThat(struct.toString()).isEqualTo(
+                "Struct{"
+                        + "_id=symbol-array-1,"
+                        + "symbols=[a, b]"
+                        + "}");
+    }
+
+    @Test
     @FixFor("DBZ-1392")
     public void shouldProcessHeterogeneousArrayWithEmptyNestedDocument() {
         val = BsonDocument.parse("{\n" +
