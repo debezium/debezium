@@ -294,6 +294,9 @@ public class MongoDataConverter {
             case JAVASCRIPT:
             case OBJECT_ID:
             case DECIMAL128:
+            case SYMBOL:
+            case MIN_KEY:
+            case MAX_KEY:
                 builder.field(key, Schema.OPTIONAL_STRING_SCHEMA);
                 break;
             case DOUBLE:
@@ -625,6 +628,9 @@ public class MongoDataConverter {
             case JAVASCRIPT:
             case OBJECT_ID:
             case DECIMAL128:
+            case SYMBOL:
+            case MIN_KEY:
+            case MAX_KEY:
                 return Schema.OPTIONAL_STRING_SCHEMA;
 
             case DOUBLE:
@@ -827,6 +833,19 @@ public class MongoDataConverter {
 
             case JAVASCRIPT:
                 colValue = value.asJavaScript().getCode();
+                break;
+
+            case SYMBOL:
+                colValue = value.asSymbol().getSymbol();
+                break;
+
+            // MinKey and MaxKey carry no value of their own; represent them by their canonical name.
+            case MIN_KEY:
+                colValue = "MinKey";
+                break;
+
+            case MAX_KEY:
+                colValue = "MaxKey";
                 break;
 
             default:
