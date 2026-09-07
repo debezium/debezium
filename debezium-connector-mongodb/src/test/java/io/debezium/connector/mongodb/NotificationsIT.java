@@ -47,6 +47,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.SnapshotMode;
+import io.debezium.doc.FixFor;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.notification.AbstractNotificationsIT;
@@ -133,10 +134,10 @@ public class NotificationsIT extends AbstractMongoConnectorIT {
                     notifications.add(r);
                 }
             });
-            return notifications.size() == 6;
+            return notifications.size() == 7;
         });
 
-        assertThat(notifications).hasSize(6);
+        assertThat(notifications).hasSize(7);
         SourceRecord sourceRecord = notifications.get(0);
         Assertions.assertThat(sourceRecord.topic()).isEqualTo("io.debezium.notification");
         Assertions.assertThat(((Struct) sourceRecord.value()).getString("aggregate_type")).isEqualTo("Initial Snapshot");
@@ -206,7 +207,7 @@ public class NotificationsIT extends AbstractMongoConnectorIT {
         notifications
                 .forEach(notification -> System.out.println("[notificationCorrectlySentOnJmx]:" + notification.toString()));
 
-        assertThat(notifications).hasSize(6);
+        assertThat(notifications).hasSize(7);
         assertThat(notifications.get(0))
                 .hasFieldOrPropertyWithValue("aggregateType", "Initial Snapshot")
                 .hasFieldOrPropertyWithValue("type", "STARTED")
@@ -248,7 +249,7 @@ public class NotificationsIT extends AbstractMongoConnectorIT {
 
         assertThat(notifications).allSatisfy(mBeanNotificationInfo -> assertThat(mBeanNotificationInfo.getName()).isEqualTo(Notification.class.getName()));
 
-        assertThat(jmxNotifications).hasSize(2);
+        assertThat(jmxNotifications).hasSize(3);
         assertThat(jmxNotifications.get(0)).hasFieldOrPropertyWithValue("message", "Initial Snapshot generated a notification");
 
         Notification notification = mapper.readValue(jmxNotifications.get(0).getUserData().toString(), Notification.class);
@@ -258,13 +259,51 @@ public class NotificationsIT extends AbstractMongoConnectorIT {
                 .hasFieldOrPropertyWithValue("additionalData", Map.of("connector_name", "mongo1"));
         assertThat(notification.getTimestamp()).isCloseTo(Instant.now().toEpochMilli(), Percentage.withPercentage(1));
 
-        assertThat(jmxNotifications.get(1)).hasFieldOrPropertyWithValue("message", "Initial Snapshot generated a notification");
-        notification = mapper.readValue(jmxNotifications.get(1).getUserData().toString(), Notification.class);
+        assertThat(jmxNotifications.get(2)).hasFieldOrPropertyWithValue("message", "Initial Snapshot generated a notification");
+        notification = mapper.readValue(jmxNotifications.get(2).getUserData().toString(), Notification.class);
         assertThat(notification)
                 .hasFieldOrPropertyWithValue("aggregateType", "Initial Snapshot")
                 .hasFieldOrPropertyWithValue("type", "COMPLETED")
                 .hasFieldOrPropertyWithValue("additionalData", Map.of("connector_name", "mongo1"));
         assertThat(notification.getTimestamp()).isCloseTo(Instant.now().toEpochMilli(), Percentage.withPercentage(1));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2537")
+    void initialSnapshotSentDataCollectionResolvedNotificationThatContainsDataCollections() {
+        // Testing.Print.enable();
+
+        storeDocuments("dbA", "c1", "simple_objects.json");
+        storeDocuments("dbA", "c2", "simple_objects.json");
+
+        startConnector(config -> config
+                .with(SinkNotificationChannel.NOTIFICATION_TOPIC, "io.debezium.notification")
+                .with(CommonConnectorConfig.NOTIFICATION_ENABLED_CHANNELS, "sink"));
+
+        assertConnectorIsRunning();
+
+        waitForAvailableRecords(500, TimeUnit.MILLISECONDS);
+
+        List<SourceRecord> notifications = new ArrayList<>();
+
+        Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> {
+
+            consumeAvailableRecords(r -> {
+                if (r.topic().equals("io.debezium.notification")) {
+                    notifications.add(r);
+                }
+            });
+            return notifications.size() == 7;
+        });
+
+        assertThat(notifications).hasSize(7);
+        SourceRecord sourceRecord = notifications.get(1);
+        Assertions.assertThat(sourceRecord.topic()).isEqualTo("io.debezium.notification");
+        Assertions.assertThat(((Struct) sourceRecord.value()).getString("aggregate_type")).isEqualTo("Initial Snapshot");
+        Assertions.assertThat(((Struct) sourceRecord.value()).getString("type")).isEqualTo("DATA_COLLECTIONS_RESOLVED");
+        Assertions.assertThat(((Struct) sourceRecord.value()).getInt64("timestamp")).isCloseTo(Instant.now().toEpochMilli(), Percentage.withPercentage(1));
+        Assertions.assertThat(((Struct) sourceRecord.value()).getMap("additional_data")).containsEntry("data_collections", "dbA.c1,dbA.c2");
+
     }
 
     private void assertTableNotificationsSentToJmx(List<Notification> notifications, String tableName) {
