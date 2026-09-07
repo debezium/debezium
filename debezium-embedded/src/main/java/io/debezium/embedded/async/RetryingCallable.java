@@ -18,9 +18,12 @@ import io.debezium.util.RetryingSupplier;
  * Extension to {@link Callable}, which allows to re-try the action if exception is thrown during the execution.
  * The action is re-tried {@code retries} number of times.
  * The delay between retries is defined by {@link DelayStrategy}, which needs to be provided by the implementing class.
- * The action is re-tried when a {@link RetriableException} is thrown, either directly or as any exception in the
- * cause chain of the thrown exception. The retry loop is implemented by {@link RetryingSupplier}, to which this
- * class delegates.
+ * The action is re-tried when the thrown exception is a {@link RetriableException} or when its message matches the
+ * custom retriable message pattern. Only the thrown exception itself is examined, nested causes are not inspected:
+ * a terminal failure may deliberately wrap a retriable one (e.g. {@code ErrorHandler} wraps a retriable whose
+ * connector-side retries are exhausted in a {@code ConnectException} which must stop the task). If cause-chain
+ * semantics are needed, use {@link RetryingSupplier} directly. The retry loop is implemented by
+ * {@link RetryingSupplier}, to which this class delegates.
  *
  * @author vjuranek
  */
@@ -50,10 +53,7 @@ public abstract class RetryingCallable<V> implements Callable<V> {
                 .doGet(this::doCall)
                 .retriableExceptions(RetriableException.class)
                 .customRetriableMessagePattern(customRetriableMessagePattern)
-                // A terminal failure can wrap a retriable one on purpose (ErrorHandler wraps a
-                // retriable whose connector-side retries are exhausted in a ConnectException, which
-                // ChangeEventQueue raises from poll() to stop the task): examining the thrown
-                // exception alone preserves that contract.
+                // Outermost-only classification, see the class javadoc for the contract.
                 .walkCauseChain(false)
                 .delayStrategy(delayStrategy())
                 .name("Callable")
