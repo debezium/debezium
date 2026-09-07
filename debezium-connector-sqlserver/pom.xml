@@ -215,7 +215,9 @@
                                 </log>
                                 <wait>
                                     <time>60000</time> <!-- 60 seconds max -->
-                                    <log>SQL Server is now ready for client connections</log>
+                                    <!-- The "ready for client connections" message only signals that the TDS listener is up;
+                                         sa logins can still be rejected until startup recovery finishes. -->
+                                    <log>Recovery is complete</log>
                                 </wait>
                             </run>
                             <external>
