@@ -450,7 +450,7 @@ If xref:jdbc-property-schema-evolution[`schema.evolution`] is set to `basic`, th
 Automatic table creation does not expose SingleStore-specific shard key, sort key, or other table option settings.
 If the target table requires explicit shard keys, sort keys, or other SingleStore table options, create the destination table in SingleStore before the connector writes to it.
 
-For SingleStore targets, {prodname} maps {prodname} `io.debezium.data.Json` logical values and Kafka Connect `ARRAY` and `MAP` schema values to the SingleStore `JSON` column type.
+For SingleStore targets, {prodname} maps {prodname} `io.debezium.data.Json` logical values and Kafka Connect `ARRAY`, `MAP`, and `STRUCT` schema values to the SingleStore `JSON` column type.
 The connector maps {prodname} `io.debezium.data.geometry.Geometry` and `io.debezium.data.geometry.Geography` logical values to the SingleStore `GEOGRAPHY` column type, and `io.debezium.data.geometry.Point` logical values to the SingleStore `GEOGRAPHYPOINT` column type.
 SingleStore supports a subset of WKT geospatial values.
 The connector writes `POINT`, `LINESTRING`, and `POLYGON` WKB values to SingleStore as WKT strings.
@@ -494,8 +494,8 @@ StarRocks `VARCHAR` lengths are byte lengths rather than character lengths, so t
 `DECIMAL` columns support a maximum precision of 38; the connector caps larger propagated precisions at 38, and values that exceed the capped precision fail on write.
 When column type propagation is enabled, `BIGINT UNSIGNED` source columns map to `LARGEINT` columns, preserving the full unsigned 64-bit range.
 
-{prodname} `io.debezium.data.Json` logical values and Kafka Connect `MAP` schema values map to the StarRocks `JSON` column type, `ENUM` and `SET` values map to `STRING` columns, and `YEAR` values map to `INT` columns.
-The StarRocks dialect does not support geospatial or vector logical types, and Kafka Connect `ARRAY` and `STRUCT` schema types are not mapped to the StarRocks `ARRAY` and `STRUCT` column types.
+{prodname} `io.debezium.data.Json` logical values and Kafka Connect `MAP` and `STRUCT` schema values map to the StarRocks `JSON` column type, `ENUM` and `SET` values map to `STRING` columns, and `YEAR` values map to `INT` columns.
+The StarRocks dialect does not support geospatial or vector logical types, and the Kafka Connect `ARRAY` schema type is not mapped to the StarRocks `ARRAY` column type; `STRUCT` values are stored as `JSON` rather than as the StarRocks `STRUCT` column type.
 
 [[jdbc-cockroachdb-targets]]
 === CockroachDB sink targets
@@ -513,7 +513,7 @@ Setting `flush.max.retries` to `0` disables the retries so that a conflicting fl
 
 For CockroachDB targets, {prodname} uses PostgreSQL-compatible mappings for most data types, with the following exceptions:
 
-* `io.debezium.data.Json` logical values and Kafka Connect `MAP` schema values are written to the CockroachDB `jsonb` column type.
+* `io.debezium.data.Json` logical values and Kafka Connect `MAP` and `STRUCT` schema values are written to the CockroachDB `jsonb` column type.
 * `io.debezium.data.Xml` logical values and propagated range, `macaddr`, and `cidr` column types are written as `text`, because CockroachDB does not provide those types.
 * Propagated `money` column types are written as `decimal(19,2)` types.
 * `io.debezium.data.geometry.Geometry`, `io.debezium.data.geometry.Geography`, and `io.debezium.data.geometry.Point` logical values are written to the built-in CockroachDB `geometry` and `geography` types; no PostGIS extension schema is required.
@@ -943,13 +943,13 @@ ifdef::community[]
 For SingleStore targets, {prodname} uses MySQL/MariaDB-compatible mappings for most dialect-specific logical types.
 SingleStore maps {prodname} `io.debezium.data.Json` logical values to `json`.
 
-Kafka Connect `MAP` schema values are also written to SingleStore `json` columns.
+Kafka Connect `MAP` and `STRUCT` schema values are also written to SingleStore `json` columns.
 {prodname} `io.debezium.data.geometry.Geometry` and `io.debezium.data.geometry.Geography` logical values are written to SingleStore `geography` columns, and `io.debezium.data.geometry.Point` logical values are written to SingleStore `geographypoint` columns.
 
 When you configure the JDBC connector to use CockroachDB as a sink target, {prodname} uses the PostgreSQL-compatible mappings for most dialect-specific logical types.
 For example, the connector uses the following mappings:
 
-* `io.debezium.data.Json` logical values and Kafka Connect `MAP` schema values are written to CockroachDB `jsonb` columns.
+* `io.debezium.data.Json` logical values and Kafka Connect `MAP` and `STRUCT` schema values are written to CockroachDB `jsonb` columns.
 * `io.debezium.data.Xml` logical values are written to `text` columns because CockroachDB has no XML type.
 * Geometry, geography, and point values are written to the built-in CockroachDB `geometry` and `geography` types without a PostGIS extension schema.
 * `io.debezium.data.FloatVector` logical values are written to `vector` columns; sparse double vectors are not supported.

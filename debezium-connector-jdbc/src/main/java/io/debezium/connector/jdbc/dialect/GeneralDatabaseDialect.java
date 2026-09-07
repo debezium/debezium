@@ -65,6 +65,7 @@ import io.debezium.connector.jdbc.type.connect.ConnectInt64Type;
 import io.debezium.connector.jdbc.type.connect.ConnectInt8Type;
 import io.debezium.connector.jdbc.type.connect.ConnectMapToConnectStringType;
 import io.debezium.connector.jdbc.type.connect.ConnectStringType;
+import io.debezium.connector.jdbc.type.connect.ConnectStructToConnectStringType;
 import io.debezium.connector.jdbc.type.connect.ConnectTimeType;
 import io.debezium.connector.jdbc.type.connect.ConnectTimestampType;
 import io.debezium.connector.jdbc.type.debezium.DateType;
@@ -710,6 +711,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         registerType(ConnectTimestampType.INSTANCE);
         registerType(ConnectTimeType.INSTANCE);
         registerType(ConnectMapToConnectStringType.INSTANCE);
+        registerType(ConnectStructToConnectStringType.INSTANCE);
     }
 
     protected void registerType(JdbcType type) {

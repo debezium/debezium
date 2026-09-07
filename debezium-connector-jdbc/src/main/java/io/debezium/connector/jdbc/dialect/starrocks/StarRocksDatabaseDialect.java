@@ -159,6 +159,7 @@ public class StarRocksDatabaseDialect extends GeneralDatabaseDialect {
         registerType(YearType.INSTANCE);
         registerType(JsonType.INSTANCE);
         registerType(MapToJsonType.INSTANCE);
+        registerType(StructToJsonType.INSTANCE);
         registerType(TimeType.INSTANCE);
         registerType(MicroTimeType.INSTANCE);
         registerType(NanoTimeType.INSTANCE);
