@@ -482,8 +482,7 @@ The connector writes {prodname} `io.debezium.time.Time`, `io.debezium.time.Micro
 MySQL `TIME` values outside of the 24-hour clock range retain the MySQL `[-]HHH:mm:ss.ffffff` notation, and `io.debezium.time.ZonedTime` values are stored verbatim with their original offset.
 
 `io.debezium.time.ZonedTimestamp` values are normalized to the database time zone and written to `DATETIME` columns; the original offset is not preserved.
-S
-tarRocks `DATETIME` columns do not accept a precision argument; StarRocks retains fractional seconds up to microsecond precision.
+StarRocks `DATETIME` columns do not accept a precision argument; StarRocks retains fractional seconds up to microsecond precision.
 
 Note that the StarRocks JDBC driver reports `DATETIME` columns without fractional second precision, so although values are stored with microsecond precision, reading them through the JDBC driver truncates the fraction unless the value is explicitly cast, for example, to `VARCHAR`.
 
