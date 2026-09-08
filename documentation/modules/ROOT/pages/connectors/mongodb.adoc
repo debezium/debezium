@@ -1,4 +1,4 @@
-brolda// Category: debezium-using
+// Category: debezium-using
 // Type: assembly
 [id="debezium-connector-for-mongodb"]
 = {prodname} connector for MongoDB
