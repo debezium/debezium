@@ -1,0 +1,47 @@
+[id="server-tutorial-jdbc-sink"]
+= {prodname} Server Tutorial - JDBC Sink
+
+:toc:
+:toc-placement: macro
+:sectanchors:
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+:windows:
+
+toc::[]
+
+This tutorial demonstrates how to use {prodname} to monitor a MySQL database.
+As the data in the MySQL database changes, you will see the data in the PostgreSQL database server change to match it.
+
+In this tutorial you will start the JDBC sink service,
+connect it to a PostgreSQL database server,
+run a MySQL database server with a simple example database,
+and use {prodname} to monitor the database for changes.
+
+.Prerequisites
+
+* Docker is installed and running.
++
+This tutorial uses Docker and the {prodname} container images to run the required services.
+You should use the latest version of Docker.
+For more information, see link:https://docs.docker.com/engine/installation/[the Docker Engine installation documentation].
+
+ifdef::community[]
+[NOTE]
+====
+This example can also be run using Podman. For more information see link:https://podman.io/[Podman].
+====
+endif::community[]
+
+include::{partialsdir}/modules/tutorial/server-introduction-debezium.adoc[leveloffset=+1]
+
+include::{partialsdir}/assemblies/tutorial/assembly-starting-services-server-jdbc-sink.adoc[leveloffset=+1]
+
+include::{partialsdir}/assemblies/tutorial/assembly-deploying-mysql-connector-server-jdbc-sink.adoc[leveloffset=+1]
+
+include::{partialsdir}/assemblies/tutorial/assembly-viewing-change-events-server-jdbc-sink.adoc[leveloffset=+1]
+
+include::{partialsdir}/modules/tutorial/server-cleaning-up.adoc[leveloffset=+1]
+
+include::{partialsdir}/modules/tutorial/con-next-steps.adoc[leveloffset=+1]

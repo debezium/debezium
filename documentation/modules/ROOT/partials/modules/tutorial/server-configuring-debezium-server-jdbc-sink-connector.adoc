@@ -1,0 +1,85 @@
+// Metadata created by nebel
+//
+// ParentAssemblies: assemblies/tutorial/as_starting-services.adoc
+// UserStory:
+
+[id="configuring-debezium-server-jdbc-sink-connector"]
+= Configuring Debezium Server for JDBC Sink and MySQL Connectors
+
+Configure the {prodname} server application so that it can stream change events to the JDBC sink, which are then committed to the PostgreSQL database.
+
+.Prerequisites
+
+* The PostgreSQL and MySQL containers are running.
+* You have connected to the `inventory` database with the MySQL command line client or via the container itself.
+
+.Procedure
+
+. Create a new file called `application.properties` in the `debezium-server/config/lib` directory and add the following to it:
+
++
+--
+----
+debezium.sink.type=jdbc
+debezium.sink.jdbc.connection.url=jdbc:postgresql://localhost:5432/inventory
+debezium.sink.jdbc.connection.username=pguser
+debezium.sink.jdbc.connection.password=pgpw
+debezium.sink.jdbc.connector.class=io.debezium.connector.jdbc.JdbcSinkConnector
+debezium.sink.jdbc.insert.mode=upsert
+debezium.sink.jdbc.primary.key.mode=record_key
+debezium.sink.jdbc.schema.evolution=basic
+debezium.sink.jdbc.delete.enabled=true
+debezium.sink.jdbc.batch.size=1
+debezium.format.value=json
+debezium.source.connector.class=io.debezium.connector.mysql.MySqlConnector
+debezium.source.offset.storage.file.filename=data/offsets.dat
+debezium.source.offset.flush.interval.ms=0
+debezium.source.database.hostname=localhost
+debezium.source.database.port=3306
+debezium.source.database.server.id=223344
+debezium.source.database.user=debezium
+debezium.source.database.password=dbz
+debezium.source.topic.prefix=tutorial
+debezium.source.schema.history.internal=io.debezium.storage.file.history.FileSchemaHistory
+debezium.source.schema.history.internal.file.filename=data/history.dat
+debezium.source.table.exclude.list=inventory.geom
+quarkus.log.console.json=false
+----
+--
++
+
+The following list describes the purpose of each configuration option shown above:
+
++
+--
+`debezium.sink.type=jdbc`:: The type of sink to use
+`debezium.sink.jdbc.connection.url=jdbc:postgresql://localhost:5432/inventory`:: The url of the database that {prodname} server will stream change events to
+`debezium.sink.jdbc.connection.username=pguser`:: The username for the database server the JDBC sink connects to
+`debezium.sink.jdbc.connection.password=pgpw`:: The password for the database server the JDBC sink connects to
+`debezium.sink.jdbc.connector.class=io.debezium.connector.jdbc.JdbcSinkConnector`:: The connector class to use
+`debezium.sink.jdbc.insert.mode=upsert`:: The insert strategy used to insert events into the database. In this case, if there is no PK an `INSERT` is performed, otherwise an `UPDATE` is performed.
+`debezium.sink.jdbc.primary.key.mode=record_key`:: Specifies how the connector resolves the primary key columns from the event. 
+`debezium.sink.jdbc.schema.evolution=basic`:: Specifies how the connector evolves the destination table schemas.
+`debezium.sink.jdbc.delete.enabled=true`:: Specifies whether the connector processes DELETE or tombstone events and removes the corresponding row from the database. Use of this option requires that you set the `primary.key.mode` to `record.key`.
+`debezium.sink.jdbc.batch.size=1`:: Batch size 
+`debezium.format.value=json`:: The format used to encode the value portion of the change events
+`debezium.source.connector.class=io.debezium.connector.mysql.MySqlConnector`:: The connector class to use
+`debezium.source.offset.storage.file.filename=data/offsets.dat`:: The location that the offsets are stored when not using Kafka
+`debezium.source.offset.flush.interval.ms=0`:: Interal in milliseconds between each offset flush
+`debezium.source.database.hostname=localhost`:: Host that the server is on
+`debezium.source.database.port=3306`:: The port used to reach the MySQL database server
+`debezium.source.database.server.id=223344`:: The MySQL database server's ID
+`debezium.source.database.user=debezium`:: MySQL database server username
+`debezium.source.database.password=dbz`:: MySQL database server password
+`debezium.source.topic.prefix=tutorial`:: Change event topic prefix
+`debezium.source.schema.history.internal=io.debezium.storage.file.history.FileSchemaHistory`:: File history config
+`debezium.source.schema.history.internal.file.filename=data/history.dat`:: Location of the history file
+`debezium.source.table.exclude.list=inventory.geom`:: List of tables to exclude (in this case we exclude `geom` as it contains types not supported by PostgreSQL)
+`quarkus.log.console.json=false`:: Specifies Quarkus output format
+--
++
+
+.Further Configuration
+
+* For a full list of configuration options for the MySQL connector, visit {link-prefix}:{link-mysql-connector}#debezium-connector-for-mysql[{prodname} connector for MySQL].
+* For a full list of configuration options for the JDBC Sink connector, xref:{debezium-connector-for-jdbc}

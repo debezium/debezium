@@ -1,0 +1,71 @@
+// Metadata created by nebel
+//
+// ParentAssemblies: assemblies/tutorial/as_starting-services.adoc
+// UserStory:
+
+[id="starting-http-sink"]
+= Starting the HTTP Sink
+
+.Procedure
+
+. Open a new terminal and use it to start the HTTP server that will receive change events from {prodname} in a container.
+
++
+--
+This command runs a new container using version {debezium-docker-label} of the `example-httpd` container, which is based on version 2.4 of the `docker.io/library/httpd:2.4` image:
+
+[source,shell,options="nowrap",subs="+attributes"]
+----
+$ docker run -it -rm --name httpsink -p 8081:80 -v $(pwd):/user/local/apache2/htdocs docker.io/httpd:{debezium-docker-label}
+----
+
+The following list describes the purpose of parameters in the preceding command:
+
+`-it`:: The container is interactive, which means the terminal's standard input and output are attached to the container.
+`--rm`:: The container will be removed when it is stopped.
+`--name httpsink`:: The name of the container.
+`-p 8081:80`:: Maps port `8081` in the container to port `80` on the Docker host so that applications outside of the container can communicate with {prodname} server.
+`-v $(pwd):/user/local/apache2/htdocs`:: Mounts the container's filesystem to a volume on the host machine.
+`quay.io/debezium/example-httpd:{debezium-docker-label}`:: The Docker label indicating the container image we are using, in this case an example configuration of https://github.com/docker-library/httpd/blob/4da43810a4429c552e19c43f8e513248c34cfc84/2.4/Dockerfile[`httpd:2.4`].
++
+
+You should see output similar to the following:
+
+[source,shell,options="nowrap"]
+----
+[Mon Sep 07 12:49:58.948951 2026] [mpm_event:notice] [pid 1:tid 1] AH00489: Apache/2.4.68 (Unix) configured -- resuming normal operations
+[Mon Sep 07 12:49:58.949435 2026] [core:notice] [pid 1:tid 1] AH00094: Command line: 'httpd -D FOREGROUND'
+----
+
+As the server receives change events it will output them here.
+
+--
+. Verify that the server started by running the following command:
+
++
+----
+$ curl http://localhost:8081
+----
++
+
+You should see something like the following:
+
++
+----
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+<title>It works! Apache httpd</title>
+</head>
+<body>
+<p>It works!</p>
+</body>
+</html>
+----
++
+
+Alternatively, you can test that it works by visiting `http://localhost:8081` in a web browser.
+
+--
+The preceding response shows that the HTTP sink started successfully and is ready to receive change events from {prodname} server.
+--

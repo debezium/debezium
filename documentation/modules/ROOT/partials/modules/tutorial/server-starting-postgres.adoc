@@ -1,0 +1,158 @@
+// Metadata created by nebel
+//
+// ParentAssemblies: assemblies/tutorial/as_starting-services.adoc
+// UserStory:
+
+[id="starting-postgres-database"]
+= Starting the PostgreSQL database
+
+.Procedure
+
+. Open a new terminal and use it to start the PostgreSQL database server that will receive change events from {prodname} in a container.
+
++
+--
+This command runs a new container using version {debezium-docker-label} of the `example-httpd` container, which is based on version 2.4 of the `docker.io/library/httpd:2.4` image:
+
+[source,shell,options="nowrap",subs="+attributes"]
+----
+$ docker run -it --rm --name postgres -p 5432:5432 -e POSTGRES_USER=pguser -e POSTGRES_PASSWORD=pgpw example-postgres:{debezium-docker-label}
+----
+
+The following list describes the purpose of parameters in the preceding command:
+
+`-it`:: The container is interactive, which means the terminal's standard input and output are attached to the container.
+`--rm`:: The container will be removed when it is stopped.
+`--name postgres`:: The name of the container.
+`-p 5432:5432`:: Maps port `5432` in the container to port `5432` on the Docker host so that applications outside of the container can communicate with {prodname} server.
+`-e POSTGRES_USER=pguser `:: Sets a user when creating the database
+`-e POSTGRES_PASSWORD=pgpw`:: Sets the password for the user specified with `POSTGRES-USER`
+`quay.io/debezium/example-postgres:{debezium-docker-label}`:: The Docker label indicating the container image we are using, in this case an example configuration of github.com/docker-library/postgres/blob/e00e1bd34ec5c8a8e7ad89b273b3d42efaf6d5bc/18/trixie/Dockerfile[`postgres:18.6`].
+--
++
+
+. Verify that the server started.
+
+--
+You should see output similar to the following:
+
+[source,shell,options="nowrap"]
+----
+The files belonging to this database system will be owned by user "postgres".
+This user must also own the server process.
+
+The database cluster will be initialized with locale "en_US.utf8".
+The default database encoding has accordingly been set to "UTF8".
+The default text search configuration will be set to "english".
+
+Data page checksums are enabled.
+
+fixing permissions on existing directory /var/lib/postgresql/18/docker ... ok
+creating subdirectories ... ok
+selecting dynamic shared memory implementation ... posix
+selecting default "max_connections" ... 100
+selecting default "shared_buffers" ... 128MB
+selecting default time zone ... Etc/UTC
+creating configuration files ... ok
+running bootstrap script ... ok
+performing post-bootstrap initialization ... ok
+syncing data to disk ... ok
+
+
+Success. You can now start the database server using:
+
+    pg_ctl -D /var/lib/postgresql/18/docker -l logfile start
+
+initdb: warning: enabling "trust" authentication for local connections
+initdb: hint: You can change this by editing pg_hba.conf or using the option -A, or --auth-local and --auth-host, the next time you run initdb.
+waiting for server to start....2026-09-08 13:26:31.939 UTC [48] LOG:  starting PostgreSQL 18.6 (Debian 18.6-1.pgdg13+2) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+2026-09-08 13:26:31.940 UTC [48] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2026-09-08 13:26:31.952 UTC [54] LOG:  database system was shut down at 2026-09-08 13:26:31 UTC
+2026-09-08 13:26:31.956 UTC [48] LOG:  database system is ready to accept connections
+ done
+server started
+CREATE DATABASE
+
+
+/usr/local/bin/docker-entrypoint.sh: running /docker-entrypoint-initdb.d/setup.sql
+CREATE DATABASE
+GRANT
+
+
+2026-09-08 13:26:32.154 UTC [48] LOG:  received fast shutdown request
+waiting for server to shut down....2026-09-08 13:26:32.155 UTC [48] LOG:  aborting any active transactions
+2026-09-08 13:26:32.156 UTC [48] LOG:  background worker "logical replication launcher" (PID 57) exited with exit code 1
+2026-09-08 13:26:32.157 UTC [52] LOG:  shutting down
+2026-09-08 13:26:32.158 UTC [52] LOG:  checkpoint starting: shutdown immediate
+2026-09-08 13:26:32.261 UTC [52] LOG:  checkpoint complete: wrote 1883 buffers (11.5%), wrote 3 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.021 s, sync=0.079 s, total=0.104 s; sync files=601, longest=0.003 s, average=0.001 s; distance=8704 kB, estimate=8704 kB; lsn=0/1FE1BD8, redo lsn=0/1FE1BD8
+2026-09-08 13:26:32.270 UTC [48] LOG:  database system is shut down
+ done
+server stopped
+
+PostgreSQL init process complete; ready for start up.
+
+2026-09-08 13:26:32.373 UTC [1] LOG:  starting PostgreSQL 18.6 (Debian 18.6-1.pgdg13+2) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+2026-09-08 13:26:32.380 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+2026-09-08 13:26:32.391 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+2026-09-08 13:26:32.401 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2026-09-08 13:26:32.407 UTC [72] LOG:  database system was shut down at 2026-09-08 13:26:32 UTC
+2026-09-08 13:26:32.428 UTC [1] LOG:  database system is ready to accept connections
+----
+
+The server restarts a few times as it initialises.
+
+. Log into the server and view tables
+
+Start a new terminal and run the following command to enter the container the PostgreSQL database server is running in and log in.
+
++
+----
+$ podman exec -it postgres bash -c "psql -Upguser"
+----
+
+You should see something like the following:
+
+[source,sql,options="nowrap"]
+----
+psql (18.6 (Debian 18.6-1.pgdg13+2))
+Type "help" for help.
+
+pguser=#
+----
+
+Enter the following to switch to the `inventory` database that will receive changes from the MySQL database.
+
+[source,sql,options="nowrap"]
+----
+pguser=# \c inventory
+----
+
+If prompted for a password, enter `pgpw` (the password we used when setting up the container earlier).
+
+You should now see the following:
+
+[source,sql,options="nowrap"]
+----
+pguser=# \c inventory
+You are now connected to database "inventory" as user "pguser".
+inventory=#
+----
+
+To view the tables currently present in the database, use:
+
+[source,sql,options="nowrap"]
+----
+inventory=# \d
+----
+
+You should receive a message like:
+
+[source,sql,options="nowrap"]
+----
+inventory=# \d
+Did not find any relations.
+----
++
+
+When {prodname} server sends over the change events, you will see that tables from the MySQL database have appeared.
+--

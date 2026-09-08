@@ -1,0 +1,31 @@
+// Metadata created by nebel
+//
+// UserStory: As an evaluator, I want to use Debezium to monitor my sample MySQL database so that I can see how Debezium captures database changes.
+
+:context: mysql
+
+[id="deploying-mysql-connector-jdbc-sink"]
+= Deploying the MySQL connector with {prodname} Server and the JDBC Sink
+
+After starting the PostgreSQL server and MySQL services,
+you are ready to deploy the {prodname} MySQL connector so that it can start monitoring the sample MySQL database (`inventory`).
+
+At this point, you are running the PostgreSQL services,
+a MySQL database server with a sample `inventory` database,
+and the MySQL command line client that is connected to the database.
+To deploy the MySQL connector,
+you must:
+
+* xref:configuring-debezium-server-jdbc-sink-connector[Configure the MySQL connector to monitor the `inventory` database]
++
+After the connector is configured and {prodname} server is started,
+it will start monitoring the database server's `binlog` and it will generate change events for each row that changes.
+
+* xref:watching-connector-start-up[Watch the MySQL connector start]
++
+Reviewing the {prodname} server log output as the connector starts helps you to better understand each task it must complete before it can start monitoring the `binlog`.
+
+
+include::{partialsdir}/modules/tutorial/server-configuring-debezium-server-jdbc-sink.adoc[leveloffset=+1]
+
+include::{partialsdir}/modules/tutorial/server-watching-connector-start-up-jdbc-sink.adoc[leveloffset=+1]
