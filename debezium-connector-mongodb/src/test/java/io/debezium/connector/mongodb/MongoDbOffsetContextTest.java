@@ -7,17 +7,16 @@ package io.debezium.connector.mongodb;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.kafka.connect.errors.DataException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.doc.FixFor;
 
 /**
  * Unit tests for {@link MongoDbOffsetContext} and its {@link MongoDbOffsetContext.Loader}.
@@ -101,16 +100,14 @@ public class MongoDbOffsetContextTest {
     }
 
     /**
-     * Bug 2 demonstration: When collectionId is null (as it is during an incomplete
-     * snapshot), calling getSourceInfo() throws DataException because the "collection"
-     * field is required (non-optional) in the schema but the value is null.
-     *
-     * This documents why MongoDbConnectorTask.validate() uses getOffset() instead of
-     * getSourceInfo() for error messages — getSourceInfo() is unsafe when collectionId
-     * is null.
+     * When collectionId is null (as it is during an incomplete snapshot), calling
+     * getSourceInfo() must not throw: the "collection" field is optional in the schema, so
+     * the struct is built with the field omitted. This is the root-cause fix for the crash
+     * reported in debezium/dbz#1862.
      */
     @Test
-    public void getSourceInfoThrowsWhenCollectionIsNull() {
+    @FixFor("debezium/dbz#1862")
+    public void getSourceInfoDoesNotThrowWhenCollectionIsNull() {
         Map<String, Object> offset = new HashMap<>();
         offset.put(SourceInfo.INITIAL_SYNC, true);
         offset.put(SourceInfo.TIMESTAMP, 0);
@@ -118,17 +115,15 @@ public class MongoDbOffsetContextTest {
 
         MongoDbOffsetContext context = loader.load(offset);
 
-        // getSourceInfo() builds a Struct with required "collection" field = null → crash
-        assertThatThrownBy(() -> context.getSourceInfo())
-                .as("getSourceInfo() should throw when collectionId is null (required field)")
-                .isInstanceOf(DataException.class)
-                .hasMessageContaining("collection");
+        assertThatNoException()
+                .as("getSourceInfo() should not throw when collectionId is null (optional field)")
+                .isThrownBy(() -> assertThat(context.getSourceInfo().getString(SourceInfo.COLLECTION)).isNull());
     }
 
     /**
-     * Bug 2 fix verification: getOffset() should work even when collectionId is null,
-     * providing a safe alternative for error messages. This is used in
-     * MongoDbConnectorTask.validate() instead of the unsafe getSourceInfo().
+     * getOffset() works even when collectionId is null. Now that getSourceInfo() is also safe,
+     * both are usable for error messages; getOffset() remains the choice in
+     * MongoDbConnectorTask.validate().
      */
     @Test
     public void getOffsetWorksWhenCollectionIsNull() {
