@@ -97,6 +97,7 @@ public class SqlServerConnection extends JdbcConnection {
     private static final String CDC_JOB_INFO_JOB_TYPE_CAPTURE_VALUE = "capture";
     private static final String CDC_JOB_INFO_POLLING_INTERVAL_COLUMN_NAME = "pollinginterval";
     private static final long DEFAULT_CDC_POLLING_INTERVAL_SECONDS = 5;
+    private static final int ERROR_INVALID_COLUMN_NAME = 207;
     private static final String GET_START_LSN_FOR_LAST_BATCH_SCANNED = "SELECT TOP 1 start_lsn from sys.dm_cdc_log_scan_sessions ORDER BY session_id DESC";
     private static final String START_LSN_INDICATING_EMPTY_BATCH = "00000000:00000000:0000\u0000";
 
@@ -194,6 +195,12 @@ public class SqlServerConnection extends JdbcConnection {
         this(config, valueConverters, skippedOperations, useSingleDatabase);
 
         this.optionRecompile = optionRecompile;
+    }
+
+    public boolean isUndefinedColumnError(SQLException exception) {
+        // The driver reports the generic S0001 SQLSTATE for most server errors, so the
+        // classification has to use the server error code.
+        return exception.getErrorCode() == ERROR_INVALID_COLUMN_NAME;
     }
 
     private String buildGetAllChangesForTableQuery(SqlServerConnectorConfig.DataQueryMode dataQueryMode,

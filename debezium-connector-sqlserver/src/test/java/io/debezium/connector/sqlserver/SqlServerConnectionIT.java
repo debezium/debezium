@@ -8,6 +8,7 @@ package io.debezium.connector.sqlserver;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -795,4 +796,25 @@ public class SqlServerConnectionIT {
         }
     }
 
+    @Test
+    @FixFor("debezium/dbz#2452")
+    void shouldClassifyUndefinedColumnError() throws Exception {
+        try (SqlServerConnection connection = TestHelper.adminConnection()) {
+            connection.connect();
+            try {
+                connection.execute("SELECT no_such_column FROM sys.databases");
+                fail("the query on a non-existing column should have failed");
+            }
+            catch (SQLException e) {
+                assertThat(connection.isUndefinedColumnError(e)).isTrue();
+            }
+            try {
+                connection.execute("SELECT name FROM no_such_table_2452");
+                fail("the query on a non-existing table should have failed");
+            }
+            catch (SQLException e) {
+                assertThat(connection.isUndefinedColumnError(e)).isFalse();
+            }
+        }
+    }
 }

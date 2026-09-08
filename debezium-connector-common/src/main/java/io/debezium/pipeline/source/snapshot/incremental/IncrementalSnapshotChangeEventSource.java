@@ -5,6 +5,7 @@
  */
 package io.debezium.pipeline.source.snapshot.incremental;
 
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 
@@ -22,6 +23,21 @@ import io.debezium.spi.schema.DataCollectionId;
  * @param <T> data collection id class
  */
 public interface IncrementalSnapshotChangeEventSource<P extends Partition, T extends DataCollectionId> {
+
+    /**
+     * Recognizes the dialect-specific SQL error a chunk query fails with when it references a
+     * column that no longer exists in the database, which the incremental snapshot treats as a
+     * stale cached schema and recovers from by deferring the chunk. Connectors opt in by passing
+     * their classifier to the change event source; with {@link #NONE} the recovery never
+     * triggers and such failures keep their pre-existing handling.
+     */
+    @FunctionalInterface
+    interface UndefinedColumnClassifier {
+
+        UndefinedColumnClassifier NONE = exception -> false;
+
+        boolean isUndefinedColumn(SQLException exception);
+    }
 
     void closeWindow(P partition, String id, OffsetContext offsetContext) throws InterruptedException;
 
