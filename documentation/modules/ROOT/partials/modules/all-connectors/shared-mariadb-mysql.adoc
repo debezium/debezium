@@ -892,8 +892,8 @@ end::set-binlog-position-format[]
 
 ==== Send a signal to reposition the stream
 
-tag::set-binlog-position-procedure-mysql[]
-Send a {prodname} `set-binlog-position` signal at run time to specify the binlog reading position for the MySQL connector.
+tag::set-binlog-position-procedure[]
+Send a {prodname} `set-binlog-position` signal at run time to specify the binlog reading position for the {connector-name} connector.
 
 
 .Prerequisites
@@ -918,65 +918,22 @@ SQL to use when GTID is disabled (uses the binlog file and position)::
 INSERT INTO debezium_signal (id, type, data) VALUES (
   'set-position-001',
   'set-binlog-position',
-  '{"binlog_filename": "mysql-bin.000003", "binlog_position": 1234}'
+  '{"binlog_filename": "{binlog-filename-example}", "binlog_position": 1234}'
 );
 ----
 +
-SQL to use when GTID is enabled (specifies UUID-based GTID set)::
+SQL to use when GTID is enabled (specifies {gtid-label})::
 +
 [source,sql,indent=0,subs="+attributes"]
 ----
 INSERT INTO debezium_signal (id, type, data) VALUES (
   'set-gtid-001',
   'set-binlog-position',
-  '{"gtid_set": "3E11FA47-71CA-11E1-9E33-C80AA9429562:1-100"}'
+  '{"gtid_set": "{gtid-value}"}'
 );
 ----
 3. Restart the connector to begin streaming from the new position.
-end::set-binlog-position-procedure-mysql[]
-
-tag::set-binlog-position-procedure-mariadb[]
-Send a {prodname} `set-binlog-position` signal at run time to specify the binlog reading position for the MariaDB connector.
-
-
-.Prerequisites
-
-* The connector is configured to use one of the available {link-prefix}:{link-signalling}#sending-signals-to-a-debezium-connector[{prodname} signaling channels].
-* A {link-prefix}:{link-signalling}#debezium-signaling-enabling-source-signaling-channel[signaling data collection] exists on the source database.
-* The connector configuration property `heartbeat.interval.ms` is set to ensure that offset changes are persisted.
-
-.Procedure
-
-1. Determine the target position in your database history (binlog file and position, or GTID set).
-2. Send a `set-binlog-position` signal that includes the standard `id`, `type`, and `data` properties in the format that is required for your preferred signaling channel.
-+
-In the data portion of the signal, specify the target position as determined in step 1.
-+
-For example, for the source signaling channel, add one of the following SQL commands to the `data` component of the signal, depending on whether GTID is enabled:
-+
-SQL to use when GTID is disabled (uses the binlog file and position)::
-+
-[source,sql,indent=0,subs="+attributes"]
-----
-INSERT INTO debezium_signal (id, type, data) VALUES (
-  'set-position-001',
-  'set-binlog-position',
-  '{"binlog_filename": "mariadb-bin.000003", "binlog_position": 1234}'
-);
-----
-+
-SQL to use when GTID is enabled (specifies domain-server-sequence GTID set)::
-+
-[source,sql,indent=0,subs="+attributes"]
-----
-INSERT INTO debezium_signal (id, type, data) VALUES (
-  'set-gtid-001',
-  'set-binlog-position',
-  '{"gtid_set": "0-1-100"}'
-);
-----
-3. Restart the connector to begin streaming from the new position.
-end::set-binlog-position-procedure-mariadb[]
+end::set-binlog-position-procedure[]
 
 
 === Topic names
