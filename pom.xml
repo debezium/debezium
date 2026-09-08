@@ -71,6 +71,10 @@
         <maven.compiler.release>${debezium.java.connector.target}</maven.compiler.release>
         <maven.compiler.testRelease>${debezium.java.connector.target}</maven.compiler.testRelease>
 
+        <!-- 'sort' rewrites the contributor files in order, 'check' fails the build if they are
+             not sorted; mirrors format.imports.goal used by impsort-maven-plugin -->
+        <format.names.goal>sort</format.names.goal>
+
         <!-- Minimum JDK version required for building the project -->
         <jdk.min.version>${debezium.java.source}</jdk.min.version>
 
@@ -95,6 +99,9 @@
         <version.checkstyle.plugin>3.6.0</version.checkstyle.plugin>
         <version.release.plugin>2.5.3</version.release.plugin>
         <version.impsort>1.12.0</version.impsort>
+        <version.gmavenplus.plugin>4.1.1</version.gmavenplus.plugin>
+        <!-- Groovy runtime for the gmavenplus build script below; keep aligned with version.groovy in debezium-bom -->
+        <version.groovy.runtime>4.0.17</version.groovy.runtime>
         <version.failsafe.plugin>${version.surefire.plugin}</version.failsafe.plugin>
         <version.checkstyle>13.2.0</version.checkstyle>
         <version.revapi.plugin>0.15.1</version.revapi.plugin>
@@ -448,6 +455,55 @@
         </plugins>
     </build>
     <profiles>
+        <profile>
+            <!--
+                Keeps COPYRIGHT.txt, Aliases.txt and FilteredNames.txt sorted. These are
+                append-only lists that every contributor adds their name to. Appended names all
+                land on the last line of the file, so two concurrent pull requests always
+                conflict; sorted, they only conflict when the names are alphabetical neighbours.
+
+                Activated by the presence of COPYRIGHT.txt so that it applies to the aggregator
+                only. A plugin declared in build/plugins is pulled into every module's effective
+                pom even with inherited=false, which this avoids.
+            -->
+            <id>sort-contributor-files</id>
+            <activation>
+                <file>
+                    <exists>${basedir}/COPYRIGHT.txt</exists>
+                </file>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.gmavenplus</groupId>
+                        <artifactId>gmavenplus-plugin</artifactId>
+                        <version>${version.gmavenplus.plugin}</version>
+                        <dependencies>
+                            <dependency>
+                                <groupId>org.apache.groovy</groupId>
+                                <artifactId>groovy</artifactId>
+                                <version>${version.groovy.runtime}</version>
+                                <scope>runtime</scope>
+                            </dependency>
+                        </dependencies>
+                        <executions>
+                            <execution>
+                                <id>sort-contributor-files</id>
+                                <phase>validate</phase>
+                                <goals>
+                                    <goal>execute</goal>
+                                </goals>
+                                <configuration>
+                                    <scripts>
+                                        <script>${project.basedir}/support/scripts/sort-contributor-files.groovy</script>
+                                    </scripts>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
         <profile>
             <id>qa</id>
             <activation>
