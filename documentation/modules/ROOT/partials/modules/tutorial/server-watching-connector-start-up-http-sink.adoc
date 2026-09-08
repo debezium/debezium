@@ -1,0 +1,265 @@
+[id="server-watching-connector-start-up-http-sink"]
+= Watching {prodname} Server and the connector start
+
+When you start {prodname} server, a large volume of log output is generated.
+By reviewing this output,
+you can better understand the process that the connector goes through from the time it is created until it begins reading the MySQL server's `binlog`.
+
+After starting {prodname} server and the connector,
+you can review the log output in the terminal to track the connector's status.
+
+The first few lines show the {prodname} Server engine being created and started:
+
+[source,shell,options="nowrap"]
+----
+...
+2026-09-03 13:03:21,920 INFO  [io.quarkus.debezium.agroal.configuration.AgroalCompatibilityDatasourceRecorder] (main) Agroal default engine: io.debezium.connector.mysql.MySqlConnector
+2026-09-03 13:03:22,052 INFO  [io.quarkus.debezium.engine.RunnableDebeziumConnectorRegistry] (main) start(default) called; known engines=[default], currently running=[]
+2026-09-03 13:03:22,061 INFO  [io.debezium.util.Threads] (main) Requested thread factory for component Connector, id = quarkus-extension named = default
+2026-09-03 13:03:22,063 INFO  [io.debezium.util.Threads] (main) Creating thread debezium-connector-quarkus-extension-default-0
+2026-09-03 13:03:22,063 INFO  [io.quarkus.debezium.engine.DebeziumRunner] (main) Starting Debezium Engine debezium-connector-quarkus-extension-default-0
+2026-09-03 13:03:22,064 INFO  [io.quarkus.debezium.engine.RunnableDebeziumConnectorRegistry] (main) start(default) success; runner thread launched
+2026-09-03 13:03:22,067 INFO  [io.quarkus.debezium.engine.DebeziumWithCustomSerialization] (debezium-connector-quarkus-extension-default-0) Creating Debezium Engine instance EngineManifest[id=default] for Connector Connector[name=io.debezium.connector.mysql.MySqlConnector] and serialization - header: io.debezium.engine.format.Json, key: io.debezium.engine.format.Json, value: io.debezium.engine.format.Json
+2026-09-03 13:03:22,111 INFO  [io.debezium.server.BaseChangeConsumer] (debezium-connector-quarkus-extension-default-0) Using 'io.debezium.server.BaseChangeConsumer$$Lambda/0x000000001c403008@2c8a582b' stream name mapper
+2026-09-03 13:03:22,159 INFO  [io.debezium.server.http.HttpChangeConsumer] (debezium-connector-quarkus-extension-default-0) Using http content-type type application/json
+2026-09-03 13:03:22,159 INFO  [io.debezium.server.http.HttpChangeConsumer] (debezium-connector-quarkus-extension-default-0) Using sink URL: http://127.0.0.1:8081
+2026-09-03 13:03:22,160 INFO  [io.debezium.server.http.HttpChangeConsumer] (debezium-connector-quarkus-extension-default-0) Batch mode: disabled
+2026-09-03 13:03:22,161 INFO  [io.debezium.server.producers.ChangeConsumerProducer] (debezium-connector-quarkus-extension-default-0) Consumer 'io.debezium.server.http.HttpChangeConsumer' instantiated
+...
+----
+
+Note the sink URL, it should be the same as the one you configured in `application.properties` earlier.
+Further down, you should see output like the following from the connector:
+
+[source,shell,options="nowrap"]
+----
+...
+2026-09-03 13:03:22,305 INFO  [io.quarkus.debezium.engine.DebeziumWithCustomSerialization] (debezium-connector-quarkus-extension-default-0) running engine default with Debezium Connector Connector[name=io.debezium.connector.mysql.MySqlConnector]
+2026-09-03 13:03:22,305 INFO  [io.debezium.embedded.async.AsyncEmbeddedEngine] (debezium-connector-quarkus-extension-default-0) Engine state has changed from 'CREATING' to 'INITIALIZING'
+2026-09-03 13:03:22,466 INFO  [io.debezium.config.CommonConnectorConfig] (debezium-connector-quarkus-extension-default-0) Loading the custom source info struct maker plugin: io.debezium.connector.mysql.MySqlSourceInfoStructMaker
+2026-09-03 13:03:22,552 INFO  [io.debezium.util.Threads] (debezium-connector-quarkus-extension-default-0) Requested thread factory for component MySqlConnector, id = tutorial named = connection-validation
+2026-09-03 13:03:22,553 INFO  [io.debezium.util.Threads] (debezium-connector-quarkus-extension-default-0) Creating thread debezium-mysqlconnector-tutorial-connection-validation
+2026-09-03 13:03:22,622 INFO  [io.quarkus] (main) debezium-server-dist 3.7.0.Alpha1 on JVM (powered by Quarkus 3.33.1.1) started in 22.841s. Listening on: http://0.0.0.0:8080
+2026-09-03 13:03:22,622 INFO  [io.quarkus] (main) Profile prod activated. 
+2026-09-03 13:03:22,622 INFO  [io.quarkus] (main) Installed features: [agroal, cdi, config-yaml, debezium-db2, debezium-mariadb, debezium-mongodb, debezium-mysql, debezium-oracle, debezium-postgresql, debezium-sqlserver, jdbc-db2, jdbc-mariadb, jdbc-mssql, jdbc-mysql, jdbc-oracle, jdbc-postgresql, kubernetes-client, mongodb-client, narayana-jta, rest, rest-jackson, smallrye-context-propagation, smallrye-health, vertx]
+2026-09-03 13:03:23,314 INFO  [io.debezium.connector.mysql.jdbc.MySqlConnection] (debezium-mysqlconnector-tutorial-connection-validation) Using 'SHOW BINARY LOG STATUS' to get binary log status
+2026-09-03 13:03:23,318 INFO  [io.debezium.connector.binlog.BinlogConnector] (debezium-mysqlconnector-tutorial-connection-validation) Successfully tested connection for jdbc:mysql://localhost:3306/?useInformationSchema=true&nullCatalogMeansCurrent=false&useUnicode=true&characterEncoding=UTF-8&characterSetResults=UTF-8&zeroDateTimeBehavior=CONVERT_TO_NULL&connectTimeout=30000 with user 'debezium'
+2026-09-03 13:03:23,331 INFO  [io.debezium.util.Threads] (debezium-mysqlconnector-tutorial-connection-validation) Requested thread factory for component JdbcConnection, id = JdbcConnection named = jdbc-connection-close
+2026-09-03 13:03:23,331 INFO  [io.debezium.util.Threads] (debezium-mysqlconnector-tutorial-connection-validation) Creating thread debezium-jdbcconnection-JdbcConnection-jdbc-connection-close
+2026-09-03 13:03:23,334 INFO  [io.debezium.jdbc.JdbcConnection] (debezium-jdbcconnection-JdbcConnection-jdbc-connection-close) Connection gracefully closed
+2026-09-03 13:03:23,405 INFO  [io.debezium.embedded.async.AsyncEmbeddedEngine] (debezium-connector-quarkus-extension-default-0) Found offset store provider 'file' for 'org.apache.kafka.connect.storage.FileOffsetBackingStore'
+...
+----
+
+{prodname} Server state changes from `CREATING` to `INITIALISING` and starts the MySQL connector, as well as locates the file used to store offsets.
+
+[source,shell,options="nowrap"]
+----
+...
+2026-09-03 13:03:23,420 INFO  [org.apache.kafka.connect.storage.FileOffsetBackingStore] (debezium-connector-quarkus-extension-default-0) Starting FileOffsetBackingStore with file data/offsets.dat
+2026-09-03 13:03:23,423 INFO  [io.debezium.embedded.async.AsyncEmbeddedEngine] (debezium-connector-quarkus-extension-default-0) Offset store 'org.apache.kafka.connect.storage.FileOffsetBackingStore' successfully started
+2026-09-03 13:03:23,451 INFO  [io.debezium.embedded.async.AsyncEmbeddedEngine] (debezium-connector-quarkus-extension-default-0) Engine state has changed from 'INITIALIZING' to 'CREATING_TASKS'
+2026-09-03 13:03:23,511 INFO  [io.debezium.embedded.async.AsyncEmbeddedEngine] (debezium-connector-quarkus-extension-default-0) Engine state has changed from 'CREATING_TASKS' to 'STARTING_TASKS'
+2026-09-03 13:03:23,512 INFO  [io.debezium.embedded.async.AsyncEmbeddedEngine] (debezium-connector-quarkus-extension-default-0) Waiting max. for 40000 ms for individual source tasks to start.
+2026-09-03 13:03:23,521 INFO  [io.debezium.config.CommonConnectorConfig] (pool-6-thread-1) Loading the custom source info struct maker plugin: io.debezium.connector.mysql.MySqlSourceInfoStructMaker
+2026-09-03 13:03:23,538 INFO  [io.debezium.openlineage.emitter.NoOpLineageEmitter] (pool-6-thread-1) You are using a no-op lineage emitter. If you want to emit open lineage event, please set 'openlineage.integration.enabled=true'
+2026-09-03 13:03:23,541 INFO  [io.debezium.connector.common.BaseSourceTask] (pool-6-thread-1) Starting MySqlConnectorTask with configuration:
+   connector.class = io.debezium.connector.mysql.MySqlConnector
+   java.specification.version = 25
+   datasource.devservices.show-logs = false
+   sun.jnu.encoding = UTF-8
+   io.quarkus.security.http.test-if-basic-auth-implicitly-required = true
+   sun.arch.data.model = 64
+   java.vendor.url = https://ubuntu.com/
+   record.processing.threads = 
+   errors.retry.delay.initial.ms = 300
+   datasource.metrics.enabled = false
+   sun.boot.library.path = /usr/lib/jvm/java-25-openjdk-amd64/lib
+   sun.java.command = io.debezium.server.Main
+   datasource.devservices.image-name = quay.io/debezium/postgres:15
+   jdk.debug = release
+   offset.storage = org.apache.kafka.connect.storage.FileOffsetBackingStore
+   java.specification.vendor = Oracle Corporation
+   java.version.date = 2026-07-21
+   java.home = /usr/lib/jvm/java-25-openjdk-amd64
+   file.separator = /
+   java.vm.compressedOopsMode = Zero based
+   internal.task.management.timeout.ms = 40000
+   line.separator = 
+
+   java.vm.specification.vendor = Oracle Corporation
+   java.specification.name = Java Platform API Specification
+   offset.storage.http.url = http://127.0.0.1:8081
+   sun.management.compiler = HotSpot 64-Bit Tiered Compilers
+   record.processing.shutdown.timeout.ms = 1000
+   java.runtime.version = 25.0.4+7-1-26.04-Ubuntu
+   user.name = your_username
+   datasource.jdbc.transactions = enabled
+   datasource.health-exclude = false
+   record.processing.order = ORDERED
+   schema.history.internal.file.filename = data/history.dat
+   tombstones.on.delete = false
+   offset.storage.file.filename = data/offsets.dat
+   file.encoding = UTF-8
+   datasource.health.enabled = true
+   value.converter = org.apache.kafka.connect.json.JsonConverter
+   java.io.tmpdir = /tmp
+   java.version = 25.0.4
+   database.server.id = 223344
+   datasource.jdbc.telemetry = false
+   notification.enabled.channels = quarkus
+   errors.retry.delay.max.ms = 10000
+   java.vm.specification.name = Java Virtual Machine Specification
+   value.converter.value = json
+   offset.flush.interval.ms = 0
+   native.encoding = UTF-8
+   java.library.path = /usr/java/packages/lib:/usr/lib/x86_64-linux-gnu/jni:/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu:/usr/lib/jni:/lib:/usr/lib
+   stderr.encoding = UTF-8
+   java.vendor = Ubuntu
+   schema.history.internal.http.url = http://127.0.0.1:8081
+   sun.io.unicode.encoding = UnicodeLittle
+   io.netty.machineId = 77:72:8e:7f:7d:26:9f:80
+   datasource.dev-ui.allow-sql = false
+   database.include.list = inventory
+...
+----
+
+[TIP]
+====
+If the connector is not able to connect,
+or if it does not see any tables or the `binlog`,
+check these grants to ensure that all of those listed above are included.
+====
+
+Next, the connector reports the steps that make up the snapshot operation:
+
+[source,shell,options="nowrap"]
+----
+...
+2026-09-03 13:03:23,543 INFO  [io.debezium.config.CommonConnectorConfig] (pool-6-thread-1) Loading the custom topic naming strategy plugin: io.debezium.schema.DefaultTopicNamingStrategy
+2026-09-03 13:03:23,589 INFO  [io.debezium.connector.mysql.jdbc.MySqlConnection] (pool-6-thread-1) Using 'SHOW BINARY LOG STATUS' to get binary log status
+2026-09-03 13:03:23,649 INFO  [io.debezium.connector.common.BaseSourceTask] (pool-6-thread-1) No previous offsets found
+2026-09-03 13:03:23,939 INFO  [io.debezium.connector.mysql.MySqlDatabaseSchema] (pool-6-thread-1) Using MySql DdlParserType DEFAULT
+2026-09-03 13:03:24,063 INFO  [io.debezium.connector.mysql.jdbc.MySqlConnection] (pool-6-thread-1) Using 'SHOW BINARY LOG STATUS' to get binary log status
+2026-09-03 13:03:24,116 INFO  [io.debezium.connector.mysql.MySqlConnectorTask] (pool-6-thread-1) Guardrail validation skipped
+2026-09-03 13:03:24,116 INFO  [io.debezium.connector.mysql.MySqlConnectorTask] (pool-6-thread-1) Closing connection before starting schema recovery
+2026-09-03 13:03:24,116 INFO  [io.debezium.util.Threads] (pool-6-thread-1) Requested thread factory for component JdbcConnection, id = JdbcConnection named = jdbc-connection-close
+2026-09-03 13:03:24,116 INFO  [io.debezium.util.Threads] (pool-6-thread-1) Creating thread debezium-jdbcconnection-JdbcConnection-jdbc-connection-close
+2026-09-03 13:03:24,119 INFO  [io.debezium.jdbc.JdbcConnection] (debezium-jdbcconnection-JdbcConnection-jdbc-connection-close) Connection gracefully closed
+2026-09-03 13:03:24,122 INFO  [io.debezium.connector.common.BaseSourceTask] (pool-6-thread-1) Connector started with no previous offset for partition 'BinlogPartition{serverName='tutorial'} io.debezium.connector.mysql.MySqlPartition@b852b7d'
+2026-09-03 13:03:24,123 INFO  [io.debezium.connector.common.BaseSourceTask] (pool-6-thread-1) Database schema history storage was found. Connector will use the pre-existing storage. Checking settings for the same.
+2026-09-03 13:03:24,123 INFO  [io.debezium.connector.mysql.MySqlConnectorTask] (pool-6-thread-1) Reconnecting after validating schema recovery
+2026-09-03 13:03:24,143 INFO  [io.debezium.connector.mysql.MySqlConnectorTask] (pool-6-thread-1) No previous offset found
+2026-09-03 13:03:24,153 INFO  [io.debezium.connector.base.QueueProviderServiceProvider] (pool-6-thread-1) Using QueueProvider io.debezium.connector.base.DefaultQueueProvider
+2026-09-03 13:03:24,188 INFO  [io.debezium.util.Threads] (pool-6-thread-1) Requested thread factory for component MySqlConnector, id = tutorial named = SignalProcessor
+2026-09-03 13:03:24,494 INFO  [io.debezium.util.Threads] (pool-6-thread-1) Requested thread factory for component MySqlConnector, id = tutorial named = change-event-source-coordinator
+2026-09-03 13:03:24,495 INFO  [io.debezium.util.Threads] (pool-6-thread-1) Requested thread factory for component MySqlConnector, id = tutorial named = blocking-snapshot
+2026-09-03 13:03:24,507 INFO  [io.debezium.util.Threads] (pool-6-thread-1) Creating thread debezium-mysqlconnector-tutorial-change-event-source-coordinator
+2026-09-03 13:03:24,508 INFO  [io.debezium.embedded.async.AsyncEmbeddedEngine] (debezium-connector-quarkus-extension-default-0) All tasks have started successfully.
+2026-09-03 13:03:24,509 INFO  [io.debezium.embedded.async.AsyncEmbeddedEngine] (debezium-connector-quarkus-extension-default-0) Engine state has changed from 'STARTING_TASKS' to 'POLLING_TASKS'
+2026-09-03 13:03:24,510 INFO  [io.debezium.pipeline.ChangeEventSourceCoordinator] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Metrics registered
+2026-09-03 13:03:24,512 INFO  [io.debezium.pipeline.ChangeEventSourceCoordinator] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Context created
+2026-09-03 13:03:24,515 INFO  [io.debezium.embedded.async.AsyncEmbeddedEngine] (debezium-connector-quarkus-extension-default-0) Using io.debezium.embedded.async.ParallelSmtAndConvertBatchProcessor processor
+2026-09-03 13:03:24,533 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) According to the connector configuration both schema and data will be snapshot.
+2026-09-03 13:03:24,548 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Snapshot step 1 - Preparing
+2026-09-03 13:03:24,551 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Snapshot step 2 - Determining captured tables
+2026-09-03 13:03:24,551 INFO  [io.debezium.connector.binlog.jdbc.BinlogConnectorConnection] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Read list of available databases
+2026-09-03 13:03:24,556 INFO  [io.debezium.connector.binlog.jdbc.BinlogConnectorConnection] (debezium-mysqlconnector-tutorial-change-event-source-coordinator)   list of available databases is: [information_schema, inventory, mysql, performance_schema, sys]
+2026-09-03 13:03:24,556 INFO  [io.debezium.connector.binlog.jdbc.BinlogConnectorConnection] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Read list of available tables in each database
+2026-09-03 13:03:24,570 INFO  [io.debezium.connector.binlog.BinlogSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator)         snapshot continuing with database(s): [inventory]
+2026-09-03 13:03:24,570 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Adding table inventory.addresses to the list of capture schema tables
+2026-09-03 13:03:24,570 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Adding table inventory.customers to the list of capture schema tables
+2026-09-03 13:03:24,570 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Adding table inventory.orders to the list of capture schema tables
+2026-09-03 13:03:24,571 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Adding table inventory.geom to the list of capture schema tables
+2026-09-03 13:03:24,571 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Adding table inventory.products_on_hand to the list of capture schema tables
+2026-09-03 13:03:24,571 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Adding table inventory.products to the list of capture schema tables
+2026-09-03 13:03:24,573 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Created connection pool with 1 threads
+2026-09-03 13:03:24,573 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Snapshot step 3 - Locking captured tables [inventory.addresses, inventory.customers, inventory.geom, inventory.orders, inventory.products, inventory.products_on_hand]
+2026-09-03 13:03:24,576 INFO  [io.debezium.connector.binlog.BinlogSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Flush and obtain global read lock to prevent writes to database
+2026-09-03 13:03:24,578 INFO  [io.debezium.connector.binlog.BinlogSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Starting lock heartbeat
+2026-09-03 13:03:24,578 INFO  [io.debezium.util.Threads] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Requested thread factory for component MySqlSnapshotChangeEventSource, id = tutorial named = lock-heartbeat
+2026-09-03 13:03:24,579 INFO  [io.debezium.util.Threads] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Creating thread debezium-mysqlsnapshotchangeeventsource-tutorial-lock-heartbeat
+2026-09-03 13:03:24,581 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Snapshot step 4 - Determining snapshot offset
+2026-09-03 13:03:24,592 INFO  [io.debezium.connector.mysql.MySqlSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Read binlog position of MySQL primary server
+2026-09-03 13:03:24,603 INFO  [io.debezium.connector.mysql.MySqlSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator)    using binlog 'mysql-bin.000003' at position '157' and gtid ''
+2026-09-03 13:03:24,605 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Snapshot step 5 - Reading structure of captured tables
+2026-09-03 13:03:24,605 INFO  [io.debezium.connector.binlog.BinlogSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) All eligible tables schema should be captured, capturing: [inventory.addresses, inventory.customers, inventory.geom, inventory.orders, inventory.products, inventory.products_on_hand]
+ANTLR Tool version 4.10.1 used for code generation does not match the current runtime version 4.13.2
+ANTLR Runtime version 4.10.1 used for parser compilation does not match the current runtime version 4.13.2
+ANTLR Tool version 4.10.1 used for code generation does not match the current runtime version 4.13.2
+ANTLR Runtime version 4.10.1 used for parser compilation does not match the current runtime version 4.13.2
+2026-09-03 13:03:25,909 INFO  [io.debezium.connector.binlog.BinlogSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Reading structure of database 'inventory'
+2026-09-03 13:03:26,008 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Snapshot step 6 - Persisting schema history
+2026-09-03 13:03:26,049 INFO  [io.debezium.relational.history.SchemaHistoryMetrics] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Already applied 1 database changes
+2026-09-03 13:03:26,283 INFO  [io.debezium.connector.binlog.BinlogSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Releasing global read lock to enable MySQL writes
+2026-09-03 13:03:26,285 INFO  [io.debezium.connector.binlog.BinlogSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Writes to MySQL tables prevented for a total of 00:00:01.707
+2026-09-03 13:03:26,285 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Snapshot step 7 - Snapshotting data
+2026-09-03 13:03:26,294 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) For table 'inventory.addresses' using select statement: 'SELECT `id`, `customer_id`, `street`, `city`, `state`, `zip`, `type` FROM `inventory`.`addresses`'
+2026-09-03 13:03:26,304 INFO  [io.debezium.connector.binlog.BinlogSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Estimated row count for table inventory.addresses is OptionalLong[7]
+2026-09-03 13:03:26,305 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) For table 'inventory.customers' using select statement: 'SELECT `id`, `first_name`, `last_name`, `email` FROM `inventory`.`customers`'
+2026-09-03 13:03:26,307 INFO  [io.debezium.connector.binlog.BinlogSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Estimated row count for table inventory.customers is OptionalLong[4]
+2026-09-03 13:03:26,308 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) For table 'inventory.geom' using select statement: 'SELECT `id`, `g`, `h` FROM `inventory`.`geom`'
+2026-09-03 13:03:26,310 INFO  [io.debezium.connector.binlog.BinlogSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Estimated row count for table inventory.geom is OptionalLong[0]
+2026-09-03 13:03:26,310 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) For table 'inventory.orders' using select statement: 'SELECT `order_number`, `order_date`, `purchaser`, `quantity`, `product_id` FROM `inventory`.`orders`'
+2026-09-03 13:03:26,312 INFO  [io.debezium.connector.binlog.BinlogSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Estimated row count for table inventory.orders is OptionalLong[0]
+2026-09-03 13:03:26,313 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) For table 'inventory.products' using select statement: 'SELECT `id`, `name`, `description`, `weight` FROM `inventory`.`products`'
+2026-09-03 13:03:26,315 INFO  [io.debezium.connector.binlog.BinlogSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Estimated row count for table inventory.products is OptionalLong[9]
+2026-09-03 13:03:26,315 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) For table 'inventory.products_on_hand' using select statement: 'SELECT `product_id`, `quantity` FROM `inventory`.`products_on_hand`'
+2026-09-03 13:03:26,317 INFO  [io.debezium.connector.binlog.BinlogSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Estimated row count for table inventory.products_on_hand is OptionalLong[2]
+2026-09-03 13:03:26,321 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Creating snapshot worker pool with 1 worker thread(s)
+2026-09-03 13:03:26,326 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (pool-8-thread-1) Exporting data from table 'inventory.addresses' (1 of 6 tables)
+2026-09-03 13:03:26,363 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (pool-8-thread-1)     Finished exporting 7 records for table 'inventory.addresses' (1 of 6 tables); total duration '00:00:00.037'
+2026-09-03 13:03:26,368 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (pool-8-thread-1) Exporting data from table 'inventory.customers' (2 of 6 tables)
+2026-09-03 13:03:26,373 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (pool-8-thread-1)     Finished exporting 4 records for table 'inventory.customers' (2 of 6 tables); total duration '00:00:00.005'
+2026-09-03 13:03:26,374 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (pool-8-thread-1) Exporting data from table 'inventory.geom' (3 of 6 tables)
+2026-09-03 13:03:26,381 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (pool-8-thread-1)     Finished exporting 3 records for table 'inventory.geom' (3 of 6 tables); total duration '00:00:00.007'
+2026-09-03 13:03:26,383 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (pool-8-thread-1) Exporting data from table 'inventory.orders' (4 of 6 tables)
+2026-09-03 13:03:26,398 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (pool-8-thread-1)     Finished exporting 4 records for table 'inventory.orders' (4 of 6 tables); total duration '00:00:00.015'
+2026-09-03 13:03:26,401 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (pool-8-thread-1) Exporting data from table 'inventory.products' (5 of 6 tables)
+2026-09-03 13:03:26,408 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (pool-8-thread-1)     Finished exporting 9 records for table 'inventory.products' (5 of 6 tables); total duration '00:00:00.007'
+2026-09-03 13:03:26,411 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (pool-8-thread-1) Exporting data from table 'inventory.products_on_hand' (6 of 6 tables)
+2026-09-03 13:03:26,416 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (pool-8-thread-1)     Finished exporting 9 records for table 'inventory.products_on_hand' (6 of 6 tables); total duration '00:00:00.005'
+2026-09-03 13:03:26,421 INFO  [io.debezium.pipeline.source.AbstractSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Snapshot - Final stage
+2026-09-03 13:03:26,421 INFO  [io.debezium.pipeline.source.AbstractSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Snapshot completed
+2026-09-03 13:03:26,427 INFO  [io.debezium.pipeline.ChangeEventSourceCoordinator] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Snapshot ended with SnapshotResult [status=COMPLETED, offset=BinlogOffsetContext{sourceInfoSchema=Schema{io.debezium.connector.mysql.Source:STRUCT}, sourceInfo=BinlogSourceInfo{currentGtid='null', currentBinlogFilename='mysql-bin.000003', currentBinlogPosition=157, currentRowNumber=0, serverId=0, sourceTime=2026-09-03T12:03:26Z, threadId=-1, currentQuery='null', tableIds=[inventory.products_on_hand], databaseName='inventory'}, snapshotCompleted=true, transactionContext=TransactionContext [currentTransactionId=null, perTableEventCount={}, totalEventCount=0], restartGtidSet='null', currentGtidSet='null', restartBinlogFilename='mysql-bin.000003', restartBinlogPosition=157, restartRowsToSkip=0, restartEventsToSkip=0, currentEventLengthInBytes=0, inTransaction=false, transactionId='null', incrementalSnapshotContext=IncrementalSnapshotContext [windowOpened=false, chunkEndPosition=null, dataCollectionsToSnapshot=[], lastEventKeySent=null, maximumKey=null]}]
+...
+----
+
+Each of these steps reports what the connector is doing to perform the consistent snapshot.
+For example, Step 6 involves reverse engineering the DDL `create` statements for the tables that are being captured
+and the global write lock just 1 second after acquiring it,
+and Step 7 reads all of the rows in each of the tables and reports the time taken and number of rows found.
+In this case, the connector completed its consistent snapshot in just under 1 second.
+
+[NOTE]
+====
+The snapshot process will take longer with your databases,
+but the connector outputs enough log messages that you can track what it is working on,
+even when the tables have a large number of rows.
+And although an exclusive write lock is used at the beginning of the snapshot process,
+it should not last very long even for large databases.
+This is because the lock is released before any data is copied.
+For more information, see the xref:{link-mysql-connector}#debezium-connector-for-mysql[MySQL connector documentation].
+====
+
+Finally, the log output shows that the connector has transitioned from its snapshot mode into continuously reading the MySQL server's `binlog`:
+
+[source,shell,options="nowrap"]
+----
+...
+2026-09-03 13:03:26,437 INFO  [io.debezium.util.Threads] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Requested thread factory for component MySqlConnector, id = tutorial named = binlog-client
+2026-09-03 13:03:26,443 INFO  [io.debezium.connector.binlog.BinlogStreamingChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Enable ssl PREFERRED mode for connector tutorial
+2026-09-03 13:03:26,495 INFO  [io.debezium.pipeline.signal.SignalProcessor] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) SignalProcessor started. Scheduling it every 5000ms
+2026-09-03 13:03:26,495 INFO  [io.debezium.util.Threads] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Creating thread debezium-mysqlconnector-tutorial-SignalProcessor
+2026-09-03 13:03:26,495 INFO  [io.debezium.pipeline.ChangeEventSourceCoordinator] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Starting streaming
+2026-09-03 13:03:26,506 INFO  [io.debezium.connector.binlog.BinlogStreamingChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Skip 0 events on streaming start
+2026-09-03 13:03:26,506 INFO  [io.debezium.connector.binlog.BinlogStreamingChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Skip 0 rows on streaming start
+2026-09-03 13:03:26,508 INFO  [io.debezium.util.Threads] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Creating thread debezium-mysqlconnector-tutorial-binlog-client
+2026-09-03 13:03:26,522 INFO  [io.debezium.util.Threads] (blc-localhost:3306) Creating thread debezium-mysqlconnector-tutorial-binlog-client
+2026-09-03 13:03:26,528 INFO  [com.github.shyiko.mysql.binlog.BinaryLogClient] (blc-localhost:3306) Database version: 8.2.0 (major=8, minor=2, mariadb=false)
+2026-09-03 13:03:26,538 INFO  [com.github.shyiko.mysql.binlog.BinaryLogClient] (blc-localhost:3306) SSL enabled
+2026-09-03 13:03:26,595 INFO  [com.github.shyiko.mysql.binlog.BinaryLogClient] (blc-localhost:3306) Requesting streaming from position filename: mysql-bin.000003, position: 157
+2026-09-03 13:03:26,598 INFO  [com.github.shyiko.mysql.binlog.BinaryLogClient] (blc-localhost:3306) Connected to localhost:3306 at mysql-bin.000003/157 (sid:223344, cid:12)
+2026-09-03 13:03:26,598 INFO  [io.debezium.connector.binlog.BinlogStreamingChangeEventSource] (blc-localhost:3306) Connected to binlog at localhost:3306, starting at BinlogOffsetContext{sourceInfoSchema=Schema{io.debezium.connector.mysql.Source:STRUCT}, sourceInfo=BinlogSourceInfo{currentGtid='null', currentBinlogFilename='mysql-bin.000003', currentBinlogPosition=157, currentRowNumber=0, serverId=0, sourceTime=2026-09-03T12:03:26Z, threadId=-1, currentQuery='null', tableIds=[inventory.products_on_hand], databaseName='inventory'}, snapshotCompleted=true, transactionContext=TransactionContext [currentTransactionId=null, perTableEventCount={}, totalEventCount=0], restartGtidSet='null', currentGtidSet='null', restartBinlogFilename='mysql-bin.000003', restartBinlogPosition=157, restartRowsToSkip=0, restartEventsToSkip=0, currentEventLengthInBytes=0, inTransaction=false, transactionId='null', incrementalSnapshotContext=IncrementalSnapshotContext [windowOpened=false, chunkEndPosition=null, dataCollectionsToSnapshot=[], lastEventKeySent=null, maximumKey=null]}
+...
+----

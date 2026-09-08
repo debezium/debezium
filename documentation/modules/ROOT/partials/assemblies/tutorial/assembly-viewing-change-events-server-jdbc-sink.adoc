@@ -1,0 +1,29 @@
+// Metadata created by nebel
+//
+// UserStory: As an evaluator, I want to use Debezium to view create, update, and delete events in my database.
+:context: mysql
+
+[id="viewing-change-events-jdbc-sink"]
+= Viewing change events
+
+After deploying the {prodname} MySQL connector,
+it starts monitoring the `inventory` database for data change events.
+
+When you watched {prodname} server and the connector start up,
+you saw that events were being streamed to the JDBC Sink at `jdbc:postgresql://localhost:5432/inventory`
+
+As events are received, the JDBC sink connector inserts the data into the PostgreSQL database.
+In this topic, you will see different types of change events to see how the connector captured them:
+
+* xref:viewing-create-event-jdbc-sink[Viewing a _create_ event]
+* xref:updating-database-viewing-update-event-jdbc-sink[Updating the database and viewing the _update_ event]
+* xref:deleting-record-database-viewing-delete-event-jdbc-sink[Deleting a record in the database and viewing the _delete_ event]
+* xref:restarting-{prodname}-server-jdbc-sink[Restarting {prodname} server and changing the database]
+
+include::{partialsdir}/modules/tutorial/server-viewing-create-event-jdbc-sink.adoc[leveloffset=+1]
+
+include::{partialsdir}/modules/tutorial/server-updating-database-viewing-update-event-jdbc-sink.adoc[leveloffset=+1]
+
+include::{partialsdir}/modules/tutorial/server-deleting-record-database-viewing-delete-event-jdbc-sink.adoc[leveloffset=+1]
+
+include::{partialsdir}/modules/tutorial/server-restarting-debezium-server-jdbc-sink.adoc[leveloffset=+1]

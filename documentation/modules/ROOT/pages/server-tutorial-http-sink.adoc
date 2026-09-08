@@ -1,0 +1,46 @@
+[id="server-tutorial-http-sink"]
+= {prodname} Server Tutorial - HTTP Sink
+
+:toc:
+:toc-placement: macro
+:sectanchors:
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+:windows:
+
+toc::[]
+
+This tutorial demonstrates how to use {prodname} to monitor a MySQL database.
+As the data in the database changes, you will see the resulting event streams.
+
+In this tutorial you will start the HTTP sink service,
+run a MySQL database server with a simple example database,
+and use {prodname} to monitor the database for changes.
+
+.Prerequisites
+
+* Docker is installed and running.
++
+This tutorial uses Docker and the {prodname} container images to run the required services.
+You should use the latest version of Docker.
+For more information, see link:https://docs.docker.com/engine/installation/[the Docker Engine installation documentation].
+
+ifdef::community[]
+[NOTE]
+====
+This example can also be run using Podman. For more information see link:https://podman.io/[Podman].
+====
+endif::community[]
+
+include::{partialsdir}/modules/tutorial/server-introduction-debezium.adoc[leveloffset=+1]
+
+include::{partialsdir}/assemblies/tutorial/assembly-starting-services-server-http-sink.adoc[leveloffset=+1]
+
+include::{partialsdir}/assemblies/tutorial/assembly-deploying-mysql-connector-server-http-sink.adoc[leveloffset=+1]
+
+include::{partialsdir}/assemblies/tutorial/assembly-viewing-change-events-server.adoc[leveloffset=+1]
+
+include::{partialsdir}/modules/tutorial/server-cleaning-up.adoc[leveloffset=+1]
+
+include::{partialsdir}/modules/tutorial/con-next-steps.adoc[leveloffset=+1]
