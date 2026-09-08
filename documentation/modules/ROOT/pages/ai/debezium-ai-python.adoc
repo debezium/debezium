@@ -1,0 +1,102 @@
+// Category: debezium-using
+// Type: assembly
+// ModuleID: debezium-ai-python-integration
+// Title: Debezium AI Python Integration (PyDebeziumAI)
+[id="debezium-ai-python-integration"]
+= Debezium AI Python Integration (PyDebeziumAI)
+ifdef::community[]
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+endif::community[]
+
+Real-time Change Data Capture (CDC) is essential for keeping generative AI applications, search indexes, and Retrieval-Augmented Generation (RAG) pipelines synchronized with transactional databases.
+
+Debezium provides an official Python package, `pydebeziumai`, designed to streamline real-time CDC event streaming from relational databases into vector stores and AI agent frameworks.
+
+== Overview & Architecture
+
+Unlike traditional Kafka-centric streaming pipelines that require deploying separate Kafka Connect clusters, Schema Registries, and consumer workers, `pydebeziumai` runs the Debezium embedded engine directly inside your Python application process using high-performance JVM bindings.
+
+[source]
+----
+PostgreSQL / MySQL ──► Embedded Debezium Engine (in-process) ──► PyDebeziumAI ──► Vector Store
+----
+
+Every database `INSERT`, `UPDATE`, or `DELETE` transaction is captured from the source database binary log, converted into Python-native events, transformed into LangChain `Document` objects, and immediately upserted or deleted from the target vector database in real time.
+
+== Key Features
+
+- **In-Process CDC Engine**: Runs the embedded Debezium engine directly within Python using JVM bindings, eliminating Kafka broker and Connect overhead for lightweight Python services.
+- **LangChain & LangGraph Native**: Maps CDC change events to standard `langchain_core.documents.Document` instances and provides retriever nodes for LangGraph agents.
+- **Deterministic ID Strategies**: Generates idempotent, primary-key-based UUID document identifiers to ensure database updates and deletes map correctly to existing vector embeddings without duplicates.
+- **Pluggable Vector DB Adapters**: Built-in adapters for Chroma, PGVector, and Milvus.
+- **Pluggable Embedding Providers**: Compatible with any LangChain embedding model provider, including `OpenAIEmbeddings`, `HuggingFaceEmbeddings`, `OllamaEmbeddings`, `CohereEmbeddings`, and `VertexAIEmbeddings`.
+- **Event Compaction**: Automatically compacts batches under high write loads to collapse redundant mutations to identical primary keys before flushing.
+
+== Supported Sources & Vector Stores
+
+[cols="1,2",options="header"]
+|===
+| Component Category | Supported Technologies
+
+| **Source Databases**
+| PostgreSQL (15, 16, 17), MySQL (8.0, 8.4 LTS)
+
+| **Vector Databases**
+| Chroma (`chromadb`), PGVector (`pgvector`), Milvus (`pymilvus`, `milvus-lite`)
+
+| **Embedding Providers**
+| OpenAI, HuggingFace / Local Sentence-Transformers, Ollama, Cohere, Vertex AI, AWS Bedrock
+|===
+
+== Quickstart
+
+To install `pydebeziumai` with Chroma vector store support:
+
+[source,bash]
+----
+pip install "pydebeziumai[chroma,debezium]"
+----
+
+=== Example Usage
+
+[source,python]
+----
+from pydebeziumai import LiveContext
+
+# Initialize real-time CDC sync context
+rag = LiveContext(
+    debezium_config={
+        "name": "mysql-connector",
+        "connector.class": "io.debezium.connector.mysql.MySqlConnector",
+        "database.hostname": "localhost",
+        "database.port": "3306",
+        "database.user": "debezium",
+        "database.password": "dbz",
+        "topic.prefix": "myserver",
+        "table.include.list": "inventory.products",
+    },
+    vector_store="chroma",
+    embedding_model="local",  # sentence-transformers (offline)
+    id_strategy="table_pk",
+)
+
+# Start real-time background sync loop
+rag.start()
+
+# Use as a standard LangChain retriever
+retriever = rag.as_retriever(search_kwargs={"k": 5})
+docs = retriever.invoke("Find products under $100")
+----
+
+== Official Documentation & Repository
+
+For complete quickstart guides, API references, architecture details, and tutorials, visit the official **Read the Docs** documentation page and GitHub repository:
+
+- **Documentation**: link:https://debezium-ai-python.readthedocs.io/en/latest/[PyDebeziumAI Read the Docs^]
+- **GitHub Repository**: link:https://github.com/debezium/debezium-ai-python[debezium/debezium-ai-python on GitHub^]
