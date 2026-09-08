@@ -1,0 +1,62 @@
+[id="viewing-create-event-jdbc-sink"]
+= Viewing a _create_ event
+
+By viewing the output of the HTTP Sink container,
+you can see how the MySQL connector captured _create_ events in the `inventory` database.
+In this case, the _create_ events capture new customers being added to the database.
+
+.Procedure
+
+. Open a the terminal window that the HTTP Sink is running in.
++
+--
+In this tutorial, once change event data is received it is sent to the container's standard output.
+To achieve more appreciable functionality in production, you should instead create an API to consume and process events as they are received.
+
+. In the terminal that is running the MySQL command line client, run the following statement:
++
+--
+[source,sql,options="nowrap"]
+----
+mysql> INSERT INTO customers (first_name, last_name, email) VALUES ('John', 'Tutorial', 'johntutorial@example.com');
+Query OK, 1 row affected (0.01 sec)
+----
+
+A new row corresponding to the one we have just added will now appear in the PostgreSQL database.
+
+. In the terminal that is running the PostgreSQL command line client, run the following statement:
+[source,sql,options="nowrap"]
+----
+inventory=# SELECT * FROM tutorial_inventory_customers;
+  id  | first_name | last_name |          email           
+------+------------+-----------+--------------------------
+ 1001 | Sally      | Thomas    | sally.thomas@acme.com
+ 1002 | George     | Bailey    | gbailey@foobar.com
+ 1003 | Edward     | Walker    | ed@walker.com
+ 1004 | Anne       | Kretchmar | annek@noanswer.org
+ 1005 | John       | Tutorial  | johntutorial@example.com
+(5 rows)
+----
+
+. Compare the column values in the PostgreSQL database record to the one you just added in the `inventory` database.
+
+In the terminal that is running the MySQL command line client, run the following statement:
++
+--
+[source,sql,options="nowrap"]
+----
+mysql> SELECT * FROM customers;
++------+------------+-----------+--------------------------+
+| id   | first_name | last_name | email                    |
++------+------------+-----------+--------------------------+
+| 1001 | Sally      | Thomas    | sally.thomas@acme.com    |
+| 1002 | George     | Bailey    | gbailey@foobar.com       |
+| 1003 | Edward     | Walker    | ed@walker.com            |
+| 1004 | Anne       | Kretchmar | annek@noanswer.org       |
+| 1006 | John       | Tutorial  | johntutorial@example.com |
++------+------------+-----------+--------------------------+
+5 rows in set (0.00 sec)
+----
+
+This shows that the newly created row you reviewed matches the records in the database.
+--

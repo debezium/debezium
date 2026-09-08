@@ -26,4 +26,4 @@ include::{partialsdir}/modules/tutorial/server-updating-database-viewing-update-
 
 include::{partialsdir}/modules/tutorial/server-deleting-record-database-viewing-delete-event-http-sink.adoc[leveloffset=+1]
 
-include::{partialsdir}/modules/tutorial/server-restarting-debezium-server-http-sink.adoc[leveloffset=+1]
+include::{partialsdir}/modules/tutorial/server-restarting-server-http-sink.adoc[leveloffset=+1]

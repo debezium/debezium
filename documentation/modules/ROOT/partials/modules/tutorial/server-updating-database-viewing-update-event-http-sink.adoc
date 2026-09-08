@@ -1,4 +1,3 @@
-
 [id="updating-database-viewing-update-event-http-sink"]
 = Updating the database and viewing the _update_ event
 
