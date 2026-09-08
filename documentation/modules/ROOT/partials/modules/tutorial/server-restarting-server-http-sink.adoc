@@ -1,0 +1,114 @@
+// Metadata created by nebel
+//
+// ParentAssemblies: assemblies/tutorial/as_viewing-change-events.adoc
+// UserStory:
+
+[id="restarting-{prodname}-server-service-http-sink"]
+= Restarting the {prodname} server application
+
+When the {prodname} server application goes offline and restarts, {prodname} resumes capturing database changes from the point where it stopped, without missing any events.
+
+.Procedure
+
+. Open the terminal window where you used `run.sh` to start {prodname} server and stop it using `CTRL-C`.
+
+The {prodname} server application is stopped, and gracefully shuts down.
+
+--
+
+. While {prodname} server is down, switch to the terminal for the MySQL command line client, and add a few records:
++
+--
+[source,sql,options="nowrap"]
+----
+mysql> INSERT INTO customers VALUES (default, "Sarah", "Thompson", "kitt@acme.com");
+mysql> INSERT INTO customers VALUES (default, "Kenneth", "Anderson", "kander@acme.com");
+----
+
+The records are added to the database.
+However, because {prodname} server is not running,
+the HTTP Sink does not receive any updates.
+
+. Open a new terminal, and use `run.sh` to restart the {prodname} server application.
++
+--
+This command starts {prodname} server, which reads `history.dat` and `offsets.dat` to continue from where it left off.
+
+[source,shell,options="nowrap",subs="+attributes"]
+----
+$ ./run.sh
+----
+
+Here are the last few lines from the restarted server:
+
+[source,shell,options="nowrap"]
+----
+...
+INFO  [io.debezium.config.CommonConnectorConfig] (pool-6-thread-1) Loading the custom topic naming strategy plugin: io.debezium.schema.DefaultTopicNamingStrategy
+INFO  [io.debezium.connector.mysql.jdbc.MySqlConnection] (pool-6-thread-1) Using 'SHOW BINARY LOG STATUS' to get binary log status
+INFO  [io.debezium.connector.common.BaseSourceTask] (pool-6-thread-1) Found previous partition offset BinlogPartition{serverName='tutorial'} io.debezium.connector.mysql.MySqlPartition@b852b7d: {file=mysql-bin.000003, pos=157}
+INFO  [io.debezium.connector.mysql.MySqlDatabaseSchema] (pool-6-thread-1) Using MySql DdlParserType DEFAULT
+INFO  [io.debezium.connector.mysql.jdbc.MySqlConnection] (pool-6-thread-1) Using 'SHOW BINARY LOG STATUS' to get binary log status
+INFO  [io.debezium.connector.mysql.MySqlConnectorTask] (pool-6-thread-1) Guardrail validation skipped
+INFO  [io.debezium.connector.mysql.MySqlConnectorTask] (pool-6-thread-1) Closing connection before starting schema recovery
+INFO  [io.debezium.util.Threads] (pool-6-thread-1) Requested thread factory for component JdbcConnection, id = JdbcConnection named = jdbc-connection-close
+INFO  [io.debezium.util.Threads] (pool-6-thread-1) Creating thread debezium-jdbcconnection-JdbcConnection-jdbc-connection-close
+INFO  [io.debezium.jdbc.JdbcConnection] (debezium-jdbcconnection-JdbcConnection-jdbc-connection-close) Connection gracefully closed
+INFO  [io.debezium.connector.binlog.jdbc.BinlogConnectorConnection] (pool-6-thread-1) Get all known binlogs
+INFO  [io.debezium.connector.binlog.jdbc.BinlogConnectorConnection] (pool-6-thread-1) Server has the binlog file 'mysql-bin.000003' required by the connector
+INFO  [io.debezium.connector.mysql.MySqlConnectorTask] (pool-6-thread-1) Reconnecting after validating schema recovery
+INFO  [io.debezium.connector.mysql.MySqlConnectorTask] (pool-6-thread-1) Found previous offset BinlogOffsetContext{sourceInfoSchema=Schema{io.debezium.connector.mysql.Source:STRUCT}, sourceInfo=BinlogSourceInfo{currentGtid='null', currentBinlogFilename='mysql-bin.000003', currentBinlogPosition=157, currentRowNumber=0, serverId=0, sourceTime=null, threadId=-1, currentQuery='null', tableIds=[], databaseName='null'}, snapshotCompleted=false, transactionContext=TransactionContext [currentTransactionId=null, perTableEventCount={}, totalEventCount=0], restartGtidSet='null', currentGtidSet='null', restartBinlogFilename='mysql-bin.000003', restartBinlogPosition=157, restartRowsToSkip=0, restartEventsToSkip=0, currentEventLengthInBytes=0, inTransaction=false, transactionId='null', incrementalSnapshotContext=IncrementalSnapshotContext [windowOpened=false, chunkEndPosition=null, dataCollectionsToSnapshot=[], lastEventKeySent=null, maximumKey=null]}
+INFO  [io.debezium.connector.base.QueueProviderServiceProvider] (pool-6-thread-1) Using QueueProvider io.debezium.connector.base.DefaultQueueProvider
+INFO  [io.debezium.util.Threads] (pool-6-thread-1) Requested thread factory for component MySqlConnector, id = tutorial named = SignalProcessor
+INFO  [io.debezium.util.Threads] (pool-6-thread-1) Requested thread factory for component MySqlConnector, id = tutorial named = change-event-source-coordinator
+INFO  [io.debezium.util.Threads] (pool-6-thread-1) Requested thread factory for component MySqlConnector, id = tutorial named = blocking-snapshot
+INFO  [io.debezium.util.Threads] (pool-6-thread-1) Creating thread debezium-mysqlconnector-tutorial-change-event-source-coordinator
+INFO  [io.debezium.embedded.async.AsyncEmbeddedEngine] (debezium-connector-quarkus-extension-default-0) All tasks have started successfully.
+INFO  [io.debezium.embedded.async.AsyncEmbeddedEngine] (debezium-connector-quarkus-extension-default-0) Engine state has changed from 'STARTING_TASKS' to 'POLLING_TASKS'2026-09-08 13:42:16,112 INFO  [io.debezium.pipeline.ChangeEventSourceCoordinator] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Metrics registered
+INFO  [io.debezium.pipeline.ChangeEventSourceCoordinator] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Context created
+INFO  [io.debezium.embedded.async.AsyncEmbeddedEngine] (debezium-connector-quarkus-extension-default-0) Using io.debezium.embedded.async.ParallelSmtAndConvertBatchProcessor processor
+INFO  [io.debezium.relational.history.SchemaHistoryMetrics] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Started database schema history recovery
+INFO  [io.debezium.relational.history.SchemaHistoryMetrics] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Already applied 2 database changes
+INFO  [io.debezium.relational.history.SchemaHistoryMetrics] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Database schema history recovery in progress, recovered 3 records
+INFO  [io.debezium.relational.history.SchemaHistoryMetrics] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Finished database schema history recovery of 16 change(s) in 1408 ms
+INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) A previous offset indicating a completed snapshot has been found.
+INFO  [io.debezium.pipeline.ChangeEventSourceCoordinator] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Snapshot ended with SnapshotResult [status=SKIPPED, offset=BinlogOffsetContext{sourceInfoSchema=Schema{io.debezium.connector.mysql.Source:STRUCT}, sourceInfo=BinlogSourceInfo{currentGtid='null', currentBinlogFilename='mysql-bin.000003', currentBinlogPosition=157, currentRowNumber=0, serverId=0, sourceTime=null, threadId=-1, currentQuery='null', tableIds=[], databaseName='null'}, snapshotCompleted=false, transactionContext=TransactionContext [currentTransactionId=null, perTableEventCount={}, totalEventCount=0], restartGtidSet='null', currentGtidSet='null', restartBinlogFilename='mysql-bin.000003', restartBinlogPosition=157, restartRowsToSkip=0, restartEventsToSkip=0, currentEventLengthInBytes=0, inTransaction=false, transactionId='null', incrementalSnapshotContext=IncrementalSnapshotContext [windowOpened=false, chunkEndPosition=null, dataCollectionsToSnapshot=[], lastEventKeySent=null, maximumKey=null]}]
+INFO  [io.debezium.util.Threads] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Requested thread factory for component MySqlConnector, id = tutorial named = binlog-client
+INFO  [io.debezium.connector.binlog.BinlogStreamingChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Enable ssl PREFERRED mode for connector tutorial
+INFO  [io.debezium.pipeline.signal.SignalProcessor] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) SignalProcessor started. Scheduling it every 5000ms
+INFO  [io.debezium.util.Threads] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Creating thread debezium-mysqlconnector-tutorial-SignalProcessor
+INFO  [io.debezium.pipeline.ChangeEventSourceCoordinator] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Starting streaming
+INFO  [io.debezium.connector.binlog.BinlogStreamingChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Skip 0 events on streaming start
+INFO  [io.debezium.connector.binlog.BinlogStreamingChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Skip 0 rows on streaming start
+INFO  [io.debezium.util.Threads] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Creating thread debezium-mysqlconnector-tutorial-binlog-client
+INFO  [io.debezium.util.Threads] (blc-localhost:3306) Creating thread debezium-mysqlconnector-tutorial-binlog-client
+INFO  [com.github.shyiko.mysql.binlog.BinaryLogClient] (blc-localhost:3306) Database version: 8.2.0 (major=8, minor=2, mariadb=false)
+INFO  [com.github.shyiko.mysql.binlog.BinaryLogClient] (blc-localhost:3306) SSL enabled
+INFO  [com.github.shyiko.mysql.binlog.BinaryLogClient] (blc-localhost:3306) Requesting streaming from position filename: mysql-bin.000003, position: 157
+INFO  [com.github.shyiko.mysql.binlog.BinaryLogClient] (blc-localhost:3306) Connected to localhost:3306 at mysql-bin.000003/157 (sid:223344, cid:18)
+INFO  [io.debezium.connector.binlog.BinlogStreamingChangeEventSource] (blc-localhost:3306) Connected to binlog at localhost:3306, starting at BinlogOffsetContext{sourceInfoSchema=Schema{io.debezium.connector.mysql.Source:STRUCT}, sourceInfo=BinlogSourceInfo{currentGtid='null', currentBinlogFilename='mysql-bin.000003', currentBinlogPosition=157, currentRowNumber=0, serverId=0, sourceTime=null, threadId=-1, currentQuery='null', tableIds=[], databaseName='null'}, snapshotCompleted=false, transactionContext=TransactionContext [currentTransactionId=null, perTableEventCount={}, totalEventCount=0], restartGtidSet='null', currentGtidSet='null', restartBinlogFilename='mysql-bin.000003', restartBinlogPosition=157, restartRowsToSkip=0, restartEventsToSkip=0, currentEventLengthInBytes=0, inTransaction=false, transactionId='null', incrementalSnapshotContext=IncrementalSnapshotContext [windowOpened=false, chunkEndPosition=null, dataCollectionsToSnapshot=[], lastEventKeySent=null, maximumKey=null]}
+INFO  [io.debezium.connector.binlog.BinlogStreamingChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Waiting for keepalive thread to start
+INFO  [io.debezium.util.Threads] (blc-localhost:3306) Creating thread debezium-mysqlconnector-tutorial-binlog-client
+INFO  [io.debezium.connector.binlog.BinlogStreamingChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Keepalive thread is running
+...
+----
+
+These lines show that the service found the offsets previously recorded by the last task before it was shut down,
+connected to the MySQL database,
+started reading the `binlog` from that position,
+and generated events from any changes in the MySQL database since that point in time.
+--
+
+. Switch to the terminal running the HTTP sink container to see events for the two new records you created when {prodname} server was offline:
++
+--
+[source,json,options="nowrap",subs="+attributes"]
+----
+{"schema":{"type":"struct","fields":[{"type":"struct","fields":[{"type":"int32","optional":false,"field":"id"},{"type":"string","optional":false,"field":"first_name"},{"type":"string","optional":false,"field":"last_name"},{"type":"string","optional":false,"field":"email"}],"optional":true,"name":"tutorial.inventory.customers.Value","field":"before"},{"type":"struct","fields":[{"type":"int32","optional":false,"field":"id"},{"type":"string","optional":false,"field":"first_name"},{"type":"string","optional":false,"field":"last_name"},{"type":"string","optional":false,"field":"email"}],"optional":true,"name":"tutorial.inventory.customers.Value","field":"after"},{"type":"struct","fields":[{"type":"string","optional":false,"field":"version"},{"type":"string","optional":false,"field":"connector"},{"type":"string","optional":false,"field":"name"},{"type":"int64","optional":false,"field":"ts_ms"},{"type":"string","optional":true,"name":"io.debezium.data.Enum","version":1,"parameters":{"allowed":"true,first,first_in_data_collection,last_in_data_collection,last,false,incremental"},"default":"false","field":"snapshot"},{"type":"string","optional":false,"field":"db"},{"type":"string","optional":true,"field":"sequence"},{"type":"int64","optional":true,"field":"ts_us"},{"type":"int64","optional":true,"field":"ts_ns"},{"type":"string","optional":true,"field":"table"},{"type":"int64","optional":false,"field":"server_id"},{"type":"string","optional":true,"field":"gtid"},{"type":"string","optional":false,"field":"file"},{"type":"int64","optional":false,"field":"pos"},{"type":"int32","optional":false,"field":"row"},{"type":"int64","optional":true,"field":"thread"},{"type":"string","optional":true,"field":"query"}],"optional":false,"name":"io.debezium.connector.mysql.Source","version":1,"field":"source"},{"type":"struct","fields":[{"type":"string","optional":false,"field":"id"},{"type":"int64","optional":false,"field":"total_order"},{"type":"int64","optional":false,"field":"data_collection_order"}],"optional":true,"name":"event.block","version":1,"field":"transaction"},{"type":"string","optional":false,"field":"op"},{"type":"int64","optional":true,"field":"ts_ms"},{"type":"int64","optional":true,"field":"ts_us"},{"type":"int64","optional":true,"field":"ts_ns"}],"optional":false,"name":"tutorial.inventory.customers.Envelope","version":2},"payload":{"before":null,"after":{"id":1005,"first_name":"Sarah","last_name":"Thompson","email":"kitt@acme.com"},"source":{"version":"3.7.0.Alpha1","connector":"mysql","name":"tutorial","ts_ms":1788871299000,"snapshot":"false","db":"inventory","sequence":null,"ts_us":1788871299000000,"ts_ns":1788871299000000000,"table":"customers","server_id":223344,"gtid":null,"file":"mysql-bin.000003","pos":392,"row":0,"thread":8,"query":null},"transaction":null,"op":"c","ts_ms":1788871337830,"ts_us":1788871337830791,"ts_ns":1788871337830791298}}
+{"schema":{"type":"struct","fields":[{"type":"struct","fields":[{"type":"int32","optional":false,"field":"id"},{"type":"string","optional":false,"field":"first_name"},{"type":"string","optional":false,"field":"last_name"},{"type":"string","optional":false,"field":"email"}],"optional":true,"name":"tutorial.inventory.customers.Value","field":"before"},{"type":"struct","fields":[{"type":"int32","optional":false,"field":"id"},{"type":"string","optional":false,"field":"first_name"},{"type":"string","optional":false,"field":"last_name"},{"type":"string","optional":false,"field":"email"}],"optional":true,"name":"tutorial.inventory.customers.Value","field":"after"},{"type":"struct","fields":[{"type":"string","optional":false,"field":"version"},{"type":"string","optional":false,"field":"connector"},{"type":"string","optional":false,"field":"name"},{"type":"int64","optional":false,"field":"ts_ms"},{"type":"string","optional":true,"name":"io.debezium.data.Enum","version":1,"parameters":{"allowed":"true,first,first_in_data_collection,last_in_data_collection,last,false,incremental"},"default":"false","field":"snapshot"},{"type":"string","optional":false,"field":"db"},{"type":"string","optional":true,"field":"sequence"},{"type":"int64","optional":true,"field":"ts_us"},{"type":"int64","optional":true,"field":"ts_ns"},{"type":"string","optional":true,"field":"table"},{"type":"int64","optional":false,"field":"server_id"},{"type":"string","optional":true,"field":"gtid"},{"type":"string","optional":false,"field":"file"},{"type":"int64","optional":false,"field":"pos"},{"type":"int32","optional":false,"field":"row"},{"type":"int64","optional":true,"field":"thread"},{"type":"string","optional":true,"field":"query"}],"optional":false,"name":"io.debezium.connector.mysql.Source","version":1,"field":"source"},{"type":"struct","fields":[{"type":"string","optional":false,"field":"id"},{"type":"int64","optional":false,"field":"total_order"},{"type":"int64","optional":false,"field":"data_collection_order"}],"optional":true,"name":"event.block","version":1,"field":"transaction"},{"type":"string","optional":false,"field":"op"},{"type":"int64","optional":true,"field":"ts_ms"},{"type":"int64","optional":true,"field":"ts_us"},{"type":"int64","optional":true,"field":"ts_ns"}],"optional":false,"name":"tutorial.inventory.customers.Envelope","version":2},"payload":{"before":null,"after":{"id":1006,"first_name":"Kenneth","last_name":"Anderson","email":"kander@acme.com"},"source":{"version":"3.7.0.Alpha1","connector":"mysql","name":"tutorial","ts_ms":1788871304000,"snapshot":"false","db":"inventory","sequence":null,"ts_us":1788871304000000,"ts_ns":1788871304000000000,"table":"customers","server_id":223344,"gtid":null,"file":"mysql-bin.000003","pos":730,"row":0,"thread":8,"query":null},"transaction":null,"op":"c","ts_ms":1788871337852,"ts_us":1788871337852455,"ts_ns":1788871337852455168}}
+----
+
+These events are _create_ events that are similar to what you saw previously.
+As you see, {prodname} still reports all of the changes in a database even when it is not running
+(as long as it is restarted before the MySQL database purges from its `binlog` the commits that were missed).
+--
