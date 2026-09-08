@@ -62,7 +62,7 @@ RUN chown -R 1001:kafka $KAFKA_HOME && \
 # Add and unzip Kafka
 #
 RUN mkdir /tmp/zipped_kafka /tmp/extracted_kafka
-ADD ${KAFKA_SOURCE_PATH} /tmp/zipped_kafka
+RUN curl -OJLs --insecure --output-dir /tmp/zipped_kafka ${KAFKA_SOURCE_PATH}
 RUN unzip /tmp/zipped_kafka/*.zip -d /tmp/extracted_kafka
 
 #
