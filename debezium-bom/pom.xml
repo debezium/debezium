@@ -48,6 +48,9 @@
         <!-- Redis -->
         <version.jedis>6.0.0</version.jedis>
 
+        <!-- NATS -->
+        <version.jnats>2.26.2</version.jnats>
+
         <!-- S3 -->
         <version.s3>2.53.1</version.s3>
 
@@ -576,6 +579,13 @@
                 <artifactId>jedis</artifactId>
                 <version>${version.jedis}</version>
             </dependency>
+
+            <!-- NATS Storage -->
+            <dependency>
+                <groupId>io.nats</groupId>
+                <artifactId>jnats</artifactId>
+                <version>${version.jnats}</version>
+            </dependency>
             <dependency>
                 <groupId>org.apache.rocketmq</groupId>
                 <artifactId>rocketmq-client</artifactId>
@@ -892,6 +902,11 @@
             <dependency>
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-storage-chronicle-queue</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-storage-nats</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

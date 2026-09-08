@@ -30,5 +30,6 @@
         <module>debezium-storage-jdbc</module>
         <module>debezium-storage-configmap</module>
         <module>debezium-storage-chronicle-queue</module>
+        <module>debezium-storage-nats</module>
     </modules>
 </project>
