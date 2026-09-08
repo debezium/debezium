@@ -477,6 +477,9 @@ public abstract class BinlogConnectorConnection extends JdbcConnection {
 
     /**
      * Determine whether the binlog position as set in the offset details is available on the server.
+     * <p>
+     * When the server knows of GTIDs but {@code gtid_mode} is not {@code ON}, the stored GTID is not
+     * maintained while streaming and only the binlog file and position are validated.
      *
      * @param config the connector configuration; should not be null
      * @param gtid the GTID from the connector offsets; may be null
@@ -491,40 +494,22 @@ public abstract class BinlogConnectorConnection extends JdbcConnection {
                 return true;
             }
 
-            GtidSet availableGtidSet = knownGtidSet();
+            final GtidSet availableGtidSet = knownGtidSet();
             if (availableGtidSet.isEmpty()) {
                 // Last offsets had GTIDs but the server does not use them
                 LOGGER.info("Connector used GTIDs previously, but server does not know of any GTIDs or they are not enabled");
                 return false;
             }
 
-            // GTIDs are enabled, used previously, retain only the ranges allowed
-            GtidSet gtidSet = config.getGtidSetFactory().createGtidSet(gtid).retainAll(config.getGtidSourceFilter());
-            LOGGER.info("GTID Set retained: '{}'", gtidSet);
-
-            // Get the GTID set that is available on the server
-            if (gtidSet.isContainedWithin(availableGtidSet)) {
-                LOGGER.info("The server's GTID set '{}' contains the connector's stored GTID set '{}'; checking whether any still-needed GTIDs have been purged",
-                        availableGtidSet, gtidSet);
-
-                final GtidSet knownServerSet = availableGtidSet.retainAll(config.getGtidSourceFilter());
-                final GtidSet gtidSetToReplicate = subtractGtidSet(knownServerSet, gtidSet);
-                final GtidSet purgedGtidSet = purgedGtidSet();
-                LOGGER.info("Server has already purged '{}' GTIDs", purgedGtidSet);
-
-                final GtidSet nonPurgedGtidSetTemplate = subtractGtidSet(gtidSetToReplicate, purgedGtidSet);
-                LOGGER.info("GTIDs known by the server but not processed yet '{}', for replication are available only '{}'",
-                        gtidSetToReplicate, nonPurgedGtidSetTemplate);
-
-                if (!gtidSetToReplicate.equals(nonPurgedGtidSetTemplate)) {
-                    LOGGER.info("Some of the GTIDs needed to replicate have been already purged");
-                    return false;
-                }
-                return true;
+            if (isGtidModeEnabled()) {
+                return isGtidSetAvailable(config, gtid, availableGtidSet);
             }
 
-            LOGGER.info("Connector last known GTIDs are '{}', but server has '{}'", gtidSet, availableGtidSet);
-            return false;
+            // Outside gtid_mode=ON the streaming source never registers the GTID handler, so the stored
+            // GTID still holds whatever the snapshot wrote. Validate the binlog file and position
+            // instead, since that is what the resume uses.
+            LOGGER.warn("The stored offset contains the GTID set '{}', but gtid_mode is not 'ON' so the connector "
+                    + "does not maintain it; validating the binlog file and position instead", gtid);
         }
 
         if (Strings.isNullOrBlank(binlogFileName)) {
@@ -543,6 +528,44 @@ public abstract class BinlogConnectorConnection extends JdbcConnection {
         }
 
         return found;
+    }
+
+    /**
+     * Determine whether the GTID set from the connector offsets is still available on the server.
+     *
+     * @param config the connector configuration; should not be null
+     * @param gtid the non-empty GTID from the connector offsets; should not be null
+     * @param availableGtidSet the non-empty GTID set known to the server; should not be null
+     * @return {@code true} if every still-needed GTID is available, {@code false} otherwise
+     */
+    private boolean isGtidSetAvailable(BinlogConnectorConfig config, String gtid, GtidSet availableGtidSet) {
+        // GTIDs are enabled, used previously, retain only the ranges allowed
+        GtidSet gtidSet = config.getGtidSetFactory().createGtidSet(gtid).retainAll(config.getGtidSourceFilter());
+        LOGGER.info("GTID Set retained: '{}'", gtidSet);
+
+        // Get the GTID set that is available on the server
+        if (gtidSet.isContainedWithin(availableGtidSet)) {
+            LOGGER.info("The server's GTID set '{}' contains the connector's stored GTID set '{}'; checking whether any still-needed GTIDs have been purged",
+                    availableGtidSet, gtidSet);
+
+            final GtidSet knownServerSet = availableGtidSet.retainAll(config.getGtidSourceFilter());
+            final GtidSet gtidSetToReplicate = subtractGtidSet(knownServerSet, gtidSet);
+            final GtidSet purgedGtidSet = purgedGtidSet();
+            LOGGER.info("Server has already purged '{}' GTIDs", purgedGtidSet);
+
+            final GtidSet nonPurgedGtidSetTemplate = subtractGtidSet(gtidSetToReplicate, purgedGtidSet);
+            LOGGER.info("GTIDs known by the server but not processed yet '{}', for replication are available only '{}'",
+                    gtidSetToReplicate, nonPurgedGtidSetTemplate);
+
+            if (!gtidSetToReplicate.equals(nonPurgedGtidSetTemplate)) {
+                LOGGER.info("Some of the GTIDs needed to replicate have been already purged");
+                return false;
+            }
+            return true;
+        }
+
+        LOGGER.info("Connector last known GTIDs are '{}', but server has '{}'", gtidSet, availableGtidSet);
+        return false;
     }
 
     /**
