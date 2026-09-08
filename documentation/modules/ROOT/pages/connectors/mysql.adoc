@@ -429,10 +429,11 @@ mysql> show global variables like '%GTID%';
 |Option |Description
 
 |`gtid_mode`
-a|Boolean that specifies whether GTID mode of the MySQL server is enabled or not.
+a|Specifies whether GTID mode of the MySQL server is enabled.
 
 * `ON` = enabled
 * `OFF` = disabled
+* `OFF_PERMISSIVE`, `ON_PERMISSIVE` = intermediate values, required while switching between `OFF` and `ON`
 
 |`enforce_gtid_consistency`
 a|Boolean that specifies whether the server enforces GTID consistency by allowing the execution of statements that can be logged in a transactionally safe manner. Required when using GTIDs.
@@ -441,6 +442,13 @@ a|Boolean that specifies whether the server enforces GTID consistency by allowin
 * `OFF` = disabled
 
 |===
+
+[NOTE]
+====
+The connector uses GTIDs only when `gtid_mode` is `ON`.
+In the intermediate modes it streams by binlog file and position, and validates that position when it restarts.
+If the offset still carries a GTID from an earlier configuration, the connector logs a warning and ignores it.
+====
 
 
 // Type: procedure
