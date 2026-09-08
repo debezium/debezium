@@ -186,7 +186,10 @@ include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloff
 // Title: Send a signal to change the binlog reading position
 ==== Send a signal to reposition the stream
 
-include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=set-binlog-position-procedure-mariadb]
+:binlog-filename-example: mariadb-bin.000003
+:gtid-label: domain-server-sequence GTID set
+:gtid-value: 0-1-100
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=set-binlog-position-procedure]
 
 // Type: concept
 // Title: Default names of Kafka topics that receive {prodname} MariaDB change event records
