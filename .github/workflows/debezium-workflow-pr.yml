@@ -41,6 +41,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: debezium/dbz/.github/actions/check-unicode-safety@main
+        with:
+          # The contributor name files hold display names copied from GitHub accounts, so their
+          # content is chosen by contributors rather than by the project and will legitimately
+          # contain any script or mark a person has in their name. They are plain data, read only
+          # by grep in jenkins-jobs/scripts/check-contributors.sh to build contributor lists, and
+          # are never compiled or executed, so it's safe to exclude these.
+          exclude-patterns: |
+            COPYRIGHT.txt
+            jenkins-jobs/scripts/config/Aliases.txt
+            jenkins-jobs/scripts/config/FilteredNames.txt
 
   # This job is responsible for inspecting the changes in the repository and setting specific output variables
   # that subsequent jobs can use to determine whether a particular job should be skipped or included.
