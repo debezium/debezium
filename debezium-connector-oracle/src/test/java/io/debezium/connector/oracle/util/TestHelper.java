@@ -9,12 +9,14 @@ import static io.debezium.connector.oracle.jdbc.OracleJdbcConfiguration.SECONDAR
 
 import java.math.BigInteger;
 import java.nio.file.Path;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.StringJoiner;
 import java.util.concurrent.TimeUnit;
 
 import org.awaitility.Awaitility;
@@ -387,6 +389,195 @@ public class TestHelper {
             connection.resetSessionToCdb();
         }
         return connection;
+    }
+
+    /**
+     * Queries and logs the state of the XStream outbound server and the components it depends on.
+     *
+     * <p>This exists to answer a question the connector logs cannot: when an attach fails with
+     * {@code ORA-26812}, is there genuinely a client session still attached to the outbound server,
+     * or does the server merely believe there is one after the client has cleanly detached? The two
+     * cases require different fixes and are indistinguishable from the connector side. Captured
+     * within a fraction of a second of the first refusal, it is the latter: no client session is
+     * present at any point, so the follow-on question is what the server's own capture and apply
+     * pipeline is doing while it refuses, which the {@code V$XSTREAM_} runtime views below report.
+     *
+     * <p>Every statement is read-only and each is isolated, so a view that is unavailable in a given
+     * database configuration is reported in place rather than hiding the remaining output. Failures
+     * are logged and never propagated; this is diagnostic only and must not influence test outcome.
+     *
+     * @param reason short description of what triggered the collection, included in the log output
+     * @return {@code true} if a report was collected and logged, {@code false} if the collection
+     *         itself failed and the caller should arrange another attempt; an individual query that
+     *         fails is reported in place and still counts as a successful collection
+     */
+    public static boolean logXStreamOutboundServerDiagnostics(String reason) {
+        if (!isXStream()) {
+            return false;
+        }
+
+        final StringBuilder report = new StringBuilder();
+        report.append("XStream outbound server diagnostics (").append(reason).append(')');
+
+        // The outbound server, its capture, and its apply all live in the root of a CDB.
+        try (OracleConnection admin = adminConnection(true)) {
+            appendQuery(admin, report, "V$XSTREAM_OUTBOUND_SERVER",
+                    "SELECT SERVER_NAME, STATE, STARTUP_TIME, TOTAL_MESSAGES_SENT, BYTES_SENT FROM V$XSTREAM_OUTBOUND_SERVER");
+
+            // V$XSTREAM_OUTBOUND_SERVER above is empty unless a client is attached, and the DBA_ views
+            // below report configuration rather than runtime state, so neither describes what the
+            // outbound server is actually doing while an attach is being refused. These four do: they
+            // were confirmed to populate on a 19c server with no client attached, and are the only
+            // runtime view of the capture and apply pipeline available in that state.
+            //
+            // STATE is the column of interest in each. A healthy idle capture reads 'WAITING FOR
+            // TRANSACTION' or 'CAPTURING CHANGES'; 'PAUSED FOR FLOW CONTROL' means the apply side has
+            // stopped draining, which is a documented XStream stall and would not surface anywhere else
+            // in this dump. STATE_CHANGED_TIME dates the current state directly, rather than leaving it
+            // to be inferred from session logon times.
+            appendQuery(admin, report, "V$XSTREAM_CAPTURE",
+                    "SELECT CAPTURE_NAME, STATE, TOTAL_MESSAGES_CAPTURED, TOTAL_MESSAGES_ENQUEUED, "
+                            + "STATE_CHANGED_TIME FROM V$XSTREAM_CAPTURE");
+
+            appendQuery(admin, report, "V$XSTREAM_APPLY_READER",
+                    "SELECT APPLY_NAME, STATE, TOTAL_MESSAGES_DEQUEUED FROM V$XSTREAM_APPLY_READER");
+
+            appendQuery(admin, report, "V$XSTREAM_APPLY_COORDINATOR",
+                    "SELECT APPLY_NAME, STATE, TOTAL_RECEIVED, TOTAL_APPLIED FROM V$XSTREAM_APPLY_COORDINATOR");
+
+            appendQuery(admin, report, "V$XSTREAM_APPLY_SERVER",
+                    "SELECT APPLY_NAME, SERVER_ID, STATE FROM V$XSTREAM_APPLY_SERVER ORDER BY SERVER_ID");
+
+            // Per Oracle's XStream Out monitoring documentation, the row whose XStream program name is
+            // 'TNS' is the attached client application's session. Its absence while ORA-26812 is being
+            // raised means no client is attached and the server state itself is stale.
+            //
+            // LAST_CALL_ET dates each session back to the start of its current call, which is useful for
+            // correlating the capture and apply processes against connector activity. It says nothing
+            // about health: on an idle outbound server it simply tracks session age, so a large value is
+            // expected rather than a sign of a hang.
+            //
+            // Liveness comes from EVENT, WAIT_CLASS and SECONDS_IN_WAIT. A healthy idle 19c server sits
+            // on 'rdbms ipc message', 'REPL Capture/Apply: messages' or 'LogMiner reader: redo (idle)'
+            // with WAIT_CLASS 'Idle' and SECONDS_IN_WAIT cycling within a few seconds; a stuck one shows
+            // a non-idle class or a wait that keeps climbing, and BLOCKING_SESSION names any blocker.
+            // DBA_APPLY cannot answer this, as its STATUS is configuration state, not liveness.
+            appendQuery(admin, report, "V$SESSION (MODULE = 'XStream')",
+                    "SELECT SID, SERIAL#, USERNAME, STATUS, LOGON_TIME, LAST_CALL_ET, "
+                            + "EVENT, WAIT_CLASS, SECONDS_IN_WAIT, BLOCKING_SESSION, "
+                            + "SUBSTR(PROGRAM, INSTR(PROGRAM, '(') + 1, 4) AS XSTREAM_PROCESS "
+                            + "FROM V$SESSION WHERE MODULE = 'XStream'");
+
+            // The query above is the sole basis for concluding that no client is attached, and it is
+            // only as good as its filter: MODULE = 'XStream' matches the outbound server's own
+            // background processes and a client that is attached right now. A session left behind by a
+            // previous test would not necessarily still carry that module, and would then be invisible
+            // there while remaining exactly the orphan ORA-26812 claims exists. So the same question is
+            // asked again without the filter, over every session belonging to the connector user.
+            //
+            // An empty result, or only sessions belonging to the test in flight, confirms the reading
+            // taken so far. A session that outlives the test that opened it is the missing client.
+            final String connectorUser = getConnectorUserName();
+            appendQuery(admin, report, "V$SESSION (USERNAME = '" + connectorUser + "')",
+                    "SELECT SID, SERIAL#, STATUS, MODULE, PROGRAM, LOGON_TIME, LAST_CALL_ET, "
+                            + "EVENT, WAIT_CLASS, SECONDS_IN_WAIT "
+                            + "FROM V$SESSION WHERE UPPER(USERNAME) = UPPER('" + connectorUser + "') "
+                            + "ORDER BY LOGON_TIME");
+
+            appendQuery(admin, report, "DBA_CAPTURE",
+                    "SELECT CAPTURE_NAME, STATUS, ERROR_NUMBER, ERROR_MESSAGE FROM DBA_CAPTURE");
+
+            appendQuery(admin, report, "DBA_APPLY",
+                    "SELECT APPLY_NAME, APPLY_CAPTURED, STATUS, ERROR_NUMBER, ERROR_MESSAGE FROM DBA_APPLY");
+
+            // Shared and streams pool headroom, included as a control rather than a lead: capture and
+            // apply allocate from these, so a healthy reading here rules memory out at a glance.
+            appendQuery(admin, report, "V$SGASTAT (free memory)",
+                    "SELECT POOL, NAME, BYTES FROM V$SGASTAT WHERE NAME = 'free memory'");
+
+            LOGGER.warn("{}", report);
+            return true;
+        }
+        catch (Exception e) {
+            LOGGER.warn("Failed to collect XStream outbound server diagnostics ({}){}{}",
+                    reason, System.lineSeparator(), report, e);
+            return false;
+        }
+    }
+
+    /**
+     * Returns a compact identity of the XStream outbound server's capture and apply sessions, as
+     * {@code PROCESS=SID/SERIAL#@LOGON_TIME} entries in a stable order.
+     *
+     * <p>This is the control for the observation that, in every wedge captured so far, those sessions
+     * date to the instant the connector detached. That is only meaningful if they do <em>not</em>
+     * restart on an ordinary detach, and the diagnostics dump cannot answer it because it only runs
+     * when an attach has already failed. Comparing this identity across successful test boundaries
+     * distinguishes the two.
+     *
+     * <p>{@code LOGON_TIME} is used rather than deriving a start time from {@code LAST_CALL_ET},
+     * because the latter merely tracks session age on an idle server and says nothing about restarts.
+     *
+     * @return the session identity, or {@code null} when not running against XStream; never throws
+     */
+    public static String getXStreamOutboundServerSessionIdentity() {
+        if (!isXStream()) {
+            return null;
+        }
+        try (OracleConnection admin = adminConnection(true)) {
+            final StringJoiner entries = new StringJoiner(", ");
+            admin.query("SELECT SUBSTR(PROGRAM, INSTR(PROGRAM, '(') + 1, 4) || '=' || SID || '/' || SERIAL# "
+                    + "|| '@' || TO_CHAR(LOGON_TIME, 'HH24:MI:SS') AS ENTRY "
+                    + "FROM V$SESSION WHERE MODULE = 'XStream' ORDER BY 1", rs -> {
+                        while (rs.next()) {
+                            entries.add(rs.getString(1));
+                        }
+                    });
+            return entries.length() == 0 ? "<none>" : entries.toString();
+        }
+        catch (Exception e) {
+            // Returned rather than thrown so a lookup failure shows up as a change in the tracked
+            // identity instead of silently dropping an observation or failing an unrelated test.
+            return "<unavailable: " + e.getMessage() + ">";
+        }
+    }
+
+    /**
+     * Runs a single diagnostic query and appends its result set to {@code report} as a text table.
+     * A failing query is recorded in the report rather than aborting the wider collection.
+     */
+    private static void appendQuery(OracleConnection connection, StringBuilder report, String label, String sql) {
+        final String newLine = System.lineSeparator();
+        report.append(newLine).append("  ").append(label).append(':');
+        try {
+            connection.query(sql, rs -> {
+                final ResultSetMetaData metaData = rs.getMetaData();
+                final int columnCount = metaData.getColumnCount();
+
+                final StringJoiner header = new StringJoiner(" | ");
+                for (int i = 1; i <= columnCount; i++) {
+                    header.add(metaData.getColumnLabel(i));
+                }
+                report.append(newLine).append("    ").append(header);
+
+                boolean empty = true;
+                while (rs.next()) {
+                    empty = false;
+                    final StringJoiner row = new StringJoiner(" | ");
+                    for (int i = 1; i <= columnCount; i++) {
+                        row.add(String.valueOf(rs.getString(i)));
+                    }
+                    report.append(newLine).append("    ").append(row);
+                }
+
+                if (empty) {
+                    report.append(newLine).append("    <no rows>");
+                }
+            });
+        }
+        catch (Exception e) {
+            report.append(newLine).append("    <query failed: ").append(e.getMessage()).append('>');
+        }
     }
 
     /**
