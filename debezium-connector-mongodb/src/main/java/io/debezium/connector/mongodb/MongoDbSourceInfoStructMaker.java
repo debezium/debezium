@@ -20,7 +20,7 @@ public class MongoDbSourceInfoStructMaker extends AbstractSourceInfoStructMaker<
         super.init(connector, version, connectorConfig);
         schema = commonSchemaBuilder()
                 .name(connectorConfig.schemaNameAdjuster().adjust("io.debezium.connector.mongo.Source"))
-                .field(SourceInfo.COLLECTION, Schema.STRING_SCHEMA)
+                .field(SourceInfo.COLLECTION, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(SourceInfo.ORDER, Schema.INT32_SCHEMA)
                 .field(SourceInfo.LSID, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(SourceInfo.TXN_NUMBER, Schema.OPTIONAL_INT64_SCHEMA)
@@ -35,10 +35,14 @@ public class MongoDbSourceInfoStructMaker extends AbstractSourceInfoStructMaker<
 
     @Override
     public Struct struct(SourceInfo sourceInfo) {
-        String collectionName = sourceInfo.collectionId() != null ? sourceInfo.collectionId().name() : null;
         Struct struct = super.commonStruct(sourceInfo)
-                .put(SourceInfo.COLLECTION, collectionName)
                 .put(SourceInfo.ORDER, sourceInfo.position().getInc());
+
+        // The collection is unknown for no-event positions (e.g. heartbeats or the streaming start
+        // offset), where CollectionId.parse("") resets it to null. The field is optional, so omit it.
+        if (sourceInfo.collectionId() != null) {
+            struct.put(SourceInfo.COLLECTION, sourceInfo.collectionId().name());
+        }
 
         if (sourceInfo.position().getChangeStreamSessionTxnId() != null) {
             struct.put(SourceInfo.LSID, sourceInfo.position().getChangeStreamSessionTxnId().lsid)
