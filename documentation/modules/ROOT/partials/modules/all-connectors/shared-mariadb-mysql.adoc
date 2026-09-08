@@ -1925,6 +1925,10 @@ Only values with a size of up to 2GB are supported. It is recommended to externa
 a|`io.debezium.data.Json`
 
 Contains the string representation of a `JSON` document, array, or scalar.
+ifdef::MYSQL[]
+By default, values captured from the binlog omit whitespace, for example, `{"key":"value"}`, while values captured during snapshots keep the format that the database server returns over JDBC, for example, `{"key": "value"}`.
+To make both produce the same string, set xref:{context}-property-json-string-formatting-mode[`json.string.formatting.mode`] to `database`.
+endif::MYSQL[]
 
 |`ENUM`
 |`STRING`
