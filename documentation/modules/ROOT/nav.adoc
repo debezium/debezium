@@ -72,6 +72,7 @@
 ** xref:integrations/hibernate-cache.adoc[Hibernate Cache Invalidation]
 ** xref:integrations/testcontainers.adoc[Integration Testing with Testcontainers]
 * Debezium AI
+** xref:ai/debezium-ai-python.adoc[PyDebeziumAI]
 ** xref:ai/embeddings.adoc[Embeddings Transformation]
 ** xref:ai/docling.adoc[Docling Transformation]
 * Standalone Debezium
