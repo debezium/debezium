@@ -314,7 +314,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
             executeAndProcessQuery(statement);
 
-            logActiveTransactions();
+            logPendingTransactions();
 
             return calculateNewStartScn(startScn, endScn, getOffsetContext().getCommitScn().getMaxCommittedScn());
         }
@@ -1439,16 +1439,21 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     }
 
     /**
-     * Logs all active transactions.
+     * Logs all active and deferred transactions with their metadata, oldest first, at debug level.
+     * Deferred transactions are reported on a separate line and only when the deferred map is non-empty.
      */
-    private void logActiveTransactions() {
-        if (LOGGER.isDebugEnabled() && !getTransactionCache().isEmpty()) {
-            // This is wrapped in try-with-resources specifically for Infinispan performance
-            cacheProvider.getTransactionCache().transactions(transactions -> {
-                LOGGER.debug("All active transactions: {}",
-                        transactions.map(t -> t.getTransactionId() + " (" + t.getStartScn() + ")")
-                                .collect(Collectors.joining(",")));
-            });
+    private void logPendingTransactions() {
+        if (LOGGER.isDebugEnabled() && !(getTransactionCache().isEmpty() && deferredTransactions.isEmpty())) {
+            final Map<Boolean, List<PendingTransaction>> pending = getPendingTransactions().stream()
+                    .collect(Collectors.partitioningBy(PendingTransaction::deferred));
+            logPendingTransactions("All active transactions: {}", pending.get(false));
+            logPendingTransactions("All deferred transactions: {}", pending.get(true));
+        }
+    }
+
+    private static void logPendingTransactions(String format, List<PendingTransaction> transactions) {
+        if (!transactions.isEmpty()) {
+            LOGGER.debug(format, transactions.stream().map(PendingTransaction::toLogString).collect(Collectors.joining(", ")));
         }
     }
 

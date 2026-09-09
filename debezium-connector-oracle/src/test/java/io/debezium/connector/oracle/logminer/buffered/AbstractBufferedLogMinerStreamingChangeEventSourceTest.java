@@ -72,6 +72,7 @@ import io.debezium.schema.SchemaTopicNamingStrategy;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Clock;
 
+import ch.qos.logback.classic.Level;
 import oracle.jdbc.OracleTypes;
 import oracle.sql.CharacterSet;
 
@@ -597,6 +598,47 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
 
             assertThat(source.getTransactionCache().containsTransaction(PARTIAL_TXN_ID_FULL)).isFalse();
             assertThat(source.getTransactionCache().containsTransaction(PARTIAL_TXN_ID_OTHER)).isTrue();
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2576")
+    public void testBatchDebugLoggingIncludesActiveTransactionMetadataOldestFirst() throws Exception {
+        if (!isTransactionAbandonmentSupported()) {
+            return;
+        }
+
+        final LogInterceptor logInterceptor = new LogInterceptor(BufferedLogMinerStreamingChangeEventSource.class);
+        logInterceptor.setLoggerLevel(BufferedLogMinerStreamingChangeEventSource.class, Level.DEBUG);
+        try (var source = getChangeEventSource(getConfig().build())) {
+            final ResultSet rs = Mockito.mock(ResultSet.class);
+            Mockito.when(rs.next()).thenReturn(false);
+
+            final PreparedStatement ps = Mockito.mock(PreparedStatement.class);
+            Mockito.when(ps.executeQuery()).thenReturn(rs);
+
+            final BufferedStreamingChangeEventSource mock = Mockito.spy(source);
+            Mockito.doReturn(ps).when(mock).createQueryStatement();
+
+            // The second transaction is older by SCN and must be reported first
+            final Instant firstStart = Instant.parse("2024-01-01T10:00:00Z");
+            final Instant secondStart = Instant.parse("2024-01-01T09:00:00Z");
+            mock.processEvent(getStartLogMinerEventRow(10, TRANSACTION_ID_1, firstStart));
+            mock.processEvent(getInsertLogMinerEventRow(11, TRANSACTION_ID_1));
+            mock.processEvent(getInsertLogMinerEventRow(12, TRANSACTION_ID_1));
+            mock.processEvent(getStartLogMinerEventRow(5, TRANSACTION_ID_2, secondStart));
+            mock.processEvent(getInsertLogMinerEventRow(6, TRANSACTION_ID_2));
+
+            mock.process(Scn.valueOf(100), Scn.valueOf(100), Scn.valueOf(200));
+
+            assertThat(logInterceptor.messageMatches("All active transactions: "
+                    + TRANSACTION_ID_2 + " \\(startScn=5, changeTime=" + secondStart + ", userName=.*, clientId=.*, redoThread=\\d+, events=1\\), "
+                    + TRANSACTION_ID_1 + " \\(startScn=10, changeTime=" + firstStart + ", userName=.*, clientId=.*, redoThread=\\d+, events=2\\)"))
+                    .isTrue();
+            assertThat(logInterceptor.containsMessage("All deferred transactions:")).isFalse();
+        }
+        finally {
+            logInterceptor.setLoggerLevel(BufferedLogMinerStreamingChangeEventSource.class, null);
         }
     }
 
