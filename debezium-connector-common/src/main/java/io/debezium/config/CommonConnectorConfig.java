@@ -1038,8 +1038,7 @@ public abstract class CommonConnectorConfig {
             .withImportance(Importance.LOW)
             .withDescription("Provide a temporary workaround for an error that should be retriable."
                     + " If set a stacktrace of non-retriable exception is traversed and messages are"
-                    + " matched against this regular expression. If matched the error is changed to retriable.")
-            .withDefault(false);
+                    + " matched against this regular expression. If matched the error is changed to retriable.");
 
     public static final Field NOTIFICATION_ENABLED_CHANNELS = Field.create(NOTIFICATION_CONFIGURATION_FIELD_PREFIX_STRING + "enabled.channels")
             .withDisplayName("Enabled notification channels names")
