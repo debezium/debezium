@@ -1261,7 +1261,7 @@ public class HybridMiningStrategyIT extends AbstractAsyncEngineConnectorTest {
         schemaHistory.start();
 
         final String databaseName = TestHelper.getDatabaseName().toUpperCase();
-        final String schemaName = TestHelper.SCHEMA_USER.toUpperCase();
+        final String schemaName = TestHelper.getSchemaUserName().toUpperCase();
 
         final Map<String, Object> source = Collect.linkMapOf("server", TestHelper.SERVER_NAME);
         final Map<String, Object> position = Collect.linkMapOf(

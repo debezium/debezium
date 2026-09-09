@@ -106,7 +106,7 @@ public class UnbufferedLogMinerAdapterIT extends AbstractAsyncEngineConnectorTes
             stopConnector();
 
             // Read the offsets
-            final OraclePartition partition = new OraclePartition(TestHelper.SERVER_NAME, TestHelper.DATABASE);
+            final OraclePartition partition = new OraclePartition(TestHelper.SERVER_NAME, TestHelper.getDatabaseName());
             final Map<String, Object> committedOffsets = readLastCommittedOffset(config, partition.getSourcePartition());
 
             // Get SCN passed from the snapshot into the streaming phase

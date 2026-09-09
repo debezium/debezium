@@ -55,6 +55,22 @@ public class SqlUtilsTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#1106")
+    void testDatabaseSupplementalLogMinCheckSqlStandardMode() {
+        String result = SqlUtils.databaseSupplementalLoggingMinCheckQuery(false);
+        String expected = "SELECT 'KEY', SUPPLEMENTAL_LOG_DATA_MIN FROM V$DATABASE";
+        assertThat(result).isEqualTo(expected);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1106")
+    void testDatabaseSupplementalLogMinCheckSqlAdbMode() {
+        String result = SqlUtils.databaseSupplementalLoggingMinCheckQuery(true);
+        String expected = "SELECT 'KEY', MINIMAL FROM DBA_SUPPLEMENTAL_LOGGING";
+        assertThat(result).isEqualTo(expected);
+    }
+
+    @Test
     void testTableSupplementalLogCheckSql() {
         String result = SqlUtils.tableSupplementalLoggingCheckQuery();
         String expected = "SELECT 'KEY', LOG_GROUP_TYPE FROM ALL_LOG_GROUPS WHERE OWNER=? AND TABLE_NAME=?";
@@ -92,6 +108,22 @@ public class SqlUtilsTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#1106")
+    void testLogSwitchHistorySqlAdbMode() {
+        String result = SqlUtils.switchHistoryQuery(Collections.emptyList(), true);
+        String expected = "SELECT 'TOTAL', COUNT(1) FROM V$ARCHIVED_LOG A " +
+                "WHERE A.FIRST_TIME > TRUNC(SYSDATE) " +
+                "AND A.DEST_ID IN (SELECT DISTINCT DEST_ID FROM V$ARCHIVED_LOG WHERE STATUS='A' AND (NAME LIKE '+%' OR NAME LIKE '/%'))";
+        assertThat(result).isEqualTo(expected);
+
+        // When destination names are available, ADB mode uses the standard destination filtering
+        result = SqlUtils.switchHistoryQuery(Collections.singletonList("LOG_ARCHIVE_DEST_4"), true);
+        expected = "SELECT 'TOTAL', COUNT(1) FROM V$ARCHIVED_LOG A, V$ARCHIVE_DEST_STATUS DS " +
+                "WHERE A.FIRST_TIME > TRUNC(SYSDATE) AND A.DEST_ID = DS.DEST_ID AND DS.DEST_NAME = 'LOG_ARCHIVE_DEST_4'";
+        assertThat(result).isEqualTo(expected);
+    }
+
+    @Test
     void testCurrentRedoLogFileNameSql() {
         String result = SqlUtils.currentRedoNameQuery();
         String expected = "SELECT F.MEMBER FROM V$LOG LOG, V$LOGFILE F  WHERE LOG.GROUP#=F.GROUP# AND LOG.STATUS='CURRENT'";
@@ -109,6 +141,22 @@ public class SqlUtilsTest {
     void testDatabaseSupplementalLogAllCheckSql() {
         String result = SqlUtils.databaseSupplementalLoggingAllCheckQuery();
         String expected = "SELECT 'KEY', SUPPLEMENTAL_LOG_DATA_ALL FROM V$DATABASE";
+        assertThat(result).isEqualTo(expected);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1106")
+    void testDatabaseSupplementalLogAllCheckSqlStandardMode() {
+        String result = SqlUtils.databaseSupplementalLoggingAllCheckQuery(false);
+        String expected = "SELECT 'KEY', SUPPLEMENTAL_LOG_DATA_ALL FROM V$DATABASE";
+        assertThat(result).isEqualTo(expected);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1106")
+    void testDatabaseSupplementalLogAllCheckSqlAdbMode() {
+        String result = SqlUtils.databaseSupplementalLoggingAllCheckQuery(true);
+        String expected = "SELECT 'KEY', ALL_COLUMN FROM DBA_SUPPLEMENTAL_LOGGING";
         assertThat(result).isEqualTo(expected);
     }
 
@@ -208,5 +256,118 @@ public class SqlUtilsTest {
                         "AND DS.DEST_NAME = 'LOG_ARCHIVE_DEST_1' " +
                         "AND A.RESETLOGS_CHANGE# = D.RESETLOGS_CHANGE# " +
                         "AND A.RESETLOGS_TIME = D.RESETLOGS_TIME");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1106")
+    void testDeletedArchiveLogsQueryAdbMode() {
+        String result = SqlUtils.deletedArchiveLogsQuery(Scn.valueOf(12345L), Collections.emptyList(), true);
+        assertThat(result).isEqualTo(
+                "SELECT A.NAME AS FILE_NAME, A.FIRST_CHANGE# FIRST_CHANGE, A.NEXT_CHANGE# NEXT_CHANGE, " +
+                        "A.SEQUENCE# AS SEQ, A.THREAD# AS THREAD " +
+                        "FROM V$ARCHIVED_LOG A, V$DATABASE D " +
+                        "WHERE A.NAME IS NOT NULL " +
+                        "AND A.ARCHIVED = 'YES' " +
+                        "AND A.STATUS = 'D' " +
+                        "AND A.FIRST_CHANGE# <= 12345 " +
+                        "AND A.NEXT_CHANGE# > 12345 " +
+                        "AND A.DEST_ID IN (" +
+                        "SELECT DISTINCT DEST_ID FROM V$ARCHIVED_LOG WHERE STATUS='A' AND (NAME LIKE '+%' OR NAME LIKE '/%')) " +
+                        "AND A.RESETLOGS_CHANGE# = D.RESETLOGS_CHANGE# " +
+                        "AND A.RESETLOGS_TIME = D.RESETLOGS_TIME");
+
+        // When destination names are available, ADB mode uses the standard destination filtering
+        result = SqlUtils.deletedArchiveLogsQuery(Scn.valueOf(12345L), Collections.singletonList("LOG_ARCHIVE_DEST_1"), true);
+        assertThat(result).isEqualTo(SqlUtils.deletedArchiveLogsQuery(Scn.valueOf(12345L), Collections.singletonList("LOG_ARCHIVE_DEST_1")));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1106")
+    void testOldestFirstArchiveLogChangeSqlAdbMode() {
+        final String sqlStemAdb = "SELECT MIN(FIRST_CHANGE#) " +
+                "FROM (" +
+                "SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# " +
+                "FROM V$LOG " +
+                "UNION " +
+                "SELECT MIN(A.FIRST_CHANGE#) AS FIRST_CHANGE# " +
+                "FROM V$ARCHIVED_LOG A, V$DATABASE D " +
+                "WHERE A.DEST_ID IN (" +
+                "SELECT DISTINCT DEST_ID FROM V$ARCHIVED_LOG WHERE STATUS='A' AND (NAME LIKE '+%%' OR NAME LIKE '/%%')) " +
+                "AND A.STATUS='A' " +
+                "AND A.RESETLOGS_CHANGE# = D.RESETLOGS_CHANGE# " +
+                "AND A.RESETLOGS_TIME = D.RESETLOGS_TIME" +
+                "%s)";
+
+        String result = SqlUtils.oldestFirstChangeQuery(Duration.ofHours(0L), Collections.emptyList(), true);
+        assertThat(result).isEqualTo(String.format(sqlStemAdb, ""));
+
+        result = SqlUtils.oldestFirstChangeQuery(Duration.ofHours(1L), Collections.emptyList(), true);
+        assertThat(result).isEqualTo(String.format(sqlStemAdb, " AND A.FIRST_TIME >= SYSDATE - (1/24)"));
+
+        // When destination names are available, ADB mode uses the standard destination filtering
+        result = SqlUtils.oldestFirstChangeQuery(Duration.ofHours(0L), Collections.singletonList("LOG_ARCHIVE_DEST_3"), true);
+        assertThat(result).isEqualTo(SqlUtils.oldestFirstChangeQuery(Duration.ofHours(0L), Collections.singletonList("LOG_ARCHIVE_DEST_3")));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1106")
+    void testAllRedoThreadArchiveLogsSqlAdbMode() {
+        final String sqlStemAdb = "SELECT A.NAME, A.SEQUENCE#, A.FIRST_CHANGE#, A.NEXT_CHANGE#, A.BLOCKS*BLOCK_SIZE, " +
+                "A.DICTIONARY_BEGIN, A.DICTIONARY_END, NULL AS DEST_NAME " +
+                "FROM V$ARCHIVED_LOG A, V$DATABASE D " +
+                "WHERE A.DEST_ID IN (" +
+                "SELECT DISTINCT DEST_ID FROM V$ARCHIVED_LOG WHERE STATUS='A' AND (NAME LIKE '+%%' OR NAME LIKE '/%%')) " +
+                "AND A.STATUS='A' " +
+                "AND A.THREAD#=%d " +
+                "AND A.RESETLOGS_CHANGE# = D.RESETLOGS_CHANGE# " +
+                "AND A.RESETLOGS_TIME = D.RESETLOGS_TIME " +
+                "ORDER BY A.SEQUENCE# DESC";
+
+        String result = SqlUtils.allRedoThreadArchiveLogs(1, Collections.emptyList(), true);
+        assertThat(result).isEqualTo(String.format(sqlStemAdb, 1));
+
+        // When destination names are available, ADB mode uses the standard destination filtering
+        result = SqlUtils.allRedoThreadArchiveLogs(2, Collections.singletonList("LOG_ARCHIVE_DEST_5"), true);
+        assertThat(result).isEqualTo(SqlUtils.allRedoThreadArchiveLogs(2, Collections.singletonList("LOG_ARCHIVE_DEST_5")));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1106")
+    void testAllMinableLogsSqlAdbMode() {
+        final String archiveLogsStemAdb = "SELECT A.NAME AS FILE_NAME, A.FIRST_CHANGE# FIRST_CHANGE, " +
+                "A.NEXT_CHANGE# NEXT_CHANGE, 'YES', NULL, 'ARCHIVED', A.SEQUENCE# AS SEQ, " +
+                "A.DICTIONARY_BEGIN, A.DICTIONARY_END, A.THREAD# AS THREAD, A.BLOCKS*A.BLOCK_SIZE, NULL AS DEST_NAME " +
+                "FROM V$ARCHIVED_LOG A, V$DATABASE D " +
+                "WHERE A.NAME IS NOT NULL " +
+                "AND A.ARCHIVED = 'YES' " +
+                "AND A.STATUS = 'A' " +
+                "AND A.NEXT_CHANGE# > %d " +
+                "AND A.DEST_ID IN (" +
+                "SELECT DISTINCT DEST_ID FROM V$ARCHIVED_LOG WHERE STATUS='A' AND (NAME LIKE '+%%' OR NAME LIKE '/%%')) " +
+                "AND A.RESETLOGS_CHANGE# = D.RESETLOGS_CHANGE# " +
+                "AND A.RESETLOGS_TIME = D.RESETLOGS_TIME " +
+                "%s" +
+                "ORDER BY 7";
+
+        final String combinedStemAdb = ONLINE_LOG_PATTERN + " UNION " + archiveLogsStemAdb;
+
+        // ADB mode without destination names and archiveLogOnlyMode=false (includes UNION with online logs)
+        String result = SqlUtils.allMinableLogsQuery(Scn.valueOf(10L), Duration.ofHours(0L), false, Collections.emptyList(), true);
+        assertThat(result).isEqualTo(String.format(combinedStemAdb, 10, ""));
+
+        // ADB mode without destination names and archiveLogOnlyMode=true (no UNION, archive logs only)
+        result = SqlUtils.allMinableLogsQuery(Scn.valueOf(10L), Duration.ofHours(0L), true, Collections.emptyList(), true);
+        assertThat(result).isEqualTo(String.format(archiveLogsStemAdb, 10, ""));
+
+        // ADB mode with destination names (still uses V$ARCHIVE_DEST_STATUS)
+        result = SqlUtils.allMinableLogsQuery(Scn.valueOf(10L), Duration.ofHours(0L), false, Collections.singletonList("LOG_ARCHIVE_DEST_2"), true);
+        assertThat(result).isEqualTo(COMBINED_PATTERN.formatted(10, "= 'LOG_ARCHIVE_DEST_2'", ""));
+
+        // ADB mode with archive log retention
+        result = SqlUtils.allMinableLogsQuery(Scn.valueOf(10L), Duration.ofHours(1L), false, Collections.emptyList(), true);
+        assertThat(result).isEqualTo(String.format(combinedStemAdb, 10, "AND A.FIRST_TIME >= SYSDATE - (1/24) "));
+
+        result = SqlUtils.allMinableLogsQuery(Scn.valueOf(10L), Duration.ofHours(1L), true, Collections.emptyList(), true);
+        assertThat(result).isEqualTo(String.format(archiveLogsStemAdb, 10, "AND A.FIRST_TIME >= SYSDATE - (1/24) "));
     }
 }
