@@ -28,6 +28,7 @@ public class MongoDbSchemaFactory extends SchemaFactory {
      */
     private static final int MONGODB_TRUNCATED_ARRAY_SCHEMA_VERSION = 1;
     private static final int MONGODB_UPDATED_DESCRIPTION_SCHEMA_VERSION = 1;
+    private static final int MONGODB_BSON_TIMESTAMP_SCHEMA_VERSION = 1;
 
     public Schema truncatedArraySchema() {
         return SchemaBuilder.struct()
@@ -49,6 +50,16 @@ public class MongoDbSchemaFactory extends SchemaFactory {
                         Json.builder().optional().build())
                 .field(MongoDbFieldName.TRUNCATED_ARRAYS,
                         SchemaBuilder.array(MongoDbSchema.TRUNCATED_ARRAY_SCHEMA).optional().build())
+                .build();
+    }
+
+    public Schema bsonTimestampSchema() {
+        return SchemaBuilder.struct()
+                .name(MongoDbSchema.SCHEMA_NAME_TIMESTAMP)
+                .version(MONGODB_BSON_TIMESTAMP_SCHEMA_VERSION)
+                .optional()
+                .field("time", Schema.OPTIONAL_INT64_SCHEMA)
+                .field("increment", Schema.OPTIONAL_INT32_SCHEMA)
                 .build();
     }
 }
