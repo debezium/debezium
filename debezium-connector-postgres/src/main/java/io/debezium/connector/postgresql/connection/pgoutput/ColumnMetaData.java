@@ -39,7 +39,7 @@ public class ColumnMetaData {
      * @param optional {@code true} if the column is considered optional, {@code false} otherwise
      * @param hasDefaultValue {@code true} if the column has a default value specified, {@code false} otherwise
      * @param defaultValueExpression the parsed default value literal for the column
-    * @param comment the column comment, or {@code null} if comments are not included or no comment is defined
+     * @param comment the column comment, or {@code null} if comments are not included or no comment is defined
      * @param typeModifier the attribute type modifier
      * @param driverTypeName the type name the JDBC driver reports for the column, {@code null} when unavailable
      */

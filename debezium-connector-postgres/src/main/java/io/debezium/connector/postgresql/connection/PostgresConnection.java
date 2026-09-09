@@ -1008,18 +1008,24 @@ public class PostgresConnection extends JdbcConnection {
             return null;
         }
 
-        final DatabaseMetaData databaseMetaData = connection().getMetaData();
-        final String schemaNamePattern = createPatternFromName(tableId.schema(), databaseMetaData.getSearchStringEscape());
-        final String tableNamePattern = createPatternFromName(tableId.table(), databaseMetaData.getSearchStringEscape());
+        try {
+            final DatabaseMetaData databaseMetaData = connection().getMetaData();
+            final String schemaNamePattern = createPatternFromName(tableId.schema(), databaseMetaData.getSearchStringEscape());
+            final String tableNamePattern = createPatternFromName(tableId.table(), databaseMetaData.getSearchStringEscape());
 
-        try (ResultSet tableMetadata = databaseMetaData.getTables(null, schemaNamePattern, tableNamePattern, supportedTableTypes())) {
-            while (tableMetadata.next()) {
-                if (isTableType(tableMetadata.getString(4))) {
-                    return readTableComment(tableMetadata);
+            try (ResultSet tableMetadata = databaseMetaData.getTables(null, schemaNamePattern, tableNamePattern, supportedTableTypes())) {
+                while (tableMetadata.next()) {
+                    if (isTableType(tableMetadata.getString(4))) {
+                        return readTableComment(tableMetadata);
+                    }
                 }
             }
+            return null;
         }
-        return null;
+        catch (SQLException e) {
+            LOGGER.error("Failed to read table comment metadata for '{}.{}'", tableId.schema(), tableId.table());
+            throw e;
+        }
     }
 
     @FunctionalInterface

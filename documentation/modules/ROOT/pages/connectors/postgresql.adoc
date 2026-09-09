@@ -3544,6 +3544,8 @@ The built-in system schemas `pg_catalog` and `information_schema` are always pre
 |`false`
 |Specifies whether the connector includes PostgreSQL table and column comments in its relational schema metadata.
 Column comments are also included in the `doc` attribute of the corresponding field schema.
+Comments are captured during snapshots and schema refreshes.
+Because a standalone `COMMENT ON` statement does not produce a WAL event, the connector does not capture the updated comment until a subsequent schema refresh occurs.
 Enabling this option can increase the connector's memory usage if the database contains many comments or comments that are large.
 
 |[[postgresql-property-schema-exclude-list]]<<postgresql-property-schema-exclude-list, `+schema.exclude.list+`>>

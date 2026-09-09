@@ -32,6 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.annotation.VisibleForTesting;
 import io.debezium.connector.postgresql.PostgresStreamingChangeEventSource.PgConnectionSupplier;
 import io.debezium.connector.postgresql.PostgresType;
 import io.debezium.connector.postgresql.TypeRegistry;
@@ -693,6 +694,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
      * @param metadata The relation metadata collected from previous 'R' replication stream messages
      * @return table based on a prior replication relation message
      */
+    @VisibleForTesting
     static Table resolveRelationFromMetadata(PgOutputRelationMetaData metadata) {
         List<io.debezium.relational.Column> columns = new ArrayList<>();
         for (ColumnMetaData columnMetadata : metadata.getColumns()) {
