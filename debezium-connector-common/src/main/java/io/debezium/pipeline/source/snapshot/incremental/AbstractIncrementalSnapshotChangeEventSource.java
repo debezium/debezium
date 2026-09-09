@@ -795,8 +795,12 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         return key;
     }
 
+    /**
+     * Unwraps a raw row value so that it can be bound back into a chunk query parameter; also used by the
+     * initial snapshot's resume-from-key handling in {@code RelationalSnapshotChangeEventSource}.
+     */
     @SuppressWarnings("unchecked")
-    static Object unwrapKeyValue(Object fieldValue) {
+    public static Object unwrapKeyValue(Object fieldValue) {
         if (fieldValue instanceof SpecialValueDecimal specialValueDecimal) {
             final Optional<BigDecimal> decimalValue = specialValueDecimal.getDecimalValue();
             if (decimalValue.isPresent()) {
