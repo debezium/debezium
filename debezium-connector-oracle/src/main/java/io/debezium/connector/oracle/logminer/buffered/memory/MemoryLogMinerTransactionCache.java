@@ -29,65 +29,65 @@ import io.debezium.connector.oracle.logminer.events.RowIdCodec;
  */
 public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionCache<MemoryTransaction> {
 
-    private final Map<String, MemoryTransaction> transactionsByTransactionId = new HashMap<>();
-    private final Map<String, List<LogMinerEventEntry>> eventsByTransactionId = new HashMap<>();
-    private final Map<String, HashMap<Integer, LogMinerEvent>> eventsByEventIdByTransactionId = new HashMap<>();
-    private final Map<String, Set<Integer>> rollbacksByTransactionId = new HashMap<>();
+    private final Map<String, MemoryTransaction> transactionsByTransactionSlt = new HashMap<>();
+    private final Map<String, List<LogMinerEventEntry>> eventsByTransactionSlt = new HashMap<>();
+    private final Map<String, HashMap<Integer, LogMinerEvent>> eventsByEventIdByTransactionSlt = new HashMap<>();
+    private final Map<String, Set<Integer>> rollbacksByTransactionSlt = new HashMap<>();
 
     @Override
     public MemoryTransaction getTransaction(String transactionId) {
-        return transactionsByTransactionId.get(transactionId);
+        return checkTransactionSqn(transactionId, transactionsByTransactionSlt.get(getTransactionSlt(transactionId)));
     }
 
     @Override
     public void addTransaction(MemoryTransaction transaction) {
-        transactionsByTransactionId.put(transaction.getTransactionId(), transaction);
+        transactionsByTransactionSlt.put(transaction.getTransactionSlt(), transaction);
     }
 
     @Override
     public void removeTransaction(MemoryTransaction transaction) {
-        transactionsByTransactionId.remove(transaction.getTransactionId());
+        transactionsByTransactionSlt.remove(transaction.getTransactionSlt());
     }
 
     @Override
     public boolean containsTransaction(String transactionId) {
-        return transactionsByTransactionId.containsKey(transactionId);
+        return transactionsByTransactionSlt.containsKey(getTransactionSlt(transactionId));
     }
 
     @Override
     public boolean isEmpty() {
-        return transactionsByTransactionId.isEmpty();
+        return transactionsByTransactionSlt.isEmpty();
     }
 
     @Override
     public int getTransactionCount() {
-        return transactionsByTransactionId.size();
+        return transactionsByTransactionSlt.size();
     }
 
     @Override
     public <R> R streamTransactionsAndReturn(Function<Stream<MemoryTransaction>, R> consumer) {
-        return consumer.apply(transactionsByTransactionId.values().stream());
+        return consumer.apply(transactionsByTransactionSlt.values().stream());
     }
 
     @Override
     public void transactions(Consumer<Stream<MemoryTransaction>> consumer) {
-        consumer.accept(transactionsByTransactionId.values().stream());
+        consumer.accept(transactionsByTransactionSlt.values().stream());
     }
 
     @Override
     public void eventKeys(Consumer<Stream<String>> consumer) {
-        consumer.accept(eventsByTransactionId.entrySet().stream()
+        consumer.accept(eventsByTransactionSlt.entrySet().stream()
                 .flatMap(entry -> {
-                    String outerKey = entry.getKey();
+                    String outerKey = getTransactionSlt(entry.getKey());
                     return entry.getValue().stream().map(LogMinerEventEntry::eventId).map(key -> outerKey + "-" + key);
                 }));
     }
 
     @Override
     public void forEachEvent(MemoryTransaction transaction, LogMinerEventPredicate predicate) throws InterruptedException {
-        final var events = eventsByTransactionId.get(transaction.getTransactionId());
+        final var events = eventsByTransactionSlt.get(transaction.getTransactionSlt());
         if (events != null) {
-            final Set<Integer> rollbacks = rollbacksByTransactionId.getOrDefault(transaction.getTransactionId(), Set.of());
+            final Set<Integer> rollbacks = rollbacksByTransactionSlt.getOrDefault(transaction.getTransactionSlt(), Set.of());
             try (var stream = events.stream()) {
                 final Iterator<LogMinerEventEntry> iterator = stream.iterator();
                 while (iterator.hasNext()) {
@@ -102,7 +102,7 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
 
     @Override
     public LogMinerEvent getTransactionEvent(MemoryTransaction transaction, int eventKey) {
-        final var eventsByEventId = eventsByEventIdByTransactionId.get(transaction.getTransactionId());
+        final var eventsByEventId = eventsByEventIdByTransactionSlt.get(transaction.getTransactionSlt());
         if (eventsByEventId != null) {
             return eventsByEventId.get(eventKey);
         }
@@ -111,30 +111,30 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
 
     @Override
     public MemoryTransaction getAndRemoveTransaction(String transactionId) {
-        return transactionsByTransactionId.remove(transactionId);
+        return checkTransactionSqn(transactionId, transactionsByTransactionSlt.remove(getTransactionSlt(transactionId)));
     }
 
     @Override
     public void addTransactionEvent(MemoryTransaction transaction, int eventKey, LogMinerEvent event) {
-        eventsByTransactionId.computeIfAbsent(transaction.getTransactionId(), (id) -> new ArrayList<>())
+        eventsByTransactionSlt.computeIfAbsent(transaction.getTransactionSlt(), (slt) -> new ArrayList<>())
                 .add(new LogMinerEventEntry(eventKey, event));
-        eventsByEventIdByTransactionId.computeIfAbsent(transaction.getTransactionId(), (id) -> new HashMap<>())
+        eventsByEventIdByTransactionSlt.computeIfAbsent(transaction.getTransactionSlt(), (slt) -> new HashMap<>())
                 .put(eventKey, event);
     }
 
     @Override
     public void removeTransactionEvents(MemoryTransaction transaction) {
-        eventsByTransactionId.remove(transaction.getTransactionId());
-        eventsByEventIdByTransactionId.remove(transaction.getTransactionId());
-        rollbacksByTransactionId.remove(transaction.getTransactionId());
+        eventsByTransactionSlt.remove(transaction.getTransactionSlt());
+        eventsByEventIdByTransactionSlt.remove(transaction.getTransactionSlt());
+        rollbacksByTransactionSlt.remove(transaction.getTransactionSlt());
     }
 
     @Override
     public boolean rollbackTransactionEventWithRowId(MemoryTransaction transaction, String rowId) {
         final RowIdCodec.Packed encodedRowId = RowIdCodec.encode(rowId);
-        final var events = eventsByTransactionId.get(transaction.getTransactionId());
+        final var events = eventsByTransactionSlt.get(transaction.getTransactionSlt());
         if (events != null) {
-            final Set<Integer> rollbacks = rollbacksByTransactionId.computeIfAbsent(transaction.getTransactionId(), k -> new HashSet<>());
+            final Set<Integer> rollbacks = rollbacksByTransactionSlt.computeIfAbsent(transaction.getTransactionSlt(), slt -> new HashSet<>());
             for (int i = events.size() - 1; i >= 0; i--) {
                 final LogMinerEventEntry entry = events.get(i);
                 if (entry.event.getRowId().equals(encodedRowId) && !rollbacks.contains(entry.eventId)) {
@@ -148,7 +148,7 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
 
     @Override
     public boolean containsTransactionEvent(MemoryTransaction transaction, int eventKey) {
-        final var eventsByEventId = eventsByEventIdByTransactionId.get(transaction.getTransactionId());
+        final var eventsByEventId = eventsByEventIdByTransactionSlt.get(transaction.getTransactionSlt());
         if (eventsByEventId != null) {
             return eventsByEventId.containsKey(eventKey);
         }
@@ -157,7 +157,7 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
 
     @Override
     public int getTransactionEventCount(MemoryTransaction transaction) {
-        final var events = eventsByTransactionId.get(transaction.getTransactionId());
+        final var events = eventsByTransactionSlt.get(transaction.getTransactionSlt());
         if (events != null) {
             return events.size();
         }
@@ -166,15 +166,15 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
 
     @Override
     public int getTransactionEvents() {
-        return eventsByTransactionId.values().stream().mapToInt(List::size).sum();
+        return eventsByTransactionSlt.values().stream().mapToInt(List::size).sum();
     }
 
     @Override
     public void clear() {
-        transactionsByTransactionId.clear();
-        eventsByTransactionId.clear();
-        eventsByEventIdByTransactionId.clear();
-        rollbacksByTransactionId.clear();
+        transactionsByTransactionSlt.clear();
+        eventsByTransactionSlt.clear();
+        eventsByEventIdByTransactionSlt.clear();
+        rollbacksByTransactionSlt.clear();
     }
 
     @Override

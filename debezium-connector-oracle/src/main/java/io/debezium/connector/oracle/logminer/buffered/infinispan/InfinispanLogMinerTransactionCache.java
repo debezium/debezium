@@ -32,7 +32,7 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
     private final BasicCache<String, Boolean> rollbackCache;
 
     // Heap-backed caches for quick access to specific metadata to speed up processing
-    private final Map<String, TreeSet<Integer>> eventIdsByTransactionId = new HashMap<>();
+    private final Map<String, TreeSet<Integer>> eventIdsByTransactionSlt = new HashMap<>();
 
     public InfinispanLogMinerTransactionCache(BasicCache<String, InfinispanTransaction> transactionCache,
                                               BasicCache<String, LogMinerEvent> eventCache,
@@ -46,33 +46,33 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
 
     @Override
     public InfinispanTransaction getTransaction(String transactionId) {
-        return transactionCache.get(transactionId);
+        return checkTransactionSqn(transactionId, transactionCache.get(getTransactionSlt(transactionId)));
     }
 
     @Override
     public void addTransaction(InfinispanTransaction transaction) {
-        transactionCache.put(transaction.getTransactionId(), transaction);
-        eventIdsByTransactionId.put(transaction.getTransactionId(), new TreeSet<>());
+        transactionCache.put(transaction.getTransactionSlt(), transaction);
+        eventIdsByTransactionSlt.put(transaction.getTransactionSlt(), new TreeSet<>());
     }
 
     @Override
     public void removeTransaction(InfinispanTransaction transaction) {
-        transactionCache.remove(transaction.getTransactionId());
+        transactionCache.remove(transaction.getTransactionSlt());
     }
 
     @Override
     public boolean containsTransaction(String transactionId) {
-        return eventIdsByTransactionId.containsKey(transactionId);
+        return eventIdsByTransactionSlt.containsKey(getTransactionSlt(transactionId));
     }
 
     @Override
     public boolean isEmpty() {
-        return eventIdsByTransactionId.isEmpty();
+        return eventIdsByTransactionSlt.isEmpty();
     }
 
     @Override
     public int getTransactionCount() {
-        return eventIdsByTransactionId.size();
+        return eventIdsByTransactionSlt.size();
     }
 
     @Override
@@ -98,7 +98,7 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
 
     @Override
     public void forEachEvent(InfinispanTransaction transaction, LogMinerEventPredicate predicate) throws InterruptedException {
-        final var events = eventIdsByTransactionId.get(transaction.getTransactionId());
+        final var events = eventIdsByTransactionSlt.get(transaction.getTransactionSlt());
         if (events != null) {
             try (var stream = events.stream()) {
                 final Iterator<Integer> iterator = stream.iterator();
@@ -120,31 +120,35 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
     @Override
     public InfinispanTransaction getAndRemoveTransaction(String transactionId) {
         // Intentionally blocking
-        return transactionCache.remove(transactionId);
+        final InfinispanTransaction transaction = getTransaction(transactionId);
+        if (transaction != null) {
+            removeTransaction(transaction);
+        }
+        return transaction;
     }
 
     @Override
     public void addTransactionEvent(InfinispanTransaction transaction, int eventKey, LogMinerEvent event) {
         eventCache.put(transaction.getEventId(eventKey), event);
-        eventIdsByTransactionId.get(transaction.getTransactionId()).add(eventKey);
+        eventIdsByTransactionSlt.get(transaction.getTransactionSlt()).add(eventKey);
     }
 
     @Override
     public void removeTransactionEvents(InfinispanTransaction transaction) {
-        final var events = eventIdsByTransactionId.get(transaction.getTransactionId());
+        final var events = eventIdsByTransactionSlt.get(transaction.getTransactionSlt());
         if (events != null) {
             events.descendingSet().stream().map(transaction::getEventId).forEach(key -> {
                 eventCache.remove(key);
                 rollbackCache.remove(key);
             });
         }
-        eventIdsByTransactionId.remove(transaction.getTransactionId());
+        eventIdsByTransactionSlt.remove(transaction.getTransactionSlt());
     }
 
     @Override
     public boolean rollbackTransactionEventWithRowId(InfinispanTransaction transaction, String rowId) {
         final RowIdCodec.Packed encodedRowId = RowIdCodec.encode(rowId);
-        final TreeSet<Integer> eventIds = eventIdsByTransactionId.get(transaction.getTransactionId());
+        final TreeSet<Integer> eventIds = eventIdsByTransactionSlt.get(transaction.getTransactionSlt());
         for (Integer eventId : eventIds.descendingSet()) {
             final String eventKey = transaction.getEventId(eventId);
             final LogMinerEvent event = eventCache.get(eventKey);
@@ -158,7 +162,7 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
 
     @Override
     public boolean containsTransactionEvent(InfinispanTransaction transaction, int eventKey) {
-        final var events = eventIdsByTransactionId.get(transaction.getTransactionId());
+        final var events = eventIdsByTransactionSlt.get(transaction.getTransactionSlt());
         if (events != null) {
             return events.contains(eventKey);
         }
@@ -167,7 +171,7 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
 
     @Override
     public int getTransactionEventCount(InfinispanTransaction transaction) {
-        final var events = eventIdsByTransactionId.get(transaction.getTransactionId());
+        final var events = eventIdsByTransactionSlt.get(transaction.getTransactionSlt());
         if (events != null) {
             return events.size();
         }
@@ -176,7 +180,7 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
 
     @Override
     public int getTransactionEvents() {
-        return eventIdsByTransactionId.values().stream().mapToInt(Set::size).sum();
+        return eventIdsByTransactionSlt.values().stream().mapToInt(Set::size).sum();
     }
 
     @Override
@@ -184,7 +188,7 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
         transactionCache.clear();
         eventCache.clear();
         rollbackCache.clear();
-        eventIdsByTransactionId.clear();
+        eventIdsByTransactionSlt.clear();
     }
 
     @Override
@@ -200,19 +204,42 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
         // be managed in the cache's heap, in which case we can avoid this put.
 
         // Necessary to synchronize state
-        transactionCache.put(transaction.getTransactionId(), transaction);
+        transactionCache.put(transaction.getTransactionSlt(), transaction);
     }
 
     private void primeHeapCacheFromOffHeapCaches() {
+        Iterator<Map.Entry<String, InfinispanTransaction>> transactionIt = transactionCache.entrySet().iterator();
+        while (transactionIt.hasNext()) {
+            Map.Entry<String, InfinispanTransaction> entry = transactionIt.next();
+            String transactionSlt = getTransactionSlt(entry.getKey());
+            if (!entry.getKey().equals(transactionSlt)) {
+                transactionCache.put(transactionSlt, entry.getValue());
+                transactionIt.remove();
+            }
+        }
+
         // Primes the heap-based cache if the Infinispan disk caches contained data on start-up
         eventKeys(keyStream -> {
             keyStream.map(k -> k.split("-", 2))
                     .filter(parts -> parts.length == 2)
                     .forEach(parts -> {
-                        final String transactionId = parts[0];
+                        final String transactionSlt = getTransactionSlt(parts[0]);
+
+                        if (!transactionSlt.equals(parts[0])) {
+                            String oldEventKey = String.join("-", parts);
+                            String newEventKey = String.join("-", transactionSlt, parts[1]);
+
+                            eventCache.put(newEventKey, eventCache.remove(oldEventKey));
+
+                            Boolean rollback = rollbackCache.remove(oldEventKey);
+                            if (rollback != null) {
+                                rollbackCache.put(newEventKey, rollback);
+                            }
+                        }
+
                         final int eventId = Integer.parseInt(parts[1]);
-                        if (transactionCache.containsKey(transactionId)) {
-                            eventIdsByTransactionId.computeIfAbsent(transactionId, k -> new TreeSet<>()).add(eventId);
+                        if (transactionCache.containsKey(transactionSlt)) {
+                            eventIdsByTransactionSlt.computeIfAbsent(transactionSlt, k -> new TreeSet<>()).add(eventId);
                         }
                     });
         });
