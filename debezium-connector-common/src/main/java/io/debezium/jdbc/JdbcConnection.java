@@ -1262,7 +1262,10 @@ public class JdbcConnection implements AutoCloseable {
                     if (tableFilter == null || tableFilter.isIncluded(tableId)) {
                         tableIds.add(tableId);
                         attributesByTable.putAll(getAttributeDetails(tableId, tableType));
-                        commentsByTable.put(tableId, readTableComment(rs));
+                        final String comment = readTableComment(rs);
+                        if (!Strings.isNullOrBlank(comment)) {
+                            commentsByTable.put(tableId, comment);
+                        }
                     }
                 }
                 else {
