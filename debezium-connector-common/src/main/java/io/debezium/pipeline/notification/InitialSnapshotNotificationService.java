@@ -155,7 +155,7 @@ public class InitialSnapshotNotificationService<P extends Partition, O extends O
                 .map(DataCollectionId::identifier)
                 .collect(Collectors.joining(LIST_DELIMITER));
 
-        notificationService.notify(buildNotificationWith("DATA_COLLECTIONS_RESOLVED",
+        notificationService.notify(buildNotificationWith(SnapshotStatus.DATA_COLLECTIONS_RESOLVED.name(),
                 Map.of(DATA_COLLECTIONS, dataCollections)), Offsets.of(partition, offsetContext));
     }
 

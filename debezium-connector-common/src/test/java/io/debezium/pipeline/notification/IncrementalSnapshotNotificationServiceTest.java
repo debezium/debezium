@@ -27,6 +27,7 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.doc.FixFor;
 import io.debezium.pipeline.source.snapshot.incremental.DataCollection;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -73,6 +74,19 @@ public class IncrementalSnapshotNotificationServiceTest {
         incrementalSnapshotNotificationService.notifyStarted(incrementalSnapshotContext, partition, offsetContext);
 
         Notification expectedNotification = new Notification("12345", "Incremental Snapshot", "STARTED", Map.of(
+                "connector_name", "connector-test",
+                "data_collections", "db.inventory.product,db.inventory.customer"), clock.millis());
+
+        verify(notificationService).notify(eq(expectedNotification), any(Offsets.class));
+    }
+
+    @Test
+    @FixFor("debezium/dbx#2537")
+    public void notifyDataCollectionsResolved() {
+
+        incrementalSnapshotNotificationService.notifyDataCollectionsResolved(incrementalSnapshotContext, partition, offsetContext);
+
+        Notification expectedNotification = new Notification("12345", "Incremental Snapshot", "DATA_COLLECTIONS_RESOLVED", Map.of(
                 "connector_name", "connector-test",
                 "data_collections", "db.inventory.product,db.inventory.customer"), clock.millis());
 

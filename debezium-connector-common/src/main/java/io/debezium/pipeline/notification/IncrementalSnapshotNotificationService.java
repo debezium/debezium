@@ -60,11 +60,23 @@ public class IncrementalSnapshotNotificationService<P extends Partition, O exten
 
     public <T extends DataCollectionId> void notifyStarted(IncrementalSnapshotContext<T> incrementalSnapshotContext, P partition, OffsetContext offsetContext) {
 
+        @Deprecated(forRemoval = true)
         String dataCollections = incrementalSnapshotContext.getDataCollections().stream().map(DataCollection::getId)
                 .map(DataCollectionId::identifier)
                 .collect(Collectors.joining(LIST_DELIMITER));
 
         notificationService.notify(buildNotificationWith(incrementalSnapshotContext, SnapshotStatus.STARTED,
+                Map.of(DATA_COLLECTIONS, dataCollections), offsetContext), Offsets.of(partition, offsetContext));
+    }
+
+    public <T extends DataCollectionId> void notifyDataCollectionsResolved(IncrementalSnapshotContext<T> incrementalSnapshotContext, P partition,
+                                                                           OffsetContext offsetContext) {
+
+        String dataCollections = incrementalSnapshotContext.getDataCollections().stream().map(DataCollection::getId)
+                .map(DataCollectionId::identifier)
+                .collect(Collectors.joining(LIST_DELIMITER));
+
+        notificationService.notify(buildNotificationWith(incrementalSnapshotContext, SnapshotStatus.DATA_COLLECTIONS_RESOLVED,
                 Map.of(DATA_COLLECTIONS, dataCollections), offsetContext), Offsets.of(partition, offsetContext));
     }
 
