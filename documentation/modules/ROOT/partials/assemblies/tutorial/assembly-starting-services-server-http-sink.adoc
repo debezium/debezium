@@ -13,10 +13,10 @@ To start the services needed for this tutorial, you must:
 * xref:starting-mysql-database[Start a MySQL database]
 * xref:starting-mysql-command-line-client[Start a MySQL command line client]
 
-include::{partialsdir}/modules/tutorial/server-considerations-running-debezium-with-docker.adoc[leveloffset=+1]
+include::{partialsdir}/modules/tutorial/kafka-connect/server-considerations-running-debezium-with-docker.adoc[leveloffset=+1]
 
-include::{partialsdir}/modules/tutorial/server-starting-http-sink.adoc[leveloffset=+1]
+include::{partialsdir}/modules/tutorial/kafka-connect/server-starting-http-sink.adoc[leveloffset=+1]
 
-include::{partialsdir}/modules/tutorial/proc-starting-mysql-database.adoc[leveloffset=+1]
+include::{partialsdir}/modules/tutorial/kafka-connect/proc-starting-mysql-database.adoc[leveloffset=+1]
 
-include::{partialsdir}/modules/tutorial/proc-starting-mysql-command-line-client.adoc[leveloffset=+1]
+include::{partialsdir}/modules/tutorial/kafka-connect/proc-starting-mysql-command-line-client.adoc[leveloffset=+1]

@@ -1,5 +1,5 @@
-[id="tutorial"]
-= Tutorial
+[id="kc-tutorial"]
+= Kafka Connect Tutorial
 :page-aliases: tutorial.adoc
 
 :toc:
@@ -34,7 +34,7 @@ This example can also be run using Podman. For more information see link:https:/
 ====
 endif::community[]
 
-include::{partialsdir}/modules/tutorial/con-introduction-debezium.adoc[leveloffset=+1]
+include::{partialsdir}/modules/tutorial/kafka-connect/con-introduction-debezium.adoc[leveloffset=+1]
 
 include::{partialsdir}/assemblies/tutorial/assembly-starting-services.adoc[leveloffset=+1]
 
@@ -42,6 +42,6 @@ include::{partialsdir}/assemblies/tutorial/assembly-deploying-mysql-connector.ad
 
 include::{partialsdir}/assemblies/tutorial/assembly-viewing-change-events.adoc[leveloffset=+1]
 
-include::{partialsdir}/modules/tutorial/proc-cleaning-up.adoc[leveloffset=+1]
+include::{partialsdir}/modules/tutorial/kafka-connect/proc-cleaning-up.adoc[leveloffset=+1]
 
-include::{partialsdir}/modules/tutorial/con-next-steps.adoc[leveloffset=+1]
+include::{partialsdir}/modules/tutorial/kafka-connect/con-next-steps.adoc[leveloffset=+1]

@@ -15,8 +15,8 @@ To start the services needed for this tutorial, you must:
 
 include::{partialsdir}/modules/tutorial/server-considerations-running-debezium-with-docker.adoc[leveloffset=+1]
 
-include::{partialsdir}/modules/tutorial/proc-starting-mysql-database.adoc[leveloffset=+1]
+include::{partialsdir}/modules/tutorial/server-starting-mysql-database.adoc[leveloffset=+1]
 
 include::{partialsdir}/modules/tutorial/proc-starting-mysql-command-line-client.adoc[leveloffset=+1]
 
-include::{partialsdir}/modules/tutorial/server-starting-postgres.adoc[leveloffset=+1]
+include::{partialsdir}/modules/tutorial/server-starting-postgres-database.adoc[leveloffset=+1]

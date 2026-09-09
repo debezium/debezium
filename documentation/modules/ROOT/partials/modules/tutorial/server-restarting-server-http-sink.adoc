@@ -10,7 +10,7 @@ When the {prodname} server application goes offline and restarts, {prodname} res
 
 .Procedure
 
-. Open the terminal window where you used `run.sh` to start {prodname} server and stop it using `CTRL-C`.
+. Open the terminal window where you used `run.sh` to start {prodname} server and stop it using kbd:[CTRL(+C)*].
 
 The {prodname} server application is stopped, and gracefully shuts down.
 

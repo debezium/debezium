@@ -1,5 +1,5 @@
-[id="server-tutorial-http-sink"]
-= {prodname} Server Tutorial - HTTP Sink
+[id="server-tutorial"]
+= {prodname} Server Tutorial
 
 :toc:
 :toc-placement: macro
