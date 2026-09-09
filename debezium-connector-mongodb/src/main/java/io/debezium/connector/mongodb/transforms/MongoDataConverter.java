@@ -847,11 +847,11 @@ public class MongoDataConverter {
 
             case TIMESTAMP:
                 if (bsonTimestampHandlingMode == BsonTimestampHandlingMode.STRUCT) {
-                    // The BSON components are unsigned 32-bit values; time is widened so post-2038
-                    // values stay exact, increment is an ordinal that fits the signed range.
+                    // Both BSON components are unsigned 32-bit values, widened to signed 64-bit so the
+                    // full unsigned range stays exact (Connect has no unsigned types).
                     Struct timestampStruct = new Struct(MongoDbSchema.BSON_TIMESTAMP_SCHEMA);
                     timestampStruct.put("time", Integer.toUnsignedLong(value.asTimestamp().getTime()));
-                    timestampStruct.put("increment", value.asTimestamp().getInc());
+                    timestampStruct.put("increment", Integer.toUnsignedLong(value.asTimestamp().getInc()));
                     colValue = timestampStruct;
                     break;
                 }
