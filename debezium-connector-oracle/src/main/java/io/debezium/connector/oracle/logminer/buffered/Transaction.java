@@ -15,12 +15,29 @@ import io.debezium.connector.oracle.Scn;
  * @author Chris Cranford
  */
 public interface Transaction {
+    String NO_SEQUENCE_TRX_ID_SUFFIX = "ffffffff";
+
+    static String getUsnSlt(String transactionId) {
+        return transactionId == null ? null : transactionId.substring(0, 8);
+    }
+
+    static void checkSqn(String transactionId, String currentTransactionId, Scn currentStartScn) {
+        if (!transactionId.endsWith(NO_SEQUENCE_TRX_ID_SUFFIX) && !transactionId.regionMatches(8, currentTransactionId, 8, 8)) {
+            throw new IllegalStateException("Invalid XID %s: The slot is occupied by the transaction %s started at SCN %s".formatted(transactionId,
+                    currentTransactionId, currentStartScn));
+        }
+    }
+
     /**
      * Get the transaction identifier
      *
      * @return the transaction unique identifier, never {@code null}
      */
     String getTransactionId();
+
+    default String getUsnSlt() {
+        return getUsnSlt(getTransactionId());
+    }
 
     /**
      * Get the system change number of when the transaction started
@@ -66,7 +83,7 @@ public interface Transaction {
         if (index < 0 || index >= getNumberOfEvents()) {
             throw new IndexOutOfBoundsException("Index " + index + "outside the transaction " + getTransactionId() + " event list bounds");
         }
-        return getTransactionId() + "-" + index;
+        return getUsnSlt() + "-" + index;
     }
 
     /**

@@ -46,13 +46,6 @@ public class InfinispanTransaction extends AbstractTransaction {
         numberOfEvents = 0;
     }
 
-    public String getEventId(int index) {
-        if (index < 0 || index >= numberOfEvents) {
-            throw new IndexOutOfBoundsException("Index " + index + "outside the transaction " + getTransactionId() + " event list bounds");
-        }
-        return getTransactionId() + "-" + index;
-    }
-
     @Override
     public String toString() {
         return "InfinispanTransaction{" +

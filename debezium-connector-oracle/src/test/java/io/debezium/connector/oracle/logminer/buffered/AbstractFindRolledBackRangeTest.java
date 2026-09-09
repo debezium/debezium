@@ -584,8 +584,8 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     public void testRollbacksAreScopedToTheirOwnTransaction() throws Exception {
         LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
         LogMinerTransactionCache<T> cache = cacheProvider.getTransactionCache();
-        T first = transaction("1");
-        T second = transaction("2");
+        T first = transaction("0100010001000000");
+        T second = transaction("0100020001000000");
 
         // Two concurrent transactions on the same table with interleaved redo. Each undo must only walk the
         // events of its own transaction; a walk across both would hit the other transaction's row first.
@@ -1222,7 +1222,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
 
     private LogMinerEvent[] cache(LogMinerEvent[] events) throws InterruptedException {
         LogMinerTransactionCache<T> cache = cacheProvider.getTransactionCache();
-        T transaction = transaction("1");
+        T transaction = transaction("0100010001000000");
         for (LogMinerEvent event : events) {
             addEvent(cache, transaction, event);
         }
