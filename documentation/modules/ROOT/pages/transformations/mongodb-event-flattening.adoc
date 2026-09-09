@@ -488,6 +488,15 @@ The increment component that MongoDB uses to order operations that occur during 
 
 `struct`::
 The SMT emits a structure with the fields `time` and `increment`, preserving both components of the BSON value.
++
+[NOTE]
+.Mixed Array Types in Struct Mode
+====
+BSON Timestamp values have a different schema than BSON date/time values.
+Using `array.encoding=array` with an array that mixes both types will trigger an `Array elements with different Bson types are not supported` SMT error.
+
+Workaround: Set `array.encoding=document` to capture arrays with mixed types.
+====
 
 |[[mongodb-extract-new-record-state-flatten-struct]]<<mongodb-extract-new-record-state-flatten-struct, `flatten.struct`>>
 |`false`
