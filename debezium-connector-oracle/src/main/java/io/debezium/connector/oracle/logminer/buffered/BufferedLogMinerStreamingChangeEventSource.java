@@ -660,34 +660,15 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                     LOGGER.debug("No matching transaction found for partial transaction '{}' with prefix '{}'",
                             transactionId, prefix);
                 }
-                else if (matchingTransactions.size() == 1) {
-                    final MatchedTransaction matched = matchingTransactions.get(0);
-                    LOGGER.warn("Matched partial transaction '{}' to {} transaction '{}' (startScn={}, changeTime={}). " +
-                            "Rolling back the matched transaction.",
-                            transactionId,
-                            matched.deferred() ? "deferred" : "cached",
-                            matched.transactionId(),
-                            matched.startScn(),
-                            matched.changeTime());
-                    if (matched.deferred()) {
-                        removeDeferredTransaction(matched.transactionId());
-                    }
-                    else {
-                        finalizeTransaction(matched.transactionId(), event.getScn(), true);
-                        getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
-                        getMetrics().setBufferedEventCount(getTransactionCache().getTransactionEvents());
-                    }
-                }
                 else {
-                    // Multiple candidates share the rollback's undo segment and slot prefix. Oracle
-                    // reuses an undo slot only after the transaction that previously occupied it has
-                    // ended, so of all candidates only the one with the highest start SCN can still
-                    // be in progress, and it is the one this rollback terminates.
+                    // Oracle reuses an undo slot only after the transaction that previously occupied
+                    // it has ended, so of all same-prefix candidates only the one with the highest
+                    // start SCN can still be in progress, and it is the one this rollback terminates.
                     final MatchedTransaction matched = matchingTransactions.stream()
                             .max(Comparator.comparing(MatchedTransaction::startScn))
                             .orElseThrow();
 
-                    LOGGER.warn("Matched partial transaction '{}' to the most recent of {} transactions with prefix '{}', " +
+                    LOGGER.warn("Matched partial transaction '{}' to the most recent of {} transaction(s) with prefix '{}', " +
                             "the {} transaction '{}' (startScn={}, changeTime={}). Rolling back the matched transaction.",
                             transactionId,
                             matchingTransactions.size(),
