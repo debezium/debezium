@@ -34,6 +34,7 @@ import io.debezium.annotation.Immutable;
 import io.debezium.annotation.VisibleForTesting;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.util.Collect;
+import io.debezium.util.Strings;
 
 /**
  * A registry of types supported by a PostgreSQL instance. Allows lookup of the types according to
@@ -287,6 +288,11 @@ public class TypeRegistry {
      * @return type associated with the given type name
      */
     public PostgresType get(String schemaName, String typeName) {
+        if (Strings.isNullOrBlank(typeName)) {
+            LOGGER.warn("Type with a null or blank name requested for schema '{}'", schemaName);
+            return PostgresType.UNKNOWN;
+        }
+
         typeName = switch (typeName) {
             case "serial" -> "int4";
             case "smallserial" -> "int2";
@@ -309,6 +315,11 @@ public class TypeRegistry {
      * @return type associated with the given type name
      */
     public PostgresType get(String name) {
+        if (Strings.isNullOrBlank(name)) {
+            LOGGER.warn("Type with a null or blank name requested");
+            return PostgresType.UNKNOWN;
+        }
+
         name = switch (name) {
             case "serial" -> "int4";
             case "smallserial" -> "int2";
