@@ -7,6 +7,7 @@ package io.debezium.pipeline.notification;
 
 public enum SnapshotStatus {
     STARTED,
+    DATA_COLLECTIONS_RESOLVED,
     PAUSED,
     RESUMED,
     ABORTED,
