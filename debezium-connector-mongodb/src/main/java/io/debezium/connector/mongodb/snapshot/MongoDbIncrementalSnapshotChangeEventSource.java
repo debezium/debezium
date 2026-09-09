@@ -441,6 +441,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
             notificationService.incrementalSnapshotNotificationService().notifyStarted(context, partition, offsetContext);
 
             progressListener.monitoredDataCollectionsDetermined(partition, monitoredDataCollections);
+            notificationService.incrementalSnapshotNotificationService().notifyDataCollectionsResolved(context, partition, offsetContext);
             readChunk(partition, offsetContext);
         }
     }

@@ -83,6 +83,19 @@ public class IncrementalSnapshotNotificationServiceTest {
     }
 
     @Test
+    @FixFor("debezium/dbx#2537")
+    public void notifyDataCollectionsResolved() {
+
+        incrementalSnapshotNotificationService.notifyDataCollectionsResolved(incrementalSnapshotContext, partition, offsetContext);
+
+        Notification expectedNotification = new Notification("12345", "Incremental Snapshot", "DATA_COLLECTIONS_RESOLVED", Map.of(
+                "connector_name", "connector-test",
+                "data_collections", "db.inventory.product,db.inventory.customer"), clock.millis());
+
+        verify(notificationService).notify(eq(expectedNotification), any(Offsets.class));
+    }
+
+    @Test
     public void notifyPaused() {
 
         incrementalSnapshotNotificationService.notifyPaused(incrementalSnapshotContext, partition, offsetContext);
