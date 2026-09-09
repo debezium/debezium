@@ -32,6 +32,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -58,6 +59,7 @@ import io.debezium.pipeline.source.snapshot.chunked.SnapshotChunk;
 import io.debezium.pipeline.source.snapshot.chunked.SnapshotChunkQueryBuilder;
 import io.debezium.pipeline.source.snapshot.chunked.SnapshotProgress;
 import io.debezium.pipeline.source.snapshot.chunked.TableChunkProgress;
+import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
@@ -74,6 +76,7 @@ import io.debezium.spi.snapshot.Snapshotter;
 import io.debezium.util.Clock;
 import io.debezium.util.ColumnUtils;
 import io.debezium.util.LoggingContext;
+import io.debezium.util.Metronome;
 import io.debezium.util.Stopwatch;
 import io.debezium.util.Strings;
 import io.debezium.util.Threads;
@@ -105,6 +108,24 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     protected Queue<JdbcConnection> connectionPool;
     private final TableId signalDataCollectionTableId;
 
+    /**
+     * Remaining whole-snapshot retry budget for retriable table/chunk read failures; shared across all
+     * snapshot units of this snapshot execution (see {@code snapshot.retry.max}).
+     */
+    private final AtomicInteger snapshotRetryBudget;
+
+    /**
+     * Per-unit (table or chunk) resume state, keyed by the unit's identifier. Only populated while a unit
+     * runs with a non-zero retry budget, so the default configuration takes the pre-existing code paths.
+     */
+    private final Map<String, SnapshotUnitRetryState> retryStates = new ConcurrentHashMap<>();
+
+    /**
+     * Tables whose snapshot select comes from {@code snapshot.select.statement.overrides}; those scans
+     * cannot be resumed from a key and fall back to a full re-read on retry.
+     */
+    private final Set<TableId> selectOverrideTables = ConcurrentHashMap.newKeySet();
+
     public RelationalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig connectorConfig,
                                                MainConnectionProvidingConnectionFactory<? extends JdbcConnection> jdbcConnectionFactory,
                                                RelationalDatabaseSchema schema, EventDispatcher<P, TableId> dispatcher, Clock clock,
@@ -119,6 +140,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         this.clock = clock;
         this.snapshotProgressListener = snapshotProgressListener;
         this.snapshotterService = snapshotterService;
+        this.snapshotRetryBudget = new AtomicInteger(connectorConfig.snapshotRetryMax());
 
         if (!connectorConfig.getSignalingDataCollectionIds().isEmpty()) {
             this.signalDataCollectionTableId = TableId.parse(connectorConfig.getSignalingDataCollectionIds().get(0));
@@ -562,6 +584,13 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                 tableId -> determineSnapshotSelect(snapshotContext, tableId, snapshotSelectOverridesByTable),
                 this::rowCountForTable);
 
+        // Overridden selects cannot be resumed from a key on retry; remember them for the retry handling
+        prepared.queryTables.forEach((tableId, snapshotSelect) -> {
+            if (snapshotSelect.selectOverride()) {
+                selectOverrideTables.add(tableId);
+            }
+        });
+
         try (ThreadedSnapshotExecutor executor = new ThreadedSnapshotExecutor(snapshotMaxThreads, "snapshot")) {
             final int tableCount = prepared.rowCountTables.size();
             int tableOrder = 1;
@@ -843,8 +872,10 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                     LoggingContext.PreviousContext previousLoggingContext = LoggingContext.forConnector(
                             connectorConfig.getContextName(), connectorConfig.getLogicalName(), null, "snapshot", snapshotContext.partition);
                     try {
-                        doCreateDataEventsForTable(sourceContext, snapshotContext, offset, snapshotReceiver, table, firstTable, lastTable, tableOrder, tableCount,
-                                selectStatement, rowCount, rowCountTablesKeySet, connection);
+                        executeSnapshotUnitWithRetries(snapshotContext, connection, table.id().identifier(),
+                                "table " + table.id(), table.id().identifier(),
+                                () -> doCreateDataEventsForTable(sourceContext, snapshotContext, offset, snapshotReceiver, table, firstTable, lastTable,
+                                        tableOrder, tableCount, selectStatement, rowCount, rowCountTablesKeySet, connection));
                     }
                     catch (SQLException e) {
                         notificationService.initialSnapshotNotificationService().notifyCompletedTableWithError(snapshotContext.partition,
@@ -868,7 +899,10 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                     LoggingContext.PreviousContext previousLoggingContext = LoggingContext.forConnector(
                             connectorConfig.getContextName(), connectorConfig.getLogicalName(), null, "snapshot", snapshotContext.partition);
                     try {
-                        doCreateDataEventsForChunk(sourceContext, snapshotContext, offset, snapshotReceiver, chunk, progressMap, snapshotProgress, connection);
+                        executeSnapshotUnitWithRetries(snapshotContext, connection, chunk.getChunkId(),
+                                "table " + chunk.getTableId() + " chunk " + chunk.getChunkId(), chunk.getTableId().identifier(),
+                                () -> doCreateDataEventsForChunk(sourceContext, snapshotContext, offset, snapshotReceiver, chunk, progressMap,
+                                        snapshotProgress, connection));
                     }
                     catch (SQLException e) {
                         notificationService.initialSnapshotNotificationService().notifyCompletedTableWithError(
@@ -882,6 +916,151 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                 null);
     }
 
+    /**
+     * Executes a snapshot unit (a whole table or a single chunk), retrying retriable read failures against
+     * the whole-snapshot retry budget configured via {@code snapshot.retry.max}.
+     * <p>
+     * Only failures for which {@link #isSnapshotErrorRetriable(SQLException)} returns {@code true} are
+     * retried; a {@link ConnectException} whose cause is a retriable {@link SQLException} (e.g. from
+     * {@link #getSnapshotSourceTimestamp}) is unwrapped as well. An {@link InterruptedException} - the
+     * connector stopping - always propagates immediately. Between attempts the connection is recovered via
+     * {@link #recoverConnection} and the unit resumes from the last emitted key where possible, so rows are
+     * not emitted twice (see {@link SnapshotUnitRetryState}).
+     *
+     * @param snapshotContext the snapshot context
+     * @param connection the pooled connection used by this unit
+     * @param unitKey unique identifier of the unit, keying the resume state
+     * @param unitDescription human-readable description of the unit, used for logging
+     * @param tableIdentifier identifier of the unit's table, used for notifications
+     * @param unit the unit of snapshot work to execute
+     */
+    private void executeSnapshotUnitWithRetries(RelationalSnapshotContext<P, O> snapshotContext, JdbcConnection connection,
+                                                String unitKey, String unitDescription, String tableIdentifier,
+                                                RetriableSnapshotUnit unit)
+            throws Exception {
+        final int maxRetries = connectorConfig.snapshotRetryMax();
+        if (maxRetries == 0) {
+            // Retry not opted in; keep the pre-existing behavior with no resume state tracking
+            unit.execute();
+            return;
+        }
+
+        retryStates.put(unitKey, new SnapshotUnitRetryState());
+        try {
+            final Metronome retryMetronome = Metronome.sleeper(connectorConfig.snapshotRetryDelay(), clock);
+            for (int attempt = 1;; attempt++) {
+                try {
+                    unit.execute();
+                    return;
+                }
+                catch (SQLException | ConnectException e) {
+                    final SQLException failure = extractRetriableError(e);
+                    if (failure == null || !consumeSnapshotRetryBudget()) {
+                        throw e;
+                    }
+                    LOGGER.warn("Snapshot of {} failed with a retriable error on attempt {}, retrying ({} of {} whole-snapshot retries remaining)",
+                            unitDescription, attempt, snapshotRetryBudget.get(), maxRetries, failure);
+                    notificationService.initialSnapshotNotificationService().notifyTableSnapshotRetry(
+                            snapshotContext.partition, snapshotContext.offset, tableIdentifier, attempt, maxRetries);
+                    retryMetronome.pause();
+                    recoverConnection(snapshotContext, connection);
+                }
+            }
+        }
+        finally {
+            retryStates.remove(unitKey);
+        }
+    }
+
+    /**
+     * Returns whether the given snapshot read failure is transient and eligible for a per-table/per-chunk
+     * retry (see {@code snapshot.retry.max}).
+     * <p>
+     * Defaults to {@code false} so that retry stays strictly opt-in per connector; connectors override this
+     * with the error classes they know to be transient (e.g. connection resets, or Oracle's ORA-01466).
+     */
+    protected boolean isSnapshotErrorRetriable(SQLException exception) {
+        return false;
+    }
+
+    /**
+     * Recovers the given pooled connection before a snapshot retry attempt.
+     * <p>
+     * A failed statement can leave the connection in an aborted-transaction state that a liveness check
+     * does not detect, so the default rolls the transaction back and re-establishes the connection if it is
+     * no longer valid, re-applying the connector-specific per-connection state the same way the reconnect
+     * path of the connection pool does. Connectors that must re-apply additional state (e.g. a session
+     * context or an exported snapshot pin) can override this.
+     */
+    protected void recoverConnection(RelationalSnapshotContext<P, O> snapshotContext, JdbcConnection connection) throws SQLException {
+        // TODO(review): the design doc leaves room for an unconditional reconnect here; rolling back and
+        // only reconnecting an invalid connection preserves the per-connection consistent-read view for
+        // in-transaction failures, which seems preferable as a common default.
+        try {
+            connection.rollback();
+        }
+        catch (SQLException e) {
+            LOGGER.debug("Rollback before snapshot retry failed; the connection will be re-established", e);
+        }
+        if (!connection.isValid()) {
+            connection.reconnect();
+            initializePooledConnection(connection);
+            connectionPoolConnectionCreated(snapshotContext, connection);
+        }
+    }
+
+    /**
+     * Extracts the retriable {@link SQLException} from a snapshot unit failure, unwrapping a
+     * {@link ConnectException} whose cause is a {@link SQLException}, or returns {@code null} when the
+     * failure is not retriable.
+     */
+    private SQLException extractRetriableError(Exception exception) {
+        SQLException sqlException = null;
+        if (exception instanceof SQLException) {
+            sqlException = (SQLException) exception;
+        }
+        else if (exception instanceof ConnectException && exception.getCause() instanceof SQLException) {
+            sqlException = (SQLException) exception.getCause();
+        }
+        return sqlException != null && isSnapshotErrorRetriable(sqlException) ? sqlException : null;
+    }
+
+    /**
+     * Consumes one retry from the whole-snapshot budget; returns {@code false} when the budget is exhausted.
+     */
+    private boolean consumeSnapshotRetryBudget() {
+        return snapshotRetryBudget.getAndUpdate(remaining -> remaining > 0 ? remaining - 1 : remaining) > 0;
+    }
+
+    /**
+     * Returns whether the given key columns support resuming a scan from the last emitted key. NULL-aware
+     * resume bounds need to know how the database sorts NULLs, so nullable key columns are only resumable
+     * when {@link JdbcConnection#nullsSortLast()} is known; otherwise the retry falls back to a full
+     * re-read that accepts duplicates.
+     */
+    private static boolean isResumableKey(JdbcConnection connection, List<Column> keyColumns) {
+        if (keyColumns.isEmpty()) {
+            return false;
+        }
+        return keyColumns.stream().noneMatch(Column::isOptional) || connection.nullsSortLast().isPresent();
+    }
+
+    /**
+     * Extracts the key column values from a snapshot row, in key column order, for use as the resume
+     * position of a retried scan.
+     * <p>
+     * Note: raw row values (unwrapped the same way as the incremental snapshot's chunk position) are used
+     * rather than {@link TableSchema#keyFromColumnData}, because the converted Kafka Connect values would
+     * not round-trip through {@link JdbcConnection#setQueryColumnValue} when re-bound into the resume query.
+     */
+    private static Object[] keyFromRow(List<Column> keyColumns, Object[] row) {
+        final Object[] key = new Object[keyColumns.size()];
+        for (int i = 0; i < keyColumns.size(); i++) {
+            key[i] = AbstractIncrementalSnapshotChangeEventSource.unwrapKeyValue(row[keyColumns.get(i).position() - 1]);
+        }
+        return key;
+    }
+
     protected void doCreateDataEventsForTable(ChangeEventSourceContext sourceContext, RelationalSnapshotContext<P, O> snapshotContext, O offset,
                                               SnapshotReceiver<P> snapshotReceiver, Table table,
                                               boolean firstTable, boolean lastTable, int tableOrder, int tableCount, String selectStatement, OptionalLong rowCount,
@@ -890,6 +1069,12 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
         if (!sourceContext.isRunning()) {
             throw new InterruptedException("Interrupted while snapshotting table " + table.id());
+        }
+
+        final SnapshotUnitRetryState retryState = retryStates.get(table.id().identifier());
+        if (retryState != null && retryState.isCompleted()) {
+            // The previous attempt had finished this table when the failure struck; there is nothing to redo
+            return;
         }
 
         long exportStart = clock.currentTimeInMillis();
@@ -903,11 +1088,30 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
         Instant sourceTableSnapshotTimestamp = getSnapshotSourceTimestamp(jdbcConnection, offset, table.id());
 
-        try (Statement statement = readTableStatement(jdbcConnection, rowCount);
-                ResultSet rs = resultSetForDataEvents(selectStatement, statement)) {
+        // With retry opted in and a usable key, scan in key order so that a retry can resume from the last
+        // emitted key; keyless and select-override tables fall back to a full re-read accepting duplicates
+        final List<Column> keyColumns = getKeyColumnsForChunking(table);
+        final boolean resumable = retryState != null && isResumableKey(jdbcConnection, keyColumns)
+                && !selectOverrideTables.contains(table.id());
+        final Object[] resumeKey = resumable ? retryState.getLastEmittedKey() : null;
+
+        String effectiveSelect = selectStatement;
+        if (resumable) {
+            final SnapshotChunkQueryBuilder queryBuilder = new SnapshotChunkQueryBuilder(jdbcConnection, connectorConfig);
+            effectiveSelect = resumeKey != null
+                    ? queryBuilder.buildResumeQuery(keyColumns, selectStatement, resumeKey)
+                    : queryBuilder.ensureOrderedByKey(selectStatement, keyColumns);
+        }
+
+        try (Statement statement = resumeKey != null
+                ? readTableResumeStatement(jdbcConnection, effectiveSelect, keyColumns, resumeKey, rowCount)
+                : readTableStatement(jdbcConnection, rowCount);
+                ResultSet rs = resumeKey != null
+                        ? CancellableResultSet.from(((PreparedStatement) statement).executeQuery())
+                        : resultSetForDataEvents(effectiveSelect, statement)) {
 
             ColumnUtils.ColumnArray columnArray = ColumnUtils.toArray(rs, table);
-            long rows = 0;
+            long rows = retryState != null ? retryState.getRowsEmitted() : 0;
             Timer logTimer = getTableScanLogTimer();
             boolean hasNext = rs.next();
 
@@ -939,6 +1143,9 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
                     dispatcher.dispatchSnapshotEvent(snapshotContext.partition, table.id(),
                             getChangeRecordEmitter(snapshotContext.partition, offset, table.id(), row, sourceTableSnapshotTimestamp), snapshotReceiver);
+                    if (retryState != null) {
+                        retryState.recordEmitted(resumable ? keyFromRow(keyColumns, row) : null);
+                    }
                 }
             }
             else {
@@ -950,7 +1157,21 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
             snapshotProgressListener.dataCollectionSnapshotCompleted(snapshotContext.partition, table.id(), rows);
             notificationService.initialSnapshotNotificationService().notifyCompletedTableSuccessfully(snapshotContext.partition,
                     snapshotContext.offset, table.id().identifier(), rows, snapshotContext.capturedTables);
+            if (retryState != null) {
+                retryState.markCompleted();
+            }
         }
+    }
+
+    /**
+     * Creates the prepared statement that resumes a retried table scan strictly after the last emitted key.
+     */
+    private PreparedStatement readTableResumeStatement(JdbcConnection jdbcConnection, String sql, List<Column> keyColumns,
+                                                       Object[] resumeKey, OptionalLong rowCount)
+            throws SQLException {
+        final PreparedStatement statement = jdbcConnection.readTablePreparedStatement(connectorConfig, sql, rowCount);
+        new SnapshotChunkQueryBuilder(jdbcConnection, connectorConfig).prepareResumeStatement(statement, keyColumns, resumeKey);
+        return statement;
     }
 
     protected void doCreateDataEventsForChunk(ChangeEventSourceContext sourceContext, RelationalSnapshotContext<P, O> snapshotContext,
@@ -961,6 +1182,12 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
         if (!sourceContext.isRunning()) {
             throw new InterruptedException("Interrupted while snapshotting chunk " + chunk.getChunkId());
+        }
+
+        final SnapshotUnitRetryState retryState = retryStates.get(chunk.getChunkId());
+        if (retryState != null && retryState.isCompleted()) {
+            // The previous attempt had finished this chunk when the failure struck; there is nothing to redo
+            return;
         }
 
         final TableId tableId = chunk.getTableId();
@@ -991,9 +1218,18 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         // Get key columns for query building
         final List<Column> keyColumns = getKeyColumnsForChunking(table);
 
+        // A bounded chunk query is ordered by the key columns, so a retry can resume strictly after the
+        // last emitted key; unbounded chunks (keyless and select-override tables) are scanned unordered and
+        // fall back to a full re-read accepting duplicates
+        final boolean resumable = retryState != null && isResumableKey(jdbcConnection, keyColumns)
+                && (chunk.hasLowerBound() || chunk.hasUpperBound());
+        final Object[] resumeKey = resumable ? retryState.getLastEmittedKey() : null;
+
         // Build chunk query using standalone SnapshotChunkQueryBuilder
         final SnapshotChunkQueryBuilder queryBuilder = new SnapshotChunkQueryBuilder(jdbcConnection, connectorConfig);
-        final String chunkQuery = queryBuilder.buildChunkQuery(chunk, keyColumns, chunk.getBaseSelectStatement());
+        final String chunkQuery = resumeKey != null
+                ? queryBuilder.buildChunkQueryResumingFrom(chunk, keyColumns, chunk.getBaseSelectStatement(), resumeKey)
+                : queryBuilder.buildChunkQuery(chunk, keyColumns, chunk.getBaseSelectStatement());
         final Instant sourceTableSnapshotTimestamp = getSnapshotSourceTimestamp(jdbcConnection, offset, tableId);
 
         // Create the chunk statement via readTablePreparedStatement() so that the configured
@@ -1001,8 +1237,13 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         try (PreparedStatement statement = jdbcConnection.readTablePreparedStatement(connectorConfig, chunkQuery,
                 chunk.getEstimatedRowCount())) {
 
-            queryBuilder.prepareChunkStatement(statement, chunk, keyColumns);
-            long rows = 0;
+            if (resumeKey != null) {
+                queryBuilder.prepareChunkStatementResumingFrom(statement, chunk, keyColumns, resumeKey);
+            }
+            else {
+                queryBuilder.prepareChunkStatement(statement, chunk, keyColumns);
+            }
+            long rows = retryState != null ? retryState.getRowsEmitted() : 0;
             Timer logTimer = getTableScanLogTimer();
 
             try (ResultSet rs = statement.executeQuery()) {
@@ -1035,11 +1276,19 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                         // Coordinate emission based on marker type
                         emitRecordWithCoordination(snapshotContext, offset, snapshotReceiver, chunk, progress,
                                 snapshotProgress, tableId, row, sourceTableSnapshotTimestamp, isFirstRecord, isLastRecord);
+                        if (retryState != null) {
+                            retryState.recordEmitted(resumable ? keyFromRow(keyColumns, row) : null);
+                        }
                     }
                 }
-                else {
-                    // Empty chunk - handle coordination for empty first/last chunks
+                else if (retryState == null || (retryState.getRowsEmitted() == 0 && !retryState.isEmptyCoordinationHandled())) {
+                    // Empty chunk - handle coordination for empty first/last chunks. A retried scan must not
+                    // signal the coordination latches a second time: they were counted down either when a
+                    // previous attempt emitted the chunk's rows or when it already handled the empty chunk.
                     handleEmptyChunkCoordination(chunk, progress, snapshotProgress);
+                    if (retryState != null) {
+                        retryState.markEmptyCoordinationHandled();
+                    }
                 }
             }
 
@@ -1085,6 +1334,10 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                                 table.id().identifier(),
                                 progress.getTotalRowsScanned(),
                                 snapshotContext.capturedTables);
+            }
+
+            if (retryState != null) {
+                retryState.markCompleted();
             }
         }
     }
@@ -1344,6 +1597,63 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
          * @throws Exception if an error occurs during execution
          */
         void execute(JdbcConnection connection, T offset) throws Exception;
+    }
+
+    /**
+     * Functional interface for a snapshot unit (a whole table or a single chunk) whose read may be retried.
+     */
+    @FunctionalInterface
+    interface RetriableSnapshotUnit {
+        void execute() throws SQLException, InterruptedException;
+    }
+
+    /**
+     * Tracks the progress of one snapshot unit (a whole table or a single chunk) across retry attempts so
+     * that a retried unit resumes from the last emitted key instead of re-emitting rows, and so that the
+     * snapshot markers stay correct: the cumulative row count keeps a retried unit from emitting a second
+     * FIRST marker, and the completed flag keeps an attempt that failed after all bookkeeping (e.g. on
+     * statement close) from re-running it.
+     * <p>
+     * A unit runs on a single thread at a time and all attempts of a unit run on the same thread, so no
+     * synchronization is needed.
+     */
+    private static class SnapshotUnitRetryState {
+
+        private long rowsEmitted;
+        private Object[] lastEmittedKey;
+        private boolean completed;
+        private boolean emptyCoordinationHandled;
+
+        void recordEmitted(Object[] key) {
+            rowsEmitted++;
+            if (key != null) {
+                lastEmittedKey = key;
+            }
+        }
+
+        long getRowsEmitted() {
+            return rowsEmitted;
+        }
+
+        Object[] getLastEmittedKey() {
+            return lastEmittedKey;
+        }
+
+        boolean isCompleted() {
+            return completed;
+        }
+
+        void markCompleted() {
+            completed = true;
+        }
+
+        boolean isEmptyCoordinationHandled() {
+            return emptyCoordinationHandled;
+        }
+
+        void markEmptyCoordinationHandled() {
+            emptyCoordinationHandled = true;
+        }
     }
 
     /**
