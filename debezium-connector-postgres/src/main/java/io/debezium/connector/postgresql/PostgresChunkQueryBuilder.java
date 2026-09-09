@@ -39,8 +39,8 @@ public class PostgresChunkQueryBuilder<T extends DataCollectionId> extends RowVa
 
     @Override
     protected boolean isAdditionalGeneratedColumn(Table table, String columnName) {
-        // After pruning, generated columns are absent from table.columns(), so this filter is a
-        // no-op for the stream over table.columns(). Kept for symmetry with the detection hook.
+        // Side-map entries can still exist for columns that are present in table.columns()
+        // (e.g. before pruning). Always consult the side map for projection filtering.
         return schema.getGeneratedColumnsForTableId(table.id()).stream()
                 .anyMatch(name -> name.equalsIgnoreCase(columnName));
     }

@@ -8,10 +8,13 @@ package io.debezium.connector.postgresql;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Schema;
@@ -35,6 +38,7 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchemaBuilder;
 import io.debezium.relational.Tables;
 import io.debezium.spi.topic.TopicNamingStrategy;
+import io.debezium.util.Strings;
 
 /**
  * Component that records the schema information for the {@link PostgresConnector}. The schema information contains
@@ -94,11 +98,9 @@ public class PostgresSchema extends RelationalDatabaseSchema {
     protected PostgresSchema refresh(PostgresConnection connection, boolean printReplicaIdentityInfo) throws SQLException {
         // read all the information from the DB
         connection.readSchema(tables(), null, null, getTableFilter(), null, true);
-        // The Postgres JDBC driver does not expose the IS_GENERATEDCOLUMN metadata slot that
-        // JdbcConnection.readSchema() relies on, so Column.isGenerated() is left false after the
-        // initial read. Populate it from pg_attribute.attgenerated so incremental snapshot and any
-        // other consumer that relies on isGenerated() can behave correctly.
-        tableIds().forEach(tableId -> refreshGeneratedColumnsMap(connection, tableId));
+        // The Postgres JDBC driver does not reliably populate IS_GENERATEDCOLUMN metadata.
+        // Populate generated-column metadata from pg_attribute.attgenerated.
+        refreshGeneratedColumnsMap(connection);
         if (printReplicaIdentityInfo) {
             // print out all the replica identity info
             tableIds().forEach(tableId -> printReplicaIdentityInfo(connection, tableId));
@@ -144,9 +146,10 @@ public class PostgresSchema extends RelationalDatabaseSchema {
         // DBZ-2020: only pgoutput prunes generated columns and needs them tracked; other decoders keep
         // the column (and its value) in the Table, so leave them untouched here.
         if (tracksGeneratedColumns()) {
-            final List<String> generatedColumnNames = trackedGeneratedColumnNames(updatedTable, connection, tableId);
-            tableIdToGeneratedColumns.put(tableId, Collections.unmodifiableList(generatedColumnNames));
-            updatedTable = applyGeneratedColumnFlags(updatedTable, generatedColumnNames);
+            final List<String> allGeneratedColumnNames = readGeneratedColumnNames(connection, tableId);
+            final List<String> trackedGeneratedColumnNames = trackedGeneratedColumnNames(updatedTable, allGeneratedColumnNames);
+            tableIdToGeneratedColumns.put(tableId, Collections.unmodifiableList(trackedGeneratedColumnNames));
+            updatedTable = applyGeneratedColumnFlags(updatedTable, allGeneratedColumnNames);
             if (removeGeneratedColumns) {
                 // DBZ-2020: never prune a primary key column, generated or not; removing it here would
                 // leave a dangling PK reference and TableEditorImpl would reject the table.
@@ -226,37 +229,21 @@ public class PostgresSchema extends RelationalDatabaseSchema {
         // I Would prefer to use data provided by PgDatabaseMetaData, but the PG JDBC driver does not expose storage type
         // information. Thus, we need to make a separate query. If we are refreshing schemas rarely, this is not a big
         // deal.
-        List<String> toastableColumns = new ArrayList<>();
-        String relName = tableId.table();
-        String schema = tableId.schema() != null && tableId.schema().length() > 0 ? tableId.schema() : "public";
-        String statement = "select att.attname" +
-                " from pg_attribute att " +
-                " join pg_class tbl on tbl.oid = att.attrelid" +
-                " join pg_namespace ns on tbl.relnamespace = ns.oid" +
-                " where tbl.relname = ?" +
-                " and ns.nspname = ?" +
-                " and att.attnum > 0" +
-                " and att.attstorage in ('x', 'e', 'm')" +
-                " and not att.attisdropped;";
-
-        try {
-            connection.prepareQuery(statement, stmt -> {
-                stmt.setString(1, relName);
-                stmt.setString(2, schema);
-            }, rs -> {
-                while (rs.next()) {
-                    toastableColumns.add(rs.getString(1));
-                }
-            });
-            if (!connection.connection().getAutoCommit()) {
-                connection.connection().commit();
-            }
-        }
-        catch (SQLException e) {
-            throw new ConnectException("Unable to refresh toastable columns mapping", e);
-        }
-
+        final List<String> toastableColumns = readColumnNames(connection, tableId, "att.attstorage in ('x', 'e', 'm')",
+                "Unable to refresh toastable columns mapping");
         tableIdToToastableColumns.put(tableId, Collections.unmodifiableList(toastableColumns));
+    }
+
+    /**
+     * Refreshes generated-column metadata for all currently captured tables with one metadata query.
+     */
+    private void refreshGeneratedColumnsMap(PostgresConnection connection) {
+        if (!tracksGeneratedColumns()) {
+            return;
+        }
+        final Set<TableId> tableIds = tableIds();
+        final Map<TableId, List<String>> allGeneratedColumnsByTable = readGeneratedColumnNames(connection, tableIds);
+        tableIds.forEach(tableId -> refreshGeneratedColumnsMap(tableId, allGeneratedColumnsByTable.getOrDefault(tableId, List.of())));
     }
 
     /**
@@ -268,13 +255,17 @@ public class PostgresSchema extends RelationalDatabaseSchema {
         if (!tracksGeneratedColumns()) {
             return;
         }
+        refreshGeneratedColumnsMap(tableId, readGeneratedColumnNames(connection, tableId));
+    }
+
+    private void refreshGeneratedColumnsMap(TableId tableId, List<String> allGeneratedColumnNames) {
         final Table current = tables().forTable(tableId);
         if (current == null) {
             return;
         }
-        final List<String> generatedColumnNames = trackedGeneratedColumnNames(current, connection, tableId);
-        tableIdToGeneratedColumns.put(tableId, Collections.unmodifiableList(generatedColumnNames));
-        final Table updated = applyGeneratedColumnFlags(current, generatedColumnNames);
+        final List<String> generatedColumnNamesForProjection = trackedGeneratedColumnNames(current, allGeneratedColumnNames);
+        tableIdToGeneratedColumns.put(tableId, Collections.unmodifiableList(generatedColumnNamesForProjection));
+        final Table updated = applyGeneratedColumnFlags(current, allGeneratedColumnNames);
         if (updated != current) {
             tables().overwriteTable(updated);
         }
@@ -287,15 +278,14 @@ public class PostgresSchema extends RelationalDatabaseSchema {
      * <p>DBZ-2020: a generated column that is also the primary key is excluded, so it stays in both the
      * {@link Table} and the chunk projection instead of being pruned as generated.</p>
      */
-    private List<String> trackedGeneratedColumnNames(Table table, PostgresConnection connection, TableId tableId) {
-        final List<String> allGeneratedColumnNames = readGeneratedColumnNames(connection, tableId);
+    private List<String> trackedGeneratedColumnNames(Table table, List<String> allGeneratedColumnNames) {
         final List<String> primaryKeyColumnNames = table.primaryKeyColumnNames();
         if (primaryKeyColumnNames.isEmpty()) {
             return allGeneratedColumnNames;
         }
         return allGeneratedColumnNames.stream()
                 .filter(name -> !primaryKeyColumnNames.contains(name))
-                .collect(Collectors.toList());
+                .toList();
     }
 
     /**
@@ -323,8 +313,58 @@ public class PostgresSchema extends RelationalDatabaseSchema {
     }
 
     private List<String> readGeneratedColumnNames(PostgresConnection connection, TableId tableId) {
+        return readColumnNames(connection, tableId, "att.attgenerated <> ''",
+                "Unable to read generated column metadata for " + tableId);
+    }
+
+    private Map<TableId, List<String>> readGeneratedColumnNames(PostgresConnection connection, Collection<TableId> tableIds) {
+        if (tableIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
         // See applyGeneratedColumnFlags for why attgenerated <> '' captures both STORED (PG12+) and
         // VIRTUAL (PG18+) generated columns.
+        final Set<TableId> capturedLookupKeys = tableIds.stream()
+                .map(tableId -> new TableId(null, schemaName(tableId), tableId.table()))
+                .collect(Collectors.toSet());
+        final String tablePredicates = String.join(" OR ", Collections.nCopies(capturedLookupKeys.size(), "(ns.nspname = ? and tbl.relname = ?)"));
+        final String statement = "select ns.nspname, tbl.relname, att.attname" +
+                " from pg_attribute att" +
+                " join pg_class tbl on tbl.oid = att.attrelid" +
+                " join pg_namespace ns on tbl.relnamespace = ns.oid" +
+                " where (" + tablePredicates + ")" +
+                " and att.attnum > 0" +
+                " and att.attgenerated <> ''" +
+                " and not att.attisdropped;";
+
+        final Map<TableId, TableId> capturedTablesByName = new HashMap<>();
+        for (TableId tableId : tableIds) {
+            capturedTablesByName.put(new TableId(null, schemaName(tableId), tableId.table()), tableId);
+        }
+
+        final Map<TableId, List<String>> generatedColumnsByTable = new LinkedHashMap<>();
+        runColumnMetadataQuery(connection, statement, stmt -> {
+            int index = 1;
+            for (TableId lookupTableId : capturedLookupKeys) {
+                stmt.setString(index++, lookupTableId.schema());
+                stmt.setString(index++, lookupTableId.table());
+            }
+        }, rs -> {
+            while (rs.next()) {
+                final String schema = rs.getString(1);
+                final String tableName = rs.getString(2);
+                final String columnName = rs.getString(3);
+                final TableId lookupKey = new TableId(null, schema, tableName);
+                final TableId capturedTableId = capturedTablesByName.get(lookupKey);
+                if (capturedTableId != null) {
+                    generatedColumnsByTable.computeIfAbsent(capturedTableId, ignored -> new ArrayList<>()).add(columnName);
+                }
+            }
+        }, "Unable to read generated column metadata");
+        return generatedColumnsByTable;
+    }
+
+    private List<String> readColumnNames(PostgresConnection connection, TableId tableId, String predicate, String errorContext) {
         final String statement = "select att.attname" +
                 " from pg_attribute att" +
                 " join pg_class tbl on tbl.oid = att.attrelid" +
@@ -332,28 +372,37 @@ public class PostgresSchema extends RelationalDatabaseSchema {
                 " where tbl.relname = ?" +
                 " and ns.nspname = ?" +
                 " and att.attnum > 0" +
-                " and att.attgenerated <> ''" +
+                " and " + predicate +
                 " and not att.attisdropped;";
-        final String relName = tableId.table();
-        final String schema = tableId.schema() != null && tableId.schema().length() > 0 ? tableId.schema() : PUBLIC_SCHEMA_NAME;
-        final List<String> generatedColumns = new ArrayList<>();
+
+        final List<String> columnNames = new ArrayList<>();
+        runColumnMetadataQuery(connection, statement, stmt -> {
+            stmt.setString(1, tableId.table());
+            stmt.setString(2, schemaName(tableId));
+        }, rs -> {
+            while (rs.next()) {
+                columnNames.add(rs.getString(1));
+            }
+        }, errorContext);
+        return columnNames;
+    }
+
+    private void runColumnMetadataQuery(PostgresConnection connection, String statement,
+                                        JdbcConnection.StatementPreparer statementPreparer,
+                                        JdbcConnection.ResultSetConsumer consumer, String errorContext) {
         try {
-            connection.prepareQuery(statement, stmt -> {
-                stmt.setString(1, relName);
-                stmt.setString(2, schema);
-            }, rs -> {
-                while (rs.next()) {
-                    generatedColumns.add(rs.getString(1));
-                }
-            });
+            connection.prepareQuery(statement, statementPreparer, consumer);
             if (!connection.connection().getAutoCommit()) {
                 connection.connection().commit();
             }
         }
         catch (SQLException e) {
-            throw new ConnectException("Unable to read generated column metadata for " + tableId, e);
+            throw new ConnectException(errorContext, e);
         }
-        return generatedColumns;
+    }
+
+    private String schemaName(TableId tableId) {
+        return Strings.isNullOrEmpty(tableId.schema()) ? PUBLIC_SCHEMA_NAME : tableId.schema();
     }
 
     protected static TableId parse(String table) {
