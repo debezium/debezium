@@ -284,7 +284,7 @@ public class ExtractNewDocumentStateTest {
             Struct timestamp = value.getStruct("ts");
             assertThat(timestamp.schema().name()).isEqualTo(MongoDbSchema.SCHEMA_NAME_TIMESTAMP);
             assertThat(timestamp.get("time")).isEqualTo(1710000000L);
-            assertThat(timestamp.get("increment")).isEqualTo(7);
+            assertThat(timestamp.get("increment")).isEqualTo(7L);
         }
         finally {
             structTransformation.close();

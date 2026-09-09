@@ -54,12 +54,15 @@ public class MongoDbSchemaFactory extends SchemaFactory {
     }
 
     public Schema bsonTimestampSchema() {
+        // A BSON Timestamp always carries both components, so neither subfield is optional. Both are
+        // unsigned 32-bit values in BSON; they are widened to (signed) INT64 because Connect has no
+        // unsigned types and the full unsigned range must stay exact.
         return SchemaBuilder.struct()
                 .name(MongoDbSchema.SCHEMA_NAME_TIMESTAMP)
                 .version(MONGODB_BSON_TIMESTAMP_SCHEMA_VERSION)
                 .optional()
-                .field("time", Schema.OPTIONAL_INT64_SCHEMA)
-                .field("increment", Schema.OPTIONAL_INT32_SCHEMA)
+                .field("time", Schema.INT64_SCHEMA)
+                .field("increment", Schema.INT64_SCHEMA)
                 .build();
     }
 }

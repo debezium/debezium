@@ -351,9 +351,9 @@ public class MongoDataConverterTest {
         final Struct tsA = (Struct) struct.get("ts_a");
         final Struct tsB = (Struct) struct.get("ts_b");
         assertThat(tsA.get("time")).isEqualTo(1710000000L);
-        assertThat(tsA.get("increment")).isEqualTo(7);
+        assertThat(tsA.get("increment")).isEqualTo(7L);
         assertThat(tsB.get("time")).isEqualTo(1710000000L);
-        assertThat(tsB.get("increment")).isEqualTo(8);
+        assertThat(tsB.get("increment")).isEqualTo(8L);
         // Two BSON values with the same time and a different increment must stay distinguishable
         assertThat(tsA).isNotEqualTo(tsB);
     }
@@ -382,8 +382,8 @@ public class MongoDataConverterTest {
         @SuppressWarnings("unchecked")
         final List<Struct> timestamps = (List<Struct>) struct.get("ts_values");
         assertThat(timestamps).hasSize(2);
-        assertThat(timestamps.get(0).get("increment")).isEqualTo(7);
-        assertThat(timestamps.get(1).get("increment")).isEqualTo(8);
+        assertThat(timestamps.get(0).get("increment")).isEqualTo(7L);
+        assertThat(timestamps.get(1).get("increment")).isEqualTo(8L);
     }
 
     @Test
