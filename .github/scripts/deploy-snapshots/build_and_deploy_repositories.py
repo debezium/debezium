@@ -47,7 +47,7 @@ def main():
             command.append("-Passembly,oracle-all,docs")
         elif repository["id"] != "jbang-catalog":
             command.append("-Passembly,docs")
-        elif repository["id"] == "debezium-server"
+        elif repository["id"] == "debezium-server":
             command.append("-Passembly,native")
 
         subprocess.run(command, cwd=repo_dir, check=True)
