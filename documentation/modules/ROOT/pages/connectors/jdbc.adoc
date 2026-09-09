@@ -124,6 +124,17 @@ In addition, the payload of the source message must be a `Struct` that has eithe
 
 If the structure of the events in the Kafka topic do not adhere to these rules, you must implement a custom single message transformation to convert the structure of the source events into a usable format.
 
+When an event field is a Kafka Connect `STRUCT` for which no dedicated column type is registered, the connector serializes the structure to JSON and stores it in a JSON-capable column:
+
+* **Native JSON dialects** (MySQL, PostgreSQL, SingleStore, StarRocks, CockroachDB, Oracle 21c+): Written directly to native `JSON` or `jsonb` columns.
+* **Non-native JSON dialects** (Oracle 19c and earlier, Db2, SQL Server): Stored as JSON text in a large character column, such as `CLOB` or `LONGTEXT`.
+
+[NOTE]
+====
+Large character types such as `CLOB` and `LONGTEXT` are typically stored out-of-row, which can reduce write performance.
+If you can guarantee that the serialized `STRUCT` value does not exceed a fixed length, you can improve write performance by pre-creating the target column ahead of time as an in-row bounded type, such as `VARCHAR(n)`.
+====
+
 // Type: concept
 // Title: Description of how the {prodname} JDBC connector handles primary keys in source events
 // ModuleID: debezium-jdbc-connector-description-of-how-the-connector-handles-primary-keys-in-source-events
@@ -495,7 +506,10 @@ StarRocks `VARCHAR` lengths are byte lengths rather than character lengths, so t
 When column type propagation is enabled, `BIGINT UNSIGNED` source columns map to `LARGEINT` columns, preserving the full unsigned 64-bit range.
 
 {prodname} `io.debezium.data.Json` logical values and Kafka Connect `MAP` and `STRUCT` schema values map to the StarRocks `JSON` column type, `ENUM` and `SET` values map to `STRING` columns, and `YEAR` values map to `INT` columns.
-The StarRocks dialect does not support geospatial or vector logical types, and the Kafka Connect `ARRAY` schema type is not mapped to the StarRocks `ARRAY` column type; `STRUCT` values are stored as `JSON` rather than as the StarRocks `STRUCT` column type.
+The StarRocks dialect does not map geospatial or vector logical types to native StarRocks column types.
+Because geospatial values are struct-based, they are serialized to `JSON` like other `STRUCT` values rather than being rejected.
+
+The Kafka Connect `ARRAY` schema type is not mapped to the StarRocks `ARRAY` column type, and `STRUCT` values are stored as `JSON` rather than as the native StarRocks `STRUCT` column type.
 
 [[jdbc-cockroachdb-targets]]
 === CockroachDB sink targets
