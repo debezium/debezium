@@ -27,6 +27,7 @@ import org.bson.BsonType;
 import org.bson.BsonValue;
 
 import io.debezium.DebeziumException;
+import io.debezium.connector.mongodb.MongoDbSchema;
 import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState.ArrayEncoding;
 import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState.BsonTimestampHandlingMode;
 import io.debezium.schema.FieldNameSelector;
@@ -42,19 +43,6 @@ import io.debezium.schema.SchemaNameAdjuster;
  */
 public class MongoDataConverter {
     public static final String SCHEMA_NAME_REGEX = "io.debezium.mongodb.regex";
-    public static final String SCHEMA_NAME_TIMESTAMP = "io.debezium.mongodb.timestamp";
-
-    /**
-     * Schema used by {@link BsonTimestampHandlingMode#STRUCT} to keep both components of a BSON
-     * Timestamp; the default {@link BsonTimestampHandlingMode#CONNECT} representation retains only
-     * the time component.
-     */
-    public static final Schema BSON_TIMESTAMP_STRUCT_SCHEMA = SchemaBuilder.struct()
-            .name(SCHEMA_NAME_TIMESTAMP)
-            .optional()
-            .field("time", Schema.OPTIONAL_INT64_SCHEMA)
-            .field("increment", Schema.OPTIONAL_INT32_SCHEMA)
-            .build();
 
     private final ArrayEncoding arrayEncoding;
     private final FieldNamer<String> fieldNamer;
@@ -641,7 +629,7 @@ public class MongoDataConverter {
 
     private Schema timestampSchema() {
         return bsonTimestampHandlingMode == BsonTimestampHandlingMode.STRUCT
-                ? BSON_TIMESTAMP_STRUCT_SCHEMA
+                ? MongoDbSchema.BSON_TIMESTAMP_SCHEMA
                 : Timestamp.builder().optional().build();
     }
 
@@ -861,7 +849,7 @@ public class MongoDataConverter {
                 if (bsonTimestampHandlingMode == BsonTimestampHandlingMode.STRUCT) {
                     // The BSON components are unsigned 32-bit values; time is widened so post-2038
                     // values stay exact, increment is an ordinal that fits the signed range.
-                    Struct timestampStruct = new Struct(BSON_TIMESTAMP_STRUCT_SCHEMA);
+                    Struct timestampStruct = new Struct(MongoDbSchema.BSON_TIMESTAMP_SCHEMA);
                     timestampStruct.put("time", Integer.toUnsignedLong(value.asTimestamp().getTime()));
                     timestampStruct.put("increment", value.asTimestamp().getInc());
                     colValue = timestampStruct;
