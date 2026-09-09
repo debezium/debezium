@@ -28,6 +28,7 @@ import org.bson.BsonValue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import io.debezium.connector.mongodb.MongoDbSchema;
 import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState.ArrayEncoding;
 import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState.BsonTimestampHandlingMode;
 import io.debezium.doc.FixFor;
@@ -346,7 +347,7 @@ public class MongoDataConverterTest {
             converter.buildStruct(bsonValueEntry, finalSchema, struct);
         }
 
-        assertThat(finalSchema.field("ts_a").schema().name()).isEqualTo(MongoDataConverter.SCHEMA_NAME_TIMESTAMP);
+        assertThat(finalSchema.field("ts_a").schema().name()).isEqualTo(MongoDbSchema.SCHEMA_NAME_TIMESTAMP);
         final Struct tsA = (Struct) struct.get("ts_a");
         final Struct tsB = (Struct) struct.get("ts_b");
         assertThat(tsA.get("time")).isEqualTo(1710000000L);

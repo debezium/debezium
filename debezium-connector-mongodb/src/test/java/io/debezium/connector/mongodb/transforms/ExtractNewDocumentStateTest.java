@@ -22,6 +22,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.connector.AbstractSourceInfo;
+import io.debezium.connector.mongodb.MongoDbSchema;
 import io.debezium.doc.FixFor;
 import io.debezium.junit.SkipWhenKafkaVersion;
 import io.debezium.util.Collect;
@@ -281,7 +282,7 @@ public class ExtractNewDocumentStateTest {
             Struct value = (Struct) transformed.value();
 
             Struct timestamp = value.getStruct("ts");
-            assertThat(timestamp.schema().name()).isEqualTo(MongoDataConverter.SCHEMA_NAME_TIMESTAMP);
+            assertThat(timestamp.schema().name()).isEqualTo(MongoDbSchema.SCHEMA_NAME_TIMESTAMP);
             assertThat(timestamp.get("time")).isEqualTo(1710000000L);
             assertThat(timestamp.get("increment")).isEqualTo(7);
         }
