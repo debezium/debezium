@@ -1113,6 +1113,10 @@ The following table lists the streaming metrics that are available.
 |`long`
 |The number of unrecoverable errors while processing commit logs.
 
+|`CdcDirectoryTotalBytes`
+|`long`
+|The total size in bytes of the CDC directory on disk, sampled each time the connector scans the directory for new commit logs.
+
 |===
 
 [[cassandra-tracing]]
