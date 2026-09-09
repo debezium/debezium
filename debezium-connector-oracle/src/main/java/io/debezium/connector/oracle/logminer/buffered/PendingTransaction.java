@@ -36,4 +36,24 @@ public record PendingTransaction(String transactionId, Scn startScn, Instant cha
     public static final Comparator<PendingTransaction> OLDEST_FIRST = Comparator
             .comparing(PendingTransaction::startScn)
             .thenComparing(PendingTransaction::transactionId);
+
+    /**
+     * Returns a compact, single-line description of the transaction suitable for log output, for example
+     * {@code 0a.000b.0000000c (startScn=100, changeTime=2024-01-01T00:00:00Z, userName=DEBEZIUM, clientId=null, redoThread=1, events=5)}.
+     * The event count is omitted for deferred transactions, which by definition have none.
+     *
+     * @return the log description, never {@code null}
+     */
+    public String toLogString() {
+        final StringBuilder sb = new StringBuilder(transactionId)
+                .append(" (startScn=").append(startScn)
+                .append(", changeTime=").append(changeTime)
+                .append(", userName=").append(userName)
+                .append(", clientId=").append(clientId)
+                .append(", redoThread=").append(redoThreadId);
+        if (!deferred) {
+            sb.append(", events=").append(eventCount);
+        }
+        return sb.append(')').toString();
+    }
 }
