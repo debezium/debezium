@@ -133,6 +133,7 @@ This bound guards against wide tables (for example, tables with 500-1000 columns
 
 |===
 
+ifdef::community[]
 // Type: concept
 // ModuleID: debezium-reselect-columns-post-processor-rocksdb-cache
 // Title: {prodname} `ReselectColumnsPostProcessor` RocksDB cache
@@ -199,6 +200,7 @@ By default the directory is retained, so cached values persist across connector 
 Note that this is the same property that the in-memory cache uses, but with a different default: persistent storage is permanent unless a time-to-live is explicitly configured.
 
 |===
+endif::community[]
 
 // Type: concept
 // ModuleID: example-debezium-reselect-columns-post-processor-configuration
