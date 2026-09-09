@@ -59,6 +59,7 @@ import io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerStreamingC
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 import io.debezium.connector.oracle.util.TestHelper;
+import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.EventDispatcher;
@@ -215,6 +216,7 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
     }
 
     @Test
+    @FixFor("debezium/dbz#2531")
     public void testPartialRollbackWithMultipleDeferredMatchesRollsBackLatestAndPrunesStale() throws Exception {
         final String staleTransactionId = "12345678aaaaaaaa";
         final String activeTransactionId = "12345678bbbbbbbb";
@@ -234,6 +236,7 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
     }
 
     @Test
+    @FixFor("debezium/dbz#2531")
     public void testPartialRollbackWithCachedAndDeferredMatchesRollsBackLatestCachedAndPrunesStaleDeferred() throws Exception {
         final String staleTransactionId = "12345678aaaaaaaa";
         final String activeTransactionId = "12345678bbbbbbbb";
@@ -254,6 +257,7 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
     }
 
     @Test
+    @FixFor("debezium/dbz#2531")
     public void testPartialRollbackWithLatestDeferredMatchDoesNotTouchOlderCachedTransaction() throws Exception {
         final String cachedTransactionId = "12345678aaaaaaaa";
         final String deferredTransactionId = "12345678bbbbbbbb";
@@ -271,6 +275,7 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
     }
 
     @Test
+    @FixFor("debezium/dbz#2531")
     public void testPartialCommitRemovesMatchingDeferredTransaction() throws Exception {
         final String deferredTransactionId = "12345678abcdef01";
 
@@ -288,6 +293,7 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
     }
 
     @Test
+    @FixFor("debezium/dbz#2531")
     public void testPartialCommitPrunesAllStaleDeferredMatches() throws Exception {
         final String staleTransactionId = "12345678aaaaaaaa";
         final String activeTransactionId = "12345678bbbbbbbb";
@@ -306,6 +312,7 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
     }
 
     @Test
+    @FixFor("debezium/dbz#2531")
     public void testPartialCommitDoesNotTouchCachedTransaction() throws Exception {
         final String cachedTransactionId = "12345678aaaaaaaa";
 
