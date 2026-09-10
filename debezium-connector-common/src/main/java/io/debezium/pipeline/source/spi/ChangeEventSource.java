@@ -40,5 +40,16 @@ public interface ChangeEventSource {
          * Wait for the streamingPaused function to be called.
          */
         void waitStreamingPaused() throws InterruptedException;
+
+        /**
+         * Executes any pending signals whose actions requested synchronous invocation.
+         * <p>
+         * A streaming source calls this from its own thread at points where it is safe for a signal action
+         * to inspect or mutate the source's state, for example between batches of events. Signals that
+         * arrived since the previous call are executed in order before this method returns.
+         *
+         * @see io.debezium.pipeline.signal.actions.SignalAction#isSynchronous()
+         */
+        void processSynchronousSignals() throws InterruptedException;
     }
 }
