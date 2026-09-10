@@ -127,7 +127,9 @@ public class ExtractNewDocumentStateUpdateFieldOperatorTestIT extends AbstractEx
         assertThat(transformedUpdateValue.get("_id")).isEqualTo(1);
         assertThat(transformedUpdateValue.get("dataIntNewName")).isEqualTo(123);
 
-        assertThat(valueSchema.field("dataInt")).isNull();
+        // The renamed-away field is reported in removedFields and surfaces as a null value
+        VerifyRecord.assertConnectSchemasAreEqual("dataInt", valueSchema.field("dataInt").schema(), Schema.OPTIONAL_STRING_SCHEMA);
+        assertThat(transformedUpdateValue.get("dataInt")).isNull();
     }
 
     /**
@@ -215,7 +217,9 @@ public class ExtractNewDocumentStateUpdateFieldOperatorTestIT extends AbstractEx
         VerifyRecord.assertConnectSchemasAreEqual("_id", valueSchema.field("_id").schema(), Schema.OPTIONAL_INT32_SCHEMA);
         assertThat(transformedUpdateValue.get("_id")).isEqualTo(1);
 
-        assertThat(valueSchema.field("dataStr")).isNull();
+        // The unset field is reported in removedFields and surfaces as a null value
+        VerifyRecord.assertConnectSchemasAreEqual("dataStr", valueSchema.field("dataStr").schema(), Schema.OPTIONAL_STRING_SCHEMA);
+        assertThat(transformedUpdateValue.get("dataStr")).isNull();
         // Since the field "nonExistentField" doesn't exist ensure it's not present in the schema
         assertThat(valueSchema.field("nonExistentField")).isNull();
     }
