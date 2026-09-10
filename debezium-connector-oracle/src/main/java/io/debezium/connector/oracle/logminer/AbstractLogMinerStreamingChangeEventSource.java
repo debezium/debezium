@@ -2051,6 +2051,8 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
                 LOGGER.warn("SCN {} is not yet in archive logs, waiting for log switch.", scn);
                 showMessage = false;
             }
+            // No batch is being processed while waiting, so pending synchronous signals can safely run here
+            dispatcher.processSynchronousSignals();
             Metronome.sleeper(connectorConfig.getArchiveLogOnlyScnPollTime(), getClock()).pause();
         }
 
