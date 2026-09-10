@@ -20,7 +20,7 @@ import io.debezium.connector.oracle.logminer.events.RollbackToSavepointEvent;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.TableId;
 
-public abstract class AbstractFindFirstRolledBackEventEntryTest<T extends Transaction> {
+public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     protected static final TableId TABLE = TableId.parse("db.schema.table");
     protected static final Instant CHANGE_TIME = Instant.now();
 
