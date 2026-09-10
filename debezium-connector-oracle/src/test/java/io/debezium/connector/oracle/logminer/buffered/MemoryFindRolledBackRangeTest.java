@@ -11,7 +11,7 @@ import io.debezium.connector.oracle.logminer.buffered.memory.MemoryCacheProvider
 import io.debezium.connector.oracle.logminer.buffered.memory.MemoryTransaction;
 import io.debezium.connector.oracle.logminer.buffered.memory.MemoryTransactionFactory;
 
-public class MemoryFindFirstRolledBackEventEntryTest extends AbstractFindFirstRolledBackEventEntryTest<MemoryTransaction> {
+public class MemoryFindRolledBackRangeTest extends AbstractFindRolledBackRangeTest<MemoryTransaction> {
     @Override
     protected CacheProvider<MemoryTransaction> getCacheProvider() {
         return new MemoryCacheProvider(new OracleConnectorConfig(Configuration.empty()));

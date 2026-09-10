@@ -132,27 +132,23 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
 
     @Override
     public void addTransactionEvent(EhcacheTransaction transaction, int eventKey, LogMinerEvent event) {
+        eventCache.put(transaction.getEventId(eventKey), event);
+        checkAndThrowIfEviction(CacheProvider.EVENTS_CACHE_NAME);
         final TreeSet<Integer> eventIds = eventIdsByTransactionId.get(transaction.getTransactionId());
-        if (event instanceof RollbackToSavepointEvent rollbackEvent) {
+        eventIds.add(eventKey);
+
+        if (event instanceof RollbackToSavepointEvent) {
             final Iterator<LogMinerEventEntry> reverseIterator = new LogMinerEventEntryIterator(
                     eventIds.descendingIterator(), id -> eventCache.get(transaction.getEventId(id)));
-            final LogMinerEventEntry rolledBackEntry = findFirstRolledBackEventEntry(transaction, reverseIterator, rollbackEvent);
-            if (rolledBackEntry != null) {
-                final Iterator<Integer> forwardIterator = eventIds.tailSet(rolledBackEntry.eventId()).iterator();
+            final LogMinerEventEntryRange range = findRolledBackRange(transaction.getTransactionId(), reverseIterator);
+            if (range != null) {
+                final Iterator<Integer> forwardIterator = eventIds.subSet(range.start().eventId(), range.end().eventId()).iterator();
                 while (forwardIterator.hasNext()) {
-                    final int id = forwardIterator.next();
-                    final String eventId = transaction.getEventId(id);
-                    if (eventCache.get(eventId) instanceof RollbackToSavepointEvent) {
-                        break;
-                    }
-                    eventCache.remove(eventId);
+                    eventCache.remove(transaction.getEventId(forwardIterator.next()));
                     forwardIterator.remove();
                 }
             }
         }
-        eventCache.put(transaction.getEventId(eventKey), event);
-        checkAndThrowIfEviction(CacheProvider.EVENTS_CACHE_NAME);
-        eventIds.add(eventKey);
     }
 
     @Override

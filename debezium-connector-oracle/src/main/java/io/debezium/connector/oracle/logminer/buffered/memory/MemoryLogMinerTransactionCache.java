@@ -113,20 +113,23 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
     @Override
     public void addTransactionEvent(MemoryTransaction transaction, int eventKey, LogMinerEvent event) {
         List<LogMinerEventEntry> entries = eventsByTransactionId.computeIfAbsent(transaction.getTransactionId(), (id) -> new ArrayList<>());
+        entries.add(new LogMinerEventEntry(eventKey, event));
         Map<Integer, LogMinerEvent> eventsByEventId = eventsByEventIdByTransactionId.computeIfAbsent(transaction.getTransactionId(), (id) -> new HashMap<>());
-        if (event instanceof RollbackToSavepointEvent rollbackEvent) {
+        eventsByEventId.put(eventKey, event);
+
+        if (event instanceof RollbackToSavepointEvent) {
             ListIterator<LogMinerEventEntry> it = entries.listIterator(entries.size());
-            LogMinerEventEntry rolledBackEntry = findFirstRolledBackEventEntry(transaction, reverseIterator(it), rollbackEvent);
-            if (rolledBackEntry != null) {
+            LogMinerEventEntryRange range = findRolledBackRange(transaction.getTransactionId(), reverseIterator(it));
+            if (range != null) {
                 while (it.hasNext()) {
-                    if (it.next() == rolledBackEntry) {
+                    if (it.next() == range.start()) {
                         it.previous();
                         break;
                     }
                 }
                 while (it.hasNext()) {
                     LogMinerEventEntry entry = it.next();
-                    if (entry.event() instanceof RollbackToSavepointEvent) {
+                    if (entry == range.end()) {
                         break;
                     }
                     eventsByEventId.remove(entry.eventId());
@@ -134,8 +137,6 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
                 }
             }
         }
-        entries.add(new LogMinerEventEntry(eventKey, event));
-        eventsByEventId.put(eventKey, event);
     }
 
     private Iterator<LogMinerEventEntry> reverseIterator(ListIterator<LogMinerEventEntry> it) {

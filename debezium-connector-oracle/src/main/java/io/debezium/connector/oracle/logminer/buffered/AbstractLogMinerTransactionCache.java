@@ -61,7 +61,7 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
                 .map(transaction -> new ScnDetails(transaction.getStartScn(), transaction.getChangeTime())));
     }
 
-    protected LogMinerEventEntry findFirstRolledBackEventEntry(T transaction, Iterator<LogMinerEventEntry> iterator, RollbackToSavepointEvent rollbackEvent) {
+    protected LogMinerEventEntryRange findRolledBackRange(String transactionId, Iterator<LogMinerEventEntry> iterator) {
         // INSERT/UPDATE statements containing LOB/XML columns are stored in the cache as a sequence:
         // 1. (optional) INSERT or UPDATE with an empty ROW_ID, containing regular column values and initial LOB/XML column values
         // 2. (optional) LOB operation groups with an empty ROW_ID, one group per out-of-line LOB value:
@@ -79,7 +79,14 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
         // DBMS_LOB procedures are stored in the cache as:
         // 1. SELECT_LOB_LOCATOR with a real ROW_ID
         // 2. one or more LOB_WRITE/LOB_ERASE (LOB_TRIM is not stored) with a real or empty ROW_ID
-        String transactionId = transaction.getTransactionId();
+        if (!iterator.hasNext()) {
+            return null;
+        }
+        LogMinerEventEntry end = iterator.next();
+        if (!(end.event() instanceof RollbackToSavepointEvent)) {
+            return null;
+        }
+        LogMinerEvent rollbackEvent = end.event();
         EventType rollbackType = rollbackEvent.getEventType();
         LogMinerEventEntry rolledBackEntry = null;
         LogMinerEventEntry lobStartEntry = null;
@@ -88,6 +95,7 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
             final LogMinerEventEntry entry = iterator.next();
             final LogMinerEvent event = entry.event();
             if (entry.event() instanceof RollbackToSavepointEvent) {
+                end = entry;
                 continue;
             }
             else if (!event.getTableId().equals(rollbackEvent.getTableId())) {
@@ -98,16 +106,16 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
             }
             else if (event.getRowId().equals(rollbackEvent.getRowId())) {
                 if (event.getEventType() == EventType.INSERT && rollbackType == EventType.DELETE) {
-                    return entry;
+                    return new LogMinerEventEntryRange(entry, end);
                 }
                 else if (event.getEventType() == EventType.DELETE && rollbackType == EventType.INSERT) {
-                    return entry;
+                    return new LogMinerEventEntryRange(entry, end);
                 }
                 else if (event.getEventType() == EventType.SELECT_LOB_LOCATOR && rollbackType == EventType.UPDATE) {
                     LOGGER.warn(
                             "An event with an unexpected OPERATION '{}' is followed by the rollback event in transaction '{}' with SCN '{}' on table '{}' by row-id '{}'. Please enable 'log.mining.include.internal.events'.",
                             event.getEventType(), transactionId, rollbackEvent.getScn(), rollbackEvent.getTableId(), rollbackEvent.getRowId());
-                    return entry;
+                    return new LogMinerEventEntryRange(entry, end);
                 }
                 else if ((event.getEventType() == EventType.LOB_WRITE || event.getEventType() == EventType.LOB_TRIM || event.getEventType() == EventType.LOB_ERASE)
                         && rollbackType == EventType.UPDATE) {
@@ -134,7 +142,7 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
                         transactionId, rollbackEvent.getScn(), rollbackEvent.getTableId(), rollbackEvent.getRowId());
                 if (event.getEventType() == EventType.INSERT) {
                     if (rollbackType == EventType.DELETE) {
-                        return entry;
+                        return new LogMinerEventEntryRange(entry, end);
                     }
                     Loggings.logWarningAndTraceRecord(LOGGER, rollbackEvent,
                             "Cannot apply the undo change in transaction '{}' with SCN '{}' on table '{}' by row-id '{}' since '{}' was not expected before '{}'. Manual investigation is required.",
@@ -143,7 +151,7 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
                 }
                 else if (event.getEventType() == EventType.UPDATE) {
                     if (rollbackType == EventType.UPDATE) {
-                        return entry;
+                        return new LogMinerEventEntryRange(entry, end);
                     }
                     Loggings.logWarningAndTraceRecord(LOGGER, rollbackEvent,
                             "Cannot apply the undo change in transaction '{}' with SCN '{}' on table '{}' by row-id '{}' since '{}' was not expected before '{}'. Manual investigation is required.",
@@ -172,7 +180,7 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
             if (lobStmt) {
                 if (event.getEventType() == EventType.SELECT_LOB_LOCATOR) {
                     if (event.getRowId().equals(rollbackEvent.getRowId())) {
-                        return entry;
+                        return new LogMinerEventEntryRange(entry, end);
                     }
                 }
                 else if (event.getEventType() == EventType.LOB_WRITE || event.getEventType() == EventType.LOB_TRIM || event.getEventType() == EventType.LOB_ERASE) {
@@ -193,10 +201,10 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
                     break;
                 }
                 else if (event.getEventType() == EventType.INSERT && rollbackType == EventType.DELETE) {
-                    return entry;
+                    return new LogMinerEventEntryRange(entry, end);
                 }
                 else if (event.getEventType() == EventType.UPDATE && rollbackType == EventType.UPDATE) {
-                    return entry;
+                    return new LogMinerEventEntryRange(entry, end);
                 }
                 lobStartEntry = null;
                 LOGGER.warn(
@@ -238,7 +246,7 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
                     transactionId, rollbackEvent.getScn(), rollbackEvent.getTableId(), rollbackEvent.getRowId(), rolledBackType, rollbackType);
             return null;
         }
-        return rolledBackEntry;
+        return new LogMinerEventEntryRange(rolledBackEntry, end);
     }
 
     private int compareTransactionScnDetails(T first, T second) {
@@ -256,6 +264,9 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
      * @param event the event object
      */
     public record LogMinerEventEntry(int eventId, LogMinerEvent event) {
+    }
+
+    public record LogMinerEventEntryRange(LogMinerEventEntry start, LogMinerEventEntry end) {
     }
 
     protected static class LogMinerEventEntryIterator implements Iterator<LogMinerEventEntry> {
