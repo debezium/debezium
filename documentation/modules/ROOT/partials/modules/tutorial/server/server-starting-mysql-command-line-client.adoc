@@ -11,6 +11,7 @@ After starting MySQL, you start a MySQL command line client so that you access t
 .Procedure
 
 . Open a new terminal, and use it to start the MySQL command line client in a container.
+
 +
 --
 This command runs a new container using the https://hub.docker.com/r/_/mysql/[mysql:8.2] image,
@@ -28,18 +29,8 @@ which means the terminal's standard input and output are attached to the contain
 `--link mysql`:: Links the container to the `mysql` container.
 --
 
-ifdef::community[]
-[NOTE]
-====
-If you use Podman, run the following command:
-[source,shell,options="nowrap",subs="+attributes"]
-----
-$ podman run -it --rm --name mysqlterm --pod dbz mysql:8.2 sh -c 'exec mysql -h 0.0.0.0 -uroot -pdebezium'
-----
-====
-endif::community[]
-
 . Verify that the MySQL command line client started.
+
 +
 --
 You should see output similar to the following:

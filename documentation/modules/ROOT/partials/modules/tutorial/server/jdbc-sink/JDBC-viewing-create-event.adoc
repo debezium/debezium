@@ -1,11 +1,9 @@
 .Procedure
 
-. Open a the terminal window that the {selected-sink} sink is running in.
-+
-
 . In the terminal that is running the MySQL command line client, run the following statement:
-+
 
++
+--
 [source,sql,options="nowrap"]
 ----
 mysql> INSERT INTO customers (first_name, last_name, email) VALUES ('John', 'Tutorial', 'johntutorial@example.com');
@@ -13,8 +11,12 @@ Query OK, 1 row affected (0.01 sec)
 ----
 
 A new row corresponding to the one we have just added will now appear in the PostgreSQL database.
+--
 
 . In the terminal that is running the PostgreSQL command line client, run the following statement:
+
++
+--
 [source,sql,options="nowrap"]
 ----
 inventory=# SELECT * FROM tutorial_inventory_customers;
@@ -27,11 +29,13 @@ inventory=# SELECT * FROM tutorial_inventory_customers;
  1005 | John       | Tutorial  | johntutorial@example.com
 (5 rows)
 ----
+--
 
 . Compare the column values in the PostgreSQL database record to the one you just added in the `inventory` database.
 
-In the terminal that is running the MySQL command line client, run the following statement:
 +
+--
+In the terminal that is running the MySQL command line client, run the following statement:
 
 [source,sql,options="nowrap"]
 ----
@@ -49,4 +53,4 @@ mysql> SELECT * FROM customers;
 ----
 
 This shows that the newly created row you reviewed matches the records in the database.
-
+--

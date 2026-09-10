@@ -19,7 +19,6 @@ The following list describes the purpose of parameters in the preceding command:
 `-p 8081:80`:: Maps port `8081` in the container to port `80` on the Docker host so that applications outside of the container can communicate with {prodname} server.
 `-v $(pwd):/user/local/apache2/htdocs`:: Mounts the container's filesystem to a volume on the host machine.
 `quay.io/debezium/example-httpd:{debezium-docker-label}`:: The Docker label indicating the container image we are using, in this case an example configuration of https://github.com/docker-library/httpd/blob/4da43810a4429c552e19c43f8e513248c34cfc84/2.4/Dockerfile[`httpd:2.4`].
-+
 
 You should see output similar to the following:
 
@@ -30,8 +29,8 @@ You should see output similar to the following:
 ----
 
 As the server receives change events it will output them here.
-
 --
+
 . Verify that the server started by running the following command:
 
 +
@@ -57,7 +56,4 @@ You should see something like the following:
 +
 
 Alternatively, you can test that it works by visiting `http://localhost:8081` in a web browser.
-
---
 The preceding response shows that the HTTP sink started successfully and is ready to receive change events from {prodname} server.
---

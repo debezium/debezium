@@ -20,7 +20,7 @@ The output displays the change events.
 Since this is the first time a snapshot has been taken, there will be a lot of change events (one for each record in the database).
 Each event is formatted in JSON as configured by the `debezium.format.value` property in `config\lib\application.properties`.
 
-You should see a large output similar to the following:
+You should see a large output similar to the following (this is just the output of one change event POST request, you will see many of these):
 
 [source,shell,options="nowrap"]
 ----

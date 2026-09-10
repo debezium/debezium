@@ -3,7 +3,7 @@
 // ParentAssemblies: assemblies/tutorial/as_viewing-change-events.adoc
 // UserStory:
 
-[id="restarting-{prodname}-server-service"]
+[id="restarting-{prodname}-server"]
 = Restarting the {prodname} server application
 
 When the {prodname} server application goes offline and restarts, {prodname} resumes capturing database changes from the point where it stopped, without missing any events.
@@ -12,11 +12,13 @@ When the {prodname} server application goes offline and restarts, {prodname} res
 
 . Open the terminal window where you used `run.sh` to start {prodname} server and stop it using kbd:[CTRL(+C)*].
 
++
+--
 The {prodname} server application is stopped, and gracefully shuts down.
-
 --
 
 . While {prodname} server is down, switch to the terminal for the MySQL command line client, and add a few records:
+
 +
 --
 [source,sql,options="nowrap"]
@@ -28,8 +30,10 @@ mysql> INSERT INTO customers VALUES (default, "Kenneth", "Anderson", "kander@acm
 The records are added to the database.
 However, because {prodname} server is not running,
 the HTTP Sink does not receive any updates.
+--
 
 . Open a new terminal, and use `run.sh` to restart the {prodname} server application.
+
 +
 --
 This command starts {prodname} server, which reads `history.dat` and `offsets.dat` to continue from where it left off.
@@ -104,4 +108,3 @@ include::{partialsdir}/modules/tutorial/server/{selected-sink}-sink/{selected-si
 These events are _create_ events that are similar to what you saw previously.
 As you see, {prodname} still reports all of the changes in a database even when it is not running
 (as long as it is restarted before the MySQL database purges from its `binlog` the commits that were missed).
---

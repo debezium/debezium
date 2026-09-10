@@ -19,4 +19,4 @@ include::{partialsdir}/modules/tutorial/server/server-starting-sink.adoc[levelof
 
 include::{partialsdir}/modules/tutorial/server/server-starting-mysql-database.adoc[leveloffset=+1]
 
-include::{partialsdir}/modules/tutorial/kafka-connect/proc-starting-mysql-command-line-client.adoc[leveloffset=+1]
+include::{partialsdir}/modules/tutorial/server/server-starting-mysql-command-line-client.adoc[leveloffset=+1]
