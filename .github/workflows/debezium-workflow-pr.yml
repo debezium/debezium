@@ -96,6 +96,8 @@ jobs:
             .mvn/**
             .github/actions/**
             .github/workflows/debezium-workflow-pr.yml
+            .github/workflows/connector-informix-workflow.yml
+            .github/workflows/apicurio-check-workflow.yml
 
       - name: Get modified files (MongoDB)
         id: changed-files-mongodb
@@ -104,6 +106,7 @@ jobs:
           files: |
             debezium-sink/**
             debezium-connector-mongodb/**
+            .github/workflows/connector-mongodb-workflow.yml
 
       - name: Get modified files (MySQL)
         id: changed-files-mysql
@@ -112,6 +115,7 @@ jobs:
           files: |
             debezium-connector-mysql/**
             debezium-connector-binlog/**
+            .github/workflows/connector-mysql-workflow.yml
 
       - name: Get modified files (MariaDB)
         id: changed-files-mariadb
@@ -120,6 +124,7 @@ jobs:
           files: |
             debezium-connector-mariadb/**
             debezium-connector-binlog/**
+            .github/workflows/connector-mariadb-workflow.yml
 
       - name: Get modified files (PostgreSQL)
         id: changed-files-postgresql
@@ -127,6 +132,7 @@ jobs:
         with:
           files: |
             debezium-connector-postgres/**
+            .github/workflows/connector-postgresql-workflow.yml
 
       - name: Get modified files (Oracle)
         id: changed-files-oracle
@@ -134,6 +140,7 @@ jobs:
         with:
           files: |
             debezium-connector-oracle/**
+            .github/workflows/connector-oracle-workflow.yml
 
       - name: Get modified files (SQL Server)
         id: changed-files-sqlserver
@@ -149,6 +156,7 @@ jobs:
           files: |
             debezium-sink/**
             debezium-connector-jdbc/**
+            .github/workflows/connector-jdbc-workflow.yml
 
       - name: Get modified files (Schema Generator)
         id: changed-files-schema-generator
