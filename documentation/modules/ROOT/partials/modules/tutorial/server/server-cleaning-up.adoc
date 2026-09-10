@@ -9,14 +9,16 @@ After you are finished with the tutorial,
 you can use Docker to stop all of the running containers.
 
 .Procedure
+
 . Stop {prodname} server:
 
 +
-----
-. Open the terminal window where you used `run.sh` to start {prodname} server and stop it using kbd:[CTRL(+C)*].
-----
+--
+Open the terminal window where you used `run.sh` to start {prodname} server and stop it using kbd:[CTRL(+C)*].
+--
 
 . Stop each of the containers:
+
 +
 --
 [source,shell,options="nowrap"]
@@ -34,6 +36,7 @@ Because you used the `--rm` option when you started them, Docker also removes th
 --
 
 . Verify that all of the processes have stopped and have been removed:
+
 +
 --
 [source,shell,options="nowrap"]

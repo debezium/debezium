@@ -42,6 +42,7 @@ Further down, you should see output like the following from the connector:
 ----
 
 {prodname} Server state changes from `CREATING` to `INITIALISING` and starts the MySQL connector, as well as locates the file used to store offsets.
+The following output shows the `FileOffsetBackingStore` being started, as well as the MySQL connector being started.
 
 [source,shell,options="nowrap"]
 ----

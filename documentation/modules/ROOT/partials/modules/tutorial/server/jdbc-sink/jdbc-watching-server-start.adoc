@@ -519,6 +519,7 @@ The whole output will look like the following when starting for the first time. 
 
 . The first few lines show the {prodname} Server engine being created and started:
 
++
 [source,shell,options="nowrap"]
 ----
 ...
@@ -541,6 +542,7 @@ The whole output will look like the following when starting for the first time. 
 . Further down, you should see output like the following from the connector. 
 Note the value of `connection.url`, it should be the same as the one you configured in `application.properties` earlier.
 
++
 [source,shell,options="nowrap"]
 ----
 ...
@@ -589,6 +591,7 @@ Note the value of `connection.url`, it should be the same as the one you configu
 
 . {prodname} Server state changes from `CREATING` to `INITIALISING` and starts the MySQL connector, as well as locates the file used to store offsets.
 
++
 [source,shell,options="nowrap"]
 ----
 ...
@@ -611,6 +614,8 @@ Note the value of `connection.url`, it should be the same as the one you configu
 
 . The file offset backing store service is started with the offsets file we specified in `application.properties`. When {prodname} server is shut down, it will restart from where it left off in this file. 
 
++
+--
 [source,shell,options="nowrap"]
 ----
 ...
@@ -656,9 +661,12 @@ If the connector is not able to connect,
 or if it does not see any tables or the `binlog`,
 check these grants to ensure that all of those listed above are included.
 ====
+--
 
 . Next, the connector reports the steps that make up the snapshot operation:
 
++
+--
 [source,shell,options="nowrap"]
 ----
 ...
@@ -765,9 +773,11 @@ it should not last very long even for large databases.
 This is because the lock is released before any data is copied.
 For more information, see the xref:{link-mysql-connector}#debezium-connector-for-mysql[MySQL connector documentation].
 ====
+--
 
 . Finally, the log output shows that the connector has transitioned from its snapshot mode into continuously reading the MySQL server's `binlog`:
 
++
 [source,shell,options="nowrap"]
 ----
 ...

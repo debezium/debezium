@@ -1,6 +1,6 @@
 .Procedure
 
-. Open a new terminal and use it to start the PostgreSQL database server that will receive change events from {prodname} in a container. For the purposes of this tutorial, this will be hitherto referred to as the "{selected-sink}" sink, as this is the database the {selected-sink} sink connector will stream changes to.
+. Open a new terminal and use it to start the PostgreSQL database server that will receive change events from {prodname} in a container. For the purposes of this tutorial, this will be referred to as the "{selected-sink}" sink, as this is the database the {selected-sink} sink connector will stream changes to.
 
 +
 --
@@ -21,10 +21,10 @@ The following list describes the purpose of parameters in the preceding command:
 `-e POSTGRES_PASSWORD=pgpw`:: Sets the password for the user specified with `POSTGRES-USER`
 `quay.io/debezium/example-postgres:{debezium-docker-label}`:: The Docker label indicating the container image we are using, in this case an example configuration of github.com/docker-library/postgres/blob/e00e1bd34ec5c8a8e7ad89b273b3d42efaf6d5bc/18/trixie/Dockerfile[`postgres:18.6`].
 --
-+
 
 . Verify that the server started.
 
++
 --
 You should see output similar to the following:
 
@@ -92,12 +92,13 @@ PostgreSQL init process complete; ready for start up.
 ----
 
 The server restarts a few times as it initialises.
+Next, we will log into the database server and view tables currently present (there shouldn't be any until {prodname} server is started and the {selected-sink} sink connector starts streaming change events).
+--
 
-. Log into the server and view tables
-
-Start a new terminal and run the following command to enter the container the PostgreSQL database server is running in and log in.
+. Start a new terminal and run the following command to enter the container the PostgreSQL database server is running in and log in.
 
 +
+--
 ----
 $ podman exec -it postgres bash -c "psql -Upguser"
 ----
@@ -111,9 +112,12 @@ Type "help" for help.
 
 pguser=#
 ----
+--
 
-Enter the following to switch to the `inventory` database that will receive changes from the MySQL database.
+. Enter the following to switch to the `inventory` database that will receive changes from the MySQL database.
 
++
+--
 [source,sql,options="nowrap"]
 ----
 pguser=# \c inventory
@@ -129,9 +133,12 @@ pguser=# \c inventory
 You are now connected to database "inventory" as user "pguser".
 inventory=#
 ----
+--
 
-To view the tables currently present in the database, use:
+. To view the tables currently present in the database, use:
 
++
+--
 [source,sql,options="nowrap"]
 ----
 inventory=# \d
@@ -144,7 +151,6 @@ You should receive a message like:
 inventory=# \d
 Did not find any relations.
 ----
-+
 
 When {prodname} server sends over the change events, you will see that tables from the MySQL database have appeared.
 --

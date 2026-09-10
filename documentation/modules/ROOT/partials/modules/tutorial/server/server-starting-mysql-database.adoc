@@ -39,10 +39,12 @@ $ podman run -it --rm --name mysql --pod dbz -e MYSQL_ROOT_PASSWORD=debezium -e 
 ----
 ====
 endif::community[]
-
+--
 
 . Verify that the MySQL server starts.
 
++
+--
 The MySQL server starts and stops a few times as the configuration is modified.
 You should see output similar to the following:
 

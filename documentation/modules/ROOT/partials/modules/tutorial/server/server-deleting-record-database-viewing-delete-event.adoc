@@ -1,11 +1,12 @@
 [id="server-deleting-record-database-viewing-delete-event"]
 = Deleting a record in the database and viewing the _delete_ event
 
-By deleting a record in the database and observing the change event that the {prodname} MySQL connector captures, you can learn how {prodname} represents deletions and how Kafka log compaction handles tombstone events.
+By deleting a record in the database and observing the change event that the {prodname} MySQL connector captures, you can learn how {prodname} represents deletions.
 
 .Procedure
 
 . In the terminal that is running the MySQL command line client, run the following statement:
+
 +
 --
 [source,sql,options="nowrap"]
@@ -13,3 +14,6 @@ By deleting a record in the database and observing the change event that the {pr
 mysql> DELETE FROM customers WHERE last_name = 'Tutorial';
 Query OK, 1 row affected (0.00 sec)
 ----
+--
+
+include::{partialsdir}/modules/tutorial/server/{selected-sink}-sink/{selected-sink}-deleting-record-database-viewing-delete-event.adoc[]
