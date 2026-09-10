@@ -76,17 +76,17 @@ Be sure to test the configuration to ensure that the reselection query provides 
 == Value caching
 
 By default, the post processor queries the database for every event that requires reselection.
-For workloads in which the same rows are reselected repeatedly (for example, TOAST or LOB columns that the database re-emits as placeholders on every unrelated update of a row), you can enable an optional cache of reselected values to reduce the number of database round-trips.
+For workloads in which the same rows are reselected repeatedly (for example, TOAST or LOB columns that {prodname} emits as placeholders on every unrelated row update), you can enable an optional cache of reselected values to reduce the number of database queries.
 
 Enable caching by setting `reselect.cache.enabled` to `true`.
-Values are cached per row and per column, keyed by the event's message key, so events that touch different placeholder subsets of the same row reuse each other's results.
-Before the post processor queries the database, it checks the cache for each column that requires reselection, and only queries the columns that are not present in the cache.
+Reselected values are cached per row and per column, using the event's message key as the cache key.
+Before querying the database, the post processor checks the cache for each column that requires reselection, and only queries columns that are not already cached.
+Eligible columns whose values are present in the event record are also written to the cache, even if no reselection is needed, so a later event that omits the same column can be served from the cache without querying the database again.
 
 The cache is refreshed on modification: any event that carries a real (non-placeholder) value for an eligible column updates that column's cache entry with the current value.
 As a result, a later event that does not modify the column can be served from the cache, and a cached value is never served after the column has changed.
-Correctness therefore never depends on a cache entry expiring.
 
-Because the row identity is the message key, including its schema, a change to the key's schema (for example, a DDL change or a primary-key reordering) yields a different cache key and a natural cache miss rather than a stale hit.
+Because the row identity is the message key, including its schema, a change to the key's schema (for example, a DDL change or a primary-key reordering) yields a different cache key, so the post processor queries the database for the new key rather than returning a stale cached value.
 
 The cache storage is pluggable through the `reselect.cache.type` property, which names an implementation of the `io.debezium.processors.reselect.cache.ReselectColumnCache` contract.
 {prodname} provides the implementations described in the following sections; you can also supply a custom implementation to integrate an alternative backend.
@@ -134,20 +134,18 @@ This bound guards against wide tables (for example, tables with 500-1000 columns
 |===
 
 ifdef::community[]
-// Type: concept
-// ModuleID: debezium-reselect-columns-post-processor-rocksdb-cache
-// Title: {prodname} `ReselectColumnsPostProcessor` RocksDB cache
 [id="value-caching-rocksdb"]
 === RocksDB cache
 
 The `io.debezium.storage.rocksdb.reselect.RocksDbReselectColumnCache` implementation persists cached values to disk in an embedded RocksDB database.
-Cached values survive connector restarts, so columns that would otherwise need to be reselected again after every restart can continue to be served from the cache.
+Cached values persist after you a connector restarts, so columns that would otherwise need to be reselected continue to be served from the cache after a restart.
 Entries remain correct across restarts because the post processor refreshes the cache whenever a column arrives with a real value.
 
 To use the RocksDB cache, the `debezium-storage-rocksdb` artifact must be on the connector plugin path, and `reselect.cache.type` must be set to the implementation's fully-qualified class name.
 
 Storage is permanent by default: no time-to-live is applied, and the database directory is retained when the connector stops.
-If you configure a positive `reselect.cache.ttl.ms`, expired entries are treated as cache misses and removed when they are read, and RocksDB additionally reclaims expired entries from disk during compaction.
+If you specify a positive `reselect.cache.ttl.ms` value, expired entries are treated as cache misses and removed when they are read.
+RocksDB reclaims expired entries from disk during compaction.
 A time-to-live is recommended for schemas that change frequently, because entries written under a previous key schema are never overwritten and would otherwise remain on disk indefinitely.
 
 [NOTE]
@@ -306,8 +304,13 @@ See xref:value-caching[Value caching] for a description of the caching mechanism
 |The fully-qualified name of the `io.debezium.processors.reselect.cache.ReselectColumnCache` implementation used to store reselected values.
 Applies only when `reselect.cache.enabled` is `true`.
 
-{prodname} provides the xref:value-caching-in-memory[in-memory cache] (the default) and the xref:value-caching-rocksdb[RocksDB cache] (`io.debezium.storage.rocksdb.reselect.RocksDbReselectColumnCache`); each supports additional `reselect.cache.*` properties described in its section.
-Provide a custom class to plug in an alternative cache backend.
+ifdef::product[]
+{prodname} provides the xref:value-caching-in-memory[in-memory cache].
+You can set additional `reselect.cache.*` properties, as described in xref:value-caching-in-memory[In-memory cache].
+endif::product[]
+ifdef::community[]
+{prodname} provides the xref:value-caching-in-memory[in-memory cache] (the default) and the xref:value-caching-rocksdb[RocksDB cache] (`io.debezium.storage.rocksdb.reselect.RocksDbReselectColumnCache`); each caches supports additional `reselect.cache.*` properties, as described in xref:value-caching-rocksdb[RocksDB cache].
+endif::community[]
 
 |===
 
