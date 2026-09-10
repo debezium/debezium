@@ -61,7 +61,6 @@ jobs:
       jdbc-changed: ${{ steps.changed-files-jdbc.outputs.any_changed }}
       schema-generator-changed: ${{ steps.changed-files-schema-generator.outputs.any_changed }}
       debezium-testing-changed: ${{ steps.changed-files-debezium-testing.outputs.any_changed }}
-      debezium-testing-mongodb-changed: ${{ steps.changed-files-debezium-testing-mongodb.outputs.any_changed }}
       mysql-ddl-parser-changed: ${{ steps.changed-files-mysql-ddl-parser.outputs.any_changed }}
       oracle-ddl-parser-changed: ${{ steps.changed-files-oracle-ddl-parser.outputs.any_changed }}
       mariadb-ddl-parser-changed: ${{ steps.changed-files-mariadb-ddl-parser.outputs.any_changed }}
@@ -171,13 +170,6 @@ jobs:
         with:
           files: |
             debezium-testing/**
-
-      - name: Get modified files (Debezium Testing MongoDB)
-        id: changed-files-debezium-testing-mongodb
-        uses: tj-actions/changed-files@v47.0.6
-        with:
-          files: |
-            debezium-testing/**/MongoDb*.java
 
       - name: Get modified files (MySQL DDL parser)
         id: changed-files-mysql-ddl-parser
@@ -479,7 +471,7 @@ jobs:
   build_mongodb:
     name: MongoDB
     needs: [ check_style, file_changes, build_core ]
-    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mongodb-changed == 'true' || needs.file_changes.outputs.debezium-testing-mongodb-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mongodb-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
     uses: ./.github/workflows/connector-mongodb-workflow.yml
     with:
       maven-cache-key: maven-debezium-test-build
@@ -503,7 +495,7 @@ jobs:
   build_postgresql:
     name: PostgreSQL
     needs: [ check_style, file_changes, build_core ]
-    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.postgresql-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.postgresql-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
     uses: ./.github/workflows/connector-postgresql-workflow.yml
     with:
       maven-cache-key: maven-debezium-test-build
@@ -512,7 +504,7 @@ jobs:
     name: SQL Server
     needs: [ check_style, file_changes, build_core ]
     runs-on: ubuntu-latest
-    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.sqlserver-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.sqlserver-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
     steps:
       - name: Checkout Action (Core)
         uses: actions/checkout@v7
