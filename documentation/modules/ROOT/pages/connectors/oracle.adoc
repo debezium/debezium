@@ -1239,7 +1239,7 @@ Additionally, the location where the cache is kept is defined by the `path` attr
 [IMPORTANT]
 ====
 The {prodname} Infinispan buffer implementation requires that you configure a set of distinct cache configurations, each identified by a {prodname}-defined cache name.
-You must configure caches for the following identifiers: `transactions`, `events`, `processed-transactions`, `rollbacks`, and `schema-changes`.
+You must configure caches for the following identifiers: `transactions`, `events`, `processed-transactions`, and `schema-changes`.
 
 Each cache name is a hardcoded identifier that you specify in the XML of a {prodname} Oracle connector configuration property in the `log.mining.buffer.infinispan.cache` namespace.
 For example, the property `log.mining.buffer.infinispan.cache.transactions` contains the XML configuration for the cache that must include `name="transactions"` in its XML definition.
@@ -1321,7 +1321,7 @@ Additionally, the following example shows some settings that you might configure
     <disk unit="B">1024000000</disk>
 </resources>
 ----
-The following example shows an Ehcache configuration that includes both a global setting and specific settings for the `transactions`, `processedtransactions`, `schemachanges`, `events`, and `rollbacks` caches.
+The following example shows an Ehcache configuration that includes both a global setting and specific settings for the `transactions`, `processedtransactions`, `schemachanges`, and `events` caches.
 
 .Example configuration
 [source,json]
@@ -1332,8 +1332,7 @@ The following example shows an Ehcache configuration that includes both a global
   "log.mining.buffer.ehcache.transactions.config": "<resources><heap unit=\"entries\">512</entries><disk unit=\"B\">1024000000</disk></resources>",
   "log.mining.buffer.ehcache.processedtransactions.config": "<resources><heap unit=\"entries\">512</entries><disk unit=\"B\">1024000000</disk></resources>",
   "log.mining.buffer.ehcache.schemachanges.config": "<resources><heap unit=\"entries\">512</entries><disk unit=\"B\">1024000000</disk></resources>",
-  "log.mining.buffer.ehcache.events.config": "<resources><heap unit=\"entries\">512</entries><disk unit=\"B\">1024000000</disk></resources>",
-  "log.mining.buffer.ehcache.rollbacks.config": "<resources><heap unit=\"entries\">512</entries><disk unit=\"B\">1024000000</disk></resources>"
+  "log.mining.buffer.ehcache.events.config": "<resources><heap unit=\"entries\">512</entries><disk unit=\"B\">1024000000</disk></resources>"
 }
 ----
 endif::community[]
@@ -4768,11 +4767,6 @@ For more information, see xref:oracle-event-buffering-infinispan[Infinispan even
 |The XML configuration for the Infinispan events cache.
 For more information, see xref:oracle-event-buffering-infinispan[Infinispan event buffering].
 
-|[[oracle-property-log-mining-buffer-infinispan-cache-rollbacks]]<<oracle-property-log-mining-buffer-infinispan-cache-rollbacks, `+log.mining.buffer.infinispan.cache.rollbacks+`>>
-|No default
-|The XML configuration for the Infinispan rollback events cache.
-For more information, see xref:oracle-event-buffering-infinispan[Infinispan event buffering].
-
 |[[oracle-property-log-mining-buffer-infinispan-cache-processed-transactions]]<<oracle-property-log-mining-buffer-infinispan-cache-processed-transactions, `+log.mining.buffer.infinispan.cache.processed_transactions+`>>
 |No default
 |The XML configuration for the Infinispan processed transactions cache.
@@ -4805,11 +4799,6 @@ For more information, see xref:oracle-event-buffering-ehcache[Ehcache event buff
 |[[oracle-property-log-mining-buffer-ehcache-events-config]]<<oracle-property-log-mining-buffer-ehcache-events-config, `+log.mining.buffer.ehcache.events.config+`>>
 |No default
 |The XML configuration for the Ehcache events configuration.
-For more information, see xref:oracle-event-buffering-ehcache[Ehcache event buffering].
-
-|[[oracle-property-log-mining-buffer-ehcache-rollbacks-config]]<<oracle-property-log-mining-buffer-ehcache-rollbacks-config, `+log.mining.buffer.ehcache.rollbacks.config+`>>
-|No default
-|The XML configuration for the Ehcache rollback events configuration.
 For more information, see xref:oracle-event-buffering-ehcache[Ehcache event buffering].
 
 |[[oracle-property-log-mining-buffer-drop-on-stop]]<<oracle-property-log-mining-buffer-drop-on-stop, `+log.mining.buffer.drop.on.stop+`>>
