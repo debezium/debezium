@@ -6,6 +6,7 @@
 package io.debezium.connector.oracle.xstream;
 
 import java.sql.SQLException;
+import java.sql.Types;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -327,38 +328,13 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
     }
 
     /**
-     * Pins the streaming JDBC connection's session to the configured PDB, when the
-     * connector is configured against a CDB+PDB topology. Called once after construction
-     * and before any LCRs are processed, while the connection is already active from the
-     * upstream XStream attach. The reconnect branch in {@link #getConnection()} re-pins
-     * the session if the underlying connection has to be reopened later (e.g. after an
-     * Oracle restart).
+     * Returns the shared out-of-bands JDBC connection (DDL fetch, LOB reselect). The
+     * connection targets the primary/source database and its PDB session pinning is
+     * managed by {@code XstreamStreamingChangeEventSource#pinConnectionToPdb()} — both
+     * at streaming start and again after a blocking snapshot, whose close() resets the
+     * shared session back to {@code CDB$ROOT}.
      */
-    void init() throws SQLException {
-        if (connectorConfig.isUsingPluggableDatabase()) {
-            jdbcConnection.setSessionToPdb(connectorConfig.getPdbName());
-        }
-    }
-
-    /**
-     * Returns the streaming JDBC connection ready for an out-of-bands query against the
-     * captured database. Reconnects the underlying connection if it is currently
-     * disconnected (e.g. after an Oracle restart) and re-pins the session to the
-     * configured PDB on reconnection. Reused across out-of-bands callbacks (DDL fetch,
-     * LOB reselect) so we don't open and tear down a JDBC connection per LCR.
-     *
-     * <p>The connection is dedicated to the XStream change-event source — the snapshot
-     * phase has its own connection — so swapping its session to a PDB once is safe.
-     * Future downstream-mining-DB support can extend this helper to manage a separate
-     * source-side connection.
-     */
-    private OracleConnection getConnection() throws SQLException {
-        if (!jdbcConnection.isConnected()) {
-            jdbcConnection.connect();
-            if (connectorConfig.isUsingPluggableDatabase()) {
-                jdbcConnection.setSessionToPdb(connectorConfig.getPdbName());
-            }
-        }
+    private OracleConnection getConnection() {
         return jdbcConnection;
     }
 
@@ -535,33 +511,47 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
             // the consumer, so we read column values directly without calling rs.next().
             // A return of `false` means no matching row was found — typically the row
             // was deleted between the LCR emission and our reselect.
-            final boolean found = getConnection().reselectColumns(table, lobColumnNames, pkColumns, pkValues, null, rs -> {
-                for (String colName : lobColumnNames) {
-                    final Column column = table.columnWithName(colName);
-                    if (column == null) {
-                        // The lobColumnNames list comes from chunkValues, which was populated
-                        // earlier in dispatchDataChangeEvent from schema.getLobColumnsForTable(table.id())
-                        // — i.e. columns of the same Table we're using here. A null lookup
-                        // means our schema view is internally inconsistent; fail loudly so the
-                        // root cause surfaces instead of emitting partial-but-passing data.
-                        throw new DebeziumException("Schema cache for table " + table.id()
-                                + " does not include LOB column '" + colName
-                                + "' that was registered for reselection (tx=" + row.getTransactionId()
-                                + ", scn=" + offsetContext.getScn() + ").");
-                    }
-                    // Always overwrite — including with null — so a column whose row truly
-                    // holds NULL is reported as null, not as the UNAVAILABLE_VALUE placeholder
-                    // that was pre-seeded in chunkValues. (Without this, a multi-LOB row whose
-                    // LOB op only touched one column would emit the unavailable marker for the
-                    // others.)
-                    if (column.jdbcType() == java.sql.Types.BLOB) {
-                        chunkValues.put(colName, rs.getBytes(colName));
-                    }
-                    else {
-                        chunkValues.put(colName, rs.getString(colName));
-                    }
-                }
-            });
+            //
+            // Passing the event's source info enables the flashback "AS OF SCN" query
+            // (keyed on commit_scn, set by processLCR before we get here) so the
+            // reselect observes the row as of this event rather than its latest state,
+            // matching the LogMiner reselect semantics. OracleConnection falls back to
+            // a plain query on ORA-01555/ORA-01466.
+            final OracleConnection connection = getConnection();
+            final boolean found = connection.reselectColumns(table, lobColumnNames, pkColumns, pkValues,
+                    offsetContext.getSourceInfo(), rs -> {
+                        for (int i = 0; i < lobColumnNames.size(); i++) {
+                            final String colName = lobColumnNames.get(i);
+                            final Column column = table.columnWithName(colName);
+                            if (column == null) {
+                                // The lobColumnNames list comes from chunkValues, which was populated
+                                // earlier in dispatchDataChangeEvent from schema.getLobColumnsForTable(table.id())
+                                // — i.e. columns of the same Table we're using here. A null lookup
+                                // means our schema view is internally inconsistent; fail loudly so the
+                                // root cause surfaces instead of emitting partial-but-passing data.
+                                throw new DebeziumException("Schema cache for table " + table.id()
+                                        + " does not include LOB column '" + colName
+                                        + "' that was registered for reselection (tx=" + row.getTransactionId()
+                                        + ", scn=" + offsetContext.getScn() + ").");
+                            }
+                            // Always overwrite — including with null — so a column whose row truly
+                            // holds NULL is reported as null, not as the UNAVAILABLE_VALUE placeholder
+                            // that was pre-seeded in chunkValues. (Without this, a multi-LOB row whose
+                            // LOB op only touched one column would emit the unavailable marker for the
+                            // others.)
+                            if (column.jdbcType() == Types.BLOB) {
+                                // Materialize immediately: a Blob locator's validity is tied to the
+                                // session state, while these values are converted at dispatch time.
+                                chunkValues.put(colName, rs.getBytes(i + 1));
+                            }
+                            else {
+                                // Delegate to the Oracle-specific column rules (JSON, XMLTYPE,
+                                // temporal types) so this path stays consistent with the snapshot
+                                // reads and ReselectColumnsPostProcessor.
+                                chunkValues.put(colName, connection.getColumnValue(rs, i + 1, column, table));
+                            }
+                        }
+                    });
             if (!found) {
                 LOGGER.warn("Reselect for table {} returned no rows — the row may have been deleted "
                         + "between the LCR and the reselect (tx={}, scn={}, rowId={}).",

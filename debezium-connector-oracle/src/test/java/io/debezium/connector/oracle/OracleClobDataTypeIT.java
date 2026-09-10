@@ -1071,7 +1071,7 @@ public class OracleClobDataTypeIT extends AbstractAsyncEngineConnectorTest {
 
     @Test
     @FixFor({ "DBZ-2948", "DBZ-5773" })
-    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER, reason = "DBZ-4741 enables LOB_ERASE propagation for XStream; OLR handled by its own test")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER, reason = "LOB_ERASE is propagated as an UPDATE by XStream (debezium/dbz#579); OpenLogReplicator does not differentiate between LOB operations")
     public void shouldNotStreamAnyChangesWhenLobEraseIsDetected() throws Exception {
         String ddl = "CREATE TABLE CLOB_TEST ("
                 + "ID numeric(9,0), "
@@ -1178,8 +1178,8 @@ public class OracleClobDataTypeIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    @FixFor("DBZ-4741")
-    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.XSTREAM, reason = "DBZ-4741 XStream-specific: LOB_WRITE re-reads CLOB from source")
+    @FixFor("debezium/dbz#579")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.XSTREAM, reason = "debezium/dbz#579 XStream-specific: LOB_WRITE re-reads CLOB from source")
     public void shouldStreamUpdateWithReselectedValueForXStreamLobWriteAppend() throws Exception {
         String ddl = "CREATE TABLE CLOB_TEST ("
                 + "ID numeric(9,0), "
@@ -1234,8 +1234,8 @@ public class OracleClobDataTypeIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    @FixFor("DBZ-4741")
-    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.XSTREAM, reason = "DBZ-4741 XStream-specific: LOB_TRIM re-reads CLOB from source")
+    @FixFor("debezium/dbz#579")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.XSTREAM, reason = "debezium/dbz#579 XStream-specific: LOB_TRIM re-reads CLOB from source")
     public void shouldStreamUpdateWithReselectedValueForXStreamLobTrim() throws Exception {
         String ddl = "CREATE TABLE CLOB_TEST ("
                 + "ID numeric(9,0), "
@@ -1281,8 +1281,8 @@ public class OracleClobDataTypeIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    @FixFor("DBZ-4741")
-    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.XSTREAM, reason = "DBZ-4741 XStream-specific: LOB_ERASE re-reads CLOB from source")
+    @FixFor("debezium/dbz#579")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.XSTREAM, reason = "debezium/dbz#579 XStream-specific: LOB_ERASE re-reads CLOB from source")
     public void shouldStreamUpdateWithReselectedValueForXStreamLobErase() throws Exception {
         String ddl = "CREATE TABLE CLOB_TEST ("
                 + "ID numeric(9,0), "
