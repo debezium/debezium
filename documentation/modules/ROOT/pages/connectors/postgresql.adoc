@@ -4414,6 +4414,26 @@ For more information about the support scope of Red{nbsp}Hat Technology Preview 
 If you use an ephemeral offset store such as `org.apache.kafka.connect.storage.MemoryOffsetBackingStore`, no additional configuration is needed because the connector always defers to the replication slot position on startup.
 ====
 
+|[[postgresql-property-lsn-flush-timeout-action]]<<postgresql-property-lsn-flush-timeout-action, `+lsn.flush.timeout.action+`>>
+|`fail`
+|Specifies the action to take when an LSN flush operation times out.
+
+Set one of the following options:
+
+`fail`::
+Fails the connector.
+
+`warn`::
+Logs a warning and continues processing.
+
+`ignore`::
+Continues processing and ignores the timeout.
+
+|[[postgresql-property-lsn-flush-timeout-ms]]<<postgresql-property-lsn-flush-timeout-ms, `+lsn.flush.timeout.ms+`>>
+|30000 (30 seconds)
+|The maximum time, in milliseconds, that the connector waits for an LSN flush operation to complete.
+If the operation does not complete within the specified interval, the connector takes the action configured in the xref:postgresql-property-lsn-flush-timeout-action[`lsn.flush.timeout.action`] property.
+
 |[[postgresql-property-retriable-restart-connector-wait-ms]]<<postgresql-property-retriable-restart-connector-wait-ms, `+retriable.restart.connector.wait.ms+`>>
 |10000 (10 seconds)
 |The number of milliseconds to wait before restarting a connector after a retriable error occurs.
