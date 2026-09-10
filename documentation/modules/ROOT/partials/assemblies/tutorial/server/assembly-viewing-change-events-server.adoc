@@ -17,10 +17,10 @@ In this topic, you will see different types of change events to see how the conn
 * xref:deleting-record-database-viewing-delete-event[Deleting a record in the database and viewing the _delete_ event]
 * xref:restarting-{prodname}-server-http-sink[Restarting {prodname} server and changing the database]
 
-include::{partialsdir}/modules/tutorial/server-viewing-create-event.adoc[leveloffset=+1]
+include::{partialsdir}/modules/tutorial/server/server-viewing-create-event.adoc[leveloffset=+1]
 
-include::{partialsdir}/modules/tutorial/server-updating-database-viewing-update-event.adoc[leveloffset=+1]
+include::{partialsdir}/modules/tutorial/server/server-updating-database-viewing-update-event.adoc[leveloffset=+1]
 
-include::{partialsdir}/modules/tutorial/server-deleting-record-database-viewing-delete-event.adoc[leveloffset=+1]
+include::{partialsdir}/modules/tutorial/server/server-deleting-record-database-viewing-delete-event.adoc[leveloffset=+1]
 
-include::{partialsdir}/modules/tutorial/server-restarting-server.adoc[leveloffset=+1]
+include::{partialsdir}/modules/tutorial/server/server-restarting-server.adoc[leveloffset=+1]

@@ -1,14 +1,14 @@
-[id="viewing-create-event-http-sink"]
+[id="viewing-create-event-{selected-sink}-sink"]
 = Viewing a _create_ event
 
-By viewing the output of the HTTP Sink container,
+By viewing the output of the {selected-sink} sink container,
 you can see how the MySQL connector captured _create_ events in the `inventory` database.
 In this case, the _create_ events capture new customers being added to the database.
 
 .Procedure
 
 ifdef::community[]
-. Open a the terminal window that the HTTP Sink is running in.
+. Open a the terminal window that the {selected-sink} sink is running in.
 +
 --
 In this tutorial, once change event data is received it is sent to the container's standard output.
@@ -84,7 +84,7 @@ You should see a large output similar to the following:
 
 [NOTE]
 ====
-The httpd server is configured to output the details of any requests it receives (change events are sent as POST requests), so any new events will automatically appear as long as the HTTP Sink container is running.
+The httpd server is configured to output the details of any requests it receives (change events are sent as POST requests), so any new events will automatically appear as long as the {selected-sink} sink container is running.
 ====
 --
 endif::community[]
@@ -104,7 +104,7 @@ mysql> INSERT INTO customers (first_name, last_name, email) VALUES ('John', 'Tut
 Query OK, 1 row affected (0.01 sec)
 ----
 
-The new change event that appears in the HTTP sink terminal output should look something like the following:
+The new change event that appears in the {selected-sink} sink terminal output should look something like the following:
 
 [source,shell,options="nowrap"]
 ----

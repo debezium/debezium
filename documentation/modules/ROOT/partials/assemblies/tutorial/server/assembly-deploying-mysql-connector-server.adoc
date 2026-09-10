@@ -3,7 +3,7 @@
 [id="server-deploying-mysql-connector"]
 = Deploying the MySQL connector with {prodname} Server and the {selected-sink} sink
 
-After starting the HTTP server and MySQL services,
+After starting the {selected-sink} sink and MySQL services,
 you are ready to deploy the {prodname} MySQL connector so that it can start monitoring the sample MySQL database (`inventory`).
 
 At this point, you are running the {selected-sink} sink services,
