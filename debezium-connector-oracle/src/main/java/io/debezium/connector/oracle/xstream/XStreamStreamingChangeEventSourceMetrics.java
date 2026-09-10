@@ -16,7 +16,9 @@ import io.debezium.pipeline.source.spi.EventMetadataProvider;
  *
  * @author Chris Cranford
  */
-public class XStreamStreamingChangeEventSourceMetrics extends AbstractOracleStreamingChangeEventSourceMetrics {
+public class XStreamStreamingChangeEventSourceMetrics
+        extends AbstractOracleStreamingChangeEventSourceMetrics
+        implements XStreamStreamingChangeEventSourceMetricsMXBean {
     public XStreamStreamingChangeEventSourceMetrics(CdcSourceTaskContext taskContext,
                                                     ChangeEventQueueMetrics changeEventQueueMetrics,
                                                     EventMetadataProvider metadataProvider,
