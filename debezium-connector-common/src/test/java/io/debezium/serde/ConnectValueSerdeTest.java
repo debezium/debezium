@@ -24,6 +24,7 @@ import org.junit.jupiter.api.Test;
 
 import io.debezium.DebeziumException;
 import io.debezium.data.VariableScaleDecimal;
+import io.debezium.doc.FixFor;
 
 /**
  * Unit tests for {@link ConnectValueSerde}, exercising exact-runtime-type round-trips for every
@@ -225,5 +226,54 @@ public class ConnectValueSerdeTest {
         final byte[] truncated = new byte[bytes.length - 5];
         System.arraycopy(bytes, 0, truncated, 0, truncated.length);
         assertThatThrownBy(() -> serde.deserialize(truncated)).isInstanceOf(DebeziumException.class);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2609")
+    public void mapInKeyStructUsesDistinctKeyTagFromList() {
+        final Schema mapSchema = SchemaBuilder.struct()
+                .field("f1", SchemaBuilder.map(Schema.STRING_SCHEMA, Schema.STRING_SCHEMA).build())
+                .build();
+        final Schema listSchema = SchemaBuilder.struct()
+                .field("f1", SchemaBuilder.array(Schema.STRING_SCHEMA).build())
+                .build();
+
+        final Struct mapStruct = new Struct(mapSchema).put("f1", Map.of("k", "v"));
+        final Struct listStruct = new Struct(listSchema).put("f1", List.of("k", "v"));
+
+        final byte[] mapBytes = serde.serializeStructIdentity(mapStruct);
+        final byte[] listBytes = serde.serializeStructIdentity(listStruct);
+
+        assertThat(mapBytes).isNotEqualTo(listBytes);
+        // The first 16 bytes are the schema fingerprint; the 17th byte is the field value tag.
+        final byte mapTag = mapBytes[16];
+        final byte listTag = listBytes[16];
+        assertThat(mapTag).isEqualTo((byte) 15);
+        assertThat(listTag).isEqualTo((byte) 14);
+        assertThat(mapTag).isNotEqualTo(listTag);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2609")
+    public void corruptedNegativeLengthThrowsDebeziumException() {
+        // Construct bytes with DBZ magic, format version 1, timestamp 0, TAG_STRING (1), and negative length (-1).
+        final byte[] corrupted = new byte[]{
+                'D', 'B', 'Z', 1,
+                0, 0, 0, 0, 0, 0, 0, 0,
+                1,
+                (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF
+        };
+        assertThatThrownBy(() -> serde.deserialize(corrupted))
+                .isInstanceOf(DebeziumException.class)
+                .hasMessageContaining("Invalid negative byte array length");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2609")
+    public void emptyStructIdentityHandledSafely() {
+        final Schema schema = SchemaBuilder.struct().build();
+        final Struct struct = new Struct(schema);
+        final byte[] bytes = serde.serializeStructIdentity(struct);
+        assertThat(bytes).isNotNull();
     }
 }
