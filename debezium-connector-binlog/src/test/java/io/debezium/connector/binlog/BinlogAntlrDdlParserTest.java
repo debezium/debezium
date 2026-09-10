@@ -51,6 +51,7 @@ import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.ddl.DdlParserListener.Event;
 import io.debezium.relational.ddl.SimpleDdlParserListener;
+import io.debezium.relational.mapping.PropagateSourceMetadataToSchemaParameter;
 import io.debezium.schema.DefaultTopicNamingStrategy;
 import io.debezium.schema.FieldNameSelector;
 import io.debezium.schema.SchemaNameAdjuster;
@@ -690,6 +691,35 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
         assertThat(table.columnWithName("l").charsetName()).isEqualTo("LATIN2");
         assertThat(table.columnWithName("lvc").jdbcType()).isEqualTo(Types.VARCHAR);
         assertThat(table.columnWithName("lvb").jdbcType()).isEqualTo(Types.BLOB);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2189")
+    public void shouldMapBooleanAliasesToTinyInt() {
+        final String ddl = "CREATE TABLE boolean_aliases (id INT PRIMARY KEY, created_bool BOOL);"
+                + "ALTER TABLE boolean_aliases ADD COLUMN added_boolean BOOLEAN;";
+
+        parser.parse(ddl, tables);
+
+        assertThat(parser.getParsingExceptionsFromWalker()).isEmpty();
+        final Table table = tables.forTable(null, null, "boolean_aliases");
+        assertColumn(table, "created_bool", "TINYINT", Types.TINYINT, 1, -1, true, false, false);
+        assertColumn(table, "added_boolean", "TINYINT", Types.TINYINT, 1, -1, true, false, false);
+        assertThat(getColumnSchema(table, "created_bool").type()).isEqualTo(Schema.Type.INT8);
+        assertThat(getColumnSchema(table, "added_boolean").type()).isEqualTo(Schema.Type.INT8);
+
+        final var sourceTypePropagator = new PropagateSourceMetadataToSchemaParameter();
+        final var createdBoolSchema = SchemaBuilder.int8();
+        sourceTypePropagator.alterFieldSchema(table.columnWithName("created_bool"), createdBoolSchema);
+        assertThat(createdBoolSchema.parameters())
+                .containsEntry(PropagateSourceMetadataToSchemaParameter.TYPE_NAME_PARAMETER_KEY, "TINYINT")
+                .containsEntry(PropagateSourceMetadataToSchemaParameter.TYPE_LENGTH_PARAMETER_KEY, "1");
+
+        final var addedBooleanSchema = SchemaBuilder.int8();
+        sourceTypePropagator.alterFieldSchema(table.columnWithName("added_boolean"), addedBooleanSchema);
+        assertThat(addedBooleanSchema.parameters())
+                .containsEntry(PropagateSourceMetadataToSchemaParameter.TYPE_NAME_PARAMETER_KEY, "TINYINT")
+                .containsEntry(PropagateSourceMetadataToSchemaParameter.TYPE_LENGTH_PARAMETER_KEY, "1");
     }
 
     @Test
@@ -3203,7 +3233,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
         parser.parse(ddl, tables);
         Table table = tables.forTable(new TableId(null, null, "default_value_test"));
         assertThat(table.columnWithName("id").isOptional()).isEqualTo(false);
-        assertThat(getColumnSchema(table, "boolean_c").defaultValue()).isEqualTo(false);
+        assertThat(getColumnSchema(table, "boolean_c").defaultValue()).isEqualTo((byte) 0);
         assertThat(getColumnSchema(table, "bit_c").defaultValue()).isEqualTo(true);
         assertThat(getColumnSchema(table, "tiny_c").defaultValue()).isEqualTo((byte) 2);
         assertThat(getColumnSchema(table, "tiny_un_c").defaultValue()).isEqualTo((short) 3);
