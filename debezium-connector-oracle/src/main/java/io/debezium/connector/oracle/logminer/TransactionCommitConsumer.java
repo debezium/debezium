@@ -107,7 +107,7 @@ public class TransactionCommitConsumer implements AutoCloseable {
         pending.sort(Comparator.comparingLong(x -> x.transactionIndex));
 
         for (final RowState rowState : pending) {
-            prepareAndDispatch(rowState.event, rowState.transactionId, rowState.transactionSequence);
+            prepareAndDispatch(rowState);
         }
 
         // For situations where the consumer instance is reused, reset internal state
@@ -170,8 +170,11 @@ public class TransactionCommitConsumer implements AutoCloseable {
             return;
         }
 
-        if (!tryMerge(accumulatorEvent, event)) {
-            prepareAndDispatch(accumulatorEvent, transactionId, transactionSequence);
+        if (tryMerge(accumulatorEvent, event)) {
+            rowState.transactionSequence = transactionSequence;
+        }
+        else {
+            prepareAndDispatch(rowState);
             if (rowId.equals(currentLobDetails.rowId)) {
                 currentLobDetails.reset();
             }
@@ -301,10 +304,11 @@ public class TransactionCommitConsumer implements AutoCloseable {
         values[details.columnPosition] = constructor.apply(prevValue);
     }
 
-    private void prepareAndDispatch(DmlEvent event, String transactionId, long transactionSequence) throws InterruptedException {
-        if (null == event) { // we just added the first event for this row
+    private void prepareAndDispatch(RowState rowState) throws InterruptedException {
+        if (null == rowState) { // we just added the first event for this row
             return;
         }
+        final DmlEvent event = rowState.event;
         Object[] values = newValues(event);
         for (int i = 0; i < values.length; i++) {
             if (values[i] instanceof AbstractUnderConstruction) {
@@ -327,7 +331,7 @@ public class TransactionCommitConsumer implements AutoCloseable {
                 return;
             }
         }
-        dispatchChangeEvent(event, transactionId, transactionSequence);
+        dispatchChangeEvent(event, rowState.transactionId, rowState.transactionSequence);
     }
 
     private boolean tryMerge(DmlEvent prev, DmlEvent next) {
@@ -967,7 +971,7 @@ public class TransactionCommitConsumer implements AutoCloseable {
         final DmlEvent event;
         final long transactionIndex;
         final String transactionId;
-        final long transactionSequence;
+        long transactionSequence;
 
         RowState(final DmlEvent event, final long transactionIndex, String transactionId, long transactionSequence) {
             this.event = event;
