@@ -85,8 +85,6 @@ jobs:
             debezium-util/**
             debezium-connect-plugins/**
             debezium-embedded/**
-            debezium-revapi/**
-            debezium-ide-configs/**
             debezium-parent/pom.xml
             debezium-bom/pom.xml
             debezium-storage/**
