@@ -32,7 +32,7 @@ runs:
     - name: Restore Maven Repository (read-only)
       if: ${{ inputs.save != 'true' }}
       id: cache-restore
-      uses: actions/cache/restore@v5
+      uses: actions/cache/restore@v6
       with:
         path: ~/.m2/repository
         key: ${{ inputs.key }}
@@ -41,7 +41,7 @@ runs:
     - name: Cache Maven Repository
       if: ${{ inputs.save == 'true' }}
       id: cache-check
-      uses: actions/cache@v5
+      uses: actions/cache@v6
       with:
         path: ~/.m2/repository
         key: ${{ inputs.key }}
