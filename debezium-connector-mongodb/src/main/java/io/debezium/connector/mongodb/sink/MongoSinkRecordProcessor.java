@@ -35,6 +35,10 @@ final class MongoSinkRecordProcessor {
 
         for (SinkRecord kafkaSinkRecord : records) {
             DebeziumSinkRecord record = new KafkaDebeziumSinkRecord(kafkaSinkRecord, sinkConfig.cloudEventsSchemaNamePattern());
+            if (record.isTombstone()) {
+                LOGGER.debug("Skipping debezium tombstone event for kafka topic compaction");
+                continue;
+            }
             MongoProcessedSinkRecordData processedData = new MongoProcessedSinkRecordData(record, sinkConfig);
 
             if (processedData.getException() != null) {
