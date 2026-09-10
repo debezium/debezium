@@ -1,11 +1,3 @@
-// Metadata created by nebel
-//
-// ParentAssemblies: assemblies/tutorial/as_starting-services.adoc
-// UserStory:
-
-[id="starting-http-sink"]
-= Starting the HTTP Sink
-
 .Procedure
 
 . Open a new terminal and use it to start the HTTP server that will receive change events from {prodname} in a container.

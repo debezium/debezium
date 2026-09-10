@@ -1,7 +1,3 @@
-// Metadata created by nebel
-//
-// UserStory:
-
 [id="server-considerations-running-debezium-docker"]
 = Considerations for running {prodname} server with Docker
 

@@ -1,0 +1,26 @@
+:context: mysql
+
+[id="server-viewing-change-events"]
+= Viewing change events
+
+After deploying the {prodname} MySQL connector,
+it starts monitoring the `inventory` database for data change events.
+
+When you watched {prodname} server and the connector start up,
+you saw that events were being streamed to the HTTP Sink at `http://127.0.0.1:8081`
+
+As events are received, they are output to the standard output of the container the HTTP Sink is running in, which can be viewed using `docker logs httpsink`.
+In this topic, you will see different types of change events to see how the connector captured them:
+
+* xref:viewing-create-event[Viewing a _create_ event]
+* xref:updating-database-viewing-update-event[Updating the database and viewing the _update_ event]
+* xref:deleting-record-database-viewing-delete-event[Deleting a record in the database and viewing the _delete_ event]
+* xref:restarting-{prodname}-server-http-sink[Restarting {prodname} server and changing the database]
+
+include::{partialsdir}/modules/tutorial/server-viewing-create-event.adoc[leveloffset=+1]
+
+include::{partialsdir}/modules/tutorial/server-updating-database-viewing-update-event.adoc[leveloffset=+1]
+
+include::{partialsdir}/modules/tutorial/server-deleting-record-database-viewing-delete-event.adoc[leveloffset=+1]
+
+include::{partialsdir}/modules/tutorial/server-restarting-server.adoc[leveloffset=+1]

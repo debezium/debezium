@@ -1,11 +1,3 @@
-// Metadata created by nebel
-//
-// ParentAssemblies: assemblies/tutorial/as_starting-services.adoc
-// UserStory:
-
-[id="starting-postgres-database"]
-= Starting the PostgreSQL database
-
 .Procedure
 
 . Open a new terminal and use it to start the PostgreSQL database server that will receive change events from {prodname} in a container.

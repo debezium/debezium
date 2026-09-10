@@ -1,0 +1,802 @@
+The whole output will look like the following when starting for the first time. Each relevant section will be explained in more detail below.
+
+[source,shell,options="nowrap"]
+----
+# 0 - Server starts
+
+       __       __                 _                 
+  ____/ /___   / /_   ___  ____   (_)__  __ ____ ___ 
+ / __  // _ \ / __ \ / _ \/_  /  / // / / // __ `__ \
+/ /_/ //  __// /_/ //  __/ / /_ / // /_/ // / / / / /
+\__,_/ \___//_.___/ \___/ /___//_/ \__,_//_/ /_/ /_/ 
+                                                     
+
+
+                          Powered by Quarkus 3.33.1.1
+2026-09-08 16:13:28,334 WARN  [io.quarkus.config] (main) Unrecognized configuration file /mnt/c/Users/SeanConnaughton/Documents/Debezium Server Tutorial/debezium-server-dist-3.7.0.Alpha1/debezium-server/config/application.properties.cassandra.redis.example found; Please, check if your are providing the proper extension to load the file
+2026-09-08 16:13:28,337 WARN  [io.quarkus.config] (main) Unrecognized configuration file /mnt/c/Users/SeanConnaughton/Documents/Debezium Server Tutorial/debezium-server-dist-3.7.0.Alpha1/debezium-server/config/application.yaml.example found; Please, check if your are providing the proper extension to load the file
+2026-09-08 16:13:28,340 WARN  [io.quarkus.config] (main) Unrecognized configuration file /mnt/c/Users/SeanConnaughton/Documents/Debezium Server Tutorial/debezium-server-dist-3.7.0.Alpha1/debezium-server/config/application.properties.example found; Please, check if your are providing the proper extension to load the file
+2026-09-08 16:13:28,341 WARN  [io.quarkus.config] (main) The "quarkus.log.console.json" config property is deprecated and should not be used anymore.
+
+# 1 - Server engine is created 
+
+2026-09-08 16:13:28,833 INFO  [io.quarkus.debezium.agroal.configuration.AgroalCompatibilityDatasourceRecorder] (main) found Agroal compatible connectors: io.debezium.connector.db2.Db2Connector,io.debezium.connector.oracle.OracleConnector,io.debezium.connector.sqlserver.SqlServerConnector,io.debezium.connector.mongodb.MongoDbConnector,io.debezium.connector.postgresql.PostgresConnector,io.debezium.connector.mysql.MySqlConnector,io.debezium.connector.mariadb.MariaDbConnector
+2026-09-08 16:13:28,834 INFO  [io.quarkus.debezium.agroal.configuration.AgroalCompatibilityDatasourceRecorder] (main) Agroal default engine: io.debezium.connector.mysql.MySqlConnector
+2026-09-08 16:13:28,957 WARN  [io.quarkus.debezium.agroal.engine.AgroalParser] (main) No datasource configuration found for engine default
+2026-09-08 16:13:28,979 WARN  [io.quarkus.debezium.agroal.engine.AgroalParser] (main) No datasource configuration found for engine default
+2026-09-08 16:13:28,981 WARN  [io.quarkus.debezium.agroal.engine.AgroalParser] (main) No datasource configuration found for engine default
+2026-09-08 16:13:28,983 WARN  [io.quarkus.debezium.agroal.engine.AgroalParser] (main) No datasource configuration found for engine default
+2026-09-08 16:13:29,036 INFO  [io.quarkus.debezium.engine.RunnableDebeziumConnectorRegistry] (main) start(default) called; known engines=[default], currently running=[]
+2026-09-08 16:13:29,047 INFO  [io.debezium.util.Threads] (main) Requested thread factory for component Connector, id = quarkus-extension named = default
+2026-09-08 16:13:29,051 INFO  [io.debezium.util.Threads] (main) Creating thread debezium-connector-quarkus-extension-default-0
+2026-09-08 16:13:29,052 INFO  [io.quarkus.debezium.engine.DebeziumRunner] (main) Starting Debezium Engine debezium-connector-quarkus-extension-default-0
+2026-09-08 16:13:29,053 INFO  [io.quarkus.debezium.engine.RunnableDebeziumConnectorRegistry] (main) start(default) success; runner thread launched
+2026-09-08 16:13:29,056 INFO  [io.quarkus.debezium.engine.DebeziumWithCustomSerialization] (debezium-connector-quarkus-extension-default-0) Creating Debezium Engine instance EngineManifest[id=default] for Connector Connector[name=io.debezium.connector.mysql.MySqlConnector] and serialization - header: io.debezium.engine.format.Json, key: io.debezium.engine.format.Json, value: io.debezium.engine.format.Json
+2026-09-08 16:13:29,115 INFO  [io.debezium.server.BaseChangeConsumer] (debezium-connector-quarkus-extension-default-0) Using 'io.debezium.server.BaseChangeConsumer$$Lambda/0x00000000263ba8f8@57a3355' stream name mapper
+
+# 2 - Next, the JDBC sink is initialised
+
+2026-09-08 16:13:29,116 INFO  [io.debezium.server.jdbc.JdbcChangeConsumer] (debezium-connector-quarkus-extension-default-0) Initializing JDBC sink
+2026-09-08 16:13:29,167 INFO  [io.debezium.connector.jdbc.JdbcSinkConnectorTask] (debezium-connector-quarkus-extension-default-0) Starting JdbcSinkConnectorConfig with configuration:
+2026-09-08 16:13:29,170 INFO  [io.debezium.connector.jdbc.JdbcSinkConnectorTask] (debezium-connector-quarkus-extension-default-0)    connector.class = io.debezium.connector.jdbc.JdbcSinkConnector
+2026-09-08 16:13:29,171 INFO  [io.debezium.connector.jdbc.JdbcSinkConnectorTask] (debezium-connector-quarkus-extension-default-0)    delete.enabled = true
+2026-09-08 16:13:29,171 INFO  [io.debezium.connector.jdbc.JdbcSinkConnectorTask] (debezium-connector-quarkus-extension-default-0)    primary.key.mode = record_key
+2026-09-08 16:13:29,172 INFO  [io.debezium.connector.jdbc.JdbcSinkConnectorTask] (debezium-connector-quarkus-extension-default-0)    schema.evolution = basic
+2026-09-08 16:13:29,172 INFO  [io.debezium.connector.jdbc.JdbcSinkConnectorTask] (debezium-connector-quarkus-extension-default-0)    connection.password = ********
+2026-09-08 16:13:29,173 INFO  [io.debezium.connector.jdbc.JdbcSinkConnectorTask] (debezium-connector-quarkus-extension-default-0)    batch.size = 1
+2026-09-08 16:13:29,173 INFO  [io.debezium.connector.jdbc.JdbcSinkConnectorTask] (debezium-connector-quarkus-extension-default-0)    connection.username = pguser
+2026-09-08 16:13:29,174 INFO  [io.debezium.connector.jdbc.JdbcSinkConnectorTask] (debezium-connector-quarkus-extension-default-0)    connection.url = jdbc:postgresql://localhost:5432/inventory
+2026-09-08 16:13:29,175 INFO  [io.debezium.connector.jdbc.JdbcSinkConnectorTask] (debezium-connector-quarkus-extension-default-0)    insert.mode = upsert
+2026-09-08 16:13:29,635 INFO  [org.hibernate.orm.core] (debezium-connector-quarkus-extension-default-0) HHH000001: Hibernate ORM core version 7.2.6.Final
+2026-09-08 16:13:29,780 INFO  [io.debezium.server.jdbc.JdbcChangeConsumer] (debezium-connector-quarkus-extension-default-0) JDBC connection URL: jdbc:postgresql://localhost:5432/inventory
+2026-09-08 16:13:29,781 INFO  [io.debezium.server.jdbc.JdbcChangeConsumer] (debezium-connector-quarkus-extension-default-0) Creating Hibernate SessionFactory
+2026-09-08 16:13:30,319 INFO  [org.hibernate.orm.beans] (debezium-connector-quarkus-extension-default-0) HHH10005002: No explicit CDI BeanManager reference was passed to Hibernate, but CDI is available on the Hibernate class loader
+2026-09-08 16:13:31,468 INFO  [org.hibernate.orm.connection] (debezium-connector-quarkus-extension-default-0) HHH102002: Instantiating explicit connection provider: org.hibernate.agroal.internal.AgroalConnectionProvider
+2026-09-08 16:13:32,753 INFO  [org.hibernate.orm.connections.pooling] (debezium-connector-quarkus-extension-default-0) HHH10001005: Database info:
+	Database JDBC URL [jdbc:postgresql://localhost:5432/inventory]
+	Database driver: PostgreSQL JDBC Driver
+	Database dialect: PostgreSQLDialect
+	Database version: 18.6
+	Default catalog/schema: inventory/public
+	Autocommit mode: true
+	Isolation level: READ_COMMITTED
+	JDBC fetch size: none
+	Pool: AgroalConnectionProvider
+	Minimum pool size: 5
+	Maximum pool size: 32
+2026-09-08 16:13:35,486 INFO  [org.hibernate.orm.core] (debezium-connector-quarkus-extension-default-0) HHH000490: Using JTA platform [org.hibernate.engine.transaction.jta.platform.internal.NarayanaJtaPlatform]
+2026-09-08 16:13:35,726 INFO  [io.debezium.connector.jdbc.dialect.DatabaseDialectResolver] (debezium-connector-quarkus-extension-default-0) Using dialect io.debezium.connector.jdbc.dialect.postgres.PostgresDatabaseDialect
+2026-09-08 16:13:35,907 INFO  [io.debezium.connector.jdbc.dialect.GeneralDatabaseDialect] (debezium-connector-quarkus-extension-default-0) Database TimeZone: Europe/Dublin
+2026-09-08 16:13:35,908 INFO  [io.debezium.server.jdbc.JdbcChangeConsumer] (debezium-connector-quarkus-extension-default-0) Resolved database dialect: PostgresDatabaseDialect
+2026-09-08 16:13:35,933 INFO  [io.debezium.connector.jdbc.JdbcChangeEventSink] (debezium-connector-quarkus-extension-default-0) Database version 18.6.0
+2026-09-08 16:13:35,934 INFO  [io.debezium.server.jdbc.JdbcChangeConsumer] (debezium-connector-quarkus-extension-default-0) JDBC sink initialized successfully
+2026-09-08 16:13:35,934 INFO  [io.debezium.server.jdbc.JdbcChangeConsumer] (debezium-connector-quarkus-extension-default-0) Insert mode: UPSERT
+2026-09-08 16:13:35,935 INFO  [io.debezium.server.jdbc.JdbcChangeConsumer] (debezium-connector-quarkus-extension-default-0) Schema evolution: BASIC
+2026-09-08 16:13:35,935 INFO  [io.debezium.server.jdbc.JdbcChangeConsumer] (debezium-connector-quarkus-extension-default-0) Batch size: 1
+2026-09-08 16:13:35,936 INFO  [io.debezium.server.producers.ChangeConsumerProducer] (debezium-connector-quarkus-extension-default-0) Consumer 'io.debezium.server.jdbc.JdbcChangeConsumer' instantiated
+2026-09-08 16:13:35,940 INFO  [io.debezium.server.BaseChangeConsumer] (main) Using 'io.debezium.server.BaseChangeConsumer$$Lambda/0x00000000263ba8f8@57a3355' stream name mapper
+2026-09-08 16:13:35,950 INFO  [io.debezium.embedded.async.AsyncEmbeddedEngine] (debezium-connector-quarkus-extension-default-0) Consumer doesn't support tombstone events, setting 'tombstones.on.delete' to false.
+
+# These are the values for the JSON converter that serialises DB rows into change events.
+
+2026-09-08 16:13:35,973 INFO  [org.apache.kafka.common.config.AbstractConfig] (debezium-connector-quarkus-extension-default-0) JsonConverterConfig values: 
+	converter.type = header
+	decimal.format = BASE64
+	replace.null.with.default = true
+	schema.content = null
+	schemas.cache.size = 1000
+	schemas.enable = true
+
+2026-09-08 16:13:35,981 INFO  [org.apache.kafka.common.config.AbstractConfig] (debezium-connector-quarkus-extension-default-0) JsonConverterConfig values: 
+	converter.type = key
+	decimal.format = BASE64
+	replace.null.with.default = true
+	schema.content = null
+	schemas.cache.size = 1000
+	schemas.enable = true
+
+2026-09-08 16:13:35,982 INFO  [org.apache.kafka.common.config.AbstractConfig] (debezium-connector-quarkus-extension-default-0) JsonConverterConfig values: 
+	converter.type = value
+	decimal.format = BASE64
+	replace.null.with.default = true
+	schema.content = null
+	schemas.cache.size = 1000
+	schemas.enable = true
+
+2026-09-08 16:13:36,064 INFO  [org.apache.kafka.common.config.AbstractConfig] (debezium-connector-quarkus-extension-default-0) EmbeddedWorkerConfig values: 
+	access.control.allow.methods = 
+	access.control.allow.origin = 
+	admin.listeners = null
+	bootstrap.servers = [localhost:9092]
+	client.dns.lookup = use_all_dns_ips
+	config.providers = []
+	connector.client.config.override.policy = All
+	header.converter = class org.apache.kafka.connect.storage.SimpleHeaderConverter
+	header.converter.plugin.version = null
+	key.converter = class org.apache.kafka.connect.json.JsonConverter
+	key.converter.plugin.version = null
+	listeners = [http://:8083]
+	metric.reporters = [org.apache.kafka.common.metrics.JmxReporter]
+	metrics.num.samples = 2
+	metrics.recording.level = INFO
+	metrics.sample.window.ms = 30000
+	offset.flush.interval.ms = 0
+	offset.flush.timeout.ms = 5000
+	offset.storage.file.filename = data/offsets.dat
+	offset.storage.partitions = null
+	offset.storage.replication.factor = null
+	offset.storage.topic = 
+	plugin.discovery = hybrid_warn
+	plugin.path = null
+	response.http.headers.config = 
+	rest.advertised.host.name = null
+	rest.advertised.listener = null
+	rest.advertised.port = null
+	rest.extension.classes = []
+	ssl.cipher.suites = []
+	ssl.client.auth = none
+	ssl.enabled.protocols = [TLSv1.2, TLSv1.3]
+	ssl.endpoint.identification.algorithm = https
+	ssl.engine.factory.class = null
+	ssl.key.password = null
+	ssl.keymanager.algorithm = SunX509
+	ssl.keystore.certificate.chain = null
+	ssl.keystore.key = null
+	ssl.keystore.location = null
+	ssl.keystore.password = null
+	ssl.keystore.type = JKS
+	ssl.protocol = TLSv1.3
+	ssl.provider = null
+	ssl.secure.random.implementation = null
+	ssl.trustmanager.algorithm = PKIX
+	ssl.truststore.certificates = null
+	ssl.truststore.location = null
+	ssl.truststore.password = null
+	ssl.truststore.type = JKS
+	task.shutdown.graceful.timeout.ms = 5000
+	topic.creation.enable = true
+	topic.tracking.allow.reset = true
+	topic.tracking.enable = true
+	value.converter = class org.apache.kafka.connect.json.JsonConverter
+	value.converter.plugin.version = null
+
+# 3 - The server engine is initialised
+
+2026-09-08 16:13:36,076 INFO  [io.quarkus.debezium.engine.DebeziumWithCustomSerialization] (debezium-connector-quarkus-extension-default-0) running engine default with Debezium Connector Connector[name=io.debezium.connector.mysql.MySqlConnector]
+2026-09-08 16:13:36,077 INFO  [io.debezium.embedded.async.AsyncEmbeddedEngine] (debezium-connector-quarkus-extension-default-0) Engine state has changed from 'CREATING' to 'INITIALIZING'
+2026-09-08 16:13:36,199 INFO  [io.debezium.config.CommonConnectorConfig] (debezium-connector-quarkus-extension-default-0) Loading the custom source info struct maker plugin: io.debezium.connector.mysql.MySqlSourceInfoStructMaker
+2026-09-08 16:13:36,272 INFO  [io.debezium.util.Threads] (debezium-connector-quarkus-extension-default-0) Requested thread factory for component MySqlConnector, id = tutorial named = connection-validation
+2026-09-08 16:13:36,273 INFO  [io.debezium.util.Threads] (debezium-connector-quarkus-extension-default-0) Creating thread debezium-mysqlconnector-tutorial-connection-validation
+2026-09-08 16:13:36,336 INFO  [io.quarkus] (main) debezium-server-dist 3.7.0.Alpha1 on JVM (powered by Quarkus 3.33.1.1) started in 31.335s. Listening on: http://0.0.0.0:8080
+2026-09-08 16:13:36,337 INFO  [io.quarkus] (main) Profile prod activated. 
+2026-09-08 16:13:36,338 INFO  [io.quarkus] (main) Installed features: [agroal, cdi, config-yaml, debezium-db2, debezium-mariadb, debezium-mongodb, debezium-mysql, debezium-oracle, debezium-postgresql, debezium-sqlserver, jdbc-db2, jdbc-mariadb, jdbc-mssql, jdbc-mysql, jdbc-oracle, jdbc-postgresql, kubernetes-client, mongodb-client, narayana-jta, rest, rest-jackson, smallrye-context-propagation, smallrye-health, vertx]
+2026-09-08 16:13:37,022 INFO  [io.debezium.connector.mysql.jdbc.MySqlConnection] (debezium-mysqlconnector-tutorial-connection-validation) Using 'SHOW BINARY LOG STATUS' to get binary log status
+2026-09-08 16:13:37,026 INFO  [io.debezium.connector.binlog.BinlogConnector] (debezium-mysqlconnector-tutorial-connection-validation) Successfully tested connection for jdbc:mysql://localhost:3306/?useInformationSchema=true&nullCatalogMeansCurrent=false&useUnicode=true&characterEncoding=UTF-8&characterSetResults=UTF-8&zeroDateTimeBehavior=CONVERT_TO_NULL&connectTimeout=30000 with user 'debezium'
+2026-09-08 16:13:37,042 INFO  [io.debezium.util.Threads] (debezium-mysqlconnector-tutorial-connection-validation) Requested thread factory for component JdbcConnection, id = JdbcConnection named = jdbc-connection-close
+2026-09-08 16:13:37,043 INFO  [io.debezium.util.Threads] (debezium-mysqlconnector-tutorial-connection-validation) Creating thread debezium-jdbcconnection-JdbcConnection-jdbc-connection-close
+2026-09-08 16:13:37,047 INFO  [io.debezium.jdbc.JdbcConnection] (debezium-jdbcconnection-JdbcConnection-jdbc-connection-close) Connection gracefully closed
+2026-09-08 16:13:37,118 INFO  [io.debezium.embedded.async.AsyncEmbeddedEngine] (debezium-connector-quarkus-extension-default-0) Found offset store provider 'file' for 'org.apache.kafka.connect.storage.FileOffsetBackingStore'
+
+# More JSON converter settings
+
+2026-09-08 16:13:37,119 INFO  [org.apache.kafka.common.config.AbstractConfig] (debezium-connector-quarkus-extension-default-0) JsonConverterConfig values: 
+	converter.type = key
+	decimal.format = BASE64
+	replace.null.with.default = true
+	schema.content = null
+	schemas.cache.size = 1000
+	schemas.enable = false
+
+2026-09-08 16:13:37,129 INFO  [org.apache.kafka.common.config.AbstractConfig] (debezium-connector-quarkus-extension-default-0) JsonConverterConfig values: 
+	converter.type = key
+	decimal.format = BASE64
+	replace.null.with.default = true
+	schema.content = null
+	schemas.cache.size = 1000
+	schemas.enable = false
+
+2026-09-08 16:13:37,129 INFO  [org.apache.kafka.common.config.AbstractConfig] (debezium-connector-quarkus-extension-default-0) JsonConverterConfig values: 
+	converter.type = value
+	decimal.format = BASE64
+	replace.null.with.default = true
+	schema.content = null
+	schemas.cache.size = 1000
+	schemas.enable = false
+
+2026-09-08 16:13:37,131 INFO  [org.apache.kafka.common.config.AbstractConfig] (debezium-connector-quarkus-extension-default-0) EmbeddedWorkerConfig values: 
+	access.control.allow.methods = 
+	access.control.allow.origin = 
+	admin.listeners = null
+	bootstrap.servers = [localhost:9092]
+	client.dns.lookup = use_all_dns_ips
+	config.providers = []
+	connector.client.config.override.policy = All
+	header.converter = class org.apache.kafka.connect.storage.SimpleHeaderConverter
+	header.converter.plugin.version = null
+	key.converter = class org.apache.kafka.connect.json.JsonConverter
+	key.converter.plugin.version = null
+	listeners = [http://:8083]
+	metric.reporters = [org.apache.kafka.common.metrics.JmxReporter]
+	metrics.num.samples = 2
+	metrics.recording.level = INFO
+	metrics.sample.window.ms = 30000
+	offset.flush.interval.ms = 0
+	offset.flush.timeout.ms = 5000
+	offset.storage.file.filename = data/offsets.dat
+	offset.storage.partitions = null
+	offset.storage.replication.factor = null
+	offset.storage.topic = 
+	plugin.discovery = hybrid_warn
+	plugin.path = null
+	response.http.headers.config = 
+	rest.advertised.host.name = null
+	rest.advertised.listener = null
+	rest.advertised.port = null
+	rest.extension.classes = []
+	ssl.cipher.suites = []
+	ssl.client.auth = none
+	ssl.enabled.protocols = [TLSv1.2, TLSv1.3]
+	ssl.endpoint.identification.algorithm = https
+	ssl.engine.factory.class = null
+	ssl.key.password = null
+	ssl.keymanager.algorithm = SunX509
+	ssl.keystore.certificate.chain = null
+	ssl.keystore.key = null
+	ssl.keystore.location = null
+	ssl.keystore.password = null
+	ssl.keystore.type = JKS
+	ssl.protocol = TLSv1.3
+	ssl.provider = null
+	ssl.secure.random.implementation = null
+	ssl.trustmanager.algorithm = PKIX
+	ssl.truststore.certificates = null
+	ssl.truststore.location = null
+	ssl.truststore.password = null
+	ssl.truststore.type = JKS
+	task.shutdown.graceful.timeout.ms = 5000
+	topic.creation.enable = true
+	topic.tracking.allow.reset = true
+	topic.tracking.enable = true
+	value.converter = class org.apache.kafka.connect.json.JsonConverter
+	value.converter.plugin.version = null
+
+# 4 - The file offset backing store service is started with the offsets file we specified in `application.properties`
+
+2026-09-08 16:13:37,135 INFO  [org.apache.kafka.connect.storage.FileOffsetBackingStore] (debezium-connector-quarkus-extension-default-0) Starting FileOffsetBackingStore with file data/offsets.dat
+2026-09-08 16:13:37,139 INFO  [io.debezium.embedded.async.AsyncEmbeddedEngine] (debezium-connector-quarkus-extension-default-0) Offset store 'org.apache.kafka.connect.storage.FileOffsetBackingStore' successfully started
+2026-09-08 16:13:37,171 INFO  [io.debezium.embedded.async.AsyncEmbeddedEngine] (debezium-connector-quarkus-extension-default-0) Engine state has changed from 'INITIALIZING' to 'CREATING_TASKS'
+2026-09-08 16:13:37,236 INFO  [io.debezium.embedded.async.AsyncEmbeddedEngine] (debezium-connector-quarkus-extension-default-0) Engine state has changed from 'CREATING_TASKS' to 'STARTING_TASKS'
+2026-09-08 16:13:37,238 INFO  [io.debezium.embedded.async.AsyncEmbeddedEngine] (debezium-connector-quarkus-extension-default-0) Waiting max. for 40000 ms for individual source tasks to start.
+2026-09-08 16:13:37,249 INFO  [io.debezium.config.CommonConnectorConfig] (pool-6-thread-1) Loading the custom source info struct maker plugin: io.debezium.connector.mysql.MySqlSourceInfoStructMaker
+2026-09-08 16:13:37,264 INFO  [io.debezium.openlineage.emitter.NoOpLineageEmitter] (pool-6-thread-1) You are using a no-op lineage emitter. If you want to emit open lineage event, please set 'openlineage.integration.enabled=true'
+2026-09-08 16:13:37,267 INFO  [io.debezium.connector.common.BaseSourceTask] (pool-6-thread-1) Starting MySqlConnectorTask with configuration:
+   connector.class = io.debezium.connector.mysql.MySqlConnector
+   schema.history.internal.jdbc.insert.mode = upsert
+   java.specification.version = 25
+   datasource.devservices.show-logs = false
+   sun.jnu.encoding = UTF-8
+   io.quarkus.security.http.test-if-basic-auth-implicitly-required = true
+   sun.arch.data.model = 64
+   java.vendor.url = https://ubuntu.com/
+   record.processing.threads = 
+   errors.retry.delay.initial.ms = 300
+   datasource.metrics.enabled = false
+   sun.boot.library.path = /usr/lib/jvm/java-25-openjdk-amd64/lib
+   sun.java.command = io.debezium.server.Main
+   datasource.devservices.image-name = quay.io/debezium/postgres:15
+   jdk.debug = release
+   offset.storage = org.apache.kafka.connect.storage.FileOffsetBackingStore
+   java.specification.vendor = Oracle Corporation
+   offset.storage.jdbc.delete.enabled = true
+   java.version.date = 2026-07-21
+   java.home = /usr/lib/jvm/java-25-openjdk-amd64
+   schema.history.internal.jdbc.schema.evolution = basic
+   file.separator = /
+   java.vm.compressedOopsMode = Zero based
+   internal.task.management.timeout.ms = 40000
+   line.separator = 
+
+# JVM options and classpath
+
+   java.vm.specification.vendor = Oracle Corporation
+   java.specification.name = Java Platform API Specification
+   table.exclude.list = inventory.geom
+   offset.storage.jdbc.connection.password = ********
+   schema.history.internal.jdbc.batch.size = 1
+   schema.history.internal.jdbc.connector.class = io.debezium.connector.jdbc.JdbcSinkConnector
+   sun.management.compiler = HotSpot 64-Bit Tiered Compilers
+   record.processing.shutdown.timeout.ms = 1000
+   java.runtime.version = 25.0.4+7-1-26.04-Ubuntu
+   user.name = seanconnaughton
+   datasource.jdbc.transactions = enabled
+   datasource.health-exclude = false
+   record.processing.order = ORDERED
+   schema.history.internal.file.filename = data/history.dat
+   tombstones.on.delete = false
+   offset.storage.jdbc.schema.evolution = basic
+   offset.storage.file.filename = data/offsets.dat
+   file.encoding = UTF-8
+   datasource.health.enabled = true
+   value.converter = org.apache.kafka.connect.json.JsonConverter
+   schema.history.internal.jdbc.delete.enabled = true
+   java.io.tmpdir = /tmp
+   database.server.id = 223344
+   java.version = 25.0.4
+   datasource.jdbc.telemetry = false
+   notification.enabled.channels = quarkus
+   errors.retry.delay.max.ms = 10000
+   java.vm.specification.name = Java Virtual Machine Specification
+   value.converter.value = json
+   offset.flush.interval.ms = 0
+   native.encoding = UTF-8
+   java.library.path = /usr/java/packages/lib:/usr/lib/x86_64-linux-gnu/jni:/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu:/usr/lib/jni:/lib:/usr/lib
+   java.vendor = Ubuntu
+   stderr.encoding = UTF-8
+   offset.storage.jdbc.connector.class = io.debezium.connector.jdbc.JdbcSinkConnector
+   sun.io.unicode.encoding = UnicodeLittle
+   io.netty.machineId = 1c:ba:c7:00:37:0b:59:6a
+   datasource.dev-ui.allow-sql = false
+   schema.history.internal.jdbc.primary.key.mode = record_key
+   java.class.path = debezium-server-dist-3.7.0.Alpha1-runner.jar:config/lib:lib/agroal-api-3.0.1.jar:lib/agroal-narayana-3.0.1.jar:lib/agroal-pool-3.0.1.jar:lib/amqp-client-5.16.0.jar:lib/animal-sniffer-annotations-1.24.jar:lib/annotations-2.17.241.jar:lib/annotations-4.1.1.4.jar:lib/annotations-api-6.0.53.jar:lib/antlr4-runtime-4.13.2.jar:lib/apache-client-2.17.241.jar:lib/api-common-2.56.1.jar:lib/apiguardian-api-1.1.2.jar:lib/arc-3.33.1.1.jar:lib/auth-2.17.241.jar:lib/auto-value-annotations-1.11.0.jar:lib/awaitility-4.3.0.jar:lib/aws-cbor-protocol-2.17.241.jar:lib/aws-core-2.17.241.jar:lib/aws-json-protocol-2.17.241.jar:lib/aws-query-protocol-2.13.13.jar:lib/azure-core-1.53.0.jar:lib/azure-core-amqp-2.9.10.jar:lib/azure-json-1.3.0.jar:lib/azure-messaging-eventhubs-5.19.1.jar:lib/azure-xml-1.1.0.jar:lib/bcpkix-jdk18on-1.84.jar:lib/bcprov-ext-jdk15on-1.70.jar:lib/bcprov-jdk18on-1.84.jar:lib/bcprov-lts8on-2.73.7.jar:lib/bcutil-jdk18on-1.84.jar:lib/bouncy-castle-bc-4.2.1-pkg.jar:lib/brotli4j-1.16.0.jar:lib/bson-5.6.4.jar:lib/bson-record-codec-5.6.2.jar:lib/byte-buddy-1.17.8.jar:lib/cache-api-1.1.0.jar:lib/caffeine-3.2.3.jar:lib/checker-compat-qual-2.5.3.jar:lib/checker-qual-3.53.1.jar:lib/classgraph-4.8.179.jar:lib/classmate-1.7.1.jar:lib/client-1.14.0.jar:lib/commons-beanutils-1.9.4.jar:lib/commons-codec-1.21.0.jar:lib/commons-collections-3.2.2.jar:lib/commons-collections4-4.3.jar:lib/commons-digester-2.1.jar:lib/commons-io-2.21.0.jar:lib/commons-lang3-3.20.0.jar:lib/commons-logging-1.2.jar:lib/commons-logging-jboss-logging-2.0.0.Final.jar:lib/commons-pool2-2.12.1.jar:lib/commons-text-1.15.0.jar:lib/commons-validator-1.7.jar:lib/concurrentlinkedhashmap-lru-1.4.2.jar:lib/connect-api-4.3.0.jar:lib/connect-json-4.3.0.jar:lib/connect-runtime-4.3.0.jar:lib/connect-transforms-4.3.0.jar:lib/conscrypt-openjdk-uber-2.5.2.jar:lib/crac-1.5.0.jar:lib/debezium-api-3.7.0.Alpha1.jar:lib/debezium-config-3.7.0.Alpha1.jar:lib/debezium-connector-binlog-3.7.0.Alpha1.jar:lib/debezium-connector-cockroachdb-3.7.0.Alpha1.jar:lib/debezium-connector-common-3.7.0.Alpha1.jar:lib/debezium-connector-db2-3.7.0.Alpha1.jar:lib/debezium-connector-ibmi-3.7.0.Alpha1.jar:lib/debezium-connector-informix-3.7.0.Alpha1.jar:lib/debezium-connector-jdbc-3.7.0.Alpha1.jar:lib/debezium-connector-mariadb-3.7.0.Alpha1.jar:lib/debezium-connector-mongodb-3.7.0.Alpha1.jar:lib/debezium-connector-mysql-3.7.0.Alpha1.jar:lib/debezium-connector-oracle-3.7.0.Alpha1.jar:lib/debezium-connector-postgres-3.7.0.Alpha1.jar:lib/debezium-connector-spanner-3.7.0.Alpha1.jar:lib/debezium-connector-sqlserver-3.7.0.Alpha1.jar:lib/debezium-connector-vitess-3.7.0.Alpha1.jar:lib/debezium-ddl-parser-3.7.0.Alpha1.jar:lib/debezium-embedded-3.7.0.Alpha1.jar:lib/debezium-kafka-adapters-3.7.0.Alpha1.jar:lib/debezium-openlineage-api-3.7.0.Alpha1.jar:lib/debezium-quarkus-agroal-3.7.0.Alpha1.jar:lib/debezium-quarkus-db2-3.7.0.Alpha1.jar:lib/debezium-quarkus-engine-3.7.0.Alpha1.jar:lib/debezium-quarkus-engine-spi-3.7.0.Alpha1.jar:lib/debezium-quarkus-mariadb-3.7.0.Alpha1.jar:lib/debezium-quarkus-mongodb-3.7.0.Alpha1.jar:lib/debezium-quarkus-mysql-3.7.0.Alpha1.jar:lib/debezium-quarkus-oracle-3.7.0.Alpha1.jar:lib/debezium-quarkus-postgres-3.7.0.Alpha1.jar:lib/debezium-quarkus-sqlserver-3.7.0.Alpha1.jar:lib/debezium-server-core-3.7.0.Alpha1.jar:lib/debezium-server-eventhubs-3.7.0.Alpha1.jar:lib/debezium-server-fluss-3.7.0.Alpha1.jar:lib/debezium-server-http-3.7.0.Alpha1.jar:lib/debezium-server-infinispan-3.7.0.Alpha1.jar:lib/debezium-server-instructlab-3.7.0.Alpha1.jar:lib/debezium-server-jdbc-3.7.0.Alpha1.jar:lib/debezium-server-kafka-3.7.0.Alpha1.jar:lib/debezium-server-kinesis-3.7.0.Alpha1.jar:lib/debezium-server-milvus-3.7.0.Alpha1.jar:lib/debezium-server-nats-jetstream-3.7.0.Alpha1.jar:lib/debezium-server-nats-streaming-3.7.0.Alpha1.jar:lib/debezium-server-pravega-3.7.0.Alpha1.jar:lib/debezium-server-pubsub-3.7.0.Alpha1.jar:lib/debezium-server-pulsar-3.7.0.Alpha1.jar:lib/debezium-server-qdrant-3.7.0.Alpha1.jar:lib/debezium-server-rabbitmq-3.7.0.Alpha1.jar:lib/debezium-server-redis-3.7.0.Alpha1.jar:lib/debezium-server-rocketmq-3.7.0.Alpha1.jar:lib/debezium-server-sns-3.7.0.Alpha1.jar:lib/debezium-server-sqs-3.7.0.Alpha1.jar:lib/debezium-sink-3.7.0.Alpha1.jar:lib/debezium-storage-api-3.7.0.Alpha1.jar:lib/debezium-storage-configmap-3.7.0.Alpha1.jar:lib/debezium-storage-file-3.7.0.Alpha1.jar:lib/debezium-storage-jdbc-3.7.0.Alpha1.jar:lib/debezium-storage-kafka-3.7.0.Alpha1.jar:lib/debezium-storage-redis-3.7.0.Alpha1.jar:lib/debezium-util-3.7.0.Alpha1.jar:lib/detector-resources-support-0.33.0.jar:lib/ehcache-3.11.1.jar:lib/error_prone_annotations-2.47.0.jar:lib/eventstream-1.0.1.jar:lib/failureaccess-1.0.1.jar:lib/FastInfoset-1.2.15.jar:lib/fastjson-1.2.83.jar:lib/flogger-0.8.jar:lib/flogger-system-backend-0.8.jar:lib/fluss-client-0.9.0-incubating.jar:lib/gax-2.73.1.jar:lib/gax-grpc-2.73.1.jar:lib/gax-httpjson-2.73.1.jar:lib/google-auth-library-credentials-1.41.0.jar:lib/google-auth-library-oauth2-http-1.41.0.jar:lib/google-cloud-core-2.63.1.jar:lib/google-cloud-core-grpc-2.63.1.jar:lib/google-cloud-monitoring-3.83.0.jar:lib/google-cloud-pubsub-1.145.0.jar:lib/google-cloud-pubsublite-1.15.21.jar:lib/google-cloud-spanner-6.107.0.jar:lib/google-extensions-0.8.jar:lib/google-http-client-1.47.1.jar:lib/google-http-client-gson-1.47.1.jar:lib/grpc-alts-1.79.0.jar:lib/grpc-api-1.79.0.jar:lib/grpc-auth-1.79.0.jar:lib/grpc-context-1.79.0.jar:lib/grpc-core-1.79.0.jar:lib/grpc-gcp-1.9.0.jar:lib/grpc-google-cloud-pubsublite-v1-1.15.21.jar:lib/grpc-google-cloud-spanner-admin-database-v1-6.107.0.jar:lib/grpc-google-cloud-spanner-admin-instance-v1-6.107.0.jar:lib/grpc-google-cloud-spanner-v1-6.107.0.jar:lib/grpc-google-common-protos-2.64.1.jar:lib/grpc-googleapis-1.79.0.jar:lib/grpc-grpclb-1.79.0.jar:lib/grpc-inprocess-1.79.0.jar:lib/grpc-netty-shaded-1.79.0.jar:lib/grpc-opentelemetry-1.79.0.jar:lib/grpc-protobuf-1.79.0.jar:lib/grpc-protobuf-lite-1.79.0.jar:lib/grpc-rls-1.79.0.jar:lib/grpc-services-1.79.0.jar:lib/grpc-stub-1.79.0.jar:lib/grpc-util-1.79.0.jar:lib/grpc-xds-1.79.0.jar:lib/gson-2.13.2.jar:lib/guava-33.5.0-jre.jar:lib/hamcrest-2.2.jar:lib/hibernate-agroal-7.2.6.Final.jar:lib/hibernate-community-dialects-7.2.6.Final.jar:lib/hibernate-core-7.2.6.Final.jar:lib/hibernate-models-1.0.1.jar:lib/http-client-spi-2.17.241.jar:lib/httpclient-4.5.14.jar:lib/httpcore-4.4.16.jar:lib/ibmi-journal-parsing-3.7.0.Alpha1.jar:lib/infinispan-api-16.1.3.jar:lib/infinispan-client-hotrod-16.1.3.jar:lib/infinispan-commons-16.1.3.jar:lib/infinispan-core-16.1.3.jar:lib/infinispan-counter-api-16.1.3.jar:lib/istack-commons-runtime-3.0.7.jar:lib/j2objc-annotations-2.8.jar:lib/jackson-annotations-2.21.jar:lib/jackson-core-2.21.2.jar:lib/jackson-databind-2.21.2.jar:lib/jackson-datatype-jdk8-2.21.2.jar:lib/jackson-datatype-jsr310-2.21.2.jar:lib/jackson-jakarta-rs-base-2.21.2.jar:lib/jackson-jakarta-rs-json-provider-2.21.2.jar:lib/jackson-module-blackbird-2.21.2.jar:lib/jackson-module-jakarta-xmlbind-annotations-2.21.2.jar:lib/jackson-module-parameter-names-2.21.2.jar:lib/jakarta.activation-api-2.1.4.jar:lib/jakarta.annotation-api-3.0.0.jar:lib/jakarta.el-api-6.0.1.jar:lib/jakarta.enterprise.cdi-api-4.1.0.jar:lib/jakarta.enterprise.lang-model-4.1.0.jar:lib/jakarta.inject-api-2.0.1.jar:lib/jakarta.interceptor-api-2.2.0.jar:lib/jakarta.json-api-2.1.3.jar:lib/jakarta.persistence-api-3.2.0.jar:lib/jakarta.resource-api-2.1.0.jar:lib/jakarta.transaction-api-2.0.1.jar:lib/jakarta.ws.rs-api-3.1.0.jar:lib/jakarta.xml.bind-api-4.0.5.jar:lib/java-nats-streaming-2.2.3.jar:lib/javax.activation-api-1.2.0.jar:lib/javax.annotation-api-1.3.2.jar:lib/jaxb-api-2.3.1.jar:lib/jaxb-runtime-2.3.1.jar:lib/jboss-invocation-2.0.0.Final.jar:lib/jboss-logging-3.6.2.Final.jar:lib/jboss-logmanager-3.2.1.Final.jar:lib/jboss-threads-3.9.2.jar:lib/jboss-transaction-spi-8.0.0.Final.jar:lib/jcc-12.1.0.0.jar:lib/jctools-core-4.0.5.jar:lib/jedis-6.0.0.jar:lib/jetty-ee10-servlets-12.0.34.jar:lib/jetty-util-9.4.56.v20240826.jar:lib/jgroups-5.5.2.Final.jar:lib/jna-5.8.0.jar:lib/jnats-2.21.2.jar:lib/joda-time-2.10.1.jar:lib/json-20250107.jar:lib/json-utils-2.17.241.jar:lib/jspecify-1.0.0.jar:lib/jsr305-3.0.2.jar:lib/jt400-21.0.4.jar:lib/jt400-override-ccsid-3.7.0.Alpha1.jar:lib/junit-jupiter-6.0.3.jar:lib/junit-jupiter-api-6.0.3.jar:lib/junit-jupiter-engine-6.0.3.jar:lib/junit-jupiter-params-6.0.3.jar:lib/junit-platform-commons-6.0.3.jar:lib/junit-platform-engine-6.0.3.jar:lib/junit-platform-launcher-6.0.3.jar:lib/kafka-clients-4.3.0.jar:lib/kinesis-2.17.241.jar:lib/kubernetes-client-7.5.2.jar:lib/kubernetes-client-api-7.5.2.jar:lib/kubernetes-httpclient-vertx-7.5.2.jar:lib/kubernetes-model-admissionregistration-7.5.2.jar:lib/kubernetes-model-apiextensions-7.5.2.jar:lib/kubernetes-model-apps-7.5.2.jar:lib/kubernetes-model-autoscaling-7.5.2.jar:lib/kubernetes-model-batch-7.5.2.jar:lib/kubernetes-model-certificates-7.5.2.jar:lib/kubernetes-model-common-7.5.2.jar:lib/kubernetes-model-coordination-7.5.2.jar:lib/kubernetes-model-core-7.5.2.jar:lib/kubernetes-model-discovery-7.5.2.jar:lib/kubernetes-model-events-7.5.2.jar:lib/kubernetes-model-extensions-7.5.2.jar:lib/kubernetes-model-flowcontrol-7.5.2.jar:lib/kubernetes-model-gatewayapi-7.5.2.jar:lib/kubernetes-model-metrics-7.5.2.jar:lib/kubernetes-model-networking-7.5.2.jar:lib/kubernetes-model-node-7.5.2.jar:lib/kubernetes-model-policy-7.5.2.jar:lib/kubernetes-model-rbac-7.5.2.jar:lib/kubernetes-model-resource-7.5.2.jar:lib/kubernetes-model-scheduling-7.5.2.jar:lib/kubernetes-model-storageclass-7.5.2.jar:lib/listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar:lib/lz4-java-1.10.1.jar:lib/lz4-java-1.8.0.jar:lib/mariadb-java-client-3.5.7.jar:lib/maven-artifact-3.9.12.jar:lib/metrics-spi-2.17.241.jar:lib/microprofile-config-api-3.1.jar:lib/microprofile-context-propagation-api-1.3.jar:lib/microprofile-health-api-4.0.1.jar:lib/microprofile-reactive-streams-operators-api-3.0.1.jar:lib/microprofile-reactive-streams-operators-core-3.0.1.jar:lib/milvus-sdk-java-2.5.4.jar:lib/mongodb-crypt-5.6.4.jar:lib/mongodb-driver-core-5.6.2.jar:lib/mongodb-driver-reactivestreams-5.6.4.jar:lib/mongodb-driver-sync-5.6.2.jar:lib/mssql-jdbc-12.4.2.jre8.jar:lib/mutiny-3.1.1.jar:lib/mutiny-reactive-streams-operators-3.1.1.jar:lib/mutiny-smallrye-context-propagation-3.1.1.jar:lib/mutiny-zero-flow-adapters-1.1.1.jar:lib/mysql-binlog-connector-java-0.41.0.jar:lib/mysql-connector-j-26.7.0.jar:lib/mysql-connector-j-9.6.0.jar:lib/narayana-jta-7.3.3.Final.jar:lib/narayana-jts-integration-7.3.3.Final.jar:lib/native-linux-x86_64-1.16.0.jar:lib/netty-all-4.1.132.Final.jar:lib/netty-buffer-4.1.132.Final.jar:lib/netty-codec-4.1.132.Final.jar:lib/netty-codec-dns-4.1.132.Final.jar:lib/netty-codec-haproxy-4.1.132.Final.jar:lib/netty-codec-http-4.1.132.Final.jar:lib/netty-codec-http2-4.1.132.Final.jar:lib/netty-codec-memcache-4.1.132.Final.jar:lib/netty-codec-mqtt-4.1.132.Final.jar:lib/netty-codec-redis-4.1.132.Final.jar:lib/netty-codec-smtp-4.1.132.Final.jar:lib/netty-codec-socks-4.1.132.Final.jar:lib/netty-codec-stomp-4.1.132.Final.jar:lib/netty-codec-xml-4.1.132.Final.jar:lib/netty-common-4.1.132.Final.jar:lib/netty-handler-4.1.132.Final.jar:lib/netty-handler-proxy-4.1.132.Final.jar:lib/netty-handler-ssl-ocsp-4.1.132.Final.jar:lib/netty-nio-client-2.17.241.jar:lib/netty-resolver-4.1.132.Final.jar:lib/netty-resolver-dns-4.1.132.Final.jar:lib/netty-resolver-dns-classes-macos-4.1.132.Final.jar:lib/netty-resolver-dns-native-macos-4.1.132.Final-osx-aarch_64.jar:lib/netty-resolver-dns-native-macos-4.1.132.Final-osx-x86_64.jar:lib/netty-tcnative-boringssl-static-2.0.75.Final-linux-aarch_64.jar:lib/netty-tcnative-boringssl-static-2.0.75.Final-linux-x86_64.jar:lib/netty-tcnative-boringssl-static-2.0.75.Final-osx-aarch_64.jar:lib/netty-tcnative-boringssl-static-2.0.75.Final-osx-x86_64.jar:lib/netty-tcnative-boringssl-static-2.0.75.Final-windows-x86_64.jar:lib/netty-tcnative-boringssl-static-2.0.75.Final.jar:lib/netty-tcnative-classes-2.0.75.Final.jar:lib/netty-transport-4.1.132.Final.jar:lib/netty-transport-classes-epoll-4.1.132.Final.jar:lib/netty-transport-classes-kqueue-4.1.132.Final.jar:lib/netty-transport-native-epoll-4.1.132.Final-linux-aarch_64.jar:lib/netty-transport-native-epoll-4.1.132.Final-linux-riscv64.jar:lib/netty-transport-native-epoll-4.1.132.Final-linux-x86_64.jar:lib/netty-transport-native-epoll-4.1.132.Final.jar:lib/netty-transport-native-kqueue-4.1.132.Final-osx-aarch_64.jar:lib/netty-transport-native-kqueue-4.1.132.Final-osx-x86_64.jar:lib/netty-transport-native-unix-common-4.1.132.Final.jar:lib/netty-transport-rxtx-4.1.132.Final.jar:lib/netty-transport-sctp-4.1.132.Final.jar:lib/netty-transport-udt-4.1.132.Final.jar:lib/ojdbc11-23.26.0.0.0.jar:lib/ojdbc17-23.26.0.0.0.jar:lib/okhttp-4.8.1.jar:lib/okhttp-jvm-5.3.2.jar:lib/okio-2.7.0.jar:lib/opencensus-api-0.31.1.jar:lib/opencensus-contrib-grpc-util-0.31.1.jar:lib/opencensus-contrib-http-util-0.31.1.jar:lib/opentelemetry-api-1.57.0.jar:lib/opentelemetry-api-incubator-1.57.0-alpha.jar:lib/opentelemetry-common-1.57.0.jar:lib/opentelemetry-context-1.57.0.jar:lib/opentelemetry-exporter-common-1.57.0.jar:lib/opentelemetry-exporter-logging-1.57.0.jar:lib/opentelemetry-exporter-logging-otlp-1.57.0.jar:lib/opentelemetry-exporter-otlp-1.57.0.jar:lib/opentelemetry-exporter-otlp-common-1.57.0.jar:lib/opentelemetry-exporter-prometheus-1.57.0-alpha.jar:lib/opentelemetry-exporter-sender-okhttp-1.57.0.jar:lib/opentelemetry-sdk-1.57.0.jar:lib/opentelemetry-sdk-common-1.57.0.jar:lib/opentelemetry-sdk-extension-autoconfigure-spi-1.57.0.jar:lib/opentelemetry-sdk-logs-1.57.0.jar:lib/opentelemetry-sdk-metrics-1.57.0.jar:lib/opentelemetry-sdk-trace-1.57.0.jar:lib/opentest4j-1.3.0.jar:lib/orai18n-23.26.0.0.0.jar:lib/parsson-1.1.7.jar:lib/perfmark-api-0.27.0.jar:lib/postgresql-42.7.11.jar:lib/postgresql-42.7.13.jar:lib/pravega-client-0.13.0.jar:lib/pravega-common-0.13.0.jar:lib/pravega-shared-authplugin-0.13.0.jar:lib/pravega-shared-controller-api-0.13.0.jar:lib/pravega-shared-protocol-0.13.0.jar:lib/pravega-shared-security-0.13.0.jar:lib/profiles-2.17.241.jar:lib/prometheus-metrics-config-1.3.10.jar:lib/prometheus-metrics-exporter-common-1.3.10.jar:lib/prometheus-metrics-exporter-httpserver-1.3.10.jar:lib/prometheus-metrics-exposition-formats-no-protobuf-1.3.10.jar:lib/prometheus-metrics-exposition-textformats-1.3.10.jar:lib/prometheus-metrics-model-1.3.10.jar:lib/proto-google-cloud-monitoring-v3-3.83.0.jar:lib/proto-google-cloud-pubsub-v1-1.127.0.jar:lib/proto-google-cloud-pubsublite-v1-1.15.21.jar:lib/proto-google-cloud-spanner-admin-database-v1-6.107.0.jar:lib/proto-google-cloud-spanner-admin-instance-v1-6.107.0.jar:lib/proto-google-cloud-spanner-v1-6.107.0.jar:lib/proto-google-common-protos-2.65.1.jar:lib/proto-google-iam-v1-1.59.1.jar:lib/protobuf-java-4.33.2.jar:lib/protobuf-java-util-4.33.2.jar:lib/protocol-core-2.17.241.jar:lib/proton-j-0.34.1.jar:lib/protostream-6.0.6.jar:lib/protostream-types-6.0.6.jar:lib/pulsar-client-4.2.1.jar:lib/pulsar-client-admin-api-4.2.1.jar:lib/pulsar-client-api-4.2.1.jar:lib/qpid-proton-j-extensions-1.2.5.jar:lib/quarkus-agroal-3.33.1.1.jar:lib/quarkus-arc-3.33.1.1.jar:lib/quarkus-bootstrap-runner-3.33.1.1.jar:lib/quarkus-classloader-commons-3.33.1.1.jar:lib/quarkus-config-yaml-3.33.1.1.jar:lib/quarkus-core-3.33.1.1.jar:lib/quarkus-credentials-3.33.1.1.jar:lib/quarkus-datasource-3.33.1.1.jar:lib/quarkus-datasource-common-3.33.1.1.jar:lib/quarkus-development-mode-spi-3.33.1.1.jar:lib/quarkus-devservices-3.33.1.1.jar:lib/quarkus-fs-util-1.3.0.jar:lib/quarkus-ide-launcher-3.33.1.1.jar:lib/quarkus-jackson-3.33.1.1.jar:lib/quarkus-jdbc-db2-3.33.1.1.jar:lib/quarkus-jdbc-mariadb-3.33.1.1.jar:lib/quarkus-jdbc-mssql-3.33.1.1.jar:lib/quarkus-jdbc-mysql-3.33.1.1.jar:lib/quarkus-jdbc-oracle-3.33.1.1.jar:lib/quarkus-jdbc-postgresql-3.33.1.1.jar:lib/quarkus-jsonp-3.33.1.1.jar:lib/quarkus-kubernetes-client-3.33.1.1.jar:lib/quarkus-kubernetes-client-internal-3.33.1.1.jar:lib/quarkus-kubernetes-config-3.33.1.1.jar:lib/quarkus-logging-json-3.33.1.1.jar:lib/quarkus-mongodb-client-3.33.1.1.jar:lib/quarkus-mutiny-3.33.1.1.jar:lib/quarkus-mutiny-reactive-streams-operators-3.33.1.1.jar:lib/quarkus-narayana-jta-3.33.1.1.jar:lib/quarkus-netty-3.33.1.1.jar:lib/quarkus-rest-3.33.1.1.jar:lib/quarkus-rest-common-3.33.1.1.jar:lib/quarkus-rest-jackson-3.33.1.1.jar:lib/quarkus-rest-jackson-common-3.33.1.1.jar:lib/quarkus-security-2.3.2.jar:lib/quarkus-security-runtime-spi-3.33.1.1.jar:lib/quarkus-smallrye-context-propagation-3.33.1.1.jar:lib/quarkus-smallrye-health-3.33.1.1.jar:lib/quarkus-tls-registry-3.33.1.1.jar:lib/quarkus-tls-registry-spi-3.33.1.1.jar:lib/quarkus-transaction-annotations-3.33.1.1.jar:lib/quarkus-value-registry-3.33.1.1.jar:lib/quarkus-vertx-3.33.1.1.jar:lib/quarkus-vertx-http-3.33.1.1.jar:lib/quarkus-vertx-latebound-mdc-provider-3.33.1.1.jar:lib/quarkus-vertx-utils-3.33.1.1.jar:lib/quarkus-virtual-threads-3.33.1.1.jar:lib/re2j-1.8.jar:lib/reactive-streams-1.0.4.jar:lib/reactor-core-3.4.38.jar:lib/redis-authx-core-0.1.1-beta2.jar:lib/regions-2.17.241.jar:lib/resteasy-reactive-3.33.1.1.jar:lib/resteasy-reactive-common-3.33.1.1.jar:lib/resteasy-reactive-common-types-3.33.1.1.jar:lib/resteasy-reactive-jackson-3.33.1.1.jar:lib/resteasy-reactive-vertx-3.33.1.1.jar:lib/rocketmq-acl-5.2.0.jar:lib/rocketmq-client-5.2.0.jar:lib/rocketmq-common-5.2.0.jar:lib/rocketmq-logback-classic-1.0.1.jar:lib/rocketmq-proto-2.0.3.jar:lib/rocketmq-remoting-5.2.0.jar:lib/rocketmq-rocksdb-1.0.2.jar:lib/rocketmq-slf4j-api-1.0.1.jar:lib/rocketmq-srvutil-5.2.0.jar:lib/rocketmq-tools-5.2.0.jar:lib/rxjava-3.1.12.jar:lib/sdk-core-2.17.241.jar:lib/service-1.16.0.jar:lib/singlestore-jdbc-client-1.2.11.jar:lib/sketches-java-0.8.2.jar:lib/slf4j-api-2.0.17.jar:lib/slf4j-jboss-logmanager-2.0.2.Final.jar:lib/smallrye-common-annotation-2.16.0.jar:lib/smallrye-common-classloader-2.16.0.jar:lib/smallrye-common-constraint-2.16.0.jar:lib/smallrye-common-cpu-2.16.0.jar:lib/smallrye-common-expression-2.16.0.jar:lib/smallrye-common-function-2.16.0.jar:lib/smallrye-common-io-2.16.0.jar:lib/smallrye-common-net-2.16.0.jar:lib/smallrye-common-os-2.16.0.jar:lib/smallrye-common-ref-2.16.0.jar:lib/smallrye-common-vertx-context-2.16.0.jar:lib/smallrye-config-3.16.0.jar:lib/smallrye-config-common-3.16.0.jar:lib/smallrye-config-core-3.16.0.jar:lib/smallrye-config-source-yaml-3.16.0.jar:lib/smallrye-context-propagation-2.3.0.jar:lib/smallrye-context-propagation-api-2.3.0.jar:lib/smallrye-context-propagation-jta-2.3.0.jar:lib/smallrye-context-propagation-storage-2.3.0.jar:lib/smallrye-fault-tolerance-vertx-6.10.0.jar:lib/smallrye-health-4.3.0.jar:lib/smallrye-health-api-4.3.0.jar:lib/smallrye-health-provided-checks-4.3.0.jar:lib/smallrye-mutiny-vertx-auth-common-3.21.6.jar:lib/smallrye-mutiny-vertx-bridge-common-3.21.6.jar:lib/smallrye-mutiny-vertx-core-3.21.6.jar:lib/smallrye-mutiny-vertx-runtime-3.21.6.jar:lib/smallrye-mutiny-vertx-uri-template-3.21.6.jar:lib/smallrye-mutiny-vertx-web-3.21.6.jar:lib/smallrye-mutiny-vertx-web-common-3.21.6.jar:lib/smallrye-private-key-pem-parser-0.9.2.jar:lib/smallrye-reactive-converter-api-3.0.3.jar:lib/smallrye-reactive-converter-mutiny-3.0.3.jar:lib/snakeyaml-2.5.jar:lib/snakeyaml-engine-2.10.jar:lib/snappy-java-1.1.10.8.jar:lib/sns-2.17.241.jar:lib/sqs-2.13.13.jar:lib/starrocks-connector-j-1.1.1.jar:lib/stax-ex-1.8.jar:lib/stream-client-1.3.0.jar:lib/swagger-annotations-2.2.39.jar:lib/third-party-jackson-core-2.17.241.jar:lib/third-party-jackson-dataformat-cbor-2.17.241.jar:lib/threetenbp-1.7.0.jar:lib/txw2-2.3.1.jar:lib/utils-2.17.241.jar:lib/validation-api-1.1.0.Final.jar:lib/vertx-auth-common-4.5.26.jar:lib/vertx-bridge-common-4.5.26.jar:lib/vertx-codegen-4.5.26.jar:lib/vertx-core-4.5.26.jar:lib/vertx-mutiny-generator-3.21.6.jar:lib/vertx-uri-template-4.5.26.jar:lib/vertx-web-4.5.26.jar:lib/vertx-web-client-4.5.26.jar:lib/vertx-web-common-4.5.26.jar:lib/vitess-client-23.0.0-rc1.jar:lib/vitess-grpc-client-23.0.0-rc1.jar:lib/wildfly-common-2.0.1.jar:lib/wildfly-elytron-asn1-2.8.3.Final.jar:lib/wildfly-elytron-auth-2.8.3.Final.jar:lib/wildfly-elytron-auth-server-2.8.3.Final.jar:lib/wildfly-elytron-base-2.8.3.Final.jar:lib/wildfly-elytron-credential-2.8.3.Final.jar:lib/wildfly-elytron-http-2.8.3.Final.jar:lib/wildfly-elytron-keystore-2.8.3.Final.jar:lib/wildfly-elytron-mechanism-2.8.3.Final.jar:lib/wildfly-elytron-mechanism-digest-2.8.3.Final.jar:lib/wildfly-elytron-mechanism-gssapi-2.8.3.Final.jar:lib/wildfly-elytron-mechanism-oauth2-2.8.3.Final.jar:lib/wildfly-elytron-mechanism-scram-2.8.3.Final.jar:lib/wildfly-elytron-password-impl-2.8.3.Final.jar:lib/wildfly-elytron-permission-2.8.3.Final.jar:lib/wildfly-elytron-provider-util-2.8.3.Final.jar:lib/wildfly-elytron-sasl-2.8.3.Final.jar:lib/wildfly-elytron-sasl-digest-2.8.3.Final.jar:lib/wildfly-elytron-sasl-external-2.8.3.Final.jar:lib/wildfly-elytron-sasl-gs2-2.8.3.Final.jar:lib/wildfly-elytron-sasl-gssapi-2.8.3.Final.jar:lib/wildfly-elytron-sasl-oauth2-2.8.3.Final.jar:lib/wildfly-elytron-sasl-plain-2.8.3.Final.jar:lib/wildfly-elytron-sasl-scram-2.8.3.Final.jar:lib/wildfly-elytron-security-manager-action-2.8.3.Final.jar:lib/wildfly-elytron-ssl-2.8.3.Final.jar:lib/wildfly-elytron-util-2.8.3.Final.jar:lib/wildfly-elytron-x500-2.8.3.Final.jar:lib/wildfly-elytron-x500-cert-2.8.3.Final.jar:lib/wildfly-elytron-x500-cert-util-2.8.3.Final.jar:lib/wkb-1.0.2.jar:lib/xdb-23.26.0.0.0.jar:lib/xmlparserv2-23.26.0.0.0.jar:lib/zjsonpatch-7.5.2.jar:lib/zstd-jni-1.5.6-10.jar
+   bootstrap.servers = localhost:9092
+   java.vm.vendor = Ubuntu
+   user.timezone = Europe/Dublin
+   org.jboss.logging.provider = jboss
+   schema.history.internal.jdbc.connection.url = jdbc:postgresql://localhost:5432/inventory
+   logging.initial-configurator.min-level = 400
+   java.vm.specification.version = 25
+   os.name = Linux
+   datasource.devservices.reuse = true
+   key.converter = org.apache.kafka.connect.json.JsonConverter
+   sun.java.launcher = SUN_STANDARD
+   offset.storage.jdbc.connection.username = pguser
+   database.user = debezium
+   sun.cpu.endian = little
+   user.home = /home/seanconnaughton
+   user.language = en
+   io.netty.allocator.maxOrder = 3
+   datasource.jdbc = true
+   errors.max.retries = -1
+   database.password = ********
+   name = jdbc
+   io.netty.allocator.disableCacheFinalizersForFastThreadLocalThreads = true
+   schema.history.internal.jdbc.connection.password = ********
+   offset.storage.jdbc.primary.key.mode = record_key
+   offset.storage.jdbc.insert.mode = upsert
+   com.mysql.cj.disableAbandonedConnectionCleanup = true
+   stdout.encoding = UTF-8
+   path.separator = :
+   os.version = 6.18.33.2-microsoft-standard-WSL2
+   java.runtime.name = OpenJDK Runtime Environment
+   topic.prefix = tutorial
+   java.vm.name = OpenJDK 64-Bit Server VM
+   header.converter.value = json
+   java.vendor.url.bug = https://bugs.launchpad.net/ubuntu/+source/openjdk-25
+   schema.history.internal.jdbc.connection.username = pguser
+   offset.storage.jdbc.connection.url = jdbc:postgresql://localhost:5432/inventory
+   java.util.concurrent.ForkJoinPool.common.threadFactory = io.quarkus.bootstrap.forkjoin.QuarkusForkJoinWorkerThreadFactory
+   user.dir = /mnt/c/Users/SeanConnaughton/Documents/Debezium Server Tutorial/debezium-server-dist-3.7.0.Alpha1/debezium-server
+   datasource.dev-ui.enabled = true
+   key.converter.value = json
+   os.arch = amd64
+   offset.storage.jdbc.batch.size = 1
+   offset.flush.timeout.ms = 5000
+   vertx.disableDnsResolver = true
+   database.port = 3306
+   java.util.logging.manager = org.jboss.logmanager.LogManager
+   schema.history.internal = io.debezium.storage.file.history.FileSchemaHistory
+   record.processing.with.serial.consumer = false
+   jdk.console = java.base
+   java.vm.info = mixed mode, sharing
+   vertx.disableTCCL = true
+   java.vm.version = 25.0.4+7-1-26.04-Ubuntu
+   stdin.encoding = UTF-8
+   vertx.logger-delegate-factory-class-name = io.quarkus.vertx.core.runtime.VertxLogDelegateFactory
+   database.hostname = localhost
+   java.class.version = 69.0
+
+# 5 - The server reads the MySQL database binlog and starts the snapshot operation
+
+2026-09-08 16:13:37,271 INFO  [io.debezium.config.CommonConnectorConfig] (pool-6-thread-1) Loading the custom topic naming strategy plugin: io.debezium.schema.DefaultTopicNamingStrategy
+2026-09-08 16:13:37,316 INFO  [io.debezium.connector.mysql.jdbc.MySqlConnection] (pool-6-thread-1) Using 'SHOW BINARY LOG STATUS' to get binary log status
+2026-09-08 16:13:37,391 INFO  [io.debezium.connector.common.BaseSourceTask] (pool-6-thread-1) No previous offsets found
+2026-09-08 16:13:37,625 INFO  [io.debezium.connector.mysql.MySqlDatabaseSchema] (pool-6-thread-1) Using MySql DdlParserType DEFAULT
+2026-09-08 16:13:37,757 INFO  [io.debezium.connector.mysql.jdbc.MySqlConnection] (pool-6-thread-1) Using 'SHOW BINARY LOG STATUS' to get binary log status
+2026-09-08 16:13:37,814 INFO  [io.debezium.connector.mysql.MySqlConnectorTask] (pool-6-thread-1) Guardrail validation skipped
+2026-09-08 16:13:37,816 INFO  [io.debezium.connector.mysql.MySqlConnectorTask] (pool-6-thread-1) Closing connection before starting schema recovery
+2026-09-08 16:13:37,817 INFO  [io.debezium.util.Threads] (pool-6-thread-1) Requested thread factory for component JdbcConnection, id = JdbcConnection named = jdbc-connection-close
+2026-09-08 16:13:37,818 INFO  [io.debezium.util.Threads] (pool-6-thread-1) Creating thread debezium-jdbcconnection-JdbcConnection-jdbc-connection-close
+2026-09-08 16:13:37,820 INFO  [io.debezium.jdbc.JdbcConnection] (debezium-jdbcconnection-JdbcConnection-jdbc-connection-close) Connection gracefully closed
+2026-09-08 16:13:37,824 INFO  [io.debezium.connector.common.BaseSourceTask] (pool-6-thread-1) Connector started with no previous offset for partition 'BinlogPartition{serverName='tutorial'} io.debezium.connector.mysql.MySqlPartition@b852b7d'
+2026-09-08 16:13:37,826 INFO  [io.debezium.connector.common.BaseSourceTask] (pool-6-thread-1) Database schema history storage was found. Connector will use the pre-existing storage. Checking settings for the same.
+2026-09-08 16:13:37,827 INFO  [io.debezium.connector.mysql.MySqlConnectorTask] (pool-6-thread-1) Reconnecting after validating schema recovery
+2026-09-08 16:13:37,846 INFO  [io.debezium.connector.mysql.MySqlConnectorTask] (pool-6-thread-1) No previous offset found
+2026-09-08 16:13:37,857 INFO  [io.debezium.connector.base.QueueProviderServiceProvider] (pool-6-thread-1) Using QueueProvider io.debezium.connector.base.DefaultQueueProvider
+2026-09-08 16:13:37,887 INFO  [io.debezium.util.Threads] (pool-6-thread-1) Requested thread factory for component MySqlConnector, id = tutorial named = SignalProcessor
+2026-09-08 16:13:38,105 INFO  [io.debezium.util.Threads] (pool-6-thread-1) Requested thread factory for component MySqlConnector, id = tutorial named = change-event-source-coordinator
+2026-09-08 16:13:38,112 INFO  [io.debezium.util.Threads] (pool-6-thread-1) Requested thread factory for component MySqlConnector, id = tutorial named = blocking-snapshot
+2026-09-08 16:13:38,124 INFO  [io.debezium.util.Threads] (pool-6-thread-1) Creating thread debezium-mysqlconnector-tutorial-change-event-source-coordinator
+2026-09-08 16:13:38,127 INFO  [io.debezium.embedded.async.AsyncEmbeddedEngine] (debezium-connector-quarkus-extension-default-0) All tasks have started successfully.
+2026-09-08 16:13:38,128 INFO  [io.debezium.embedded.async.AsyncEmbeddedEngine] (debezium-connector-quarkus-extension-default-0) Engine state has changed from 'STARTING_TASKS' to 'POLLING_TASKS'
+2026-09-08 16:13:38,128 INFO  [io.debezium.pipeline.ChangeEventSourceCoordinator] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Metrics registered
+2026-09-08 16:13:38,131 INFO  [io.debezium.pipeline.ChangeEventSourceCoordinator] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Context created
+2026-09-08 16:13:38,133 INFO  [io.debezium.embedded.async.AsyncEmbeddedEngine] (debezium-connector-quarkus-extension-default-0) Using io.debezium.embedded.async.ParallelSmtAndConvertBatchProcessor processor
+2026-09-08 16:13:38,151 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) According to the connector configuration both schema and data will be snapshot.
+2026-09-08 16:13:38,169 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Snapshot step 1 - Preparing
+2026-09-08 16:13:38,172 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Snapshot step 2 - Determining captured tables
+2026-09-08 16:13:38,173 INFO  [io.debezium.connector.binlog.jdbc.BinlogConnectorConnection] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Read list of available databases
+2026-09-08 16:13:38,177 INFO  [io.debezium.connector.binlog.jdbc.BinlogConnectorConnection] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) 	 list of available databases is: [information_schema, inventory, mysql, performance_schema, sys]
+2026-09-08 16:13:38,179 INFO  [io.debezium.connector.binlog.jdbc.BinlogConnectorConnection] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Read list of available tables in each database
+2026-09-08 16:13:38,197 INFO  [io.debezium.connector.binlog.BinlogSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) 	snapshot continuing with database(s): [performance_schema, mysql, sys, inventory]
+2026-09-08 16:13:38,198 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Adding table inventory.addresses to the list of capture schema tables
+2026-09-08 16:13:38,200 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Adding table inventory.customers to the list of capture schema tables
+2026-09-08 16:13:38,201 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Adding table inventory.orders to the list of capture schema tables
+2026-09-08 16:13:38,202 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Adding table inventory.geom to the list of capture schema tables
+2026-09-08 16:13:38,203 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Adding table inventory.products_on_hand to the list of capture schema tables
+2026-09-08 16:13:38,204 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Adding table inventory.products to the list of capture schema tables
+2026-09-08 16:13:38,208 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Created connection pool with 1 threads
+2026-09-08 16:13:38,209 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Snapshot step 3 - Locking captured tables [inventory.addresses, inventory.customers, inventory.orders, inventory.products, inventory.products_on_hand]
+2026-09-08 16:13:38,215 INFO  [io.debezium.connector.binlog.BinlogSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Flush and obtain global read lock to prevent writes to database
+2026-09-08 16:13:38,220 INFO  [io.debezium.connector.binlog.BinlogSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Starting lock heartbeat
+2026-09-08 16:13:38,221 INFO  [io.debezium.util.Threads] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Requested thread factory for component MySqlSnapshotChangeEventSource, id = tutorial named = lock-heartbeat
+2026-09-08 16:13:38,222 INFO  [io.debezium.util.Threads] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Creating thread debezium-mysqlsnapshotchangeeventsource-tutorial-lock-heartbeat
+2026-09-08 16:13:38,225 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Snapshot step 4 - Determining snapshot offset
+2026-09-08 16:13:38,238 INFO  [io.debezium.connector.mysql.MySqlSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Read binlog position of MySQL primary server
+2026-09-08 16:13:38,244 INFO  [io.debezium.connector.mysql.MySqlSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) 	 using binlog 'mysql-bin.000003' at position '157' and gtid ''
+2026-09-08 16:13:38,248 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Snapshot step 5 - Reading structure of captured tables
+2026-09-08 16:13:38,249 INFO  [io.debezium.connector.binlog.BinlogSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) All eligible tables schema should be captured, capturing: [inventory.addresses, inventory.customers, inventory.geom, inventory.orders, inventory.products, inventory.products_on_hand]
+2026-09-08 16:13:39,878 INFO  [io.debezium.connector.binlog.BinlogSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Reading structure of database 'inventory'
+2026-09-08 16:13:39,983 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Snapshot step 6 - Persisting schema history
+2026-09-08 16:13:40,030 INFO  [io.debezium.relational.history.SchemaHistoryMetrics] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Already applied 1 database changes
+2026-09-08 16:13:40,201 WARN  [io.debezium.connector.jdbc.JdbcChangeEventSink.SchemaChange] (pool-6-thread-1) Ignored schema change event for topic 'tutorial'. Schema change records are not supported by JDBC connector. Adjust `topics` or `topics.regex` to exclude schema change topic.
+2026-09-08 16:13:40,202 WARN  [io.debezium.connector.jdbc.JdbcChangeEventSink.SchemaChange] (pool-6-thread-1) Ignored schema change event for topic 'tutorial'. Schema change records are not supported by JDBC connector. Adjust `topics` or `topics.regex` to exclude schema change topic.
+2026-09-08 16:13:40,203 WARN  [io.debezium.connector.jdbc.JdbcChangeEventSink.SchemaChange] (pool-6-thread-1) Ignored schema change event for topic 'tutorial'. Schema change records are not supported by JDBC connector. Adjust `topics` or `topics.regex` to exclude schema change topic.
+2026-09-08 16:13:40,204 WARN  [io.debezium.connector.jdbc.JdbcChangeEventSink.SchemaChange] (pool-6-thread-1) Ignored schema change event for topic 'tutorial'. Schema change records are not supported by JDBC connector. Adjust `topics` or `topics.regex` to exclude schema change topic.
+2026-09-08 16:13:40,204 WARN  [io.debezium.connector.jdbc.JdbcChangeEventSink.SchemaChange] (pool-6-thread-1) Ignored schema change event for topic 'tutorial'. Schema change records are not supported by JDBC connector. Adjust `topics` or `topics.regex` to exclude schema change topic.
+2026-09-08 16:13:40,205 WARN  [io.debezium.connector.jdbc.JdbcChangeEventSink.SchemaChange] (pool-6-thread-1) Ignored schema change event for topic 'tutorial'. Schema change records are not supported by JDBC connector. Adjust `topics` or `topics.regex` to exclude schema change topic.
+2026-09-08 16:13:40,343 INFO  [io.debezium.connector.binlog.BinlogSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Releasing global read lock to enable MySQL writes
+2026-09-08 16:13:40,346 INFO  [io.debezium.connector.binlog.BinlogSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Writes to MySQL tables prevented for a total of 00:00:02.126
+2026-09-08 16:13:40,348 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Snapshot step 7 - Snapshotting data
+2026-09-08 16:13:40,358 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) For table 'inventory.addresses' using select statement: 'SELECT `id`, `customer_id`, `street`, `city`, `state`, `zip`, `type` FROM `inventory`.`addresses`'
+2026-09-08 16:13:40,374 INFO  [io.debezium.connector.binlog.BinlogSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Estimated row count for table inventory.addresses is OptionalLong[7]
+2026-09-08 16:13:40,376 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) For table 'inventory.customers' using select statement: 'SELECT `id`, `first_name`, `last_name`, `email` FROM `inventory`.`customers`'
+2026-09-08 16:13:40,380 INFO  [io.debezium.connector.binlog.BinlogSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Estimated row count for table inventory.customers is OptionalLong[4]
+2026-09-08 16:13:40,381 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) For table 'inventory.orders' using select statement: 'SELECT `order_number`, `order_date`, `purchaser`, `quantity`, `product_id` FROM `inventory`.`orders`'
+2026-09-08 16:13:40,386 INFO  [io.debezium.connector.binlog.BinlogSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Estimated row count for table inventory.orders is OptionalLong[0]
+2026-09-08 16:13:40,387 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) For table 'inventory.products' using select statement: 'SELECT `id`, `name`, `description`, `weight` FROM `inventory`.`products`'
+2026-09-08 16:13:40,390 INFO  [io.debezium.connector.binlog.BinlogSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Estimated row count for table inventory.products is OptionalLong[9]
+2026-09-08 16:13:40,391 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) For table 'inventory.products_on_hand' using select statement: 'SELECT `product_id`, `quantity` FROM `inventory`.`products_on_hand`'
+2026-09-08 16:13:40,396 INFO  [io.debezium.connector.binlog.BinlogSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Estimated row count for table inventory.products_on_hand is OptionalLong[9]
+2026-09-08 16:13:40,401 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Creating snapshot worker pool with 1 worker thread(s)
+2026-09-08 16:13:40,408 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (pool-8-thread-1) Exporting data from table 'inventory.addresses' (1 of 5 tables)
+2026-09-08 16:13:40,456 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (pool-8-thread-1) 	 Finished exporting 7 records for table 'inventory.addresses' (1 of 5 tables); total duration '00:00:00.048'
+2026-09-08 16:13:40,462 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (pool-8-thread-1) Exporting data from table 'inventory.customers' (2 of 5 tables)
+2026-09-08 16:13:40,469 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (pool-8-thread-1) 	 Finished exporting 4 records for table 'inventory.customers' (2 of 5 tables); total duration '00:00:00.007'
+2026-09-08 16:13:40,472 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (pool-8-thread-1) Exporting data from table 'inventory.orders' (3 of 5 tables)
+2026-09-08 16:13:40,489 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (pool-8-thread-1) 	 Finished exporting 4 records for table 'inventory.orders' (3 of 5 tables); total duration '00:00:00.017'
+2026-09-08 16:13:40,492 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (pool-8-thread-1) Exporting data from table 'inventory.products' (4 of 5 tables)
+2026-09-08 16:13:40,501 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (pool-8-thread-1) 	 Finished exporting 9 records for table 'inventory.products' (4 of 5 tables); total duration '00:00:00.009'
+2026-09-08 16:13:40,504 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (pool-8-thread-1) Exporting data from table 'inventory.products_on_hand' (5 of 5 tables)
+2026-09-08 16:13:40,512 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (pool-8-thread-1) 	 Finished exporting 9 records for table 'inventory.products_on_hand' (5 of 5 tables); total duration '00:00:00.008'
+2026-09-08 16:13:40,518 INFO  [io.debezium.pipeline.source.AbstractSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Snapshot - Final stage
+2026-09-08 16:13:40,519 INFO  [io.debezium.pipeline.source.AbstractSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Snapshot completed
+2026-09-08 16:13:40,527 INFO  [io.debezium.pipeline.ChangeEventSourceCoordinator] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Snapshot ended with SnapshotResult [status=COMPLETED, offset=BinlogOffsetContext{sourceInfoSchema=Schema{io.debezium.connector.mysql.Source:STRUCT}, sourceInfo=BinlogSourceInfo{currentGtid='null', currentBinlogFilename='mysql-bin.000003', currentBinlogPosition=157, currentRowNumber=0, serverId=0, sourceTime=2026-09-08T15:13:40Z, threadId=-1, currentQuery='null', tableIds=[inventory.products_on_hand], databaseName='inventory'}, snapshotCompleted=true, transactionContext=TransactionContext [currentTransactionId=null, perTableEventCount={}, totalEventCount=0], restartGtidSet='null', currentGtidSet='null', restartBinlogFilename='mysql-bin.000003', restartBinlogPosition=157, restartRowsToSkip=0, restartEventsToSkip=0, currentEventLengthInBytes=0, inTransaction=false, transactionId='null', incrementalSnapshotContext=IncrementalSnapshotContext [windowOpened=false, chunkEndPosition=null, dataCollectionsToSnapshot=[], lastEventKeySent=null, maximumKey=null]}]
+
+# 6 - The server transitions from the snapshot operation to continuously monitoring the database for changes
+
+2026-09-08 16:13:40,539 INFO  [io.debezium.util.Threads] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Requested thread factory for component MySqlConnector, id = tutorial named = binlog-client
+2026-09-08 16:13:40,546 INFO  [io.debezium.connector.binlog.BinlogStreamingChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Enable ssl PREFERRED mode for connector tutorial
+2026-09-08 16:13:40,602 INFO  [io.debezium.pipeline.signal.SignalProcessor] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) SignalProcessor started. Scheduling it every 5000ms
+2026-09-08 16:13:40,603 INFO  [io.debezium.util.Threads] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Creating thread debezium-mysqlconnector-tutorial-SignalProcessor
+2026-09-08 16:13:40,605 INFO  [io.debezium.pipeline.ChangeEventSourceCoordinator] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Starting streaming
+2026-09-08 16:13:40,611 INFO  [io.debezium.connector.binlog.BinlogStreamingChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Skip 0 events on streaming start
+2026-09-08 16:13:40,612 INFO  [io.debezium.connector.binlog.BinlogStreamingChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Skip 0 rows on streaming start
+2026-09-08 16:13:40,615 INFO  [io.debezium.util.Threads] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Creating thread debezium-mysqlconnector-tutorial-binlog-client
+2026-09-08 16:13:40,630 INFO  [io.debezium.util.Threads] (blc-localhost:3306) Creating thread debezium-mysqlconnector-tutorial-binlog-client
+2026-09-08 16:13:40,637 INFO  [com.github.shyiko.mysql.binlog.BinaryLogClient] (blc-localhost:3306) Database version: 8.2.0 (major=8, minor=2, mariadb=false)
+2026-09-08 16:13:40,648 INFO  [com.github.shyiko.mysql.binlog.BinaryLogClient] (blc-localhost:3306) SSL enabled
+2026-09-08 16:13:40,704 INFO  [com.github.shyiko.mysql.binlog.BinaryLogClient] (blc-localhost:3306) Requesting streaming from position filename: mysql-bin.000003, position: 157
+2026-09-08 16:13:40,708 INFO  [com.github.shyiko.mysql.binlog.BinaryLogClient] (blc-localhost:3306) Connected to localhost:3306 at mysql-bin.000003/157 (sid:223344, cid:13)
+2026-09-08 16:13:40,709 INFO  [io.debezium.connector.binlog.BinlogStreamingChangeEventSource] (blc-localhost:3306) Connected to binlog at localhost:3306, starting at BinlogOffsetContext{sourceInfoSchema=Schema{io.debezium.connector.mysql.Source:STRUCT}, sourceInfo=BinlogSourceInfo{currentGtid='null', currentBinlogFilename='mysql-bin.000003', currentBinlogPosition=157, currentRowNumber=0, serverId=0, sourceTime=2026-09-08T15:13:40Z, threadId=-1, currentQuery='null', tableIds=[inventory.products_on_hand], databaseName='inventory'}, snapshotCompleted=true, transactionContext=TransactionContext [currentTransactionId=null, perTableEventCount={}, totalEventCount=0], restartGtidSet='null', currentGtidSet='null', restartBinlogFilename='mysql-bin.000003', restartBinlogPosition=157, restartRowsToSkip=0, restartEventsToSkip=0, currentEventLengthInBytes=0, inTransaction=false, transactionId='null', incrementalSnapshotContext=IncrementalSnapshotContext [windowOpened=false, chunkEndPosition=null, dataCollectionsToSnapshot=[], lastEventKeySent=null, maximumKey=null]}
+2026-09-08 16:13:40,710 INFO  [io.debezium.connector.binlog.BinlogStreamingChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Waiting for keepalive thread to start
+2026-09-08 16:13:40,713 INFO  [io.debezium.util.Threads] (blc-localhost:3306) Creating thread debezium-mysqlconnector-tutorial-binlog-client
+2026-09-08 16:13:40,774 WARN  [io.debezium.connector.jdbc.JdbcChangeEventSink.SchemaChange] (pool-6-thread-1) Ignored schema change event for topic 'tutorial'. Schema change records are not supported by JDBC connector. Adjust `topics` or `topics.regex` to exclude schema change topic.
+2026-09-08 16:13:40,775 WARN  [io.debezium.connector.jdbc.JdbcChangeEventSink.SchemaChange] (pool-6-thread-1) Ignored schema change event for topic 'tutorial'. Schema change records are not supported by JDBC connector. Adjust `topics` or `topics.regex` to exclude schema change topic.
+2026-09-08 16:13:40,776 WARN  [io.debezium.connector.jdbc.JdbcChangeEventSink.SchemaChange] (pool-6-thread-1) Ignored schema change event for topic 'tutorial'. Schema change records are not supported by JDBC connector. Adjust `topics` or `topics.regex` to exclude schema change topic.
+2026-09-08 16:13:40,777 WARN  [io.debezium.connector.jdbc.JdbcChangeEventSink.SchemaChange] (pool-6-thread-1) Ignored schema change event for topic 'tutorial'. Schema change records are not supported by JDBC connector. Adjust `topics` or `topics.regex` to exclude schema change topic.
+2026-09-08 16:13:40,778 WARN  [io.debezium.connector.jdbc.JdbcChangeEventSink.SchemaChange] (pool-6-thread-1) Ignored schema change event for topic 'tutorial'. Schema change records are not supported by JDBC connector. Adjust `topics` or `topics.regex` to exclude schema change topic.
+2026-09-08 16:13:40,779 WARN  [io.debezium.connector.jdbc.JdbcChangeEventSink.SchemaChange] (pool-6-thread-1) Ignored schema change event for topic 'tutorial'. Schema change records are not supported by JDBC connector. Adjust `topics` or `topics.regex` to exclude schema change topic.
+2026-09-08 16:13:40,780 WARN  [io.debezium.connector.jdbc.JdbcChangeEventSink.SchemaChange] (pool-6-thread-1) Ignored schema change event for topic 'tutorial'. Schema change records are not supported by JDBC connector. Adjust `topics` or `topics.regex` to exclude schema change topic.
+2026-09-08 16:13:40,781 WARN  [io.debezium.connector.jdbc.JdbcChangeEventSink.SchemaChange] (pool-6-thread-1) Ignored schema change event for topic 'tutorial'. Schema change records are not supported by JDBC connector. Adjust `topics` or `topics.regex` to exclude schema change topic.
+2026-09-08 16:13:40,782 WARN  [io.debezium.connector.jdbc.JdbcChangeEventSink.SchemaChange] (pool-6-thread-1) Ignored schema change event for topic 'tutorial'. Schema change records are not supported by JDBC connector. Adjust `topics` or `topics.regex` to exclude schema change topic.
+2026-09-08 16:13:40,783 WARN  [io.debezium.connector.jdbc.JdbcChangeEventSink.SchemaChange] (pool-6-thread-1) Ignored schema change event for topic 'tutorial'. Schema change records are not supported by JDBC connector. Adjust `topics` or `topics.regex` to exclude schema change topic.
+2026-09-08 16:13:40,813 INFO  [io.debezium.connector.binlog.BinlogStreamingChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Keepalive thread is running
+2026-09-08 16:13:40,874 WARN  [io.debezium.connector.jdbc.dialect.postgres.EnumType] (pool-6-thread-1) Cannot create enum types automatically, please create the table by hand. Using STRING fallback.
+...
+----
+
+.Details
+
+. The first few lines show the {prodname} Server engine being created and started:
+
+[source,shell,options="nowrap"]
+----
+...
+2026-09-08 16:13:28,833 INFO  [io.quarkus.debezium.agroal.configuration.AgroalCompatibilityDatasourceRecorder] (main) found Agroal compatible connectors: io.debezium.connector.db2.Db2Connector,io.debezium.connector.oracle.OracleConnector,io.debezium.connector.sqlserver.SqlServerConnector,io.debezium.connector.mongodb.MongoDbConnector,io.debezium.connector.postgresql.PostgresConnector,io.debezium.connector.mysql.MySqlConnector,io.debezium.connector.mariadb.MariaDbConnector
+2026-09-08 16:13:28,834 INFO  [io.quarkus.debezium.agroal.configuration.AgroalCompatibilityDatasourceRecorder] (main) Agroal default engine: io.debezium.connector.mysql.MySqlConnector
+2026-09-08 16:13:28,957 WARN  [io.quarkus.debezium.agroal.engine.AgroalParser] (main) No datasource configuration found for engine default
+2026-09-08 16:13:28,979 WARN  [io.quarkus.debezium.agroal.engine.AgroalParser] (main) No datasource configuration found for engine default
+2026-09-08 16:13:28,981 WARN  [io.quarkus.debezium.agroal.engine.AgroalParser] (main) No datasource configuration found for engine default
+2026-09-08 16:13:28,983 WARN  [io.quarkus.debezium.agroal.engine.AgroalParser] (main) No datasource configuration found for engine default
+2026-09-08 16:13:29,036 INFO  [io.quarkus.debezium.engine.RunnableDebeziumConnectorRegistry] (main) start(default) called; known engines=[default], currently running=[]
+2026-09-08 16:13:29,047 INFO  [io.debezium.util.Threads] (main) Requested thread factory for component Connector, id = quarkus-extension named = default
+2026-09-08 16:13:29,051 INFO  [io.debezium.util.Threads] (main) Creating thread debezium-connector-quarkus-extension-default-0
+2026-09-08 16:13:29,052 INFO  [io.quarkus.debezium.engine.DebeziumRunner] (main) Starting Debezium Engine debezium-connector-quarkus-extension-default-0
+2026-09-08 16:13:29,053 INFO  [io.quarkus.debezium.engine.RunnableDebeziumConnectorRegistry] (main) start(default) success; runner thread launched
+2026-09-08 16:13:29,056 INFO  [io.quarkus.debezium.engine.DebeziumWithCustomSerialization] (debezium-connector-quarkus-extension-default-0) Creating Debezium Engine instance EngineManifest[id=default] for Connector Connector[name=io.debezium.connector.mysql.MySqlConnector] and serialization - header: io.debezium.engine.format.Json, key: io.debezium.engine.format.Json, value: io.debezium.engine.format.Json
+2026-09-08 16:13:29,115 INFO  [io.debezium.server.BaseChangeConsumer] (debezium-connector-quarkus-extension-default-0) Using 'io.debezium.server.BaseChangeConsumer$$Lambda/0x00000000263ba8f8@57a3355' stream name mapper
+...
+----
+
+. Further down, you should see output like the following from the connector. 
+Note the value of `connection.url`, it should be the same as the one you configured in `application.properties` earlier.
+
+[source,shell,options="nowrap"]
+----
+...
+2026-09-08 16:13:29,116 INFO  [io.debezium.server.jdbc.JdbcChangeConsumer] (debezium-connector-quarkus-extension-default-0) Initializing JDBC sink
+2026-09-08 16:13:29,167 INFO  [io.debezium.connector.jdbc.JdbcSinkConnectorTask] (debezium-connector-quarkus-extension-default-0) Starting JdbcSinkConnectorConfig with configuration:
+2026-09-08 16:13:29,170 INFO  [io.debezium.connector.jdbc.JdbcSinkConnectorTask] (debezium-connector-quarkus-extension-default-0)    connector.class = io.debezium.connector.jdbc.JdbcSinkConnector
+2026-09-08 16:13:29,171 INFO  [io.debezium.connector.jdbc.JdbcSinkConnectorTask] (debezium-connector-quarkus-extension-default-0)    delete.enabled = true
+2026-09-08 16:13:29,171 INFO  [io.debezium.connector.jdbc.JdbcSinkConnectorTask] (debezium-connector-quarkus-extension-default-0)    primary.key.mode = record_key
+2026-09-08 16:13:29,172 INFO  [io.debezium.connector.jdbc.JdbcSinkConnectorTask] (debezium-connector-quarkus-extension-default-0)    schema.evolution = basic
+2026-09-08 16:13:29,172 INFO  [io.debezium.connector.jdbc.JdbcSinkConnectorTask] (debezium-connector-quarkus-extension-default-0)    connection.password = ********
+2026-09-08 16:13:29,173 INFO  [io.debezium.connector.jdbc.JdbcSinkConnectorTask] (debezium-connector-quarkus-extension-default-0)    batch.size = 1
+2026-09-08 16:13:29,173 INFO  [io.debezium.connector.jdbc.JdbcSinkConnectorTask] (debezium-connector-quarkus-extension-default-0)    connection.username = pguser
+2026-09-08 16:13:29,174 INFO  [io.debezium.connector.jdbc.JdbcSinkConnectorTask] (debezium-connector-quarkus-extension-default-0)    connection.url = jdbc:postgresql://localhost:5432/inventory
+2026-09-08 16:13:29,175 INFO  [io.debezium.connector.jdbc.JdbcSinkConnectorTask] (debezium-connector-quarkus-extension-default-0)    insert.mode = upsert
+2026-09-08 16:13:29,635 INFO  [org.hibernate.orm.core] (debezium-connector-quarkus-extension-default-0) HHH000001: Hibernate ORM core version 7.2.6.Final
+2026-09-08 16:13:29,780 INFO  [io.debezium.server.jdbc.JdbcChangeConsumer] (debezium-connector-quarkus-extension-default-0) JDBC connection URL: jdbc:postgresql://localhost:5432/inventory
+2026-09-08 16:13:29,781 INFO  [io.debezium.server.jdbc.JdbcChangeConsumer] (debezium-connector-quarkus-extension-default-0) Creating Hibernate SessionFactory
+2026-09-08 16:13:30,319 INFO  [org.hibernate.orm.beans] (debezium-connector-quarkus-extension-default-0) HHH10005002: No explicit CDI BeanManager reference was passed to Hibernate, but CDI is available on the Hibernate class loader
+2026-09-08 16:13:31,468 INFO  [org.hibernate.orm.connection] (debezium-connector-quarkus-extension-default-0) HHH102002: Instantiating explicit connection provider: org.hibernate.agroal.internal.AgroalConnectionProvider
+2026-09-08 16:13:32,753 INFO  [org.hibernate.orm.connections.pooling] (debezium-connector-quarkus-extension-default-0) HHH10001005: Database info:
+	Database JDBC URL [jdbc:postgresql://localhost:5432/inventory]
+	Database driver: PostgreSQL JDBC Driver
+	Database dialect: PostgreSQLDialect
+	Database version: 18.6
+	Default catalog/schema: inventory/public
+	Autocommit mode: true
+	Isolation level: READ_COMMITTED
+	JDBC fetch size: none
+	Pool: AgroalConnectionProvider
+	Minimum pool size: 5
+	Maximum pool size: 32
+2026-09-08 16:13:35,486 INFO  [org.hibernate.orm.core] (debezium-connector-quarkus-extension-default-0) HHH000490: Using JTA platform [org.hibernate.engine.transaction.jta.platform.internal.NarayanaJtaPlatform]
+2026-09-08 16:13:35,726 INFO  [io.debezium.connector.jdbc.dialect.DatabaseDialectResolver] (debezium-connector-quarkus-extension-default-0) Using dialect io.debezium.connector.jdbc.dialect.postgres.PostgresDatabaseDialect
+2026-09-08 16:13:35,907 INFO  [io.debezium.connector.jdbc.dialect.GeneralDatabaseDialect] (debezium-connector-quarkus-extension-default-0) Database TimeZone: Europe/Dublin
+2026-09-08 16:13:35,908 INFO  [io.debezium.server.jdbc.JdbcChangeConsumer] (debezium-connector-quarkus-extension-default-0) Resolved database dialect: PostgresDatabaseDialect
+2026-09-08 16:13:35,933 INFO  [io.debezium.connector.jdbc.JdbcChangeEventSink] (debezium-connector-quarkus-extension-default-0) Database version 18.6.0
+2026-09-08 16:13:35,934 INFO  [io.debezium.server.jdbc.JdbcChangeConsumer] (debezium-connector-quarkus-extension-default-0) JDBC sink initialized successfully
+2026-09-08 16:13:35,934 INFO  [io.debezium.server.jdbc.JdbcChangeConsumer] (debezium-connector-quarkus-extension-default-0) Insert mode: UPSERT
+2026-09-08 16:13:35,935 INFO  [io.debezium.server.jdbc.JdbcChangeConsumer] (debezium-connector-quarkus-extension-default-0) Schema evolution: BASIC
+2026-09-08 16:13:35,935 INFO  [io.debezium.server.jdbc.JdbcChangeConsumer] (debezium-connector-quarkus-extension-default-0) Batch size: 1
+2026-09-08 16:13:35,936 INFO  [io.debezium.server.producers.ChangeConsumerProducer] (debezium-connector-quarkus-extension-default-0) Consumer 'io.debezium.server.jdbc.JdbcChangeConsumer' instantiated
+2026-09-08 16:13:35,940 INFO  [io.debezium.server.BaseChangeConsumer] (main) Using 'io.debezium.server.BaseChangeConsumer$$Lambda/0x00000000263ba8f8@57a3355' stream name mapper
+2026-09-08 16:13:35,950 INFO  [io.debezium.embedded.async.AsyncEmbeddedEngine] (debezium-connector-quarkus-extension-default-0) Consumer doesn't support tombstone events, setting 'tombstones.on.delete' to false.
+...
+----
+
+. {prodname} Server state changes from `CREATING` to `INITIALISING` and starts the MySQL connector, as well as locates the file used to store offsets.
+
+[source,shell,options="nowrap"]
+----
+...
+2026-09-08 16:13:36,076 INFO  [io.quarkus.debezium.engine.DebeziumWithCustomSerialization] (debezium-connector-quarkus-extension-default-0) running engine default with Debezium Connector Connector[name=io.debezium.connector.mysql.MySqlConnector]
+2026-09-08 16:13:36,077 INFO  [io.debezium.embedded.async.AsyncEmbeddedEngine] (debezium-connector-quarkus-extension-default-0) Engine state has changed from 'CREATING' to 'INITIALIZING'
+2026-09-08 16:13:36,199 INFO  [io.debezium.config.CommonConnectorConfig] (debezium-connector-quarkus-extension-default-0) Loading the custom source info struct maker plugin: io.debezium.connector.mysql.MySqlSourceInfoStructMaker
+2026-09-08 16:13:36,272 INFO  [io.debezium.util.Threads] (debezium-connector-quarkus-extension-default-0) Requested thread factory for component MySqlConnector, id = tutorial named = connection-validation
+2026-09-08 16:13:36,273 INFO  [io.debezium.util.Threads] (debezium-connector-quarkus-extension-default-0) Creating thread debezium-mysqlconnector-tutorial-connection-validation
+2026-09-08 16:13:36,336 INFO  [io.quarkus] (main) debezium-server-dist 3.7.0.Alpha1 on JVM (powered by Quarkus 3.33.1.1) started in 31.335s. Listening on: http://0.0.0.0:8080
+2026-09-08 16:13:36,337 INFO  [io.quarkus] (main) Profile prod activated. 
+2026-09-08 16:13:36,338 INFO  [io.quarkus] (main) Installed features: [agroal, cdi, config-yaml, debezium-db2, debezium-mariadb, debezium-mongodb, debezium-mysql, debezium-oracle, debezium-postgresql, debezium-sqlserver, jdbc-db2, jdbc-mariadb, jdbc-mssql, jdbc-mysql, jdbc-oracle, jdbc-postgresql, kubernetes-client, mongodb-client, narayana-jta, rest, rest-jackson, smallrye-context-propagation, smallrye-health, vertx]
+2026-09-08 16:13:37,022 INFO  [io.debezium.connector.mysql.jdbc.MySqlConnection] (debezium-mysqlconnector-tutorial-connection-validation) Using 'SHOW BINARY LOG STATUS' to get binary log status
+2026-09-08 16:13:37,026 INFO  [io.debezium.connector.binlog.BinlogConnector] (debezium-mysqlconnector-tutorial-connection-validation) Successfully tested connection for jdbc:mysql://localhost:3306/?useInformationSchema=true&nullCatalogMeansCurrent=false&useUnicode=true&characterEncoding=UTF-8&characterSetResults=UTF-8&zeroDateTimeBehavior=CONVERT_TO_NULL&connectTimeout=30000 with user 'debezium'
+2026-09-08 16:13:37,042 INFO  [io.debezium.util.Threads] (debezium-mysqlconnector-tutorial-connection-validation) Requested thread factory for component JdbcConnection, id = JdbcConnection named = jdbc-connection-close
+2026-09-08 16:13:37,043 INFO  [io.debezium.util.Threads] (debezium-mysqlconnector-tutorial-connection-validation) Creating thread debezium-jdbcconnection-JdbcConnection-jdbc-connection-close
+2026-09-08 16:13:37,047 INFO  [io.debezium.jdbc.JdbcConnection] (debezium-jdbcconnection-JdbcConnection-jdbc-connection-close) Connection gracefully closed
+2026-09-08 16:13:37,118 INFO  [io.debezium.embedded.async.AsyncEmbeddedEngine] (debezium-connector-quarkus-extension-default-0) Found offset store provider 'file' for 'org.apache.kafka.connect.storage.FileOffsetBackingStore'
+...
+----
+
+. The file offset backing store service is started with the offsets file we specified in `application.properties`. When {prodname} server is shut down, it will restart from where it left off in this file. 
+
+[source,shell,options="nowrap"]
+----
+...
+2026-09-08 16:13:37,135 INFO  [org.apache.kafka.connect.storage.FileOffsetBackingStore] (debezium-connector-quarkus-extension-default-0) Starting FileOffsetBackingStore with file data/offsets.dat
+2026-09-08 16:13:37,139 INFO  [io.debezium.embedded.async.AsyncEmbeddedEngine] (debezium-connector-quarkus-extension-default-0) Offset store 'org.apache.kafka.connect.storage.FileOffsetBackingStore' successfully started
+2026-09-08 16:13:37,171 INFO  [io.debezium.embedded.async.AsyncEmbeddedEngine] (debezium-connector-quarkus-extension-default-0) Engine state has changed from 'INITIALIZING' to 'CREATING_TASKS'
+2026-09-08 16:13:37,236 INFO  [io.debezium.embedded.async.AsyncEmbeddedEngine] (debezium-connector-quarkus-extension-default-0) Engine state has changed from 'CREATING_TASKS' to 'STARTING_TASKS'
+2026-09-08 16:13:37,238 INFO  [io.debezium.embedded.async.AsyncEmbeddedEngine] (debezium-connector-quarkus-extension-default-0) Waiting max. for 40000 ms for individual source tasks to start.
+2026-09-08 16:13:37,249 INFO  [io.debezium.config.CommonConnectorConfig] (pool-6-thread-1) Loading the custom source info struct maker plugin: io.debezium.connector.mysql.MySqlSourceInfoStructMaker
+2026-09-08 16:13:37,264 INFO  [io.debezium.openlineage.emitter.NoOpLineageEmitter] (pool-6-thread-1) You are using a no-op lineage emitter. If you want to emit open lineage event, please set 'openlineage.integration.enabled=true'
+2026-09-08 16:13:37,267 INFO  [io.debezium.connector.common.BaseSourceTask] (pool-6-thread-1) Starting MySqlConnectorTask with configuration:
+   connector.class = io.debezium.connector.mysql.MySqlConnector
+   schema.history.internal.jdbc.insert.mode = upsert
+   java.specification.version = 25
+   datasource.devservices.show-logs = false
+   sun.jnu.encoding = UTF-8
+   io.quarkus.security.http.test-if-basic-auth-implicitly-required = true
+   sun.arch.data.model = 64
+   java.vendor.url = https://ubuntu.com/
+   record.processing.threads =
+   errors.retry.delay.initial.ms = 300
+   datasource.metrics.enabled = false
+   sun.boot.library.path = /usr/lib/jvm/java-25-openjdk-amd64/lib
+   sun.java.command = io.debezium.server.Main
+   datasource.devservices.image-name = quay.io/debezium/postgres:15
+   jdk.debug = release
+   offset.storage = org.apache.kafka.connect.storage.FileOffsetBackingStore
+   java.specification.vendor = Oracle Corporation
+   offset.storage.jdbc.delete.enabled = true
+   java.version.date = 2026-07-21
+   java.home = /usr/lib/jvm/java-25-openjdk-amd64
+   schema.history.internal.jdbc.schema.evolution = basic
+   file.separator = /
+   java.vm.compressedOopsMode = Zero based
+   internal.task.management.timeout.ms = 40000
+   line.separator =
+...
+----
+
+[TIP]
+====
+If the connector is not able to connect,
+or if it does not see any tables or the `binlog`,
+check these grants to ensure that all of those listed above are included.
+====
+
+. Next, the connector reports the steps that make up the snapshot operation:
+
+[source,shell,options="nowrap"]
+----
+...
+2026-09-08 16:13:37,271 INFO  [io.debezium.config.CommonConnectorConfig] (pool-6-thread-1) Loading the custom topic naming strategy plugin: io.debezium.schema.DefaultTopicNamingStrategy
+2026-09-08 16:13:37,316 INFO  [io.debezium.connector.mysql.jdbc.MySqlConnection] (pool-6-thread-1) Using 'SHOW BINARY LOG STATUS' to get binary log status
+2026-09-08 16:13:37,391 INFO  [io.debezium.connector.common.BaseSourceTask] (pool-6-thread-1) No previous offsets found
+2026-09-08 16:13:37,625 INFO  [io.debezium.connector.mysql.MySqlDatabaseSchema] (pool-6-thread-1) Using MySql DdlParserType DEFAULT
+2026-09-08 16:13:37,757 INFO  [io.debezium.connector.mysql.jdbc.MySqlConnection] (pool-6-thread-1) Using 'SHOW BINARY LOG STATUS' to get binary log status
+2026-09-08 16:13:37,814 INFO  [io.debezium.connector.mysql.MySqlConnectorTask] (pool-6-thread-1) Guardrail validation skipped
+2026-09-08 16:13:37,816 INFO  [io.debezium.connector.mysql.MySqlConnectorTask] (pool-6-thread-1) Closing connection before starting schema recovery
+2026-09-08 16:13:37,817 INFO  [io.debezium.util.Threads] (pool-6-thread-1) Requested thread factory for component JdbcConnection, id = JdbcConnection named = jdbc-connection-close
+2026-09-08 16:13:37,818 INFO  [io.debezium.util.Threads] (pool-6-thread-1) Creating thread debezium-jdbcconnection-JdbcConnection-jdbc-connection-close
+2026-09-08 16:13:37,820 INFO  [io.debezium.jdbc.JdbcConnection] (debezium-jdbcconnection-JdbcConnection-jdbc-connection-close) Connection gracefully closed
+2026-09-08 16:13:37,824 INFO  [io.debezium.connector.common.BaseSourceTask] (pool-6-thread-1) Connector started with no previous offset for partition 'BinlogPartition{serverName='tutorial'} io.debezium.connector.mysql.MySqlPartition@b852b7d'
+2026-09-08 16:13:37,826 INFO  [io.debezium.connector.common.BaseSourceTask] (pool-6-thread-1) Database schema history storage was found. Connector will use the pre-existing storage. Checking settings for the same.
+2026-09-08 16:13:37,827 INFO  [io.debezium.connector.mysql.MySqlConnectorTask] (pool-6-thread-1) Reconnecting after validating schema recovery
+2026-09-08 16:13:37,846 INFO  [io.debezium.connector.mysql.MySqlConnectorTask] (pool-6-thread-1) No previous offset found
+2026-09-08 16:13:37,857 INFO  [io.debezium.connector.base.QueueProviderServiceProvider] (pool-6-thread-1) Using QueueProvider io.debezium.connector.base.DefaultQueueProvider
+2026-09-08 16:13:37,887 INFO  [io.debezium.util.Threads] (pool-6-thread-1) Requested thread factory for component MySqlConnector, id = tutorial named = SignalProcessor
+2026-09-08 16:13:38,105 INFO  [io.debezium.util.Threads] (pool-6-thread-1) Requested thread factory for component MySqlConnector, id = tutorial named = change-event-source-coordinator
+2026-09-08 16:13:38,112 INFO  [io.debezium.util.Threads] (pool-6-thread-1) Requested thread factory for component MySqlConnector, id = tutorial named = blocking-snapshot
+2026-09-08 16:13:38,124 INFO  [io.debezium.util.Threads] (pool-6-thread-1) Creating thread debezium-mysqlconnector-tutorial-change-event-source-coordinator
+2026-09-08 16:13:38,127 INFO  [io.debezium.embedded.async.AsyncEmbeddedEngine] (debezium-connector-quarkus-extension-default-0) All tasks have started successfully.
+2026-09-08 16:13:38,128 INFO  [io.debezium.embedded.async.AsyncEmbeddedEngine] (debezium-connector-quarkus-extension-default-0) Engine state has changed from 'STARTING_TASKS' to 'POLLING_TASKS'
+2026-09-08 16:13:38,128 INFO  [io.debezium.pipeline.ChangeEventSourceCoordinator] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Metrics registered
+2026-09-08 16:13:38,131 INFO  [io.debezium.pipeline.ChangeEventSourceCoordinator] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Context created
+2026-09-08 16:13:38,133 INFO  [io.debezium.embedded.async.AsyncEmbeddedEngine] (debezium-connector-quarkus-extension-default-0) Using io.debezium.embedded.async.ParallelSmtAndConvertBatchProcessor processor
+2026-09-08 16:13:38,151 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) According to the connector configuration both schema and data will be snapshot.
+2026-09-08 16:13:38,169 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Snapshot step 1 - Preparing
+2026-09-08 16:13:38,172 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Snapshot step 2 - Determining captured tables
+2026-09-08 16:13:38,173 INFO  [io.debezium.connector.binlog.jdbc.BinlogConnectorConnection] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Read list of available databases
+2026-09-08 16:13:38,177 INFO  [io.debezium.connector.binlog.jdbc.BinlogConnectorConnection] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) 	 list of available databases is: [information_schema, inventory, mysql, performance_schema, sys]
+2026-09-08 16:13:38,179 INFO  [io.debezium.connector.binlog.jdbc.BinlogConnectorConnection] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Read list of available tables in each database
+2026-09-08 16:13:38,197 INFO  [io.debezium.connector.binlog.BinlogSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) 	snapshot continuing with database(s): [performance_schema, mysql, sys, inventory]
+2026-09-08 16:13:38,198 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Adding table inventory.addresses to the list of capture schema tables
+2026-09-08 16:13:38,200 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Adding table inventory.customers to the list of capture schema tables
+2026-09-08 16:13:38,201 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Adding table inventory.orders to the list of capture schema tables
+2026-09-08 16:13:38,202 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Adding table inventory.geom to the list of capture schema tables
+2026-09-08 16:13:38,203 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Adding table inventory.products_on_hand to the list of capture schema tables
+2026-09-08 16:13:38,204 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Adding table inventory.products to the list of capture schema tables
+2026-09-08 16:13:38,208 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Created connection pool with 1 threads
+2026-09-08 16:13:38,209 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Snapshot step 3 - Locking captured tables [inventory.addresses, inventory.customers, inventory.orders, inventory.products, inventory.products_on_hand]
+2026-09-08 16:13:38,215 INFO  [io.debezium.connector.binlog.BinlogSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Flush and obtain global read lock to prevent writes to database
+2026-09-08 16:13:38,220 INFO  [io.debezium.connector.binlog.BinlogSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Starting lock heartbeat
+2026-09-08 16:13:38,221 INFO  [io.debezium.util.Threads] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Requested thread factory for component MySqlSnapshotChangeEventSource, id = tutorial named = lock-heartbeat
+2026-09-08 16:13:38,222 INFO  [io.debezium.util.Threads] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Creating thread debezium-mysqlsnapshotchangeeventsource-tutorial-lock-heartbeat
+2026-09-08 16:13:38,225 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Snapshot step 4 - Determining snapshot offset
+2026-09-08 16:13:38,238 INFO  [io.debezium.connector.mysql.MySqlSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Read binlog position of MySQL primary server
+2026-09-08 16:13:38,244 INFO  [io.debezium.connector.mysql.MySqlSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) 	 using binlog 'mysql-bin.000003' at position '157' and gtid ''
+2026-09-08 16:13:38,248 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Snapshot step 5 - Reading structure of captured tables
+2026-09-08 16:13:38,249 INFO  [io.debezium.connector.binlog.BinlogSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) All eligible tables schema should be captured, capturing: [inventory.addresses, inventory.customers, inventory.geom, inventory.orders, inventory.products, inventory.products_on_hand]
+2026-09-08 16:13:39,878 INFO  [io.debezium.connector.binlog.BinlogSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Reading structure of database 'inventory'
+2026-09-08 16:13:39,983 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Snapshot step 6 - Persisting schema history
+2026-09-08 16:13:40,030 INFO  [io.debezium.relational.history.SchemaHistoryMetrics] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Already applied 1 database changes
+2026-09-08 16:13:40,201 WARN  [io.debezium.connector.jdbc.JdbcChangeEventSink.SchemaChange] (pool-6-thread-1) Ignored schema change event for topic 'tutorial'. Schema change records are not supported by JDBC connector. Adjust `topics` or `topics.regex` to exclude schema change topic.
+2026-09-08 16:13:40,202 WARN  [io.debezium.connector.jdbc.JdbcChangeEventSink.SchemaChange] (pool-6-thread-1) Ignored schema change event for topic 'tutorial'. Schema change records are not supported by JDBC connector. Adjust `topics` or `topics.regex` to exclude schema change topic.
+2026-09-08 16:13:40,203 WARN  [io.debezium.connector.jdbc.JdbcChangeEventSink.SchemaChange] (pool-6-thread-1) Ignored schema change event for topic 'tutorial'. Schema change records are not supported by JDBC connector. Adjust `topics` or `topics.regex` to exclude schema change topic.
+2026-09-08 16:13:40,204 WARN  [io.debezium.connector.jdbc.JdbcChangeEventSink.SchemaChange] (pool-6-thread-1) Ignored schema change event for topic 'tutorial'. Schema change records are not supported by JDBC connector. Adjust `topics` or `topics.regex` to exclude schema change topic.
+2026-09-08 16:13:40,204 WARN  [io.debezium.connector.jdbc.JdbcChangeEventSink.SchemaChange] (pool-6-thread-1) Ignored schema change event for topic 'tutorial'. Schema change records are not supported by JDBC connector. Adjust `topics` or `topics.regex` to exclude schema change topic.
+2026-09-08 16:13:40,205 WARN  [io.debezium.connector.jdbc.JdbcChangeEventSink.SchemaChange] (pool-6-thread-1) Ignored schema change event for topic 'tutorial'. Schema change records are not supported by JDBC connector. Adjust `topics` or `topics.regex` to exclude schema change topic.
+2026-09-08 16:13:40,343 INFO  [io.debezium.connector.binlog.BinlogSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Releasing global read lock to enable MySQL writes
+2026-09-08 16:13:40,346 INFO  [io.debezium.connector.binlog.BinlogSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Writes to MySQL tables prevented for a total of 00:00:02.126
+2026-09-08 16:13:40,348 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Snapshot step 7 - Snapshotting data
+2026-09-08 16:13:40,358 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) For table 'inventory.addresses' using select statement: 'SELECT `id`, `customer_id`, `street`, `city`, `state`, `zip`, `type` FROM `inventory`.`addresses`'
+2026-09-08 16:13:40,374 INFO  [io.debezium.connector.binlog.BinlogSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Estimated row count for table inventory.addresses is OptionalLong[7]
+2026-09-08 16:13:40,376 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) For table 'inventory.customers' using select statement: 'SELECT `id`, `first_name`, `last_name`, `email` FROM `inventory`.`customers`'
+2026-09-08 16:13:40,380 INFO  [io.debezium.connector.binlog.BinlogSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Estimated row count for table inventory.customers is OptionalLong[4]
+2026-09-08 16:13:40,381 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) For table 'inventory.orders' using select statement: 'SELECT `order_number`, `order_date`, `purchaser`, `quantity`, `product_id` FROM `inventory`.`orders`'
+2026-09-08 16:13:40,386 INFO  [io.debezium.connector.binlog.BinlogSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Estimated row count for table inventory.orders is OptionalLong[0]
+2026-09-08 16:13:40,387 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) For table 'inventory.products' using select statement: 'SELECT `id`, `name`, `description`, `weight` FROM `inventory`.`products`'
+2026-09-08 16:13:40,390 INFO  [io.debezium.connector.binlog.BinlogSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Estimated row count for table inventory.products is OptionalLong[9]
+2026-09-08 16:13:40,391 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) For table 'inventory.products_on_hand' using select statement: 'SELECT `product_id`, `quantity` FROM `inventory`.`products_on_hand`'
+2026-09-08 16:13:40,396 INFO  [io.debezium.connector.binlog.BinlogSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Estimated row count for table inventory.products_on_hand is OptionalLong[9]
+2026-09-08 16:13:40,401 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Creating snapshot worker pool with 1 worker thread(s)
+2026-09-08 16:13:40,408 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (pool-8-thread-1) Exporting data from table 'inventory.addresses' (1 of 5 tables)
+2026-09-08 16:13:40,456 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (pool-8-thread-1) 	 Finished exporting 7 records for table 'inventory.addresses' (1 of 5 tables); total duration '00:00:00.048'
+2026-09-08 16:13:40,462 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (pool-8-thread-1) Exporting data from table 'inventory.customers' (2 of 5 tables)
+2026-09-08 16:13:40,469 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (pool-8-thread-1) 	 Finished exporting 4 records for table 'inventory.customers' (2 of 5 tables); total duration '00:00:00.007'
+2026-09-08 16:13:40,472 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (pool-8-thread-1) Exporting data from table 'inventory.orders' (3 of 5 tables)
+2026-09-08 16:13:40,489 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (pool-8-thread-1) 	 Finished exporting 4 records for table 'inventory.orders' (3 of 5 tables); total duration '00:00:00.017'
+2026-09-08 16:13:40,492 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (pool-8-thread-1) Exporting data from table 'inventory.products' (4 of 5 tables)
+2026-09-08 16:13:40,501 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (pool-8-thread-1) 	 Finished exporting 9 records for table 'inventory.products' (4 of 5 tables); total duration '00:00:00.009'
+2026-09-08 16:13:40,504 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (pool-8-thread-1) Exporting data from table 'inventory.products_on_hand' (5 of 5 tables)
+2026-09-08 16:13:40,512 INFO  [io.debezium.relational.RelationalSnapshotChangeEventSource] (pool-8-thread-1) 	 Finished exporting 9 records for table 'inventory.products_on_hand' (5 of 5 tables); total duration '00:00:00.008'
+2026-09-08 16:13:40,518 INFO  [io.debezium.pipeline.source.AbstractSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Snapshot - Final stage
+2026-09-08 16:13:40,519 INFO  [io.debezium.pipeline.source.AbstractSnapshotChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Snapshot completed
+2026-09-08 16:13:40,527 INFO  [io.debezium.pipeline.ChangeEventSourceCoordinator] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Snapshot ended with SnapshotResult [status=COMPLETED, offset=BinlogOffsetContext{sourceInfoSchema=Schema{io.debezium.connector.mysql.Source:STRUCT}, sourceInfo=BinlogSourceInfo{currentGtid='null', currentBinlogFilename='mysql-bin.000003', currentBinlogPosition=157, currentRowNumber=0, serverId=0, sourceTime=2026-09-08T15:13:40Z, threadId=-1, currentQuery='null', tableIds=[inventory.products_on_hand], databaseName='inventory'}, snapshotCompleted=true, transactionContext=TransactionContext [currentTransactionId=null, perTableEventCount={}, totalEventCount=0], restartGtidSet='null', currentGtidSet='null', restartBinlogFilename='mysql-bin.000003', restartBinlogPosition=157, restartRowsToSkip=0, restartEventsToSkip=0, currentEventLengthInBytes=0, inTransaction=false, transactionId='null', incrementalSnapshotContext=IncrementalSnapshotContext [windowOpened=false, chunkEndPosition=null, dataCollectionsToSnapshot=[], lastEventKeySent=null, maximumKey=null]}]
+...
+----
+
+Each of these steps reports what the connector is doing to perform the consistent snapshot.
+For example, Step 6 involves reverse engineering the DDL `create` statements for the tables that are being captured
+and the global write lock just 1 second after acquiring it,
+and Step 7 reads all of the rows in each of the tables and reports the time taken and number of rows found.
+In this case, the connector completed its consistent snapshot in just under 1 second.
+
+[NOTE]
+====
+The snapshot process will take longer with your databases,
+but the connector outputs enough log messages that you can track what it is working on,
+even when the tables have a large number of rows.
+And although an exclusive write lock is used at the beginning of the snapshot process,
+it should not last very long even for large databases.
+This is because the lock is released before any data is copied.
+For more information, see the xref:{link-mysql-connector}#debezium-connector-for-mysql[MySQL connector documentation].
+====
+
+. Finally, the log output shows that the connector has transitioned from its snapshot mode into continuously reading the MySQL server's `binlog`:
+
+[source,shell,options="nowrap"]
+----
+...
+2026-09-08 16:13:40,539 INFO  [io.debezium.util.Threads] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Requested thread factory for component MySqlConnector, id = tutorial named = binlog-client
+2026-09-08 16:13:40,546 INFO  [io.debezium.connector.binlog.BinlogStreamingChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Enable ssl PREFERRED mode for connector tutorial
+2026-09-08 16:13:40,602 INFO  [io.debezium.pipeline.signal.SignalProcessor] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) SignalProcessor started. Scheduling it every 5000ms
+2026-09-08 16:13:40,603 INFO  [io.debezium.util.Threads] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Creating thread debezium-mysqlconnector-tutorial-SignalProcessor
+2026-09-08 16:13:40,605 INFO  [io.debezium.pipeline.ChangeEventSourceCoordinator] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Starting streaming
+2026-09-08 16:13:40,611 INFO  [io.debezium.connector.binlog.BinlogStreamingChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Skip 0 events on streaming start
+2026-09-08 16:13:40,612 INFO  [io.debezium.connector.binlog.BinlogStreamingChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Skip 0 rows on streaming start
+2026-09-08 16:13:40,615 INFO  [io.debezium.util.Threads] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Creating thread debezium-mysqlconnector-tutorial-binlog-client
+2026-09-08 16:13:40,630 INFO  [io.debezium.util.Threads] (blc-localhost:3306) Creating thread debezium-mysqlconnector-tutorial-binlog-client
+2026-09-08 16:13:40,637 INFO  [com.github.shyiko.mysql.binlog.BinaryLogClient] (blc-localhost:3306) Database version: 8.2.0 (major=8, minor=2, mariadb=false)
+2026-09-08 16:13:40,648 INFO  [com.github.shyiko.mysql.binlog.BinaryLogClient] (blc-localhost:3306) SSL enabled
+2026-09-08 16:13:40,704 INFO  [com.github.shyiko.mysql.binlog.BinaryLogClient] (blc-localhost:3306) Requesting streaming from position filename: mysql-bin.000003, position: 157
+2026-09-08 16:13:40,708 INFO  [com.github.shyiko.mysql.binlog.BinaryLogClient] (blc-localhost:3306) Connected to localhost:3306 at mysql-bin.000003/157 (sid:223344, cid:13)
+2026-09-08 16:13:40,709 INFO  [io.debezium.connector.binlog.BinlogStreamingChangeEventSource] (blc-localhost:3306) Connected to binlog at localhost:3306, starting at BinlogOffsetContext{sourceInfoSchema=Schema{io.debezium.connector.mysql.Source:STRUCT}, sourceInfo=BinlogSourceInfo{currentGtid='null', currentBinlogFilename='mysql-bin.000003', currentBinlogPosition=157, currentRowNumber=0, serverId=0, sourceTime=2026-09-08T15:13:40Z, threadId=-1, currentQuery='null', tableIds=[inventory.products_on_hand], databaseName='inventory'}, snapshotCompleted=true, transactionContext=TransactionContext [currentTransactionId=null, perTableEventCount={}, totalEventCount=0], restartGtidSet='null', currentGtidSet='null', restartBinlogFilename='mysql-bin.000003', restartBinlogPosition=157, restartRowsToSkip=0, restartEventsToSkip=0, currentEventLengthInBytes=0, inTransaction=false, transactionId='null', incrementalSnapshotContext=IncrementalSnapshotContext [windowOpened=false, chunkEndPosition=null, dataCollectionsToSnapshot=[], lastEventKeySent=null, maximumKey=null]}
+2026-09-08 16:13:40,710 INFO  [io.debezium.connector.binlog.BinlogStreamingChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Waiting for keepalive thread to start
+2026-09-08 16:13:40,713 INFO  [io.debezium.util.Threads] (blc-localhost:3306) Creating thread debezium-mysqlconnector-tutorial-binlog-client
+2026-09-08 16:13:40,774 WARN  [io.debezium.connector.jdbc.JdbcChangeEventSink.SchemaChange] (pool-6-thread-1) Ignored schema change event for topic 'tutorial'. Schema change records are not supported by JDBC connector. Adjust `topics` or `topics.regex` to exclude schema change topic.
+2026-09-08 16:13:40,775 WARN  [io.debezium.connector.jdbc.JdbcChangeEventSink.SchemaChange] (pool-6-thread-1) Ignored schema change event for topic 'tutorial'. Schema change records are not supported by JDBC connector. Adjust `topics` or `topics.regex` to exclude schema change topic.
+2026-09-08 16:13:40,776 WARN  [io.debezium.connector.jdbc.JdbcChangeEventSink.SchemaChange] (pool-6-thread-1) Ignored schema change event for topic 'tutorial'. Schema change records are not supported by JDBC connector. Adjust `topics` or `topics.regex` to exclude schema change topic.
+2026-09-08 16:13:40,777 WARN  [io.debezium.connector.jdbc.JdbcChangeEventSink.SchemaChange] (pool-6-thread-1) Ignored schema change event for topic 'tutorial'. Schema change records are not supported by JDBC connector. Adjust `topics` or `topics.regex` to exclude schema change topic.
+2026-09-08 16:13:40,778 WARN  [io.debezium.connector.jdbc.JdbcChangeEventSink.SchemaChange] (pool-6-thread-1) Ignored schema change event for topic 'tutorial'. Schema change records are not supported by JDBC connector. Adjust `topics` or `topics.regex` to exclude schema change topic.
+2026-09-08 16:13:40,779 WARN  [io.debezium.connector.jdbc.JdbcChangeEventSink.SchemaChange] (pool-6-thread-1) Ignored schema change event for topic 'tutorial'. Schema change records are not supported by JDBC connector. Adjust `topics` or `topics.regex` to exclude schema change topic.
+2026-09-08 16:13:40,780 WARN  [io.debezium.connector.jdbc.JdbcChangeEventSink.SchemaChange] (pool-6-thread-1) Ignored schema change event for topic 'tutorial'. Schema change records are not supported by JDBC connector. Adjust `topics` or `topics.regex` to exclude schema change topic.
+2026-09-08 16:13:40,781 WARN  [io.debezium.connector.jdbc.JdbcChangeEventSink.SchemaChange] (pool-6-thread-1) Ignored schema change event for topic 'tutorial'. Schema change records are not supported by JDBC connector. Adjust `topics` or `topics.regex` to exclude schema change topic.
+2026-09-08 16:13:40,782 WARN  [io.debezium.connector.jdbc.JdbcChangeEventSink.SchemaChange] (pool-6-thread-1) Ignored schema change event for topic 'tutorial'. Schema change records are not supported by JDBC connector. Adjust `topics` or `topics.regex` to exclude schema change topic.
+2026-09-08 16:13:40,783 WARN  [io.debezium.connector.jdbc.JdbcChangeEventSink.SchemaChange] (pool-6-thread-1) Ignored schema change event for topic 'tutorial'. Schema change records are not supported by JDBC connector. Adjust `topics` or `topics.regex` to exclude schema change topic.
+2026-09-08 16:13:40,813 INFO  [io.debezium.connector.binlog.BinlogStreamingChangeEventSource] (debezium-mysqlconnector-tutorial-change-event-source-coordinator) Keepalive thread is running
+...
+----

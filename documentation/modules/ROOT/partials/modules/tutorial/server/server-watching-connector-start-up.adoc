@@ -1,0 +1,17 @@
+[id="server-watching-connector-start-up"]
+= Watching {prodname} Server and the connector start
+
+When you start {prodname} server, a large volume of log output is generated.
+By reviewing this output,
+you can better understand the process that the connector goes through from the time it is created until it begins reading the MySQL server's `binlog`.
+
+After starting {prodname} server and the connector,
+you can review the log output in the terminal to track the connector's status.
+
+ifeval::["{selected-sink}" == "http"]
+include::{partialsdir}/modules/tutorial/server/{selected-sink}-sink/{selected-sink}-watching-server-start.adoc[]
+endif::[]
+
+ifeval::["{selected-sink}" == "jdbc"]
+include::{partialsdir}/modules/tutorial/server/{selected-sink}-sink/{selected-sink}-watching-server-start.adoc[]
+endif::[]
