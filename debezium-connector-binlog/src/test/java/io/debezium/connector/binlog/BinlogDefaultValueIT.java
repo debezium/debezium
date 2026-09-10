@@ -1038,8 +1038,8 @@ public abstract class BinlogDefaultValueIT<C extends SourceConnector> extends Ab
         assertFieldDefaultValue(change, "C15", (short) 0);
         assertFieldDefaultValue(change, "C16", BigDecimal.valueOf(1.23));
         assertFieldDefaultValue(change, "C17", BigDecimal.valueOf(1.23));
-        assertFieldDefaultValue(change, "C18", 3.14f);
-        assertFieldDefaultValue(change, "C19", 3.14f);
+        assertFieldDefaultValue(change, "C18", 3.14d);
+        assertFieldDefaultValue(change, "C19", 3.14d);
     }
 
     private void assertFieldDefaultValue(Struct value, String fieldName, Object defaultValue) {
