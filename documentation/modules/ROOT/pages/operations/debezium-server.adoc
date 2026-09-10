@@ -421,8 +421,9 @@ Available options
 * `org.apache.kafka.connect.storage.FileOffsetBackingStore` for non-Kafka deployments
 * `org.apache.kafka.connect.storage.MemoryOffsetBackingStore` volatile store for test environments
 * `io.debezium.storage.jdbc.offset.JdbcOffsetBackingStore` for database using JDBC
+ifdef::community[]
 * `io.debezium.storage.redis.offset.RedisOffsetBackingStore` for Redis deployments
-
+endif::community[]
 |[[debezium-source-offset-storage-file-filename]]<<debezium-source-offset-storage-file-filename, `debezium.source.offset.storage.file.filename`>>
 |
 |If using a file offset store (default), the file in which connector offsets are stored for non-Kafka deployments.
@@ -511,19 +512,21 @@ There are also other options available
 
 * `io.debezium.storage.file.history.FileSchemaHistory` for non-Kafka deployments
 * `io.debezium.relational.history.MemorySchemaHistory` volatile store for test environments
+ifdef::community[]
 * `io.debezium.storage.redis.history.RedisSchemaHistory` for Redis deployments
 * `io.debezium.storage.rocketmq.history.RocketMqSchemaHistory` for RocketMQ deployments
 * `io.debezium.storage.azure.blob.history.AzureBlobSchemaHistory` for Azure Blob Storage deployments
+endif::community[]
 
 |[[debezium-source-database-history-file-filename]]<<debezium-source-database-history-file-filename, `debezium.source.schema.history.internal.file.filename`>>
 |
 |The name and location of the file to which `FileSchemaHistory` persists its data.
 
+ifdef::community[]
 |[[debezium-source-database-history-redis-address]]<<debezium-source-database-history-redis-address, `debezium.source.schema.history.internal.redis.address`>>
 |
 |The Redis host:port to connect to if using `RedisSchemaHistory`.
 
-ifdef::community[]
 |[[debezium-source-database-history-redis-user]]<<debezium-source-database-history-redis-user, `debezium.source.schema.history.internal.redis.user`>>
 |
 |The Redis user to use if using `RedisSchemaHistory`.
@@ -884,8 +887,6 @@ Set the `debezium.sink.type` property to specify the sink implementation, and th
 
 
 ifdef::community[]
-// Type: reference
-// Title: Amazon Kinesis sink configuration
 [id="debezium-server-amazon-kinesis-sink-configuration"]
 ==== Amazon Kinesis
 
@@ -923,8 +924,6 @@ So this string will be used as message key for messages from tables without prim
 |===
 
 
-// Type: reference
-// Title: Amazon Kinesis sink injection points
 [id="debezium-server-amazon-kinesis-injection-points"]
 ===== Injection points
 
@@ -952,8 +951,6 @@ By default the same name is used.
 endif::community[]
 
 ifdef::community[]
-// Type: reference
-// Title: Google Cloud Pub/Sub sink configuration
 [id="debezium-server-google-cloud-pubsub-sink-configuration"]
 ==== Google Cloud Pub/Sub
 
@@ -1062,8 +1059,6 @@ Unless this value is set, debezium-server will connect to a cloud pubsub instanc
 |===
 
 
-// Type: reference
-// Title: Google Cloud Pub/Sub sink injection points
 [id="debezium-server-google-cloud-pubsub-injection-points"]
 ===== Injection points
 
@@ -1090,8 +1085,6 @@ When the alternative implementations are not available then the default ones are
 endif::community[]
 
 ifdef::community[]
-// Type: reference
-// Title: Pub/Sub Lite sink configuration
 [id="debezium-server-pubsub-lite-sink-configuration"]
 ==== Pub/Sub Lite
 
@@ -1132,8 +1125,6 @@ This is not supported by Pub/Sub Lite so a surrogate key must be used.
 
 |===
 
-// Type: reference
-// Title: Pub/Sub Lite sink injection points
 [id="debezium-server-pubsub-lite-injection-points"]
 ===== Injection points
 
@@ -1290,8 +1281,6 @@ Set these using the `params.` prefix, for example, `debezium.sink.http.authentic
 |===
 
 ifdef::community[]
-// Type: reference
-// Title: Apache Pulsar sink configuration
 [id="debezium-server-apache-pulsar-sink-configuration"]
 ==== Apache Pulsar
 
@@ -1346,8 +1335,6 @@ This is not supported by Pulsar so a surrogate key must be used.
 
 |===
 
-// Type: reference
-// Title: Apache Pulsar sink injection points
 [id="debezium-server-apache-pulsar-injection-points"]
 ===== Injection points
 
@@ -1370,8 +1357,6 @@ When the alternative implementations are not available then the default ones are
 endif::community[]
 
 ifdef::community[]
-// Type: reference
-// Title: Azure Event Hubs sink configuration
 [id="debezium-server-azure-event-hubs-sink-configuration"]
 ==== Azure Event Hubs
 
@@ -1458,8 +1443,6 @@ debezium.transforms.PartitionRouter.partition.payload.fields=source.db
 debezium.transforms.PartitionRouter.partition.topic.num=5
 ----
 
-// Type: reference
-// Title: Azure Event Hubs sink injection points
 [id="debezium-server-azure-event-hubs-injection-points"]
 ===== Injection points
 
@@ -1481,8 +1464,6 @@ When the alternative implementations are not available then the default ones are
 endif::community[]
 
 ifdef::community[]
-// Type: reference
-// Title: Redis (Stream) sink configuration
 [id="debezium-server-redis-stream-sink-configuration"]
 ==== Redis (Stream)
 
@@ -1633,9 +1614,6 @@ Set the value to `true` to configure {prodname} to use a  https://redis.io/docs/
 
 |===
 
-// Type: reference
-// ModuleID: debezium-server-redis-stream-message-format
-// Title: Redis (Stream) sink message format
 [id="p-redis-message-format"]
 ===== Message Format
 
@@ -1662,8 +1640,6 @@ Set the `redis.message.format` property to specify which format to use when send
 ----
 You can read more about Redis Streams https://redis.io/docs/data-types/streams/[here].
 
-// Type: reference
-// Title: Redis (Stream) sink injection points
 [id="debezium-server-redis-stream-injection-points"]
 ===== Injection points
 
@@ -1683,15 +1659,11 @@ By default the same name is used.
 
 |===
 
-// Type: reference
-// Title: Redis sink configuration examples
 [id="debezium-server-redis-configuration-examples"]
 ==== Redis Configuration Examples
 
 The following examples show complete `application.properties` configurations for connecting {prodname} Server to a Redis sink in both single-instance and cluster deployment modes.
 
-// Type: reference
-// Title: Redis sink single instance mode configuration
 [id="debezium-server-redis-single-instance-mode"]
 ===== Single Instance Mode
 
@@ -1718,8 +1690,6 @@ debezium.source.schema.history.internal.redis.password=password
 debezium.source.schema.history.internal.redis.cluster.enabled=false
 ----
 
-// Type: reference
-// Title: Redis sink cluster mode configuration
 [id="debezium-server-redis-cluster-mode"]
 ===== Cluster Mode
 
@@ -1754,8 +1724,6 @@ The {prodname} Server instance must be able to communicate with the cluster node
 endif::community[]
 
 ifdef::community[]
-// Type: reference
-// Title: NATS Streaming sink configuration
 [id="debezium-server-nats-streaming-sink-configuration"]
 ==== NATS Streaming
 
@@ -1786,8 +1754,6 @@ https://docs.nats.io/nats-streaming-concepts/intro[NATS Streaming] is a data str
 |===
 
 
-// Type: reference
-// Title: NATS Streaming sink injection points
 [id="debezium-server-nats-streaming-injection-points"]
 ===== Injection points
 
@@ -1814,8 +1780,6 @@ By default the same name is used.
 endif::community[]
 
 ifdef::community[]
-// Type: reference
-// Title: NATS JetStream sink configuration
 [id="debezium-server-nats-jetstream-sink-configuration"]
 ==== NATS JetStream
 NATS has a built-in distributed persistence system called https://docs.nats.io/nats-concepts/jetstream[JetStream] which enables new functionalities and higher qualities of service on top of the base 'Core NATS' functionalities and qualities of service.
@@ -1898,8 +1862,6 @@ During asynchronous processing, each message is published with a timeout specifi
 
 If you need a more configurable stream, it can be created with nats cli. More about streams at: https://docs.nats.io/nats-concepts/jetstream/streams
 
-// Type: reference
-// Title: NATS JetStream sink injection points
 [id="debezium-server-nats-jetstream-injection-points"]
 ===== Injection points
 
@@ -1926,8 +1888,6 @@ By default the same name is used.
 endif::community[]
 
 ifdef::community[]
-// Type: reference
-// Title: Apache Fluss sink configuration
 [id="debezium-server-apache-fluss-sink-configuration"]
 ==== Apache Fluss
 
@@ -1987,8 +1947,6 @@ Apache Fluss requires connectors to be configured with schemas enabled. Schemale
 
 |===
 
-// Type: reference
-// Title: Apache Fluss sink injection points
 [id="debezium-server-apache-fluss-injection-points"]
 ===== Injection points
 
@@ -2062,8 +2020,6 @@ If you do not provide a custom implementation, {prodname} Server uses the defaul
 |===
 
 ifdef::community[]
-// Type: reference
-// Title: Pravega sink configuration
 [id="debezium-server-pravega-sink-configuration"]
 ==== Pravega
 
@@ -2095,8 +2051,6 @@ The Pravega sink expects destination scope and streams to already be created.
 
 |===
 
-// Type: reference
-// Title: Pravega sink injection points
 [id="debezium-server-pravega-injection-points"]
 ===== Injection points
 
@@ -2119,8 +2073,6 @@ By default the same name is used.
 endif::community[]
 
 ifdef::community[]
-// Type: reference
-// Title: Infinispan sink configuration
 [id="debezium-server-infinispan-sink-configuration"]
 ==== Infinispan
 
@@ -2161,8 +2113,6 @@ The Infinispan sink expects that the destination cache is already defined and cr
 
 |===
 
-// Type: reference
-// Title: Infinispan sink injection points
 [id="debezium-server-infinispan-injection-points"]
 ===== Injection points
 
@@ -2183,8 +2133,6 @@ When the alternative implementations are not available then the default ones are
 endif::community[]
 
 ifdef::community[]
-// Type: reference
-// Title: Apache RocketMQ sink configuration
 [id="debezium-server-apache-rocketmq-sink-configuration"]
 ==== Apache RocketMQ
 
@@ -2233,8 +2181,6 @@ proper value based on the actual application to avoid long thread blocking time.
 
 |===
 
-// Type: reference
-// Title: Apache RocketMQ sink injection points
 [id="debezium-server-apache-rocketmq-injection-points"]
 ===== Injection points
 
@@ -2261,8 +2207,6 @@ By default the same name is used.
 endif::community[]
 
 ifdef::community[]
-// Type: reference
-// Title: RabbitMQ Stream sink configuration
 [id="debezium-server-rabbitmq-stream-sink-configuration"]
 ==== RabbitMQ Stream
 
@@ -2340,8 +2284,6 @@ So this string will be used as value for records without a payload.
 |===
 
 
-// Type: reference
-// Title: RabbitMQ Stream sink injection points
 [id="debezium-server-rabbitmq-stream-injection-points"]
 ===== Injection points
 
@@ -2360,8 +2302,6 @@ When the alternative implementations are not available then the default ones are
 By default the same name is used.
 |===
 
-// Type: reference
-// Title: RabbitMQ Native Stream sink configuration
 [id="debezium-server-rabbitmq-native-stream-sink-configuration"]
 ==== RabbitMQ Native Stream
 
@@ -2454,8 +2394,6 @@ So this string will be used as value for records without a payload.
 endif::community[]
 
 ifdef::community[]
-// Type: reference
-// Title: Milvus sink configuration
 [id="debezium-server-milvus-sink-configuration"]
 ==== Milvus
 
@@ -2488,8 +2426,6 @@ Must be set to `milvus`.
 |===
 
 
-// Type: reference
-// Title: Milvus sink injection points
 [id="debezium-server-milvus-injection-points"]
 ===== Injection points
 
@@ -2517,8 +2453,6 @@ By default, dots in a name are replaced with underscores.
 endif::community[]
 
 ifdef::community[]
-// Type: reference
-// Title: Qdrant sink configuration
 [id="debezium-server-qdrant-sink-configuration"]
 ==== Qdrant Sink
 
@@ -2596,8 +2530,6 @@ If you specify implementations that are not available, the connector uses the de
 endif::community[]
 
 ifdef::community[]
-// Type: reference
-// Title: InstructLab sink configuration
 [id="debezium-server-instructlab-sink-configuration"]
 ==== InstructLab
 
@@ -2652,9 +2584,6 @@ For example, a value of `a/b` and a base path of `/taxonomy` represents `/taxono
 
 |===
 
-// Type: reference
-// ModuleID: debezium-server-instructlab-mapping-definition
-// Title: InstructLab sink mapping definition
 [id="instructlab-mapping-definition"]
 ===== Mapping definition
 
@@ -2683,8 +2612,6 @@ Use this option when you want to map the value of a specific static constant to 
 endif::community[]
 
 ifdef::community[]
-// Type: reference
-// Title: JDBC sink configuration
 [id="debezium-server-jdbc-sink-configuration"]
 ==== JDBC
 
@@ -2743,8 +2670,6 @@ debezium.sink.jdbc.delete.enabled=true
 endif::community[]
 
 ifdef::community[]
-// Type: reference
-// Title: Apache Iceberg sink configuration
 [id="debezium-server-apache-iceberg-sink-configuration"]
 ==== Apache Iceberg
 
@@ -2892,8 +2817,6 @@ The connector provides the following features:
 endif::community[]
 
 ifdef::community[]
-// Type: assembly
-// Title: Databricks Zerobus Ingest sink configuration
 [id="debezium-server-databricks-zerobus-ingest-sink-configuration"]
 ==== Databricks Zerobus Ingest
 
@@ -2926,8 +2849,6 @@ To enable the service to write data to the target table, the following requireme
 ** `SELECT`
 ** `MODIFY`
 
-// Type: reference
-// Title: Databricks Zerobus Ingest gRPC route configuration properties
 [id="debezium-server-zerobus-grpc-route-configuration"]
 ===== gRPC route (`zerobus`)
 
@@ -3196,8 +3117,6 @@ debezium.sink.zerobus.tombstone.handling.mode=event
 debezium.sink.zerobus.filter.operations=c,r,u,d,t,m,tombstone
 ----
 
-// Type: reference
-// Title: Databricks Zerobus Ingest gRPC route injection points
 [id="debezium-server-zerobus-grpc-injection-points"]
 ====== Injection points
 
@@ -3217,8 +3136,6 @@ By default, the sink builds the instance from the <<zerobus-endpoint, `endpoint`
 
 |===
 
-// Type: reference
-// Title: Databricks Zerobus Ingest REST route configuration properties
 [id="debezium-server-zerobus-rest-route-configuration"]
 ===== REST route (`zerobus-rest`)
 
@@ -3269,8 +3186,6 @@ For more information, see <<zerobus-monitoring, Monitoring>>.
 
 |===
 
-// Type: assembly
-// Title: Databricks Zerobus Ingest Kafka route
 [[zerobus-kafka-route]]
 ===== Kafka route
 
@@ -3367,8 +3282,6 @@ The handler uses this list to build the OAuth Rich Authorization Requests (RFC 9
 If you set this option, the handler skips the OAuth exchange and uses this token directly.
 |===
 
-// Type: reference
-// Title: Record format for the Databricks Zerobus Ingest Kafka route
 [id="debezium-server-zerobus-kafka-route-record-format"]
 ====== Record format for the Kafka route
 
@@ -3400,8 +3313,6 @@ Zerobus rejects an ISO-8601 string for a `TIMESTAMP` column, and it interprets a
 Because of the latter, the `connect` mode, which emits milliseconds, silently stores an incorrect instant.
 |===
 
-// Type: reference
-// Title: Tuning throughput on the Databricks Zerobus Ingest Kafka route
 [id="debezium-server-zerobus-kafka-route-tuning-throughput"]
 ====== Tuning throughput on the Kafka route
 
@@ -3495,8 +3406,6 @@ debezium.transforms.route.regex=<topic-prefix>\\.<schema>\\.<table>
 debezium.transforms.route.replacement=<catalog>.<schema>.<table>
 ----
 
-// Type: reference
-// Title: Databricks Zerobus Ingest data type mapping
 [[zerobus-data-type-mapping]]
 ===== Data type mapping
 
@@ -3539,8 +3448,6 @@ The following table shows mappings between {prodname} logical types and Delta co
 
 |===
 
-// Type: reference
-// Title: Monitoring the Databricks Zerobus Ingest sink
 [[zerobus-monitoring]]
 ===== Monitoring
 
@@ -3652,15 +3559,11 @@ To monitor the connection on the Kafka route, use the standard `kafka.producer:t
 endif::community[]
 
 ifdef::community[]
-// Type: assembly
-// Title: Cassandra connector configuration notes
 [id="debezium-server-cassandra-connector"]
 === Cassandra connector configuration notes
 
 The {prodname} Cassandra connector requires additional JVM options at startup and a specific `application.properties` configuration when run with {prodname} Server.
 
-// Type: procedure
-// Title: Running {prodname} Server with the Cassandra connector
 [id="debezium-server-running-with-cassandra-connector"]
 ==== Running {prodname} Server with Cassandra connector
 
@@ -3673,8 +3576,6 @@ Set the `JDK_JAVA_OPTIONS` environment variable to the following options before 
 JDK_JAVA_OPTIONS="--add-exports java.base/jdk.internal.misc=ALL-UNNAMED --add-exports java.base/jdk.internal.ref=ALL-UNNAMED --add-exports java.base/sun.nio.ch=ALL-UNNAMED --add-exports java.management.rmi/com.sun.jmx.remote.internal.rmi=ALL-UNNAMED --add-exports java.rmi/sun.rmi.registry=ALL-UNNAMED --add-exports java.rmi/sun.rmi.server=ALL-UNNAMED --add-exports java.sql/java.sql=ALL-UNNAMED  --add-opens java.base/java.lang.module=ALL-UNNAMED --add-opens java.base/jdk.internal.loader=ALL-UNNAMED --add-opens java.base/jdk.internal.ref=ALL-UNNAMED --add-opens java.base/jdk.internal.reflect=ALL-UNNAMED --add-opens java.base/jdk.internal.math=ALL-UNNAMED --add-opens java.base/jdk.internal.module=ALL-UNNAMED --add-opens java.base/jdk.internal.util.jar=ALL-UNNAMED --add-opens jdk.management/com.sun.management.internal=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens java.base/sun.nio.ch=ALL-UNNAMED"
 ```
 
-// Type: reference
-// Title: Sample `application.properties` for running the Cassandra connector with Redis sink
 [id="debezium-server-cassandra-connector-sample-application-properties"]
 ==== Sample of basic `application.properties` for running Cassandra connector with Redis sink
 
@@ -3699,8 +3600,6 @@ debezium.source.topic.prefix=sample_prefix
 debezium.source.http.port=8040
 ```
 
-// Type: reference
-// Title: Cassandra connector transformation for operation code
 [id="debezium-server-cassandra-connector-transformation-for-operation-code"]
 ==== Transformation for Operation Code
 
