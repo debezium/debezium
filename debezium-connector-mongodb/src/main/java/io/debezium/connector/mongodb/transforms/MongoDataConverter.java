@@ -27,7 +27,9 @@ import org.bson.BsonType;
 import org.bson.BsonValue;
 
 import io.debezium.DebeziumException;
+import io.debezium.connector.mongodb.MongoDbSchema;
 import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState.ArrayEncoding;
+import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState.BsonTimestampHandlingMode;
 import io.debezium.schema.FieldNameSelector;
 import io.debezium.schema.FieldNameSelector.FieldNamer;
 import io.debezium.schema.SchemaNameAdjuster;
@@ -41,6 +43,7 @@ import io.debezium.schema.SchemaNameAdjuster;
  */
 public class MongoDataConverter {
     public static final String SCHEMA_NAME_REGEX = "io.debezium.mongodb.regex";
+
     private final ArrayEncoding arrayEncoding;
     private final FieldNamer<String> fieldNamer;
 
@@ -49,10 +52,18 @@ public class MongoDataConverter {
      */
     private final boolean sanitizeValue;
 
-    public MongoDataConverter(ArrayEncoding arrayEncoding, FieldNamer<String> fieldNamer, boolean sanitizeValue) {
+    private final BsonTimestampHandlingMode bsonTimestampHandlingMode;
+
+    public MongoDataConverter(ArrayEncoding arrayEncoding, FieldNamer<String> fieldNamer, boolean sanitizeValue,
+                              BsonTimestampHandlingMode bsonTimestampHandlingMode) {
         this.arrayEncoding = arrayEncoding;
         this.fieldNamer = fieldNamer;
         this.sanitizeValue = sanitizeValue;
+        this.bsonTimestampHandlingMode = bsonTimestampHandlingMode;
+    }
+
+    public MongoDataConverter(ArrayEncoding arrayEncoding, FieldNamer<String> fieldNamer, boolean sanitizeValue) {
+        this(arrayEncoding, fieldNamer, sanitizeValue, BsonTimestampHandlingMode.CONNECT);
     }
 
     public MongoDataConverter(ArrayEncoding arrayEncoding) {
@@ -316,8 +327,11 @@ public class MongoDataConverter {
                 break;
 
             case DATE_TIME:
-            case TIMESTAMP:
                 builder.field(key, Timestamp.builder().optional().build());
+                break;
+
+            case TIMESTAMP:
+                builder.field(key, timestampSchema());
                 break;
 
             case BOOLEAN:
@@ -613,6 +627,12 @@ public class MongoDataConverter {
         map.values().iterator().next();
     }
 
+    private Schema timestampSchema() {
+        return bsonTimestampHandlingMode == BsonTimestampHandlingMode.STRUCT
+                ? MongoDbSchema.BSON_TIMESTAMP_SCHEMA
+                : Timestamp.builder().optional().build();
+    }
+
     /**
      * Returns the schema for a given BsonType
      */
@@ -641,6 +661,8 @@ public class MongoDataConverter {
                 return Schema.OPTIONAL_INT64_SCHEMA;
 
             case TIMESTAMP:
+                return timestampSchema();
+
             case DATE_TIME:
                 return Timestamp.builder().optional().build();
 
@@ -824,6 +846,15 @@ public class MongoDataConverter {
                 break;
 
             case TIMESTAMP:
+                if (bsonTimestampHandlingMode == BsonTimestampHandlingMode.STRUCT) {
+                    // Both BSON components are unsigned 32-bit values, widened to signed 64-bit so the
+                    // full unsigned range stays exact (Connect has no unsigned types).
+                    Struct timestampStruct = new Struct(MongoDbSchema.BSON_TIMESTAMP_SCHEMA);
+                    timestampStruct.put("time", Integer.toUnsignedLong(value.asTimestamp().getTime()));
+                    timestampStruct.put("increment", Integer.toUnsignedLong(value.asTimestamp().getInc()));
+                    colValue = timestampStruct;
+                    break;
+                }
                 colValue = new Date(1000L * value.asTimestamp().getTime());
                 break;
 

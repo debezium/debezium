@@ -6,6 +6,7 @@
 package io.debezium.connector.mongodb.transforms;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -13,6 +14,8 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Date;
+import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
 
@@ -26,8 +29,13 @@ import org.bson.BsonValue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import io.debezium.DebeziumException;
+import io.debezium.connector.mongodb.MongoDbSchema;
 import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState.ArrayEncoding;
+import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState.BsonTimestampHandlingMode;
 import io.debezium.doc.FixFor;
+import io.debezium.schema.FieldNameSelector;
+import io.debezium.schema.SchemaNameAdjuster;
 
 /**
  * Unit test for {@code MongoDataConverter}.
@@ -317,6 +325,178 @@ public class MongoDataConverterTest {
                         + "_id=symbol-array-1,"
                         + "symbols=[a, b]"
                         + "}");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2570")
+    public void shouldPreserveBsonTimestampComponentsInStructMode() {
+        val = BsonDocument.parse("{\n" +
+                "    \"_id\" : \"timestamp-1\",\n" +
+                "    \"ts_a\" : { \"$timestamp\" : { \"t\": 1710000000, \"i\": 7 } },\n" +
+                "    \"ts_b\" : { \"$timestamp\" : { \"t\": 1710000000, \"i\": 8 } }\n" +
+                "}");
+        builder = SchemaBuilder.struct().name("withtimestamp");
+        converter = new MongoDataConverter(ArrayEncoding.ARRAY,
+                FieldNameSelector.defaultNonRelationalSelector(SchemaNameAdjuster.NO_OP), false,
+                BsonTimestampHandlingMode.STRUCT);
+
+        Map<String, Map<Object, BsonType>> entry = converter.parseBsonDocument(val);
+        converter.buildSchema(entry, builder);
+
+        final Schema finalSchema = builder.build();
+        final Struct struct = new Struct(finalSchema);
+        for (Map.Entry<String, BsonValue> bsonValueEntry : val.entrySet()) {
+            converter.buildStruct(bsonValueEntry, finalSchema, struct);
+        }
+
+        assertThat(finalSchema.field("ts_a").schema().name()).isEqualTo(MongoDbSchema.SCHEMA_NAME_TIMESTAMP);
+        final Struct tsA = (Struct) struct.get("ts_a");
+        final Struct tsB = (Struct) struct.get("ts_b");
+        assertThat(tsA.get("time")).isEqualTo(1710000000L);
+        assertThat(tsA.get("increment")).isEqualTo(7L);
+        assertThat(tsB.get("time")).isEqualTo(1710000000L);
+        assertThat(tsB.get("increment")).isEqualTo(8L);
+        // Two BSON values with the same time and a different increment must stay distinguishable
+        assertThat(tsA).isNotEqualTo(tsB);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2570")
+    public void shouldPreserveBsonTimestampComponentsInArraysInStructMode() {
+        val = BsonDocument.parse("{\n" +
+                "    \"_id\" : \"timestamp-array-1\",\n" +
+                "    \"ts_values\" : [ { \"$timestamp\" : { \"t\": 1710000000, \"i\": 7 } }, { \"$timestamp\" : { \"t\": 1710000000, \"i\": 8 } } ]\n" +
+                "}");
+        builder = SchemaBuilder.struct().name("withtimestamparray");
+        converter = new MongoDataConverter(ArrayEncoding.ARRAY,
+                FieldNameSelector.defaultNonRelationalSelector(SchemaNameAdjuster.NO_OP), false,
+                BsonTimestampHandlingMode.STRUCT);
+
+        Map<String, Map<Object, BsonType>> entry = converter.parseBsonDocument(val);
+        converter.buildSchema(entry, builder);
+
+        final Schema finalSchema = builder.build();
+        final Struct struct = new Struct(finalSchema);
+        for (Map.Entry<String, BsonValue> bsonValueEntry : val.entrySet()) {
+            converter.buildStruct(bsonValueEntry, finalSchema, struct);
+        }
+
+        @SuppressWarnings("unchecked")
+        final List<Struct> timestamps = (List<Struct>) struct.get("ts_values");
+        assertThat(timestamps).hasSize(2);
+        assertThat(timestamps.get(0).get("increment")).isEqualTo(7L);
+        assertThat(timestamps.get(1).get("increment")).isEqualTo(8L);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2570")
+    public void shouldPreserveNestedBsonTimestampInStructMode() {
+        val = BsonDocument.parse("{\n" +
+                "    \"_id\" : \"nested-timestamp-1\",\n" +
+                "    \"meta\" : { \"ts\" : { \"$timestamp\" : { \"t\": 1710000000, \"i\": 7 } }, \"label\": \"x\" }\n" +
+                "}");
+        builder = SchemaBuilder.struct().name("withnestedtimestamp");
+        converter = new MongoDataConverter(ArrayEncoding.ARRAY,
+                FieldNameSelector.defaultNonRelationalSelector(SchemaNameAdjuster.NO_OP), false,
+                BsonTimestampHandlingMode.STRUCT);
+
+        Map<String, Map<Object, BsonType>> entry = converter.parseBsonDocument(val);
+        converter.buildSchema(entry, builder);
+
+        final Schema finalSchema = builder.build();
+        final Struct struct = new Struct(finalSchema);
+        for (Map.Entry<String, BsonValue> bsonValueEntry : val.entrySet()) {
+            converter.buildStruct(bsonValueEntry, finalSchema, struct);
+        }
+
+        final Struct nestedTimestamp = struct.getStruct("meta").getStruct("ts");
+        assertThat(nestedTimestamp.schema().name()).isEqualTo(MongoDbSchema.SCHEMA_NAME_TIMESTAMP);
+        assertThat(nestedTimestamp.get("time")).isEqualTo(1710000000L);
+        assertThat(nestedTimestamp.get("increment")).isEqualTo(7L);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2570")
+    public void shouldEncodeMixedDateAndTimestampArrayAsDocumentInStructMode() {
+        // In struct mode a BSON timestamp no longer shares a schema with a date/time value, so an
+        // array mixing the two cannot be encoded as 'array'; 'document' encoding indexes each element
+        // under its own field and preserves both types.
+        val = BsonDocument.parse("{\n" +
+                "    \"_id\" : \"mixed-1\",\n" +
+                "    \"times\" : [ { \"$timestamp\" : { \"t\": 1710000000, \"i\": 7 } }, { \"$date\": 1710000000000 } ]\n" +
+                "}");
+        builder = SchemaBuilder.struct().name("withmixedarray");
+        converter = new MongoDataConverter(ArrayEncoding.DOCUMENT,
+                FieldNameSelector.defaultNonRelationalSelector(SchemaNameAdjuster.NO_OP), false,
+                BsonTimestampHandlingMode.STRUCT);
+
+        Map<String, Map<Object, BsonType>> entry = converter.parseBsonDocument(val);
+        converter.buildSchema(entry, builder);
+
+        final Schema finalSchema = builder.build();
+        final Struct struct = new Struct(finalSchema);
+        for (Map.Entry<String, BsonValue> bsonValueEntry : val.entrySet()) {
+            converter.buildStruct(bsonValueEntry, finalSchema, struct);
+        }
+
+        final Struct times = struct.getStruct("times");
+
+        // The timestamp element keeps the struct schema with both components...
+        final Struct ts0 = times.getStruct("_0");
+        assertThat(ts0.schema().name()).isEqualTo(MongoDbSchema.SCHEMA_NAME_TIMESTAMP);
+        assertThat(ts0.get("time")).isEqualTo(1710000000L);
+        assertThat(ts0.get("increment")).isEqualTo(7L);
+
+        // ...while the date/time element stays a Connect Timestamp (java.util.Date).
+        assertThat(times.get("_1")).isInstanceOf(Date.class);
+        assertThat(((Date) times.get("_1")).getTime()).isEqualTo(1710000000000L);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2570")
+    public void shouldRejectMixedDateAndTimestampArrayInArrayModeInStructMode() {
+        // Documented side effect: in struct mode a timestamp and a date/time no longer share a schema,
+        // so 'array' encoding cannot represent an array that mixes them (use 'document' encoding instead).
+        val = BsonDocument.parse("{\n" +
+                "    \"_id\" : \"mixed-array-fail-1\",\n" +
+                "    \"times\" : [ { \"$timestamp\" : { \"t\": 1710000000, \"i\": 7 } }, { \"$date\": 1710000000000 } ]\n" +
+                "}");
+        builder = SchemaBuilder.struct().name("withmixedarrayfail");
+        converter = new MongoDataConverter(ArrayEncoding.ARRAY,
+                FieldNameSelector.defaultNonRelationalSelector(SchemaNameAdjuster.NO_OP), false,
+                BsonTimestampHandlingMode.STRUCT);
+
+        assertThatThrownBy(() -> {
+            Map<String, Map<Object, BsonType>> entry = converter.parseBsonDocument(val);
+            converter.buildSchema(entry, builder);
+        }).isInstanceOf(DebeziumException.class)
+                .hasMessageContaining("different Bson types");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2570")
+    public void shouldConvertBsonTimestampToConnectTimestampByDefault() {
+        val = BsonDocument.parse("{\n" +
+                "    \"_id\" : \"timestamp-2\",\n" +
+                "    \"ts_a\" : { \"$timestamp\" : { \"t\": 1710000000, \"i\": 7 } },\n" +
+                "    \"ts_b\" : { \"$timestamp\" : { \"t\": 1710000000, \"i\": 8 } }\n" +
+                "}");
+        builder = SchemaBuilder.struct().name("withtimestampdefault");
+        converter = new MongoDataConverter(ArrayEncoding.ARRAY);
+
+        Map<String, Map<Object, BsonType>> entry = converter.parseBsonDocument(val);
+        converter.buildSchema(entry, builder);
+
+        final Schema finalSchema = builder.build();
+        final Struct struct = new Struct(finalSchema);
+        for (Map.Entry<String, BsonValue> bsonValueEntry : val.entrySet()) {
+            converter.buildStruct(bsonValueEntry, finalSchema, struct);
+        }
+
+        assertThat(finalSchema.field("ts_a").schema()).isEqualTo(Timestamp.builder().optional().build());
+        assertThat(struct.get("ts_a")).isEqualTo(new Date(1710000000000L));
+        // The default representation retains only the time component
+        assertThat(struct.get("ts_a")).isEqualTo(struct.get("ts_b"));
     }
 
     @Test
