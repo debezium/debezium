@@ -201,14 +201,17 @@ jobs:
             debezium-ddl-parser/src/test/resources/oracle/examples/**
 
       # Files that cannot affect the build. When a pull request touches only these,
-      # the build chain below is skipped entirely.
-      - name: Get modified files (Documentation and contributor metadata)
+      # the build chain below is skipped entirely. The bare *.md and *.txt patterns
+      # match the repository root only; a globstar would be needed to recurse, so
+      # text fixtures under a module's src/test/resources still trigger a build.
+      - name: Get modified files (Documentation and project metadata)
         id: changed-files-non-code
         uses: tj-actions/changed-files@v47.0.6
         with:
           files: |
             documentation/**
-            COPYRIGHT.txt
+            *.md
+            *.txt
             jenkins-jobs/scripts/config/Aliases.txt
             jenkins-jobs/scripts/config/FilteredNames.txt
 
