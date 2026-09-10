@@ -143,6 +143,9 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
             while (getContext().isRunning()) {
 
+                // Execute pending synchronous signals now that no batch is being processed
+                getContext().processSynchronousSignals();
+
                 // Check if we should break when using archive log only mode
                 if (getConfig().isArchiveLogOnlyMode()) {
                     if (waitForRangeAvailabilityInArchiveLogs(sessionStartScn, sessionEndScn)) {
@@ -1502,6 +1505,34 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
         LOGGER.info("Successfully dropped transaction '{}' from Oracle LogMiner buffer via manual request", transactionId);
         return true;
+    }
+
+    /**
+     * Returns a snapshot of all transactions currently pending in the buffer, both the active transactions
+     * held in the transaction cache and the deferred transactions that have not yet emitted any DML events.
+     * The pending transaction list is ordered from oldest to newest by start SCN.
+     * <p>
+     * The buffer is owned by the streaming thread, so this method must only be called from that thread.
+     * Signal actions that call it must request synchronous invocation via
+     * {@link io.debezium.pipeline.signal.actions.SignalAction#isSynchronous()}.
+     *
+     * @return the pending transactions, oldest first, never {@code null}
+     */
+    public List<PendingTransaction> getPendingTransactions() {
+        final List<PendingTransaction> pending = new ArrayList<>();
+
+        getTransactionCache().transactions(stream -> stream
+                .map(t -> new PendingTransaction(t.getTransactionId(), t.getStartScn(), t.getChangeTime(), t.getUserName(),
+                        t.getClientId(), t.getRedoThreadId(), getTransactionEventCount(t), false))
+                .forEach(pending::add));
+
+        deferredTransactions.values().stream()
+                .map(t -> new PendingTransaction(t.transactionId(), t.startScn(), t.changeTime(), t.userName(),
+                        t.clientId(), t.redoThreadId(), 0, true))
+                .forEach(pending::add);
+
+        pending.sort(PendingTransaction.OLDEST_FIRST);
+        return pending;
     }
 
     /**

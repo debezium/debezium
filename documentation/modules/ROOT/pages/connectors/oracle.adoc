@@ -541,6 +541,56 @@ INSERT INTO debezium.debezium_signal VALUES('drop-tx-1', 'drop-transaction', '{"
 }
 ----
 
+[id="oracle-log-pending-transactions-signal"]
+=== Logging pending transactions
+
+You can use {prodname} signaling to send a `log-pending-transactions` signal to the connector at run time to write the details of every transaction that is currently pending in the LogMiner buffer to the connector log.
+
+The connector's mining window is bounded by the oldest transaction that it has seen but that has not yet committed or rolled back.
+Identifying these transactions normally requires that you enable verbose logging before the situation occurs, or that you have access to query LogMiner directly.
+The `log-pending-transactions` signal provides an on-demand view of the transactions that the connector currently tracks, so that you can decide whether to wait for a transaction, or remove it by using the xref:oracle-drop-transaction-signal[`drop-transaction`] signal.
+
+The signal reports two kinds of transactions:
+
+Active transactions:: Transactions for which the connector has buffered one or more change events.
+Deferred transactions:: Transactions that the connector has seen start, but for which it has not yet buffered any change events.
+
+For each transaction, the connector logs the transaction ID, the SCN and time at which the transaction started, the database user name and client identifier associated with the transaction, and the redo thread on which the transaction was mined.
+For active transactions, the connector also logs the number of buffered events.
+Entries are ordered from the oldest transaction to the newest, so that the first entry is the transaction that currently holds back the mining window.
+
+The connector processes the signal on its streaming thread at the start of the next mining iteration, so that the buffer is read in a consistent state.
+On a busy connector the entries can therefore appear a few seconds after the signal is received.
+
+.Prerequisites
+* The connector is configured to use one of the available link:{link-signalling}#sending-signals-to-a-debezium-connector[{prodname} signaling channels].
+* You have access to the connector log file.
+
+.Procedure
+* Send a signal that includes the standard `id` and `type` properties of a {prodname} signal to your preferred signaling channel.
+The signal does not require any `data`.
++
+.Example SQL using the `source` signal channel
+[source,sql,indent=0,subs="+attributes"]
+----
+INSERT INTO debezium.debezium_signal (id, type) VALUES('log-tx-1', 'log-pending-transactions');
+----
++
+.Example message payload using the `kafka` signal channel
+[source,json,indent=0,subs="+attributes"]
+----
+{
+  "type": "log-pending-transactions"
+}
+----
++
+The connector writes entries similar to the following to its log:
++
+----
+Pending transactions in Oracle LogMiner buffer as requested by signal 'log-tx-1': 2 total (1 active, 1 deferred)
+Active transaction 1a.2b.001f: startScn=12345678, changeTime=2024-01-01T10:15:30Z, userName=APP, clientId=batch-loader, redoThread=1, events=1500
+Deferred transaction 1c.2d.0020: startScn=12345900, changeTime=2024-01-01T10:16:02Z, userName=APP, clientId=null, redoThread=1
+----
 
 // Type: concept
 // ModuleID: default-names-of-kafka-topics-that-receive-debezium-oracle-change-event-records
