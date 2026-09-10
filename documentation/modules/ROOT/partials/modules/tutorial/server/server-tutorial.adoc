@@ -1,0 +1,28 @@
+[id="server-tutorial-{selected-sink}"]
+= {prodname} Server Tutorial - {selected-sink} Sink
+
+:toc:
+:toc-placement: macro
+:sectanchors:
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+:windows:
+
+toc::[]
+
+include::{partialsdir}/modules/tutorial/server/{selected-sink}-sink/{selected-sink}-introduction.adoc[]
+
+include::{partialsdir}/modules/tutorial/server/server-prerequisites.adoc[]
+
+include::{partialsdir}/modules/tutorial/server/server-introduction.adoc[leveloffset=+1]
+
+include::{partialsdir}/assemblies/tutorial/server/assembly-starting-services-server.adoc[leveloffset=+1]
+
+include::{partialsdir}/assemblies/tutorial/server/assembly-deploying-mysql-connector-server.adoc[leveloffset=+1]
+
+include::{partialsdir}/assemblies/tutorial/server/assembly-viewing-change-events-server.adoc[leveloffset=+1]
+
+include::{partialsdir}/modules/tutorial/server/server-cleaning-up.adoc[leveloffset=+1]
+
+include::{partialsdir}/modules/tutorial/kafka-connect/con-next-steps.adoc[leveloffset=+1]

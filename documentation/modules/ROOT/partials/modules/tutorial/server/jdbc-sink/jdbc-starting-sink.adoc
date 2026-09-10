@@ -1,10 +1,10 @@
 .Procedure
 
-. Open a new terminal and use it to start the PostgreSQL database server that will receive change events from {prodname} in a container.
+. Open a new terminal and use it to start the PostgreSQL database server that will receive change events from {prodname} in a container. For the purposes of this tutorial, this will be hitherto referred to as the "{selected-sink}" sink, as this is the database the {selected-sink} sink connector will stream changes to.
 
 +
 --
-This command runs a new container using version {debezium-docker-label} of the `example-httpd` container, which is based on version 2.4 of the `docker.io/library/httpd:2.4` image:
+This command runs a new container using version {debezium-docker-label} of the `example-postgres` container, which is based on version 18.6 of the `docker.io/library/postgres:18.6` image:
 
 [source,shell,options="nowrap",subs="+attributes"]
 ----

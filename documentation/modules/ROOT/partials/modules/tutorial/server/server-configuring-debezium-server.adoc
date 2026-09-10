@@ -1,22 +1,17 @@
-// Metadata created by nebel
-//
-// ParentAssemblies: assemblies/tutorial/as_starting-services.adoc
-// UserStory:
-
 [id="configuring-debezium-server"]
 = Configuring Debezium Server for the {selected-sink} sink
 
-Configure the {prodname} server application so that it can stream change events to the HTTP sink.
+Configure the {prodname} server application so that it can stream change events to the {selected-sink} sink.
 
 .Prerequisites
 
-* The {selected-sink} and MySQL containers are running.
+* The {selected-sink} sink and MySQL containers are running.
 * You have connected to the `inventory` database with the MySQL command line client or via the container itself.
 
-ifeval::["{selected-sink}" == "http"]
+ifeval::["{selected-sink}" == "HTTP"]
 include::{partialsdir}/modules/tutorial/server/{selected-sink}-sink/{selected-sink}-configuring-server.adoc[]
 endif::[]
 
-ifeval::["{selected-sink}" == "jdbc"]
+ifeval::["{selected-sink}" == "JDBC"]
 include::{partialsdir}/modules/tutorial/server/{selected-sink}-sink/{selected-sink}-configuring-server.adoc[]
 endif::[]

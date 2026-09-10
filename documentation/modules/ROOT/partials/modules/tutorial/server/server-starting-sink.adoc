@@ -1,10 +1,10 @@
 [id="starting-sink"]
 = Starting the {selected-sink} sink
 
-ifeval::["{selected-sink}" == "http"]
-include::{partialsdir}/modules/tutorial/server/http-sink/http-starting-sink.adoc[]
+ifeval::["{selected-sink}" == "HTTP"]
+include::{partialsdir}/modules/tutorial/server/{selected-sink}-sink/{selected-sink}-starting-sink.adoc[]
 endif::[]
 
-ifeval::["{selected-sink}" == "jdbc"]
-include::{partialsdir}/modules/tutorial/server/jdbc-sink/jdbc-starting-sink.adoc[]
+ifeval::["{selected-sink}" == "JDBC"]
+include::{partialsdir}/modules/tutorial/server/{selected-sink}-sink/{selected-sink}-starting-sink.adoc[]
 endif::[]

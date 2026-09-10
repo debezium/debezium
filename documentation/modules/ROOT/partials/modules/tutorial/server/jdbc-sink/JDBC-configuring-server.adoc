@@ -1,12 +1,8 @@
-// Metadata created by nebel
-//
-// ParentAssemblies: assemblies/tutorial/as_starting-services.adoc
-// UserStory:
 
-[id="configuring-debezium-server-jdbc-sink-connector"]
-= Configuring Debezium Server for JDBC Sink and MySQL Connectors
+[id="configuring-debezium-server-{selected-sink}-sink-connector"]
+= Configuring Debezium Server for {selected-sink} sink and MySQL Connectors
 
-Configure the {prodname} server application so that it can stream change events to the JDBC sink, which are then committed to the PostgreSQL database.
+Configure the {prodname} server application so that it can stream change events to the {selected-sink} sink, which are then committed to the PostgreSQL database.
 
 .Prerequisites
 
