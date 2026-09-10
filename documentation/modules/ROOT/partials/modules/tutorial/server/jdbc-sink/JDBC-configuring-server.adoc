@@ -4,10 +4,13 @@
 
 Configure the {prodname} server application so that it can stream change events to the {selected-sink} sink, which are then committed to the PostgreSQL database.
 
+Visit `https://jdbc.postgresql.org/` to download the PostgreSQL JDBC driver. Once it is downloaded, place it in the `debezium-server\config\lib` directory.
+
 .Prerequisites
 
 * The PostgreSQL and MySQL containers are running.
 * You have connected to the `inventory` database with the MySQL command line client or via the container itself.
+* The PostgreSQL JDBC driver is present in the `debezium-server\config\lib` directory.
 
 .Procedure
 

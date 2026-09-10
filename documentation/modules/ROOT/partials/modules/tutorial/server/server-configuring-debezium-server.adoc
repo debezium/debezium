@@ -1,5 +1,5 @@
-[id="configuring-debezium-server"]
-= Configuring Debezium Server for the {selected-sink} sink
+[id="configuring-{prodname}-server"]
+= Configuring {prodname} Server for the {selected-sink} sink
 
 Configure the {prodname} server application so that it can stream change events to the {selected-sink} sink.
 
@@ -8,10 +8,4 @@ Configure the {prodname} server application so that it can stream change events 
 * The {selected-sink} sink and MySQL containers are running.
 * You have connected to the `inventory` database with the MySQL command line client or via the container itself.
 
-ifeval::["{selected-sink}" == "HTTP"]
 include::{partialsdir}/modules/tutorial/server/{selected-sink}-sink/{selected-sink}-configuring-server.adoc[]
-endif::[]
-
-ifeval::["{selected-sink}" == "JDBC"]
-include::{partialsdir}/modules/tutorial/server/{selected-sink}-sink/{selected-sink}-configuring-server.adoc[]
-endif::[]

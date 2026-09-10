@@ -1,0 +1,14 @@
+. In the terminal that is running the PostgreSQL command line client, run the following statement:
+[source,sql,options="nowrap"]
+----
+inventory=# SELECT * FROM tutorial_inventory_customers;
+  id  | first_name | last_name |         email         
+------+------------+-----------+-----------------------
+ 1001 | Sally      | Thomas    | sally.thomas@acme.com
+ 1002 | George     | Bailey    | gbailey@foobar.com
+ 1003 | Edward     | Walker    | ed@walker.com
+ 1004 | Anne       | Kretchmar | annek@noanswer.org
+ 1006 | Sarah      | Thompson  | kitt@acme.com
+ 1007 | Kenneth    | Anderson  | kander@acme.com
+(6 rows)
+----

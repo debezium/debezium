@@ -1,0 +1,135 @@
+. Switch to the terminal running the HTTP Sink container to see _two_ new events.
+
++
+By deleting a row in the `customers` table, the {prodname} MySQL connector generated two new events.
+
+. Review the _key_ and _value_ for the first new event.
++
+--
+Here are the details of the _key_ for the first new event (formatted for readability):
+
+[source,json,options="nowrap"]
+----
+{
+  "schema": {
+    "type": "struct",
+    "name": "dbserver1.inventory.customers.Key",
+    "optional": false,
+    "fields": [
+      {
+        "field": "id",
+        "type": "int32",
+        "optional": false
+      }
+    ]
+  },
+  "payload": {
+    "id": 1005
+  }
+}
+----
+
+This _key_ is the same as the _key_ in the previous two events you looked at.
+
+Here is the _value_ of the first new event (formatted for readability):
+
+[source,json,options="nowrap",subs="+attributes"]
+----
+"payload": {
+        "before": {
+            "id": 1005,
+            "first_name": "Johnathan",
+            "last_name": "Tutorial",
+            "email": "johnathantutorial@example.com"
+        },
+        "after": null,
+        "source": {
+            "version": "3.7.0.Alpha1",
+            "connector": "mysql",
+            "name": "tutorial",
+            "ts_ms": 1788868704000,
+            "snapshot": "false",
+            "db": "inventory",
+            "sequence": null,
+            "ts_us": 1788868704000000,
+            "ts_ns": 1788868704000000000,
+            "table": "customers",
+            "server_id": 223344,
+            "gtid": null,
+            "file": "mysql-bin.000003",
+            "pos": 1155,
+            "row": 0,
+            "thread": 13,
+            "query": null
+        },
+        "transaction": null,
+        "op": "d",
+        "ts_ms": 1788868704671,
+        "ts_us": 1788868704671357,
+        "ts_ns": 1788868704671357803
+    }
+----
+[cols="1a,7a",options="header",subs="+attributes"]
+
+The following list describes select fields in the preceding example of a `delete` event value:
+
+`before`::
+The `before` field shows the state of the row before its deletion.
+
+`after`::
+Shows the state of the field after the deletion.
+The value of the `after` field is `null`, because the row no longer exists.
+
+`source`::
+The `source` field structure has many of the same values as before, the deletion occurred, except that the values of the `ts_sec` and `pos` fields have changed.
+In some circumstances, the `file` value might also change.
+
+`op`::
+Shows the type of operation that the event describes.
+The `op` field value is `d`, indicating that the record was deleted.
+
+`ts_ms`, `ts_us`, `ts_ns`::
+Displays timestamps in milliseconds, microseconds, and nanoseconds that indicate when the connector processed the event.
+The time is based on the system clock in the JVM that runs the Kafka Connect task.
+
+Thus, this event provides a consumer with the information that it needs to process the removal of the row.
+The event record also provides the old values, because some consumers might require them to properly handle the removal.
+--
+
+. Review the _key_ and _value_ for the second new event.
+
++
+Here is the _key_ for the second new event (formatted for readability):
++
+[source,json,options="nowrap"]
+----
+  {
+    "schema": {
+      "type": "struct",
+      "name": "dbserver1.inventory.customers.Key"
+      "optional": false,
+      "fields": [
+        {
+          "field": "id",
+          "type": "int32",
+          "optional": false
+        }
+      ]
+    },
+    "payload": {
+      "id": 1004
+    }
+  }
+----
++
+Once again, this _key_ is exactly the same key as in the previous three events you looked at.
++
+Here is the _value_ of that same event (formatted for readability):
++
+[source,json,options="nowrap"]
+----
+{
+  "schema": null,
+  "payload": null
+}
+----

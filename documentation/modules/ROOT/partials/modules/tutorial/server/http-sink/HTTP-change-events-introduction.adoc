@@ -1,0 +1,4 @@
+When you watched {prodname} server and the connector start up,
+you saw that events were being streamed to the {selected-sink} sink at `http://127.0.0.1:8081`
+
+As events are received, they are output to the standard output of the container the {selected-sink} sink is running in.
