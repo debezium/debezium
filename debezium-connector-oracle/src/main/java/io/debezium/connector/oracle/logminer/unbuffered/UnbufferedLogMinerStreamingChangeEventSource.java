@@ -211,6 +211,11 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
     }
 
     @Override
+    protected boolean isDispatchAllowedForDataChangeEvent(LogMinerEventRow event) {
+        return !event.isRollbackFlag();
+    }
+
+    @Override
     protected void enqueueEvent(LogMinerEventRow event, LogMinerEvent dispatchedEvent) throws InterruptedException {
         getMetrics().calculateLagFromSource(event.getChangeTime());
         accumulator.accept(dispatchedEvent, event.getTransactionId(), event.getTransactionSequence());
