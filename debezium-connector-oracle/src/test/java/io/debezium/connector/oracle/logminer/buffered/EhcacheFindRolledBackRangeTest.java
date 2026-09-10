@@ -11,7 +11,7 @@ import io.debezium.connector.oracle.logminer.buffered.ehcache.EhcacheCacheProvid
 import io.debezium.connector.oracle.logminer.buffered.ehcache.EhcacheTransaction;
 import io.debezium.connector.oracle.logminer.buffered.ehcache.EhcacheTransactionFactory;
 
-public class EhcacheFindFirstRolledBackEventEntryTest extends AbstractFindFirstRolledBackEventEntryTest<EhcacheTransaction> {
+public class EhcacheFindRolledBackRangeTest extends AbstractFindRolledBackRangeTest<EhcacheTransaction> {
     private static final String HEAP_ONLY_CACHE_CONFIG = "<resources><heap unit=\"entries\">100</heap></resources>";
     private static final Configuration CONFIG = Configuration.create()
             .with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_TRANSACTIONS_CONFIG, HEAP_ONLY_CACHE_CONFIG)
