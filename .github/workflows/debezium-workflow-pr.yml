@@ -244,6 +244,13 @@ jobs:
     needs: [ file_changes ]
     if: ${{ needs.file_changes.outputs.non-code-only-changed == 'false' }}
     runs-on: ubuntu-latest
+    # The dependency delta lookup below reads this pull request's artifacts from earlier runs
+    # through the REST API, which needs the actions:read scope.  Declaring the scopes here keeps
+    # the lookup working no matter how the repository's default token permissions are configured;
+    # without actions:read the query returns 403 and every run pays the full download cost.
+    permissions:
+      contents: read
+      actions: read
     steps:
       - name: Checkout Action (Core)
         uses: actions/checkout@v7
@@ -294,8 +301,15 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           ARTIFACT_NAME: maven-repo-delta-pr-${{ github.event.pull_request.number }}
         run: |
-          url=$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${ARTIFACT_NAME}&per_page=10" \
-            --jq '[.artifacts[] | select(.expired == false)] | first | .archive_download_url // empty')
+          set -euo pipefail
+          # A failed lookup and an absent delta both leave the build to download what it needs, but
+          # only the first is a defect.  Keep them apart so a broken lookup cannot masquerade as a
+          # routine miss for the lifetime of the workflow.
+          if ! url=$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${ARTIFACT_NAME}&per_page=10" \
+            --jq '[.artifacts[] | select(.expired == false)] | first | .archive_download_url // empty'); then
+            echo "::warning::Could not query artifacts named ${ARTIFACT_NAME}; continuing without a dependency delta"
+            exit 1
+          fi
           if [ -z "${url}" ]; then
             echo "No previous dependency delta found for this pull request"
             exit 0
