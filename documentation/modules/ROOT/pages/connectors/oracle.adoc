@@ -1367,9 +1367,10 @@ For the connector to use the `heartbeat.action.query` with tables that are not o
 [[capturing-large-object-data]]
 === Capturing large object data
 
-Oracle stores several data types by using internal large object (LOB) mechanisms in the redo logs.
-To enable {prodname} to capture changes to LOB data, you must set the xref:oracle-property-lob-enabled[`lob.enabled`] connector configuration property to `true`.
+Capturing Oracle LOB data during streaming requires special handling.
+Configure the connector to capture LOB values accurately while balancing mining overhead and performance.
 
+To accurately capture LOB column values during streaming, set the `lob.enabled` connector configuration property to `true`.
 With this property enabled, the connector can capture the following data types:
 
 `CLOB`:: Character large objects.
@@ -1377,14 +1378,14 @@ With this property enabled, the connector can capture the following data types:
 `BLOB`:: Binary large objects.
 `XMLTYPE`:: XML data stored as a LOB.
 `JSON`:: JSON data (Oracle 21c and later).
-Extended strings:: `VARCHAR2`, `NVARCHAR2`, and `RAW` columns that exceed the legacy maximum lengths when the database parameter `max_string_size` is set to `EXTENDED`.
+`Extended strings`:: `VARCHAR2`, `NVARCHAR2`, and `RAW` columns that exceed the legacy maximum lengths when the database parameter `max_string_size` is set to `EXTENDED`.
 For more information about how the connector supports extended strings, see xref:support-for-extended-max-string-size[Extended max string size].
 
 When `lob.enabled` is set to `false` (the default), snapshot events include the current LOB column values, but streamed change events represent LOB columns with the xref:oracle-property-unavailable-value-placeholder[`unavailable.value.placeholder`] constant.
 Disabling mining of LOB values reduces the volume of data that LogMiner processes by excluding LOB-specific redo log entries.
 
 When `lob.enabled` is `true`, the connector mines additional redo log operation types that Oracle uses to represent LOB writes.
-Oracle only supplies LOB column values when the column value is explicitly set or changed in a SQL statement.
+During streaming, Oracle includes LOB column values in redo data only when a SQL DML statement explicitly sets or changes an LOB column value.
 If a DML statement does not modify an LOB column, the change event contains the configured unavailable value placeholder rather than the column's current value.
 
 // Type: concept
@@ -1393,27 +1394,26 @@ If a DML statement does not modify an LOB column, the change event contains the 
 [id="oracle-internal-events-and-rollback-to-savepoint-handling"]
 ==== INTERNAL events and ROLLBACK TO SAVEPOINT handling
 
-Oracle records `INTERNAL` events in the redo log to associate `ROW_ID` values with out-of-line LOB operations.
-Capturing these events helps the connector avoid emitting stale LOB values after savepoint rollbacks.
-Configure `log.mining.include.internal.events` to specify whether the connector captures these events to enable accurate handling of `ROLLBACK TO SAVEPOINT` in transactions that modify LOB columns.
-When a table stores LOB data out-of-line, these events provide the connector with the row identifier that it needs to correctly correlate LOB changes with their parent DML operation.
+Oracle records INTERNAL events in the redo log for out-of-line LOB operations.
+These events serve two purposes: they associate `ROW_ID` values with LOB data, and they mark the boundary between successive DML statements.
+The connector uses these boundaries to identify which events belong to a rolled-back statement during `ROLLBACK TO SAVEPOINT` processing.
+Set the `log.mining.include.internal.events` property to specify whether the connector captures `INTERNAL` events.
+The connector requires these events to accurately process `ROLLBACK TO SAVEPOINT` operations in transactions that modify LOB columns.
 
+When a table stores LOB data out-of-line, these events provide the connector with the row identifier that it needs to correctly correlate LOB changes with their parent DML operation.
 This correlation becomes critical when a transaction uses `ROLLBACK TO SAVEPOINT` to partially undo changes.
 In the absence of the `ROW_ID` information that an `INTERNAL` event provides, the connector cannot reliably determine which row a rolled-back LOB operation affects.
 In such scenarios, the connector might emit change events that contain stale LOB field values.
 
-To prevent {prodname} from emitting change events that contain stale LOB values, you can set the xref:oracle-property-log-mining-include-internal-events[`log.mining.include.internal.events`] configuration property.
-
-* When set to `false` (the default), `INTERNAL` events are excluded from LogMiner queries.
-This keeps the volume of mined redo log data lower, but partial rollbacks in transactions that modify out-of-line LOB columns may produce change events with stale values for the affected LOB fields.
-* When set to `true`, the connector includes `INTERNAL` events in LogMiner queries.
+The `log.mining.include.internal.events` property controls whether the connector includes Oracle `INTERNAL` events in LogMiner queries.
 The `log.mining.include.internal.events` property accepts the following values:
-`false`:: (default) The connector excludes `INTERNAL` events from LogMiner queries.
+
+`false`:: (Default) The connector excludes `INTERNAL` events from LogMiner queries.
 This setting reduces the volume of mined redo log data.
 However, after a partial rollback of a transaction that modifies out-of-line LOB columns, the connector might emit change events that contain stale values for affected LOB fields.
 
 `true`:: The connector includes `INTERNAL` events in LogMiner queries.
-This setting increases the volume of mined redo log data, but enables the connector to reliably handle `ROLLBACK TO SAVEPOINT` operations for tables with out-of-line LOB columns.
+This setting increases the volume of mined redo log data, but enables the connector to accurately process `ROLLBACK TO SAVEPOINT` operations for tables with out-of-line LOB columns.
 
 [NOTE]
 ====
@@ -1426,8 +1426,9 @@ If your application does not use `ROLLBACK TO SAVEPOINT` in transactions that mo
 Enable it only when you need accurate partial rollback handling for tables that store LOB data out-of-line.
 ====
 
-As an alternative, you can set `lob.enabled` to `false` and use the xref:post-processors/reselect-columns.adoc[Reselect columns post processor] to re-query LOB column values directly from the database.
-This approach avoids the overhead of mining both LOB-specific redo log entries and `INTERNAL` events entirely, while still ensuring that LOB fields contain correct values, since the post processor fetches the current column value from the source table.
+As an alternative to enabling LOB mining and capturing `INTERNAL` events, you can set `lob.enabled` to `false` and configure the xref:post-processors/reselect-columns.adoc[Reselect columns post processor] to re-query LOB column values directly from the database.
+
+This approach avoids the overhead of mining LOB-specific redo log entries and `INTERNAL` events while still ensuring that change events contain correct LOB values, because the post processor retrieves the values directly from the source table.
 
 // Type: assembly
 // ModuleID: descriptions-of-debezium-oracle-connector-data-change-events
