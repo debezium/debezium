@@ -17,7 +17,7 @@ import io.debezium.sink.valuebinding.ValueBindDescriptor;
  *
  * @author Chris Cranford
  */
-public abstract class AbstractBytesType extends AbstractType {
+public abstract class AbstractBytesType extends AbstractType implements RawBytesJdbcType {
 
     @Override
     public String[] getRegistrationKeys() {

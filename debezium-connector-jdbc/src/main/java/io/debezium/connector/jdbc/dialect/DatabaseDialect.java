@@ -20,8 +20,10 @@ import io.debezium.connector.jdbc.JdbcSinkRecord;
 import io.debezium.connector.jdbc.field.JdbcFieldDescriptor;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
 import io.debezium.connector.jdbc.type.JdbcType;
+import io.debezium.connector.jdbc.util.BinaryHandling;
 import io.debezium.metadata.CollectionId;
 import io.debezium.sink.column.ColumnDescriptor;
+import io.debezium.sink.field.FieldDescriptor;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
 
 /**
@@ -209,6 +211,18 @@ public interface DatabaseDialect {
      * @return the query binding SQL fragment
      */
     String getQueryBindingWithValueCast(ColumnDescriptor column, Schema schema, JdbcType type);
+
+    /**
+     * Resolves how a field is bound for the destination table.
+     *
+     * @param table the table descriptor, never {@code null}
+     * @param record the sink record the field belongs to, never {@code null}
+     * @param field the field descriptor, never {@code null}
+     * @return the resolved binary handling mode and destination column
+     */
+    default BinaryHandling.Resolution resolveBinaryHandling(TableDescriptor table, JdbcSinkRecord record, FieldDescriptor field) {
+        return BinaryHandling.Resolution.bytes(null);
+    }
 
     /**
      * Gets the maximum length of a VARCHAR field in a primary key column.

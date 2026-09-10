@@ -13,6 +13,7 @@ import org.hibernate.engine.jdbc.Size;
 
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.JdbcType;
+import io.debezium.connector.jdbc.type.RawBytesJdbcType;
 import io.debezium.connector.jdbc.util.ByteArrayUtils;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
 
@@ -21,7 +22,7 @@ import io.debezium.sink.valuebinding.ValueBindDescriptor;
  *
  * @author Chris Cranford
  */
-public class ConnectBytesType extends AbstractConnectSchemaType {
+public class ConnectBytesType extends AbstractConnectSchemaType implements RawBytesJdbcType {
 
     public static final ConnectBytesType INSTANCE = new ConnectBytesType();
 
