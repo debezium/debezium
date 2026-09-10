@@ -18,21 +18,32 @@ import java.util.Set;
  */
 public abstract class AbstractLogMinerTransactionCache<T extends Transaction> implements LogMinerTransactionCache<T> {
 
+    protected static String getTransactionSlt(String transactionId) {
+        return Transaction.getTransactionSlt(transactionId);
+    }
+
+    protected static <T extends Transaction> T checkTransactionSqn(String transactionId, T transaction) {
+        if (transaction != null) {
+            Transaction.checkTransactionSqn(transactionId, transaction.getTransactionId(), transaction.getStartScn());
+        }
+        return transaction;
+    }
+
     private final Set<String> abandonedTransactions = new HashSet<>();
 
     @Override
     public void abandon(T transaction) {
-        abandonedTransactions.add(transaction.getTransactionId());
+        abandonedTransactions.add(transaction.getTransactionSlt());
     }
 
     @Override
     public void removeAbandonedTransaction(String transactionId) {
-        abandonedTransactions.remove(transactionId);
+        abandonedTransactions.remove(getTransactionSlt(transactionId));
     }
 
     @Override
     public boolean isAbandoned(String transactionId) {
-        return abandonedTransactions.contains(transactionId);
+        return abandonedTransactions.contains(getTransactionSlt(transactionId));
     }
 
     @Override

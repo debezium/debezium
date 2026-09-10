@@ -334,7 +334,7 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
         Mockito.when(rs.getString(7)).thenReturn("ABC");
         Mockito.when(rs.getString(8)).thenReturn("DEBEZIUM");
         Mockito.when(rs.getString(10)).thenReturn("AAAAAAAAAAAAAAAAAD");
-        Mockito.when(rs.getBytes(5)).thenReturn(new byte[]{ 0x12, 0x34, 0x56, 0x78 });
+        Mockito.when(rs.getBytes(5)).thenReturn(new byte[]{ 0x12, 0x34, 0x56, 0x78, (byte) 0x90 });
 
         final PreparedStatement ps = Mockito.mock(PreparedStatement.class);
         Mockito.when(ps.executeQuery()).thenReturn(rs);
@@ -657,7 +657,7 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
         }
 
         public boolean hasDeferredTransaction(String transactionId) {
-            return getDeferredTransactionsForTest().containsKey(transactionId);
+            return getDeferredTransactionsForTest().containsKey(Transaction.getTransactionSlt(transactionId));
         }
 
         public Scn getOldestDeferredTransactionStartScn() {
