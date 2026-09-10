@@ -189,9 +189,13 @@ To run the build, navigate to the project's root directory and run:
 
 It might be useful to simply run a _validate_ check against the code instead of automatically applying code style changes.  If you want to simply run validation, navigate to the project's root directory and run:
 
-    $ ./mvnw clean install -Dformat.formatter.goal=validate -Dformat.imports.goal=check     
+    $ ./mvnw clean install -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dformat.names.goal=check     
 
-Please note that when running _validate_ checks, the build will stop as soon as it encounters its first violation.  This means it is necessary to run the build multiple times until no violations are detected.
+Please note that when running _validate_ checks, the build will stop as soon as it encounters its first violation.  This means it is necessary to run the build multiple times until no violations are detected.  
+
+If there are violations with `COPYRIGHT.txt`, `Aliases.txt`, or `FilteredNames.txt` because you've added your name and GitHub handle, you can resolve those automatically by having the build sort the files automatically.  Navigate to the project root directory and run:
+
+    $ ./mvnw clean install -Dformat.names.goal=sort
 
 ### Rebasing
 
