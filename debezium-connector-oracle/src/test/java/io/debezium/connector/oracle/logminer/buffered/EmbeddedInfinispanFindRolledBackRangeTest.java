@@ -13,7 +13,7 @@ import io.debezium.connector.oracle.logminer.buffered.infinispan.EmbeddedInfinis
 import io.debezium.connector.oracle.logminer.buffered.infinispan.InfinispanTransaction;
 import io.debezium.connector.oracle.logminer.buffered.infinispan.InfinispanTransactionFactory;
 
-public class EmbeddedInfinispanFindFirstRolledBackEventEntryTest extends AbstractFindFirstRolledBackEventEntryTest<InfinispanTransaction> {
+public class EmbeddedInfinispanFindRolledBackRangeTest extends AbstractFindRolledBackRangeTest<InfinispanTransaction> {
     private static final Configuration CONFIG = Configuration.create()
             .with(OracleConnectorConfig.LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS, heapOnlyCacheConfig("transactions"))
             .with(OracleConnectorConfig.LOG_MINING_BUFFER_INFINISPAN_CACHE_PROCESSED_TRANSACTIONS, heapOnlyCacheConfig("processed-transactions"))
