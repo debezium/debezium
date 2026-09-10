@@ -6,10 +6,8 @@
 After deploying the {prodname} MySQL connector,
 it starts monitoring the `inventory` database for data change events.
 
-When you watched {prodname} server and the connector start up,
-you saw that events were being streamed to the HTTP Sink at `http://127.0.0.1:8081`
+include::{partialsdir}/modules/tutorial/server/{selected-sink}-sink/{selected-sink}-change-events-introduction.adoc[]
 
-As events are received, they are output to the standard output of the container the HTTP Sink is running in, which can be viewed using `docker logs httpsink`.
 In this topic, you will see different types of change events to see how the connector captured them:
 
 * xref:viewing-create-event[Viewing a _create_ event]

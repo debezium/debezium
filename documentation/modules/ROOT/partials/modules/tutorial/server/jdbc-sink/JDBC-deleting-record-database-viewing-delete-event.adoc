@@ -1,22 +1,6 @@
-[id="deleting-record-database-viewing-delete-event-jdbc-sink"]
-= Deleting a record in the database and viewing the _delete_ event
-
-By deleting a record in the database and observing the change event that the {prodname} MySQL connector captures, you can learn how {prodname} represents deletions and how Kafka log compaction handles tombstone events.
-
-.Procedure
-
-. In the terminal that is running the MySQL command line client, run the following statement:
-+
---
-[source,sql,options="nowrap"]
-----
-mysql> DELETE FROM customers WHERE last_name = 'Tutorial';
-Query OK, 1 row affected (0.00 sec)
-----
-
 . In the terminal that is running the PostgreSQL command line client, run the following statement:
 [source,sql,options="nowrap"]
-----
+====
 inventory=# SELECT * FROM tutorial_inventory_customers;
   id  | first_name | last_name |         email         
 ------+------------+-----------+-----------------------
@@ -25,7 +9,7 @@ inventory=# SELECT * FROM tutorial_inventory_customers;
  1003 | Edward     | Walker    | ed@walker.com
  1004 | Anne       | Kretchmar | annek@noanswer.org
 (4 rows)
-----
+====
 
 +
 By deleting a row in the `customers` table, the {prodname} MySQL connector generated two new events.

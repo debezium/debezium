@@ -1,1 +1,0 @@
-Visit `https://jdbc.postgresql.org/` to download the PostgreSQL JDBC driver. Once it is downloaded, place it in the `debezium-server\config\lib` directory.

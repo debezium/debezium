@@ -1,0 +1,20 @@
+Now check that the changes propogated to the PostgreSQL server.
+
+. In the terminal that is running the PostgreSQL command line client, run the following statement:
+[source,sql,options="nowrap"]
+----
+inventory=# SELECT * FROM tutorial_inventory_customers;
+  id  | first_name | last_name |             email             
+------+------------+-----------+-------------------------------
+ 1001 | Sally      | Thomas    | sally.thomas@acme.com
+ 1002 | George     | Bailey    | gbailey@foobar.com
+ 1003 | Edward     | Walker    | ed@walker.com
+ 1004 | Anne       | Kretchmar | annek@noanswer.org
+ 1005 | Johnathan  | Tutorial  | johnathantutorial@example.com
+(5 rows)
+----
+
++
+--
+By changing a record in the `customers` table, the {prodname} MySQL connector generated a new event.
+You should see the change event at the end of the {prodname} server POST request log.

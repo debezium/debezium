@@ -13,6 +13,7 @@ Start a MySQL server that is preconfigured with a sample `inventory` database so
 . Open a new terminal, and use it to start a new container that runs a MySQL database server preconfigured with an `inventory` database.
 
 +
+--
 This command runs a new container using version {debezium-docker-label} of the `quay.io/debezium/example-mysql` image, which is https://github.com/debezium/container-images/blob/main/examples/mysql/{debezium-docker-label}/Dockerfile[based on] the https://hub.docker.com/r/_/mysql/[mysql:8.2] image.
 It also defines and populates a sample `inventory` database:
 
@@ -38,19 +39,17 @@ $ podman run -it --rm --name mysql --pod dbz -e MYSQL_ROOT_PASSWORD=debezium -e 
 ----
 ====
 endif::community[]
-+
+
 
 . Verify that the MySQL server starts.
-
 
 The MySQL server starts and stops a few times as the configuration is modified.
 You should see output similar to the following:
 
-+
 [source,shell,options="nowrap"]
 ----
 ...
 [System] [MY-010931] [Server] /usr/sbin/mysqld: ready for connections. Version: '8.0.27'  socket: '/var/run/mysqld/mysqld.sock'  port: 3306  MySQL Community Server - GPL.
 [System] [MY-011323] [Server] X Plugin ready for connections. Bind-address: '::' port: 33060, socket: /var/run/mysqld/mysqlx.sock
 ----
-+
+--

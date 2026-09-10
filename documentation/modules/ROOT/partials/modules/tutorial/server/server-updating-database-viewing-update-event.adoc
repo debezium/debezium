@@ -1,5 +1,4 @@
-
-[id="updating-database-viewing-update-event-jdbc-sink"]
+[id="server-updating-database-viewing-update-event"]
 = Updating the database and viewing the _update_ event
 
 By updating a record in the database and observing the change event that the {prodname} MySQL connector captures, you can learn how to identify what changed in a commit and compare events to determine their sequence.
@@ -34,24 +33,6 @@ mysql> SELECT * FROM customers;
 +------+------------+-----------+-------------------------------+
 5 rows in set (0.00 sec)
 ----
-
-Now check that the changes propogated to the PostgreSQL server.
-
-. In the terminal that is running the PostgreSQL command line client, run the following statement:
-[source,sql,options="nowrap"]
-----
-inventory=# SELECT * FROM tutorial_inventory_customers;
-  id  | first_name | last_name |             email             
-------+------------+-----------+-------------------------------
- 1001 | Sally      | Thomas    | sally.thomas@acme.com
- 1002 | George     | Bailey    | gbailey@foobar.com
- 1003 | Edward     | Walker    | ed@walker.com
- 1004 | Anne       | Kretchmar | annek@noanswer.org
- 1005 | Johnathan  | Tutorial  | johnathantutorial@example.com
-(5 rows)
-----
-
-+
 --
-By changing a record in the `customers` table, the {prodname} MySQL connector generated a new event.
-You should see the change event at the end of the {prodname} server POST request log.
+
+include::{partialsdir}/modules/tutorial/server/{selected-sink}-sink/{selected-sink}-updating-database-viewing-update-event.adoc[]
