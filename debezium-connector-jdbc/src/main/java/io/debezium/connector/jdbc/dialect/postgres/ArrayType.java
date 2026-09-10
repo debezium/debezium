@@ -105,10 +105,26 @@ public class ArrayType extends AbstractType {
         }
         if (isPlainBytes(schema.valueSchema())) {
             return ((Collection<?>) value).stream()
-                    .map(element -> element == null ? null : ByteArrayUtils.getByteArrayFromValue(element))
+                    .map(ArrayType::toBinaryElement)
                     .toArray(byte[][]::new);
         }
         return value;
+    }
+
+    /**
+     * {@link ByteArrayUtils#getByteArrayFromValue} returns {@code null} for anything that is neither
+     * {@code byte[]} nor {@code ByteBuffer}; letting that through would write SQL NULL and silently
+     * lose the element value, so an unconvertible non-null element is rejected instead.
+     */
+    private static byte[] toBinaryElement(Object element) {
+        if (element == null) {
+            return null;
+        }
+        final byte[] bytes = ByteArrayUtils.getByteArrayFromValue(element);
+        if (bytes == null) {
+            throw new IllegalArgumentException("Unsupported BYTES array element type: " + element.getClass().getName());
+        }
+        return bytes;
     }
 
     /**
