@@ -483,6 +483,23 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
         queue.enqueue(new DataChangeEvent(record));
     }
 
+    /**
+     * Executes any pending signals whose actions requested
+     * {@link io.debezium.pipeline.signal.actions.SignalAction#isSynchronous() synchronous} invocation.
+     * <p>
+     * A streaming source calls this from its own thread at points where it is safe for a signal action
+     * to inspect or mutate the source's state, for example between batches of events. Signals that
+     * arrived since the previous call are executed in order before this method returns.
+     * <p>
+     * This is distinct from the source-channel read performed while dispatching a data change event,
+     * which only reads the signal table and queues any synchronous signal for this method to execute.
+     */
+    public void processSynchronousSignals() throws InterruptedException {
+        if (signalProcessor != null) {
+            signalProcessor.processSynchronousSignals();
+        }
+    }
+
     public void dispatchServerHeartbeatEvent(P partition, OffsetContext offset) throws InterruptedException {
         if (incrementalSnapshotChangeEventSource != null) {
             incrementalSnapshotChangeEventSource.processHeartbeat(partition, offset);

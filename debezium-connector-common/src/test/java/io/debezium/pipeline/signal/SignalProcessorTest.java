@@ -13,12 +13,15 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -27,6 +30,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.connector.common.BaseSourceInfo;
+import io.debezium.doc.FixFor;
 import io.debezium.document.DocumentReader;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.CommonOffsetContext;
@@ -38,6 +42,8 @@ import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.spi.schema.DataCollectionId;
+
+import ch.qos.logback.classic.Level;
 
 public class SignalProcessorTest {
 
@@ -61,6 +67,22 @@ public class SignalProcessorTest {
         });
 
         initialOffset = Offsets.of(new TestPartition(), testOffset);
+    }
+
+    @AfterEach
+    public void tearDown() {
+        // Restore the inherited level in case a test raised it to DEBUG
+        new LogInterceptor(SignalProcessor.class).setLoggerLevel(SignalProcessor.class, null);
+    }
+
+    /**
+     * Returns an interceptor for {@link SignalProcessor} with its logger raised to DEBUG, so tests can
+     * observe the deferral of synchronous signals.
+     */
+    private static LogInterceptor signalProcessorDebugLog() {
+        final LogInterceptor log = new LogInterceptor(SignalProcessor.class);
+        log.setLoggerLevel(SignalProcessor.class, Level.DEBUG);
+        return log;
     }
 
     @Test
@@ -201,6 +223,198 @@ public class SignalProcessorTest {
         signalProcess.stop();
     }
 
+    @Test
+    @FixFor("debezium/dbz#2577")
+    public void shouldDeferSynchronousActionUntilStreamingSourceProcessesSignals() throws InterruptedException {
+
+        final SignalChannelReader genericChannel = mock(SignalChannelReader.class);
+
+        when(genericChannel.name()).thenReturn("generic");
+        when(genericChannel.read()).thenReturn(
+                List.of(new SignalRecord("sync1", "custom", "{\"v\": 7}", Map.of("channelOffset", -1L))),
+                List.of());
+
+        final LogInterceptor log = signalProcessorDebugLog();
+        final AtomicInteger called = new AtomicInteger();
+        final AtomicReference<Thread> executingThread = new AtomicReference<>();
+        final AtomicReference<SignalPayload<TestPartition>> receivedPayload = new AtomicReference<>();
+        final SignalAction<TestPartition> testAction = new SynchronousAction(signalPayload -> {
+            called.set(signalPayload.data.getInteger("v"));
+            executingThread.set(Thread.currentThread());
+            receivedPayload.set(signalPayload);
+            return true;
+        });
+
+        signalProcess = new SignalProcessor<>(SourceConnector.class, baseConfig(), Map.of("custom", testAction), List.of(genericChannel), documentReader,
+                initialOffset);
+
+        signalProcess.start();
+
+        // The processor reads the signal on its executor thread, but must not execute it there
+        Awaitility.await()
+                .atMost(40, TimeUnit.SECONDS)
+                .untilAsserted(() -> assertThat(log.containsMessage("Signal 'sync1' of type 'custom' deferred until the streaming source processes synchronous signals"))
+                        .isTrue());
+        assertThat(called.intValue()).isZero();
+
+        // The streaming source drains the queue on its own thread
+        signalProcess.processSynchronousSignals();
+
+        assertThat(called.intValue()).isEqualTo(7);
+        assertThat(executingThread.get()).isSameAs(Thread.currentThread());
+        assertThat(receivedPayload.get().id).isEqualTo("sync1");
+        assertThat(receivedPayload.get().partition).isSameAs(initialOffset.getTheOnlyPartition());
+        assertThat(receivedPayload.get().offsetContext).isSameAs(initialOffset.getTheOnlyOffset());
+
+        // Draining again is a no-op
+        signalProcess.processSynchronousSignals();
+        assertThat(called.intValue()).isEqualTo(7);
+
+        signalProcess.stop();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2577")
+    public void shouldExecuteSynchronousSignalsInArrivalOrder() throws InterruptedException {
+
+        final SignalChannelReader genericChannel = mock(SignalChannelReader.class);
+
+        when(genericChannel.name()).thenReturn("generic");
+        when(genericChannel.read()).thenReturn(
+                List.of(new SignalRecord("first", "custom", "{}", Map.of("channelOffset", -1L)),
+                        new SignalRecord("second", "custom", "{}", Map.of("channelOffset", -1L))),
+                List.of(new SignalRecord("third", "custom", "{}", Map.of("channelOffset", -1L))),
+                List.of());
+
+        final LogInterceptor log = signalProcessorDebugLog();
+        final List<String> executed = new CopyOnWriteArrayList<>();
+        final SignalAction<TestPartition> testAction = new SynchronousAction(signalPayload -> executed.add(signalPayload.id));
+
+        signalProcess = new SignalProcessor<>(SourceConnector.class, baseConfig(), Map.of("custom", testAction), List.of(genericChannel), documentReader,
+                initialOffset);
+
+        signalProcess.start();
+
+        Awaitility.await()
+                .atMost(40, TimeUnit.SECONDS)
+                .untilAsserted(() -> assertThat(log.containsMessage("Signal 'third' of type 'custom' deferred until the streaming source processes synchronous signals"))
+                        .isTrue());
+        assertThat(executed).isEmpty();
+
+        signalProcess.processSynchronousSignals();
+
+        assertThat(executed).containsExactly("first", "second", "third");
+
+        signalProcess.stop();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2577")
+    public void shouldContinueWithNextSynchronousSignalWhenActionFails() throws InterruptedException {
+
+        final SignalChannelReader genericChannel = mock(SignalChannelReader.class);
+
+        when(genericChannel.name()).thenReturn("generic");
+        when(genericChannel.read()).thenReturn(
+                List.of(new SignalRecord("failing", "custom", "{}", Map.of("channelOffset", -1L)),
+                        new SignalRecord("succeeding", "custom", "{}", Map.of("channelOffset", -1L))),
+                List.of());
+
+        final LogInterceptor log = signalProcessorDebugLog();
+        final List<String> executed = new CopyOnWriteArrayList<>();
+        final SignalAction<TestPartition> testAction = new SynchronousAction(signalPayload -> {
+            if ("failing".equals(signalPayload.id)) {
+                throw new IllegalStateException("boom");
+            }
+            return executed.add(signalPayload.id);
+        });
+
+        signalProcess = new SignalProcessor<>(SourceConnector.class, baseConfig(), Map.of("custom", testAction), List.of(genericChannel), documentReader,
+                initialOffset);
+
+        signalProcess.start();
+
+        Awaitility.await()
+                .atMost(40, TimeUnit.SECONDS)
+                .untilAsserted(() -> assertThat(
+                        log.containsMessage("Signal 'succeeding' of type 'custom' deferred until the streaming source processes synchronous signals")).isTrue());
+
+        signalProcess.processSynchronousSignals();
+
+        assertThat(executed).containsExactly("succeeding");
+        assertThat(log.containsWarnMessage("Action custom failed.")).isTrue();
+
+        signalProcess.stop();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2577")
+    public void shouldSkipSynchronousSignalWhenPartitionIsNoLongerManaged() throws InterruptedException {
+
+        final SignalChannelReader genericChannel = mock(SignalChannelReader.class);
+
+        when(genericChannel.name()).thenReturn("generic");
+        when(genericChannel.read()).thenReturn(
+                List.of(new SignalRecord("orphan", "custom", "{}", Map.of("channelOffset", -1L))),
+                List.of());
+
+        final LogInterceptor log = signalProcessorDebugLog();
+        final AtomicInteger called = new AtomicInteger();
+        final SignalAction<TestPartition> testAction = new SynchronousAction(signalPayload -> {
+            called.incrementAndGet();
+            return true;
+        });
+
+        signalProcess = new SignalProcessor<>(SourceConnector.class, baseConfig(), Map.of("custom", testAction), List.of(genericChannel), documentReader,
+                initialOffset);
+
+        signalProcess.start();
+
+        Awaitility.await()
+                .atMost(40, TimeUnit.SECONDS)
+                .untilAsserted(() -> assertThat(log.containsMessage("Signal 'orphan' of type 'custom' deferred until the streaming source processes synchronous signals"))
+                        .isTrue());
+
+        // The partition is dropped before the streaming source gets to the signal
+        signalProcess.setContext(null);
+        signalProcess.processSynchronousSignals();
+
+        assertThat(called.intValue()).isZero();
+        assertThat(log.containsWarnMessage("Signal 'orphan' of type 'custom' references partition")).isTrue();
+
+        signalProcess.stop();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2577")
+    public void shouldWarnAboutUnexecutedSynchronousSignalsOnStop() throws InterruptedException {
+
+        final SignalChannelReader genericChannel = mock(SignalChannelReader.class);
+
+        when(genericChannel.name()).thenReturn("generic");
+        when(genericChannel.read()).thenReturn(
+                List.of(new SignalRecord("pending", "custom", "{}", Map.of("channelOffset", -1L))),
+                List.of());
+
+        final LogInterceptor log = signalProcessorDebugLog();
+        final SignalAction<TestPartition> testAction = new SynchronousAction(signalPayload -> true);
+
+        signalProcess = new SignalProcessor<>(SourceConnector.class, baseConfig(), Map.of("custom", testAction), List.of(genericChannel), documentReader,
+                initialOffset);
+
+        signalProcess.start();
+
+        Awaitility.await()
+                .atMost(40, TimeUnit.SECONDS)
+                .untilAsserted(
+                        () -> assertThat(log.containsMessage("Signal 'pending' of type 'custom' deferred until the streaming source processes synchronous signals"))
+                                .isTrue());
+
+        signalProcess.stop();
+
+        assertThat(log.containsWarnMessage("SignalProcessor stopped with 1 synchronous signal(s) that were never executed: [pending]")).isTrue();
+    }
+
     protected CommonConnectorConfig baseConfig() {
         return baseConfig(Map.of());
     }
@@ -241,6 +455,28 @@ public class SignalProcessorTest {
                 return Optional.empty();
             }
         };
+    }
+
+    /**
+     * A signal action that opts into synchronous invocation and delegates to the given action.
+     */
+    private static class SynchronousAction implements SignalAction<TestPartition> {
+
+        private final SignalAction<TestPartition> delegate;
+
+        SynchronousAction(SignalAction<TestPartition> delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public boolean arrived(SignalPayload<TestPartition> signalPayload) throws InterruptedException {
+            return delegate.arrived(signalPayload);
+        }
+
+        @Override
+        public boolean isSynchronous() {
+            return true;
+        }
     }
 
     private static class TestPartition implements Partition {
