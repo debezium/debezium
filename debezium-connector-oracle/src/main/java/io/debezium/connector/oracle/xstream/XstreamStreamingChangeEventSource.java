@@ -111,13 +111,18 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
 
         this.effectiveOffset = offsetContext;
 
+        // The out-of-bands connection (DDL fetch, LOB reselect) must always target the
+        // primary/source database. In downstream and standby capture modes the streaming
+        // factory's main connection points at the mining or standby instance, where the
+        // captured tables do not exist; snapshotConnectionFactory() resolves to the
+        // primary in all factory implementations.
         LcrEventHandler eventHandler = new LcrEventHandler(connectorConfig, errorHandler, dispatcher, clock, schema,
                 partition, offsetContext, isTableCaseInsensitive(), this, streamingMetrics,
-                connectionFactory.streamingConnectionFactory().mainConnection());
+                connectionFactory.snapshotConnectionFactory().mainConnection());
 
         try (OracleConnection xsConnection = connectAndAttachWithRetries(getStartPosition(offsetContext))) {
             try {
-                eventHandler.init();
+                pinConnectionToPdb();
                 // 2. receive events while running
                 while (context.isRunning()) {
                     LOGGER.trace("Receiving LCR");
@@ -130,6 +135,10 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
                         LOGGER.info("Streaming will now pause");
                         context.streamingPaused();
                         context.waitSnapshotCompletion();
+                        // The blocking snapshot shares the same main connection and its
+                        // close() resets the session back to CDB$ROOT; re-pin to the PDB
+                        // before processing any further LCRs.
+                        pinConnectionToPdb();
                         LOGGER.info("Streaming resumed");
                     }
                 }
@@ -178,6 +187,19 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
                     streamingMetrics);
         }
         return Optional.of(offsetActivityMonitor);
+    }
+
+    /**
+     * Pins the shared out-of-bands JDBC connection's session to the configured PDB when
+     * the connector is configured against a CDB+PDB topology. Must be called before the
+     * receive loop starts and again after a blocking snapshot completes, because
+     * {@code OracleSnapshotChangeEventSource#close()} resets the shared connection's
+     * session back to {@code CDB$ROOT}.
+     */
+    private void pinConnectionToPdb() {
+        if (connectorConfig.isUsingPluggableDatabase()) {
+            connectionFactory.snapshotConnectionFactory().mainConnection().setSessionToPdb(connectorConfig.getPdbName());
+        }
     }
 
     private boolean isTableCaseInsensitive() {
