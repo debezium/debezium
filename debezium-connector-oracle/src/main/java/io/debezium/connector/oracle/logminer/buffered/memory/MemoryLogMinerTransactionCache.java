@@ -163,7 +163,7 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
         // Uses the highest event key ever assigned rather than checking for presence directly
         // since a partial rollback may have removed the event's entry from the cache.
         List<LogMinerEventEntry> entries = eventsByTransactionId.get(transaction.getTransactionId());
-        return entries != null && entries.size() > 0 && entries.get(entries.size() - 1).eventId() >= eventKey;
+        return entries != null && !entries.isEmpty() && entries.get(entries.size() - 1).eventId() >= eventKey;
     }
 
     @Override
