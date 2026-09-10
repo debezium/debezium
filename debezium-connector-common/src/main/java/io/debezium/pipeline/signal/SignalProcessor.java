@@ -11,7 +11,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
@@ -65,6 +67,8 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
     private final Map<P, O> partitionOffsets = new ConcurrentHashMap<>();
 
     private final Semaphore semaphore = new Semaphore(1);
+
+    private final Queue<DeferredSignal<P>> synchronousSignals = new ConcurrentLinkedQueue<>();
 
     public SignalProcessor(Class<? extends SourceConnector> connector,
                            CommonConnectorConfig config,
@@ -135,6 +139,13 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
             signalProcessorExecutor.awaitTermination(connectorConfig.getExecutorShutdownTimeout().toMillis(), TimeUnit.MILLISECONDS);
         }
 
+        if (!synchronousSignals.isEmpty()) {
+            LOGGER.warn("SignalProcessor stopped with {} synchronous signal(s) that were never executed: {}",
+                    synchronousSignals.size(),
+                    synchronousSignals.stream().map(deferred -> deferred.signalRecord().getId()).collect(Collectors.toList()));
+            synchronousSignals.clear();
+        }
+
         LOGGER.info("SignalProcessor stopped");
     }
 
@@ -165,6 +176,42 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
                     .flatMap(Collection::stream)
                     .forEach(signalRecord -> processSignal(signalRecord, partition));
         });
+    }
+
+    /**
+     * Executes every signal whose action requested {@link SignalAction#isSynchronous() synchronous} invocation.
+     * <p>
+     * Streaming sources call this from their own thread at a point where it is safe for an action to inspect or
+     * mutate the source's state. Signals are executed in arrival order, and each is delivered with the offset
+     * context currently associated with its partition. A signal whose partition is no longer managed by this
+     * processor is skipped with a warning.
+     * <p>
+     * This method does not contend for the semaphore that serializes channel reads, so it never blocks behind
+     * the signal processor's executor thread.
+     *
+     * @throws InterruptedException if the calling thread is interrupted while an action is executing
+     */
+    public void processSynchronousSignals() throws InterruptedException {
+        DeferredSignal<P> deferred;
+        while ((deferred = synchronousSignals.poll()) != null) {
+            final SignalRecord signalRecord = deferred.signalRecord();
+            final O offset = partitionOffsets.get(deferred.partition());
+            if (offset == null) {
+                LOGGER.warn("Signal '{}' of type '{}' references partition {} which is no longer managed by this task; skipping",
+                        signalRecord.getId(), signalRecord.getType(), deferred.partition());
+                continue;
+            }
+            LOGGER.debug("Executing synchronous signal id = '{}', type = '{}'", signalRecord.getId(), signalRecord.getType());
+            try {
+                invokeAction(deferred.action(), signalRecord, deferred.jsonData(), deferred.partition(), offset);
+            }
+            catch (InterruptedException e) {
+                throw e;
+            }
+            catch (Exception e) {
+                LOGGER.warn("Action {} failed. The signal {} may not have been processed.", signalRecord.getType(), signalRecord, e);
+            }
+        }
     }
 
     /**
@@ -306,6 +353,18 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
     private void executeSignal(SignalAction<P> action, SignalRecord signalRecord,
                                Document jsonData, P partition, O offset)
             throws InterruptedException {
+        if (action.isSynchronous()) {
+            LOGGER.debug("Signal '{}' of type '{}' deferred until the streaming source processes synchronous signals",
+                    signalRecord.getId(), signalRecord.getType());
+            synchronousSignals.add(new DeferredSignal<>(action, signalRecord, jsonData, partition));
+            return;
+        }
+        invokeAction(action, signalRecord, jsonData, partition, offset);
+    }
+
+    private void invokeAction(SignalAction<P> action, SignalRecord signalRecord,
+                              Document jsonData, P partition, O offset)
+            throws InterruptedException {
         SignalPayload<P> payload = new SignalPayload<>(
                 partition,
                 signalRecord.getId(),
@@ -318,5 +377,13 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
 
     private static <T extends SignalChannelReader> Predicate<SignalChannelReader> isSignal(Class<T> channelClass) {
         return channel -> channel.getClass().equals(channelClass);
+    }
+
+    /**
+     * A signal whose action requested synchronous invocation, held until the streaming source drains the queue.
+     * The offset is resolved when the signal executes rather than captured here, so the action observes the
+     * offset context that is current at that time.
+     */
+    private record DeferredSignal<P extends Partition>(SignalAction<P> action, SignalRecord signalRecord, Document jsonData, P partition) {
     }
 }

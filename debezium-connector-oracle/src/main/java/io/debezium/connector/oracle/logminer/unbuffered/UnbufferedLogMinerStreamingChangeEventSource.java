@@ -106,6 +106,9 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
 
         while (getContext().isRunning()) {
 
+            // Execute pending synchronous signals now that no batch is being processed
+            getContext().processSynchronousSignals();
+
             // Check if we should break when using archive log only mode
             if (getConfig().isArchiveLogOnlyMode()) {
                 if (waitForRangeAvailabilityInArchiveLogs(minLogScn, upperBoundsScn)) {
