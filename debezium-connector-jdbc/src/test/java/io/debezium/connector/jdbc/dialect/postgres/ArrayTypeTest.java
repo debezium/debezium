@@ -6,6 +6,7 @@
 package io.debezium.connector.jdbc.dialect.postgres;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
@@ -128,6 +129,20 @@ class ArrayTypeTest {
 
         assertThat(ArrayType.unwrapElements(arraySchema, elements))
                 .isEqualTo(new byte[][]{ { 1, 2, 3 }, { 4, 5, 6 }, null });
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2571")
+    @DisplayName("Should reject a BYTES element that is neither byte[] nor ByteBuffer")
+    void testRejectsUnconvertibleBytesElement() {
+        // A silent SQL NULL here would turn an upstream converter bug into invisible data loss.
+        final Schema arraySchema = SchemaBuilder.array(Schema.OPTIONAL_BYTES_SCHEMA).optional().build();
+        final List<Object> elements = List.of("not-binary");
+
+        assertThatThrownBy(() -> ArrayType.unwrapElements(arraySchema, elements))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Unsupported BYTES array element type")
+                .hasMessageContaining(String.class.getName());
     }
 
     @Test
