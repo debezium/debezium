@@ -510,6 +510,9 @@ After you drop a transaction, the connector abandons uncommitted changes for tha
 Use the `drop-transaction` signal only when you are certain that the transaction should not be processed.
 ====
 
+The connector processes the signal on its streaming thread at the start of the next mining iteration, so that the buffer is modified in a consistent state.
+On a busy connector the transaction is therefore removed a few seconds after the signal is received, and the connector log reports whether it was found and dropped.
+
 ifdef::community[]
 [NOTE]
 ====

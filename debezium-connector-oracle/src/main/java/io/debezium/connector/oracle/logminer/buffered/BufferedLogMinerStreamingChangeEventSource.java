@@ -1454,7 +1454,10 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
     /**
      * Abandons a single transaction identified by its transaction id.
-     * This method is public so it can be invoked by external signal actions.
+     * <p>
+     * The buffer is owned by the streaming thread, so this method must only be called from that thread.
+     * Signal actions that call it must request synchronous invocation via
+     * {@link io.debezium.pipeline.signal.actions.SignalAction#isSynchronous()}.
      *
      * @param transactionId the transaction id to abandon, must be in lowercase hex format
      * @return true if the transaction was found and abandoned, false otherwise

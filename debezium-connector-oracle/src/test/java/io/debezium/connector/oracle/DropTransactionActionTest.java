@@ -76,6 +76,12 @@ public class DropTransactionActionTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2577")
+    public void shouldRequestSynchronousInvocationBecauseTheBufferIsOwnedByTheStreamingThread() {
+        assertThat(action.isSynchronous()).isTrue();
+    }
+
+    @Test
     @FixFor("DBZ-9552")
     public void shouldReturnFalseWhenTransactionNotFound() throws Exception {
         // Given a transaction ID that doesn't exist
