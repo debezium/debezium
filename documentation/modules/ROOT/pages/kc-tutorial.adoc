@@ -36,11 +36,11 @@ endif::community[]
 
 include::{partialsdir}/modules/tutorial/kafka-connect/con-introduction-debezium.adoc[leveloffset=+1]
 
-include::{partialsdir}/assemblies/tutorial/assembly-starting-services.adoc[leveloffset=+1]
+include::{partialsdir}/assemblies/tutorial/kafka-connect/assembly-starting-services.adoc[leveloffset=+1]
 
-include::{partialsdir}/assemblies/tutorial/assembly-deploying-mysql-connector.adoc[leveloffset=+1]
+include::{partialsdir}/assemblies/tutorial/kafka-connect/assembly-deploying-mysql-connector.adoc[leveloffset=+1]
 
-include::{partialsdir}/assemblies/tutorial/assembly-viewing-change-events.adoc[leveloffset=+1]
+include::{partialsdir}/assemblies/tutorial/kafka-connect/assembly-viewing-change-events.adoc[leveloffset=+1]
 
 include::{partialsdir}/modules/tutorial/kafka-connect/proc-cleaning-up.adoc[leveloffset=+1]
 

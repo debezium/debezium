@@ -1,4 +1,4 @@
-[id="server-introduction-debezium"]
+[id="server-introduction"]
 = Introduction to {prodname} Server
 
 {prodname} is a distributed platform that converts information from your existing databases into event streams, enabling applications to detect, and immediately respond to row-level changes in the databases.

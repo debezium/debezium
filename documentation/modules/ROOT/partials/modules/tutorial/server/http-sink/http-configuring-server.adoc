@@ -1,18 +1,3 @@
-// Metadata created by nebel
-//
-// ParentAssemblies: assemblies/tutorial/as_starting-services.adoc
-// UserStory:
-
-[id="configuring-debezium-server-http-sink"]
-= Configuring Debezium Server for HTTP Sink Connector
-
-Configure the {prodname} server application so that it can stream change events to the HTTP sink.
-
-.Prerequisites
-
-* The HTTP Sink and MySQL containers are running.
-* You have connected to the `inventory` database with the MySQL command line client or via the container itself.
-
 .Procedure
 
 . Create a new file called `application.properties` in the `debezium-server/config/lib` directory and add the following to it:

@@ -1,0 +1,6 @@
+This tutorial demonstrates how to use {prodname} to monitor a MySQL database.
+As the data in the database changes, you will see the resulting event streams.
+
+In this tutorial you will start the {selected-sink} sink service,
+run a MySQL database server with a simple example database,
+and use {prodname} to monitor the database for changes.
