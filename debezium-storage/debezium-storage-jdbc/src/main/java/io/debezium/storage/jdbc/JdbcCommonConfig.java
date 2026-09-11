@@ -41,7 +41,6 @@ public class JdbcCommonConfig {
 
     public static final Field PROP_PASSWORD = Field.create(CONFIGURATION_FIELD_CONNECTION_GROUP + "password")
             .withDescription("Password of the database which will be used to access the database storage")
-            .withValidation(Field::isRequired)
             .withDeprecatedAliases(CONFIGURATION_FIELD_PREFIX_STRING + "password");
 
     private static final long DEFAULT_WAIT_RETRY_DELAY = 3000L;
