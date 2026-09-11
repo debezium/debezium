@@ -52,6 +52,7 @@ public class SingleStoreDatabaseDialect extends MariaDbDatabaseDialect {
         registerType(JsonType.INSTANCE);
         registerType(ArrayToJsonType.INSTANCE);
         registerType(MapToJsonType.INSTANCE);
+        registerType(StructToJsonType.INSTANCE);
         registerType(GeometryType.INSTANCE);
         registerType(PointType.INSTANCE);
         registerType(FloatVectorType.INSTANCE);
