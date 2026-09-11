@@ -7,18 +7,15 @@ package io.debezium.connector.oracle.logminer.buffered;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnectorConfig;
+import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningBufferType;
 import io.debezium.connector.oracle.logminer.buffered.ehcache.EhcacheCacheProvider;
 import io.debezium.connector.oracle.logminer.buffered.ehcache.EhcacheTransaction;
 import io.debezium.connector.oracle.logminer.buffered.ehcache.EhcacheTransactionFactory;
+import io.debezium.connector.oracle.util.TestHelper;
 
 public class EhcacheFindRolledBackRangeTest extends AbstractFindRolledBackRangeTest<EhcacheTransaction> {
-    private static final String HEAP_ONLY_CACHE_CONFIG = "<resources><heap unit=\"entries\">100</heap></resources>";
-    private static final Configuration CONFIG = Configuration.create()
-            .with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_TRANSACTIONS_CONFIG, HEAP_ONLY_CACHE_CONFIG)
-            .with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_PROCESSED_TRANSACTIONS_CONFIG, HEAP_ONLY_CACHE_CONFIG)
-            .with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_SCHEMA_CHANGES_CONFIG, HEAP_ONLY_CACHE_CONFIG)
-            .with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_EVENTS_CONFIG, HEAP_ONLY_CACHE_CONFIG)
-            .build();
+
+    private static final Configuration CONFIG = getConfiguration();
 
     @Override
     protected CacheProvider<EhcacheTransaction> getCacheProvider() {
@@ -29,4 +26,12 @@ public class EhcacheFindRolledBackRangeTest extends AbstractFindRolledBackRangeT
     protected TransactionFactory<EhcacheTransaction> getTransactionFactory() {
         return new EhcacheTransactionFactory();
     }
+
+    private static Configuration getConfiguration() {
+        final Configuration.Builder configBuilder = Configuration.create()
+                .with(OracleConnectorConfig.LOG_MINING_BUFFER_TYPE, LogMiningBufferType.EHCACHE.getValue())
+                .with(OracleConnectorConfig.LOG_MINING_BUFFER_DROP_ON_STOP, Boolean.TRUE);
+        return TestHelper.withDefaultEhcacheConfigurations(configBuilder, 1024 * 66).build();
+    }
+
 }
