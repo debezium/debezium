@@ -17,7 +17,9 @@ The resulting events can be processed by transformations such as `ExtractChanged
 You can configure a fixed projection to select document paths, assign output names, and convert values to specified Connect types.
 Without a matching projection, the SMT infers a schema from the document images in each event, using the existing MongoDB BSON converter.
 An inferred schema can vary between events and can contain nested structs or arrays.
-Use a fixed projection to produce stable relational columns.
+For production pipelines that require stable relational columns, configure a fixed projection for each collection that the sink consumes.
+The configured names and types define the output schema even when source fields disappear or change shape.
+Changing the projection configuration can change that schema and requires coordination with the sink's table schema and any schema compatibility rules.
 
 == Applying the transformation at a sink
 
@@ -28,6 +30,21 @@ That sink must support the original MongoDB event format; converting events for 
 Configure the sink's key and value converters to deserialize the Kafka records with their Connect schemas.
 For example, use schema-enabled JSON or an appropriate schema-aware converter.
 The SMT expects a schemaful Debezium envelope.
+
+The mapping configuration describes Kafka Connect types and does not require an Avro schema, Avro serialization, or a schema registry.
+The connector's converters determine the Kafka wire format.
+For example, the following converter settings can be used on the source and sink when storing schema-enabled JSON records in Kafka:
+
+[source,properties]
+----
+key.converter=org.apache.kafka.connect.json.JsonConverter
+key.converter.schemas.enable=true
+value.converter=org.apache.kafka.connect.json.JsonConverter
+value.converter.schemas.enable=true
+----
+
+The source and sink converters must agree on the format of the records already in the topic.
+Enabling schemas on the sink alone cannot recover Connect schemas from schema-less JSON records.
 
 The transformation preserves `op` and the record key so a Debezium JDBC sink can apply its existing upsert and delete handling.
 Configure the JDBC sink primary key and delete settings separately.
@@ -69,6 +86,33 @@ The collection mapping properties have `HIGH` importance.
 Output names must match `[A-Za-z_][A-Za-z0-9_]*`.
 Destination database naming restrictions still apply.
 Invalid JSON, duplicate output names, unknown options, invalid types, and malformed pointers cause configuration errors.
+
+== Retaining complete documents alongside selected columns
+
+An empty pointer with the `io.debezium.data.Json` type retains the complete document image as a JSON string.
+For example, the following collection projection keeps the document and exposes one frequently queried field as a separate column:
+
+[source,json]
+----
+{
+  "customer_city": {"path": "/customer/address/city", "type": "string"},
+  "document_json": {"path": "", "type": "io.debezium.data.Json"}
+}
+----
+
+To retain only the complete document, configure a projection containing only `document_json`.
+This keeps a fixed output schema without inferring schemas for the document's nested objects or arrays.
+The JSON logical type uses a Connect string; the sink and its database dialect determine whether it is stored in a native JSON column or another compatible column type.
+Configure the target column type accordingly.
+
+The SMT preserves the document JSON string it receives, including its Extended JSON representation.
+It does not preserve the enclosing CDC event inside `document_json`, nor recover fields removed upstream by source filtering or another transformation.
+The document includes the fields that are also projected separately; selected fields are not subtracted from it.
+
+Keeping both the document and selected columns increases record and storage size.
+When pre-images are available, both `before` and `after` can contain a complete document string.
+Omitting a sensitive field from the scalar projection does not remove it from `document_json`.
+Apply the required field filtering and access controls before retaining complete documents, and account for them in retention policies.
 
 == Path syntax and document changes
 
@@ -145,13 +189,62 @@ A BSON timestamp's increment orders operations within a second and is not a frac
 Use `io.debezium.data.Json` to retain both components.
 Precise decimal types reject non-finite numbers; use a string or JSON representation if those values must be retained.
 
+== Inferred schema fallback
+
+If no `schema.mapping.<database>.<collection>` matches the event's source metadata, the SMT falls back to inference, even when mappings exist for other collections.
+It does not reject an unmatched collection.
+Check collection names and sink topic selection when a fixed schema is required.
+
+Inference combines fields from `before` and `after` recursively, including document fields within array elements.
+A field removed from a nested document remains in that event's schema with a null value in `after`.
+If an array becomes empty, its element type can still be inferred from `before`.
+The output values come from the original images; combining structures for inference does not copy removed values into `after`.
+
+The schema is inferred independently for each event, without retaining fields from previous events.
+When a field is absent from both images of a later event, it is absent from that event's inferred schema.
+Conflicting structures, such as a document changing to a scalar, produce an error identifying the document path.
+Inference also retains the existing BSON converter's type and array limitations.
+Use a fixed projection to select compatible leaves or preserve varying structures with `io.debezium.data.Json`.
+
+== Identifying changed projection fields
+
+To add headers listing changed and unchanged fields, apply `ExtractChangedRecordState` after this SMT:
+
+[source,properties]
+----
+transforms=map,changes
+transforms.map.type=io.debezium.connector.mongodb.transforms.MongoToRelationalMapper
+transforms.map.schema.mapping.shop.orders={"customer_city":{"path":"/customer/address/city","type":"string"},"second_sku":{"path":"/items/1/sku","type":"string"}}
+transforms.changes.type=io.debezium.transforms.ExtractChangedRecordState
+transforms.changes.header.changed.name=Changed
+transforms.changes.header.unchanged.name=Unchanged
+----
+
+For an update that removes `customer.address.city`, the configured `customer_city` field changes to null and appears in the `Changed` header.
+If `items` shrinks to fewer than two elements, `second_sku` changes to null in the same way.
+The comparison uses output field names at the top level of the converted Struct.
+With an inferred nested Struct, a change to `address.city` is reported as a change to `address`, rather than as a nested JSON path.
+If the projection includes `document_json`, that field is compared as a string, so formatting changes can also mark it as changed.
+
+Both document images are required for the comparison.
+If `before` is unavailable, the changed and unchanged headers are empty; this does not establish that the document was unchanged.
+Create, snapshot, and delete events also receive empty lists, and tombstones pass through unchanged.
+Consumers must explicitly use these headers if they need field-specific processing; adding them does not configure partial-column SQL updates in a JDBC sink.
+If an additional SMT unwraps the envelope, place it after `ExtractChangedRecordState` so both document images are still available for comparison.
+For more information, see xref:transformations/event-changes.adoc[Event changes].
+
 == Capture modes and deletes
 
 Create, snapshot, and update events require a non-null full `after` document.
-For streaming updates, configure a `change_streams_update_full` capture mode.
-The corresponding mode with pre-images also supplies a `before` document for comparing changed fields.
+For streaming updates, set `capture.mode` to `change_streams_update_full` or `change_streams_update_full_with_pre_image` on the MongoDB source connector.
+To compare changed fields, use `change_streams_update_full_with_pre_image` and enable MongoDB document pre-images for the captured collections.
 If the full document is unavailable, including a failed full-document lookup, the SMT reports an error rather than treating the event as a document with every projected field removed.
 Partial updates are not reconstructed by this SMT.
+
+With the default full-document lookup, concurrent updates can cause `after` to contain a newer state than the operation represented by the event.
+The changed-field headers describe differences between the received images, not the update operators that MongoDB executed.
+If operation-specific images are required, consider `capture.mode.full.update.type=post_image` with the MongoDB version and collection configuration required for post-images.
+See xref:connectors/mongodb.adoc#mongodb-property-capture-mode[Capture mode] and xref:connectors/mongodb.adoc#mongodb-property-capture-mode-full-update-type[Full update type].
 
 Delete events are retained even when no pre-image is available; their `before` and `after` fields use optional Struct schemas and their original key is preserved.
 Tombstones and non-envelope records pass through unchanged.
