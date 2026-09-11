@@ -148,7 +148,6 @@ public class JdbcSchemaHistoryTest {
         history.configure(Configuration.create()
                 .with(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + JdbcSchemaHistoryConfig.PROP_JDBC_URL.name(), "jdbc:sqlite:" + dbFile)
                 .with(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + JdbcSchemaHistoryConfig.PROP_USER.name(), "user")
-                .with(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + JdbcSchemaHistoryConfig.PROP_PASSWORD.name(), "pass")
                 .build(), null, SchemaHistoryMetrics.NOOP, true);
         history.start();
     }
@@ -181,6 +180,12 @@ public class JdbcSchemaHistoryTest {
         history.initializeStorage();
         assertTrue(history.storageExists());
         assertFalse(history.exists());
+    }
+
+    @Test
+    public void shouldInitializeStorageWithoutPassword() {
+        history.initializeStorage();
+        assertTrue(history.storageExists());
     }
 
     @Test
