@@ -1396,7 +1396,10 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         if (ABANDONED_DETAILS_LOGGER.isDebugEnabled()) {
             final Set<String> tableNames = new HashSet<>();
             getTransactionCache().forEachEvent(transaction, event -> {
-                tableNames.add(event.getTableId().identifier());
+                // Undo markers and INTERNAL events carry no change of their own, mirror the commit path and skip them
+                if (event.getEventType() != EventType.INTERNAL && !(event instanceof RollbackToSavepointEvent)) {
+                    tableNames.add(event.getTableId().identifier());
+                }
                 return true;
             });
             return String.format(", %d tables [%s]", tableNames.size(), String.join(",", tableNames));
