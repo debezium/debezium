@@ -27,6 +27,7 @@ final class ColumnEditorImpl implements ColumnEditor {
     private boolean optional = true;
     private boolean autoIncremented = false;
     private boolean generated = false;
+    private boolean invisible = false;
     private String defaultValueExpression = null;
     private boolean hasDefaultValue = false;
     private List<String> enumValues;
@@ -98,6 +99,11 @@ final class ColumnEditorImpl implements ColumnEditor {
     @Override
     public boolean isGenerated() {
         return generated;
+    }
+
+    @Override
+    public boolean isInvisible() {
+        return invisible;
     }
 
     @Override
@@ -200,6 +206,12 @@ final class ColumnEditorImpl implements ColumnEditor {
     }
 
     @Override
+    public ColumnEditorImpl invisible(boolean invisible) {
+        this.invisible = invisible;
+        return this;
+    }
+
+    @Override
     public ColumnEditorImpl position(int position) {
         this.position = position;
         return this;
@@ -250,7 +262,7 @@ final class ColumnEditorImpl implements ColumnEditor {
                 Interner.intern(typeName), Interner.intern(typeExpression),
                 Interner.intern(charsetName), Interner.intern(tableCharsetName),
                 length, scale, enumValues == null ? null : Interner.intern(Collections.unmodifiableList(enumValues)),
-                optional, autoIncremented, generated,
+                optional, autoIncremented, generated, invisible,
                 Interner.intern(defaultValueExpression), hasDefaultValue,
                 Interner.intern(comment));
         return Interner.intern(column);

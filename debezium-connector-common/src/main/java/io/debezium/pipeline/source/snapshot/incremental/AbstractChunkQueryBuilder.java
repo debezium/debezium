@@ -93,15 +93,35 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
     }
 
     protected String buildProjection(Table table) {
-        String projection = "*";
-        if (connectorConfig.isColumnsFiltered()) {
-            TableId tableId = table.id();
-            projection = table.columns().stream()
-                    .filter(column -> columnFilter.matches(tableId.catalog(), tableId.schema(), tableId.table(), column.name()))
-                    .map(column -> jdbcConnection.quoteIdentifier(column.name()))
-                    .collect(Collectors.joining(", "));
+        // DBZ-2020: keep SELECT * unless column filters apply or a connector opts in via the hooks
+        // below (Postgres pgoutput), so we avoid widening the schemaChanges race window (DBZ-6000).
+        final boolean columnsFiltered = connectorConfig.isColumnsFiltered();
+        if (!columnsFiltered && !hasAdditionalGeneratedColumns(table)) {
+            return "*";
         }
-        return projection;
+        final TableId tableId = table.id();
+        return table.columns().stream()
+                .filter(column -> !isAdditionalGeneratedColumn(table, column.name()))
+                .filter(column -> !columnsFiltered
+                        || columnFilter.matches(tableId.catalog(), tableId.schema(), tableId.table(), column.name()))
+                .map(column -> jdbcConnection.quoteIdentifier(column.name()))
+                .collect(Collectors.joining(", "));
+    }
+
+    /**
+     * Hook for connectors that track generated columns outside the in-memory {@link Table}
+     * (for example after {@code refreshFromIncrementalSnapshot} has pruned them). Default is none.
+     */
+    protected boolean hasAdditionalGeneratedColumns(Table table) {
+        return false;
+    }
+
+    /**
+     * Hook for connectors that track generated columns outside the in-memory {@link Table}.
+     * Default is never generated.
+     */
+    protected boolean isAdditionalGeneratedColumn(Table table, String columnName) {
+        return false;
     }
 
     public void addLowerBound(List<Column> pkColumns, Object[] boundaryKey, StringBuilder condition, boolean inclusiveFinal) {
