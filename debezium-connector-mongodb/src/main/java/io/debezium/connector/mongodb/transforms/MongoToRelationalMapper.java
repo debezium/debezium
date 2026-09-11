@@ -8,6 +8,7 @@ package io.debezium.connector.mongodb.transforms;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigException;
@@ -19,6 +20,7 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.apache.kafka.connect.transforms.util.Requirements;
+import org.bson.BsonArray;
 import org.bson.BsonDocument;
 import org.bson.BsonType;
 import org.bson.BsonValue;
@@ -160,14 +162,8 @@ public class MongoToRelationalMapper<R extends ConnectRecord<R>> implements Tran
             schemaName = schemaName.substring(0, schemaName.length() - 9); // Remove "Envelope"
         }
 
-        BsonDocument mergedDoc = new BsonDocument();
-        if (beforeDoc != null) {
-            mergedDoc.putAll(beforeDoc);
-        }
-        if (afterDoc != null) {
-            // 'after' state typically has the most complete/recent field set
-            mergedDoc.putAll(afterDoc);
-        }
+        final var mergedSample = mergeSchemaSamples(schemaSample(beforeDoc, ""), schemaSample(afterDoc, ""), "");
+        final var mergedDoc = mergedSample != null ? mergedSample.asDocument() : new BsonDocument();
 
         // Use MongoDataConverter to derive the schema from the merged document
         Map<String, Map<Object, BsonType>> parsedMap = converter.parseBsonDocument(mergedDoc);
@@ -175,6 +171,74 @@ public class MongoToRelationalMapper<R extends ConnectRecord<R>> implements Tran
         converter.buildSchema(parsedMap, builder);
 
         return builder.build();
+    }
+
+    /**
+     * Builds a sample used only for schema inference. Array elements share one recursively
+     * merged sample, so fields from any element in either image contribute to the schema.
+     * The original documents are still used when converting values.
+     */
+    private BsonValue schemaSample(BsonValue value, String path) {
+        if (value != null && value.isDocument()) {
+            final var sample = new BsonDocument();
+            for (Map.Entry<String, BsonValue> entry : value.asDocument().entrySet()) {
+                sample.put(entry.getKey(), schemaSample(entry.getValue(), fieldPath(path, entry.getKey())));
+            }
+            return sample;
+        }
+        if (value != null && value.isArray()) {
+            BsonValue elementSample = null;
+            final var array = value.asArray();
+            for (int i = 0; i < array.size(); i++) {
+                final var elementPath = path + "/" + i;
+                elementSample = mergeSchemaSamples(elementSample, schemaSample(array.get(i), elementPath), elementPath);
+            }
+            return elementSample != null ? new BsonArray(List.of(elementSample)) : new BsonArray();
+        }
+        return value;
+    }
+
+    private BsonValue mergeSchemaSamples(BsonValue before, BsonValue after, String path) {
+        if (before == null || before.isNull()) {
+            return after != null ? after : before;
+        }
+        if (after == null || after.isNull()) {
+            return before;
+        }
+        if (before.isDocument() && after.isDocument()) {
+            final var merged = new BsonDocument();
+            merged.putAll(before.asDocument());
+            for (Map.Entry<String, BsonValue> entry : after.asDocument().entrySet()) {
+                merged.put(entry.getKey(), mergeSchemaSamples(merged.get(entry.getKey()), entry.getValue(), fieldPath(path, entry.getKey())));
+            }
+            return merged;
+        }
+        if (before.isArray() && after.isArray()) {
+            if (before.asArray().isEmpty()) {
+                return after;
+            }
+            if (after.asArray().isEmpty()) {
+                return before;
+            }
+            return new BsonArray(List.of(mergeSchemaSamples(before.asArray().get(0), after.asArray().get(0), path + "/0")));
+        }
+        if (before.getBsonType() != after.getBsonType()
+                && (before.isDocument() || after.isDocument() || before.isArray() || after.isArray()
+                        || !Objects.equals(inferredValueSchema(before), inferredValueSchema(after)))) {
+            throw new DataException("Cannot infer a common MongoDB schema at '" + path + "': " + before.getBsonType() + " and " + after.getBsonType()
+                    + ". Configure schema.mapping.<database>.<collection> to select compatible fields or retain the value as io.debezium.data.Json.");
+        }
+        return after;
+    }
+
+    private Schema inferredValueSchema(BsonValue value) {
+        final var builder = SchemaBuilder.struct().name("MongoToRelationalMapper.InferredValue");
+        converter.schema("value", Map.entry(value, value.getBsonType()), builder);
+        return builder.field("value") != null ? builder.field("value").schema() : null;
+    }
+
+    private static String fieldPath(String parent, String field) {
+        return parent + "/" + field.replace("~", "~0").replace("/", "~1");
     }
 
     /**
