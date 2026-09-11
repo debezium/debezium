@@ -117,7 +117,7 @@ properties([
 //   The pipeline validates at startup that RELEASE_PLAN and SOURCE_REPOSITORIES are in sync.
 @Field final RELEASE_PLAN = [
     ['debezium'],
-    ['cassandra', 'cockroachdb', 'db2', 'ibmi', 'informix', 'ingres', 'milvus' ,'spanner', 'sqlite', 'vitess', 'tidb', 'yashandb']`,
+    ['cassandra', 'cockroachdb', 'db2', 'ibmi', 'informix', 'ingres', 'milvus' ,'spanner', 'sqlite', 'vitess', 'tidb', 'yashandb'],
     ['quarkus', 'operator'],
     ['server', 'jbang-catalog'],
     ['platform']
