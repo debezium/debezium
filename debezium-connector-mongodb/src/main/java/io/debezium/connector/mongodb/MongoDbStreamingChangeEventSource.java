@@ -227,8 +227,9 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             stream.startAtOperationTime(offsetContext.lastTimestamp());
         }
         else if (connectorConfig.startAtOperationTime().isPresent()) {
-            LOGGER.info("Resuming streaming from explicit operation time '{}'", offsetContext.lastTimestamp());
-            stream.startAtOperationTime(connectorConfig.startAtOperationTime().get());
+            final var startTimestamp = connectorConfig.startAtOperationTime().get();
+            LOGGER.info("Resuming streaming from explicit operation time '{}'", startTimestamp);
+            stream.startAtOperationTime(startTimestamp);
         }
 
         if (connectorConfig.getCursorMaxAwaitTime() > 0) {

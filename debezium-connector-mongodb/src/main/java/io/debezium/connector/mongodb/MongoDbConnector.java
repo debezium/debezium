@@ -110,8 +110,8 @@ public class MongoDbConnector extends BaseSourceConnector implements ConfigDescr
         Map<String, ConfigValue> validation = validateAllFields(config);
         ConfigValue csValidation = validation.get(MongoDbConnectorConfig.CONNECTION_STRING.name());
 
-        // Validate connection when connection string is otherwise valid
-        if (csValidation.errorMessages().isEmpty()) {
+        // Construct the connection configuration only after all field validation has succeeded.
+        if (validation.values().stream().allMatch(configValue -> configValue.errorMessages().isEmpty())) {
             validateConnection(config, csValidation);
         }
         return new Config(new ArrayList<>(validation.values()));

@@ -1619,13 +1619,17 @@ For the complete list of BSON type representations, see the MongoDB documentatio
 This setting does not affect the representation of document identifiers in change event keys.
 
 |[[mongodb-property-capture-start-op-time]]<<mongodb-property-capture-start-op-time, `+capture.start.op.time+`>>
-|No default value
+|`-1` (disabled)
 |Specifies the https://www.mongodb.com/docs/manual/changeStreams/#ref-start-time-id1[startAtOperationTime] change stream parameter.
-Set the value to be a long representation of the BSON timestamp.
+Set the value to the packed 64-bit long representation of a BSON timestamp, which contains both seconds and the operation increment.
+This value is not a Unix timestamp in seconds or milliseconds.
+The connector uses it only if no offset is available when streaming starts.
+For readable timestamp formats, use xref:mongodb-property-capture-start-timestamp[`capture.start.timestamp`].
+You cannot configure both properties unless `capture.start.op.time` is `-1` (disabled).
 
 [IMPORTANT]
 ====
-The ability to set the `capture.start.op.time`` property to override the normal offset-based behavior and begin streaming from a specific timestamp is a Technology Preview feature.
+The ability to set the `capture.start.op.time` property to begin streaming from a specific timestamp when no offset is available is a Technology Preview feature.
 Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
 Red{nbsp}Hat does not recommend using them in production.
 These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
@@ -1633,6 +1637,45 @@ These features provide early access to upcoming product features, enabling custo
 For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
 
 ====
+
+|[[mongodb-property-capture-start-timestamp]]<<mongodb-property-capture-start-timestamp, `+capture.start.timestamp+`>>
+|No default value
+|Specifies the starting position for a change stream when no offset is available.
+This property is an alternative to xref:mongodb-property-capture-start-op-time[`capture.start.op.time`] and has the same Technology Preview status.
+Set the value to a string in one of the following formats:
+
+* Integer Unix seconds, for example, `1789084800`.
+* ISO-8601 with `Z` or an explicit UTC offset, for example, `2026-09-11T00:00:00Z` or `2026-09-11T09:00:00+09:00`.
+* A BSON timestamp in Extended JSON v2 format, for example, `{"$timestamp":{"t":1789084800,"i":7}}`.
+
+Unix seconds and ISO-8601 values use an operation increment of `0`, so capture starts at the beginning of the specified second.
+Extended JSON preserves the `i` value, which is an operation increment within a second, not a fractional second.
+Events at the specified BSON timestamp are included.
+
+Seconds and the Extended JSON `i` value must be integers in the range `0` through `4294967295`.
+For ISO-8601 values, the corresponding UTC instant must be between `1970-01-01T00:00:00Z` and `2106-02-07T06:28:15Z`, inclusive.
+Nonzero fractional seconds, timestamps without a UTC offset, and out-of-range values cause configuration errors.
+Numeric values are always interpreted as seconds; Unix milliseconds are not supported.
+An ISO-8601 fractional part containing only zeros, such as `.000`, is accepted.
+You cannot configure this property together with `capture.start.op.time` unless that property is `-1` (disabled).
+
+To start streaming from the configured timestamp without an initial snapshot, set xref:mongodb-property-snapshot-mode[`snapshot.mode`] to `no_data` and use a connector with no stored offset.
+For example:
+
+[source,json]
+----
+{
+  "snapshot.mode": "no_data",
+  "capture.start.timestamp": "2026-09-11T00:00:00Z"
+}
+----
+
+A stored resume token or offset timestamp takes precedence over this property.
+Changing the property does not rewind an existing connector.
+If the connector performs a snapshot, streaming uses the position established by the snapshot.
+This setting does not create a historical snapshot.
+MongoDB must still retain the requested starting position in the oplog; configuring a timestamp does not restore expired oplog history.
+
 |[[mongodb-property-capture-scope]]<<mongodb-property-capture-scope, `+capture.scope+`>>
 |`deployment`
 |Specifies the https://www.mongodb.com/docs/manual/changeStreams/#watch-a-collection--database--or-deployment[scope of the change streams] that the connector opens.
