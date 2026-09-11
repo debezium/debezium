@@ -25,6 +25,7 @@ import io.debezium.relational.TableId;
 
 public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     protected static final TableId TABLE = TableId.parse("db.schema.table");
+    protected static final TableId OTHER_TABLE = TableId.parse("db.schema.other");
     protected static final Instant CHANGE_TIME = Instant.now();
 
     private CacheProvider<T> cacheProvider;
@@ -1128,9 +1129,51 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
         assertThat(logInterceptor.containsWarnMessage("Please enable 'log.mining.include.internal.events'")).isFalse();
     }
 
+    @Test
+    @FixFor("debezium/dbz#1960")
+    public void testRollbackInsertScalarWithUnexpectedTable() throws Exception {
+        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        // The event immediately preceding the undo belongs to another table, so the undo cannot be attributed
+        LogMinerEvent[] events = new LogMinerEvent[]{
+                event(EventType.INSERT, 0, "BBBBBBBBBBBBBBBBBB", "1"),
+                event(EventType.INSERT, 0, "CCCCCCCCCCCCCCCCCC", "2", OTHER_TABLE),
+                event(EventType.DELETE, 1, "BBBBBBBBBBBBBBBBBB", "3"), };
+        LogMinerEvent[] expected = new LogMinerEvent[]{
+                event(EventType.INSERT, 0, "BBBBBBBBBBBBBBBBBB", "1"),
+                event(EventType.INSERT, 0, "CCCCCCCCCCCCCCCCCC", "2", OTHER_TABLE),
+                event(EventType.DELETE, 1, "BBBBBBBBBBBBBBBBBB", "3"), };
+        assertThat(cache(events)).isEqualTo(expected);
+        assertThat(logInterceptor.containsWarnMessage("has a different TABLE_NAME '" + OTHER_TABLE + "'")).isTrue();
+        assertThat(logInterceptor.containsWarnMessage("Manual investigation is required")).isTrue();
+        assertThat(logInterceptor.containsWarnMessage("Please enable 'log.mining.include.internal.events'")).isFalse();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1960")
+    public void testRollbackUpdateOutOfLineWithUnexpectedTable() throws Exception {
+        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        // The INTERNAL event is matched, but the empty-ROW_ID event before it belongs to another table. Without the
+        // guard it would be taken as the inline part of the same statement and removed along with the INTERNAL event.
+        LogMinerEvent[] events = new LogMinerEvent[]{
+                event(EventType.UPDATE, 0, "AAAAAAAAAAAAAAAAAA", "1", OTHER_TABLE),
+                event(EventType.INTERNAL, 0, "BBBBBBBBBBBBBBBBBB", "2"),
+                event(EventType.UPDATE, 1, "BBBBBBBBBBBBBBBBBB", "3"), };
+        LogMinerEvent[] expected = new LogMinerEvent[]{
+                event(EventType.UPDATE, 0, "AAAAAAAAAAAAAAAAAA", "1", OTHER_TABLE),
+                event(EventType.UPDATE, 1, "BBBBBBBBBBBBBBBBBB", "3"), };
+        assertThat(cache(events)).isEqualTo(expected);
+        assertThat(logInterceptor.containsWarnMessage("unexpected TABLE_NAME '" + OTHER_TABLE + "'")).isTrue();
+        assertThat(logInterceptor.containsWarnMessage("Please enable 'log.mining.include.internal.events'")).isTrue();
+        assertThat(logInterceptor.containsWarnMessage("Manual investigation is required")).isFalse();
+    }
+
     private LogMinerEvent event(EventType eventType, int rollback, String rowId, String rsId) {
-        return rollback == 0 ? new LogMinerEvent(eventType, Scn.ONE, TABLE, rowId, rsId, CHANGE_TIME)
-                : new RollbackToSavepointEvent(eventType, Scn.ONE, TABLE, rowId, rsId, CHANGE_TIME);
+        return event(eventType, rollback, rowId, rsId, TABLE);
+    }
+
+    private LogMinerEvent event(EventType eventType, int rollback, String rowId, String rsId, TableId tableId) {
+        return rollback == 0 ? new LogMinerEvent(eventType, Scn.ONE, tableId, rowId, rsId, CHANGE_TIME)
+                : new RollbackToSavepointEvent(eventType, Scn.ONE, tableId, rowId, rsId, CHANGE_TIME);
     }
 
     private LogMinerEvent[] cache(LogMinerEvent[] events) throws InterruptedException {
