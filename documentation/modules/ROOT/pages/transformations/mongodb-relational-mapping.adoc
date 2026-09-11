@@ -1,0 +1,162 @@
+// Category: debezium-using
+// Type: assembly
+// ModuleID: mapping-mongodb-documents-to-relational-structs
+[id="mongodb-relational-mapping"]
+= MongoDB Relational Mapping
+
+:toc:
+:toc-placement: macro
+:linkattrs:
+
+toc::[]
+
+The `io.debezium.connector.mongodb.transforms.MongoToRelationalMapper` single message transformation (SMT) converts the JSON strings in MongoDB change event `before` and `after` fields into Kafka Connect `Struct` values.
+It retains the change event envelope, record key, headers, source metadata, and operation.
+The resulting events can be processed by transformations such as `ExtractChangedRecordState`.
+
+You can configure a fixed projection to select document paths, assign output names, and convert values to specified Connect types.
+Without a matching projection, the SMT infers a schema from the document images in each event, using the existing MongoDB BSON converter.
+An inferred schema can vary between events and can contain nested structs or arrays.
+Use a fixed projection to produce stable relational columns.
+
+== Applying the transformation at a sink
+
+Apply this SMT to the JDBC sink connector to retain the original MongoDB change events in Kafka.
+A separate MongoDB sink can consume the same topic using a handler that understands Debezium MongoDB events.
+That sink must support the original MongoDB event format; converting events for a JDBC sink does not add MongoDB source support to other sink implementations.
+
+Configure the sink's key and value converters to deserialize the Kafka records with their Connect schemas.
+For example, use schema-enabled JSON or an appropriate schema-aware converter.
+The SMT expects a schemaful Debezium envelope.
+
+The transformation preserves `op` and the record key so a Debezium JDBC sink can apply its existing upsert and delete handling.
+Configure the JDBC sink primary key and delete settings separately.
+The MongoDB key's `id` remains the source connector's serialized identifier; the SMT does not re-key records.
+The two sinks consume independently and do not form a transaction across databases.
+
+== Configuring collection projections
+
+Each `schema.mapping.<database>.<collection>` property contains a JSON string.
+The database and collection are matched exactly against `source.db` and `source.collection`, independently of the Kafka topic name.
+Dots in collection names are retained as part of the collection name.
+Each JSON member names an output field and specifies its `path` and `type`.
+
+The following example shows the JSON value for `schema.mapping.shop.orders`:
+
+[source,json]
+----
+{
+  "customer_city": {"path": "/customer/address/city", "type": "string"},
+  "second_sku": {"path": "/items/1/sku", "type": "string"},
+  "price": {"path": "/price", "type": "org.apache.kafka.connect.data.Decimal", "scale": 2, "precision": 34},
+  "document_json": {"path": "", "type": "io.debezium.data.Json"}
+}
+----
+
+When configuring Kafka Connect through its REST API, serialize this value as a string inside the connector configuration:
+
+[source,json]
+----
+{
+  "transforms": "map",
+  "transforms.map.type": "io.debezium.connector.mongodb.transforms.MongoToRelationalMapper",
+  "transforms.map.schema.mapping.shop.orders": "{\"customer_city\":{\"path\":\"/customer/address/city\",\"type\":\"string\"}}"
+}
+----
+
+These are transformation settings to add to the sink configuration, not a complete connector configuration.
+The collection mapping properties have `HIGH` importance.
+Output names must match `[A-Za-z_][A-Za-z0-9_]*`.
+Destination database naming restrictions still apply.
+Invalid JSON, duplicate output names, unknown options, invalid types, and malformed pointers cause configuration errors.
+
+== Path syntax and document changes
+
+Paths use https://www.rfc-editor.org/rfc/rfc6901.html[JSON Pointer] syntax and are evaluated against the BSON document represented by `before` or `after`.
+They do not start at the change event envelope.
+Extended JSON type wrappers such as `$oid` are not nested BSON document fields: select `/_id`, not `/_id/$oid`.
+
+MongoDB permits https://www.mongodb.com/docs/manual/core/dot-dollar-considerations/[field names that contain periods or dollar signs].
+JSON Pointer distinguishes a literal name from a nested path without reserving periods, commas, colons, or equals signs as field-name separators.
+JSON properties also keep type parameters such as decimal scale separate from the path.
+
+[cols="1,2",options="header"]
+|===
+|Pointer |Selected value
+|`/customer/name` |The `name` field in the `customer` document.
+|`/customer.name` |The top-level field named `customer.name`.
+|`/items/0/sku` |The first array element's `sku`, or `sku` under the object member named `0` if `items` is a document.
+|`/a~1b` |The field named `a/b`.
+|`/a~0b` |The field named `a~b`.
+|`/` |The field with an empty name.
+|An empty string |The entire document.
+|===
+
+Paths select a single value; there is no wildcard expansion or conversion of one event into multiple relational rows.
+An array index is zero-based and has no leading zeros except for `0` itself.
+Unresolved paths produce `null`, including missing fields, out-of-range array indices, and paths whose parent is now a scalar.
+An explicit BSON null also produces `null`.
+All configured fields remain in the same optional output schema, so a JDBC upsert can clear columns whose source fields disappeared or whose array elements were removed.
+The projection does not retain a distinction between an absent field and an explicit null; retain the original document if that distinction is needed.
+
+Only selected values undergo BSON-to-Connect conversion.
+An unselected heterogeneous array does not undergo Connect array schema inference.
+The input must still be a valid document that the BSON JSON parser can read.
+For selected arrays, documents, or other BSON values, `io.debezium.data.Json` emits an Extended JSON string.
+When that type is used with an empty pointer, the original document JSON string is retained unchanged.
+
+If a selected leaf exists but cannot be converted to its declared type, the SMT raises a conversion error.
+It does not replace conversion errors with null or silently omit the field.
+For example, selecting `/customer/name` yields null after `customer` becomes a string; selecting `/customer` as `string` fails while `customer` is a document.
+
+== Output types
+
+Primitive type names are case-insensitive; logical names are case-sensitive and must be fully qualified.
+All output schemas are optional.
+
+[cols="1,2",options="header"]
+|===
+|Type |Conversion
+|`int8`, `int16`, `int32`, `int64` |BSON numbers or numeric strings, with exact integral conversion and range checks.
+|`float32`, `float64` |BSON numbers or numeric strings. Floating-point rounding applies; non-finite results and underflow to zero are rejected.
+|`boolean` |BSON boolean or a case-insensitive `true`/`false` string.
+|`string` |BSON string, ObjectId, numeric, boolean, or date value. Documents and arrays require `io.debezium.data.Json`.
+|`bytes` |BSON binary data, without the binary subtype.
+|`org.apache.kafka.connect.data.Decimal` |Exact decimal conversion. Requires non-negative `scale`; optional positive `precision` must be at least scale. Rounding and precision overflow are rejected.
+|`io.debezium.data.VariableScaleDecimal` |Exact decimal value with its own scale.
+|`io.debezium.data.Json` |Extended JSON representation of the selected BSON value.
+|`io.debezium.data.Uuid` |Canonical UUID string or standard UUID binary subtype 4. Legacy UUID binary representations are not inferred.
+|`io.debezium.data.Bits` |Binary value interpreted with Debezium's little-endian bit representation. Requires a positive `length` in bits.
+|`org.apache.kafka.connect.data.Date`, `Time`, `Timestamp` |Connect logical values with millisecond precision; date and time components are selected in UTC for BSON dates.
+|`io.debezium.time.Date` |Days since the Unix epoch.
+|`io.debezium.time.Timestamp`, `MicroTimestamp`, `NanoTimestamp` |Milliseconds, microseconds, or nanoseconds since the Unix epoch.
+|`io.debezium.time.Time`, `MicroTime`, `NanoTime` |Milliseconds, microseconds, or nanoseconds since midnight, within one day.
+|`io.debezium.time.ZonedTimestamp`, `ZonedTime` |ISO-8601 text with an offset. BSON date inputs use UTC.
+|`io.debezium.time.Year` |An integer year, or the UTC year of a BSON date.
+|`io.debezium.time.MicroDuration`, `NanoDuration` |An integral count of microseconds or nanoseconds, or an ISO-8601 duration string.
+|===
+
+The aliases `integer`, `long`, `float`, and `double` denote `int32`, `int64`, `float32`, and `float64`, respectively.
+For timestamp types, numeric BSON values use the declared output unit, and strings require an ISO-8601 timestamp with an offset.
+For date types, numeric values are epoch days, and strings use ISO local dates.
+For unzoned time types, numeric values use the declared output unit, and strings use ISO local times.
+Conversions reject overflow or fractional precision that the output type cannot represent.
+A BSON timestamp's increment orders operations within a second and is not a fractional time; conversion to a temporal value uses only its unsigned seconds component.
+Use `io.debezium.data.Json` to retain both components.
+Precise decimal types reject non-finite numbers; use a string or JSON representation if those values must be retained.
+
+== Capture modes and deletes
+
+Create, snapshot, and update events require a non-null full `after` document.
+For streaming updates, configure a `change_streams_update_full` capture mode.
+The corresponding mode with pre-images also supplies a `before` document for comparing changed fields.
+If the full document is unavailable, including a failed full-document lookup, the SMT reports an error rather than treating the event as a document with every projected field removed.
+Partial updates are not reconstructed by this SMT.
+
+Delete events are retained even when no pre-image is available; their `before` and `after` fields use optional Struct schemas and their original key is preserved.
+Tombstones and non-envelope records pass through unchanged.
+Relational envelopes that already have Struct document fields also pass through unchanged.
+Use SMT predicates or sink topic selection to control which records reach this transformation.
+
+The `add.missing.fields` option defaults to `true` and controls explicit null assignment in inferred document conversion.
+Configured projections always keep their optional fields and return null for unresolved paths, independently of this option.
