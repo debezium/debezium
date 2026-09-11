@@ -120,7 +120,7 @@ public class MariaDbChangeEventSourceFactory implements ChangeEventSourceFactory
                                                                                                                                                 NotificationService<MariaDbPartition, MariaDbOffsetContext> notificationService) {
         if (configuration.isReadOnlyConnection()) {
             if (connectionFactory.mainConnection().isGtidModeEnabled()) {
-                return Optional.of(new MariaDbReadOnlyIncrementalSnapshotChangeEventSource(
+                final var source = new MariaDbReadOnlyIncrementalSnapshotChangeEventSource(
                         configuration,
                         connectionFactory.mainConnection(),
                         dispatcher,
@@ -128,7 +128,9 @@ public class MariaDbChangeEventSourceFactory implements ChangeEventSourceFactory
                         clock,
                         snapshotProgressListener,
                         dataChangeEventListener,
-                        notificationService));
+                        notificationService);
+                source.setErrorHandler(errorHandler);
+                return Optional.of(source);
             }
             throw new UnsupportedOperationException("Read only connection requires GTID_MODE to be ON");
         }
@@ -138,7 +140,7 @@ public class MariaDbChangeEventSourceFactory implements ChangeEventSourceFactory
             return Optional.empty();
         }
 
-        return Optional.of(new BinlogSignalBasedIncrementalSnapshotChangeEventSource<>(
+        final var source = new BinlogSignalBasedIncrementalSnapshotChangeEventSource<MariaDbPartition>(
                 configuration,
                 connectionFactory.mainConnection(),
                 dispatcher,
@@ -146,7 +148,9 @@ public class MariaDbChangeEventSourceFactory implements ChangeEventSourceFactory
                 clock,
                 snapshotProgressListener,
                 dataChangeEventListener,
-                notificationService));
+                notificationService);
+        source.setErrorHandler(errorHandler);
+        return Optional.of(source);
     }
 
     private void preSnapshot() {

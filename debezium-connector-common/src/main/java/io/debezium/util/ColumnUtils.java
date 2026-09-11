@@ -47,7 +47,7 @@ public class ColumnUtils {
                 for (int j = 0; j < metaData.getColumnCount(); j++) {
                     resultSetColumns[j] = metaData.getColumnName(j + 1);
                 }
-                throw new IllegalArgumentException("Column '"
+                throw new SchemaMismatchException("Column '"
                         + columnName
                         + "' not found in result set '"
                         + String.join(", ", resultSetColumns)
@@ -60,6 +60,16 @@ public class ColumnUtils {
             greatestColumnPosition = Math.max(greatestColumnPosition, columns[i].position());
         }
         return new ColumnArray(columns, greatestColumnPosition);
+    }
+
+    /**
+     * A result-set column is missing from the cached table definition.
+     */
+    public static class SchemaMismatchException extends IllegalArgumentException {
+
+        public SchemaMismatchException(String message) {
+            super(message);
+        }
     }
 
     public static class MappedColumns {

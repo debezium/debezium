@@ -10,6 +10,7 @@ import java.sql.SQLException;
 import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
+import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
@@ -44,6 +45,19 @@ public class BinlogSignalBasedIncrementalSnapshotChangeEventSource<P extends Bin
         super(config, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener, notificationService);
         this.schema = databaseSchema;
         this.binlogConnectorConnection = jdbcConnection;
+    }
+
+    @Override
+    protected boolean supportsSchemaMismatchRecovery() {
+        return true;
+    }
+
+    @Override
+    protected void postReadChunk(IncrementalSnapshotContext<TableId> context) {
+        // Binlog snapshot queries must not retain metadata locks between chunks, even if
+        // a watermark method returns without ending the transaction or a chunk exits early.
+        rollbackChunkTransaction(null);
+        super.postReadChunk(context);
     }
 
     @Override
