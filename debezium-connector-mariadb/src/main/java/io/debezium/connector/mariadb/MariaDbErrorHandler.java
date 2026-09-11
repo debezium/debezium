@@ -37,13 +37,12 @@ public class MariaDbErrorHandler extends ErrorHandler {
 
     @Override
     protected boolean isRetriable(Throwable throwable) {
-        while (throwable != null) {
-            if (throwable instanceof SQLException sqlException) {
+        for (Throwable cause = throwable; cause != null; cause = cause.getCause()) {
+            if (cause instanceof SQLException sqlException) {
                 if (NON_RETRIABLE_ERROR_CODES.contains(sqlException.getErrorCode())) {
                     return false;
                 }
             }
-            throwable = throwable.getCause();
         }
         return super.isRetriable(throwable);
     }
