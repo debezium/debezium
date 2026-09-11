@@ -17,7 +17,9 @@ import org.junit.jupiter.api.Test;
 
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.SnapshotMode;
 import io.debezium.data.Envelope;
+import io.debezium.data.Envelope.Operation;
 import io.debezium.doc.FixFor;
+import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.util.Collect;
 
@@ -98,6 +100,68 @@ public class TransactionMetadataIT extends AbstractMongoConnectorIT {
         assertEndTransaction(all.get(7), txId1, 6, Collect.hashMapOf("dbA.c1", 6));
 
         stopConnector();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2549")
+    void shouldReplayDeleteWithoutDuplicateTransactionEndWhenStoppedBeforeTombstoneIsCommitted() throws Exception {
+        final String collectionName = "c1";
+        final String topicName = "mongo1.dbA." + collectionName;
+
+        config = TestHelper.getConfiguration(mongo)
+                .edit()
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbA." + collectionName)
+                .with(MongoDbConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                .with(MongoDbConnectorConfig.PROVIDE_TRANSACTION_METADATA, true)
+                .with(MongoDbConnectorConfig.MAX_BATCH_SIZE, 1)
+                .build();
+
+        context = new MongoDbTaskContext(config);
+        TestHelper.cleanDatabase(mongo, "dbA");
+
+        if (!TestHelper.transactionsSupported()) {
+            return;
+        }
+
+        start(MongoDbConnector.class, config, record -> topicName.equals(record.topic()) && record.value() == null);
+        waitForStreamingRunning("mongodb", "mongo1");
+
+        insertDocumentsInTx("dbA", collectionName, new Document("_id", 1).append("value", "before-delete"));
+
+        final SourceRecord begin = consumeRecord();
+        final String transactionId = assertBeginTransaction(begin);
+
+        final SourceRecord create = consumeRecord();
+        assertOperation(create, Operation.CREATE);
+
+        deleteDocuments("dbA", collectionName, new Document("_id", 1));
+
+        final SourceRecord end = consumeRecord();
+        assertEndTransaction(end, transactionId, 1, Collect.hashMapOf("dbA.c1", 1));
+
+        final SourceRecord deleteBeforeStop = consumeRecord();
+        assertThat(deleteBeforeStop.key()).isEqualTo(create.key());
+        assertThat(deleteBeforeStop.sourceOffset()).doesNotContainKey(TransactionContext.OFFSET_TRANSACTION_ID);
+        assertOperation(deleteBeforeStop, Operation.DELETE);
+
+        waitForEngineShutdown();
+        stopConnector();
+
+        start(MongoDbConnector.class, config);
+        waitForStreamingRunning("mongodb", "mongo1");
+
+        insertDocuments("dbA", collectionName, new Document("_id", 2).append("value", "restart-marker"));
+
+        final SourceRecord replayedDelete = consumeRecord();
+        assertThat(replayedDelete.key()).isEqualTo(create.key());
+        assertOperation(replayedDelete, Operation.DELETE);
+
+        final SourceRecord replayedTombstone = consumeRecord();
+        assertThat(replayedTombstone.key()).isEqualTo(create.key());
+        assertThat(replayedTombstone.value()).isNull();
+
+        final SourceRecord markerCreate = consumeRecord();
+        assertOperation(markerCreate, Operation.CREATE);
     }
 
     @Test
@@ -213,5 +277,10 @@ public class TransactionMetadataIT extends AbstractMongoConnectorIT {
         assertEndTransaction(all.get(3), txId, 2, Collect.hashMapOf("dbA.c1", 2));
 
         stopConnector();
+    }
+
+    private static void assertOperation(SourceRecord record, Operation expected) {
+        final Struct value = (Struct) record.value();
+        assertThat(value.getString(Envelope.FieldName.OPERATION)).isEqualTo(expected.code());
     }
 }

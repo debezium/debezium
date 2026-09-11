@@ -46,7 +46,7 @@ public abstract class CommonOffsetContext<T extends BaseSourceInfo> implements O
      */
     protected boolean snapshotCompleted;
 
-    private Map<String, ?> offsetBeforeEvent;
+    private Map<String, Object> offsetBeforeEvent;
 
     public CommonOffsetContext(T sourceInfo) {
         this.sourceInfo = sourceInfo;
@@ -65,6 +65,13 @@ public abstract class CommonOffsetContext<T extends BaseSourceInfo> implements O
     @Override
     public Map<String, ?> getOffsetForIncompleteEvent() {
         return offsetBeforeEvent == null ? getOffset() : new HashMap<>(offsetBeforeEvent);
+    }
+
+    @Override
+    public void updateTransactionContextForIncompleteEvent() {
+        if (offsetBeforeEvent != null) {
+            getTransactionContext().store(offsetBeforeEvent);
+        }
     }
 
     @Override
