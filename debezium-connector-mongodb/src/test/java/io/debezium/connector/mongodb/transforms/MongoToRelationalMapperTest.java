@@ -80,7 +80,8 @@ public class MongoToRelationalMapperTest {
         // GIVEN: A raw, unmodified Debezium MongoDB SourceRecord
 
         // 1. Build a mock "Envelope" schema. Notice how 'before' and 'after' are merely OPTIONAL_STRING_SCHEMA.
-        Schema sourceSchema = SchemaBuilder.struct().name("io.debezium.connector.mongo.Source").build();
+        Schema sourceSchema = SchemaBuilder.struct().name("io.debezium.connector.mongo.Source")
+                .field("db", Schema.STRING_SCHEMA).field("collection", Schema.STRING_SCHEMA).build();
         Schema recordSchema = SchemaBuilder.struct().name("server.db.collection.Envelope")
                 .field(Envelope.FieldName.BEFORE, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(Envelope.FieldName.AFTER, Schema.OPTIONAL_STRING_SCHEMA)
@@ -94,7 +95,7 @@ public class MongoToRelationalMapperTest {
         Struct recordValue = new Struct(recordSchema);
         recordValue.put(Envelope.FieldName.BEFORE, "{\"_id\": 1, \"name\": \"old_name\"}");
         recordValue.put(Envelope.FieldName.AFTER, "{\"_id\": 1, \"name\": \"new_name\", \"age\": 30}");
-        recordValue.put(Envelope.FieldName.SOURCE, new Struct(sourceSchema));
+        recordValue.put(Envelope.FieldName.SOURCE, new Struct(sourceSchema).put("db", "db").put("collection", "collection"));
         recordValue.put(Envelope.FieldName.OPERATION, Envelope.Operation.UPDATE.code());
         recordValue.put(Envelope.FieldName.TIMESTAMP, 123456789L);
 
@@ -138,7 +139,8 @@ public class MongoToRelationalMapperTest {
     @Test
     public void shouldConvertCreateOperation() {
         // GIVEN: A 'Create' (op=c) record where 'before' is null
-        Schema sourceSchema = SchemaBuilder.struct().name("io.debezium.connector.mongo.Source").build();
+        Schema sourceSchema = SchemaBuilder.struct().name("io.debezium.connector.mongo.Source")
+                .field("db", Schema.STRING_SCHEMA).field("collection", Schema.STRING_SCHEMA).build();
         Schema recordSchema = SchemaBuilder.struct().name("server.db.collection.Envelope")
                 .field(Envelope.FieldName.BEFORE, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(Envelope.FieldName.AFTER, Schema.OPTIONAL_STRING_SCHEMA)
@@ -150,7 +152,7 @@ public class MongoToRelationalMapperTest {
         Struct recordValue = new Struct(recordSchema);
         recordValue.put(Envelope.FieldName.BEFORE, null);
         recordValue.put(Envelope.FieldName.AFTER, "{\"_id\": 1, \"name\": \"new_item\"}");
-        recordValue.put(Envelope.FieldName.SOURCE, new Struct(sourceSchema));
+        recordValue.put(Envelope.FieldName.SOURCE, new Struct(sourceSchema).put("db", "db").put("collection", "collection"));
         recordValue.put(Envelope.FieldName.OPERATION, Envelope.Operation.CREATE.code());
         recordValue.put(Envelope.FieldName.TIMESTAMP, 123456789L);
 
@@ -169,7 +171,8 @@ public class MongoToRelationalMapperTest {
     @Test
     public void shouldConvertDeleteOperation() {
         // GIVEN: A 'Delete' (op=d) record where 'after' is null
-        Schema sourceSchema = SchemaBuilder.struct().name("io.debezium.connector.mongo.Source").build();
+        Schema sourceSchema = SchemaBuilder.struct().name("io.debezium.connector.mongo.Source")
+                .field("db", Schema.STRING_SCHEMA).field("collection", Schema.STRING_SCHEMA).build();
         Schema recordSchema = SchemaBuilder.struct().name("server.db.collection.Envelope")
                 .field(Envelope.FieldName.BEFORE, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(Envelope.FieldName.AFTER, Schema.OPTIONAL_STRING_SCHEMA)
@@ -181,7 +184,7 @@ public class MongoToRelationalMapperTest {
         Struct recordValue = new Struct(recordSchema);
         recordValue.put(Envelope.FieldName.BEFORE, "{\"_id\": 1, \"name\": \"deleted_item\"}");
         recordValue.put(Envelope.FieldName.AFTER, null);
-        recordValue.put(Envelope.FieldName.SOURCE, new Struct(sourceSchema));
+        recordValue.put(Envelope.FieldName.SOURCE, new Struct(sourceSchema).put("db", "db").put("collection", "collection"));
         recordValue.put(Envelope.FieldName.OPERATION, Envelope.Operation.DELETE.code());
         recordValue.put(Envelope.FieldName.TIMESTAMP, 123456789L);
 
@@ -200,7 +203,8 @@ public class MongoToRelationalMapperTest {
     @Test
     public void shouldConvertUpdateWithoutPreImage() {
         // GIVEN: An 'Update' (op=u) where 'before' is null (happens in some capture modes)
-        Schema sourceSchema = SchemaBuilder.struct().name("io.debezium.connector.mongo.Source").build();
+        Schema sourceSchema = SchemaBuilder.struct().name("io.debezium.connector.mongo.Source")
+                .field("db", Schema.STRING_SCHEMA).field("collection", Schema.STRING_SCHEMA).build();
         Schema recordSchema = SchemaBuilder.struct().name("server.db.collection.Envelope")
                 .field(Envelope.FieldName.BEFORE, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(Envelope.FieldName.AFTER, Schema.OPTIONAL_STRING_SCHEMA)
@@ -212,7 +216,7 @@ public class MongoToRelationalMapperTest {
         Struct recordValue = new Struct(recordSchema);
         recordValue.put(Envelope.FieldName.BEFORE, null);
         recordValue.put(Envelope.FieldName.AFTER, "{\"_id\": 1, \"status\": \"updated\"}");
-        recordValue.put(Envelope.FieldName.SOURCE, new Struct(sourceSchema));
+        recordValue.put(Envelope.FieldName.SOURCE, new Struct(sourceSchema).put("db", "db").put("collection", "collection"));
         recordValue.put(Envelope.FieldName.OPERATION, Envelope.Operation.UPDATE.code());
         recordValue.put(Envelope.FieldName.TIMESTAMP, 123456789L);
 
@@ -231,10 +235,13 @@ public class MongoToRelationalMapperTest {
     public void shouldApplyStaticSchemaMapping() {
         // GIVEN: Configuration with a strict per-collection schema mapping
         java.util.Map<String, String> configs = new HashMap<>();
-        configs.put("schema.mapping.server.db.collection", "_id:int32,priority:int32");
+        configs.put("schema.mapping.db.collection", """
+                {"_id":{"path":"/_id","type":"int32"},"priority":{"path":"/priority","type":"int32"}}
+                """);
         transformation.configure(configs);
 
-        Schema sourceSchema = SchemaBuilder.struct().name("io.debezium.connector.mongo.Source").build();
+        Schema sourceSchema = SchemaBuilder.struct().name("io.debezium.connector.mongo.Source")
+                .field("db", Schema.STRING_SCHEMA).field("collection", Schema.STRING_SCHEMA).build();
         Schema recordSchema = SchemaBuilder.struct().name("server.db.collection.Envelope")
                 .field(Envelope.FieldName.BEFORE, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(Envelope.FieldName.AFTER, Schema.OPTIONAL_STRING_SCHEMA)
@@ -247,7 +254,7 @@ public class MongoToRelationalMapperTest {
         // Also it is missing 'priority' which the mapping DOES have.
         Struct recordValue = new Struct(recordSchema);
         recordValue.put(Envelope.FieldName.AFTER, "{\"_id\": 1, \"extra_field\": \"ignored\"}");
-        recordValue.put(Envelope.FieldName.SOURCE, new Struct(sourceSchema));
+        recordValue.put(Envelope.FieldName.SOURCE, new Struct(sourceSchema).put("db", "db").put("collection", "collection"));
         recordValue.put(Envelope.FieldName.OPERATION, Envelope.Operation.CREATE.code());
         recordValue.put(Envelope.FieldName.TIMESTAMP, 123456789L);
 
@@ -270,11 +277,14 @@ public class MongoToRelationalMapperTest {
     public void shouldNotAddMissingFieldsWhenDisabled() {
         // GIVEN: Configuration where add.missing.fields is false
         java.util.Map<String, String> configs = new HashMap<>();
-        configs.put("schema.mapping.server.db.collection", "_id:int32,priority:int32");
+        configs.put("schema.mapping.db.collection", """
+                {"_id":{"path":"/_id","type":"int32"},"priority":{"path":"/priority","type":"int32"}}
+                """);
         configs.put("add.missing.fields", "false");
         transformation.configure(configs);
 
-        Schema sourceSchema = SchemaBuilder.struct().name("io.debezium.connector.mongo.Source").build();
+        Schema sourceSchema = SchemaBuilder.struct().name("io.debezium.connector.mongo.Source")
+                .field("db", Schema.STRING_SCHEMA).field("collection", Schema.STRING_SCHEMA).build();
         Schema recordSchema = SchemaBuilder.struct().name("server.db.collection.Envelope")
                 .field(Envelope.FieldName.BEFORE, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(Envelope.FieldName.AFTER, Schema.OPTIONAL_STRING_SCHEMA)
@@ -285,7 +295,7 @@ public class MongoToRelationalMapperTest {
 
         Struct recordValue = new Struct(recordSchema);
         recordValue.put(Envelope.FieldName.AFTER, "{\"_id\": 1}");
-        recordValue.put(Envelope.FieldName.SOURCE, new Struct(sourceSchema));
+        recordValue.put(Envelope.FieldName.SOURCE, new Struct(sourceSchema).put("db", "db").put("collection", "collection"));
         recordValue.put(Envelope.FieldName.OPERATION, Envelope.Operation.CREATE.code());
         recordValue.put(Envelope.FieldName.TIMESTAMP, 123456789L);
 
@@ -311,7 +321,8 @@ public class MongoToRelationalMapperTest {
         // Snapshot events look like creates — 'before' is always null and 'after' contains the document.
         // This verifies the SMT handles the 'r' operation code correctly.
 
-        Schema sourceSchema = SchemaBuilder.struct().name("io.debezium.connector.mongo.Source").build();
+        Schema sourceSchema = SchemaBuilder.struct().name("io.debezium.connector.mongo.Source")
+                .field("db", Schema.STRING_SCHEMA).field("collection", Schema.STRING_SCHEMA).build();
         Schema recordSchema = SchemaBuilder.struct().name("server.db.collection.Envelope")
                 .field(Envelope.FieldName.BEFORE, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(Envelope.FieldName.AFTER, Schema.OPTIONAL_STRING_SCHEMA)
@@ -323,7 +334,7 @@ public class MongoToRelationalMapperTest {
         Struct recordValue = new Struct(recordSchema);
         recordValue.put(Envelope.FieldName.BEFORE, null);
         recordValue.put(Envelope.FieldName.AFTER, "{\"_id\": 1, \"name\": \"snapshot_item\", \"active\": true}");
-        recordValue.put(Envelope.FieldName.SOURCE, new Struct(sourceSchema));
+        recordValue.put(Envelope.FieldName.SOURCE, new Struct(sourceSchema).put("db", "db").put("collection", "collection"));
         recordValue.put(Envelope.FieldName.OPERATION, Envelope.Operation.READ.code());
         recordValue.put(Envelope.FieldName.TIMESTAMP, 123456789L);
 
@@ -347,7 +358,8 @@ public class MongoToRelationalMapperTest {
         // This happens when the capture mode is 'change_streams_update_full_with_pre_image',
         // which tells MongoDB to include the full document state before the change.
 
-        Schema sourceSchema = SchemaBuilder.struct().name("io.debezium.connector.mongo.Source").build();
+        Schema sourceSchema = SchemaBuilder.struct().name("io.debezium.connector.mongo.Source")
+                .field("db", Schema.STRING_SCHEMA).field("collection", Schema.STRING_SCHEMA).build();
         Schema recordSchema = SchemaBuilder.struct().name("server.db.collection.Envelope")
                 .field(Envelope.FieldName.BEFORE, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(Envelope.FieldName.AFTER, Schema.OPTIONAL_STRING_SCHEMA)
@@ -359,7 +371,7 @@ public class MongoToRelationalMapperTest {
         Struct recordValue = new Struct(recordSchema);
         recordValue.put(Envelope.FieldName.BEFORE, "{\"_id\": 1, \"status\": \"pending\"}");
         recordValue.put(Envelope.FieldName.AFTER, "{\"_id\": 1, \"status\": \"complete\"}");
-        recordValue.put(Envelope.FieldName.SOURCE, new Struct(sourceSchema));
+        recordValue.put(Envelope.FieldName.SOURCE, new Struct(sourceSchema).put("db", "db").put("collection", "collection"));
         recordValue.put(Envelope.FieldName.OPERATION, Envelope.Operation.UPDATE.code());
         recordValue.put(Envelope.FieldName.TIMESTAMP, 123456789L);
 
