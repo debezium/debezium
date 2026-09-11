@@ -532,6 +532,13 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
                 lock.unlock();
             }
         }
+
+        @Override
+        public void processSynchronousSignals() throws InterruptedException {
+            if (signalProcessor != null) {
+                signalProcessor.processSynchronousSignals();
+            }
+        }
     }
 
     protected void streamingConnected(boolean status) {

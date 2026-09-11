@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.oracle.spi;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.slf4j.Logger;
@@ -13,31 +14,32 @@ import org.slf4j.LoggerFactory;
 import io.debezium.DebeziumException;
 import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerStreamingChangeEventSource;
+import io.debezium.connector.oracle.logminer.buffered.PendingTransaction;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.signal.SignalPayload;
 import io.debezium.pipeline.signal.actions.SignalAction;
 import io.debezium.pipeline.spi.Partition;
-import io.debezium.util.Strings;
 
 /**
- * Signal action to drop (abandon) a transaction from the Oracle LogMiner buffer.
+ * Signal action that logs the details of every active and deferred transaction currently pending
+ * in the Oracle LogMiner buffer, ordered from oldest to newest, giving an on-demand view of the
+ * transactions that influence the connector's mining window.
  * <p>
- * The buffer is only safe to mutate from the streaming thread, so this action requests
+ * The buffer is only safe to read from the streaming thread, so this action requests
  * {@link #isSynchronous() synchronous} invocation and the mining loop executes it at its next
  * safe point rather than on the thread that delivered the signal.
  *
- * @author Debezium Community
+ * @author Chris Cranford
  */
-public class DropTransactionAction<P extends Partition> implements SignalAction<P> {
+public class LogPendingTransactionsAction<P extends Partition> implements SignalAction<P> {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(DropTransactionAction.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(LogPendingTransactionsAction.class);
 
-    public static final String NAME = "drop-transaction";
-    private static final String FIELD_TRANSACTION_ID = "transaction-id";
+    public static final String NAME = "log-pending-transactions";
 
     private final ChangeEventSourceCoordinator<P, ?> changeEventSourceCoordinator;
 
-    public DropTransactionAction(ChangeEventSourceCoordinator<P, ?> changeEventSourceCoordinator) {
+    public LogPendingTransactionsAction(ChangeEventSourceCoordinator<P, ?> changeEventSourceCoordinator) {
         this.changeEventSourceCoordinator = changeEventSourceCoordinator;
     }
 
@@ -56,39 +58,42 @@ public class DropTransactionAction<P extends Partition> implements SignalAction<
                             NAME, signalPayload.id, signalPayload.partition.getClass().getSimpleName()));
         }
 
-        final String transactionId = signalPayload.data.getString(FIELD_TRANSACTION_ID);
-        if (Strings.isNullOrEmpty(transactionId)) {
-            LOGGER.warn("Drop transaction signal '{}' has arrived but the required field '{}' is missing or empty from data",
-                    signalPayload.id, FIELD_TRANSACTION_ID);
-            return false;
-        }
-
-        // Use new coordinator accessor that enables connector-specific signal actions to access streaming sources
         final BufferedLogMinerStreamingChangeEventSource source = getStreamingSource();
         if (source == null) {
-            LOGGER.warn("Cannot process drop transaction signal '{}' - streaming source is not available", signalPayload.id);
+            LOGGER.warn("Cannot process {} signal '{}' - streaming source is not available", NAME, signalPayload.id);
             return false;
         }
 
-        final String txId = transactionId.trim().toLowerCase();
-        LOGGER.info("Attempting to drop transaction '{}' from Oracle LogMiner buffer as requested by signal '{}'", txId, signalPayload.id);
+        logPendingTransactions(signalPayload.id, source.getPendingTransactions());
+        return true;
+    }
 
-        final boolean success = source.abandonTransactionById(txId);
+    private static void logPendingTransactions(String signalId, List<PendingTransaction> transactions) {
+        LOGGER.info("Pending transactions in Oracle LogMiner buffer as requested by signal '{}': {} total ({} active, {} deferred)",
+                signalId, transactions.size(),
+                transactions.stream().filter(t -> !t.deferred()).count(),
+                transactions.stream().filter(PendingTransaction::deferred).count());
 
-        if (success) {
-            LOGGER.info("Successfully dropped transaction '{}' from Oracle LogMiner buffer via signal '{}'", txId, signalPayload.id);
+        for (PendingTransaction transaction : transactions) {
+            if (transaction.deferred()) {
+                LOGGER.info("Deferred transaction {}: startScn={}, changeTime={}, userName={}, clientId={}, redoThread={}",
+                        transaction.transactionId(), transaction.startScn(), transaction.changeTime(),
+                        transaction.userName(), transaction.clientId(), transaction.redoThreadId());
+            }
+            else {
+                LOGGER.info("Active transaction {}: startScn={}, changeTime={}, userName={}, clientId={}, redoThread={}, events={}",
+                        transaction.transactionId(), transaction.startScn(), transaction.changeTime(),
+                        transaction.userName(), transaction.clientId(), transaction.redoThreadId(),
+                        transaction.eventCount());
+            }
         }
-        else {
-            LOGGER.warn("Transaction '{}' was not found in Oracle LogMiner buffer or could not be dropped via signal '{}'", txId, signalPayload.id);
-        }
-
-        return success;
     }
 
     /**
      * Retrieves the buffered LogMiner streaming source from the coordinator.
      *
-     * @return the BufferedLogMinerStreamingChangeEventSource, or null if not available or wrong type
+     * @return the BufferedLogMinerStreamingChangeEventSource, or null if no streaming source is available
+     * @throws DebeziumException if the streaming source is not a BufferedLogMinerStreamingChangeEventSource
      */
     private BufferedLogMinerStreamingChangeEventSource getStreamingSource() {
         final Optional<?> source = changeEventSourceCoordinator.getStreamingSource();

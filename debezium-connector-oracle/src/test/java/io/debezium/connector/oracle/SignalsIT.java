@@ -25,8 +25,10 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnectorConfig.SnapshotMode;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.spi.DropTransactionAction;
+import io.debezium.connector.oracle.spi.LogPendingTransactionsAction;
 import io.debezium.connector.oracle.util.OracleMetricsHelper;
 import io.debezium.connector.oracle.util.TestHelper;
+import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.EqualityCheck;
 import io.debezium.junit.SkipWhenDatabaseVersion;
@@ -239,6 +241,62 @@ public class SignalsIT extends AbstractAsyncEngineConnectorTest {
         assertThat(signalAfter.getString("ID")).isEqualTo("drop-tx-1");
         assertThat(signalAfter.getString("TYPE")).isEqualTo("drop-transaction");
         assertThat(signalAfter.getString("DATA")).contains(fakeTransactionId);
+
+        assertNoRecordsToConsume();
+        stopConnector();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2577")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER_BUFFERED)
+    public void shouldLogPendingTransactionsViaSignal() throws Exception {
+        final LogInterceptor logInterceptor = new LogInterceptor(LogPendingTransactionsAction.class);
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER")
+                .with(OracleConnectorConfig.SIGNAL_DATA_COLLECTION, TestHelper.getDatabaseName() + ".DEBEZIUM.DEBEZIUM_SIGNAL")
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                .build();
+
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+
+        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+        waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        // Create an uncommitted transaction so that the buffer holds an active transaction with one event
+        connection.executeWithoutCommitting("INSERT INTO debezium.customer VALUES (1, 'Uncommitted-Transaction', 100.00, TO_DATE('2024-01-01', 'yyyy-mm-dd'))");
+
+        // Send the signal using a separate connection so the uncommitted transaction above stays open
+        try (OracleConnection signalConnection = TestHelper.testConnection()) {
+            signalConnection.execute("INSERT INTO debezium.debezium_signal VALUES('log-tx-1', 'log-pending-transactions', NULL)");
+        }
+
+        Awaitility.await()
+                .atMost(Duration.ofSeconds(30))
+                .until(() -> logInterceptor.containsMessage("Pending transactions in Oracle LogMiner buffer as requested by signal 'log-tx-1'"));
+
+        // The uncommitted insert was mined before the signal's commit, so it must be reported as active with one event
+        assertThat(logInterceptor.messageMatches("Active transaction [0-9a-f.]+: startScn=\\d+, changeTime=.+, userName=.+, clientId=.+, redoThread=\\d+, events=1"))
+                .isTrue();
+
+        connection.execute("COMMIT");
+
+        OracleMetricsHelper.waitForCurrentScnToHaveBeenSeenByConnector();
+
+        SourceRecords records = consumeRecordsByTopic(2);
+        List<SourceRecord> customerRecords = records.recordsForTopic("server1.DEBEZIUM.CUSTOMER");
+        List<SourceRecord> signalRecords = records.recordsForTopic("server1.DEBEZIUM.DEBEZIUM_SIGNAL");
+        assertThat(customerRecords).hasSize(1);
+        assertThat(signalRecords).hasSize(1);
+
+        Struct customerAfter = ((Struct) customerRecords.get(0).value()).getStruct("after");
+        assertThat(customerAfter.get("ID")).isEqualTo(1);
+        assertThat(customerAfter.getString("NAME")).isEqualTo("Uncommitted-Transaction");
+
+        Struct signalAfter = ((Struct) signalRecords.get(0).value()).getStruct("after");
+        assertThat(signalAfter.getString("ID")).isEqualTo("log-tx-1");
+        assertThat(signalAfter.getString("TYPE")).isEqualTo("log-pending-transactions");
 
         assertNoRecordsToConsume();
         stopConnector();

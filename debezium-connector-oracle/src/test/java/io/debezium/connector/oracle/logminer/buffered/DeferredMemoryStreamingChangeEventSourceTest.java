@@ -25,6 +25,7 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.AfterEach;
@@ -173,6 +174,41 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
             assertThat(transaction.getUserName()).isEqualTo(TestHelper.SCHEMA_USER);
             assertThat(transaction.getClientId()).isNull();
             assertThat(transaction.getRedoThreadId()).isEqualTo(1);
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2577")
+    public void testPendingTransactionsIncludeDeferredTransactionsOrderedOldestFirst() throws Exception {
+        try (var source = getChangeEventSource(getConfig().build())) {
+            final Instant deferredStartTime = Instant.now().minusSeconds(30);
+
+            // An active transaction that started after the deferred one
+            source.processEvent(getStartLogMinerEventRow(10, TRANSACTION_ID_1));
+            source.processEvent(getInsertLogMinerEventRow(11, TRANSACTION_ID_1));
+
+            // A deferred transaction with only a start event, never promoted into the cache
+            source.processEvent(getStartLogMinerEventRow(5, TRANSACTION_ID_2, deferredStartTime));
+
+            final List<PendingTransaction> pending = source.getPendingTransactions();
+
+            assertThat(pending).hasSize(2);
+
+            final PendingTransaction deferred = pending.get(0);
+            assertThat(deferred.transactionId()).isEqualTo(TRANSACTION_ID_2);
+            assertThat(deferred.startScn()).isEqualTo(Scn.valueOf(5));
+            assertThat(deferred.changeTime()).isEqualTo(deferredStartTime);
+            assertThat(deferred.userName()).isEqualTo(TestHelper.SCHEMA_USER);
+            assertThat(deferred.clientId()).isNull();
+            assertThat(deferred.redoThreadId()).isEqualTo(1);
+            assertThat(deferred.eventCount()).isZero();
+            assertThat(deferred.deferred()).isTrue();
+
+            final PendingTransaction active = pending.get(1);
+            assertThat(active.transactionId()).isEqualTo(TRANSACTION_ID_1);
+            assertThat(active.startScn()).isEqualTo(Scn.valueOf(10));
+            assertThat(active.eventCount()).isEqualTo(1);
+            assertThat(active.deferred()).isFalse();
         }
     }
 

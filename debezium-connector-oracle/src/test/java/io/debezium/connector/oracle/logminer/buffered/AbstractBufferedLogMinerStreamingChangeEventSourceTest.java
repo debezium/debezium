@@ -25,6 +25,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Calendar;
+import java.util.List;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -596,6 +597,36 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
 
             assertThat(source.getTransactionCache().containsTransaction(PARTIAL_TXN_ID_FULL)).isFalse();
             assertThat(source.getTransactionCache().containsTransaction(PARTIAL_TXN_ID_OTHER)).isTrue();
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2577")
+    public void testPendingTransactionsAreOrderedOldestFirstWithEventCounts() throws Exception {
+        try (var source = getChangeEventSource(getConfig().build())) {
+            // Second transaction starts first by SCN but is added after the first to prove the ordering is by SCN
+            source.processEvent(getStartLogMinerEventRow(10, TRANSACTION_ID_1));
+            source.processEvent(getInsertLogMinerEventRow(11, TRANSACTION_ID_1));
+            source.processEvent(getInsertLogMinerEventRow(12, TRANSACTION_ID_1));
+            source.processEvent(getStartLogMinerEventRow(5, TRANSACTION_ID_2));
+            source.processEvent(getInsertLogMinerEventRow(6, TRANSACTION_ID_2));
+
+            final List<PendingTransaction> pending = source.getPendingTransactions();
+
+            assertThat(pending).hasSize(2);
+            assertThat(pending.get(0).transactionId()).isEqualTo(TRANSACTION_ID_2);
+            assertThat(pending.get(0).startScn()).isEqualTo(Scn.valueOf(5));
+            assertThat(pending.get(0).eventCount()).isEqualTo(1);
+            assertThat(pending.get(0).deferred()).isFalse();
+            assertThat(pending.get(1).transactionId()).isEqualTo(TRANSACTION_ID_1);
+            assertThat(pending.get(1).startScn()).isEqualTo(Scn.valueOf(10));
+            assertThat(pending.get(1).eventCount()).isEqualTo(2);
+            assertThat(pending.get(1).deferred()).isFalse();
+
+            source.processEvent(getCommitLogMinerEventRow(13, TRANSACTION_ID_1));
+            source.processEvent(getCommitLogMinerEventRow(14, TRANSACTION_ID_2));
+
+            assertThat(source.getPendingTransactions()).isEmpty();
         }
     }
 
