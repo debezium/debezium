@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.transforms;
+package io.debezium.transforms.claimcheck;
 
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
@@ -29,14 +29,14 @@ import io.debezium.DebeziumException;
 import io.debezium.util.HexConverter;
 import io.debezium.util.Strings;
 
-final class ClaimCheckRecordSerializer {
+public final class ClaimCheckRecordSerializer {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private ClaimCheckRecordSerializer() {
     }
 
-    static SerializedRecord serialize(SourceRecord record) {
+    public static SerializedRecord serialize(SourceRecord record) {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("version", 1);
         payload.put("topic", record.topic());
@@ -162,7 +162,7 @@ final class ClaimCheckRecordSerializer {
         return candidate.replaceAll("[^A-Za-z0-9_.=-]", "_");
     }
 
-    static String sha256Hex(byte[] data) {
+    private static String sha256Hex(byte[] data) {
         try {
             byte[] digest = MessageDigest.getInstance("SHA-256").digest(data);
             return HexConverter.convertToHexString(digest);
@@ -172,6 +172,6 @@ final class ClaimCheckRecordSerializer {
         }
     }
 
-    record SerializedRecord(String key, byte[] payload, String sha256) {
+    public record SerializedRecord(String key, byte[] payload, String sha256) {
     }
 }
