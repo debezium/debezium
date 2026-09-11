@@ -354,6 +354,7 @@ surya-dl,Surya Dhaneshwar
 suryadanny,Surya Dhaneshwar
 SyedMuhammadSufyian,Syed Muhammad Sufyian
 SylvainMarty,Sylvain Marty
+tarqu1n,Matt Langley
 Tayler,Tayler Dunn
 taylor-rolison,Taylor Rolison
 TechIsCool,David Beck
