@@ -42,6 +42,7 @@ import io.debezium.metadata.ConfigDescriptor;
 import io.debezium.spi.storage.OversizedRecord;
 import io.debezium.spi.storage.OversizedRecordReference;
 import io.debezium.spi.storage.OversizedRecordStorage;
+import io.debezium.transforms.claimcheck.ClaimCheckRecordSerializer;
 import io.debezium.util.ApproximateStructSizeCalculator;
 import io.debezium.util.Strings;
 

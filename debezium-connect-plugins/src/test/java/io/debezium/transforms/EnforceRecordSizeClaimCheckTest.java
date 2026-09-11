@@ -12,7 +12,9 @@ import java.math.BigDecimal;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.ArrayList;
+import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -84,7 +86,8 @@ class EnforceRecordSizeClaimCheckTest {
         assertThat(marker.path("uri").asText()).isEqualTo("test://claim-check/" + stored.key());
         assertThat(marker.path("column").asText()).isEqualTo("payload");
         assertThat(marker.path("size_bytes").asLong()).isEqualTo(stored.payload().length);
-        assertThat(marker.path("sha256").asText()).isEqualTo(ClaimCheckRecordSerializer.sha256Hex(stored.payload()));
+        assertThat(marker.path("sha256").asText()).isEqualTo(HexFormat.of().formatHex(
+                MessageDigest.getInstance("SHA-256").digest(stored.payload())));
 
         assertThat(after(sourceRecord).getString("payload")).isEqualTo(payload);
         assertThat(RecordingStorage.configuredBasePath).isEqualTo("test://claim-check");
