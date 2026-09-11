@@ -48,6 +48,28 @@ To serialize more than one field, specify a comma-separated list, as in the foll
 transforms.stringify.fields=properties,metadata
 ----
 
+=== Nested fields
+
+A field name can use dot notation to target a field that is nested inside a struct, so that you can reach into a change-event envelope without first applying a flattening transformation.
+For example, `after.payload` serializes the `payload` field that is nested inside the `after` struct.
+Each path segment except the last must resolve to a struct; the final segment is the field whose value is retyped to a JSON string.
+A name without a dot, such as `payload`, targets a top-level field, so existing configurations continue to work unchanged.
+
+[source]
+----
+transforms.stringify.fields=after.payload
+----
+
+[WARNING]
+====
+When a nested target is inside a structure that is shared under more than one field of the same named schema, configure the same path under every such field.
+The most common case is a change-event envelope, in which the `before` and `after` fields share a single record schema.
+To serialize a nested field there, specify the path under both `after` and `before`, as in `after.payload,before.payload`.
+If you retype the field under only one of them, the retyped and the original copies of that schema carry the same name but different field types, which the Kafka Connect schema model does not allow, and the connector fails.
+====
+
+If a non-final path segment resolves to a field that is not a struct, the transformation throws an exception when it processes a record, rather than when you configure it.
+
 == Configuration options
 
 The following table lists the configuration options for the transformation.
@@ -60,7 +82,10 @@ The following table lists the configuration options for the transformation.
 
 |[[stringify-fields-fields]]<<stringify-fields-fields, `fields`>>
 |No default value.
-|A comma-separated list of the top-level value fields to serialize to a JSON string.
+|A comma-separated list of the value fields to serialize to a JSON string.
+A field name can use dot notation, for example `after.payload`, to target a field that is nested inside a struct.
+Each path segment except the last must resolve to a struct.
+A name without a dot targets a top-level field.
 
 |===
 
