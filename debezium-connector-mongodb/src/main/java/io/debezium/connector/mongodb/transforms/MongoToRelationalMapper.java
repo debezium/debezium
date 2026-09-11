@@ -49,34 +49,19 @@ public class MongoToRelationalMapper<R extends ConnectRecord<R>> implements Tran
 
     private static final String SCHEMA_MAPPING_PREFIX = "schema.mapping.";
 
-    // Configuration for handling missing fields
-    private static final Field ADD_MISSING_FIELDS = Field.create("add.missing.fields")
-            .withDisplayName("Add missing fields")
-            .withType(ConfigDef.Type.BOOLEAN)
-            .withWidth(ConfigDef.Width.SHORT)
-            .withImportance(ConfigDef.Importance.LOW)
-            .withDefault(true)
-            .withDescription("Explicitly assigns null to absent fields when inferring a document schema. "
-                    + "Configured schema mappings always retain every optional output field and use null for unresolved paths.");
+    private Field.Set configFields = Field.setOf();
 
-    private Field.Set configFields = Field.setOf(ADD_MISSING_FIELDS);
-
-    private Configuration config;
     private SmtManager<R> smtManager;
     private MongoDataConverter converter;
-    private boolean addMissingFields;
     private final Map<String, MongoDocumentMapping> customSchemaMap = new HashMap<>();
 
     @Override
     public void configure(final Map<String, ?> configs) {
-        this.config = Configuration.from(configs);
+        final var config = Configuration.from(configs);
         this.smtManager = new SmtManager<>(config);
 
-        addMissingFields = config.getBoolean(ADD_MISSING_FIELDS);
-
-        smtManager.validate(config, Field.setOf(ADD_MISSING_FIELDS));
         customSchemaMap.clear();
-        configFields = Field.setOf(ADD_MISSING_FIELDS);
+        configFields = Field.setOf();
         for (Map.Entry<String, ?> entry : configs.entrySet()) {
             if (entry.getKey().startsWith(SCHEMA_MAPPING_PREFIX)) {
                 final String namespace = entry.getKey().substring(SCHEMA_MAPPING_PREFIX.length());
@@ -99,7 +84,7 @@ public class MongoToRelationalMapper<R extends ConnectRecord<R>> implements Tran
         // Using ARRAY encoding to handle nested BSON arrays consistently
         converter = new MongoDataConverter(ExtractNewDocumentState.ArrayEncoding.ARRAY);
 
-        LOGGER.info("MongoToRelationalMapper initialized. Missing fields injection is set to: {}", addMissingFields);
+        LOGGER.info("MongoToRelationalMapper initialized with {} collection mappings", customSchemaMap.size());
     }
 
     @Override
@@ -251,24 +236,10 @@ public class MongoToRelationalMapper<R extends ConnectRecord<R>> implements Tran
 
         Struct struct = new Struct(schema);
 
-        if (addMissingFields) {
-            // Ensure all schema fields are present, even if not in the document
-            for (org.apache.kafka.connect.data.Field field : schema.fields()) {
-                String fieldName = field.name();
-                if (doc.containsKey(fieldName)) {
-                    converter.buildStruct(new java.util.AbstractMap.SimpleEntry<>(fieldName, doc.get(fieldName)), schema, struct);
-                }
-                else {
-                    struct.put(fieldName, null);
-                }
-            }
-        }
-        else {
-            // Only process fields that exist in the document
-            for (Map.Entry<String, BsonValue> entry : doc.entrySet()) {
-                if (schema.field(entry.getKey()) != null) {
-                    converter.buildStruct(entry, schema, struct);
-                }
+        // Unassigned optional Struct fields already have a null value.
+        for (Map.Entry<String, BsonValue> entry : doc.entrySet()) {
+            if (schema.field(entry.getKey()) != null) {
+                converter.buildStruct(entry, schema, struct);
             }
         }
 
