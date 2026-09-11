@@ -26,6 +26,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Calendar;
+import java.util.Map;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -696,7 +697,37 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     }
 
     @Test
-    @FixFor("DBZ-1914")
+    @FixFor("debezium/dbz#1960")
+    public void testLastEventIsForgottenWhenTransactionCommits() throws Exception {
+        try (var source = getChangeEventSource(getConfig().build())) {
+            source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
+            source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1));
+
+            assertThat(source.getLastEventByTransactionId()).containsOnlyKeys(TRANSACTION_ID_1);
+
+            source.processEvent(getCommitLogMinerEventRow(3, TRANSACTION_ID_1));
+
+            assertThat(source.getLastEventByTransactionId()).isEmpty();
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1960")
+    public void testLastEventIsForgottenWhenPartialRollbackIsAppliedByPrefixAndTransactionCommits() throws Exception {
+        try (var source = getChangeEventSource(getConfig().build())) {
+            source.processEvent(getStartLogMinerEventRow(1, PARTIAL_TXN_ID_FULL));
+            source.processEvent(getInsertLogMinerEventRow(2, PARTIAL_TXN_ID_FULL, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'insert'"));
+            source.processEvent(getUpdateLogMinerEventRow(3, PARTIAL_TXN_ID_FULL, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'update'"));
+            source.processEvent(getRollbackToSavepointLogMinerEventRow(4, PARTIAL_TXN_ID_PARTIAL, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'insert'"));
+            source.processEvent(getCommitLogMinerEventRow(5, PARTIAL_TXN_ID_FULL));
+
+            // The undo was attributed to PARTIAL_TXN_ID_FULL, so committing it must leave nothing behind
+            assertThat(source.getLastEventByTransactionId()).isEmpty();
+        }
+    }
+
+    @Test
+    @FixFor({ "DBZ-1914", "debezium/dbz#1960" })
     public void testSavepointRollbackIdempotence() throws Exception {
         final Configuration config = getConfig().build();
         try (var source = getChangeEventSource(config)) {
@@ -1102,6 +1133,13 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             var field = AbstractLogMinerStreamingChangeEventSource.class.getDeclaredField("currentRedoThreadState");
             field.setAccessible(true);
             field.set(this, state);
+        }
+
+        @SuppressWarnings("unchecked")
+        public Map<String, LogMinerEventRow> getLastEventByTransactionId() throws Exception {
+            var field = BufferedLogMinerStreamingChangeEventSource.class.getDeclaredField("lastEventByTransactionId");
+            field.setAccessible(true);
+            return (Map<String, LogMinerEventRow>) field.get(this);
         }
 
         @Override
