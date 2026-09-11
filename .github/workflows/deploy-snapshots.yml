@@ -6,28 +6,10 @@ on:
   workflow_dispatch:
     inputs:
       debezium-repositories:
-        description: Multiline list of id#repo[#subDir]#branch entries. Include the main Debezium repository as a normal entry, for example core#debezium/debezium#main.
+        description: "List of id#repo[#subDir]#branch entries separated by spaces or newlines."
         required: false
-        default: |
-          core#debezium/debezium#main
-          cassandra#debezium/debezium-connector-cassandra#main
-          cockroachdb#debezium/debezium-connector-cockroachdb#main
-          db2#debezium/debezium-connector-db2#main
-          ibmi#debezium/debezium-connector-ibmi#main
-          informix#debezium/debezium-connector-informix#main
-          ingres#debezium/debezium-connector-ingres#main
-          milvus#debezium/debezium-connector-milvus#main
-          spanner#debezium/debezium-connector-spanner#main
-          sqlite#debezium/debezium-connector-sqlite#main
-          tidb#debezium/debezium-connector-tidb#main
-          vitess#debezium/debezium-connector-vitess#main
-          yashandb#debezium/debezium-connector-yashandb#main
-          quarkus#debezium/debezium-quarkus#main
-          server#debezium/debezium-server#main
-          operator#debezium/debezium-operator#main
-          platform#debezium/debezium-platform#debezium-platform-conductor#main
-          jbang-catalog#debezium/jbang-catalog#main
-        type: textarea
+        default: "core#debezium/debezium#main cassandra#debezium/debezium-connector-cassandra#main cockroachdb#debezium/debezium-connector-cockroachdb#main db2#debezium/debezium-connector-db2#main ibmi#debezium/debezium-connector-ibmi#main informix#debezium/debezium-connector-informix#main ingres#debezium/debezium-connector-ingres#main milvus#debezium/debezium-connector-milvus#main spanner#debezium/debezium-connector-spanner#main sqlite#debezium/debezium-connector-sqlite#main tidb#debezium/debezium-connector-tidb#main vitess#debezium/debezium-connector-vitess#main yashandb#debezium/debezium-connector-yashandb#main quarkus#debezium/debezium-quarkus#main server#debezium/debezium-server#main operator#debezium/debezium-operator#main platform#debezium/debezium-platform#debezium-platform-conductor#main jbang-catalog#debezium/jbang-catalog#main"
+        type: string
       descriptors-repository:
         description: Repository where Debezium descriptors are published
         required: false
