@@ -577,6 +577,36 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
         assertThat(logInterceptor.containsWarnMessage("Please enable 'log.mining.include.internal.events'")).isFalse();
     }
 
+    @Test
+    @FixFor("debezium/dbz#1960")
+    public void testRollbacksAreScopedToTheirOwnTransaction() throws Exception {
+        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        LogMinerTransactionCache<T> cache = cacheProvider.getTransactionCache();
+        T first = transaction("1");
+        T second = transaction("2");
+
+        // Two concurrent transactions on the same table with interleaved redo. Each undo must only walk the
+        // events of its own transaction; a walk across both would hit the other transaction's row first.
+        addEvent(cache, first, event(EventType.INSERT, 0, "BBBBBBBBBBBBBBBBBB", "1"));
+        addEvent(cache, second, event(EventType.INSERT, 0, "CCCCCCCCCCCCCCCCCC", "2"));
+        addEvent(cache, first, event(EventType.UPDATE, 0, "BBBBBBBBBBBBBBBBBB", "3"));
+        addEvent(cache, second, event(EventType.UPDATE, 0, "CCCCCCCCCCCCCCCCCC", "4"));
+        addEvent(cache, second, event(EventType.UPDATE, 1, "CCCCCCCCCCCCCCCCCC", "5"));
+        addEvent(cache, first, event(EventType.UPDATE, 1, "BBBBBBBBBBBBBBBBBB", "6"));
+        addEvent(cache, first, event(EventType.DELETE, 1, "BBBBBBBBBBBBBBBBBB", "7"));
+
+        // The first transaction rolled back to a savepoint taken before its insert
+        assertThat(events(cache, first)).isEqualTo(new LogMinerEvent[]{
+                event(EventType.UPDATE, 1, "BBBBBBBBBBBBBBBBBB", "6"),
+                event(EventType.DELETE, 1, "BBBBBBBBBBBBBBBBBB", "7"), });
+        // The second transaction rolled back to a savepoint taken after its insert
+        assertThat(events(cache, second)).isEqualTo(new LogMinerEvent[]{
+                event(EventType.INSERT, 0, "CCCCCCCCCCCCCCCCCC", "2"),
+                event(EventType.UPDATE, 1, "CCCCCCCCCCCCCCCCCC", "5"), });
+        assertThat(logInterceptor.containsWarnMessage("Manual investigation is required")).isFalse();
+        assertThat(logInterceptor.containsWarnMessage("Please enable 'log.mining.include.internal.events'")).isFalse();
+    }
+
     // Supported without INTERNAL
 
     @Test
@@ -1178,11 +1208,24 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
 
     private LogMinerEvent[] cache(LogMinerEvent[] events) throws InterruptedException {
         LogMinerTransactionCache<T> cache = cacheProvider.getTransactionCache();
-        T transaction = transactionFactory.createTransaction("1", Scn.ONE, CHANGE_TIME, "userName", 1, "clientId");
-        cache.addTransaction(transaction);
+        T transaction = transaction("1");
         for (LogMinerEvent event : events) {
-            cache.addTransactionEvent(transaction, transaction.getNextEventId(), event);
+            addEvent(cache, transaction, event);
         }
+        return events(cache, transaction);
+    }
+
+    private T transaction(String transactionId) {
+        T transaction = transactionFactory.createTransaction(transactionId, Scn.ONE, CHANGE_TIME, "userName", 1, "clientId");
+        cacheProvider.getTransactionCache().addTransaction(transaction);
+        return transaction;
+    }
+
+    private void addEvent(LogMinerTransactionCache<T> cache, T transaction, LogMinerEvent event) {
+        cache.addTransactionEvent(transaction, transaction.getNextEventId(), event);
+    }
+
+    private LogMinerEvent[] events(LogMinerTransactionCache<T> cache, T transaction) throws InterruptedException {
         List<LogMinerEvent> result = new ArrayList<>(transaction.getNumberOfEvents());
         cache.forEachEvent(transaction, result::add);
         return result.toArray(new LogMinerEvent[result.size()]);
