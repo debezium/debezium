@@ -126,6 +126,11 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
     }
 
     @Override
+    protected String signalExcludingColumnIncludeList() {
+        return "dbo.a.pk,dbo.a.aa";
+    }
+
+    @Override
     protected String alterColumnStatement(String table, String column, String type) {
         return String.format("ALTER TABLE %s ALTER COLUMN %s %s", table, column, type);
     }
