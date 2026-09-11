@@ -236,12 +236,29 @@ public final class Tables {
      */
     public Table overwriteTable(TableId tableId, List<Column> columnDefs, List<String> primaryKeyColumnNames,
                                 String defaultCharsetName, List<Attribute> attributes) {
+        return overwriteTable(tableId, columnDefs, primaryKeyColumnNames, defaultCharsetName, null, attributes);
+    }
+
+    /**
+     * Add or update the definition for the identified table.
+     *
+     * @param tableId the identifier for the table
+     * @param columnDefs the list of column definitions; may not be null or empty
+     * @param primaryKeyColumnNames the list of the column names that make up the primary key; may be null or empty
+     * @param defaultCharsetName the name of the character set that should be used by default
+     * @param comment the table comment; may be null
+     * @param attributes the list of attribute definitions; may not be null or empty
+     * @return the previous table definition, or null if there was no prior table definition
+     */
+    public Table overwriteTable(TableId tableId, List<Column> columnDefs, List<String> primaryKeyColumnNames,
+                                String defaultCharsetName, String comment, List<Attribute> attributes) {
         return lock.write(() -> {
             Table updated = Table.editor()
                     .tableId(tableId)
                     .addColumns(columnDefs)
                     .setPrimaryKeyNames(primaryKeyColumnNames)
                     .setDefaultCharsetName(defaultCharsetName)
+                    .setComment(comment)
                     .addAttributes(attributes)
                     .create();
 

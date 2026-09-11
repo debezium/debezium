@@ -3540,6 +3540,14 @@ If you include this property in the configuration, do not also set the `schema.e
 *Performance note:* {prodname} uses `schema.include.list` (and `schema.exclude.list`) to restrict which PostgreSQL custom types are pre-loaded into memory at startup, reducing heap usage in databases with many schemas or custom types (for example, multi-tenant deployments).
 The built-in system schemas `pg_catalog` and `information_schema` are always pre-loaded.
 
+|[[postgresql-property-include-schema-comments]]<<postgresql-property-include-schema-comments, `+include.schema.comments+`>>
+|`false`
+|Specifies whether the connector includes PostgreSQL table and column comments in its relational schema metadata.
+Column comments are also included in the `doc` attribute of the corresponding field schema.
+Comments are captured during snapshots and schema refreshes.
+Because a standalone `COMMENT ON` statement does not produce a WAL event, the connector does not capture the updated comment until a subsequent schema refresh occurs.
+Enabling this option can increase the connector's memory usage if the database contains many comments or comments that are large.
+
 |[[postgresql-property-schema-exclude-list]]<<postgresql-property-schema-exclude-list, `+schema.exclude.list+`>>
 |No default
 |An optional, comma-separated list of regular expressions that match names of schemas for which you *do not* want to capture changes.

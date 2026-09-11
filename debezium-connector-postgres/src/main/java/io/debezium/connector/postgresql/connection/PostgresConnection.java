@@ -97,6 +97,7 @@ public class PostgresConnection extends JdbcConnection {
 
     private final TypeRegistry typeRegistry;
     private final PostgresDefaultValueConverter defaultValueConverter;
+    private final boolean includeSchemaComments;
 
     /**
      * Creates a Postgres connection using the supplied configuration.
@@ -110,6 +111,7 @@ public class PostgresConnection extends JdbcConnection {
      */
     public PostgresConnection(JdbcConfiguration config, TypeRegistry typeRegistry, PostgresValueConverterBuilder valueConverterBuilder, String connectionUsage) {
         super(addDefaultSettings(config, connectionUsage), FACTORY, PostgresConnection::validateServerVersion, "\"", "\"");
+        this.includeSchemaComments = false;
 
         if (Objects.isNull(typeRegistry) || Objects.isNull(valueConverterBuilder)) {
             this.typeRegistry = null;
@@ -156,6 +158,7 @@ public class PostgresConnection extends JdbcConnection {
                 FACTORY,
                 PostgresConnection::validateServerVersion,
                 "\"", "\"");
+        this.includeSchemaComments = config.isSchemaCommentsHistoryEnabled();
 
         if (Objects.isNull(typeRegistry)) {
             this.typeRegistry = null;
@@ -690,6 +693,11 @@ public class PostgresConnection extends JdbcConnection {
         return doReadTableColumn(columnMetadata, tableId, columnFilter);
     }
 
+    @Override
+    protected String readTableComment(ResultSet tableMetadata) throws SQLException {
+        return includeSchemaComments ? tableMetadata.getString(5) : null;
+    }
+
     public Optional<Column> readColumnForDecoder(ResultSet columnMetadata, TableId tableId, Tables.ColumnNameFilter columnNameFilter)
             throws SQLException {
         return doReadTableColumn(columnMetadata, tableId, columnNameFilter).map(ColumnEditor::create);
@@ -711,6 +719,9 @@ public class PostgresConnection extends JdbcConnection {
             }
 
             column.optional(isNullable(columnMetadata.getInt(11)));
+            if (includeSchemaComments) {
+                column.comment(columnMetadata.getString(12));
+            }
             column.position(columnMetadata.getInt(17));
             column.autoIncremented("YES".equalsIgnoreCase(columnMetadata.getString(23)));
 
@@ -988,6 +999,31 @@ public class PostgresConnection extends JdbcConnection {
         }
         catch (SQLException e) {
             LOGGER.error("Failed to read column metadata for '{}.{}'", tableId.schema(), tableId.table());
+            throw e;
+        }
+    }
+
+    public String getTableCommentForDecoder(TableId tableId) throws SQLException {
+        if (!includeSchemaComments) {
+            return null;
+        }
+
+        try {
+            final DatabaseMetaData databaseMetaData = connection().getMetaData();
+            final String schemaNamePattern = createPatternFromName(tableId.schema(), databaseMetaData.getSearchStringEscape());
+            final String tableNamePattern = createPatternFromName(tableId.table(), databaseMetaData.getSearchStringEscape());
+
+            try (ResultSet tableMetadata = databaseMetaData.getTables(null, schemaNamePattern, tableNamePattern, supportedTableTypes())) {
+                while (tableMetadata.next()) {
+                    if (isTableType(tableMetadata.getString(4))) {
+                        return readTableComment(tableMetadata);
+                    }
+                }
+            }
+            return null;
+        }
+        catch (SQLException e) {
+            LOGGER.error("Failed to read table comment metadata for '{}.{}'", tableId.schema(), tableId.table());
             throw e;
         }
     }

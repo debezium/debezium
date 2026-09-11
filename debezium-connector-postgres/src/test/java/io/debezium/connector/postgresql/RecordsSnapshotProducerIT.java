@@ -102,6 +102,36 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2534")
+    void shouldIncludeColumnCommentsInSnapshotSchema() throws Exception {
+        final String comment = "Description of the record";
+
+        assertThat(snapshotColumnDocumentation(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.INCLUDE_SCHEMA_COMMENTS, true), comment)).isEqualTo(comment);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2534")
+    void shouldExcludeColumnCommentsFromSnapshotSchemaByDefault() throws Exception {
+        assertThat(snapshotColumnDocumentation(TestHelper.defaultConfig(), "Description of the record")).isNull();
+    }
+
+    private String snapshotColumnDocumentation(Configuration.Builder config, String comment) throws Exception {
+        TestHelper.execute(
+                "CREATE TABLE schema_comments_test (id INTEGER PRIMARY KEY, description TEXT);",
+                "COMMENT ON COLUMN schema_comments_test.description IS '" + comment + "';",
+                "INSERT INTO schema_comments_test VALUES (1, 'record');");
+
+        buildNoStreamProducer(config.with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.schema_comments_test"));
+
+        final TestConsumer consumer = testConsumer(1, "public.schema_comments_test");
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        final SourceRecord record = consumer.remove();
+        return ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER).schema().field("description").schema().doc();
+    }
+
+    @Test
     @FixFor("debezium/dbz#2025")
     public void shouldGenerateSnapshotForVarbit1Datatype() throws Exception {
         TestHelper.dropAllSchemas();
