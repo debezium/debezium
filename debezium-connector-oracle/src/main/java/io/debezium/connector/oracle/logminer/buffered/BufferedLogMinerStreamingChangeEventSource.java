@@ -1217,7 +1217,12 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             }
         }
 
-        LogMinerEventRow lastEvent = lastEventByTransactionId.get(transactionId);
+        // Key by the resolved transaction's id rather than the event row's. When the undo above was matched
+        // by the transaction prefix, the row carries the unresolved "ffffffff" id while the transaction it
+        // was attributed to carries its real id. Every removal from this map is keyed by the real id, so an
+        // entry stored under the row's id would never be removed and would be retained for the life of the
+        // task.
+        LogMinerEventRow lastEvent = lastEventByTransactionId.get(transaction.getTransactionId());
         if (lastEvent != null && lastEvent != event
                 && lastEvent.getEventType() == EventType.XML_END && lastEvent.getTransactionSequence() == 1
                 && event.getEventType() == EventType.XML_BEGIN && event.getTransactionSequence() > 1) {
@@ -1227,7 +1232,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             enqueueEvent(lastEvent, new LogMinerEvent(EventType.INTERNAL, lastEvent.getScn(),
                     lastEvent.getTableId(), lastEvent.getRowId(), lastEvent.getRsId(), lastEvent.getChangeTime()));
         }
-        lastEventByTransactionId.put(transactionId, event);
+        lastEventByTransactionId.put(transaction.getTransactionId(), event);
 
         final int eventId = transaction.getNextEventId();
         if (!getTransactionCache().containsTransactionEvent(transaction, eventId)) {
