@@ -752,6 +752,22 @@ public class TestHelper {
         return builder;
     }
 
+    public static Configuration.Builder withDefaultEhcacheConfigurations(Configuration.Builder builder, int cacheSize) {
+        builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_GLOBAL_CONFIG, getEhcacheGlobalCacheConfig());
+        for (Field cacheField : getEhcacheCacheMappings()) {
+            builder.with(cacheField, getEhcacheBasicCacheConfig(cacheSize));
+        }
+        return builder;
+    }
+
+    private static List<Field> getEhcacheCacheMappings() {
+        return List.of(
+                OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_TRANSACTIONS_CONFIG,
+                OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_PROCESSED_TRANSACTIONS_CONFIG,
+                OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_SCHEMA_CHANGES_CONFIG,
+                OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_EVENTS_CONFIG);
+    }
+
     /**
      * Simulate {@link Thread#sleep(long)} by using {@link Awaitility} instead.
      *
