@@ -274,15 +274,7 @@ public class MongoToRelationalMapperTest {
     }
 
     @Test
-    public void shouldNotAddMissingFieldsWhenDisabled() {
-        // GIVEN: Configuration where add.missing.fields is false
-        java.util.Map<String, String> configs = new HashMap<>();
-        configs.put("schema.mapping.db.collection", """
-                {"_id":{"path":"/_id","type":"int32"},"priority":{"path":"/priority","type":"int32"}}
-                """);
-        configs.put("add.missing.fields", "false");
-        transformation.configure(configs);
-
+    public void shouldRetainRemovedFieldsAsNullWithInferredSchema() {
         Schema sourceSchema = SchemaBuilder.struct().name("io.debezium.connector.mongo.Source")
                 .field("db", Schema.STRING_SCHEMA).field("collection", Schema.STRING_SCHEMA).build();
         Schema recordSchema = SchemaBuilder.struct().name("server.db.collection.Envelope")
@@ -294,9 +286,10 @@ public class MongoToRelationalMapperTest {
                 .build();
 
         Struct recordValue = new Struct(recordSchema);
+        recordValue.put(Envelope.FieldName.BEFORE, "{\"_id\": 1, \"priority\": 42}");
         recordValue.put(Envelope.FieldName.AFTER, "{\"_id\": 1}");
         recordValue.put(Envelope.FieldName.SOURCE, new Struct(sourceSchema).put("db", "db").put("collection", "collection"));
-        recordValue.put(Envelope.FieldName.OPERATION, Envelope.Operation.CREATE.code());
+        recordValue.put(Envelope.FieldName.OPERATION, Envelope.Operation.UPDATE.code());
         recordValue.put(Envelope.FieldName.TIMESTAMP, 123456789L);
 
         SourceRecord record = new SourceRecord(new HashMap<>(), new HashMap<>(), "server.db.collection", null, null, recordSchema, recordValue);
@@ -309,10 +302,10 @@ public class MongoToRelationalMapperTest {
         Struct after = val.getStruct(Envelope.FieldName.AFTER);
 
         assertThat(after.getInt32("_id")).isEqualTo(1);
-        // With add.missing.fields=false, we expect the SMT to skip injecting null for the 'priority' field,
-        // even though it exists in the schema mapping.
-
         assertThat(after.get("priority")).isNull();
+        assertThat(after.schema().field("priority").schema()).isEqualTo(Schema.OPTIONAL_INT32_SCHEMA);
+        assertThat(val.getStruct(Envelope.FieldName.BEFORE).schema()).isSameAs(after.schema());
+        assertThat(val.getStruct(Envelope.FieldName.BEFORE).getInt32("priority")).isEqualTo(42);
     }
 
     @Test

@@ -158,5 +158,6 @@ Tombstones and non-envelope records pass through unchanged.
 Relational envelopes that already have Struct document fields also pass through unchanged.
 Use SMT predicates or sink topic selection to control which records reach this transformation.
 
-The `add.missing.fields` option defaults to `true` and controls explicit null assignment in inferred document conversion.
-Configured projections always keep their optional fields and return null for unresolved paths, independently of this option.
+Missing fields in an inferred schema have null values in the corresponding document image.
+Configured projections always keep their optional fields and return null for unresolved paths.
+Kafka Connect Struct values do not distinguish an unassigned optional field from a field explicitly assigned null.
