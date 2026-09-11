@@ -78,6 +78,16 @@ public interface OffsetContext {
         return getOffset();
     }
 
+    /**
+     * Updates the transaction state in the offset captured for the current source event without advancing its source
+     * position.
+     * <p>
+     * This is used when an implicit transaction boundary is emitted while processing a source event. It ensures that
+     * the transaction boundary can be restored after a restart while the source event itself is still replayed.
+     */
+    default void updateTransactionContextForIncompleteEvent() {
+    }
+
     Schema getSourceInfoSchema();
 
     Struct getSourceInfo();
