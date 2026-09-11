@@ -31,5 +31,6 @@
         <module>debezium-ai-embeddings-minilm</module>
         <module>debezium-ai-embeddings-ollama</module>
         <module>debezium-ai-embeddings-voyage-ai</module>
+        <module>debezium-ai-embeddings-openai</module>
     </modules>
 </project>
