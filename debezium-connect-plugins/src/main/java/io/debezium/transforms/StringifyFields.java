@@ -9,6 +9,9 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import org.apache.kafka.common.cache.Cache;
+import org.apache.kafka.common.cache.LRUCache;
+import org.apache.kafka.common.cache.SynchronizedCache;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.components.Versioned;
 import org.apache.kafka.connect.connector.ConnectRecord;
@@ -24,6 +27,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.Module;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
+import io.debezium.data.SchemaUtil;
 import io.debezium.metadata.ConfigDescriptor;
 import io.debezium.util.Strings;
 
@@ -87,6 +91,7 @@ public class StringifyFields<R extends ConnectRecord<R>> implements Transformati
 
     private PathNode root;
     private final JsonConverter jsonConverter = new JsonConverter();
+    private Cache<Schema, Schema> schemaUpdateCache;
 
     @Override
     public void configure(Map<String, ?> configs) {
@@ -114,6 +119,11 @@ public class StringifyFields<R extends ConnectRecord<R>> implements Transformati
         converterConfig.put("schemas.enable", false);
         converterConfig.put("converter.type", "value");
         jsonConverter.configure(converterConfig);
+
+        // The retyped schema depends only on the input schema and the configured paths, both fixed
+        // after configuration, so it is cached per input schema to avoid rebuilding it per record and
+        // to keep a stable schema identity for downstream converters and the schema registry.
+        schemaUpdateCache = new SynchronizedCache<>(new LRUCache<>(16));
     }
 
     @Override
@@ -122,7 +132,11 @@ public class StringifyFields<R extends ConnectRecord<R>> implements Transformati
             return record;
         }
         Struct value = (Struct) record.value();
-        Schema newSchema = retypeSchema(value.schema(), root, "");
+        Schema newSchema = schemaUpdateCache.get(value.schema());
+        if (newSchema == null) {
+            newSchema = retypeSchema(value.schema(), root, "");
+            schemaUpdateCache.put(value.schema(), newSchema);
+        }
         Struct newValue = transformStruct(value, newSchema, root, "");
 
         return record.newRecord(record.topic(), record.kafkaPartition(), record.keySchema(), record.key(),
@@ -134,10 +148,7 @@ public class StringifyFields<R extends ConnectRecord<R>> implements Transformati
      * into nested structs for paths that reach deeper than the current level.
      */
     private Schema retypeSchema(Schema schema, PathNode node, String pathPrefix) {
-        SchemaBuilder builder = org.apache.kafka.connect.transforms.util.SchemaUtil.copySchemaBasics(schema, SchemaBuilder.struct());
-        if (schema.isOptional()) {
-            builder.optional();
-        }
+        SchemaBuilder builder = SchemaUtil.copySchemaBasics(schema);
         for (org.apache.kafka.connect.data.Field field : schema.fields()) {
             PathNode child = node.children.get(field.name());
             if (child == null) {
