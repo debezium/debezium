@@ -92,18 +92,22 @@ public class TransactionMonitor {
                 LOGGER.trace("Transaction was in progress, executing implicit transaction commit");
                 endTransaction(partition, offset, offset.getOffsetForIncompleteEvent(), eventMetadataProvider.getEventTimestamp(source, offset, key, value));
                 transactionContext.endTransaction();
+                offset.updateTransactionContextForIncompleteEvent();
             }
             return;
         }
 
         if (!transactionContext.isTransactionInProgress()) {
             transactionContext.beginTransaction(transactionInfo);
+            offset.updateTransactionContextForIncompleteEvent();
             beginTransaction(partition, offset, offset.getOffsetForIncompleteEvent(), eventMetadataProvider.getEventTimestamp(source, offset, key, value));
         }
         else if (!transactionContext.getTransactionId().equals(txId)) {
             endTransaction(partition, offset, offset.getOffsetForIncompleteEvent(), eventMetadataProvider.getEventTimestamp(source, offset, key, value));
             transactionContext.endTransaction();
+            offset.updateTransactionContextForIncompleteEvent();
             transactionContext.beginTransaction(transactionInfo);
+            offset.updateTransactionContextForIncompleteEvent();
             beginTransaction(partition, offset, offset.getOffsetForIncompleteEvent(), eventMetadataProvider.getEventTimestamp(source, offset, key, value));
         }
         transactionEvent(offset, source, value);

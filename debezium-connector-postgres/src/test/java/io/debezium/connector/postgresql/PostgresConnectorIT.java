@@ -3686,36 +3686,42 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
                         "CREATE TABLE public.pk_restart (id INTEGER PRIMARY KEY, value INTEGER);" +
                         "INSERT INTO public.pk_restart VALUES (1, 10);");
 
-        final Configuration config = TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
-                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.pk_restart")
-                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, false)
-                .with(PostgresConnectorConfig.MAX_BATCH_SIZE, 1)
-                .build();
+        try {
+            final Configuration config = TestHelper.defaultConfig()
+                    .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                    .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.pk_restart")
+                    .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, false)
+                    .with(PostgresConnectorConfig.MAX_BATCH_SIZE, 1)
+                    .build();
 
-        start(PostgresConnector.class, config, record -> record.value() instanceof Struct value
-                && "c".equals(value.getString(Envelope.FieldName.OPERATION))
-                && ((Struct) record.key()).getInt32("id") == 2);
+            start(PostgresConnector.class, config, record -> record.value() instanceof Struct value
+                    && "c".equals(value.getString(Envelope.FieldName.OPERATION))
+                    && ((Struct) record.key()).getInt32("id") == 2);
 
-        VerifyRecord.isValidRead(consumeRecord(), "id", 1);
+            VerifyRecord.isValidRead(consumeRecord(), "id", 1);
 
-        TestHelper.execute("UPDATE public.pk_restart SET id = 2 WHERE id = 1;");
+            TestHelper.execute("UPDATE public.pk_restart SET id = 2 WHERE id = 1;");
 
-        VerifyRecord.isValidDelete(consumeRecord(), "id", 1);
-        VerifyRecord.isValidTombstone(consumeRecord());
+            VerifyRecord.isValidDelete(consumeRecord(), "id", 1);
+            VerifyRecord.isValidTombstone(consumeRecord());
 
-        waitForEngineShutdown();
-        cleanupTestFwkState();
+            waitForEngineShutdown();
+            stopConnector();
 
-        start(PostgresConnector.class, config);
-        assertConnectorIsRunning();
+            start(PostgresConnector.class, config);
+            assertConnectorIsRunning();
 
-        TestHelper.execute("INSERT INTO public.pk_restart VALUES (3, 30);");
+            TestHelper.execute("INSERT INTO public.pk_restart VALUES (3, 30);");
 
-        VerifyRecord.isValidDelete(consumeRecord(), "id", 1);
-        VerifyRecord.isValidTombstone(consumeRecord());
-        VerifyRecord.isValidInsert(consumeRecord(), "id", 2);
-        VerifyRecord.isValidInsert(consumeRecord(), "id", 3);
+            VerifyRecord.isValidDelete(consumeRecord(), "id", 1);
+            VerifyRecord.isValidTombstone(consumeRecord());
+            VerifyRecord.isValidInsert(consumeRecord(), "id", 2);
+            VerifyRecord.isValidInsert(consumeRecord(), "id", 3);
+        }
+        finally {
+            stopConnector();
+            TestHelper.execute("DROP TABLE IF EXISTS public.pk_restart;");
+        }
     }
 
     @Test
