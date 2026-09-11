@@ -27,7 +27,7 @@ on:
           operator#debezium/debezium-operator#main
           platform#debezium/debezium-platform#debezium-platform-conductor#main
           jbang-catalog#debezium/jbang-catalog#main
-        type: string
+        type: textarea
       descriptors-repository:
         description: Repository where Debezium descriptors are published
         required: false
@@ -81,14 +81,18 @@ jobs:
       - name: Override defaults from workflow_dispatch inputs
         if: github.event_name == 'workflow_dispatch'
         shell: bash
+        env:
+          INPUT_DEBEZIUM_REPOSITORIES: ${{ github.event.inputs.debezium-repositories }}
+          INPUT_DESCRIPTORS_REPOSITORY: ${{ github.event.inputs.descriptors-repository }}
+          INPUT_DESCRIPTORS_BRANCH: ${{ github.event.inputs.descriptors-branch }}
         run: |
           set -euo pipefail
           {
             echo 'DEBEZIUM_REPOSITORIES<<EOF'
-            printf '%s\n' "${{ github.event.inputs.debezium-repositories }}"
+            echo "${INPUT_DEBEZIUM_REPOSITORIES}"
             echo 'EOF'
-            echo "DESCRIPTORS_REPOSITORY=${{ github.event.inputs.descriptors-repository }}"
-            echo "DESCRIPTORS_BRANCH=${{ github.event.inputs.descriptors-branch }}"
+            echo "DESCRIPTORS_REPOSITORY=${INPUT_DESCRIPTORS_REPOSITORY}"
+            echo "DESCRIPTORS_BRANCH=${INPUT_DESCRIPTORS_BRANCH}"
           } >> "${GITHUB_ENV}"
 
       - name: Checkout workflow repository
