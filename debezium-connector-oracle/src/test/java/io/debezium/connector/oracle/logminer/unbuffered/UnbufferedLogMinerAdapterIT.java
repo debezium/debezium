@@ -9,9 +9,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.SQLException;
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,7 +29,10 @@ import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.SourceInfo;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
+import io.debezium.connector.oracle.logminer.AbstractLogMinerStreamingChangeEventSource;
 import io.debezium.connector.oracle.util.TestHelper;
+import io.debezium.data.Envelope;
+import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
@@ -125,6 +131,135 @@ public class UnbufferedLogMinerAdapterIT extends AbstractAsyncEngineConnectorTes
         finally {
             TestHelper.dropTable(connection, "dbz9013");
         }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1960")
+    public void shouldNotEmitRollbackFlaggedEventsWhenRollingBackToSavepoint() throws Exception {
+        TestHelper.dropTable(connection, "dbz1960");
+        try {
+            connection.execute("CREATE TABLE dbz1960 (id numeric(9,0) primary key, data varchar2(50))");
+            TestHelper.streamTable(connection, "dbz1960");
+
+            // Every DML row is logged at DEBUG with its ROLLBACK column rendered as rollbackFlag=<bool>
+            final LogInterceptor sourceLogInterceptor = new LogInterceptor(AbstractLogMinerStreamingChangeEventSource.class);
+            sourceLogInterceptor.setLoggerLevel(AbstractLogMinerStreamingChangeEventSource.class, Level.DEBUG);
+
+            final Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ1960")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO dbz1960 (id,data) values (1,'insert')");
+
+            SourceRecords records = consumeRecordsByTopic(1);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ1960")).hasSize(1);
+            VerifyRecord.isValidInsert(records.recordsForTopic("server1.DEBEZIUM.DBZ1960").get(0), "ID", 1);
+
+            // Two changes that survive, then a savepoint covering one of each DML type that is rolled back
+            connection.execute("BEGIN " +
+                    "UPDATE dbz1960 SET data = 'update' WHERE id = 1;" +
+                    "INSERT INTO dbz1960 (id,data) values (2,'insert');" +
+                    "SAVEPOINT a;" +
+                    "UPDATE dbz1960 SET data = 'rolled-back' WHERE id = 1;" +
+                    "INSERT INTO dbz1960 (id,data) values (3,'rolled-back');" +
+                    "DELETE FROM dbz1960 WHERE id = 2;" +
+                    "ROLLBACK TO SAVEPOINT a;" +
+                    "COMMIT;" +
+                    "END;");
+
+            records = consumeRecordsByTopic(2);
+            final List<SourceRecord> tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ1960");
+            assertThat(tableRecords).hasSize(2);
+
+            VerifyRecord.isValidUpdate(tableRecords.get(0), "ID", 1);
+            assertThat(getAfter(tableRecords.get(0)).get("DATA")).isEqualTo("update");
+
+            VerifyRecord.isValidInsert(tableRecords.get(1), "ID", 2);
+            assertThat(getAfter(tableRecords.get(1)).get("DATA")).isEqualTo("insert");
+
+            assertNoRecordsToConsume();
+
+            stopConnector();
+
+            // In COMMITTED_DATA_ONLY mode LogMiner withholds the three rolled-back statements entirely,
+            // neither their forward rows nor their ROLLBACK=1 undo rows are surfaced, so the unbuffered
+            // implementation never observes a partial rollback for a savepoint. Pin that here so a change
+            // in LogMiner's behaviour shows up as a failed count rather than as spurious change events.
+            final List<String> dmlRows = sourceLogInterceptor.getLogEntriesThatContainsMessage("DML: ");
+            assertThat(dmlRows).as("observed DML rows: %s", dmlRows)
+                    .filteredOn(row -> row.contains("rollbackFlag=true")).isEmpty();
+            assertThat(dmlRows).as("observed DML rows: %s", dmlRows)
+                    .filteredOn(row -> row.contains("rollbackFlag=false")).hasSize(3);
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz1960");
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1960")
+    public void shouldNotEmitRollbackFlaggedEventsOnConstraintViolation() throws Exception {
+        TestHelper.dropTable(connection, "dbz1960");
+        try {
+            connection.execute("CREATE TABLE dbz1960 (id numeric(9,0), data varchar2(50))");
+            connection.execute("CREATE UNIQUE INDEX uk_dbz1960 ON dbz1960 (id)");
+            TestHelper.streamTable(connection, "dbz1960");
+
+            final LogInterceptor sourceLogInterceptor = new LogInterceptor(AbstractLogMinerStreamingChangeEventSource.class);
+            sourceLogInterceptor.setLoggerLevel(AbstractLogMinerStreamingChangeEventSource.class, Level.DEBUG);
+
+            final Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ1960")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // The second insert is written to redo and then undone by a statement-level rollback
+            try {
+                connection.executeWithoutCommitting("INSERT INTO dbz1960 (id,data) values (1,'insert')");
+                connection.executeWithoutCommitting("INSERT INTO dbz1960 (id,data) values (1,'rolled-back')");
+            }
+            catch (SQLException e) {
+                if (!e.getMessage().startsWith("ORA-00001")) {
+                    throw e;
+                }
+            }
+            finally {
+                connection.executeWithoutCommitting("COMMIT");
+            }
+
+            final SourceRecords records = consumeRecordsByTopic(1);
+            final List<SourceRecord> tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ1960");
+            assertThat(tableRecords).hasSize(1);
+
+            VerifyRecord.isValidInsert(tableRecords.get(0), "ID", 1);
+            assertThat(getAfter(tableRecords.get(0)).get("DATA")).isEqualTo("insert");
+
+            assertNoRecordsToConsume();
+
+            stopConnector();
+
+            final List<String> dmlRows = sourceLogInterceptor.getLogEntriesThatContainsMessage("DML: ");
+            assertThat(dmlRows).as("observed DML rows: %s", dmlRows)
+                    .filteredOn(row -> row.contains("rollbackFlag=true")).isEmpty();
+            assertThat(dmlRows).as("observed DML rows: %s", dmlRows)
+                    .filteredOn(row -> row.contains("rollbackFlag=false")).hasSize(1);
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz1960");
+        }
+    }
+
+    private static Struct getAfter(SourceRecord record) {
+        return ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
     }
 
 }
