@@ -6,18 +6,24 @@
 package io.debezium.connector.mongodb;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 
+import java.util.List;
 import java.util.Optional;
 
+import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.bson.BsonTimestamp;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 
 import io.debezium.config.Configuration;
@@ -25,6 +31,86 @@ import io.debezium.config.Field;
 import io.debezium.data.Envelope;
 
 public class MongoDbConnectorConfigTest {
+
+    @Test
+    void shouldExposeCaptureStartFields() {
+        final var configDef = new MongoDbConnector().config();
+        for (var field : new Field[]{ MongoDbConnectorConfig.CAPTURE_START_OP_TIME, MongoDbConnectorConfig.CAPTURE_START_TIMESTAMP }) {
+            assertThat(MongoDbConnectorConfig.ALL_FIELDS.fieldWithName(field.name())).isNotNull();
+            assertThat(configDef.configKeys()).containsKey(field.name());
+        }
+    }
+
+    @Test
+    void shouldLeaveStartTimeUnspecifiedByDefault() {
+        assertThat(new MongoDbConnectorConfig(TestHelper.getConfiguration()).startAtOperationTime()).isEmpty();
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = { 30L, 7684060705770700807L, Long.MIN_VALUE })
+    void shouldPreservePackedOperationTime(long value) {
+        final var config = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.CAPTURE_START_OP_TIME, value)
+                .build();
+        assertThat(new MongoDbConnectorConfig(config).startAtOperationTime()).contains(new BsonTimestamp(value));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "1789084800", "2026-09-11T09:00:00+09:00", "{\"$timestamp\":{\"t\":1789084800,\"i\":0}}" })
+    void shouldUseReadableStartTimestamp(String value) {
+        final var config = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.CAPTURE_START_TIMESTAMP, value)
+                .build();
+        assertThat(config.validate(MongoDbConnectorConfig.ALL_FIELDS).get(MongoDbConnectorConfig.CAPTURE_START_TIMESTAMP.name()).errorMessages()).isEmpty();
+        assertThat(new MongoDbConnectorConfig(config).startAtOperationTime()).contains(new BsonTimestamp(1789084800, 0));
+    }
+
+    @Test
+    void shouldAllowDisabledLegacyStartTimeWithReadableTimestamp() {
+        final var config = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.CAPTURE_START_OP_TIME, -1L)
+                .with(MongoDbConnectorConfig.CAPTURE_START_TIMESTAMP, "30")
+                .build();
+        assertThat(new MongoDbConnectorConfig(config).startAtOperationTime()).contains(new BsonTimestamp(30, 0));
+        assertThat(config.validate(MongoDbConnectorConfig.ALL_FIELDS).get(MongoDbConnectorConfig.CAPTURE_START_TIMESTAMP.name()).errorMessages()).isEmpty();
+    }
+
+    @Test
+    void shouldRejectConflictingStartTimes() {
+        final var config = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.CAPTURE_START_OP_TIME, new BsonTimestamp(30, 0).getValue())
+                .with(MongoDbConnectorConfig.CAPTURE_START_TIMESTAMP, "30")
+                .build();
+        assertThat(connectorValidationErrors(config, MongoDbConnectorConfig.CAPTURE_START_TIMESTAMP))
+                .singleElement().asString().contains("Cannot be configured together with 'capture.start.op.time'");
+        assertThatThrownBy(() -> new MongoDbConnectorConfig(config))
+                .isInstanceOf(ConfigException.class).hasMessageContaining("capture.start.op.time");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "", "invalid", "30.5", "4294967296", "2026-09-11T00:00:00.001Z", "{\"$timestamp\":{\"t\":30,\"i\":-1}}" })
+    void shouldReportInvalidStartTimestampAsConfigurationError(String value) {
+        final var config = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.CAPTURE_START_TIMESTAMP, value)
+                .build();
+        assertThat(connectorValidationErrors(config, MongoDbConnectorConfig.CAPTURE_START_TIMESTAMP)).hasSize(1);
+        assertThatThrownBy(() -> new MongoDbConnectorConfig(config))
+                .isInstanceOf(ConfigException.class).hasMessageContaining("capture.start.timestamp");
+    }
+
+    @Test
+    void shouldValidateLegacyStartTimeType() {
+        final var config = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.CAPTURE_START_OP_TIME, "invalid")
+                .build();
+        assertThat(connectorValidationErrors(config, MongoDbConnectorConfig.CAPTURE_START_OP_TIME)).hasSize(1);
+    }
+
+    private static List<String> connectorValidationErrors(Configuration config, Field field) {
+        return new MongoDbConnector().validate(config.asMap()).configValues().stream()
+                .filter(value -> value.name().equals(field.name()))
+                .findFirst().orElseThrow().errorMessages();
+    }
 
     @Test
     void parseSignallingMessage() {
