@@ -247,6 +247,8 @@ def checkPreReleaseContent(String dbzContent, String copyrightContent, String re
    'server': true,
  ]
 
+@Field final DISABLE_PARALLEL_BUILD = ['quarkus'] as Set
+
 def buildArgsForRepo(repoDir) {
     BUILD_ARGS.getOrDefault(repoDir, "-Dversion.debezium=$RELEASE_VERSION") << ' -Dmaven.wagon.http.retryHandler.count=5'
 }
@@ -386,7 +388,8 @@ def operatorPostPerformSteps() {
 
 def releasePrepare(repoDir, repoName) {
     echo "Building current development version"
-    sh "./mvnw clean install -T 1C -DskipTests -DskipITs -Passembly"
+    def threads = repoDir in DISABLE_PARALLEL_BUILD ? '' : '-T 1C'
+    sh "./mvnw clean install $threads -DskipTests -DskipITs -Passembly"
 
     def ignoreSnaphots = FORCE_IGNORE_SNAPSHOTS.getOrDefault(repoDir, IGNORE_SNAPSHOTS)
 
@@ -414,7 +417,8 @@ def releasePerformPostSteps(repoDir, repoName) {
     def buildArgs = buildArgsForRepo(repoDir)
 
     echo "Building new development version"
-    sh "env MAVEN_OPTS='-Xmx8g -Xms1g' ./mvnw clean install -T 1C -DskipTests -DskipITs -Passembly $buildArgs"
+    def threads = repoDir in DISABLE_PARALLEL_BUILD ? '' : '-T 1C'
+    sh "env MAVEN_OPTS='-Xmx8g -Xms1g' ./mvnw clean install $threads -DskipTests -DskipITs -Passembly $buildArgs"
 
     echo 'Executing post-perform steps'
     POST_PERFORM_STEPS.getOrDefault(repoDir, this.&defaultPostPerformSteps)()
