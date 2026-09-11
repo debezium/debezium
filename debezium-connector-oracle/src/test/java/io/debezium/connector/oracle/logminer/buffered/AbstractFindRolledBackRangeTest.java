@@ -11,12 +11,15 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.events.RollbackToSavepointEvent;
+import io.debezium.doc.FixFor;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.TableId;
 
@@ -24,9 +27,28 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     protected static final TableId TABLE = TableId.parse("db.schema.table");
     protected static final Instant CHANGE_TIME = Instant.now();
 
+    private CacheProvider<T> cacheProvider;
+    private TransactionFactory<T> transactionFactory;
+
+    @BeforeEach
+    void beforeEach() {
+        cacheProvider = getCacheProvider();
+        transactionFactory = getTransactionFactory();
+    }
+
+    @AfterEach
+    void afterEach() throws Exception {
+        if (cacheProvider != null) {
+            cacheProvider.close();
+            cacheProvider = null;
+        }
+        transactionFactory = null;
+    }
+
     // INSERT
 
     @Test
+    @FixFor("debezium/dbz#1960")
     public void testRollbackInsertScalar() throws Exception {
         // CREATE TABLE DBZ1960_01(ID NUMERIC(9,0) PRIMARY KEY, STR0 VARCHAR(50));
         // SAVEPOINT s1;
@@ -45,6 +67,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
+    @FixFor("debezium/dbz#1960")
     public void testRollbackInsertEmpty() throws Exception {
         // CREATE TABLE DBZ1960_02(ID NUMERIC(9,0) PRIMARY KEY, LOB0 CLOB);
         // SAVEPOINT s1;
@@ -64,6 +87,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
+    @FixFor("debezium/dbz#1960")
     public void testRollbackInsertInline() throws Exception {
         // CREATE TABLE DBZ1960_03(ID NUMERIC(9,0) PRIMARY KEY, LOB0 CLOB);
         // SAVEPOINT s1;
@@ -83,6 +107,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
+    @FixFor("debezium/dbz#1960")
     public void testRollbackInsertOutOfLine() throws Exception {
         // CREATE TABLE DBZ1960_04(ID NUMERIC(9,0) PRIMARY KEY, XML0 XMLTYPE, LOB0 CLOB, EXT0 VARCHAR2(8000));
         // SAVEPOINT s1;
@@ -109,6 +134,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
+    @FixFor("debezium/dbz#1960")
     public void testRollbackInsertInlineAndOutOfLine() throws Exception {
         // CREATE TABLE DBZ1960_05(ID NUMERIC(9,0) PRIMARY KEY, EXT0 VARCHAR2(8000), XML0 XMLTYPE, LOB0 CLOB, LOB1 CLOB);
         // SAVEPOINT s1;
@@ -137,6 +163,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     // UPDATE
 
     @Test
+    @FixFor("debezium/dbz#1960")
     public void testRollbackUpdateScalar() throws Exception {
         // CREATE TABLE DBZ1960_06(ID NUMERIC(9,0) PRIMARY KEY, STR0 VARCHAR(50));
         // INSERT INTO DBZ1960_06 (ID, STR0) VALUES (1, 'STR0-1-0');
@@ -158,6 +185,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
+    @FixFor("debezium/dbz#1960")
     public void testRollbackUpdateEmpty() throws Exception {
         // CREATE TABLE DBZ1960_07(ID NUMERIC(9,0) PRIMARY KEY, LOB0 CLOB);
         // INSERT INTO DBZ1960_07 (ID, LOB0) VALUES (1, NULL);
@@ -182,6 +210,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
+    @FixFor("debezium/dbz#1960")
     public void testRollbackUpdateInline() throws Exception {
         // CREATE TABLE DBZ1960_08(ID NUMERIC(9,0) PRIMARY KEY, LOB0 CLOB);
         // INSERT INTO DBZ1960_08 (ID, LOB0) VALUES (1, 'LOB0-1-0');
@@ -206,6 +235,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
+    @FixFor("debezium/dbz#1960")
     public void testRollbackUpdateOutOfLine() throws Exception {
         // CREATE TABLE DBZ1960_09(ID NUMERIC(9,0) PRIMARY KEY, XML0 XMLTYPE, LOB0 CLOB, EXT0 VARCHAR2(8000));
         // INSERT INTO DBZ1960_09 (ID, XML0, LOB0, EXT0) VALUES (1, XMLTYPE('<XML0><ID>1</ID><V>0</V></XML0>'), 'LOB0-1-0', 'EXT0-1-0');
@@ -242,6 +272,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
+    @FixFor("debezium/dbz#1960")
     public void testRollbackUpdateXml() throws Exception {
         // CREATE TABLE DBZ1960_10(ID NUMERIC(9,0) PRIMARY KEY, XML0 XMLTYPE);
         // INSERT INTO DBZ1960_10 (ID, XML0) VALUES (1, XMLTYPE('<XML0><ID>1</ID><V>0</V></XML0>'));
@@ -274,6 +305,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
+    @FixFor("debezium/dbz#1960")
     public void testRollbackUpdateScalarAndOutOfLine() throws Exception {
         // CREATE TABLE DBZ1960_11(ID NUMERIC(9,0) PRIMARY KEY, STR0 VARCHAR2(50), XML0 XMLTYPE, LOB0 CLOB, EXT0 VARCHAR2(8000));
         // INSERT INTO DBZ1960_11 (ID, STR0, EXT0, LOB0) VALUES (1, 'STR0-1-0', 'EXT0-1-0', 'LOB0-1-0');
@@ -305,6 +337,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
+    @FixFor("debezium/dbz#1960")
     public void testRollbackUpdateScalarAndXml() throws Exception {
         // CREATE TABLE DBZ1960_12(ID NUMERIC(9,0) PRIMARY KEY, STR0 VARCHAR2(50), XML0 XMLTYPE);
         // INSERT INTO DBZ1960_12 (ID, STR0, XML0) VALUES (1, 'STR0-1-0', XMLTYPE('<XML0><ID>1</ID><V>0</V></XML0>'));
@@ -338,6 +371,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
+    @FixFor("debezium/dbz#1960")
     public void testRollbackUpdateInlineAndOutOfLine() throws Exception {
         // CREATE TABLE DBZ1960_13(ID NUMERIC(9,0) PRIMARY KEY, LOB0 CLOB, XML0 XMLTYPE, LOB1 CLOB, EXT0 VARCHAR2(8000));
         // INSERT INTO DBZ1960_13 (ID, LOB0, XML0, EXT0, LOB1) VALUES (1, 'LOB0-1-0', XMLTYPE('<XML0><ID>1</ID><V>0</V></XML0>'), 'EXT0-1-0', 'LOB1-1-0');
@@ -374,6 +408,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
+    @FixFor("debezium/dbz#1960")
     public void testRollbackUpdateScalarAndInlineAndOutOfLine() throws Exception {
         // CREATE TABLE DBZ1960_14(ID NUMERIC(9,0) PRIMARY KEY, STR0 VARCHAR2(50), LOB0 CLOB, XML0 XMLTYPE, LOB1 CLOB, EXT0 VARCHAR2(8000));
         // INSERT INTO DBZ1960_14 (ID, STR0, LOB0, EXT0, LOB1) VALUES (1, 'STR0-1-0', 'LOB0-1-0', 'EXT0-1-0', 'LOB1-1-0');
@@ -405,6 +440,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
+    @FixFor("debezium/dbz#1960")
     public void testRollbackLobWrite() throws Exception {
         // CREATE TABLE DBZ1960_15(ID NUMERIC(9,0) PRIMARY KEY, LOB0 CLOB);
         // INSERT INTO DBZ1960_15 (ID, LOB0) VALUES (1, 'LOB0-1-0');
@@ -435,6 +471,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
+    @FixFor("debezium/dbz#1960")
     public void testRollbackLobTrim() throws Exception {
         // CREATE TABLE DBZ1960_16(ID NUMERIC(9,0) PRIMARY KEY, LOB0 CLOB);
         // INSERT INTO DBZ1960_16 (ID, LOB0) VALUES (1, 'LOB0-1-00');
@@ -467,6 +504,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     // DELETE
 
     @Test
+    @FixFor("debezium/dbz#1960")
     public void testRollbackDelete() throws Exception {
         // CREATE TABLE DBZ1960_17(ID NUMERIC(9,0) PRIMARY KEY, STR0 VARCHAR2(50), LOB0 CLOB, XML0 XMLTYPE, LOB1 CLOB, EXT0 VARCHAR2(8000));
         // INSERT INTO DBZ1960_17 (ID, STR0, LOB0, XML0, EXT0, LOB1) VALUES (1, 'STR0-1-0', RPAD('LOB0-1-', 1985, '0'), XMLTYPE('<XML0><ID>1</ID><V>0</V></XML0>'), RPAD('EXT0-1-', 4000, '0'), 'LOB1-1-0');
@@ -506,6 +544,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     // Rollback multiple operations
 
     @Test
+    @FixFor("debezium/dbz#1960")
     public void testRollbacks() throws Exception {
         // CREATE TABLE DBZ1960_18(ID NUMERIC(9,0) PRIMARY KEY, STR0 VARCHAR2(50));
         // INSERT INTO DBZ1960_18 (ID, STR0) VALUES (1, 'STR0-1-0');
@@ -540,6 +579,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     // Supported without INTERNAL
 
     @Test
+    @FixFor("debezium/dbz#1960")
     public void testRollbackUpdateOutOfLineWithoutInternal() throws Exception {
         // CREATE TABLE DBZ1960_19(ID NUMERIC(9,0) PRIMARY KEY, LOB0 CLOB);
         // INSERT INTO DBZ1960_19 (ID, LOB0) VALUES (1, 'LOB0-1-0');
@@ -565,6 +605,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
+    @FixFor("debezium/dbz#1960")
     public void testInsertEmptyWithoutInternalAndRollbackUpdateScalar() throws Exception {
         // CREATE TABLE DBZ1960_20(ID NUMERIC(9,0) PRIMARY KEY, STR0 VARCHAR2(50), LOB0 CLOB);
         // INSERT INTO DBZ1960_20 (ID, STR0, LOB0) VALUES (1, 'STR0-1-0', EMPTY_CLOB());
@@ -587,6 +628,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
+    @FixFor("debezium/dbz#1960")
     public void testUpdateEmptyWithoutInternalAndRollbackUpdateInlineAndOutOfLine() throws Exception {
         // CREATE TABLE DBZ1960_21(ID NUMERIC(9,0) PRIMARY KEY, LOB0 CLOB, LOB1 CLOB);
         // INSERT INTO DBZ1960_21 (ID, LOB0, LOB1) VALUES (1, NULL, NULL);
@@ -616,6 +658,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
+    @FixFor("debezium/dbz#1960")
     public void testUpdateOutOfLineWithoutInternalAndRollbackUpdateInlineAndOutOfLine() throws Exception {
         // CREATE TABLE DBZ1960_22(ID NUMERIC(9,0) PRIMARY KEY, LOB0 CLOB, EXT0 VARCHAR2(8000));
         // INSERT INTO DBZ1960_22 (ID, LOB0, EXT0) VALUES (1, 'LOB0-1-0', 'EXT0-1-0');
@@ -647,6 +690,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
+    @FixFor("debezium/dbz#1960")
     public void testInsertOutOfLineWithoutInternalAndRollbackUpdateScalar() throws Exception {
         // CREATE TABLE DBZ1960_23(ID NUMERIC(9,0) PRIMARY KEY, STR0 VARCHAR2(50), LOB0 CLOB);
         // INSERT INTO DBZ1960_23 (ID, STR0, LOB0) VALUES (1, 'STR0-1-0', RPAD('LOB0-1-', 1985, '0'));
@@ -673,6 +717,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
+    @FixFor("debezium/dbz#1960")
     public void testUpdateXmlWithoutInternalAndRollbackUpdateInlineAndOutOfLine() throws Exception {
         // CREATE TABLE DBZ1960_24(ID NUMERIC(9,0) PRIMARY KEY, XML0 XMLTYPE, EXT0 VARCHAR2(8000), LOB0 CLOB);
         // INSERT INTO DBZ1960_24 (ID, XML0, EXT0, LOB0) VALUES (1, XMLTYPE('<XML0><ID>1</ID><V>0</V></XML0>'), 'EXT0-1-0', 'LOB0-1-0');
@@ -712,6 +757,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
+    @FixFor("debezium/dbz#1960")
     public void testUpdateOutOfLineAndXmlWithoutInternalAndRollbackUpdateInlineAndXml() throws Exception {
         // CREATE TABLE DBZ1960_25(ID NUMERIC(9,0) PRIMARY KEY, EXT0 VARCHAR2(8000), XML0 XMLTYPE);
         // INSERT INTO DBZ1960_25 (ID, EXT0, XML0) VALUES (1, 'EXT0-1-0', XMLTYPE('<XML0><ID>1</ID><V>0</V></XML0>'));
@@ -758,6 +804,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
+    @FixFor("debezium/dbz#1960")
     public void testRollbackLobWriteWithoutInternal() throws Exception {
         // CREATE TABLE DBZ1960_26(ID NUMERIC(9,0) PRIMARY KEY, LOB0 CLOB);
         // INSERT INTO DBZ1960_26 (ID, LOB0) VALUES (1, 'LOB0-1-0');
@@ -788,6 +835,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
+    @FixFor("debezium/dbz#1960")
     public void testRollbackLobTrimWithoutInternal() throws Exception {
         // CREATE TABLE DBZ1960_27(ID NUMERIC(9,0) PRIMARY KEY, LOB0 CLOB);
         // INSERT INTO DBZ1960_27 (ID, LOB0) VALUES (1, 'LOB0-1-00');
@@ -820,6 +868,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     // Not supported without INTERNAL: silently remove valid events because the event sequence is ambiguous
 
     @Test
+    @FixFor("debezium/dbz#1960")
     public void testUpdateEmptyWithoutInternalAndRollbackUpdateScalar() throws Exception {
         // CREATE TABLE DBZ1960_28(ID NUMERIC(9,0) PRIMARY KEY, STR0 VARCHAR2(50), LOB0 CLOB);
         // INSERT INTO DBZ1960_28 (ID, STR0) VALUES (1, 'STR0-1-0');
@@ -850,6 +899,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
+    @FixFor("debezium/dbz#1960")
     public void testUpdateOutOfLineWithoutInternalAndRollbackUpdateScalar() throws Exception {
         // CREATE TABLE DBZ1960_29(ID NUMERIC(9,0) PRIMARY KEY, STR0 VARCHAR2(50), LOB0 CLOB, EXT0 VARCHAR2(8000));
         // INSERT INTO DBZ1960_29 (ID, STR0, LOB0) VALUES (1, 'STR0-1-0', EMPTY_CLOB());
@@ -882,6 +932,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
+    @FixFor("debezium/dbz#1960")
     public void testUpdateEmptyWithoutInternalAndRollbackUpdateInlineAndXml() throws Exception {
         // CREATE TABLE DBZ1960_30(ID NUMERIC(9,0) PRIMARY KEY, STR0 VARCHAR2(50), LOB0 CLOB, XML0 XMLTYPE);
         // INSERT INTO DBZ1960_30 (ID, STR0, XML0) VALUES (1, 'STR0-1-0', XMLTYPE('<XML0><ID>1</ID><V>0</V></XML0>'));
@@ -915,6 +966,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
+    @FixFor("debezium/dbz#1960")
     public void testUpdateXmlWithoutInternalAndRollbackUpdateInlineAndXml() throws Exception {
         // CREATE TABLE DBZ1960_31(ID NUMERIC(9,0) PRIMARY KEY, XML0 XMLTYPE, XML1 XMLTYPE, LOB0 CLOB);
         // INSERT INTO DBZ1960_31 (ID, XML0, XML1, LOB0) VALUES (1, XMLTYPE('<XML0><ID>1</ID><V>0</V></XML0>'), XMLTYPE('<XML1><ID>1</ID><V>0</V></XML1>'), 'LOB0-1-0');
@@ -954,6 +1006,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     // Manual investigation is required
 
     @Test
+    @FixFor("debezium/dbz#1960")
     public void testRollbackInsertScalarWithUnexpectedOperation() throws Exception {
         LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
         LogMinerEvent[] events = new LogMinerEvent[]{
@@ -970,6 +1023,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
+    @FixFor("debezium/dbz#1960")
     public void testRollbackInsertEmptyWithUnexpectedOperation() throws Exception {
         LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
         LogMinerEvent[] events = new LogMinerEvent[]{
@@ -987,6 +1041,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
+    @FixFor("debezium/dbz#1960")
     public void testRollbackUpdateScalarWithUnexpectedOperation() throws Exception {
         LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
         LogMinerEvent[] events = new LogMinerEvent[]{
@@ -1003,6 +1058,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
+    @FixFor("debezium/dbz#1960")
     public void testRollbackUpdateEmptyWithUnexpectedOperation() throws Exception {
         LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
         LogMinerEvent[] events = new LogMinerEvent[]{
@@ -1020,6 +1076,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
+    @FixFor("debezium/dbz#1960")
     public void testRollbackUpdateInlineWithUnexpectedOperation() throws Exception {
         LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
         LogMinerEvent[] events = new LogMinerEvent[]{
@@ -1036,6 +1093,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
+    @FixFor("debezium/dbz#1960")
     public void testRollbackUpdateOutOfLineWithUnexpectedOperation() throws Exception {
         LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
         LogMinerEvent[] events = new LogMinerEvent[]{
@@ -1054,6 +1112,7 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     @Test
+    @FixFor("debezium/dbz#1960")
     public void testRollbackInsertScalarWithUnexpectedRowId() throws Exception {
         LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
         LogMinerEvent[] events = new LogMinerEvent[]{
@@ -1075,8 +1134,8 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     private LogMinerEvent[] cache(LogMinerEvent[] events) throws InterruptedException {
-        LogMinerTransactionCache<T> cache = getCacheProvider().getTransactionCache();
-        T transaction = getTransactionFactory().createTransaction("1", Scn.ONE, CHANGE_TIME, "userName", 1, "clientId");
+        LogMinerTransactionCache<T> cache = cacheProvider.getTransactionCache();
+        T transaction = transactionFactory.createTransaction("1", Scn.ONE, CHANGE_TIME, "userName", 1, "clientId");
         cache.addTransaction(transaction);
         for (LogMinerEvent event : events) {
             cache.addTransactionEvent(transaction, transaction.getNextEventId(), event);
