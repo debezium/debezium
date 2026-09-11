@@ -842,7 +842,7 @@ The following example shows the value portion of a change event that the connect
             },
             {
               "type": "string",
-              "optional": false,
+              "optional": true,
               "field": "collection"
             },
             {
