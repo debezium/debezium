@@ -5,6 +5,10 @@
  */
 package io.debezium.pipeline.source.snapshot.incremental;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
@@ -14,9 +18,13 @@ import static org.mockito.Mockito.when;
 
 import java.sql.SQLException;
 import java.sql.SQLNonTransientConnectionException;
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.source.SourceConnector;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,15 +33,22 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.connector.SourceInfoStructMaker;
+import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.pipeline.DataChangeEvent;
+import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
+import io.debezium.relational.Column;
 import io.debezium.relational.ColumnFilterMode;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.relational.RelationalDatabaseSchema;
+import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
+import io.debezium.util.LoggingContext;
 
 /**
  * Verifies how {@link AbstractIncrementalSnapshotChangeEventSource#readChunk} reacts when reading a
@@ -94,6 +109,79 @@ public class AbstractIncrementalSnapshotChangeEventSourceTest {
         source.readChunk(null, offsetContext);
 
         verify(jdbcConnection, never()).close();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2604")
+    @SuppressWarnings("unchecked")
+    public void shouldEndChunkTransactionWhenChunkReadFailsWithNonSqlError() throws Exception {
+        // A schema change racing with the chunk query surfaces as a runtime exception from result-set
+        // processing ("Column 'c' not found in result set ...", see DBZ-4350). readChunk skips the
+        // table and lets streaming continue, but the transaction the chunk queries run in must still
+        // be ended: on connections with autocommit disabled it holds the chunk table's shared
+        // metadata lock until this connection ends the transaction. Ending it here must not
+        // depend on a later window or connector-specific streaming loop cleaning it up.
+        RelationalDatabaseSchema schema = mock(RelationalDatabaseSchema.class);
+        Table table = mock(Table.class);
+        when(schema.tableFor(any(TableId.class))).thenReturn(table);
+
+        ChunkQueryBuilder<TableId> chunkQueryBuilder = mock(ChunkQueryBuilder.class);
+        doReturn(chunkQueryBuilder).when(jdbcConnection).chunkQueryBuilder(any());
+        when(chunkQueryBuilder.prepareTable(any(), any())).thenReturn(table);
+        when(chunkQueryBuilder.getQueryColumns(any(), any())).thenReturn(List.of(mock(Column.class)));
+        when(chunkQueryBuilder.buildMaxPrimaryKeyQuery(any(), any(), any())).thenReturn("SELECT max(pk) FROM a");
+
+        source = new SignalBasedIncrementalSnapshotChangeEventSource<>(config(), jdbcConnection, null, schema, null, progressListener, null,
+                notificationService);
+
+        final AtomicBoolean chunkReadFailed = new AtomicBoolean();
+        final AtomicBoolean transactionEndedAfterFailure = new AtomicBoolean();
+        when(jdbcConnection.queryAndMap(anyString(), any(JdbcConnection.ResultSetMapper.class))).thenAnswer(invocation -> {
+            chunkReadFailed.set(true);
+            throw new IllegalArgumentException("Column 'c' not found in result set 'pk, aa, c'");
+        });
+        when(jdbcConnection.rollback()).thenAnswer(invocation -> {
+            if (chunkReadFailed.get()) {
+                transactionEndedAfterFailure.set(true);
+            }
+            return jdbcConnection;
+        });
+
+        source.readChunk(null, offsetContext);
+
+        assertThat(transactionEndedAfterFailure)
+                .as("the transaction the failed chunk read ran in must be ended before readChunk returns")
+                .isTrue();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2604")
+    public void shouldCloseConnectionAndReportRollbackFailure() throws Exception {
+        final var readFailure = new SQLException("chunk failed");
+        final var rollbackFailure = new SQLException("rollback failed");
+        when(jdbcConnection.commit()).thenThrow(readFailure);
+        when(jdbcConnection.rollback()).thenThrow(rollbackFailure);
+        final var queue = new ChangeEventQueue.Builder<DataChangeEvent>()
+                .maxBatchSize(10).maxQueueSize(20).pollInterval(Duration.ofMillis(10))
+                .loggingContextSupplier(() -> LoggingContext.forConnector("test", "recovery", "test"))
+                .build();
+        try {
+            final var errorHandler = new ErrorHandler(SourceConnector.class, config(), queue, null);
+            source.setErrorHandler(errorHandler);
+
+            assertThatThrownBy(() -> source.readChunk(null, offsetContext))
+                    .hasMessageContaining("Could not roll back")
+                    .hasCause(rollbackFailure);
+
+            verify(jdbcConnection).close();
+            verify(progressListener, never()).snapshotCompleted(null);
+            assertThat(rollbackFailure.getSuppressed()).containsExactly(readFailure);
+            assertThat(errorHandler.getProducerThrowable()).hasCause(rollbackFailure);
+            assertThatThrownBy(queue::poll).isInstanceOf(ConnectException.class);
+        }
+        finally {
+            queue.close();
+        }
     }
 
     private RelationalDatabaseConnectorConfig config() {

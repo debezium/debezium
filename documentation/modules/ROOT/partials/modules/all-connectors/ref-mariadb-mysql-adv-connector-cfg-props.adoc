@@ -394,6 +394,12 @@ Description:::
 Specifies whether the connector allows schema changes during an incremental snapshot.
 When the value is set to `true`, the connector detects schema change during an incremental snapshot, and re-select a current chunk to avoid locking DDLs.
 +
+If a query result contains a column that is absent from the connector's cached table definition, the connector discards the current chunk and retries it after closing the watermark window.
+The retry retains the current table and the last emitted snapshot key, allowing streaming to process the pending schema change before reading the chunk again.
+This behavior applies to both signal-table and read-only incremental snapshots.
+As with schema verification, a persistent mismatch is logged and retried in subsequent watermark windows instead of skipping the table.
+The connector does not report the snapshot as complete while the table is waiting for its schema to catch up.
++
 Changes to a primary key are not supported.
 Changing the primary during an incremental snapshot, can lead to incorrect results.
 A further limitation is that if a schema change affects only the default values of columns, then the change is not detected until the DDL is processed from the binlog stream.
