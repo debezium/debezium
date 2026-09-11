@@ -16,6 +16,8 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.util.BinlogTestConnection;
@@ -105,5 +107,189 @@ public abstract class BinlogRestartIT<C extends SourceConnector> extends Abstrac
                 .isEqualTo(5);
 
         stopConnector();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2549")
+    public void shouldReplayDeleteWhenStoppedBeforeTombstoneIsCommitted() throws Exception {
+        config = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.INITIAL)
+                .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("restart_table"))
+                .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with(BinlogConnectorConfig.MAX_BATCH_SIZE, 1)
+                .build();
+
+        try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName());
+                JdbcConnection connection = db.connect()) {
+            connection.execute(
+                    "CREATE TABLE restart_table (id INT PRIMARY KEY, val INT)",
+                    "INSERT INTO restart_table VALUES(1, 10)");
+        }
+
+        start(getConnectorClass(), config, record -> record.value() == null
+                && ((Struct) record.key()).getInt32("id") == 1);
+
+        final SourceRecord snapshotRecord = consumeRecord();
+        assertThat(((Struct) snapshotRecord.key()).getInt32("id")).isEqualTo(1);
+
+        try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName());
+                JdbcConnection connection = db.connect()) {
+            connection.execute("DELETE FROM restart_table WHERE id = 1");
+        }
+
+        final SourceRecord deleteBeforeStop = consumeRecord();
+        assertThat(((Struct) deleteBeforeStop.key()).getInt32("id")).isEqualTo(1);
+        assertThat(((Struct) deleteBeforeStop.value()).getString("op")).isEqualTo("d");
+
+        waitForEngineShutdown();
+        stopConnector();
+
+        start(getConnectorClass(), config);
+
+        try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName());
+                JdbcConnection connection = db.connect()) {
+            connection.execute("INSERT INTO restart_table VALUES(3, 30)");
+        }
+
+        final SourceRecord replayedDelete = consumeRecord();
+        assertThat(((Struct) replayedDelete.key()).getInt32("id")).isEqualTo(1);
+        assertThat(((Struct) replayedDelete.value()).getString("op")).isEqualTo("d");
+
+        final SourceRecord replayedTombstone = consumeRecord();
+        assertThat(((Struct) replayedTombstone.key()).getInt32("id")).isEqualTo(1);
+        assertThat(replayedTombstone.value()).isNull();
+
+        final SourceRecord markerCreate = consumeRecord();
+        assertThat(((Struct) markerCreate.key()).getInt32("id")).isEqualTo(3);
+        assertThat(((Struct) markerCreate.value()).getString("op")).isEqualTo("c");
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = { true, false })
+    @FixFor("debezium/dbz#2549")
+    public void shouldReplayPrimaryKeyUpdateWhenStoppedBetweenSplitRecords(boolean stopBeforeTombstone) throws Exception {
+        config = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.INITIAL)
+                .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("restart_table"))
+                .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with(BinlogConnectorConfig.MAX_BATCH_SIZE, 1)
+                .build();
+
+        try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName());
+                JdbcConnection connection = db.connect()) {
+            connection.execute(
+                    "CREATE TABLE restart_table (id INT PRIMARY KEY, val INT)",
+                    "INSERT INTO restart_table VALUES(1, 10)");
+        }
+
+        start(getConnectorClass(), config, record -> {
+            if (stopBeforeTombstone) {
+                return record.value() == null && ((Struct) record.key()).getInt32("id") == 1;
+            }
+            return record.value() != null
+                    && ((Struct) record.key()).getInt32("id") == 2
+                    && ((Struct) record.value()).getString("op").equals("c");
+        });
+
+        final SourceRecord snapshotRecord = consumeRecord();
+        assertThat(((Struct) snapshotRecord.key()).getInt32("id")).isEqualTo(1);
+
+        try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName());
+                JdbcConnection connection = db.connect()) {
+            connection.execute("UPDATE restart_table SET id = 2 WHERE id = 1");
+        }
+
+        final SourceRecord deleteBeforeStop = consumeRecord();
+        assertThat(((Struct) deleteBeforeStop.key()).getInt32("id")).isEqualTo(1);
+        assertThat(((Struct) deleteBeforeStop.value()).getString("op")).isEqualTo("d");
+
+        if (!stopBeforeTombstone) {
+            final SourceRecord tombstoneBeforeStop = consumeRecord();
+            assertThat(((Struct) tombstoneBeforeStop.key()).getInt32("id")).isEqualTo(1);
+            assertThat(tombstoneBeforeStop.value()).isNull();
+        }
+
+        waitForEngineShutdown();
+        stopConnector();
+
+        start(getConnectorClass(), config);
+
+        try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName());
+                JdbcConnection connection = db.connect()) {
+            connection.execute("INSERT INTO restart_table VALUES(3, 30)");
+        }
+
+        final SourceRecord replayedDelete = consumeRecord();
+        assertThat(((Struct) replayedDelete.key()).getInt32("id")).isEqualTo(1);
+        assertThat(((Struct) replayedDelete.value()).getString("op")).isEqualTo("d");
+
+        final SourceRecord replayedTombstone = consumeRecord();
+        assertThat(((Struct) replayedTombstone.key()).getInt32("id")).isEqualTo(1);
+        assertThat(replayedTombstone.value()).isNull();
+
+        final SourceRecord replayedCreate = consumeRecord();
+        assertThat(((Struct) replayedCreate.key()).getInt32("id")).isEqualTo(2);
+        assertThat(((Struct) replayedCreate.value()).getString("op")).isEqualTo("c");
+
+        final SourceRecord markerCreate = consumeRecord();
+        assertThat(((Struct) markerCreate.key()).getInt32("id")).isEqualTo(3);
+        assertThat(((Struct) markerCreate.value()).getString("op")).isEqualTo("c");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2549")
+    public void shouldReplayPrimaryKeyUpdateWhenTombstonesAreDisabled() throws Exception {
+        config = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.INITIAL)
+                .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("restart_table"))
+                .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with(BinlogConnectorConfig.TOMBSTONES_ON_DELETE, false)
+                .with(BinlogConnectorConfig.MAX_BATCH_SIZE, 1)
+                .build();
+
+        try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName());
+                JdbcConnection connection = db.connect()) {
+            connection.execute(
+                    "CREATE TABLE restart_table (id INT PRIMARY KEY, val INT)",
+                    "INSERT INTO restart_table VALUES(1, 10)");
+        }
+
+        start(getConnectorClass(), config, record -> record.value() != null
+                && ((Struct) record.key()).getInt32("id") == 2
+                && ((Struct) record.value()).getString("op").equals("c"));
+
+        final SourceRecord snapshotRecord = consumeRecord();
+        assertThat(((Struct) snapshotRecord.key()).getInt32("id")).isEqualTo(1);
+
+        try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName());
+                JdbcConnection connection = db.connect()) {
+            connection.execute("UPDATE restart_table SET id = 2 WHERE id = 1");
+        }
+
+        final SourceRecord deleteBeforeStop = consumeRecord();
+        assertThat(((Struct) deleteBeforeStop.key()).getInt32("id")).isEqualTo(1);
+        assertThat(((Struct) deleteBeforeStop.value()).getString("op")).isEqualTo("d");
+
+        waitForEngineShutdown();
+        stopConnector();
+
+        start(getConnectorClass(), config);
+
+        try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName());
+                JdbcConnection connection = db.connect()) {
+            connection.execute("INSERT INTO restart_table VALUES(3, 30)");
+        }
+
+        final SourceRecord replayedDelete = consumeRecord();
+        assertThat(((Struct) replayedDelete.key()).getInt32("id")).isEqualTo(1);
+        assertThat(((Struct) replayedDelete.value()).getString("op")).isEqualTo("d");
+
+        final SourceRecord replayedCreate = consumeRecord();
+        assertThat(((Struct) replayedCreate.key()).getInt32("id")).isEqualTo(2);
+        assertThat(((Struct) replayedCreate.value()).getString("op")).isEqualTo("c");
+
+        final SourceRecord markerCreate = consumeRecord();
+        assertThat(((Struct) markerCreate.key()).getInt32("id")).isEqualTo(3);
+        assertThat(((Struct) markerCreate.value()).getString("op")).isEqualTo("c");
     }
 }
