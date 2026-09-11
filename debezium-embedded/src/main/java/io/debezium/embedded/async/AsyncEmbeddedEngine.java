@@ -1292,7 +1292,8 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         private final SourceRecordCommitter committer;
 
         PollRecords(final EngineSourceTask task, final RecordProcessor processor, final AtomicReference<State> engineState) {
-            super(Configuration.from(task.context().config()).getInteger(EmbeddedEngineConfig.ERRORS_MAX_RETRIES));
+            super(Configuration.from(task.context().config()).getInteger(EmbeddedEngineConfig.ERRORS_MAX_RETRIES),
+                    Configuration.from(task.context().config()).getString(CommonConnectorConfig.CUSTOM_RETRIABLE_EXCEPTION));
             this.task = task;
             this.processor = processor;
             this.engineState = engineState;
