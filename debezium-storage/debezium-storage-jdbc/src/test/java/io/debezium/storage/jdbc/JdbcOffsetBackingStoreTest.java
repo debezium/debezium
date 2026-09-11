@@ -44,7 +44,6 @@ public class JdbcOffsetBackingStoreTest {
         props = new HashMap<>();
         props.put("offset.storage.jdbc.url", "jdbc:sqlite:" + dbFile.getAbsolutePath());
         props.put("offset.storage.jdbc.user", "user");
-        props.put("offset.storage.jdbc.password", "pass");
         props.put("offset.storage.jdbc.offset.table.name", "offsets_jdbc");
         props.put("offset.storage.jdbc.offset.table.ddl", "CREATE TABLE %s (id VARCHAR(36) NOT NULL, " +
                 "offset_key VARCHAR(1255), offset_val VARCHAR(1255)," +
