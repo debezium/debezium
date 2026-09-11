@@ -99,9 +99,7 @@
         <version.checkstyle.plugin>3.6.0</version.checkstyle.plugin>
         <version.release.plugin>2.5.3</version.release.plugin>
         <version.impsort>1.12.0</version.impsort>
-        <version.gmavenplus.plugin>4.1.1</version.gmavenplus.plugin>
-        <!-- Groovy runtime for the gmavenplus build script below; keep aligned with version.groovy in debezium-bom -->
-        <version.groovy.runtime>4.0.17</version.groovy.runtime>
+        <version.exec.plugin>3.6.3</version.exec.plugin>
         <version.failsafe.plugin>${version.surefire.plugin}</version.failsafe.plugin>
         <version.checkstyle>13.2.0</version.checkstyle>
         <version.revapi.plugin>0.15.1</version.revapi.plugin>
@@ -475,28 +473,23 @@
             <build>
                 <plugins>
                     <plugin>
-                        <groupId>org.codehaus.gmavenplus</groupId>
-                        <artifactId>gmavenplus-plugin</artifactId>
-                        <version>${version.gmavenplus.plugin}</version>
-                        <dependencies>
-                            <dependency>
-                                <groupId>org.apache.groovy</groupId>
-                                <artifactId>groovy</artifactId>
-                                <version>${version.groovy.runtime}</version>
-                                <scope>runtime</scope>
-                            </dependency>
-                        </dependencies>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>${version.exec.plugin}</version>
                         <executions>
                             <execution>
                                 <id>sort-contributor-files</id>
                                 <phase>validate</phase>
                                 <goals>
-                                    <goal>execute</goal>
+                                    <goal>exec</goal>
                                 </goals>
                                 <configuration>
-                                    <scripts>
-                                        <script>${project.basedir}/support/scripts/sort-contributor-files.groovy</script>
-                                    </scripts>
+                                    <executable>${java.home}/bin/java</executable>
+                                    <arguments>
+                                        <argument>${project.basedir}/support/scripts/SortContributorFiles.java</argument>
+                                        <argument>${project.basedir}</argument>
+                                        <argument>${format.names.goal}</argument>
+                                    </arguments>
                                 </configuration>
                             </execution>
                         </executions>
