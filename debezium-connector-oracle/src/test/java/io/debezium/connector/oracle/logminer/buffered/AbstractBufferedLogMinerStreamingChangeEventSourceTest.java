@@ -74,6 +74,7 @@ import io.debezium.schema.SchemaTopicNamingStrategy;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Clock;
 
+import ch.qos.logback.classic.Level;
 import oracle.sql.CharacterSet;
 
 /**
@@ -566,6 +567,37 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     }
 
     @Test
+    @FixFor("debezium/dbz#1960")
+    public void testAbandonedTransactionDetailsListOnlyTablesWithLiveChanges() throws Exception {
+        if (!isTransactionAbandonmentSupported()) {
+            return;
+        }
+
+        final LogInterceptor logInterceptor = new LogInterceptor(BufferedLogMinerStreamingChangeEventSource.class);
+        final ch.qos.logback.classic.Logger detailsLogger = (ch.qos.logback.classic.Logger) LoggerFactory
+                .getLogger(BufferedLogMinerStreamingChangeEventSource.class.getName() + ".AbandonedDetails");
+        final Level previousLevel = detailsLogger.getLevel();
+        detailsLogger.setLevel(Level.DEBUG);
+        try (var source = getChangeEventSource(getConfig().build())) {
+            Mockito.when(offsetContext.getScn()).thenReturn(Scn.valueOf(1L));
+            Mockito.when(offsetContext.getSnapshotScn()).thenReturn(Scn.NULL);
+
+            final Instant changeTime = Instant.now().minus(24, ChronoUnit.HOURS);
+            source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1, changeTime, "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'insert'"));
+            // A change on a second table that is rolled back to a savepoint; only its undo marker stays in the cache
+            source.processEvent(getUpdateLogMinerEventRow(3, TRANSACTION_ID_1, changeTime, "TEST_TABLE2", "AAAAAAAAAAAAAAAAAC", "'update'"));
+            source.processEvent(getRollbackToSavepointLogMinerEventRow(4, TRANSACTION_ID_1, changeTime, "TEST_TABLE2", "AAAAAAAAAAAAAAAAAC", "'insert'"));
+            source.abandonTransactions(Duration.ofHours(1L));
+
+            assertThat(source.getTransactionCache().isEmpty()).isTrue();
+            assertThat(logInterceptor.containsWarnMessage("1 tables [ORCLPDB1.DEBEZIUM.TEST_TABLE]) is being abandoned")).isTrue();
+        }
+        finally {
+            detailsLogger.setLevel(previousLevel);
+        }
+    }
+
+    @Test
     @FixFor("DBZ-1145")
     public void testCacheIsEmptyWhenTransactionIsRolledBackWithPartialTransactionId() throws Exception {
         try (var source = getChangeEventSource(getConfig().build())) {
@@ -845,6 +877,15 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
                 .create();
 
         schema.refresh(table);
+
+        // Typed columns: the field-name cache compares columns by type and the first table's are typeless
+        Table secondTable = Table.editor()
+                .tableId(TableId.parse("ORCLPDB1.DEBEZIUM.TEST_TABLE2"))
+                .addColumn(Column.editor().name("ID").type("VARCHAR2(50)").create())
+                .addColumn(Column.editor().name("DATA").type("VARCHAR2(50)").create())
+                .create();
+
+        schema.refresh(secondTable);
         return schema;
     }
 
