@@ -99,9 +99,7 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
                 continue;
             }
             else if (!event.getTableId().equals(rollbackEvent.getTableId())) {
-                Loggings.logWarningAndTraceRecord(LOGGER, rollbackEvent,
-                        "Cannot apply the undo change in transaction '{}' with SCN '{}' on table '{}' by row-id '{}' since the preceding event in the transaction cache is from table '{}'. Manual investigation is required.",
-                        transactionId, rollbackEvent.getScn(), rollbackEvent.getTableId(), rollbackEvent.getRowId(), event.getTableId());
+                logCannotApplyRollbackToSavepointWarning(transactionId, rollbackEvent, "TABLE_NAME", event.getTableId());
                 return null;
             }
             else if (event.getRowId().equals(rollbackEvent.getRowId())) {
@@ -112,16 +110,12 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
                     return new LogMinerEventEntryRange(entry, end);
                 }
                 else if (event.getEventType() == EventType.SELECT_LOB_LOCATOR && rollbackType == EventType.UPDATE) {
-                    LOGGER.warn(
-                            "An event with an unexpected OPERATION '{}' is followed by the rollback event in transaction '{}' with SCN '{}' on table '{}' by row-id '{}'. Please enable 'log.mining.include.internal.events'.",
-                            event.getEventType(), transactionId, rollbackEvent.getScn(), rollbackEvent.getTableId(), rollbackEvent.getRowId());
+                    logUnexpectedEventBeforeRollbackWarning(transactionId, rollbackEvent, "OPERATION", event.getEventType());
                     return new LogMinerEventEntryRange(entry, end);
                 }
                 else if ((event.getEventType() == EventType.LOB_WRITE || event.getEventType() == EventType.LOB_TRIM || event.getEventType() == EventType.LOB_ERASE)
                         && rollbackType == EventType.UPDATE) {
-                    LOGGER.warn(
-                            "An event with an unexpected OPERATION '{}' is followed by the rollback event in transaction '{}' with SCN '{}' on table '{}' by row-id '{}'. Please enable 'log.mining.include.internal.events'.",
-                            event.getEventType(), transactionId, rollbackEvent.getScn(), rollbackEvent.getTableId(), rollbackEvent.getRowId());
+                    logUnexpectedEventBeforeRollbackWarning(transactionId, rollbackEvent, "OPERATION", event.getEventType());
                     lobStmt = true;
                     break;
                 }
@@ -131,31 +125,23 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
                     lobStmt = event.getEventType() == EventType.INTERNAL && rollbackType == EventType.UPDATE;
                     break;
                 }
-                Loggings.logWarningAndTraceRecord(LOGGER, rollbackEvent,
-                        "Cannot apply the undo change in transaction '{}' with SCN '{}' on table '{}' by row-id '{}' since '{}' was not expected before '{}'. Manual investigation is required.",
-                        transactionId, rollbackEvent.getScn(), rollbackEvent.getTableId(), rollbackEvent.getRowId(), event.getEventType(), rollbackType);
+                logCannotApplyRollbackToSavepointWarning(transactionId, rollbackEvent, event.getEventType());
                 return null;
             }
             else if (RowIdCodec.EMPTY_ROW_ID.equals(event.getRowId())) {
-                LOGGER.warn(
-                        "An event with an empty row-id is followed by the rollback event in transaction '{}' with SCN '{}' on table '{}' by row-id '{}'. Please enable 'log.mining.include.internal.events'.",
-                        transactionId, rollbackEvent.getScn(), rollbackEvent.getTableId(), rollbackEvent.getRowId());
+                logUnexpectedEventBeforeRollbackWarning(transactionId, rollbackEvent, "ROW_ID", event.getRowId());
                 if (event.getEventType() == EventType.INSERT) {
                     if (rollbackType == EventType.DELETE) {
                         return new LogMinerEventEntryRange(entry, end);
                     }
-                    Loggings.logWarningAndTraceRecord(LOGGER, rollbackEvent,
-                            "Cannot apply the undo change in transaction '{}' with SCN '{}' on table '{}' by row-id '{}' since '{}' was not expected before '{}'. Manual investigation is required.",
-                            transactionId, rollbackEvent.getScn(), rollbackEvent.getTableId(), rollbackEvent.getRowId(), event.getEventType(), rollbackType);
+                    logCannotApplyRollbackToSavepointWarning(transactionId, rollbackEvent, event.getEventType());
                     return null;
                 }
                 else if (event.getEventType() == EventType.UPDATE) {
                     if (rollbackType == EventType.UPDATE) {
                         return new LogMinerEventEntryRange(entry, end);
                     }
-                    Loggings.logWarningAndTraceRecord(LOGGER, rollbackEvent,
-                            "Cannot apply the undo change in transaction '{}' with SCN '{}' on table '{}' by row-id '{}' since '{}' was not expected before '{}'. Manual investigation is required.",
-                            transactionId, rollbackEvent.getScn(), rollbackEvent.getTableId(), rollbackEvent.getRowId(), event.getEventType(), rollbackType);
+                    logCannotApplyRollbackToSavepointWarning(transactionId, rollbackEvent, event.getEventType());
                     return null;
                 }
                 else if (event.getEventType() == EventType.LOB_WRITE || event.getEventType() == EventType.LOB_TRIM || event.getEventType() == EventType.LOB_ERASE) {
@@ -163,18 +149,14 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
                 }
                 break;
             }
-            Loggings.logWarningAndTraceRecord(LOGGER, rollbackEvent,
-                    "Cannot apply the undo change in transaction '{}' with SCN '{}' on table '{}' by row-id '{}' since the preceding event in the transaction cache has a different row-id '{}'. Manual investigation is required.",
-                    transactionId, rollbackEvent.getScn(), rollbackEvent.getTableId(), rollbackEvent.getRowId(), event.getRowId());
+            logCannotApplyRollbackToSavepointWarning(transactionId, rollbackEvent, "ROW_ID", event.getRowId());
             return null;
         }
         while (iterator.hasNext()) {
             final LogMinerEventEntry entry = iterator.next();
             final LogMinerEvent event = entry.event();
             if (!event.getTableId().equals(rollbackEvent.getTableId())) {
-                LOGGER.warn(
-                        "An event with an empty ROW_ID and an unexpected TABLE_NAME '{}' was detected while applying the undo change in transaction '{}' with SCN '{}' on table '{}' by row-id '{}'. Please enable 'log.mining.include.internal.events'.",
-                        event.getTableId(), transactionId, rollbackEvent.getScn(), rollbackEvent.getTableId(), rollbackEvent.getRowId());
+                logUnexpectedEventWithEmptyRowIdWarning(transactionId, rollbackEvent, "TABLE_NAME", event.getTableId());
                 break;
             }
             if (lobStmt) {
@@ -195,9 +177,7 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
             }
             if (event.getEventType() == EventType.INSERT || event.getEventType() == EventType.UPDATE) {
                 if (lobStartEntry != null && !lobStartEntry.event().getRsId().equals(event.getRsId())) {
-                    LOGGER.warn(
-                            "An event with an empty ROW_ID and an unexpected RS_ID '{}' was detected while applying the undo change in transaction '{}' with SCN '{}' on table '{}' by row-id '{}'. Please enable 'log.mining.include.internal.events'.",
-                            event.getRsId(), transactionId, rollbackEvent.getScn(), rollbackEvent.getTableId(), rollbackEvent.getRowId());
+                    logUnexpectedEventWithEmptyRowIdWarning(transactionId, rollbackEvent, "RS_ID", event.getRsId());
                     break;
                 }
                 else if (event.getEventType() == EventType.INSERT && rollbackType == EventType.DELETE) {
@@ -207,25 +187,19 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
                     return new LogMinerEventEntryRange(entry, end);
                 }
                 lobStartEntry = null;
-                LOGGER.warn(
-                        "An event with an empty ROW_ID and an unexpected OPERATION '{}' was detected while applying the undo change in transaction '{}' with SCN '{}' on table '{}' by row-id '{}'. Please enable 'log.mining.include.internal.events'.",
-                        event.getEventType(), transactionId, rollbackEvent.getScn(), rollbackEvent.getTableId(), rollbackEvent.getRowId());
+                logUnexpectedEventWithEmptyRowIdWarning(transactionId, rollbackEvent, "OPERATION", event.getEventType());
                 break;
             }
             else if (event.getEventType() == EventType.SELECT_LOB_LOCATOR || event.getEventType() == EventType.EXTENDED_STRING_BEGIN) {
                 if (lobStartEntry != null && !lobStartEntry.event().getRsId().equals(event.getRsId())) {
-                    LOGGER.warn(
-                            "An event with an empty ROW_ID and an unexpected RS_ID '{}' was detected while applying the undo change in transaction '{}' with SCN '{}' on table '{}' by row-id '{}'. Please enable 'log.mining.include.internal.events'.",
-                            event.getRsId(), transactionId, rollbackEvent.getScn(), rollbackEvent.getTableId(), rollbackEvent.getRowId());
+                    logUnexpectedEventWithEmptyRowIdWarning(transactionId, rollbackEvent, "RS_ID", event.getRsId());
                     break;
                 }
                 lobStartEntry = entry;
             }
             else if (event.getEventType() == EventType.XML_BEGIN) {
                 if (lobStartEntry != null) {
-                    LOGGER.warn(
-                            "An unexpected XML_BEGIN event was detected while applying the undo change in transaction '{}' with SCN '{}' on table '{}' by row-id '{}'. Please enable 'log.mining.include.internal.events'.",
-                            transactionId, rollbackEvent.getScn(), rollbackEvent.getTableId(), rollbackEvent.getRowId());
+                    logUnexpectedEventWithEmptyRowIdWarning(transactionId, rollbackEvent, "OPERATION", event.getEventType());
                     break;
                 }
                 rolledBackEntry = entry;
@@ -235,18 +209,43 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
         if (lobStartEntry != null) {
             rolledBackEntry = lobStartEntry;
         }
+        else if (rolledBackEntry == null) {
+            return null;
+        }
 
-        EventType rolledBackType = rolledBackEntry == null ? null : rolledBackEntry.event().getEventType();
+        EventType rolledBackType = rolledBackEntry.event().getEventType();
         if ((rolledBackType == EventType.UPDATE
                 || rolledBackType == EventType.SELECT_LOB_LOCATOR
                 || rolledBackType == EventType.EXTENDED_STRING_BEGIN
                 || rolledBackType == EventType.XML_BEGIN) && rollbackType != EventType.UPDATE) {
-            Loggings.logWarningAndTraceRecord(LOGGER, rollbackEvent,
-                    "Cannot apply the undo change in transaction '{}' with SCN '{}' on table '{}' by row-id '{}' since '{}' was not expected before '{}'. Manual investigation is required.",
-                    transactionId, rollbackEvent.getScn(), rollbackEvent.getTableId(), rollbackEvent.getRowId(), rolledBackType, rollbackType);
+            logCannotApplyRollbackToSavepointWarning(transactionId, rollbackEvent, rolledBackType);
             return null;
         }
         return new LogMinerEventEntryRange(rolledBackEntry, end);
+    }
+
+    private void logCannotApplyRollbackToSavepointWarning(String transactionId, LogMinerEvent rollbackEvent, String fieldName, Object fieldValue) {
+        Loggings.logWarningAndTraceRecord(LOGGER, rollbackEvent,
+                "Cannot apply the undo change in transaction '{}' with SCN '{}' on table '{}' by row-id '{}' since the preceding event in the transaction cache has a different {} '{}'. Manual investigation is required.",
+                transactionId, rollbackEvent.getScn(), rollbackEvent.getTableId(), rollbackEvent.getRowId(), fieldName, fieldValue);
+    }
+
+    private void logCannotApplyRollbackToSavepointWarning(String transactionId, LogMinerEvent rollbackEvent, EventType rolledBackType) {
+        Loggings.logWarningAndTraceRecord(LOGGER, rollbackEvent,
+                "Cannot apply the undo change in transaction '{}' with SCN '{}' on table '{}' by row-id '{}' since '{}' was not expected before '{}'. Manual investigation is required.",
+                transactionId, rollbackEvent.getScn(), rollbackEvent.getTableId(), rollbackEvent.getRowId(), rolledBackType, rollbackEvent.getEventType());
+    }
+
+    private void logUnexpectedEventBeforeRollbackWarning(String transactionId, LogMinerEvent rollbackEvent, String fieldName, Object fieldValue) {
+        Loggings.logWarningAndTraceRecord(LOGGER, rollbackEvent,
+                "An event with an unexpected {} '{}' is followed by the rollback event in transaction '{}' with SCN '{}' on table '{}' by row-id '{}'. Please enable 'log.mining.include.internal.events'.",
+                fieldName, fieldValue, transactionId, rollbackEvent.getScn(), rollbackEvent.getTableId(), rollbackEvent.getRowId());
+    }
+
+    private void logUnexpectedEventWithEmptyRowIdWarning(String transactionId, LogMinerEvent rollbackEvent, String fieldName, Object fieldValue) {
+        Loggings.logWarningAndTraceRecord(LOGGER, rollbackEvent,
+                "An event with an empty ROW_ID and an unexpected {} '{}' was detected while applying the undo change in transaction '{}' with SCN '{}' on table '{}' by row-id '{}'. Please enable 'log.mining.include.internal.events'.",
+                fieldName, fieldValue, transactionId, rollbackEvent.getScn(), rollbackEvent.getTableId(), rollbackEvent.getRowId());
     }
 
     private int compareTransactionScnDetails(T first, T second) {
