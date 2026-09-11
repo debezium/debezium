@@ -297,7 +297,7 @@ def gitMergeAndDeleteCandidate(repoName, repoBranch) {
             git pull --rebase \"https://\${GITHUB_USERNAME}:\${GITHUB_PASSWORD}@$repoName\" $repoBranch && \\
             git checkout $repoBranch && \\
             git rebase $CANDIDATE_BRANCH && \\
-            git push --force-with-lease \"https://\${GITHUB_USERNAME}:\${GITHUB_PASSWORD}@$repoName\" HEAD:$repoBranch && \\
+            git push \"https://\${GITHUB_USERNAME}:\${GITHUB_PASSWORD}@$repoName\" HEAD:$repoBranch && \\
             git push --delete \"https://\${GITHUB_USERNAME}:\${GITHUB_PASSWORD}@$repoName\" $CANDIDATE_BRANCH
         """
          )
