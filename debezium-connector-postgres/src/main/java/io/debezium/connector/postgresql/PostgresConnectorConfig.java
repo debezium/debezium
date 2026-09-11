@@ -1149,6 +1149,18 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     "the original value is a toasted value not provided by the database. " +
                     "If starts with 'hex:' prefix it is expected that the rest of the string represents hexadecimal encoded octets.");
 
+    public static final Field PROPAGATE_COLUMN_UNAVAILABLE_VALUE_PLACEHOLDER = Field.create("column.propagate.unavailable.value.placeholder")
+            .withDisplayName("Propagate unavailable value placeholders by columns")
+            .withType(Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(false)
+            .withDescription("Declare the exact unavailable value placeholder representation each column carries "
+                    + "as the '__debezium.unavailable.value.placeholder' schema parameter, so consumers such as the "
+                    + "reselect columns post processor can recognize placeholder values without inferring them from the value shape. "
+                    + "Enabling the parameter changes the registered schemas of captured tables.");
+
     public static final Field MONEY_FRACTION_DIGITS = Field.create("money.fraction.digits")
             .withDisplayName("Money fraction digits")
             .withType(Type.SHORT)
@@ -1528,6 +1540,10 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return publishViaPartitionRoot;
     }
 
+    public boolean isUnavailableValuePlaceholderPropagated() {
+        return getConfig().getBoolean(PROPAGATE_COLUMN_UNAVAILABLE_VALUE_PLACEHOLDER);
+    }
+
     @Override
     public byte[] getUnavailableValuePlaceholder() {
         String placeholder = getConfig().getString(UNAVAILABLE_VALUE_PLACEHOLDER);
@@ -1582,7 +1598,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     LSN_FLUSH_TIMEOUT_ACTION, XMIN_FETCH_INTERVAL)
             .group(Field.Group.CONNECTOR, HSTORE_HANDLING_MODE, BINARY_HANDLING_MODE, SCHEMA_NAME_ADJUSTMENT_MODE, INTERVAL_HANDLING_MODE,
                     LOGICAL_DECODING_MESSAGE_PREFIX_INCLUDE_LIST, LOGICAL_DECODING_MESSAGE_PREFIX_EXCLUDE_LIST, PUBLISH_VIA_PARTITION_ROOT, LSN_FLUSH_MODE,
-                    SHOULD_FLUSH_LSN_IN_SOURCE_DB, UNAVAILABLE_VALUE_PLACEHOLDER, SKIPPED_OPERATIONS)
+                    SHOULD_FLUSH_LSN_IN_SOURCE_DB, UNAVAILABLE_VALUE_PLACEHOLDER, PROPAGATE_COLUMN_UNAVAILABLE_VALUE_PLACEHOLDER, SKIPPED_OPERATIONS)
             .group(Field.Group.CONNECTOR_ADVANCED, SCHEMA_REFRESH_MODE, INCLUDE_UNKNOWN_DATATYPES, SOURCE_INFO_STRUCT_MAKER)
             .group(Field.Group.CONNECTOR_SNAPSHOT, SNAPSHOT_MODE, SNAPSHOT_ISOLATION_MODE, SNAPSHOT_QUERY_MODE, SNAPSHOT_QUERY_MODE_CUSTOM_NAME, SNAPSHOT_LOCKING_MODE,
                     SNAPSHOT_LOCKING_MODE_CUSTOM_NAME, INCREMENTAL_SNAPSHOT_CHUNK_SIZE)
