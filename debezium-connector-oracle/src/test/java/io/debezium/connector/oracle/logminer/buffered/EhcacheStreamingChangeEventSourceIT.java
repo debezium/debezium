@@ -23,7 +23,7 @@ public class EhcacheStreamingChangeEventSourceIT extends AbstractBufferedLogMine
         return TestHelper.withDefaultEhcacheConfigurations(TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.LOG_MINING_BUFFER_TYPE, LogMiningBufferType.EHCACHE.getValue())
                 .with(OracleConnectorConfig.LOG_MINING_BUFFER_DROP_ON_STOP, Boolean.TRUE),
-                1024 * 66);
+                1024 * 1_000_000);
     }
 
     @Override
