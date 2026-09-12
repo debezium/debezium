@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -34,6 +35,7 @@ import org.junit.jupiter.api.Test;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
+import io.debezium.doc.FixFor;
 import io.debezium.junit.relational.TestRelationalDatabaseConfig;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.ErrorHandler;
@@ -180,6 +182,44 @@ class BaseSourceTaskTest {
             assertThat(baseSourceTask.startRootLoggingContext).isEqualTo(expectedStartRootLogging);
             assertThat(baseSourceTask.pollRootLoggingContext).isEqualTo(expectedRootLogging);
         }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2460")
+    void verifyCommitAcknowledgesOnlyFlushedGeneration() throws InterruptedException {
+        baseSourceTask.start(new HashMap<>());
+        pollAndIgnoreRetryException(baseSourceTask);
+
+        Map<String, String> partition = Map.of("server", "test");
+        Map<String, Long> offset1 = Map.of("lsn", 100L);
+        Map<String, Long> offset2 = Map.of("lsn", 200L);
+
+        // generation 1 delivered, first commit: nothing was flushed before, nothing may be acknowledged
+        baseSourceTask.commitRecord(sourceRecordWith(partition, offset1), null);
+        baseSourceTask.performCommit();
+        verify(baseSourceTask.coordinator, times(0)).commitOffset(anyMap(), anyMap());
+
+        // generation 2 delivered, second commit: acknowledges generation 1 only
+        baseSourceTask.commitRecord(sourceRecordWith(partition, offset2), null);
+        baseSourceTask.performCommit();
+        verify(baseSourceTask.coordinator, times(1)).commitOffset(partition, offset1);
+        verify(baseSourceTask.coordinator, times(0)).commitOffset(partition, offset2);
+
+        // no new records, third commit: acknowledges generation 2, the last flushed snapshot
+        baseSourceTask.performCommit();
+        verify(baseSourceTask.coordinator, times(1)).commitOffset(partition, offset2);
+
+        // nothing new flushed: no further acknowledgements
+        baseSourceTask.performCommit();
+        verify(baseSourceTask.coordinator, times(2)).commitOffset(anyMap(), anyMap());
+    }
+
+    private static SourceRecord sourceRecordWith(Map<String, ?> partition, Map<String, ?> offset) {
+        Schema valueSchema = SchemaBuilder.struct()
+                .name("io.debezium.connector.common.Value")
+                .field("name", Schema.STRING_SCHEMA)
+                .build();
+        return new SourceRecord(partition, offset, "dummy", valueSchema, new Struct(valueSchema).put("name", "test"));
     }
 
     private static void pollAndIgnoreRetryException(BaseSourceTask<Partition, OffsetContext> baseSourceTask) throws InterruptedException {
