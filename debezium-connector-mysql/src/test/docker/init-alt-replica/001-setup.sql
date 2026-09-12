@@ -12,6 +12,8 @@ CREATE USER 'snapper' IDENTIFIED BY 'snapperpass';
 GRANT SELECT, RELOAD, SHOW DATABASES, REPLICATION SLAVE, REPLICATION CLIENT  ON *.* TO 'snapper'@'%';
 CREATE USER 'cloud' IDENTIFIED BY 'cloudpass';
 GRANT SELECT, RELOAD, SHOW DATABASES, REPLICATION SLAVE, REPLICATION CLIENT, LOCK TABLES  ON *.* TO 'cloud'@'%';
+-- MySQL 8.0+ only: dynamic privilege for LOCK INSTANCE FOR BACKUP (statement is a no-op on older versions)
+/*!80011 GRANT BACKUP_ADMIN ON *.* TO 'cloud'@'%' */;
 GRANT ALL PRIVILEGES ON *.* TO 'mysqlreplica'@'%';
 
 -- Start the GTID-based replication ...
