@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.oracle.logminer.buffered.ehcache.serialization;
 
+import java.io.IOException;
+
 import io.debezium.connector.oracle.logminer.events.XmlEndEvent;
 
 /**
@@ -16,5 +18,19 @@ public class XmlEndEventSerdesProvider<T extends XmlEndEvent> extends LogMinerEv
     @Override
     public Class<?> getJavaType() {
         return XmlEndEvent.class;
+    }
+
+    @Override
+    public void serialize(XmlEndEvent event, SerializerOutputStream stream) throws IOException {
+        super.serialize(event, stream);
+
+        stream.writeLong(event.getTransactionSequence());
+    }
+
+    @Override
+    public void deserialize(DeserializationContext context, SerializerInputStream stream) throws IOException {
+        super.deserialize(context, stream);
+
+        context.addValue(stream.hasNext() ? stream.readLong() : 1L);
     }
 }
