@@ -194,6 +194,32 @@ public interface LogMinerTransactionCache<T extends Transaction> {
     boolean isAbandoned(String transactionId);
 
     /**
+     * Get the most recently enqueued event for the specified transaction.
+     *
+     * @param transactionId the transaction identifier, should not be {@code null}
+     * @return the most recently enqueued event for the transaction, or {@code null} if none is tracked
+     */
+    LogMinerEvent getLastEnqueuedEvent(String transactionId);
+
+    /**
+     * Records the given event as the most recently enqueued event for the specified transaction.
+     *
+     * @param transactionId the transaction identifier, should not be {@code null}
+     * @param event the event to track, should not be {@code null}
+     * @return the previously tracked event for the transaction, or {@code null} if there was none
+     */
+    LogMinerEvent putLastEnqueuedEvent(String transactionId, LogMinerEvent event);
+
+    /**
+     * Removes the tracked last enqueued event for the specified transaction. This should be done
+     * whenever the transaction is removed from the cache, e.g. on commit, rollback, or abandonment.
+     *
+     * @param transactionId the transaction identifier, should not be {@code null}
+     * @return the removed event, or {@code null} if none was tracked
+     */
+    LogMinerEvent removeLastEnqueuedEvent(String transactionId);
+
+    /**
      * Clears the contents of the cache.
      */
     void clear();
