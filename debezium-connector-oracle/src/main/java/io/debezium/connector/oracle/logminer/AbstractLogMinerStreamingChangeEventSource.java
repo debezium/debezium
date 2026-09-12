@@ -1413,7 +1413,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         else if (getOffsetContext().getCommitScn().hasEventScnBeenHandled(event)) {
             final Scn commitScn = getOffsetContext().getCommitScn().getCommitScnForRedoThread(event.getThread());
             LOGGER.trace("DDL skipped with SCN {} <= Commit SCN {} for thread {}: {}",
-                    event.getScn(), commitScn, event.getRowId(), Loggings.maybeRedactSensitiveData(event));
+                    event.getScn(), commitScn, event.getThread(), Loggings.maybeRedactSensitiveData(event));
             return true;
         }
 
