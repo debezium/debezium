@@ -393,10 +393,8 @@ public final class ConnectValueSerde {
 
     private static void describeSchema(DataOutputStream dos, Schema schema) throws IOException {
         if (schema == null) {
-            dos.writeBoolean(false);
             return;
         }
-        dos.writeBoolean(true);
         writeNullableString(dos, schema.name());
         dos.writeByte(schema.type().ordinal());
         dos.writeBoolean(schema.isOptional());
@@ -404,12 +402,10 @@ public final class ConnectValueSerde {
         dos.writeInt(version != null ? version : 0);
         switch (schema.type()) {
             case STRUCT:
-                dos.writeInt(schema.fields() != null ? schema.fields().size() : 0);
-                if (schema.fields() != null) {
-                    for (org.apache.kafka.connect.data.Field field : schema.fields()) {
-                        dos.writeUTF(field.name());
-                        describeSchema(dos, field.schema());
-                    }
+                dos.writeInt(schema.fields().size());
+                for (org.apache.kafka.connect.data.Field field : schema.fields()) {
+                    dos.writeUTF(field.name());
+                    describeSchema(dos, field.schema());
                 }
                 break;
             case ARRAY:
@@ -606,6 +602,9 @@ public final class ConnectValueSerde {
         final int length = dis.readInt();
         if (length < 0) {
             throw new DebeziumException("Invalid negative byte array length: " + length);
+        }
+        if (length > dis.available()) {
+            throw new DebeziumException("Invalid byte array length: " + length);
         }
         final byte[] bytes = new byte[length];
         dis.readFully(bytes);
