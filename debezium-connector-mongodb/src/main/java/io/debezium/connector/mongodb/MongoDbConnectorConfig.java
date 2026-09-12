@@ -19,6 +19,7 @@ import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
+import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.connect.data.Struct;
 import org.bson.BsonTimestamp;
 import org.bson.Document;
@@ -974,8 +975,20 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDefault(-1L)
-            .withDescription("If no existing offset is detected,  "
-                    + "Debezium will start streaming from given timestamp");
+            .withDescription("If no existing offset is detected, Debezium will start streaming from the given packed BSON timestamp. "
+                    + "Cannot be used with capture.start.timestamp unless set to -1 (disabled).");
+
+    public static final Field CAPTURE_START_TIMESTAMP = Field.create("capture.start.timestamp")
+            .withDisplayName("Capture from timestamp")
+            .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
+            .withWidth(Width.LONG)
+            .withImportance(Importance.LOW)
+            .withValidation(MongoDbConnectorConfig::validateStartTimestamp)
+            .withDescription("If no existing offset is detected, Debezium will start streaming from this timestamp. "
+                    + "Accepts integer Unix seconds, ISO-8601 with a UTC offset and whole-second precision, "
+                    + "or a BSON timestamp in Extended JSON format. "
+                    + "Cannot be used with capture.start.op.time unless that property is set to -1 (disabled).");
 
     public static final Field CAPTURE_SCOPE = Field.create("capture.scope")
             .withDisplayName("Capture scope")
@@ -1102,7 +1115,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
             .group(Field.Group.FILTERS, DATABASE_INCLUDE_LIST, DATABASE_EXCLUDE_LIST, COLLECTION_INCLUDE_LIST, COLLECTION_EXCLUDE_LIST, FIELD_EXCLUDE_LIST, FIELD_RENAMES,
                     SNAPSHOT_FILTER_QUERY_BY_COLLECTION)
             .group(Field.Group.CONNECTOR, TOPIC_PREFIX, SNAPSHOT_MODE, CAPTURE_MODE, CAPTURE_SCOPE, CAPTURE_TARGET, JSON_SERIALIZATION_MODE, SCHEMA_NAME_ADJUSTMENT_MODE,
-                    SOURCE_INFO_STRUCT_MAKER)
+                    SOURCE_INFO_STRUCT_MAKER, CAPTURE_START_OP_TIME, CAPTURE_START_TIMESTAMP)
             .create();
 
     /**
@@ -1115,7 +1128,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
     }
 
     private final SnapshotMode snapshotMode;
-    private final Long startOperationTime;
+    private final BsonTimestamp startOperationTime;
     private final CaptureMode captureMode;
     private final JsonSerializationMode jsonSerializationMode;
     private final FullUpdateType captureModeFullUpdateType;
@@ -1173,7 +1186,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
         String snapshotModeValue = config.getString(MongoDbConnectorConfig.SNAPSHOT_MODE);
         this.snapshotMode = SnapshotMode.parse(snapshotModeValue, MongoDbConnectorConfig.SNAPSHOT_MODE.defaultValueAsString());
 
-        this.startOperationTime = config.getLong(CAPTURE_START_OP_TIME);
+        this.startOperationTime = resolveStartOperationTime(config);
 
         String captureModeValue = config.getString(MongoDbConnectorConfig.CAPTURE_MODE);
         this.captureMode = CaptureMode.parse(captureModeValue, MongoDbConnectorConfig.CAPTURE_MODE.defaultValueAsString());
@@ -1284,6 +1297,36 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
         return ConnectorConfigValidationHelper.validateExcludeField(config, DATABASE_INCLUDE_LIST, DATABASE_EXCLUDE_LIST, problems);
     }
 
+    private static int validateStartTimestamp(Configuration config, Field field, ValidationOutput problems) {
+        try {
+            resolveStartOperationTime(config);
+            return 0;
+        }
+        catch (ConfigException e) {
+            problems.accept(field, config.getString(field), e.getMessage());
+            return 1;
+        }
+    }
+
+    private static BsonTimestamp resolveStartOperationTime(Configuration config) {
+        final var value = config.getString(CAPTURE_START_TIMESTAMP);
+        final var operationTime = config.getLong(CAPTURE_START_OP_TIME);
+        final var hasOperationTime = !CAPTURE_START_OP_TIME.defaultValue().equals(operationTime);
+        if (value != null) {
+            if (hasOperationTime) {
+                throw new ConfigException(CAPTURE_START_TIMESTAMP.name(), value,
+                        "Cannot be configured together with '" + CAPTURE_START_OP_TIME.name() + "'");
+            }
+            try {
+                return BsonTimestampParser.parse(value);
+            }
+            catch (IllegalArgumentException e) {
+                throw new ConfigException(CAPTURE_START_TIMESTAMP.name(), value, e.getMessage());
+            }
+        }
+        return hasOperationTime ? new BsonTimestamp(operationTime) : null;
+    }
+
     private static int validateCaptureTarget(Configuration config, Field field, ValidationOutput problems) {
         var value = config.getString(field);
         var scope = CaptureScope.parse(config.getString(CAPTURE_SCOPE), CAPTURE_SCOPE.defaultValueAsString());
@@ -1340,10 +1383,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
     }
 
     public Optional<BsonTimestamp> startAtOperationTime() {
-        if (CAPTURE_START_OP_TIME.defaultValue().equals(startOperationTime)) {
-            return Optional.empty();
-        }
-        return Optional.of(new BsonTimestamp(startOperationTime));
+        return Optional.ofNullable(startOperationTime);
     }
 
     public FullUpdateType getCaptureModeFullUpdateType() {
