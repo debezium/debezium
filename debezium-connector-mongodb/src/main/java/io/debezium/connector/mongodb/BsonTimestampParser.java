@@ -17,6 +17,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectReader;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 
+import io.debezium.util.Strings;
+
 /**
  * Parses a change stream start time without losing timestamp precision or overflowing BSON timestamp components.
  */
@@ -35,7 +37,7 @@ final class BsonTimestampParser {
     }
 
     static BsonTimestamp parse(String value) {
-        if (value == null || value.isBlank()) {
+        if (Strings.isNullOrBlank(value)) {
             throw new IllegalArgumentException(FORMAT_DESCRIPTION);
         }
         final var timestamp = value.trim();
