@@ -129,7 +129,7 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
                 return null;
             }
             else if (RowIdCodec.EMPTY_ROW_ID.equals(event.getRowId())) {
-                logUnexpectedEventBeforeRollbackWarning(transactionId, rollbackEvent, "ROW_ID", event.getRowId());
+                logUnexpectedEventBeforeRollbackWarning(transactionId, rollbackEvent, "ROW_ID", event.getRowIdAsString());
                 if (event.getEventType() == EventType.INSERT) {
                     if (rollbackType == EventType.DELETE) {
                         return new LogMinerEventEntryRange(entry, end);
@@ -149,7 +149,7 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
                 }
                 break;
             }
-            logCannotApplyRollbackToSavepointWarning(transactionId, rollbackEvent, "ROW_ID", event.getRowId());
+            logCannotApplyRollbackToSavepointWarning(transactionId, rollbackEvent, "ROW_ID", event.getRowIdAsString());
             return null;
         }
         while (iterator.hasNext()) {
@@ -227,25 +227,25 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
     private void logCannotApplyRollbackToSavepointWarning(String transactionId, LogMinerEvent rollbackEvent, String fieldName, Object fieldValue) {
         Loggings.logWarningAndTraceRecord(LOGGER, rollbackEvent,
                 "Cannot apply the undo change in transaction '{}' with SCN '{}' on table '{}' by row-id '{}' since the preceding event in the transaction cache has a different {} '{}'. Manual investigation is required.",
-                transactionId, rollbackEvent.getScn(), rollbackEvent.getTableId(), rollbackEvent.getRowId(), fieldName, fieldValue);
+                transactionId, rollbackEvent.getScn(), rollbackEvent.getTableId(), rollbackEvent.getRowIdAsString(), fieldName, fieldValue);
     }
 
     private void logCannotApplyRollbackToSavepointWarning(String transactionId, LogMinerEvent rollbackEvent, EventType rolledBackType) {
         Loggings.logWarningAndTraceRecord(LOGGER, rollbackEvent,
                 "Cannot apply the undo change in transaction '{}' with SCN '{}' on table '{}' by row-id '{}' since '{}' was not expected before '{}'. Manual investigation is required.",
-                transactionId, rollbackEvent.getScn(), rollbackEvent.getTableId(), rollbackEvent.getRowId(), rolledBackType, rollbackEvent.getEventType());
+                transactionId, rollbackEvent.getScn(), rollbackEvent.getTableId(), rollbackEvent.getRowIdAsString(), rolledBackType, rollbackEvent.getEventType());
     }
 
     private void logUnexpectedEventBeforeRollbackWarning(String transactionId, LogMinerEvent rollbackEvent, String fieldName, Object fieldValue) {
         Loggings.logWarningAndTraceRecord(LOGGER, rollbackEvent,
                 "An event with an unexpected {} '{}' is followed by the rollback event in transaction '{}' with SCN '{}' on table '{}' by row-id '{}'. Please enable 'log.mining.include.internal.events'.",
-                fieldName, fieldValue, transactionId, rollbackEvent.getScn(), rollbackEvent.getTableId(), rollbackEvent.getRowId());
+                fieldName, fieldValue, transactionId, rollbackEvent.getScn(), rollbackEvent.getTableId(), rollbackEvent.getRowIdAsString());
     }
 
     private void logUnexpectedEventWithEmptyRowIdWarning(String transactionId, LogMinerEvent rollbackEvent, String fieldName, Object fieldValue) {
         Loggings.logWarningAndTraceRecord(LOGGER, rollbackEvent,
                 "An event with an empty ROW_ID and an unexpected {} '{}' was detected while applying the undo change in transaction '{}' with SCN '{}' on table '{}' by row-id '{}'. Please enable 'log.mining.include.internal.events'.",
-                fieldName, fieldValue, transactionId, rollbackEvent.getScn(), rollbackEvent.getTableId(), rollbackEvent.getRowId());
+                fieldName, fieldValue, transactionId, rollbackEvent.getScn(), rollbackEvent.getTableId(), rollbackEvent.getRowIdAsString());
     }
 
     private int compareTransactionScnDetails(T first, T second) {
