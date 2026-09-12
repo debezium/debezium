@@ -57,6 +57,7 @@ import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceM
 import io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerStreamingChangeEventSource.ProcessResult;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
+import io.debezium.connector.oracle.logminer.events.LogMinerEventWithSequence;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.doc.FixFor;
@@ -730,22 +731,22 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
 
     @Test
     @FixFor("debezium/dbz#1960")
-    public void testLastEventIsForgottenWhenTransactionCommits() throws Exception {
+    public void testLastEnqueuedEventIsForgottenWhenTransactionCommits() throws Exception {
         try (var source = getChangeEventSource(getConfig().build())) {
             source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
             source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1));
 
-            assertThat(source.getLastEventByTransactionId()).containsOnlyKeys(TRANSACTION_ID_1);
+            assertThat(source.getLastEnqueuedEventByTransactionId()).containsOnlyKeys(TRANSACTION_ID_1);
 
             source.processEvent(getCommitLogMinerEventRow(3, TRANSACTION_ID_1));
 
-            assertThat(source.getLastEventByTransactionId()).isEmpty();
+            assertThat(source.getLastEnqueuedEventByTransactionId()).isEmpty();
         }
     }
 
     @Test
     @FixFor("debezium/dbz#1960")
-    public void testLastEventIsForgottenWhenPartialRollbackIsAppliedByPrefixAndTransactionCommits() throws Exception {
+    public void testLastEnqueuedEventIsForgottenWhenPartialRollbackIsAppliedByPrefixAndTransactionCommits() throws Exception {
         try (var source = getChangeEventSource(getConfig().build())) {
             source.processEvent(getStartLogMinerEventRow(1, PARTIAL_TXN_ID_FULL));
             source.processEvent(getInsertLogMinerEventRow(2, PARTIAL_TXN_ID_FULL, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'insert'"));
@@ -754,7 +755,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             source.processEvent(getCommitLogMinerEventRow(5, PARTIAL_TXN_ID_FULL));
 
             // The undo was attributed to PARTIAL_TXN_ID_FULL, so committing it must leave nothing behind
-            assertThat(source.getLastEventByTransactionId()).isEmpty();
+            assertThat(source.getLastEnqueuedEventByTransactionId()).isEmpty();
         }
     }
 
@@ -1177,10 +1178,10 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         }
 
         @SuppressWarnings("unchecked")
-        public Map<String, LogMinerEventRow> getLastEventByTransactionId() throws Exception {
-            var field = BufferedLogMinerStreamingChangeEventSource.class.getDeclaredField("lastEventByTransactionId");
+        public Map<String, LogMinerEventWithSequence> getLastEnqueuedEventByTransactionId() throws Exception {
+            var field = AbstractLogMinerTransactionCache.class.getDeclaredField("lastEnqueuedEventByTransactionId");
             field.setAccessible(true);
-            return (Map<String, LogMinerEventRow>) field.get(this);
+            return (Map<String, LogMinerEventWithSequence>) field.get(this.getTransactionCache());
         }
 
         @Override

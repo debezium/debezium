@@ -13,6 +13,7 @@ import java.util.stream.Stream;
 
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
+import io.debezium.connector.oracle.logminer.events.LogMinerEventWithSequence;
 
 /**
  * A cache implementation that stores transactions and their respective events.
@@ -192,6 +193,32 @@ public interface LogMinerTransactionCache<T extends Transaction> {
      * @return {@code true} if the transaction is abandoned, {@code false} otherwise
      */
     boolean isAbandoned(String transactionId);
+
+    /**
+     * Get the most recently enqueued event for the specified transaction.
+     *
+     * @param transactionId the transaction identifier, should not be {@code null}
+     * @return the most recently enqueued event for the transaction, or {@code null} if none is tracked
+     */
+    LogMinerEventWithSequence getLastEnqueuedEvent(String transactionId);
+
+    /**
+     * Records the given event as the most recently enqueued event for the specified transaction.
+     *
+     * @param transactionId the transaction identifier, should not be {@code null}
+     * @param event the event to track, should not be {@code null}
+     * @return the previously tracked event for the transaction, or {@code null} if there was none
+     */
+    LogMinerEventWithSequence putLastEnqueuedEvent(String transactionId, LogMinerEventWithSequence event);
+
+    /**
+     * Removes the tracked last enqueued event for the specified transaction. This should be done
+     * whenever the transaction is removed from the cache, e.g. on commit, rollback, or abandonment.
+     *
+     * @param transactionId the transaction identifier, should not be {@code null}
+     * @return the removed event, or {@code null} if none was tracked
+     */
+    LogMinerEventWithSequence removeLastEnqueuedEvent(String transactionId);
 
     /**
      * Clears the contents of the cache.

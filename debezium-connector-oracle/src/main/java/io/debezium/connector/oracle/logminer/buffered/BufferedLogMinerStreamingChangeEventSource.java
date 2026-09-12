@@ -51,6 +51,7 @@ import io.debezium.connector.oracle.logminer.events.DmlEvent;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
+import io.debezium.connector.oracle.logminer.events.LogMinerEventWithSequence;
 import io.debezium.connector.oracle.logminer.events.RedoSqlDmlEvent;
 import io.debezium.connector.oracle.logminer.events.RollbackToSavepointEvent;
 import io.debezium.connector.oracle.logminer.events.RowIdCodec;
@@ -84,7 +85,6 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     private final String queryString;
     private final CacheProvider<Transaction> cacheProvider;
     private final TransactionFactory<Transaction> transactionFactory;
-    private final Map<String, LogMinerEventRow> lastEventByTransactionId = new HashMap<>();
 
     private Instant lastProcessedScnChangeTime = null;
     private Scn lastProcessedScn = Scn.NULL;
@@ -400,8 +400,8 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
     @Override
     protected void handleInternalEvent(LogMinerEventRow event) throws InterruptedException {
-        final LogMinerEventRow lastEvent = lastEventByTransactionId.get(event.getTransactionId());
-        if (lastEvent != null && (lastEvent.getRowId().endsWith(RowIdCodec.EMPTY_ROW_ID_SUFFIX)
+        final LogMinerEventWithSequence lastEvent = getTransactionCache().getLastEnqueuedEvent(event.getTransactionId());
+        if (lastEvent != null && (lastEvent.getRowId().equals(RowIdCodec.EMPTY_ROW_ID)
                 || lastEvent.getEventType() == EventType.SELECT_LOB_LOCATOR
                 || lastEvent.getEventType() == EventType.LOB_WRITE
                 || lastEvent.getEventType() == EventType.LOB_TRIM
@@ -836,7 +836,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         final Transaction transaction = getTransactionCache().getTransaction(transactionId);
         if (transaction != null) {
             LOGGER.debug("Skipping GoldenGate replication marker for transaction {} with SCN {}", transactionId, event.getScn());
-            lastEventByTransactionId.remove(transaction.getTransactionId());
+            getTransactionCache().removeLastEnqueuedEvent(transaction.getTransactionId());
             getTransactionCache().removeTransactionEvents(transaction);
             getTransactionCache().removeTransaction(transaction);
         }
@@ -1087,7 +1087,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         else {
             getTransactionCache().removeAbandonedTransaction(transaction.getTransactionId());
         }
-        lastEventByTransactionId.remove(transaction.getTransactionId());
+        getTransactionCache().removeLastEnqueuedEvent(transaction.getTransactionId());
         getTransactionCache().removeTransactionEvents(transaction);
     }
 
@@ -1130,7 +1130,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         if (rollbackEvent) {
             final Transaction transaction = getTransactionCache().getTransaction(transactionId);
             if (transaction != null) {
-                lastEventByTransactionId.remove(transaction.getTransactionId());
+                getTransactionCache().removeLastEnqueuedEvent(transaction.getTransactionId());
                 getTransactionCache().removeTransactionEvents(transaction);
                 getTransactionCache().removeTransaction(transaction);
             }
@@ -1222,17 +1222,17 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         // was attributed to carries its real id. Every removal from this map is keyed by the real id, so an
         // entry stored under the row's id would never be removed and would be retained for the life of the
         // task.
-        LogMinerEventRow lastEvent = lastEventByTransactionId.get(transaction.getTransactionId());
-        if (lastEvent != null && lastEvent != event
+        LogMinerEventWithSequence lastEvent = getTransactionCache().getLastEnqueuedEvent(transaction.getTransactionId());
+        if (lastEvent != null && event.getEventType() == dispatchedEvent.getEventType()
                 && lastEvent.getEventType() == EventType.XML_END && lastEvent.getTransactionSequence() == 1
                 && event.getEventType() == EventType.XML_BEGIN && event.getTransactionSequence() > 1) {
             LOGGER.debug(
                     "Transaction {} is missing INTERNAL ROLLBACK=0 SEQUENCE#=1 with a real ROW_ID between XML_END at SCN {} and XML_BEGIN at SCN {}, simulate it to mark the end of the previous statement in the cache",
                     transactionId, lastEvent.getScn(), event.getScn());
-            enqueueEvent(lastEvent, new LogMinerEvent(EventType.INTERNAL, lastEvent.getScn(),
-                    lastEvent.getTableId(), lastEvent.getRowId(), lastEvent.getRsId(), lastEvent.getChangeTime()));
+            enqueueEvent(event, new LogMinerEvent(EventType.INTERNAL, lastEvent.getScn(),
+                    lastEvent.getTableId(), lastEvent.getRowIdAsString(), lastEvent.getRsId(), lastEvent.getChangeTime()));
         }
-        lastEventByTransactionId.put(transaction.getTransactionId(), event);
+        getTransactionCache().putLastEnqueuedEvent(transaction.getTransactionId(), new LogMinerEventWithSequence(event));
 
         final int eventId = transaction.getNextEventId();
         if (!getTransactionCache().containsTransactionEvent(transaction, eventId)) {
