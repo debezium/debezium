@@ -19,20 +19,27 @@ import io.debezium.relational.TableId;
 public class XmlBeginEvent extends DmlEvent {
 
     private final String columnName;
+    private final long transactionSequence;
 
     public XmlBeginEvent(LogMinerEventRow row, LogMinerDmlEntry dmlEntry, String columnName) {
         super(row, dmlEntry);
         this.columnName = columnName;
+        this.transactionSequence = row.getTransactionSequence() == null ? 1L : row.getTransactionSequence();
     }
 
     public XmlBeginEvent(EventType eventType, Scn scn, TableId tableId, String rowId, String rsId, Instant changeTime,
-                         Object[] oldValues, Object[] newValues, String columnName) {
+                         Object[] oldValues, Object[] newValues, String columnName, long transactionSequence) {
         super(eventType, scn, tableId, rowId, rsId, changeTime, oldValues, newValues);
         this.columnName = columnName;
+        this.transactionSequence = transactionSequence;
     }
 
     public String getColumnName() {
         return columnName;
+    }
+
+    public long getTransactionSequence() {
+        return transactionSequence;
     }
 
     @Override

@@ -48,11 +48,12 @@ public class XmlBeginEventAdapter extends DmlEventAdapter {
      * @param oldValues old column values
      * @param newValues new column values
      * @param columnName the column name references by the SelectLobLocatorEvent
+     * @param transactionSequence the transaction sequence number of the event
      * @return the constructed SelectLobLocatorEvent
      */
     @ProtoFactory
     public XmlBeginEvent factory(int eventType, String scn, String tableId, String rowId, String rsId, String changeTime,
-                                 String[] oldValues, String[] newValues, String columnName) {
+                                 String[] oldValues, String[] newValues, String columnName, long transactionSequence) {
         return new XmlBeginEvent(
                 EventType.from(eventType),
                 Scn.valueOf(scn),
@@ -62,7 +63,8 @@ public class XmlBeginEventAdapter extends DmlEventAdapter {
                 Instant.parse(changeTime),
                 oldValues,
                 newValues,
-                columnName);
+                columnName,
+                transactionSequence);
     }
 
     /**
@@ -74,6 +76,17 @@ public class XmlBeginEventAdapter extends DmlEventAdapter {
     @ProtoField(number = 9)
     public String getColumnName(XmlBeginEvent event) {
         return event.getColumnName();
+    }
+
+    /**
+     * A ProtoStream handler to extract the {@code transactionSequence} field from a {@link XmlBeginEvent} type.
+     *
+     * @param event the event instance, must not be {@code null}
+     * @return the transaction sequence number
+     */
+    @ProtoField(number = 10, defaultValue = "1")
+    public long getTransactionSequence(XmlBeginEvent event) {
+        return event.getTransactionSequence();
     }
 
 }
