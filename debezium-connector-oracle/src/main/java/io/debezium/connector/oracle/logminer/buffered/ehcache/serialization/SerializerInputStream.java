@@ -86,6 +86,16 @@ public class SerializerInputStream extends AbstractSerializerStream {
     }
 
     /**
+     * Read a long value from the stream.
+     *
+     * @return the long value
+     * @throws IOException when a read operation fails
+     */
+    public long readLong() throws IOException {
+        return delegate.readLong();
+    }
+
+    /**
      * Read a string value from the stream.
      *
      * @return the string value or {@code null} when null
@@ -98,6 +108,20 @@ public class SerializerInputStream extends AbstractSerializerStream {
             return null;
         }
         return delegate.readUTF();
+    }
+
+    /**
+     * Checks whether there is more data remaining to be read from the stream.
+     *
+     * This is used to preserve backward compatibility when reading cache entries that were
+     * persisted by an older version that did not yet serialize a field appended to the end
+     * of a type's byte layout.
+     *
+     * @return {@code true} if at least one more byte remains in the stream
+     * @throws IOException when a read operation fails
+     */
+    public boolean hasNext() throws IOException {
+        return delegate.available() > 0;
     }
 
     /**

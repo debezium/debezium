@@ -19,6 +19,8 @@ import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.events.RollbackToSavepointEvent;
+import io.debezium.connector.oracle.logminer.events.XmlBeginEvent;
+import io.debezium.connector.oracle.logminer.events.XmlEndEvent;
 import io.debezium.doc.FixFor;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.TableId;
@@ -799,35 +801,33 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
         // Version: 26ai Free Release 23.26.2.0.0
         LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
         LogMinerEvent[] events = new LogMinerEvent[]{
-                event(EventType.INSERT, 0, "AAAAAAAAAAAAAAAAAA", "1"),
-                event(EventType.XML_BEGIN, 0, "AAAAAAAAAAAAAAAAAA", "2"),
-                event(EventType.XML_WRITE, 0, "AAAAAAAAAAAAAAAAAA", "2"),
-                event(EventType.XML_END, 0, "AAAAAAAAAAAAAAAAAA", "2"),
-                event(EventType.UPDATE, 0, "BBBBBBBBBBBBBBBBBB", "3"),
-                event(EventType.EXTENDED_STRING_BEGIN, 0, "AAAAAAAAAAAAAAAAAA", "4"),
-                event(EventType.EXTENDED_STRING_WRITE, 0, "AAAAAAAAAAAAAAAAAA", "5"),
-                event(EventType.XML_BEGIN, 0, "AAAAAAAAAAAAAAAAAA", "6"),
-                event(EventType.XML_WRITE, 0, "AAAAAAAAAAAAAAAAAA", "6"),
-                event(EventType.XML_END, 0, "AAAAAAAAAAAAAAAAAA", "6"),
-                // event(EventType.INTERNAL, 0, "BBBBBBBBBBBBBBBBBB", "7"), // SEQUENCE#=1
-                event(EventType.INTERNAL, 0, "AAAAAAAAAAAAAAAAAA", "6"), // added by Debezium
-                event(EventType.XML_BEGIN, 0, "AAAAAAAAAAAAAAAAAA", "8"),
-                event(EventType.XML_WRITE, 0, "AAAAAAAAAAAAAAAAAA", "8"),
-                event(EventType.XML_END, 0, "AAAAAAAAAAAAAAAAAA", "8"),
-                event(EventType.UPDATE, 0, "BBBBBBBBBBBBBBBBBB", "9"),
-                event(EventType.UPDATE, 1, "BBBBBBBBBBBBBBBBBB", "10"), };
+                event(EventType.INSERT, 0, "AAAAAAAAAAAAAAAAAA", "1", 1L),
+                event(EventType.XML_BEGIN, 0, "AAAAAAAAAAAAAAAAAA", "2", 2L),
+                event(EventType.XML_WRITE, 0, "AAAAAAAAAAAAAAAAAA", "2", 3L),
+                event(EventType.XML_END, 0, "AAAAAAAAAAAAAAAAAA", "2", 4L),
+                event(EventType.UPDATE, 0, "BBBBBBBBBBBBBBBBBB", "3", 5L),
+                event(EventType.EXTENDED_STRING_BEGIN, 0, "AAAAAAAAAAAAAAAAAA", "4", 3L),
+                event(EventType.EXTENDED_STRING_WRITE, 0, "AAAAAAAAAAAAAAAAAA", "5", 1L),
+                event(EventType.XML_BEGIN, 0, "AAAAAAAAAAAAAAAAAA", "6", 4L),
+                event(EventType.XML_WRITE, 0, "AAAAAAAAAAAAAAAAAA", "6", 1L),
+                event(EventType.XML_END, 0, "AAAAAAAAAAAAAAAAAA", "6", 1L),
+                // event(EventType.INTERNAL, 0, "BBBBBBBBBBBBBBBBBB", "7", 1L),
+                event(EventType.XML_BEGIN, 0, "AAAAAAAAAAAAAAAAAA", "8", 2L),
+                event(EventType.XML_WRITE, 0, "AAAAAAAAAAAAAAAAAA", "8", 3L),
+                event(EventType.XML_END, 0, "AAAAAAAAAAAAAAAAAA", "8", 4L),
+                event(EventType.UPDATE, 0, "BBBBBBBBBBBBBBBBBB", "9", 5L),
+                event(EventType.UPDATE, 1, "BBBBBBBBBBBBBBBBBB", "10", 1L), };
         LogMinerEvent[] expected = new LogMinerEvent[]{
-                event(EventType.INSERT, 0, "AAAAAAAAAAAAAAAAAA", "1"),
-                event(EventType.XML_BEGIN, 0, "AAAAAAAAAAAAAAAAAA", "2"),
-                event(EventType.XML_WRITE, 0, "AAAAAAAAAAAAAAAAAA", "2"),
-                event(EventType.XML_END, 0, "AAAAAAAAAAAAAAAAAA", "2"),
-                event(EventType.UPDATE, 0, "BBBBBBBBBBBBBBBBBB", "3"),
-                event(EventType.EXTENDED_STRING_BEGIN, 0, "AAAAAAAAAAAAAAAAAA", "4"),
-                event(EventType.EXTENDED_STRING_WRITE, 0, "AAAAAAAAAAAAAAAAAA", "5"),
-                event(EventType.XML_BEGIN, 0, "AAAAAAAAAAAAAAAAAA", "6"),
-                event(EventType.XML_WRITE, 0, "AAAAAAAAAAAAAAAAAA", "6"),
-                event(EventType.XML_END, 0, "AAAAAAAAAAAAAAAAAA", "6"),
-                event(EventType.INTERNAL, 0, "AAAAAAAAAAAAAAAAAA", "6"),
+                event(EventType.INSERT, 0, "AAAAAAAAAAAAAAAAAA", "1", 1L),
+                event(EventType.XML_BEGIN, 0, "AAAAAAAAAAAAAAAAAA", "2", 2L),
+                event(EventType.XML_WRITE, 0, "AAAAAAAAAAAAAAAAAA", "2", 3L),
+                event(EventType.XML_END, 0, "AAAAAAAAAAAAAAAAAA", "2", 4L),
+                event(EventType.UPDATE, 0, "BBBBBBBBBBBBBBBBBB", "3", 5L),
+                event(EventType.EXTENDED_STRING_BEGIN, 0, "AAAAAAAAAAAAAAAAAA", "4", 3L),
+                event(EventType.EXTENDED_STRING_WRITE, 0, "AAAAAAAAAAAAAAAAAA", "5", 1L),
+                event(EventType.XML_BEGIN, 0, "AAAAAAAAAAAAAAAAAA", "6", 4L),
+                event(EventType.XML_WRITE, 0, "AAAAAAAAAAAAAAAAAA", "6", 1L),
+                event(EventType.XML_END, 0, "AAAAAAAAAAAAAAAAAA", "6", 1L),
                 event(EventType.UPDATE, 1, "BBBBBBBBBBBBBBBBBB", "10"), };
         assertThat(cache(events)).isEqualTo(expected);
         assertThat(logInterceptor.containsWarnMessage("Manual investigation is required")).isFalse();
@@ -1202,6 +1202,20 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
     }
 
     private LogMinerEvent event(EventType eventType, int rollback, String rowId, String rsId, TableId tableId) {
+        return event(eventType, rollback, rowId, rsId, tableId, 1L);
+    }
+
+    private LogMinerEvent event(EventType eventType, int rollback, String rowId, String rsId, long transactionSequence) {
+        return event(eventType, rollback, rowId, rsId, TABLE, transactionSequence);
+    }
+
+    private LogMinerEvent event(EventType eventType, int rollback, String rowId, String rsId, TableId tableId, long transactionSequence) {
+        if (eventType == EventType.XML_BEGIN) {
+            return new XmlBeginEvent(eventType, Scn.ONE, tableId, rowId, rsId, CHANGE_TIME, new Object[]{}, new Object[]{}, "COLUMN_NAME", transactionSequence);
+        }
+        if (eventType == EventType.XML_END) {
+            return new XmlEndEvent(eventType, Scn.ONE, tableId, rowId, rsId, CHANGE_TIME, transactionSequence);
+        }
         return rollback == 0 ? new LogMinerEvent(eventType, Scn.ONE, tableId, rowId, rsId, CHANGE_TIME)
                 : new RollbackToSavepointEvent(eventType, Scn.ONE, tableId, rowId, rsId, CHANGE_TIME);
     }

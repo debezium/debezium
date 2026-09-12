@@ -25,6 +25,7 @@ public class XmlBeginEventSerdesProvider<T extends XmlBeginEvent> extends DmlEve
         super.serialize(event, stream);
 
         stream.writeString(event.getColumnName());
+        stream.writeLong(event.getTransactionSequence());
     }
 
     @Override
@@ -32,5 +33,6 @@ public class XmlBeginEventSerdesProvider<T extends XmlBeginEvent> extends DmlEve
         super.deserialize(context, stream);
 
         context.addValue(stream.readString());
+        context.addValue(stream.hasNext() ? stream.readLong() : 1L);
     }
 }
