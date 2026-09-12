@@ -12,6 +12,7 @@ import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 
 import java.math.BigInteger;
@@ -25,6 +26,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Calendar;
+import java.util.Map;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -56,6 +58,7 @@ import io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerStreamingC
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 import io.debezium.connector.oracle.util.TestHelper;
+import io.debezium.data.Envelope.Operation;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
@@ -71,7 +74,7 @@ import io.debezium.schema.SchemaTopicNamingStrategy;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Clock;
 
-import oracle.jdbc.OracleTypes;
+import ch.qos.logback.classic.Level;
 import oracle.sql.CharacterSet;
 
 /**
@@ -83,13 +86,13 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractBufferedLogMinerStreamingChangeEventSourceTest.class);
 
-    private static final String LOB_TABLE_NAME = "TEST_LOB_TABLE";
     private static final String TRANSACTION_ID_1 = "1234567890";
     private static final String TRANSACTION_ID_2 = "9876543210";
     private static final String TRANSACTION_ID_3 = "9880212345";
     private static final String PARTIAL_TXN_ID_FULL = "0e001c0012345678";
     private static final String PARTIAL_TXN_ID_PARTIAL = "0e001c00ffffffff";
     private static final String PARTIAL_TXN_ID_OTHER = "0f001d0087654321";
+    private static final String PARTIAL_TXN_ID_SAME_PREFIX = "0e001c0087654321";
 
     protected ChangeEventSourceContext context;
     protected EventDispatcher<OraclePartition, TableId> dispatcher;
@@ -564,6 +567,37 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     }
 
     @Test
+    @FixFor("debezium/dbz#1960")
+    public void testAbandonedTransactionDetailsListOnlyTablesWithLiveChanges() throws Exception {
+        if (!isTransactionAbandonmentSupported()) {
+            return;
+        }
+
+        final LogInterceptor logInterceptor = new LogInterceptor(BufferedLogMinerStreamingChangeEventSource.class);
+        final ch.qos.logback.classic.Logger detailsLogger = (ch.qos.logback.classic.Logger) LoggerFactory
+                .getLogger(BufferedLogMinerStreamingChangeEventSource.class.getName() + ".AbandonedDetails");
+        final Level previousLevel = detailsLogger.getLevel();
+        detailsLogger.setLevel(Level.DEBUG);
+        try (var source = getChangeEventSource(getConfig().build())) {
+            Mockito.when(offsetContext.getScn()).thenReturn(Scn.valueOf(1L));
+            Mockito.when(offsetContext.getSnapshotScn()).thenReturn(Scn.NULL);
+
+            final Instant changeTime = Instant.now().minus(24, ChronoUnit.HOURS);
+            source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1, changeTime, "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'insert'"));
+            // A change on a second table that is rolled back to a savepoint; only its undo marker stays in the cache
+            source.processEvent(getUpdateLogMinerEventRow(3, TRANSACTION_ID_1, changeTime, "TEST_TABLE2", "AAAAAAAAAAAAAAAAAC", "'update'"));
+            source.processEvent(getRollbackToSavepointLogMinerEventRow(4, TRANSACTION_ID_1, changeTime, "TEST_TABLE2", "AAAAAAAAAAAAAAAAAC", "'insert'"));
+            source.abandonTransactions(Duration.ofHours(1L));
+
+            assertThat(source.getTransactionCache().isEmpty()).isTrue();
+            assertThat(logInterceptor.containsWarnMessage("1 tables [ORCLPDB1.DEBEZIUM.TEST_TABLE]) is being abandoned")).isTrue();
+        }
+        finally {
+            detailsLogger.setLevel(previousLevel);
+        }
+    }
+
+    @Test
     @FixFor("DBZ-1145")
     public void testCacheIsEmptyWhenTransactionIsRolledBackWithPartialTransactionId() throws Exception {
         try (var source = getChangeEventSource(getConfig().build())) {
@@ -615,20 +649,132 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     }
 
     @Test
-    @FixFor("DBZ-9615")
-    public void testSavepointRollbackInsertWithNullLob() throws Exception {
-        final Configuration config = getConfig()
-                .with(OracleConnectorConfig.LOB_ENABLED, true)
-                .build();
+    @FixFor("debezium/dbz#1960")
+    public void testPartialRollbackIsIgnoredWhenNoTransactionMatchesPrefix() throws Exception {
+        try (var source = getChangeEventSource(getConfig().build())) {
+            source.processEvent(getStartLogMinerEventRow(1, PARTIAL_TXN_ID_OTHER));
+            source.processEvent(getInsertLogMinerEventRow(2, PARTIAL_TXN_ID_OTHER, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'insert'"));
+            source.processEvent(getUpdateLogMinerEventRow(3, PARTIAL_TXN_ID_OTHER, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'update'"));
 
+            // The undo refers to a prefix that no cached transaction shares
+            source.processEvent(getRollbackToSavepointLogMinerEventRow(4, PARTIAL_TXN_ID_PARTIAL, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'insert'"));
+
+            assertThat(source.getTransactionCache().containsTransaction(PARTIAL_TXN_ID_PARTIAL)).isFalse();
+            assertThat(source.getTransactionCache().getTransactionEventCount(source.getTransactionCache().getTransaction(PARTIAL_TXN_ID_OTHER))).isEqualTo(2);
+            assertThat(metrics.getNumberOfPartialRollbackCount()).isZero();
+
+            source.processEvent(getCommitLogMinerEventRow(5, PARTIAL_TXN_ID_OTHER));
+
+            Mockito.verify(dispatcher, Mockito.times(1))
+                    .dispatchDataChangeEvent(any(), any(), argThat(emitter -> emitter.getOperation() == Operation.CREATE));
+            Mockito.verify(dispatcher, Mockito.times(1))
+                    .dispatchDataChangeEvent(any(), any(), argThat(emitter -> emitter.getOperation() == Operation.UPDATE));
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1960")
+    public void testPartialRollbackIsAppliedWhenExactlyOneTransactionMatchesPrefix() throws Exception {
+        try (var source = getChangeEventSource(getConfig().build())) {
+            source.processEvent(getStartLogMinerEventRow(1, PARTIAL_TXN_ID_FULL));
+            source.processEvent(getInsertLogMinerEventRow(2, PARTIAL_TXN_ID_FULL, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'insert'"));
+            source.processEvent(getUpdateLogMinerEventRow(3, PARTIAL_TXN_ID_FULL, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'update'"));
+
+            // The undo's sequence could not be resolved, but exactly one cached transaction shares its prefix
+            source.processEvent(getRollbackToSavepointLogMinerEventRow(4, PARTIAL_TXN_ID_PARTIAL, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'insert'"));
+
+            assertThat(source.getTransactionCache().containsTransaction(PARTIAL_TXN_ID_PARTIAL)).isFalse();
+            assertThat(source.getTransactionCache().containsTransaction(PARTIAL_TXN_ID_FULL)).isTrue();
+            assertThat(metrics.getNumberOfPartialRollbackCount()).isEqualTo(1);
+
+            source.processEvent(getCommitLogMinerEventRow(5, PARTIAL_TXN_ID_FULL));
+
+            Mockito.verify(dispatcher, Mockito.times(1))
+                    .dispatchDataChangeEvent(any(), any(), argThat(emitter -> emitter.getOperation() == Operation.CREATE));
+            Mockito.verify(dispatcher, Mockito.never())
+                    .dispatchDataChangeEvent(any(), any(), argThat(emitter -> emitter.getOperation() == Operation.UPDATE));
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1960")
+    public void testPartialRollbackIsNotAppliedWhenMultipleTransactionsMatchPrefix() throws Exception {
+        final LogInterceptor logInterceptor = new LogInterceptor(BufferedLogMinerStreamingChangeEventSource.class);
+        try (var source = getChangeEventSource(getConfig().build())) {
+            source.processEvent(getStartLogMinerEventRow(1, PARTIAL_TXN_ID_FULL));
+            source.processEvent(getInsertLogMinerEventRow(2, PARTIAL_TXN_ID_FULL, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'insert'"));
+            source.processEvent(getUpdateLogMinerEventRow(3, PARTIAL_TXN_ID_FULL, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'update'"));
+            source.processEvent(getStartLogMinerEventRow(4, PARTIAL_TXN_ID_SAME_PREFIX));
+            source.processEvent(getInsertLogMinerEventRow(5, PARTIAL_TXN_ID_SAME_PREFIX, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAC", "'insert'"));
+            source.processEvent(getUpdateLogMinerEventRow(6, PARTIAL_TXN_ID_SAME_PREFIX, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAC", "'update'"));
+
+            // Two cached transactions share the undo's prefix, so it cannot be attributed safely
+            source.processEvent(getRollbackToSavepointLogMinerEventRow(7, PARTIAL_TXN_ID_PARTIAL, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'insert'"));
+
+            assertThat(logInterceptor.containsWarnMessage("Unable to match partial transaction '" + PARTIAL_TXN_ID_PARTIAL + "' to a single cached transaction"))
+                    .isTrue();
+            assertThat(source.getTransactionCache().containsTransaction(PARTIAL_TXN_ID_PARTIAL)).isFalse();
+            assertThat(source.getTransactionCache().getTransactionEventCount(source.getTransactionCache().getTransaction(PARTIAL_TXN_ID_FULL))).isEqualTo(2);
+            assertThat(source.getTransactionCache().getTransactionEventCount(source.getTransactionCache().getTransaction(PARTIAL_TXN_ID_SAME_PREFIX))).isEqualTo(2);
+            assertThat(metrics.getNumberOfPartialRollbackCount()).isZero();
+
+            source.processEvent(getCommitLogMinerEventRow(8, PARTIAL_TXN_ID_FULL));
+            source.processEvent(getCommitLogMinerEventRow(9, PARTIAL_TXN_ID_SAME_PREFIX));
+
+            Mockito.verify(dispatcher, Mockito.times(2))
+                    .dispatchDataChangeEvent(any(), any(), argThat(emitter -> emitter.getOperation() == Operation.CREATE));
+            Mockito.verify(dispatcher, Mockito.times(2))
+                    .dispatchDataChangeEvent(any(), any(), argThat(emitter -> emitter.getOperation() == Operation.UPDATE));
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1960")
+    public void testLastEventIsForgottenWhenTransactionCommits() throws Exception {
+        try (var source = getChangeEventSource(getConfig().build())) {
+            source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
+            source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1));
+
+            assertThat(source.getLastEventByTransactionId()).containsOnlyKeys(TRANSACTION_ID_1);
+
+            source.processEvent(getCommitLogMinerEventRow(3, TRANSACTION_ID_1));
+
+            assertThat(source.getLastEventByTransactionId()).isEmpty();
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1960")
+    public void testLastEventIsForgottenWhenPartialRollbackIsAppliedByPrefixAndTransactionCommits() throws Exception {
+        try (var source = getChangeEventSource(getConfig().build())) {
+            source.processEvent(getStartLogMinerEventRow(1, PARTIAL_TXN_ID_FULL));
+            source.processEvent(getInsertLogMinerEventRow(2, PARTIAL_TXN_ID_FULL, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'insert'"));
+            source.processEvent(getUpdateLogMinerEventRow(3, PARTIAL_TXN_ID_FULL, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'update'"));
+            source.processEvent(getRollbackToSavepointLogMinerEventRow(4, PARTIAL_TXN_ID_PARTIAL, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'insert'"));
+            source.processEvent(getCommitLogMinerEventRow(5, PARTIAL_TXN_ID_FULL));
+
+            // The undo was attributed to PARTIAL_TXN_ID_FULL, so committing it must leave nothing behind
+            assertThat(source.getLastEventByTransactionId()).isEmpty();
+        }
+    }
+
+    @Test
+    @FixFor({ "DBZ-1914", "debezium/dbz#1960" })
+    public void testSavepointRollbackIdempotence() throws Exception {
+        final Configuration config = getConfig().build();
         try (var source = getChangeEventSource(config)) {
             source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
-            source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1, Instant.now(), LOB_TABLE_NAME, "AAAAAAAAAAAAAAAAAA", "EMPTY_CLOB()"));
-            source.processEvent(getUpdateLogMinerEventRow(3, TRANSACTION_ID_1, Instant.now(), LOB_TABLE_NAME, "AAAAAAAAAAAAAAAAAB", "NULL"));
-            source.processEvent(getRollbackToSavepointLogMinerEventRow(4, TRANSACTION_ID_1, Instant.now(), LOB_TABLE_NAME, "AAAAAAAAAAAAAAAAAB"));
+            source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'insert'"));
+            source.processEvent(getUpdateLogMinerEventRow(3, TRANSACTION_ID_1, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'update'"));
+            source.processEvent(getRollbackToSavepointLogMinerEventRow(4, TRANSACTION_ID_1, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'insert'"));
+            // Simulate a new mining session
+            source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
+            source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'insert'"));
+            source.processEvent(getUpdateLogMinerEventRow(3, TRANSACTION_ID_1, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'update'"));
+            source.processEvent(getRollbackToSavepointLogMinerEventRow(4, TRANSACTION_ID_1, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'insert'"));
             source.processEvent(getCommitLogMinerEventRow(5, TRANSACTION_ID_1));
-            Mockito.verify(dispatcher, Mockito.never())
-                    .dispatchDataChangeEvent(any(), any(), any());
+            Mockito.verify(dispatcher, Mockito.times(1))
+                    .dispatchDataChangeEvent(any(), any(), argThat(emitter -> emitter.getOperation() == Operation.CREATE));
         }
     }
 
@@ -730,15 +876,16 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
                 .addColumn(Column.editor().name("DATA").create())
                 .create();
 
-        Table lobTable = Table.editor()
-                .tableId(TableId.parse("ORCLPDB1.DEBEZIUM.TEST_LOB_TABLE"))
+        schema.refresh(table);
+
+        // Typed columns: the field-name cache compares columns by type and the first table's are typeless
+        Table secondTable = Table.editor()
+                .tableId(TableId.parse("ORCLPDB1.DEBEZIUM.TEST_TABLE2"))
                 .addColumn(Column.editor().name("ID").type("VARCHAR2(50)").create())
-                .addColumn(Column.editor().name("DATA").type("CLOB").jdbcType(OracleTypes.CLOB).create())
-                .setPrimaryKeyNames("ID")
+                .addColumn(Column.editor().name("DATA").type("VARCHAR2(50)").create())
                 .create();
 
-        schema.refresh(table);
-        schema.refresh(lobTable);
+        schema.refresh(secondTable);
         return schema;
     }
 
@@ -870,19 +1017,20 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         return row;
     }
 
-    private LogMinerEventRow getRollbackToSavepointLogMinerEventRow(long scn, String transactionId, Instant changeTime, String tableName, String rowId) {
+    private LogMinerEventRow getRollbackToSavepointLogMinerEventRow(long scn, String transactionId, Instant changeTime, String tableName, String rowId,
+                                                                    String dataValue) {
         LogMinerEventRow row = Mockito.mock(LogMinerEventRow.class);
-        Mockito.when(row.getEventType()).thenReturn(EventType.DELETE);
+        Mockito.when(row.getEventType()).thenReturn(EventType.UPDATE);
         Mockito.when(row.isRollbackFlag()).thenReturn(true);
         Mockito.when(row.getTransactionId()).thenReturn(transactionId);
         Mockito.when(row.getScn()).thenReturn(Scn.valueOf(scn));
         Mockito.when(row.getChangeTime()).thenReturn(changeTime);
         Mockito.when(row.getRowId()).thenReturn(rowId);
-        Mockito.when(row.getOperation()).thenReturn("DELETE");
+        Mockito.when(row.getOperation()).thenReturn("UPDATE");
         Mockito.when(row.getTableName()).thenReturn(tableName);
         Mockito.when(row.getTableId()).thenReturn(TableId.parse("ORCLPDB1.DEBEZIUM." + tableName));
         Mockito.when(row.getRedoSql()).thenReturn(
-                "delete from \"DEBEZIUM\".\"%s\" where ROWID = '%s';".formatted(tableName, rowId));
+                "update \"DEBEZIUM\".\"%s\" set \"DATA\" = %s;".formatted(tableName, dataValue));
         Mockito.when(row.getRsId()).thenReturn("A.B.C");
         Mockito.when(row.getTablespaceName()).thenReturn("DEBEZIUM");
         Mockito.when(row.getUserName()).thenReturn(TestHelper.SCHEMA_USER);
@@ -1026,6 +1174,13 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             var field = AbstractLogMinerStreamingChangeEventSource.class.getDeclaredField("currentRedoThreadState");
             field.setAccessible(true);
             field.set(this, state);
+        }
+
+        @SuppressWarnings("unchecked")
+        public Map<String, LogMinerEventRow> getLastEventByTransactionId() throws Exception {
+            var field = BufferedLogMinerStreamingChangeEventSource.class.getDeclaredField("lastEventByTransactionId");
+            field.setAccessible(true);
+            return (Map<String, LogMinerEventRow>) field.get(this);
         }
 
         @Override

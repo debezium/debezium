@@ -105,7 +105,6 @@ public class TestHelper {
         cacheMappings.put(CacheProvider.PROCESSED_TRANSACTIONS_CACHE_NAME, OracleConnectorConfig.LOG_MINING_BUFFER_INFINISPAN_CACHE_PROCESSED_TRANSACTIONS);
         cacheMappings.put(CacheProvider.SCHEMA_CHANGES_CACHE_NAME, OracleConnectorConfig.LOG_MINING_BUFFER_INFINISPAN_CACHE_SCHEMA_CHANGES);
         cacheMappings.put(CacheProvider.EVENTS_CACHE_NAME, OracleConnectorConfig.LOG_MINING_BUFFER_INFINISPAN_CACHE_EVENTS);
-        cacheMappings.put(CacheProvider.ROLLBACKS_CACHE_NAME, OracleConnectorConfig.LOG_MINING_BUFFER_INFINISPAN_CACHE_ROLLBACKS);
     }
 
     /**
@@ -203,7 +202,6 @@ public class TestHelper {
                 builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_PROCESSED_TRANSACTIONS_CONFIG, getEhcacheBasicCacheConfig(cacheSize));
                 builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_SCHEMA_CHANGES_CONFIG, getEhcacheBasicCacheConfig(cacheSize));
                 builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_EVENTS_CONFIG, getEhcacheBasicCacheConfig(cacheSize));
-                builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_ROLLBACKS_CONFIG, getEhcacheBasicCacheConfig(cacheSize));
             }
             builder.withDefault(OracleConnectorConfig.LOG_MINING_BUFFER_DROP_ON_STOP, true);
         }
@@ -754,6 +752,22 @@ public class TestHelper {
         return builder;
     }
 
+    public static Configuration.Builder withDefaultEhcacheConfigurations(Configuration.Builder builder, int cacheSize) {
+        builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_GLOBAL_CONFIG, getEhcacheGlobalCacheConfig());
+        for (Field cacheField : getEhcacheCacheMappings()) {
+            builder.with(cacheField, getEhcacheBasicCacheConfig(cacheSize));
+        }
+        return builder;
+    }
+
+    private static List<Field> getEhcacheCacheMappings() {
+        return List.of(
+                OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_TRANSACTIONS_CONFIG,
+                OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_PROCESSED_TRANSACTIONS_CONFIG,
+                OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_SCHEMA_CHANGES_CONFIG,
+                OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_EVENTS_CONFIG);
+    }
+
     /**
      * Simulate {@link Thread#sleep(long)} by using {@link Awaitility} instead.
      *
@@ -904,6 +918,12 @@ public class TestHelper {
     public static void disableGoldenGateReplication() throws SQLException {
         try (OracleConnection admin = adminConnection(true)) {
             admin.execute("ALTER SYSTEM SET enable_goldengate_replication=TRUE SCOPE=BOTH");
+        }
+    }
+
+    public static void flushSharedMemoryPool() throws SQLException {
+        try (OracleConnection admin = adminConnection(true)) {
+            admin.execute("ALTER SYSTEM FLUSH SHARED_POOL");
         }
     }
 }

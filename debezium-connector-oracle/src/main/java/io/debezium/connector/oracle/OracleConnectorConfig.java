@@ -478,15 +478,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withValidation(OracleConnectorConfig::validateLogMiningInfinispanCacheConfiguration)
             .withDescription("Specifies the XML configuration for the Infinispan 'events' cache");
 
-    public static final Field LOG_MINING_BUFFER_INFINISPAN_CACHE_ROLLBACKS = Field.create("log.mining.buffer.infinispan.cache.rollbacks")
-            .withDisplayName("Infinispan 'rollbacks' cache configuration")
-            .withType(Type.STRING)
-            .withWidth(Width.LONG)
-            .withImportance(Importance.LOW)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED))
-            .withValidation(OracleConnectorConfig::validateLogMiningInfinispanCacheConfiguration)
-            .withDescription("Specifies the XML configuration for the Infinispan 'rollbacks' cache");
-
     public static final Field LOG_MINING_BUFFER_INFINISPAN_CACHE_SCHEMA_CHANGES = Field.create("log.mining.buffer.infinispan.cache.schema_changes")
             .withDisplayName("Infinispan 'schema-changes' cache configuration")
             .withType(Type.STRING)
@@ -658,6 +649,17 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDefault(false)
             .withValidation(OracleConnectorConfig::validateLogMiningIncludeRedoSql);
 
+    public static final Field LOG_MINING_INCLUDE_INTERNAL_EVENTS = Field.create("log.mining.include.internal.events")
+            .withDisplayName("Specifies whether the connector supports mining INTERNAL events")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(false)
+            .withDescription("When set to 'false', the default, INTERNAL events will not be captured. " +
+                    "When 'lob.enabled' is 'true' and all LOB columns of an operation are stored out-of-line, " +
+                    "INTERNAL events provide the ROW_IDs necessary for accurate ROLLBACK TO SAVEPOINT handling. " +
+                    "NOTE: Enabling this may significantly increase the volume of events returned by LogMiner.");
+
     public static final Field SNAPSHOT_DATABASE_ERRORS_MAX_RETRIES = Field.create("snapshot.database.errors.max.retries")
             .withDisplayName("The maximum number of retries before snapshot database errors are not retried")
             .withType(Type.INT)
@@ -710,15 +712,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withImportance(Importance.LOW)
             .withValidation(OracleConnectorConfig::validateEhcacheCacheConfigField)
             .withDescription("Specifies the inner body the Ehcache <cache/> tag for the events cache, but " +
-                    "should not include the <key-type/> nor the <value-type/> attributes as these are managed by Debezium.");
-
-    public static final Field LOG_MINING_BUFFER_EHCACHE_ROLLBACKS_CONFIG = Field.create("log.mining.buffer.ehcache.rollbacks.config")
-            .withDisplayName("Defines the partial ehcache configuration for the rollbacks cache")
-            .withType(Type.STRING)
-            .withWidth(Width.LONG)
-            .withImportance(Importance.LOW)
-            .withValidation(OracleConnectorConfig::validateEhcacheCacheConfigField)
-            .withDescription("Specifies the inner body the Ehcache <cache/> tag for the rollbacks cache, but " +
                     "should not include the <key-type/> nor the <value-type/> attributes as these are managed by Debezium.");
 
     public static final Field OBJECT_ID_CACHE_SIZE = Field.createInternal("object.id.cache.size")
@@ -851,7 +844,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_BUFFER_TYPE, LOG_MINING_BUFFER_TRACK_RS_ID, LOG_MINING_BUFFER_TRACK_CLIENT_ID, LOG_MINING_BUFFER_TRACK_USERNAME,
                     LOG_MINING_BUFFER_TRACK_COMMIT_TIMESTAMP, LOG_MINING_BUFFER_TRACK_START_TIMESTAMP,
                     LOG_MINING_BUFFER_DROP_ON_STOP, LOG_MINING_BUFFER_INFINISPAN_CACHE_GLOBAL,
-                    LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS, LOG_MINING_BUFFER_INFINISPAN_CACHE_EVENTS, LOG_MINING_BUFFER_INFINISPAN_CACHE_ROLLBACKS,
+                    LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS, LOG_MINING_BUFFER_INFINISPAN_CACHE_EVENTS,
                     LOG_MINING_BUFFER_INFINISPAN_CACHE_PROCESSED_TRANSACTIONS, LOG_MINING_BUFFER_INFINISPAN_CACHE_SCHEMA_CHANGES,
                     LOG_MINING_BUFFER_TRANSACTION_EVENTS_THRESHOLD, LOG_MINING_ARCHIVE_LOG_ONLY_SCN_POLL_INTERVAL_MS,
                     LOG_MINING_LOG_QUERY_MAX_RETRIES, LOG_MINING_LOG_BACKOFF_INITIAL_DELAY_MS,
@@ -859,7 +852,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_READ_ONLY, LOG_MINING_FLUSH_TABLE_NAME, LOG_MINING_QUERY_FILTER_MODE, LOG_MINING_RESTART_CONNECTION, LOG_MINING_MAX_SCN_DEVIATION_MS,
                     LOG_MINING_SCHEMA_CHANGES_USERNAME_EXCLUDE_LIST, LOG_MINING_INCLUDE_REDO_SQL, OLR_SOURCE, OLR_HOST, OLR_PORT,
                     LOG_MINING_BUFFER_EHCACHE_GLOBAL_CONFIG, LOG_MINING_BUFFER_EHCACHE_TRANSACTIONS_CONFIG, LOG_MINING_BUFFER_EHCACHE_PROCESSED_TRANSACTIONS_CONFIG,
-                    LOG_MINING_BUFFER_EHCACHE_SCHEMA_CHANGES_CONFIG, LOG_MINING_BUFFER_EHCACHE_EVENTS_CONFIG, LOG_MINING_BUFFER_EHCACHE_ROLLBACKS_CONFIG,
+                    LOG_MINING_BUFFER_EHCACHE_SCHEMA_CHANGES_CONFIG, LOG_MINING_BUFFER_EHCACHE_EVENTS_CONFIG,
                     LOG_MINING_SQL_RELAXED_QUOTE_DETECTION, LOG_MINING_CLIENTID_INCLUDE_LIST, LOG_MINING_CLIENTID_EXCLUDE_LIST, LOG_MINING_RESUME_POSITION_INTERVAL_MS,
                     LOG_MINING_BUFFER_DEFERRED_TRANSACTION_START, LOG_MINING_BUFFER_DEFERRED_TRANSACTION_RETENTION_MS, LOG_MINING_PATH_DICTIONARY,
                     LOG_MINING_USE_CTE_QUERY,
@@ -930,6 +923,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final String logMiningInifispanGlobalConfiguration;
     private final Set<String> logMiningSchemaChangesUsernameExcludes;
     private final Boolean logMiningIncludeRedoSql;
+    private final boolean logMiningIncludeInternalEvents;
     private final Configuration logMiningEhCacheConfiguration;
     private final boolean logMiningUseSqlRelaxedQuoteDetection;
     private final Set<String> logMiningClientIdIncludes;
@@ -1014,6 +1008,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningInifispanGlobalConfiguration = config.getString(LOG_MINING_BUFFER_INFINISPAN_CACHE_GLOBAL);
         this.logMiningSchemaChangesUsernameExcludes = Strings.setOf(config.getString(LOG_MINING_SCHEMA_CHANGES_USERNAME_EXCLUDE_LIST), String::new);
         this.logMiningIncludeRedoSql = config.getBoolean(LOG_MINING_INCLUDE_REDO_SQL);
+        this.logMiningIncludeInternalEvents = config.getBoolean(LOG_MINING_INCLUDE_INTERNAL_EVENTS);
         this.logMiningUseSqlRelaxedQuoteDetection = config.getBoolean(LOG_MINING_SQL_RELAXED_QUOTE_DETECTION);
         this.logMiningClientIdIncludes = Strings.setOfTrimmed(config.getString(LOG_MINING_CLIENTID_INCLUDE_LIST), String::new);
         this.logMiningClientIdExcludes = Strings.setOfTrimmed(config.getString(LOG_MINING_CLIENTID_EXCLUDE_LIST), String::new);
@@ -2037,6 +2032,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      */
     public boolean isLogMiningIncludeRedoSql() {
         return logMiningIncludeRedoSql;
+    }
+
+    /**
+     * @return true if INTERNAL events are to be captured.
+     */
+    public boolean isLogMiningIncludeInternalEvents() {
+        return logMiningIncludeInternalEvents;
     }
 
     /**

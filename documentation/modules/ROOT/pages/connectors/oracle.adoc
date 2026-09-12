@@ -1239,7 +1239,7 @@ Additionally, the location where the cache is kept is defined by the `path` attr
 [IMPORTANT]
 ====
 The {prodname} Infinispan buffer implementation requires that you configure a set of distinct cache configurations, each identified by a {prodname}-defined cache name.
-You must configure caches for the following identifiers: `transactions`, `events`, `processed-transactions`, `rollbacks`, and `schema-changes`.
+You must configure caches for the following identifiers: `transactions`, `events`, `processed-transactions`, and `schema-changes`.
 
 Each cache name is a hardcoded identifier that you specify in the XML of a {prodname} Oracle connector configuration property in the `log.mining.buffer.infinispan.cache` namespace.
 For example, the property `log.mining.buffer.infinispan.cache.transactions` contains the XML configuration for the cache that must include `name="transactions"` in its XML definition.
@@ -1321,7 +1321,7 @@ Additionally, the following example shows some settings that you might configure
     <disk unit="B">1024000000</disk>
 </resources>
 ----
-The following example shows an Ehcache configuration that includes both a global setting and specific settings for the `transactions`, `processedtransactions`, `schemachanges`, `events`, and `rollbacks` caches.
+The following example shows an Ehcache configuration that includes both a global setting and specific settings for the `transactions`, `processedtransactions`, `schemachanges`, and `events` caches.
 
 .Example configuration
 [source,json]
@@ -1332,8 +1332,7 @@ The following example shows an Ehcache configuration that includes both a global
   "log.mining.buffer.ehcache.transactions.config": "<resources><heap unit=\"entries\">512</entries><disk unit=\"B\">1024000000</disk></resources>",
   "log.mining.buffer.ehcache.processedtransactions.config": "<resources><heap unit=\"entries\">512</entries><disk unit=\"B\">1024000000</disk></resources>",
   "log.mining.buffer.ehcache.schemachanges.config": "<resources><heap unit=\"entries\">512</entries><disk unit=\"B\">1024000000</disk></resources>",
-  "log.mining.buffer.ehcache.events.config": "<resources><heap unit=\"entries\">512</entries><disk unit=\"B\">1024000000</disk></resources>",
-  "log.mining.buffer.ehcache.rollbacks.config": "<resources><heap unit=\"entries\">512</entries><disk unit=\"B\">1024000000</disk></resources>"
+  "log.mining.buffer.ehcache.events.config": "<resources><heap unit=\"entries\">512</entries><disk unit=\"B\">1024000000</disk></resources>"
 }
 ----
 endif::community[]
@@ -1360,6 +1359,75 @@ At regular intervals, the heartbeat action query causes the connector to insert 
 ====
 For the connector to use the `heartbeat.action.query` with tables that are not owned by the xref:creating-users-for-the-connector[connector user account], you must grant the connector user permission to run the necessary `INSERT` or `UPDATE` queries on those tables.
 ====
+
+// Type: concept
+// ModuleID: how-debezium-captures-large-object-data
+// Title: How {prodname} captures large object data
+[[capturing-large-object-data]]
+=== Capturing large object data
+
+Capturing Oracle LOB data during streaming requires special handling.
+Configure the connector to capture LOB values accurately while balancing mining overhead and performance.
+
+To accurately capture LOB column values during streaming, set the `lob.enabled` connector configuration property to `true`.
+With this property enabled, the connector can capture the following data types:
+
+`CLOB`:: Character large objects.
+`NCLOB`:: National character set large objects.
+`BLOB`:: Binary large objects.
+`XMLTYPE`:: XML data stored as a LOB.
+`JSON`:: JSON data (Oracle 21c and later).
+`Extended strings`:: `VARCHAR2`, `NVARCHAR2`, and `RAW` columns that exceed the legacy maximum lengths when the database parameter `max_string_size` is set to `EXTENDED`.
+For more information about how the connector supports extended strings, see xref:support-for-extended-max-string-size[Extended max string size].
+
+When `lob.enabled` is set to `false` (the default), snapshot events include the current LOB column values, but streamed change events represent LOB columns with the xref:oracle-property-unavailable-value-placeholder[`unavailable.value.placeholder`] constant.
+Disabling mining of LOB values reduces the volume of data that LogMiner processes by excluding LOB-specific redo log entries.
+
+When `lob.enabled` is `true`, the connector mines additional redo log operation types that Oracle uses to represent LOB writes.
+During streaming, Oracle includes LOB column values in redo data only when a SQL DML statement explicitly sets or changes an LOB column value.
+If a DML statement does not modify an LOB column, the change event contains the configured unavailable value placeholder rather than the column's current value.
+
+// Type: concept
+// Title: How Oracle processes INTERNAL events and savepoint rollbacks
+// ModuleID: how-oracle-processes-internal-events-and-savepoint-rollbacks
+[id="oracle-internal-events-and-rollback-to-savepoint-handling"]
+==== INTERNAL events and ROLLBACK TO SAVEPOINT handling
+
+Oracle records INTERNAL events in the redo log for out-of-line LOB operations.
+These events serve two purposes: they associate `ROW_ID` values with LOB data, and they mark the boundary between successive DML statements.
+The connector uses these boundaries to identify which events belong to a rolled-back statement during `ROLLBACK TO SAVEPOINT` processing.
+Set the `log.mining.include.internal.events` property to specify whether the connector captures `INTERNAL` events.
+The connector requires these events to accurately process `ROLLBACK TO SAVEPOINT` operations in transactions that modify LOB columns.
+
+When a table stores LOB data out-of-line, these events provide the connector with the row identifier that it needs to correctly correlate LOB changes with their parent DML operation.
+This correlation becomes critical when a transaction uses `ROLLBACK TO SAVEPOINT` to partially undo changes.
+In the absence of the `ROW_ID` information that an `INTERNAL` event provides, the connector cannot reliably determine which row a rolled-back LOB operation affects.
+In such scenarios, the connector might emit change events that contain stale LOB field values.
+
+The `log.mining.include.internal.events` property controls whether the connector includes Oracle `INTERNAL` events in LogMiner queries.
+The `log.mining.include.internal.events` property accepts the following values:
+
+`false`:: (Default) The connector excludes `INTERNAL` events from LogMiner queries.
+This setting reduces the volume of mined redo log data.
+However, after a partial rollback of a transaction that modifies out-of-line LOB columns, the connector might emit change events that contain stale values for affected LOB fields.
+
+`true`:: The connector includes `INTERNAL` events in LogMiner queries.
+This setting increases the volume of mined redo log data, but enables the connector to accurately process `ROLLBACK TO SAVEPOINT` operations for tables with out-of-line LOB columns.
+
+[NOTE]
+====
+The `log.mining.include.internal.events` property has no effect unless `lob.enabled` is also set to `true`.
+====
+
+[TIP]
+====
+If your application does not use `ROLLBACK TO SAVEPOINT` in transactions that modify tables with LOB columns, you can safely leave `log.mining.include.internal.events` set to `false`.
+Enable it only when you need accurate partial rollback handling for tables that store LOB data out-of-line.
+====
+
+As an alternative to enabling LOB mining and capturing `INTERNAL` events, you can set `lob.enabled` to `false` and configure the xref:post-processors/reselect-columns.adoc[Reselect columns post processor] to re-query LOB column values directly from the database.
+
+This approach avoids the overhead of mining LOB-specific redo log entries and `INTERNAL` events while still ensuring that change events contain correct LOB values, because the post processor retrieves the values directly from the source table.
 
 // Type: assembly
 // ModuleID: descriptions-of-debezium-oracle-connector-data-change-events
@@ -4699,11 +4767,6 @@ For more information, see xref:oracle-event-buffering-infinispan[Infinispan even
 |The XML configuration for the Infinispan events cache.
 For more information, see xref:oracle-event-buffering-infinispan[Infinispan event buffering].
 
-|[[oracle-property-log-mining-buffer-infinispan-cache-rollbacks]]<<oracle-property-log-mining-buffer-infinispan-cache-rollbacks, `+log.mining.buffer.infinispan.cache.rollbacks+`>>
-|No default
-|The XML configuration for the Infinispan rollback events cache.
-For more information, see xref:oracle-event-buffering-infinispan[Infinispan event buffering].
-
 |[[oracle-property-log-mining-buffer-infinispan-cache-processed-transactions]]<<oracle-property-log-mining-buffer-infinispan-cache-processed-transactions, `+log.mining.buffer.infinispan.cache.processed_transactions+`>>
 |No default
 |The XML configuration for the Infinispan processed transactions cache.
@@ -4736,11 +4799,6 @@ For more information, see xref:oracle-event-buffering-ehcache[Ehcache event buff
 |[[oracle-property-log-mining-buffer-ehcache-events-config]]<<oracle-property-log-mining-buffer-ehcache-events-config, `+log.mining.buffer.ehcache.events.config+`>>
 |No default
 |The XML configuration for the Ehcache events configuration.
-For more information, see xref:oracle-event-buffering-ehcache[Ehcache event buffering].
-
-|[[oracle-property-log-mining-buffer-ehcache-rollbacks-config]]<<oracle-property-log-mining-buffer-ehcache-rollbacks-config, `+log.mining.buffer.ehcache.rollbacks.config+`>>
-|No default
-|The XML configuration for the Ehcache rollback events configuration.
 For more information, see xref:oracle-event-buffering-ehcache[Ehcache event buffering].
 
 |[[oracle-property-log-mining-buffer-drop-on-stop]]<<oracle-property-log-mining-buffer-drop-on-stop, `+log.mining.buffer.drop.on.stop+`>>
@@ -4879,6 +4937,19 @@ endif::product[]
 ifdef::community[]
 This configuration is ignored when using the XStream or OpenLogReplicator adapters.
 endif::community[]
+
+|[[oracle-property-log-mining-include-internal-events]]<<oracle-property-log-mining-include-internal-events, `+log.mining.include.internal.events+`>>
+|`false`
+|Specifies whether the connector captures `INTERNAL` events.
+Set one of the following values:
+`false`:: (default) The connector does not capture `INTERNAL` events.
+Set this option to reduce the volume of redo log data that the connector processes.
+After a partial rollback of a transaction that modifies externally stored LOB data, the change events that the connector emits might contain stale values for the affected LOB fields.
+
+`true`:: The connector captures `INTERNAL` events.
+Set this option to enable the connector to accurately handle `ROLLBACK TO SAVEPOINT` operations for tables with out-of-line LOB columns.
+This option can result in an increased volume of redo log data.
+For more information, see xref:capturing-large-object-data[Capturing large object data].
 
 |[[oracle-property-lob-enabled]]<<oracle-property-lob-enabled, `+lob.enabled+`>>
 |`false`

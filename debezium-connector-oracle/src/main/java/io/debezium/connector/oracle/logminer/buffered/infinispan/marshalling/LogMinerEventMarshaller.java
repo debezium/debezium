@@ -27,6 +27,7 @@ import org.infinispan.protostream.annotations.ProtoSchema;
         XmlEndEventAdapter.class,
         RedoSqlDmlEventAdapter.class,
         ExtendedStringBeginEventAdapter.class,
-        ExtendedStringWriteEventAdapter.class }, schemaFilePath = "/")
+        ExtendedStringWriteEventAdapter.class,
+        RollbackToSavepointEventAdapter.class }, schemaFilePath = "/")
 public interface LogMinerEventMarshaller extends SerializationContextInitializer {
 }
