@@ -18,6 +18,8 @@ import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.events.RollbackToSavepointEvent;
 import io.debezium.connector.oracle.logminer.events.RowIdCodec;
+import io.debezium.connector.oracle.logminer.events.XmlBeginEvent;
+import io.debezium.connector.oracle.logminer.events.XmlEndEvent;
 import io.debezium.util.Loggings;
 
 /**
@@ -203,6 +205,14 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
                     break;
                 }
                 rolledBackEntry = entry;
+            }
+            else if (event.getEventType() == EventType.XML_END
+                    && event instanceof XmlEndEvent xmlEnd
+                    && xmlEnd.getTransactionSequence() == 1
+                    && rolledBackEntry != null
+                    && rolledBackEntry.event() instanceof XmlBeginEvent xmlBegin
+                    && xmlBegin.getTransactionSequence() > 1) {
+                break;
             }
         }
 
