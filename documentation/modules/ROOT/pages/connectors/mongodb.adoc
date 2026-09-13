@@ -1668,6 +1668,7 @@ Nonzero fractional seconds, timestamps without a UTC offset, and out-of-range va
 Numeric values are always interpreted as seconds; Unix milliseconds are not supported.
 An ISO-8601 fractional part containing only zeros, such as `.000`, is accepted.
 You cannot configure this property together with `capture.start.op.time` unless that property is `-1` (disabled).
+Configuration validation reports conflicting settings as errors on both properties.
 
 To start streaming from the configured timestamp without an initial snapshot, set xref:mongodb-property-snapshot-mode[`snapshot.mode`] to `no_data` and use a connector with no stored offset.
 For example:

@@ -975,6 +975,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDefault(-1L)
+            .withValidation(MongoDbConnectorConfig::validateStartOpTime)
             .withDescription("If no existing offset is detected, Debezium will start streaming from the given packed BSON timestamp. "
                     + "Cannot be used with capture.start.timestamp unless set to -1 (disabled).");
 
@@ -1302,6 +1303,14 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
         return ConnectorConfigValidationHelper.validateExcludeField(config, DATABASE_INCLUDE_LIST, DATABASE_EXCLUDE_LIST, problems);
     }
 
+    private static int validateStartOpTime(Configuration config, Field field, ValidationOutput problems) {
+        if (hasConflictingStartTimes(config)) {
+            problems.accept(field, config.getString(field), "Cannot be configured together with '" + CAPTURE_START_TIMESTAMP.name() + "'");
+            return 1;
+        }
+        return 0;
+    }
+
     private static int validateStartTimestamp(Configuration config, Field field, ValidationOutput problems) {
         try {
             resolveStartOperationTime(config);
@@ -1313,17 +1322,21 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
         }
     }
 
+    private static boolean hasConflictingStartTimes(Configuration config) {
+        return config.getString(CAPTURE_START_TIMESTAMP) != null
+                && !CAPTURE_START_OP_TIME.defaultValue().equals(config.getLong(CAPTURE_START_OP_TIME));
+    }
+
     private static BsonTimestamp resolveStartOperationTime(Configuration config) {
+        if (hasConflictingStartTimes(config)) {
+            throw new IllegalArgumentException("Cannot be configured together with '" + CAPTURE_START_OP_TIME.name() + "'");
+        }
         final var value = config.getString(CAPTURE_START_TIMESTAMP);
-        final var operationTime = config.getLong(CAPTURE_START_OP_TIME);
-        final var hasOperationTime = !CAPTURE_START_OP_TIME.defaultValue().equals(operationTime);
         if (value != null) {
-            if (hasOperationTime) {
-                throw new IllegalArgumentException("Cannot be configured together with '" + CAPTURE_START_OP_TIME.name() + "'");
-            }
             return BsonTimestampParser.parse(value);
         }
-        return hasOperationTime ? new BsonTimestamp(operationTime) : null;
+        final var operationTime = config.getLong(CAPTURE_START_OP_TIME);
+        return !CAPTURE_START_OP_TIME.defaultValue().equals(operationTime) ? new BsonTimestamp(operationTime) : null;
     }
 
     private static int validateCaptureTarget(Configuration config, Field field, ValidationOutput problems) {
