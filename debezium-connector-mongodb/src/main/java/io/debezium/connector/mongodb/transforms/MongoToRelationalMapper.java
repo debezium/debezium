@@ -144,7 +144,7 @@ public class MongoToRelationalMapper<R extends ConnectRecord<R>> implements Tran
         // Infer schema from the combined field set of before/after
         String schemaName = record.valueSchema().name();
         if (Envelope.isEnvelopeSchema(schemaName)) {
-            schemaName = schemaName.substring(0, schemaName.length() - 9); // Remove "Envelope"
+            schemaName = schemaName.substring(0, schemaName.length() - Envelope.SCHEMA_NAME_SUFFIX.length());
         }
 
         final var mergedSample = mergeSchemaSamples(schemaSample(beforeDoc, ""), schemaSample(afterDoc, ""), "");

@@ -21,7 +21,18 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import io.debezium.data.Envelope;
+
 class MongoToRelationalMapperInferenceTest {
+
+    @ParameterizedTest
+    @ValueSource(strings = { "server.db.collection", "server.Envelope.collection", "server.db.Envelope" })
+    void shouldRemoveOnlyTrailingEnvelopeSuffixFromPayloadSchemaName(String schemaName) {
+        final var result = transform("{\"value\":1}", "{\"value\":2}", schemaName);
+        assertThat(result.schema().name()).isEqualTo(schemaName + Envelope.SCHEMA_NAME_SUFFIX);
+        assertThat(result.getStruct("before").schema().name()).isEqualTo(schemaName);
+        assertThat(result.getStruct("after").schema()).isSameAs(result.getStruct("before").schema());
+    }
 
     @Test
     void shouldRetainAddedAndRemovedNestedFieldsInBothImages() {
@@ -122,9 +133,13 @@ class MongoToRelationalMapperInferenceTest {
     }
 
     private static Struct transform(String before, String after) {
+        return transform(before, after, "server.db.collection");
+    }
+
+    private static Struct transform(String before, String after, String schemaName) {
         final var sourceSchema = SchemaBuilder.struct().name("server.Source")
                 .field("db", Schema.STRING_SCHEMA).field("collection", Schema.STRING_SCHEMA).build();
-        final var envelopeSchema = SchemaBuilder.struct().name("server.db.collection.Envelope")
+        final var envelopeSchema = SchemaBuilder.struct().name(schemaName + Envelope.SCHEMA_NAME_SUFFIX)
                 .field("before", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("after", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("source", sourceSchema)
