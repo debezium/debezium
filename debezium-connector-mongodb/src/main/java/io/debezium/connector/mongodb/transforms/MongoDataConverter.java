@@ -824,7 +824,7 @@ public class MongoDataConverter {
                 break;
 
             case TIMESTAMP:
-                colValue = new Date(1000L * value.asTimestamp().getTime());
+                colValue = new Date(1000L * Integer.toUnsignedLong(value.asTimestamp().getTime()));
                 break;
 
             case JAVASCRIPT:
