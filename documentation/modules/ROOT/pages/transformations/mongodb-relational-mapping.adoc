@@ -105,7 +105,8 @@ This keeps a fixed output schema without inferring schemas for the document's ne
 The JSON logical type uses a Connect string; the sink and its database dialect determine whether it is stored in a native JSON column or another compatible column type.
 Configure the target column type accordingly.
 
-The SMT preserves the document JSON string it receives, including its Extended JSON representation.
+By default, the SMT preserves the document JSON string it receives, including its Extended JSON representation.
+Setting `json.output.mode` to `canonical` instead reserializes the complete document, just like other mapped JSON values.
 It does not preserve the enclosing CDC event inside `document_json`, nor recover fields removed upstream by source filtering or another transformation.
 The document includes the fields that are also projected separately; selected fields are not subtracted from it.
 
@@ -113,6 +114,42 @@ Keeping both the document and selected columns increases record and storage size
 When pre-images are available, both `before` and `after` can contain a complete document string.
 Omitting a sensitive field from the scalar projection does not remove it from `document_json`.
 Apply the required field filtering and access controls before retaining complete documents, and account for them in retention policies.
+
+== JSON output representation
+
+The `json.output.mode` option controls the representation of every `io.debezium.data.Json` field in collection projections, in both `before` and `after`.
+It has `MEDIUM` importance and accepts the following values:
+
+[cols="1,2,2",options="header"]
+|===
+|Value |Whole-document JSON |Nested JSON values
+|`input` (default) |Retains the original document string unchanged. |Extracts the selected value from the input JSON without BSON reserialization.
+|`canonical` |Reserializes the document as MongoDB Extended JSON v2 canonical. |Serializes the selected value as MongoDB Extended JSON v2 canonical.
+|===
+
+The `input` mode retains the incoming type wrappers, numeric representations, and string escapes instead of selecting a new Extended JSON dialect.
+For example, a nested `{"age":30}` remains `{"age":30}`, while `{"age":{"$numberInt":"30"}}` retains its explicit type wrapper.
+This policy also applies to selected arrays and scalar values.
+Missing paths and explicit BSON nulls still produce a Connect null, not the string `"null"`.
+
+To normalize all mapped JSON fields, including a root-pointer `document_json`, configure:
+
+[source,properties]
+----
+transforms.map.json.output.mode=canonical
+----
+
+In this mode, `{"age":30}` becomes `{"age":{"$numberInt":"30"}}`.
+The whole-document field no longer preserves the original string.
+The setting does not change explicitly mapped scalar types, inferred schemas, keys, headers, or other envelope metadata.
+It is independent of the Kafka converter and does not change the Kafka wire format.
+
+Canonical output describes the BSON types parsed from the incoming JSON; it cannot recover type information already lost during source serialization.
+For example, a small Int64 serialized as a plain number in relaxed JSON can be parsed as Int32 before this SMT emits canonical JSON.
+If preserving source BSON types is required, configure the MongoDB source connector's xref:connectors/mongodb.adoc#mongodb-property-json-serialization-mode[`json.serialization.mode`] as `extended` before the events are published.
+
+The `input` mode also preserves bare `NaN` and `Infinity` values that the source connector can emit in legacy mode.
+Consumers that require strict JSON might reject these values; `canonical` represents them using Extended JSON type wrappers.
 
 == Path syntax and document changes
 
@@ -147,7 +184,7 @@ Only selected values undergo BSON-to-Connect conversion.
 An unselected heterogeneous array does not undergo Connect array schema inference.
 The input must still be a valid document that the BSON JSON parser can read.
 For selected arrays, documents, or other BSON values, `io.debezium.data.Json` emits an Extended JSON string.
-When that type is used with an empty pointer, the original document JSON string is retained unchanged.
+Its representation follows `json.output.mode` for both empty and non-empty pointers.
 
 If a selected leaf exists but cannot be converted to its declared type, the SMT raises a conversion error.
 It does not replace conversion errors with null or silently omit the field.
@@ -168,7 +205,7 @@ All output schemas are optional.
 |`bytes` |BSON binary data, without the binary subtype.
 |`org.apache.kafka.connect.data.Decimal` |Exact decimal conversion. Requires non-negative `scale`; optional positive `precision` must be at least scale. Rounding and precision overflow are rejected.
 |`io.debezium.data.VariableScaleDecimal` |Exact decimal value with its own scale.
-|`io.debezium.data.Json` |Extended JSON representation of the selected BSON value.
+|`io.debezium.data.Json` |JSON representation of the selected value, controlled by `json.output.mode`.
 |`io.debezium.data.Uuid` |Canonical UUID string or standard UUID binary subtype 4. Legacy UUID binary representations are not inferred.
 |`io.debezium.data.Bits` |Binary value interpreted with Debezium's little-endian bit representation. Requires a positive `length` in bits.
 |`org.apache.kafka.connect.data.Date`, `Time`, `Timestamp` |Connect logical values with millisecond precision; date and time components are selected in UTC for BSON dates.

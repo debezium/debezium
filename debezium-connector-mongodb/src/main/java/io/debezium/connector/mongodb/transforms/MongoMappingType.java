@@ -161,7 +161,7 @@ final class MongoMappingType {
         if (name != null) {
             switch (name) {
                 case Json.LOGICAL_NAME:
-                    return json(value);
+                    return canonicalJson(value);
                 case Uuid.LOGICAL_NAME:
                     if (value.isBinary()) {
                         return value.asBinary().asUuid().toString();
@@ -297,7 +297,7 @@ final class MongoMappingType {
         };
     }
 
-    private static String json(BsonValue value) {
+    private static String canonicalJson(BsonValue value) {
         // A wrapper lets the BSON writer serialize scalars and arrays as well as documents.
         final String wrapper = new BsonDocument("value", value).toJson(JSON_SETTINGS);
         return wrapper.substring(wrapper.indexOf(':') + 1, wrapper.length() - 1).trim();

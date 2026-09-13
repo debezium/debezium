@@ -28,6 +28,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
+import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.connector.mongodb.Module;
 import io.debezium.data.Envelope;
@@ -45,11 +46,38 @@ import io.debezium.transforms.SmtManager;
  */
 public class MongoToRelationalMapper<R extends ConnectRecord<R>> implements Transformation<R>, Versioned, ConfigDescriptor {
 
+    public enum JsonOutputMode implements EnumeratedValue {
+        INPUT("input"),
+        CANONICAL("canonical");
+
+        private final String value;
+
+        JsonOutputMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+    }
+
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoToRelationalMapper.class);
 
     private static final String SCHEMA_MAPPING_PREFIX = "schema.mapping.";
 
-    private Field.Set configFields = Field.setOf();
+    private static final Field JSON_OUTPUT_MODE = Field.create("json.output.mode")
+            .withDisplayName("JSON output mode")
+            .withEnum(JsonOutputMode.class, JsonOutputMode.INPUT)
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.MEDIUM)
+            .withDescription("How collection mappings serialize io.debezium.data.Json fields. "
+                    + "'input' (the default) preserves the incoming JSON representation. "
+                    + "'canonical' serializes all mapped JSON values, including the whole document, as canonical Extended JSON.");
+
+    private static final Field.Set CONFIG_FIELDS = Field.setOf(JSON_OUTPUT_MODE);
+
+    private Field.Set configFields = CONFIG_FIELDS;
 
     private SmtManager<R> smtManager;
     private MongoDataConverter converter;
@@ -59,9 +87,11 @@ public class MongoToRelationalMapper<R extends ConnectRecord<R>> implements Tran
     public void configure(final Map<String, ?> configs) {
         final var config = Configuration.from(configs);
         this.smtManager = new SmtManager<>(config);
+        smtManager.validate(config, CONFIG_FIELDS);
+        final var jsonOutputMode = EnumeratedValue.parse(JsonOutputMode.class, config.getString(JSON_OUTPUT_MODE));
 
         customSchemaMap.clear();
-        configFields = Field.setOf();
+        configFields = CONFIG_FIELDS;
         for (Map.Entry<String, ?> entry : configs.entrySet()) {
             if (entry.getKey().startsWith(SCHEMA_MAPPING_PREFIX)) {
                 final String namespace = entry.getKey().substring(SCHEMA_MAPPING_PREFIX.length());
@@ -72,7 +102,7 @@ public class MongoToRelationalMapper<R extends ConnectRecord<R>> implements Tran
                 if (!(entry.getValue() instanceof String json)) {
                     throw new ConfigException("Schema mapping values must be JSON strings: " + entry.getKey());
                 }
-                customSchemaMap.put(namespace, new MongoDocumentMapping(namespace, json));
+                customSchemaMap.put(namespace, new MongoDocumentMapping(namespace, json, jsonOutputMode));
                 configFields = configFields.with(Field.create(entry.getKey())
                         .withType(ConfigDef.Type.STRING)
                         .withImportance(ConfigDef.Importance.HIGH)

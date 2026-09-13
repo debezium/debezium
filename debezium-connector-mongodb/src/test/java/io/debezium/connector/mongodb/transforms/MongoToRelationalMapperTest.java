@@ -6,9 +6,13 @@
 package io.debezium.connector.mongodb.transforms;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.HashMap;
+import java.util.Map;
 
+import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -16,6 +20,8 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.data.Envelope;
@@ -38,6 +44,38 @@ public class MongoToRelationalMapperTest {
     @AfterEach
     void closeSmt() {
         transformation.close();
+    }
+
+    @Test
+    void shouldExposeJsonOutputModeBeforeConfigurationAndAfterReconfiguration() {
+        try (var mapper = new MongoToRelationalMapper<SourceRecord>()) {
+            final var option = mapper.config().configKeys().get("json.output.mode");
+            assertThat(option.type).isEqualTo(ConfigDef.Type.STRING);
+            assertThat(option.defaultValue).isEqualTo("input");
+            assertThat(option.importance).isEqualTo(ConfigDef.Importance.MEDIUM);
+            assertThat(mapper.getConfigFields().asArray()).extracting(io.debezium.config.Field::name).contains("json.output.mode");
+
+            mapper.configure(Map.of("json.output.mode", "canonical", "schema.mapping.shop.orders", """
+                    {"document_json":{"path":"","type":"io.debezium.data.Json"}}
+                    """));
+            assertThat(mapper.config().configKeys()).containsKeys("json.output.mode", "schema.mapping.shop.orders");
+            mapper.configure(Map.of());
+            assertThat(mapper.config().configKeys()).containsOnlyKeys("json.output.mode");
+            assertThat(mapper.config().configKeys().get("json.output.mode").defaultValue).isEqualTo("input");
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "", " ", "legacy", "extended", "relaxed", "typo" })
+    void shouldRejectInvalidJsonOutputModes(String mode) {
+        assertThatThrownBy(() -> transformation.configure(Map.of("json.output.mode", mode)))
+                .isInstanceOf(ConfigException.class).hasMessageContaining("json.output.mode");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "input", "canonical", "INPUT", "CANONICAL", " input ", " canonical " })
+    void shouldAcceptJsonOutputModes(String mode) {
+        transformation.configure(Map.of("json.output.mode", mode));
     }
 
     @Test
