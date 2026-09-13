@@ -90,9 +90,10 @@ public class MongoDbConnectorConfigTest {
         assertThat(connector.connectionConfig).isNull();
         assertThat(validationErrors(validation, MongoDbConnectorConfig.CONNECTION_STRING)).isEmpty();
         assertThat(validationErrors(validation, MongoDbConnectorConfig.CAPTURE_START_TIMESTAMP))
-                .singleElement().asString().contains("Cannot be configured together with 'capture.start.op.time'");
+                .containsExactly("The 'capture.start.timestamp' value is invalid: Cannot be configured together with 'capture.start.op.time'");
         assertThatThrownBy(() -> new MongoDbConnectorConfig(config))
-                .isInstanceOf(ConfigException.class).hasMessageContaining("capture.start.op.time");
+                .isInstanceOf(ConfigException.class)
+                .hasMessage("Invalid value 30 for configuration capture.start.timestamp: Cannot be configured together with 'capture.start.op.time'");
     }
 
     @ParameterizedTest
@@ -105,9 +106,13 @@ public class MongoDbConnectorConfigTest {
         final var validation = connector.validate(config.asMap());
         assertThat(connector.connectionConfig).isNull();
         assertThat(validationErrors(validation, MongoDbConnectorConfig.CONNECTION_STRING)).isEmpty();
-        assertThat(validationErrors(validation, MongoDbConnectorConfig.CAPTURE_START_TIMESTAMP)).hasSize(1);
+        assertThat(validationErrors(validation, MongoDbConnectorConfig.CAPTURE_START_TIMESTAMP))
+                .singleElement().asString()
+                .startsWith("The 'capture.start.timestamp' value is invalid: ")
+                .doesNotContain("Invalid value", "for configuration");
         assertThatThrownBy(() -> new MongoDbConnectorConfig(config))
-                .isInstanceOf(ConfigException.class).hasMessageContaining("capture.start.timestamp");
+                .isInstanceOf(ConfigException.class)
+                .hasMessageStartingWith("Invalid value " + value + " for configuration capture.start.timestamp: ");
     }
 
     @Test

@@ -1186,7 +1186,12 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
         String snapshotModeValue = config.getString(MongoDbConnectorConfig.SNAPSHOT_MODE);
         this.snapshotMode = SnapshotMode.parse(snapshotModeValue, MongoDbConnectorConfig.SNAPSHOT_MODE.defaultValueAsString());
 
-        this.startOperationTime = resolveStartOperationTime(config);
+        try {
+            this.startOperationTime = resolveStartOperationTime(config);
+        }
+        catch (IllegalArgumentException e) {
+            throw new ConfigException(CAPTURE_START_TIMESTAMP.name(), config.getString(CAPTURE_START_TIMESTAMP), e.getMessage());
+        }
 
         String captureModeValue = config.getString(MongoDbConnectorConfig.CAPTURE_MODE);
         this.captureMode = CaptureMode.parse(captureModeValue, MongoDbConnectorConfig.CAPTURE_MODE.defaultValueAsString());
@@ -1302,7 +1307,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
             resolveStartOperationTime(config);
             return 0;
         }
-        catch (ConfigException e) {
+        catch (IllegalArgumentException e) {
             problems.accept(field, config.getString(field), e.getMessage());
             return 1;
         }
@@ -1314,15 +1319,9 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
         final var hasOperationTime = !CAPTURE_START_OP_TIME.defaultValue().equals(operationTime);
         if (value != null) {
             if (hasOperationTime) {
-                throw new ConfigException(CAPTURE_START_TIMESTAMP.name(), value,
-                        "Cannot be configured together with '" + CAPTURE_START_OP_TIME.name() + "'");
+                throw new IllegalArgumentException("Cannot be configured together with '" + CAPTURE_START_OP_TIME.name() + "'");
             }
-            try {
-                return BsonTimestampParser.parse(value);
-            }
-            catch (IllegalArgumentException e) {
-                throw new ConfigException(CAPTURE_START_TIMESTAMP.name(), value, e.getMessage());
-            }
+            return BsonTimestampParser.parse(value);
         }
         return hasOperationTime ? new BsonTimestamp(operationTime) : null;
     }
