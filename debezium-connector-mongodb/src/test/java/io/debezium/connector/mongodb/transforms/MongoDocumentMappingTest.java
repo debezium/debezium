@@ -10,6 +10,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.connect.data.Struct;
@@ -17,7 +18,9 @@ import org.apache.kafka.connect.errors.DataException;
 import org.bson.BsonDocument;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -121,6 +124,44 @@ class MongoDocumentMappingTest {
                 """);
         assertThatThrownBy(() -> convert(mapping, "{\"a\":{\"nested\":5}}"))
                 .isInstanceOf(DataException.class).hasMessageContaining("selected");
+    }
+
+    @ParameterizedTest
+    @MethodSource("invalidMappingJson")
+    void shouldIncludeJsonErrorDetailsAndLocation(String mapping, String detail, int line, int column) {
+        assertThatThrownBy(() -> new MongoDocumentMapping("shop.orders", mapping))
+                .isInstanceOf(ConfigException.class)
+                .hasMessageContaining("Schema mapping for shop.orders")
+                .hasMessageContaining(detail)
+                .hasMessageContaining("line " + line + ", column " + column);
+    }
+
+    private static Stream<Arguments> invalidMappingJson() {
+        return Stream.of(
+                Arguments.of("""
+                        {
+                          "a": ]
+                        }
+                        """, "Unexpected character", 2, 8),
+                Arguments.of("""
+                        {
+                          "a":{"path":"/x","type":"string"},
+                          "a":{"path":"/y","type":"string"}
+                        }
+                        """, "Duplicate field 'a'", 3, 6),
+                Arguments.of("""
+                        {
+                          "a": {
+                            "path": "/x",
+                            "path": "/y",
+                            "type": "string"
+                          }
+                        }
+                        """, "Duplicate field 'path'", 4, 11),
+                Arguments.of("""
+                        {"a":{"path":"/x","type":"string"}}
+                        {}
+                        """, "Trailing token", 2, 1));
     }
 
     @ParameterizedTest
