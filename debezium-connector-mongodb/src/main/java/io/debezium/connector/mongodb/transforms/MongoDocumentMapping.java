@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.mongodb.transforms;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -18,6 +17,7 @@ import org.apache.kafka.connect.errors.DataException;
 import org.bson.BsonDocument;
 
 import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -45,8 +45,11 @@ final class MongoDocumentMapping {
         try {
             mapping = MAPPER.readTree(json);
         }
-        catch (IOException e) {
-            throw new ConfigException("Schema mapping for " + namespace + " must be valid JSON without duplicate fields or trailing content");
+        catch (JsonProcessingException e) {
+            final var location = e.getLocation();
+            final var position = location == null ? "" : " at line " + location.getLineNr() + ", column " + location.getColumnNr();
+            throw new ConfigException("Schema mapping for " + namespace + " must be valid JSON without duplicate fields or trailing content: "
+                    + e.getOriginalMessage() + position);
         }
         if (mapping == null || !mapping.isObject() || mapping.isEmpty()) {
             throw new ConfigException("Schema mapping for " + namespace + " must be a non-empty JSON object");
