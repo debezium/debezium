@@ -353,7 +353,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
     public final List<SourceRecord> poll() throws InterruptedException {
 
         try (var rootLoggingContext = LoggingContext.initRootContext()) {
-            // in we fail to start, return empty list and try to start next poll() method call
+            // if we fail to start, return empty list and try to start next poll() method call
             if (!startIfNeededAndPossible()) {
                 return Collections.emptyList();
             }
