@@ -129,8 +129,11 @@ public class MongoToRelationalMapper<R extends ConnectRecord<R>> implements Tran
         if (customSchemaMap.isEmpty()) {
             return null;
         }
-        final var source = envelope.getStruct(Envelope.FieldName.SOURCE);
-        if (source == null || source.schema().field("db") == null || source.schema().field("collection") == null) {
+        final var source = envelope.schema().field(Envelope.FieldName.SOURCE) == null
+                ? null
+                : envelope.getStruct(Envelope.FieldName.SOURCE);
+        if (source == null || source.schema().field("db") == null || source.schema().field("collection") == null
+                || source.getString("db") == null || source.getString("collection") == null) {
             throw new DataException("Collection schema mappings require source.db and source.collection metadata");
         }
         return customSchemaMap.get(source.getString("db") + "." + source.getString("collection"));
