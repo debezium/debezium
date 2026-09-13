@@ -246,6 +246,41 @@ Conflicting structures, such as a document changing to a scalar, produce an erro
 Inference also retains the existing BSON converter's type and array limitations.
 Use a fixed projection to select compatible leaves or preserve varying structures with `io.debezium.data.Json`.
 
+Inference rejects BSON `Undefined` and `DBPointer` values with an error identifying the BSON type and document path.
+This applies to either document image, including values nested in documents, arrays, or JavaScript scopes.
+These values are not silently omitted or converted to null.
+With a fixed projection, unselected values do not undergo inference, and selected `io.debezium.data.Json` fields can retain these types.
+For an unsupported value inside a JavaScript scope, select the entire scoped JavaScript value as JSON; `$scope` is an Extended JSON wrapper, not a selectable BSON document field.
+The checks apply to BSON types decoded from the incoming JSON.
+For example, legacy JSON represents a `DBPointer` as a document containing `$ref` and `$id` fields, which is inferred as a document.
+Configure the source connector's `json.serialization.mode=extended` if the original BSON type identity must be retained.
+
+=== Preserving mixed-type arrays as JSON
+
+Kafka Connect arrays use one element schema.
+Inference therefore rejects arrays with incompatible element types, such as an integer and a string, rather than automatically converting them to JSON.
+To retain a mixed-type array, explicitly map the array to `io.debezium.data.Json`.
+For example, consider this document in `shop.orders`:
+
+[source,json]
+----
+{"items": [1, "two", null, {"x": true}]}
+----
+
+The following projection preserves the array and also retains the complete document:
+
+[source,properties]
+----
+transforms=map
+transforms.map.type=io.debezium.connector.mongodb.transforms.MongoToRelationalMapper
+transforms.map.schema.mapping.shop.orders={"items_json":{"path":"/items","type":"io.debezium.data.Json"},"document_json":{"path":"","type":"io.debezium.data.Json"}}
+----
+
+With the default `json.output.mode=input`, `items_json` contains the JSON text `[1, "two", null, {"x": true}]` as a Connect string with the JSON logical type, not as a Connect array.
+The element order, values, and nested structure are retained, and `document_json` contains the original document string received by the SMT.
+The target database and sink determine how these strings are stored in columns.
+Setting `json.output.mode=canonical` changes the representation of mapped JSON values; it does not enable automatic JSON fallback during inference.
+
 == Identifying changed projection fields
 
 To add headers listing changed and unchanged fields, apply `ExtractChangedRecordState` after this SMT:
