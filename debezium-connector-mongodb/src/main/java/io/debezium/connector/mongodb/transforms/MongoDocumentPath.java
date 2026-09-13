@@ -16,9 +16,11 @@ import org.bson.BsonValue;
  * An RFC 6901 JSON Pointer evaluated against the BSON document, before Connect conversion.
  */
 final class MongoDocumentPath {
+    private final String pointer;
     private final List<String> tokens;
 
     MongoDocumentPath(String pointer) {
+        this.pointer = pointer;
         List<String> parsed = new ArrayList<>();
         if (!pointer.isEmpty()) {
             if (!pointer.startsWith("/")) {
@@ -38,6 +40,10 @@ final class MongoDocumentPath {
 
     boolean isRoot() {
         return tokens.isEmpty();
+    }
+
+    String pointer() {
+        return pointer;
     }
 
     BsonValue read(BsonDocument document) {

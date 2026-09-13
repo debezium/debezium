@@ -23,6 +23,9 @@ import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.bson.BsonDocument;
+import org.bson.json.JsonMode;
+import org.bson.json.JsonWriterSettings;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -239,6 +242,106 @@ class MongoToRelationalMapperIntegrationTest {
                     restored.value(), result.timestamp());
             assertChangedFields(changes.apply(deserializedRecord), List.of("details"), List.of("_id"));
         }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "input", "canonical" })
+    void shouldApplyJsonOutputModeThroughTheSinkChain(String mode) {
+        final String projection = """
+                {"document_json":{"path":"","type":"io.debezium.data.Json"},
+                 "profile_json":{"path":"/profile","type":"io.debezium.data.Json"},
+                 "age":{"path":"/profile/age","type":"int32"}}
+                """;
+        final String beforeProfile = "{ \"age\" : 30, \"date\" : {\"$date\":0} }";
+        final String afterProfile = "{ \"age\" : 31, \"date\" : {\"$date\":0} }";
+        final String before = " {\"profile\":" + beforeProfile + "} ";
+        final String after = " {\"profile\":" + afterProfile + "} ";
+        final var original = record("u", before, after);
+        mapper.configure(Map.of("json.output.mode", mode, "schema.mapping.shop.orders", projection));
+        final var sourceResult = changes.apply(mapper.apply(original));
+        assertPreservedMetadata(original, sourceResult);
+
+        try (var converter = new JsonConverter();
+                var sinkMapper = new MongoToRelationalMapper<SinkRecord>();
+                var sinkChanges = new ExtractChangedRecordState<SinkRecord>()) {
+            converter.configure(Map.of("schemas.enable", true), false);
+            sinkMapper.configure(Map.of("json.output.mode", mode, "schema.mapping.shop.orders", projection));
+            sinkChanges.configure(Map.of("header.changed.name", "Changed", "header.unchanged.name", "Unchanged"));
+            final var decoded = converter.toConnectData(original.topic(),
+                    converter.fromConnectData(original.topic(), original.valueSchema(), original.value()));
+            final var input = new SinkRecord(original.topic(), original.kafkaPartition(), original.keySchema(), original.key(), decoded.schema(), decoded.value(), 123L);
+            final var result = sinkChanges.apply(sinkMapper.apply(input));
+            final var envelope = (Struct) result.value();
+            final var canonical = JsonWriterSettings.builder().outputMode(JsonMode.EXTENDED).build();
+            assertThat(envelope.getStruct("before").getString("document_json"))
+                    .isEqualTo(mode.equals("input") ? before : BsonDocument.parse(before).toJson(canonical));
+            assertThat(envelope.getStruct("after").getString("document_json"))
+                    .isEqualTo(mode.equals("input") ? after : BsonDocument.parse(after).toJson(canonical));
+            assertThat(envelope.getStruct("before").getString("profile_json"))
+                    .isEqualTo(mode.equals("input") ? beforeProfile : BsonDocument.parse(beforeProfile).toJson(canonical));
+            assertThat(envelope.getStruct("after").getString("profile_json"))
+                    .isEqualTo(mode.equals("input") ? afterProfile : BsonDocument.parse(afterProfile).toJson(canonical));
+            assertThat(envelope.getStruct("before").getInt32("age")).isEqualTo(30);
+            assertThat(envelope.getStruct("after").getInt32("age")).isEqualTo(31);
+            assertChangedFields(result, List.of("document_json", "profile_json", "age"), List.of());
+            assertThat(result.kafkaOffset()).isEqualTo(123L);
+            assertThat(result.key()).isEqualTo(original.key());
+            assertThat(result.value()).isEqualTo(sourceResult.value());
+            final var restored = converter.toConnectData(result.topic(), converter.fromConnectData(result.topic(), result.valueSchema(), result.value()));
+            assertThat(restored.value()).isEqualTo(result.value());
+            assertThat(restored.schema()).isEqualTo(result.valueSchema());
+
+            final var deletion = changes.apply(mapper.apply(record("d", before, null)));
+            assertThat(((Struct) deletion.value()).getStruct("before").getString("profile_json"))
+                    .isEqualTo(envelope.getStruct("before").getString("profile_json"));
+            assertThat(((Struct) deletion.value()).getStruct("after")).isNull();
+            assertChangedFields(deletion, List.of(), List.of());
+            final var tombstone = original.newRecord(original.topic(), original.kafkaPartition(), original.keySchema(), original.key(), null, null, original.timestamp());
+            assertThat(mapper.apply(tombstone)).isSameAs(tombstone);
+        }
+    }
+
+    @Test
+    void shouldResetJsonOutputModeWhenReconfiguredAndLeaveInferenceUnchanged() {
+        final String projection = """
+                {"document_json":{"path":"","type":"io.debezium.data.Json"},
+                 "nested":{"path":"/age","type":"io.debezium.data.Json"}}
+                """;
+        final String json = " {\"age\":30} ";
+        final var original = record("c", null, json);
+        mapper.configure(Map.of("json.output.mode", "canonical", "schema.mapping.shop.orders", projection));
+        assertThat(((Struct) mapper.apply(original).value()).getStruct("after").getString("nested")).contains("$numberInt");
+        mapper.configure(Map.of("schema.mapping.shop.orders", projection));
+        final var input = ((Struct) mapper.apply(original).value()).getStruct("after");
+        assertThat(input.getString("document_json")).isEqualTo(json);
+        assertThat(input.getString("nested")).isEqualTo("30");
+        mapper.configure(Map.of("json.output.mode", "canonical", "schema.mapping.shop.other", projection));
+        final var inferred = ((Struct) mapper.apply(original).value()).getStruct("after");
+        assertThat(inferred.getInt32("age")).isEqualTo(30);
+        assertThat(inferred.schema().fields()).hasSize(1);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "input", "canonical" })
+    void shouldReportRemovedJsonFieldsAndShrinkingArrays(String mode) {
+        mapper.configure(Map.of("json.output.mode", mode, "schema.mapping.shop.orders", """
+                {"removed":{"path":"/removed","type":"io.debezium.data.Json"},
+                 "second":{"path":"/items/1","type":"io.debezium.data.Json"},
+                 "items":{"path":"/items","type":"io.debezium.data.Json"}}
+                """));
+        final var original = record("u", "{\"removed\":{\"n\":1},\"items\":[1,{\"n\":2}]}", "{\"items\":[]}");
+        final var result = changes.apply(mapper.apply(original));
+        final var envelope = (Struct) result.value();
+        final var before = envelope.getStruct("before");
+        final var after = envelope.getStruct("after");
+        assertThat(before.getString("removed")).isNotNull();
+        assertThat(before.getString("second")).isNotNull();
+        assertThat(after.get("removed")).isNull();
+        assertThat(after.get("second")).isNull();
+        assertThat(after.getString("items")).isEqualTo("[]");
+        assertThat(after.schema()).isSameAs(before.schema());
+        assertChangedFields(result, List.of("removed", "second", "items"), List.of());
+        assertPreservedMetadata(original, result);
     }
 
     private static void assertProjection(Struct envelope) {

@@ -7,7 +7,9 @@ package io.debezium.connector.mongodb.transforms;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.connect.data.Schema;
@@ -22,6 +24,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import io.debezium.connector.mongodb.transforms.MongoToRelationalMapper.JsonOutputMode;
 import io.debezium.data.Json;
 import io.debezium.schema.SchemaNameAdjuster;
 
@@ -39,8 +42,15 @@ final class MongoDocumentMapping {
 
     private final List<MappingField> fields;
     private final Schema schema;
+    private final JsonOutputMode jsonOutputMode;
+    private final Set<String> jsonPaths;
 
     MongoDocumentMapping(String namespace, String json) {
+        this(namespace, json, JsonOutputMode.INPUT);
+    }
+
+    MongoDocumentMapping(String namespace, String json, JsonOutputMode jsonOutputMode) {
+        this.jsonOutputMode = jsonOutputMode;
         final JsonNode mapping;
         try {
             mapping = MAPPER.readTree(json);
@@ -78,6 +88,10 @@ final class MongoDocumentMapping {
         });
         fields = List.copyOf(parsed);
         schema = builder.build();
+        jsonPaths = fields.stream()
+                .filter(field -> Json.LOGICAL_NAME.equals(field.schema().name()) && !field.path().isRoot())
+                .map(field -> field.path().pointer())
+                .collect(Collectors.toUnmodifiableSet());
     }
 
     Schema schema() {
@@ -89,11 +103,31 @@ final class MongoDocumentMapping {
             return null;
         }
         final var result = new Struct(schema);
+        Map<String, String> inputJson = null;
         for (MappingField field : fields) {
             try {
-                final Object value = field.path().isRoot() && Json.LOGICAL_NAME.equals(field.schema().name())
-                        ? originalJson
-                        : MongoMappingType.convert(field.path().read(document), field.schema());
+                final var selected = field.path().read(document);
+                final Object value;
+                if (selected == null || selected.isNull()) {
+                    value = null;
+                }
+                else if (jsonOutputMode == JsonOutputMode.INPUT && Json.LOGICAL_NAME.equals(field.schema().name())) {
+                    if (field.path().isRoot()) {
+                        value = originalJson;
+                    }
+                    else {
+                        if (inputJson == null) {
+                            inputJson = MongoDocumentJson.extract(originalJson, jsonPaths);
+                        }
+                        value = inputJson.get(field.path().pointer());
+                        if (value == null) {
+                            throw new DataException("No incoming JSON representation for document path '" + field.path().pointer() + "'");
+                        }
+                    }
+                }
+                else {
+                    value = MongoMappingType.convert(selected, field.schema());
+                }
                 result.put(field.name(), value);
             }
             catch (RuntimeException e) {
