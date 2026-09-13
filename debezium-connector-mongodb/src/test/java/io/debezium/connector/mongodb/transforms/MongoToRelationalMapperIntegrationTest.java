@@ -12,6 +12,7 @@ import java.math.BigDecimal;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Schema;
@@ -26,7 +27,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import io.debezium.connector.mongodb.MongoDbFieldName;
@@ -151,6 +154,44 @@ class MongoToRelationalMapperIntegrationTest {
         assertThat(((Struct) result.value()).getStruct("after").schema().field("document_json")).isNull();
     }
 
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("incompleteSourceMetadata")
+    void shouldRejectIncompleteSourceMetadataWithCollectionMappings(String description, Schema sourceSchema, Struct source) {
+        mapper.configure(Map.of("schema.mapping.shop.orders", PROJECTION));
+        final var original = record("c", null, "{\"_id\":1}", sourceSchema, source);
+        assertThatThrownBy(() -> mapper.apply(original))
+                .as(description)
+                .isInstanceOf(DataException.class)
+                .hasMessage("Collection schema mappings require source.db and source.collection metadata");
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("incompleteSourceMetadata")
+    void shouldInferWithIncompleteSourceMetadataWhenNoMappingsAreConfigured(String description, Schema sourceSchema, Struct source) {
+        final var original = record("u", "{\"_id\":1,\"removed\":42}", "{\"_id\":1}", sourceSchema, source);
+        final var result = changes.apply(mapper.apply(original));
+        assertChangedFields(result, List.of("removed"), List.of("_id"));
+        final var envelope = (Struct) result.value();
+        assertThat(envelope.getStruct("after").getInt32("_id")).as(description).isEqualTo(1);
+        envelope.validate();
+    }
+
+    private static Stream<Arguments> incompleteSourceMetadata() {
+        final var sourceSchema = SchemaBuilder.struct().name("server.Source").optional()
+                .field("db", Schema.OPTIONAL_STRING_SCHEMA).field("collection", Schema.OPTIONAL_STRING_SCHEMA).build();
+        final var sourceWithoutDbSchema = SchemaBuilder.struct().name("server.Source")
+                .field("collection", Schema.STRING_SCHEMA).build();
+        final var sourceWithoutCollectionSchema = SchemaBuilder.struct().name("server.Source")
+                .field("db", Schema.STRING_SCHEMA).build();
+        return Stream.of(
+                Arguments.of("missing source field", null, null),
+                Arguments.of("null source value", sourceSchema, null),
+                Arguments.of("missing db field", sourceWithoutDbSchema, new Struct(sourceWithoutDbSchema).put("collection", "orders")),
+                Arguments.of("missing collection field", sourceWithoutCollectionSchema, new Struct(sourceWithoutCollectionSchema).put("db", "shop")),
+                Arguments.of("null db value", sourceSchema, new Struct(sourceSchema).put("db", null).put("collection", "orders")),
+                Arguments.of("null collection value", sourceSchema, new Struct(sourceSchema).put("db", "shop").put("collection", null)));
+    }
+
     @Test
     void shouldApplyTheSinkChainAfterSchemaEnabledJsonDeserialization() {
         final var original = record("u", BEFORE, AFTER);
@@ -249,10 +290,17 @@ class MongoToRelationalMapperIntegrationTest {
     private static SourceRecord record(String operation, String before, String after) {
         final var sourceSchema = SchemaBuilder.struct().name("server.Source")
                 .field("db", Schema.STRING_SCHEMA).field("collection", Schema.STRING_SCHEMA).build();
-        final var envelopeSchema = SchemaBuilder.struct().name("server.shop.orders.Envelope").version(1)
+        return record(operation, before, after, sourceSchema, new Struct(sourceSchema).put("db", "shop").put("collection", "orders"));
+    }
+
+    private static SourceRecord record(String operation, String before, String after, Schema sourceSchema, Struct source) {
+        final var envelopeSchemaBuilder = SchemaBuilder.struct().name("server.shop.orders.Envelope").version(1)
                 .doc("MongoDB event with additional envelope metadata").parameter("custom", "retained")
-                .field("before", Json.builder().optional().build()).field("after", Json.builder().optional().build())
-                .field("source", sourceSchema).field("op", Schema.STRING_SCHEMA)
+                .field("before", Json.builder().optional().build()).field("after", Json.builder().optional().build());
+        if (sourceSchema != null) {
+            envelopeSchemaBuilder.field("source", sourceSchema);
+        }
+        final var envelopeSchema = envelopeSchemaBuilder.field("op", Schema.STRING_SCHEMA)
                 .field("ts_ms", Schema.INT64_SCHEMA).field("ts_us", Schema.INT64_SCHEMA).field("ts_ns", Schema.INT64_SCHEMA)
                 .field("transaction", TransactionMonitor.TRANSACTION_BLOCK_SCHEMA)
                 .field("updateDescription", MongoDbSchema.UPDATED_DESCRIPTION_SCHEMA)
@@ -265,9 +313,11 @@ class MongoToRelationalMapperIntegrationTest {
                 .put("truncatedArrays", List.of(new Struct(MongoDbSchema.TRUNCATED_ARRAY_SCHEMA)
                         .put(MongoDbFieldName.ARRAY_FIELD_NAME, "items").put(MongoDbFieldName.ARRAY_NEW_SIZE, 1)));
         final var envelope = new Struct(envelopeSchema).put("before", before).put("after", after)
-                .put("source", new Struct(sourceSchema).put("db", "shop").put("collection", "orders"))
                 .put("op", operation).put("ts_ms", 123L).put("ts_us", 123000L).put("ts_ns", 123000000L)
                 .put("transaction", transaction).put("updateDescription", updateDescription).put("custom_metadata", "preserved");
+        if (sourceSchema != null) {
+            envelope.put("source", source);
+        }
         final var keySchema = SchemaBuilder.struct().name("server.shop.orders.Key").field("id", Schema.STRING_SCHEMA).build();
         final var key = new Struct(keySchema).put("id", "1");
         // Topic routing must not change which collection projection is selected.

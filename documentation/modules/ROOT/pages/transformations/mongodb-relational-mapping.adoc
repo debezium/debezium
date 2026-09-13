@@ -191,6 +191,9 @@ Precise decimal types reject non-finite numbers; use a string or JSON representa
 
 == Inferred schema fallback
 
+When collection mappings are configured, the SMT requires a `source` struct with non-null `db` and `collection` fields to identify the collection.
+If any of this metadata is absent or null, the SMT raises an error instead of falling back to inference.
+
 If no `schema.mapping.<database>.<collection>` matches the event's source metadata, the SMT falls back to inference, even when mappings exist for other collections.
 It does not reject an unmatched collection.
 Check collection names and sink topic selection when a fixed schema is required.
