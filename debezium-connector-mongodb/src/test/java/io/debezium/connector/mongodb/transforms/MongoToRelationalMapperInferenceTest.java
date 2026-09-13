@@ -8,6 +8,7 @@ package io.debezium.connector.mongodb.transforms;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -16,14 +17,54 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.bson.BsonDocument;
+import org.bson.BsonTimestamp;
+import org.bson.BsonType;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import io.debezium.data.Envelope;
 
 class MongoToRelationalMapperInferenceTest {
+
+    @ParameterizedTest
+    @ValueSource(longs = { 0L, 1L, 2_147_483_647L, 2_147_483_648L, 4_294_967_295L })
+    void shouldInferUnsignedTimestampsInBothImages(long seconds) {
+        final var before = new BsonDocument("value", new BsonTimestamp((int) seconds, 0)).toJson();
+        final var after = new BsonDocument("value", new BsonTimestamp((int) seconds, -1)).toJson();
+        final var result = transform(before, after);
+        assertThat(result.getStruct("before").get("value")).isEqualTo(new Date(seconds * 1_000));
+        assertThat(result.getStruct("after").get("value")).isEqualTo(new Date(seconds * 1_000));
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = BsonType.class, names = { "UNDEFINED", "DB_POINTER" })
+    void shouldRejectUnsupportedTypesWithTheirPathInEitherImage(BsonType type) {
+        final var value = type == BsonType.UNDEFINED ? "{\"$undefined\":true}"
+                : "{\"$dbPointer\":{\"$ref\":\"db.collection\",\"$id\":{\"$oid\":\"507f1f77bcf86cd799439011\"}}}";
+        final Map<String, String> documents = Map.of(
+                "/value", "{\"value\":%s}",
+                "/nested/value", "{\"nested\":{\"value\":%s}}",
+                "/items/1", "{\"items\":[null,%s]}",
+                "/items/1/value", "{\"items\":[{}, {\"value\":%s}]}",
+                "/a~1b/~0c", "{\"a/b\":{\"~c\":%s}}",
+                "/", "{\"\":%s}",
+                "/script/$scope/value", "{\"script\":{\"$code\":\"return value;\",\"$scope\":{\"value\":%s}}}");
+        documents.forEach((path, template) -> {
+            final var document = template.formatted(value);
+            for (var images : List.of(List.of(document, "{}"), List.of("{}", document), List.of(document, document))) {
+                assertThatThrownBy(() -> transform(images.get(0), images.get(1)))
+                        .isInstanceOf(DataException.class)
+                        .hasMessageContaining("unsupported BSON type " + type)
+                        .hasMessageContaining("'" + path + "'")
+                        .hasMessageContaining("schema.mapping.<database>.<collection>")
+                        .hasMessageContaining("io.debezium.data.Json");
+            }
+        });
+    }
 
     @ParameterizedTest
     @ValueSource(strings = { "server.db.collection", "server.Envelope.collection", "server.db.Envelope" })
@@ -32,6 +73,16 @@ class MongoToRelationalMapperInferenceTest {
         assertThat(result.schema().name()).isEqualTo(schemaName + Envelope.SCHEMA_NAME_SUFFIX);
         assertThat(result.getStruct("before").schema().name()).isEqualTo(schemaName);
         assertThat(result.getStruct("after").schema()).isSameAs(result.getStruct("before").schema());
+    }
+
+    @Test
+    void shouldInferReferenceDocumentsWithoutTreatingThemAsDbPointers() {
+        final var result = transform("{}", """
+                {"reference":{"$ref":"db.collection","$id":{"$oid":"507f1f77bcf86cd799439011"}}}
+                """);
+        final var reference = result.getStruct("after").getStruct("reference");
+        assertThat(reference.getString("$ref")).isEqualTo("db.collection");
+        assertThat(reference.getString("$id")).isEqualTo("507f1f77bcf86cd799439011");
     }
 
     @Test
