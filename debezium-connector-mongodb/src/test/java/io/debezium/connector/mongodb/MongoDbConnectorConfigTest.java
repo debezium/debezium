@@ -15,7 +15,9 @@ import static org.mockito.Mockito.mock;
 import java.util.List;
 import java.util.Optional;
 
+import org.apache.kafka.common.config.Config;
 import org.apache.kafka.common.config.ConfigException;
+import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -23,11 +25,13 @@ import org.bson.BsonTimestamp;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
+import io.debezium.connector.mongodb.connection.MongoDbConnectionContext;
 import io.debezium.data.Envelope;
 
 public class MongoDbConnectorConfigTest {
@@ -81,7 +85,11 @@ public class MongoDbConnectorConfigTest {
                 .with(MongoDbConnectorConfig.CAPTURE_START_OP_TIME, new BsonTimestamp(30, 0).getValue())
                 .with(MongoDbConnectorConfig.CAPTURE_START_TIMESTAMP, "30")
                 .build();
-        assertThat(connectorValidationErrors(config, MongoDbConnectorConfig.CAPTURE_START_TIMESTAMP))
+        final var connector = new ConnectionValidationConnector();
+        final var validation = connector.validate(config.asMap());
+        assertThat(connector.connectionConfig).isNull();
+        assertThat(validationErrors(validation, MongoDbConnectorConfig.CONNECTION_STRING)).isEmpty();
+        assertThat(validationErrors(validation, MongoDbConnectorConfig.CAPTURE_START_TIMESTAMP))
                 .singleElement().asString().contains("Cannot be configured together with 'capture.start.op.time'");
         assertThatThrownBy(() -> new MongoDbConnectorConfig(config))
                 .isInstanceOf(ConfigException.class).hasMessageContaining("capture.start.op.time");
@@ -93,7 +101,11 @@ public class MongoDbConnectorConfigTest {
         final var config = TestHelper.getConfiguration().edit()
                 .with(MongoDbConnectorConfig.CAPTURE_START_TIMESTAMP, value)
                 .build();
-        assertThat(connectorValidationErrors(config, MongoDbConnectorConfig.CAPTURE_START_TIMESTAMP)).hasSize(1);
+        final var connector = new ConnectionValidationConnector();
+        final var validation = connector.validate(config.asMap());
+        assertThat(connector.connectionConfig).isNull();
+        assertThat(validationErrors(validation, MongoDbConnectorConfig.CONNECTION_STRING)).isEmpty();
+        assertThat(validationErrors(validation, MongoDbConnectorConfig.CAPTURE_START_TIMESTAMP)).hasSize(1);
         assertThatThrownBy(() -> new MongoDbConnectorConfig(config))
                 .isInstanceOf(ConfigException.class).hasMessageContaining("capture.start.timestamp");
     }
@@ -103,13 +115,82 @@ public class MongoDbConnectorConfigTest {
         final var config = TestHelper.getConfiguration().edit()
                 .with(MongoDbConnectorConfig.CAPTURE_START_OP_TIME, "invalid")
                 .build();
-        assertThat(connectorValidationErrors(config, MongoDbConnectorConfig.CAPTURE_START_OP_TIME)).hasSize(1);
+        final var connector = new ConnectionValidationConnector();
+        final var validation = connector.validate(config.asMap());
+        assertThat(validationErrors(validation, MongoDbConnectorConfig.CAPTURE_START_OP_TIME)).hasSize(1);
+        assertThat(connector.connectionConfig).isNotNull();
+        assertThat(connector.connectionConfig.startAtOperationTime()).isEmpty();
+        assertThat(validationErrors(validation, MongoDbConnectorConfig.CONNECTION_STRING))
+                .containsExactly(ConnectionValidationConnector.CONNECTION_ERROR);
     }
 
-    private static List<String> connectorValidationErrors(Configuration config, Field field) {
-        return new MongoDbConnector().validate(config.asMap()).configValues().stream()
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = "30")
+    void shouldValidateConnectionWithValidStartTimestamp(String value) {
+        final var builder = TestHelper.getConfiguration().edit();
+        if (value != null) {
+            builder.with(MongoDbConnectorConfig.CAPTURE_START_TIMESTAMP, value);
+        }
+        final var config = builder.build();
+        final var connector = new ConnectionValidationConnector();
+        final var validation = connector.validate(config.asMap());
+        assertThat(connector.connectionConfig).isNotNull();
+        assertThat(validationErrors(validation, MongoDbConnectorConfig.CAPTURE_START_TIMESTAMP)).isEmpty();
+        assertThat(validationErrors(validation, MongoDbConnectorConfig.CONNECTION_STRING))
+                .containsExactly(ConnectionValidationConnector.CONNECTION_ERROR);
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = "30")
+    void shouldValidateConnectionWithUnrelatedFieldError(String value) {
+        final var builder = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.SNAPSHOT_MODE, "invalid");
+        if (value != null) {
+            builder.with(MongoDbConnectorConfig.CAPTURE_START_TIMESTAMP, value);
+        }
+        final var config = builder.build();
+        final var connector = new ConnectionValidationConnector();
+        final var validation = connector.validate(config.asMap());
+        assertThat(validationErrors(validation, MongoDbConnectorConfig.SNAPSHOT_MODE)).hasSize(1);
+        assertThat(validationErrors(validation, MongoDbConnectorConfig.CAPTURE_START_TIMESTAMP)).isEmpty();
+        assertThat(connector.connectionConfig).isNotNull();
+        assertThat(validationErrors(validation, MongoDbConnectorConfig.CONNECTION_STRING))
+                .containsExactly(ConnectionValidationConnector.CONNECTION_ERROR);
+    }
+
+    @Test
+    void shouldSkipConnectionValidationWithInvalidConnectionString() {
+        final var config = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.CONNECTION_STRING, "invalid")
+                .with(MongoDbConnectorConfig.CAPTURE_START_TIMESTAMP, "30")
+                .build();
+        final var connector = new ConnectionValidationConnector();
+        final var validation = connector.validate(config.asMap());
+        assertThat(connector.connectionConfig).isNull();
+        assertThat(validationErrors(validation, MongoDbConnectorConfig.CONNECTION_STRING))
+                .isNotEmpty().doesNotContain(ConnectionValidationConnector.CONNECTION_ERROR);
+        assertThat(validationErrors(validation, MongoDbConnectorConfig.CAPTURE_START_TIMESTAMP)).isEmpty();
+    }
+
+    private static List<String> validationErrors(Config validation, Field field) {
+        return validation.configValues().stream()
                 .filter(value -> value.name().equals(field.name()))
                 .findFirst().orElseThrow().errorMessages();
+    }
+
+    private static class ConnectionValidationConnector extends MongoDbConnector {
+        private static final String CONNECTION_ERROR = "Unable to connect: test connection failure";
+
+        private MongoDbConnectorConfig connectionConfig;
+
+        @Override
+        public void validateConnection(Configuration config, ConfigValue connectionStringValidation) {
+            // Exercise configuration construction without opening a MongoDB connection.
+            connectionConfig = new MongoDbConnectionContext(config).getConnectorConfig();
+            connectionStringValidation.addErrorMessage(CONNECTION_ERROR);
+        }
     }
 
     @Test
