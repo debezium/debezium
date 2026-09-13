@@ -197,6 +197,14 @@ public class MongoToRelationalMapper<R extends ConnectRecord<R>> implements Tran
      * The original documents are still used when converting values.
      */
     private BsonValue schemaSample(BsonValue value, String path) {
+        if (value != null && (value.getBsonType() == BsonType.UNDEFINED || value.getBsonType() == BsonType.DB_POINTER)) {
+            throw new DataException("Cannot infer a MongoDB schema at '" + path + "': unsupported BSON type " + value.getBsonType()
+                    + ". Configure schema.mapping.<database>.<collection> to select compatible fields or retain the value as io.debezium.data.Json.");
+        }
+        if (value != null && value.isJavaScriptWithScope()) {
+            // Scoped JavaScript is a scalar BSON value, but its scope can contain unsupported values.
+            schemaSample(value.asJavaScriptWithScope().getScope(), fieldPath(path, "$scope"));
+        }
         if (value != null && value.isDocument()) {
             final var sample = new BsonDocument();
             for (Map.Entry<String, BsonValue> entry : value.asDocument().entrySet()) {
