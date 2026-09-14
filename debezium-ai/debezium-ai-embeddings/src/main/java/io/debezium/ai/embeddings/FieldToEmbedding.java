@@ -136,7 +136,7 @@ public class FieldToEmbedding<R extends ConnectRecord<R>> implements Transformat
 
     protected void validateConfiguration() {
         if (sourceField == null || sourceField.isBlank()) {
-            throw new ConfigException(format("'%s' must be set to non-empty value.", TEXT_FIELD.name()));
+            throw new ConfigException(format("'%s' must be set to non-empty value.", TEXT_FIELD));
         }
         modelFactory.validateConfiguration();
     }
