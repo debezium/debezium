@@ -41,6 +41,7 @@ import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.PostgresConnection.PostgresValueConverterBuilder;
 import io.debezium.connector.postgresql.connection.PostgresDefaultValueConverter;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
+import io.debezium.connector.postgresql.metrics.PostgresChangeEventSourceMetricsFactory;
 import io.debezium.connector.postgresql.spi.SlotCreationResult;
 import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.document.DocumentReader;
@@ -51,7 +52,6 @@ import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.GuardrailValidator;
-import io.debezium.pipeline.metrics.DefaultChangeEventSourceMetricsFactory;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -282,7 +282,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                             replicationConnection,
                             slotCreatedInfo,
                             slotInfo),
-                    new DefaultChangeEventSourceMetricsFactory<>(),
+                    new PostgresChangeEventSourceMetricsFactory(),
                     dispatcher,
                     schema,
                     snapshotterService,
