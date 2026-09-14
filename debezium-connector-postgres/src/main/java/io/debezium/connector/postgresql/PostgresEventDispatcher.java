@@ -14,6 +14,7 @@ import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.DebeziumHeaderProducer;
 import io.debezium.connector.postgresql.connection.LogicalDecodingMessage;
 import io.debezium.connector.postgresql.pipeline.txmetadata.PostgresTransactionMonitor;
+import io.debezium.data.Envelope;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.EventDispatcher;
@@ -21,7 +22,6 @@ import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.ChangeEventCreator;
 import io.debezium.pipeline.spi.OffsetContext;
-import io.debezium.pipeline.spi.Partition;
 import io.debezium.schema.DataCollectionFilters;
 import io.debezium.schema.DatabaseSchema;
 import io.debezium.schema.SchemaNameAdjuster;
@@ -60,14 +60,16 @@ public class PostgresEventDispatcher<T extends DataCollectionId> extends EventDi
         this.messageFilter = connectorConfig.getMessageFilter();
     }
 
-    public void dispatchLogicalDecodingMessage(Partition partition, OffsetContext offset, Long decodeTimestamp,
+    public void dispatchLogicalDecodingMessage(PostgresPartition partition, OffsetContext offset, Long decodeTimestamp,
                                                LogicalDecodingMessage message)
             throws InterruptedException {
         if (messageFilter.isIncluded(message.getPrefix())) {
-            logicalDecodingMessageMonitor.logicalDecodingMessageEvent(partition, offset, decodeTimestamp, message, transactionMonitor);
+            logicalDecodingMessageMonitor.logicalDecodingMessageEvent(
+                    partition, offset, decodeTimestamp, message, transactionMonitor, getEventListener());
         }
         else {
             LOGGER.trace("Filtered data change event for logical decoding message with prefix{}", message.getPrefix());
+            getEventListener().onFilteredEvent(partition, "logical decoding message with prefix = " + message.getPrefix(), Envelope.Operation.MESSAGE);
         }
     }
 

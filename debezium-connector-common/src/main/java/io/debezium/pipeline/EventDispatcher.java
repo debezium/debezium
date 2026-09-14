@@ -744,6 +744,10 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
         this.eventListener = eventListener;
     }
 
+    protected DataChangeEventListener<P> getEventListener() {
+        return eventListener;
+    }
+
     /**
      * Enable support for incremental snapshotting.
      */
