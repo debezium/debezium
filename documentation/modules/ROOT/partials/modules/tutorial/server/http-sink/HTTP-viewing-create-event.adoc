@@ -107,43 +107,7 @@ The new change event that appears in the {selected-sink} sink terminal output sh
 ----
 --
 
-. For the last event, review the details of the _key_.
-+
---
-Here are the details of the _key_ of the last event (formatted for readability):
-
-[source,json,options="nowrap"]
-----
-{
-  "schema":{
-    "type":"struct",
-      "fields":[
-        {
-          "type":"int32",
-          "optional":false,
-          "field":"id"
-        }
-      ],
-    "optional":false,
-    "name":"tutorial.inventory.customers.Key"
-  },
-  "payload":{
-    "id":1005
-  }
-}
-----
-
-The event has two parts: a `schema` and a `payload`.
-The `schema` contains a Kafka Connect schema describing what is in the payload.
-In this case, the payload is a `struct` named `tutorial.inventory.customers.Key` that is not optional and has one required field (`id` of type `int32`).
-
-The `payload` has a single `id` field, with a value of `1005`.
-
-By reviewing the _key_ of the event,
-you can see that this event applies to the row in the `inventory.customers` table whose `id` primary key column had a value of `1005`.
---
-
-. Review the details of the same event's _value_.
+. Review the details of the event's _value_.
 +
 --
 The event's _value_ shows that the row was created,
@@ -398,8 +362,7 @@ Here are the details of the _value_ of the last event (formatted for readability
 }
 ----
 
-This portion of the event is much longer,
-but like the event's _key_, it also has a `schema` and a `payload`.
+The event has two parts: a `schema` and a `payload`.
 The `schema` contains a schema named `tutorial.inventory.customers.Envelope` (version 2) that can contain five fields:
 
 `before`::
@@ -419,22 +382,22 @@ the connector name, the name of the `binlog` file where the event was recorded, 
 A required field that contains a string value describing the type of operation.
 Values for the MySQL connector are `c` for create (or insert), `u` for update, `d` for delete, and `r` for read (in the case of a snapshot).
 `ts_ms`::
-An optional field that, if present, contains the time (using the system clock in the JVM running the Kafka Connect task) at which the connector processed the event.
+An optional field that, if present, contains the time (using the system clock in the JVM running the {prodname} server task) at which the connector processed the event.
 
 [NOTE]
 ====
 The JSON representations of the events are much longer than the rows they describe.
-This is because, with every event key and value, {prodname} server ships the _schema_ that describes the _payload_.
+This is because, with every event value, {prodname} server ships the _schema_ that describes the _payload_.
 Over time, this structure may change.
-However, having the schemas for the key and the value in the event itself makes it much easier for consuming applications to understand the messages, especially as they evolve over time.
+However, having the schemas for the value in the event itself makes it much easier for consuming applications to understand the messages, especially as they evolve over time.
 
 The {prodname} MySQL connector constructs these schemas based upon the structure of the database tables.
 If you use DDL statements to alter the table definitions in the MySQL databases,
-the connector reads these DDL statements and updates its Kafka Connect schemas.
+the connector reads these DDL statements and updates its schemas.
 This is the only way that each event is structured exactly like the table from where it originated at the time the event occurred.
-However, the Kafka topic containing all of the events for a single table might have events that correspond to each state of the table definition.
+However, the offset file containing all of the events for a single table might have events that correspond to each state of the table definition.
 
-The JSON converter includes the key and value schemas in every message,
+The JSON converter includes value schemas in every message,
 so it does produce very verbose events.
 // The following condition can be removed when the downstream supports Avro.
 ifdef::community[]
@@ -448,7 +411,7 @@ endif::community[]
 ====
 --
 
-. Compare the event's _key_ and _value_ schemas to the state of the `inventory` database.
+. Compare the event's _value_ schema to the state of the `inventory` database.
 In the terminal that is running the MySQL command line client, run the following statement:
 +
 --
