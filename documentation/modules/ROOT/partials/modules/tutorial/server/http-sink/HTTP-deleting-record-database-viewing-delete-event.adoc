@@ -1,37 +1,12 @@
-. Switch to the terminal running the HTTP Sink container to see _two_ new events.
+. Switch to the terminal running the HTTP Sink container to see another _new_ event.
 
 +
-By deleting a row in the `customers` table, the {prodname} MySQL connector generated two new events.
+By deleting a row in the `customers` table, the {prodname} MySQL connector generated a new event.
 
-. Review the _key_ and _value_ for the first new event.
+. Review the _value_ for the first new event.
 +
 --
-Here are the details of the _key_ for the first new event (formatted for readability):
-
-[source,json,options="nowrap"]
-----
-{
-  "schema": {
-    "type": "struct",
-    "name": "dbserver1.inventory.customers.Key",
-    "optional": false,
-    "fields": [
-      {
-        "field": "id",
-        "type": "int32",
-        "optional": false
-      }
-    ]
-  },
-  "payload": {
-    "id": 1005
-  }
-}
-----
-
-This _key_ is the same as the _key_ in the previous two events you looked at.
-
-Here is the _value_ of the first new event (formatted for readability):
+Here is the _value_ of the new event (formatted for readability):
 
 [source,json,options="nowrap",subs="+attributes"]
 ----
@@ -90,46 +65,8 @@ The `op` field value is `d`, indicating that the record was deleted.
 
 `ts_ms`, `ts_us`, `ts_ns`::
 Displays timestamps in milliseconds, microseconds, and nanoseconds that indicate when the connector processed the event.
-The time is based on the system clock in the JVM that runs the Kafka Connect task.
+The time is based on the system clock in the JVM that runs the {prodname} server task.
 
 Thus, this event provides a consumer with the information that it needs to process the removal of the row.
 The event record also provides the old values, because some consumers might require them to properly handle the removal.
 --
-
-. Review the _key_ and _value_ for the second new event.
-
-+
-Here is the _key_ for the second new event (formatted for readability):
-+
-[source,json,options="nowrap"]
-----
-  {
-    "schema": {
-      "type": "struct",
-      "name": "dbserver1.inventory.customers.Key"
-      "optional": false,
-      "fields": [
-        {
-          "field": "id",
-          "type": "int32",
-          "optional": false
-        }
-      ]
-    },
-    "payload": {
-      "id": 1004
-    }
-  }
-----
-+
-Once again, this _key_ is exactly the same key as in the previous three events you looked at.
-+
-Here is the _value_ of that same event (formatted for readability):
-+
-[source,json,options="nowrap"]
-----
-{
-  "schema": null,
-  "payload": null
-}
-----

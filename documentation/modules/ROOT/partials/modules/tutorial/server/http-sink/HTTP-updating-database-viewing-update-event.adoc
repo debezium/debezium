@@ -5,31 +5,6 @@
 By changing a record in the `customers` table, the {prodname} MySQL connector generated a new event.
 You should see the change event at the end of the {prodname} server POST request log.
 
-Here are the details of the _key_ for the _update_ event (formatted for readability):
-
-[source,json,options="nowrap"]
-----
-  {
-    "schema": {
-      "type": "struct",
-      "name": "tutorial.inventory.customers.Key",
-      "optional": false,
-      "fields": [
-        {
-          "field": "id",
-          "type": "int32",
-          "optional": false
-        }
-      ]
-    },
-    "payload": {
-      "id": 1005
-    }
-  }
-----
-
-This _key_ is the same as the _key_ for the previous events.
-
 Here is that new event's _value_.
 There are no changes in the `schema` section, so only the `payload` section is shown (formatted for readability):
 
