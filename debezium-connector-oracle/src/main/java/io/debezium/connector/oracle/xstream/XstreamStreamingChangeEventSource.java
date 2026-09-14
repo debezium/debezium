@@ -203,14 +203,16 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
                 return connection;
             }
             catch (StreamsException e) {
-                if (!isAttachExceptionRetriable(e) || attempt == DEFAULT_MAX_ATTACH_RETRIES) {
-                    if (attempt == DEFAULT_MAX_ATTACH_RETRIES) {
-                        LOGGER.warn("Failed to attach to outbound server with max attempts", e);
-                    }
+                if (!isAttachExceptionRetriable(e)) {
+                    LOGGER.warn("Failed to attach to outbound server with non-retriable error", e);
+                    throw e;
+                }
+                if (attempt == DEFAULT_MAX_ATTACH_RETRIES) {
+                    LOGGER.warn("Failed to attach to outbound server with max attempts", e);
                     throw e;
                 }
 
-                LOGGER.warn("Failed to attach to outbound server - attempt {} / {}", attempt, DEFAULT_MAX_ATTACH_RETRIES);
+                LOGGER.warn("Failed to attach to outbound server - attempt {} / {}: {}", attempt, DEFAULT_MAX_ATTACH_RETRIES, e.getMessage());
                 retryStrategy.sleepWhen(true);
             }
             finally {
@@ -229,6 +231,8 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
                 || e.getErrorCode() == 23656
                 || e.getErrorCode() == 26928
                 || e.getErrorCode() == 26812 // An active session currently attached to XStream server
+                || e.getErrorCode() == 26804 // Apply is disabled; attach restarts it once the previous instance is gone
+                || e.getErrorCode() == 26808 // Apply process died unexpectedly; typically mid-restart after a detach
                 || e.getMessage().contains("did not start properly and is currently in state")
                 || e.getMessage().contains("Timeout occurred while starting XStream process")
                 || e.getMessage().contains("Unable to communicate with XStream apply coordinator process");
