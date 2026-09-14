@@ -1,0 +1,161 @@
+/*
+ * Copyright Debezium Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
+package io.debezium.connector.mongodb;
+
+import static io.debezium.junit.EqualityCheck.LESS_THAN;
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
+
+import org.apache.kafka.connect.data.Struct;
+import org.awaitility.Awaitility;
+import org.bson.BsonDocument;
+import org.bson.Document;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+
+import com.mongodb.client.MongoChangeStreamCursor;
+import com.mongodb.client.model.ChangeStreamPreAndPostImagesOptions;
+import com.mongodb.client.model.CreateCollectionOptions;
+import com.mongodb.client.model.changestream.ChangeStreamDocument;
+import com.mongodb.client.model.changestream.FullDocument;
+import com.mongodb.client.model.changestream.FullDocumentBeforeChange;
+
+import io.debezium.config.CommonConnectorConfig;
+import io.debezium.connector.mongodb.MongoDbConnectorConfig.CaptureMode;
+import io.debezium.connector.mongodb.MongoDbConnectorConfig.FullUpdateType;
+import io.debezium.connector.mongodb.connection.MongoDbConnections;
+import io.debezium.data.Envelope;
+import io.debezium.doc.FixFor;
+import io.debezium.heartbeat.Heartbeat;
+import io.debezium.junit.SkipWhenDatabaseVersion;
+
+@SkipWhenDatabaseVersion(check = LESS_THAN, major = 6, minor = 0, patch = 9, reason = "Splitting Change Stream events requires MongoDB 6.0.9 or newer.")
+public class MongoDbSplitEventIT extends AbstractMongoConnectorIT {
+
+    static Stream<Arguments> captureModes() {
+        return Stream.of(
+                Arguments.of(CaptureMode.CHANGE_STREAMS_UPDATE_FULL, FullUpdateType.LOOKUP, 2),
+                Arguments.of(CaptureMode.CHANGE_STREAMS_UPDATE_FULL, FullUpdateType.POST_IMAGE, 2),
+                Arguments.of(CaptureMode.CHANGE_STREAMS_WITH_PRE_IMAGE, FullUpdateType.LOOKUP, 2),
+                Arguments.of(CaptureMode.CHANGE_STREAMS_UPDATE_FULL_WITH_PRE_IMAGE, FullUpdateType.LOOKUP, 3),
+                Arguments.of(CaptureMode.CHANGE_STREAMS_UPDATE_FULL_WITH_PRE_IMAGE, FullUpdateType.POST_IMAGE, 3));
+    }
+
+    @ParameterizedTest
+    @MethodSource("captureModes")
+    @FixFor("debezium/dbz#2619")
+    void shouldValidateAndResumeAfterSplitEvent(CaptureMode captureMode, FullUpdateType fullUpdateType, int fragmentCount) throws InterruptedException {
+        final var dbName = "dbit";
+        final var collectionName = "splitEvents";
+        final var beforePayload = "a".repeat(9 * 1024 * 1024);
+        final var afterPayload = "b".repeat(9 * 1024 * 1024);
+        final var before = new Document("_id", 1).append("payload", beforePayload);
+        final var after = new Document("_id", 1).append("payload", afterPayload);
+
+        config = TestHelper.getConfiguration(mongo).edit()
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, dbName + "." + collectionName)
+                .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.NO_DATA)
+                .with(MongoDbConnectorConfig.CAPTURE_MODE, captureMode)
+                .with(MongoDbConnectorConfig.CAPTURE_MODE_FULL_UPDATE_TYPE, fullUpdateType)
+                .with(MongoDbConnectorConfig.CURSOR_OVERSIZE_HANDLING_MODE, MongoDbConnectorConfig.OversizeHandlingMode.SPLIT)
+                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(Heartbeat.HEARTBEAT_INTERVAL, 0)
+                .build();
+        context = new MongoDbTaskContext(config);
+
+        try (var client = connect()) {
+            final var database = client.getDatabase(dbName);
+            database.createCollection(collectionName, new CreateCollectionOptions()
+                    .changeStreamPreAndPostImagesOptions(new ChangeStreamPreAndPostImagesOptions(true)));
+            final var collection = database.getCollection(collectionName);
+            collection.insertOne(before);
+
+            start(MongoDbConnector.class, config);
+            waitForStreamingRunning("mongodb", "mongo");
+
+            // Observe the actual fragment tokens independently of Debezium's merging and offset handling.
+            final var stream = collection.watch(List.of(new Document("$changeStreamSplitLargeEvent", new Document())), BsonDocument.class)
+                    .maxAwaitTime(1, TimeUnit.SECONDS);
+            if (captureMode.isFullUpdate()) {
+                stream.fullDocument(fullUpdateType.isPostImage() ? FullDocument.WHEN_AVAILABLE : FullDocument.UPDATE_LOOKUP);
+            }
+            if (captureMode.isIncludePreImage()) {
+                stream.fullDocumentBeforeChange(FullDocumentBeforeChange.WHEN_AVAILABLE);
+            }
+
+            final BsonDocument lastFragmentToken;
+            try (var cursor = stream.cursor()) {
+                collection.updateOne(new Document("_id", 1), new Document("$set", new Document("payload", afterPayload)));
+                lastFragmentToken = readSplitEventResumeToken(cursor, fragmentCount);
+            }
+
+            final var records = consumeRecordsByTopic(1);
+            assertThat(records.recordsForTopic("mongo." + dbName + "." + collectionName)).hasSize(1);
+            final var record = records.allRecordsInOrder().get(0);
+            final var value = (Struct) record.value();
+            assertThat(value.getString(Envelope.FieldName.OPERATION)).isEqualTo(Envelope.Operation.UPDATE.code());
+            if (captureMode.isFullUpdate()) {
+                assertThat(Document.parse(value.getString("after"))).isEqualTo(after);
+            }
+            if (captureMode.isIncludePreImage()) {
+                assertThat(Document.parse(value.getString("before"))).isEqualTo(before);
+            }
+            final var resumeToken = ResumeTokens.toBase64(lastFragmentToken);
+            assertThat(record.sourceOffset().get(SourceInfo.RESUME_TOKEN)).isEqualTo(resumeToken);
+            stopConnector();
+
+            final var committedOffset = readLastCommittedOffset(config, record.sourcePartition());
+            assertThat(committedOffset).containsEntry(SourceInfo.RESUME_TOKEN, resumeToken);
+
+            // The server can resume from this token with the same document options.
+            try (var ignored = stream.resumeAfter(lastFragmentToken).cursor()) {
+                final var offset = new MongoDbOffsetContext.Loader(context.getConfig()).load(committedOffset);
+                try (var connection = MongoDbConnections.create(config)) {
+                    assertThat(connection.validateLogPosition(offset, context))
+                            .as("Startup validation must accept the committed token of a completed split event")
+                            .isTrue();
+                }
+            }
+
+            start(MongoDbConnector.class, config);
+            waitForStreamingRunning("mongodb", "mongo");
+            final var marker = new Document("_id", 2).append("marker", "resumed");
+            collection.insertOne(marker);
+            final var resumedRecords = consumeRecordsByTopic(1);
+            assertThat(resumedRecords.recordsForTopic("mongo." + dbName + "." + collectionName)).hasSize(1);
+            final var resumedRecord = resumedRecords.allRecordsInOrder().get(0);
+            final var resumedValue = (Struct) resumedRecord.value();
+            assertThat(resumedValue.getString(Envelope.FieldName.OPERATION)).isEqualTo(Envelope.Operation.CREATE.code());
+            assertThat(Document.parse(resumedValue.getString("after"))).isEqualTo(marker);
+            assertNoRecordsToConsume();
+        }
+    }
+
+    private BsonDocument readSplitEventResumeToken(MongoChangeStreamCursor<ChangeStreamDocument<BsonDocument>> cursor, int fragmentCount) {
+        final List<BsonDocument> fragmentTokens = new ArrayList<>();
+        Awaitility.await("Receiving all " + fragmentCount + " change stream fragments")
+                .atMost(waitTimeForRecords() * 30L, TimeUnit.SECONDS)
+                .until(() -> {
+                    final var event = cursor.tryNext();
+                    if (event == null) {
+                        return false;
+                    }
+                    assertThat(event.getSplitEvent()).isNotNull();
+                    assertThat(event.getSplitEvent().getFragment()).isEqualTo(fragmentTokens.size() + 1);
+                    assertThat(event.getSplitEvent().getOf()).isEqualTo(fragmentCount);
+                    assertThat(event.getResumeToken()).isNotNull();
+                    fragmentTokens.add(event.getResumeToken());
+                    return fragmentTokens.size() == fragmentCount;
+                });
+        return fragmentTokens.get(fragmentCount - 1);
+    }
+}
