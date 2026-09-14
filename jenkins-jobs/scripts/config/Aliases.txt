@@ -15,7 +15,6 @@ Akhil Mohammad,Mohammad Akhil
 akhilm,Mohammad Akhil
 akshansh,Akshansh Jain
 akshat08,Akshat Sapra
-akshat08,Akshat Sapra
 akulapid,Akula
 AleksejsSibanovs,Aleksejs Sibanovs
 Alex-pvl,Aleksandr Pavlyuk
@@ -45,7 +44,6 @@ benw-at-birdie,Ben White
 bep7520,Blake Peno
 BetaCat,合龙 张
 Bhagyashree,Bhagyashree Goyal
-bhuvan-somisetty,bhuvan-somisetty
 bhuvan-somisetty,bhuvan-somisetty
 BigGillyStyle,Andy Pickler
 Binayak490-cyber,Binayak Das
