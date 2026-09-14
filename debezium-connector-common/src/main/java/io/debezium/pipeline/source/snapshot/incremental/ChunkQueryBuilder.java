@@ -9,6 +9,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
+import java.util.OptionalLong;
 
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.Column;
@@ -66,6 +67,30 @@ public interface ChunkQueryBuilder<T extends DataCollectionId> {
      * Builds a query for reading the maximum primary key value from a table.
      */
     String buildMaxPrimaryKeyQuery(IncrementalSnapshotContext<T> context, Table table, Optional<String> additionalCondition);
+
+    /**
+     * Returns a best-effort, constant-time estimate of the number of rows in the table using connector-provided
+     * metadata (for example PostgreSQL {@code pg_class.reltuples}).
+     * <p>
+     * The estimate is only valid for the whole table, so it must only be used when no {@code additionalConditions}
+     * row filter is present. The default implementation returns {@link OptionalLong#empty()} (no estimate source);
+     * connectors override it to expose their metadata estimate.
+     *
+     * @return the estimated row count, or {@link OptionalLong#empty()} when no estimate source is available
+     */
+    OptionalLong estimateRowCount(IncrementalSnapshotContext<T> context, Table table);
+
+    /**
+     * Returns the exact number of rows the incremental snapshot will scan for the table, i.e. the rows whose key is
+     * less than or equal to {@code maximumKey} (optionally further constrained by {@code additionalCondition}).
+     * <p>
+     * Bounding the count by {@code maximumKey} matches exactly what the snapshot reads (later inserts flow through
+     * streaming), so derived progress cannot exceed 100% under concurrent inserts. This is a best-effort operation:
+     * a failure resolves to {@link OptionalLong#empty()} rather than failing the snapshot.
+     *
+     * @return the bounded exact row count, or {@link OptionalLong#empty()} when it could not be determined
+     */
+    OptionalLong countRows(IncrementalSnapshotContext<T> context, Table table, Optional<String> additionalCondition, Object[] maximumKey);
 
     /**
      * Returns the columns that are used for paginating the incremental snapshot chunks.

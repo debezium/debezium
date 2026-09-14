@@ -24,6 +24,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalLong;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
@@ -989,6 +990,31 @@ public class OracleConnection extends JdbcConnection {
     @Override
     public <T extends DataCollectionId> ChunkQueryBuilder<T> chunkQueryBuilder(RelationalDatabaseConnectorConfig connectorConfig) {
         return new OraclePhysicalRowIdentifierChunkQueryBuilder<>(connectorConfig, this);
+    }
+
+    @Override
+    public OptionalLong readRowCountEstimate(TableId tableId) {
+        // all_tables.num_rows is populated by the optimizer statistics (DBMS_STATS/ANALYZE); it is null when no stats
+        // have been gathered. Best-effort and only used by incremental snapshots when no row filter is present.
+        final String query = "SELECT num_rows FROM all_tables WHERE owner = ? AND table_name = ?";
+        try {
+            return prepareQueryAndMap(query,
+                    statement -> {
+                        statement.setString(1, tableId.schema());
+                        statement.setString(2, tableId.table());
+                    },
+                    rs -> {
+                        if (rs.next()) {
+                            final long estimate = rs.getLong(1);
+                            return rs.wasNull() ? OptionalLong.empty() : OptionalLong.of(estimate);
+                        }
+                        return OptionalLong.empty();
+                    });
+        }
+        catch (SQLException e) {
+            LOGGER.warn("Unable to read row count estimate for table '{}' from all_tables; incremental snapshot will fall back to an exact count", tableId, e);
+            return OptionalLong.empty();
+        }
     }
 
     public long getMaximumRedoLogFileSize() throws SQLException {

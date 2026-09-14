@@ -281,11 +281,25 @@ a|[source, json]
       "data_collections":"table1, table2",
       "current_collection_in_progress":"table1",
       "maximum_key":"100",
-      "last_processed_key":"50"
+      "last_processed_key":"50",
+      "total_rows":"100",
+      "total_chunks":"10",
+      "chunk_index":"5"
    },
    "timestamp": "1695817046353"
 }
 ----
+The `total_rows`, `total_chunks`, and `chunk_index` fields let you report the progress of the scan for the current data collection:
+
+`total_rows`:: A best-effort estimate of the total number of rows in the data collection that is currently being snapshotted.
+{prodname} uses the database's own metadata statistics when they are available, and otherwise falls back to a bounded count.
+Because the value is an estimate, it might not exactly match the number of rows that are ultimately scanned.
+`total_chunks`:: The number of chunks that are required to complete the scan, derived from `total_rows` and the configured `incremental.snapshot.chunk.size`.
+`chunk_index`:: The index of the chunk that is currently being processed, from `0` up to `total_chunks`.
+The reported progress never exceeds 100 percent.
+
+These fields are present only when {prodname} can establish an estimate for the data collection; if it cannot, the fields are omitted.
+
 |Snapshot completed for a table
 a|[source, json]
 ----
@@ -298,11 +312,16 @@ a|[source, json]
       "data_collection":"table1, table2",
       "scanned_collection":"table1",
       "total_rows_scanned":"100",
+      "total_rows":"100",
       "status":"SUCCEEDED"
    },
    "timestamp": "1695817046353"
 }
 ----
+The `total_rows` field reports the best-effort estimate of the total number of rows in the data collection.
+It is present only on a successful scan completion (`status` is `SUCCEEDED`) and only when {prodname} can establish an estimate for the data collection.
+Because the value is an estimate, it might differ slightly from `total_rows_scanned`, which reports the exact number of rows that were scanned.
+
 In the preceding example, the `additional_data.status` field can contain one of the following values:
 
 `EMPTY`:: The table contains no values.
