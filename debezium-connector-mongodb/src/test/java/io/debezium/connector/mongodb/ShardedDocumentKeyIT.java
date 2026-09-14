@@ -46,7 +46,7 @@ public class ShardedDocumentKeyIT extends AbstractShardedMongoConnectorIT {
     }
 
     @Test
-    @FixFor("DBZ-2337")
+    @FixFor("debezium/dbz#2337")
     void snapshotAndStreamingShouldAgreeOnTheKey() throws InterruptedException {
         insertDocuments(DATABASE, COLLECTION, new Document("_id", 1)
                 .append(SHARD_KEY, "a")
@@ -64,7 +64,7 @@ public class ShardedDocumentKeyIT extends AbstractShardedMongoConnectorIT {
     }
 
     @Test
-    @FixFor("DBZ-2337")
+    @FixFor("debezium/dbz#2337")
     void defaultModeShouldKeepTheIdKey() throws InterruptedException {
         insertDocuments(DATABASE, COLLECTION, new Document("_id", 1)
                 .append(SHARD_KEY, "a")

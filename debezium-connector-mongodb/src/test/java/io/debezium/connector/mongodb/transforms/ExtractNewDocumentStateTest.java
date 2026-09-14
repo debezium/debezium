@@ -445,7 +445,7 @@ public class ExtractNewDocumentStateTest {
     }
 
     @Test
-    @FixFor("DBZ-2337")
+    @FixFor("debezium/dbz#2337")
     public void shouldTakeIdOutOfDocumentKeyWhenRewritingDeletes() {
         SourceRecord transformed = rewriteDelete("documentKey", "{\"caseNo\": \"201907130000200001\",\"_id\": 1}");
 
@@ -453,7 +453,7 @@ public class ExtractNewDocumentStateTest {
     }
 
     @Test
-    @FixFor("DBZ-2337")
+    @FixFor("debezium/dbz#2337")
     public void shouldKeepCompositeIdWhenRewritingDeletes() {
         SourceRecord transformed = rewriteDelete("id", "{\"_id\": 1,\"tenant\": \"a\"}");
 
