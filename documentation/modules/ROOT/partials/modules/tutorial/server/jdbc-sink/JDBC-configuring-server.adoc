@@ -54,7 +54,7 @@ The following list describes the purpose of each configuration option shown abov
 `debezium.sink.jdbc.primary.key.mode=record_key`:: Specifies how the connector resolves the primary key columns from the event. 
 `debezium.sink.jdbc.schema.evolution=basic`:: Specifies how the connector evolves the destination table schemas.
 `debezium.sink.jdbc.delete.enabled=true`:: Specifies whether the connector processes DELETE or tombstone events and removes the corresponding row from the database. Use of this option requires that you set the `primary.key.mode` to `record.key`.
-`debezium.sink.jdbc.batch.size=1`:: Batch size 
+`debezium.sink.jdbc.batch.size=1`:: Batch size - for the purposes of this tutorial it is set to 1 so that single change events can be relayed. In a production environment, you should increase this to improve performance
 `debezium.format.value=json`:: The format used to encode the value portion of the change events
 `debezium.source.connector.class=io.debezium.connector.mysql.MySqlConnector`:: The connector class to use
 `debezium.source.offset.storage.file.filename=data/offsets.dat`:: The location that the offsets are stored when not using Kafka

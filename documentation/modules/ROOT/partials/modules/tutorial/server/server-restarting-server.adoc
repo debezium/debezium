@@ -29,7 +29,7 @@ mysql> INSERT INTO customers VALUES (default, "Kenneth", "Anderson", "kander@acm
 
 The records are added to the database.
 However, because {prodname} server is not running,
-the HTTP Sink does not receive any updates.
+the {selected-sink} Sink does not receive any updates.
 --
 
 . Open a new terminal, and use `run.sh` to restart the {prodname} server application.

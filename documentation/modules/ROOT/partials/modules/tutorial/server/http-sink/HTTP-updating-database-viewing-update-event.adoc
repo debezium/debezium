@@ -54,11 +54,13 @@ The following list describes select fields in the preceding example of the paylo
 
 `before`::
 The `before` field shows the values that were present in the row before the update.
-The original `first_name` value is `Anne`.
+The original `first_name` value is `John`.
+The original `email` value is `johntutorial@example.com`
 
 `after`::
 The `after` field shows the state of the row after the `update` event.
-The `first_name` value is now `Anne Marie`.
+The `first_name` value is now `Johnathan`.
+The `email` value is now `johnathantutorial@example.com`
 
 `source`::
 The `source` field structure has many of the same values as before, except that the `ts_sec` and `pos` fields have changed.
@@ -70,7 +72,7 @@ The `u` value indicates that change was due to an `update` event.
 
 `ts_ms`, `ts_us`, `ts_ns`::
 Displays timestamps in milliseconds, microseconds, and nanoseconds that indicate when the connector processed the event.
-The time is based on the system clock in the JVM that runs the Kafka Connect task.
+The time is based on the system clock in the JVM that runs the {prodname} server task.
 
 By viewing the `payload` section, you can learn several important things about the _update_ event:
 
