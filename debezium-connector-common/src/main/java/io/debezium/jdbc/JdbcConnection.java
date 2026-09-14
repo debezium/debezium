@@ -1697,6 +1697,22 @@ public class JdbcConnection implements AutoCloseable {
         return new DefaultChunkQueryBuilder<T>(connectorConfig, this);
     }
 
+    /**
+     * Returns a best-effort, constant-time estimate of the number of rows in the given table, typically read from
+     * connector-specific metadata (for example PostgreSQL {@code pg_class.reltuples} or InnoDB
+     * {@code information_schema.tables.table_rows}).
+     * <p>
+     * Used by incremental snapshots to report per-table progress without paying for an exact {@code COUNT}. The
+     * estimate is only meaningful for the whole table, so callers must not use it when a row filter
+     * ({@code additionalConditions}) is present.
+     *
+     * @param tableId the table to estimate
+     * @return the estimated row count, or {@link OptionalLong#empty()} when no estimate source is available
+     */
+    public OptionalLong readRowCountEstimate(TableId tableId) {
+        return OptionalLong.empty();
+    }
+
     public String buildSelectWithRowLimits(TableId tableId, int limit, String projection, Optional<String> condition,
                                            Optional<String> additionalCondition, String orderBy) {
         return buildSelectWithRowLimits(tableId, limit, projection, condition, additionalCondition, orderBy, Optional.empty());

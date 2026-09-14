@@ -34,6 +34,9 @@ public class IncrementalSnapshotNotificationService<P extends Partition, O exten
     public static final String NONE = "<none>";
     public static final String CONNECTOR_NAME = "connector_name";
     public static final String TOTAL_ROWS_SCANNED = "total_rows_scanned";
+    public static final String TOTAL_ROWS = "total_rows";
+    public static final String TOTAL_CHUNKS = "total_chunks";
+    public static final String CHUNK_INDEX = "chunk_index";
     public static final String STATUS = "status";
     public static final String LIST_DELIMITER = ",";
 
@@ -112,33 +115,65 @@ public class IncrementalSnapshotNotificationService<P extends Partition, O exten
                 .map(DataCollectionId::identifier)
                 .collect(Collectors.joining(LIST_DELIMITER));
 
+        Map<String, String> additionalData = new HashMap<>();
+        additionalData.put(DATA_COLLECTIONS, dataCollections);
+        additionalData.put(SCANNED_COLLECTION, scannedCollection);
+        additionalData.put(TOTAL_ROWS_SCANNED, String.valueOf(totalRowsScanned));
+        additionalData.put(STATUS, status.name());
+        // The best-effort per-collection total is reported only on a successful scan completion.
+        if (status == TableScanCompletionStatus.SUCCEEDED) {
+            incrementalSnapshotContext.totalRows().ifPresent(value -> additionalData.put(TOTAL_ROWS, String.valueOf(value)));
+        }
+
         notificationService.notify(buildNotificationWith(incrementalSnapshotContext, SnapshotStatus.TABLE_SCAN_COMPLETED,
-                Map.of(
-                        DATA_COLLECTIONS, dataCollections,
-                        SCANNED_COLLECTION, scannedCollection,
-                        TOTAL_ROWS_SCANNED, String.valueOf(totalRowsScanned),
-                        STATUS, status.name()),
-                offsetContext),
+                additionalData, offsetContext),
                 Offsets.of(partition, offsetContext));
     }
 
     public <T extends DataCollectionId> void notifyInProgress(IncrementalSnapshotContext<T> incrementalSnapshotContext, P partition, OffsetContext offsetContext) {
+        notifyInProgress(incrementalSnapshotContext, partition, offsetContext, 0L);
+    }
+
+    /**
+     * Emits an {@code IN_PROGRESS} notification, adding best-effort per-collection progress fields when the context
+     * carries a total row count. The derived {@code total_chunks} and {@code chunk_index} are computed here from that
+     * single stored value (and the configured chunk size) so that the two snapshot sources (relational and MongoDB)
+     * share one derivation.
+     *
+     * @param totalRowsScanned number of rows scanned so far, used to derive the current chunk index
+     */
+    public <T extends DataCollectionId> void notifyInProgress(IncrementalSnapshotContext<T> incrementalSnapshotContext, P partition, OffsetContext offsetContext,
+                                                              long totalRowsScanned) {
 
         String dataCollections = incrementalSnapshotContext.getDataCollections().stream().map(DataCollection::getId)
                 .map(DataCollectionId::identifier)
                 .collect(Collectors.joining(LIST_DELIMITER));
 
+        Map<String, String> additionalData = new HashMap<>();
+        additionalData.put(DATA_COLLECTIONS, dataCollections);
+        additionalData.put(CURRENT_COLLECTION_IN_PROGRESS, incrementalSnapshotContext.currentDataCollectionId().getId().identifier());
+        additionalData.put(MAXIMUM_KEY,
+                incrementalSnapshotContext.maximumKey().map(mk -> Arrays.stream(mk).map(x -> Objects.toString(x, "<null>")).collect(Collectors.joining(",")))
+                        .orElse("\"<null>\""));
+        additionalData.put(LAST_PROCESSED_KEY, Arrays.stream(incrementalSnapshotContext.chunkEndPosititon())
+                .map(x -> Objects.toString(x, "<null>")).collect(Collectors.joining(",")));
+        incrementalSnapshotContext.totalRows().ifPresent(rows -> {
+            additionalData.put(TOTAL_ROWS, String.valueOf(rows));
+            final int chunkSize = connectorConfig.getIncrementalSnapshotChunkSize();
+            if (chunkSize > 0) {
+                final long totalChunks = ceilDiv(rows, chunkSize);
+                additionalData.put(TOTAL_CHUNKS, String.valueOf(totalChunks));
+                additionalData.put(CHUNK_INDEX, String.valueOf(Math.min(ceilDiv(totalRowsScanned, chunkSize), totalChunks)));
+            }
+        });
+
         notificationService.notify(buildNotificationWith(incrementalSnapshotContext, SnapshotStatus.IN_PROGRESS,
-                Map.of(
-                        DATA_COLLECTIONS, dataCollections,
-                        CURRENT_COLLECTION_IN_PROGRESS, incrementalSnapshotContext.currentDataCollectionId().getId().identifier(),
-                        MAXIMUM_KEY,
-                        incrementalSnapshotContext.maximumKey().map(mk -> Arrays.stream(mk).map(x -> Objects.toString(x, "<null>")).collect(Collectors.joining(",")))
-                                .orElse("\"<null>\""),
-                        LAST_PROCESSED_KEY, Arrays.stream(incrementalSnapshotContext.chunkEndPosititon())
-                                .map(x -> Objects.toString(x, "<null>")).collect(Collectors.joining(","))),
-                offsetContext),
+                additionalData, offsetContext),
                 Offsets.of(partition, offsetContext));
+    }
+
+    private static long ceilDiv(long value, long divisor) {
+        return (value + divisor - 1) / divisor;
     }
 
     public <T extends DataCollectionId> void notifyCompleted(IncrementalSnapshotContext<T> incrementalSnapshotContext, P partition, OffsetContext offsetContext) {

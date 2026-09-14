@@ -1319,14 +1319,28 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
                 .collect(Collectors.toList())).contains("ad-hoc");
 
         Struct inProgress = incrementalSnapshotNotification.stream().filter(s -> s.getString("type").equals("IN_PROGRESS")).findFirst().get();
-        assertThat(inProgress.getMap("additional_data"))
+        Map<String, String> inProgressData = inProgress.getMap("additional_data");
+        assertThat(inProgressData)
                 .containsEntry("current_collection_in_progress", tableDataCollectionId())
                 .containsEntry("maximum_key", "1000")
-                .containsEntry("last_processed_key", String.valueOf(defaultIncrementalSnapshotChunkSize()));
+                .containsEntry("last_processed_key", String.valueOf(defaultIncrementalSnapshotChunkSize()))
+                .containsKey("total_rows")
+                .containsKey("total_chunks")
+                .containsKey("chunk_index");
+
+        // total_rows is a best-effort estimate that varies per connector, so we assert the derived progress
+        // fields are internally consistent rather than asserting an exact estimate value.
+        long totalRows = Long.parseLong(inProgressData.get("total_rows"));
+        long totalChunks = Long.parseLong(inProgressData.get("total_chunks"));
+        long chunkIndex = Long.parseLong(inProgressData.get("chunk_index"));
+        int chunkSize = defaultIncrementalSnapshotChunkSize();
+        assertThat(totalChunks).isEqualTo((totalRows + chunkSize - 1) / chunkSize);
+        assertThat(chunkIndex).isBetween(0L, totalChunks);
 
         Struct completed = incrementalSnapshotNotification.stream().filter(s -> s.getString("type").equals("TABLE_SCAN_COMPLETED")).findFirst().get();
         assertThat(completed.getMap("additional_data"))
-                .containsEntry("total_rows_scanned", "1000");
+                .containsEntry("total_rows_scanned", "1000")
+                .containsKey("total_rows");
     }
 
     protected void sendAdHocSnapshotSignalAndWait(String... collectionIds) throws Exception {

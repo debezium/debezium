@@ -10,6 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.OptionalLong;
 import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.Test;
@@ -115,5 +116,45 @@ public class MongoDbIncrementalSnapshotContextTest {
         assertThat(restoredCollection).isNotNull();
         assertThat(restoredCollection.getId().identifier()).isEqualTo(collectionId);
         assertThat(restoredCollection.getAdditionalCondition()).isEmpty();
+    }
+
+    /**
+     * The best-effort per-collection total document count must survive an offset round-trip so that
+     * progress reporting continues to work after a connector restart.
+     */
+    @Test
+    @FixFor("debezium/dbz#2620")
+    public void shouldRoundTripTotalRowsThroughOffsets() {
+        final MongoDbIncrementalSnapshotContext<CollectionId> original = new MongoDbIncrementalSnapshotContext<>(false);
+        original.addDataCollectionNamesToSnapshot("test-correlation", List.of("dbA.c1"), List.of(), "");
+        original.sendEvent(new Object[]{ "k" });
+        original.maximumKey(new Object[]{ "max" });
+        original.totalRows(OptionalLong.of(4200L));
+
+        final Map<String, Object> offsets = new HashMap<>();
+        original.store(offsets);
+
+        final MongoDbIncrementalSnapshotContext<CollectionId> restored = MongoDbIncrementalSnapshotContext.load(offsets, false);
+        assertThat(restored.totalRows()).isEqualTo(OptionalLong.of(4200L));
+    }
+
+    /**
+     * When the total document count could not be established it must not be stored, and a restored
+     * context must report it as absent so that the progress fields are omitted.
+     */
+    @Test
+    @FixFor("debezium/dbz#2620")
+    public void shouldNotStoreTotalRowsWhenAbsent() {
+        final MongoDbIncrementalSnapshotContext<CollectionId> original = new MongoDbIncrementalSnapshotContext<>(false);
+        original.addDataCollectionNamesToSnapshot("test-correlation", List.of("dbA.c1"), List.of(), "");
+        original.sendEvent(new Object[]{ "k" });
+        original.maximumKey(new Object[]{ "max" });
+
+        final Map<String, Object> offsets = new HashMap<>();
+        original.store(offsets);
+
+        assertThat(offsets).doesNotContainKey(MongoDbIncrementalSnapshotContext.TABLE_TOTAL_ROWS);
+        final MongoDbIncrementalSnapshotContext<CollectionId> restored = MongoDbIncrementalSnapshotContext.load(offsets, false);
+        assertThat(restored.totalRows()).isEqualTo(OptionalLong.empty());
     }
 }
