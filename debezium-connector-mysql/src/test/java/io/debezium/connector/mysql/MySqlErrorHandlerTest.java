@@ -54,23 +54,27 @@ public class MySqlErrorHandlerTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2611")
     void binlogReadErrorIsNotRetriable() {
         final SQLException sqlException = new SQLException("could not find next log", "HY000", ER_MASTER_FATAL_ERROR_READING_BINLOG);
         assertThat(errorHandler.isRetriable(sqlException)).isFalse();
     }
 
     @Test
+    @FixFor("debezium/dbz#2611")
     void wrappedBinlogReadErrorIsNotRetriable() {
         final SQLException sqlException = new SQLException("could not find next log", "HY000", ER_MASTER_FATAL_ERROR_READING_BINLOG);
         assertThat(errorHandler.isRetriable(new DebeziumException(sqlException))).isFalse();
     }
 
     @Test
+    @FixFor("debezium/dbz#2611")
     void unrelatedExceptionIsNotRetriable() {
         assertThat(errorHandler.isRetriable(new NullPointerException())).isFalse();
     }
 
     @Test
+    @FixFor("debezium/dbz#2611")
     void nullThrowableIsNotRetriable() {
         assertThat(errorHandler.isRetriable(null)).isFalse();
     }
