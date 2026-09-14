@@ -1333,6 +1333,124 @@ public class OracleClobDataTypeIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#579")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.XSTREAM, reason = "debezium/dbz#579 XStream-specific: LOB_WRITE cannot be re-read without a primary key")
+    public void shouldStreamUpdateWithUnavailablePlaceholderForXStreamLobWriteWithoutPrimaryKey() throws Exception {
+        String ddl = "CREATE TABLE CLOB_TEST ("
+                + "ID numeric(9,0), "
+                + "VAL_CLOB clob)";
+
+        connection.execute(ddl);
+        TestHelper.streamTable(connection, "debezium.clob_test");
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CLOB_TEST")
+                .with(OracleConnectorConfig.LOB_ENABLED, true)
+                .build();
+
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        String initial = part(JSON_DATA, 0, 8000);
+        Clob initialClob = createClob(initial);
+        connection.prepareQuery("INSERT INTO CLOB_TEST VALUES (1, ?)", p -> p.setClob(1, initialClob), null);
+        connection.commit();
+        consumeRecordsByTopic(1); // discard INSERT
+
+        // Without a primary key the connector cannot re-select the full CLOB, so the LOB_WRITE
+        // must surface as an UPDATE carrying the unavailable value placeholder rather than the
+        // partial chunk that DBMS_LOB.WRITEAPPEND sent.
+        final String appended = "abcd";
+        connection.prepareQuery(
+                "DECLARE loc CLOB; BEGIN "
+                        + "  SELECT VAL_CLOB INTO loc FROM CLOB_TEST WHERE ID = 1 FOR UPDATE; "
+                        + "  DBMS_LOB.OPEN(loc, DBMS_LOB.LOB_READWRITE); "
+                        + "  DBMS_LOB.WRITEAPPEND(loc, ?, ?); "
+                        + "  DBMS_LOB.CLOSE(loc); "
+                        + "END;",
+                p -> {
+                    p.setInt(1, appended.length());
+                    p.setString(2, appended);
+                },
+                null);
+        connection.commit();
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(topicName("CLOB_TEST"))).hasSize(1);
+
+        SourceRecord record = records.recordsForTopic(topicName("CLOB_TEST")).get(0);
+        VerifyRecord.isValidUpdate(record);
+
+        Struct after = after(record);
+        assertThat(after.get("ID")).isEqualTo(1);
+        assertThat(after.get("VAL_CLOB")).isEqualTo(getUnavailableValuePlaceholder(config));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#579")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.XSTREAM, reason = "debezium/dbz#579 XStream-specific: LOB_WRITE re-read finds no row at the commit SCN")
+    public void shouldStreamUpdateWithUnavailablePlaceholderForXStreamLobWriteWhenRowDeletedInSameTransaction() throws Exception {
+        String ddl = "CREATE TABLE CLOB_TEST ("
+                + "ID numeric(9,0), "
+                + "VAL_CLOB clob, "
+                + "primary key(id))";
+
+        connection.execute(ddl);
+        TestHelper.streamTable(connection, "debezium.clob_test");
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CLOB_TEST")
+                .with(OracleConnectorConfig.LOB_ENABLED, true)
+                .build();
+
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        String initial = part(JSON_DATA, 0, 8000);
+        Clob initialClob = createClob(initial);
+        connection.prepareQuery("INSERT INTO CLOB_TEST VALUES (1, ?)", p -> p.setClob(1, initialClob), null);
+        connection.commit();
+        consumeRecordsByTopic(1); // discard INSERT
+
+        // Append to the CLOB and delete the row in the same transaction. The re-select runs
+        // AS OF the commit SCN, where the row no longer exists, so the LOB_WRITE must surface
+        // as an UPDATE carrying the unavailable value placeholder, followed by the DELETE.
+        final String appended = "abcd";
+        connection.prepareQuery(
+                "DECLARE loc CLOB; BEGIN "
+                        + "  SELECT VAL_CLOB INTO loc FROM CLOB_TEST WHERE ID = 1 FOR UPDATE; "
+                        + "  DBMS_LOB.OPEN(loc, DBMS_LOB.LOB_READWRITE); "
+                        + "  DBMS_LOB.WRITEAPPEND(loc, ?, ?); "
+                        + "  DBMS_LOB.CLOSE(loc); "
+                        + "  DELETE FROM CLOB_TEST WHERE ID = 1; "
+                        + "END;",
+                p -> {
+                    p.setInt(1, appended.length());
+                    p.setString(2, appended);
+                },
+                null);
+        connection.commit();
+
+        SourceRecords records = consumeRecordsByTopic(3);
+        assertThat(records.recordsForTopic(topicName("CLOB_TEST"))).hasSize(3);
+
+        SourceRecord update = records.recordsForTopic(topicName("CLOB_TEST")).get(0);
+        VerifyRecord.isValidUpdate(update, "ID", 1);
+
+        Struct after = after(update);
+        assertThat(after.get("ID")).isEqualTo(1);
+        assertThat(after.get("VAL_CLOB")).isEqualTo(getUnavailableValuePlaceholder(config));
+
+        SourceRecord delete = records.recordsForTopic(topicName("CLOB_TEST")).get(1);
+        VerifyRecord.isValidDelete(delete, "ID", 1);
+
+        SourceRecord tombstone = records.recordsForTopic(topicName("CLOB_TEST")).get(2);
+        VerifyRecord.isValidTombstone(tombstone, "ID", 1);
+    }
+
+    @Test
     @FixFor("DBZ-2948")
     public void shouldStreamClobDataTypeValuesWithPrimaryKeyChange() throws Exception {
         String ddl = "CREATE TABLE CLOB_TEST ("

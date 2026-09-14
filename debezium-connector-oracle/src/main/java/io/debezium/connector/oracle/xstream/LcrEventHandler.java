@@ -459,6 +459,12 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
      * <p>Delegates to {@link OracleConnection#reselectColumns} so this path
      * shares the existing SQL builder, identifier quoting, and flashback
      * fallback logic with the {@code ReselectColumnsPostProcessor} path.
+     *
+     * <p>When the re-selection cannot be performed (no primary key, incomplete
+     * primary key in the LCR, or the row no longer exists), every LOB column is
+     * reported with {@link OracleValueConverters#UNAVAILABLE_VALUE} instead. The
+     * partial chunk delta must never be emitted as if it were the full column
+     * value.
      */
     private void reselectLobValues(RowLCR row, Table table, Map<String, Object> chunkValues) {
         if (chunkValues.isEmpty()) {
@@ -467,10 +473,12 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
 
         final List<String> pkColumns = table.primaryKeyColumnNames();
         if (pkColumns.isEmpty()) {
-            LOGGER.warn("Cannot reselect LOB values for table {}: no primary key defined "
+            LOGGER.warn("Cannot reselect LOB values for table {}: no primary key defined, "
+                    + "LOB columns will be emitted with the unavailable value placeholder "
                     + "(tx={}, scn={}, rowId={}).",
                     table.id(), row.getTransactionId(), offsetContext.getScn(),
                     row.getAttribute("ROW_ID"));
+            markLobValuesUnavailable(chunkValues);
             return;
         }
 
@@ -492,10 +500,12 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
             }
         }
         if (pkValuesMap.size() < pkColumns.size()) {
-            LOGGER.warn("Cannot reselect LOB values for table {}: incomplete primary key in LCR "
+            LOGGER.warn("Cannot reselect LOB values for table {}: incomplete primary key in LCR, "
+                    + "LOB columns will be emitted with the unavailable value placeholder "
                     + "(tx={}, scn={}, rowId={}).",
                     table.id(), row.getTransactionId(), offsetContext.getScn(),
                     row.getAttribute("ROW_ID"));
+            markLobValuesUnavailable(chunkValues);
             return;
         }
 
@@ -553,10 +563,12 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
                         }
                     });
             if (!found) {
-                LOGGER.warn("Reselect for table {} returned no rows — the row may have been deleted "
-                        + "between the LCR and the reselect (tx={}, scn={}, rowId={}).",
+                LOGGER.warn("Reselect for table {} returned no rows, the row may have been deleted "
+                        + "between the LCR and the reselect, LOB columns will be emitted with the "
+                        + "unavailable value placeholder (tx={}, scn={}, rowId={}).",
                         table.id(), row.getTransactionId(), offsetContext.getScn(),
                         row.getAttribute("ROW_ID"));
+                markLobValuesUnavailable(chunkValues);
             }
         }
         catch (SQLException e) {
@@ -569,6 +581,14 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
                     + " (tx=" + row.getTransactionId() + ", scn=" + offsetContext.getScn()
                     + ", rowId=" + row.getAttribute("ROW_ID") + ")", e);
         }
+    }
+
+    /**
+     * Replaces every LOB column entry with the unavailable value placeholder so that a partial
+     * {@code LOB_WRITE} chunk is never emitted as the column's full value.
+     */
+    private static void markLobValuesUnavailable(Map<String, Object> chunkValues) {
+        chunkValues.replaceAll((column, value) -> OracleValueConverters.UNAVAILABLE_VALUE);
     }
 
 }
