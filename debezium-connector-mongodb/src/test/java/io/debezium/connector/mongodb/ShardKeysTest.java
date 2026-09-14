@@ -31,7 +31,7 @@ public class ShardKeysTest {
     private static final CollectionId COLLECTION = new CollectionId("dbA", "c1");
 
     @Test
-    @FixFor("DBZ-2337")
+    @FixFor("debezium/dbz#2337")
     void shouldUseOnlyIdWhenCollectionIsNotSharded() {
         var document = new BsonDocument("_id", ID)
                 .append("name", new BsonString("Mary"));
@@ -42,7 +42,7 @@ public class ShardKeysTest {
     }
 
     @Test
-    @FixFor("DBZ-2337")
+    @FixFor("debezium/dbz#2337")
     void shouldPutShardKeyBeforeId() {
         var document = new BsonDocument("_id", ID)
                 .append("caseNo", new BsonString("201907130000200001"))
@@ -57,7 +57,7 @@ public class ShardKeysTest {
     }
 
     @Test
-    @FixFor("DBZ-2337")
+    @FixFor("debezium/dbz#2337")
     void shouldPreserveCompoundShardKeyOrder() {
         var document = new BsonDocument("_id", ID)
                 .append("region", new BsonString("eu"))
@@ -69,7 +69,7 @@ public class ShardKeysTest {
     }
 
     @Test
-    @FixFor("DBZ-2337")
+    @FixFor("debezium/dbz#2337")
     void shouldNotDuplicateIdWhenItIsPartOfTheShardKey() {
         var document = new BsonDocument("_id", ID)
                 .append("tenant", new BsonInt32(7));
@@ -80,7 +80,7 @@ public class ShardKeysTest {
     }
 
     @Test
-    @FixFor("DBZ-2337")
+    @FixFor("debezium/dbz#2337")
     void shouldKeepIdInShardKeyPosition() {
         var document = new BsonDocument("_id", ID)
                 .append("tenant", new BsonInt32(7));
@@ -91,7 +91,7 @@ public class ShardKeysTest {
     }
 
     @Test
-    @FixFor("DBZ-2337")
+    @FixFor("debezium/dbz#2337")
     void shouldResolveNestedShardKeyUnderItsDottedName() {
         var document = new BsonDocument("_id", ID)
                 .append("address", new BsonDocument("zip", new BsonString("12345")));
@@ -104,7 +104,7 @@ public class ShardKeysTest {
     }
 
     @Test
-    @FixFor("DBZ-2337")
+    @FixFor("debezium/dbz#2337")
     void shouldSkipShardKeyFieldMissingFromDocument() {
         var document = new BsonDocument("_id", ID);
 
@@ -114,7 +114,7 @@ public class ShardKeysTest {
     }
 
     @Test
-    @FixFor("DBZ-2337")
+    @FixFor("debezium/dbz#2337")
     void shouldSkipNestedShardKeyWhoseParentIsNotADocument() {
         var document = new BsonDocument("_id", ID)
                 .append("address", new BsonString("not a document"));
@@ -125,7 +125,7 @@ public class ShardKeysTest {
     }
 
     @Test
-    @FixFor("DBZ-2337")
+    @FixFor("debezium/dbz#2337")
     void shouldReadShardKeyOrderFromConfigEntry() {
         var entry = new Document("key", new Document("tenant", 1).append("region", "hashed"));
 
@@ -133,13 +133,13 @@ public class ShardKeysTest {
     }
 
     @Test
-    @FixFor("DBZ-2337")
+    @FixFor("debezium/dbz#2337")
     void shouldTreatMissingConfigEntryAsUnsharded() {
         assertThat(ShardKeys.shardKeyPathsOf(null, COLLECTION)).isEmpty();
     }
 
     @Test
-    @FixFor("DBZ-2337")
+    @FixFor("debezium/dbz#2337")
     void shouldFailWhenConfigEntryHasNoShardKey() {
         // Falling back to _id here would not match the documentKey that the change stream reports for the same document
         assertThatThrownBy(() -> ShardKeys.shardKeyPathsOf(new Document(), COLLECTION))
@@ -148,7 +148,7 @@ public class ShardKeysTest {
     }
 
     @Test
-    @FixFor("DBZ-2337")
+    @FixFor("debezium/dbz#2337")
     void shouldFailWhenConfigEntryHasEmptyShardKey() {
         var entry = new Document("key", new Document());
 
@@ -158,7 +158,7 @@ public class ShardKeysTest {
     }
 
     @Test
-    @FixFor("DBZ-2337")
+    @FixFor("debezium/dbz#2337")
     void shouldFailWhenConfigEntryShardKeyIsNotADocument() {
         var entry = new Document("key", "tenant");
 
@@ -168,7 +168,7 @@ public class ShardKeysTest {
     }
 
     @Test
-    @FixFor("DBZ-2337")
+    @FixFor("debezium/dbz#2337")
     void shouldTreatEveryCollectionAsUnshardedWithoutConnection() {
         assertThat(ShardKeys.unsharded().shardKeyPathsFor(COLLECTION)).isEmpty();
     }
