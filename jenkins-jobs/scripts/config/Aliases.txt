@@ -26,6 +26,7 @@ AndreiLeib,Andrei Leibovski
 AndreyIg,Andrey Ignatenko
 angsdey2,Angshuman Dey
 ani-sha,Anisha Mohanty
+anilabhabaral,Anilabha Baral
 antonio0,Antonio Marino
 aqhil07,Mohammad Akhil
 archiedx,Archie David
@@ -417,6 +418,3 @@ zrlurb,Peter Urbanetz
 zxpzlp,Xiaopu Zhu
 zxxz,Giovanni De Stefano
 “vsantonastaso”,Vincenzo Santonastaso
-bhuvan-somisetty,bhuvan-somisetty
-akshat08,Akshat Sapra
-anilabhabaral,Anilabha Baral
