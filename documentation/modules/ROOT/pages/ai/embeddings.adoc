@@ -173,6 +173,36 @@ No other configuration besides the general one is needed.
 
 This model is especially suited to prototyping and testing, because it does not depend on any external infrastructure or remote requests. 
 
+=== OpenAI
+
+Embeddings provided by link:https://platform.openai.com/[OpenAI] models.
+
+.OpenAI embeddings configuration options
+[cols="30%a,25%a,45%a",subs="+attributes",options="header"]
+|===
+|Option
+|Default
+|Description
+
+|[[embeddings-openai-api-key]]xref:embeddings-openai-api-key[`embeddings.openai.api.key`]
+|No default value
+|The OpenAI API key.
+|[[embeddings-openai-model-name]]xref:embeddings-openai-model-name[`embeddings.openai.model.name`]
+|No default value
+|Name of the embedding model.
+The list of OpenAI embedding models can be found in the link:https://platform.openai.com/docs/guides/embeddings[OpenAI Embeddings documentation].
+|[[embeddings-openai-baseurl]]xref:embeddings-openai-baseurl[`embeddings.openai.baseUrl`]
+|Default OpenAI API URL
+|Base OpenAI API URL.
+If not provided, the default OpenAI client URL is used.
+|[[embeddings-openai-organization-id]]xref:embeddings-openai-organization-id[`embeddings.openai.organization.id`]
+|No default value
+|Organization ID for the OpenAI API.
+|[[embeddings-openai-operation-timeout-ms]]xref:embeddings-openai-operation-timeout-ms[`embeddings.openai.operation.timeout.ms`]
+|15000 (15 seconds)
+|Maximum amount of time in milliseconds to wait for the embeddings reply.
+|===
+
 === Voyage AI
 
 Embeddings provided by link:https://www.voyageai.com/[Voyage AI] models.
