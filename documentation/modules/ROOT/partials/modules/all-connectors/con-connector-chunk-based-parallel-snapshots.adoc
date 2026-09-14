@@ -1,0 +1,80 @@
+Chunk-based parallel snapshotting accelerates initial snapshots by distributing smaller units of work across multiple threads, improving workload balance and snapshot resilience.
+
+ifdef::community[]
+NOTE: Chunk-based parallel snapshotting is an incubating feature.
+endif::community[]
+ifdef::product[]
+[IMPORTANT]
+====
+Chunk-based parallel snapshotting is a Technology Preview feature.
+Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
+Red{nbsp}Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+endif::product[]
+
+When you set xref:{context}-property-snapshot-max-threads[`snapshot.max.threads`] to a value greater than `1`, the connector divides each table into _chunks_ based on primary key ranges and distributes those chunks across the available threads.
+Each thread snapshots its assigned chunks concurrently, and the connector emits `READ` events for each captured row as it progresses through the chunks.
+
+The xref:{context}-property-snapshot-max-threads-multiplier[`snapshot.max.threads.multiplier`] property controls how many chunks the connector creates per table relative to the thread count.
+By default, the connector creates one chunk per thread.
+Setting a higher multiplier creates more, smaller chunks, which keeps threads more evenly loaded and limits the amount of work to be repeated if a snapshot is interrupted.
+For example, with 4 threads and a multiplier of `2`, the connector creates 8 chunks instead of 4.
+
+[NOTE]
+====
+Tables without a primary key, and tables that use snapshot select overrides, are processed as a single chunk and fall back to single-threaded snapshotting.
+====
+
+The following table summarizes the differences between the two parallel snapshotting approaches.
+
+[cols="1a,2a,2a",options="header"]
+|===
+|Characteristic
+|Chunk-based (default)
+|Legacy table-per-thread
+
+|Unit of work per thread
+|Each thread processes a chunk of rows from a table.
+Chunks are defined by ranges of primary key values.
+|Each thread processes an entire table.
+
+|Load distribution
+|Threads claim available chunks as they complete their current work, helping to balance the workload across threads.
+|Each thread remains assigned to the same table for the duration of the snapshot.
+Threads that finish processing smaller tables remain idle while other threads continue to process larger tables.
+
+|Idle-connection risk
+|Low.
+
+Threads remain active until the snapshot finishes.
+|High.
+
+Threads that finish processing a table can remain idle while waiting for other threads to complete.
+In environments that enforce connection timeouts, idle connections can prevent the connector from closing connections cleanly after the snapshot finishes.
+Failure to close a connection can result in an exception, even if a snapshot captures all data successfully.
+|Resumability after interruption
+|If the snapshot is interrupted, the connector resumes from the last completed chunk, reducing the amount of work that must be repeated.
+|If the snapshot is interrupted while a table is being processed, the connector must restart the snapshot of that table.
+
+|===
+
+Chunk-based snapshotting is the default behavior.
+To use chunk-based snapshotting, set `legacy.snapshot.max.threads` to `false`.
+
+To revert to the legacy table-per-thread behavior, set xref:{context}-property-legacy-snapshot-max-threads[`legacy.snapshot.max.threads`] to `true`.
+
+[NOTE]
+====
+If you use the legacy behavior and experience idle-connection failures after a snapshot completes, set `snapshot.max.threads` to `1` as a workaround and retry the snapshot.
+====
+
+ifdef::community[]
+[IMPORTANT]
+====
+The legacy table-per-thread behavior is deprecated and will be removed in a future release.
+
+The property `internal.legacy.snapshot.max.threads` is a deprecated alias for `legacy.snapshot.max.threads` and should not be used in new configurations.
+====
+endif::community[]
