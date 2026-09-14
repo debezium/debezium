@@ -36,7 +36,6 @@ public class JdbcCommonConfig {
 
     public static final Field PROP_USER = Field.create(CONFIGURATION_FIELD_CONNECTION_GROUP + "user")
             .withDescription("Username of the database which will be used to access the database storage")
-            .withValidation(Field::isRequired)
             .withDeprecatedAliases(CONFIGURATION_FIELD_PREFIX_STRING + "user");
 
     public static final Field PROP_PASSWORD = Field.create(CONFIGURATION_FIELD_CONNECTION_GROUP + "password")
