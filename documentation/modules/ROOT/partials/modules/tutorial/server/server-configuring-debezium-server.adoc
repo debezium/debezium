@@ -1,11 +1,6 @@
-[id="configuring-{prodname}-server"]
+[id="configuring-{prodname}-server-{selected-sink}-sink"]
 = Configuring {prodname} Server for the {selected-sink} sink
 
 Configure the {prodname} server application so that it can stream change events to the {selected-sink} sink.
-
-.Prerequisites
-
-* The {selected-sink} sink and MySQL containers are running.
-* You have connected to the `inventory` database with the MySQL command line client or via the container itself.
 
 include::{partialsdir}/modules/tutorial/server/{selected-sink}-sink/{selected-sink}-configuring-server.adoc[]

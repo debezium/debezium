@@ -12,12 +12,12 @@ and the MySQL command line client that is connected to the database.
 To deploy the MySQL connector,
 you must:
 
-* xref:configuring-debezium-server-sink-connector[Configure the MySQL connector to monitor the `inventory` database]
+* xref:configuring-{prodname}-server-{selected-sink}-sink[Configure the MySQL connector to monitor the `inventory` database]
 +
 After the connector is configured and {prodname} server is started,
 it will start monitoring the database server's `binlog` and it will generate change events for each row that changes.
 
-* xref:watching-connector-start-up[Watch the MySQL connector start]
+* xref:server-watching-connector-start-up[Watch the MySQL connector start]
 +
 Reviewing the {prodname} server log output as the connector starts helps you to better understand each task it must complete before it can start monitoring the `binlog`.
 

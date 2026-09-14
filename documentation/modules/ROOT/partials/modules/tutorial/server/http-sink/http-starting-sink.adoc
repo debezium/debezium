@@ -8,7 +8,7 @@ This command runs a new container using version {debezium-docker-label} of the `
 
 [source,shell,options="nowrap",subs="+attributes"]
 ----
-$ docker run -it -rm --name httpsink -p 8081:80 -v $(pwd):/user/local/apache2/htdocs docker.io/httpd:{debezium-docker-label}
+$ docker run -it -rm --name httpsink -p 8081:80 -v $(pwd):/user/local/apache2/htdocs quay.io/debezium/example-httpd:{debezium-docker-label}
 ----
 
 The following list describes the purpose of parameters in the preceding command:

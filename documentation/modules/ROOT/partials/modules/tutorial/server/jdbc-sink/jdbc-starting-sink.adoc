@@ -8,7 +8,7 @@ This command runs a new container using version {debezium-docker-label} of the `
 
 [source,shell,options="nowrap",subs="+attributes"]
 ----
-$ docker run -it --rm --name postgres -p 5432:5432 -e POSTGRES_USER=pguser -e POSTGRES_PASSWORD=pgpw example-postgres:{debezium-docker-label}
+$ docker run -it --rm --name postgres -p 5432:5432 -e POSTGRES_USER=pguser -e POSTGRES_PASSWORD=pgpw quay.io/debezium/example-postgres:{debezium-docker-label}
 ----
 
 The following list describes the purpose of parameters in the preceding command:

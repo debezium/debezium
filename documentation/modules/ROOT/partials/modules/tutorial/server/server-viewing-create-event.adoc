@@ -1,4 +1,4 @@
-[id="viewing-create-event-{selected-sink}-sink"]
+[id="server-viewing-create-event"]
 = Viewing a _create_ event
 
 By viewing the output of the {selected-sink} sink container,
