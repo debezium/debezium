@@ -294,7 +294,6 @@ Guy Korland
 Guy Pascarella
 Hady Willi
 Hagar Yasser
-Hagar Yasser
 Hang Ruan
 Hans-Peter Grahsl
 Haris Bin Saif
@@ -327,7 +326,6 @@ Ilia Bogdanov
 Ilyas Ahsan
 Indra Shukla
 Ingmar Fjolla
-Inki Hwang
 Inki Hwang
 ismail Simsek
 Issam El Nasiri
@@ -652,7 +650,6 @@ Raúl Tovar
 Regi Çallmori
 Renato Mefi
 René Kerner
-René Kerner
 René Rütter
 Ricardo Rosales
 Rich O'Connell
@@ -755,7 +752,6 @@ Sungho Hwang
 Surya Dhaneshwar
 Syed Muhammad Sufyian
 Sylvain Marty
-Sylvain Marty
 Tapani Moilanen
 Tautvydas Januskevicius
 Tayler Dunn
@@ -805,7 +801,6 @@ Victar Malinouski
 Victor Castaño
 Victor Xiang
 Vincentius Adrian
-Vincenzo Santonastaso
 Vincenzo Santonastaso
 Vineeth Yelagandula
 Vipin Kalra
