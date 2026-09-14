@@ -14,6 +14,7 @@ import org.apache.kafka.common.config.ConfigException;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.doc.FixFor;
 
 import dev.langchain4j.model.embedding.EmbeddingModel;
 
@@ -24,6 +25,7 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
  */
 public class OpenAiModelFactoryTest {
 
+    @FixFor("debezium/dbz#2627")
     @Test
     public void testMissingApiKeyThrowsCleanConfigException() {
         OpenAiModelFactory factory = new OpenAiModelFactory();
@@ -35,6 +37,7 @@ public class OpenAiModelFactoryTest {
                 .hasMessageContaining("'openai.api.key' must be set to non-empty value.");
     }
 
+    @FixFor("debezium/dbz#2627")
     @Test
     public void testMissingModelNameThrowsCleanConfigException() {
         OpenAiModelFactory factory = new OpenAiModelFactory();
@@ -46,6 +49,7 @@ public class OpenAiModelFactoryTest {
                 .hasMessageContaining("'openai.model.name' must be set to non-empty value.");
     }
 
+    @FixFor("debezium/dbz#2627")
     @Test
     public void testGetModelWithDefaultAndCustomLogging() {
         OpenAiModelFactory factory = new OpenAiModelFactory();
@@ -60,6 +64,7 @@ public class OpenAiModelFactoryTest {
         assertThat(model).isNotNull();
     }
 
+    @FixFor("debezium/dbz#2627")
     @Test
     public void testBaseUrlAliasSupport() {
         OpenAiModelFactory factory = new OpenAiModelFactory();
