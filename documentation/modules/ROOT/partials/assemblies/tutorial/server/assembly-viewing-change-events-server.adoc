@@ -10,10 +10,10 @@ include::{partialsdir}/modules/tutorial/server/{selected-sink}-sink/{selected-si
 
 In this topic, you will see different types of change events to see how the connector captured them:
 
-* xref:viewing-create-event[Viewing a _create_ event]
-* xref:updating-database-viewing-update-event[Updating the database and viewing the _update_ event]
-* xref:deleting-record-database-viewing-delete-event[Deleting a record in the database and viewing the _delete_ event]
-* xref:restarting-{prodname}-server-http-sink[Restarting {prodname} server and changing the database]
+* xref:server-viewing-create-event[Viewing a _create_ event]
+* xref:server-updating-database-viewing-update-event[Updating the database and viewing the _update_ event]
+* xref:server-deleting-record-database-viewing-delete-event[Deleting a record in the database and viewing the _delete_ event]
+* xref:server-restarting-{prodname}-server[Restarting {prodname} server and changing the database]
 
 include::{partialsdir}/modules/tutorial/server/server-viewing-create-event.adoc[leveloffset=+1]
 

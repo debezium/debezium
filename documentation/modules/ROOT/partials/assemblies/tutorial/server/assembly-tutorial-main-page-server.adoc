@@ -1,6 +1,7 @@
 [id="server-tutorial-{selected-sink}"]
 = {prodname} Server Tutorial - {selected-sink} Sink
 
+:experimental:
 :toc:
 :toc-placement: macro
 :sectanchors:

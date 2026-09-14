@@ -1,9 +1,3 @@
-
-[id="configuring-debezium-server-{selected-sink}-sink-connector"]
-= Configuring Debezium Server for {selected-sink} sink and MySQL Connectors
-
-Configure the {prodname} server application so that it can stream change events to the {selected-sink} sink, which are then committed to the PostgreSQL database.
-
 Visit `https://jdbc.postgresql.org/` to download the PostgreSQL JDBC driver. Once it is downloaded, place it in the `debezium-server\config\lib` directory.
 
 .Prerequisites
@@ -81,4 +75,4 @@ The following list describes the purpose of each configuration option shown abov
 .Further Configuration
 
 * For a full list of configuration options for the MySQL connector, visit {link-prefix}:{link-mysql-connector}#debezium-connector-for-mysql[{prodname} connector for MySQL].
-* For a full list of configuration options for the JDBC Sink connector, xref:{debezium-connector-for-jdbc}
+* For a full list of configuration options for the JDBC Sink connector, visit {link-prefix}:{link-jdbc-connector}#debezium-connector-for-jdbc[{prodname} connector for JDBC].

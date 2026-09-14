@@ -1,3 +1,8 @@
+.Prerequisites
+
+* The {selected-sink} sink and MySQL containers are running.
+* You have connected to the `inventory` database with the MySQL command line client or via the container itself.
+
 .Procedure
 
 . Create a new file called `application.properties` in the `debezium-server/config/lib` directory and add the following to it:
@@ -50,5 +55,4 @@ The following list describes the purpose of each configuration option shown abov
 
 .Further Configuration
 
-* For a full list of configuration options for {prodname} server, visit {link-prefix}:{link-debezium-server}#debezium-server{prodname-server}
 * For a full list of configuration options for the MySQL connector, visit {link-prefix}:{link-mysql-connector}#debezium-connector-for-mysql[{prodname} connector for MySQL].

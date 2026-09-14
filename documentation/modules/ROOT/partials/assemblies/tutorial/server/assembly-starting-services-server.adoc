@@ -3,15 +3,15 @@
 [id="server-starting-services"]
 = Starting the connector and {selected-sink} sink services
 
-Using {prodname} requires two separate services: The {selected-sink} sink service and the {prodname} connector.
+Using {prodname} requires two separate services: The {selected-sink} sink service and the {prodname} Server application (which will start the connector).
 In this tutorial,
-you will set up a single instance of each service using http://docker.com[Docker] and https://quay.io/organization/debezium[the {prodname} container images].
+you will set up a single instance of each service using http://docker.com[Docker], https://quay.io/organization/debezium[the {prodname} container images], and the https://repo1.maven.org/maven2/io/debezium/debezium-server-dist/{debezium-version}/debezium-server-dist-{debezium-version}.tar.gz[{prodname} Server distribution].
 
 To start the services needed for this tutorial, you must:
 
-* xref:starting-sink[Start the {selected-sink} sink]
-* xref:starting-mysql-database[Start a MySQL database]
-* xref:starting-mysql-command-line-client[Start a MySQL command line client]
+* xref:server-starting-{selected-sink}-sink[Start the {selected-sink} sink]
+* xref:server-starting-mysql-database[Start a MySQL database]
+* xref:server-starting-mysql-command-line-client[Start a MySQL command line client]
 
 include::{partialsdir}/modules/tutorial/server/server-considerations-running-debezium-with-docker.adoc[leveloffset=+1]
 
