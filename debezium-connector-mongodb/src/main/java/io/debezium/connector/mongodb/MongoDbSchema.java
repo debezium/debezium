@@ -12,9 +12,11 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.function.Function;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
+import org.bson.BsonDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,9 +58,15 @@ public class MongoDbSchema implements DatabaseSchema<CollectionId> {
     private final ConcurrentMap<CollectionId, MongoDbCollectionSchema> collections = new ConcurrentHashMap<>();
     private final JsonSerialization serialization;
     private final MongoDbTaskContext taskContext;
+    private final ShardKeys shardKeys;
 
     public MongoDbSchema(MongoDbConnectorConfig config, MongoDbTaskContext taskContext, TopicNamingStrategy<CollectionId> topicNamingStrategy, Schema sourceSchema,
                          SchemaNameAdjuster schemaNameAdjuster) {
+        this(config, taskContext, topicNamingStrategy, sourceSchema, schemaNameAdjuster, ShardKeys.unsharded());
+    }
+
+    public MongoDbSchema(MongoDbConnectorConfig config, MongoDbTaskContext taskContext, TopicNamingStrategy<CollectionId> topicNamingStrategy, Schema sourceSchema,
+                         SchemaNameAdjuster schemaNameAdjuster, ShardKeys shardKeys) {
         this.config = config;
         this.filters = taskContext.getFilters();
         this.topicNamingStrategy = topicNamingStrategy;
@@ -66,6 +74,7 @@ public class MongoDbSchema implements DatabaseSchema<CollectionId> {
         this.adjuster = schemaNameAdjuster;
         this.serialization = new JsonSerialization(config.getJsonSerializationMode());
         this.taskContext = taskContext;
+        this.shardKeys = shardKeys;
     }
 
     @Override
@@ -80,7 +89,7 @@ public class MongoDbSchema implements DatabaseSchema<CollectionId> {
 
             final Schema keySchema = SchemaBuilder.struct()
                     .name(adjuster.adjust(topicName + ".Key"))
-                    .field("id", Schema.STRING_SCHEMA)
+                    .field(keyFieldName(), Schema.STRING_SCHEMA)
                     .build();
 
             final Schema valueSchema = SchemaBuilder.struct()
@@ -107,12 +116,34 @@ public class MongoDbSchema implements DatabaseSchema<CollectionId> {
                     id,
                     fieldFilter,
                     keySchema,
-                    serialization::getDocumentId,
+                    keyGeneratorFor(id),
+                    documentKeyGeneratorFor(),
                     envelope,
                     valueSchema,
                     serialization::getDocumentValue,
                     serialization::getUpdatedFields);
         });
+    }
+
+    private String keyFieldName() {
+        if (config.getChangeEventKeyMode() == MongoDbConnectorConfig.ChangeEventKeyMode.ID) {
+            return MongoDbFieldName.ID;
+        }
+        return MongoDbFieldName.DOCUMENT_KEY;
+    }
+
+    private Function<BsonDocument, Object> keyGeneratorFor(CollectionId collectionId) {
+        if (config.getChangeEventKeyMode() == MongoDbConnectorConfig.ChangeEventKeyMode.ID) {
+            return serialization::getDocumentId;
+        }
+        return document -> serialization.getDocumentKey(ShardKeys.documentKeyOf(document, shardKeys.shardKeyPathsFor(collectionId)));
+    }
+
+    private Function<BsonDocument, Object> documentKeyGeneratorFor() {
+        if (config.getChangeEventKeyMode() == MongoDbConnectorConfig.ChangeEventKeyMode.ID) {
+            return serialization::getDocumentId;
+        }
+        return serialization::getDocumentKey;
     }
 
     @Override

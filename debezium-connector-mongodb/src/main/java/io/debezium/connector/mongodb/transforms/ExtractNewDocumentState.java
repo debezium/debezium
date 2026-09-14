@@ -143,6 +143,7 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends Abstrac
                     "When set to true and \"delete.tombstone.handling.mode\" is rewrite, extracts the \"id\" from the deleted record's key and includes it as \"_id\" in the event payload.");
 
     private ExtractField<R> keyExtractor;
+    private ExtractField<R> documentKeyExtractor;
     private Flatten<R> recordFlattener;
     private MongoDataConverter converter;
     private boolean flattenStruct;
@@ -183,7 +184,8 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends Abstrac
         delimiter = config.getString(DELIMITER);
         rewriteTombstoneDeletesWithId = config.getBoolean(REWRITE_TOMBSTONE_DELETES_WITH_ID);
 
-        keyExtractor = ConnectRecordUtil.extractKeyDelegate("id");
+        keyExtractor = ConnectRecordUtil.extractKeyDelegate(MongoDbFieldName.ID);
+        documentKeyExtractor = ConnectRecordUtil.extractKeyDelegate(MongoDbFieldName.DOCUMENT_KEY);
         recordFlattener = ConnectRecordUtil.flattenValueDelegate(delimiter);
     }
 
@@ -198,9 +200,11 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends Abstrac
             headersToAdd.forEach(h -> record.headers().add(h));
         }
 
-        final R keyRecord = keyExtractor.apply(record);
+        final boolean keyHoldsDocumentKey = holdsDocumentKey(record.keySchema());
+        final R keyRecord = (keyHoldsDocumentKey ? documentKeyExtractor : keyExtractor).apply(record);
 
         BsonDocument keyDocument = BsonDocument.parse("{ \"id\" : " + keyRecord.key().toString() + "}");
+        BsonValue documentId = documentIdOf(keyDocument, keyHoldsDocumentKey);
         BsonDocument valueDocument = new BsonDocument();
 
         // Handling tombstone record
@@ -240,14 +244,14 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends Abstrac
 
         // update
         if (newRecord.value() == null && updateDescriptionRecord.value() != null) {
-            valueDocument = getPartialUpdateDocument(newRecord, updateDescriptionRecord, keyDocument);
+            valueDocument = getPartialUpdateDocument(newRecord, updateDescriptionRecord, documentId);
         }
 
         // add rewrite field
         if (extractRecordStrategy.isRewriteMode()) {
             valueDocument.append(DELETED_FIELD, new BsonBoolean(isDeletion));
-            if (rewriteTombstoneDeletesWithId && !valueDocument.containsKey("_id") && keyDocument.containsKey("id")) {
-                valueDocument.append("_id", keyDocument.get("id"));
+            if (rewriteTombstoneDeletesWithId && !valueDocument.containsKey("_id") && documentId != null) {
+                valueDocument.append("_id", documentId);
             }
         }
 
@@ -270,7 +274,24 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends Abstrac
     public void close() {
         super.close();
         keyExtractor.close();
+        documentKeyExtractor.close();
         recordFlattener.close();
+    }
+
+    /**
+     * Returns the {@code _id} of the document that the record key identifies. A key that holds the change stream
+     * documentKey carries the shard key fields as well, so the id has to be taken out of it.
+     */
+    private static BsonValue documentIdOf(BsonDocument keyDocument, boolean keyHoldsDocumentKey) {
+        BsonValue key = keyDocument.get(MongoDbFieldName.ID);
+        if (!keyHoldsDocumentKey || key == null || !key.isDocument()) {
+            return key;
+        }
+        return key.asDocument().getOrDefault("_id", key);
+    }
+
+    private static boolean holdsDocumentKey(Schema keySchema) {
+        return keySchema != null && keySchema.field(MongoDbFieldName.DOCUMENT_KEY) != null;
     }
 
     private R newRecord(R record, BsonDocument keyDocument, BsonDocument valueDocument) {
@@ -353,7 +374,7 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends Abstrac
         }
     }
 
-    private BsonDocument getPartialUpdateDocument(R beforeRecord, R updateDescriptionRecord, BsonDocument keyDocument) {
+    private BsonDocument getPartialUpdateDocument(R beforeRecord, R updateDescriptionRecord, BsonValue documentId) {
         BsonDocument valueDocument = new BsonDocument();
 
         Struct updateDescription = requireStruct(updateDescriptionRecord.value(), MongoDbFieldName.UPDATE_DESCRIPTION);
@@ -379,7 +400,7 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends Abstrac
         }
 
         if (!valueDocument.containsKey("_id")) {
-            valueDocument.append("_id", keyDocument.get("id"));
+            valueDocument.append("_id", documentId);
         }
 
         if (flattenStruct) {

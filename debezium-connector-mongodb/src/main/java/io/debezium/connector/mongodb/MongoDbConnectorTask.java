@@ -109,7 +109,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
 
         final Schema structSchema = connectorConfig.getSourceInfoStructMaker().schema();
         this.schema = new MongoDbSchema(connectorConfig, taskContext, connectorConfig.getTopicNamingStrategy(MongoDbConnectorConfig.TOPIC_NAMING_STRATEGY),
-                structSchema, schemaNameAdjuster);
+                structSchema, schemaNameAdjuster, new ShardKeys(connectionContext::getMongoClient));
 
         final Offsets<MongoDbPartition, MongoDbOffsetContext> previousOffsets = getPreviousOffsets(connectorConfig);
         final Clock clock = Clock.system();

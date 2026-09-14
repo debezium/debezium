@@ -672,6 +672,68 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
         }
     }
 
+    /**
+     * The set of predefined modes for deriving the change event key from a document.
+     */
+    public enum ChangeEventKeyMode implements EnumeratedValue {
+        /**
+         * Uses only the {@code _id} field of the document. In a sharded cluster {@code _id} is only guaranteed to be
+         * unique within a shard, so distinct documents may produce the same change event key.
+         */
+        ID("id"),
+
+        /**
+         * Uses the change stream {@code documentKey}, which is the shard key followed by {@code _id} for sharded
+         * collections and just {@code _id} otherwise. This makes the key unique across the whole cluster.
+         */
+        DOCUMENT_KEY("document_key");
+
+        private final String value;
+
+        ChangeEventKeyMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static ChangeEventKeyMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (ChangeEventKeyMode option : ChangeEventKeyMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static ChangeEventKeyMode parse(String value, String defaultValue) {
+            ChangeEventKeyMode mode = parse(value);
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+            return mode;
+        }
+    }
+
     protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = 0;
 
     public static final Field ALLOW_OFFSET_INVALIDATION = Field.createInternal("mongodb.allow.offset.invalidation")
@@ -967,6 +1029,20 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
                     + "'extended' uses MongoDB Extended JSON v2 canonical mode. "
                     + "'relaxed' uses MongoDB Extended JSON v2 relaxed mode.");
 
+    public static final Field CHANGE_EVENT_KEY_MODE = Field.create("change.event.key.mode")
+            .withDisplayName("Change event key mode")
+            .withEnum(ChangeEventKeyMode.class, ChangeEventKeyMode.ID)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Controls which part of the document is used as the change event key. "
+                    + "Options include: "
+                    + "'id' (the default) uses only the '_id' field; "
+                    + "'document_key' uses the change stream 'documentKey', which for a sharded collection is the shard key "
+                    + "followed by '_id' and is therefore unique across the whole cluster. "
+                    + "Note that enabling 'document_key' changes the emitted record keys, and that the key of a document "
+                    + "changes if sharding is enabled on a collection that already contains data.");
+
     public static final Field CAPTURE_START_OP_TIME = Field.create("capture.start.op.time")
             .withDisplayName("Capture from operation time")
             .withType(Type.LONG)
@@ -1101,8 +1177,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
                     CURSOR_MAX_AWAIT_TIME_MS)
             .group(Field.Group.FILTERS, DATABASE_INCLUDE_LIST, DATABASE_EXCLUDE_LIST, COLLECTION_INCLUDE_LIST, COLLECTION_EXCLUDE_LIST, FIELD_EXCLUDE_LIST, FIELD_RENAMES,
                     SNAPSHOT_FILTER_QUERY_BY_COLLECTION)
-            .group(Field.Group.CONNECTOR, TOPIC_PREFIX, SNAPSHOT_MODE, CAPTURE_MODE, CAPTURE_SCOPE, CAPTURE_TARGET, JSON_SERIALIZATION_MODE, SCHEMA_NAME_ADJUSTMENT_MODE,
-                    SOURCE_INFO_STRUCT_MAKER)
+            .group(Field.Group.CONNECTOR, TOPIC_PREFIX, SNAPSHOT_MODE, CAPTURE_MODE, CAPTURE_SCOPE, CAPTURE_TARGET, JSON_SERIALIZATION_MODE,
+                    CHANGE_EVENT_KEY_MODE, SCHEMA_NAME_ADJUSTMENT_MODE, SOURCE_INFO_STRUCT_MAKER)
             .create();
 
     /**
@@ -1145,6 +1221,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
     private final OversizeHandlingMode oversizeHandlingMode;
     private final FiltersMatchMode filtersMatchMode;
     private final int oversizeSkipThreshold;
+    private final ChangeEventKeyMode changeEventKeyMode;
 
     public MongoDbConnectorConfig(Configuration config) {
         super(config, DEFAULT_SNAPSHOT_FETCH_SIZE);
@@ -1201,6 +1278,9 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
 
         this.snapshotMaxThreads = resolveSnapshotMaxThreads(config);
         this.cursorMaxAwaitTimeMs = config.getInteger(MongoDbConnectorConfig.CURSOR_MAX_AWAIT_TIME_MS, 0);
+
+        String changeEventKeyModeValue = config.getString(MongoDbConnectorConfig.CHANGE_EVENT_KEY_MODE);
+        this.changeEventKeyMode = ChangeEventKeyMode.parse(changeEventKeyModeValue, MongoDbConnectorConfig.CHANGE_EVENT_KEY_MODE.defaultValueAsString());
     }
 
     private static int validateChangeStreamPipeline(Configuration config, Field field, ValidationOutput problems) {
@@ -1460,6 +1540,10 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
 
     public FiltersMatchMode getFiltersMatchMode() {
         return filtersMatchMode;
+    }
+
+    public ChangeEventKeyMode getChangeEventKeyMode() {
+        return changeEventKeyMode;
     }
 
     @Override

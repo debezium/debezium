@@ -290,4 +290,69 @@ public class ExtractNewDocumentStateTest {
 
         assertThat(transformed.valueSchema().name()).isEqualTo("mongo.DASMongoDB._10019_AutoState");
     }
+
+    @Test
+    @FixFor("DBZ-2337")
+    public void shouldTakeIdOutOfDocumentKeyWhenRewritingDeletes() {
+        SourceRecord transformed = rewriteDelete("documentKey", "{\"caseNo\": \"201907130000200001\",\"_id\": 1}");
+
+        assertThat(((Struct) transformed.value()).get("_id")).isEqualTo(1);
+    }
+
+    @Test
+    @FixFor("DBZ-2337")
+    public void shouldKeepCompositeIdWhenRewritingDeletes() {
+        SourceRecord transformed = rewriteDelete("id", "{\"_id\": 1,\"tenant\": \"a\"}");
+
+        Struct id = (Struct) ((Struct) transformed.value()).get("_id");
+        assertThat(id.get("_id")).isEqualTo(1);
+        assertThat(id.get("tenant")).isEqualTo("a");
+    }
+
+    private SourceRecord rewriteDelete(String keyFieldName, String key) {
+        ExtractNewDocumentState<SourceRecord> smt = new ExtractNewDocumentState<>();
+        smt.configure(Collect.hashMapOf(
+                "array.encoding", "array",
+                "delete.tombstone.handling.mode", "rewrite",
+                "delete.tombstone.handling.mode.rewrite-with-id", "true"));
+
+        Schema keySchema = SchemaBuilder.struct()
+                .name("mongo.dbA.orders.Key")
+                .field(keyFieldName, Schema.STRING_SCHEMA)
+                .build();
+        Struct keyStruct = new Struct(keySchema).put(keyFieldName, key);
+
+        Schema updateDescriptionSchema = SchemaBuilder.struct()
+                .name("mongo.dbA.orders.updateDescription")
+                .field("updatedFields", Schema.OPTIONAL_STRING_SCHEMA)
+                .field("removedFields", SchemaBuilder.array(Schema.STRING_SCHEMA).optional().build())
+                .field("truncatedArrays", SchemaBuilder.array(Schema.STRING_SCHEMA).optional().build())
+                .optional()
+                .build();
+
+        Schema valueSchema = SchemaBuilder.struct()
+                .name("mongo.dbA.orders.Envelope")
+                .field("before", Schema.OPTIONAL_STRING_SCHEMA)
+                .field("after", Schema.OPTIONAL_STRING_SCHEMA)
+                .field("updateDescription", updateDescriptionSchema)
+                .field("op", Schema.STRING_SCHEMA)
+                .build();
+        Struct valueStruct = new Struct(valueSchema).put("op", "d");
+
+        final SourceRecord eventRecord = new SourceRecord(
+                new HashMap<>(),
+                new HashMap<>(),
+                "mongo.dbA.orders",
+                keySchema,
+                keyStruct,
+                valueSchema,
+                valueStruct);
+
+        try {
+            return smt.apply(eventRecord);
+        }
+        finally {
+            smt.close();
+        }
+    }
 }
