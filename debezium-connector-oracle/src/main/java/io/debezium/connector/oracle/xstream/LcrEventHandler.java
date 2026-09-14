@@ -63,7 +63,6 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
     private final boolean tablenameCaseInsensitive;
     private final XstreamStreamingChangeEventSource eventSource;
     private final XStreamStreamingChangeEventSourceMetrics streamingMetrics;
-    private final OracleConnection jdbcConnection;
     private final Map<String, ChunkColumnValues> columnChunks;
     private RowLCR currentRow;
 
@@ -71,8 +70,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
                     EventDispatcher<OraclePartition, TableId> dispatcher, Clock clock,
                     OracleDatabaseSchema schema, OraclePartition partition, OracleOffsetContext offsetContext,
                     boolean tablenameCaseInsensitive, XstreamStreamingChangeEventSource eventSource,
-                    XStreamStreamingChangeEventSourceMetrics streamingMetrics,
-                    OracleConnection jdbcConnection) {
+                    XStreamStreamingChangeEventSourceMetrics streamingMetrics) {
         this.connectorConfig = connectorConfig;
         this.errorHandler = errorHandler;
         this.dispatcher = dispatcher;
@@ -83,7 +81,6 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
         this.tablenameCaseInsensitive = tablenameCaseInsensitive;
         this.eventSource = eventSource;
         this.streamingMetrics = streamingMetrics;
-        this.jdbcConnection = jdbcConnection;
         this.columnChunks = new LinkedHashMap<>();
     }
 
@@ -329,13 +326,10 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
 
     /**
      * Returns the shared out-of-bands JDBC connection (DDL fetch, LOB reselect). The
-     * connection targets the primary/source database and its PDB session pinning is
-     * managed by {@code XstreamStreamingChangeEventSource#pinConnectionToPdb()} — both
-     * at streaming start and again after a blocking snapshot, whose close() resets the
-     * shared session back to {@code CDB$ROOT}.
+     * connection's lifecycle and PDB session pinning are owned by the streaming source.
      */
-    private OracleConnection getConnection() {
-        return jdbcConnection;
+    private OracleConnection getConnection() throws SQLException {
+        return eventSource.getOutOfBandsConnection();
     }
 
     private void setWatermark() {
