@@ -6349,7 +6349,7 @@ Because the LCR does not contain the full column value, the connector re-selects
 The `before` element contains the unavailable value placeholder for the LOB columns, as described in the xref:oracle-property-unavailable-value-placeholder[`unavailable.value.placeholder`] property.
 
 For the re-selection to succeed, the table must have a primary key, and the connector must be able to read the table.
-If the table has no primary key, or the row was deleted before the connector could re-select it, the connector logs a warning and cannot provide the complete LOB value for the event.
+If the table has no primary key, or the row was deleted before the connector could re-select it, the connector logs a warning and emits the unavailable value placeholder for the LOB columns in the `after` element.
 
 // Type: concept
 // ModuleID: debezium-oracle-connector-frequently-asked-questions
