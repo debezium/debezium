@@ -17,6 +17,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalLong;
 import java.util.Queue;
 import java.util.UUID;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -55,6 +56,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
 
     public static final String EVENT_PRIMARY_KEY = INCREMENTAL_SNAPSHOT_KEY + "_primary_key";
     public static final String TABLE_MAXIMUM_KEY = INCREMENTAL_SNAPSHOT_KEY + "_maximum_key";
+    public static final String TABLE_TOTAL_ROWS = INCREMENTAL_SNAPSHOT_KEY + "_total_rows";
     public static final String CORRELATION_ID = INCREMENTAL_SNAPSHOT_KEY + "_correlation_id";
     private final SnapshotDataCollection<T> snapshotDataCollection = new SnapshotDataCollection<>(this);
 
@@ -85,6 +87,12 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
      * The largest PK in the table at the start of snapshot.
      */
     private Object[] maximumKey;
+
+    /**
+     * The best-effort total number of rows the incremental snapshot will scan for the current table.
+     * Empty when no count could be resolved. Persisted so per-table progress survives a connector restart.
+     */
+    private OptionalLong totalRows = OptionalLong.empty();
 
     private Table schema;
 
@@ -210,6 +218,13 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         }
         offset.put(EVENT_PRIMARY_KEY, arrayToSerializedString(lastEventKeySent));
         offset.put(TABLE_MAXIMUM_KEY, arrayToSerializedString(maximumKey));
+        if (totalRows.isPresent()) {
+            offset.put(TABLE_TOTAL_ROWS, String.valueOf(totalRows.getAsLong()));
+        }
+        else {
+            // Clear any previous value so a total from an earlier collection cannot linger if the offset map is reused.
+            offset.remove(TABLE_TOTAL_ROWS);
+        }
         offset.put(SnapshotDataCollection.DATA_COLLECTIONS_TO_SNAPSHOT_KEY, snapshotDataCollection.dataCollectionsAsJsonString());
         offset.put(CORRELATION_ID, correlationId);
         return offset;
@@ -296,6 +311,8 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         final String maximumKeyStr = (String) offsets.get(TABLE_MAXIMUM_KEY);
         context.maximumKey = (maximumKeyStr != null) ? context.serializedStringToArray(TABLE_MAXIMUM_KEY, maximumKeyStr)
                 : null;
+        final String totalRowsStr = (String) offsets.get(TABLE_TOTAL_ROWS);
+        context.totalRows = (totalRowsStr != null) ? OptionalLong.of(Long.parseLong(totalRowsStr)) : OptionalLong.empty();
         final String dataCollectionsStr = (String) offsets.get(SnapshotDataCollection.DATA_COLLECTIONS_TO_SNAPSHOT_KEY);
         context.snapshotDataCollection.clear();
         if (dataCollectionsStr != null) {
@@ -344,6 +361,8 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
 
     public DataCollection<T> nextDataCollection() {
         resetChunk();
+        // The total row count is per data collection, so it is cleared only when advancing to the next one.
+        totalRows = OptionalLong.empty();
         return snapshotDataCollection.getNext();
     }
 
@@ -362,6 +381,16 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
 
     public Optional<Object[]> maximumKey() {
         return Optional.ofNullable(maximumKey);
+    }
+
+    @Override
+    public void totalRows(OptionalLong totalRows) {
+        this.totalRows = totalRows;
+    }
+
+    @Override
+    public OptionalLong totalRows() {
+        return totalRows;
     }
 
     @Override

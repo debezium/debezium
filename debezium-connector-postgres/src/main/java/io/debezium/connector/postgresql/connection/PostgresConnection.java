@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalInt;
+import java.util.OptionalLong;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
@@ -903,6 +904,31 @@ public class PostgresConnection extends JdbcConnection {
     public <T extends DataCollectionId> ChunkQueryBuilder<T> chunkQueryBuilder(RelationalDatabaseConnectorConfig connectorConfig) {
         // PostgreSQL definitely must use row value constructors in order to yield optimal results. See DBZ-5071.
         return new RowValueConstructorChunkQueryBuilder<>(connectorConfig, this);
+    }
+
+    @Override
+    public OptionalLong readRowCountEstimate(TableId tableId) {
+        // pg_class.reltuples is a planner estimate maintained by ANALYZE/autovacuum; -1 means "unknown" (never analyzed).
+        final String query = "SELECT c.reltuples::bigint FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
+                + "WHERE n.nspname = ? AND c.relname = ?";
+        try {
+            return prepareQueryAndMap(query,
+                    statement -> {
+                        statement.setString(1, tableId.schema());
+                        statement.setString(2, tableId.table());
+                    },
+                    rs -> {
+                        if (rs.next()) {
+                            final long estimate = rs.getLong(1);
+                            return estimate >= 0 ? OptionalLong.of(estimate) : OptionalLong.empty();
+                        }
+                        return OptionalLong.empty();
+                    });
+        }
+        catch (SQLException e) {
+            LOGGER.warn("Unable to read row count estimate for table '{}' from pg_class; incremental snapshot will fall back to an exact count", tableId, e);
+            return OptionalLong.empty();
+        }
     }
 
     @Override

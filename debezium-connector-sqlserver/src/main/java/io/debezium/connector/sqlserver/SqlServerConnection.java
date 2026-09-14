@@ -28,6 +28,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalLong;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -855,6 +856,30 @@ public class SqlServerConnection extends JdbcConnection {
         return Stream.of(tableId.catalog(), tableId.schema(), tableId.table())
                 .map(this::quoteIdentifier)
                 .collect(Collectors.joining("."));
+    }
+
+    @Override
+    public OptionalLong readRowCountEstimate(TableId tableId) {
+        // sys.partitions.rows holds the maintained row count for the heap or clustered index (index_id 0 or 1).
+        // It is read from the target database's catalog and only relies on the metadata visibility that
+        // db_datareader already grants (no VIEW DATABASE STATE required). Best-effort: only used when no filter is present.
+        final String query = "SELECT SUM(p.rows) FROM " + quoteIdentifier(tableId.catalog())
+                + ".sys.partitions p WHERE p.object_id = OBJECT_ID(?) AND p.index_id IN (0, 1)";
+        try {
+            return prepareQueryAndMap(query,
+                    statement -> statement.setString(1, quotedTableIdString(tableId)),
+                    rs -> {
+                        if (rs.next()) {
+                            final long estimate = rs.getLong(1);
+                            return rs.wasNull() ? OptionalLong.empty() : OptionalLong.of(estimate);
+                        }
+                        return OptionalLong.empty();
+                    });
+        }
+        catch (SQLException e) {
+            LOGGER.warn("Unable to read row count estimate for table '{}' from sys.partitions; incremental snapshot will fall back to an exact count", tableId, e);
+            return OptionalLong.empty();
+        }
     }
 
     private String replaceDatabaseNamePlaceholder(String sql, String databaseName) {
