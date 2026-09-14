@@ -16,8 +16,6 @@ import com.mongodb.MongoException;
 import com.mongodb.client.ChangeStreamIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
-import com.mongodb.client.model.changestream.FullDocument;
-import com.mongodb.client.model.changestream.FullDocumentBeforeChange;
 
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.connection.MongoDbConnections;
@@ -207,17 +205,6 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
     protected ChangeStreamIterable<BsonDocument> initChangeStream(MongoClient client, MongoDbOffsetContext offsetContext) {
         final ChangeStreamIterable<BsonDocument> stream = MongoUtils.openChangeStream(client, taskContext);
 
-        if (connectorConfig.getCaptureMode().isFullUpdate()) {
-            if (connectorConfig.getCaptureModeFullUpdateType().isPostImage()) {
-                stream.fullDocument(FullDocument.WHEN_AVAILABLE);
-            }
-            else {
-                stream.fullDocument(FullDocument.UPDATE_LOOKUP);
-            }
-        }
-        if (connectorConfig.getCaptureMode().isIncludePreImage()) {
-            stream.fullDocumentBeforeChange(FullDocumentBeforeChange.WHEN_AVAILABLE);
-        }
         if (offsetContext.lastResumeToken() != null) {
             LOGGER.info("Resuming streaming from token '{}'", offsetContext.lastResumeToken());
             stream.resumeAfter(offsetContext.lastResumeTokenDoc());
