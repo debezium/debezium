@@ -67,16 +67,16 @@ public class PostgresReadOnlyIncrementalSnapshotContext<T> extends AbstractIncre
 
         Long eventTxId = offsetContext.getSourceInfo().getInt64(SourceInfo.TXID_KEY);
         LOGGER.trace("Received event with TxId {}", eventTxId);
-        LOGGER.trace("Updating window. Window opened: {}, low watermark {}, high watermark {}", windowOpened, lowWatermark, highWatermark);
+        LOGGER.trace("Updating window. Window opened: {}, low watermark {}, high watermark {}", deduplicationNeeded(), lowWatermark, highWatermark);
 
-        if (!windowOpened && lowWatermark != null) {
+        if (!deduplicationNeeded() && lowWatermark != null) {
             boolean pastLowWatermark = eventTxId >= lowWatermark.getXMin();
             if (pastLowWatermark) {
                 LOGGER.debug("Current event txId {}, low watermark {}", eventTxId, lowWatermark);
-                windowOpened = true;
+                openWindow(currentChunkId());
             }
         }
-        if (windowOpened && highWatermark != null) {
+        if (deduplicationNeeded() && highWatermark != null) {
             boolean pastHighWatermark = eventTxId > Math.max(highWatermark.getXMax(), lowWatermark.getXMax());
             if (pastHighWatermark) {
                 LOGGER.debug("Current event txId {}, high watermark {}", eventTxId, highWatermark);
@@ -86,12 +86,12 @@ public class PostgresReadOnlyIncrementalSnapshotContext<T> extends AbstractIncre
     }
 
     public boolean isWindowClosed() {
-        return !windowOpened;
+        return !deduplicationNeeded();
     }
 
     public void closeWindow() {
         LOGGER.trace("Window closed. Low and High watermark cleaned");
-        windowOpened = false;
+        closeWindow(currentChunkId());
         previousHighWatermark = highWatermark;
         highWatermark = null;
         previousLowWatermark = lowWatermark;

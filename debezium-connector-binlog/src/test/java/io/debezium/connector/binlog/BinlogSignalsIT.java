@@ -20,6 +20,8 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.connect.source.SourceConnector;
+import org.awaitility.Awaitility;
+import org.awaitility.core.ConditionTimeoutException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -31,10 +33,12 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
 import io.debezium.engine.DebeziumEngine;
+import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.kafka.KafkaClusterUtils;
 import io.debezium.pipeline.signal.actions.snapshotting.ExecuteSnapshot;
 import io.debezium.pipeline.signal.channels.KafkaSignalChannel;
+import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotChangeEventSource;
 import io.strimzi.test.container.StrimziKafkaCluster;
 
 /**
@@ -46,6 +50,7 @@ public abstract class BinlogSignalsIT<C extends SourceConnector> extends Abstrac
             .toAbsolutePath();
     protected final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase(SERVER_NAME, "incremental_snapshot-test").withDbHistoryPath(SCHEMA_HISTORY_PATH);
     protected static StrimziKafkaCluster kafkaCluster;
+    public static final String EXCLUDED_TABLE = "a";
 
     @BeforeAll
     static void startKafka() {
@@ -88,6 +93,7 @@ public abstract class BinlogSignalsIT<C extends SourceConnector> extends Abstrac
 
     protected Configuration.Builder config() {
         return DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.TABLE_EXCLUDE_LIST, DATABASE.getDatabaseName() + "." + EXCLUDED_TABLE)
                 .with(BinlogConnectorConfig.INCLUDE_SQL_QUERY, true)
                 .with(BinlogConnectorConfig.USER, "mysqluser")
                 .with(BinlogConnectorConfig.PASSWORD, "mysqlpw")
@@ -199,7 +205,40 @@ public abstract class BinlogSignalsIT<C extends SourceConnector> extends Abstrac
         String signalValue = String.format(
                 "{\"type\":\"execute-snapshot\",\"data\": {\"data-collections\": [\"%s\"], \"type\": \"INCREMENTAL\"}}",
                 table);
+
+        // Intercept logs to detect when the Kafka signal has been consumed and the snapshot
+        // request has been queued in the state manager. This prevents a race condition where
+        // the INSERT binlog events below are processed by the streaming thread before the Kafka
+        // consumer thread has queued the snapshot request, leaving the queue empty and the
+        // snapshot never triggered.
+        //
+        // The wait is best-effort: if the connector is not yet running (e.g., in tests that
+        // send the signal before starting the connector), the timeout is ignored and we proceed.
+        final LogInterceptor signalInterceptor = new LogInterceptor(AbstractIncrementalSnapshotChangeEventSource.class);
         sendKafkaSignal(signalValue, signalTopic);
+
+        try {
+            Awaitility.await("Waiting for execute-snapshot signal to be queued")
+                    .atMost(5, TimeUnit.SECONDS)
+                    .until(() -> signalInterceptor.containsMessage("Request data collections"));
+        }
+        catch (ConditionTimeoutException ignored) {
+            // The connector may not be running yet; the INSERT below will trigger
+            // checkAndAddDataCollections once the connector processes binlog events.
+        }
+
+        try (JdbcConnection connection = databaseConnection()) {
+            connection.setAutoCommit(false);
+            connection.executeWithoutCommitting(String.format("INSERT INTO %s (aa) VALUES (%s)", EXCLUDED_TABLE, 1));
+            connection.commit();
+        }
+        catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    protected JdbcConnection databaseConnection() {
+        return getTestDatabaseConnection(DATABASE.getDatabaseName());
     }
 
     protected void sendKafkaSignal(String signalValue, String signalTopic) throws ExecutionException, InterruptedException {

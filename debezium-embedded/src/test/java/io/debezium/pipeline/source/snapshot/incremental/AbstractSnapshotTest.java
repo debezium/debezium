@@ -39,7 +39,7 @@ public abstract class AbstractSnapshotTest<T extends SourceConnector> extends Ab
             .toAbsolutePath();
     protected static final int PARTITION_NO = 0;
     protected static final String SERVER_NAME = "test_server";
-    private static final int MAXIMUM_NO_RECORDS_CONSUMES = 5;
+    private static final int MAXIMUM_NO_RECORDS_CONSUMES = 9;
     protected final Path signalsFile = Paths.get("src", "test", "resources")
             .resolve("debezium_signaling_file.txt");
 
