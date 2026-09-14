@@ -6339,14 +6339,17 @@ The following configuration properties are _required_ when using XStream unless 
 === XStream and DBMS_LOB
 
 Oracle provides a database package called `DBMS_LOB` that consists of a collection of programs to operate on BLOB, CLOB, and NCLOB columns.
-Most of these programs manipulate the LOB column in totality, however, one program, `WRITEAPPEND`, is capable of manipulating a subset of the LOB data buffer.
+Most of these programs manipulate the LOB column in totality, however, some programs, such as `WRITE`, `WRITEAPPEND`, `TRIM`, and `ERASE`, manipulate only a subset of the LOB data buffer.
 
-When using XStream, `WRITEAPPEND` emits a logical change record (LCR) event for each invocation of the program.
-These LCR events are not combined into a single change event as they are when using the Oracle LogMiner adapter.
-As a result, consumers of the topic might receive events with partial column values.
-ifdef::community[]
-This diverged behavior is captured in https://issues.redhat.com/browse/DBZ-4741[DBZ-4741] and will be addressed in a future release.
-endif::community[]
+When using XStream, each invocation of one of these programs emits a dedicated `LOB_WRITE`, `LOB_TRIM`, or `LOB_ERASE` logical change record (LCR).
+Such an LCR carries only the portion of the LOB that the program changed, not the complete column value.
+
+The connector emits each of these LCRs as an update change event.
+Because the LCR does not contain the full column value, the connector re-selects the current value of the row's LOB columns from the database, using the primary key of the row and the commit SCN of the event, and places the complete values in the `after` element of the change event.
+The `before` element contains the unavailable value placeholder for the LOB columns, as described in the xref:oracle-property-unavailable-value-placeholder[`unavailable.value.placeholder`] property.
+
+For the re-selection to succeed, the table must have a primary key, and the connector must be able to read the table.
+If the table has no primary key, or the row was deleted before the connector could re-select it, the connector logs a warning and cannot provide the complete LOB value for the event.
 
 // Type: concept
 // ModuleID: debezium-oracle-connector-frequently-asked-questions
