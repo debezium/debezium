@@ -2771,8 +2771,7 @@ The server can be extended in two ways by providing a custom logic:
 * implementation of a new sink
 * customization of an existing sink - i.e. non-standard configuration
 
-// Type: concept
-// Title: Implementing a new {prodname} Server sink
+
 [id="debezium-server-implementing-a-new-sink"]
 === Implementation of a new sink
 
@@ -2785,8 +2784,6 @@ The execution path must pass the messages into the target system and regularly c
 See the https://github.com/debezium/debezium-server/blob/main/debezium-server-kinesis/src/main/java/io/debezium/server/kinesis/KinesisChangeConsumer.java[Kinesis sink] implementation for further details.
 
 
-// Type: concept
-// Title: Customizing an existing {prodname} Server sink
 [id="debezium-server-customizing-an-existing-sink"]
 === Customization of an existing sink
 
