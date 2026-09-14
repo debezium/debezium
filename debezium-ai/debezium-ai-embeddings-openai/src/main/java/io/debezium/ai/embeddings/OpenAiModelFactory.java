@@ -37,7 +37,8 @@ public class OpenAiModelFactory<R extends ConnectRecord<R>> implements Embedding
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.HIGH)
-            .withDescription("Base URL for OpenAI client. If not provided, default OpenAI client URL will be used.");
+            .withDescription("Base URL for OpenAI client. If not provided, default OpenAI client URL will be used.")
+            .withDeprecatedAliases(OPENAI_PREFIX + "base.url");
 
     private static final Field OPENAI_API_KEY = Field.create(OPENAI_PREFIX + "api.key")
             .withDisplayName("OpenAI API key.")
@@ -71,13 +72,32 @@ public class OpenAiModelFactory<R extends ConnectRecord<R>> implements Embedding
             .withDescription("Milliseconds to wait for OpenAI calculations to finish (defaults to %s).".formatted(DEFAULT_OPERATION_TIMEOUT))
             .withValidation(Field::isNonNegativeInteger);
 
-    public static final Field.Set ALL_FIELDS = Field.setOf(OPENAI_BASE_URL, OPENAI_API_KEY, OPENAI_ORGANIZATION_ID, MODEL_NAME, OPERATION_TIMEOUT);
+    private static final Field LOG_REQUESTS = Field.create(OPENAI_PREFIX + "log.requests")
+            .withDisplayName("Log OpenAI requests.")
+            .withType(ConfigDef.Type.BOOLEAN)
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDefault(false)
+            .withDescription("Whether to log requests sent to OpenAI API. Should be used with caution in production as it may expose sensitive data.");
+
+    private static final Field LOG_RESPONSES = Field.create(OPENAI_PREFIX + "log.responses")
+            .withDisplayName("Log OpenAI responses.")
+            .withType(ConfigDef.Type.BOOLEAN)
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDefault(false)
+            .withDescription("Whether to log responses received from OpenAI API. Should be used with caution in production as it may expose sensitive data.");
+
+    public static final Field.Set ALL_FIELDS = Field.setOf(OPENAI_BASE_URL, OPENAI_API_KEY, OPENAI_ORGANIZATION_ID, MODEL_NAME, OPERATION_TIMEOUT, LOG_REQUESTS,
+            LOG_RESPONSES);
 
     private String baseUrl;
     private String apiKey;
     private String organizationId;
     private String modelName;
     private int operationTimeout;
+    private boolean logRequests;
+    private boolean logResponses;
 
     @Override
     public Field.Set getConfigFields() {
@@ -91,15 +111,17 @@ public class OpenAiModelFactory<R extends ConnectRecord<R>> implements Embedding
         organizationId = config.getString(OPENAI_ORGANIZATION_ID);
         modelName = config.getString(MODEL_NAME);
         operationTimeout = config.getInteger(OPERATION_TIMEOUT);
+        logRequests = config.getBoolean(LOG_REQUESTS);
+        logResponses = config.getBoolean(LOG_RESPONSES);
     }
 
     @Override
     public void validateConfiguration() {
         if (Strings.isNullOrBlank(apiKey)) {
-            throw new ConfigException(format("'%s' must be set to non-empty value.", OPENAI_API_KEY));
+            throw new ConfigException(format("'%s' must be set to non-empty value.", OPENAI_API_KEY.name()));
         }
         if (Strings.isNullOrBlank(modelName)) {
-            throw new ConfigException(format("'%s' must be set to non-empty value.", MODEL_NAME));
+            throw new ConfigException(format("'%s' must be set to non-empty value.", MODEL_NAME.name()));
         }
     }
 
@@ -109,8 +131,8 @@ public class OpenAiModelFactory<R extends ConnectRecord<R>> implements Embedding
                 .apiKey(apiKey)
                 .modelName(modelName)
                 .timeout(Duration.ofMillis(operationTimeout))
-                .logRequests(true)
-                .logResponses(true);
+                .logRequests(logRequests)
+                .logResponses(logResponses);
         if (!Strings.isNullOrBlank(baseUrl)) {
             builder.baseUrl(baseUrl);
         }
