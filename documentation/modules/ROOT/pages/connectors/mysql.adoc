@@ -100,6 +100,12 @@ include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloff
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=cap-tbls-not-in-initial-schema-chg]
 
 // Type: concept
+[id="debezium-mysql-chunk-based-parallel-snapshots"]
+=== Chunk-based parallel snapshots
+
+include::{partialsdir}/modules/all-connectors/con-connector-chunk-based-parallel-snapshots.adoc[leveloffset=+1]
+
+// Type: concept
 [id="debezium-mysql-ad-hoc-snapshots"]
 === Ad hoc snapshots
 
