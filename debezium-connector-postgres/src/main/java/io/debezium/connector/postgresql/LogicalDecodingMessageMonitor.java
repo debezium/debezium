@@ -20,8 +20,8 @@ import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.connector.postgresql.connection.LogicalDecodingMessage;
 import io.debezium.data.Envelope;
 import io.debezium.function.BlockingConsumer;
+import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.spi.OffsetContext;
-import io.debezium.pipeline.spi.Partition;
 import io.debezium.pipeline.txmetadata.TransactionMonitor;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.schema.DataCollectionId;
@@ -87,8 +87,9 @@ public class LogicalDecodingMessageMonitor {
         this.valueSchema = PostgresSchemaFactory.get().logicalDecodingMessageMonitorValueSchema(schemaNameAdjuster, connectorConfig, binaryMode);
     }
 
-    public void logicalDecodingMessageEvent(Partition partition, OffsetContext offsetContext, Long timestamp,
-                                            LogicalDecodingMessage message, TransactionMonitor transactionMonitor)
+    public void logicalDecodingMessageEvent(PostgresPartition partition, OffsetContext offsetContext, Long timestamp,
+                                            LogicalDecodingMessage message, TransactionMonitor transactionMonitor,
+                                            DataChangeEventListener<PostgresPartition> eventListener)
             throws InterruptedException {
         final Struct logicalMsgStruct = new Struct(blockSchema);
         logicalMsgStruct.put(DEBEZIUM_LOGICAL_DECODING_MESSAGE_PREFIX_KEY, message.getPrefix());
@@ -103,7 +104,9 @@ public class LogicalDecodingMessageMonitor {
         value.put(DEBEZIUM_LOGICAL_DECODING_MESSAGE_KEY, logicalMsgStruct);
         value.put(Envelope.FieldName.SOURCE, offsetContext.getSourceInfo());
 
-        transactionMonitor.dataEvent(partition, new LogicalDecodingMessageId(), offsetContext, key, value);
+        final var dataCollectionId = new LogicalDecodingMessageId();
+        transactionMonitor.dataEvent(partition, dataCollectionId, offsetContext, key, value);
+        eventListener.onEvent(partition, dataCollectionId, offsetContext, key, value, Envelope.Operation.MESSAGE);
 
         sender.accept(new SourceRecord(partition.getSourcePartition(), offsetContext.getOffset(), topicName,
                 keySchema, key, value.schema(), value));
