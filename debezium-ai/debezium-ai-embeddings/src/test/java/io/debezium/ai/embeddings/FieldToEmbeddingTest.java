@@ -22,6 +22,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.data.Envelope;
+import io.debezium.doc.FixFor;
 
 /**
  * Basic tests of {@link FieldToEmbedding} SMT.
@@ -99,6 +100,7 @@ public class FieldToEmbeddingTest {
         assertThat(payloadStruct).contains(0.0f, 1.0f, 2.0f, 3.0f);
     }
 
+    @FixFor("debezium/dbz#2627")
     @Test
     public void testBlankSourceFieldThrowsCleanConfigException() {
         FieldToEmbedding<SourceRecord> embeddingSmt = new FieldToEmbedding<>();
@@ -107,6 +109,7 @@ public class FieldToEmbeddingTest {
                 .hasMessageContaining("field.source");
     }
 
+    @FixFor("debezium/dbz#2627")
     @Test
     public void testMultipleInstancesCanBeConfiguredIndependently() {
         FieldToEmbedding<SourceRecord> smt1 = new FieldToEmbedding<>();
