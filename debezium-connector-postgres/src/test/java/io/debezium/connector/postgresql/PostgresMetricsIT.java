@@ -152,6 +152,7 @@ public class PostgresMetricsIT extends AbstractMetricsTest<PostgresConnector> {
                 .atMost(TestHelper.waitTimeForRecords() * 5, TimeUnit.SECONDS)
                 .untilAsserted(() -> {
                     assertThat(mBeanServer.getAttribute(getStreamingMetricsObjectName(), "TotalNumberOfEventsSeen")).isEqualTo(1L);
+                    assertThat(mBeanServer.getAttribute(getStreamingMetricsObjectName(), "TotalNumberOfLogicalMessageEventsSeen")).isEqualTo(1L);
                     assertThat((Long) mBeanServer.getAttribute(getStreamingMetricsObjectName(), "MilliSecondsSinceLastEvent")).isGreaterThanOrEqualTo(0L);
                     assertThat(mBeanServer.getAttribute(getStreamingMetricsObjectName(), "NumberOfEventsFiltered")).isEqualTo(1L);
                 });
@@ -159,6 +160,7 @@ public class PostgresMetricsIT extends AbstractMetricsTest<PostgresConnector> {
 
     private void assertIncludedLogicalMessageMetrics(MBeanServer mBeanServer) throws Exception {
         assertThat(mBeanServer.getAttribute(getStreamingMetricsObjectName(), "TotalNumberOfEventsSeen")).isEqualTo(1L);
+        assertThat(mBeanServer.getAttribute(getStreamingMetricsObjectName(), "TotalNumberOfLogicalMessageEventsSeen")).isEqualTo(1L);
         assertThat(mBeanServer.getAttribute(getStreamingMetricsObjectName(), "LastEvent")).isNotNull();
         assertThat((Long) mBeanServer.getAttribute(getStreamingMetricsObjectName(), "MilliSecondsSinceLastEvent")).isGreaterThanOrEqualTo(0L);
 
