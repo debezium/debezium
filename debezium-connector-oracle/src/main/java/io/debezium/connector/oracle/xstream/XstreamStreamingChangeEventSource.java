@@ -111,14 +111,8 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
 
         this.effectiveOffset = offsetContext;
 
-        // The out-of-bands connection (DDL fetch, LOB reselect) must always target the
-        // primary/source database. In downstream and standby capture modes the streaming
-        // factory's main connection points at the mining or standby instance, where the
-        // captured tables do not exist; snapshotConnectionFactory() resolves to the
-        // primary in all factory implementations.
         LcrEventHandler eventHandler = new LcrEventHandler(connectorConfig, errorHandler, dispatcher, clock, schema,
-                partition, offsetContext, isTableCaseInsensitive(), this, streamingMetrics,
-                connectionFactory.snapshotConnectionFactory().mainConnection());
+                partition, offsetContext, isTableCaseInsensitive(), this, streamingMetrics);
 
         try (OracleConnection xsConnection = connectAndAttachWithRetries(getStartPosition(offsetContext))) {
             try {
@@ -190,14 +184,38 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
     }
 
     /**
-     * Pins the shared out-of-bands JDBC connection's session to the configured PDB when
-     * the connector is configured against a CDB+PDB topology. Must be called before the
-     * receive loop starts and again after a blocking snapshot completes, because
-     * {@code OracleSnapshotChangeEventSource#close()} resets the shared connection's
-     * session back to {@code CDB$ROOT}.
+     * Returns the shared out-of-bands JDBC connection used by the LCR handler for DDL fetches
+     * and LOB re-selection. It must always target the primary/source database: in downstream
+     * and standby capture modes the streaming factory's main connection points at the mining
+     * or standby instance, where the captured tables do not exist, whereas
+     * {@code snapshotConnectionFactory()} resolves to the primary in all factory
+     * implementations.
+     *
+     * <p>{@code JdbcConnection} re-establishes a closed connection lazily on first use and
+     * only re-runs its initial operations, which would leave the new session on
+     * {@code CDB$ROOT}. If the connection is found closed here, it is re-established and
+     * pinned to the PDB again before being handed out.
+     */
+    OracleConnection getOutOfBandsConnection() throws SQLException {
+        final OracleConnection connection = connectionFactory.snapshotConnectionFactory().mainConnection();
+        if (!connection.isConnected()) {
+            LOGGER.info("Out-of-bands connection is no longer connected, re-establishing it");
+            connection.connection();
+            pinConnectionToPdb();
+        }
+        return connection;
+    }
+
+    /**
+     * Pins the out-of-bands connection's session to the configured PDB when the connector is
+     * configured against a CDB+PDB topology. Must be called before the receive loop starts,
+     * again after a blocking snapshot completes because
+     * {@code OracleSnapshotChangeEventSource#close()} resets the session back to
+     * {@code CDB$ROOT}, and whenever the connection has been re-established.
      */
     private void pinConnectionToPdb() {
         if (connectorConfig.isUsingPluggableDatabase()) {
+            LOGGER.debug("Pinning out-of-bands connection session to PDB '{}'", connectorConfig.getPdbName());
             connectionFactory.snapshotConnectionFactory().mainConnection().setSessionToPdb(connectorConfig.getPdbName());
         }
     }
