@@ -170,7 +170,6 @@ JLDLaughlin,Jessica Laughlin
 jmks,Jason Schweier
 Jono,Jono Morris
 joontube,Seongjoon Jeong
-joontube,Seongjoon Jeong
 jorkzijlstra,JOrk Zijlstra
 joschi,Jochen Schalanda
 josetesan,Jose Luis
