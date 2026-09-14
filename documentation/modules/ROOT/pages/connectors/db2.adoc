@@ -1089,7 +1089,7 @@ A value in the key's payload field is optional when a table does not have a prim
 `mydatabase.MYSCHEMA.CUSTOMERS.Key`::
 Name of the schema that defines the structure of the key's payload.
 This schema describes the structure of the primary key for the table that was changed.
-Key schema names have the format _connector-name_._database-name_._table-name_.`Key`. 
+Key schema names have the format _connector-name_._database-name_._table-name_.`Key`.
 In this example the name is comprised of the following components:
 +
 `mydatabase`::: The name of the connector that generated this event.
@@ -3247,11 +3247,11 @@ An exception can then result, even if the snapshot captures all data successfull
 If you experience this problem, set `snapshot.max.threads` to `1` and retry the snapshot.
 ====
 ifdef::community[]
-+
+
 NOTE: The property `internal.legacy.snapshot.max.threads` is a deprecated alias for `legacy.snapshot.max.threads` and should not be used in new configurations.
 endif::community[]
 ifdef::product[]
-+
+
 [IMPORTANT]
 ====
 Chunk-based parallel snapshotting is a Technology Preview feature.
