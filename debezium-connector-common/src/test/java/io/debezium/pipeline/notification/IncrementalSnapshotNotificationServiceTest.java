@@ -83,7 +83,7 @@ public class IncrementalSnapshotNotificationServiceTest {
     }
 
     @Test
-    @FixFor("debezium/dbx#2537")
+    @FixFor("debezium/dbz#2537")
     public void notifyDataCollectionsResolved() {
 
         incrementalSnapshotNotificationService.notifyDataCollectionsResolved(incrementalSnapshotContext, partition, offsetContext);
