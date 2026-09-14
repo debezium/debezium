@@ -4,7 +4,7 @@
 
 +
 --
-This command runs a new container using version {debezium-docker-label} of the `example-httpd` container, which is based on version 2.4 of the `docker.io/library/httpd:2.4` image:
+This command runs a new container using version {debezium-docker-label} of the `example-httpd` image, which is based on version 2.4 of the `docker.io/library/httpd:2.4` image:
 
 [source,shell,options="nowrap",subs="+attributes"]
 ----

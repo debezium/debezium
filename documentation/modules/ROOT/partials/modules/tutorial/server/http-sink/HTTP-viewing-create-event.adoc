@@ -17,7 +17,7 @@ $ docker logs httpsink
 ====
 
 The output displays the change events.
-Since this is the first time a snapshot has been taken, there will be a lot of change events (one for each record in the database).
+Since this is the first time a snapshot has been taken, there will be a lot of change events.
 Each event is formatted in JSON as configured by the `debezium.format.value` property in `config\lib\application.properties`.
 
 You should see a large output similar to the following (this is just the output of one change event POST request, you will see many of these):
@@ -367,11 +367,11 @@ The `schema` contains a schema named `tutorial.inventory.customers.Envelope` (ve
 
 `before`::
 An optional field that, if present, contains the state of the row _before_ the event occurred.
-The structure will be described by the `tutorial.inventory.customers.Value` Kafka Connect schema,
+The structure will be described by the `tutorial.inventory.customers.Value` schema,
 which the `tutorial` connector uses for all rows in the `inventory.customers` table.
 `after`::
 An optional field that, if present, contains the state of the row _after_ the event occurred.
-The structure is described by the same `tutorial.inventory.customers.Value` Kafka Connect schema used in `before`.
+The structure is described by the same `tutorial.inventory.customers.Value` schema used in `before`.
 `source`::
 A required field that contains a structure describing the source metadata for the event,
 which in the case of MySQL, contains several fields:
@@ -425,7 +425,7 @@ mysql> SELECT * FROM customers;
 | 1002 | George     | Bailey    | gbailey@foobar.com       |
 | 1003 | Edward     | Walker    | ed@walker.com            |
 | 1004 | Anne       | Kretchmar | annek@noanswer.org       |
-| 1006 | John       | Tutorial  | johntutorial@example.com |
+| 1005 | John       | Tutorial  | johntutorial@example.com |
 +------+------------+-----------+--------------------------+
 5 rows in set (0.00 sec)
 ----

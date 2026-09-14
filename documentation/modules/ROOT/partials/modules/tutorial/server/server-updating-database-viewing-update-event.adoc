@@ -29,7 +29,7 @@ mysql> SELECT * FROM customers;
 | 1002 | George     | Bailey    | gbailey@foobar.com            |
 | 1003 | Edward     | Walker    | ed@walker.com                 |
 | 1004 | Anne       | Kretchmar | annek@noanswer.org            |
-| 1006 | Johnathan  | Tutorial  | johnathantutorial@example.com |
+| 1005 | Johnathan  | Tutorial  | johnathantutorial@example.com |
 +------+------------+-----------+-------------------------------+
 5 rows in set (0.00 sec)
 ----
