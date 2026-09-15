@@ -7,11 +7,15 @@ package io.debezium.connector.postgresql;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
@@ -210,6 +214,35 @@ public class ConnectionIT implements Testing {
             try (PostgresConnection conn = TestHelper.create()) {
                 conn.execute("DROP SCHEMA IF EXISTS dbz2041 CASCADE");
             }
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2521")
+    public void shouldReturnUnknownTypeForNullOrBlankTypeName() {
+        final TypeRegistry typeRegistry = TestHelper.getTypeRegistry();
+
+        assertThat(typeRegistry.get((String) null)).isSameAs(PostgresType.UNKNOWN);
+        assertThat(typeRegistry.get("")).isSameAs(PostgresType.UNKNOWN);
+        assertThat(typeRegistry.get("   ")).isSameAs(PostgresType.UNKNOWN);
+        assertThat(typeRegistry.get("public", null)).isSameAs(PostgresType.UNKNOWN);
+        assertThat(typeRegistry.get("public", "")).isSameAs(PostgresType.UNKNOWN);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2521")
+    public void shouldReadColumnWhenDriverReportsNoTypeName() throws SQLException {
+        final ResultSet columnMetadata = mock(ResultSet.class);
+        when(columnMetadata.getString(4)).thenReturn("c");
+        when(columnMetadata.getString(6)).thenReturn(null);
+
+        try (PostgresConnection conn = TestHelper.createWithTypeRegistry()) {
+            final Optional<Column> column = conn.readColumnForDecoder(
+                    columnMetadata, new TableId(null, "public", "t"), null);
+
+            assertThat(column).isPresent();
+            assertThat(column.get().typeName()).isNull();
+            assertThat(column.get().nativeType()).isEqualTo(PostgresType.UNKNOWN.getRootType().getOid());
         }
     }
 

@@ -736,7 +736,7 @@ public class PostgresConnection extends JdbcConnection {
             // agree (debezium/dbz#683), but skip it when the type did not resolve so an unrecognized
             // name (e.g. from a PostgreSQL-compatible source) keeps the driver's spelling rather than
             // the UNKNOWN placeholder.
-            if (typeName.contains(".") && nativeType != PostgresType.UNKNOWN) {
+            if (nativeType != PostgresType.UNKNOWN && typeName.contains(".")) {
                 column.type(nativeType.getName());
             }
 
