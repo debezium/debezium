@@ -29,6 +29,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.doc.FixFor;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableEditor;
@@ -184,6 +185,7 @@ public class JdbcSchemaHistoryTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#1957")
     public void shouldInitializeStorageWithoutCredentials() {
         history.stop();
         history = new JdbcSchemaHistory();
