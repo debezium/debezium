@@ -1,7 +1,8 @@
 Chunk-based parallel snapshotting accelerates initial snapshots by distributing smaller units of work across multiple threads, improving workload balance and snapshot resilience.
 
 ifdef::community[]
-NOTE: Chunk-based parallel snapshotting is an incubating feature.
+NOTE: Chunk-based parallel snapshotting is currently in an incubating state and is subject to change without notice in future releases.
+
 endif::community[]
 ifdef::product[]
 [IMPORTANT]
@@ -73,8 +74,6 @@ If you use the legacy behavior and experience idle-connection failures after a s
 ifdef::community[]
 [IMPORTANT]
 ====
-The legacy table-per-thread behavior is deprecated and will be removed in a future release.
-
 The property `internal.legacy.snapshot.max.threads` is a deprecated alias for `legacy.snapshot.max.threads` and should not be used in new configurations.
 ====
 endif::community[]
