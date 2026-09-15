@@ -27,11 +27,13 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import io.debezium.data.Envelope;
+import io.debezium.doc.FixFor;
 
 class MongoToRelationalMapperInferenceTest {
 
     @ParameterizedTest
     @ValueSource(longs = { 0L, 1L, 2_147_483_647L, 2_147_483_648L, 4_294_967_295L })
+    @FixFor("debezium/dbz#1715")
     void shouldInferUnsignedTimestampsInBothImages(long seconds) {
         final var before = new BsonDocument("value", new BsonTimestamp((int) seconds, 0)).toJson();
         final var after = new BsonDocument("value", new BsonTimestamp((int) seconds, -1)).toJson();
@@ -42,6 +44,7 @@ class MongoToRelationalMapperInferenceTest {
 
     @ParameterizedTest
     @EnumSource(value = BsonType.class, names = { "UNDEFINED", "DB_POINTER" })
+    @FixFor("debezium/dbz#1715")
     void shouldRejectUnsupportedTypesWithTheirPathInEitherImage(BsonType type) {
         final var value = type == BsonType.UNDEFINED ? "{\"$undefined\":true}"
                 : "{\"$dbPointer\":{\"$ref\":\"db.collection\",\"$id\":{\"$oid\":\"507f1f77bcf86cd799439011\"}}}";
@@ -68,6 +71,7 @@ class MongoToRelationalMapperInferenceTest {
 
     @ParameterizedTest
     @ValueSource(strings = { "server.db.collection", "server.Envelope.collection", "server.db.Envelope" })
+    @FixFor("debezium/dbz#1715")
     void shouldRemoveOnlyTrailingEnvelopeSuffixFromPayloadSchemaName(String schemaName) {
         final var result = transform("{\"value\":1}", "{\"value\":2}", schemaName);
         assertThat(result.schema().name()).isEqualTo(schemaName + Envelope.SCHEMA_NAME_SUFFIX);
@@ -76,6 +80,7 @@ class MongoToRelationalMapperInferenceTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#1715")
     void shouldInferReferenceDocumentsWithoutTreatingThemAsDbPointers() {
         final var result = transform("{}", """
                 {"reference":{"$ref":"db.collection","$id":{"$oid":"507f1f77bcf86cd799439011"}}}
@@ -86,6 +91,7 @@ class MongoToRelationalMapperInferenceTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#1715")
     void shouldRetainAddedAndRemovedNestedFieldsInBothImages() {
         final var result = transform("""
                 {"address":{"city":"Seoul","details":{"removed":42}}}
@@ -111,6 +117,7 @@ class MongoToRelationalMapperInferenceTest {
             "{}|{\"nested\":{\"value\":42}}",
             "{\"nested\":{\"value\":null}}|{\"nested\":{\"value\":42}}"
     }, delimiter = '|')
+    @FixFor("debezium/dbz#1715")
     void shouldInferNestedTypesFromEitherImage(String empty, String populated) {
         for (boolean reverse : List.of(false, true)) {
             final var result = transform(reverse ? populated : empty, reverse ? empty : populated);
@@ -126,6 +133,7 @@ class MongoToRelationalMapperInferenceTest {
 
     @ParameterizedTest
     @ValueSource(strings = { "[]", "[1]", "null" })
+    @FixFor("debezium/dbz#1715")
     void shouldRetainArrayElementTypeWhenArrayShrinks(String afterArray) {
         final var result = transform("{\"items\":[1,2]}", "{\"items\":" + afterArray + "}");
         final var before = result.getStruct("before");
@@ -141,6 +149,7 @@ class MongoToRelationalMapperInferenceTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#1715")
     void shouldUnionNestedFieldsAcrossArrayElementsAndImages() {
         final var result = transform("""
                 {"items":[{"details":{"removed":42}},{"details":{"other":true}}]}
@@ -168,6 +177,7 @@ class MongoToRelationalMapperInferenceTest {
             "{\"items\":[{\"details\":{}}]}|{\"items\":[{\"details\":false}]}|/items/0/details",
             "{\"a/b\":{\"~c\":[]}}|{\"a/b\":{\"~c\":true}}|/a~1b/~0c"
     }, delimiter = '|')
+    @FixFor("debezium/dbz#1715")
     void shouldReportConflictingTypesWithDocumentPath(String before, String after, String path) {
         assertThatThrownBy(() -> transform(before, after))
                 .isInstanceOf(DataException.class)
@@ -177,6 +187,7 @@ class MongoToRelationalMapperInferenceTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#1715")
     void shouldPreserveCompatibleBsonTypesWithTheSameConnectRepresentation() {
         final var result = transform("{\"id\":{\"$oid\":\"507f1f77bcf86cd799439011\"}}", "{\"id\":\"text\"}");
         assertThat(result.getStruct("before").getString("id")).isEqualTo("507f1f77bcf86cd799439011");

@@ -29,6 +29,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.debezium.data.VariableScaleDecimal;
+import io.debezium.doc.FixFor;
 
 class MongoMappingTypeTest {
     private static final String DATE = "{\"$date\":\"2026-09-11T12:34:56.123Z\"}";
@@ -88,6 +89,7 @@ class MongoMappingTypeTest {
 
     @ParameterizedTest
     @MethodSource("values")
+    @FixFor("debezium/dbz#1715")
     void shouldConvertValuesToTheDeclaredConnectRepresentation(String type, String json, Object expected) {
         final var schema = MongoMappingType.schema(type, null, null, null);
         final var converted = MongoMappingType.convert(BsonDocument.parse("{\"v\":" + json + "}").get("v"), schema);
@@ -102,6 +104,7 @@ class MongoMappingTypeTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#1715")
     void shouldPreserveDecimalPrecisionAndScale() {
         final var value = BsonDocument.parse("{\"price\":{\"$numberDecimal\":\"12345678901234567890123456789012.34\"}}").get("price");
         final var fixed = MongoMappingType.schema("org.apache.kafka.connect.data.Decimal", 2, 34, null);
@@ -114,6 +117,7 @@ class MongoMappingTypeTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#1715")
     void shouldSerializeSelectedBsonValuesAsExtendedJson() {
         final var schema = MongoMappingType.schema("io.debezium.data.Json", null, null, null);
         for (String json : new String[]{ "{\"a\":{\"$numberDecimal\":\"19.99\"}}", "[1,\"x\",true]", "{\"$timestamp\":{\"t\":10,\"i\":7}}", "\"hello\"" }) {
@@ -124,6 +128,7 @@ class MongoMappingTypeTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#1715")
     void shouldValidateBitsLength() {
         final var schema = MongoMappingType.schema("io.debezium.data.Bits", null, null, 9);
         final var value = BsonDocument.parse("{\"v\":{\"$binary\":{\"base64\":\"/wE=\",\"subType\":\"00\"}}}").get("v");
@@ -159,6 +164,7 @@ class MongoMappingTypeTest {
 
     @ParameterizedTest
     @MethodSource("invalidValues")
+    @FixFor("debezium/dbz#1715")
     void shouldReportConversionErrorsWithTheOutputField(String type, String json) throws JsonProcessingException {
         final var mapping = new MongoDocumentMapping("shop.orders", new ObjectMapper().writeValueAsString(Map.of("selected", Map.of("path", "/v", "type", type))));
         final var document = BsonDocument.parse("{\"v\":" + json + "}");
@@ -167,6 +173,7 @@ class MongoMappingTypeTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#1715")
     void shouldRejectDecimalRoundingOverflowAndNonFiniteNumbers() {
         final var schema = MongoMappingType.schema("org.apache.kafka.connect.data.Decimal", 2, 5, null);
         for (String value : new String[]{ "19.999", "1000.00", "NaN", "Infinity" }) {

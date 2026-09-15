@@ -57,6 +57,7 @@ public class MongoDataConverterTest {
 
     @ParameterizedTest
     @ValueSource(longs = { 0L, 1L, 2_147_483_647L, 2_147_483_648L, 4_294_967_295L })
+    @FixFor("debezium/dbz#1715")
     void shouldConvertUnsignedTimestampSecondsInFieldsAndArrays(long seconds) {
         final var timestamp = new BsonTimestamp((int) seconds, 0);
         final var sameSecond = new BsonTimestamp((int) seconds, -1);

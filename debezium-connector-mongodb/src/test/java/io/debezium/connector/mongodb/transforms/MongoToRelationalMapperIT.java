@@ -60,6 +60,7 @@ public class MongoToRelationalMapperIT extends AbstractMongoConnectorIT {
     private static final JsonWriterSettings CANONICAL = JsonWriterSettings.builder().outputMode(JsonMode.EXTENDED).build();
 
     @Test
+    @FixFor("debezium/dbz#1715")
     void shouldConvertUnsignedTimestampsThroughBothMongoTransformations() throws Exception {
         try (var client = TestHelper.connect(mongo)) {
             final var collection = client.getDatabase(DATABASE).getCollection(COLLECTION, BsonDocument.class);
@@ -81,6 +82,7 @@ public class MongoToRelationalMapperIT extends AbstractMongoConnectorIT {
 
     @ParameterizedTest
     @EnumSource(value = BsonType.class, names = { "UNDEFINED", "DB_POINTER" })
+    @FixFor("debezium/dbz#1715")
     void shouldRejectUnsupportedInferenceButAllowJsonProjection(BsonType type) throws Exception {
         final var value = MongoBsonTypeTestData.values().get(type == BsonType.UNDEFINED ? "undefinedValue" : "dbPointerValue");
         try (var client = TestHelper.connect(mongo)) {
@@ -144,7 +146,7 @@ public class MongoToRelationalMapperIT extends AbstractMongoConnectorIT {
 
     @ParameterizedTest
     @EnumSource(JsonSerializationMode.class)
-    @FixFor("dbz#1715")
+    @FixFor("debezium/dbz#1715")
     @SkipWhenDatabaseVersion(check = LESS_THAN, major = 6, reason = "Change stream pre-images require MongoDB 6.0 or later")
     void shouldMapAllBsonTypesThroughSnapshotAndStreaming(JsonSerializationMode sourceMode) throws Exception {
         final var snapshotDocument = new BsonDocument("_id", new BsonInt32(1))
