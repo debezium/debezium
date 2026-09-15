@@ -20,6 +20,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -350,7 +351,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                 .collect(toMap(io.debezium.relational.Column::name, io.debezium.relational.Column::defaultValueExpression));
 
         columnOptionality = readColumns.stream().collect(toMap(io.debezium.relational.Column::name, io.debezium.relational.Column::isOptional));
-        columnTypeNames = readColumns.stream().collect(toMap(io.debezium.relational.Column::name, io.debezium.relational.Column::typeName));
+        columnTypeNames = readColumns.stream().collect(HashMap::new, (map, column) -> map.put(column.name(), column.typeName()), HashMap::putAll);
         primaryKeyColumns = connection.readPrimaryKeyNames(databaseMetadata, tableId);
         if (primaryKeyColumns == null || primaryKeyColumns.isEmpty()) {
             LOGGER.warn("Primary keys are not defined for table '{}', defaulting to unique indices", tableName);
