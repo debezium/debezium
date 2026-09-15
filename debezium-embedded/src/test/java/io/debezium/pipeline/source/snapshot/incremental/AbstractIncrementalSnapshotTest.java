@@ -95,9 +95,6 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
             logger.info("Sending signal with query {}", query);
             connection.execute(query);
         }
-        catch (Exception e) {
-            logger.warn("Failed to send signal", e);
-        }
     }
 
     protected void sendAdHocSnapshotSignal() throws SQLException {
@@ -737,64 +734,20 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     }
 
     @Test
-    @FixFor("DBZ-4271")
+    @FixFor({ "DBZ-4271", "debezium/dbz#2636" })
     public void removeNotYetCapturedCollectionFromInProgressIncrementalSnapshot() throws Exception {
-        final LogInterceptor interceptor = new LogInterceptor(AbstractIncrementalSnapshotChangeEventSource.class);
-
-        // We will use chunk size of 250, this gives us enough granularity with the incremental
-        // snapshot to have a couple round trips for the first table but enough table to trigger
-        // the removal of the second table before it starts being processed.
-        populateTables();
-        startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 250));
-
-        final List<String> collectionIds = tableDataCollectionIds();
-        assertThat(collectionIds).hasSize(2);
-
-        final List<String> tableNames = tableNames();
-        assertThat(tableNames).hasSize(2);
-
-        final List<String> topicNames = topicNames();
-        assertThat(topicNames).hasSize(2);
-
-        final String collectionIdToRemove = collectionIds.get(1);
-        final String tableToSnapshot = tableNames.get(0);
-        final String topicToConsume = topicNames.get(0);
-
-        // Send the start signal for all collections and stop for the second collection
-        sendAdHocSnapshotSignal(collectionIds.toArray(new String[0]));
-        sendAdHocSnapshotStopSignal(collectionIdToRemove);
-
-        // Wait until the stop has been processed, verifying it was removed from the snapshot.
-        Awaitility.await().atMost(getWaitDurationInSeconds())
-                .until(() -> interceptor.containsMessage("Removing '[" + collectionIdToRemove + "]' collections from incremental snapshot"));
-
-        try (JdbcConnection connection = databaseConnection()) {
-            connection.setAutoCommit(false);
-            for (int i = 0; i < ROW_COUNT; i++) {
-                connection.executeWithoutCommitting(String.format("INSERT INTO %s (%s, aa) VALUES (%s, %s)",
-                        tableToSnapshot,
-                        connection.quoteIdentifier(pkFieldName()),
-                        i + ROW_COUNT + 1,
-                        i + ROW_COUNT));
-            }
-            connection.commit();
-        }
-
-        final int expectedRecordCount = ROW_COUNT * 2;
-        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount, topicToConsume);
-        for (int i = 0; i < expectedRecordCount; i++) {
-            assertThat(dbChanges).contains(entry(i + 1, i));
-        }
+        removeCapturedCollectionFromInProgressIncrementalSnapshot(1);
     }
 
     @Test
-    @FixFor("DBZ-4271")
+    @FixFor({ "DBZ-4271", "debezium/dbz#2636" })
     public void removeStartedCapturedCollectionFromInProgressIncrementalSnapshot() throws Exception {
+        removeCapturedCollectionFromInProgressIncrementalSnapshot(0);
+    }
+
+    protected void removeCapturedCollectionFromInProgressIncrementalSnapshot(int collectionIndexToRemove) throws Exception {
         final LogInterceptor interceptor = new LogInterceptor(AbstractIncrementalSnapshotChangeEventSource.class);
 
-        // We will use chunk size of 250, this gives us enough granularity with the incremental
-        // snapshot to have a couple round trips for the first table but enough table to trigger
-        // the removal of the second table before it starts being processed.
         populateTables();
         startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 250));
 
@@ -807,11 +760,11 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         final List<String> topicNames = topicNames();
         assertThat(topicNames).hasSize(2);
 
-        final String collectionIdToRemove = collectionIds.get(0);
-        final String tableToSnapshot = tableNames.get(1);
-        final String topicToConsume = topicNames.get(1);
+        final String collectionIdToRemove = collectionIds.get(collectionIndexToRemove);
+        final String tableToSnapshot = tableNames.get(1 - collectionIndexToRemove);
+        final String topicToConsume = topicNames.get(1 - collectionIndexToRemove);
 
-        // Send the start signal for all collections and stop for the second collection
+        // Send the start signal for all collections and stop for the selected collection.
         sendAdHocSnapshotSignal(collectionIds.toArray(new String[0]));
         sendAdHocSnapshotStopSignal(collectionIdToRemove);
 
