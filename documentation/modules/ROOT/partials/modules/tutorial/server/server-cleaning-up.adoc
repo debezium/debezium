@@ -14,7 +14,13 @@ you can use Docker to stop all of the running containers.
 
 +
 --
-Open the terminal window where you used `run.sh` to start {prodname} server and stop it using kbd:[CTRL(+C)*].
+Open the terminal window where you used `run.sh` to start {prodname} server and stop it using kbd:[CTRL+C].
+
+[NOTE]
+====
+If you are on MacOS, use kbd:[command+.] instead.
+====
+
 --
 
 . Stop each of the containers:
@@ -23,12 +29,7 @@ Open the terminal window where you used `run.sh` to start {prodname} server and 
 --
 [source,shell,options="nowrap"]
 ----
-ifeval::["{selected-sink}" == "HTTP"]
-$ docker stop mysql httpsink
-endif::[]
-ifeval::["{selected-sink}" == "JDBC"]
-$ docker stop mysql postgres
-endif::[]
+include::{partialsdir}/modules/tutorial/server/{selected-sink}-sink/{selected-sink}-cleaning-up.adoc[]
 ----
 
 Docker stops each container.
