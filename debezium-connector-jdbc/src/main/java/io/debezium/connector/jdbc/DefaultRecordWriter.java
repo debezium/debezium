@@ -13,6 +13,8 @@ import java.sql.Statement;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,13 +23,13 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
 
+import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.DataException;
 import org.hibernate.JDBCException;
 import org.hibernate.SharedSessionContract;
 import org.hibernate.Transaction;
-import org.hibernate.jdbc.Work;
 import org.hibernate.query.NativeQuery;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,6 +37,9 @@ import org.slf4j.LoggerFactory;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.field.JdbcFieldDescriptor;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
+import io.debezium.connector.jdbc.type.JdbcType;
+import io.debezium.connector.jdbc.util.BinaryHandling;
+import io.debezium.connector.jdbc.util.ByteArrayUtils;
 import io.debezium.metadata.CollectionId;
 import io.debezium.sink.batch.Batch;
 import io.debezium.sink.batch.BatchRecord;
@@ -55,6 +60,18 @@ import io.debezium.util.Stopwatch;
 public class DefaultRecordWriter implements RecordWriter {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultRecordWriter.class);
+
+    private enum BinaryBindingKind {
+        BYTES,
+        STRING,
+        OTHER
+    }
+
+    private record BinaryFieldBinding(String fieldName, boolean key, Class<?> jdbcType, BinaryBindingKind kind) {
+    }
+
+    private record BinaryBindingSignature(List<BinaryFieldBinding> fields) {
+    }
 
     private final SharedSessionContract session;
     private final QueryBinderResolver queryBinderResolver;
@@ -98,10 +115,10 @@ public class DefaultRecordWriter implements RecordWriter {
     /**
      * Bind key field values to the query for a single record.
      */
-    protected int bindKeyValuesToQuery(JdbcSinkRecord record, QueryBinder query, int index) {
+    protected int bindKeyValuesToQuery(JdbcSinkRecord record, TableDescriptor table, QueryBinder query, int index) {
         final Struct keySource = record.filteredKey();
         if (keySource != null) {
-            index = bindFieldValuesToQuery(record, query, index, keySource, record.keyFieldNames());
+            index = bindFieldValuesToQuery(record, table, query, index, keySource, record.keyFieldNames());
         }
         return index;
     }
@@ -109,14 +126,14 @@ public class DefaultRecordWriter implements RecordWriter {
     /**
      * Bind non-key field values to the query for a single record.
      */
-    protected int bindNonKeyValuesToQuery(JdbcSinkRecord record, QueryBinder query, int index) {
-        return bindFieldValuesToQuery(record, query, index, record.getPayload(), record.nonKeyFieldNames());
+    protected int bindNonKeyValuesToQuery(JdbcSinkRecord record, TableDescriptor table, QueryBinder query, int index) {
+        return bindFieldValuesToQuery(record, table, query, index, record.getPayload(), record.nonKeyFieldNames());
     }
 
     /**
      * Bind field values to the query for a single record.
      */
-    protected int bindFieldValuesToQuery(JdbcSinkRecord record, QueryBinder query, int index, Struct source, Set<String> fieldNames) {
+    protected int bindFieldValuesToQuery(JdbcSinkRecord record, TableDescriptor table, QueryBinder query, int index, Struct source, Set<String> fieldNames) {
         for (String fieldName : fieldNames) {
             final JdbcFieldDescriptor field = record.jdbcFields().get(fieldName);
 
@@ -127,12 +144,39 @@ public class DefaultRecordWriter implements RecordWriter {
             else {
                 value = source.get(fieldName);
             }
-            List<ValueBindDescriptor> boundValues = dialect.bindValue(field, index, value);
+            List<ValueBindDescriptor> boundValues = maybeBindBytesAsCharacter(record, field, table, index, value);
+            if (boundValues == null) {
+                boundValues = dialect.bindValue(field, index, value);
+            }
 
             boundValues.forEach(query::bind);
             index += boundValues.size();
         }
         return index;
+    }
+
+    /**
+     * Returns an encoded string binding when the field and destination column resolve to a textual
+     * binary handling mode. Returns {@code null} to use the regular binding.
+     */
+    protected List<ValueBindDescriptor> maybeBindBytesAsCharacter(JdbcSinkRecord record, JdbcFieldDescriptor field, TableDescriptor table, int index, Object value) {
+        if (table == null) {
+            return null;
+        }
+        final BinaryHandling.Resolution resolution = dialect.resolveBinaryHandling(table, record, field);
+        if (!resolution.isEncoded()) {
+            return null;
+        }
+        final int targetJdbcType = resolution.targetColumn().getJdbcType();
+        if (value == null) {
+            return List.of(new ValueBindDescriptor(index, null, targetJdbcType));
+        }
+        final byte[] bytes = ByteArrayUtils.getByteArrayFromValue(value);
+        if (bytes == null) {
+            // Let the regular binding report an unexpected value type.
+            return null;
+        }
+        return List.of(new ValueBindDescriptor(index, resolution.mode().encode(bytes), targetJdbcType));
     }
 
     private TableDescriptor readTable(CollectionId collectionId) {
@@ -159,8 +203,32 @@ public class DefaultRecordWriter implements RecordWriter {
             throw e;
         }
         progressListener().tableCreated();
+        warnForSchemaEvolvedBinaryColumns(record, record.allFields().keySet());
 
         return readTable(collectionId);
+    }
+
+    /**
+     * Warns when schema evolution creates a binary column for a field configured with a textual
+     * binary handling mode. Schema evolution derives the column type from the record schema, while
+     * sink-side encoding applies only when an existing destination column is a character type.
+     */
+    private void warnForSchemaEvolvedBinaryColumns(JdbcSinkRecord record, Collection<String> fieldNames) {
+        if (!config.isBinaryHandlingEnabled()) {
+            return;
+        }
+        for (String fieldName : fieldNames) {
+            final FieldDescriptor field = record.allFields().get(fieldName);
+            if (field == null || !BinaryHandling.isRawBytesSchema(field.getSchema(), dialect.getSchemaType(field.getSchema()))) {
+                continue;
+            }
+            final JdbcSinkConnectorConfig.BinaryHandlingMode mode = config.getBinaryHandlingMode(record.topicName(), field.getName());
+            if (JdbcSinkConnectorConfig.BinaryHandlingMode.BYTES != mode) {
+                LOGGER.warn("Schema evolution created a binary column for field '{}' in topic '{}', so binary handling mode '{}' does not apply. "
+                        + "Pre-create a character column or configure binary.handling.mode on the source connector.",
+                        field.getName(), record.topicName(), mode.getValue());
+            }
+        }
     }
 
     private boolean hasTable(CollectionId collectionId) {
@@ -214,6 +282,7 @@ public class DefaultRecordWriter implements RecordWriter {
             throw e;
         }
         progressListener().tableAltered();
+        warnForSchemaEvolvedBinaryColumns(record, missingFields);
 
         return readTable(collectionId);
     }
@@ -358,10 +427,10 @@ public class DefaultRecordWriter implements RecordWriter {
                         session.doWork(conn -> {
                             for (var entry : resolved.values()) {
                                 if (!entry.inserts().isEmpty()) {
-                                    performTableWrite(conn, entry.table(), entry.inserts());
+                                    performTableWrites(conn, entry.table(), entry.inserts());
                                 }
                                 if (!entry.deletes().isEmpty()) {
-                                    performTableWrite(conn, entry.table(), entry.deletes());
+                                    performTableWrites(conn, entry.table(), entry.deletes());
                                 }
                             }
                         });
@@ -389,13 +458,13 @@ public class DefaultRecordWriter implements RecordWriter {
     public void write(TableDescriptor tableDescriptor, List<JdbcSinkRecord> records) {
         Stopwatch writeStopwatch = Stopwatch.reusable();
         writeStopwatch.start();
-        SqlStatementInfo statementInfo = getSqlStatementInfo(tableDescriptor, records);
         final Transaction transaction = getSession().beginTransaction();
 
         try {
-            getSession().doWork(processBatch(statementInfo, records));
+            getSession().doWork(connection -> performTableWrites(connection, tableDescriptor, records));
             transaction.commit();
-            processMetrics(records, statementInfo);
+            // The statements are derived per write group; the metrics only need the delete flag.
+            processMetrics(records, records.get(0).isDelete());
         }
         catch (Exception e) {
             transaction.rollback();
@@ -406,7 +475,11 @@ public class DefaultRecordWriter implements RecordWriter {
     }
 
     protected void processMetrics(List<JdbcSinkRecord> records, SqlStatementInfo statementInfo) {
-        if (statementInfo.isDelete()) {
+        processMetrics(records, statementInfo.isDelete());
+    }
+
+    private void processMetrics(List<JdbcSinkRecord> records, boolean deletes) {
+        if (deletes) {
             progressListener().deleted(records.size());
         }
         else {
@@ -437,14 +510,61 @@ public class DefaultRecordWriter implements RecordWriter {
      * Subclasses can override to change the write strategy (e.g., UNNEST).
      */
     protected void performTableWrite(Connection conn, TableDescriptor table, List<JdbcSinkRecord> records) throws SQLException {
-        performWrite(conn, getSqlStatementInfo(table, records), records);
+        performWrite(conn, table, getSqlStatementInfo(table, records), records);
     }
 
-    private Work processBatch(SqlStatementInfo statementInfo, List<JdbcSinkRecord> records) {
-        return conn -> performWrite(conn, statementInfo, records);
+    /**
+     * Splits records into contiguous groups with a consistent binary parameter shape. SQL generation
+     * derives its parameter bindings from the first record, so a JDBC batch cannot mix raw byte arrays
+     * and encoded strings for the same field. Keeping groups contiguous preserves input record order.
+     */
+    protected void performTableWrites(Connection conn, TableDescriptor table, List<JdbcSinkRecord> records) throws SQLException {
+        if (!config.isBinaryHandlingEnabled() || records.size() < 2) {
+            // Bindings cannot differ per record, so skip the per-record signature resolution.
+            performTableWrite(conn, table, records);
+            return;
+        }
+        for (List<JdbcSinkRecord> group : partitionRecordsByBinaryBinding(table, records)) {
+            performTableWrite(conn, table, group);
+        }
     }
 
-    protected void performWrite(Connection conn, SqlStatementInfo statementInfo, List<JdbcSinkRecord> records) throws SQLException {
+    private List<List<JdbcSinkRecord>> partitionRecordsByBinaryBinding(TableDescriptor table, List<JdbcSinkRecord> records) {
+        final List<List<JdbcSinkRecord>> groups = new ArrayList<>();
+        BinaryBindingSignature previousSignature = null;
+
+        for (JdbcSinkRecord record : records) {
+            final BinaryBindingSignature signature = resolveBinaryBindingSignature(table, record);
+            if (!signature.equals(previousSignature)) {
+                groups.add(new ArrayList<>());
+                previousSignature = signature;
+            }
+            groups.get(groups.size() - 1).add(record);
+        }
+        return groups;
+    }
+
+    private BinaryBindingSignature resolveBinaryBindingSignature(TableDescriptor table, JdbcSinkRecord record) {
+        final List<BinaryFieldBinding> fields = record.jdbcFields().values().stream()
+                .filter(field -> field.getSchema().type() == Schema.Type.BYTES)
+                .sorted(Comparator.comparing(JdbcFieldDescriptor::getName).thenComparing(JdbcFieldDescriptor::isKey))
+                .map(field -> {
+                    final JdbcType jdbcType = dialect.getSchemaType(field.getSchema());
+                    final BinaryHandling.Resolution resolution = dialect.resolveBinaryHandling(table, record, field);
+                    final BinaryBindingKind kind;
+                    if (!BinaryHandling.isRawBytesSchema(field.getSchema(), jdbcType)) {
+                        kind = BinaryBindingKind.OTHER;
+                    }
+                    else {
+                        kind = resolution.isEncoded() ? BinaryBindingKind.STRING : BinaryBindingKind.BYTES;
+                    }
+                    return new BinaryFieldBinding(field.getName(), field.isKey(), jdbcType.getClass(), kind);
+                })
+                .toList();
+        return new BinaryBindingSignature(fields);
+    }
+
+    protected void performWrite(Connection conn, TableDescriptor table, SqlStatementInfo statementInfo, List<JdbcSinkRecord> records) throws SQLException {
         try (PreparedStatement prepareStatement = conn.prepareStatement(statementInfo.statement())) {
             QueryBinder queryBinder = getQueryBinderResolver().resolve(prepareStatement);
             Stopwatch allbindStopwatch = Stopwatch.reusable();
@@ -452,7 +572,7 @@ public class DefaultRecordWriter implements RecordWriter {
             for (JdbcSinkRecord record : records) {
                 Stopwatch singlebindStopwatch = Stopwatch.reusable();
                 singlebindStopwatch.start();
-                bindValues(record, queryBinder);
+                bindValues(record, table, queryBinder);
                 singlebindStopwatch.stop();
 
                 Stopwatch addBatchStopwatch = Stopwatch.reusable();
@@ -479,22 +599,22 @@ public class DefaultRecordWriter implements RecordWriter {
         }
     }
 
-    protected void bindValues(JdbcSinkRecord record, QueryBinder queryBinder) {
+    protected void bindValues(JdbcSinkRecord record, TableDescriptor table, QueryBinder queryBinder) {
         int index;
         if (record.isDelete()) {
-            bindKeyValuesToQuery(record, queryBinder, 1);
+            bindKeyValuesToQuery(record, table, queryBinder, 1);
             return;
         }
 
         switch (getConfig().getInsertMode()) {
             case INSERT:
             case UPSERT:
-                index = bindKeyValuesToQuery(record, queryBinder, 1);
-                bindNonKeyValuesToQuery(record, queryBinder, index);
+                index = bindKeyValuesToQuery(record, table, queryBinder, 1);
+                bindNonKeyValuesToQuery(record, table, queryBinder, index);
                 break;
             case UPDATE:
-                index = bindNonKeyValuesToQuery(record, queryBinder, 1);
-                bindKeyValuesToQuery(record, queryBinder, index);
+                index = bindNonKeyValuesToQuery(record, table, queryBinder, 1);
+                bindKeyValuesToQuery(record, table, queryBinder, index);
                 break;
         }
     }
