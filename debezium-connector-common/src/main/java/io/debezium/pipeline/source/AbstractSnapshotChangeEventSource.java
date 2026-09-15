@@ -72,7 +72,7 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
         final SnapshotContext<P, O> ctx;
         try {
             ctx = prepare(partition, snapshottingTask.isOnDemand());
-            // In case of a bocking snapshot the offsets of snapshot context must be the set to avoid reinitialization
+            // In case of a blocking snapshot the offsets of snapshot context must be the set to avoid reinitialization
             // to an empty one during the determineSnapshotOffset function
             if (previousOffset != null && snapshottingTask.isOnDemand()) {
                 ctx.offset = previousOffset;
