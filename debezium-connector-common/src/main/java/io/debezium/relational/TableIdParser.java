@@ -22,9 +22,7 @@ import io.debezium.text.TokenStream.Tokens;
 class TableIdParser {
 
     private static final char SEPARATOR = '.';
-    private static final String SINGLE_QUOTES = "''";
-    private static final String DOUBLE_QUOTES = "\"\"";
-    private static final String BACKTICKS = "``";
+    private static final char NOT_QUOTED = 0;
 
     public static List<String> parse(String identifier) {
         return parse(identifier, new TableIdPredicates() {
@@ -39,13 +37,33 @@ class TableIdParser {
         List<String> parts = new ArrayList<>(3);
 
         while (stream.hasNext()) {
-            parts.add(stream.consume()
-                    .replace(SINGLE_QUOTES, "'")
-                    .replace(DOUBLE_QUOTES, "\"")
-                    .replace(BACKTICKS, "`"));
+            int tokenStart = stream.nextPosition().index();
+            parts.add(unescape(stream.consume(), quotingCharOf(identifier, tokenStart, predicates)));
         }
 
         return parts;
+    }
+
+    private static String unescape(String part, char quotingChar) {
+        if (quotingChar == NOT_QUOTED) {
+            return part;
+        }
+
+        if (part.indexOf(quotingChar) < 0) {
+            return part;
+        }
+
+        String quote = String.valueOf(quotingChar);
+        return part.replace(quote + quote, quote);
+    }
+
+    private static char quotingCharOf(String identifier, int tokenStart, TableIdPredicates predicates) {
+        if (tokenStart == 0) {
+            return NOT_QUOTED;
+        }
+
+        char previous = identifier.charAt(tokenStart - 1);
+        return predicates.isQuotingChar(previous) ? previous : NOT_QUOTED;
     }
 
     private static class TableIdTokenizer implements Tokenizer {
