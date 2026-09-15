@@ -11,6 +11,7 @@
     </parent>
 
     <artifactId>debezium-server-api</artifactId>
+    <name>Debezium Server Api</name>
 
     <dependencies>
         <dependency>
