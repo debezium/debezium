@@ -21,6 +21,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.doc.FixFor;
 import io.debezium.spi.storage.OffsetStore;
 import io.debezium.storage.jdbc.offset.JdbcOffsetBackingStore;
 
@@ -79,6 +80,7 @@ public class JdbcOffsetBackingStoreTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#1957")
     public void testInitializeWithoutCredentials() {
         store.stop();
         props.remove("offset.storage.jdbc.user");
