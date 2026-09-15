@@ -1,14 +1,67 @@
 .Procedure
 
+. Create an SQL file which will contain statements to set up our database.
+
++
+--
+Create a new file called `setup.sql` and insert the following into it:
+
+.setup.sql
+[source,sql,options="nowrap"]
+----
+CREATE DATABASE inventory;
+GRANT ALL PRIVILEGES ON DATABASE inventory TO pguser;
+----
+
+`CREATE DATABASE inventory;`:: Creates the database that {prodname} will stream changes to.
+`GRANT ALL PRIVILEGES ON DATABASE inventory TO pguser;`:: Grants all privileges to the user that will be specified in the `application.properties` file later. This will allow {prodname} to access and modify the database as needed.
+
+[NOTE]
+====
+For simplicity, the user `pguser` will have unrestricted access to the database. This is fine for the purposes of this tutorial, but in a production environment it would be better to follow the principle of least privilege and only give this user the minimum necessary permissions.
+====
+
+--
+
+. Create a Dockerfile which we will use to build a custom `postgres:18.6` container image using our configuration.
+
++
+--
+Create a new file called `Dockerfile` (no file extension necessary). In this file, put the following:
+
+.Dockerfile
+[source,dockerfile,options="nowrap"]
+----
+FROM postgres:18.6
+COPY ./setup.sql docker-entrypoint-initdb.d
+----
+
+`FROM postgres:18.6`:: Defines the base image
+`COPY ./setup.sql docker-entrypoint-initdb.d`:: Copies our custom setup file into the container, it will run when the server starts up.
+--
+
+. Build the custom `postgres:18.6` image using the Dockerfile
+
++
+--
+Run the following command to build the container image we will use.
+
+[source,shell,options="nowrap"]
+----
+$ docker build -t example-postgres .
+----
+
+--
+
 . Open a new terminal and use it to start the PostgreSQL database server that will receive change events from {prodname} in a container. This is the database the {selected-sink} sink connector will stream changes to.
 
 +
 --
-This command runs a new container using version {debezium-docker-label} of the `example-postgres` image, which is based on version 18.6 of the `docker.io/library/postgres:18.6` image:
+This command runs a new container using our custom image:
 
 [source,shell,options="nowrap",subs="+attributes"]
 ----
-$ docker run -it --rm --name postgres -p 5432:5432 -e POSTGRES_USER=pguser -e POSTGRES_PASSWORD=pgpw quay.io/debezium/example-postgres:{debezium-docker-label}
+$ docker run -it --rm --name postgres -p 5432:5432 -e POSTGRES_USER=pguser -e POSTGRES_PASSWORD=pgpw example-postgres
 ----
 
 The following list describes the purpose of parameters in the preceding command:
@@ -58,9 +111,9 @@ Success. You can now start the database server using:
 initdb: warning: enabling "trust" authentication for local connections
 initdb: hint: You can change this by editing pg_hba.conf or using the option -A, or --auth-local and --auth-host, the next time you run initdb.
 waiting for server to start....2026-09-08 13:26:31.939 UTC [48] LOG:  starting PostgreSQL 18.6 (Debian 18.6-1.pgdg13+2) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
-2026-09-08 13:26:31.940 UTC [48] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
-2026-09-08 13:26:31.952 UTC [54] LOG:  database system was shut down at 2026-09-08 13:26:31 UTC
-2026-09-08 13:26:31.956 UTC [48] LOG:  database system is ready to accept connections
+[48] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+[54] LOG:  database system was shut down at 2026-09-08 13:26:31 UTC
+[48] LOG:  database system is ready to accept connections
  done
 server started
 CREATE DATABASE
@@ -71,24 +124,24 @@ CREATE DATABASE
 GRANT
 
 
-2026-09-08 13:26:32.154 UTC [48] LOG:  received fast shutdown request
+[48] LOG:  received fast shutdown request
 waiting for server to shut down....2026-09-08 13:26:32.155 UTC [48] LOG:  aborting any active transactions
-2026-09-08 13:26:32.156 UTC [48] LOG:  background worker "logical replication launcher" (PID 57) exited with exit code 1
-2026-09-08 13:26:32.157 UTC [52] LOG:  shutting down
-2026-09-08 13:26:32.158 UTC [52] LOG:  checkpoint starting: shutdown immediate
-2026-09-08 13:26:32.261 UTC [52] LOG:  checkpoint complete: wrote 1883 buffers (11.5%), wrote 3 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.021 s, sync=0.079 s, total=0.104 s; sync files=601, longest=0.003 s, average=0.001 s; distance=8704 kB, estimate=8704 kB; lsn=0/1FE1BD8, redo lsn=0/1FE1BD8
-2026-09-08 13:26:32.270 UTC [48] LOG:  database system is shut down
+[48] LOG:  background worker "logical replication launcher" (PID 57) exited with exit code 1
+[52] LOG:  shutting down
+[52] LOG:  checkpoint starting: shutdown immediate
+[52] LOG:  checkpoint complete: wrote 1883 buffers (11.5%), wrote 3 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.021 s, sync=0.079 s, total=0.104 s; sync files=601, longest=0.003 s, average=0.001 s; distance=8704 kB, estimate=8704 kB; lsn=0/1FE1BD8, redo lsn=0/1FE1BD8
+[48] LOG:  database system is shut down
  done
 server stopped
 
 PostgreSQL init process complete; ready for start up.
 
-2026-09-08 13:26:32.373 UTC [1] LOG:  starting PostgreSQL 18.6 (Debian 18.6-1.pgdg13+2) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
-2026-09-08 13:26:32.380 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
-2026-09-08 13:26:32.391 UTC [1] LOG:  listening on IPv6 address "::", port 5432
-2026-09-08 13:26:32.401 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
-2026-09-08 13:26:32.407 UTC [72] LOG:  database system was shut down at 2026-09-08 13:26:32 UTC
-2026-09-08 13:26:32.428 UTC [1] LOG:  database system is ready to accept connections
+[1] LOG:  starting PostgreSQL 18.6 (Debian 18.6-1.pgdg13+2) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+[1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+[1] LOG:  listening on IPv6 address "::", port 5432
+[1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+[72] LOG:  database system was shut down at 2026-09-08 13:26:32 UTC
+[1] LOG:  database system is ready to accept connections
 ----
 
 The server restarts a few times as it initialises.
@@ -99,8 +152,9 @@ Next, we will log into the database server and view tables currently present (th
 
 +
 --
+[source,shell,options="nowrap"]
 ----
-$ podman exec -it postgres bash -c "psql -Upguser"
+$ docker exec -it postgres bash -c "psql -Upguser"
 ----
 
 You should see something like the following:
