@@ -121,7 +121,7 @@ public class OpenAiModelFactory<R extends ConnectRecord<R>> implements Embedding
             throw new ConfigException(format("'%s' must be set to non-empty value.", OPENAI_API_KEY));
         }
         if (Strings.isNullOrBlank(modelName)) {
-            throw new ConfigException(format("'%s' must be set to non-empty value.", MODEL_NAME.name()));
+            throw new ConfigException(format("'%s' must be set to non-empty value.", MODEL_NAME));
         }
     }
 
