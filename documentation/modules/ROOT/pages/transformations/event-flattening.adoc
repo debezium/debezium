@@ -22,7 +22,7 @@ Although this complex message format accurately details information about change
 Sink connectors, or other parts of the Kafka ecosystem might require messages that are formatted so that field names and values are presented in a simplified, flattened structure.
 
 To simplify the format of the event records that the {prodname} connectors produce, you can use the {prodname} event flattening single message transformation (SMT).
-Configure the transformation to support consumers that require Kafka records to be in a format that is simpler than the default format that that the connector produces.
+Configure the transformation to support consumers that require Kafka records to be in a format that is simpler than the default format that the connector produces.
 Depending on your particular use case, you can apply the SMT to a {prodname} connector, or to a sink connector that consumes messages that the {prodname} connector produces.
 To enable Apache Kafka to retain the {prodname} change event messages in their original format, configure the SMT for a sink connector.
 
