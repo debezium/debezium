@@ -45,10 +45,6 @@ class BytesType extends AbstractBytesType {
 
     @Override
     public Object[] convertArray(Schema schema, Collection<?> values) {
-        if (schema.name() != null) {
-            // A named BYTES schema can represent a logical value rather than raw binary data.
-            return super.convertArray(schema, values);
-        }
         // PostgreSQL selects its bytea[] encoder by the runtime array type, including for empty arrays.
         return values.stream().map(BytesType::toBinaryElement).toArray(byte[][]::new);
     }
