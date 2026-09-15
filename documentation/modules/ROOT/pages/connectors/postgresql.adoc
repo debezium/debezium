@@ -4901,7 +4901,7 @@ The {prodname} PostgreSQL connector also provides the following custom streaming
 |===
 |Attribute |Type |Description
 
-|`TotalNumberOfLogicalMessageEventsSeen`
+|[[postgres-streaming-metrics-total-number-of-logical-message-events-seen]]<<postgres-streaming-metrics-total-number-of-logical-message-events-seen, `+TotalNumberOfLogicalMessageEventsSeen+`>>
 |`long`
 |The total number of logical decoding message events processed by the connector since its last start or metrics reset.
 

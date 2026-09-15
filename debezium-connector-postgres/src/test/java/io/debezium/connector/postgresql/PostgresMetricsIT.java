@@ -24,6 +24,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
+import io.debezium.doc.FixFor;
 import io.debezium.pipeline.AbstractMetricsTest;
 
 /**
@@ -99,6 +100,7 @@ public class PostgresMetricsIT extends AbstractMetricsTest<PostgresConnector> {
     }
 
     @Test
+    @FixFor("debezium/dbz#2624")
     public void shouldUpdateStreamingMetricsForNonTransactionalLogicalMessage() throws Exception {
         final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
 
@@ -118,6 +120,7 @@ public class PostgresMetricsIT extends AbstractMetricsTest<PostgresConnector> {
     }
 
     @Test
+    @FixFor("debezium/dbz#2624")
     public void shouldUpdateStreamingMetricsForTransactionalLogicalMessage() throws Exception {
         final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
 
@@ -137,6 +140,7 @@ public class PostgresMetricsIT extends AbstractMetricsTest<PostgresConnector> {
     }
 
     @Test
+    @FixFor("debezium/dbz#2624")
     public void shouldUpdateStreamingMetricsForFilteredLogicalMessage() throws Exception {
         final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
 
