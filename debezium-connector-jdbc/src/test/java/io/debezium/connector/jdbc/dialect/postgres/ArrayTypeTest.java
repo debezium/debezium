@@ -12,6 +12,7 @@ import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Stream;
 
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
@@ -19,6 +20,8 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import io.debezium.connector.jdbc.type.connect.ConnectDecimalType;
 import io.debezium.connector.jdbc.type.connect.ConnectStringType;
@@ -31,6 +34,11 @@ import io.debezium.doc.FixFor;
  */
 @Tag("UnitTests")
 class ArrayTypeTest {
+
+    static Stream<Schema> bytesSchemas() {
+        return Stream.of(Schema.OPTIONAL_BYTES_SCHEMA,
+                SchemaBuilder.bytes().name("custom.Binary").optional().build());
+    }
 
     @Test
     @DisplayName("Should strip the precision/scale modifier for createArrayOf element type")
@@ -119,48 +127,52 @@ class ArrayTypeTest {
                 .containsExactly("a", null, "b");
     }
 
-    @Test
+    @ParameterizedTest
+    @MethodSource("bytesSchemas")
     @FixFor("debezium/dbz#2571")
-    @DisplayName("Should convert plain BYTES elements to a typed byte[][]")
-    void testConvertsBytesElementsToTypedArray() {
+    @DisplayName("Should convert named and unnamed BYTES elements to a typed byte[][]")
+    void testConvertsBytesElementsToTypedArray(Schema schema) {
         // Connection#createArrayOf rejects a byte[] element inside a generic Object[].
         final List<Object> elements = Arrays.asList(
                 new byte[]{ 1, 2, 3 },
                 ByteBuffer.wrap(new byte[]{ 4, 5, 6 }),
                 null);
 
-        assertThat(BytesType.INSTANCE.convertArray(Schema.OPTIONAL_BYTES_SCHEMA, elements))
+        assertThat(BytesType.INSTANCE.convertArray(schema, elements))
                 .isInstanceOf(byte[][].class)
                 .isEqualTo(new byte[][]{ { 1, 2, 3 }, { 4, 5, 6 }, null });
     }
 
-    @Test
+    @ParameterizedTest
+    @MethodSource("bytesSchemas")
     @FixFor("debezium/dbz#2571")
     @DisplayName("Should reject a BYTES element that is neither byte[] nor ByteBuffer")
-    void testRejectsUnconvertibleBytesElement() {
+    void testRejectsUnconvertibleBytesElement(Schema schema) {
         // A silent SQL NULL here would turn an upstream converter bug into invisible data loss.
         final List<Object> elements = List.of("not-binary");
 
-        assertThatThrownBy(() -> BytesType.INSTANCE.convertArray(Schema.OPTIONAL_BYTES_SCHEMA, elements))
+        assertThatThrownBy(() -> BytesType.INSTANCE.convertArray(schema, elements))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Unsupported BYTES array element type")
                 .hasMessageContaining(String.class.getName());
     }
 
-    @Test
+    @ParameterizedTest
+    @MethodSource("bytesSchemas")
     @FixFor("debezium/dbz#2571")
     @DisplayName("Should convert an empty BYTES array to an empty byte[][]")
-    void testConvertsEmptyBytesArray() {
-        assertThat(BytesType.INSTANCE.convertArray(Schema.OPTIONAL_BYTES_SCHEMA, List.of()))
+    void testConvertsEmptyBytesArray(Schema schema) {
+        assertThat(BytesType.INSTANCE.convertArray(schema, List.of()))
                 .isInstanceOf(byte[][].class)
                 .isEmpty();
     }
 
-    @Test
+    @ParameterizedTest
+    @MethodSource("bytesSchemas")
     @FixFor("debezium/dbz#2571")
     @DisplayName("Should retain the binary array type when every element is null")
-    void testConvertsBytesArrayWithOnlyNulls() {
-        assertThat(BytesType.INSTANCE.convertArray(Schema.OPTIONAL_BYTES_SCHEMA, Arrays.asList(null, null)))
+    void testConvertsBytesArrayWithOnlyNulls(Schema schema) {
+        assertThat(BytesType.INSTANCE.convertArray(schema, Arrays.asList(null, null)))
                 .isInstanceOf(byte[][].class)
                 .containsExactly(null, null);
     }
@@ -175,17 +187,6 @@ class ArrayTypeTest {
 
         assertThat(ConnectDecimalType.INSTANCE.convertArray(Decimal.schema(2), elements))
                 .containsExactly(decimal);
-    }
-
-    @Test
-    @FixFor("debezium/dbz#2571")
-    @DisplayName("Should preserve named BYTES elements that fall back to the binary handler")
-    void testPassesNamedBytesElementsThrough() {
-        final Schema schema = SchemaBuilder.bytes().name("custom.Binary").build();
-        final var value = ByteBuffer.wrap(new byte[]{ 1, 2, 3 });
-
-        assertThat(BytesType.INSTANCE.convertArray(schema, List.of(value)))
-                .containsExactly(value);
     }
 
     @Test
