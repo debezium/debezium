@@ -140,7 +140,7 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends Abstrac
             .withImportance(ConfigDef.Importance.LOW)
             .withDefault(false)
             .withDescription(
-                    "When set to true and \"delete.tombstone.handling.mode\" is rewrite, extracts the \"id\" from the deleted record's key and includes it as \"_id\" in the event payload.");
+                    "When set to true and \"delete.tombstone.handling.mode\" is rewrite, reads the \"_id\" of the deleted document from the record key and adds it to the event payload.");
 
     private ExtractField<R> keyExtractor;
     private ExtractField<R> documentKeyExtractor;
