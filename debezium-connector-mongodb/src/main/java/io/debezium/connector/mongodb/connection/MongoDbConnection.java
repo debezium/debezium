@@ -221,7 +221,7 @@ public final class MongoDbConnection implements AutoCloseable {
                     return true;
                 }
                 catch (MongoCommandException | MongoChangeStreamException e) {
-                    LOGGER.info("Resume token validation failed");
+                    LOGGER.info("Resume token validation failed: {}", e.getMessage());
                     LOGGER.debug("Error while validating resume token", e);
                     return false;
                 }
