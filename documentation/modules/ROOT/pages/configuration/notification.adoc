@@ -295,7 +295,7 @@ The `total_rows`, `total_chunks`, and `chunk_index` fields let you report the pr
 {prodname} uses the database's own metadata statistics when they are available, and otherwise falls back to a bounded count.
 Because the value is an estimate, it might not exactly match the number of rows that are ultimately scanned.
 `total_chunks`:: The number of chunks that are required to complete the scan, derived from `total_rows` and the configured `incremental.snapshot.chunk.size`.
-`chunk_index`:: The index of the chunk that is currently being processed, from `0` up to `total_chunks`.
+`chunk_index`:: The number of chunks that have been completed so far for the current data collection, from `1` up to `total_chunks`.
 The reported progress never exceeds 100 percent.
 
 These fields are present only when {prodname} can establish an estimate for the data collection; if it cannot, the fields are omitted.
