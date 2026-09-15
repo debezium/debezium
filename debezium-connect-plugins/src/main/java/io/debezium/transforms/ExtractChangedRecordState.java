@@ -86,13 +86,18 @@ public class ExtractChangedRecordState<R extends ConnectRecord<R>> implements Tr
             Struct afterValue = requireStruct(after, "After value should be struct.");
             Struct beforeValue = requireStruct(before, "Before value should be struct.");
             afterValue.schema().fields().forEach(field -> {
-                Object afterFieldValue = afterValue.getWithoutDefault(field.name());
-                Object beforeFieldValue = beforeValue.getWithoutDefault(field.name());
-                if (!Objects.equals(afterFieldValue, beforeFieldValue)) {
+                if (beforeValue.schema().field(field.name()) == null) {
                     changedNames.add(field.name());
                 }
                 else {
-                    unchangedNames.add(field.name());
+                    Object afterFieldValue = afterValue.getWithoutDefault(field.name());
+                    Object beforeFieldValue = beforeValue.getWithoutDefault(field.name());
+                    if (!Objects.deepEquals(afterFieldValue, beforeFieldValue)) {
+                        changedNames.add(field.name());
+                    }
+                    else {
+                        unchangedNames.add(field.name());
+                    }
                 }
             });
         }
