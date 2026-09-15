@@ -2026,6 +2026,8 @@ Any change events for documents exceeding the maximum (specified by the `cursor.
 Change events exceeding the maximum BSON size will be split using the https://www.mongodb.com/docs/v6.0/reference/operator/aggregation/changeStreamSplitLargeEvent/[$changeStreamSplitLargeEvent] aggregation. This option requires **MongoDB 6.0.9 or newer**.
 The connector combines all fragments into a single change event and uses the last fragment's resume token for its offset.
 When validating the saved resume token at startup, the connector applies the same full-document and pre-image options that it uses for streaming.
+The change stream used to determine the snapshot start position also uses these options.
+If its first event is split, the connector reads all fragments and records the last fragment's token before copying collection data.
 
 |[[mongodb-property-cursor-oversize-skip-threshold]]<<mongodb-property-cursor-oversize-skip-threshold, `+cursor.oversize.skip.threshold+`>>
 |0

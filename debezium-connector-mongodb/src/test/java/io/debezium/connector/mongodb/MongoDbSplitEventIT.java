@@ -13,7 +13,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 
@@ -21,6 +23,7 @@ import org.apache.kafka.connect.data.Struct;
 import org.awaitility.Awaitility;
 import org.bson.BsonDocument;
 import org.bson.Document;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -30,12 +33,14 @@ import com.mongodb.WriteConcern;
 import com.mongodb.client.ChangeStreamIterable;
 import com.mongodb.client.MongoChangeStreamCursor;
 import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.ChangeStreamPreAndPostImagesOptions;
 import com.mongodb.client.model.CreateCollectionOptions;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 import com.mongodb.client.model.changestream.FullDocument;
 import com.mongodb.client.model.changestream.FullDocumentBeforeChange;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.CaptureMode;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.FullUpdateType;
@@ -44,6 +49,12 @@ import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.junit.SkipWhenDatabaseVersion;
+import io.debezium.junit.logging.LogInterceptor;
+import io.debezium.util.LoggingContext;
+
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
 
 @SkipWhenDatabaseVersion(check = LESS_THAN, major = 6, minor = 0, patch = 9, reason = "Splitting Change Stream events requires MongoDB 6.0.9 or newer.")
 public class MongoDbSplitEventIT extends AbstractMongoConnectorIT {
@@ -210,6 +221,196 @@ public class MongoDbSplitEventIT extends AbstractMongoConnectorIT {
                 assertThat(readChangeStreamEvent(resumed).getFullDocument()).isEqualTo(marker.toBsonDocument());
             }
         }
+    }
+
+    @ParameterizedTest
+    @MethodSource("captureModes")
+    @FixFor("debezium/dbz#2619")
+    void shouldInitializeSnapshotOffsetAtEndOfSplitEvent(CaptureMode captureMode, FullUpdateType fullUpdateType, int fragmentCount)
+            throws InterruptedException {
+        configureSnapshot(captureMode, fullUpdateType);
+        try (var client = connect()) {
+            final var collection = createSnapshotCollection(client.getDatabase("dbit"));
+            collection.insertOne(new Document("_id", 1).append("payload", "a".repeat(9 * 1024 * 1024)));
+            try (var probe = MongoUtils.openChangeStream(client, context).batchSize(1).cursor();
+                    var observer = openSplitStream(collection, captureMode, fullUpdateType).cursor()) {
+                collection.updateOne(new Document("_id", 1),
+                        new Document("$set", new Document("payload", "b".repeat(9 * 1024 * 1024))));
+                final var marker = new Document("_id", 2).append("marker", "after-boundary");
+                collection.insertOne(marker);
+
+                final var offset = MongoDbOffsetContext.empty(context.getConfig());
+                offset.initEvent(probe);
+                final var fragments = readSplitEvent(observer, fragmentCount);
+                assertSnapshotOffset(offset, fragments);
+                // The probe must consume only the first logical event, even if the next one is available.
+                assertThat(readChangeStreamEvent(probe).getFullDocument()).isEqualTo(marker.toBsonDocument());
+                try (var connection = MongoDbConnections.create(config)) {
+                    assertThat(connection.validateLogPosition(offset, context)).isTrue();
+                }
+                try (var resumed = MongoUtils.openChangeStream(client, context).resumeAfter(offset.lastResumeTokenDoc()).cursor()) {
+                    assertThat(readChangeStreamEvent(resumed).getFullDocument()).isEqualTo(marker.toBsonDocument());
+                }
+            }
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource("captureModes")
+    @FixFor("debezium/dbz#2619")
+    void shouldResumeStreamingAfterSnapshotStartsWithSplitEvent(CaptureMode captureMode, FullUpdateType fullUpdateType, int fragmentCount)
+            throws InterruptedException {
+        configureSnapshot(captureMode, fullUpdateType);
+        try (var client = connect()) {
+            final var collection = createSnapshotCollection(client.getDatabase("dbit"));
+            collection.insertOne(new Document("_id", 1).append("payload", "a".repeat(9 * 1024 * 1024)));
+            final var after = new Document("_id", 1).append("payload", "b".repeat(9 * 1024 * 1024));
+            final var marker = new Document("_id", 2).append("marker", "after-boundary");
+            try (var observer = openSplitStream(collection, captureMode, fullUpdateType).cursor()) {
+                final var updated = new CountDownLatch(1);
+                final var updateStarted = new AtomicBoolean();
+                final var updateFailure = new AtomicReference<Throwable>();
+                final var commandLogger = (Logger) org.slf4j.LoggerFactory.getLogger("org.mongodb.driver.protocol.command");
+                final var previousLevel = commandLogger.getLevel();
+                // Run the write synchronously before the snapshot probe's first getMore is sent.
+                // This places the update after cursor creation without timing sleeps or production test hooks.
+                final var interceptor = new LogInterceptor(commandLogger.getName()) {
+                    @Override
+                    protected void append(ILoggingEvent event) {
+                        if ("snapshot".equals(event.getMDCPropertyMap().get(LoggingContext.CONNECTOR_CONTEXT))
+                                && event.getFormattedMessage().startsWith("Command \"getMore\" started")
+                                && updateStarted.compareAndSet(false, true)) {
+                            try {
+                                collection.updateOne(new Document("_id", 1), new Document("$set", new Document("payload", after.getString("payload"))));
+                                collection.insertOne(marker);
+                            }
+                            catch (Throwable t) {
+                                updateFailure.set(t);
+                            }
+                            finally {
+                                updated.countDown();
+                            }
+                        }
+                    }
+                };
+                commandLogger.setLevel(Level.DEBUG);
+                try {
+                    final var engineFailure = new AtomicReference<Throwable>();
+                    start(MongoDbConnector.class, config, (success, message, error) -> {
+                        if (!success) {
+                            engineFailure.set(new DebeziumException(message, error));
+                        }
+                    });
+                    assertThat(updated.await(waitTimeForRecords() * 30L, TimeUnit.SECONDS)).as("Snapshot probe triggered the concurrent update").isTrue();
+                    assertThat(updateFailure.get()).isNull();
+                    final var fragments = readSplitEvent(observer, fragmentCount);
+                    final var lastToken = ResumeTokens.toBase64(fragments.get(fragmentCount - 1).getResumeToken());
+
+                    final var snapshotRecords = consumeRecordsByTopic(2).allRecordsInOrder();
+                    final List<Document> snapshotDocuments = new ArrayList<>();
+                    for (var record : snapshotRecords) {
+                        final var value = (Struct) record.value();
+                        assertThat(value.getString(Envelope.FieldName.OPERATION)).isEqualTo(Envelope.Operation.READ.code());
+                        assertThat(record.sourceOffset().get(SourceInfo.RESUME_TOKEN)).isEqualTo(lastToken);
+                        assertThat(record.sourceOffset().get(SourceInfo.TIMESTAMP)).isEqualTo(fragments.get(0).getClusterTime().getTime());
+                        assertThat(record.sourceOffset().get(SourceInfo.ORDER)).isEqualTo(fragments.get(0).getClusterTime().getInc());
+                        snapshotDocuments.add(Document.parse(value.getString("after")));
+                    }
+                    assertThat(snapshotDocuments).containsExactlyInAnyOrder(after, marker);
+
+                    final var streamedRecord = consumeRecordsByTopic(1).allRecordsInOrder().get(0);
+                    final var streamedValue = (Struct) streamedRecord.value();
+                    assertThat(streamedValue.getString(Envelope.FieldName.OPERATION)).isEqualTo(Envelope.Operation.CREATE.code());
+                    assertThat(Document.parse(streamedValue.getString("after"))).isEqualTo(marker);
+                    assertNoRecordsToConsume();
+                    assertThat(engineFailure.get()).isNull();
+                }
+                finally {
+                    commandLogger.detachAppender(interceptor);
+                    commandLogger.setLevel(previousLevel);
+                    interceptor.stop();
+                }
+            }
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2619")
+    void shouldInitializeSnapshotOffsetWithoutEvents() {
+        configureSnapshot(CaptureMode.CHANGE_STREAMS_UPDATE_FULL_WITH_PRE_IMAGE, FullUpdateType.POST_IMAGE);
+        try (var client = connect()) {
+            createSnapshotCollection(client.getDatabase("dbit"));
+            try (var probe = MongoUtils.openChangeStream(client, context).cursor()) {
+                final var offset = MongoDbOffsetContext.empty(context.getConfig());
+                offset.initEvent(probe);
+                assertThat(probe.getResumeToken()).isNotNull();
+                assertThat(offset.lastResumeTokenDoc()).isEqualTo(probe.getResumeToken());
+            }
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2619")
+    void shouldInitializeSnapshotOffsetWithUnsplitEvent() {
+        configureSnapshot(CaptureMode.CHANGE_STREAMS_UPDATE_FULL_WITH_PRE_IMAGE, FullUpdateType.POST_IMAGE);
+        try (var client = connect()) {
+            final var collection = createSnapshotCollection(client.getDatabase("dbit"));
+            try (var probe = MongoUtils.openChangeStream(client, context).cursor();
+                    var observer = openSplitStream(collection, CaptureMode.CHANGE_STREAMS_UPDATE_FULL_WITH_PRE_IMAGE, FullUpdateType.POST_IMAGE).cursor()) {
+                collection.insertOne(new Document("_id", 1).append("value", "small"));
+                final var offset = MongoDbOffsetContext.empty(context.getConfig());
+                offset.initEvent(probe);
+                final var event = readChangeStreamEvent(observer);
+                assertThat(event.getSplitEvent()).isNull();
+                assertThat(offset.lastResumeTokenDoc()).isEqualTo(event.getResumeToken());
+                assertThat(offset.lastTimestamp()).isEqualTo(event.getClusterTime());
+            }
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2619")
+    void shouldNotInitializeSnapshotOffsetFromIncompleteSplitEvent() {
+        configureSnapshot(CaptureMode.CHANGE_STREAMS_UPDATE_FULL_WITH_PRE_IMAGE, FullUpdateType.POST_IMAGE);
+        try (var client = connect()) {
+            final var collection = createSnapshotCollection(client.getDatabase("dbit"));
+            collection.insertOne(new Document("_id", 1).append("payload", "a".repeat(9 * 1024 * 1024)));
+            try (var probe = MongoUtils.openChangeStream(client, context).batchSize(1).cursor()) {
+                collection.updateOne(new Document("_id", 1),
+                        new Document("$set", new Document("payload", "b".repeat(9 * 1024 * 1024))));
+                assertThat(readChangeStreamEvent(probe).getSplitEvent().getFragment()).isEqualTo(1);
+                final var offset = MongoDbOffsetContext.empty(context.getConfig());
+                assertThrows(DebeziumException.class, () -> offset.initEvent(probe));
+                assertThat(offset.lastResumeToken()).isNull();
+                assertThat(offset.sourceInfo().hasPosition()).isFalse();
+            }
+        }
+    }
+
+    private void configureSnapshot(CaptureMode captureMode, FullUpdateType fullUpdateType) {
+        config = TestHelper.getConfiguration(mongo).edit()
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.snapshotSplitEvents")
+                .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.INITIAL)
+                .with(MongoDbConnectorConfig.CAPTURE_MODE, captureMode)
+                .with(MongoDbConnectorConfig.CAPTURE_MODE_FULL_UPDATE_TYPE, fullUpdateType)
+                .with(MongoDbConnectorConfig.CURSOR_OVERSIZE_HANDLING_MODE, MongoDbConnectorConfig.OversizeHandlingMode.SPLIT)
+                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(Heartbeat.HEARTBEAT_INTERVAL, 0)
+                .build();
+        context = new MongoDbTaskContext(config);
+    }
+
+    private MongoCollection<Document> createSnapshotCollection(MongoDatabase database) {
+        database.createCollection("snapshotSplitEvents", new CreateCollectionOptions()
+                .changeStreamPreAndPostImagesOptions(new ChangeStreamPreAndPostImagesOptions(true)));
+        return database.getCollection("snapshotSplitEvents").withWriteConcern(WriteConcern.MAJORITY);
+    }
+
+    private void assertSnapshotOffset(MongoDbOffsetContext offset, List<ChangeStreamDocument<BsonDocument>> fragments) {
+        assertThat(offset.lastResumeTokenDoc()).isEqualTo(fragments.get(fragments.size() - 1).getResumeToken());
+        assertThat(offset.lastTimestamp()).isEqualTo(fragments.get(0).getClusterTime());
+        assertThat(offset.sourceInfo().collectionId()).isEqualTo(new CollectionId("dbit", "snapshotSplitEvents"));
     }
 
     private ChangeStreamIterable<BsonDocument> openSplitStream(MongoCollection<Document> collection, CaptureMode captureMode, FullUpdateType fullUpdateType) {
