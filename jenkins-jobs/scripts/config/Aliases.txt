@@ -66,6 +66,7 @@ cezarpaulo16,Paulo Silva
 chadthamn,Chad Marmon
 Chaitanya-030,Chaitanya Sheth
 chaitra,Chaitra Dalawai
+charlesjmorgan,Charles Morgan
 chriscollingwood,Chris Collingwood
 Chrisss93,Chris Lee
 chungeun-choi,Chungeun Choi
