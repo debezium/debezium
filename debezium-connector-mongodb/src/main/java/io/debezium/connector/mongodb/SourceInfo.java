@@ -16,11 +16,13 @@ import org.bson.types.BSONTimestamp;
 import com.mongodb.client.MongoChangeStreamCursor;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 
+import io.debezium.DebeziumException;
 import io.debezium.annotation.Immutable;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.common.BaseSourceInfo;
 import io.debezium.connector.mongodb.events.BufferingChangeStreamCursor.ResumableChangeStreamEvent;
+import io.debezium.connector.mongodb.events.SplitEventHandler;
 
 /**
  * Information about the source of information, which includes the partitions and offsets within those partitions. The MongoDB
@@ -185,7 +187,39 @@ public final class SourceInfo extends BaseSourceInfo {
             noEvent(cursor);
         }
         else {
-            changeStreamEvent(result);
+            changeStreamEvent(readCompleteEvent(cursor, result));
+        }
+    }
+
+    /**
+     * Resuming from an intermediate fragment's token skips earlier fragments, preventing streaming
+     * from reconstructing the complete event. Reassemble the first event so the snapshot start offset
+     * uses its final fragment's token while retaining the event's metadata.
+     */
+    private static ChangeStreamDocument<BsonDocument> readCompleteEvent(MongoChangeStreamCursor<ChangeStreamDocument<BsonDocument>> cursor,
+                                                                        ChangeStreamDocument<BsonDocument> event) {
+        if (event.getSplitEvent() == null) {
+            return event;
+        }
+
+        final var totalFragments = event.getSplitEvent().getOf();
+        final var handler = new SplitEventHandler<BsonDocument>();
+        for (var expectedFragment = 1;; expectedFragment++) {
+            if (Thread.currentThread().isInterrupted()) {
+                throw new DebeziumException("Interrupted while determining MongoDB snapshot start position");
+            }
+            if (event == null || event.getSplitEvent() == null
+                    || event.getSplitEvent().getFragment() != expectedFragment
+                    || event.getSplitEvent().getOf() != totalFragments || expectedFragment > totalFragments) {
+                throw new DebeziumException("Missing or out-of-order change stream fragment while determining MongoDB snapshot start position");
+            }
+
+            final var complete = handler.handle(event);
+            if (complete.isPresent()) {
+                // Keep the event's metadata, but resume after its final fragment. Do not consume the next event.
+                return complete.get();
+            }
+            event = cursor.tryNext();
         }
     }
 
