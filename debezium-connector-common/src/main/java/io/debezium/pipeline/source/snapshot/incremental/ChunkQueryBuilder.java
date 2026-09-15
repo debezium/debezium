@@ -78,7 +78,9 @@ public interface ChunkQueryBuilder<T extends DataCollectionId> {
      *
      * @return the estimated row count, or {@link OptionalLong#empty()} when no estimate source is available
      */
-    OptionalLong estimateRowCount(IncrementalSnapshotContext<T> context, Table table);
+    default OptionalLong estimateRowCount(IncrementalSnapshotContext<T> context, Table table) {
+        return OptionalLong.empty();
+    }
 
     /**
      * Returns the exact number of rows the incremental snapshot will scan for the table, i.e. the rows whose key is
@@ -87,10 +89,15 @@ public interface ChunkQueryBuilder<T extends DataCollectionId> {
      * Bounding the count by {@code maximumKey} matches exactly what the snapshot reads (later inserts flow through
      * streaming), so derived progress cannot exceed 100% under concurrent inserts. This is a best-effort operation:
      * a failure resolves to {@link OptionalLong#empty()} rather than failing the snapshot.
+     * <p>
+     * The default implementation returns {@link OptionalLong#empty()} (no count available); connectors override it
+     * (typically via {@link AbstractChunkQueryBuilder}) to expose the bounded count.
      *
      * @return the bounded exact row count, or {@link OptionalLong#empty()} when it could not be determined
      */
-    OptionalLong countRows(IncrementalSnapshotContext<T> context, Table table, Optional<String> additionalCondition, Object[] maximumKey);
+    default OptionalLong countRows(IncrementalSnapshotContext<T> context, Table table, Optional<String> additionalCondition, Object[] maximumKey) {
+        return OptionalLong.empty();
+    }
 
     /**
      * Returns the columns that are used for paginating the incremental snapshot chunks.

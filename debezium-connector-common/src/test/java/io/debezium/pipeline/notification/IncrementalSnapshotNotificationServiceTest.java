@@ -28,6 +28,7 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.doc.FixFor;
 import io.debezium.pipeline.source.snapshot.incremental.DataCollection;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -159,6 +160,7 @@ public class IncrementalSnapshotNotificationServiceTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2620")
     public void notifyTableScanCompletedWithTotalRows() {
 
         when(incrementalSnapshotContext.totalRows()).thenReturn(OptionalLong.of(100L));
