@@ -25,6 +25,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.data.Envelope;
+import io.debezium.doc.FixFor;
 
 /**
  * Unit test for {@link MongoToRelationalMapper}.
@@ -47,6 +48,7 @@ public class MongoToRelationalMapperTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#1715")
     void shouldExposeJsonOutputModeBeforeConfigurationAndAfterReconfiguration() {
         try (var mapper = new MongoToRelationalMapper<SourceRecord>()) {
             final var option = mapper.config().configKeys().get("json.output.mode");
@@ -67,6 +69,7 @@ public class MongoToRelationalMapperTest {
 
     @ParameterizedTest
     @ValueSource(strings = { "", " ", "legacy", "extended", "relaxed", "typo" })
+    @FixFor("debezium/dbz#1715")
     void shouldRejectInvalidJsonOutputModes(String mode) {
         assertThatThrownBy(() -> transformation.configure(Map.of("json.output.mode", mode)))
                 .isInstanceOf(ConfigException.class).hasMessageContaining("json.output.mode");
@@ -74,11 +77,13 @@ public class MongoToRelationalMapperTest {
 
     @ParameterizedTest
     @ValueSource(strings = { "input", "canonical", "INPUT", "CANONICAL", " input ", " canonical " })
+    @FixFor("debezium/dbz#1715")
     void shouldAcceptJsonOutputModes(String mode) {
         transformation.configure(Map.of("json.output.mode", mode));
     }
 
     @Test
+    @FixFor("debezium/dbz#1715")
     public void shouldPassHeartbeatMessages() {
         // Heartbeat messages sent by Debezium don't have standard MongoDB envelope shapes.
         // The SMT must be smart enough to detect this and seamlessly pass them through without crashing.
@@ -114,6 +119,7 @@ public class MongoToRelationalMapperTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#1715")
     public void shouldConvertBsonStringsToStructs() {
         // GIVEN: A raw, unmodified Debezium MongoDB SourceRecord
 
@@ -175,6 +181,7 @@ public class MongoToRelationalMapperTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#1715")
     public void shouldConvertCreateOperation() {
         // GIVEN: A 'Create' (op=c) record where 'before' is null
         Schema sourceSchema = SchemaBuilder.struct().name("io.debezium.connector.mongo.Source")
@@ -207,6 +214,7 @@ public class MongoToRelationalMapperTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#1715")
     public void shouldConvertDeleteOperation() {
         // GIVEN: A 'Delete' (op=d) record where 'after' is null
         Schema sourceSchema = SchemaBuilder.struct().name("io.debezium.connector.mongo.Source")
@@ -239,6 +247,7 @@ public class MongoToRelationalMapperTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#1715")
     public void shouldConvertUpdateWithoutPreImage() {
         // GIVEN: An 'Update' (op=u) where 'before' is null (happens in some capture modes)
         Schema sourceSchema = SchemaBuilder.struct().name("io.debezium.connector.mongo.Source")
@@ -270,6 +279,7 @@ public class MongoToRelationalMapperTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#1715")
     public void shouldApplyStaticSchemaMapping() {
         // GIVEN: Configuration with a strict per-collection schema mapping
         java.util.Map<String, String> configs = new HashMap<>();
@@ -312,6 +322,7 @@ public class MongoToRelationalMapperTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#1715")
     public void shouldRetainRemovedFieldsAsNullWithInferredSchema() {
         Schema sourceSchema = SchemaBuilder.struct().name("io.debezium.connector.mongo.Source")
                 .field("db", Schema.STRING_SCHEMA).field("collection", Schema.STRING_SCHEMA).build();
@@ -347,6 +358,7 @@ public class MongoToRelationalMapperTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#1715")
     public void shouldConvertReadOperation() {
         // GIVEN: A 'Read' (op=r) record emitted during a snapshot.
         // Snapshot events look like creates — 'before' is always null and 'after' contains the document.
@@ -384,6 +396,7 @@ public class MongoToRelationalMapperTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#1715")
     public void shouldConvertUpdateWithFullPreImage() {
         // GIVEN: An 'Update' (op=u) where BOTH 'before' and 'after' are present.
         // This happens when the capture mode is 'change_streams_update_full_with_pre_image',

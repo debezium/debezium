@@ -38,6 +38,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import io.debezium.connector.mongodb.MongoDbFieldName;
 import io.debezium.connector.mongodb.MongoDbSchema;
 import io.debezium.data.Json;
+import io.debezium.doc.FixFor;
 import io.debezium.pipeline.txmetadata.TransactionMonitor;
 import io.debezium.transforms.ExtractChangedRecordState;
 
@@ -78,6 +79,7 @@ class MongoToRelationalMapperIntegrationTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#1715")
     void shouldIdentifyRemovedFieldsAndShrinkingArraysAfterInference() {
         final var original = record("u", """
                 {"_id":1,"address":{"city":"Seoul","removed":42},"items":[1,2],"removed":true}
@@ -94,6 +96,7 @@ class MongoToRelationalMapperIntegrationTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#1715")
     void shouldCompareProjectedFieldsWhilePreservingBothOriginalDocuments() {
         mapper.configure(Map.of("schema.mapping.shop.orders", PROJECTION));
         final var original = record("u", BEFORE, AFTER);
@@ -111,6 +114,7 @@ class MongoToRelationalMapperIntegrationTest {
 
     @ParameterizedTest
     @CsvSource({ "c,false,true", "r,false,true", "u,false,true", "d,true,false", "d,false,false" })
+    @FixFor("debezium/dbz#1715")
     void shouldKeepLifecycleEventsWithEmptyChangeHeaders(String operation, boolean hasBefore, boolean hasAfter) {
         for (boolean fixedProjection : List.of(false, true)) {
             mapper.configure(fixedProjection ? Map.of("schema.mapping.shop.orders", PROJECTION) : Map.of());
@@ -127,6 +131,7 @@ class MongoToRelationalMapperIntegrationTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#1715")
     void shouldPassTombstonesThroughBothTransformations() {
         final var original = record("d", null, null);
         final var tombstone = original.newRecord(original.topic(), original.kafkaPartition(), original.keySchema(), original.key(), null, null,
@@ -139,6 +144,7 @@ class MongoToRelationalMapperIntegrationTest {
 
     @ParameterizedTest
     @ValueSource(strings = { "c", "r", "u" })
+    @FixFor("debezium/dbz#1715")
     void shouldRejectMissingFullAfterDocuments(String operation) {
         for (boolean fixedProjection : List.of(false, true)) {
             mapper.configure(fixedProjection ? Map.of("schema.mapping.shop.orders", PROJECTION) : Map.of());
@@ -150,6 +156,7 @@ class MongoToRelationalMapperIntegrationTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#1715")
     void shouldFallBackToInferenceForAnUnmappedCollection() {
         mapper.configure(Map.of("schema.mapping.shop.other", PROJECTION));
         final var result = changes.apply(mapper.apply(record("u", "{\"_id\":1,\"removed\":42}", "{\"_id\":1}")));
@@ -159,6 +166,7 @@ class MongoToRelationalMapperIntegrationTest {
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("incompleteSourceMetadata")
+    @FixFor("debezium/dbz#1715")
     void shouldRejectIncompleteSourceMetadataWithCollectionMappings(String description, Schema sourceSchema, Struct source) {
         mapper.configure(Map.of("schema.mapping.shop.orders", PROJECTION));
         final var original = record("c", null, "{\"_id\":1}", sourceSchema, source);
@@ -170,6 +178,7 @@ class MongoToRelationalMapperIntegrationTest {
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("incompleteSourceMetadata")
+    @FixFor("debezium/dbz#1715")
     void shouldInferWithIncompleteSourceMetadataWhenNoMappingsAreConfigured(String description, Schema sourceSchema, Struct source) {
         final var original = record("u", "{\"_id\":1,\"removed\":42}", "{\"_id\":1}", sourceSchema, source);
         final var result = changes.apply(mapper.apply(original));
@@ -196,6 +205,7 @@ class MongoToRelationalMapperIntegrationTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#1715")
     void shouldApplyTheSinkChainAfterSchemaEnabledJsonDeserialization() {
         final var original = record("u", BEFORE, AFTER);
         try (var keyConverter = new JsonConverter();
@@ -228,6 +238,7 @@ class MongoToRelationalMapperIntegrationTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#1715")
     void shouldRetainInferredMissingFieldsThroughSchemaEnabledJson() {
         final var result = mapper.apply(record("u", "{\"_id\":1,\"details\":{\"removed\":42}}", "{\"_id\":1,\"details\":{}}"));
         try (var converter = new JsonConverter()) {
@@ -246,6 +257,7 @@ class MongoToRelationalMapperIntegrationTest {
 
     @ParameterizedTest
     @ValueSource(strings = { "input", "canonical" })
+    @FixFor("debezium/dbz#1715")
     void shouldApplyJsonOutputModeThroughTheSinkChain(String mode) {
         final String projection = """
                 {"document_json":{"path":"","type":"io.debezium.data.Json"},
@@ -302,6 +314,7 @@ class MongoToRelationalMapperIntegrationTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#1715")
     void shouldResetJsonOutputModeWhenReconfiguredAndLeaveInferenceUnchanged() {
         final String projection = """
                 {"document_json":{"path":"","type":"io.debezium.data.Json"},
@@ -323,6 +336,7 @@ class MongoToRelationalMapperIntegrationTest {
 
     @ParameterizedTest
     @ValueSource(strings = { "input", "canonical" })
+    @FixFor("debezium/dbz#1715")
     void shouldReportRemovedJsonFieldsAndShrinkingArrays(String mode) {
         mapper.configure(Map.of("json.output.mode", mode, "schema.mapping.shop.orders", """
                 {"removed":{"path":"/removed","type":"io.debezium.data.Json"},

@@ -26,9 +26,12 @@ import org.junit.jupiter.params.provider.ValueSource;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import io.debezium.doc.FixFor;
+
 class MongoDocumentMappingTest {
 
     @Test
+    @FixFor("debezium/dbz#1715")
     void shouldProjectBeforeConvertingUnselectedValues() {
         final var mapping = new MongoDocumentMapping("shop.orders", """
                 {"city":{"path":"/customer/address/city","type":"string"},
@@ -65,6 +68,7 @@ class MongoDocumentMappingTest {
             "/a~1b|a/b", "/a~0b|a~b", "/~01|~1", "/a.b|a.b", "/a,b|a,b", "/a:b|a:b", "/a=b|a=b",
             "/$price|$price", "/고객|고객", "/a\"b|a\"b", "/a\\b|a\\b"
     }, delimiter = '|')
+    @FixFor("debezium/dbz#1715")
     void shouldResolveLiteralFieldNames(String pointer, String field) throws JsonProcessingException {
         final var mapper = new ObjectMapper();
         final var mapping = new MongoDocumentMapping("shop.orders", mapper.writeValueAsString(Map.of("selected", Map.of("path", pointer, "type", "string"))));
@@ -72,6 +76,7 @@ class MongoDocumentMappingTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#1715")
     void shouldDistinguishEmptyFieldFromRootAndRetainOriginalJson() {
         final String json = " {\"\":\"empty field\", \"_id\":{\"$oid\":\"507f1f77bcf86cd799439011\"},\"mixed\":[1,true]} ";
         final var mapping = new MongoDocumentMapping("shop.orders", """
@@ -88,6 +93,7 @@ class MongoDocumentMappingTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#1715")
     void shouldResolveNumericObjectKeysAndArrayIndicesByContainerType() {
         final var mapping = new MongoDocumentMapping("shop.orders", """
                 {"sku":{"path":"/items/0/sku","type":"string"}}
@@ -98,12 +104,14 @@ class MongoDocumentMappingTest {
 
     @ParameterizedTest
     @ValueSource(strings = { "/items/01", "/items/-1", "/items/-", "/items/*", "/items/999999999999999999999", "/items/2", "/absent/a" })
+    @FixFor("debezium/dbz#1715")
     void shouldReturnNullForUnresolvedPaths(String path) throws JsonProcessingException {
         final var mapping = new MongoDocumentMapping("shop.orders", new ObjectMapper().writeValueAsString(Map.of("selected", Map.of("path", path, "type", "string"))));
         assertThat(convert(mapping, "{\"items\":[\"first\"]}").get("selected")).isNull();
     }
 
     @Test
+    @FixFor("debezium/dbz#1715")
     void shouldHandleMissingAndNullWithoutDroppingOutputFields() {
         final var mapping = new MongoDocumentMapping("shop.orders", """
                 {"selected":{"path":"/a/b","type":"int64"}}
@@ -118,6 +126,7 @@ class MongoDocumentMappingTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#1715")
     void shouldRejectTypeMismatchAtSelectedLeaf() {
         final var mapping = new MongoDocumentMapping("shop.orders", """
                 {"selected":{"path":"/a","type":"string"}}
@@ -128,6 +137,7 @@ class MongoDocumentMappingTest {
 
     @ParameterizedTest
     @MethodSource("invalidMappingJson")
+    @FixFor("debezium/dbz#1715")
     void shouldIncludeJsonErrorDetailsAndLocation(String mapping, String detail, int line, int column) {
         assertThatThrownBy(() -> new MongoDocumentMapping("shop.orders", mapping))
                 .isInstanceOf(ConfigException.class)
@@ -184,6 +194,7 @@ class MongoDocumentMappingTest {
             "{\"a\":{\"path\":\"/x\",\"type\":\"io.debezium.data.Bits\"}}",
             "{\"a\":{\"path\":\"/x\",\"type\":\"io.debezium.data.Bits\",\"length\":0}}"
     })
+    @FixFor("debezium/dbz#1715")
     void shouldRejectInvalidMappingsAtConfigurationTime(String mapping) {
         assertThatThrownBy(() -> new MongoDocumentMapping("shop.orders", mapping)).isInstanceOf(ConfigException.class);
     }

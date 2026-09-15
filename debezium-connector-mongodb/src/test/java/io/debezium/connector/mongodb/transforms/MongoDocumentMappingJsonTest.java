@@ -29,6 +29,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.debezium.connector.mongodb.transforms.MongoToRelationalMapper.JsonOutputMode;
+import io.debezium.doc.FixFor;
 
 class MongoDocumentMappingJsonTest {
 
@@ -50,6 +51,7 @@ class MongoDocumentMappingJsonTest {
             "NaN", "Infinity", "-Infinity", "{\"$numberDouble\":\"NaN\"}",
             "{\"$numberDecimal\":\"12345678901234567890.12345678901234\"}"
     })
+    @FixFor("debezium/dbz#1715")
     void shouldPreserveIncomingJsonWithoutReserializing(String selected) {
         final var json = " \n{\"v\":" + selected + ",\"tail\":false} \n";
         final var mapping = new MongoDocumentMapping("shop.orders", MAPPING);
@@ -62,6 +64,7 @@ class MongoDocumentMappingJsonTest {
 
     @ParameterizedTest
     @EnumSource(value = JsonMode.class, names = { "STRICT", "RELAXED", "EXTENDED" })
+    @FixFor("debezium/dbz#1715")
     void shouldApplyOneOutputPolicyToRootAndNestedBsonTypes(JsonMode inputMode) {
         final var document = MongoBsonTypeTestData.values();
         final var settings = JsonWriterSettings.builder().outputMode(inputMode).build();
@@ -78,6 +81,7 @@ class MongoDocumentMappingJsonTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#1715")
     void shouldCoverEveryStorableBsonType() {
         final var types = EnumSet.allOf(BsonType.class);
         types.remove(BsonType.END_OF_DOCUMENT);
@@ -87,6 +91,7 @@ class MongoDocumentMappingJsonTest {
 
     @ParameterizedTest
     @EnumSource(value = JsonMode.class, names = { "STRICT", "RELAXED", "EXTENDED" })
+    @FixFor("debezium/dbz#1715")
     void shouldProjectEveryBsonValueIndividually(JsonMode inputMode) {
         final var settings = JsonWriterSettings.builder().outputMode(inputMode).build();
         for (var entry : MongoBsonTypeTestData.values().entrySet()) {
@@ -112,6 +117,7 @@ class MongoDocumentMappingJsonTest {
             "[1,true]|[{\"$numberInt\": \"1\"}, true]",
             "\"hello\"|\"hello\""
     }, delimiter = '|')
+    @FixFor("debezium/dbz#1715")
     void shouldCanonicalizeScalarAndArrayValues(String value, String expected) {
         final var json = "{\"v\":" + value + "}";
         final var result = convert(new MongoDocumentMapping("shop.orders", MAPPING, JsonOutputMode.CANONICAL), json);
@@ -124,6 +130,7 @@ class MongoDocumentMappingJsonTest {
             "/a~1b|a/b", "/a~0b|a~b", "/~01|~1", "/a.b|a.b", "/a,b|a,b", "/a:b|a:b", "/a=b|a=b",
             "/$price|$price", "/고객|고객", "/a\"b|a\"b", "/a\\b|a\\b", "/|''"
     }, delimiter = '|')
+    @FixFor("debezium/dbz#1715")
     void shouldPreserveJsonSelectedThroughEscapedAndLiteralPaths(String pointer, String field) throws JsonProcessingException {
         final var mapper = new ObjectMapper();
         final var mapping = new MongoDocumentMapping("shop.orders",
@@ -134,6 +141,7 @@ class MongoDocumentMappingJsonTest {
 
     @ParameterizedTest
     @EnumSource(JsonOutputMode.class)
+    @FixFor("debezium/dbz#1715")
     void shouldPreserveBsonPathAndNullSemantics(JsonOutputMode mode) {
         final var mapping = new MongoDocumentMapping("shop.orders", """
                 {"id":{"path":"/_id","type":"io.debezium.data.Json"},
@@ -166,6 +174,7 @@ class MongoDocumentMappingJsonTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#1715")
     void shouldExtractOverlappingPathsAndUseTheLastDuplicateField() {
         final var mapping = new MongoDocumentMapping("shop.orders", """
                 {"parent":{"path":"/items","type":"io.debezium.data.Json"},
@@ -179,6 +188,7 @@ class MongoDocumentMappingJsonTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#1715")
     void shouldPreserveFragmentsAcrossParserBuffers() {
         final var selected = "{\"text\":\"" + "서울 🙂 \\u0061 ".repeat(2_000) + "\",\"n\":1e+03}";
         final var json = "{\"prefix\":\"" + "🙂".repeat(5_000) + "\",\"v\":" + selected + "}";
@@ -189,6 +199,7 @@ class MongoDocumentMappingJsonTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#1715")
     void shouldRejectTrailingContentWhenExtractingJson() {
         final var mapping = new MongoDocumentMapping("shop.orders", MAPPING);
         assertThatThrownBy(() -> convert(mapping, "{\"v\":1} {\"v\":2}"))
