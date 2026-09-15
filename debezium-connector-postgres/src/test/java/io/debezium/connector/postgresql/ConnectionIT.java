@@ -241,7 +241,7 @@ public class ConnectionIT implements Testing {
                     columnMetadata, new TableId(null, "public", "t"), null);
 
             assertThat(column).isPresent();
-            assertThat(column.get().typeName()).isNull();
+            assertThat(column.get().typeName()).isEqualTo(PostgresType.UNKNOWN.getName());
             assertThat(column.get().nativeType()).isEqualTo(PostgresType.UNKNOWN.getRootType().getOid());
         }
     }
