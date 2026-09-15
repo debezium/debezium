@@ -115,12 +115,16 @@ Run the {prodname} Server startup script to begin streaming change events from y
 .Prerequisites
 
 * Configure {prodname} Server as described in xref:debezium-server-configuration[{prodname} Server configuration].
+* To use the Oracle connector, copy the Oracle JDBC driver to the `lib` directory before you start the server.
+* To use Oracle XStream, copy both the Oracle JDBC driver and the required XStream API files to the `lib` directory.
+For more information, see xref:{link-oracle-connector}#obtaining-oracle-jdbc-driver-and-xstreams-api-files[Obtaining the Oracle JDBC driver and XStream API files].
+
 
 .Procedure
 
 . Open a command prompt or terminal window.
 . Change to the `_<ServerInstallDirectory>_/debezium-server` directory.
-. Start {prodname} Server:
+. Start {prodname} Server by entering one of the following commands:
 +
 ** On Linux, run the `run.sh` script:
 +
@@ -128,7 +132,6 @@ Run the {prodname} Server startup script to begin streaming change events from y
 ----
 ./run.sh
 ----
-ifdef::product[]
 +
 ** On Windows, run the `run.bat` script:
 +
@@ -136,15 +139,6 @@ ifdef::product[]
 ----
 run.bat
 ----
-endif::product[]
-
-[NOTE]
-====
-To use the Oracle connector, copy the Oracle JDBC driver to the `lib` directory before you start the server.
-
-If you use Oracle XStream, also copy the required XStream API files to the `lib` directory.
-For more information, see xref:{link-oracle-connector}#obtaining-oracle-jdbc-driver-and-xstreams-api-files[Obtaining the Oracle JDBC driver and XStream API files].
-====
 
 // Type: concept
 [id="debezium-server-configuration"]
