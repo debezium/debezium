@@ -4691,7 +4691,7 @@ Tables without a primary key, and tables that use snapshot select overrides, are
 |A global multiplier that controls the number of chunks created per table during a parallel snapshot.
 By default, {prodname} creates one chunk per thread.
 A higher value causes the connector to create more, smaller chunks per table when running a snapshot.
-Smaller chunks keep threads more evenly loaded and reduce the amount of work that must be repeated if a snapshot is interrupted.
+Smaller chunks keep threads more evenly loaded.
 For example, with 4 threads and a multiplier of `2`, {prodname} creates 8 chunks instead of 4.
 
 To override the multiplier for a specific table, set `snapshot.max.threads.multiplier.<fully_qualified_table_name>` to the desired value.
