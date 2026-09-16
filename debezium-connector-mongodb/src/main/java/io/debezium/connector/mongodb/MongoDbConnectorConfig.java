@@ -1323,7 +1323,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
     }
 
     private static boolean hasConflictingStartTimes(Configuration config) {
-        return config.getString(CAPTURE_START_TIMESTAMP) != null
+        return !Strings.isNullOrBlank(config.getString(CAPTURE_START_TIMESTAMP))
                 && !CAPTURE_START_OP_TIME.defaultValue().equals(config.getLong(CAPTURE_START_OP_TIME));
     }
 
@@ -1332,7 +1332,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
             throw new IllegalArgumentException("Cannot be configured together with '" + CAPTURE_START_OP_TIME.name() + "'");
         }
         final var value = config.getString(CAPTURE_START_TIMESTAMP);
-        if (value != null) {
+        if (!Strings.isNullOrBlank(value)) {
             return BsonTimestampParser.parse(value);
         }
         final var operationTime = config.getLong(CAPTURE_START_OP_TIME);

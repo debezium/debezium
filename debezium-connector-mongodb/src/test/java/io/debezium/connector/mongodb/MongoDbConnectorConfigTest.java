@@ -25,6 +25,7 @@ import org.bson.BsonTimestamp;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
@@ -45,12 +46,36 @@ public class MongoDbConnectorConfigTest {
         }
     }
 
-    @Test
-    void shouldLeaveStartTimeUnspecifiedByDefault() {
-        final var config = TestHelper.getConfiguration();
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = { " ", "\t\n" })
+    void shouldLeaveStartTimeUnspecifiedByDefault(String value) {
+        final var builder = TestHelper.getConfiguration().edit();
+        if (value != null) {
+            builder.with(MongoDbConnectorConfig.CAPTURE_START_TIMESTAMP, value);
+        }
+        final var config = builder.build();
         assertThat(new MongoDbConnectorConfig(config).startAtOperationTime()).isEmpty();
         assertThat(config.validate(MongoDbConnectorConfig.ALL_FIELDS).get(MongoDbConnectorConfig.CAPTURE_START_OP_TIME.name()).errorMessages()).isEmpty();
         assertThat(config.validate(MongoDbConnectorConfig.ALL_FIELDS).get(MongoDbConnectorConfig.CAPTURE_START_TIMESTAMP.name()).errorMessages()).isEmpty();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "", " ", "\t\n" })
+    void shouldUsePackedOperationTimeWithBlankStartTimestamp(String value) {
+        final var operationTime = new BsonTimestamp(30, 7);
+        final var config = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.CAPTURE_START_OP_TIME, operationTime.getValue())
+                .with(MongoDbConnectorConfig.CAPTURE_START_TIMESTAMP, value)
+                .build();
+        final var connector = new ConnectionValidationConnector();
+        final var validation = connector.validate(config.asMap());
+        assertThat(validationErrors(validation, MongoDbConnectorConfig.CAPTURE_START_TIMESTAMP)).isEmpty();
+        assertThat(validationErrors(validation, MongoDbConnectorConfig.CAPTURE_START_OP_TIME)).isEmpty();
+        assertThat(connector.connectionConfig).isNotNull();
+        assertThat(connector.connectionConfig.startAtOperationTime()).contains(operationTime);
+        assertThat(validationErrors(validation, MongoDbConnectorConfig.CONNECTION_STRING))
+                .containsExactly(ConnectionValidationConnector.CONNECTION_ERROR);
     }
 
     @ParameterizedTest
@@ -87,7 +112,7 @@ public class MongoDbConnectorConfigTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = { "30", "", "invalid" })
+    @ValueSource(strings = { "30", "invalid" })
     void shouldRejectConflictingStartTimes(String value) {
         final var config = TestHelper.getConfiguration().edit()
                 .with(MongoDbConnectorConfig.CAPTURE_START_OP_TIME, new BsonTimestamp(30, 0).getValue())
@@ -107,7 +132,7 @@ public class MongoDbConnectorConfigTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = { "", "invalid", "30.5", "4294967296", "2026-09-11T00:00:00.001Z", "{\"$timestamp\":{\"t\":30,\"i\":-1}}" })
+    @ValueSource(strings = { "invalid", "30.5", "4294967296", "2026-09-11T00:00:00.001Z", "{\"$timestamp\":{\"t\":30,\"i\":-1}}" })
     void shouldReportInvalidStartTimestampAsConfigurationError(String value) {
         final var config = TestHelper.getConfiguration().edit()
                 .with(MongoDbConnectorConfig.CAPTURE_START_TIMESTAMP, value)
@@ -165,8 +190,8 @@ public class MongoDbConnectorConfigTest {
     }
 
     @ParameterizedTest
-    @NullSource
-    @ValueSource(strings = "30")
+    @NullAndEmptySource
+    @ValueSource(strings = { "30", " ", "\t\n" })
     void shouldValidateConnectionWithValidStartTimestamp(String value) {
         final var builder = TestHelper.getConfiguration().edit();
         if (value != null) {
