@@ -347,3 +347,66 @@ The `source` block of a SQLite change event contains the following connector-spe
 |`change_id`
 |The identifier that the connector assigned to the change in the CDC log. It increases monotonically in commit order, and is the position from which the connector resumes streaming.
 |===
+
+[[sqlite-schema-change-events]]
+== Schema change events
+
+The {prodname} SQLite connector emits a schema change event whenever the structure of a captured table changes.
+It emits one event for each table that is created, altered, or dropped while the connector is running, and one event for each table during the initial snapshot.
+
+SQLite exposes no data definition language (DDL) statement to an external reader, so the connector detects a schema change by watching SQLite's `schema_version` counter, which SQLite increments for any DDL.
+When the counter moves, the connector re-reads the current schema from the database file, reconciles the capture triggers, and emits a schema change event for each captured table that was created, altered, or dropped.
+A DDL statement that does not change a captured table, such as `CREATE INDEX`, moves the counter but reconciles to no event.
+
+Because no literal DDL text is available, the `ddl` field of a SQLite schema change event is always `null`.
+The change is described by the `tableChanges` array instead.
+
+The connector does not keep a schema history topic.
+It reads the current schema directly from the database file whenever it needs it, so there is no separate history to replay after a restart.
+
+The connector writes schema change events to a single topic that is named after the `topic.prefix` property.
+For example, if `topic.prefix` is set to `sqlite`, the connector writes schema change events to the `sqlite` topic.
+
+.Renames
+SQLite gives no link between a table's old and new name, so a table rename appears to the connector as two changes: a `DROP` of the old name, followed by a `CREATE` of the new name.
+The connector emits a separate schema change event for each.
+
+.Example: schema change event
+The following example shows the value of a schema change event that the connector emits after a `note` column is added to the `orders` table:
+
+[source,json,indent=0]
+----
+{
+  "source": {
+    "version": "{debezium-version}",
+    "connector": "sqlite",
+    "name": "sqlite",
+    "ts_ms": 1754630700000,
+    "snapshot": "false",
+    "db": "sqlite",
+    "table": "orders",
+    "change_id": 44
+  },
+  "ts_ms": 1754630700123,
+  "databaseName": "sqlite",
+  "schemaName": null,
+  "ddl": null,
+  "tableChanges": [
+    {
+      "type": "ALTER",
+      "id": "\"orders\"",
+      "table": {
+        "primaryKeyColumnNames": [ "id" ],
+        "columns": [
+          { "name": "id", "jdbcType": -5, "typeName": "INTEGER", "optional": false },
+          { "name": "name", "jdbcType": 12, "typeName": "TEXT", "optional": true },
+          { "name": "quantity", "jdbcType": -5, "typeName": "INTEGER", "optional": true },
+          { "name": "note", "jdbcType": 12, "typeName": "TEXT", "optional": true }
+        ]
+      }
+    }
+  ]
+}
+----
+
+SQLite records no log position for a DDL statement, so the `change_id` in the `source` block of a schema change event is the last log position that the connector consumed, rather than a new value.
