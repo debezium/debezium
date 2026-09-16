@@ -58,6 +58,7 @@ asciidoc:
     link-serdes: 'integrations/serdes.adoc'
     link-signalling: 'configuration/signalling.adoc'
     link-smt-predicates: 'transformations/applying-transformations-selectively.adoc'
+    link-sqlite-connector: 'connectors/sqlite.adoc'
     link-sqlserver-connector: 'connectors/sqlserver.adoc'
     link-transformations: 'transformations/index.adoc'
     link-topic-auto-creation: 'configuration/topic-auto-create-config.adoc'

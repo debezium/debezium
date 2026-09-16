@@ -20,6 +20,7 @@ We currently have the following connectors:
 * xref:connectors/yashandb.adoc[YashanDB] (Incubating)
 * xref:connectors/ingres.adoc[Ingres] (Incubating)
 * xref:connectors/milvus.adoc[Milvus] (Incubating)
+* xref:connectors/sqlite.adoc[SQLite] (Incubating)
 
 [NOTE]
 ====
