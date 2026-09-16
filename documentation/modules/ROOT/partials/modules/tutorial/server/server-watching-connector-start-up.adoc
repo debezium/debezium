@@ -1,6 +1,15 @@
 [id="server-watching-connector-start-up"]
 = Watching {prodname} Server and the connector start
 
+
+--
+To start {prodname} server, open a new terminal in the `{prodname}-server` directory (where `run.sh` is located) and run the following statement:
+[source,shell,options="nowrap"]
+----
+$ ./run.sh
+----
+--
+
 When you start {prodname} server, a large volume of log output is generated.
 By reviewing this output,
 you can better understand the process that the connector goes through from the time it is created until it begins reading the MySQL server's `binlog`.
