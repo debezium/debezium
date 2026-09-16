@@ -1641,6 +1641,7 @@ For more information about the support scope of Red{nbsp}Hat Technology Preview 
 |[[mongodb-property-capture-start-timestamp]]<<mongodb-property-capture-start-timestamp, `+capture.start.timestamp+`>>
 |No default value
 |Specifies the starting position for a change stream when no offset is available.
+An empty or whitespace-only value is treated as unset.
 This property is an alternative to xref:mongodb-property-capture-start-op-time[`capture.start.op.time`] and has the same Technology Preview status.
 Set the value to a string in one of the following formats:
 
