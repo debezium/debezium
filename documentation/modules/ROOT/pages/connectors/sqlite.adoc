@@ -551,3 +551,94 @@ The following example shows the configuration of a connector that captures the `
 <6> The criteria for performing a snapshot on startup.
 
 You can send this configuration to a running Kafka Connect service with the `POST` command of the Kafka Connect REST API.
+
+[[sqlite-connector-properties]]
+=== Connector properties
+
+The {prodname} SQLite connector supports the {prodname} properties that are common to all connectors, in addition to the following connector-specific properties.
+
+Because SQLite is a single file with no server, no schema, and no separate databases, the connector does not use the relational connection and schema-filtering properties.
+The `hostname`, `port`, `user`, `password`, and `database.name` properties, and the `schema.include.list` and `schema.exclude.list` properties, do not apply.
+
+.Required connector configuration properties
+[cols="3,2,5",options="header"]
+|===
+|Property |Default |Description
+
+|`name`
+|No default
+|A unique name for the connector. Attempting to register again with the same name fails.
+
+|`connector.class`
+|No default
+|The name of the Java class for the connector. Always specify `io.debezium.connector.sqlite.SQLiteSourceConnector`.
+
+|`topic.prefix`
+|No default
+|A prefix that names the SQLite database from which the connector captures changes. The connector prepends this value to the name of every topic that it produces. The prefix must be unique across all connectors.
+
+|`database.file.path`
+|No default
+|The path of the SQLite database file that the connector monitors.
+
+|`tasks.max`
+|`1`
+|The connector supports a single task. If you set a higher value, the connector logs a warning and uses a single task.
+|===
+
+.Snapshot and streaming properties
+[cols="3,2,5",options="header"]
+|===
+|Property |Default |Description
+
+|`snapshot.mode`
+|`initial`
+|Specifies the criteria for running a snapshot when the connector starts. Set one of the following values: `initial`, `always`, `no_data`, or `initial_only`.
+
+|`cdc.log.batch.size`
+|`1000`
+|The maximum number of rows that the connector reads from the `_debezium_cdc_log` table in each streaming poll. A small value keeps each read transaction short, so that SQLite can checkpoint the WAL between polls.
+
+|`log.compaction.threshold`
+|`10000`
+|The number of already-committed rows that the connector lets accumulate in the `_debezium_cdc_log` table before it deletes them. The connector deletes rows up to the last committed `change_id` once this many rows have accumulated since the previous deletion.
+
+|`nonnull.affinity.mismatch.fallback`
+|`false`
+|Specifies whether to substitute a type placeholder for a value whose SQLite storage class does not match its column's affinity, in a non-nullable column that has no default. When `true`, the connector emits `0`, `0.0`, an empty string, or empty bytes, instead of failing the conversion. The fallback takes effect only under the `warn` and `skip` values of `event.converting.failure.handling.mode`.
+|===
+
+.Filter and event properties
+[cols="3,2,5",options="header"]
+|===
+|Property |Default |Description
+
+|`table.include.list`
+|No default
+|An optional, comma-separated list of regular expressions or literal names that match the tables to capture. SQLite has no schema, so each entry is a bare table name. If you do not set this property, the connector captures all non-system tables. Do not set this property and the `table.exclude.list` property at the same time.
+
+|`table.exclude.list`
+|No default
+|An optional, comma-separated list of regular expressions or literal names that match the tables to exclude from capture. Do not set this property and the `table.include.list` property at the same time.
+
+|`column.include.list`
+|No default
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of columns to include in change event values.
+
+|`column.exclude.list`
+|No default
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of columns to exclude from change event values.
+
+|`tombstones.on.delete`
+|`true`
+|Specifies whether the connector emits a tombstone event after each delete event, so that Kafka can remove all messages for the deleted key during log compaction.
+
+|`event.converting.failure.handling.mode`
+|`fail`
+|Specifies how the connector reacts when a value cannot be converted to its column's schema type, for example, when a value's SQLite storage class does not match the column's affinity. Set one of the following values: `fail`, `warn`, or `skip`.
+|===
+
+[NOTE]
+====
+The connector always excludes SQLite's internal `sqlite_` tables and its own `_debezium_` tables from capture, regardless of the include and exclude lists.
+====
