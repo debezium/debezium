@@ -75,8 +75,10 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         implements IncrementalSnapshotChangeEventSource<P, T> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractIncrementalSnapshotChangeEventSource.class);
+    private static final int MAX_SCHEMA_MISMATCH_RETRIES = 5;
 
     private boolean schemaMismatchRetryPending;
+    private int schemaMismatchRetries;
     private ErrorHandler errorHandler;
 
     protected final RelationalDatabaseConnectorConfig connectorConfig;
@@ -323,6 +325,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                 try {
                     if (createDataEventsForTable(partition)) {
                         schemaMismatchRetryPending = false;
+                        schemaMismatchRetries = 0;
 
                         if (!context.snapshotRunning()) { // A stop signal has been processed and window cleared.
                             return;
@@ -419,9 +422,15 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         window.clear();
         context.revertChunk();
         context.setSchemaVerificationPassed(false);
+        if (schemaMismatchRetries >= MAX_SCHEMA_MISMATCH_RETRIES) {
+            throw reportFailure("Incremental snapshot for table '%s' failed after %d schema mismatch retries"
+                    .formatted(context.currentDataCollectionId().getId(), MAX_SCHEMA_MISMATCH_RETRIES), cause);
+        }
+        // Count retries scheduled after a failed read, not windows spent verifying the schema.
+        schemaMismatchRetries++;
         schemaMismatchRetryPending = true;
-        LOGGER.warn("Retrying incremental snapshot chunk for table {} in the next watermark window after a schema mismatch",
-                context.currentDataCollectionId().getId(), cause);
+        LOGGER.warn("Retrying incremental snapshot chunk for table {} in the next watermark window after a schema mismatch (retry {} of {})",
+                context.currentDataCollectionId().getId(), schemaMismatchRetries, MAX_SCHEMA_MISMATCH_RETRIES, cause);
         try {
             // The failed read transaction has already been rolled back. Close the empty window
             // so streaming can process the DDL before the next attempt reads the same chunk.
@@ -593,6 +602,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
 
     private void nextDataCollection(P partition, OffsetContext offsetContext) {
         schemaMismatchRetryPending = false;
+        schemaMismatchRetries = 0;
         context.nextDataCollection();
         if (!context.snapshotRunning()) {
             progressListener.snapshotCompleted(partition);
@@ -628,6 +638,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
 
         if (shouldReadChunk) {
             schemaMismatchRetryPending = false;
+            schemaMismatchRetries = 0;
 
             List<T> monitoredDataCollections = newDataCollectionIds.stream()
                     .map(DataCollection::getId).collect(Collectors.toList());
