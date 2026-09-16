@@ -1,6 +1,7 @@
-This tutorial demonstrates how to use {prodname} to monitor a MySQL database.
+This tutorial demonstrates how to use {prodname} server to monitor a MySQL database.
 As the data in the database changes, you will see the resulting event streams.
 
 In this tutorial you will start the {selected-sink} sink service,
 run a MySQL database server with a simple example database,
-and use {prodname} to monitor the database for changes.
+and use {prodname} server to monitor the database for changes.
+This tutorial is a completely Kafka-less deployment, with significantly less complexity than if you were to use Kafka.

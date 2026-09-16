@@ -47,8 +47,8 @@ The following list describes the purpose of each configuration option shown abov
 `debezium.source.database.user=debezium`:: MySQL database server username
 `debezium.source.database.password=dbz`:: MySQL database server password
 `debezium.source.topic.prefix=tutorial`:: Change event topic prefix
-`debezium.source.schema.history.internal=io.debezium.storage.file.history.FileSchemaHistory`:: File history config
-`debezium.source.schema.history.internal.file.filename=data/history.dat`:: Location of the history file
+`debezium.source.schema.history.internal=io.debezium.storage.file.history.FileSchemaHistory`:: File used to store schema history
+`debezium.source.schema.history.internal.file.filename=data/history.dat`:: Location of the schema history file
 `debezium.source.database.include.list=inventory`:: The specific database to track on the server (you can also specify single tables, or exclude only tables you don't want)
 `quarkus.log.console.json=false`:: Specifies Quarkus output format
 --

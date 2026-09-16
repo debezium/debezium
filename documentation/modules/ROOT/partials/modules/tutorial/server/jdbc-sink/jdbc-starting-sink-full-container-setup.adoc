@@ -13,7 +13,7 @@ CREATE DATABASE inventory;
 GRANT ALL PRIVILEGES ON DATABASE inventory TO pguser;
 ----
 
-`CREATE DATABASE inventory;`:: Creates the database that {prodname} will stream changes to.
+`CREATE DATABASE inventory;`:: Creates the database that {prodname} server will stream changes to.
 `GRANT ALL PRIVILEGES ON DATABASE inventory TO pguser;`:: Grants all privileges to the user that will be specified in the `application.properties` file later. This will allow {prodname} to access and modify the database as needed.
 
 [NOTE]
@@ -53,7 +53,7 @@ $ docker build -t example-postgres .
 
 --
 
-. Open a new terminal and use it to start the PostgreSQL database server that will receive change events from {prodname} in a container. This is the database the {selected-sink} sink connector will stream changes to.
+. Open a new terminal and use it to start the PostgreSQL database server that will receive change events from {prodname} server in a container. This is the database the {selected-sink} sink connector will stream changes to.
 
 +
 --
