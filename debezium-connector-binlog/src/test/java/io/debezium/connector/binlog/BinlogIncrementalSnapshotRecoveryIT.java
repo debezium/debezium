@@ -17,6 +17,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
@@ -54,6 +55,7 @@ import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnaps
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
+import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
@@ -89,6 +91,8 @@ public abstract class BinlogIncrementalSnapshotRecoveryIT<C extends SourceConnec
     private int rollbackAttempts;
     private int failingRollbackAttempt;
     private SQLException rollbackFailure;
+    private Runnable windowOpenAction = () -> {
+    };
 
     protected abstract BinlogConnectorConfig createConfig(Configuration configuration);
 
@@ -108,6 +112,10 @@ public abstract class BinlogIncrementalSnapshotRecoveryIT<C extends SourceConnec
         if (++rollbackAttempts == failingRollbackAttempt) {
             throw rollbackFailure;
         }
+    }
+
+    protected void beforeWindowOpen() {
+        windowOpenAction.run();
     }
 
     private void failRollbackOnAttempt(int attempt) {
@@ -302,21 +310,121 @@ public abstract class BinlogIncrementalSnapshotRecoveryIT<C extends SourceConnec
     @ParameterizedTest
     @FixFor("debezium/dbz#2604")
     @ValueSource(strings = { "read-only", "insert_insert", "insert_delete" })
-    void shouldKeepRetryingPersistentMismatchWithoutSkippingTables(String mode) throws Exception {
+    void shouldRecoverOnLastSchemaMismatchRetry(String mode) throws Exception {
         initialize(mode, true);
         schema.refresh(table("a", false));
         context.maximumKey(new Object[]{ 5 });
         seedVerifiedSchema();
         source.init(partition, offset);
 
-        for (int i = 0; i < 5; i++) {
+        retrySchemaMismatchFourTimes();
+
+        schema.refresh(table("a", true));
+        assertAllRows(completeSnapshot());
+    }
+
+    @ParameterizedTest
+    @FixFor("debezium/dbz#2604")
+    @ValueSource(strings = { "read-only", "insert_insert", "insert_delete" })
+    void shouldReportPersistentSchemaMismatchAfterFiveRetries(String mode) throws Exception {
+        initialize(mode, true);
+        context.sendEvent(new Object[]{ 2 });
+        context.nextChunkPosition(new Object[]{ 2 });
+        context.maximumKey(new Object[]{ 5 });
+        schema.refresh(table("a", false));
+        seedVerifiedSchema();
+        source.init(partition, offset);
+        retrySchemaMismatchFourTimes();
+
+        // Schema verification can span additional windows without consuming or resetting retries.
+        for (int i = 0; i < 7; i++) {
+            context.setSchema(null);
             advanceWatermark();
             assertRetryPreservesTableAndReleasesLock();
             assertThat(errorHandler.getProducerThrowable()).isNull();
         }
 
+        if (readOnly) {
+            assertThatThrownBy(this::advanceWatermark).hasMessageContaining("after 5 schema mismatch retries");
+        }
+        else {
+            // SignalProcessor catches the exception; the task must still see the failure.
+            advanceWatermark();
+        }
+
+        assertThat(errorHandler.getProducerThrowable())
+                .hasMessageContaining("after 5 schema mismatch retries")
+                .hasMessageContaining(tableId("a").identifier());
+        assertThatThrownBy(queue::poll).isInstanceOf(ConnectException.class);
+        assertThat(context.snapshotRunning()).isTrue();
+        assertThat(context.currentDataCollectionId().getId()).isEqualTo(tableId("a"));
+        assertThat(context.chunkEndPosititon()).containsExactly(2);
+        assertDdlIsNotBlocked();
+    }
+
+    @ParameterizedTest
+    @FixFor("debezium/dbz#2604")
+    @ValueSource(strings = { "read-only", "insert_insert", "insert_delete" })
+    void shouldResetSchemaMismatchRetriesAfterSuccessfulChunk(String mode) throws Exception {
+        initialize(mode, true);
+        schema.refresh(table("a", false));
+        context.maximumKey(new Object[]{ 5 });
+        seedVerifiedSchema();
+        source.init(partition, offset);
+        retrySchemaMismatchFourTimes();
+
+        final var nextChunkInvalidated = new AtomicBoolean();
+        windowOpenAction = () -> {
+            if (Arrays.equals(context.chunkEndPosititon(), new Object[]{ 2 }) && nextChunkInvalidated.compareAndSet(false, true)) {
+                schema.refresh(table("a", false));
+            }
+        };
         schema.refresh(table("a", true));
-        assertAllRows(completeSnapshot());
+        List<SourceRecord> records = new ArrayList<>();
+        for (int i = 0; i < 3 && !nextChunkInvalidated.get(); i++) {
+            advanceWatermark();
+            queue.poll().forEach(event -> records.add(event.getRecord()));
+        }
+        assertThat(nextChunkInvalidated).isTrue();
+        assertRows(records, List.of(1, 2));
+        assertThat(context.chunkEndPosititon()).containsExactly(2);
+        retrySchemaMismatchFourTimes();
+
+        schema.refresh(table("a", true));
+        records.addAll(completeSnapshot());
+        assertAllRows(records);
+    }
+
+    @ParameterizedTest
+    @FixFor("debezium/dbz#2604")
+    @ValueSource(strings = { "read-only", "insert_insert", "insert_delete" })
+    void shouldResetSchemaMismatchRetriesWhenSkippingToNextTable(String mode) throws Exception {
+        initialize(mode, true);
+        schema.refresh(table("a", false));
+        context.maximumKey(new Object[]{ 5 });
+        seedVerifiedSchema();
+        source.init(partition, offset);
+        retrySchemaMismatchFourTimes();
+
+        schema.refresh(table("b", false));
+        source.requestStopSnapshot(partition, offset, Map.of(), List.of(database.qualifiedTableName("a")));
+        advanceWatermark();
+        advanceWatermark();
+
+        assertThat(context.currentDataCollectionId().getId()).isEqualTo(tableId("b"));
+        assertThat(errorHandler.getProducerThrowable()).isNull();
+        assertThat(queue.poll()).isEmpty();
+        schema.refresh(table("b", true));
+        assertRows(completeSnapshot(), List.of(11, 12, 13));
+    }
+
+    private void retrySchemaMismatchFourTimes() throws Exception {
+        // Together with the initial failure, these consume all attempts preceding retry five.
+        for (int i = 0; i < 4; i++) {
+            advanceWatermark();
+            assertRetryPreservesTableAndReleasesLock();
+            assertThat(errorHandler.getProducerThrowable()).isNull();
+        }
     }
 
     @ParameterizedTest
@@ -413,7 +521,13 @@ public abstract class BinlogIncrementalSnapshotRecoveryIT<C extends SourceConnec
         });
         source = readOnly ? createReadOnlySource()
                 : new BinlogSignalBasedIncrementalSnapshotChangeEventSource<>(config, jdbc, dispatcher, schema,
-                        Clock.system(), SnapshotProgressListener.NO_OP(), DataChangeEventListener.NO_OP(), notifications);
+                        Clock.system(), SnapshotProgressListener.NO_OP(), DataChangeEventListener.NO_OP(), notifications) {
+                    @Override
+                    protected void emitWindowOpen(P partition, OffsetContext offsetContext) throws SQLException {
+                        beforeWindowOpen();
+                        super.emitWindowOpen(partition, offsetContext);
+                    }
+                };
         errorHandler = new ErrorHandler(getConnectorClass(), config, queue, null);
         source.setErrorHandler(errorHandler);
         dispatcher.setIncrementalSnapshotChangeEventSource(java.util.Optional.of(source));

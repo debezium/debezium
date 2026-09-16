@@ -21,6 +21,7 @@ import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
+import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
@@ -74,6 +75,12 @@ class IncrementalSnapshotRecoveryIT
     @Override
     protected AbstractIncrementalSnapshotChangeEventSource<MariaDbPartition, TableId> createReadOnlySource() {
         return new MariaDbReadOnlyIncrementalSnapshotChangeEventSource((MariaDbConnectorConfig) config, jdbc, dispatcher,
-                (MariaDbDatabaseSchema) schema, Clock.system(), SnapshotProgressListener.NO_OP(), DataChangeEventListener.NO_OP(), notifications);
+                (MariaDbDatabaseSchema) schema, Clock.system(), SnapshotProgressListener.NO_OP(), DataChangeEventListener.NO_OP(), notifications) {
+            @Override
+            protected void emitWindowOpen(MariaDbPartition partition, OffsetContext offsetContext) {
+                beforeWindowOpen();
+                super.emitWindowOpen(partition, offsetContext);
+            }
+        };
     }
 }

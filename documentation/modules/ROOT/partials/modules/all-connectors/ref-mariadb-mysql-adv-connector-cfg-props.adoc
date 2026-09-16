@@ -397,7 +397,10 @@ When the value is set to `true`, the connector detects schema change during an i
 If a query result contains a column that is absent from the connector's cached table definition, the connector discards the current chunk and retries it after closing the watermark window.
 The retry retains the current table and the last emitted snapshot key, allowing streaming to process the pending schema change before reading the chunk again.
 This behavior applies to both signal-table and read-only incremental snapshots.
-As with schema verification, a persistent mismatch is logged and retried in subsequent watermark windows instead of skipping the table.
+After the initial read fails, the connector retries the chunk up to five times in subsequent watermark windows.
+If all five retries fail with a column mismatch, the connector reports an error through its task error handling instead of skipping the table.
+Windows spent verifying the schema do not consume retries.
+The retry count resets after a successful chunk read or when a new table or snapshot begins.
 The connector does not report the snapshot as complete while the table is waiting for its schema to catch up.
 If transaction cleanup or watermark-window closure fails during recovery, the connector reports the failure through its task error handling.
 When this property is `false`, a column mismatch continues to skip the affected table after transaction cleanup is attempted.

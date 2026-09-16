@@ -21,6 +21,7 @@ import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
+import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.TableId;
 import io.debezium.util.Clock;
@@ -75,6 +76,12 @@ class IncrementalSnapshotRecoveryIT
     @Override
     protected AbstractIncrementalSnapshotChangeEventSource<MySqlPartition, TableId> createReadOnlySource() {
         return new MySqlReadOnlyIncrementalSnapshotChangeEventSource((MySqlConnectorConfig) config, jdbc, dispatcher,
-                (MySqlDatabaseSchema) schema, Clock.system(), SnapshotProgressListener.NO_OP(), DataChangeEventListener.NO_OP(), notifications);
+                (MySqlDatabaseSchema) schema, Clock.system(), SnapshotProgressListener.NO_OP(), DataChangeEventListener.NO_OP(), notifications) {
+            @Override
+            protected void emitWindowOpen(MySqlPartition partition, OffsetContext offsetContext) {
+                beforeWindowOpen();
+                super.emitWindowOpen(partition, offsetContext);
+            }
+        };
     }
 }
