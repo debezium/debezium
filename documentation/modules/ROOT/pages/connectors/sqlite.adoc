@@ -479,3 +479,75 @@ The `nonnull.affinity.mismatch.fallback` property decides what happens:
 --
 
 The placeholder is a synthetic value in place of the real one, which is why it is off by default and takes effect only under the `warn` and `skip` failure modes.
+
+[[setting-up-sqlite]]
+== Setting up SQLite
+
+The connector installs its capture triggers and creates the `_debezium_cdc_log` table on the database itself, so there is no schema to prepare by hand.
+Before you deploy the connector, make sure that the connector can reach and write to the database file.
+
+.Prerequisites
+
+* A SQLite database file.
+* Read and write access to the database file for the process that runs the connector.
+The connector creates the `_debezium_cdc_log` table, installs the capture triggers, and deletes already-committed rows from the log, all of which write to the file.
+* Java 17 or later on the Kafka Connect worker.
+
+.Procedure
+
+. Place the Kafka Connect worker on the same host as the application that writes to the database, with direct access to the database file on a local filesystem.
++
+[IMPORTANT]
+====
+SQLite coordinates WAL access through a shared-memory file and local filesystem locks, so every process that opens the database must run on the same host and share the same file.
+A database file on a network filesystem, or one that is reached from a different host or container than the application that writes to it, is not supported.
+====
+
+. Grant the connector's process read and write permission on the database file and on the directory that contains it, so that SQLite can create the WAL and shared-memory files alongside it.
+
+. Verify that the tables that you want to capture have a primary key.
+The change event key is built from the primary key, so a table with no primary key produces events that have a null key.
+
+[[sqlite-deployment]]
+== Deployment
+
+To deploy a {prodname} SQLite connector, you install the connector archive on a Kafka Connect server, configure the connector, and start the Kafka Connect service.
+
+.Prerequisites
+
+* <<setting-up-sqlite,SQLite is set up>> to run a {prodname} connector.
+* Apache Kafka and Kafka Connect are installed.
+
+.Procedure
+
+. Download the {prodname} SQLite connector plug-in archive.
+. Extract the files into your Kafka Connect environment.
+. Add the directory that contains the connector files to the Kafka Connect `plugin.path`.
+. Restart the Kafka Connect process to pick up the new JAR files.
+
+[[sqlite-example-configuration]]
+=== Connector configuration example
+
+The following example shows the configuration of a connector that captures the `orders` and `customers` tables from a SQLite database file:
+
+[source,json,indent=0]
+----
+{
+  "name": "sqlite-connector",  // <1>
+  "config": {
+    "connector.class": "io.debezium.connector.sqlite.SQLiteSourceConnector",  // <2>
+    "topic.prefix": "sqlite",  // <3>
+    "database.file.path": "/data/app.db",  // <4>
+    "table.include.list": "orders,customers",  // <5>
+    "snapshot.mode": "initial"  // <6>
+  }
+}
+----
+<1> The name of the connector.
+<2> The name of the connector class. Always specify this value for a SQLite connector.
+<3> The prefix of the Kafka topics to which the connector writes change events.
+<4> The path of the SQLite database file that the connector monitors.
+<5> A comma-separated list of the tables to capture. SQLite has no schema, so each entry is a bare table name.
+<6> The criteria for performing a snapshot on startup.
+
+You can send this configuration to a running Kafka Connect service with the `POST` command of the Kafka Connect REST API.
