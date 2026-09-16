@@ -86,6 +86,9 @@ public abstract class BinlogIncrementalSnapshotRecoveryIT<C extends SourceConnec
     private SignalProcessor<P, O> signalProcessor;
     private SourceSignalChannel signalChannel;
     private ErrorHandler errorHandler;
+    private int rollbackAttempts;
+    private int failingRollbackAttempt;
+    private SQLException rollbackFailure;
 
     protected abstract BinlogConnectorConfig createConfig(Configuration configuration);
 
@@ -100,6 +103,18 @@ public abstract class BinlogIncrementalSnapshotRecoveryIT<C extends SourceConnec
     protected abstract O createOffset();
 
     protected abstract AbstractIncrementalSnapshotChangeEventSource<P, TableId> createReadOnlySource();
+
+    protected void beforeRollback() throws SQLException {
+        if (++rollbackAttempts == failingRollbackAttempt) {
+            throw rollbackFailure;
+        }
+    }
+
+    private void failRollbackOnAttempt(int attempt) {
+        rollbackAttempts = 0;
+        failingRollbackAttempt = attempt;
+        rollbackFailure = new SQLException("Injected rollback failure");
+    }
 
     @BeforeEach
     void createTables() throws SQLException {
@@ -220,6 +235,73 @@ public abstract class BinlogIncrementalSnapshotRecoveryIT<C extends SourceConnec
     @ParameterizedTest
     @FixFor("debezium/dbz#2604")
     @ValueSource(strings = { "read-only", "insert_insert", "insert_delete" })
+    void shouldSkipTableWhenRollbackFailsAndRecoveryIsDisabled(String mode) throws Exception {
+        initialize(mode, false);
+        schema.refresh(table("a", false));
+        context.maximumKey(new Object[]{ 5 });
+        failRollbackOnAttempt(1);
+
+        source.init(partition, offset);
+
+        assertThat(context.currentDataCollectionId().getId()).isEqualTo(tableId("b"));
+        assertThat(errorHandler.getProducerThrowable()).isNull();
+        assertThat(queue.poll()).isEmpty();
+        assertThat(jdbc.isConnected()).isFalse();
+        assertDdlIsNotBlocked();
+    }
+
+    @ParameterizedTest
+    @FixFor("debezium/dbz#2604")
+    @ValueSource(strings = { "read-only", "insert_insert", "insert_delete" })
+    void shouldContinueSnapshotWhenFinalCleanupFailsOutsideRecovery(String mode) throws Exception {
+        initialize(mode, true);
+        failRollbackOnAttempt(1);
+
+        source.init(partition, offset);
+
+        assertThat(context.currentDataCollectionId().getId()).isEqualTo(tableId("a"));
+        assertThat(errorHandler.getProducerThrowable()).isNull();
+        assertThat(jdbc.isConnected()).isFalse();
+        assertDdlIsNotBlocked();
+        assertAllRows(completeSnapshot());
+    }
+
+    @ParameterizedTest
+    @FixFor("debezium/dbz#2604")
+    @ValueSource(strings = { "read-only", "insert_insert", "insert_delete" })
+    void shouldReportRollbackFailureBeforeSchemaMismatchRetry(String mode) throws Exception {
+        assertRollbackFailureDuringRecovery(mode, 1);
+    }
+
+    @ParameterizedTest
+    @FixFor("debezium/dbz#2604")
+    @ValueSource(strings = { "read-only", "insert_insert", "insert_delete" })
+    void shouldReportRollbackFailureAfterRecoveryWindowClose(String mode) throws Exception {
+        assertRollbackFailureDuringRecovery(mode, 2);
+    }
+
+    private void assertRollbackFailureDuringRecovery(String mode, int attempt) throws Exception {
+        initialize(mode, true);
+        schema.refresh(table("a", false));
+        context.maximumKey(new Object[]{ 5 });
+        seedVerifiedSchema();
+        failRollbackOnAttempt(attempt);
+
+        assertThatThrownBy(() -> source.init(partition, offset))
+                .hasMessageContaining("Could not roll back")
+                .hasCause(rollbackFailure);
+
+        assertThat(context.currentDataCollectionId().getId()).isEqualTo(tableId("a"));
+        assertThat(context.snapshotRunning()).isTrue();
+        assertThat(errorHandler.getProducerThrowable()).hasCause(rollbackFailure);
+        assertThatThrownBy(queue::poll).isInstanceOf(ConnectException.class);
+        assertThat(jdbc.isConnected()).isFalse();
+        assertDdlIsNotBlocked();
+    }
+
+    @ParameterizedTest
+    @FixFor("debezium/dbz#2604")
+    @ValueSource(strings = { "read-only", "insert_insert", "insert_delete" })
     void shouldKeepRetryingPersistentMismatchWithoutSkippingTables(String mode) throws Exception {
         initialize(mode, true);
         schema.refresh(table("a", false));
@@ -242,19 +324,10 @@ public abstract class BinlogIncrementalSnapshotRecoveryIT<C extends SourceConnec
     @ValueSource(strings = { "insert_insert", "insert_delete" })
     void shouldReportRecoveryWindowFailureThroughSignalProcessor(String mode) throws Exception {
         initialize(mode, true);
-        source.setErrorHandler(errorHandler);
         schema.refresh(table("a", false));
         context.maximumKey(new Object[]{ 5 });
         seedVerifiedSchema();
-        if (mode.equals("insert_insert")) {
-            observer.execute("CREATE TRIGGER fail_close BEFORE INSERT ON signal_table FOR EACH ROW "
-                    + "BEGIN IF NEW.type = 'snapshot-window-close' THEN "
-                    + "SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Injected window close failure'; END IF; END");
-        }
-        else {
-            observer.execute("CREATE TRIGGER fail_close BEFORE DELETE ON signal_table FOR EACH ROW "
-                    + "SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Injected window close failure'");
-        }
+        rejectWindowClose(mode);
         context.pauseSnapshot();
         source.init(partition, offset);
 
@@ -266,6 +339,38 @@ public abstract class BinlogIncrementalSnapshotRecoveryIT<C extends SourceConnec
         assertThat(errorHandler.getProducerThrowable()).hasMessageContaining("Could not close incremental snapshot window");
         assertThatThrownBy(() -> queue.poll()).isInstanceOf(ConnectException.class);
         assertDdlIsNotBlocked();
+    }
+
+    @ParameterizedTest
+    @FixFor("debezium/dbz#2604")
+    @ValueSource(strings = { "insert_insert", "insert_delete" })
+    void shouldPreserveRecoveryWindowFailureWhenFinalCleanupAlsoFails(String mode) throws Exception {
+        initialize(mode, true);
+        schema.refresh(table("a", false));
+        context.maximumKey(new Object[]{ 5 });
+        seedVerifiedSchema();
+        rejectWindowClose(mode);
+        failRollbackOnAttempt(2);
+
+        assertThatThrownBy(() -> source.init(partition, offset))
+                .hasMessageContaining("Could not close incremental snapshot window");
+
+        assertThat(errorHandler.getProducerThrowable()).hasMessageContaining("Could not close incremental snapshot window");
+        assertThat(context.currentDataCollectionId().getId()).isEqualTo(tableId("a"));
+        assertThatThrownBy(queue::poll).isInstanceOf(ConnectException.class);
+        assertDdlIsNotBlocked();
+    }
+
+    private void rejectWindowClose(String mode) throws SQLException {
+        if (mode.equals("insert_insert")) {
+            observer.execute("CREATE TRIGGER fail_close BEFORE INSERT ON signal_table FOR EACH ROW "
+                    + "BEGIN IF NEW.type = 'snapshot-window-close' THEN "
+                    + "SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Injected window close failure'; END IF; END");
+        }
+        else {
+            observer.execute("CREATE TRIGGER fail_close BEFORE DELETE ON signal_table FOR EACH ROW "
+                    + "SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Injected window close failure'");
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -310,6 +415,7 @@ public abstract class BinlogIncrementalSnapshotRecoveryIT<C extends SourceConnec
                 : new BinlogSignalBasedIncrementalSnapshotChangeEventSource<>(config, jdbc, dispatcher, schema,
                         Clock.system(), SnapshotProgressListener.NO_OP(), DataChangeEventListener.NO_OP(), notifications);
         errorHandler = new ErrorHandler(getConnectorClass(), config, queue, null);
+        source.setErrorHandler(errorHandler);
         dispatcher.setIncrementalSnapshotChangeEventSource(java.util.Optional.of(source));
         signalChannel = new SourceSignalChannel();
         signalProcessor = new SignalProcessor<>(getConnectorClass(), config,

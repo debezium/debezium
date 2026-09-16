@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
+import java.sql.SQLException;
 import java.util.List;
 
 import io.debezium.config.Configuration;
@@ -16,6 +17,7 @@ import io.debezium.connector.mysql.jdbc.MySqlConnection;
 import io.debezium.connector.mysql.jdbc.MySqlConnectionConfiguration;
 import io.debezium.connector.mysql.jdbc.MySqlFieldReaderResolver;
 import io.debezium.connector.mysql.jdbc.MySqlValueConverters;
+import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
@@ -35,7 +37,13 @@ class IncrementalSnapshotRecoveryIT
     @Override
     protected BinlogConnectorConnection createConnection(Configuration configuration) {
         return new MySqlConnection(new MySqlConnectionConfiguration(configuration),
-                MySqlFieldReaderResolver.resolve((MySqlConnectorConfig) config));
+                MySqlFieldReaderResolver.resolve((MySqlConnectorConfig) config)) {
+            @Override
+            public synchronized JdbcConnection rollback() throws SQLException {
+                beforeRollback();
+                return super.rollback();
+            }
+        };
     }
 
     @Override

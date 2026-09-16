@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mariadb;
 
+import java.sql.SQLException;
 import java.util.List;
 
 import io.debezium.config.Configuration;
@@ -16,6 +17,7 @@ import io.debezium.connector.mariadb.jdbc.MariaDbConnection;
 import io.debezium.connector.mariadb.jdbc.MariaDbConnectionConfiguration;
 import io.debezium.connector.mariadb.jdbc.MariaDbFieldReader;
 import io.debezium.connector.mariadb.jdbc.MariaDbValueConverters;
+import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
@@ -35,7 +37,13 @@ class IncrementalSnapshotRecoveryIT
     @Override
     protected BinlogConnectorConnection createConnection(Configuration configuration) {
         return new MariaDbConnection(new MariaDbConnectionConfiguration(configuration),
-                new MariaDbFieldReader((MariaDbConnectorConfig) config));
+                new MariaDbFieldReader((MariaDbConnectorConfig) config)) {
+            @Override
+            public synchronized JdbcConnection rollback() throws SQLException {
+                beforeRollback();
+                return super.rollback();
+            }
+        };
     }
 
     @Override
