@@ -642,3 +642,47 @@ The `hostname`, `port`, `user`, `password`, and `database.name` properties, and 
 ====
 The connector always excludes SQLite's internal `sqlite_` tables and its own `_debezium_` tables from capture, regardless of the include and exclude lists.
 ====
+
+[[sqlite-monitoring]]
+== Monitoring
+
+The {prodname} SQLite connector provides the snapshot and streaming metrics that are common to all {prodname} connectors, and a few SQLite-specific streaming metrics.
+
+The connector exposes snapshot metrics through the following JMX object name:
+
+`debezium.sqlite:type=connector-metrics,context=snapshot,server=_<topic.prefix>_`
+
+The connector exposes streaming metrics through the following JMX object name:
+
+`debezium.sqlite:type=connector-metrics,context=streaming,server=_<topic.prefix>_`
+
+.SQLite-specific streaming metrics
+[cols="2,1,4",options="header"]
+|===
+|Attribute |Type |Description
+
+|`CurrentChangeId`
+|`long`
+|The `change_id` of the row that the connector most recently dispatched.
+
+|`CommittedChangeId`
+|`long`
+|The `change_id` that Kafka Connect most recently committed to the connector offsets.
+
+|`CdcLogDepth`
+|`long`
+|The number of rows in the `_debezium_cdc_log` table that the connector has not yet compacted. It is the backlog that is still waiting to be deleted from the log.
+|===
+
+[[sqlite-limitations]]
+== Limitations
+
+The connector has the following limitations:
+
+* The connector supports a single task, and each connector instance captures a single database file. To capture more than one database file, deploy one connector for each file.
+* The connector and the application that writes to the database must run on the same host, with direct access to the same database file on a local filesystem. A database file on a network filesystem, or one that is reached from a different host or container than the writer, is not supported.
+* The connector requires read and write access to the database file. It creates the `_debezium_cdc_log` table, installs the capture triggers, and compacts the log, all within the user's database.
+* The connector does not support incremental snapshots, ad hoc snapshots, or blocking snapshots.
+* SQLite exposes no DDL text to an external reader, so the `ddl` field of a schema change event is always `null`. The change is described by the `tableChanges` array.
+* A table that has no primary key produces change events that have a null key.
+* SQLite has no fixed-precision decimal type, so a `NUMERIC` column, including one that is declared `DECIMAL`, maps to `FLOAT64`.
