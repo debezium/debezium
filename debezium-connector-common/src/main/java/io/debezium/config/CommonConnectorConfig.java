@@ -1020,6 +1020,17 @@ public abstract class CommonConnectorConfig {
             .withDefault("source")
             .withDescription("List of channels names that are enabled. Source channel is enabled by default");
 
+    public static final Field SIGNAL_SYNCHRONOUS_BATCH_SIZE = Field.createInternal("signal.synchronous.batch.size")
+            .withDisplayName("Synchronous signal batch size")
+            .withType(Type.INT)
+            .withDefault(10)
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withValidation(Field::isPositiveInteger)
+            .withDescription("The maximum number of synchronous signals the streaming thread executes each time it processes "
+                    + "pending signals. Any remainder is executed on subsequent iterations. Defaults to 10.");
+
     public static final Field TOPIC_NAMING_STRATEGY = Field.create("topic.naming.strategy")
             .withDisplayName("Topic naming strategy class")
             .withGroup(Field.createGroupEntry(Field.Group.ADVANCED))
@@ -1562,7 +1573,7 @@ public abstract class CommonConnectorConfig {
                     OPEN_LINEAGE_INTEGRATION_JOB_NAMESPACE, OPEN_LINEAGE_INTEGRATION_JOB_DESCRIPTION, OPEN_LINEAGE_INTEGRATION_JOB_TAGS,
                     OPEN_LINEAGE_INTEGRATION_JOB_OWNERS, OPEN_LINEAGE_INTEGRATION_DATASET_KAFKA_BOOTSTRAP_SERVER, EXTENDED_HEADERS_ENABLED, GUARDRAIL_COLLECTIONS_MAX,
                     GUARDRAIL_COLLECTIONS_LIMIT_ACTION, CUSTOM_SANITIZE_PATTERN, SIGNAL_EMIT_FAILURE_MAX_RETRIES, SIGNAL_EMIT_FAILURE_BACKOFF_INTERVAL_MS,
-                    STATISTICS_METRICS_ENABLED, OFFSET_ACTIVITY_MONITOR_INTERVAL_MS)
+                    STATISTICS_METRICS_ENABLED, OFFSET_ACTIVITY_MONITOR_INTERVAL_MS, SIGNAL_SYNCHRONOUS_BATCH_SIZE)
             .group(Field.Group.ADVANCED_HEARTBEAT, Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX, SIGNAL_POLL_INTERVAL_MS)
             .group(Field.Group.CONNECTOR, TOPIC_NAMING_STRATEGY, SinkNotificationChannel.NOTIFICATION_TOPIC, CUSTOM_METRIC_TAGS)
             .create();
@@ -1606,6 +1617,7 @@ public abstract class CommonConnectorConfig {
     private final int signalEmitFailureMaxRetries;
 
     private final List<String> signalEnabledChannels;
+    private final int signalSynchronousBatchSize;
     private final EnumSet<Operation> skippedOperations;
     private final String taskId;
     private final boolean skipMessagesWithoutChange;
@@ -1657,6 +1669,7 @@ public abstract class CommonConnectorConfig {
         this.signalEmitFailureMaxRetries = config.getInteger(SIGNAL_EMIT_FAILURE_MAX_RETRIES);
         this.signalEmitFailureBackoff = Duration.ofMillis(config.getLong(SIGNAL_EMIT_FAILURE_BACKOFF_INTERVAL_MS));
         this.signalEnabledChannels = getSignalEnabledChannels(config);
+        this.signalSynchronousBatchSize = config.getInteger(SIGNAL_SYNCHRONOUS_BATCH_SIZE);
         this.skippedOperations = determineSkippedOperations(config);
         this.taskId = config.getString(ConfigurationNames.TASK_ID_PROPERTY_NAME);
         this.notificationTopicName = config.getString(SinkNotificationChannel.NOTIFICATION_TOPIC);
@@ -2309,6 +2322,14 @@ public abstract class CommonConnectorConfig {
 
     public List<String> getEnabledChannels() {
         return signalEnabledChannels;
+    }
+
+    /**
+     * @return the maximum number of synchronous signals executed per call to
+     *         {@code SignalProcessor#processSynchronousSignals()}
+     */
+    public int getSignalSynchronousBatchSize() {
+        return signalSynchronousBatchSize;
     }
 
     public Optional<String[]> parseSignallingMessage(Struct value, String fieldName) {
