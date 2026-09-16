@@ -360,11 +360,11 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             LOGGER.trace("Window close emitted");
         }
         catch (ColumnUtils.SchemaMismatchException e) {
-            rollbackChunkTransaction(e);
             if (supportsSchemaMismatchRecovery() && connectorConfig.isIncrementalSnapshotSchemaChangesEnabled()) {
                 retryChunkAfterSchemaMismatch(partition, offsetContext, e);
             }
             else {
+                rollbackChunkTransaction(e);
                 warnAndSkip(partition, offsetContext, SQL_EXCEPTION,
                         "Schema mismatch while executing incremental snapshot for table '%s', skipping and continuing streaming"
                                 .formatted(context.currentDataCollectionId().getId()),
@@ -411,6 +411,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
 
     private void retryChunkAfterSchemaMismatch(P partition, OffsetContext offsetContext, ColumnUtils.SchemaMismatchException cause)
             throws InterruptedException {
+        rollbackChunkTransactionForRecovery(cause);
         // Do not publish a partially read chunk or advance to the next table. Streaming must
         // process the intervening DDL before the next window attempts the same chunk again.
         window.clear();
@@ -431,21 +432,43 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             e.addSuppressed(cause);
             throw reportFailure("Could not close incremental snapshot window after a schema mismatch", e);
         }
+        // Capturing the high watermark can open another transaction. Its cleanup is part of
+        // recovery too; the final best-effort cleanup must not hide an earlier recovery failure.
+        rollbackChunkTransactionForRecovery(cause);
     }
 
-    protected void rollbackChunkTransaction(Throwable chunkFailure) {
+    private void rollbackChunkTransactionForRecovery(Throwable chunkFailure) {
+        rollbackChunkTransaction(chunkFailure).ifPresent(failure -> {
+            throw reportFailure("Could not roll back the incremental snapshot chunk", failure);
+        });
+    }
+
+    /**
+     * Ends a chunk transaction, discarding the connection if rollback fails. The caller decides
+     * whether a cleanup failure should abort recovery or retain the existing table-skip policy.
+     */
+    protected Optional<SQLException> rollbackChunkTransaction(Throwable chunkFailure) {
         try {
             // A failed read can bypass the window-close transaction boundary and retain
             // metadata locks. rollback() does not reconnect an already closed connection.
             jdbcConnection.rollback();
         }
         catch (SQLException e) {
-            closeJdbcConnection();
-            if (chunkFailure != null) {
+            if (chunkFailure != null && chunkFailure != e) {
                 e.addSuppressed(chunkFailure);
             }
-            throw reportFailure("Could not roll back the incremental snapshot chunk", e);
+            try {
+                jdbcConnection.close();
+            }
+            catch (SQLException closeFailure) {
+                if (closeFailure != e) {
+                    e.addSuppressed(closeFailure);
+                }
+            }
+            LOGGER.warn("Could not roll back the incremental snapshot chunk; attempted to close the connection", e);
+            return Optional.of(e);
         }
+        return Optional.empty();
     }
 
     private DebeziumException reportFailure(String message, Throwable cause) {

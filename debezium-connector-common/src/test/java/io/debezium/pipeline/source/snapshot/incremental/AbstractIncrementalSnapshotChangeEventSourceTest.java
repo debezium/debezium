@@ -11,6 +11,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -22,12 +23,16 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Stream;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.debezium.config.Configuration;
@@ -48,6 +53,7 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
+import io.debezium.util.ColumnUtils;
 import io.debezium.util.LoggingContext;
 
 /**
@@ -67,6 +73,7 @@ public class AbstractIncrementalSnapshotChangeEventSourceTest {
     private SignalBasedIncrementalSnapshotChangeEventSource<TestPartition, TableId> source;
     private SnapshotProgressListener<TestPartition> progressListener;
     private NotificationService<TestPartition, OffsetContext> notificationService;
+    private SignalBasedIncrementalSnapshotContext<TableId> context;
 
     @BeforeEach
     @SuppressWarnings("unchecked")
@@ -77,10 +84,8 @@ public class AbstractIncrementalSnapshotChangeEventSourceTest {
         source = new SignalBasedIncrementalSnapshotChangeEventSource<>(config(), jdbcConnection, null, null, null, progressListener, null,
                 notificationService);
 
-        // A snapshot with a single pending data collection so that readChunk proceeds past its
-        // guard clauses and starts reading a chunk.
-        SignalBasedIncrementalSnapshotContext<TableId> context = new SignalBasedIncrementalSnapshotContext<>();
-        context.addDataCollectionNamesToSnapshot("signal-1", List.of("public.a"), List.of(), "");
+        context = new SignalBasedIncrementalSnapshotContext<>();
+        context.addDataCollectionNamesToSnapshot("signal-1", List.of("public.a", "public.b"), List.of(), "");
 
         offsetContext = mock(OffsetContext.class);
         doReturn(context).when(offsetContext).getIncrementalSnapshotContext();
@@ -154,17 +159,53 @@ public class AbstractIncrementalSnapshotChangeEventSourceTest {
                 .isTrue();
     }
 
+    @ParameterizedTest
+    @FixFor("debezium/dbz#2604")
+    @MethodSource("failuresOutsideSchemaMismatchRecovery")
+    public void shouldSkipTableWhenRollbackFailsOutsideRecovery(Exception readFailure, boolean recoverySupported, boolean schemaChangesEnabled) throws Exception {
+        source = recoverySource(recoverySupported, schemaChangesEnabled);
+        final var rollbackFailure = new SQLException("rollback failed");
+        final var closeFailure = new SQLException("close failed");
+        when(jdbcConnection.commit()).thenThrow(readFailure);
+        when(jdbcConnection.rollback()).thenThrow(rollbackFailure);
+        doThrow(closeFailure).when(jdbcConnection).close();
+        final var queue = errorQueue();
+        try {
+            final var errorHandler = new ErrorHandler(SourceConnector.class, config(), queue, null);
+            source.setErrorHandler(errorHandler);
+
+            source.readChunk(null, offsetContext);
+
+            verify(jdbcConnection).close();
+            assertThat(context.currentDataCollectionId().getId()).isEqualTo(TableId.parse("public.b"));
+            verify(progressListener, never()).snapshotCompleted(null);
+            assertThat(rollbackFailure.getSuppressed()).contains(readFailure, closeFailure);
+            assertThat(errorHandler.getProducerThrowable()).isNull();
+            assertThat(queue.poll()).isEmpty();
+        }
+        finally {
+            queue.close();
+        }
+    }
+
+    private static Stream<Arguments> failuresOutsideSchemaMismatchRecovery() {
+        return Stream.of(
+                Arguments.of(new SQLException("chunk failed"), true, true),
+                Arguments.of(new IllegalArgumentException("chunk failed"), true, true),
+                Arguments.of(new ColumnUtils.SchemaMismatchException("schema mismatch"), false, true),
+                Arguments.of(new ColumnUtils.SchemaMismatchException("schema mismatch"), true, false),
+                Arguments.of(new ColumnUtils.SchemaMismatchException("schema mismatch"), false, false));
+    }
+
     @Test
     @FixFor("debezium/dbz#2604")
-    public void shouldCloseConnectionAndReportRollbackFailure() throws Exception {
-        final var readFailure = new SQLException("chunk failed");
+    public void shouldReportRollbackFailureDuringSchemaMismatchRecovery() throws Exception {
+        source = recoverySource(true, true);
+        final var readFailure = new ColumnUtils.SchemaMismatchException("schema mismatch");
         final var rollbackFailure = new SQLException("rollback failed");
         when(jdbcConnection.commit()).thenThrow(readFailure);
         when(jdbcConnection.rollback()).thenThrow(rollbackFailure);
-        final var queue = new ChangeEventQueue.Builder<DataChangeEvent>()
-                .maxBatchSize(10).maxQueueSize(20).pollInterval(Duration.ofMillis(10))
-                .loggingContextSupplier(() -> LoggingContext.forConnector("test", "recovery", "test"))
-                .build();
+        final var queue = errorQueue();
         try {
             final var errorHandler = new ErrorHandler(SourceConnector.class, config(), queue, null);
             source.setErrorHandler(errorHandler);
@@ -174,6 +215,7 @@ public class AbstractIncrementalSnapshotChangeEventSourceTest {
                     .hasCause(rollbackFailure);
 
             verify(jdbcConnection).close();
+            assertThat(context.currentDataCollectionId().getId()).isEqualTo(TableId.parse("public.a"));
             verify(progressListener, never()).snapshotCompleted(null);
             assertThat(rollbackFailure.getSuppressed()).containsExactly(readFailure);
             assertThat(errorHandler.getProducerThrowable()).hasCause(rollbackFailure);
@@ -184,12 +226,39 @@ public class AbstractIncrementalSnapshotChangeEventSourceTest {
         }
     }
 
+    private ChangeEventQueue<DataChangeEvent> errorQueue() {
+        return new ChangeEventQueue.Builder<DataChangeEvent>()
+                .maxBatchSize(10).maxQueueSize(20).pollInterval(Duration.ofMillis(10))
+                .loggingContextSupplier(() -> LoggingContext.forConnector("test", "recovery", "test"))
+                .build();
+    }
+
+    private SignalBasedIncrementalSnapshotChangeEventSource<TestPartition, TableId> recoverySource(boolean recoverySupported, boolean schemaChangesEnabled) {
+        return new SignalBasedIncrementalSnapshotChangeEventSource<>(config(schemaChangesEnabled), jdbcConnection, null, null, null, progressListener, null,
+                notificationService) {
+            @Override
+            protected boolean supportsSchemaMismatchRecovery() {
+                return recoverySupported;
+            }
+        };
+    }
+
     private RelationalDatabaseConnectorConfig config() {
+        return config(false);
+    }
+
+    private RelationalDatabaseConnectorConfig config(boolean schemaChangesEnabled) {
         final Configuration configuration = Configuration.create()
                 .with(RelationalDatabaseConnectorConfig.SIGNAL_DATA_COLLECTION, "debezium.signal")
                 .with(RelationalDatabaseConnectorConfig.TOPIC_PREFIX, "core")
+                .with(RelationalDatabaseConnectorConfig.INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES, schemaChangesEnabled)
                 .build();
         return new RelationalDatabaseConnectorConfig(configuration, null, null, 0, ColumnFilterMode.CATALOG, true) {
+            @Override
+            public boolean supportsSchemaChangesDuringIncrementalSnapshot() {
+                return true;
+            }
+
             @Override
             protected SourceInfoStructMaker<?> getSourceInfoStructMaker(Version version) {
                 return null;
