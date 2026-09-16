@@ -316,9 +316,50 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
             executeAndProcessQuery(statement);
 
+            dbz2634DumpRawRows(startScn, endScn);
+
             logPendingTransactions();
 
             return calculateNewStartScn(startScn, endScn, getOffsetContext().getCommitScn().getMaxCommittedScn());
+        }
+    }
+
+    // DBZ2634 instrumentation: every row LogMiner emits for the fetched range in this same mining session,
+    // with none of the connector's predicates, so the log shows what Oracle wrote next to what was cached.
+    private static final int DBZ2634_RAW_ROW_LIMIT = 5000;
+
+    private void dbz2634DumpRawRows(Scn startScn, Scn endScn) {
+        if ("false".equalsIgnoreCase(System.getenv("DBZ2634_RAW_DUMP"))) {
+            return;
+        }
+        final String sql = "SELECT SCN, LTRIM(RS_ID), SSN, RAWTOHEX(XID), OPERATION_CODE, OPERATION, SEG_OWNER, TABLE_NAME, ROW_ID, "
+                + "ROLLBACK, SEQUENCE#, CSF, STATUS, INFO, CASE WHEN SQL_REDO IS NULL THEN 0 ELSE 1 END "
+                + "FROM V$LOGMNR_CONTENTS WHERE SCN > ? AND SCN <= ?";
+        try (PreparedStatement statement = getStreamingConnection().connection().prepareStatement(sql)) {
+            statement.setFetchSize(2000);
+            statement.setString(1, startScn.toString());
+            statement.setString(2, endScn.toString());
+            try (ResultSet rs = statement.executeQuery()) {
+                final StringBuilder sb = new StringBuilder();
+                int rows = 0;
+                while (rs.next()) {
+                    rows++;
+                    if (rows <= DBZ2634_RAW_ROW_LIMIT) {
+                        sb.append("\n  ").append(rows);
+                        for (int i = 1; i <= 15; i++) {
+                            sb.append('|').append(rs.getString(i));
+                        }
+                    }
+                }
+                if (rows > 0) {
+                    LOGGER.warn(
+                            "DBZ2634 raw logminer rows for fetch range [{}, {}]: {} rows{} (scn|rs_id|ssn|xid|op_code|op|owner|table|row_id|rollback|seq|csf|status|info|has_sql){}",
+                            startScn, endScn, rows, rows > DBZ2634_RAW_ROW_LIMIT ? " truncated to " + DBZ2634_RAW_ROW_LIMIT : "", sb);
+                }
+            }
+        }
+        catch (Exception e) {
+            LOGGER.warn("DBZ2634 raw logminer dump failed for fetch range [{}, {}]", startScn, endScn, e);
         }
     }
 

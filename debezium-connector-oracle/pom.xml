@@ -432,6 +432,11 @@
             </activation>
             <properties>
                 <skipITs>false</skipITs>
+                <!-- DBZ2634 instrumentation branch: run only the buffered LogMiner ITs and no unit tests -->
+                <it.test>MemoryStreamingChangeEventSourceIT,EhcacheStreamingChangeEventSourceIT,EmbeddedInfinispanStreamingChangeEventSourceIT</it.test>
+                <test>NoSuchUnitTest</test>
+                <surefire.failIfNoSpecifiedTests>false</surefire.failIfNoSpecifiedTests>
+                <failIfNoTests>false</failIfNoTests>
             </properties>
         </profile>
         <!--
