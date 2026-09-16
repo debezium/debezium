@@ -91,3 +91,82 @@ The connector reads the log in small batches, emits a change event for each row,
 So that the log does not grow without bound, the connector periodically deletes the rows whose changes {prodname} has already committed downstream.
 
 A SQLite connector uses a single task, and each connector instance captures a single database file.
+
+[[how-the-sqlite-connector-works]]
+== How the connector works
+
+To optimally configure and run a {prodname} SQLite connector, it is helpful to understand how the connector performs snapshots, streams changes, and names topics.
+
+[[sqlite-snapshots]]
+=== Snapshots
+
+When a SQLite connector starts for the first time, it performs an initial snapshot of the tables that it captures.
+The connector completes the following steps:
+
+. Switches the database file to WAL journal mode, and creates the `_debezium_cdc_log` table if it does not already exist.
+
+. Installs the capture triggers on each table that it captures.
+From this point on, SQLite logs every insert, update, and delete to the CDC log table with a `change_id`, so that no change that occurs during or after the snapshot is lost.
+
+. Opens a read transaction on the WAL, which provides a consistent view of the database without locking the tables or blocking application writers.
+
+. Reads the highest `change_id` in the CDC log within that same view, and stores it in the connector offsets as the position from which streaming later resumes.
+Because the connector reads the mark and the table data from one consistent view, any change that is committed after the mark is left for the streaming phase, with no gap and no duplicate.
+
+. Reads every row of each captured table, and emits it as a read (`op=r`) event.
+The connector also emits one schema change event per table.
+
+. Records that the snapshot is complete in the connector offsets, and hands off to the streaming phase, which resumes from the stored `change_id`.
+
+.Snapshot modes
+The `snapshot.mode` property controls the snapshot behavior:
+
+`initial`:: The connector performs a snapshot when no offsets exist, and then streams changes. This is the default.
+`always`:: The connector performs a snapshot every time that it starts, and then streams changes.
+`no_data`:: The connector does not snapshot data. It installs the capture triggers if they are missing, and begins streaming from the current position of the CDC log.
+`initial_only`:: The connector performs a snapshot when no offsets exist, and then stops without streaming.
+
+[NOTE]
+====
+The SQLite connector does not support incremental snapshots, ad hoc snapshots, or blocking snapshots.
+====
+
+[[sqlite-streaming-changes]]
+=== Streaming changes
+
+After the snapshot completes, the connector begins to poll the CDC log table, and streams the rows that the triggers append to it.
+For each poll, the connector completes the following steps:
+
+. Reconciles the capture triggers if the database schema has changed since the previous poll, so that a schema change is picked up before the connector reads the next batch.
+
+. Deletes already-committed rows from the CDC log once enough of them have accumulated, so that the log does not grow without bound.
+
+. Reads a batch of rows whose `change_id` is greater than the stored offset, up to the limit that the `cdc.log.batch.size` property sets.
+
+. Emits a change event for each row, in `change_id` order, and advances the offset to the `change_id` of the last row that it emits.
+
+If a poll returns no rows, the connector pauses for the poll interval before it polls again.
+The connector reads each batch in a short, autocommitted transaction, so that SQLite can checkpoint the WAL between polls.
+
+Because the triggers write to the CDC log in the same transaction as the change that fired them, the `change_id` order is the commit order, and the connector emits change events in that order.
+
+A SQLite connector supports a single task, because SQLite allows a single writer.
+If you set `tasks.max` to a value greater than `1`, the connector logs a warning and uses a single task.
+
+[[sqlite-topic-names]]
+=== Topic names
+
+By default, the SQLite connector writes all of the change events for a table to a single Kafka topic.
+The connector names change event topics according to the following format:
+
+_topicPrefix_._tableName_
+
+The following list provides definitions for the components of the default name:
+
+_topicPrefix_:: The value that the `topic.prefix` configuration property specifies.
+_tableName_:: The name of the table in which the operation occurred.
+
+SQLite has no catalog or schema, so the table name is the only qualifier between the prefix and the name of the topic.
+For example, if `topic.prefix` is set to `sqlite`, and a row is inserted into the `orders` table, the connector emits the event to the `sqlite.orders` topic.
+
+To change the topic naming convention, you can configure a custom topic naming strategy.
