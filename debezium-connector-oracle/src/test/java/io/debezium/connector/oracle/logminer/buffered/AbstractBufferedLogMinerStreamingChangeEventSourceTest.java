@@ -995,7 +995,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         Mockito.when(row.getRedoSql()).thenReturn("insert into \"DEBEZIUM\".\"%s\"(\"ID\",\"DATA\") values ('1',%s);".formatted(tableName, dataValue));
         Mockito.when(row.getRsId()).thenReturn("A.B.C");
         Mockito.when(row.getTablespaceName()).thenReturn("DEBEZIUM");
-        Mockito.when(row.getUserName()).thenReturn(TestHelper.SCHEMA_USER);
+        Mockito.when(row.getUserName()).thenReturn(TestHelper.getSchemaUserName());
         return row;
     }
 
@@ -1013,7 +1013,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
                 "update \"DEBEZIUM\".\"%s\" set \"DATA\" = %s where \"ID\" = '1' and ROWID = '%s';".formatted(tableName, dataValue, rowId));
         Mockito.when(row.getRsId()).thenReturn("A.B.C");
         Mockito.when(row.getTablespaceName()).thenReturn("DEBEZIUM");
-        Mockito.when(row.getUserName()).thenReturn(TestHelper.SCHEMA_USER);
+        Mockito.when(row.getUserName()).thenReturn(TestHelper.getSchemaUserName());
         return row;
     }
 
@@ -1033,7 +1033,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
                 "update \"DEBEZIUM\".\"%s\" set \"DATA\" = %s;".formatted(tableName, dataValue));
         Mockito.when(row.getRsId()).thenReturn("A.B.C");
         Mockito.when(row.getTablespaceName()).thenReturn("DEBEZIUM");
-        Mockito.when(row.getUserName()).thenReturn(TestHelper.SCHEMA_USER);
+        Mockito.when(row.getUserName()).thenReturn(TestHelper.getSchemaUserName());
         return row;
     }
 

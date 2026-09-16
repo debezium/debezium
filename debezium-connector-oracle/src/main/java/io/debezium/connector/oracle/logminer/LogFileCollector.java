@@ -186,7 +186,7 @@ public class LogFileCollector {
     @VisibleForTesting
     public List<LogFile> getDeletedLogsForOffsetScn(Scn offsetScn) throws SQLException {
         return connection.queryAndMap(
-                SqlUtils.deletedArchiveLogsQuery(offsetScn, archiveLogDestinationNames),
+                SqlUtils.deletedArchiveLogsQuery(offsetScn, archiveLogDestinationNames, connection.isAutonomousDatabase()),
                 rs -> {
                     final List<LogFile> logs = new ArrayList<>();
                     while (rs.next()) {
@@ -319,6 +319,19 @@ public class LogFileCollector {
         final List<LogFile> result = new ArrayList<>();
         final Set<LogFile.ThreadSequence> seen = new HashSet<>();
 
+        if (destinationNames.isEmpty()) {
+            // No destination precedence is available, e.g. Oracle Autonomous Database where the
+            // archive destination views are hidden; retain all logs across destinations.
+            for (List<LogFile> destinationLogs : logs.values()) {
+                for (LogFile logFile : destinationLogs) {
+                    if (seen.add(logFile.getThreadSequence())) {
+                        result.add(logFile);
+                    }
+                }
+            }
+            return result;
+        }
+
         for (String destinationName : destinationNames) {
             final List<LogFile> destinationLogs = logs.get(destinationName);
             if (destinationLogs == null) {
@@ -354,6 +367,13 @@ public class LogFileCollector {
         }
 
         if (threadLogs == null || threadLogs.isEmpty()) {
+            // In ADB, multiple redo threads may be present in V$THREAD but not all are actively used.
+            // If a thread has no logs at all, we treat it as consistent in ADB mode since the thread
+            // is likely not being used for this specific database instance.
+            if (connection.isAutonomousDatabase()) {
+                LOGGER.debug("Redo thread {} has no logs in Autonomous Database mode, treating as consistent.", threadId);
+                return true;
+            }
             logException(String.format("Redo thread %d is inconsistent; enabled SCN %s checkpoint SCN %s reading from SCN %s, no logs found.",
                     threadId, enabledScn, checkpointScn, startScn));
             return false;
@@ -593,7 +613,7 @@ public class LogFileCollector {
     @VisibleForTesting
     public List<LogFile> getAllRedoThreadArchiveLogs(int threadId) throws SQLException {
         return connection.queryAndMap(
-                SqlUtils.allRedoThreadArchiveLogs(threadId, archiveLogDestinationNames),
+                SqlUtils.allRedoThreadArchiveLogs(threadId, archiveLogDestinationNames, connection.isAutonomousDatabase()),
                 rs -> {
                     final Map<String, List<LogFile>> archiveLogsByDestination = new HashMap<>();
                     while (rs.next()) {
@@ -629,7 +649,7 @@ public class LogFileCollector {
      * @return query string
      */
     private String getLogsQuery(Scn offsetScn) {
-        return SqlUtils.allMinableLogsQuery(offsetScn, archiveLogRetention, archiveLogOnlyMode, archiveLogDestinationNames);
+        return SqlUtils.allMinableLogsQuery(offsetScn, archiveLogRetention, archiveLogOnlyMode, archiveLogDestinationNames, connection.isAutonomousDatabase());
     }
 
     /**
