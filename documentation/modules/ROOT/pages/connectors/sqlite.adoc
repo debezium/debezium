@@ -1,0 +1,93 @@
+[id="debezium-connector-for-sqlite"]
+= {prodname} connector for SQLite
+
+:context: sqlite
+:data-collection: table
+:mbean-name: {context}
+:connector-file: {context}
+:connector-class: SQLiteSourceConnector
+:connector-name: SQLite
+:include-list-example: orders
+
+ifdef::community[]
+
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+
+endif::community[]
+
+The {prodname} SQLite connector captures row-level changes in the tables of a link:https://www.sqlite.org/[SQLite] database file.
+ifdef::community[]
+For information about the SQLite versions that are compatible with this connector, see the link:https://debezium.io/releases/[{prodname} release overview].
+endif::community[]
+
+SQLite is an embedded database that stores an entire database in a single file, and it exposes no replication log or change stream that an external process can follow.
+Instead, the connector captures changes with SQL triggers.
+For each table that it captures, the connector installs `AFTER INSERT`, `AFTER UPDATE`, and `AFTER DELETE` triggers.
+Every trigger writes one row that describes the change into an internal table named `_debezium_cdc_log`, in commit order.
+
+The first time that the connector starts, it reads a consistent snapshot of the tables that it is configured to capture.
+After the snapshot completes, the connector streams changes by reading the new rows that the triggers append to the CDC log table.
+By default, change events for a particular table go to a Kafka topic that is named after the table.
+Applications and services can then consume change event records from these topics.
+
+ifdef::community[]
+[NOTE]
+====
+The {prodname} connector for SQLite is currently in the Incubating stage of development.
+You are encouraged to explore and test the connector, but it is not yet recommended for production use.
+The format of emitted messages may change, specific features may not be implemented, and it is expected to evolve before it is production-ready.
+====
+endif::community[]
+
+[[sqlite-overview]]
+== Overview
+
+Because SQLite has no server process and no built-in change stream, the connector runs against the database file directly and derives a change stream from SQL triggers.
+
+The connector opens the same database file that the application writes to, and it opens the file in link:https://www.sqlite.org/wal.html[write-ahead logging (WAL)] mode.
+WAL mode lets the connector read the database in short transactions while application writers continue to commit, so capture does not block the application and the application does not block capture.
+
+For each captured table, the connector installs three triggers, one each for `INSERT`, `UPDATE`, and `DELETE`.
+Every trigger appends a single row to the `_debezium_cdc_log` table within the same transaction as the change that fired it, so a change and its log row commit together, or not at all.
+The CDC log table has the following structure:
+
+[cols="2,2,5",options="header"]
+|===
+|Column |Type |Description
+
+|`change_id`
+|`INTEGER PRIMARY KEY AUTOINCREMENT`
+|A monotonically increasing identifier that SQLite assigns in commit order. It is the position that the connector streams from and stores in its offsets.
+
+|`table_name`
+|`TEXT`
+|The name of the table in which the change occurred.
+
+|`operation`
+|`TEXT`
+|The kind of change: `c` for an insert, `u` for an update, and `d` for a delete.
+
+|`old_row_data`
+|`TEXT`
+|A JSON object with the row's values before the change. It is `null` for an insert.
+
+|`new_row_data`
+|`TEXT`
+|A JSON object with the row's values after the change. It is `null` for a delete.
+
+|`committed_at`
+|`INTEGER`
+|The time, in milliseconds since the UNIX epoch, at which the change was recorded.
+|===
+
+Because the triggers write to the log in the same transaction as the change, the `change_id` order is the commit order, and the connector emits change events in that order.
+The connector reads the log in small batches, emits a change event for each row, and advances its offset to the `change_id` of the last row that it processed.
+So that the log does not grow without bound, the connector periodically deletes the rows whose changes {prodname} has already committed downstream.
+
+A SQLite connector uses a single task, and each connector instance captures a single database file.
