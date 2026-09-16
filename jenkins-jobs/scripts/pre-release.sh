@@ -63,24 +63,50 @@ MAJOR_MINOR=$(echo "$VERSION" | grep -oP '^\d+\.\d+')
 step "Fetching tags to derive PREVIOUS_VERSION..."
 # Tags have the form vMAJOR.MINOR.MICRO.Qualifier (e.g. v3.7.0.Beta1).
 # ltrimstr("refs/tags/v") strips both the ref prefix and the v in one step.
-# We only consider tags that are strictly less than VERSION so that
-# pre-release tags of the same MICRO (e.g. 3.6.2.Alpha1 when releasing
-# 3.6.2.Final) do not shadow the real previous release.
-# Sort fields: k1=MAJOR k2=MINOR k3=MICRO k4=Qualifier (lexicographic, Alpha<Beta<Final).
+# Strategy:
+#   - For a pre-release (qualifier is not "Final"), the previous version is
+#     the greatest tag with the same MAJOR.MINOR.MICRO that sorts before
+#     VERSION (e.g. Beta1 before Beta2).  If none exists, fall back to the
+#     greatest tag in the same MAJOR.MINOR series, then globally.
+#   - For a Final release, exclude same-MICRO pre-release tags and look for
+#     the previous patch release in the same MAJOR.MINOR series.
+# Sort fields: k1=MAJOR k2=MINOR k3=MICRO k4=Qualifier (lexicographic,
+# which gives Alpha < Beta < CR < Final).
 MICRO=$(echo "$VERSION" | grep -oP '^\d+\.\d+\.\d+')
-PREVIOUS_VERSION=$(gh api \
+QUALIFIER=$(echo "$VERSION" | grep -oP '[^.]+$')
+
+ALL_TAGS=$(gh api \
   "repos/debezium/debezium/git/refs/tags" --paginate \
-  --jq '.[].ref | ltrimstr("refs/tags/v")' \
-  | grep -P "^${MAJOR_MINOR//./\\.}\." \
-  | grep -v "^${MICRO//./\\.}\." \
-  | sort -t. -k1,1n -k2,2n -k3,3n -k4,4 \
-  | tail -1)
+  --jq '.[].ref | ltrimstr("refs/tags/v")')
+
+if [[ "$QUALIFIER" != "Final" ]]; then
+    # Pre-release (Alpha, Beta, CR, …): the previous release is the greatest
+    # same-MICRO tag that sorts strictly before VERSION.
+    # VERSION itself is not in the tag list yet (not yet tagged), so we sort
+    # all existing same-MICRO tags and take the last one whose qualifier
+    # compares less than QUALIFIER.
+    # Example: existing tags 3.7.0.Alpha1, 3.7.0.Beta1; VERSION=3.7.0.Beta2
+    #          -> 3.7.0.Beta1
+    PREVIOUS_VERSION=$(echo "$ALL_TAGS" \
+      | grep -P "^${MICRO//./\\.}\." \
+      | sort -t. -k1,1n -k2,2n -k3,3n -k4,4 \
+      | awk -F. -v q="$QUALIFIER" '$4 < q {last=$0} END {print last}')
+else
+    # Final release: ignore all tags of the same MICRO (pre-releases + the
+    # current Final) and pick the greatest remaining tag in the same
+    # MAJOR.MINOR series.
+    # Example: 3.6.3.Final -> 3.6.2.Final  (not 3.6.3.CR1)
+    PREVIOUS_VERSION=$(echo "$ALL_TAGS" \
+      | grep -P "^${MAJOR_MINOR//./\\.}\." \
+      | grep -v "^${MICRO//./\\.}\." \
+      | sort -t. -k1,1n -k2,2n -k3,3n -k4,4 \
+      | tail -1)
+fi
 
 if [ -z "$PREVIOUS_VERSION" ]; then
-    PREVIOUS_VERSION=$(gh api \
-      "repos/debezium/debezium/git/refs/tags" --paginate \
-      --jq '.[].ref | ltrimstr("refs/tags/v")' \
-      | grep -v "^${MICRO//./\\.}\." \
+    # Global fallback: latest tag across all versions except VERSION itself.
+    PREVIOUS_VERSION=$(echo "$ALL_TAGS" \
+      | grep -v "^${VERSION//./\\.}$" \
       | sort -t. -k1,1n -k2,2n -k3,3n -k4,4 \
       | tail -1)
 fi
@@ -180,7 +206,7 @@ done
 # ---------------------------------------------------------------------------
 # GitHub Project operations
 # ---------------------------------------------------------------------------
-step "Creating new GitHub project iteration ${NEXT_VERSION}..."
+step "Re-assigning to new GitHub project iteration ${NEXT_VERSION}..."
 groovy debezium/jenkins-jobs/scripts/dbz-project-tool.groovy \
     -o debezium -t "$GITHUB_TOKEN" -i "$VERSION" -p "$PROJECT_NUMBER" \
     -a new-iteration --new-iteration "$NEXT_VERSION"

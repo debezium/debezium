@@ -265,9 +265,16 @@ def buildArgsForRepo(repoDir) {
     'jbang-catalog': 'debezium-jbang-catalog',
 ]
 
+// Overrides the default 'io.debezium' group ID used in artifactExists() for repos that
+// publish under a different Maven group ID.
+@Field final TEST_GROUP_IDS = [
+    'jbang-catalog': 'io.debezium.jbang',
+]
+
 def artifactExists(repoDir) {
     def artifactId = TEST_ARTIFACTS.getOrDefault(repoDir, "debezium-connector-${repoDir}")
-    def url  = "https://repo1.maven.org/maven2/io/debezium/${artifactId}/$RELEASE_VERSION/${artifactId}-${RELEASE_VERSION}.pom"
+    def groupPath = TEST_GROUP_IDS.getOrDefault(repoDir, 'io.debezium').replace('.', '/')
+    def url = "https://repo1.maven.org/maven2/${groupPath}/${artifactId}/$RELEASE_VERSION/${artifactId}-${RELEASE_VERSION}.pom"
     echo "Checking ${url}"
     sh(script: "curl -sSfI ${url} >/dev/null", returnStatus: true) == 0
 }
@@ -339,6 +346,9 @@ def serverPrePrepareSteps() {
     fileUtils.modifyFile('debezium-server-bom/pom.xml') {
         it.replaceFirst('<version>.+</version>\n    </parent>', "<version>$RELEASE_VERSION</version>\n    </parent>")
     }
+    fileUtils.modifyFile('debezium-quarkus-bridge/pom.xml') {
+        it.replaceFirst('<version>.+</version>\n    </parent>', "<version>$RELEASE_VERSION</version>\n    </parent>")
+    }
     defaultPrePrepareSteps()
 }
 
@@ -382,6 +392,9 @@ def debeziumPostPerformSteps() {
 
 def serverPostPerformSteps() {
     fileUtils.modifyFile('debezium-server-bom/pom.xml') {
+        it.replaceFirst('<version>.+</version>\n    </parent>', "<version>$DEVELOPMENT_VERSION</version>\n    </parent>")
+    }
+    fileUtils.modifyFile('debezium-quarkus-bridge/pom.xml') {
         it.replaceFirst('<version>.+</version>\n    </parent>', "<version>$DEVELOPMENT_VERSION</version>\n    </parent>")
     }
     defaultPostPerformSteps()
