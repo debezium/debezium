@@ -91,6 +91,41 @@ public class ShardedDocumentKeyIT extends AbstractShardedMongoConnectorIT {
         assertThat(snapshotted).extracting(ShardedDocumentKeyIT::keyOf).containsExactly("1", "1");
     }
 
+    @Test
+    @FixFor("debezium/dbz#2337")
+    void shouldAgreeOnTheKeyOfADocumentMissingTheShardKey() throws InterruptedException {
+        insertDocuments(DATABASE, COLLECTION, new Document("_id", 1)
+                .append("name", "Mary"));
+
+        start(MongoDbConnector.class, config(MongoDbConnectorConfig.ChangeEventKeyMode.DOCUMENT_KEY));
+        final var snapshotted = consumeFirstRecord();
+
+        updateName();
+        final var streamed = consumeFirstRecord();
+
+        // MongoDB leaves a shard key field that the document does not carry out of the document key.
+        assertThat(keyOf(streamed)).isEqualTo(keyOf(snapshotted));
+        assertThat(keyOf(snapshotted)).isEqualTo("{\"_id\": 1}");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2337")
+    void shouldAgreeOnTheKeyOfADocumentWithANullShardKey() throws InterruptedException {
+        final var withNullShardKey = new Document("_id", 1);
+        withNullShardKey.append(SHARD_KEY, null).append("name", "Mary");
+        insertDocuments(DATABASE, COLLECTION, withNullShardKey);
+
+        start(MongoDbConnector.class, config(MongoDbConnectorConfig.ChangeEventKeyMode.DOCUMENT_KEY));
+        final var snapshotted = consumeFirstRecord();
+
+        updateName();
+        final var streamed = consumeFirstRecord();
+
+        // A shard key field that is present and null is kept, unlike one that is absent.
+        assertThat(keyOf(streamed)).isEqualTo(keyOf(snapshotted));
+        assertThat(keyOf(snapshotted)).isEqualTo("{\"tenant\": null,\"_id\": 1}");
+    }
+
     /**
      * Places one chunk on each shard and inserts a document into each, both with an _id of 1. MongoDB only accepts the
      * second insert because the _id index is enforced per shard.
