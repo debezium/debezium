@@ -170,3 +170,180 @@ SQLite has no catalog or schema, so the table name is the only qualifier between
 For example, if `topic.prefix` is set to `sqlite`, and a row is inserted into the `orders` table, the connector emits the event to the `sqlite.orders` topic.
 
 To change the topic naming convention, you can configure a custom topic naming strategy.
+
+[[sqlite-events]]
+== Data change events
+
+The {prodname} SQLite connector generates a data change event for each row-level insert, update, and delete operation.
+Each event contains a key and a value.
+The structure of the key and the value depends on the table that was changed.
+
+The connector emits the following operations:
+
+[cols="1,1,3,3",options="header"]
+|===
+|Operation |`op` |`before` |`after`
+
+|Snapshot read
+|`r`
+|`null`
+|The full row, as it existed when the snapshot ran.
+
+|Insert
+|`c`
+|`null`
+|The full row that was inserted.
+
+|Update
+|`u`
+|The full row, as it existed before the update.
+|The full row, as it exists after the update.
+
+|Delete
+|`d`
+|The full row, as it existed before the delete.
+|`null`
+|===
+
+Because the capture triggers record the complete `OLD` and `NEW` row for every change, update and delete events carry a full before image, not only the primary key.
+
+[[sqlite-change-event-keys]]
+=== Change event keys
+
+The key of a change event contains the primary key of the table in which the change occurred.
+For a table named `orders` whose primary key is an `INTEGER` column named `id`, and a connector for which `topic.prefix` is set to `sqlite`, the key of every change event has the following structure:
+
+[source,json,indent=0]
+----
+{
+  "schema": {
+    "type": "struct",
+    "name": "sqlite.orders.Key",
+    "optional": false,
+    "fields": [
+      {
+        "field": "id",
+        "type": "int64",
+        "optional": false
+      }
+    ]
+  },
+  "payload": {
+    "id": 1004
+  }
+}
+----
+
+[[sqlite-change-event-values]]
+=== Change event values
+
+The value of a change event uses the standard {prodname} envelope, which contains `before`, `after`, `source`, `op`, and `ts_ms` fields.
+
+.Example: create event
+The following example shows the value of a change event that the connector emits after a row is inserted into the `orders` table:
+
+[source,json,indent=0]
+----
+{
+  "payload": {
+    "before": null,
+    "after": {
+      "id": 1004,
+      "name": "milk frother",
+      "quantity": 2
+    },
+    "source": {
+      "version": "{debezium-version}",
+      "connector": "sqlite",
+      "name": "sqlite",
+      "ts_ms": 1754630400000,
+      "snapshot": "false",
+      "db": "sqlite",
+      "table": "orders",
+      "change_id": 42
+    },
+    "op": "c",
+    "ts_ms": 1754630400123
+  }
+}
+----
+
+.Example: update event
+The following example shows an update to the same row.
+The `before` field holds the row as it existed before the change, and the `after` field holds the row as it exists after the change:
+
+[source,json,indent=0]
+----
+{
+  "payload": {
+    "before": {
+      "id": 1004,
+      "name": "milk frother",
+      "quantity": 2
+    },
+    "after": {
+      "id": 1004,
+      "name": "milk frother",
+      "quantity": 5
+    },
+    "source": {
+      "version": "{debezium-version}",
+      "connector": "sqlite",
+      "name": "sqlite",
+      "ts_ms": 1754630500000,
+      "snapshot": "false",
+      "db": "sqlite",
+      "table": "orders",
+      "change_id": 43
+    },
+    "op": "u",
+    "ts_ms": 1754630500456
+  }
+}
+----
+
+.Example: delete event
+The following example shows the deletion of the same row.
+The `before` field holds the row as it existed before the delete, and the `after` field is `null`:
+
+[source,json,indent=0]
+----
+{
+  "payload": {
+    "before": {
+      "id": 1004,
+      "name": "milk frother",
+      "quantity": 5
+    },
+    "after": null,
+    "source": {
+      "version": "{debezium-version}",
+      "connector": "sqlite",
+      "name": "sqlite",
+      "ts_ms": 1754630600000,
+      "snapshot": "false",
+      "db": "sqlite",
+      "table": "orders",
+      "change_id": 44
+    },
+    "op": "d",
+    "ts_ms": 1754630600789
+  }
+}
+----
+
+After a delete event, the connector emits a tombstone event, unless you set the `tombstones.on.delete` property to `false`.
+
+.Descriptions of `source` fields
+The `source` block of a SQLite change event contains the following connector-specific fields, in addition to the fields that all {prodname} connectors provide:
+
+[cols="1,4",options="header"]
+|===
+|Field |Description
+
+|`table`
+|The name of the table in which the operation occurred.
+
+|`change_id`
+|The identifier that the connector assigned to the change in the CDC log. It increases monotonically in commit order, and is the position from which the connector resumes streaming.
+|===
