@@ -261,11 +261,4 @@ public class PhysicalRowIdentifierChunkQueryBuilder<T extends DataCollectionId> 
     protected String getPrefetchOrderByExpression() {
         return physicalIdentifierExpression;
     }
-
-    /**
-     * Builds a quoted table reference for {@code FROM} clauses.
-     */
-    protected String buildTableReference(Table table) {
-        return jdbcConnection.quotedTableIdString(table.id());
-    }
 }

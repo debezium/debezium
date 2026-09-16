@@ -301,7 +301,7 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
             addUpperBound(pkColumns, maximumKey, condition, true);
 
             final StringBuilder sql = new StringBuilder("SELECT COUNT(1) FROM ");
-            sql.append(jdbcConnection.quotedTableIdString(table.id()));
+            sql.append(buildTableReference(table));
             getTableAlias(table).ifPresent(alias -> sql.append(' ').append(alias));
             sql.append(" WHERE ").append(condition);
             additionalCondition.ifPresent(ac -> sql.append(" AND ").append(ac));
@@ -327,6 +327,10 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
 
     protected Optional<String> getTableAlias(Table table) {
         return Optional.empty();
+    }
+
+    protected String buildTableReference(Table table) {
+        return jdbcConnection.quotedTableIdString(table.id());
     }
 
     protected KeyMapper getKeyMapper() {
