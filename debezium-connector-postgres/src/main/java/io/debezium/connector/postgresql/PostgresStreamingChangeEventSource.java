@@ -406,6 +406,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 Objects.requireNonNull(tableId);
             }
 
+            offsetContext.markSourceEventStarted();
             offsetContext.incrementLsnEventsProcessed(lsn);
             offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), toLong(message.getTransactionId()),
                     getSlotXmin(),

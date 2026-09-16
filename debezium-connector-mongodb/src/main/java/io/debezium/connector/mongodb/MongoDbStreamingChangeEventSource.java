@@ -174,6 +174,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                 event.getNamespace().getCollectionName());
 
         var emitter = new MongoDbChangeRecordEmitter(partition, offsetContext, clock, event, connectorConfig);
+        offsetContext.markSourceEventStarted();
         offsetContext.changeStreamEvent(event);
         dispatcher.dispatchDataChangeEvent(partition, collectionId, emitter);
     }
