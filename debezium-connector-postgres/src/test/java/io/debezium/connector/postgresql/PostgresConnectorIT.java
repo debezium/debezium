@@ -4359,6 +4359,11 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
             assertThat(error).isNull();
         });
         assertConnectorIsRunning();
+        waitForStreamingRunning();
+
+        final var records = consumeRecordsByTopic(10);
+        assertThat(records.allRecordsInOrder()).hasSize(10);
+        assertThat(records.topics()).hasSize(10);
         assertThat(logInterceptor.containsWarnMessage("Guardrail limit exceeded")).isTrue();
     }
 
