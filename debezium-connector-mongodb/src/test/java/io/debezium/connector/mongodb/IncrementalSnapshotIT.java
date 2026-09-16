@@ -9,15 +9,17 @@ import static java.util.stream.Collectors.toMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
+import java.lang.management.ManagementFactory;
 import java.math.BigDecimal;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -33,6 +35,7 @@ import java.util.stream.Collectors;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
+import org.bson.BsonArray;
 import org.bson.BsonDocument;
 import org.bson.Document;
 import org.bson.types.ObjectId;
@@ -49,6 +52,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.SnapshotMode;
 import io.debezium.connector.mongodb.snapshot.MongoDbIncrementalSnapshotChangeEventSource;
 import io.debezium.data.Envelope;
+import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.junit.logging.LogInterceptor;
@@ -755,6 +759,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
     }
 
     @Test
+    @FixFor("debezium/dbz#2641")
     void pauseDuringSnapshot() throws Exception {
         populateDataCollection();
         startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 1));
@@ -762,29 +767,63 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
 
         sendAdHocSnapshotSignal();
 
-        List<SourceRecord> records = new ArrayList<>();
-        String topicName = topicName();
-        consumeRecords(100, record -> {
+        final Map<Integer, Integer> dbChanges = new HashMap<>();
+        final Set<Integer> completedChunkKeys = new HashSet<>();
+        final String topicName = topicName();
+        final Consumer<SourceRecord> collectRecord = record -> {
             if (topicName.equalsIgnoreCase(record.topic())) {
-                records.add(record);
+                final int key = Integer.parseInt(((Struct) record.key()).getString(pkFieldName()));
+                final int value = extractFieldValue(record);
+                assertThat(completedChunkKeys).as("resume must not repeat completed chunks (PK %s)", key).doesNotContain(key);
+                assertThat(key).isBetween(1, ROW_COUNT);
+                assertThat(value).as("value for PK %s", key).isEqualTo(key - 1);
+                assertThat(((Struct) record.value()).getString(Envelope.FieldName.OPERATION))
+                        .isEqualTo(Envelope.Operation.READ.code());
+                VerifyRecord.isValid(record);
+                dbChanges.put(key, value);
             }
-        });
+        };
+        consumeRecords(100, collectRecord);
 
+        final var mBeanServer = ManagementFactory.getPlatformMBeanServer();
+        final var metrics = getSnapshotMetricsObjectName("mongodb", "mongo1");
         sendPauseSignal();
+        Awaitility.await("snapshot pause acknowledged").atMost(30, TimeUnit.SECONDS)
+                .until(() -> Boolean.TRUE.equals(mBeanServer.getAttribute(metrics, "SnapshotPaused")));
 
-        consumeAvailableRecords(record -> {
-            if (topicName.equalsIgnoreCase(record.topic())) {
-                records.add(record);
-            }
-        });
-        int beforeResume = records.size();
+        final Object pausedChunk = mBeanServer.getAttribute(metrics, "ChunkId");
+        assertThat(pausedChunk).isNotNull();
+        Awaitility.await("snapshot remains paused").during(500, TimeUnit.MILLISECONDS).atMost(10, TimeUnit.SECONDS)
+                .untilAsserted(() -> {
+                    assertThat(mBeanServer.getAttribute(metrics, "SnapshotPaused")).isEqualTo(true);
+                    assertThat(mBeanServer.getAttribute(metrics, "ChunkId")).isEqualTo(pausedChunk);
+                });
+        final int pausedChunkFrom = BsonArray.parse((String) mBeanServer.getAttribute(metrics, "ChunkFrom")).get(0).asInt32().getValue();
+        // Pause allows the current chunk to finish; its records can still be queued for delivery.
+        Awaitility.await("paused chunk delivered").pollInSameThread().atMost(30, TimeUnit.SECONDS)
+                .until(() -> {
+                    consumeAvailableRecords(collectRecord);
+                    return dbChanges.containsKey(pausedChunkFrom);
+                });
+        assertThat(dbChanges.size()).isBetween(1, ROW_COUNT - 1);
+
+        // Only the boundary chunk may be repeated. Earlier chunks must retain their progress.
+        dbChanges.keySet().stream().filter(key -> key < pausedChunkFrom).forEach(completedChunkKeys::add);
+        assertThat(completedChunkKeys).isNotEmpty();
 
         sendResumeSignal();
+        Awaitility.await("snapshot resume acknowledged").atMost(30, TimeUnit.SECONDS)
+                .until(() -> Boolean.FALSE.equals(mBeanServer.getAttribute(metrics, "SnapshotPaused")));
 
-        final int expectedRecordCount = ROW_COUNT;
-        Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount - beforeResume);
-        for (int i = beforeResume + 1; i < expectedRecordCount; i++) {
-            assertThat(dbChanges).contains(entry(i + 1, i));
+        // A resumed chunk can repeat keys already received before the pause.
+        Awaitility.await("all snapshot keys").pollInSameThread().atMost(60, TimeUnit.SECONDS)
+                .until(() -> {
+                    consumeAvailableRecords(collectRecord);
+                    return dbChanges.size() == ROW_COUNT;
+                });
+        assertThat(dbChanges).hasSize(ROW_COUNT);
+        for (int key = 1; key <= ROW_COUNT; key++) {
+            assertThat(dbChanges).containsEntry(key, key - 1);
         }
     }
 
