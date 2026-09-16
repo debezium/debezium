@@ -12,12 +12,14 @@ import java.util.Map;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.Document;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.Updates;
 
 import io.debezium.config.Configuration;
+import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 
 /**
@@ -43,6 +45,82 @@ public class ShardedDocumentKeyIT extends AbstractShardedMongoConnectorIT {
     @Override
     protected Map<String, String> shardedCollections() {
         return Map.of(COLLECTION, SHARD_KEY);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2337")
+    void documentsWithSameIdOnDifferentShardsShouldHaveDistinctKeys() throws InterruptedException {
+        insertTheSameIdOnBothShards();
+
+        start(MongoDbConnector.class, config(MongoDbConnectorConfig.ChangeEventKeyMode.DOCUMENT_KEY));
+        final var snapshotted = consumeRecordsByTopic(2).recordsForTopic(TOPIC);
+        assertThat(snapshotted).hasSize(2).allSatisfy(record -> {
+            verifyOperation(record, Envelope.Operation.READ);
+            assertThat(keyFieldNameOf(record)).isEqualTo("documentKey");
+        });
+        assertThat(snapshotted).extracting(ShardedDocumentKeyIT::keyOf).containsExactlyInAnyOrder(
+                "{\"tenant\": \"a\",\"_id\": 1}", "{\"tenant\": \"b\",\"_id\": 1}");
+
+        try (var client = connect()) {
+            final var collection = client.getDatabase(DATABASE).getCollection(COLLECTION);
+            assertThat(collection.updateOne(Filters.and(Filters.eq("_id", 1), Filters.eq(SHARD_KEY, "a")),
+                    Updates.set("name", "Sally")).getModifiedCount()).isEqualTo(1);
+            assertThat(collection.updateOne(Filters.and(Filters.eq("_id", 1), Filters.eq(SHARD_KEY, "b")),
+                    Updates.set("name", "Peter")).getModifiedCount()).isEqualTo(1);
+        }
+
+        final var streamed = consumeRecordsByTopic(2).recordsForTopic(TOPIC);
+        assertThat(streamed).hasSize(2).allSatisfy(record -> {
+            verifyOperation(record, Envelope.Operation.UPDATE);
+            assertThat(keyFieldNameOf(record)).isEqualTo("documentKey");
+        });
+        assertThat(streamed).extracting(ShardedDocumentKeyIT::keyOf)
+                .containsExactlyInAnyOrderElementsOf(snapshotted.stream().map(ShardedDocumentKeyIT::keyOf).toList());
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2337")
+    void defaultModeShouldGiveBothDocumentsTheSameKey() throws InterruptedException {
+        insertTheSameIdOnBothShards();
+
+        start(MongoDbConnector.class, config(MongoDbConnectorConfig.ChangeEventKeyMode.ID));
+        final var snapshotted = consumeRecordsByTopic(2).recordsForTopic(TOPIC);
+
+        // The collision the option exists to remove: two distinct documents under one key.
+        assertThat(snapshotted).hasSize(2).allSatisfy(record -> assertThat(keyFieldNameOf(record)).isEqualTo("id"));
+        assertThat(snapshotted).extracting(ShardedDocumentKeyIT::keyOf).containsExactly("1", "1");
+    }
+
+    /**
+     * Places one chunk on each shard and inserts a document into each, both with an _id of 1. MongoDB only accepts the
+     * second insert because the _id index is enforced per shard.
+     */
+    private void insertTheSameIdOnBothShards() {
+        Assumptions.assumeTrue(mongo.size() >= 2);
+
+        try (var client = connect()) {
+            final var collection = client.getDatabase(DATABASE).getCollection(COLLECTION);
+            final var admin = client.getDatabase("admin");
+
+            // Use range sharding so that the two tenants can be placed on different shards explicitly.
+            collection.drop();
+            admin.runCommand(new Document("shardCollection", FULL_COLLECTION_NAME)
+                    .append("key", new Document(SHARD_KEY, 1)));
+            admin.runCommand(new Document("split", FULL_COLLECTION_NAME)
+                    .append("middle", new Document(SHARD_KEY, "b")));
+
+            final var primaryShard = client.getDatabase("config").getCollection("databases")
+                    .find(Filters.eq("_id", DATABASE)).first().getString("primary");
+            final var destinationShard = mongo.getShard(0).getName().equals(primaryShard)
+                    ? mongo.getShard(1).getName()
+                    : mongo.getShard(0).getName();
+            admin.runCommand(new Document("moveChunk", FULL_COLLECTION_NAME)
+                    .append("find", new Document(SHARD_KEY, "b"))
+                    .append("to", destinationShard));
+
+            collection.insertOne(new Document("_id", 1).append(SHARD_KEY, "a").append("name", "Mary"));
+            collection.insertOne(new Document("_id", 1).append(SHARD_KEY, "b").append("name", "John"));
+        }
     }
 
     @Test
