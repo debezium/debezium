@@ -1279,8 +1279,9 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
     /**
      * {@link Callable} which in the loop polls the connector for the records.
      * If there are any records, they are passed to the provided processor.
-     * The {@link Callable} is {@link RetryingCallable} - if the {@link RetriableException}
-     * is thrown, the {@link Callable} is executed again according to configured {@link DelayStrategy} and number of retries.
+     * The {@link Callable} is {@link RetryingCallable} - if a {@link RetriableException} is thrown, or the message of the
+     * thrown exception matches the {@code custom.retriable.exception} pattern, the {@link Callable} is executed again
+     * according to configured {@link DelayStrategy} and number of retries.
      *
      * The polling runs in an infinite polling loop until close() is called or exception is thrown.
      * The only exception is catching {@link StopEngineException}, which also leads to finishing the polling loop,
