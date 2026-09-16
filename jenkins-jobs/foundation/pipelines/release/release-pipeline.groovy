@@ -397,10 +397,16 @@ def operatorPostPerformSteps() {
     sh "git commit -a -m \"${String.format(POST_PERFORM_COMMIT_DEFAULT, DEVELOPMENT_VERSION)}\""
 }
 
+def platformPostPerformSteps() {
+    sh 'git checkout -- openapi/openapi.json openapi/openapi.yaml || true'
+    defaultPostPerformSteps()
+}
+
 @Field final POST_PERFORM_STEPS = [
     'debezium': this.&debeziumPostPerformSteps,
     'server': this.&serverPostPerformSteps,
     'operator': this.&operatorPostPerformSteps,
+    'platform': this.&platformPostPerformSteps,
 ]
 
 def releasePrepare(repoDir, repoName) {
