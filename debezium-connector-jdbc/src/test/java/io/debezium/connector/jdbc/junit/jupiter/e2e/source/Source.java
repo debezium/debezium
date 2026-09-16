@@ -37,6 +37,8 @@ import io.strimzi.test.container.StrimziKafkaCluster;
  */
 public class Source extends JdbcConnectionProvider {
 
+    private static final int LOG_SUBSCRIPTION_TIMEOUT_SECONDS = 5;
+
     private static final AtomicInteger sourceId = new AtomicInteger();
 
     // SQL Server
@@ -123,6 +125,15 @@ public class Source extends JdbcConnectionProvider {
 
             try (LogContainerCmd command = connect.getDockerClient().logContainerCmd(connect.getContainerId())) {
                 command.withFollowStream(true).withTail(0).withStdOut(true).exec(callback);
+                try {
+                    if (!callback.awaitStarted(LOG_SUBSCRIPTION_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+                        throw new IllegalStateException("Docker log subscription did not start");
+                    }
+                }
+                catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException("Interrupted while waiting for Docker log subscription", e);
+                }
                 if (doBeforeWait != null) {
                     try {
                         doBeforeWait.run();
