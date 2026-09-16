@@ -329,7 +329,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     private static final int DBZ2634_RAW_ROW_LIMIT = 5000;
 
     private void dbz2634DumpRawRows(Scn startScn, Scn endScn) {
-        if ("false".equalsIgnoreCase(System.getenv("DBZ2634_RAW_DUMP"))) {
+        if (!getConfig().isLogMiningDbz2634RawDump()) {
             return;
         }
         final String sql = "SELECT SCN, LTRIM(RS_ID), SSN, RAWTOHEX(XID), OPERATION_CODE, OPERATION, SEG_OWNER, TABLE_NAME, ROW_ID, "

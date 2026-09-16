@@ -829,6 +829,16 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDescription("Specifies the maximum memory in bytes the LogMiner session can use for performing SQL sort operations. " +
                     "Setting this to 0 (the default) uses the database's default SORT_AREA_SIZE.");
 
+    // DBZ2634 instrumentation: when enabled, every buffered mining pass logs the raw V$LOGMNR_CONTENTS rows
+    // for its fetch range. Set only by the buffered LogMiner streaming integration tests.
+    public static final Field LOG_MINING_DBZ2634_RAW_DUMP = Field.createInternal("log.mining.dbz2634.raw.dump")
+            .withDisplayName("DBZ2634 raw LogMiner dump")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(false)
+            .withDescription("Temporary instrumentation: logs every V$LOGMNR_CONTENTS row of each mining pass without predicates.");
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("Oracle")
             .excluding(
@@ -857,7 +867,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_BUFFER_DEFERRED_TRANSACTION_START, LOG_MINING_BUFFER_DEFERRED_TRANSACTION_RETENTION_MS, LOG_MINING_PATH_DICTIONARY,
                     LOG_MINING_USE_CTE_QUERY,
                     LOG_MINING_REDO_THREAD_SCN_ADJUSTMENT, LOG_MINING_HASH_AREA_SIZE, LOG_MINING_SORT_AREA_SIZE, LOG_MINING_LOG_COUNT_MIN,
-                    LOG_MINING_LOG_COUNT_GROWTH_MAX)
+                    LOG_MINING_LOG_COUNT_GROWTH_MAX, LOG_MINING_DBZ2634_RAW_DUMP)
             .group(Field.Group.CONNECTOR, INTERVAL_HANDLING_MODE, UNAVAILABLE_VALUE_PLACEHOLDER, BINARY_HANDLING_MODE, SCHEMA_NAME_ADJUSTMENT_MODE,
                     LEGACY_DECIMAL_HANDLING_STRATEGY)
             .group(Field.Group.CONNECTOR_ADVANCED, QUERY_FETCH_SIZE, OBJECT_ID_CACHE_SIZE)
@@ -930,6 +940,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final Set<String> logMiningClientIdExcludes;
     private final String logMiningPathToDictionary;
     private final boolean logMiningUseCteQuery;
+    private final boolean logMiningDbz2634RawDump;
     private final OracleJdbcConfiguration oracleJdbcConfig;
     private final Integer logMiningRedoThreadScnAdjustment;
     private final Long logMiningHashAreaSize;
@@ -1014,6 +1025,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningClientIdExcludes = Strings.setOfTrimmed(config.getString(LOG_MINING_CLIENTID_EXCLUDE_LIST), String::new);
         this.logMiningPathToDictionary = config.getString(LOG_MINING_PATH_DICTIONARY);
         this.logMiningUseCteQuery = config.getBoolean(LOG_MINING_USE_CTE_QUERY);
+        this.logMiningDbz2634RawDump = config.getBoolean(LOG_MINING_DBZ2634_RAW_DUMP);
 
         // Initialize logMiningWindowMaxMs, but disable if CTE is enabled as they are incompatible
         final Duration configuredWindowMaxMs = Duration.ofMillis(config.getLong(LOG_MINING_WINDOW_MAX_MS));
@@ -2128,6 +2140,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      */
     public boolean isLogMiningUseCteQuery() {
         return logMiningUseCteQuery;
+    }
+
+    /**
+     * DBZ2634 instrumentation: whether each buffered mining pass logs its raw LogMiner rows.
+     */
+    public boolean isLogMiningDbz2634RawDump() {
+        return logMiningDbz2634RawDump;
     }
 
     /**
