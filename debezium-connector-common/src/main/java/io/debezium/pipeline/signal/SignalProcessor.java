@@ -70,6 +70,13 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
 
     private final Queue<DeferredSignal<P>> synchronousSignals = new ConcurrentLinkedQueue<>();
 
+    /**
+     * Upper bound on the number of synchronous signals executed by a single call to
+     * {@link #processSynchronousSignals()}. Bounds the time the streaming thread spends on signal actions per
+     * iteration, and guarantees the drain terminates even if signals arrive faster than they are executed.
+     */
+    static final int MAX_SYNCHRONOUS_SIGNALS_PER_CALL = 10;
+
     public SignalProcessor(Class<? extends SourceConnector> connector,
                            CommonConnectorConfig config,
                            Map<String, SignalAction<P>> signalActions,
@@ -186,14 +193,20 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
      * context currently associated with its partition. A signal whose partition is no longer managed by this
      * processor is skipped with a warning.
      * <p>
+     * At most {@link #MAX_SYNCHRONOUS_SIGNALS_PER_CALL} signals are executed per call so that a burst of signals
+     * cannot monopolize the streaming thread; any remainder is executed by subsequent calls.
+     * <p>
      * This method does not contend for the semaphore that serializes channel reads, so it never blocks behind
      * the signal processor's executor thread.
      *
      * @throws InterruptedException if the calling thread is interrupted while an action is executing
      */
     public void processSynchronousSignals() throws InterruptedException {
-        DeferredSignal<P> deferred;
-        while ((deferred = synchronousSignals.poll()) != null) {
+        for (int i = 0; i < MAX_SYNCHRONOUS_SIGNALS_PER_CALL; i++) {
+            final DeferredSignal<P> deferred = synchronousSignals.poll();
+            if (deferred == null) {
+                return;
+            }
             final SignalRecord signalRecord = deferred.signalRecord();
             final O offset = partitionOffsets.get(deferred.partition());
             if (offset == null) {
@@ -211,6 +224,10 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
             catch (Exception e) {
                 LOGGER.warn("Action {} failed. The signal {} may not have been processed.", signalRecord.getType(), signalRecord, e);
             }
+        }
+        if (!synchronousSignals.isEmpty()) {
+            LOGGER.debug("Reached the limit of {} synchronous signals per call; {} signal(s) deferred until the next call",
+                    MAX_SYNCHRONOUS_SIGNALS_PER_CALL, synchronousSignals.size());
         }
     }
 

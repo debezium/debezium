@@ -10,6 +10,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -306,6 +307,62 @@ public class SignalProcessorTest {
         assertThat(executed).containsExactly("first", "second", "third");
 
         signalProcess.stop();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2577")
+    public void shouldLimitSynchronousSignalsExecutedPerCall() throws InterruptedException {
+
+        final int total = SignalProcessor.MAX_SYNCHRONOUS_SIGNALS_PER_CALL + 3;
+        final List<SignalRecord> burst = new ArrayList<>();
+        for (int i = 0; i < total; i++) {
+            burst.add(new SignalRecord("burst-" + i, "custom", "{}", Map.of("channelOffset", -1L)));
+        }
+
+        final SignalChannelReader genericChannel = mock(SignalChannelReader.class);
+
+        when(genericChannel.name()).thenReturn("generic");
+        when(genericChannel.read()).thenReturn(burst, List.of());
+
+        final LogInterceptor log = signalProcessorDebugLog();
+        final List<String> executed = new CopyOnWriteArrayList<>();
+        final SignalAction<TestPartition> testAction = new SynchronousAction(signalPayload -> executed.add(signalPayload.id));
+
+        signalProcess = new SignalProcessor<>(SourceConnector.class, baseConfig(), Map.of("custom", testAction), List.of(genericChannel), documentReader,
+                initialOffset);
+
+        signalProcess.start();
+
+        Awaitility.await()
+                .atMost(40, TimeUnit.SECONDS)
+                .untilAsserted(() -> assertThat(log.containsMessage(
+                        "Signal 'burst-" + (total - 1) + "' of type 'custom' deferred until the streaming source processes synchronous signals")).isTrue());
+        assertThat(executed).isEmpty();
+
+        // The first call executes only up to the cap, in arrival order, and leaves the remainder queued
+        signalProcess.processSynchronousSignals();
+
+        assertThat(executed).hasSize(SignalProcessor.MAX_SYNCHRONOUS_SIGNALS_PER_CALL);
+        for (int i = 0; i < SignalProcessor.MAX_SYNCHRONOUS_SIGNALS_PER_CALL; i++) {
+            assertThat(executed.get(i)).isEqualTo("burst-" + i);
+        }
+        assertThat(log.containsMessage("Reached the limit of " + SignalProcessor.MAX_SYNCHRONOUS_SIGNALS_PER_CALL
+                + " synchronous signals per call; 3 signal(s) deferred until the next call")).isTrue();
+
+        // The next call drains the remainder
+        signalProcess.processSynchronousSignals();
+
+        assertThat(executed).hasSize(total);
+        for (int i = 0; i < total; i++) {
+            assertThat(executed.get(i)).isEqualTo("burst-" + i);
+        }
+
+        // Nothing is left, so a further call is a no-op
+        signalProcess.processSynchronousSignals();
+        assertThat(executed).hasSize(total);
+
+        signalProcess.stop();
+        assertThat(log.containsWarnMessage("SignalProcessor stopped with")).isFalse();
     }
 
     @Test
