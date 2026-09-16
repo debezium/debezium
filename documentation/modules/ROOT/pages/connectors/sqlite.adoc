@@ -410,3 +410,72 @@ The following example shows the value of a schema change event that the connecto
 ----
 
 SQLite records no log position for a DDL statement, so the `change_id` in the `source` block of a schema change event is the last log position that the connector consumed, rather than a new value.
+
+[[sqlite-data-type-mappings]]
+== Data type mappings
+
+SQLite does not assign a fixed data type to a column.
+Instead, each column has a _type affinity_, which SQLite derives from the column's declared type, and each stored value keeps its own _storage class_ (`INTEGER`, `REAL`, `TEXT`, `BLOB`, or `NULL`).
+The connector builds one fixed Kafka Connect schema per column, from the column's affinity, so that every value in the column shares one schema.
+
+The connector derives a column's affinity from its declared type, by applying the following rules in order:
+
+. If the declared type contains `INT`, the affinity is `INTEGER`.
+. Otherwise, if it contains `CHAR`, `CLOB`, or `TEXT`, the affinity is `TEXT`.
+. Otherwise, if it contains `BLOB`, or the declared type is empty, the affinity is `BLOB`.
+. Otherwise, if it contains `REAL`, `FLOA`, or `DOUB`, the affinity is `REAL`.
+. Otherwise, the affinity is `NUMERIC`.
+
+The rules are substring matches, so a column declared `BOOLEAN`, `DATE`, `DATETIME`, or `DECIMAL` falls through to `NUMERIC`, and a column declared with no type has `BLOB` affinity, which matches SQLite's own behavior.
+
+The connector maps each affinity to a Kafka Connect schema type:
+
+[cols="2,2,3",options="header"]
+|===
+|SQLite affinity |Kafka Connect schema type |Notes
+
+|`INTEGER`
+|`INT64`
+|
+
+|`REAL`
+|`FLOAT64`
+|
+
+|`NUMERIC`
+|`FLOAT64`
+|SQLite has no fixed-precision decimal type. A `NUMERIC` column, including one that is declared `DECIMAL`, maps to `FLOAT64`.
+
+|`TEXT`
+|`STRING`
+|
+
+|`BLOB`
+|`BYTES`
+|A column that is declared with no type also has `BLOB` affinity.
+|===
+
+.Affinity mismatches
+Because SQLite is dynamically typed, a column can hold a value whose storage class does not match the column's affinity, for example, a `TEXT` value in a column that has `INTEGER` affinity.
+The connector converts each value by the column's affinity, so a value whose storage class does not fit that affinity cannot be converted.
+
+The connector resolves the mismatch through the framework's failure mode and a connector option.
+When a value's storage class does not fit the column's affinity, the converter reports a failure, and the `event.converting.failure.handling.mode` property decides the outcome:
+
+`fail`:: The connector stops. This is the default.
+`warn`:: The connector logs the column and leaves the field null.
+`skip`:: The connector leaves the field null quietly.
+
+Under `warn` or `skip`, leaving the field null then resolves against the column:
+
+* For a nullable column, the field stays null.
+* For a non-nullable column that has a default, the schema default takes over.
+* For a non-nullable column that has no default, there is no null to fall back on.
+The `nonnull.affinity.mismatch.fallback` property decides what happens:
++
+--
+`true`:: The connector substitutes a type placeholder for the value, so that the stream keeps flowing: `0` for `INT64`, `0.0` for `FLOAT64`, an empty string for `STRING`, and empty bytes for `BYTES`.
+`false`:: The field stays null, and the record fails downstream when the Kafka Connect struct is validated. This is the default.
+--
+
+The placeholder is a synthetic value in place of the real one, which is why it is off by default and takes effect only under the `warn` and `skip` failure modes.
