@@ -20,7 +20,7 @@ Each thread snapshots its assigned chunks concurrently, and the connector emits 
 
 The xref:{context}-property-snapshot-max-threads-multiplier[`snapshot.max.threads.multiplier`] property controls how many chunks the connector creates per table relative to the thread count.
 By default, the connector creates one chunk per thread.
-Setting a higher multiplier creates more, smaller chunks, which keeps threads more evenly loaded and limits the amount of work to be repeated if a snapshot is interrupted.
+Setting a higher multiplier creates more, smaller chunks, which keeps threads more evenly loaded.
 For example, with 4 threads and a multiplier of `2`, the connector creates 8 chunks instead of 4.
 
 [NOTE]
@@ -55,9 +55,6 @@ Threads remain active until the snapshot finishes.
 Threads that finish processing a table can remain idle while waiting for other threads to complete.
 In environments that enforce connection timeouts, idle connections can prevent the connector from closing connections cleanly after the snapshot finishes.
 Failure to close a connection can result in an exception, even if a snapshot captures all data successfully.
-|Resumability after interruption
-|If the snapshot is interrupted, the connector resumes from the last completed chunk, reducing the amount of work that must be repeated.
-|If the snapshot is interrupted while a table is being processed, the connector must restart the snapshot of that table.
 
 |===
 
