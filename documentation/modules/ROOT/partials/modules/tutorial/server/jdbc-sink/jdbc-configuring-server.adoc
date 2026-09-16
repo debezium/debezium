@@ -12,6 +12,7 @@ Visit `https://jdbc.postgresql.org/` to download the PostgreSQL JDBC driver. Onc
 
 +
 --
+.application.properties
 ----
 debezium.sink.type=jdbc
 debezium.sink.jdbc.connection.url=jdbc:postgresql://localhost:5432/inventory

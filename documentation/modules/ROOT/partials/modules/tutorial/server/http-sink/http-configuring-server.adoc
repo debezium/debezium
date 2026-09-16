@@ -9,6 +9,7 @@
 
 +
 --
+.application.properties
 ----
 debezium.sink.type=http
 debezium.sink.http.url=http://127.0.0.1:8081
