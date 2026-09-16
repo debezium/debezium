@@ -6,7 +6,7 @@
 [id="server-starting-mysql-database"]
 = Starting a MySQL database
 
-Start a MySQL server that is preconfigured with a sample `inventory` database so that {prodname} has a source from which to capture changes.
+Start a MySQL server that is preconfigured with a sample `inventory` database so that {prodname} server has a source from which to capture changes.
 
 .Procedure
 

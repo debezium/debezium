@@ -1,6 +1,6 @@
 .Procedure
 
-. Get the upstream default configuration for the {selected-sink} server we will use to receive change events from {prodname}:
+. Get the upstream default configuration for the {selected-sink} server we will use to receive change events from {prodname} server:
 
 +
 --
@@ -98,7 +98,7 @@ $ docker build -t example-httpd .
 
 --
 
-. Open a new terminal and use it to start the {selected-sink} server that will receive change events from {prodname} in a container.
+. Open a new terminal and use it to start the {selected-sink} server that will receive change events from {prodname} server in a container.
 
 +
 --
