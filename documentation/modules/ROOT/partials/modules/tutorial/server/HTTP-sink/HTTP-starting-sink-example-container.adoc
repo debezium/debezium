@@ -1,6 +1,6 @@
 .Procedure
 
-. Open a new terminal and use it to start the HTTP server that will receive change events from {prodname} in a container.
+. Open a new terminal and use it to start the HTTP server that will receive change events from {prodname} server in a container.
 
 +
 --

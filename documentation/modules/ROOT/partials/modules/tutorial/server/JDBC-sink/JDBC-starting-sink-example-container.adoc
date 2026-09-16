@@ -1,6 +1,6 @@
 .Procedure
 
-. Open a new terminal and use it to start the PostgreSQL database server that will receive change events from {prodname} in a container. This is the database the {selected-sink} sink connector will stream changes to.
+. Open a new terminal and use it to start the PostgreSQL database server that will receive change events from {prodname} server in a container. This is the database the {selected-sink} sink connector will stream changes to.
 
 +
 --
