@@ -1,3 +1,3 @@
-:selected-sink: http
+:selected-sink: HTTP
 
 include::{partialsdir}/assemblies/tutorial/server/assembly-tutorial-main-page-server.adoc[]
