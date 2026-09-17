@@ -133,10 +133,10 @@ class BaseSourceTaskTest {
         baseSourceTask.start(config);
         sleep(1); // wait 1ms in order to satisfy retriable wait
         assertEquals(DebeziumTaskState.RESTARTING, baseSourceTask.getTaskState());
-        pollAndIgnoreRetryException(baseSourceTask);
+        baseSourceTask.poll(); // failed restart attempts are swallowed and retried on the next poll
         assertEquals(DebeziumTaskState.RESTARTING, baseSourceTask.getTaskState());
         sleep(1); // wait 1ms in order to satisfy retriable wait
-        pollAndIgnoreRetryException(baseSourceTask);
+        baseSourceTask.poll();
         assertEquals(DebeziumTaskState.RESTARTING, baseSourceTask.getTaskState());
         sleep(1); // wait 1ms in order to satisfy retriable wait
         baseSourceTask.poll();
@@ -145,7 +145,7 @@ class BaseSourceTaskTest {
         assertEquals(DebeziumTaskState.STOPPED, baseSourceTask.getTaskState());
 
         assertEquals(4, baseSourceTask.startCount.get());
-        assertEquals(3, baseSourceTask.stopCount.get());
+        assertEquals(1, baseSourceTask.stopCount.get());
         verify(baseSourceTask.coordinator, times(1)).stop();
     }
 
@@ -204,15 +204,6 @@ class BaseSourceTaskTest {
 
             assertThat(baseSourceTask.startRootLoggingContext).isEqualTo(expectedStartRootLogging);
             assertThat(baseSourceTask.pollRootLoggingContext).isEqualTo(expectedRootLogging);
-        }
-    }
-
-    private static void pollAndIgnoreRetryException(BaseSourceTask<Partition, OffsetContext> baseSourceTask) throws InterruptedException {
-        try {
-            baseSourceTask.poll();
-        }
-        catch (RetriableException e) {
-            // nothing to do
         }
     }
 
