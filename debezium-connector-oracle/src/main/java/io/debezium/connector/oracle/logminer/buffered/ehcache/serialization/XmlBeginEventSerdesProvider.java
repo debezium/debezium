@@ -33,6 +33,6 @@ public class XmlBeginEventSerdesProvider<T extends XmlBeginEvent> extends DmlEve
         super.deserialize(context, stream);
 
         context.addValue(stream.readString());
-        context.addValue(stream.hasNext() ? stream.readLong() : 1L);
+        context.addValue(stream.readLong());
     }
 }
