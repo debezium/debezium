@@ -699,7 +699,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             final TableSnapshotContext<T> workerContext = entry.getValue().getContext();
             if (workerContext.chunkEndPosititon() != null && workerContext.maximumKey().isPresent()) {
                 notificationService.incrementalSnapshotNotificationService()
-                        .notifyInProgress(workerContext, partition, offsetContext);
+                        .notifyInProgress(workerContext, partition, offsetContext, entry.getValue().getTotalRowsRead());
             }
         }
 

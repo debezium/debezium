@@ -101,6 +101,25 @@ public interface ChunkQueryBuilder<T extends DataCollectionId> {
     }
 
     /**
+     * Same as {@link #estimateRowCount(IncrementalSnapshotContext, Table)} but reads the estimate through the given
+     * connection, for callers that run on a connection other than the builder's own (the parallel snapshot workers).
+     * The default implementation ignores the connection and delegates to the single-connection variant.
+     */
+    default OptionalLong estimateRowCount(IncrementalSnapshotContext<T> context, Table table, JdbcConnection connection) {
+        return estimateRowCount(context, table);
+    }
+
+    /**
+     * Same as {@link #countRows(IncrementalSnapshotContext, Table, Optional, Object[])} but runs the count through the
+     * given connection, for callers that run on a connection other than the builder's own (the parallel snapshot
+     * workers). The default implementation ignores the connection and delegates to the single-connection variant.
+     */
+    default OptionalLong countRows(IncrementalSnapshotContext<T> context, Table table, Optional<String> additionalCondition, Object[] maximumKey,
+                                   JdbcConnection connection) {
+        return countRows(context, table, additionalCondition, maximumKey);
+    }
+
+    /**
      * Returns the columns that are used for paginating the incremental snapshot chunks.
      */
     List<Column> getQueryColumns(IncrementalSnapshotContext<T> context, Table table);

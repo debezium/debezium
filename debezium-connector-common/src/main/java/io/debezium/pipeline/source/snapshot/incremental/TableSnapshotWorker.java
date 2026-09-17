@@ -11,6 +11,8 @@ import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.OptionalLong;
 
 import org.apache.kafka.connect.data.Struct;
 import org.slf4j.Logger;
@@ -104,6 +106,7 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
                 return false;
             }
             context.maximumKey(maximumKey);
+            context.totalRows(resolveTotalRowCount(conn, maximumKey));
             LOGGER.info("Table '{}' has data, starting chunk reads (max key set)", tableId);
         }
 
@@ -124,6 +127,28 @@ public class TableSnapshotWorker<P extends Partition, T extends DataCollectionId
                 "read chunk for table " + tableId);
 
         return hasData && !isComplete();
+    }
+
+    /**
+     * Mirrors the sequential source: the metadata estimate when the whole table is scanned, otherwise a count bounded by
+     * the maximum key, both executed on this worker's connection so the builder's own connection is never shared
+     * across threads. Best-effort: a failure only omits the per-table progress fields from the notifications.
+     */
+    private OptionalLong resolveTotalRowCount(JdbcConnection conn, Object[] maximumKey) {
+        final Optional<String> additionalCondition = context.currentDataCollectionId().getAdditionalCondition();
+        try {
+            if (additionalCondition.isEmpty()) {
+                final OptionalLong estimate = chunkQueryBuilder.estimateRowCount(context, currentTable, conn);
+                if (estimate.isPresent() && estimate.getAsLong() > 0) {
+                    return estimate;
+                }
+            }
+            return chunkQueryBuilder.countRows(context, currentTable, additionalCondition, maximumKey, conn);
+        }
+        catch (RuntimeException e) {
+            LOGGER.warn("Unable to resolve total row count for table '{}'; per-table progress will be omitted", currentTable.id(), e);
+            return OptionalLong.empty();
+        }
     }
 
     private Object[] readMaximumKey(JdbcConnection conn) throws SQLException {
