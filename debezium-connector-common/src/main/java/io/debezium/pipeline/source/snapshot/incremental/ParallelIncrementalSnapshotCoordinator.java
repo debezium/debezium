@@ -426,6 +426,34 @@ public class ParallelIncrementalSnapshotCoordinator<P extends Partition, T exten
         }
     }
 
+    /**
+     * Drops a connection that failed with a non-transient connection error: it is closed instead of being returned to
+     * the pool, and a replacement is opened so the pool keeps its size. If the replacement cannot be opened the pool
+     * shrinks by one; borrowers already cope with an empty pool.
+     */
+    public void discardConnection(JdbcConnection connection) {
+        if (connection == null) {
+            return;
+        }
+        allConnections.remove(connection);
+        closeQuietly(connection, "non-transient connection failure");
+        if (shutdown.get()) {
+            return;
+        }
+        try {
+            final JdbcConnection fresh = connectionFactory.createConnection();
+            if (shutdown.get()) {
+                closeQuietly(fresh, "shutdown-coincident replacement");
+                return;
+            }
+            allConnections.add(fresh);
+            connectionPool.add(fresh);
+        }
+        catch (SQLException e) {
+            LOGGER.warn("Failed to replace a discarded snapshot connection, the pool shrinks by one", e);
+        }
+    }
+
     public Map<Struct, Object[]> getWindowBuffer(T dataCollectionId) {
         return windowBuffers.computeIfAbsent(dataCollectionId, k -> new ConcurrentHashMap<>());
     }

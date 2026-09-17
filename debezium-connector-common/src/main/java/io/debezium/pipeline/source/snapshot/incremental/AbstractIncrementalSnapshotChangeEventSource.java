@@ -418,6 +418,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         JdbcConnection effectiveConnection = null;
         boolean acquiredPoolConnection = false;
         boolean createdOnDemandConnection = false;
+        boolean discardEffectiveConnection = false;
 
         try {
             if (parallelCoordinator != null) {
@@ -480,9 +481,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                         context.maximumKey(maximumKey);
                     }
                     catch (SQLException e) {
-                        if (e instanceof SQLNonTransientConnectionException) {
-                            closeJdbcConnection();
-                        }
+                        discardEffectiveConnection |= closeOrDiscardOnConnectionFailure(e, effectiveConnection);
                         LOGGER.error("Failed to read maximum key for table {} after retries", currentTableId, e);
                         notificationService.incrementalSnapshotNotificationService().notifyTableScanCompleted(context, partition, offsetContext, totalRowsScanned,
                                 SQL_EXCEPTION);
@@ -536,9 +535,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                     }
                 }
                 catch (SQLException e) {
-                    if (e instanceof SQLNonTransientConnectionException) {
-                        closeJdbcConnection();
-                    }
+                    discardEffectiveConnection |= closeOrDiscardOnConnectionFailure(e, effectiveConnection);
                     notificationService.incrementalSnapshotNotificationService().notifyTableScanCompleted(context, partition, offsetContext, totalRowsScanned,
                             SQL_EXCEPTION);
                     nextDataCollection(partition, offsetContext);
@@ -548,9 +545,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             LOGGER.trace("Window close emitted");
         }
         catch (SQLException e) {
-            if (e instanceof SQLNonTransientConnectionException) {
-                closeJdbcConnection();
-            }
+            discardEffectiveConnection |= closeOrDiscardOnConnectionFailure(e, effectiveConnection);
             warnAndSkip(partition, offsetContext,
                     SQL_EXCEPTION,
                     "SQL error while executing incremental snapshot for table '%s', skipping and continuing streaming"
@@ -565,7 +560,12 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         }
         finally {
             if (acquiredPoolConnection && effectiveConnection != null) {
-                parallelCoordinator.returnConnection(effectiveConnection);
+                if (discardEffectiveConnection) {
+                    parallelCoordinator.discardConnection(effectiveConnection);
+                }
+                else {
+                    parallelCoordinator.returnConnection(effectiveConnection);
+                }
             }
             else if (createdOnDemandConnection && effectiveConnection != null) {
                 try {
@@ -645,14 +645,24 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                         throw new DebeziumException(
                                 "Parallel snapshot pool unavailable on " + Thread.currentThread().getName());
                     }
+                    boolean discardConnection = false;
                     try {
                         boolean hasMore = worker.readOneChunk(conn);
                         if (!hasMore) {
                             completedThisRound.add(tableId);
                         }
                     }
+                    catch (SQLNonTransientConnectionException e) {
+                        discardConnection = true;
+                        throw e;
+                    }
                     finally {
-                        parallelCoordinator.returnConnection(conn);
+                        if (discardConnection) {
+                            parallelCoordinator.discardConnection(conn);
+                        }
+                        else {
+                            parallelCoordinator.returnConnection(conn);
+                        }
                     }
                     return null;
                 });
@@ -736,6 +746,23 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             return true;
         }
         return false;
+    }
+
+    /**
+     * A non-transient connection error means the connection that ran the statement is unusable. When that is the
+     * primary connection it is closed as before; when it is a pooled or on-demand connection the primary is left
+     * alone and the caller discards the failing one on release. Returns whether the effective connection must be
+     * discarded.
+     */
+    private boolean closeOrDiscardOnConnectionFailure(SQLException e, JdbcConnection effectiveConnection) {
+        if (!(e instanceof SQLNonTransientConnectionException)) {
+            return false;
+        }
+        if (effectiveConnection == null || effectiveConnection == jdbcConnection) {
+            closeJdbcConnection();
+            return false;
+        }
+        return true;
     }
 
     private void closeJdbcConnection() {
