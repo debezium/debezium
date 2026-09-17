@@ -1560,7 +1560,8 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
 
     protected abstract SSLMode sslModeFor(SecureConnectionMode mode);
 
-    private SSLSocketFactory getBinlogSslSocketFactory(BinlogConnectorConfig connectorConfig, BinlogConnectorConnection connection) {
+    // Package-private for testing.
+    SSLSocketFactory getBinlogSslSocketFactory(BinlogConnectorConfig connectorConfig, BinlogConnectorConnection connection) {
         String acceptedTlsVersion = connection.getSessionVariableForSslVersion();
         if (!isNullOrEmpty(acceptedTlsVersion)) {
             SSLMode sslMode = sslModeFor(connectorConfig.getSslMode());
