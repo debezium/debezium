@@ -3418,9 +3418,7 @@ xmltype_storage
     ;
 
 xmlschema_spec
-    : (XMLSCHEMA DELIMITED_ID)? ELEMENT DELIMITED_ID (allow_or_disallow NONSCHEMA)? (
-        allow_or_disallow ANYSCHEMA
-    )?
+    : ((XMLSCHEMA DELIMITED_ID)? ELEMENT id_expression)? (allow_or_disallow (NONSCHEMA | ANYSCHEMA))*
     ;
 
 object_table
@@ -5415,7 +5413,7 @@ modify_lob_parameters
 
 lob_parameters
     : (
-        (ENABLE | DISABLE) STORAGE IN ROW
+        (ENABLE | DISABLE) STORAGE IN ROW UNSIGNED_INTEGER?
         | CHUNK UNSIGNED_INTEGER
         | PCTVERSION UNSIGNED_INTEGER
         | FREEPOOLS UNSIGNED_INTEGER
