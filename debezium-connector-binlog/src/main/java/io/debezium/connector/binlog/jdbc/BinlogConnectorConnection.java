@@ -50,21 +50,20 @@ public abstract class BinlogConnectorConnection extends JdbcConnection {
     private static final String SQL_SHOW_SYSTEM_VARIABLES_SQL_MODE = "SHOW VARIABLES WHERE Variable_name = 'sql_mode'";
     private static final String SQL_SHOW_SESSION_VARIABLE_SSL_VERSION = "SHOW SESSION STATUS LIKE 'Ssl_version'";
     private static final String QUOTED_CHARACTER = "`";
+    private static final String SQLSTATE_UNDEFINED_COLUMN = "42S22";
     public static final String MASTER_STATUS_STATEMENT = "SHOW MASTER STATUS";
 
     private final ConnectionConfiguration connectionConfig;
     private final BinlogFieldReader fieldReader;
 
-    private static final String SQLSTATE_UNDEFINED_COLUMN = "42S22";
-
-    public boolean isUndefinedColumnError(SQLException exception) {
-        return SQLSTATE_UNDEFINED_COLUMN.equals(exception.getSQLState());
-    }
-
     public BinlogConnectorConnection(ConnectionConfiguration configuration, BinlogFieldReader fieldReader) {
         super(configuration.config(), configuration.factory(), initialOperations(), QUOTED_CHARACTER, QUOTED_CHARACTER);
         this.connectionConfig = configuration;
         this.fieldReader = fieldReader;
+    }
+
+    public boolean isUndefinedColumnError(SQLException exception) {
+        return SQLSTATE_UNDEFINED_COLUMN.equals(exception.getSQLState());
     }
 
     private static Operations initialOperations() {
