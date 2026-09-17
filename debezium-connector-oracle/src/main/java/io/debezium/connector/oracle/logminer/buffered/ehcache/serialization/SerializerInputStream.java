@@ -111,20 +111,6 @@ public class SerializerInputStream extends AbstractSerializerStream {
     }
 
     /**
-     * Checks whether there is more data remaining to be read from the stream.
-     *
-     * This is used to preserve backward compatibility when reading cache entries that were
-     * persisted by an older version that did not yet serialize a field appended to the end
-     * of a type's byte layout.
-     *
-     * @return {@code true} if at least one more byte remains in the stream
-     * @throws IOException when a read operation fails
-     */
-    public boolean hasNext() throws IOException {
-        return delegate.available() > 0;
-    }
-
-    /**
      * Reads an object array from the stream.
      *
      * @return the object array, never {@code null}

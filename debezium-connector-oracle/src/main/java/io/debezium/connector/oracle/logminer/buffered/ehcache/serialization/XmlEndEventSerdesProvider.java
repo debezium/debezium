@@ -31,6 +31,6 @@ public class XmlEndEventSerdesProvider<T extends XmlEndEvent> extends LogMinerEv
     public void deserialize(DeserializationContext context, SerializerInputStream stream) throws IOException {
         super.deserialize(context, stream);
 
-        context.addValue(stream.hasNext() ? stream.readLong() : 1L);
+        context.addValue(stream.readLong());
     }
 }
