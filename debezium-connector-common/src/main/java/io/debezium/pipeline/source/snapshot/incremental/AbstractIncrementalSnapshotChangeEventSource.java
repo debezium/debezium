@@ -894,7 +894,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                             .formatted(currentTable.id(), MAX_STALE_SCHEMA_DEFERRALS),
                     cause);
         }
-        LOGGER.warn("Cached schema for table '{}' is stale against the database (deferral {}/{}): refreshing schema and re-reading the chunk in the next window",
+        LOGGER.warn("Cached schema for table '{}' is stale against the database (deferral {}/{}): re-reading the chunk in the next window",
                 currentTable.id(), staleSchemaDeferrals, MAX_STALE_SCHEMA_DEFERRALS, cause);
         // Strict drivers treat the transaction as aborted after the error that caused the
         // deferral and reject further statements until it is closed; the schema is refreshed
