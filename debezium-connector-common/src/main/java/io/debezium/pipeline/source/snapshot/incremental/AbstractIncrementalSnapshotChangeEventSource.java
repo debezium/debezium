@@ -244,6 +244,9 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         }
         offsetContext.postSnapshotCompletion();
         window.clear();
+        // Progress means a chunk was both read and emitted: a read that succeeds but whose
+        // window is then deferred must keep counting against the bound.
+        resetStaleSchemaDeferrals();
     }
 
     protected void sendEvent(P partition, EventDispatcher<P, T> dispatcher, OffsetContext offsetContext, Object[] row) throws InterruptedException {
@@ -846,7 +849,6 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             deferChunkOnStaleSchema(e.getCause());
             return false;
         }
-        resetStaleSchemaDeferrals();
         return true;
     }
 
