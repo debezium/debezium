@@ -362,7 +362,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                                         return null;
                                     }
                                     return keyFromRow(jdbcConnection.rowToArray(currentTable, rs,
-                                            ColumnUtils.toArray(rs, currentTable)));
+                                            columnArrayOrStale(rs, currentTable)));
                                 });
                         context.maximumKey(maximumKey);
                     }
@@ -380,9 +380,8 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                         nextDataCollection(partition, offsetContext);
                         continue;
                     }
-                    catch (IllegalArgumentException e) {
-                        // ColumnUtils.toArray: the result set carries a column the cached schema does not know yet
-                        deferChunkOnStaleSchema(e);
+                    catch (StaleResultSetSchemaException e) {
+                        deferChunkOnStaleSchema(e.getCause());
                         break;
                     }
                     if (context.maximumKey().isEmpty()) {
@@ -794,7 +793,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             if (checkSchemaChanges(rs)) {
                 return false;
             }
-            final ColumnUtils.ColumnArray columnArray = ColumnUtils.toArray(rs, currentTable);
+            final ColumnUtils.ColumnArray columnArray = columnArrayOrStale(rs, currentTable);
             long rows = 0;
             Timer logTimer = getTableScanLogTimer();
 
@@ -842,9 +841,8 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             LOGGER.error("Snapshotting of table {} failed. Skipping it", currentTable.id(), e);
             throw e;
         }
-        catch (IllegalArgumentException e) {
-            // ColumnUtils.toArray: the result set carries a column the cached schema does not know yet
-            deferChunkOnStaleSchema(e);
+        catch (StaleResultSetSchemaException e) {
+            deferChunkOnStaleSchema(e.getCause());
             return false;
         }
         resetStaleSchemaDeferrals();
@@ -906,6 +904,33 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         }
         catch (SQLException e) {
             throw new DebeziumException("Schema refresh failed while deferring a chunk of table '%s'".formatted(currentTable.id()), e);
+        }
+    }
+
+    /**
+     * The result set carrying a column the cached table does not know is the "cache behind the database"
+     * stale-schema signal, and {@link ColumnUtils#toArray} rejects it with an {@link IllegalArgumentException}.
+     * Only that call is classified: the same exception type raised by row conversion or key extraction is
+     * unrelated to schema drift and keeps its ordinary handling.
+     */
+    private ColumnUtils.ColumnArray columnArrayOrStale(ResultSet rs, Table table) throws SQLException {
+        try {
+            return ColumnUtils.toArray(rs, table);
+        }
+        catch (IllegalArgumentException e) {
+            throw new StaleResultSetSchemaException(e);
+        }
+    }
+
+    private static final class StaleResultSetSchemaException extends RuntimeException {
+
+        StaleResultSetSchemaException(IllegalArgumentException cause) {
+            super(cause);
+        }
+
+        @Override
+        public synchronized IllegalArgumentException getCause() {
+            return (IllegalArgumentException) super.getCause();
         }
     }
 
