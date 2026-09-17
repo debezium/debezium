@@ -194,14 +194,6 @@ public interface LogMinerTransactionCache<T extends Transaction> {
     boolean isAbandoned(String transactionId);
 
     /**
-     * Get the most recently enqueued event for the specified transaction.
-     *
-     * @param transactionId the transaction identifier, should not be {@code null}
-     * @return the most recently enqueued event for the transaction, or {@code null} if none is tracked
-     */
-    LogMinerEvent getLastEnqueuedEvent(String transactionId);
-
-    /**
      * Records the given event as the most recently enqueued event for the specified transaction.
      *
      * @param transactionId the transaction identifier, should not be {@code null}
