@@ -194,13 +194,14 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
 
     protected void sendWindowEvents(P partition, OffsetContext offsetContext) throws InterruptedException {
         LOGGER.debug("Sending {} events from window buffer", window.size());
-        if (!window.isEmpty() && windowSchema != null && databaseSchema.schemaFor(currentTable.id()) != windowSchema) {
-            // The emission schema rotated after the window was buffered (every schema refresh
-            // replaces the TableSchema instance, and the pipeline is single-threaded, so the
-            // identity comparison detects the rotation deterministically): the buffered rows
-            // no longer match it. The chunk position returns to the window start and the whole
-            // window is re-read (at-least-once); sendEvent advances lastEventKeySent before
-            // dispatching, so reverting to it would skip a row.
+        if (!window.isEmpty() && windowSchema != null && !windowSchema.equals(databaseSchema.schemaFor(currentTable.id()))) {
+            // The emission schema changed after the window was buffered: the buffered rows no
+            // longer match it. The comparison is structural (key and value schemas), not by
+            // instance: a schema refresh replaces the TableSchema instance even when nothing
+            // changed (pgoutput sends a relation message the first time a table appears in the
+            // session), and only an actual column change must defer. The chunk position returns
+            // to the window start and the whole window is re-read (at-least-once); sendEvent
+            // advances lastEventKeySent before dispatching, so reverting to it would skip a row.
             try {
                 deferChunkOnStaleSchema(new DebeziumException(
                         "The schema of table '%s' was refreshed after the window was buffered".formatted(currentTable.id())));
