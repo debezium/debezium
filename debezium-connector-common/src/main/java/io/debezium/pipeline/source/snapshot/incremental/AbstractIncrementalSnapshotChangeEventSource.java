@@ -139,7 +139,26 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         if (!context.closeWindow(id)) {
             return;
         }
-        sendWindowEvents(partition, offsetContext);
+        try {
+            sendWindowEvents(partition, offsetContext);
+        }
+        catch (InterruptedException e) {
+            throw e;
+        }
+        catch (Exception e) {
+            // This is the signal processing path: an exception escaping here is swallowed by the
+            // signal processor and the snapshot stalls silently. What reaches this point is not
+            // schema drift (sendWindowEvents defers that before emitting) or has exhausted the
+            // deferral bound, so the table is skipped visibly. The read-only sources call
+            // sendWindowEvents on the streaming thread and keep their fail-fast behavior.
+            offsetContext.postSnapshotCompletion();
+            window.clear();
+            warnAndSkip(partition, offsetContext,
+                    SQL_EXCEPTION,
+                    "Error while emitting the incremental snapshot window of table '%s', skipping and continuing streaming"
+                            .formatted(context.currentDataCollectionId().getId()),
+                    e);
+        }
         readChunk(partition, offsetContext);
     }
 
@@ -202,45 +221,17 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             // session), and only an actual column change must defer. The chunk position returns
             // to the window start and the whole window is re-read (at-least-once); sendEvent
             // advances lastEventKeySent before dispatching, so reverting to it would skip a row.
-            try {
-                deferChunkOnStaleSchema(new DebeziumException(
-                        "The schema of table '%s' was refreshed after the window was buffered".formatted(currentTable.id())));
-            }
-            catch (DebeziumException e) {
-                // The deferral bound was exceeded; this runs on the signal processing path, so
-                // letting the exception escape would get it swallowed and stall the snapshot.
-                warnAndSkip(partition, offsetContext,
-                        SQL_EXCEPTION,
-                        "Error while emitting the incremental snapshot window of table '%s', skipping and continuing streaming"
-                                .formatted(context.currentDataCollectionId().getId()),
-                        e);
-                return;
-            }
+            // Exceeding the deferral bound throws: closeWindow turns that into a visible skip on the
+            // signal processing path, the read-only sources let it fail the task as before.
+            deferChunkOnStaleSchema(new DebeziumException(
+                    "The schema of table '%s' was refreshed after the window was buffered".formatted(currentTable.id())));
             context.revertChunk();
             context.nextChunkPosition(windowStartPosition);
             return;
         }
         offsetContext.incrementalSnapshotEvents();
-        try {
-            for (Object[] row : window.values()) {
-                sendEvent(partition, dispatcher, offsetContext, row);
-            }
-        }
-        catch (InterruptedException e) {
-            throw e;
-        }
-        catch (Exception e) {
-            // Same policy as a failed chunk read: emitting this window is not going to succeed
-            // on a retry either, so skip the table visibly instead of letting the failure reach
-            // the signal processor, which swallows it and stalls the snapshot silently.
-            offsetContext.postSnapshotCompletion();
-            window.clear();
-            warnAndSkip(partition, offsetContext,
-                    SQL_EXCEPTION,
-                    "Error while emitting the incremental snapshot window of table '%s', skipping and continuing streaming"
-                            .formatted(context.currentDataCollectionId().getId()),
-                    e);
-            return;
+        for (Object[] row : window.values()) {
+            sendEvent(partition, dispatcher, offsetContext, row);
         }
         offsetContext.postSnapshotCompletion();
         window.clear();
