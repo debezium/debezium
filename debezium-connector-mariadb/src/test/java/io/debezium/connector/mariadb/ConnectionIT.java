@@ -12,15 +12,25 @@ import java.sql.SQLTimeoutException;
 
 import org.junit.jupiter.api.Test;
 
+import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.BinlogConnectionIT;
+import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
 import io.debezium.connector.binlog.util.BinlogTestConnection;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
+import io.debezium.connector.mariadb.jdbc.MariaDbConnection;
+import io.debezium.connector.mariadb.jdbc.MariaDbConnectionConfiguration;
+import io.debezium.connector.mariadb.jdbc.MariaDbFieldReader;
 
 /**
  * @author Chris Cranford
  */
 public class ConnectionIT extends BinlogConnectionIT<MariaDbConnector> implements MariaDbCommon {
+
+    @Override
+    protected BinlogConnectorConnection connectorConnection(Configuration config) {
+        return new MariaDbConnection(new MariaDbConnectionConfiguration(config), new MariaDbFieldReader(new MariaDbConnectorConfig(config)));
+    }
 
     @Test
     void whenQueryTakesMoreThenConfiguredQueryTimeoutAnExceptionMustBeThrown() throws SQLException {
