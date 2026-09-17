@@ -115,6 +115,7 @@ Fr0z3Nn,Ivanov Sergey Vasilevich
 FrankMormino,Frank Mormino
 fuxiao224,Xiao Fu
 fuyar,Farid Uyar
+gaetancollaud,Gaetan Collaud
 ganesh-bankar,Ganesh Bankar
 garrett528,Andrew Garrett
 gaurav7261,Gaurav Miglani
