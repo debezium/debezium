@@ -53,11 +53,6 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
     }
 
     @Override
-    public LogMinerEvent getLastEnqueuedEvent(String transactionId) {
-        return lastEnqueuedEventByTransactionId.get(transactionId);
-    }
-
-    @Override
     public LogMinerEvent putLastEnqueuedEvent(String transactionId, LogMinerEvent event) {
         return lastEnqueuedEventByTransactionId.put(transactionId, event);
     }
