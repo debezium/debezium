@@ -262,11 +262,18 @@ while IFS='|' read -r _tag name email repo commit; do
         placeholders=$((placeholders + 1))
     fi
 done < <(bash jenkins-jobs/scripts/check-contributors.sh 2>/dev/null || true)
-# Sort the resolved names, then append placeholders at the end so they are easy to find.
-sort -f -o COPYRIGHT.txt COPYRIGHT.txt
+
 for line in "${placeholder_lines[@]}"; do
     echo "$line" >> COPYRIGHT.txt
 done
+
+# Re-sort COPYRIGHT.txt and Aliases.txt after all appends with the same sorter the root pom runs
+# in the validate phase, so the committed files match what the build's format.names.goal=check
+# expects. It is invoked through the JDK source launcher exactly as the pom does, avoiding a full
+# Maven run here. A '#' line sorts before every name, so any placeholders end up at the top of
+# COPYRIGHT.txt where they are easy to find.
+java support/scripts/SortContributorFiles.java . sort
+
 echo "  Contributors added: ${added}, placeholders left: ${placeholders}"
 if [[ "$placeholders" -gt 0 ]]; then
     echo "  Review # PLACEHOLDER lines in COPYRIGHT.txt before merging."
