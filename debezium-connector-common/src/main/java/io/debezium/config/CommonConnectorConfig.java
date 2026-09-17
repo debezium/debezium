@@ -52,6 +52,7 @@ import io.debezium.heartbeat.HeartbeatErrorHandler;
 import io.debezium.heartbeat.HeartbeatImpl;
 import io.debezium.openlineage.OpenLineageConfig;
 import io.debezium.pipeline.ErrorHandler;
+import io.debezium.pipeline.notification.channels.HttpNotificationChannel;
 import io.debezium.pipeline.notification.channels.SinkNotificationChannel;
 import io.debezium.pipeline.txmetadata.DefaultTransactionMetadataFactory;
 import io.debezium.pipeline.txmetadata.spi.TransactionMetadataFactory;
@@ -1564,7 +1565,9 @@ public abstract class CommonConnectorConfig {
                     GUARDRAIL_COLLECTIONS_LIMIT_ACTION, CUSTOM_SANITIZE_PATTERN, SIGNAL_EMIT_FAILURE_MAX_RETRIES, SIGNAL_EMIT_FAILURE_BACKOFF_INTERVAL_MS,
                     STATISTICS_METRICS_ENABLED, OFFSET_ACTIVITY_MONITOR_INTERVAL_MS)
             .group(Field.Group.ADVANCED_HEARTBEAT, Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX, SIGNAL_POLL_INTERVAL_MS)
-            .group(Field.Group.CONNECTOR, TOPIC_NAMING_STRATEGY, SinkNotificationChannel.NOTIFICATION_TOPIC, CUSTOM_METRIC_TAGS)
+            .group(Field.Group.CONNECTOR, TOPIC_NAMING_STRATEGY, SinkNotificationChannel.NOTIFICATION_TOPIC, CUSTOM_METRIC_TAGS,
+                    HttpNotificationChannel.NOTIFICATION_URL, HttpNotificationChannel.NOTIFICATION_TIMEOUT_MS,
+                    HttpNotificationChannel.NOTIFICATION_RETRIES, HttpNotificationChannel.NOTIFICATION_ALLOW_PRIVATE_NETWORKS)
             .create();
 
     private final Configuration config;
@@ -1612,6 +1615,10 @@ public abstract class CommonConnectorConfig {
 
     private final String notificationTopicName;
     private final List<String> enabledNotificationChannels;
+    private final String notificationHttpUrl;
+    private final int notificationHttpTimeoutMs;
+    private final int notificationHttpRetries;
+    private final boolean notificationHttpAllowPrivateNetworks;
     private final Map<String, String> customMetricTags;
     private WatermarkStrategy incrementalSnapshotWatermarkingStrategy;
 
@@ -1661,6 +1668,10 @@ public abstract class CommonConnectorConfig {
         this.taskId = config.getString(ConfigurationNames.TASK_ID_PROPERTY_NAME);
         this.notificationTopicName = config.getString(SinkNotificationChannel.NOTIFICATION_TOPIC);
         this.enabledNotificationChannels = config.getList(NOTIFICATION_ENABLED_CHANNELS);
+        this.notificationHttpUrl = config.getString(HttpNotificationChannel.NOTIFICATION_URL);
+        this.notificationHttpTimeoutMs = config.getInteger(HttpNotificationChannel.NOTIFICATION_TIMEOUT_MS);
+        this.notificationHttpRetries = config.getInteger(HttpNotificationChannel.NOTIFICATION_RETRIES);
+        this.notificationHttpAllowPrivateNetworks = config.getBoolean(HttpNotificationChannel.NOTIFICATION_ALLOW_PRIVATE_NETWORKS);
         this.skipMessagesWithoutChange = config.getBoolean(SKIP_MESSAGES_WITHOUT_CHANGE);
         this.maxRetriesOnError = config.getInteger(MAX_RETRIES_ON_ERROR);
         this.customMetricTags = createCustomMetricTags(config);
@@ -1856,6 +1867,22 @@ public abstract class CommonConnectorConfig {
 
     public List<String> getEnabledNotificationChannels() {
         return enabledNotificationChannels;
+    }
+
+    public String getNotificationHttpUrl() {
+        return notificationHttpUrl;
+    }
+
+    public int getNotificationHttpTimeoutMs() {
+        return notificationHttpTimeoutMs;
+    }
+
+    public int getNotificationHttpRetries() {
+        return notificationHttpRetries;
+    }
+
+    public boolean isNotificationHttpAllowPrivateNetworks() {
+        return notificationHttpAllowPrivateNetworks;
     }
 
     public boolean shouldProvideTransactionMetadata() {
