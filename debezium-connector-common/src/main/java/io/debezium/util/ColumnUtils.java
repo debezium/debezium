@@ -11,6 +11,9 @@ import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 
@@ -18,6 +21,8 @@ import io.debezium.relational.Table;
  * Utility class for mapping columns to various data structures from {@link Table} and {@link ResultSet}.
  */
 public class ColumnUtils {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(ColumnUtils.class);
 
     public static MappedColumns toMap(Table table) {
         Map<String, Column> sourceTableColumns = new HashMap<>();
@@ -38,26 +43,14 @@ public class ColumnUtils {
             final String columnName = metaData.getColumnName(i + 1);
             columns[i] = table.columnWithName(columnName);
             if (columns[i] == null) {
-                // This situation can happen when SQL Server and Db2 schema is changed before
-                // an incremental snapshot is started and no event with the new schema has been
-                // streamed yet.
-                // This warning will help to identify the issue in case of a support request.
-
-                final String[] resultSetColumns = new String[metaData.getColumnCount()];
-                for (int j = 0; j < metaData.getColumnCount(); j++) {
-                    resultSetColumns[j] = metaData.getColumnName(j + 1);
-                }
-                throw new IllegalArgumentException("Column '"
-                        + columnName
-                        + "' not found in result set '"
-                        + String.join(", ", resultSetColumns)
-                        + "' for table '"
-                        + table.id()
-                        + "', "
-                        + table
-                        + ". This might be caused by DBZ-4350");
+                LOGGER.warn("Column '{}' returned by the snapshot query for table '{}' is not present "
+                        + "in Debezium's table model and will be skipped during incremental snapshot. "
+                        + "This may be caused by a schema change not yet captured by Debezium (DBZ-4350).",
+                        columnName, table.id());
             }
-            greatestColumnPosition = Math.max(greatestColumnPosition, columns[i].position());
+            else {
+                greatestColumnPosition = Math.max(greatestColumnPosition, columns[i].position());
+            }
         }
         return new ColumnArray(columns, greatestColumnPosition);
     }

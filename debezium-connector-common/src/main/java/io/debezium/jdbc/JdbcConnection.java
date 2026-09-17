@@ -1819,8 +1819,10 @@ public class JdbcConnection implements AutoCloseable {
     public Object[] rowToArray(Table table, ResultSet rs, ColumnUtils.ColumnArray columnArray) throws SQLException {
         final Object[] row = new Object[columnArray.getGreatestColumnPosition()];
         for (int i = 0; i < columnArray.getColumns().length; i++) {
-            row[columnArray.getColumns()[i].position() - 1] = getColumnValue(rs, i + 1,
-                    columnArray.getColumns()[i], table);
+            if (columnArray.getColumns()[i] != null) {
+                row[columnArray.getColumns()[i].position() - 1] = getColumnValue(rs, i + 1,
+                        columnArray.getColumns()[i], table);
+            }
         }
         return row;
     }
