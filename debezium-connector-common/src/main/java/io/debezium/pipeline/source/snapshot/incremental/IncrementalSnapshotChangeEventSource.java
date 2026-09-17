@@ -28,8 +28,13 @@ public interface IncrementalSnapshotChangeEventSource<P extends Partition, T ext
      * Recognizes the dialect-specific SQL error a chunk query fails with when it references a
      * column that no longer exists in the database, which the incremental snapshot treats as a
      * stale cached schema and recovers from by deferring the chunk. Connectors opt in by passing
-     * their classifier to the change event source; with {@link #NONE} the recovery never
-     * triggers and such failures keep their pre-existing handling.
+     * their classifier to the change event source; with {@link #NONE} that specific recovery
+     * never triggers and undefined-column failures keep their pre-existing handling.
+     * <p>
+     * The classifier only governs the undefined-column path. The other stale-schema recoveries
+     * apply to every connector regardless of it: a result set carrying a column the cached table
+     * does not know (rejected by {@code ColumnUtils.toArray}) defers the chunk, and a window whose
+     * emission schema changed after it was buffered is re-read.
      */
     @FunctionalInterface
     interface UndefinedColumnClassifier {
