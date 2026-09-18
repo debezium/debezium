@@ -412,6 +412,7 @@ yw,Yang Wu
 zach-all,Zach All
 Zakariae BEN ALLAL,Zakariae Ben Allal
 zalmane,Oren Elias
+ZdravkoDonev-redis,Zdravko Donev
 zeldanerd24,Kevin Rothenberger
 zhanghelong,Helong Zhang
 Zica,Lucas Gazire
