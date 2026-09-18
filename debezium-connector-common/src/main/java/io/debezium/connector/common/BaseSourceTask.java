@@ -13,7 +13,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -200,6 +199,15 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
      * (which may be a no-op depending on the connector).
      */
     private final Map<Map<String, ?>, Map<String, ?>> lastOffsets = new HashMap<>();
+
+    /**
+     * Offsets captured at the previous flush notification. Everything in here was already covered by the
+     * offset flush that triggered the current {@link #commit()}, so acknowledging these positions with the
+     * source database can never run ahead of the durably persisted offsets. Acknowledging
+     * {@link #lastOffsets} directly would confirm positions up to a flush interval ahead of the store and,
+     * after a hard crash, the persisted offset could fall below the WAL retained by the source.
+     */
+    private final Map<Map<String, ?>, Map<String, ?>> flushedOffsets = new HashMap<>();
 
     private Duration retriableRestartWait;
 
@@ -583,15 +591,13 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         if (locked) {
             try (var rootLoggingContext = LoggingContext.initRootContext()) {
                 if (coordinator != null) {
-                    Iterator<Map<String, ?>> iterator = lastOffsets.keySet().iterator();
-                    while (iterator.hasNext()) {
-                        Map<String, ?> partition = iterator.next();
-                        Map<String, ?> lastOffset = lastOffsets.get(partition);
-
-                        LOGGER.debug("Committing offset '{}' for partition '{}'", partition, lastOffset);
-                        coordinator.commitOffset(partition, lastOffset);
-                        iterator.remove();
+                    for (Map.Entry<Map<String, ?>, Map<String, ?>> entry : flushedOffsets.entrySet()) {
+                        LOGGER.debug("Committing offset '{}' for partition '{}'", entry.getValue(), entry.getKey());
+                        coordinator.commitOffset(entry.getKey(), entry.getValue());
                     }
+                    flushedOffsets.clear();
+                    flushedOffsets.putAll(lastOffsets);
+                    lastOffsets.clear();
                 }
             }
             finally {
