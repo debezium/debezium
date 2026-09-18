@@ -116,7 +116,7 @@ properties([
 //   1. Add it to SOURCE_REPOSITORIES parameter in common_parameters.groovy
 //   2. Add it to the appropriate tier below (or add a new tier if it has new dependencies)
 //   The pipeline validates at startup that RELEASE_PLAN and SOURCE_REPOSITORIES are in sync.
-@Field final RELEASE_PLAN = [
+@Field RELEASE_PLAN = [
     ['debezium'],
     ['cassandra', 'cockroachdb', 'db2', 'ibmi', 'informix', 'ingres', 'milvus' ,'spanner', 'sqlite', 'vitess', 'tidb', 'yashandb'],
     ['quarkus', 'operator'],
@@ -291,7 +291,7 @@ def branchExists(branchName) {
 }
 
 def postPerformCommitExists() {
-    sh(script: "git log --oneline | grep -qE '${POST_PERFORM_COMMIT_PATTERN}'", returnStatus: true) == 0
+    sh(script: "git log --oneline | head -2 | grep -qE '${POST_PERFORM_COMMIT_PATTERN}'", returnStatus: true) == 0
 }
 
 def gitPushCandidate(repoName) {
@@ -738,8 +738,13 @@ node {
             if (!IGNORE_RELEASE_PLAN_INCONSISTENCIES) {
                 if (missing) { error "RELEASE_PLAN is missing repositories: ${missing.sort()}" }
                 if (extra) { error "RELEASE_PLAN contains unknown repositories: ${extra.sort()}" }
-            } else if (missing || extra) {
-                echo "WARNING: Ignoring release plan inconsistencies — missing: ${missing.sort()}, extra: ${extra.sort()}"
+            } else {
+                if (missing || extra) {
+                    echo "WARNING: Ignoring release plan inconsistencies — missing: ${missing.sort()}, extra: ${extra.sort()}"
+                }
+                if (extra) {
+                    RELEASE_PLAN = RELEASE_PLAN.collect { tier -> tier - extra }.findAll { !it.isEmpty() }
+                }
             }
         }
 
