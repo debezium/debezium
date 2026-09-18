@@ -117,8 +117,12 @@ public class MariaDbStreamingChangeEventSource extends BinlogStreamingChangeEven
             setEventTimestamp(event, event.getHeader().getTimestamp());
         }
 
-        // With compatibility mode 4, this event equates to a new transaction.
-        handleTransactionBegin(partition, offsetContext, event, null);
+        // With compatibility mode 4, non-standalone GTID events equate to a new transaction.
+        // Standalone events do not have a following commit, so starting a transaction for them
+        // would leave transaction state open and notify incremental snapshots too early.
+        if ((gtidEvent.getFlags() & MariadbGtidEventData.FL_STANDALONE) == 0) {
+            handleTransactionBegin(partition, offsetContext, event, null);
+        }
     }
 
     @Override
