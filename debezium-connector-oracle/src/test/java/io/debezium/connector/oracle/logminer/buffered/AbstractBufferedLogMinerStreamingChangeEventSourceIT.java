@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
@@ -73,6 +74,15 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceIT exten
     }
 
     protected abstract Configuration.Builder getBufferImplementationConfig();
+
+    // DBZ2634 instrumentation: every connector started by these tests dumps the raw LogMiner rows of each
+    // mining pass, regardless of how the individual test built its configuration.
+    @Override
+    protected void start(Class<? extends SourceConnector> connectorClass, Configuration connectorConfig) {
+        super.start(connectorClass, connectorConfig.edit()
+                .with(OracleConnectorConfig.LOG_MINING_DBZ2634_RAW_DUMP, true)
+                .build());
+    }
 
     protected boolean hasPersistedState() {
         return false;
