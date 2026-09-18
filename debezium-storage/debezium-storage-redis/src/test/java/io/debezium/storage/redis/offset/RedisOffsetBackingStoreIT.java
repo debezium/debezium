@@ -39,6 +39,7 @@ import org.testcontainers.utility.DockerImageName;
 import io.debezium.config.Configuration;
 import io.debezium.storage.redis.RedisClient;
 import io.debezium.storage.redis.RedisClientConnectionException;
+import io.debezium.storage.redis.RedisClientLibrary;
 import io.debezium.storage.redis.RedisConnection;
 import io.debezium.util.Testing;
 
@@ -91,14 +92,17 @@ class RedisOffsetBackingStoreIT {
     }
 
     /**
-     * Provides test parameters for cluster enabled/disabled scenarios.
+     * Provides test parameters for every supported combination of cluster mode and client library.
+     * Lettuce appears for the single instance only: it rejects cluster mode outright, which
+     * {@code LettuceClientTest} covers without needing a cluster.
      *
-     * @return Stream of Arguments containing cluster enabled flag
+     * @return Stream of Arguments containing the cluster enabled flag and the client library
      */
-    static Stream<Arguments> clusterScenarios() {
+    static Stream<Arguments> clientScenarios() {
         return Stream.of(
-                Arguments.of(false),
-                Arguments.of(true));
+                Arguments.of(false, RedisClientLibrary.JEDIS),
+                Arguments.of(true, RedisClientLibrary.JEDIS),
+                Arguments.of(false, RedisClientLibrary.LETTUCE));
     }
 
     @AfterEach
@@ -116,10 +120,10 @@ class RedisOffsetBackingStoreIT {
     }
 
     @ParameterizedTest
-    @MethodSource("clusterScenarios")
+    @MethodSource("clientScenarios")
     @DisplayName("Test Redis connection with cluster mode")
-    public void testRedisConnection(boolean clusterEnabled) throws InterruptedException {
-        RedisOffsetBackingStore redisOffsetBackingStore = getRedisOffsetBackingStore(clusterEnabled);
+    public void testRedisConnection(boolean clusterEnabled, RedisClientLibrary library) throws InterruptedException {
+        RedisOffsetBackingStore redisOffsetBackingStore = getRedisOffsetBackingStore(clusterEnabled, library);
         RedisClient client = redisOffsetBackingStore.getRedisClient();
 
         // For cluster mode, clientList is not supported, so we skip this assertion
@@ -133,11 +137,11 @@ class RedisOffsetBackingStoreIT {
     }
 
     @ParameterizedTest
-    @MethodSource("clusterScenarios")
+    @MethodSource("clientScenarios")
     @Timeout(5) // Ensure we don't stuck in endless retry loop
     @DisplayName("Test load with retry mechanism")
-    public void testLoadWithRetry(boolean clusterEnabled) throws InterruptedException {
-        RedisOffsetBackingStore redisOffsetBackingStore = getRedisOffsetBackingStore(clusterEnabled);
+    public void testLoadWithRetry(boolean clusterEnabled, RedisClientLibrary library) throws InterruptedException {
+        RedisOffsetBackingStore redisOffsetBackingStore = getRedisOffsetBackingStore(clusterEnabled, library);
         RedisClient client = redisOffsetBackingStore.getRedisClient();
 
         RedisClient mockClient = Mockito.spy(client);
@@ -156,11 +160,11 @@ class RedisOffsetBackingStoreIT {
     }
 
     @ParameterizedTest
-    @MethodSource("clusterScenarios")
+    @MethodSource("clientScenarios")
     @Timeout(5) // Ensure we don't stuck in endless retry loop
     @DisplayName("Test save with retry mechanism")
-    public void testSaveWithRetry(boolean clusterEnabled) throws InterruptedException {
-        RedisOffsetBackingStore redisOffsetBackingStore = getRedisOffsetBackingStore(clusterEnabled);
+    public void testSaveWithRetry(boolean clusterEnabled, RedisClientLibrary library) throws InterruptedException {
+        RedisOffsetBackingStore redisOffsetBackingStore = getRedisOffsetBackingStore(clusterEnabled, library);
         RedisClient client = redisOffsetBackingStore.getRedisClient();
 
         // Load test key-value pair to redis to able to test save()
@@ -190,15 +194,15 @@ class RedisOffsetBackingStoreIT {
         return Arrays.stream(client.clientList().split(NEW_LINE)).filter(entry -> entry.contains(name)).count();
     }
 
-    private RedisOffsetBackingStore getRedisOffsetBackingStore(boolean clusterEnabled) {
-        RedisOffsetBackingStoreConfig config = getRedisOffsetBackingStoreConfig(clusterEnabled);
+    private RedisOffsetBackingStore getRedisOffsetBackingStore(boolean clusterEnabled, RedisClientLibrary library) {
+        RedisOffsetBackingStoreConfig config = getRedisOffsetBackingStoreConfig(clusterEnabled, library);
         RedisOffsetBackingStore redisOffsetBackingStore = new RedisOffsetBackingStore();
         redisOffsetBackingStore.configure(config);
         redisOffsetBackingStore.startNoLoad();
         return redisOffsetBackingStore;
     }
 
-    private RedisOffsetBackingStoreConfig getRedisOffsetBackingStoreConfig(boolean clusterEnabled) {
+    private RedisOffsetBackingStoreConfig getRedisOffsetBackingStoreConfig(boolean clusterEnabled, RedisClientLibrary library) {
         Map<String, String> dummyConfig = new HashMap<>();
 
         if (clusterEnabled) {
@@ -214,6 +218,7 @@ class RedisOffsetBackingStoreIT {
         }
 
         dummyConfig.put(PROP_PREFIX + "cluster.enabled", String.valueOf(clusterEnabled));
+        dummyConfig.put(PROP_PREFIX + "client.library", library.getValue());
         return new RedisOffsetBackingStoreConfig(Configuration.from(dummyConfig));
     }
 
