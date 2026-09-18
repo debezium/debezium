@@ -35,6 +35,7 @@ import javax.management.openmbean.TabularDataSupport;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
+import org.bson.BsonDocument;
 import org.bson.Document;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -42,6 +43,7 @@ import org.junit.jupiter.api.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.util.MetricsHelper;
 import io.debezium.engine.DebeziumEngine;
@@ -345,6 +347,17 @@ public class BlockingSnapshotIT extends AbstractMongoConnectorIT {
             throws InterruptedException {
 
         assertThat(snapshotAndStreamingRecords.allRecordsInOrder().size()).isEqualTo(expectedRecords);
+        snapshotAndStreamingRecords.recordsForTopic(topicName).forEach(record -> {
+            final var envelope = (Struct) record.value();
+            final var token = envelope.getStruct(Envelope.FieldName.SOURCE).getString(SourceInfo.RESUME_TOKEN);
+            if (Envelope.Operation.READ.code().equals(envelope.getString(Envelope.FieldName.OPERATION))) {
+                assertThat(token).isNull();
+            }
+            else {
+                assertThat(BsonDocument.parse(token))
+                        .isEqualTo(ResumeTokens.fromBase64((String) record.sourceOffset().get(SourceInfo.RESUME_TOKEN)));
+            }
+        });
         List<Integer> actual = snapshotAndStreamingRecords.recordsForTopic(topicName).stream()
                 .map(record -> extractFieldValue(record, "aa"))
                 .collect(Collectors.toList());

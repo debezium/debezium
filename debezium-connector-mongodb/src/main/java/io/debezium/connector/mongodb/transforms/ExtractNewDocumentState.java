@@ -349,7 +349,9 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends Abstrac
 
         // Update the value with the new fields
         for (FieldReference fieldReference : additionalFields) {
-            value.put(fieldReference.getNewField(), fieldReference.getValue(originalRecordValue));
+            if (fieldReference.getSchema(originalRecord.valueSchema()).isPresent()) {
+                value.put(fieldReference.getNewField(), fieldReference.getValue(originalRecordValue));
+            }
         }
     }
 
