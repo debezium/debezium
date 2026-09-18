@@ -10,6 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +32,7 @@ import io.debezium.connector.jdbc.junit.jupiter.PostgresInsertModeArgumentsProvi
 import io.debezium.connector.jdbc.junit.jupiter.PostgresInsertModeArgumentsProvider.PostgresInsertMode;
 import io.debezium.connector.jdbc.junit.jupiter.PostgresSinkDatabaseContextProvider;
 import io.debezium.connector.jdbc.junit.jupiter.Sink;
+import io.debezium.connector.jdbc.junit.jupiter.SinkRecordFactoryArgumentsProvider;
 import io.debezium.connector.jdbc.util.SinkRecordFactory;
 import io.debezium.data.Enum;
 import io.debezium.data.Json;
@@ -490,6 +492,148 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
             assertThat(rs.getArray(2).getArray()).isEqualTo(new Integer[]{ 1, 2, 42 });
             return null;
         });
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
+    @FixFor("debezium/dbz#2571")
+    public void testShouldWorkWithBytesArray(SinkRecordFactory factory, PostgresInsertMode insertMode) throws Exception {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.NONE.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, String.valueOf(insertMode.isUnnestEnabled()));
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server2", "schema", tableName);
+
+        JdbcSinkConnectorConfig config = getConfig(properties);
+        final JdbcKafkaSinkRecord createRecord = factory.createRecordWithSchemaValue(
+                topicName,
+                (byte) 1,
+                "data",
+                SchemaBuilder.array(Schema.OPTIONAL_BYTES_SCHEMA).optional().build(),
+                Arrays.asList(ByteBuffer.wrap(new byte[]{ 1, 2, 3 }), null, new byte[]{ 4, 5, 6 }),
+                config);
+
+        final String destinationTable = destinationTableName(createRecord);
+        final String sql = "CREATE TABLE %s (id int not null, data bytea[], primary key(id))";
+        getSink().execute(String.format(sql, destinationTable));
+
+        consume(createRecord);
+
+        getSink().assertRows(destinationTable, rs -> {
+            assertThat(rs.getInt(1)).isEqualTo(1);
+            assertThat(rs.getArray(2).getArray()).isEqualTo(new byte[][]{ { 1, 2, 3 }, null, { 4, 5, 6 } });
+            return null;
+        });
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("debezium/dbz#2571")
+    public void testShouldCreateBytesArrayColumnForNamedBytesArray(SinkRecordFactory factory) throws Exception {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, "false");
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final var tableName = randomTableName();
+        final var topicName = topicName("server2", "schema", tableName);
+        final Schema elementSchema = SchemaBuilder.bytes().name("custom.Binary").optional().build();
+        final var config = getConfig(properties);
+        final var record = factory.createRecordWithSchemaValue(
+                topicName, (byte) 1, "data", SchemaBuilder.array(elementSchema).optional().build(),
+                Arrays.asList(new byte[]{ 1, 2, 3 }, null, ByteBuffer.wrap(new byte[]{ 4, 5, 6 })), config);
+
+        // Exercise schema resolution and JdbcType conversion through the sink, without pre-creating the table.
+        consume(record);
+
+        final var destinationTable = destinationTableName(record);
+        getSink().assertColumn(destinationTable, "data", "_bytea");
+        getSink().assertRows(destinationTable, rs -> {
+            assertThat(rs.getInt(1)).isEqualTo(1);
+            assertThat(rs.getArray(2).getArray()).isEqualTo(new byte[][]{ { 1, 2, 3 }, null, { 4, 5, 6 } });
+            return null;
+        });
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
+    @FixFor("debezium/dbz#2571")
+    public void testShouldWorkWithBytesArrayBatchedWrites(SinkRecordFactory factory, PostgresInsertMode insertMode) throws Exception {
+        shouldWorkWithBytesArrayBatchedWrites(factory, insertMode, Schema.OPTIONAL_BYTES_SCHEMA);
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(PostgresInsertModeArgumentsProvider.class)
+    @FixFor("debezium/dbz#2571")
+    public void testShouldWorkWithNamedBytesArrayBatchedWrites(SinkRecordFactory factory, PostgresInsertMode insertMode) throws Exception {
+        shouldWorkWithBytesArrayBatchedWrites(factory, insertMode, SchemaBuilder.bytes().name("custom.Binary").optional().build());
+    }
+
+    private void shouldWorkWithBytesArrayBatchedWrites(SinkRecordFactory factory, PostgresInsertMode insertMode, Schema elementSchema) throws Exception {
+        // ARRAY fields are excluded from the UNNEST batch path (hasUnnestUnsupportedField), so a
+        // multi-record batch always flushes through the row-wise PreparedStatement addBatch path.
+        // Unlike the single-record tests, the insert modes still take distinct decision paths here:
+        // with UNNEST enabled the batch reaches the exclusion check and must fall back, while with
+        // it disabled the UNNEST path is skipped outright.
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.NONE.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_UNNEST_INSERT, String.valueOf(insertMode.isUnnestEnabled()));
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server2", "schema", tableName);
+
+        JdbcSinkConnectorConfig config = getConfig(properties);
+        final Schema arraySchema = SchemaBuilder.array(elementSchema).optional().build();
+        final JdbcKafkaSinkRecord record1 = factory.createRecordWithSchemaValue(
+                topicName, (byte) 1, "data", arraySchema,
+                Arrays.asList(ByteBuffer.wrap(new byte[]{ 1, 2, 3 }), null), config);
+        final JdbcKafkaSinkRecord record2 = factory.createRecordWithSchemaValue(
+                topicName, (byte) 2, "data", arraySchema,
+                Arrays.asList(new byte[]{ 4, 5, 6 }), config);
+        final JdbcKafkaSinkRecord record3 = factory.createRecordWithSchemaValue(
+                topicName, (byte) 3, "data", arraySchema,
+                List.of(), config);
+        final var record4 = factory.createRecordWithSchemaValue(
+                topicName, (byte) 4, "data", arraySchema,
+                Arrays.asList(null, null), config);
+        final var record5 = factory.createRecordWithSchemaValue(
+                topicName, (byte) 5, "data", arraySchema,
+                null, config);
+
+        final String destinationTable = destinationTableName(record1);
+        final String sql = "CREATE TABLE %s (id int not null, data bytea[], primary key(id))";
+        getSink().execute(String.format(sql, destinationTable));
+
+        // Pass all records in one call so they flush as a single JDBC batch
+        consume(List.of(record1, record2, record3, record4, record5));
+
+        final Map<Integer, Object> rowsById = new HashMap<>();
+        getSink().assertRows(destinationTable, rs -> {
+            do {
+                final var array = rs.getArray(2);
+                rowsById.put(rs.getInt(1), array == null ? null : array.getArray());
+            } while (rs.next());
+            return null;
+        });
+
+        assertThat(rowsById).containsOnlyKeys(1, 2, 3, 4, 5);
+        assertThat(rowsById.get(1)).isEqualTo(new byte[][]{ { 1, 2, 3 }, null });
+        assertThat(rowsById.get(2)).isEqualTo(new byte[][]{ { 4, 5, 6 } });
+        assertThat(rowsById.get(3)).isEqualTo(new byte[0][]);
+        assertThat(rowsById.get(4)).isEqualTo(new byte[][]{ null, null });
+        assertThat(rowsById.get(5)).isNull();
     }
 
     @ParameterizedTest
