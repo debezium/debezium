@@ -20,3 +20,22 @@ CREATE INDEX the_index IF NOT EXISTS ON t_order (order_id);
 CREATE INDEX part_idx ON partitioned_by_ts (part)
     GLOBAL PARTITION BY RANGE (part)
         (PARTITION t0 VALUES LESS THAN (TIMESTAMP '2020-01-01 00:00:00') );
+
+CREATE INDEX SCHEMA1.IDX_ONLINE_TEST ON SCHEMA1.TABLE1(COL1)
+ONLINE
+LOGGING
+TABLESPACE TS_DATA
+PCTFREE    15
+INITRANS   10
+MAXTRANS   255
+STORAGE    (
+            INITIAL          10M
+            NEXT             10M
+            MINEXTENTS       1
+            MAXEXTENTS       UNLIMITED
+            PCTINCREASE      0
+            BUFFER_POOL      DEFAULT
+            FLASH_CACHE      DEFAULT
+            CELL_FLASH_CACHE DEFAULT
+           )
+NOPARALLEL;
