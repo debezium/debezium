@@ -124,11 +124,11 @@ public class NotificationsIT extends AbstractNotificationsIT<SqlServerConnector>
                     notifications.add(r);
                 }
             });
-            return notifications.size() == 3;
+            return notifications.size() == 4;
         });
 
-        Assertions.assertThat(notifications).hasSize(3);
-        SourceRecord sourceRecord = notifications.get(2);
+        Assertions.assertThat(notifications).hasSize(4);
+        SourceRecord sourceRecord = notifications.get(3);
         Assertions.assertThat(sourceRecord.topic()).isEqualTo("io.debezium.notification");
         Struct value = (Struct) sourceRecord.value();
         Assertions.assertThat(value.getString("aggregate_type")).isEqualTo("Capture Instance");
