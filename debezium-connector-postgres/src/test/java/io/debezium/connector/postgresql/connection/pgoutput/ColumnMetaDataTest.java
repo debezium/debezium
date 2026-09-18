@@ -34,7 +34,7 @@ public class ColumnMetaDataTest {
     @Test
     @FixFor("debezium/dbz#2220")
     public void shouldReadPgVectorDimensionFromModifier() {
-        final ColumnMetaData column = new ColumnMetaData("v", vectorType(), false, true, false, null, 3, "vector");
+        final ColumnMetaData column = new ColumnMetaData("v", vectorType(), false, true, false, null, null, 3, "vector");
         assertThat(column.getLength()).isEqualTo(3);
         assertThat(column.getScale()).isEqualTo(0);
         // Single dimension modifier: vector(3), not vector(3,0).
@@ -44,7 +44,7 @@ public class ColumnMetaDataTest {
     @Test
     @FixFor("debezium/dbz#2220")
     public void shouldLeavePgVectorWithoutDimensionUnset() {
-        final ColumnMetaData column = new ColumnMetaData("v", vectorType(), false, true, false, null, TypeRegistry.NO_TYPE_MODIFIER, "vector");
+        final ColumnMetaData column = new ColumnMetaData("v", vectorType(), false, true, false, null, null, TypeRegistry.NO_TYPE_MODIFIER, "vector");
         assertThat(column.getLength()).isEqualTo(Column.UNSET_INT_VALUE);
         assertThat(column.getTypeName()).isEqualTo("vector");
     }
@@ -52,7 +52,7 @@ public class ColumnMetaDataTest {
     @Test
     @FixFor("debezium/dbz#2232")
     public void shouldKeepSerialTypeNameReportedByDriver() {
-        final ColumnMetaData column = new ColumnMetaData("pk", int4Type(), true, false, false, null, TypeRegistry.NO_TYPE_MODIFIER, "serial");
+        final ColumnMetaData column = new ColumnMetaData("pk", int4Type(), true, false, false, null, null, TypeRegistry.NO_TYPE_MODIFIER, "serial");
         assertThat(column.getDriverTypeName()).isEqualTo("serial");
         assertThat(column.getTypeName()).startsWith("serial");
     }
@@ -60,7 +60,7 @@ public class ColumnMetaDataTest {
     @Test
     @FixFor("debezium/dbz#2232")
     public void shouldFallBackToTypeNameOfOidWhenDriverReportsNone() {
-        final ColumnMetaData column = new ColumnMetaData("pk", int4Type(), true, false, false, null, TypeRegistry.NO_TYPE_MODIFIER, null);
+        final ColumnMetaData column = new ColumnMetaData("pk", int4Type(), true, false, false, null, null, TypeRegistry.NO_TYPE_MODIFIER, null);
         assertThat(column.getDriverTypeName()).isEqualTo("int4");
         assertThat(column.getTypeName()).startsWith("int4");
     }
