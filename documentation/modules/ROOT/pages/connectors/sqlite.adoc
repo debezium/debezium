@@ -1,0 +1,688 @@
+[id="debezium-connector-for-sqlite"]
+= {prodname} connector for SQLite
+
+:context: sqlite
+:data-collection: table
+:mbean-name: {context}
+:connector-file: {context}
+:connector-class: SQLiteSourceConnector
+:connector-name: SQLite
+:include-list-example: orders
+
+ifdef::community[]
+
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+
+endif::community[]
+
+The {prodname} SQLite connector captures row-level changes in the tables of a link:https://www.sqlite.org/[SQLite] database file.
+ifdef::community[]
+For information about the SQLite versions that are compatible with this connector, see the link:https://debezium.io/releases/[{prodname} release overview].
+endif::community[]
+
+SQLite is an embedded database that stores an entire database in a single file, and it exposes no replication log or change stream that an external process can follow.
+Instead, the connector captures changes with SQL triggers.
+For each table that it captures, the connector installs `AFTER INSERT`, `AFTER UPDATE`, and `AFTER DELETE` triggers.
+Every trigger writes one row that describes the change into an internal table named `_debezium_cdc_log`, in commit order.
+
+The first time that the connector starts, it reads a consistent snapshot of the tables that it is configured to capture.
+After the snapshot completes, the connector streams changes by reading the new rows that the triggers append to the CDC log table.
+By default, change events for a particular table go to a Kafka topic that is named after the table.
+Applications and services can then consume change event records from these topics.
+
+ifdef::community[]
+[NOTE]
+====
+The {prodname} connector for SQLite is currently in the Incubating stage of development.
+You are encouraged to explore and test the connector, but it is not yet recommended for production use.
+The format of emitted messages may change, specific features may not be implemented, and it is expected to evolve before it is production-ready.
+====
+endif::community[]
+
+[[sqlite-overview]]
+== Overview
+
+Because SQLite has no server process and no built-in change stream, the connector runs against the database file directly and derives a change stream from SQL triggers.
+
+The connector opens the same database file that the application writes to, and it opens the file in link:https://www.sqlite.org/wal.html[write-ahead logging (WAL)] mode.
+WAL mode lets the connector read the database in short transactions while application writers continue to commit, so capture does not block the application and the application does not block capture.
+
+For each captured table, the connector installs three triggers, one each for `INSERT`, `UPDATE`, and `DELETE`.
+Every trigger appends a single row to the `_debezium_cdc_log` table within the same transaction as the change that fired it, so a change and its log row commit together, or not at all.
+The CDC log table has the following structure:
+
+[cols="2,2,5",options="header"]
+|===
+|Column |Type |Description
+
+|`change_id`
+|`INTEGER PRIMARY KEY AUTOINCREMENT`
+|A monotonically increasing identifier that SQLite assigns in commit order. It is the position that the connector streams from and stores in its offsets.
+
+|`table_name`
+|`TEXT`
+|The name of the table in which the change occurred.
+
+|`operation`
+|`TEXT`
+|The kind of change: `c` for an insert, `u` for an update, and `d` for a delete.
+
+|`old_row_data`
+|`TEXT`
+|A JSON object with the row's values before the change. It is `null` for an insert.
+
+|`new_row_data`
+|`TEXT`
+|A JSON object with the row's values after the change. It is `null` for a delete.
+
+|`committed_at`
+|`INTEGER`
+|The time, in milliseconds since the UNIX epoch, at which the change was recorded.
+|===
+
+Because the triggers write to the log in the same transaction as the change, the `change_id` order is the commit order, and the connector emits change events in that order.
+The connector reads the log in small batches, emits a change event for each row, and advances its offset to the `change_id` of the last row that it processed.
+So that the log does not grow without bound, the connector periodically deletes the rows whose changes {prodname} has already committed downstream.
+
+A SQLite connector uses a single task, and each connector instance captures a single database file.
+
+[[how-the-sqlite-connector-works]]
+== How the connector works
+
+To optimally configure and run a {prodname} SQLite connector, it is helpful to understand how the connector performs snapshots, streams changes, and names topics.
+
+[[sqlite-snapshots]]
+=== Snapshots
+
+When a SQLite connector starts for the first time, it performs an initial snapshot of the tables that it captures.
+The connector completes the following steps:
+
+. Switches the database file to WAL journal mode, and creates the `_debezium_cdc_log` table if it does not already exist.
+
+. Installs the capture triggers on each table that it captures.
+From this point on, SQLite logs every insert, update, and delete to the CDC log table with a `change_id`, so that no change that occurs during or after the snapshot is lost.
+
+. Opens a read transaction on the WAL, which provides a consistent view of the database without locking the tables or blocking application writers.
+
+. Reads the highest `change_id` in the CDC log within that same view, and stores it in the connector offsets as the position from which streaming later resumes.
+Because the connector reads the mark and the table data from one consistent view, any change that is committed after the mark is left for the streaming phase, with no gap and no duplicate.
+
+. Reads every row of each captured table, and emits it as a read (`op=r`) event.
+The connector also emits one schema change event per table.
+
+. Records that the snapshot is complete in the connector offsets, and hands off to the streaming phase, which resumes from the stored `change_id`.
+
+.Snapshot modes
+The `snapshot.mode` property controls the snapshot behavior:
+
+`initial`:: The connector performs a snapshot when no offsets exist, and then streams changes. This is the default.
+`always`:: The connector performs a snapshot every time that it starts, and then streams changes.
+`no_data`:: The connector does not snapshot data. It installs the capture triggers if they are missing, and begins streaming from the current position of the CDC log.
+`initial_only`:: The connector performs a snapshot when no offsets exist, and then stops without streaming.
+
+[NOTE]
+====
+The SQLite connector does not support incremental snapshots, ad hoc snapshots, or blocking snapshots.
+====
+
+[[sqlite-streaming-changes]]
+=== Streaming changes
+
+After the snapshot completes, the connector begins to poll the CDC log table, and streams the rows that the triggers append to it.
+For each poll, the connector completes the following steps:
+
+. Reconciles the capture triggers if the database schema has changed since the previous poll, so that a schema change is picked up before the connector reads the next batch.
+
+. Deletes already-committed rows from the CDC log once enough of them have accumulated, so that the log does not grow without bound.
+
+. Reads a batch of rows whose `change_id` is greater than the stored offset, up to the limit that the `cdc.log.batch.size` property sets.
+
+. Emits a change event for each row, in `change_id` order, and advances the offset to the `change_id` of the last row that it emits.
+
+If a poll returns no rows, the connector pauses for the poll interval before it polls again.
+The connector reads each batch in a short, autocommitted transaction, so that SQLite can checkpoint the WAL between polls.
+
+Because the triggers write to the CDC log in the same transaction as the change that fired them, the `change_id` order is the commit order, and the connector emits change events in that order.
+
+A SQLite connector supports a single task, because SQLite allows a single writer.
+If you set `tasks.max` to a value greater than `1`, the connector logs a warning and uses a single task.
+
+[[sqlite-topic-names]]
+=== Topic names
+
+By default, the SQLite connector writes all of the change events for a table to a single Kafka topic.
+The connector names change event topics according to the following format:
+
+_topicPrefix_._tableName_
+
+The following list provides definitions for the components of the default name:
+
+_topicPrefix_:: The value that the `topic.prefix` configuration property specifies.
+_tableName_:: The name of the table in which the operation occurred.
+
+SQLite has no catalog or schema, so the table name is the only qualifier between the prefix and the name of the topic.
+For example, if `topic.prefix` is set to `sqlite`, and a row is inserted into the `orders` table, the connector emits the event to the `sqlite.orders` topic.
+
+To change the topic naming convention, you can configure a custom topic naming strategy.
+
+[[sqlite-events]]
+== Data change events
+
+The {prodname} SQLite connector generates a data change event for each row-level insert, update, and delete operation.
+Each event contains a key and a value.
+The structure of the key and the value depends on the table that was changed.
+
+The connector emits the following operations:
+
+[cols="1,1,3,3",options="header"]
+|===
+|Operation |`op` |`before` |`after`
+
+|Snapshot read
+|`r`
+|`null`
+|The full row, as it existed when the snapshot ran.
+
+|Insert
+|`c`
+|`null`
+|The full row that was inserted.
+
+|Update
+|`u`
+|The full row, as it existed before the update.
+|The full row, as it exists after the update.
+
+|Delete
+|`d`
+|The full row, as it existed before the delete.
+|`null`
+|===
+
+Because the capture triggers record the complete `OLD` and `NEW` row for every change, update and delete events carry a full before image, not only the primary key.
+
+[[sqlite-change-event-keys]]
+=== Change event keys
+
+The key of a change event contains the primary key of the table in which the change occurred.
+For a table named `orders` whose primary key is an `INTEGER` column named `id`, and a connector for which `topic.prefix` is set to `sqlite`, the key of every change event has the following structure:
+
+[source,json,indent=0]
+----
+{
+  "schema": {
+    "type": "struct",
+    "name": "sqlite.orders.Key",
+    "optional": false,
+    "fields": [
+      {
+        "field": "id",
+        "type": "int64",
+        "optional": false
+      }
+    ]
+  },
+  "payload": {
+    "id": 1004
+  }
+}
+----
+
+[[sqlite-change-event-values]]
+=== Change event values
+
+The value of a change event uses the standard {prodname} envelope, which contains `before`, `after`, `source`, `op`, and `ts_ms` fields.
+
+.Example: create event
+The following example shows the value of a change event that the connector emits after a row is inserted into the `orders` table:
+
+[source,json,indent=0]
+----
+{
+  "payload": {
+    "before": null,
+    "after": {
+      "id": 1004,
+      "name": "milk frother",
+      "quantity": 2
+    },
+    "source": {
+      "version": "{debezium-version}",
+      "connector": "sqlite",
+      "name": "sqlite",
+      "ts_ms": 1754630400000,
+      "snapshot": "false",
+      "db": "sqlite",
+      "table": "orders",
+      "change_id": 42
+    },
+    "op": "c",
+    "ts_ms": 1754630400123
+  }
+}
+----
+
+.Example: update event
+The following example shows an update to the same row.
+The `before` field holds the row as it existed before the change, and the `after` field holds the row as it exists after the change:
+
+[source,json,indent=0]
+----
+{
+  "payload": {
+    "before": {
+      "id": 1004,
+      "name": "milk frother",
+      "quantity": 2
+    },
+    "after": {
+      "id": 1004,
+      "name": "milk frother",
+      "quantity": 5
+    },
+    "source": {
+      "version": "{debezium-version}",
+      "connector": "sqlite",
+      "name": "sqlite",
+      "ts_ms": 1754630500000,
+      "snapshot": "false",
+      "db": "sqlite",
+      "table": "orders",
+      "change_id": 43
+    },
+    "op": "u",
+    "ts_ms": 1754630500456
+  }
+}
+----
+
+.Example: delete event
+The following example shows the deletion of the same row.
+The `before` field holds the row as it existed before the delete, and the `after` field is `null`:
+
+[source,json,indent=0]
+----
+{
+  "payload": {
+    "before": {
+      "id": 1004,
+      "name": "milk frother",
+      "quantity": 5
+    },
+    "after": null,
+    "source": {
+      "version": "{debezium-version}",
+      "connector": "sqlite",
+      "name": "sqlite",
+      "ts_ms": 1754630600000,
+      "snapshot": "false",
+      "db": "sqlite",
+      "table": "orders",
+      "change_id": 44
+    },
+    "op": "d",
+    "ts_ms": 1754630600789
+  }
+}
+----
+
+After a delete event, the connector emits a tombstone event, unless you set the `tombstones.on.delete` property to `false`.
+
+.Descriptions of `source` fields
+The `source` block of a SQLite change event contains the following connector-specific fields, in addition to the fields that all {prodname} connectors provide:
+
+[cols="1,4",options="header"]
+|===
+|Field |Description
+
+|`table`
+|The name of the table in which the operation occurred.
+
+|`change_id`
+|The identifier that the connector assigned to the change in the CDC log. It increases monotonically in commit order, and is the position from which the connector resumes streaming.
+|===
+
+[[sqlite-schema-change-events]]
+== Schema change events
+
+The {prodname} SQLite connector emits a schema change event whenever the structure of a captured table changes.
+It emits one event for each table that is created, altered, or dropped while the connector is running, and one event for each table during the initial snapshot.
+
+SQLite exposes no data definition language (DDL) statement to an external reader, so the connector detects a schema change by watching SQLite's `schema_version` counter, which SQLite increments for any DDL.
+When the counter moves, the connector re-reads the current schema from the database file, reconciles the capture triggers, and emits a schema change event for each captured table that was created, altered, or dropped.
+A DDL statement that does not change a captured table, such as `CREATE INDEX`, moves the counter but reconciles to no event.
+
+Because no literal DDL text is available, the `ddl` field of a SQLite schema change event is always `null`.
+The change is described by the `tableChanges` array instead.
+
+The connector does not keep a schema history topic.
+It reads the current schema directly from the database file whenever it needs it, so there is no separate history to replay after a restart.
+
+The connector writes schema change events to a single topic that is named after the `topic.prefix` property.
+For example, if `topic.prefix` is set to `sqlite`, the connector writes schema change events to the `sqlite` topic.
+
+.Renames
+SQLite gives no link between a table's old and new name, so a table rename appears to the connector as two changes: a `DROP` of the old name, followed by a `CREATE` of the new name.
+The connector emits a separate schema change event for each.
+
+.Example: schema change event
+The following example shows the value of a schema change event that the connector emits after a `note` column is added to the `orders` table:
+
+[source,json,indent=0]
+----
+{
+  "source": {
+    "version": "{debezium-version}",
+    "connector": "sqlite",
+    "name": "sqlite",
+    "ts_ms": 1754630700000,
+    "snapshot": "false",
+    "db": "sqlite",
+    "table": "orders",
+    "change_id": 44
+  },
+  "ts_ms": 1754630700123,
+  "databaseName": "sqlite",
+  "schemaName": null,
+  "ddl": null,
+  "tableChanges": [
+    {
+      "type": "ALTER",
+      "id": "\"orders\"",
+      "table": {
+        "primaryKeyColumnNames": [ "id" ],
+        "columns": [
+          { "name": "id", "jdbcType": -5, "typeName": "INTEGER", "optional": false },
+          { "name": "name", "jdbcType": 12, "typeName": "TEXT", "optional": true },
+          { "name": "quantity", "jdbcType": -5, "typeName": "INTEGER", "optional": true },
+          { "name": "note", "jdbcType": 12, "typeName": "TEXT", "optional": true }
+        ]
+      }
+    }
+  ]
+}
+----
+
+SQLite records no log position for a DDL statement, so the `change_id` in the `source` block of a schema change event is the last log position that the connector consumed, rather than a new value.
+
+[[sqlite-data-type-mappings]]
+== Data type mappings
+
+SQLite does not assign a fixed data type to a column.
+Instead, each column has a _type affinity_, which SQLite derives from the column's declared type, and each stored value keeps its own _storage class_ (`INTEGER`, `REAL`, `TEXT`, `BLOB`, or `NULL`).
+The connector builds one fixed Kafka Connect schema per column, from the column's affinity, so that every value in the column shares one schema.
+
+The connector derives a column's affinity from its declared type, by applying the following rules in order:
+
+. If the declared type contains `INT`, the affinity is `INTEGER`.
+. Otherwise, if it contains `CHAR`, `CLOB`, or `TEXT`, the affinity is `TEXT`.
+. Otherwise, if it contains `BLOB`, or the declared type is empty, the affinity is `BLOB`.
+. Otherwise, if it contains `REAL`, `FLOA`, or `DOUB`, the affinity is `REAL`.
+. Otherwise, the affinity is `NUMERIC`.
+
+The rules are substring matches, so a column declared `BOOLEAN`, `DATE`, `DATETIME`, or `DECIMAL` falls through to `NUMERIC`, and a column declared with no type has `BLOB` affinity, which matches SQLite's own behavior.
+
+The connector maps each affinity to a Kafka Connect schema type:
+
+[cols="2,2,3",options="header"]
+|===
+|SQLite affinity |Kafka Connect schema type |Notes
+
+|`INTEGER`
+|`INT64`
+|
+
+|`REAL`
+|`FLOAT64`
+|
+
+|`NUMERIC`
+|`FLOAT64`
+|SQLite has no fixed-precision decimal type. A `NUMERIC` column, including one that is declared `DECIMAL`, maps to `FLOAT64`.
+
+|`TEXT`
+|`STRING`
+|
+
+|`BLOB`
+|`BYTES`
+|A column that is declared with no type also has `BLOB` affinity.
+|===
+
+.Affinity mismatches
+Because SQLite is dynamically typed, a column can hold a value whose storage class does not match the column's affinity, for example, a `TEXT` value in a column that has `INTEGER` affinity.
+The connector converts each value by the column's affinity, so a value whose storage class does not fit that affinity cannot be converted.
+
+The connector resolves the mismatch through the framework's failure mode and a connector option.
+When a value's storage class does not fit the column's affinity, the converter reports a failure, and the `event.converting.failure.handling.mode` property decides the outcome:
+
+`fail`:: The connector stops. This is the default.
+`warn`:: The connector logs the column and leaves the field null.
+`skip`:: The connector leaves the field null quietly.
+
+Under `warn` or `skip`, leaving the field null then resolves against the column:
+
+* For a nullable column, the field stays null.
+* For a non-nullable column that has a default, the schema default takes over.
+* For a non-nullable column that has no default, there is no null to fall back on.
+The `nonnull.affinity.mismatch.fallback` property decides what happens:
++
+--
+`true`:: The connector substitutes a type placeholder for the value, so that the stream keeps flowing: `0` for `INT64`, `0.0` for `FLOAT64`, an empty string for `STRING`, and empty bytes for `BYTES`.
+`false`:: The field stays null, and the record fails downstream when the Kafka Connect struct is validated. This is the default.
+--
+
+The placeholder is a synthetic value in place of the real one, which is why it is off by default and takes effect only under the `warn` and `skip` failure modes.
+
+[[setting-up-sqlite]]
+== Setting up SQLite
+
+The connector installs its capture triggers and creates the `_debezium_cdc_log` table on the database itself, so there is no schema to prepare by hand.
+Before you deploy the connector, make sure that the connector can reach and write to the database file.
+
+.Prerequisites
+
+* A SQLite database file.
+* Read and write access to the database file for the process that runs the connector.
+The connector creates the `_debezium_cdc_log` table, installs the capture triggers, and deletes already-committed rows from the log, all of which write to the file.
+* Java 17 or later on the Kafka Connect worker.
+
+.Procedure
+
+. Place the Kafka Connect worker on the same host as the application that writes to the database, with direct access to the database file on a local filesystem.
++
+[IMPORTANT]
+====
+SQLite coordinates WAL access through a shared-memory file and local filesystem locks, so every process that opens the database must run on the same host and share the same file.
+A database file on a network filesystem, or one that is reached from a different host or container than the application that writes to it, is not supported.
+====
+
+. Grant the connector's process read and write permission on the database file and on the directory that contains it, so that SQLite can create the WAL and shared-memory files alongside it.
+
+. Verify that the tables that you want to capture have a primary key.
+The change event key is built from the primary key, so a table with no primary key produces events that have a null key.
+
+[[sqlite-deployment]]
+== Deployment
+
+To deploy a {prodname} SQLite connector, you install the connector archive on a Kafka Connect server, configure the connector, and start the Kafka Connect service.
+
+.Prerequisites
+
+* <<setting-up-sqlite,SQLite is set up>> to run a {prodname} connector.
+* Apache Kafka and Kafka Connect are installed.
+
+.Procedure
+
+. Download the {prodname} SQLite connector plug-in archive.
+. Extract the files into your Kafka Connect environment.
+. Add the directory that contains the connector files to the Kafka Connect `plugin.path`.
+. Restart the Kafka Connect process to pick up the new JAR files.
+
+[[sqlite-example-configuration]]
+=== Connector configuration example
+
+The following example shows the configuration of a connector that captures the `orders` and `customers` tables from a SQLite database file:
+
+[source,json,indent=0]
+----
+{
+  "name": "sqlite-connector",  // <1>
+  "config": {
+    "connector.class": "io.debezium.connector.sqlite.SQLiteSourceConnector",  // <2>
+    "topic.prefix": "sqlite",  // <3>
+    "database.file.path": "/data/app.db",  // <4>
+    "table.include.list": "orders,customers",  // <5>
+    "snapshot.mode": "initial"  // <6>
+  }
+}
+----
+<1> The name of the connector.
+<2> The name of the connector class. Always specify this value for a SQLite connector.
+<3> The prefix of the Kafka topics to which the connector writes change events.
+<4> The path of the SQLite database file that the connector monitors.
+<5> A comma-separated list of the tables to capture. SQLite has no schema, so each entry is a bare table name.
+<6> The criteria for performing a snapshot on startup.
+
+You can send this configuration to a running Kafka Connect service with the `POST` command of the Kafka Connect REST API.
+
+[[sqlite-connector-properties]]
+=== Connector properties
+
+The {prodname} SQLite connector supports the {prodname} properties that are common to all connectors, in addition to the following connector-specific properties.
+
+Because SQLite is a single file with no server, no schema, and no separate databases, the connector does not use the relational connection and schema-filtering properties.
+The `hostname`, `port`, `user`, `password`, and `database.name` properties, and the `schema.include.list` and `schema.exclude.list` properties, do not apply.
+
+.Required connector configuration properties
+[cols="3,2,5",options="header"]
+|===
+|Property |Default |Description
+
+|`name`
+|No default
+|A unique name for the connector. Attempting to register again with the same name fails.
+
+|`connector.class`
+|No default
+|The name of the Java class for the connector. Always specify `io.debezium.connector.sqlite.SQLiteSourceConnector`.
+
+|`topic.prefix`
+|No default
+|A prefix that names the SQLite database from which the connector captures changes. The connector prepends this value to the name of every topic that it produces. The prefix must be unique across all connectors.
+
+|`database.file.path`
+|No default
+|The path of the SQLite database file that the connector monitors.
+
+|`tasks.max`
+|`1`
+|The connector supports a single task. If you set a higher value, the connector logs a warning and uses a single task.
+|===
+
+.Snapshot and streaming properties
+[cols="3,2,5",options="header"]
+|===
+|Property |Default |Description
+
+|`snapshot.mode`
+|`initial`
+|Specifies the criteria for running a snapshot when the connector starts. Set one of the following values: `initial`, `always`, `no_data`, or `initial_only`.
+
+|`cdc.log.batch.size`
+|`1000`
+|The maximum number of rows that the connector reads from the `_debezium_cdc_log` table in each streaming poll. A small value keeps each read transaction short, so that SQLite can checkpoint the WAL between polls.
+
+|`log.compaction.threshold`
+|`10000`
+|The number of already-committed rows that the connector lets accumulate in the `_debezium_cdc_log` table before it deletes them. The connector deletes rows up to the last committed `change_id` once this many rows have accumulated since the previous deletion.
+
+|`nonnull.affinity.mismatch.fallback`
+|`false`
+|Specifies whether to substitute a type placeholder for a value whose SQLite storage class does not match its column's affinity, in a non-nullable column that has no default. When `true`, the connector emits `0`, `0.0`, an empty string, or empty bytes, instead of failing the conversion. The fallback takes effect only under the `warn` and `skip` values of `event.converting.failure.handling.mode`.
+|===
+
+.Filter and event properties
+[cols="3,2,5",options="header"]
+|===
+|Property |Default |Description
+
+|`table.include.list`
+|No default
+|An optional, comma-separated list of regular expressions or literal names that match the tables to capture. SQLite has no schema, so each entry is a bare table name. If you do not set this property, the connector captures all non-system tables. Do not set this property and the `table.exclude.list` property at the same time.
+
+|`table.exclude.list`
+|No default
+|An optional, comma-separated list of regular expressions or literal names that match the tables to exclude from capture. Do not set this property and the `table.include.list` property at the same time.
+
+|`column.include.list`
+|No default
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of columns to include in change event values.
+
+|`column.exclude.list`
+|No default
+|An optional, comma-separated list of regular expressions that match the fully-qualified names of columns to exclude from change event values.
+
+|`tombstones.on.delete`
+|`true`
+|Specifies whether the connector emits a tombstone event after each delete event, so that Kafka can remove all messages for the deleted key during log compaction.
+
+|`event.converting.failure.handling.mode`
+|`fail`
+|Specifies how the connector reacts when a value cannot be converted to its column's schema type, for example, when a value's SQLite storage class does not match the column's affinity. Set one of the following values: `fail`, `warn`, or `skip`.
+|===
+
+[NOTE]
+====
+The connector always excludes SQLite's internal `sqlite_` tables and its own `_debezium_` tables from capture, regardless of the include and exclude lists.
+====
+
+[[sqlite-monitoring]]
+== Monitoring
+
+The {prodname} SQLite connector provides the snapshot and streaming metrics that are common to all {prodname} connectors, and a few SQLite-specific streaming metrics.
+
+The connector exposes snapshot metrics through the following JMX object name:
+
+`debezium.sqlite:type=connector-metrics,context=snapshot,server=_<topic.prefix>_`
+
+The connector exposes streaming metrics through the following JMX object name:
+
+`debezium.sqlite:type=connector-metrics,context=streaming,server=_<topic.prefix>_`
+
+.SQLite-specific streaming metrics
+[cols="2,1,4",options="header"]
+|===
+|Attribute |Type |Description
+
+|`CurrentChangeId`
+|`long`
+|The `change_id` of the row that the connector most recently dispatched.
+
+|`CommittedChangeId`
+|`long`
+|The `change_id` that Kafka Connect most recently committed to the connector offsets.
+
+|`CdcLogDepth`
+|`long`
+|The number of rows in the `_debezium_cdc_log` table that the connector has not yet compacted. It is the backlog that is still waiting to be deleted from the log.
+|===
+
+[[sqlite-limitations]]
+== Limitations
+
+The connector has the following limitations:
+
+* The connector supports a single task, and each connector instance captures a single database file. To capture more than one database file, deploy one connector for each file.
+* The connector and the application that writes to the database must run on the same host, with direct access to the same database file on a local filesystem. A database file on a network filesystem, or one that is reached from a different host or container than the writer, is not supported.
+* The connector requires read and write access to the database file. It creates the `_debezium_cdc_log` table, installs the capture triggers, and compacts the log, all within the user's database.
+* The connector does not support incremental snapshots, ad hoc snapshots, or blocking snapshots.
+* SQLite exposes no DDL text to an external reader, so the `ddl` field of a schema change event is always `null`. The change is described by the `tableChanges` array.
+* A table that has no primary key produces change events that have a null key.
+* SQLite has no fixed-precision decimal type, so a `NUMERIC` column, including one that is declared `DECIMAL`, maps to `FLOAT64`.
