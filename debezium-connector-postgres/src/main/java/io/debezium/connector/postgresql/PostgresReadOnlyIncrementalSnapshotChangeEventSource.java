@@ -83,9 +83,11 @@ public class PostgresReadOnlyIncrementalSnapshotChangeEventSource<P extends Post
                                                                 Clock clock,
                                                                 SnapshotProgressListener<P> progressListener,
                                                                 DataChangeEventListener<P> dataChangeEventListener,
-                                                                NotificationService<P, ? extends OffsetContext> notificationService) {
+                                                                NotificationService<P, ? extends OffsetContext> notificationService,
+                                                                UndefinedColumnClassifier undefinedColumnClassifier) {
 
-        super(config, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener, notificationService);
+        super(config, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener, notificationService,
+                undefinedColumnClassifier);
         this.jdbcConnection = (PostgresConnection) jdbcConnection;
         this.schema = (PostgresSchema) databaseSchema;
     }
