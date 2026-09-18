@@ -241,6 +241,7 @@ def checkPreReleaseContent(String dbzContent, String copyrightContent, String re
 
 @Field final BUILD_ARGS = [
    'debezium': '-Poracle-all',
+   'server': '-Pnative',
  ]
 
 // Debezium Server must always ignore snapshots as it depends on Debezium Server BOM
