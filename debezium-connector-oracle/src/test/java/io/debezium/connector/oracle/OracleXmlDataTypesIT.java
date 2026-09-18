@@ -845,6 +845,117 @@ public class OracleXmlDataTypesIT extends AbstractAsyncEngineConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("dbz#2656")
+    public void shouldSnapshotTableWithBinaryXmlStorageXmlTypeColumn() throws Exception {
+        TestHelper.dropTable(connection, "dbz2656");
+        try {
+            connection.execute("CREATE TABLE dbz2656 (ID numeric(9,0), DATA xmltype, primary key(ID)) " +
+                    "XMLTYPE COLUMN DATA STORE AS SECUREFILE BINARY XML (CHUNK 8192) " +
+                    "ALLOW NONSCHEMA DISALLOW ANYSCHEMA");
+            TestHelper.streamTable(connection, "dbz2656");
+
+            connection.prepareUpdate("INSERT INTO dbz2656 values (1,?)", ps -> ps.setObject(1, toXmlType(XML_DATA)));
+            connection.commit();
+
+            Configuration config = getDefaultXmlConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ2656")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            List<SourceRecord> topicRecords = consumeRecordsByTopic(1).recordsForTopic(topicName("DBZ2656"));
+            assertThat(topicRecords).hasSize(1);
+
+            SourceRecord record = topicRecords.get(0);
+            VerifyRecord.isValidRead(record, "ID", 1);
+
+            Struct after = after(record);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertXmlFieldIsEqual(after, "DATA", XML_DATA);
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz2656");
+        }
+    }
+
+    @Test
+    @FixFor("dbz#2656")
+    public void shouldStreamTableCreatedWithBinaryXmlStorageXmlTypeColumn() throws Exception {
+        TestHelper.dropTable(connection, "dbz2656");
+        try {
+            Configuration config = getDefaultXmlConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ2656")
+                    .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, "true")
+                    .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, "true")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("CREATE TABLE dbz2656 (ID numeric(9,0), DATA xmltype, primary key(ID)) " +
+                    "XMLTYPE COLUMN DATA STORE AS SECUREFILE BINARY XML (CHUNK 8192) " +
+                    "ALLOW NONSCHEMA DISALLOW ANYSCHEMA");
+            TestHelper.streamTable(connection, "dbz2656");
+
+            List<SourceRecord> schemaChanges = consumeRecordsByTopic(2).recordsForTopic(TestHelper.SERVER_NAME);
+            assertThat(schemaChanges).hasSize(2);
+
+            List<Object> tableChanges = ((Struct) schemaChanges.get(0).value()).getArray("tableChanges");
+            assertThat(tableChanges).hasSize(1);
+
+            Struct tableChange = (Struct) tableChanges.get(0);
+            assertThat(tableChange.getString("type")).isEqualTo("CREATE");
+            assertThat(tableChange.getString("id")).contains("\"DBZ2656\"");
+
+            Struct dataColumn = null;
+            for (Object column : tableChange.getStruct("table").getArray("columns")) {
+                if ("DATA".equals(((Struct) column).getString("name"))) {
+                    dataColumn = (Struct) column;
+                }
+            }
+            assertThat(dataColumn).isNotNull();
+            assertThat(dataColumn.get("jdbcType")).isEqualTo(OracleTypes.SQLXML);
+            assertThat(dataColumn.get("typeName")).isEqualTo("XMLTYPE");
+
+            connection.prepareUpdate("INSERT INTO dbz2656 values (1,?)", ps -> ps.setObject(1, toXmlType(XML_DATA)));
+            connection.commit();
+
+            List<SourceRecord> topicRecords = consumeRecordsByTopic(1).recordsForTopic(topicName("DBZ2656"));
+            assertThat(topicRecords).hasSize(1);
+
+            SourceRecord record = topicRecords.get(0);
+            VerifyRecord.isValidInsert(record, "ID", 1);
+
+            Struct after = after(record);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertXmlFieldIsEqual(after, "DATA", XML_DATA);
+
+            connection.prepareUpdate("UPDATE dbz2656 SET DATA = ? WHERE ID = 1", ps -> ps.setObject(1, toXmlType(XML_DATA2)));
+            connection.commit();
+
+            topicRecords = consumeRecordsByTopic(1).recordsForTopic(topicName("DBZ2656"));
+            assertThat(topicRecords).hasSize(1);
+
+            record = topicRecords.get(0);
+            VerifyRecord.isValidUpdate(record, "ID", 1);
+
+            after = after(record);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertXmlFieldIsEqual(after, "DATA", XML_DATA2);
+
+            assertNoRecordsToConsume();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz2656");
+        }
+    }
+
     private Configuration.Builder getDefaultXmlConfig() {
         return TestHelper.defaultConfig().with(OracleConnectorConfig.LOB_ENABLED, true);
     }
