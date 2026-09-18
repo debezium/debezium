@@ -5218,6 +5218,7 @@ index_attributes
     : (
         physical_attributes_clause
         | logging_clause
+        | ONLINE
         | TABLESPACE (tablespace | DEFAULT)
         | key_compression
         | sort_or_nosort
