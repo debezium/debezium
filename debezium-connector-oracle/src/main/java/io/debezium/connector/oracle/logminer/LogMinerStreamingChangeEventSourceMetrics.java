@@ -81,6 +81,7 @@ public class LogMinerStreamingChangeEventSourceMetrics
     private final AtomicLong partialRollbackCount = new AtomicLong();
     private final AtomicLong numberOfBufferedEvents = new AtomicLong();
     private final AtomicLong numberOfCommittedEvents = new AtomicLong();
+    private final AtomicLong totalAbandonedTransactionCount = new AtomicLong();
 
     private final DurationHistogramMetric batchProcessingDuration = new DurationHistogramMetric();
     private final DurationHistogramMetric fetchQueryDuration = new DurationHistogramMetric();
@@ -133,6 +134,7 @@ public class LogMinerStreamingChangeEventSourceMetrics
         partialRollbackCount.set(0);
         numberOfBufferedEvents.set(0);
         numberOfCommittedEvents.set(0);
+        totalAbandonedTransactionCount.set(0);
 
         fetchQueryDuration.reset();
         batchProcessingDuration.reset();
@@ -415,6 +417,11 @@ public class LogMinerStreamingChangeEventSourceMetrics
     @Override
     public long getAbandonedTransactionCount() {
         return abandonedTransactionIds.getAll().size();
+    }
+
+    @Override
+    public long getTotalAbandonedTransactionCount() {
+        return totalAbandonedTransactionCount.get();
     }
 
     @Override
@@ -711,13 +718,15 @@ public class LogMinerStreamingChangeEventSourceMetrics
     }
 
     /**
-     * Add a transaction to the recently tracked abandoned transactions metric.
+     * Add a transaction to the recently tracked abandoned transactions metric and
+     * increments the total number of abandoned transactions.
      *
      * @param transactionId transaction identifier
      */
     public void addAbandonedTransactionId(String transactionId) {
         if (!Strings.isNullOrBlank(transactionId)) {
             abandonedTransactionIds.add(transactionId);
+            totalAbandonedTransactionCount.incrementAndGet();
         }
     }
 
@@ -801,6 +810,7 @@ public class LogMinerStreamingChangeEventSourceMetrics
                 ", userGlobalAreaMemory=" + userGlobalAreaMemory +
                 ", processGlobalAreaMemory=" + processGlobalAreaMemory +
                 ", abandonedTransactionIds=" + abandonedTransactionIds +
+                ", totalAbandonedTransactionCount=" + totalAbandonedTransactionCount +
                 ", rolledBackTransactionIds=" + rolledBackTransactionIds +
                 ", lastMiningSessionScnRange=" + miningSessionScnRange.get() +
                 ", lastMiningFetchScnRange=" + miningFetchScnRange.get() +
