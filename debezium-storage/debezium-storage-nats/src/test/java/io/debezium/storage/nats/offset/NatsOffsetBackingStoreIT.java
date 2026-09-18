@@ -1,0 +1,331 @@
+/*
+ * Copyright Debezium Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
+package io.debezium.storage.nats.offset;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.utility.DockerImageName;
+
+import io.debezium.config.Configuration;
+import io.debezium.spi.storage.OffsetStore;
+import io.debezium.storage.nats.NatsCommonConfig;
+
+/**
+ * Tests for NATS-based offset backing store.
+ *
+ * @author Nick Chomey
+ */
+@Testcontainers
+class NatsOffsetBackingStoreIT {
+
+    private static final String NATS_CONTAINER_IMAGE = "nats:2.12.0-alpine";
+    private static final int NATS_PORT = 4222;
+
+    @Container
+    @SuppressWarnings("resource")
+    public GenericContainer<?> natsContainer = new GenericContainer<>(DockerImageName.parse(NATS_CONTAINER_IMAGE))
+            .withExposedPorts(NATS_PORT)
+            .withCommand("-js")
+            .withLogConsumer(frame -> {
+                if (frame != null && frame.getUtf8String() != null) {
+                    System.out.print(frame.getUtf8String());
+                }
+            });
+
+    private String natsUrl;
+    private NatsOffsetBackingStore offsetStore;
+
+    @BeforeEach
+    public void setUp() {
+        natsContainer.start();
+        natsUrl = "nats://" + natsContainer.getHost() + ":" + natsContainer.getFirstMappedPort();
+
+        offsetStore = new NatsOffsetBackingStore();
+        Map<String, String> config = createConfig();
+        offsetStore.configure(Configuration.from(config));
+        offsetStore.start();
+    }
+
+    @AfterEach
+    public void tearDown() {
+        if (offsetStore != null) {
+            offsetStore.stop();
+        }
+        if (natsContainer != null) {
+            natsContainer.stop();
+        }
+    }
+
+    private Map<String, String> createConfig() {
+        Map<String, String> config = new HashMap<>();
+        config.put("offset.storage." + NatsCommonConfig.NATS_URL.name(), natsUrl);
+        config.put("offset.storage." + NatsOffsetBackingStoreConfig.PROP_BUCKET_NAME.name(), "test-offsets");
+        config.put("offset.storage." + NatsOffsetBackingStoreConfig.PROP_RETRY_ENABLED.name(), "true");
+        config.put("offset.storage." + NatsOffsetBackingStoreConfig.PROP_MAX_RETRIES.name(), "3");
+        config.put("offset.storage." + NatsOffsetBackingStoreConfig.PROP_RETRY_DELAY_MS.name(), "100");
+        return config;
+    }
+
+    @Test
+    public void shouldStartAndStop() {
+        // Should start and stop without errors
+        assertNotNull(offsetStore);
+    }
+
+    @Test
+    @Timeout(10)
+    public void shouldStoreAndRetrieveOffsets() throws Exception {
+        // Prepare test data
+        ByteBuffer key1 = ByteBuffer.wrap("key1".getBytes(StandardCharsets.UTF_8));
+        ByteBuffer value1 = ByteBuffer.wrap("value1".getBytes(StandardCharsets.UTF_8));
+        ByteBuffer key2 = ByteBuffer.wrap("key2".getBytes(StandardCharsets.UTF_8));
+        ByteBuffer value2 = ByteBuffer.wrap("value2".getBytes(StandardCharsets.UTF_8));
+
+        Map<ByteBuffer, ByteBuffer> offsets = new HashMap<>();
+        offsets.put(key1, value1);
+        offsets.put(key2, value2);
+
+        // Store offsets
+        Future<Void> setFuture = offsetStore.set(offsets, null);
+        setFuture.get(5, TimeUnit.SECONDS);
+
+        // Retrieve offsets
+        Collection<ByteBuffer> keys = new ArrayList<>();
+        keys.add(key1);
+        keys.add(key2);
+        Future<Map<ByteBuffer, ByteBuffer>> getFuture = offsetStore.get(keys);
+        Map<ByteBuffer, ByteBuffer> retrievedOffsets = getFuture.get(5, TimeUnit.SECONDS);
+
+        // Verify
+        assertThat(retrievedOffsets).hasSize(2);
+        assertEquals(value1, retrievedOffsets.get(key1));
+        assertEquals(value2, retrievedOffsets.get(key2));
+    }
+
+    @Test
+    @Timeout(10)
+    public void shouldHandleNullValues() throws Exception {
+        ByteBuffer key = ByteBuffer.wrap("nullKey".getBytes(StandardCharsets.UTF_8));
+
+        Map<ByteBuffer, ByteBuffer> offsets = new HashMap<>();
+        offsets.put(key, null);
+
+        // Store null value
+        Future<Void> setFuture = offsetStore.set(offsets, null);
+        setFuture.get(5, TimeUnit.SECONDS);
+
+        // Retrieve
+        Collection<ByteBuffer> keys = new ArrayList<>();
+        keys.add(key);
+        Future<Map<ByteBuffer, ByteBuffer>> getFuture = offsetStore.get(keys);
+        Map<ByteBuffer, ByteBuffer> retrievedOffsets = getFuture.get(5, TimeUnit.SECONDS);
+
+        // Should handle null values gracefully
+        assertThat(retrievedOffsets).containsKey(key);
+    }
+
+    @Test
+    @Timeout(10)
+    public void shouldHandleNonArrayBackedBuffers() throws Exception {
+        // Direct (non-array-backed) buffers must round-trip through the store
+        ByteBuffer key = ByteBuffer.allocateDirect(4);
+        key.put("key1".getBytes(StandardCharsets.UTF_8));
+        key.flip();
+        ByteBuffer value = ByteBuffer.allocateDirect(6);
+        value.put("value1".getBytes(StandardCharsets.UTF_8));
+        value.flip();
+
+        Map<ByteBuffer, ByteBuffer> offsets = new HashMap<>();
+        offsets.put(key, value);
+
+        Future<Void> setFuture = offsetStore.set(offsets, null);
+        setFuture.get(5, TimeUnit.SECONDS);
+
+        Collection<ByteBuffer> keys = new ArrayList<>();
+        keys.add(key);
+        Future<Map<ByteBuffer, ByteBuffer>> getFuture = offsetStore.get(keys);
+        Map<ByteBuffer, ByteBuffer> retrievedOffsets = getFuture.get(5, TimeUnit.SECONDS);
+
+        assertThat(retrievedOffsets).hasSize(1);
+        assertEquals("value1",
+                StandardCharsets.UTF_8.decode(retrievedOffsets.get(key).duplicate()).toString());
+    }
+
+    @Test
+    @Timeout(10)
+    public void shouldPersistOffsetsAcrossRestarts() throws Exception {
+        // Store initial offsets
+        ByteBuffer key = ByteBuffer.wrap("persistKey".getBytes(StandardCharsets.UTF_8));
+        ByteBuffer value = ByteBuffer.wrap("persistValue".getBytes(StandardCharsets.UTF_8));
+
+        Map<ByteBuffer, ByteBuffer> offsets = new HashMap<>();
+        offsets.put(key, value);
+
+        Future<Void> setFuture = offsetStore.set(offsets, null);
+        setFuture.get(5, TimeUnit.SECONDS);
+
+        // Stop and restart
+        offsetStore.stop();
+
+        offsetStore = new NatsOffsetBackingStore();
+        Map<String, String> config = createConfig();
+        offsetStore.configure(Configuration.from(config));
+        offsetStore.start();
+
+        // Retrieve offsets after restart
+        Collection<ByteBuffer> keys = new ArrayList<>();
+        keys.add(key);
+        Future<Map<ByteBuffer, ByteBuffer>> getFuture = offsetStore.get(keys);
+        Map<ByteBuffer, ByteBuffer> retrievedOffsets = getFuture.get(5, TimeUnit.SECONDS);
+
+        // Should persist across restarts
+        assertThat(retrievedOffsets).hasSize(1);
+        assertEquals(value, retrievedOffsets.get(key));
+    }
+
+    @Test
+    @Timeout(10)
+    public void shouldHandleCallbackOnSet() throws Exception {
+        ByteBuffer key = ByteBuffer.wrap("callbackKey".getBytes(StandardCharsets.UTF_8));
+        ByteBuffer value = ByteBuffer.wrap("callbackValue".getBytes(StandardCharsets.UTF_8));
+
+        Map<ByteBuffer, ByteBuffer> offsets = new HashMap<>();
+        offsets.put(key, value);
+
+        // Use callback to track completion
+        final boolean[] callbackInvoked = { false };
+        OffsetStore.Callback<Void> callback = new OffsetStore.Callback<Void>() {
+            public void onCompletion(Throwable error, Void result) {
+                callbackInvoked[0] = true;
+                assertNull(error);
+            }
+        };
+
+        Future<Void> setFuture = offsetStore.set(offsets, callback);
+        setFuture.get(5, TimeUnit.SECONDS);
+
+        // Callback should be invoked
+        assertTrue(callbackInvoked[0]);
+    }
+
+    @Test
+    @Timeout(10)
+    public void shouldHandleEmptyOffsets() throws Exception {
+        Map<ByteBuffer, ByteBuffer> emptyOffsets = new HashMap<>();
+
+        Future<Void> setFuture = offsetStore.set(emptyOffsets, null);
+        setFuture.get(5, TimeUnit.SECONDS);
+
+        // Should handle empty offsets without error
+        Collection<ByteBuffer> keys = new ArrayList<>();
+        Future<Map<ByteBuffer, ByteBuffer>> getFuture = offsetStore.get(keys);
+        Map<ByteBuffer, ByteBuffer> retrievedOffsets = getFuture.get(5, TimeUnit.SECONDS);
+
+        assertThat(retrievedOffsets).isEmpty();
+    }
+
+    @Test
+    @Timeout(10)
+    public void shouldNotClobberOffsetsFromAnotherStore() throws Exception {
+        // Two stores sharing the same bucket must not overwrite each other's
+        // keys: each offset is an independent object.
+        NatsOffsetBackingStore store2 = new NatsOffsetBackingStore();
+        store2.configure(Configuration.from(createConfig()));
+        store2.start();
+        try {
+            ByteBuffer key1 = ByteBuffer.wrap("store1-key".getBytes(StandardCharsets.UTF_8));
+            ByteBuffer value1 = ByteBuffer.wrap("store1-value".getBytes(StandardCharsets.UTF_8));
+            ByteBuffer key2 = ByteBuffer.wrap("store2-key".getBytes(StandardCharsets.UTF_8));
+            ByteBuffer value2 = ByteBuffer.wrap("store2-value".getBytes(StandardCharsets.UTF_8));
+
+            Map<ByteBuffer, ByteBuffer> offsets1 = new HashMap<>();
+            offsets1.put(key1, value1);
+            Map<ByteBuffer, ByteBuffer> offsets2 = new HashMap<>();
+            offsets2.put(key2, value2);
+
+            offsetStore.set(offsets1, null).get(5, TimeUnit.SECONDS);
+            store2.set(offsets2, null).get(5, TimeUnit.SECONDS);
+
+            // A fresh store must see both keys
+            NatsOffsetBackingStore store3 = new NatsOffsetBackingStore();
+            store3.configure(Configuration.from(createConfig()));
+            store3.start();
+            try {
+                Collection<ByteBuffer> keys = new ArrayList<>();
+                keys.add(key1);
+                keys.add(key2);
+                Map<ByteBuffer, ByteBuffer> all = store3.get(keys).get(5, TimeUnit.SECONDS);
+
+                assertThat(all).hasSize(2);
+                assertEquals(value1, all.get(key1));
+                assertEquals(value2, all.get(key2));
+            }
+            finally {
+                store3.stop();
+            }
+        }
+        finally {
+            store2.stop();
+        }
+    }
+
+    @Test
+    @Timeout(10)
+    public void shouldHandleKeysExceedingObjectNameLimit() throws Exception {
+        // NATS object names are embedded in subjects, which are bounded by
+        // the server's control line limit (4096 bytes). A key whose base64url
+        // encoding approaches that limit must still round-trip.
+        // 3000 bytes -> 4000 base64url chars, beyond the control line limit
+        byte[] longKeyBytes = new byte[3000];
+        for (int i = 0; i < longKeyBytes.length; i++) {
+            longKeyBytes[i] = (byte) i;
+        }
+        ByteBuffer longKey = ByteBuffer.wrap(longKeyBytes);
+        ByteBuffer value = ByteBuffer.wrap("long-key-value".getBytes(StandardCharsets.UTF_8));
+
+        Map<ByteBuffer, ByteBuffer> offsets = new HashMap<>();
+        offsets.put(longKey, value);
+
+        Future<Void> setFuture = offsetStore.set(offsets, null);
+        setFuture.get(5, TimeUnit.SECONDS);
+
+        Collection<ByteBuffer> keys = new ArrayList<>();
+        keys.add(longKey);
+        Map<ByteBuffer, ByteBuffer> retrieved = offsetStore.get(keys).get(5, TimeUnit.SECONDS);
+        assertThat(retrieved).hasSize(1);
+        assertEquals(value, retrieved.get(longKey));
+
+        // Must also survive a restart (load path)
+        offsetStore.stop();
+        offsetStore = new NatsOffsetBackingStore();
+        offsetStore.configure(Configuration.from(createConfig()));
+        offsetStore.start();
+
+        Map<ByteBuffer, ByteBuffer> afterRestart = offsetStore.get(keys).get(5, TimeUnit.SECONDS);
+        assertThat(afterRestart).hasSize(1);
+        assertEquals(value, afterRestart.get(longKey));
+    }
+}
