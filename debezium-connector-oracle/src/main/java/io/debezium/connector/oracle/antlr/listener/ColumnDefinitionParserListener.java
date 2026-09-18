@@ -73,8 +73,14 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
         columnEditor.optional(!hasNotNullConstraint);
 
         if (ctx.datatype() == null) {
-            if (ctx.type_name() != null && "MDSYS.SDO_GEOMETRY".equalsIgnoreCase(ctx.type_name().getText().replace("\"", ""))) {
-                columnEditor.jdbcType(Types.STRUCT).type("MDSYS.SDO_GEOMETRY");
+            if (ctx.type_name() != null) {
+                final String typeName = ctx.type_name().getText().replace("\"", "");
+                if ("MDSYS.SDO_GEOMETRY".equalsIgnoreCase(typeName)) {
+                    columnEditor.jdbcType(Types.STRUCT).type("MDSYS.SDO_GEOMETRY");
+                }
+                else if ("SYS.XMLTYPE".equalsIgnoreCase(typeName) || "XMLTYPE".equalsIgnoreCase(typeName)) {
+                    columnEditor.jdbcType(OracleTypes.SQLXML).type("XMLTYPE");
+                }
             }
         }
         else {
