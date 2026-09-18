@@ -97,27 +97,34 @@ public class JdbcSinkDataTypesConverter implements CustomConverter<SchemaBuilder
                     return null;
                 }
                 else if (field.hasDefaultValue()) {
-                    return toTinyInt((Boolean) field.defaultValue());
+                    // With BOOLEAN aliases normalized to TINYINT(1), the parsed column default is
+                    // a Number rather than a Boolean, so route it through the same conversion as
+                    // regular values instead of casting.
+                    return convertToTinyInt(field.defaultValue());
                 }
                 return INT16_FALLBACK;
             }
-            else if (value instanceof Boolean) {
-                return toTinyInt((Boolean) value);
-            }
-            else if (value instanceof Number) {
-                return toTinyInt(((Number) value).intValue() > 0);
-            }
-            else if (value instanceof String) {
-                try {
-                    return toTinyInt(Integer.parseInt((String) value) > 0);
-                }
-                catch (NumberFormatException e) {
-                    return toTinyInt(Boolean.parseBoolean((String) value));
-                }
-            }
-            LOGGER.warn("Cannot convert '{}' to INT16", value.getClass());
-            return INT16_FALLBACK;
+            return convertToTinyInt(value);
         };
+    }
+
+    private static short convertToTinyInt(Object value) {
+        if (value instanceof Boolean) {
+            return toTinyInt((Boolean) value);
+        }
+        else if (value instanceof Number) {
+            return toTinyInt(((Number) value).intValue() > 0);
+        }
+        else if (value instanceof String) {
+            try {
+                return toTinyInt(Integer.parseInt((String) value) > 0);
+            }
+            catch (NumberFormatException e) {
+                return toTinyInt(Boolean.parseBoolean((String) value));
+            }
+        }
+        LOGGER.warn("Cannot convert '{}' to INT16", value.getClass());
+        return INT16_FALLBACK;
     }
 
     private Converter getRealConverterDouble(RelationalColumn field) {
