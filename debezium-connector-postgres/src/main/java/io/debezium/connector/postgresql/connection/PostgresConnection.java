@@ -731,13 +731,20 @@ public class PostgresConnection extends JdbcConnection {
             column.nativeType(nativeType.getRootType().getOid());
             column.jdbcType(nativeType.getRootType().getJdbcId());
 
+            // The driver reports no type name when a column's type OID is absent from pg_type, so every
+            // consumer downstream would have to tolerate a null. Carry the resolved type's name instead.
+            if (typeName == null) {
+                typeName = nativeType.getName();
+                column.type(typeName);
+            }
+
             // The JDBC driver reports a user-defined type schema-qualified (e.g. "schema"."type") when
             // its schema is not on the search_path, whereas streaming always uses the unqualified name
             // via PostgresType#getName(). Normalize to the unqualified form so snapshot and streaming
             // agree (debezium/dbz#683), but skip it when the type did not resolve so an unrecognized
             // name (e.g. from a PostgreSQL-compatible source) keeps the driver's spelling rather than
             // the UNKNOWN placeholder.
-            if (typeName.contains(".") && nativeType != PostgresType.UNKNOWN) {
+            if (nativeType != PostgresType.UNKNOWN && typeName.contains(".")) {
                 column.type(nativeType.getName());
             }
 
