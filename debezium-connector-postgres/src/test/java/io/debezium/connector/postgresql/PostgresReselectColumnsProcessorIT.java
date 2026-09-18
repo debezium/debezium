@@ -383,6 +383,52 @@ public class PostgresReselectColumnsProcessorIT extends AbstractReselectProcesso
     }
 
     @Test
+    @FixFor("debezium/dbz#2418")
+    public void testToastColumnArrayReselectedForEveryElementType() throws Exception {
+        final List<String> arrayColumns = List.of("numeric_array", "decimal_array", "float_array", "real_array", "int_array", "smallint_array",
+                "bool_array");
+
+        TestHelper.execute("CREATE TABLE s1.dbz2418_toast (id int primary key, numeric_array numeric[],"
+                + " decimal_array numeric(10,2)[], float_array float8[], real_array real[], int_array integer[],"
+                + " smallint_array smallint[], bool_array boolean[], data2 int);");
+        for (String column : arrayColumns) {
+            // a compressible array stays in line, so it has to be stored externally to be toasted at all
+            TestHelper.execute("ALTER TABLE s1.dbz2418_toast ALTER COLUMN " + column + " SET STORAGE EXTERNAL;");
+        }
+
+        final LogInterceptor logInterceptor = getReselectLogInterceptor();
+
+        Configuration config = getConfigurationBuilder()
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1\\.dbz2418_toast")
+                .build();
+
+        start(PostgresConnector.class, config);
+        waitForStreamingStarted();
+
+        TestHelper.execute(
+                "INSERT INTO s1.dbz2418_toast (id, numeric_array, decimal_array, float_array, real_array, int_array, smallint_array,"
+                        + " bool_array, data2) SELECT 1, array_agg(g::numeric), array_agg(g::numeric(10,2)), array_agg(g::float8),"
+                        + " array_agg(g::real), array_agg(g::int4), array_agg((g % 100)::int2), array_agg(g % 2 = 0), 1"
+                        + " FROM generate_series(1, 20000) g;",
+                "UPDATE s1.dbz2418_toast SET data2 = 2 where id = 1;");
+
+        final SourceRecords sourceRecords = consumeRecordsByTopic(2);
+        final List<SourceRecord> tableRecords = sourceRecords.recordsForTopic("test_server.s1.dbz2418_toast");
+
+        final Struct insert = ((Struct) tableRecords.get(0).value()).getStruct(Envelope.FieldName.AFTER);
+        final SourceRecord updateRecord = tableRecords.get(1);
+        final Struct update = ((Struct) updateRecord.value()).getStruct(Envelope.FieldName.AFTER);
+        VerifyRecord.isValidUpdate(updateRecord, "id", 1);
+        assertThat(update.get("data2")).isEqualTo(2);
+
+        // the arrays are unchanged and toasted, so they arrive as a placeholder and have to be re-selected
+        for (String column : arrayColumns) {
+            assertColumnReselectedForUnavailableValue(logInterceptor, "s1.dbz2418_toast", column);
+            assertThat(update.get(column)).as(column).isEqualTo(insert.get(column));
+        }
+    }
+
+    @Test
     @FixFor("DBZ-8277")
     public void testToastColumnReselectedWhenPrimaryKeyIsUUIDType() throws Exception {
         TestHelper.execute("CREATE TABLE s1.dbz8277_toast (id uuid primary key, data text[], data2 int);");

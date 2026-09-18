@@ -2193,6 +2193,61 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2418")
+    public void shouldHandleToastedArrayColumnsOfAnyElementType() throws Exception {
+        TestHelper.execute(
+                "DROP TABLE IF EXISTS test_toast_table;",
+                "CREATE TABLE test_toast_table (id SERIAL PRIMARY KEY, not_toast integer,"
+                        + " numeric_array numeric[], decimal_array numeric(10,2)[], float_array double precision[],"
+                        + " real_array real[], smallint_array smallint[], bool_array boolean[],"
+                        + " inet_array inet[], timestamp_array timestamp[]);",
+                "ALTER TABLE test_toast_table ALTER COLUMN numeric_array SET STORAGE EXTERNAL;",
+                "ALTER TABLE test_toast_table ALTER COLUMN decimal_array SET STORAGE EXTERNAL;",
+                "ALTER TABLE test_toast_table ALTER COLUMN real_array SET STORAGE EXTERNAL;",
+                "ALTER TABLE test_toast_table ALTER COLUMN smallint_array SET STORAGE EXTERNAL;",
+                "ALTER TABLE test_toast_table ALTER COLUMN float_array SET STORAGE EXTERNAL;",
+                "ALTER TABLE test_toast_table ALTER COLUMN bool_array SET STORAGE EXTERNAL;",
+                "ALTER TABLE test_toast_table ALTER COLUMN inet_array SET STORAGE EXTERNAL;",
+                "ALTER TABLE test_toast_table ALTER COLUMN timestamp_array SET STORAGE EXTERNAL;");
+        startConnector(Function.identity(), false);
+
+        // every array has to be large enough to be stored out of line, otherwise the value is not toasted
+        consumer = testConsumer(1);
+        executeAndWait("INSERT INTO test_toast_table (not_toast, numeric_array, decimal_array, float_array, real_array,"
+                + " smallint_array, bool_array, inet_array, timestamp_array)"
+                + " SELECT 10, array_agg(g::numeric), array_agg(g::numeric(10,2)), array_agg(g::float8), array_agg(g::real),"
+                + " array_agg((g % 100)::int2), array_agg(g % 2 = 0),"
+                + " array_agg(('10.0.0.' || (g % 250 + 1))::inet), array_agg('2020-01-01'::timestamp + (g || ' seconds')::interval)"
+                + " FROM generate_series(1, 20000) g;");
+        consumer.remove();
+
+        // the unchanged toasted arrays now have to carry the placeholder in their own element type
+        consumer.expects(1);
+        executeAndWait("UPDATE test_toast_table SET not_toast = 2;");
+        assertRecordSchemaAndValues(Arrays.asList(
+                new SchemaAndValueField("not_toast", SchemaBuilder.OPTIONAL_INT32_SCHEMA, 2),
+                new SchemaAndValueField("numeric_array", SchemaBuilder.array(VariableScaleDecimal.optionalSchema()).optional().build(),
+                        DecoderDifferences.toastedValueVariableScaleDecimalPlaceholder(VariableScaleDecimal.optionalSchema())),
+                new SchemaAndValueField("decimal_array",
+                        SchemaBuilder.array(Decimal.builder(2).parameter(TestHelper.PRECISION_PARAMETER_KEY, "10").optional().build()).optional().build(),
+                        DecoderDifferences.toastedValueDecimalPlaceholder(2)),
+                new SchemaAndValueField("float_array", SchemaBuilder.array(SchemaBuilder.OPTIONAL_FLOAT64_SCHEMA).optional().build(),
+                        DecoderDifferences.toastedValueDoublePlaceholder()),
+                new SchemaAndValueField("real_array", SchemaBuilder.array(SchemaBuilder.OPTIONAL_FLOAT32_SCHEMA).optional().build(),
+                        DecoderDifferences.toastedValueFloatPlaceholder()),
+                new SchemaAndValueField("smallint_array", SchemaBuilder.array(SchemaBuilder.OPTIONAL_INT16_SCHEMA).optional().build(),
+                        DecoderDifferences.toastedValueSmallintPlaceholder()),
+                new SchemaAndValueField("bool_array", SchemaBuilder.array(SchemaBuilder.OPTIONAL_BOOLEAN_SCHEMA).optional().build(),
+                        DecoderDifferences.toastedValueBooleanPlaceholder()),
+                new SchemaAndValueField("inet_array", SchemaBuilder.array(SchemaBuilder.OPTIONAL_STRING_SCHEMA).optional().build(),
+                        Arrays.asList(DecoderDifferences.mandatoryToastedValuePlaceholder())),
+                new SchemaAndValueField("timestamp_array", SchemaBuilder.array(MicroTimestamp.builder().optional().build()).optional().build(),
+                        DecoderDifferences.toastedValueBigintPlaceholder())),
+                consumer.remove(),
+                Envelope.FieldName.AFTER);
+    }
+
+    @Test
     @FixFor("DBZ-7193")
     public void shouldHandleToastedArrayColumnForReplicaIdentityFullTable() throws Exception {
         TestHelper.execute(
