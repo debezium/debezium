@@ -22,6 +22,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.connector.AbstractSourceInfo;
+import io.debezium.connector.mongodb.MongoDbSchema;
 import io.debezium.doc.FixFor;
 import io.debezium.junit.SkipWhenKafkaVersion;
 import io.debezium.util.Collect;
@@ -235,6 +236,59 @@ public class ExtractNewDocumentStateTest {
 
         // when
         assertThrows(IllegalArgumentException.class, () -> transformation.apply(eventRecord));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2570")
+    public void shouldEmitBsonTimestampStructWhenConfigured() {
+        ExtractNewDocumentState<SourceRecord> structTransformation = new ExtractNewDocumentState<>();
+        structTransformation.configure(Collect.hashMapOf(
+                "array.encoding", "array",
+                "bson.timestamp.handling.mode", "struct"));
+        try {
+            Schema keySchema = SchemaBuilder.struct()
+                    .name("mongo.lab.timestamps.Key")
+                    .field("id", Schema.STRING_SCHEMA)
+                    .build();
+            Struct keyStruct = new Struct(keySchema).put("id", "\"timestamp-1\"");
+
+            Schema updateDescriptionSchema = SchemaBuilder.struct()
+                    .name("mongo.lab.timestamps.updateDescription")
+                    .field("updatedFields", Schema.OPTIONAL_STRING_SCHEMA)
+                    .field("removedFields", SchemaBuilder.array(Schema.STRING_SCHEMA).optional().build())
+                    .optional()
+                    .build();
+
+            Schema valueSchema = SchemaBuilder.struct()
+                    .name("mongo.lab.timestamps.Envelope")
+                    .field("after", Schema.OPTIONAL_STRING_SCHEMA)
+                    .field("updateDescription", updateDescriptionSchema)
+                    .field("op", Schema.STRING_SCHEMA)
+                    .build();
+            Struct valueStruct = new Struct(valueSchema)
+                    .put("after", "{\"_id\": \"timestamp-1\", \"ts\": {\"$timestamp\": {\"t\": 1710000000, \"i\": 7}}}")
+                    .put("op", "c");
+
+            final SourceRecord eventRecord = new SourceRecord(
+                    new HashMap<>(),
+                    new HashMap<>(),
+                    "mongo.lab.timestamps",
+                    keySchema,
+                    keyStruct,
+                    valueSchema,
+                    valueStruct);
+
+            SourceRecord transformed = structTransformation.apply(eventRecord);
+            Struct value = (Struct) transformed.value();
+
+            Struct timestamp = value.getStruct("ts");
+            assertThat(timestamp.schema().name()).isEqualTo(MongoDbSchema.SCHEMA_NAME_TIMESTAMP);
+            assertThat(timestamp.get("time")).isEqualTo(1710000000L);
+            assertThat(timestamp.get("increment")).isEqualTo(7L);
+        }
+        finally {
+            structTransformation.close();
+        }
     }
 
     /**

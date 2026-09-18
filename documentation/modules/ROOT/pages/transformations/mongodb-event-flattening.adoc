@@ -477,6 +477,27 @@ The SMT populates each of these index fields with the value that it retrieves fr
 
 For more information about the `array.coding` option, see the xref:mongodb-event-flattening-array-encoding[options for encoding arrays in MongoDB event messages].
 
+|[[mongodb-extract-new-record-state-bson-timestamp-handling-mode]]<<mongodb-extract-new-record-state-bson-timestamp-handling-mode, `bson.timestamp.handling.mode`>>
+|`connect`
+|Specifies how the SMT represents BSON Timestamp values.
+Set one of the following options:
+
+`connect`::
+The SMT converts the value into a Kafka Connect Timestamp that is based on the time component of the BSON value.
+The increment component that MongoDB uses to order operations that occur during the same second is discarded, so distinct BSON values can result in the same output value.
+
+`struct`::
+The SMT emits a structure with the fields `time` and `increment`, preserving both components of the BSON value.
++
+[NOTE]
+.Mixed Array Types in Struct Mode
+====
+BSON Timestamp values have a different schema than BSON date/time values.
+Using `array.encoding=array` with an array that mixes both types will trigger an `Array elements with different Bson types are not supported` SMT error.
+
+Workaround: Set `array.encoding=document` to capture arrays with mixed types.
+====
+
 |[[mongodb-extract-new-record-state-flatten-struct]]<<mongodb-extract-new-record-state-flatten-struct, `flatten.struct`>>
 |`false`
 |The SMT flattens structures (structs) in the original event message by concatenating the names of nested properties in the message, separated by a configurable delimiter, to form a simple field name.

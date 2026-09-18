@@ -44,9 +44,14 @@ public class MongoDbSchema implements DatabaseSchema<CollectionId> {
     public static final String SCHEMA_NAME_UPDATED_DESCRIPTION = "io.debezium.connector.mongodb.changestream.updatedescription";
     public static final String SCHEMA_NAME_TRUNCATED_ARRAY = "io.debezium.connector.mongodb.changestream.truncatedarray";
 
+    // Schema used by ExtractNewDocumentState's 'struct' BSON timestamp handling mode
+    public static final String SCHEMA_NAME_TIMESTAMP = "io.debezium.mongodb.timestamp";
+
     public static final Schema TRUNCATED_ARRAY_SCHEMA = MongoDbSchemaFactory.get().truncatedArraySchema();
 
     public static final Schema UPDATED_DESCRIPTION_SCHEMA = MongoDbSchemaFactory.get().updatedDescriptionSchema();
+
+    public static final Schema BSON_TIMESTAMP_SCHEMA = MongoDbSchemaFactory.get().bsonTimestampSchema();
 
     private final MongoDbConnectorConfig config;
     private final Filters filters;
