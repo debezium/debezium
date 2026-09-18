@@ -31,6 +31,7 @@ import com.mongodb.client.model.changestream.OperationType;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.data.Json;
 import io.debezium.doc.FixFor;
 import io.debezium.schema.SchemaFactory;
 
@@ -274,6 +275,7 @@ public class SourceInfoTest {
         assertThat(schema.field(SourceInfo.TIMESTAMP_KEY).schema()).isEqualTo(Schema.INT64_SCHEMA);
         assertThat(schema.field(SourceInfo.ORDER).schema()).isEqualTo(Schema.INT32_SCHEMA);
         assertThat(schema.field(SourceInfo.SNAPSHOT_KEY).schema()).isEqualTo(SchemaFactory.get().snapshotRecordSchema());
+        assertThat(schema.field(SourceInfo.RESUME_TOKEN).schema()).isEqualTo(Json.builder().optional().build());
     }
 
     @Test
@@ -295,6 +297,7 @@ public class SourceInfoTest {
                 .field("lsid", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("txnNumber", Schema.OPTIONAL_INT64_SCHEMA)
                 .field("wallTime", Schema.OPTIONAL_INT64_SCHEMA)
+                .field("resume_token", Json.builder().optional().build())
                 .build();
 
         assertConnectSchemasAreEqual(null, source.schema(), schema);
