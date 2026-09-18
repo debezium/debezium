@@ -1,6 +1,49 @@
 # Change log
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
+
+## 3.6.3.Final
+September 18th 2026 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A3.6.3.Final)
+
+### New features since 3.6.2.Final
+
+* Oracle: Add ORA-02002 to List of Retriable Exceptions [debezium/dbz#2625](https://github.com/debezium/dbz/issues/2625)
+
+
+### Breaking changes since 3.6.2.Final
+
+* Savepoint (Partial) rollback not handled correctly for tables with LOB columns [DBZ-9615] [debezium/dbz#1422](https://github.com/debezium/dbz/issues/1422)
+* Non-idempotent partial rollbacks [debezium/dbz#1914](https://github.com/debezium/dbz/issues/1914)
+* Follow-up to #1960: Move last enqueued event map to the transaction cache [debezium/dbz#2652](https://github.com/debezium/dbz/issues/2652)
+
+
+### Fixes since 3.6.2.Final
+
+* Oracle Savepoint Partial Rollback not handled when LOB column changed [debezium/dbz#1735](https://github.com/debezium/dbz/issues/1735)
+* Rollback to savepoint discards more then it should when LOBs enabled [debezium/dbz#1917](https://github.com/debezium/dbz/issues/1917)
+* Oracle log-count mining: unbounded online-mode sessions under sustained load; cap-growth heuristic inflates on slow passes [debezium/dbz#2326](https://github.com/debezium/dbz/issues/2326)
+* Oracle Create Index DDL fails to parse when using ONLINE keyword [debezium/dbz#2484](https://github.com/debezium/dbz/issues/2484)
+* Handle 'Ambiguous column name' failures and use 'tran_end_time'  in 'lsn_time_mapping' usage [debezium/dbz#2511](https://github.com/debezium/dbz/issues/2511)
+* Oracle: ambiguous partial rollback leaves stale deferred transaction that pins the offset SCN for the full deferred retention [debezium/dbz#2531](https://github.com/debezium/dbz/issues/2531)
+* Vitess connector: gRPC channels leaked on repeated connect, and close() throws NPE when never connected [debezium/dbz#2545](https://github.com/debezium/dbz/issues/2545)
+* Vitess connector: vgtid configuration compared with reference equality (==) instead of equals [debezium/dbz#2546](https://github.com/debezium/dbz/issues/2546)
+* Vitess connector: zero-day DATETIME values (e.g. 2024-01-00) crash the task; only zero-month is handled [debezium/dbz#2548](https://github.com/debezium/dbz/issues/2548)
+* Sqlserver agent running check fails task with IllegalStateException where the default query does not return any rows [debezium/dbz#2551](https://github.com/debezium/dbz/issues/2551)
+* Irregular informix connector heartbeats [debezium/dbz#2575](https://github.com/debezium/dbz/issues/2575)
+* The Oracle XStream metrics bean does not extend the MXBean interface [debezium/dbz#2602](https://github.com/debezium/dbz/issues/2602)
+* MySQL/MariaDB error handlers pass a null throwable to super.isRetriable(), so every error is non-retriable [debezium/dbz#2611](https://github.com/debezium/dbz/issues/2611)
+* Log message mistakenly uses RowId rather than ThreadId [debezium/dbz#2617](https://github.com/debezium/dbz/issues/2617)
+* PostgreSQL guardrail test can stop the engine before startup completes [debezium/dbz#2645](https://github.com/debezium/dbz/issues/2645)
+
+
+### Other changes since 3.6.2.Final
+
+* Simplify the Oracle LogMiner buffered implementation event logic [debezium/dbz#1960](https://github.com/debezium/dbz/issues/1960)
+* SQL Server CI job fails en masse when the first test suites run before server startup recovery completes [debezium/dbz#2585](https://github.com/debezium/dbz/issues/2585)
+* JDBC E2E tests can miss the streaming start log during subscription [debezium/dbz#2646](https://github.com/debezium/dbz/issues/2646)
+* Add `-DskipNonCore` to update dependency pass [debezium/dbz#2660](https://github.com/debezium/dbz/issues/2660)
+
+
 ## 3.6.2.Final
 September 1st 2026 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A3.6.2.Final)
 

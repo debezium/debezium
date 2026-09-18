@@ -1,6 +1,6 @@
-Jenkins user
 Debezium Builder
-snyk-test
 dependabotb
-Luis GarcÃÂ©s-Erice
+Jenkins user
 Jiří Novotný
+Luis GarcÃÂ©s-Erice
+snyk-test
