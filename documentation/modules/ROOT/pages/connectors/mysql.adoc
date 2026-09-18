@@ -445,9 +445,9 @@ a|Boolean that specifies whether the server enforces GTID consistency by allowin
 
 [NOTE]
 ====
-The connector uses GTIDs only when `gtid_mode` is `ON`.
-In the intermediate modes it streams by binlog file and position, and validates that position when it restarts.
-If the offset still carries a GTID from an earlier configuration, the connector logs a warning and ignores it.
+The {prodname} MySQL connector uses GTIDs only when `gtid_mode` is `ON`.
+In the intermediate modes, the connector streams by binlog file and position, and validates that position when it restarts.
+If the offset contains a GTID, the connector logs a warning and ignores the GTID.
 ====
 
 
