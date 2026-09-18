@@ -52,6 +52,7 @@ import io.debezium.heartbeat.HeartbeatErrorHandler;
 import io.debezium.heartbeat.HeartbeatImpl;
 import io.debezium.openlineage.OpenLineageConfig;
 import io.debezium.pipeline.ErrorHandler;
+import io.debezium.pipeline.notification.channels.HttpNotificationChannel;
 import io.debezium.pipeline.notification.channels.SinkNotificationChannel;
 import io.debezium.pipeline.txmetadata.DefaultTransactionMetadataFactory;
 import io.debezium.pipeline.txmetadata.spi.TransactionMetadataFactory;
@@ -1557,11 +1558,14 @@ public abstract class CommonConnectorConfig {
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .group(Field.Group.CONNECTION)
             .group(Field.Group.CONNECTION_ADVANCED, SKIP_MESSAGES_WITHOUT_CHANGE)
-            .group(Field.Group.CONNECTOR, TOPIC_PREFIX, TOMBSTONES_ON_DELETE, BINARY_HANDLING_MODE, SCHEMA_NAME_ADJUSTMENT_MODE, FIELD_NAME_ADJUSTMENT_MODE,
+            .group(Field.Group.CONNECTOR, TOPIC_PREFIX, TOPIC_NAMING_STRATEGY, TOMBSTONES_ON_DELETE, BINARY_HANDLING_MODE, SCHEMA_NAME_ADJUSTMENT_MODE,
+                    FIELD_NAME_ADJUSTMENT_MODE,
                     EVENT_CONVERTING_FAILURE_HANDLING_MODE)
             .group(Field.Group.CONNECTOR_ADVANCED, PROVIDE_TRANSACTION_METADATA, CUSTOM_CONVERTERS, CUSTOM_POST_PROCESSORS,
                     INCREMENTAL_SNAPSHOT_CHUNK_SIZE, INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES,
-                    SIGNAL_DATA_COLLECTION, SIGNAL_ENABLED_CHANNELS, NOTIFICATION_ENABLED_CHANNELS, TRANSACTION_METADATA_FACTORY)
+                    SIGNAL_DATA_COLLECTION, SIGNAL_ENABLED_CHANNELS, NOTIFICATION_ENABLED_CHANNELS, SinkNotificationChannel.NOTIFICATION_TOPIC,
+                    HttpNotificationChannel.NOTIFICATION_URL, HttpNotificationChannel.NOTIFICATION_TIMEOUT_MS,
+                    HttpNotificationChannel.NOTIFICATION_RETRIES, HttpNotificationChannel.NOTIFICATION_ALLOW_PRIVATE_NETWORKS, TRANSACTION_METADATA_FACTORY)
             .group(Field.Group.CONNECTOR_SNAPSHOT, SNAPSHOT_DELAY_MS, SNAPSHOT_FETCH_SIZE, SNAPSHOT_MODE_TABLES,
                     SNAPSHOT_MODE_CUSTOM_NAME, SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_DATA, SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_SCHEMA,
                     SNAPSHOT_MODE_CONFIGURATION_BASED_START_STREAM, SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_ON_SCHEMA_ERROR,
@@ -1573,9 +1577,8 @@ public abstract class CommonConnectorConfig {
                     OPEN_LINEAGE_INTEGRATION_JOB_NAMESPACE, OPEN_LINEAGE_INTEGRATION_JOB_DESCRIPTION, OPEN_LINEAGE_INTEGRATION_JOB_TAGS,
                     OPEN_LINEAGE_INTEGRATION_JOB_OWNERS, OPEN_LINEAGE_INTEGRATION_DATASET_KAFKA_BOOTSTRAP_SERVER, EXTENDED_HEADERS_ENABLED, GUARDRAIL_COLLECTIONS_MAX,
                     GUARDRAIL_COLLECTIONS_LIMIT_ACTION, CUSTOM_SANITIZE_PATTERN, SIGNAL_EMIT_FAILURE_MAX_RETRIES, SIGNAL_EMIT_FAILURE_BACKOFF_INTERVAL_MS,
-                    STATISTICS_METRICS_ENABLED, OFFSET_ACTIVITY_MONITOR_INTERVAL_MS, SIGNAL_SYNCHRONOUS_BATCH_SIZE)
+                    STATISTICS_METRICS_ENABLED, OFFSET_ACTIVITY_MONITOR_INTERVAL_MS, CUSTOM_METRIC_TAGS, SIGNAL_SYNCHRONOUS_BATCH_SIZE)
             .group(Field.Group.ADVANCED_HEARTBEAT, Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX, SIGNAL_POLL_INTERVAL_MS)
-            .group(Field.Group.CONNECTOR, TOPIC_NAMING_STRATEGY, SinkNotificationChannel.NOTIFICATION_TOPIC, CUSTOM_METRIC_TAGS)
             .create();
 
     private final Configuration config;
@@ -1624,6 +1627,10 @@ public abstract class CommonConnectorConfig {
 
     private final String notificationTopicName;
     private final List<String> enabledNotificationChannels;
+    private final String notificationHttpUrl;
+    private final int notificationHttpTimeoutMs;
+    private final int notificationHttpRetries;
+    private final boolean notificationHttpAllowPrivateNetworks;
     private final Map<String, String> customMetricTags;
     private WatermarkStrategy incrementalSnapshotWatermarkingStrategy;
 
@@ -1674,6 +1681,10 @@ public abstract class CommonConnectorConfig {
         this.taskId = config.getString(ConfigurationNames.TASK_ID_PROPERTY_NAME);
         this.notificationTopicName = config.getString(SinkNotificationChannel.NOTIFICATION_TOPIC);
         this.enabledNotificationChannels = config.getList(NOTIFICATION_ENABLED_CHANNELS);
+        this.notificationHttpUrl = config.getString(HttpNotificationChannel.NOTIFICATION_URL);
+        this.notificationHttpTimeoutMs = config.getInteger(HttpNotificationChannel.NOTIFICATION_TIMEOUT_MS);
+        this.notificationHttpRetries = config.getInteger(HttpNotificationChannel.NOTIFICATION_RETRIES);
+        this.notificationHttpAllowPrivateNetworks = config.getBoolean(HttpNotificationChannel.NOTIFICATION_ALLOW_PRIVATE_NETWORKS);
         this.skipMessagesWithoutChange = config.getBoolean(SKIP_MESSAGES_WITHOUT_CHANGE);
         this.maxRetriesOnError = config.getInteger(MAX_RETRIES_ON_ERROR);
         this.customMetricTags = createCustomMetricTags(config);
@@ -1869,6 +1880,22 @@ public abstract class CommonConnectorConfig {
 
     public List<String> getEnabledNotificationChannels() {
         return enabledNotificationChannels;
+    }
+
+    public String getNotificationHttpUrl() {
+        return notificationHttpUrl;
+    }
+
+    public int getNotificationHttpTimeoutMs() {
+        return notificationHttpTimeoutMs;
+    }
+
+    public int getNotificationHttpRetries() {
+        return notificationHttpRetries;
+    }
+
+    public boolean isNotificationHttpAllowPrivateNetworks() {
+        return notificationHttpAllowPrivateNetworks;
     }
 
     public boolean shouldProvideTransactionMetadata() {
