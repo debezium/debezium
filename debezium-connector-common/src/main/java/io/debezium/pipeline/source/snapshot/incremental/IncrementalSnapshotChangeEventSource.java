@@ -52,4 +52,7 @@ public interface IncrementalSnapshotChangeEventSource<P extends Partition, T ext
 
     default void processSchemaChange(P partition, OffsetContext offsetContext, DataCollectionId dataCollectionId) throws InterruptedException {
     }
+
+    default void shutdown() {
+    }
 }

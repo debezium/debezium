@@ -227,22 +227,22 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
     }
 
     @Override
-    public PreparedStatement readTableChunkStatement(IncrementalSnapshotContext<T> context, Table table, String sql) throws SQLException {
-        final PreparedStatement statement = jdbcConnection.readTablePreparedStatement(connectorConfig, sql,
+    public PreparedStatement readTableChunkStatement(IncrementalSnapshotContext<T> context, Table table, String sql, JdbcConnection connection) throws SQLException {
+        final PreparedStatement statement = connection.readTablePreparedStatement(connectorConfig, sql,
                 OptionalLong.empty());
         final Optional<Object[]> upperBound = getChunkUpperBound(context);
         if (context.isNonInitialChunk()) {
             final Object[] chunkEndPosition = context.chunkEndPosititon();
             final List<Column> queryColumns = getQueryColumns(context, table);
 
-            int pos = bindBoundaryParams(statement, queryColumns, chunkEndPosition, 1, jdbcConnection);
+            int pos = bindBoundaryParams(statement, queryColumns, chunkEndPosition, 1, connection);
             if (upperBound.isPresent()) {
-                bindBoundaryParams(statement, queryColumns, upperBound.get(), pos, jdbcConnection);
+                bindBoundaryParams(statement, queryColumns, upperBound.get(), pos, connection);
             }
         }
         else if (upperBound.isPresent()) {
             final List<Column> queryColumns = getQueryColumns(context, table);
-            bindBoundaryParams(statement, queryColumns, upperBound.get(), 1, jdbcConnection);
+            bindBoundaryParams(statement, queryColumns, upperBound.get(), 1, connection);
         }
         return statement;
     }
@@ -287,11 +287,22 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
      */
     @Override
     public OptionalLong estimateRowCount(IncrementalSnapshotContext<T> context, Table table) {
-        return jdbcConnection.readRowCountEstimate(table.id());
+        return estimateRowCount(context, table, jdbcConnection);
+    }
+
+    @Override
+    public OptionalLong estimateRowCount(IncrementalSnapshotContext<T> context, Table table, JdbcConnection connection) {
+        return connection.readRowCountEstimate(table.id());
     }
 
     @Override
     public OptionalLong countRows(IncrementalSnapshotContext<T> context, Table table, Optional<String> additionalCondition, Object[] maximumKey) {
+        return countRows(context, table, additionalCondition, maximumKey, jdbcConnection);
+    }
+
+    @Override
+    public OptionalLong countRows(IncrementalSnapshotContext<T> context, Table table, Optional<String> additionalCondition, Object[] maximumKey,
+                                  JdbcConnection connection) {
         if (maximumKey == null) {
             return OptionalLong.empty();
         }
@@ -309,8 +320,8 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
             final String countQuery = sql.toString();
             LOGGER.debug("Incremental snapshot bounded row count query: {}", countQuery);
 
-            try (PreparedStatement statement = jdbcConnection.readTablePreparedStatement(connectorConfig, countQuery, OptionalLong.empty())) {
-                bindBoundaryParams(statement, pkColumns, maximumKey, 1, jdbcConnection);
+            try (PreparedStatement statement = connection.readTablePreparedStatement(connectorConfig, countQuery, OptionalLong.empty())) {
+                bindBoundaryParams(statement, pkColumns, maximumKey, 1, connection);
                 try (ResultSet rs = statement.executeQuery()) {
                     if (rs.next()) {
                         return OptionalLong.of(rs.getLong(1));
