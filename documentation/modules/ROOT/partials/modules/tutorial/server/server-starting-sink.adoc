@@ -1,0 +1,4 @@
+[id="server-starting-{selected-sink}-sink"]
+= Starting the {selected-sink} sink
+
+include::{partialsdir}/modules/tutorial/server/{selected-sink}-sink/{selected-sink}-starting-sink-full-container-setup.adoc[]

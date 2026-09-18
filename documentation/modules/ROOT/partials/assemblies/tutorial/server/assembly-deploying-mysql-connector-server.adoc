@@ -1,0 +1,26 @@
+:context: mysql
+
+[id="server-deploying-mysql-connector"]
+= Deploying the MySQL connector with {prodname} Server and the {selected-sink} sink
+
+After starting the {selected-sink} sink and MySQL services,
+you are ready to deploy the {prodname} MySQL connector so that it can start monitoring the sample MySQL database (`inventory`).
+
+At this point, you are running the {selected-sink} sink services,
+a MySQL database server with a sample `inventory` database,
+and the MySQL command line client that is connected to the database.
+To deploy the MySQL connector,
+you must:
+
+* xref:configuring-{prodname}-server-{selected-sink}-sink[Configure the MySQL connector to monitor the `inventory` database]
++
+After the connector is configured and {prodname} server is started,
+it will start monitoring the database server's `binlog` and it will generate change events for each row that changes.
+
+* xref:server-watching-connector-start-up[Watch the MySQL connector start]
++
+Reviewing the {prodname} server log output as the connector starts helps you to better understand each task it must complete before it can start monitoring the `binlog`.
+
+include::{partialsdir}/modules/tutorial/server/server-configuring-debezium-server.adoc[leveloffset=+1]
+
+include::{partialsdir}/modules/tutorial/server/server-watching-connector-start-up.adoc[leveloffset=+1]

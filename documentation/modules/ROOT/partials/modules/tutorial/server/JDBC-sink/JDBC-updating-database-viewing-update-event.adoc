@@ -1,0 +1,20 @@
+. In the terminal that is running the PostgreSQL command line client, run the following statement to check that the changes were propogated to the PostgreSQL server.:
+
++
+--
+[source,sql,options="nowrap"]
+----
+inventory=# SELECT * FROM tutorial_inventory_customers;
+  id  | first_name | last_name |             email             
+------+------------+-----------+-------------------------------
+ 1001 | Sally      | Thomas    | sally.thomas@acme.com
+ 1002 | George     | Bailey    | gbailey@foobar.com
+ 1003 | Edward     | Walker    | ed@walker.com
+ 1004 | Anne       | Kretchmar | annek@noanswer.org
+ 1005 | Johnathan  | Tutorial  | johnathantutorial@example.com
+(5 rows)
+----
+
+By changing a record in the `customers` table, the {prodname} MySQL connector generated a new event.
+The change was then propogated to the PostgreSQL database by the {selected-sink} sink connector.
+--

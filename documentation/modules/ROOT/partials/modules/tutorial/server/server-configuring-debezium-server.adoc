@@ -1,0 +1,6 @@
+[id="configuring-{prodname}-server-{selected-sink}-sink"]
+= Configuring {prodname} Server for the {selected-sink} sink
+
+Configure the {prodname} server application so that it can stream change events to the {selected-sink} sink.
+
+include::{partialsdir}/modules/tutorial/server/{selected-sink}-sink/{selected-sink}-configuring-server.adoc[]

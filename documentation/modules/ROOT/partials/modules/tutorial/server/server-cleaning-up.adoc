@@ -1,0 +1,50 @@
+// Metadata created by nebel
+//
+// UserStory:
+
+[id="cleaning-up"]
+= Cleaning up
+
+After you are finished with the tutorial,
+you can use Docker to stop all of the running containers.
+
+.Procedure
+
+. Stop {prodname} server:
+
++
+--
+Open the terminal window where you used `run.sh` to start {prodname} server and stop it using kbd:[CTRL+C].
+
+[NOTE]
+====
+If you are on MacOS, use kbd:[command+.] instead.
+====
+
+--
+
+. Stop each of the containers:
+
++
+--
+[source,shell,options="nowrap"]
+----
+include::{partialsdir}/modules/tutorial/server/{selected-sink}-sink/{selected-sink}-cleaning-up.adoc[]
+----
+
+Docker stops each container.
+Because you used the `--rm` option when you started them, Docker also removes them.
+--
+
+. Verify that all of the processes have stopped and have been removed:
+
++
+--
+[source,shell,options="nowrap"]
+----
+$ docker ps -a
+----
+
+If any of the processes are still running,
+stop them using `docker stop __<process-name>__` or `docker stop __<containerId>__`.
+--
