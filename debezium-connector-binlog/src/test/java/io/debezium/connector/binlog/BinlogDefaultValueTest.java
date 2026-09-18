@@ -332,7 +332,7 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
                 ");";
         parser.parse(sql, tables);
         Table table = tables.forTable(new TableId(null, null, "REAL_TABLE"));
-        assertThat(getColumnSchema(table, "A").defaultValue()).isEqualTo(1f);
+        assertThat(getColumnSchema(table, "A").defaultValue()).isEqualTo(1d);
         assertThat(getColumnSchema(table, "B").defaultValue()).isEqualTo(null);
     }
 

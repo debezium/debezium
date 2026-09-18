@@ -59,6 +59,11 @@ public class MySqlAntlrDdlParserTest
     }
 
     @Override
+    protected MySqlAntlrDdlParser getParser(SimpleDdlParserListener listener, BinlogConnectorConfig.RealHandlingMode realHandlingMode) {
+        return new MySqlDdlParserWithSimpleTestListener(listener, realHandlingMode);
+    }
+
+    @Override
     protected MySqlValueConverters getValueConverters() {
         return new MySqlValueConvertersFactory().create(
                 RelationalDatabaseConnectorConfig.DecimalHandlingMode.parse(JdbcValueConverters.DecimalMode.DOUBLE.name()),
@@ -252,8 +257,17 @@ public class MySqlAntlrDdlParserTest
             this(changesListener, includeViews, includeComments, TableFilter.includeAll());
         }
 
+        MySqlDdlParserWithSimpleTestListener(DdlChanges changesListener, BinlogConnectorConfig.RealHandlingMode realHandlingMode) {
+            this(changesListener, false, false, TableFilter.includeAll(), realHandlingMode);
+        }
+
         private MySqlDdlParserWithSimpleTestListener(DdlChanges changesListener, boolean includeViews, boolean includeComments, TableFilter tableFilter) {
-            super(false, includeViews, includeComments, tableFilter, new MySqlCharsetRegistry());
+            this(changesListener, includeViews, includeComments, tableFilter, BinlogConnectorConfig.RealHandlingMode.DOUBLE);
+        }
+
+        private MySqlDdlParserWithSimpleTestListener(DdlChanges changesListener, boolean includeViews, boolean includeComments, TableFilter tableFilter,
+                                                     BinlogConnectorConfig.RealHandlingMode realHandlingMode) {
+            super(false, includeViews, includeComments, tableFilter, new MySqlCharsetRegistry(), realHandlingMode);
             this.ddlChanges = changesListener;
         }
     }
