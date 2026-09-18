@@ -20,7 +20,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.debezium.config.CommonConnectorConfig;
@@ -29,6 +28,7 @@ import io.debezium.config.Field;
 import io.debezium.pipeline.notification.Notification;
 import io.debezium.pipeline.spi.SnapshotResult.SnapshotResultStatus;
 import io.debezium.util.SsrfSafeHttpClient;
+import io.debezium.util.Strings;
 
 /**
  * A {@link NotificationChannel} that delivers notifications over HTTP by POSTing a JSON representation to a
@@ -71,6 +71,7 @@ public class HttpNotificationChannel implements NotificationChannel {
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.LOW)
             .withDefault(DEFAULT_TIMEOUT_MS)
+            .withValidation(Field::isPositiveInteger)
             .withDescription("Connect and read timeout, in milliseconds, for HTTP notification delivery.");
 
     public static final Field NOTIFICATION_RETRIES = Field.create(CommonConnectorConfig.NOTIFICATION_CONFIGURATION_FIELD_PREFIX_STRING + "http.retries")
@@ -79,6 +80,7 @@ public class HttpNotificationChannel implements NotificationChannel {
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.LOW)
             .withDefault(DEFAULT_RETRIES)
+            .withValidation(Field::isNonNegativeInteger)
             .withDescription("Number of retries after the first failed HTTP notification delivery attempt. Terminal notifications "
                     + "(COMPLETED/ABORTED/SKIPPED) are always retried at least " + MIN_TERMINAL_RETRIES + " times.");
 
@@ -97,8 +99,6 @@ public class HttpNotificationChannel implements NotificationChannel {
             SnapshotResultStatus.COMPLETED.name(),
             SnapshotResultStatus.ABORTED.name(),
             SnapshotResultStatus.SKIPPED.name());
-
-    private final ObjectMapper mapper = new ObjectMapper();
 
     private String url;
     private int retries;
@@ -214,7 +214,7 @@ public class HttpNotificationChannel implements NotificationChannel {
      * without a URL, in which case delivery is a no-op.
      */
     private boolean isConfigured() {
-        return url != null && !url.isBlank();
+        return !Strings.isNullOrBlank(url);
     }
 
     private static int validateNotificationUrl(Configuration config, Field field, Field.ValidationOutput problems) {
@@ -223,7 +223,7 @@ public class HttpNotificationChannel implements NotificationChannel {
             return 0; // the URL is only relevant when the 'http' channel is enabled
         }
         String url = config.getString(field);
-        if (url == null || url.isBlank()) {
+        if (Strings.isNullOrBlank(url)) {
             problems.accept(field, url, "HTTP notification URL must be provided when the 'http' notification channel is enabled");
             return 1;
         }
@@ -246,8 +246,8 @@ public class HttpNotificationChannel implements NotificationChannel {
         // Reuse Notification's canonical (camelCase) bean serialization so the payload stays in sync with the type as it
         // evolves, then re-add the id it marks @JsonIgnore (and thus omits from toJson) so the receiver can correlate
         // and de-duplicate events.
-        ObjectNode payload = mapper.valueToTree(notification);
+        ObjectNode payload = Notification.MAPPER.valueToTree(notification);
         payload.put(Notification.ID_KEY, notification.getId());
-        return mapper.writeValueAsString(payload);
+        return Notification.MAPPER.writeValueAsString(payload);
     }
 }
