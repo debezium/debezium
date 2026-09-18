@@ -5631,6 +5631,11 @@ See <<oracle-property-log-mining-transaction-retention-ms, `log.mining.transacti
 |`long`
 |Current number of entries in the xref:oracle-streaming-metrics-abandoned-transaction-ids[abandoned transactions] list.
 
+|[[oracle-streaming-metrics-total-abandoned-transaction-count]]<<oracle-streaming-metrics-total-abandoned-transaction-count, `+TotalAbandonedTransactionCount+`>>
+|`long`
+|The total number of transactions abandoned from the transaction buffer since the connector started.
+Unlike xref:oracle-streaming-metrics-abandoned-transaction-count[`AbandonedTransactionCount`], this value is not capped by the size of the abandoned transactions list and increments every time a transaction is abandoned.
+
 |[[oracle-streaming-metrics-rolled-back-transaction-ids]]<<oracle-streaming-metrics-rolled-back-transaction-ids, `+RolledBackTransactionIds+`>>
 |`string[]`
 |An array of the most recent transaction identifiers that have been mined and rolled back in the transaction buffer.
