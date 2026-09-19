@@ -87,4 +87,13 @@ public class TableIdTest {
         quoted = id.toQuotedString('`');
         assertThat(quoted).isEqualTo(id.toString());
     }
+
+    @Test
+    @FixFor("debezium/dbz#1377")
+    public void shouldParseBackDoubleQuotedTableId() {
+        for (String tableName : new String[]{ "test''dd", "tab\"le", "a``b" }) {
+            TableId id = new TableId(null, "test_dd", tableName);
+            assertThat(TableId.parse(id.toDoubleQuotedString(), false)).isEqualTo(id);
+        }
+    }
 }
