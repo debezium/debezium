@@ -60,7 +60,7 @@ class OracleStructToJsonTypeTest {
     void shouldMapStructToStringFallbackBeforeOracle21() {
         final JdbcType type = resolveStructType(19);
         assertThat(type).isSameAs(ConnectStructToConnectStringType.INSTANCE);
-        assertThat(type.getTypeName(STRUCT_SCHEMA, false)).isNotEqualTo("json");
+        assertThat(type.getTypeName(STRUCT_SCHEMA, false)).isEqualTo("clob");
     }
 
     private static JdbcType resolveStructType(int majorVersion) {
