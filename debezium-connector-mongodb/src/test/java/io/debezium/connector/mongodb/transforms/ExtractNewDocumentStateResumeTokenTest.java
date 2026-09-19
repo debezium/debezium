@@ -7,6 +7,7 @@ package io.debezium.connector.mongodb.transforms;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
 import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
@@ -68,6 +69,29 @@ class ExtractNewDocumentStateResumeTokenTest {
             assertThat(((Struct) transformed.value()).getInt32("_id")).isEqualTo(1);
             assertThat(transformed.valueSchema().field(OUTPUT_FIELD)).isNull();
             assertThat(transformed.headers().lastWithName(OUTPUT_FIELD)).isNull();
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#718")
+    void shouldResolveAdditionalFieldsForEachRecordSchema() {
+        try (var transformation = new ExtractNewDocumentState<SourceRecord>()) {
+            transformation.configure(Map.of("add.fields", "source.name,source.resume_token,source.resume_tokne"));
+
+            for (Schema sourceSchema : List.of(LEGACY_SOURCE_SCHEMA, SOURCE_SCHEMA, LEGACY_SOURCE_SCHEMA)) {
+                final var transformed = transformation.apply(record(sourceSchema, TOKEN, Operation.CREATE));
+                final var value = (Struct) transformed.value();
+                assertThat(value.getInt32("_id")).isEqualTo(1);
+                assertThat(value.getString("__source_name")).isEqualTo("test");
+                assertThat(transformed.valueSchema().field("__source_resume_tokne")).isNull();
+
+                if (sourceSchema.field("resume_token") == null) {
+                    assertThat(transformed.valueSchema().field(OUTPUT_FIELD)).isNull();
+                }
+                else {
+                    assertThat(value.getString(OUTPUT_FIELD)).isEqualTo(TOKEN);
+                }
+            }
         }
     }
 
