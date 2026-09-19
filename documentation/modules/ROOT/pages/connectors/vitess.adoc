@@ -1694,6 +1694,20 @@ If set to `true`, you may also want to add `<keyspace>.heartbeat` to the table i
  +
 `RDONLY`  represents streaming from the read-only slave MySQL instance.
 
+|[[vitess-property-cells]]<<vitess-property-cells, `+vitess.cells+`>>
+|_n/a_
+|An optional comma-separated list of Vitess cells (or cell aliases) the VStream should be served from, for example, `cell1,cell2`. If not configured, VTGate defaults to its own local cell. +
+ +
+This property and `vitess.cell.preference` only take effect when `vitess.tablet.type` is `REPLICA` or `RDONLY`; for `MASTER`, the shard primary is used regardless of cell.
+
+|[[vitess-property-cell-preference]]<<vitess-property-cell-preference, `+vitess.cell.preference+`>>
+|`preferlocalwithalias`
+|Controls how VTGate's tablet picker treats the cells listed in `vitess.cells`: +
+ +
+`preferlocalwithalias` - prefers tablets in VTGate's local cell (and its cell alias) before the other listed cells. +
+ +
+`onlyspecified` - restricts tablet selection to exactly the listed cells, with no local-cell fallback. Use this value to pin the VStream to specific cells.
+
 |[[vitess-property-topic-prefix]]<<vitess-property-topic-prefix, `+topic.prefix+`>>
 |No default
 |Topic prefix that provides a namespace for the particular Vitess database server or cluster in which {prodname} is capturing changes.
