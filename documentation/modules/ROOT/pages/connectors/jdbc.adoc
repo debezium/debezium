@@ -126,8 +126,9 @@ If the structure of the events in the Kafka topic do not adhere to these rules, 
 
 When an event field is a Kafka Connect `STRUCT` for which no dedicated column type is registered, the connector serializes the structure to JSON and stores it in a JSON-capable column:
 
-* **Native JSON dialects** (MySQL, PostgreSQL, SingleStore, StarRocks, CockroachDB, Oracle 21c+): Written directly to native `JSON` or `jsonb` columns.
-* **Non-native JSON dialects** (Oracle 19c and earlier, Db2, SQL Server): Stored as JSON text in a large character column, such as `CLOB` or `LONGTEXT`.
+* **Native JSON dialects** (MySQL, PostgreSQL, SingleStore, StarRocks, CockroachDB): Written directly to native `JSON` or `jsonb` columns.
+* **Oracle**: The connector selects the column type based on the target database version. Oracle 21c and later use native `JSON` columns; earlier versions use `CLOB` columns to store JSON text.
+* **Other dialects** (Db2, SQL Server): Stored as JSON text in a large character column, such as `CLOB` or `LONGTEXT`.
 
 [NOTE]
 ====
