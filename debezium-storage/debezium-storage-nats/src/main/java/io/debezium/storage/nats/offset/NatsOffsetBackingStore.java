@@ -34,6 +34,7 @@ import io.debezium.spi.storage.OffsetStorageWriter;
 import io.debezium.spi.storage.OffsetStore;
 import io.debezium.storage.nats.NatsConnection;
 import io.debezium.util.DelayStrategy;
+import io.debezium.util.HexConverter;
 import io.debezium.util.RetryingRunnable;
 import io.nats.client.ObjectStore;
 import io.nats.client.api.ObjectInfo;
@@ -75,7 +76,7 @@ public class NatsOffsetBackingStore implements OffsetStore {
 
     private void connect() {
         try {
-            natsConnection = NatsConnection.getInstance(config, config.instanceScope());
+            natsConnection = new NatsConnection(config);
             objectStore = natsConnection.getOrCreateObjectStore(config.getBucketName());
             LOGGER.info("Connected to NATS Object Store bucket: {}", config.getBucketName());
         }
@@ -141,48 +142,60 @@ public class NatsOffsetBackingStore implements OffsetStore {
      */
     @VisibleForTesting
     void load() {
+        LOGGER.debug("Loading offsets from NATS Object Store bucket: {}", config.getBucketName());
+        data.clear();
+
+        List<ObjectInfo> objects;
         try {
-            LOGGER.debug("Loading offsets from NATS Object Store bucket: {}", config.getBucketName());
-            data.clear();
-
-            List<ObjectInfo> objects = objectStore.getList();
-            for (ObjectInfo info : objects) {
-                String objectName = info.getObjectName();
-                try {
-                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                    objectStore.get(objectName, baos);
-                    byte[] payload = baos.toByteArray();
-                    if (objectName.startsWith(LONG_KEY_PREFIX)) {
-                        // Payload layout: 4-byte key length + key + value
-                        ByteBuffer buf = ByteBuffer.wrap(payload);
-                        int keyLength = buf.getInt();
-                        byte[] keyBytes = new byte[keyLength];
-                        buf.get(keyBytes);
-                        byte[] valueBytes = new byte[buf.remaining()];
-                        buf.get(valueBytes);
-                        data.put(ByteBuffer.wrap(keyBytes),
-                                valueBytes.length == 0 ? null : ByteBuffer.wrap(valueBytes));
-                    }
-                    else {
-                        ByteBuffer key = ByteBuffer.wrap(OBJECT_NAME_DECODER.decode(objectName));
-                        // A zero-byte object is a tombstone for a null value
-                        ByteBuffer value = payload.length == 0 ? null : ByteBuffer.wrap(payload);
-                        data.put(key, value);
-                    }
-                }
-                catch (Exception e) {
-                    // Object may have been deleted concurrently; skip it
-                    LOGGER.debug("Failed to load object '{}' from NATS Object Store: {}", objectName,
-                            e.toString());
-                }
-            }
-
-            LOGGER.info("Loaded {} offsets from NATS Object Store", data.size());
+            objects = objectStore.getList();
         }
         catch (Exception e) {
-            LOGGER.error("Failed to load offsets from NATS Object Store", e);
-            throw new DebeziumException("Failed to load offsets", e);
+            throw new DebeziumException(String.format("Failed to list objects in NATS Object Store bucket '%s'",
+                    config.getBucketName()), e);
         }
+
+        for (ObjectInfo info : objects) {
+            String objectName = info.getObjectName();
+            if (NatsConnection.OBJECT_STORE_WARMUP_KEY.equals(objectName)) {
+                // Written and immediately deleted by the connection warm-up, so it
+                // is the only object that can legitimately be absent here.
+                LOGGER.debug("Skipping the object store warm-up object '{}'", objectName);
+                continue;
+            }
+
+            try {
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                objectStore.get(objectName, baos);
+                byte[] payload = baos.toByteArray();
+                if (objectName.startsWith(LONG_KEY_PREFIX)) {
+                    // Payload layout: 4-byte key length + key + value
+                    ByteBuffer buf = ByteBuffer.wrap(payload);
+                    int keyLength = buf.getInt();
+                    byte[] keyBytes = new byte[keyLength];
+                    buf.get(keyBytes);
+                    byte[] valueBytes = new byte[buf.remaining()];
+                    buf.get(valueBytes);
+                    data.put(ByteBuffer.wrap(keyBytes),
+                            valueBytes.length == 0 ? null : ByteBuffer.wrap(valueBytes));
+                }
+                else {
+                    ByteBuffer key = ByteBuffer.wrap(OBJECT_NAME_DECODER.decode(objectName));
+                    // A zero-byte object is a tombstone for a null value
+                    ByteBuffer value = payload.length == 0 ? null : ByteBuffer.wrap(payload);
+                    data.put(key, value);
+                }
+            }
+            catch (Exception e) {
+                // The store never deletes offset objects, so a read failure is not
+                // a normal race. Starting without this offset would silently
+                // re-snapshot or reprocess, so fail the load instead.
+                throw new DebeziumException(String.format(
+                        "Failed to read offset object '%s' from NATS Object Store bucket '%s'",
+                        objectName, config.getBucketName()), e);
+            }
+        }
+
+        LOGGER.info("Loaded {} offsets from NATS Object Store", data.size());
     }
 
     /**
@@ -270,14 +283,7 @@ public class NatsOffsetBackingStore implements OffsetStore {
 
     private static String sha256Hex(byte[] bytes) {
         try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(bytes);
-            StringBuilder sb = new StringBuilder(hash.length * 2);
-            for (byte b : hash) {
-                sb.append(Character.forDigit((b >> 4) & 0xF, 16));
-                sb.append(Character.forDigit(b & 0xF, 16));
-            }
-            return sb.toString();
+            return HexConverter.convertToHexString(MessageDigest.getInstance("SHA-256").digest(bytes));
         }
         catch (NoSuchAlgorithmException e) {
             throw new DebeziumException("SHA-256 not available", e);

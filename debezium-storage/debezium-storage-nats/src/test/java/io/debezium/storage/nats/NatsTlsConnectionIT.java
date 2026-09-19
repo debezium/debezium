@@ -71,7 +71,7 @@ class NatsTlsConnectionIT {
                     "nats.tls.enabled", "true",
                     "nats.tls.truststore.path", truststoreFile.getAbsolutePath(),
                     "nats.tls.truststore.password", "changeit")), "");
-            NatsConnection conn = NatsConnection.getInstance(natsConfig, "tls-handshake-test");
+            NatsConnection conn = new NatsConnection(natsConfig);
             try {
                 assertEquals(Connection.Status.CONNECTED, conn.getConnection().getStatus());
             }

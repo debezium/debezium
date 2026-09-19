@@ -25,7 +25,6 @@ import org.testcontainers.utility.DockerImageName;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
-import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.relational.history.SchemaHistoryException;
@@ -279,7 +278,7 @@ class NatsSchemaHistoryIT {
 
         NatsCommonConfig connConfig = new NatsCommonConfig(Configuration.from(Collect.hashMapOf(
                 NatsCommonConfig.NATS_URL.name(), natsUrl)), "");
-        NatsConnection conn = NatsConnection.getInstance(connConfig, "consumer-leak-check");
+        NatsConnection conn = new NatsConnection(connConfig);
         try {
             List<ConsumerInfo> consumers = conn.getJetStreamManagement()
                     .getConsumers("test-schema-history");
@@ -294,16 +293,18 @@ class NatsSchemaHistoryIT {
     @Test
     @Timeout(30)
     @SuppressWarnings("deprecation")
-    public void shouldRecreateStreamAfterDeletion() throws Exception {
+    public void shouldFailWhenStreamDeleted() throws Exception {
         // If the stream is deleted out from under the history (e.g. by an
-        // operator or a retention policy), the next record() must recreate it
-        // and succeed rather than fail.
+        // operator or a retention policy), every previously recorded DDL
+        // statement is gone. Recreating the stream would let the connector
+        // continue against an incomplete history without saying so, so storing
+        // a record must fail instead.
         Map<String, Object> source = server("test-server");
         history.record(source, position("test.log", 1, 0), "testdb", "CREATE TABLE t1 (id INT);");
 
         NatsCommonConfig connConfig = new NatsCommonConfig(Configuration.from(Collect.hashMapOf(
                 NatsCommonConfig.NATS_URL.name(), natsUrl)), "");
-        NatsConnection conn = NatsConnection.getInstance(connConfig, "stream-delete-check");
+        NatsConnection conn = new NatsConnection(connConfig);
         try {
             conn.getJetStreamManagement().deleteStream("test-schema-history");
         }
@@ -311,14 +312,42 @@ class NatsSchemaHistoryIT {
             conn.close();
         }
 
-        // Must not throw: the stream should be recreated and the record stored
-        history.record(source, position("test.log", 2, 0), "testdb", "CREATE TABLE t2 (id INT);");
+        SchemaHistoryException failure = assertThrows(SchemaHistoryException.class,
+                () -> history.record(source, position("test.log", 2, 0), "testdb", "CREATE TABLE t2 (id INT);"));
+        assertThat(failure.getMessage()).contains("test-schema-history");
+        assertThat(failure.getMessage()).contains("recovery");
+    }
 
-        Tables tables = new Tables();
-        history.recover(source, position("test.log", 2, 0), tables, new MySqlAntlrDdlParser());
-        // The first record lived in the deleted stream and is gone; the new
-        // record must be present and recoverable.
-        assertThat(tables.size()).isEqualTo(1);
-        assertThat(tables.forTable(new TableId("testdb", null, "t2"))).isNotNull();
+    @Test
+    @Timeout(30)
+    @SuppressWarnings("deprecation")
+    public void shouldFailRecoveryWhenRecoveryTimeoutExpires() throws Exception {
+        // Exhausting recovery.timeout.ms with messages still pending means the
+        // recovered model is incomplete, so the connector has to fail rather
+        // than carry on and describe the wrong table structure.
+        Map<String, Object> source = server("test-server");
+        history.record(source, position("test.log", 1, 0), "testdb", "CREATE TABLE t1 (id INT);");
+
+        NatsSchemaHistory impatient = new NatsSchemaHistory();
+        impatient.configure(Configuration.from(Collect.hashMapOf(
+                SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + NatsCommonConfig.NATS_URL.name(), natsUrl,
+                SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + NatsSchemaHistoryConfig.PROP_STREAM_NAME.name(),
+                "test-schema-history",
+                SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + NatsSchemaHistoryConfig.PROP_SUBJECT.name(),
+                "test.schema.history",
+                SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + NatsSchemaHistoryConfig.PROP_RECOVERY_TIMEOUT_MS.name(),
+                "0")), null, SchemaHistoryListener.NOOP, true);
+        impatient.start();
+        try {
+            Tables tables = new Tables();
+            SchemaHistoryException failure = assertThrows(SchemaHistoryException.class,
+                    () -> impatient.recover(source, position("test.log", 1, 0), tables, new MySqlAntlrDdlParser()));
+            assertThat(failure.getMessage()).contains("couldn't be recovered");
+            assertThat(failure.getMessage()).contains(
+                    NatsSchemaHistoryConfig.PROP_RECOVERY_TIMEOUT_MS.name());
+        }
+        finally {
+            impatient.stop();
+        }
     }
 }

@@ -103,7 +103,8 @@ public class NatsSchemaHistoryConfig extends NatsCommonConfig {
         super.init(c);
         this.streamName = c.getString(PROP_STREAM_NAME);
         this.subject = c.getString(PROP_SUBJECT);
-        this.storageType = StorageType.valueOf(c.getString(PROP_STORAGE_TYPE).toUpperCase());
+        this.storageType = EnumeratedValue.parse(StorageType.class, c.getString(PROP_STORAGE_TYPE),
+                PROP_STORAGE_TYPE.defaultValueAsString());
         this.replicas = c.getInteger(PROP_REPLICAS);
         this.maxAgeMs = c.getLong(PROP_MAX_AGE_MS);
         this.maxBytes = c.getLong(PROP_MAX_BYTES);
@@ -156,13 +157,5 @@ public class NatsSchemaHistoryConfig extends NatsCommonConfig {
 
     public long getRecoveryTimeoutMs() {
         return recoveryTimeoutMs;
-    }
-
-    // Non-configurable scope used to distinguish this component in shared NATS
-    // connection cache
-    public static final String NATS_INSTANCE_SCOPE_PREFIX = "schema";
-
-    public String instanceScope() {
-        return NATS_INSTANCE_SCOPE_PREFIX + ":" + getStreamName();
     }
 }

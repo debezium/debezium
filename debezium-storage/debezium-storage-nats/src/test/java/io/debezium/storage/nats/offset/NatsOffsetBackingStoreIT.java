@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.ByteBuffer;
@@ -29,9 +30,13 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.spi.storage.OffsetStore;
 import io.debezium.storage.nats.NatsCommonConfig;
+import io.debezium.storage.nats.NatsConnection;
+import io.debezium.util.Collect;
+import io.nats.client.ObjectStore;
 
 /**
  * Tests for NATS-based offset backing store.
@@ -204,6 +209,28 @@ class NatsOffsetBackingStoreIT {
         // Should persist across restarts
         assertThat(retrievedOffsets).hasSize(1);
         assertEquals(value, retrievedOffsets.get(key));
+    }
+
+    @Test
+    @Timeout(10)
+    public void shouldFailLoadWhenAnOffsetObjectCannotBeRead() throws Exception {
+        // The store never deletes offset objects, so an object it cannot read is
+        // a real problem rather than a normal race. Starting without that offset
+        // would silently re-snapshot or reprocess, so the load has to fail.
+        NatsCommonConfig connConfig = new NatsCommonConfig(Configuration.from(Collect.hashMapOf(
+                NatsCommonConfig.NATS_URL.name(), natsUrl)), "");
+        NatsConnection conn = new NatsConnection(connConfig);
+        try {
+            ObjectStore objectStore = conn.getOrCreateObjectStore("test-offsets");
+            // A "long:" object has to start with a 4-byte key length, so an empty
+            // payload can never be decoded.
+            objectStore.put("long:broken", new byte[0]);
+        }
+        finally {
+            conn.close();
+        }
+
+        assertThrows(DebeziumException.class, offsetStore::load);
     }
 
     @Test

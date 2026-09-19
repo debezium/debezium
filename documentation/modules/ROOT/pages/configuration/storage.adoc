@@ -951,7 +951,7 @@ offset.storage.nats.bucket.name=debezium-offsets
 
 |[[schema-history-internal-nats-recovery-timeout-ms]]<<schema-history-internal-nats-recovery-timeout-ms, `schema.history.internal.nats.recovery.timeout.ms`>>
 |60000
-|Specifies the maximum time, in milliseconds, that {prodname} spends recovering the schema history before recovery stops.
+|Specifies the maximum time, in milliseconds, that {prodname} spends recovering the schema history. If recovery does not finish within this time, the connector fails to start rather than continue with an incomplete schema history. Increase this value if the history is very large.
 
 |===
 

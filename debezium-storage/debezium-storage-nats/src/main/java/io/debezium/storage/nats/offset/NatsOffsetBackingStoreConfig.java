@@ -86,12 +86,4 @@ public class NatsOffsetBackingStoreConfig extends NatsCommonConfig {
         return maxRetries;
     }
 
-    // Non-configurable scope used to distinguish this component in shared NATS
-    // connection cache
-    public static final String NATS_INSTANCE_SCOPE_PREFIX = "offset";
-
-    public String instanceScope() {
-        return NATS_INSTANCE_SCOPE_PREFIX + ":" + getBucketName();
-    }
-
 }

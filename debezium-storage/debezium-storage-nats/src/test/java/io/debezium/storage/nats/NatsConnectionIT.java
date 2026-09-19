@@ -64,7 +64,7 @@ class NatsConnectionIT {
     @Test
     public void shouldCreateConnection() throws Exception {
         NatsCommonConfig config = createConfig();
-        natsConnection = NatsConnection.getInstance(config, "test");
+        natsConnection = new NatsConnection(config);
 
         assertNotNull(natsConnection);
         assertNotNull(natsConnection.getConnection());
@@ -74,7 +74,7 @@ class NatsConnectionIT {
     @Test
     public void shouldGetJetStream() throws Exception {
         NatsCommonConfig config = createConfig();
-        natsConnection = NatsConnection.getInstance(config, "test");
+        natsConnection = new NatsConnection(config);
 
         JetStream jetStream = natsConnection.getJetStream();
         assertNotNull(jetStream);
@@ -83,7 +83,7 @@ class NatsConnectionIT {
     @Test
     public void shouldGetJetStreamManagement() throws Exception {
         NatsCommonConfig config = createConfig();
-        natsConnection = NatsConnection.getInstance(config, "test");
+        natsConnection = new NatsConnection(config);
 
         JetStreamManagement jsm = natsConnection.getJetStreamManagement();
         assertNotNull(jsm);
@@ -97,50 +97,34 @@ class NatsConnectionIT {
         NatsCommonConfig natsConfig = new NatsCommonConfig(config);
 
         assertThrows(Exception.class, () -> {
-            NatsConnection natsConnection = NatsConnection.getInstance(natsConfig, "test");
+            NatsConnection natsConnection = new NatsConnection(natsConfig);
             natsConnection.getConnection(); // This should trigger the connection attempt and throw an exception
         });
     }
 
     @Test
-    public void shouldReuseConnection() throws Exception {
-        NatsCommonConfig config = createConfig();
-
-        NatsConnection conn1 = NatsConnection.getInstance(config, "test");
-        NatsConnection conn2 = NatsConnection.getInstance(config, "test");
-
-        // Should reuse the same connection instance
-        assertThat(conn1).isSameAs(conn2);
-
-        conn1.close();
-    }
-
-    @Test
-    public void shouldShareInstanceUntilAllUsersClose() {
-        // Refcount contract: the cached instance is shared while any user
-        // holds it, and a fresh instance is created once the last user closes.
+    public void shouldNotShareConnectionsBetweenCallers() {
+        // Each caller owns its connection and closes it when done. There is no
+        // shared instance cache, so two requests always produce distinct
+        // connections with independent lifecycles.
         NatsCommonConfig config = new NatsCommonConfig(Configuration.from(Collect.hashMapOf(
                 "nats.url", "nats://localhost:4222")), "");
 
-        NatsConnection first = NatsConnection.getInstance(config, "refcount-test");
-        NatsConnection second = NatsConnection.getInstance(config, "refcount-test");
-        assertThat(first).isSameAs(second);
-
-        first.close();
-        NatsConnection third = NatsConnection.getInstance(config, "refcount-test");
-        assertThat(first).isSameAs(third);
-
-        third.close();
-        second.close();
-        NatsConnection fourth = NatsConnection.getInstance(config, "refcount-test");
-        assertThat(first).isNotSameAs(fourth);
-        fourth.close();
+        NatsConnection first = new NatsConnection(config);
+        NatsConnection second = new NatsConnection(config);
+        try {
+            assertThat(first).isNotSameAs(second);
+        }
+        finally {
+            first.close();
+            second.close();
+        }
     }
 
     @Test
     public void shouldCloseConnection() throws Exception {
         NatsCommonConfig config = createConfig();
-        natsConnection = NatsConnection.getInstance(config, "test");
+        natsConnection = new NatsConnection(config);
 
         Connection connection = natsConnection.getConnection();
         assertTrue(connection.getStatus() == Connection.Status.CONNECTED);
@@ -162,7 +146,7 @@ class NatsConnectionIT {
         NatsCommonConfig natsConfig = new NatsCommonConfig(config);
 
         // Should still work with valid URL even with short timeout
-        natsConnection = NatsConnection.getInstance(natsConfig, "test");
+        natsConnection = new NatsConnection(natsConfig);
         assertNotNull(natsConnection);
     }
 
@@ -172,7 +156,7 @@ class NatsConnectionIT {
                 "nats.url", natsUrl));
 
         NatsCommonConfig natsConfig = new NatsCommonConfig(config);
-        natsConnection = NatsConnection.getInstance(natsConfig, "test");
+        natsConnection = new NatsConnection(natsConfig);
 
         assertNotNull(natsConnection);
         // Connection name should be set (though we can't easily verify it without
@@ -188,7 +172,7 @@ class NatsConnectionIT {
                 "nats.reconnect.wait.ms", "1000"));
 
         NatsCommonConfig natsConfig = new NatsCommonConfig(config);
-        natsConnection = NatsConnection.getInstance(natsConfig, "test");
+        natsConnection = new NatsConnection(natsConfig);
 
         assertNotNull(natsConnection);
         assertTrue(natsConnection.getConnection().getStatus() == Connection.Status.CONNECTED);
@@ -206,7 +190,7 @@ class NatsConnectionIT {
                     "nats.url", url,
                     "nats.user", "debezium",
                     "nats.password", "secret")), "");
-            NatsConnection conn = NatsConnection.getInstance(natsConfig, "auth-test");
+            NatsConnection conn = new NatsConnection(natsConfig);
             try {
                 assertEquals(Connection.Status.CONNECTED, conn.getConnection().getStatus());
             }
@@ -227,7 +211,7 @@ class NatsConnectionIT {
             NatsCommonConfig natsConfig = new NatsCommonConfig(Configuration.from(Collect.hashMapOf(
                     "nats.url", url,
                     "nats.token", "tokensecret")), "");
-            NatsConnection conn = NatsConnection.getInstance(natsConfig, "auth-token-test");
+            NatsConnection conn = new NatsConnection(natsConfig);
             try {
                 assertEquals(Connection.Status.CONNECTED, conn.getConnection().getStatus());
             }
@@ -247,34 +231,13 @@ class NatsConnectionIT {
 
             NatsCommonConfig natsConfig = new NatsCommonConfig(Configuration.from(Collect.hashMapOf(
                     "nats.url", url)), "");
-            NatsConnection conn = NatsConnection.getInstance(natsConfig, "auth-fail-test");
+            NatsConnection conn = new NatsConnection(natsConfig);
             try {
                 assertThrows(Exception.class, conn::getConnection);
             }
             finally {
                 conn.close();
             }
-        }
-    }
-
-    @Test
-    public void shouldNotShareConnectionAcrossDifferentTlsConfigs() {
-        // The connection cache key must include TLS settings: a plaintext and
-        // a TLS connection to the same URL must not share an instance.
-        NatsCommonConfig plain = new NatsCommonConfig(Configuration.from(Collect.hashMapOf(
-                "nats.url", natsUrl)), "");
-        NatsCommonConfig tls = new NatsCommonConfig(Configuration.from(Collect.hashMapOf(
-                "nats.url", natsUrl,
-                "nats.tls.enabled", "true")), "");
-
-        NatsConnection plainConn = NatsConnection.getInstance(plain, "tls-cache-test");
-        NatsConnection tlsConn = NatsConnection.getInstance(tls, "tls-cache-test");
-        try {
-            assertThat(plainConn).isNotSameAs(tlsConn);
-        }
-        finally {
-            plainConn.close();
-            tlsConn.close();
         }
     }
 

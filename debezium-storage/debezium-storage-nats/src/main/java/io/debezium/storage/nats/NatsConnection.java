@@ -11,9 +11,6 @@ import java.io.InputStream;
 import java.security.KeyStore;
 import java.security.SecureRandom;
 import java.time.Duration;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
@@ -47,7 +44,13 @@ public class NatsConnection {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(NatsConnection.class);
 
-    private static final ConcurrentMap<String, NatsConnection> instances = new ConcurrentHashMap<>();
+    /**
+     * Name of the throwaway object that {@link #warmUpObjectStore(ObjectStore)}
+     * writes and deletes. Readers that enumerate the object store must skip it,
+     * because it is the only object that can legitimately disappear between a
+     * listing and a read.
+     */
+    public static final String OBJECT_STORE_WARMUP_KEY = "__dbz_os_warmup__";
 
     /**
      * Delay between probe retries (JetStream readiness, object store backing
@@ -55,31 +58,27 @@ public class NatsConnection {
      */
     private static final Duration PROBE_DELAY = Duration.ofMillis(100);
 
-    /**
-     * Guards the {@link #instances} cache and the per-instance refcount so
-     * that {@link #getInstance} and {@link #close} are atomic with respect to
-     * each other. Without it, a close() racing with getInstance() could
-     * remove an instance from the cache while another thread is acquiring it.
-     */
-    private static final Object LOCK = new Object();
-
     private final NatsCommonConfig config;
     private final int probeRetries;
     private Connection connection;
     private JetStream jetStream;
-    private final AtomicInteger refCount = new AtomicInteger(0);
-    private final String cacheKey;
-
     private JetStreamManagement jetStreamManagement;
 
-    private NatsConnection(NatsCommonConfig config, String cacheKey) {
+    public NatsConnection(NatsCommonConfig config) {
         this.config = config;
-        this.cacheKey = cacheKey;
         // Probe retries are derived from the reconnect wait: the more patient
         // the user is with connection reconnects, the more patient we are with
         // JetStream and object store readiness probes. The default reconnect
         // wait of 2000ms yields 20 retries at 100ms intervals (~2s).
         this.probeRetries = (int) Math.max(2000, config.getReconnectWait().toMillis()) / 100;
+    }
+
+    /**
+     * Retry budget used for the readiness probes, and available to callers
+     * that need to ride out a short transient failure.
+     */
+    public int getRetryBudget() {
+        return probeRetries;
     }
 
     /**
@@ -94,23 +93,14 @@ public class NatsConnection {
                 .build();
     }
 
-    public static NatsConnection getInstance(NatsCommonConfig config, String scopeKey) {
-        // Build a cache key from URL, credentials, TLS settings and a
-        // non-configurable scope identifier so offset and schema users can
-        // have independent lifecycles even on the same URL, and connections
-        // with different credentials or TLS settings are never shared.
-        String key = config.getNatsUrl() + "|" + config.getUser() + "|" + config.getToken() + "|"
-                + config.isTlsEnabled() + "|" + config.getTlsTruststorePath() + "|" + config.getTlsKeystorePath() + "|"
-                + (scopeKey == null ? "default" : scopeKey);
-        synchronized (LOCK) {
-            NatsConnection instance = instances.computeIfAbsent(key, k -> new NatsConnection(config, key));
-            instance.refCount.incrementAndGet();
-            return instance;
-        }
-    }
-
     public synchronized Connection getConnection() throws IOException, InterruptedException {
-        if (connection == null || connection.getStatus() != Connection.Status.CONNECTED) {
+        // The jnats client owns reconnection: while the status is CONNECTING,
+        // RECONNECTING or DISCONNECTED it is already working on restoring the
+        // connection, so calling Nats.connect() again would replace the field
+        // and leak a connection that keeps reconnecting in the background.
+        // Reconnecting from here is only needed when the client has given up
+        // and closed the connection.
+        if (connection == null || connection.getStatus() == Connection.Status.CLOSED) {
             connect();
         }
         return connection;
@@ -305,46 +295,26 @@ public class NatsConnection {
         }
     }
 
-    public void close() {
-        synchronized (LOCK) {
-            // Decrement reference count; only close the underlying connection when
-            // there are no more users of this shared instance.
-            int remaining = refCount.decrementAndGet();
-            if (remaining > 0) {
-                LOGGER.debug("NATS connection release: {} remaining users for URL {}", remaining, config.getNatsUrl());
-                return;
+    public synchronized void close() {
+        if (connection != null) {
+            try {
+                connection.close();
+                LOGGER.info("NATS connection closed for URL {}", config.getNatsUrl());
             }
-
-            if (remaining < 0) {
-                // Guard against accidental extra close() calls
-                refCount.compareAndSet(remaining, 0);
+            catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                LOGGER.warn("Interrupted while closing NATS connection", e);
             }
-
-            if (connection != null) {
-                try {
-                    connection.close();
-                    LOGGER.info("NATS connection closed (last user) for URL {}", config.getNatsUrl());
-                }
-                catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    LOGGER.warn("Interrupted while closing NATS connection", e);
-                }
-                finally {
-                    connection = null;
-                    jetStream = null;
-                    jetStreamManagement = null;
-                }
+            finally {
+                connection = null;
+                jetStream = null;
+                jetStreamManagement = null;
             }
-
-            // Remove from cache so a future user can create a fresh instance.
-            // This must happen even when the connection was never established,
-            // otherwise the cache entry would leak.
-            instances.remove(cacheKey, this);
         }
     }
 
     private void warmUpObjectStore(ObjectStore os) {
-        final String key = "__dbz_os_warmup__";
+        final String key = OBJECT_STORE_WARMUP_KEY;
         byte[] payload = new byte[]{ 1 };
         try {
             probeRunnable(() -> {
