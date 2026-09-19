@@ -311,6 +311,15 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
             }
             dataRecords.forEach(record -> {
                 Testing.print(record);
+                final var envelope = (Struct) record.value();
+                final var token = envelope.getStruct(Envelope.FieldName.SOURCE).getString(SourceInfo.RESUME_TOKEN);
+                if (Envelope.Operation.READ.code().equals(envelope.getString(Envelope.FieldName.OPERATION))) {
+                    assertThat(token).isNull();
+                }
+                else {
+                    assertThat(BsonDocument.parse(token))
+                            .isEqualTo(ResumeTokens.fromBase64((String) record.sourceOffset().get(SourceInfo.RESUME_TOKEN)));
+                }
                 final K id = idCalculator.apply((Struct) record.key());
                 final V value = valueConverter.apply(record);
                 dbChanges.put(id, value);

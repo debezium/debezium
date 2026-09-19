@@ -435,6 +435,18 @@ The preceding configuration results in the following content being added to the 
 
 If you want the SMT to add metadata fields to `delete` events, set the value of the xref:mongodb-extract-new-record-state-delete-tombstone-handling-mode[`delete.tombstone.handling.mode`] option to `rewrite`.
 
+To retain the change stream resume token, add the following property:
+
+[source,properties]
+----
+transforms.unwrap.add.fields=source.resume_token
+----
+
+The resulting `__source_resume_token` field contains the token as an Extended JSON string.
+Alternatively, use `transforms.unwrap.add.headers=source.resume_token` to retain it in a record header.
+Snapshot records have a null token, and tombstone records have no value from which to extract metadata.
+When replaying older records whose source schema does not include `resume_token`, the SMT omits the additional field or header.
+
 // Type: concept
 // Title: Options for applying the MongoDB extract new document state transformation selectively
 // ModuleID: options-for-applying-the-mongodb-extract-new-document-state-transformation-selectively
@@ -556,7 +568,9 @@ version:VERSION, connector:CONNECTOR, source.ts_ms:EVENT_TIMESTAMP
 When the SMT adds metadata fields to the `value` element of the simplified message, it prefixes each metadata field name with a double underscore.
 For a struct specification, the SMT also inserts an underscore between the struct name and the field name.
 
-If you specify a field that is not present in the original change event message, the SMT still adds the specified field to the `value` element of the modified message.
+If you specify a field that is not present in the original change event schema, the SMT omits the field from the modified message.
+For example, a misspelled `source.resume_tokne` entry is omitted when the requested field does not exist in the change event schema.
+If an optional field is present in the schema but its value is null, the SMT adds the field with a null value.
 
 |[[mongodb-extract-new-record-state-field-name-adjustment-mode]]xref:mongodb-extract-new-record-state-field-name-adjustment-mode[`field.name.adjustment.mode`]
 |`none`
