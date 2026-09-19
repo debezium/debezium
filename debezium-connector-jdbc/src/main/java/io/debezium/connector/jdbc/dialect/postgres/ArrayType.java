@@ -16,6 +16,7 @@ import org.apache.kafka.connect.data.Struct;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.AbstractType;
 import io.debezium.connector.jdbc.type.JdbcType;
+import io.debezium.connector.jdbc.util.StructToJsonConverter;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
 import io.debezium.util.SchemaUtils;
@@ -86,7 +87,19 @@ public class ArrayType extends AbstractType {
             return List.of(new ValueBindDescriptor(index, null));
         }
         final String elementTypeName = baseElementTypeName(getElementTypeName(this.getDialect(), schema, false));
-        return List.of(new ValueBindDescriptor(index, unwrapElements(schema, value), java.sql.Types.ARRAY, elementTypeName));
+        Object elements = unwrapElements(schema, value);
+        if (getDialect().getSchemaType(schema.valueSchema()) instanceof StructToJsonbType) {
+            // Struct elements resolve to a jsonb[] column; serialize each element to a JSON string,
+            // which the driver encodes as a jsonb array value.
+            elements = structElementsToJson((Collection<?>) elements);
+        }
+        return List.of(new ValueBindDescriptor(index, elements, java.sql.Types.ARRAY, elementTypeName));
+    }
+
+    private static List<Object> structElementsToJson(Collection<?> elements) {
+        return elements.stream()
+                .map(element -> element instanceof Struct struct ? (Object) StructToJsonConverter.structToJsonString(struct) : element)
+                .toList();
     }
 
     /**
