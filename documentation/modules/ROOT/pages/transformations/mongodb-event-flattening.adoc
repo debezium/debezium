@@ -569,6 +569,7 @@ When the SMT adds metadata fields to the `value` element of the simplified messa
 For a struct specification, the SMT also inserts an underscore between the struct name and the field name.
 
 If you specify a field that is not present in the original change event schema, the SMT omits the field from the modified message.
+For example, a misspelled `source.resume_tokne` entry is omitted when the requested field does not exist in the change event schema.
 If an optional field is present in the schema but its value is null, the SMT adds the field with a null value.
 
 |[[mongodb-extract-new-record-state-field-name-adjustment-mode]]xref:mongodb-extract-new-record-state-field-name-adjustment-mode[`field.name.adjustment.mode`]
