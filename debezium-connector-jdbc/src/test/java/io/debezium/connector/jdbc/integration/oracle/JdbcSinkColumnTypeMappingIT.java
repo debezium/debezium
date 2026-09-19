@@ -18,6 +18,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import io.debezium.connector.jdbc.JdbcKafkaSinkRecord;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.integration.AbstractJdbcSinkTest;
@@ -134,7 +136,7 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
     @ParameterizedTest
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
     @FixFor("debezium/dbz#2573")
-    public void testShouldWorkWithStructAsJsonText(SinkRecordFactory factory) throws Exception {
+    public void testShouldMapStructToJsonOrClobByOracleVersion(SinkRecordFactory factory) throws Exception {
         final Map<String, String> properties = getDefaultSinkConfig();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.BASIC.getValue());
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
@@ -162,9 +164,14 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
         final String destinationTable = destinationTableName(createRecord);
         consume(createRecord);
 
+        final String expectedColumnType = getSink().getVersion().isSameOrAfter(21) ? "JSON" : "CLOB";
+        getSink().assertColumn(destinationTable, "data", expectedColumnType);
+
+        final ObjectMapper objectMapper = new ObjectMapper();
         getSink().assertRows(destinationTable, rs -> {
             assertThat(rs.getInt(1)).isEqualTo(1);
-            assertThat(rs.getString(2)).isEqualTo("{\"sku\":\"A\",\"quantity\":1}");
+            assertThat(objectMapper.readTree(rs.getString(2)))
+                    .isEqualTo(objectMapper.readTree("{\"sku\":\"A\",\"quantity\":1}"));
             return null;
         });
     }
