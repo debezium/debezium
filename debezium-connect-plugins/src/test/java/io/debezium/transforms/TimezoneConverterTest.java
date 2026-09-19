@@ -28,6 +28,7 @@ import org.junit.jupiter.api.Test;
 import io.debezium.DebeziumException;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
+import io.debezium.doc.FixFor;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.time.MicroTimestamp;
 import io.debezium.time.NanoTimestamp;
@@ -945,5 +946,161 @@ public class TimezoneConverterTest {
         assertThat(transformedSource.getInt64("ts_ns")).isEqualTo(1762672421071088000L);
         assertThat(transformedSource.getInt64("ts_us")).isEqualTo(1762672421071088L);
         assertThat(transformedSource.getInt64("random")).isEqualTo(125L);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2667")
+    public void testHyphenatedTopicAndTableInIncludeList() {
+        final Map<String, String> props = new HashMap<>();
+        props.put("converted.timezone", "+05:30");
+        props.put("include.list", "topic:orders-topic-1:order_date_zoned_time,source:my-orders-table:order_date_zoned_timestamp");
+        converter.configure(props);
+
+        final Struct before = new Struct(recordSchema);
+        final Struct source = new Struct(sourceSchema);
+
+        before.put("id", (byte) 1);
+        before.put("name", "Srikanth");
+        before.put("order_date_zoned_time", "11:15:30.123456789+00:00");
+        before.put("order_date_zoned_timestamp", "2018-01-02T11:15:30.123456789+00:00");
+
+        source.put("table", "my-orders-table");
+        source.put("lsn", 1);
+        source.put("ts_ms", 123456789L);
+
+        final Envelope envelope = Envelope.defineSchema()
+                .withName("dummy.Envelope")
+                .withRecord(recordSchema)
+                .withSource(sourceSchema)
+                .build();
+
+        final Struct payload = envelope.create(before, source, Instant.now());
+
+        // Test matching topic with hyphen
+        SourceRecord recordTopic = new SourceRecord(
+                new HashMap<>(),
+                new HashMap<>(),
+                "orders-topic-1",
+                envelope.schema(),
+                payload);
+
+        VerifyRecord.isValid(recordTopic);
+        SourceRecord transformedTopic = converter.apply(recordTopic);
+        VerifyRecord.isValid(transformedTopic);
+
+        Struct transformedValue = (Struct) transformedTopic.value();
+        Struct transformedAfter = transformedValue.getStruct(Envelope.FieldName.AFTER);
+        assertThat(transformedAfter.get("order_date_zoned_time")).isEqualTo("16:45:30.123456789+05:30");
+        assertThat(transformedAfter.get("order_date_zoned_timestamp")).isEqualTo("2018-01-02T16:45:30.123456789+05:30");
+
+        // Test matching source table with hyphen
+        SourceRecord recordTable = new SourceRecord(
+                new HashMap<>(),
+                new HashMap<>(),
+                "other-topic",
+                envelope.schema(),
+                payload);
+
+        VerifyRecord.isValid(recordTable);
+        SourceRecord transformedTable = converter.apply(recordTable);
+        VerifyRecord.isValid(transformedTable);
+
+        transformedValue = (Struct) transformedTable.value();
+        transformedAfter = transformedValue.getStruct(Envelope.FieldName.AFTER);
+        assertThat(transformedAfter.get("order_date_zoned_timestamp")).isEqualTo("2018-01-02T16:45:30.123456789+05:30");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2667")
+    public void testPrefixDoesNotLeakToSubsequentRules() {
+        final Map<String, String> props = new HashMap<>();
+        props.put("converted.timezone", "+05:30");
+        // topic rule followed by un-prefixed rule
+        props.put("include.list", "topic:orders-topic:order_date_micros,orders:order_date_zoned_time");
+        converter.configure(props);
+
+        final Struct before = new Struct(recordSchema);
+        final Struct source = new Struct(sourceSchema);
+
+        before.put("id", (byte) 1);
+        before.put("name", "Srikanth");
+        before.put("order_date_micros", 1529507596945104L);
+        before.put("order_date_zoned_time", "11:15:30.123456789+00:00");
+
+        source.put("table", "orders");
+        source.put("lsn", 1);
+        source.put("ts_ms", 123456789L);
+
+        final Envelope envelope = Envelope.defineSchema()
+                .withName("dummy.Envelope")
+                .withRecord(recordSchema)
+                .withSource(sourceSchema)
+                .build();
+
+        final Struct payload = envelope.create(before, source, Instant.now());
+
+        // Record with topic "unrelated-topic" and source table "orders"
+        // If prefix leaked, "orders" was put in topicFieldsMap instead of noPrefixFieldsMap and would NOT match source table!
+        SourceRecord record = new SourceRecord(
+                new HashMap<>(),
+                new HashMap<>(),
+                "unrelated-topic",
+                envelope.schema(),
+                payload);
+
+        VerifyRecord.isValid(record);
+        SourceRecord transformedRecord = converter.apply(record);
+        VerifyRecord.isValid(transformedRecord);
+
+        Struct transformedValue = (Struct) transformedRecord.value();
+        Struct transformedAfter = transformedValue.getStruct(Envelope.FieldName.AFTER);
+        assertThat(transformedAfter.get("order_date_zoned_time")).isEqualTo("16:45:30.123456789+05:30");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2667")
+    public void testHyphenatedExcludeList() {
+        final Map<String, String> props = new HashMap<>();
+        props.put("converted.timezone", "+05:30");
+        props.put("exclude.list", "topic:orders-topic-1:order_date_zoned_time,source:my-orders-table:order_date_micros");
+        converter.configure(props);
+
+        final Struct before = new Struct(recordSchema);
+        final Struct source = new Struct(sourceSchema);
+
+        before.put("id", (byte) 1);
+        before.put("name", "Srikanth");
+        before.put("order_date_zoned_time", "11:15:30.123456789+00:00");
+        before.put("order_date_zoned_timestamp", "2018-01-02T11:15:30.123456789+00:00");
+
+        source.put("table", "my-orders-table");
+        source.put("lsn", 1);
+        source.put("ts_ms", 123456789L);
+
+        final Envelope envelope = Envelope.defineSchema()
+                .withName("dummy.Envelope")
+                .withRecord(recordSchema)
+                .withSource(sourceSchema)
+                .build();
+
+        final Struct payload = envelope.create(before, source, Instant.now());
+
+        SourceRecord recordTopic = new SourceRecord(
+                new HashMap<>(),
+                new HashMap<>(),
+                "orders-topic-1",
+                envelope.schema(),
+                payload);
+
+        VerifyRecord.isValid(recordTopic);
+        SourceRecord transformed = converter.apply(recordTopic);
+        VerifyRecord.isValid(transformed);
+
+        Struct transformedValue = (Struct) transformed.value();
+        Struct transformedAfter = transformedValue.getStruct(Envelope.FieldName.AFTER);
+        // order_date_zoned_time was excluded for orders-topic-1
+        assertThat(transformedAfter.get("order_date_zoned_time")).isEqualTo("11:15:30.123456789+00:00");
+        // order_date_zoned_timestamp was not excluded
+        assertThat(transformedAfter.get("order_date_zoned_timestamp")).isEqualTo("2018-01-02T16:45:30.123456789+05:30");
     }
 }
