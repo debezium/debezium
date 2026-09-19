@@ -2152,7 +2152,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         final int minimumLogCountPerThread = connectorConfig.getLogMiningMinimumLogCount();
         if (minimumLogCountPerThread > 0) {
             switch (connectorConfig.getLogMiningStrategy()) {
-                case HYBRID, ONLINE_CATALOG: {
+                case HYBRID, ONLINE_CATALOG, DICTIONARY_FROM_FILE: {
                     final long maximumRedoLogFileSize = connection.getMaximumRedoLogFileSize();
                     // The maximum committed SCN across redo threads is a lower bound on the upper
                     // boundary of the last mining session before a restart; seeding it restores the
