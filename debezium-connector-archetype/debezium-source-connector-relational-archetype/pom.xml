@@ -16,6 +16,23 @@
     <packaging>maven-archetype</packaging>
 
     <build>
+        <resources>
+            <!-- Filter only the archetype descriptor so its debeziumVersion default tracks the build version; the archetype-resources templates must stay verbatim. -->
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>false</filtering>
+                <excludes>
+                    <exclude>META-INF/maven/archetype-metadata.xml</exclude>
+                </excludes>
+            </resource>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+                <includes>
+                    <include>META-INF/maven/archetype-metadata.xml</include>
+                </includes>
+            </resource>
+        </resources>
         <testResources>
             <testResource>
                 <directory>src/test/resources</directory>
