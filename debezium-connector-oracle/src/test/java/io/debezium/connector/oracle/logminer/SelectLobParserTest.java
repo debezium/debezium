@@ -238,4 +238,32 @@ public class SelectLobParserTest {
         assertThat(entry.getNewValues()[1]).isEqualTo("2\"''\" sd f\"\"\" '''''''' ''''");
         assertThat(entry.getNewValues()[2]).isNull();
     }
+
+    @Test
+    @FixFor("debezium/dbz#2672")
+    public void shouldResetInheritedStateBetweenParses() throws Exception {
+        final Table table = Table.editor()
+                .tableId(TableId.parse("DEBEZIUM.CLOB_TEST"))
+                .addColumn(Column.editor().name("ID").create())
+                .addColumn(Column.editor().name("VAL_CLOB").create())
+                .create();
+
+        final String redoSql = "DECLARE \n" +
+                " loc_c CLOB; \n" +
+                "BEGIN\n" +
+                " select \"VAL_CLOB\" into loc_c from \"DEBEZIUM\".\"CLOB_TEST\" where \"ID\" = '2' for update;";
+
+        parser.parse(redoSql, table);
+        assertThat(parser.getColumnName()).isEqualTo("VAL_CLOB");
+        assertThat(parser.getSchemaName()).isEqualTo("DEBEZIUM");
+        assertThat(parser.getTableName()).isEqualTo("CLOB_TEST");
+
+        final LogMinerDmlEntry entry = parser.parse(null, table);
+
+        assertThat(parser.getColumnName()).isNull();
+        assertThat(parser.getSchemaName()).isNull();
+        assertThat(parser.getTableName()).isNull();
+        assertThat(entry.getObjectOwner()).isNull();
+        assertThat(entry.getObjectName()).isNull();
+    }
 }
