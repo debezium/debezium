@@ -26,7 +26,7 @@ public class ExtendedStringParserTest {
     private static final ExtendedStringParser parser = new ExtendedStringParser();
 
     @Test
-    @FixFor("debezium/dbz#2366")
+    @FixFor({ "debezium/dbz#2366", "debezium/dbz#2671" })
     public void shouldParseExtendedStringBeginRedoSqlWithTableAlias() {
         final Table table = Table.editor()
                 .tableId(TableId.parse("DEBEZIUM.TEST_TABLE"))
@@ -47,10 +47,14 @@ public class ExtendedStringParserTest {
         assertThat(parser.getColumnName()).isEqualTo("DATA");
         assertThat(entry.getNewValues()[0]).isEqualTo("1");
         assertThat(entry.getOldValues()[0]).isEqualTo("1");
+        assertThat(parser.getSchemaName()).isEqualTo("DEBEZIUM");
+        assertThat(parser.getTableName()).isEqualTo("TEST_TABLE");
+        assertThat(entry.getObjectOwner()).isEqualTo("DEBEZIUM");
+        assertThat(entry.getObjectName()).isEqualTo("TEST_TABLE");
     }
 
     @Test
-    @FixFor("debezium/dbz#2366")
+    @FixFor({ "debezium/dbz#2366", "debezium/dbz#2671" })
     public void shouldParseExtendedStringBeginRedoSqlWithoutTableAlias() {
         final Table table = Table.editor()
                 .tableId(TableId.parse("DEBEZIUM.TEST_TABLE"))
@@ -71,5 +75,9 @@ public class ExtendedStringParserTest {
         assertThat(parser.getColumnName()).isEqualTo("DATA");
         assertThat(entry.getNewValues()[0]).isEqualTo("1");
         assertThat(entry.getOldValues()[0]).isEqualTo("1");
+        assertThat(parser.getSchemaName()).isEqualTo("DEBEZIUM");
+        assertThat(parser.getTableName()).isEqualTo("TEST_TABLE");
+        assertThat(entry.getObjectOwner()).isEqualTo("DEBEZIUM");
+        assertThat(entry.getObjectName()).isEqualTo("TEST_TABLE");
     }
 }
