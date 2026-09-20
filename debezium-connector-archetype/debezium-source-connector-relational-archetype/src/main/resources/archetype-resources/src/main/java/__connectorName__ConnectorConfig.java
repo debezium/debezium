@@ -72,13 +72,8 @@ public class ${connectorName}ConnectorConfig extends RelationalDatabaseConnector
 
     private static final ConfigDefinition CONFIG_DEFINITION = RelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("${connectorName}")
-            .type(
-                    HOSTNAME,
-                    PORT,
-                    USER,
-                    PASSWORD,
-                    DATABASE_NAME)
-            .connector(SNAPSHOT_MODE)
+            .group(Field.Group.CONNECTION, HOSTNAME, PORT, USER, PASSWORD, DATABASE_NAME)
+            .group(Field.Group.CONNECTOR_SNAPSHOT, SNAPSHOT_MODE)
             .create();
 
     public static final Field.Set ALL_FIELDS = Field.setOf(CONFIG_DEFINITION.all());
