@@ -246,18 +246,6 @@ public class PostgresSchema extends RelationalDatabaseSchema {
         tableIds.forEach(tableId -> refreshGeneratedColumnsMap(tableId, allGeneratedColumnsByTable.getOrDefault(tableId, List.of())));
     }
 
-    /**
-     * Populates {@link Column#isGenerated()} from {@code pg_attribute.attgenerated} (the Postgres JDBC
-     * driver does not surface {@code IS_GENERATEDCOLUMN}) and records the names in
-     * {@link #tableIdToGeneratedColumns}. Runs for pgoutput only; see {@link #tracksGeneratedColumns()}.
-     */
-    private void refreshGeneratedColumnsMap(PostgresConnection connection, TableId tableId) {
-        if (!tracksGeneratedColumns()) {
-            return;
-        }
-        refreshGeneratedColumnsMap(tableId, readGeneratedColumnNames(connection, tableId));
-    }
-
     private void refreshGeneratedColumnsMap(TableId tableId, List<String> allGeneratedColumnNames) {
         final Table current = tables().forTable(tableId);
         if (current == null) {
@@ -324,31 +312,30 @@ public class PostgresSchema extends RelationalDatabaseSchema {
 
         // See applyGeneratedColumnFlags for why attgenerated <> '' captures both STORED (PG12+) and
         // VIRTUAL (PG18+) generated columns.
-        final Set<TableId> capturedLookupKeys = tableIds.stream()
-                .map(tableId -> new TableId(null, schemaName(tableId), tableId.table()))
-                .collect(Collectors.toSet());
-        final String tablePredicates = String.join(" OR ", Collections.nCopies(capturedLookupKeys.size(), "(ns.nspname = ? and tbl.relname = ?)"));
-        final String statement = "select ns.nspname, tbl.relname, att.attname" +
-                " from pg_attribute att" +
-                " join pg_class tbl on tbl.oid = att.attrelid" +
-                " join pg_namespace ns on tbl.relnamespace = ns.oid" +
-                " where (" + tablePredicates + ")" +
-                " and att.attnum > 0" +
-                " and att.attgenerated <> ''" +
-                " and not att.attisdropped;";
-
         final Map<TableId, TableId> capturedTablesByName = new HashMap<>();
         for (TableId tableId : tableIds) {
             capturedTablesByName.put(new TableId(null, schemaName(tableId), tableId.table()), tableId);
         }
 
+        // DBZ-2020: bind the distinct captured schemas as a single array so the statement uses one bind
+        // variable regardless of table count; a per-(schema, table) predicate would hit pgjdbc's 32767
+        // parameter ceiling for large capture sets. Rows are narrowed back to the captured tables
+        // client-side below.
+        final Set<String> capturedSchemas = capturedTablesByName.keySet().stream()
+                .map(TableId::schema)
+                .collect(Collectors.toSet());
+        final String statement = "select ns.nspname, tbl.relname, att.attname" +
+                " from pg_attribute att" +
+                " join pg_class tbl on tbl.oid = att.attrelid" +
+                " join pg_namespace ns on tbl.relnamespace = ns.oid" +
+                " where ns.nspname = ANY(?)" +
+                " and att.attnum > 0" +
+                " and att.attgenerated <> ''" +
+                " and not att.attisdropped;";
+
         final Map<TableId, List<String>> generatedColumnsByTable = new LinkedHashMap<>();
         runColumnMetadataQuery(connection, statement, stmt -> {
-            int index = 1;
-            for (TableId lookupTableId : capturedLookupKeys) {
-                stmt.setString(index++, lookupTableId.schema());
-                stmt.setString(index++, lookupTableId.table());
-            }
+            stmt.setArray(1, connection.connection().createArrayOf("text", capturedSchemas.toArray()));
         }, rs -> {
             while (rs.next()) {
                 final String schema = rs.getString(1);
@@ -360,7 +347,7 @@ public class PostgresSchema extends RelationalDatabaseSchema {
                     generatedColumnsByTable.computeIfAbsent(capturedTableId, ignored -> new ArrayList<>()).add(columnName);
                 }
             }
-        }, "Unable to read generated column metadata");
+        }, "Unable to read generated column metadata", false);
         return generatedColumnsByTable;
     }
 
@@ -383,16 +370,19 @@ public class PostgresSchema extends RelationalDatabaseSchema {
             while (rs.next()) {
                 columnNames.add(rs.getString(1));
             }
-        }, errorContext);
+        }, errorContext, true);
         return columnNames;
     }
 
     private void runColumnMetadataQuery(PostgresConnection connection, String statement,
                                         JdbcConnection.StatementPreparer statementPreparer,
-                                        JdbcConnection.ResultSetConsumer consumer, String errorContext) {
+                                        JdbcConnection.ResultSetConsumer consumer, String errorContext, boolean commitAfterQuery) {
         try {
             connection.prepareQuery(statement, statementPreparer, consumer);
-            if (!connection.connection().getAutoCommit()) {
+            // DBZ-2020: committing inside the initial snapshot's pinned transaction ends the snapshot,
+            // so the batched refresh passes commitAfterQuery=false and lets the caller own the transaction.
+            // Other paths run outside the snapshot and commit to avoid leaving the connection idle-in-transaction.
+            if (commitAfterQuery && !connection.connection().getAutoCommit()) {
                 connection.connection().commit();
             }
         }
