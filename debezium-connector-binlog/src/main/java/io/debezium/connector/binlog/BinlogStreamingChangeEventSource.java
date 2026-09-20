@@ -75,6 +75,7 @@ import com.github.shyiko.mysql.binlog.network.ServerException;
 
 import io.debezium.DebeziumException;
 import io.debezium.annotation.SingleThreadAccess;
+import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMode;
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.BinlogConnectorConfig.SecureConnectionMode;
@@ -1560,7 +1561,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
 
     protected abstract SSLMode sslModeFor(SecureConnectionMode mode);
 
-    // Package-private for testing.
+    @VisibleForTesting
     SSLSocketFactory getBinlogSslSocketFactory(BinlogConnectorConfig connectorConfig, BinlogConnectorConnection connection) {
         String acceptedTlsVersion = connection.getSessionVariableForSslVersion();
         if (!isNullOrEmpty(acceptedTlsVersion)) {

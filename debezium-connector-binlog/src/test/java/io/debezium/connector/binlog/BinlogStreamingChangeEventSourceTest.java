@@ -25,6 +25,7 @@ import com.github.shyiko.mysql.binlog.network.SSLSocketFactory;
 
 import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
 import io.debezium.connector.binlog.jdbc.ConnectionConfiguration;
+import io.debezium.doc.FixFor;
 
 /**
  * Unit tests for {@link BinlogStreamingChangeEventSource#getBinlogSslSocketFactory}.
@@ -32,6 +33,7 @@ import io.debezium.connector.binlog.jdbc.ConnectionConfiguration;
 public class BinlogStreamingChangeEventSourceTest {
 
     @Test
+    @FixFor("debezium/dbz#2655")
     public void shouldTreatBlankKeystoreAndTruststorePathsAsUnset() {
         final ConnectionConfiguration connectionConfig = mock(ConnectionConfiguration.class);
         when(connectionConfig.sslKeyStore()).thenReturn("");
@@ -50,6 +52,7 @@ public class BinlogStreamingChangeEventSourceTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2655")
     public void shouldLoadKeystoreWhenPathIsConfigured() throws Exception {
         final KeyStore emptyKeyStore = KeyStore.getInstance("JKS");
         emptyKeyStore.load(null, null);
