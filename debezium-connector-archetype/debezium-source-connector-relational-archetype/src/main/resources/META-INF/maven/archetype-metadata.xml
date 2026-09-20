@@ -10,9 +10,9 @@
         <requiredProperty key="connectorName">
             <defaultValue>MyConnector</defaultValue>
         </requiredProperty>
-        <!-- Debezium version to target -->
+        <!-- Debezium version to target; default is filtered from the archetype build version -->
         <requiredProperty key="debeziumVersion">
-            <defaultValue>3.6.0.Final</defaultValue>
+            <defaultValue>${project.version}</defaultValue>
         </requiredProperty>
     </requiredProperties>
 
