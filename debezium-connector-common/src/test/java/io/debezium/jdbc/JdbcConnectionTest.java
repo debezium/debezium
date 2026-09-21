@@ -35,7 +35,9 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
+import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection.ConnectionFactory;
+import io.debezium.relational.TableId;
 
 class JdbcConnectionTest {
 
@@ -63,6 +65,16 @@ class JdbcConnectionTest {
             conn.connect();
             conn.close();
         });
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2670")
+    public void shouldBuildRowCountStatementWithQuotedTableId() {
+        ConnectionFactory connFactory = (config) -> new NormalConnection();
+        JdbcConnection conn = new JdbcConnection(JdbcConfiguration.empty(), connFactory, "\"", "\"");
+
+        assertEquals("SELECT COUNT(1) FROM \"my schema\".\"my table\"",
+                conn.buildSelectRowCount(new TableId(null, "my schema", "my table")));
     }
 
     @Test

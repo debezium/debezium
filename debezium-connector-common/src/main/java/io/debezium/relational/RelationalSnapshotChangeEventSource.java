@@ -1120,10 +1120,11 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
     protected Long rowCountForTableChunked(TableId tableId) throws SQLException {
         // todo: snapshot select overrides?
-        // Use the quoted, fully-qualified identifier (as the rest of the snapshot SQL does) so that
-        // schema/table names requiring quoting - special characters, reserved words, etc. - remain valid.
+        // The statement is built by the connection so that each dialect can adapt it; the default uses the
+        // quoted, fully-qualified identifier (as the rest of the snapshot SQL does) so that schema/table names
+        // requiring quoting - special characters, reserved words, etc. - remain valid.
         return jdbcConnection.queryAndMap(
-                "SELECT COUNT(1) FROM %s".formatted(jdbcConnection.quotedTableIdString(tableId)),
+                jdbcConnection.buildSelectRowCount(tableId),
                 rs -> rs.next() ? rs.getLong(1) : 0L);
     }
 

@@ -1673,6 +1673,20 @@ public class JdbcConnection implements AutoCloseable {
         return new DefaultChunkQueryBuilder<T>(connectorConfig, this);
     }
 
+    /**
+     * Builds the statement that returns the exact number of rows in the given table.
+     * <p>
+     * The standard {@code COUNT} aggregate returns a 64-bit value on most databases, so the default is adequate.
+     * Dialects whose {@code COUNT} is limited to a 32-bit integer must override this to avoid an overflow on
+     * tables with more than {@link Integer#MAX_VALUE} rows.
+     *
+     * @param tableId the table to count
+     * @return the row count statement, returning the count as the first column of a single row
+     */
+    public String buildSelectRowCount(TableId tableId) {
+        return "SELECT COUNT(1) FROM %s".formatted(quotedTableIdString(tableId));
+    }
+
     public String buildSelectWithRowLimits(TableId tableId, int limit, String projection, Optional<String> condition,
                                            Optional<String> additionalCondition, String orderBy) {
         return buildSelectWithRowLimits(tableId, limit, projection, condition, additionalCondition, orderBy, Optional.empty());
