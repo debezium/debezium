@@ -385,7 +385,7 @@ public class OracleConnection extends JdbcConnection {
      * @throws SQLException if a database exception occurred
      */
     public long getRowCount(TableId tableId) throws SQLException {
-        return queryAndMap("SELECT COUNT(1) FROM " + tableId.toDoubleQuotedString(), rs -> {
+        return queryAndMap("SELECT COUNT(1) FROM " + quotedTableIdString(tableId), rs -> {
             if (rs.next()) {
                 return rs.getLong(1);
             }
@@ -438,6 +438,16 @@ public class OracleConnection extends JdbcConnection {
         return scn -> scn.compareTo(storedOffset) <= 0;
     }
 
+    /**
+     * Oracle table identifiers carry the CDB/PDB name as the catalog, but a query always executes
+     * inside a single pluggable database and cannot qualify a table with it. The catalog is dropped
+     * here so that every caller gets {@code "schema"."table"} without stripping it beforehand.
+     */
+    @Override
+    public String quotedTableIdString(TableId tableId) {
+        return super.quotedTableIdString(new TableId(null, tableId.schema(), tableId.table()));
+    }
+
     @Override
     public String buildSelectWithRowLimits(TableId tableId,
                                            int limit,
@@ -446,12 +456,11 @@ public class OracleConnection extends JdbcConnection {
                                            Optional<String> additionalCondition,
                                            String orderBy,
                                            Optional<String> tableAlias) {
-        final TableId table = new TableId(null, tableId.schema(), tableId.table());
         final StringBuilder sql = new StringBuilder("SELECT ");
         sql
                 .append(projection)
                 .append(" FROM ");
-        sql.append(quotedTableIdString(table));
+        sql.append(quotedTableIdString(tableId));
         tableAlias.ifPresent(alias -> sql.append(' ').append(alias));
         if (condition.isPresent()) {
             sql
@@ -488,7 +497,6 @@ public class OracleConnection extends JdbcConnection {
 
     @Override
     public String buildSelectPrimaryKeyBoundaries(TableId tableId, long size, String projection, String orderBy, String condition) {
-        final TableId truncatedTableId = new TableId(null, tableId.schema(), tableId.table());
         // Oracle 11g and earlier
         if (getOracleVersion().getMajor() < 12) {
             StringBuilder innerSql = new StringBuilder("SELECT ")
@@ -496,7 +504,7 @@ public class OracleConnection extends JdbcConnection {
                     .append(", ROWNUM AS RNUM FROM (SELECT ")
                     .append(projection)
                     .append(" FROM ")
-                    .append(quotedTableIdString(truncatedTableId));
+                    .append(quotedTableIdString(tableId));
             if (!Strings.isNullOrBlank(condition)) {
                 innerSql.append(" WHERE ").append(condition);
             }
@@ -515,7 +523,7 @@ public class OracleConnection extends JdbcConnection {
         StringBuilder sql = new StringBuilder("SELECT ")
                 .append(projection)
                 .append(" FROM ")
-                .append(quotedTableIdString(truncatedTableId));
+                .append(quotedTableIdString(tableId));
         if (!Strings.isNullOrBlank(condition)) {
             sql.append(" WHERE ")
                     .append(condition);
@@ -702,19 +710,18 @@ public class OracleConnection extends JdbcConnection {
     public boolean reselectColumns(Table table, List<String> columns, List<String> keyColumns, List<Object> keyValues, Struct source,
                                    ResultSetConsumer resultConsumer)
             throws SQLException {
-        final TableId oracleTableId = new TableId(null, table.id().schema(), table.id().table());
         if (source != null) {
             final String commitScn = source.getString(SourceInfo.COMMIT_SCN_KEY);
             if (!Strings.isNullOrEmpty(commitScn)) {
                 final String query = String.format("SELECT %s FROM (SELECT * FROM %s AS OF SCN ?) WHERE %s",
                         columns.stream().map(this::quoteIdentifier).collect(Collectors.joining(",")),
-                        quotedTableIdString(oracleTableId),
+                        quotedTableIdString(table.id()),
                         keyColumns.stream().map(this::quoteIdentifier).map(key -> key + "=?").collect(Collectors.joining(" AND ")));
                 final List<Object> bindValues = new ArrayList<>(keyValues.size() + 1);
                 bindValues.add(commitScn);
                 bindValues.addAll(keyValues);
                 try {
-                    return reselectColumns(query, oracleTableId, columns, bindValues, resultConsumer);
+                    return reselectColumns(query, table.id(), columns, bindValues, resultConsumer);
                 }
                 catch (Exception e) {
                     if (shouldReselectFallbackToNonFlashbackQuery(e)) {
@@ -730,10 +737,10 @@ public class OracleConnection extends JdbcConnection {
 
         final String query = String.format("SELECT %s FROM %s WHERE %s",
                 columns.stream().map(this::quoteIdentifier).collect(Collectors.joining(",")),
-                quotedTableIdString(oracleTableId),
+                quotedTableIdString(table.id()),
                 keyColumns.stream().map(this::quoteIdentifier).map(key -> key + "=?").collect(Collectors.joining(" AND ")));
 
-        return reselectColumns(query, oracleTableId, columns, keyValues, resultConsumer);
+        return reselectColumns(query, table.id(), columns, keyValues, resultConsumer);
     }
 
     private static final Set<Integer> ORACLE_RESELECT_ERROR_CODE_FALLBACK = Set.of(
