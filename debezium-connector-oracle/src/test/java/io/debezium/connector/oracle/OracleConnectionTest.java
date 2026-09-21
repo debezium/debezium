@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.oracle;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
@@ -22,8 +23,11 @@ import org.apache.kafka.connect.errors.RetriableException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import io.debezium.config.Configuration;
+import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.relational.TableId;
 
 public class OracleConnectionTest {
 
@@ -62,5 +66,43 @@ public class OracleConnectionTest {
                 connection.getOracleVersion();
             }
         });
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2653")
+    void whenTableIdHasCatalogThenQuotedTableIdStringOmitsIt() throws Exception {
+        try (OracleConnection connection = createOfflineConnection()) {
+            assertThat(connection.quotedTableIdString(new TableId("ORCLPDB1", "DEBEZIUM", "CUSTOMERS")))
+                    .isEqualTo("\"DEBEZIUM\".\"CUSTOMERS\"");
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2653")
+    void whenTableIdHasNoCatalogThenQuotedTableIdStringIsUnchanged() throws Exception {
+        try (OracleConnection connection = createOfflineConnection()) {
+            assertThat(connection.quotedTableIdString(new TableId(null, "DEBEZIUM", "CUSTOMERS")))
+                    .isEqualTo("\"DEBEZIUM\".\"CUSTOMERS\"");
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2653")
+    void whenTableIdHasMixedCaseNamesThenQuotedTableIdStringPreservesThem() throws Exception {
+        try (OracleConnection connection = createOfflineConnection()) {
+            assertThat(connection.quotedTableIdString(new TableId("ORCLPDB1", "Debezium", "Customers")))
+                    .isEqualTo("\"Debezium\".\"Customers\"");
+        }
+    }
+
+    /**
+     * Creates a connection that is never opened, sufficient for exercising query construction.
+     */
+    private static OracleConnection createOfflineConnection() {
+        final JdbcConfiguration config = JdbcConfiguration.adapt(
+                Configuration.create().with("url", "jdbc:oracle:thin:@localhost:1521/ORCLPDB1").build());
+        return new OracleConnection(config, c -> {
+            throw new SQLException("The connection should not be established");
+        }, true);
     }
 }
