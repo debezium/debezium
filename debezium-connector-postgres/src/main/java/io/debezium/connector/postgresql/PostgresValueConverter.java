@@ -122,6 +122,16 @@ public class PostgresValueConverter extends JdbcValueConverters {
     public static final String POSITIVE_INFINITY_TIMESTAMP_PG_STRING = "infinity";
 
     public static final Date NEGATIVE_INFINITY_DATE = new Date(PGStatement.DATE_NEGATIVE_INFINITY);
+
+    /**
+     * What {@code ResultSet#getObject} returned for an infinite {@code DATE} before the column was
+     * read as a {@link LocalDate}. Reading it as a {@code LocalDate} yields {@code LocalDate.MAX/MIN}
+     * instead, so the snapshot maps those back onto these, leaving the era as the only thing that
+     * the JSR-310 read changes.
+     */
+    private static final java.sql.Date POSITIVE_INFINITY_SQL_DATE = new java.sql.Date(PGStatement.DATE_POSITIVE_INFINITY);
+
+    private static final java.sql.Date NEGATIVE_INFINITY_SQL_DATE = new java.sql.Date(PGStatement.DATE_NEGATIVE_INFINITY);
     public static final Timestamp NEGATIVE_INFINITY_TIMESTAMP = new Timestamp(PGStatement.DATE_NEGATIVE_INFINITY);
     public static final Instant NEGATIVE_INFINITY_INSTANT = Conversions.toInstantFromMicros(PGStatement.DATE_NEGATIVE_INFINITY);
     public static final LocalDateTime NEGATIVE_INFINITY_LOCAL_DATE_TIME = LocalDateTime.ofInstant(NEGATIVE_INFINITY_INSTANT, ZoneOffset.UTC);
@@ -494,6 +504,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 return data -> convertTimestampWithZone(column, fieldDefn, data);
             case PgOid.TIMETZ:
                 return data -> convertTimeWithZone(column, fieldDefn, data);
+            case PgOid.DATE:
+                return ((ValueConverter) (data -> convertDateValue(column, fieldDefn, data))).and(super.converter(column, fieldDefn));
             case PgOid.OID:
                 return data -> convertBigInt(column, fieldDefn, data);
             case PgOid.JSONB_OID:
@@ -1196,6 +1208,25 @@ public class PostgresValueConverter extends JdbcValueConverters {
         return super.convertTimestampWithZone(column, fieldDefn, data);
     }
 
+    /**
+     * Normalizes a {@code DATE} value before the superclass dispatches it on the configured
+     * {@link io.debezium.jdbc.TemporalPrecisionMode}. Elements of a {@code date[]} are read as text so
+     * that their era survives (see {@link #convertTemporalArrayAsText}), while scalar values already
+     * arrive as a {@link LocalDate}; everything else is passed through untouched.
+     */
+    protected Object convertDateValue(Column column, Field fieldDefn, Object data) {
+        if (data instanceof String str) {
+            return DateTimeFormat.get().date(str);
+        }
+        if (LocalDate.MAX.equals(data)) {
+            return POSITIVE_INFINITY_SQL_DATE;
+        }
+        if (LocalDate.MIN.equals(data)) {
+            return NEGATIVE_INFINITY_SQL_DATE;
+        }
+        return data;
+    }
+
     @Override
     protected Object convertDateToStructured(Column column, Field fieldDefn, Object data) {
         if (isPositiveInfinityDate(data)) {
@@ -1561,8 +1592,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
             else if (data instanceof Array array) {
                 try {
                     final List<Object> converted;
-                    if (elementType.getOid() == PgOid.TIMETZ) {
-                        converted = convertTimeWithTimeZoneArray(array, elementType, elementConverter);
+                    if (isReadAsTextElementType(elementType.getOid())) {
+                        converted = convertTemporalArrayAsText(array, elementType, elementConverter);
                     }
                     else {
                         final Object[] values = (Object[]) array.getArray();
@@ -1580,7 +1611,33 @@ public class PostgresValueConverter extends JdbcValueConverters {
         });
     }
 
-    private List<Object> convertTimeWithTimeZoneArray(Array data, PostgresType elementType, ValueConverter elementConverter) throws SQLException {
+    /**
+     * Element types whose array elements must be read as text rather than materialized by the driver.
+     * <p>
+     * {@code java.sql.Array#getArray()} hands back {@code java.sql.Timestamp}/{@code java.sql.Date}
+     * elements, which drop the era and apply a Julian-Gregorian conversion below 1582-10-15 -- the same
+     * defect scalar {@code timestamp} and {@code timestamptz} were given a text read to avoid. Scalars
+     * return before {@code getColumnValue} reaches the array branch, so arrays never benefited from it.
+     * {@code TIMETZ} is here for an unrelated reason: microsecond precision is lost otherwise.
+     */
+    private static boolean isReadAsTextElementType(int elementTypeOid) {
+        switch (elementTypeOid) {
+            case PgOid.TIMETZ:
+            case PgOid.TIMESTAMP:
+            case PgOid.TIMESTAMPTZ:
+            case PgOid.DATE:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    /**
+     * Reads each element of {@code data} as text and hands it to the element converter, which parses it
+     * era-aware. {@code Array#getResultSet()} exposes the element's original text, including the
+     * {@code BC} suffix and the {@code infinity}/{@code -infinity} literals.
+     */
+    private List<Object> convertTemporalArrayAsText(Array data, PostgresType elementType, ValueConverter elementConverter) throws SQLException {
         final List<Object> converted = new ArrayList<>();
         try (ResultSet values = data.getResultSet()) {
             while (values.next()) {
