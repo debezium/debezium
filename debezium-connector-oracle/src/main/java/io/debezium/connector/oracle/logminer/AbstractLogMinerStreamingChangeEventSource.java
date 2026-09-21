@@ -192,7 +192,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             this.effectiveOffset = offsetContext;
             this.partition = partition;
             this.context = context;
-            this.logFileSessionSelector = resolveLogFileSessionSelector(connectorConfig, streamingConnection);
+            this.logFileSessionSelector = resolveLogFileSessionSelector(connectorConfig);
 
             // perform various pre-streaming initialization steps
             prepareJdbcConnection(false);
@@ -2185,12 +2185,11 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
                 .orElseThrow(() -> new DebeziumException("Failed to resolve archive logs upper bounds"));
     }
 
-    private LogFileSessionSelector resolveLogFileSessionSelector(OracleConnectorConfig connectorConfig, OracleConnection connection) throws SQLException {
+    private LogFileSessionSelector resolveLogFileSessionSelector(OracleConnectorConfig connectorConfig) {
         final int minimumLogCountPerThread = connectorConfig.getLogMiningMinimumLogCount();
         if (minimumLogCountPerThread > 0) {
             switch (connectorConfig.getLogMiningStrategy()) {
                 case HYBRID, ONLINE_CATALOG, DICTIONARY_FROM_FILE: {
-                    final long maximumRedoLogFileSize = connection.getMaximumRedoLogFileSize();
                     // The maximum committed SCN across redo threads is a lower bound on the upper
                     // boundary of the last mining session before a restart; seeding it restores the
                     // capped window sizing that would otherwise collapse to the minimum log count.
@@ -2199,7 +2198,6 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
                     return new CappedLogFileSessionSelector(
                             minimumLogCountPerThread,
                             connectorConfig.getLogMiningLogCountGrowthMax(),
-                            maximumRedoLogFileSize,
                             minedBoundary);
                 }
             }
