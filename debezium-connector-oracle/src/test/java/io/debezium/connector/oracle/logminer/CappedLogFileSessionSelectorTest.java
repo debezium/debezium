@@ -1131,6 +1131,44 @@ public class CappedLogFileSessionSelectorTest {
         assertThat(interceptor.containsMessage("All collected logs are within the window, resetting log count per redo thread to 2")).isTrue();
     }
 
+    @Test
+    @FixFor("dbz#2678")
+    void testConfiguredMinimumIsHonouredWhenASingleLogSatisfiesTheBudget() {
+        // The budget is 2 logs * 1 GB, but each archive is larger than the whole budget, as happens
+        // when the redo log size the window was sized from under-reports the logs actually mined.
+        // The byte threshold is met by the first log alone, yet the configured minimum still applies.
+        List<LogFile> logs = List.of(
+                createArchiveLog("arc1.log", 100, 200, 1, 1, ONE_GB * 3),
+                createArchiveLog("arc2.log", 200, 300, 2, 1, ONE_GB * 3),
+                createArchiveLog("arc3.log", 300, 400, 3, 1, ONE_GB * 3));
+
+        SessionLogSelection result = selector.selectLogsForSession(
+                new LogFilesResult(logs, singleThreadOpen()), UPPER_BOUNDS);
+
+        assertThat(result.logFiles()).containsExactly(logs.get(0), logs.get(1));
+        assertThat(result.effectiveUpperBounds()).isEqualTo(Scn.valueOf(300));
+    }
+
+    @Test
+    @FixFor("dbz#2678")
+    void testConfiguredMinimumIsHonouredForEveryRedoThread() {
+        // The floor applies per redo thread, not across the selection as a whole.
+        List<LogFile> logs = List.of(
+                createArchiveLog("t1_arc1.log", 100, 200, 1, 1, ONE_GB * 3),
+                createArchiveLog("t1_arc2.log", 200, 300, 2, 1, ONE_GB * 3),
+                createArchiveLog("t1_arc3.log", 300, 400, 3, 1, ONE_GB * 3),
+                createArchiveLog("t2_arc1.log", 100, 200, 1, 2, ONE_GB * 3),
+                createArchiveLog("t2_arc2.log", 200, 300, 2, 2, ONE_GB * 3),
+                createArchiveLog("t2_arc3.log", 300, 400, 3, 2, ONE_GB * 3));
+
+        SessionLogSelection result = selector.selectLogsForSession(
+                new LogFilesResult(logs, twoThreadsOpen()), UPPER_BOUNDS);
+
+        assertThat(result.logFiles()).extracting(LogFile::getFileName)
+                .containsExactly("t1_arc1.log", "t1_arc2.log", "t2_arc1.log", "t2_arc2.log");
+        assertThat(result.effectiveUpperBounds()).isEqualTo(Scn.valueOf(300));
+    }
+
     private static LogFile createArchiveLog(String name, long startScn, long endScn, int seq, int thread, long bytes) {
         return LogFile.forArchive(name, Scn.valueOf(startScn), Scn.valueOf(endScn), BigInteger.valueOf(seq), thread, bytes, false, false);
     }
