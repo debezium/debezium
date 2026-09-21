@@ -7,7 +7,7 @@ package io.debezium.connector.sqlserver;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.List;
@@ -126,8 +126,8 @@ public class SqlServerMaxColumnPlaceholderIT extends AbstractAsyncEngineConnecto
 
         // A max column the same update left alone keeps its placeholder before image, while its
         // after image carries the value SQL Server recorded.
-        assertThat(binaryOf(before(textSet), PAYLOAD)).isEqualTo(PLACEHOLDER.getBytes());
-        assertThat(binaryOf(after(textSet), PAYLOAD)).isEqualTo(PAYLOAD_VALUE);
+        assertThat(before(textSet).getBytes(PAYLOAD)).isEqualTo(PLACEHOLDER.getBytes(StandardCharsets.UTF_8));
+        assertThat(after(textSet).getBytes(PAYLOAD)).isEqualTo(PAYLOAD_VALUE);
     }
 
     @ParameterizedTest(name = "data.query.mode = {0}")
@@ -159,8 +159,8 @@ public class SqlServerMaxColumnPlaceholderIT extends AbstractAsyncEngineConnecto
 
         // payload holds a value the update did not touch, so only its before image is reported as
         // unavailable.
-        assertThat(binaryOf(before(statusChanged), PAYLOAD)).isEqualTo(PLACEHOLDER.getBytes());
-        assertThat(binaryOf(after(statusChanged), PAYLOAD)).isEqualTo(PAYLOAD_VALUE);
+        assertThat(before(statusChanged).getBytes(PAYLOAD)).isEqualTo(PLACEHOLDER.getBytes(StandardCharsets.UTF_8));
+        assertThat(after(statusChanged).getBytes(PAYLOAD)).isEqualTo(PAYLOAD_VALUE);
     }
 
     private Configuration config(DataQueryMode mode) {
@@ -181,16 +181,5 @@ public class SqlServerMaxColumnPlaceholderIT extends AbstractAsyncEngineConnecto
 
     private Struct after(SourceRecord record) {
         return (Struct) ((Struct) record.value()).get(Envelope.FieldName.AFTER);
-    }
-
-    private byte[] binaryOf(Struct image, String fieldName) {
-        final Object value = image.get(fieldName);
-        if (value instanceof ByteBuffer) {
-            final ByteBuffer buffer = ((ByteBuffer) value).duplicate();
-            final byte[] content = new byte[buffer.remaining()];
-            buffer.get(content);
-            return content;
-        }
-        return (byte[]) value;
     }
 }
