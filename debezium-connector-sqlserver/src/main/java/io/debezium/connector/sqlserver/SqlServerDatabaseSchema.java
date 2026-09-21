@@ -104,7 +104,10 @@ public class SqlServerDatabaseSchema extends HistorizedRelationalDatabaseSchema 
             case Types.VARBINARY:
                 return length == SQL_SERVER_MAX_BYTE_LENGTH;
             case Types.NVARCHAR:
-                return length == SQL_SERVER_MAX_NATIONAL_CHARACTER_LENGTH;
+                // The relational column model reads the length of nvarchar(max) from the table
+                // metadata, which reports it in bytes like varchar(max), while the change table
+                // metadata reports the same column in characters.
+                return length == SQL_SERVER_MAX_BYTE_LENGTH || length == SQL_SERVER_MAX_NATIONAL_CHARACTER_LENGTH;
             default:
                 return false;
         }
