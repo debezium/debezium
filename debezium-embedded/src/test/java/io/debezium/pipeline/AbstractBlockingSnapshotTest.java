@@ -77,6 +77,30 @@ public abstract class AbstractBlockingSnapshotTest<T extends SourceConnector> ex
     }
 
     @Test
+    @FixFor("debezium/dbz#2280")
+    public void blockingSnapshotShouldRunWhenColumnIncludeListExcludesSignalTable() throws Exception {
+        populateTable();
+
+        startConnectorWithSnapshot(x -> mutableConfig(false, false)
+                .with(RelationalDatabaseConnectorConfig.COLUMN_INCLUDE_LIST, signalExcludingColumnIncludeList()));
+
+        waitForSnapshotToBeCompleted(connector(), server(), task(), database());
+
+        insertRecords(ROW_COUNT, ROW_COUNT);
+
+        SourceRecords consumedRecordsByTopic = consumeRecordsByTopic(ROW_COUNT * 2, 10);
+        assertRecordsFromSnapshotAndStreamingArePresent(ROW_COUNT * 2, consumedRecordsByTopic);
+
+        sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey("", "", BLOCKING, tableDataCollectionId());
+
+        waitForLogMessage("Snapshot completed", AbstractSnapshotChangeEventSource.class);
+
+        signalingRecords = 1;
+
+        assertRecordsFromSnapshotAndStreamingArePresent((ROW_COUNT * 2), consumeRecordsByTopic((ROW_COUNT * 2) + signalingRecords, 10));
+    }
+
+    @Test
     public void executeBlockingSnapshot() throws Exception {
         // Testing.Print.enable();
 
