@@ -411,6 +411,40 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
     }
 
     @Test
+    @FixFor("debezium/dbz#2677")
+    void shouldReleaseSnapshotThreadsOnceTheSnapshotCompletes() throws Exception {
+        assertThat(incrementalSnapshotThreadNames()).isEmpty();
+
+        final Map<Integer, Document> documents = new LinkedHashMap<>();
+        for (int i = 0; i < ROW_COUNT; i++) {
+            documents.put(i, new Document().append(DOCUMENT_ID, i).append(valueFieldName(), i));
+        }
+        insertDocumentsInTx(DATABASE_NAME, COLLECTION_NAME, documents.values().toArray(Document[]::new));
+
+        startConnector();
+        sendAdHocSnapshotSignal();
+
+        consumeMixedWithIncrementalSnapshot(
+                ROW_COUNT,
+                x -> true,
+                k -> k.getString(pkFieldName()),
+                this::extractFieldValue,
+                topicName(), null);
+
+        Awaitility.await("incremental snapshot threads to be released")
+                .atMost(waitTimeForRecords() * 10L, TimeUnit.SECONDS)
+                .until(() -> incrementalSnapshotThreadNames().isEmpty());
+    }
+
+    private static List<String> incrementalSnapshotThreadNames() {
+        return Thread.getAllStackTraces().keySet().stream()
+                .filter(Thread::isAlive)
+                .map(Thread::getName)
+                .filter(name -> name.contains("incremental-snapshot"))
+                .collect(Collectors.toList());
+    }
+
+    @Test
     void snapshotOnlyInt32() throws Exception {
         snapshotOnly(0, k -> k + 1);
     }
