@@ -24,13 +24,13 @@ import org.apache.kafka.connect.sink.SinkTaskContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.mongodb.client.MongoClient;
 import com.mongodb.internal.VisibleForTesting;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.DebeziumTaskState;
 import io.debezium.connector.common.UUIDUtils;
 import io.debezium.connector.mongodb.connection.MongoDbConnectionContext;
+import io.debezium.connector.mongodb.connection.client.MongoDbClient;
 import io.debezium.dlq.ErrorReporter;
 import io.debezium.dlq.ErrorReporters;
 import io.debezium.openlineage.ConnectorContext;
@@ -44,6 +44,7 @@ public class MongoDbSinkConnectorTask extends SinkTask {
     private MongoDbChangeEventSink mongoSink;
     private ConnectorContext connectorContext;
     private DatasetDataExtractor datasetDataExtractor;
+    private MongoDbConnectionContext connectionContext;
 
     @Override
     public String version() {
@@ -61,10 +62,10 @@ public class MongoDbSinkConnectorTask extends SinkTask {
         LOGGER.info("Starting MongoDB sink task");
         var config = Configuration.from(props);
         final MongoDbSinkConnectorConfig sinkConfig = new MongoDbSinkConnectorConfig(config);
-        MongoClient client = null;
+        MongoDbClient client = null;
         try {
-            MongoDbConnectionContext connectionContext = new MongoDbConnectionContext(config);
-            client = connectionContext.getMongoClient();
+            connectionContext = new MongoDbConnectionContext(config);
+            client = connectionContext.openClient();
 
             datasetDataExtractor = new DatasetDataExtractor();
             String connectorName = props.get(CONNECTOR_NAME_PROPERTY);
@@ -74,20 +75,22 @@ public class MongoDbSinkConnectorTask extends SinkTask {
 
             DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.INITIAL);
             mongoSink = new MongoDbChangeEventSink(sinkConfig, client, ErrorReporters.fromContext(context), connectorContext);
+            DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.RUNNING);
         }
-        catch (RuntimeException taskStartingException) {
+        catch (RuntimeException | Error taskStartingException) {
             // noinspection EmptyTryBlock
-            try (MongoClient autoCloseableClient = client) {
+            try (var ownedContext = connectionContext; var autoCloseableClient = client) {
                 // just using try-with-resources to ensure they all get closed, even in the case of
                 // exceptions
             }
-            catch (RuntimeException resourceReleasingException) {
+            catch (RuntimeException | Error resourceReleasingException) {
                 taskStartingException.addSuppressed(resourceReleasingException);
             }
+            connectionContext = null;
+            mongoSink = null;
             throw new ConnectException("Failed to start MongoDB sink task", taskStartingException);
         }
 
-        DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.RUNNING);
         LOGGER.debug("Started MongoDB sink task");
     }
 
@@ -138,10 +141,18 @@ public class MongoDbSinkConnectorTask extends SinkTask {
     @Override
     public void stop() {
         LOGGER.info("Stopping MongoDB sink task");
-        if (mongoSink != null) {
-            mongoSink.close();
-            DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.STOPPED);
-            DebeziumOpenLineageEmitter.cleanup(connectorContext);
+        try (var ownedContext = connectionContext) {
+            if (mongoSink != null) {
+                mongoSink.close();
+                DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.STOPPED);
+            }
+        }
+        finally {
+            connectionContext = null;
+            mongoSink = null;
+            if (connectorContext != null) {
+                DebeziumOpenLineageEmitter.cleanup(connectorContext);
+            }
         }
     }
 
