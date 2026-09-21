@@ -14,7 +14,6 @@ import org.infinispan.protostream.annotations.ProtoField;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.XmlEndEvent;
-import io.debezium.relational.TableId;
 
 /**
  * A LogMiner event that represents a {@code XML_END} event type.
@@ -38,7 +37,7 @@ public class XmlEndEventAdapter extends LogMinerEventAdapter {
      */
     @ProtoFactory
     public XmlEndEvent factory(int eventType, String scn, String tableId, String rowId, String rsId, String changeTime, long transactionSequence) {
-        return new XmlEndEvent(EventType.from(eventType), Scn.valueOf(scn), TableId.parse(tableId), rowId, rsId, Instant.parse(changeTime), transactionSequence);
+        return new XmlEndEvent(EventType.from(eventType), Scn.valueOf(scn), parseTableId(tableId), rowId, rsId, Instant.parse(changeTime), transactionSequence);
     }
 
     /**

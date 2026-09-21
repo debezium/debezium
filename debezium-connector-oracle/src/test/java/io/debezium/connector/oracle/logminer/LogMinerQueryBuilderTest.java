@@ -321,7 +321,7 @@ public class LogMinerQueryBuilderTest {
 
         query += "(";
         query += "OPERATION_CODE IN (" + codes + ")";
-        query += config.isLobEnabled() && config.isLogMiningIncludeInternalEvents() ? internalEventsPredicate : "";
+        query += config.isLogMiningIncludeInternalEvents() ? internalEventsPredicate : "";
         query += config.storeOnlyCapturedTables() ? operationDdlPredicate : "";
         query += ")";
 

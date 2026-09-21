@@ -14,7 +14,6 @@ import org.infinispan.protostream.annotations.ProtoField;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.LobWriteEvent;
-import io.debezium.relational.TableId;
 
 /**
  * An Infinispan ProtoStream adapter to marshall {@link LobWriteEvent} instances.
@@ -52,7 +51,7 @@ public class LobWriteEventAdapter extends LogMinerEventAdapter {
      */
     @ProtoFactory
     public LobWriteEvent factory(int eventType, String scn, String tableId, String rowId, String rsId, String changeTime, String data, int offset, int length) {
-        return new LobWriteEvent(EventType.from(eventType), Scn.valueOf(scn), TableId.parse(tableId), rowId, rsId, Instant.parse(changeTime), data, offset, length);
+        return new LobWriteEvent(EventType.from(eventType), Scn.valueOf(scn), parseTableId(tableId), rowId, rsId, Instant.parse(changeTime), data, offset, length);
     }
 
     /**
