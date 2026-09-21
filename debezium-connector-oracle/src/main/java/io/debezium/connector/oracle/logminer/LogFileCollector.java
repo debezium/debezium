@@ -107,7 +107,14 @@ public class LogFileCollector {
         }
 
         throw new LogFileNotFoundException(
-                String.format("None of the log files contain offset SCN: %s, re-snapshot is required.", offsetScn));
+                ("None of the log files contain offset SCN: %s after %d attempts. This could be due to a slow archiver " +
+                        "process in the database. Please consider raising %s (the default is %s) if this continues. If a " +
+                        "connector restart does not eventually solve the issue, and the expected log can no longer be " +
+                        "resolved, a re-snapshot is required.")
+                        .formatted(offsetScn,
+                                maxAttempts + 1,
+                                OracleConnectorConfig.LOG_MINING_LOG_QUERY_MAX_RETRIES.name(),
+                                OracleConnectorConfig.LOG_MINING_LOG_QUERY_MAX_RETRIES.defaultValueAsString()));
     }
 
     /**
