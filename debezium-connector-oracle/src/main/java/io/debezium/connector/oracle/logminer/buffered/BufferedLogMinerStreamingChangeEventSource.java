@@ -402,15 +402,17 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
     @Override
     protected void handleInternalEvent(LogMinerEventRow event) throws InterruptedException {
-        final LogMinerEvent lastEvent = getTransactionCache().removeLastEnqueuedEvent(event.getTransactionId());
-        if (lastEvent != null && (lastEvent.getRowId().equals(RowIdCodec.EMPTY_ROW_ID)
-                || lastEvent.getEventType() == EventType.SELECT_LOB_LOCATOR
-                || lastEvent.getEventType() == EventType.LOB_WRITE
-                || lastEvent.getEventType() == EventType.LOB_TRIM
-                || lastEvent.getEventType() == EventType.LOB_ERASE)) {
-            if (event.getTableId() == null) {
-                event.setTableId(lastEvent.getTableId());
+        if (getConfig().isLobEnabled()) {
+            final LogMinerEvent lastEvent = getTransactionCache().removeLastEnqueuedEvent(event.getTransactionId());
+            if (lastEvent != null && (lastEvent.getRowId().equals(RowIdCodec.EMPTY_ROW_ID)
+                    || lastEvent.getEventType() == EventType.SELECT_LOB_LOCATOR
+                    || lastEvent.getEventType() == EventType.LOB_WRITE
+                    || lastEvent.getEventType() == EventType.LOB_TRIM
+                    || lastEvent.getEventType() == EventType.LOB_ERASE)) {
+                enqueueEvent(event, new LogMinerEvent(event));
             }
+        }
+        else if (getTransactionCache().containsTransaction(event.getTransactionId())) {
             enqueueEvent(event, new LogMinerEvent(event));
         }
     }
@@ -1219,12 +1221,14 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             }
         }
 
-        // Key by the resolved transaction's id rather than the event row's. When the undo above was matched
-        // by the transaction prefix, the row carries the unresolved "ffffffff" id while the transaction it
-        // was attributed to carries its real id. Every removal from this map is keyed by the real id, so an
-        // entry stored under the row's id would never be removed and would be retained for the life of the
-        // task.
-        getTransactionCache().putLastEnqueuedEvent(transaction.getTransactionId(), new LogMinerEvent(event));
+        if (getConfig().isLobEnabled() && getConfig().isLogMiningIncludeInternalEvents()) {
+            // Key by the resolved transaction's id rather than the event row's. When the undo above was matched
+            // by the transaction prefix, the row carries the unresolved "ffffffff" id while the transaction it
+            // was attributed to carries its real id. Every removal from this map is keyed by the real id, so an
+            // entry stored under the row's id would never be removed and would be retained for the life of the
+            // task.
+            getTransactionCache().putLastEnqueuedEvent(transaction.getTransactionId(), new LogMinerEvent(event));
+        }
 
         final int eventId = transaction.getNextEventId();
         if (!getTransactionCache().containsTransactionEvent(transaction, eventId)) {

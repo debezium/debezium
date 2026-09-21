@@ -13,7 +13,6 @@ import org.infinispan.protostream.annotations.ProtoFactory;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.LobEraseEvent;
-import io.debezium.relational.TableId;
 
 /**
  * An Infinispan ProtoStream adapter to marshall {@link LobEraseEvent} instances.
@@ -41,6 +40,6 @@ public class LobEraseEventAdapter extends LogMinerEventAdapter {
      */
     @ProtoFactory
     public LobEraseEvent factory(int eventType, String scn, String tableId, String rowId, String rsId, String changeTime) {
-        return new LobEraseEvent(EventType.from(eventType), Scn.valueOf(scn), TableId.parse(tableId), rowId, rsId, Instant.parse(changeTime));
+        return new LobEraseEvent(EventType.from(eventType), Scn.valueOf(scn), parseTableId(tableId), rowId, rsId, Instant.parse(changeTime));
     }
 }

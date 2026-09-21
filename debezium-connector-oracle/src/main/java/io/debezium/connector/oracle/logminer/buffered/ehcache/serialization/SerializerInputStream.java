@@ -48,11 +48,12 @@ public class SerializerInputStream extends AbstractSerializerStream {
     /**
      * Reads a Debezium {@link TableId} from the stream.
      *
-     * @return the table id, never {@code null}
+     * @return the table id, may be {@code null}
      * @throws IOException when a read operation fails
      */
     public TableId readTableId() throws IOException {
-        return TableId.parse(readString());
+        final String value = readString();
+        return value == null ? null : TableId.parse(value);
     }
 
     /**

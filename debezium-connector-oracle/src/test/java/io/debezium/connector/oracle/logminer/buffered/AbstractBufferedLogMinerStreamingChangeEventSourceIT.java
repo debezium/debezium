@@ -1060,6 +1060,55 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceIT exten
         assertThat(((Struct) tableRecords.get(1).value()).getStruct(Envelope.FieldName.AFTER).get("ID")).isEqualTo(2);
     }
 
+    // Rollback to savepoint - Requires log.mining.include.internal.events=true when lob.enabled=false
+
+    @Test
+    @FixFor("debezium/dbz#2666")
+    public void shouldRollbackUpdateOutOfLineWithLobDisabled() throws Exception {
+        String tableName = "DBZ1960_19_LOB_DISABLED";
+        String tableSpec = "(ID NUMERIC(9,0) PRIMARY KEY, LOB0 CLOB)";
+        String[] statements = new String[]{
+                "INSERT INTO DBZ1960_19_LOB_DISABLED (ID, LOB0) VALUES (1, 'LOB0-1-0')",
+                "SAVEPOINT s1",
+                "UPDATE DBZ1960_19_LOB_DISABLED SET LOB0 = RPAD('LOB0-1-', 1985, '0') WHERE ID = 1",
+                "ROLLBACK TO SAVEPOINT s1",
+                "INSERT INTO DBZ1960_19_LOB_DISABLED (ID) VALUES (2)", };
+        List<SourceRecord> tableRecords = execute(tableName, tableSpec, false, true, 3, statements);
+        assertThat(tableRecords).hasSize(3);
+
+        Struct insertAfter = ((Struct) tableRecords.get(0).value()).getStruct(Envelope.FieldName.AFTER);
+        assertThat(insertAfter.get("ID")).isEqualTo(1);
+        assertThat(insertAfter.get("LOB0")).isEqualTo(null);
+        Struct updateAfter = ((Struct) tableRecords.get(1).value()).getStruct(Envelope.FieldName.AFTER);
+        assertThat(updateAfter.get("ID")).isEqualTo(1);
+        assertThat(updateAfter.get("LOB0")).isEqualTo("LOB0-1-0");
+        assertThat(((Struct) tableRecords.get(2).value()).getStruct(Envelope.FieldName.AFTER).get("ID")).isEqualTo(2);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2666")
+    public void shouldUpdateEmptyAndRollbackUpdateInlineAndOutOfLineWithLobDisabled() throws Exception {
+        String tableName = "DBZ1960_21_LOB_DISABLED";
+        String tableSpec = "(ID NUMERIC(9,0) PRIMARY KEY, LOB0 CLOB, LOB1 CLOB)";
+        String[] statements = new String[]{
+                "INSERT INTO DBZ1960_21_LOB_DISABLED (ID, LOB0, LOB1) VALUES (1, NULL, NULL)",
+                "UPDATE DBZ1960_21_LOB_DISABLED SET LOB0 = EMPTY_CLOB(), LOB1 = EMPTY_CLOB() WHERE ID = 1",
+                "SAVEPOINT s1",
+                "UPDATE DBZ1960_21_LOB_DISABLED SET LOB0 = RPAD('LOB0-1-', 1985, '2'), LOB1 = 'LOB1-1-2' WHERE ID = 1",
+                "ROLLBACK TO SAVEPOINT s1",
+                "INSERT INTO DBZ1960_21_LOB_DISABLED (ID) VALUES (2)", };
+        List<SourceRecord> tableRecords = execute(tableName, tableSpec, false, true, 4, statements);
+        assertThat(tableRecords).hasSize(4);
+
+        for (int i = 0; i < 3; i++) {
+            Struct after = ((Struct) tableRecords.get(i).value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("LOB0")).isEqualTo(null);
+            assertThat(after.get("LOB1")).isEqualTo(null);
+        }
+        assertThat(((Struct) tableRecords.get(3).value()).getStruct(Envelope.FieldName.AFTER).get("ID")).isEqualTo(2);
+    }
+
     // Rollback to savepoint - Not supported without INTERNAL: silently remove valid events because the event sequence is ambiguous
 
     @Test
@@ -1191,6 +1240,11 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceIT exten
 
     private List<SourceRecord> execute(String tableName, String tableSpec, boolean includeInternalEvents, int numRecords, String[] statements)
             throws Exception {
+        return execute(tableName, tableSpec, true, includeInternalEvents, numRecords, statements);
+    }
+
+    private List<SourceRecord> execute(String tableName, String tableSpec, boolean lobEnabled, boolean includeInternalEvents, int numRecords, String[] statements)
+            throws Exception {
         TestHelper.dropTable(connection, tableName);
         try {
             connection.execute("CREATE TABLE " + tableName + tableSpec);
@@ -1198,7 +1252,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceIT exten
 
             Configuration config = getBufferImplementationConfig()
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\." + tableName)
-                    .with(OracleConnectorConfig.LOB_ENABLED, "true")
+                    .with(OracleConnectorConfig.LOB_ENABLED, String.valueOf(lobEnabled))
                     .with(OracleConnectorConfig.LOG_MINING_INCLUDE_INTERNAL_EVENTS, String.valueOf(includeInternalEvents))
                     .build();
 
