@@ -238,7 +238,7 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
             // Makes sure we get rows that have no TABLE_NAME or that have had an issue resolving the
             // table's object identifier due to a recent schema change causing a dictionary mismatch.
             predicate.append("(TABLE_NAME IS NULL OR ");
-            if (connectorConfig.getLogMiningStrategy() == OracleConnectorConfig.LogMiningStrategy.HYBRID) {
+            if (connectorConfig.getLogMiningStrategy().isDictionaryMismatchPossible()) {
                 predicate.append("TABLE_NAME LIKE '").append(UNKNOWN_TABLE_NAME_PREFIX).append("%' OR ");
             }
 
@@ -275,7 +275,7 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
             // Makes sure we get rows that have no TABLE_NAME or that have had an issue resolving the
             // table's object identifier due to a recent schema change causing a dictionary mismatch.
             predicate.append("(TABLE_NAME IS NULL OR ");
-            if (connectorConfig.getLogMiningStrategy() == OracleConnectorConfig.LogMiningStrategy.HYBRID) {
+            if (connectorConfig.getLogMiningStrategy().isDictionaryMismatchPossible()) {
                 predicate.append("TABLE_NAME LIKE '").append(UNKNOWN_TABLE_NAME_PREFIX).append("%' OR ");
             }
 

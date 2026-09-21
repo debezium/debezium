@@ -3540,6 +3540,10 @@ When configured with these properties, the connector:
 2. Connects to the standby database (configured via `secondary.hostname` or `secondary.url`) in read-only mode for LogMiner streaming operations.
 3. Uses the flat file data dictionary to resolve table and column names during log mining on the standby.
 
+The data dictionary is exported once, so it does not describe schema changes that are applied to the primary afterwards.
+The connector resolves the affected tables and columns from its own schema model, and rebuilding the dictionary file restores resolution on the LogMiner side.
+For details of what happens when an object cannot be resolved by either, see the xref:oracle-property-log-mining-strategy[`log.mining.strategy`] property.
+
 // Type: procedure
 [id="configuring-the-debezium-oracle-connector-to-capture-events-from-a-logical-standby"]
 ==== Configuring the {prodname} Oracle connector to capture events from a logical standby
@@ -4719,6 +4723,11 @@ This mode performs at the level of the `online_catalog` LogMiner strategy with t
 ifdef::community[]
 `dictionary_from_file`:: The connector uses the dictionary from a flat file located on the database server.
 This strategy is required when streaming changes from a physical standby database.
+The file is a point-in-time copy, so LogMiner cannot name an object that is created or altered after the file is built, and reports it as `OBJ#` followed by the object identifier.
+The connector resolves such objects from its own schema model, and reconstructs the column names that LogMiner reports as `COL 1`, `COL 2`, and so forth.
+An object that the connector has no schema for, such as a table created after the initial snapshot ran, cannot be resolved this way.
+The connector then applies the xref:oracle-property-event-processing-failure-handling-mode[`event.processing.failure.handling.mode`] property, which stops the connector by default.
+Rebuild the dictionary file to have LogMiner resolve these objects again.
 endif::community[]
 
 |[[oracle-property-log-mining-query-filter-mode]]<<oracle-property-log-mining-query-filter-mode, `+log.mining.query.filter.mode+`>>

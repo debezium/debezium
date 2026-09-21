@@ -318,8 +318,8 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         return OracleConnectorConfig.LogMiningStrategy.CATALOG_IN_REDO.equals(connectorConfig.getLogMiningStrategy());
     }
 
-    protected boolean isUsingHybridStrategy() {
-        return OracleConnectorConfig.LogMiningStrategy.HYBRID.equals(connectorConfig.getLogMiningStrategy());
+    protected boolean isDictionaryMismatchPossible() {
+        return connectorConfig.getLogMiningStrategy().isDictionaryMismatchPossible();
     }
 
     protected boolean isUsingCommittedDataOnly() {
@@ -657,7 +657,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         // be backward compatible, only trigger this behavior if there is an error reason when
         // STATUS=2 in the INFO column.
         if (event.hasErrorStatus() && !Strings.isNullOrBlank(event.getInfo())) {
-            if (!isUsingHybridStrategy() || (isUsingHybridStrategy() && !isTableKnown(event.getTableId()))) {
+            if (!isDictionaryMismatchPossible() || !isTableKnown(event.getTableId())) {
                 // Fail-fast: The SQL_REDO column is not valid and cannot be parsed
                 notifyEventProcessingFailure(event, null);
                 return;
@@ -1326,7 +1326,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
                         getMetrics(),
                         () -> handleTruncateEvent(event)));
 
-        if (isUsingHybridStrategy()) {
+        if (isDictionaryMismatchPossible()) {
             // Remove table from the column-based parser cache
             // It will be refreshed on the next DML event that requires special parsing
             reconstructColumnDmlParser.removeTableFromCache(tableId);
@@ -1436,11 +1436,12 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      * when a redo entry's object identifier matches but its version does not match the version
      * in the Oracle data dictionary.
      *
-     * @param tableId table identifier, should not be {@code null}
+     * @param tableId table identifier, can be {@code null} when the row carries no table name
      * @return true if the table is unknown, false otherwise
      */
     protected boolean isTableKnown(TableId tableId) {
-        return !tableId.table().equalsIgnoreCase("UNKNOWN");
+        // A row that carries no table name cannot be resolved any more than an UNKNOWN one can.
+        return tableId != null && !tableId.table().equalsIgnoreCase("UNKNOWN");
     }
 
     /**
@@ -1455,7 +1456,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         try {
             try {
                 final LogMinerDmlParser parser;
-                if (event.hasErrorStatus() && !Strings.isNullOrBlank(event.getInfo()) && isUsingHybridStrategy()) {
+                if (event.hasErrorStatus() && !Strings.isNullOrBlank(event.getInfo()) && isDictionaryMismatchPossible()) {
                     parser = reconstructColumnDmlParser;
                 }
                 else {
@@ -1543,6 +1544,31 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     }
 
     /**
+     * Handle an event whose object cannot be resolved to a table, which leaves the connector unable to
+     * decide whether the event belongs to a captured table, let alone emit it.
+     *
+     * @param event the event, should not be {@code null}
+     */
+    protected void notifyUnresolvableObjectFailure(LogMinerEventRow event) {
+        final String message = String.format(
+                "Failed to resolve a table for object id %s in the %s event with SCN %s. Neither LogMiner's data "
+                        + "dictionary nor the connector's relational model describe this object, which happens when the "
+                        + "table was dropped and purged, or when the data dictionary predates a schema change.",
+                event.getObjectId(),
+                event.getEventType(),
+                event.getScn());
+
+        switch (getConfig().getEventProcessingFailureHandlingMode()) {
+            case FAIL -> {
+                Loggings.logErrorAndTraceRecord(LOGGER, event, message);
+                throw new DebeziumException(message);
+            }
+            case WARN -> Loggings.logWarningAndTraceRecord(LOGGER, event, message + " This event will be ignored and skipped.");
+            default -> Loggings.logDebugAndTraceRecord(LOGGER, event, message + " This event will be ignored and skipped.");
+        }
+    }
+
+    /**
      * Resolve the relational table for a DML data event.
      *
      * @param event the event, should not be {@code null}
@@ -1573,7 +1599,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      */
     protected TableId getTableIdForDataEvent(LogMinerEventRow event) throws SQLException {
         final TableId tableId = event.getTableId();
-        if (tableId != null && isUsingHybridStrategy()) {
+        if (tableId != null && isDictionaryMismatchPossible()) {
             if (tableId.table().startsWith("BIN$")) {
                 // Object was dropped but has not been purged.
                 try (OracleConnection connection = new OracleConnection(getConfig(), true)) {
@@ -1588,12 +1614,13 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
                 }
             }
             else if (!isTableKnown(tableId)) {
-                // Object has been dropped and purged.
+                // Object has been dropped and purged, or the data dictionary predates a schema change.
                 final TableId resolvedTableId = getSchema().getTableIdByObjectId(event.getObjectId(), event.getDataObjectId());
                 if (resolvedTableId != null) {
                     return resolvedTableId;
                 }
-                throw new DebeziumException("Failed to resolve UNKNOWN table name by object id lookup");
+                notifyUnresolvableObjectFailure(event);
+                return null;
             }
         }
         return tableId;
@@ -1606,15 +1633,19 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      * @return true if the event should be skipped, false otherwise
      */
     protected boolean isNonIncludedTableSkipped(LogMinerEventRow event) {
-        if (isUsingHybridStrategy()) {
+        if (isDictionaryMismatchPossible()) {
             if (isTableLookupByObjectIdRequired(event)) {
-                // Special use case where the table has been dropped and purged, and we are processing an
-                // old event for the table that comes prior to the drop.
+                // Special use case where the table has been dropped and purged, or where the dictionary used
+                // for mining predates a schema change, and we are processing an event for that table.
                 LOGGER.trace("Found DML for dropped table in history with object-id based table name {}.", event.getTableId().table());
                 final TableId tableId = getSchema().getTableIdByObjectId(event.getObjectId(), null);
-                if (tableId != null) {
-                    event.setTableId(tableId);
+                if (tableId == null) {
+                    // The object cannot be named, so the filters cannot decide whether it is captured.
+                    // Rather than drop the event silently, defer to the event processing failure mode.
+                    notifyUnresolvableObjectFailure(event);
+                    return true;
                 }
+                event.setTableId(tableId);
                 return !tableFilter.isIncluded(event.getTableId());
             }
         }
