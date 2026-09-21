@@ -265,7 +265,10 @@ public class CappedLogFileSessionSelector implements LogFileSessionSelector {
                 accumulatedSize += logFile.getBytes();
                 cappedLogs.add(logFile);
 
-                if (accumulatedSize >= thresholdBytes) {
+                // The log count is the user-facing contract, so the byte budget never closes the
+                // window below it. A single log larger than the whole budget would otherwise
+                // satisfy the threshold on its own and starve the window.
+                if (accumulatedSize >= thresholdBytes && cappedLogs.size() >= minimumLogsPerRedoThread) {
                     break;
                 }
             }
