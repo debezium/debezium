@@ -845,6 +845,14 @@ public class SqlServerConnection extends JdbcConnection {
     }
 
     @Override
+    public String buildSelectRowCount(TableId tableId) {
+        // COUNT returns a 32-bit int in T-SQL and overflows with "Arithmetic overflow error converting expression
+        // to data type int" on tables with more than Integer.MAX_VALUE rows, before any value reaches the driver.
+        // COUNT_BIG returns a bigint and is the documented remedy.
+        return "SELECT COUNT_BIG(1) FROM %s".formatted(quotedTableIdString(tableId));
+    }
+
+    @Override
     public Optional<Boolean> nullsSortLast() {
         // "Null values are treated as the lowest possible values"
         // https://learn.microsoft.com/en-us/sql/t-sql/queries/select-order-by-clause-transact-sql?view=sql-server-ver16
