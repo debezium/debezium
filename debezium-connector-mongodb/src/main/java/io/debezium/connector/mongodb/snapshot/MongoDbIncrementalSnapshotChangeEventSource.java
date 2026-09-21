@@ -100,7 +100,11 @@ public class MongoDbIncrementalSnapshotChangeEventSource
 
     protected final NotificationService<MongoDbPartition, ? extends OffsetContext> notificationService;
 
-    private final ExecutorService incrementalSnapshotThreadPool;
+    /**
+     * Created on demand by {@link #incrementalSnapshotThreadPool()} and shut down once the snapshot completes, so a
+     * connector that never runs an incremental snapshot does not hold on to any threads.
+     */
+    private ExecutorService incrementalSnapshotThreadPool;
 
     public MongoDbIncrementalSnapshotChangeEventSource(MongoDbConnectorConfig config,
                                                        MongoDbTaskContext taskContext,
@@ -120,8 +124,22 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         this.signallingCollectionId = connectorConfig.getSignalingDataCollectionIds().isEmpty() ? null
                 : CollectionId.parse(connectorConfig.getSignalingDataCollectionIds().get(0));
         this.notificationService = notificationService;
-        this.incrementalSnapshotThreadPool = Threads.newFixedThreadPool(MongoDbConnector.class, config.getConnectorName(),
-                "incremental-snapshot", connectorConfig.getSnapshotMaxThreads());
+    }
+
+    private synchronized ExecutorService incrementalSnapshotThreadPool() {
+        if (incrementalSnapshotThreadPool == null) {
+            incrementalSnapshotThreadPool = Threads.newFixedThreadPool(MongoDbConnector.class, connectorConfig.getConnectorName(),
+                    "incremental-snapshot", connectorConfig.getSnapshotMaxThreads());
+        }
+        return incrementalSnapshotThreadPool;
+    }
+
+    private synchronized void shutdownIncrementalSnapshotThreadPool() {
+        if (incrementalSnapshotThreadPool == null) {
+            return;
+        }
+        incrementalSnapshotThreadPool.shutdown();
+        incrementalSnapshotThreadPool = null;
     }
 
     @Override
@@ -602,7 +620,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
                                           List<Future<?>> futureList, Object[] lastChunkKey) {
         final Object[] chunkStartKey = lastChunkKey;
         final Object[] chunkEndKey = keyFromRow(lastRow);
-        futureList.add(this.incrementalSnapshotThreadPool.submit(() -> {
+        futureList.add(incrementalSnapshotThreadPool().submit(() -> {
             queryChunk(collection, chunkStartKey, chunkEndKey);
         }));
         return chunkEndKey;
@@ -787,7 +805,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     }
 
     protected void postIncrementalSnapshotCompleted() {
-        // no-op
+        shutdownIncrementalSnapshotThreadPool();
     }
 
     @Override
