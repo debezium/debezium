@@ -682,7 +682,7 @@ jobs:
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.archetype-changed == 'true' }}
     steps:
       - name: Checkout Action
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - uses: ./.github/actions/build-debezium-archetype
         with:
           maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
