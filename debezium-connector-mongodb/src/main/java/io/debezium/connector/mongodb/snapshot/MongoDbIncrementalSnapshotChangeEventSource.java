@@ -43,7 +43,6 @@ import io.debezium.annotation.NotThreadSafe;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.mongodb.CollectionId;
 import io.debezium.connector.mongodb.MongoDbCollectionSchema;
-import io.debezium.connector.mongodb.MongoDbConnector;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig;
 import io.debezium.connector.mongodb.MongoDbOffsetContext;
 import io.debezium.connector.mongodb.MongoDbPartition;
@@ -128,8 +127,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
 
     private synchronized ExecutorService incrementalSnapshotThreadPool() {
         if (incrementalSnapshotThreadPool == null) {
-            incrementalSnapshotThreadPool = Threads.newFixedThreadPool(MongoDbConnector.class, connectorConfig.getConnectorName(),
-                    "incremental-snapshot", connectorConfig.getSnapshotMaxThreads());
+            incrementalSnapshotThreadPool = taskContext.getIncrementalSnapshotExecutor();
         }
         return incrementalSnapshotThreadPool;
     }
@@ -140,6 +138,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         }
         incrementalSnapshotThreadPool.shutdown();
         incrementalSnapshotThreadPool = null;
+
     }
 
     @Override
@@ -270,7 +269,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     @Override
     @SuppressWarnings("unchecked")
     public void init(MongoDbPartition partition, OffsetContext offsetContext) {
-        mongo = MongoDbConnections.create(taskContext.getRawConfig(), dispatcher, partition);
+        mongo = MongoDbConnections.create(taskContext.getConnectionContext(), dispatcher, partition);
 
         if (offsetContext == null) {
             LOGGER.info("Empty incremental snapshot change event source started, no action needed");
