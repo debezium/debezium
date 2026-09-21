@@ -13,7 +13,6 @@ import org.infinispan.protostream.annotations.ProtoFactory;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.RollbackToSavepointEvent;
-import io.debezium.relational.TableId;
 
 /**
  * A LogMiner event that represents a rollback to a savepoint.
@@ -36,7 +35,7 @@ public class RollbackToSavepointEventAdapter extends LogMinerEventAdapter {
      */
     @ProtoFactory
     public RollbackToSavepointEvent factory(int eventType, String scn, String tableId, String rowId, String rsId, String changeTime) {
-        return new RollbackToSavepointEvent(EventType.from(eventType), Scn.valueOf(scn), TableId.parse(tableId), rowId, rsId, Instant.parse(changeTime));
+        return new RollbackToSavepointEvent(EventType.from(eventType), Scn.valueOf(scn), parseTableId(tableId), rowId, rsId, Instant.parse(changeTime));
     }
 
 }

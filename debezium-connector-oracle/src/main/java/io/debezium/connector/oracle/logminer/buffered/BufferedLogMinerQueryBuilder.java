@@ -137,7 +137,7 @@ public class BufferedLogMinerQueryBuilder extends AbstractLogMinerQueryBuilder {
         predicate.append("(").append(operationInClause.build());
 
         // Handle INTERNAL operations that can contain ROW_IDs for INSERT/UPDATE operations with empty ROW_IDs
-        if (connectorConfig.isLobEnabled() && connectorConfig.isLogMiningIncludeInternalEvents()) {
+        if (connectorConfig.isLogMiningIncludeInternalEvents()) {
             predicate.append(getInternalPredicate());
         }
 
