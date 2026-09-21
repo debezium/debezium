@@ -8,26 +8,32 @@ package io.debezium.connector.mongodb.connection;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.mongodb.ConnectionString;
+import com.mongodb.ReadPreference;
 import com.mongodb.client.MongoClient;
 import com.mongodb.connection.ClusterDescription;
 import com.mongodb.connection.ClusterType;
+import com.mongodb.event.ClusterDescriptionChangedEvent;
+import com.mongodb.event.ClusterListener;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig;
 import io.debezium.connector.mongodb.MongoUtils;
 import io.debezium.connector.mongodb.connection.client.DefaultMongoDbClientFactory;
+import io.debezium.connector.mongodb.connection.client.MongoDbClient;
 import io.debezium.connector.mongodb.connection.client.MongoDbClientFactory;
 
 /**
  * @author Randall Hauch
  *
  */
-public class MongoDbConnectionContext {
+public class MongoDbConnectionContext implements AutoCloseable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbConnectionContext.class);
 
@@ -68,10 +74,41 @@ public class MongoDbConnectionContext {
         return clientFactory.getMongoClient();
     }
 
+    /**
+     * Checks server availability without requiring permission to list databases.
+     * The validation client is always closed before returning.
+     */
+    public boolean canConnect() throws InterruptedException {
+        final var connected = new CountDownLatch(1);
+        final var readPreference = Optional.ofNullable(getConnectionString().getReadPreference())
+                .orElse(ReadPreference.primaryPreferred());
+        final var listener = new ClusterListener() {
+            @Override
+            public void clusterDescriptionChanged(ClusterDescriptionChangedEvent event) {
+                if (event.getNewDescription().hasReadableServer(readPreference)) {
+                    connected.countDown();
+                }
+            }
+        };
+        final long timeout = clientFactory.getMongoClientSettings().getSocketSettings().getConnectTimeout(TimeUnit.MILLISECONDS) + 500L;
+        try (var client = clientFactory.openClient(listener)) {
+            return connected.await(timeout, TimeUnit.MILLISECONDS);
+        }
+    }
+
+    @Override
+    public void close() {
+        clientFactory.close();
+    }
+
+    public MongoDbClient openClient() {
+        return clientFactory.openClient();
+    }
+
     public ClusterDescription getClusterDescription() {
-        try (var client = getMongoClient()) {
+        try (var client = openClient()) {
             LOGGER.info("Reading description of cluster at {}", getMaskedConnectionString());
-            return MongoUtils.clusterDescription(client);
+            return MongoUtils.clusterDescription(client.getClient());
         }
     }
 
@@ -89,8 +126,8 @@ public class MongoDbConnectionContext {
         }
 
         var shardNames = new HashSet<String>();
-        try (var client = getMongoClient()) {
-            MongoUtils.onCollectionDocuments(client, "config", "shards", doc -> {
+        try (var client = openClient()) {
+            MongoUtils.onCollectionDocuments(client.getClient(), "config", "shards", doc -> {
                 String shardName = doc.getString("_id");
                 shardNames.add(shardName);
             });

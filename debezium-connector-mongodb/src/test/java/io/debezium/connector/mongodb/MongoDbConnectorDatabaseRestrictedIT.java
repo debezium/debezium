@@ -36,6 +36,7 @@ import io.debezium.connector.mongodb.MongoDbConnectorConfig.CaptureScope;
 import io.debezium.connector.mongodb.junit.MongoDbDatabaseProvider;
 import io.debezium.connector.mongodb.junit.MongoDbDatabaseVersionResolver;
 import io.debezium.connector.mongodb.junit.MongoDbPlatform;
+import io.debezium.connector.mongodb.sink.MongoDbSinkConnectorConfig;
 import io.debezium.data.Envelope;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
@@ -60,6 +61,7 @@ public class MongoDbConnectorDatabaseRestrictedIT extends AbstractAsyncEngineCon
     private static final int NEW_DOCUMENT_COUNT = 4;
 
     protected static MongoDbReplicaSet mongo;
+    private ConnectionResourceTracker resources;
 
     @BeforeAll
     static void beforeAll() {
@@ -86,11 +88,15 @@ public class MongoDbConnectorDatabaseRestrictedIT extends AbstractAsyncEngineCon
         stopConnector();
         initializeConnectorTestFramework();
         cleanDatabase(mongo, TEST_DATABASE);
+        resources = new ConnectionResourceTracker();
     }
 
     @AfterEach
     public void afterEach() {
-        stopConnector();
+        try (var tracker = resources) {
+            stopConnector();
+            Awaitility.await().atMost(10, TimeUnit.SECONDS).untilAsserted(tracker::assertReleased);
+        }
     }
 
     protected static MongoClient connect() {
@@ -115,7 +121,7 @@ public class MongoDbConnectorDatabaseRestrictedIT extends AbstractAsyncEngineCon
 
     protected Configuration connectorConfiguration(String user, String password) {
         var connectionString = mongo.getAuthConnectionString(user, password, AUTH_DATABASE);
-        return TestHelper.getConfiguration(connectionString).edit()
+        return resources.track(TestHelper.getConfiguration(connectionString)).edit()
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(CommonConnectorConfig.TOPIC_PREFIX, TOPIC_PREFIX)
                 .with(MongoDbConnectorConfig.CAPTURE_SCOPE, CaptureScope.DATABASE)
@@ -154,6 +160,24 @@ public class MongoDbConnectorDatabaseRestrictedIT extends AbstractAsyncEngineCon
 
         // Wait until we can consume the documents we just added ...
         consumeAndVerifyNotFromInitialSnapshot(topic, NEW_DOCUMENT_COUNT);
+    }
+
+    @Test
+    void shouldReleaseValidationResourcesWithInvalidCredentials() {
+        final var config = connectorConfiguration(TEST_ALLOWED_USER, "incorrect-password");
+        final var validation = new MongoDbConnector().validate(config.asMap());
+        assertThat(validation.configValues()).anySatisfy(value -> assertThat(value.errorMessages()).isNotEmpty());
+        resources.assertClientsCreated();
+    }
+
+    @Test
+    void shouldValidateSinkWithoutSourceDatabasePermissions() {
+        final var config = connectorConfiguration(TEST_DISALLOWED_USER, TEST_DISALLOWED_PWD).edit()
+                .with(MongoDbSinkConnectorConfig.SINK_DATABASE, TEST_DATABASE)
+                .build();
+        final var validation = new MongoDbSinkConnector().validate(config.asMap());
+        assertThat(validation.configValues()).allSatisfy(value -> assertThat(value.errorMessages()).isEmpty());
+        resources.assertClientsCreated();
     }
 
     @Test

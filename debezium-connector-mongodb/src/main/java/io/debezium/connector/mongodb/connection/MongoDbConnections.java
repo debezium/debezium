@@ -89,6 +89,16 @@ public final class MongoDbConnections {
         return new MongoDbConnection(configuration, eventSourcingErrorHandler(dispatcher, partition));
     }
 
+    /**
+     * Creates an operation wrapper that borrows the task-owned connection context.
+     * Closing the wrapper does not close the shared authentication resources.
+     */
+    public static MongoDbConnection create(MongoDbConnectionContext connectionContext,
+                                           EventDispatcher<MongoDbPartition, CollectionId> dispatcher,
+                                           MongoDbPartition partition) {
+        return new MongoDbConnection(connectionContext, eventSourcingErrorHandler(dispatcher, partition));
+    }
+
     private MongoDbConnections() {
         // intentionally private
     }

@@ -22,7 +22,6 @@ import org.slf4j.LoggerFactory;
 
 import com.mongodb.MongoCommandException;
 import com.mongodb.MongoException;
-import com.mongodb.client.MongoClient;
 import com.mongodb.connection.ClusterType;
 
 import io.debezium.DebeziumException;
@@ -138,19 +137,18 @@ public class MongoDbConnector extends BaseSourceConnector implements ConfigDescr
             connectionStringValidation.addErrorMessage("Deprecated field '" + DEPRECATED_CONNECTION_MODE_FILED + "' is used set to removed 'replica_set' value");
         }
 
-        MongoDbConnectionContext connectionContext = new MongoDbConnectionContext(config);
         MongoDbConnectorConfig connectorConfig = new MongoDbConnectorConfig(config);
         Duration timeout = connectorConfig.getConnectionValidationTimeout();
 
         try {
             Threads.runWithTimeout(MongoDbConnector.class, () -> {
-                try {
+                try (var connectionContext = new MongoDbConnectionContext(config)) {
                     // Check base connection and that changes can actually be captured for the configured
                     // capture.scope/capture.target, rather than requiring broader access than the connector needs
-                    try (MongoClient client = connectionContext.getMongoClient()) {
+                    try (var connection = connectionContext.openClient()) {
                         // an empty pipeline is enough to trigger the server-side authorization check for
                         // find/changeStream on the configured capture.scope/capture.target
-                        try (var cursor = MongoUtils.openChangeStream(client, connectorConfig, List.of()).cursor()) {
+                        try (var cursor = MongoUtils.openChangeStream(connection.getClient(), connectorConfig, List.of()).cursor()) {
                             // reaching here means the account is authorized for the configured target
                         }
                     }
@@ -174,6 +172,10 @@ public class MongoDbConnector extends BaseSourceConnector implements ConfigDescr
         }
         catch (TimeoutException e) {
             connectionStringValidation.addErrorMessage("Connection validation timed out after " + timeout.toMillis() + "ms");
+        }
+        catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            connectionStringValidation.addErrorMessage("Connection validation interrupted");
         }
         catch (Exception e) {
             connectionStringValidation.addErrorMessage("Error during connection validation: " + e.getMessage());
