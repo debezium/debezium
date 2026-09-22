@@ -1125,6 +1125,24 @@ public class JdbcConnection implements AutoCloseable {
     }
 
     /**
+     * Returns the column names of the given table, for use by validate-time signal table checks.
+     *
+     * @param tableId the table to inspect
+     * @return the table's column names
+     * @throws SQLException if an error occurs while accessing the database metadata
+     */
+    public List<String> getColumnNames(TableId tableId) throws SQLException {
+        DatabaseMetaData metadata = connection().getMetaData();
+        try (ResultSet rs = metadata.getColumns(tableId.catalog(), tableId.schema(), tableId.table(), null)) {
+            List<String> columnNames = new ArrayList<>();
+            while (rs.next()) {
+                columnNames.add(rs.getString(4));
+            }
+            return columnNames;
+        }
+    }
+
+    /**
      * Retrieves all {@code TableId}s in a given database catalog, mainly used to determine then the captured table.
      *
      * @param catalogName the catalog/database name

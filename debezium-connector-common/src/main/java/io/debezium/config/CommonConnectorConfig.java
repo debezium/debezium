@@ -981,6 +981,16 @@ public abstract class CommonConnectorConfig {
                     "For multi-partition mode connectors, multiple signal data collections can be specified as a comma-separated list. " +
                     "Signaling is disabled when not set.");
 
+    public static final Field SIGNAL_DATA_COLLECTION_VALIDATION_ENABLED = Field.create("signal.data.collection.validation.enabled")
+            .withDisplayName("Signal data collection validation enabled")
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(false)
+            .withDescription("Enables validate-time checks on 'signal.data.collection': existence, accepted shape, "
+                    + "and (where applicable) effective column count.");
+
     public static final Field SIGNAL_POLL_INTERVAL_MS = Field.create("signal.poll.interval.ms")
             .withDisplayName("Signal processor poll interval")
             .withGroup(Field.createGroupEntry(Field.Group.ADVANCED))
@@ -1563,8 +1573,8 @@ public abstract class CommonConnectorConfig {
                     EVENT_CONVERTING_FAILURE_HANDLING_MODE)
             .group(Field.Group.CONNECTOR_ADVANCED, PROVIDE_TRANSACTION_METADATA, CUSTOM_CONVERTERS, CUSTOM_POST_PROCESSORS,
                     INCREMENTAL_SNAPSHOT_CHUNK_SIZE, INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES,
-                    SIGNAL_DATA_COLLECTION, SIGNAL_ENABLED_CHANNELS, NOTIFICATION_ENABLED_CHANNELS, SinkNotificationChannel.NOTIFICATION_TOPIC,
-                    HttpNotificationChannel.NOTIFICATION_URL, HttpNotificationChannel.NOTIFICATION_TIMEOUT_MS,
+                    SIGNAL_DATA_COLLECTION, SIGNAL_DATA_COLLECTION_VALIDATION_ENABLED, SIGNAL_ENABLED_CHANNELS, NOTIFICATION_ENABLED_CHANNELS,
+                    SinkNotificationChannel.NOTIFICATION_TOPIC, HttpNotificationChannel.NOTIFICATION_URL, HttpNotificationChannel.NOTIFICATION_TIMEOUT_MS,
                     HttpNotificationChannel.NOTIFICATION_RETRIES, HttpNotificationChannel.NOTIFICATION_ALLOW_PRIVATE_NETWORKS, TRANSACTION_METADATA_FACTORY)
             .group(Field.Group.CONNECTOR_SNAPSHOT, SNAPSHOT_DELAY_MS, SNAPSHOT_FETCH_SIZE, SNAPSHOT_MODE_TABLES,
                     SNAPSHOT_MODE_CUSTOM_NAME, SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_DATA, SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_SCHEMA,
@@ -2357,6 +2367,10 @@ public abstract class CommonConnectorConfig {
      */
     public int getSignalSynchronousBatchSize() {
         return signalSynchronousBatchSize;
+    }
+
+    public boolean isSignalDataCollectionValidationEnabled() {
+        return config.getBoolean(SIGNAL_DATA_COLLECTION_VALIDATION_ENABLED);
     }
 
     public Optional<String[]> parseSignallingMessage(Struct value, String fieldName) {
