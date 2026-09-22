@@ -237,6 +237,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withImportance(Importance.LOW)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED))
             .withDefault(false)
+            .withValidation(OracleConnectorConfig::validateLogMiningArchiveLogOnlyMode)
             .withDescription("When set to 'false', the default, the connector will mine both archive log and redo logs to emit change events. " +
                     "When set to 'true', the connector will only mine archive logs. There are circumstances where its advantageous to only " +
                     "mine archive logs and accept latency in event emission due to frequent revolving redo logs.");
@@ -2329,6 +2330,22 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOGGER.warn("The configured '{}' of {} meets or exceeds '{}' of {}; automatic log count growth is disabled " +
                             "and each mining step targets the configured minimum.",
                             LOG_MINING_LOG_COUNT_MIN.name(), minimumLogCount, LOG_MINING_LOG_COUNT_GROWTH_MAX.name(), growthMax);
+                }
+            }
+        }
+        return 0;
+    }
+
+    public static int validateLogMiningArchiveLogOnlyMode(Configuration config, Field field, ValidationOutput problems) {
+        if (isLogMiner(config)) {
+            final CaptureMode captureMode = CaptureMode.parse(config.getString(CAPTURE_MODE));
+            if (CaptureMode.PHYSICAL_STANDBY == captureMode) {
+                final boolean archiveLogOnlyMode = config.getBoolean(LOG_MINING_ARCHIVE_LOG_ONLY_MODE);
+                if (!archiveLogOnlyMode) {
+                    problems.accept(LOG_MINING_ARCHIVE_LOG_ONLY_MODE, archiveLogOnlyMode,
+                            "The '%s' property must be set to 'true' when '%s' is '%s'".formatted(
+                                    LOG_MINING_ARCHIVE_LOG_ONLY_MODE, CAPTURE_MODE, CaptureMode.PHYSICAL_STANDBY.getValue()));
+                    return 1;
                 }
             }
         }
