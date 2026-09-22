@@ -14,7 +14,6 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigException;
@@ -106,7 +105,6 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
     private Operation operation;
 
     private final BoundedConcurrentHashMap<Schema, Schema> schemaUpdateCache = new BoundedConcurrentHashMap<>(CACHE_SIZE);
-    private final BoundedConcurrentHashMap<Headers, Headers> headersUpdateCache = new BoundedConcurrentHashMap<>(CACHE_SIZE);
 
     @Override
     public ConfigDef config() {
@@ -172,7 +170,7 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
 
         Headers updatedHeaders = record.headers();
         if (MOVE.equals(operation)) {
-            updatedHeaders = headersUpdateCache.computeIfAbsent(record.headers(), this::removeHeaders);
+            updatedHeaders = removeHeaders(record.headers());
         }
 
         return record.newRecord(
@@ -192,12 +190,6 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
         headers.forEach(updatedHeaders::remove);
 
         return updatedHeaders;
-    }
-
-    private String headersToString(Map<?, ?> map) {
-        return map.keySet().stream()
-                .map(key -> key + "=" + map.get(key))
-                .collect(Collectors.joining(", ", "{", "}"));
     }
 
     @Override

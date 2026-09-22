@@ -498,4 +498,62 @@ public class HeaderToValueTest {
         assertThat(newParent.get("newField")).isEqualTo("header value");
 
     }
+
+    @Test
+    @FixFor("DBZ-2685")
+    public void shouldRemoveMovedHeadersAcrossMultipleRecordsWithoutCachingIssues() {
+        headerToValue.configure(Map.of(
+                "headers", "h1,h2",
+                "fields", "f1,f2",
+                "operation", "move"));
+
+        Struct row1 = new Struct(VALUE_SCHEMA)
+                .put("id", 101L)
+                .put("price", 20.0F)
+                .put("product", "product 1");
+
+        Envelope createEnvelope = Envelope.defineSchema()
+                .withName("mysql-server-1.inventory.product.Envelope")
+                .withRecord(VALUE_SCHEMA)
+                .withSource(Schema.STRING_SCHEMA)
+                .build();
+
+        Struct payload1 = createEnvelope.create(row1, null, Instant.now());
+        SourceRecord record1 = new SourceRecord(new HashMap<>(), new HashMap<>(), "topic", createEnvelope.schema(), payload1);
+        record1.headers().add("h1", "v1", Schema.STRING_SCHEMA);
+        record1.headers().add("h2", "v2", Schema.STRING_SCHEMA);
+        record1.headers().add("otherHeader", "record1-meta", Schema.STRING_SCHEMA);
+
+        SourceRecord transformed1 = headerToValue.apply(record1);
+
+        Struct payloadStruct1 = Requirements.requireStruct(transformed1.value(), "");
+        assertThat(payloadStruct1.get("f1")).isEqualTo("v1");
+        assertThat(payloadStruct1.get("f2")).isEqualTo("v2");
+        assertThat(StreamSupport.stream(transformed1.headers().spliterator(), false)
+                .map(Header::key).collect(Collectors.toList())).containsExactly("otherHeader");
+        assertThat(StreamSupport.stream(transformed1.headers().spliterator(), false)
+                .filter(h -> "otherHeader".equals(h.key()))
+                .map(Header::value).findFirst().orElse(null)).isEqualTo("record1-meta");
+
+        Struct row2 = new Struct(VALUE_SCHEMA)
+                .put("id", 102L)
+                .put("price", 30.0F)
+                .put("product", "product 2");
+        Struct payload2 = createEnvelope.create(row2, null, Instant.now());
+        SourceRecord record2 = new SourceRecord(new HashMap<>(), new HashMap<>(), "topic", createEnvelope.schema(), payload2);
+        record2.headers().add("h1", "v1-different", Schema.STRING_SCHEMA);
+        record2.headers().add("h2", "v2-different", Schema.STRING_SCHEMA);
+        record2.headers().add("otherHeader", "record2-meta", Schema.STRING_SCHEMA);
+
+        SourceRecord transformed2 = headerToValue.apply(record2);
+
+        Struct payloadStruct2 = Requirements.requireStruct(transformed2.value(), "");
+        assertThat(payloadStruct2.get("f1")).isEqualTo("v1-different");
+        assertThat(payloadStruct2.get("f2")).isEqualTo("v2-different");
+        assertThat(StreamSupport.stream(transformed2.headers().spliterator(), false)
+                .map(Header::key).collect(Collectors.toList())).containsExactly("otherHeader");
+        assertThat(StreamSupport.stream(transformed2.headers().spliterator(), false)
+                .filter(h -> "otherHeader".equals(h.key()))
+                .map(Header::value).findFirst().orElse(null)).isEqualTo("record2-meta");
+    }
 }
