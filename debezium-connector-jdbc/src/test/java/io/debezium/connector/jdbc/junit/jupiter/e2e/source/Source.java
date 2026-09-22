@@ -18,7 +18,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.awaitility.Awaitility;
 import org.testcontainers.containers.JdbcDatabaseContainer;
 import org.testcontainers.containers.output.FrameConsumerResultCallback;
-import org.testcontainers.containers.output.OutputFrame;
 import org.testcontainers.containers.output.WaitingConsumer;
 
 import com.github.dockerjava.api.command.LogContainerCmd;
@@ -119,12 +118,15 @@ public class Source extends JdbcConnectionProvider {
     @SuppressWarnings("SameParameterValue")
     private void waitUntil(String message, Runnable doBeforeWait) {
         final WaitingConsumer wait = new WaitingConsumer();
+        final var diagnostics = new SourceStartupDiagnostics(type, getSourceConnectorName(),
+                () -> connect.getConnectorState(getSourceConnectorName()),
+                () -> connect.getConnectorTaskState(getSourceConnectorName(), 0));
 
         try (FrameConsumerResultCallback callback = new FrameConsumerResultCallback()) {
-            callback.addConsumer(OutputFrame.OutputType.STDOUT, wait);
+            diagnostics.attachTo(callback, wait);
 
             try (LogContainerCmd command = connect.getDockerClient().logContainerCmd(connect.getContainerId())) {
-                command.withFollowStream(true).withTail(0).withStdOut(true).exec(callback);
+                command.withFollowStream(true).withTail(0).withStdOut(true).withStdErr(true).exec(callback);
                 try {
                     if (!callback.awaitStarted(LOG_SUBSCRIPTION_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
                         throw new IllegalStateException("Docker log subscription did not start");
@@ -147,7 +149,7 @@ public class Source extends JdbcConnectionProvider {
                     wait.waitUntil(f -> f.getUtf8String().contains(message), timeoutSeconds, TimeUnit.SECONDS);
                 }
                 catch (TimeoutException e) {
-                    throw new IllegalStateException("Failed to wait for '" + message + "'", e);
+                    throw diagnostics.timeout(message, e);
                 }
             }
         }
