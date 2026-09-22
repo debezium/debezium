@@ -1,3 +1,4 @@
+A. D. Blom
 Aakash Mhatre
 Aaron Brady
 Aaron Rosenberg
@@ -190,6 +191,7 @@ Daniel Eriksson
 Daniel Petisme
 Daniele Licini
 dario
+Dario Rodrigues
 Dave Charron
 Dave Cramer
 Dave Cumberland
@@ -279,6 +281,7 @@ Ganesh Ramasubramanian
 Ganeshan Nagarajan
 Garib Karimli
 Gaurav Miglani
+Gaétan Collaud
 Giljae Joo
 Gilles Vaquez
 Gio Gutierrez
@@ -763,10 +766,12 @@ Tapani Moilanen
 Tautvydas Januskevicius
 Tayler Dunn
 Taylor Rolison
+TaylorJerry
 Teo Stocco
 Theofanis Despoudis
 Thiago Avancini
 Thiago Dantas
+Thiago Garcia
 Thierry De Leeuw
 Thomas Aregger
 Thomas Deblock

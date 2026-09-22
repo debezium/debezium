@@ -116,6 +116,7 @@ FrankMormino,Frank Mormino
 fuxiao224,Xiao Fu
 fuyar,Farid Uyar
 gaetancollaud,Gaetan Collaud
+gaetancollaud,Gaétan Collaud
 ganesh-bankar,Ganesh Bankar
 GaribKarimli,Garib Karimli
 garrett528,Andrew Garrett
@@ -383,6 +384,7 @@ tyrantlucifer,Chao Tian
 uidoyen,Hussain Ansari
 umachi,Hidetomi Umaki
 unalsurmeli,Ünal Sürmeli
+Unidade,Dario Rodrigues
 vanhoale,Hoa Le
 VanKhanhAnny,Anny Dang
 victorxiang30,Victor Xiang
@@ -421,3 +423,6 @@ zrlurb,Peter Urbanetz
 zxpzlp,Xiaopu Zhu
 zxxz,Giovanni De Stefano
 “vsantonastaso”,Vincenzo Santonastaso
+Blom-10,A. D. Blom
+JerryS,TaylorJerry
+Thiagoag,Thiago Garcia
