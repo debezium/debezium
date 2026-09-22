@@ -26,7 +26,7 @@ runs:
     - name: Build Debezium Archetypes
       shell: ${{ inputs.shell }}
       run: >
-        ./mvnw clean install -B -pl debezium-connector-archetype -amd -am
+        ./mvnw clean install -B -pl :debezium-source-connector-relational-archetype,:debezium-connector-common,:debezium-bom -am
         -Dcheckstyle.skip=${{ inputs.only-build == 'true' && 'true' || 'false' }}
         -Dformat.skip=${{ inputs.only-build == 'true' && 'true' || 'false' }}
         -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
