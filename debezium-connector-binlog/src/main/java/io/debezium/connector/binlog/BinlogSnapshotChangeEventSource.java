@@ -679,6 +679,12 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
         super.aborted(snapshotContext);
     }
 
+    @Override
+    public void close() {
+        stopLockHeartbeat();
+        super.close();
+    }
+
     private void startLockHeartbeat() {
         if (lockKeepAliveExecutor == null || lockKeepAliveExecutor.isShutdown()) {
             LOGGER.info("Starting lock heartbeat");
