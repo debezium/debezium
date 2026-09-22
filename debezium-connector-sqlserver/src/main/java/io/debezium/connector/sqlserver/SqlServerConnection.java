@@ -83,15 +83,17 @@ public class SqlServerConnection extends JdbcConnection {
     private static final String GET_MIN_LSN = "SELECT #db.sys.fn_cdc_get_min_lsn(?)";
     private static final String LOCK_TABLE = "SELECT * FROM #table WITH (TABLOCKX)";
     private static final String INCREMENT_LSN = "SELECT #db.sys.fn_cdc_increment_lsn(?)";
-    protected static final String LSN_TIMESTAMP_SELECT_STATEMENT = "TODATETIMEOFFSET(#db.sys.fn_cdc_map_lsn_to_time([__$start_lsn]), DATEPART(TZOFFSET, SYSDATETIMEOFFSET()))";
     private static final String LSN_TIMESTAMP_SELECT_STATEMENT_JOIN = "TODATETIMEOFFSET(ltm.tran_end_time, DATEPART(TZOFFSET, SYSDATETIMEOFFSET()))";
-    private static final String GET_ALL_CHANGES_FOR_TABLE_SELECT = "SELECT [__$start_lsn], [__$seqval], [__$operation], [__$update_mask], #, "
-            + LSN_TIMESTAMP_SELECT_STATEMENT;
+    private static final String GET_ALL_CHANGES_FOR_TABLE_SELECT = "SELECT cdc_data.[__$start_lsn], cdc_data.[__$seqval], cdc_data.[__$operation], cdc_data.[__$update_mask], #, "
+            + LSN_TIMESTAMP_SELECT_STATEMENT_JOIN;
     private static final String GET_ALL_CHANGES_FOR_TABLE_SELECT_DIRECT = "SELECT cdc_data.[__$start_lsn], cdc_data.[__$seqval], cdc_data.[__$operation], cdc_data.[__$update_mask], cdc_data.[__$command_id], #, "
             + LSN_TIMESTAMP_SELECT_STATEMENT_JOIN;
-    private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_FUNCTION = "FROM #db.cdc.#function(?, ?, N'all update old')";
+    // FUNCTION mode's table-valued function already bounds its output to the requested LSN range internally, so
+    // joining it against lsn_time_mapping here only changes how the commit timestamp is computed, not which rows
+    // are returned - consistent with the same rewrite already applied to DIRECT mode (see debezium/dbz#1915).
+    private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_FUNCTION = "FROM #db.cdc.#function(?, ?, N'all update old') AS cdc_data LEFT JOIN #db.cdc.lsn_time_mapping ltm ON ltm.start_lsn = cdc_data.[__$start_lsn]";
     private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_DIRECT = "FROM #db.cdc.#table AS cdc_data WITH (NOLOCK) LEFT JOIN #db.cdc.lsn_time_mapping ltm ON ltm.start_lsn = cdc_data.[__$start_lsn]";
-    private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_FUNCTION_ORDER_BY = "ORDER BY [__$start_lsn] ASC, [__$seqval] ASC, [__$operation] ASC";
+    private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_FUNCTION_ORDER_BY = "ORDER BY cdc_data.[__$start_lsn] ASC, cdc_data.[__$seqval] ASC, cdc_data.[__$operation] ASC";
     private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_DIRECT_ORDER_BY = "ORDER BY cdc_data.[__$start_lsn] ASC, cdc_data.[__$command_id] ASC, cdc_data.[__$seqval] ASC, cdc_data.[__$operation] ASC";
     private static final String GET_CDC_JOB_INFO = "{call sys.sp_cdc_help_jobs}";
     private static final String CDC_JOB_INFO_JOB_TYPE_COLUMN_NAME = "job_type";
@@ -197,8 +199,9 @@ public class SqlServerConnection extends JdbcConnection {
         this.optionRecompile = optionRecompile;
     }
 
-    private String buildGetAllChangesForTableQuery(SqlServerConnectorConfig.DataQueryMode dataQueryMode,
-                                                   Set<Envelope.Operation> skippedOperations) {
+    @VisibleForTesting
+    String buildGetAllChangesForTableQuery(SqlServerConnectorConfig.DataQueryMode dataQueryMode,
+                                           Set<Envelope.Operation> skippedOperations) {
         boolean isDirectMode = dataQueryMode == SqlServerConnectorConfig.DataQueryMode.DIRECT;
         String result;
         List<String> where = new LinkedList<>();
@@ -225,10 +228,10 @@ public class SqlServerConnection extends JdbcConnection {
             where.add("[cdc_data].[__$start_lsn] >= ?");
         }
         else {
-            where.add("(([__$start_lsn] = ? AND [__$seqval] = ? AND [__$operation] > ?) " +
-                    "OR ([__$start_lsn] = ? AND [__$seqval] > ?) " +
-                    "OR ([__$start_lsn] > ?))");
-            where.add("[__$start_lsn] <= ?");
+            where.add("(([cdc_data].[__$start_lsn] = ? AND [cdc_data].[__$seqval] = ? AND [cdc_data].[__$operation] > ?) " +
+                    "OR ([cdc_data].[__$start_lsn] = ? AND [cdc_data].[__$seqval] > ?) " +
+                    "OR ([cdc_data].[__$start_lsn] > ?))");
+            where.add("[cdc_data].[__$start_lsn] <= ?");
         }
 
         if (hasSkippedOperations(skippedOperations)) {
@@ -249,8 +252,8 @@ public class SqlServerConnection extends JdbcConnection {
                         break;
                 }
             });
-            String colPrefix = isDirectMode ? PREFIX_CDC_DATA : "";
-            where.add(colPrefix + "[__$operation] NOT IN (" + String.join(",", skippedOps) + ")");
+            // Both modes alias their result set as cdc_data now that FUNCTION mode also joins lsn_time_mapping.
+            where.add(PREFIX_CDC_DATA + "[__$operation] NOT IN (" + String.join(",", skippedOps) + ")");
         }
 
         if (!where.isEmpty()) {
@@ -437,9 +440,10 @@ public class SqlServerConnection extends JdbcConnection {
                                         Integer commandIdFrom, Lsn intervalToLsn, int maxRows)
             throws SQLException {
         String databaseName = changeTable.getSourceTableId().catalog();
-        boolean isDirectMode = config.getDataQueryMode() == SqlServerConnectorConfig.DataQueryMode.DIRECT;
+        // Both modes now alias their result set as cdc_data (FUNCTION mode joins lsn_time_mapping the same way
+        // DIRECT mode does), so captured columns are qualified the same way regardless of query mode.
         String capturedColumns = changeTable.getCapturedColumns().stream().map(this::quoteIdentifier)
-                .map(column -> isDirectMode ? PREFIX_CDC_DATA + column : column)
+                .map(column -> PREFIX_CDC_DATA + column)
                 .collect(Collectors.joining(", "));
 
         String query = replaceDatabaseNamePlaceholder(getAllChangesForTable, databaseName)
