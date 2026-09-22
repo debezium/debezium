@@ -27,6 +27,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.CollectionId;
 import io.debezium.connector.mongodb.Filters;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig;
+import io.debezium.connector.mongodb.MongoDbErrorHandler;
 import io.debezium.connector.mongodb.MongoDbOffsetContext;
 import io.debezium.connector.mongodb.MongoDbTaskContext;
 import io.debezium.connector.mongodb.MongoUtils;
@@ -221,6 +222,9 @@ public final class MongoDbConnection implements AutoCloseable {
                     return true;
                 }
                 catch (MongoCommandException | MongoChangeStreamException e) {
+                    if (MongoDbErrorHandler.isRequiredImageMissing(e)) {
+                        throw e;
+                    }
                     LOGGER.info("Resume token validation failed: {}", e.getMessage());
                     LOGGER.debug("Error while validating resume token", e);
                     return false;
