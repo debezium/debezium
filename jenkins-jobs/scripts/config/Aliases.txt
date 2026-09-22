@@ -50,6 +50,7 @@ BigGillyStyle,Andy Pickler
 Binayak490-cyber,Binayak Das
 BinLi1988,Bin Li
 bisbeb,Björn Bärtschi
+Blom-10,A. D. Blom
 bmiedlar,Bartosz Miedlar
 bpaquet,Bertrand Paquet
 brandonbrown,Brandon Brown
@@ -168,6 +169,7 @@ jehrenzweig-pi,Jesse Ehrenzweig
 JeremyVigny,Jeremy Vigny
 jerrinot,Jaromir Hamala
 JerryGao0805,Jerry Gao
+JerryS,TaylorJerry
 jgraf50,John Graf
 jiabao.sun,Jiabao Sun
 jiangzzhu,Jiang Zhu
@@ -364,6 +366,7 @@ Tayler,Tayler Dunn
 taylor-rolison,Taylor Rolison
 TechIsCool,David Beck
 thangdc94,Phạm Ngọc Thắng
+Thiagoag,Thiago Garcia
 Théophile Helleboid - chtitux,Théophile Helleboid
 TimLoes,Tim Loes
 TimoWilhelm,Timo Wilhelm
@@ -423,6 +426,3 @@ zrlurb,Peter Urbanetz
 zxpzlp,Xiaopu Zhu
 zxxz,Giovanni De Stefano
 “vsantonastaso”,Vincenzo Santonastaso
-Blom-10,A. D. Blom
-JerryS,TaylorJerry
-Thiagoag,Thiago Garcia
