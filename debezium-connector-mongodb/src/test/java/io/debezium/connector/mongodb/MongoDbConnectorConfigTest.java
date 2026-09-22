@@ -30,12 +30,49 @@ import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.mongodb.connection.MongoDbConnectionContext;
 import io.debezium.data.Envelope;
 
 public class MongoDbConnectorConfigTest {
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(ints = { 0, 1, 1000 })
+    void shouldAcceptQueryFetchSize(Integer fetchSize) {
+        final var builder = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.SNAPSHOT_FETCH_SIZE, 99);
+        if (fetchSize != null) {
+            builder.with(MongoDbConnectorConfig.QUERY_FETCH_SIZE, fetchSize);
+        }
+        final var config = builder.build();
+        final var connectorConfig = new MongoDbConnectorConfig(config);
+
+        assertThat(connectorConfig.getQueryFetchSize()).isEqualTo(fetchSize == null ? 0 : fetchSize);
+        assertThat(connectorConfig.getSnapshotFetchSize()).isEqualTo(99);
+        assertThat(MongoDbConnectorConfig.configDef().validate(config.asMap()))
+                .filteredOn(value -> value.name().equals(MongoDbConnectorConfig.QUERY_FETCH_SIZE.name()))
+                .singleElement().satisfies(value -> assertThat(value.errorMessages()).isEmpty());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "-1", "invalid" })
+    void shouldRejectInvalidQueryFetchSize(String fetchSize) {
+        final var config = TestHelper.getConfiguration().edit()
+                .with(MongoDbConnectorConfig.QUERY_FETCH_SIZE, fetchSize)
+                .build();
+
+        assertThatThrownBy(() -> new MongoDbConnector().start(config.asMap()))
+                .isInstanceOf(DebeziumException.class);
+    }
+
+    @Test
+    void shouldDescribeQueryFetchSizeForMongoDb() {
+        final var field = MongoDbConnectorConfig.configDef().configKeys().get("query.fetch.size");
+        assertThat(field.documentation).contains("change stream").doesNotContain("JDBC");
+    }
 
     @Test
     void shouldExposeCaptureStartFields() {
