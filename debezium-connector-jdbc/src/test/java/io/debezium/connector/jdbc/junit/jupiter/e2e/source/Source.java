@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -17,7 +18,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.awaitility.Awaitility;
 import org.testcontainers.containers.JdbcDatabaseContainer;
-import org.testcontainers.containers.output.FrameConsumerResultCallback;
 import org.testcontainers.containers.output.WaitingConsumer;
 
 import com.github.dockerjava.api.command.LogContainerCmd;
@@ -118,12 +118,12 @@ public class Source extends JdbcConnectionProvider {
     @SuppressWarnings("SameParameterValue")
     private void waitUntil(String message, Runnable doBeforeWait) {
         final WaitingConsumer wait = new WaitingConsumer();
+        final int since = Math.toIntExact(Instant.now().getEpochSecond());
         final var diagnostics = new SourceStartupDiagnostics(type, getSourceConnectorName(),
-                () -> connect.getConnectorState(getSourceConnectorName()),
-                () -> connect.getConnectorTaskState(getSourceConnectorName(), 0));
+                () -> SourceStartupDiagnostics.readStatus(connect.getConnectorStatusUri(getSourceConnectorName())),
+                () -> SourceStartupDiagnostics.readLogs(connect.getDockerClient(), connect.getContainerId(), since));
 
-        try (FrameConsumerResultCallback callback = new FrameConsumerResultCallback()) {
-            diagnostics.attachTo(callback, wait);
+        try (var callback = diagnostics.callback(wait)) {
 
             try (LogContainerCmd command = connect.getDockerClient().logContainerCmd(connect.getContainerId())) {
                 command.withFollowStream(true).withTail(0).withStdOut(true).withStdErr(true).exec(callback);
