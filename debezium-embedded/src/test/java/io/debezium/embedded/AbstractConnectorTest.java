@@ -102,6 +102,7 @@ public abstract class AbstractConnectorTest implements Testing {
     protected long pollTimeoutInMs = TimeUnit.SECONDS.toMillis(10);
     protected final Logger logger = LoggerFactory.getLogger(getClass());
     protected final AtomicBoolean isEngineRunning = new AtomicBoolean(false);
+    private final AtomicBoolean stopRequestedByConsumer = new AtomicBoolean(false);
     private CountDownLatch latch;
     private JsonConverter keyJsonConverter = new JsonConverter();
     private JsonConverter valueJsonConverter = new JsonConverter();
@@ -160,7 +161,18 @@ public abstract class AbstractConnectorTest implements Testing {
             if (engine != null && isEngineRunning.get()) {
                 logger.info("Stopping the engine");
                 try {
-                    engine.close();
+                    // The stop-record exception already requests shutdown; closing an async engine again while stopping fails.
+                    if (!stopRequestedByConsumer.get()) {
+                        try {
+                            engine.close();
+                        }
+                        catch (IllegalStateException e) {
+                            // The consumer may request shutdown after the check above, concurrently with close().
+                            if (!stopRequestedByConsumer.get()) {
+                                throw e;
+                            }
+                        }
+                    }
                     // Oracle connector needs longer time to complete shutdown
                     Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> !isEngineRunning.get());
                 }
@@ -422,6 +434,7 @@ public abstract class AbstractConnectorTest implements Testing {
                 .with(EmbeddedEngineConfig.OFFSET_FLUSH_INTERVAL_MS, 0)
                 .build();
         latch = new CountDownLatch(1);
+        stopRequestedByConsumer.set(false);
         DebeziumEngine.CompletionCallback wrapperCallback = (success, msg, error) -> {
             try {
                 if (callback != null) {
@@ -495,6 +508,7 @@ public abstract class AbstractConnectorTest implements Testing {
     protected Consumer<SourceRecord> getConsumer(Predicate<SourceRecord> isStopRecord, Consumer<SourceRecord> recordArrivedListener, boolean ignoreRecordsAfterStop) {
         return (record) -> {
             if (isStopRecord != null && isStopRecord.test(record)) {
+                stopRequestedByConsumer.set(true);
                 logger.error("Stopping connector after record as requested");
                 throw new ConnectException("Stopping connector after record as requested");
             }
