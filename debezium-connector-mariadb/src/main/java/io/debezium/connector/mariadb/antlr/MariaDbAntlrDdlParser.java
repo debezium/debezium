@@ -202,8 +202,12 @@ public class MariaDbAntlrDdlParser extends AntlrDdlParser<MariaDBLexer, MariaDBP
                 new DataTypeResolver.DataTypeEntry(Types.BLOB, MariaDBParser.TINYBLOB),
                 new DataTypeResolver.DataTypeEntry(Types.BLOB, MariaDBParser.MEDIUMBLOB),
                 new DataTypeResolver.DataTypeEntry(Types.BLOB, MariaDBParser.LONGBLOB),
-                new DataTypeResolver.DataTypeEntry(Types.BOOLEAN, MariaDBParser.BOOL),
-                new DataTypeResolver.DataTypeEntry(Types.BOOLEAN, MariaDBParser.BOOLEAN),
+                new DataTypeResolver.DataTypeEntry(Types.TINYINT, MariaDBParser.BOOL)
+                        .setDataTypeName("TINYINT")
+                        .setDefaultLengthDimension(1),
+                new DataTypeResolver.DataTypeEntry(Types.TINYINT, MariaDBParser.BOOLEAN)
+                        .setDataTypeName("TINYINT")
+                        .setDefaultLengthDimension(1),
                 new DataTypeResolver.DataTypeEntry(Types.BIGINT, MariaDBParser.SERIAL)));
 
         dataTypeResolverBuilder.registerDataTypes(MariaDBParser.CollectionDataTypeContext.class.getCanonicalName(), Arrays.asList(

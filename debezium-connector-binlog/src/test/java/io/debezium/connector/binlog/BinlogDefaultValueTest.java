@@ -295,10 +295,10 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
                 ");";
         parser.parse(sql, tables);
         Table table = tables.forTable(new TableId(null, null, "BOOLEAN_TABLE"));
-        assertThat(getColumnSchema(table, "A").defaultValue()).isEqualTo(false);
-        assertThat(getColumnSchema(table, "B").defaultValue()).isEqualTo(true);
-        assertThat(getColumnSchema(table, "C").defaultValue()).isEqualTo(true);
-        assertThat(getColumnSchema(table, "D").defaultValue()).isEqualTo(true);
+        assertThat(getColumnSchema(table, "A").defaultValue()).isEqualTo((byte) 0);
+        assertThat(getColumnSchema(table, "B").defaultValue()).isEqualTo((byte) 1);
+        assertThat(getColumnSchema(table, "C").defaultValue()).isEqualTo((byte) 9);
+        assertThat(getColumnSchema(table, "D").defaultValue()).isEqualTo((byte) 1);
         assertThat(getColumnSchema(table, "E").defaultValue()).isEqualTo(null);
     }
 
@@ -497,7 +497,7 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
 
         Table table = tables.forTable(new TableId(null, null, "data"));
 
-        assertThat((Boolean) getColumnSchema(table, "bval").defaultValue()).isTrue();
+        assertThat((Byte) getColumnSchema(table, "bval").defaultValue()).isEqualTo((byte) 1);
         assertThat((Byte) getColumnSchema(table, "tival1").defaultValue()).isZero();
         assertThat((Byte) getColumnSchema(table, "tival2").defaultValue()).isEqualTo((byte) 3);
         assertThat((Byte) getColumnSchema(table, "tival3").defaultValue()).isEqualTo((byte) 1);
@@ -519,7 +519,7 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
 
         Table table = tables.forTable(new TableId(null, null, "data"));
 
-        assertThat((Boolean) getColumnSchema(table, "bval").defaultValue()).isTrue();
+        assertThat((Byte) getColumnSchema(table, "bval").defaultValue()).isEqualTo((byte) 1);
         assertThat((Integer) getColumnSchema(table, "ival1").defaultValue()).isZero();
         assertThat((Integer) getColumnSchema(table, "ival2").defaultValue()).isEqualTo(3);
         assertThat((Integer) getColumnSchema(table, "ival3").defaultValue()).isEqualTo(1);
