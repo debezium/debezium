@@ -70,7 +70,7 @@ public class SignalDataCollectionValidator {
     }
 
     private static void checkSignalDataCollection(JdbcConnection connection, RelationalDatabaseConnectorConfig connectorConfig, String rawValue,
-                                                    ConfigValue signalDataCollectionValue)
+                                                  ConfigValue signalDataCollectionValue)
             throws SQLException {
         TableId parsed = TableId.parse(rawValue, false);
         Set<TableId> matches = connection.readTableNames(parsed.catalog(), parsed.schema(), parsed.table(), null);
