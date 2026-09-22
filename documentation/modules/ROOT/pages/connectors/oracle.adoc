@@ -3239,6 +3239,7 @@ capture.mode=physical_standby
 log.mining.strategy=dictionary_from_file
 log.mining.path.dictionary=/path/to/dictionary.ora
 log.mining.read.only=true
+log.mining.archive.log.only.mode=true
 secondary.hostname=standby-host
 ```
 +
