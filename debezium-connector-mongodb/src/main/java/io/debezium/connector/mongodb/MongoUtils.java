@@ -238,14 +238,18 @@ public class MongoUtils {
 
         if (config.getCaptureMode().isFullUpdate()) {
             if (config.getCaptureModeFullUpdateType().isPostImage()) {
-                stream.fullDocument(FullDocument.WHEN_AVAILABLE);
+                stream.fullDocument(config.getCaptureModeFullUpdateType() == MongoDbConnectorConfig.FullUpdateType.POST_IMAGE_REQUIRED
+                        ? FullDocument.REQUIRED
+                        : FullDocument.WHEN_AVAILABLE);
             }
             else {
                 stream.fullDocument(FullDocument.UPDATE_LOOKUP);
             }
         }
         if (config.getCaptureMode().isIncludePreImage()) {
-            stream.fullDocumentBeforeChange(FullDocumentBeforeChange.WHEN_AVAILABLE);
+            stream.fullDocumentBeforeChange(config.getCaptureModePreImage() == MongoDbConnectorConfig.PreImageMode.REQUIRED
+                    ? FullDocumentBeforeChange.REQUIRED
+                    : FullDocumentBeforeChange.WHEN_AVAILABLE);
         }
         return stream;
     }

@@ -44,6 +44,7 @@ import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.CaptureMode;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.FullUpdateType;
+import io.debezium.connector.mongodb.MongoDbConnectorConfig.PreImageMode;
 import io.debezium.connector.mongodb.connection.MongoDbConnections;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
@@ -65,7 +66,9 @@ public class MongoDbSplitEventIT extends AbstractMongoConnectorIT {
                 Arguments.of(CaptureMode.CHANGE_STREAMS_UPDATE_FULL, FullUpdateType.POST_IMAGE, 2),
                 Arguments.of(CaptureMode.CHANGE_STREAMS_WITH_PRE_IMAGE, FullUpdateType.LOOKUP, 2),
                 Arguments.of(CaptureMode.CHANGE_STREAMS_UPDATE_FULL_WITH_PRE_IMAGE, FullUpdateType.LOOKUP, 3),
-                Arguments.of(CaptureMode.CHANGE_STREAMS_UPDATE_FULL_WITH_PRE_IMAGE, FullUpdateType.POST_IMAGE, 3));
+                Arguments.of(CaptureMode.CHANGE_STREAMS_UPDATE_FULL_WITH_PRE_IMAGE, FullUpdateType.POST_IMAGE, 3),
+                Arguments.of(CaptureMode.CHANGE_STREAMS_UPDATE_FULL, FullUpdateType.POST_IMAGE_REQUIRED, 2),
+                Arguments.of(CaptureMode.CHANGE_STREAMS_UPDATE_FULL_WITH_PRE_IMAGE, FullUpdateType.POST_IMAGE_REQUIRED, 3));
     }
 
     @ParameterizedTest
@@ -85,6 +88,7 @@ public class MongoDbSplitEventIT extends AbstractMongoConnectorIT {
                 .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.NO_DATA)
                 .with(MongoDbConnectorConfig.CAPTURE_MODE, captureMode)
                 .with(MongoDbConnectorConfig.CAPTURE_MODE_FULL_UPDATE_TYPE, fullUpdateType)
+                .with(MongoDbConnectorConfig.CAPTURE_MODE_PRE_IMAGE, preImageMode(captureMode, fullUpdateType))
                 .with(MongoDbConnectorConfig.CURSOR_OVERSIZE_HANDLING_MODE, MongoDbConnectorConfig.OversizeHandlingMode.SPLIT)
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(Heartbeat.HEARTBEAT_INTERVAL, 0)
@@ -163,6 +167,7 @@ public class MongoDbSplitEventIT extends AbstractMongoConnectorIT {
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit." + collectionName)
                 .with(MongoDbConnectorConfig.CAPTURE_MODE, captureMode)
                 .with(MongoDbConnectorConfig.CAPTURE_MODE_FULL_UPDATE_TYPE, fullUpdateType)
+                .with(MongoDbConnectorConfig.CAPTURE_MODE_PRE_IMAGE, preImageMode(captureMode, fullUpdateType))
                 .with(MongoDbConnectorConfig.CURSOR_OVERSIZE_HANDLING_MODE, MongoDbConnectorConfig.OversizeHandlingMode.SPLIT)
                 .build();
         context = new MongoDbTaskContext(config);
@@ -394,6 +399,7 @@ public class MongoDbSplitEventIT extends AbstractMongoConnectorIT {
                 .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.INITIAL)
                 .with(MongoDbConnectorConfig.CAPTURE_MODE, captureMode)
                 .with(MongoDbConnectorConfig.CAPTURE_MODE_FULL_UPDATE_TYPE, fullUpdateType)
+                .with(MongoDbConnectorConfig.CAPTURE_MODE_PRE_IMAGE, preImageMode(captureMode, fullUpdateType))
                 .with(MongoDbConnectorConfig.CURSOR_OVERSIZE_HANDLING_MODE, MongoDbConnectorConfig.OversizeHandlingMode.SPLIT)
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(Heartbeat.HEARTBEAT_INTERVAL, 0)
@@ -417,12 +423,19 @@ public class MongoDbSplitEventIT extends AbstractMongoConnectorIT {
         final var stream = collection.watch(List.of(new Document("$changeStreamSplitLargeEvent", new Document())), BsonDocument.class)
                 .maxAwaitTime(1, TimeUnit.SECONDS);
         if (captureMode.isFullUpdate()) {
-            stream.fullDocument(fullUpdateType.isPostImage() ? FullDocument.WHEN_AVAILABLE : FullDocument.UPDATE_LOOKUP);
+            stream.fullDocument(fullUpdateType == FullUpdateType.POST_IMAGE_REQUIRED ? FullDocument.REQUIRED
+                    : fullUpdateType.isPostImage() ? FullDocument.WHEN_AVAILABLE : FullDocument.UPDATE_LOOKUP);
         }
         if (captureMode.isIncludePreImage()) {
-            stream.fullDocumentBeforeChange(FullDocumentBeforeChange.WHEN_AVAILABLE);
+            stream.fullDocumentBeforeChange(preImageMode(captureMode, fullUpdateType) == PreImageMode.REQUIRED
+                    ? FullDocumentBeforeChange.REQUIRED
+                    : FullDocumentBeforeChange.WHEN_AVAILABLE);
         }
         return stream;
+    }
+
+    private static PreImageMode preImageMode(CaptureMode captureMode, FullUpdateType fullUpdateType) {
+        return captureMode.isIncludePreImage() && fullUpdateType == FullUpdateType.POST_IMAGE_REQUIRED ? PreImageMode.REQUIRED : PreImageMode.WHEN_AVAILABLE;
     }
 
     private ChangeStreamDocument<BsonDocument> readChangeStreamEvent(MongoChangeStreamCursor<ChangeStreamDocument<BsonDocument>> cursor) {
