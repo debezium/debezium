@@ -1172,6 +1172,7 @@ NO_NATIVE_FULL_OUTER_JOIN      : 'NO_NATIVE_FULL_OUTER_JOIN';
 NONBLOCKING                    : 'NONBLOCKING';
 NONEDITIONABLE                 : 'NONEDITIONABLE';
 NONE                           : 'NONE';
+NONPARTITIONED                 : 'NONPARTITIONED';
 NONULLIF                       : 'NONULLIF';
 NO_NLJ_BATCHING                : 'NO_NLJ_BATCHING';
 NO_NLJ_PREFETCH                : 'NO_NLJ_PREFETCH';
