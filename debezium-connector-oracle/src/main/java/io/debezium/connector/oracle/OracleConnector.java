@@ -19,6 +19,7 @@ import org.apache.kafka.connect.source.ExactlyOnceSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.common.RelationalBaseSourceConnector;
@@ -26,6 +27,7 @@ import io.debezium.connector.oracle.jdbc.OracleConnectionFactory;
 import io.debezium.connector.oracle.jdbc.OracleConnectionFactoryProvider;
 import io.debezium.metadata.ConfigDescriptor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.relational.SignalDataCollectionValidator;
 import io.debezium.util.Threads;
 
 public class OracleConnector extends RelationalBaseSourceConnector implements ConfigDescriptor {
@@ -92,6 +94,16 @@ public class OracleConnector extends RelationalBaseSourceConnector implements Co
                     LOGGER.error("Failed testing {} connection for {}", name, config.withMaskedPasswords(), error);
                     hostnameValue.addErrorMessage("Unable to connect (" + name + "): " + error.getMessage());
                 });
+
+                if (hostnameValue.errorMessages().isEmpty()) {
+                    try (OracleConnection connection = connectionFactory.newConnection()) {
+                        SignalDataCollectionValidator.validate(connection, connectorConfig,
+                                configValues.get(CommonConnectorConfig.SIGNAL_DATA_COLLECTION.name()));
+                    }
+                    catch (Exception e) {
+                        LOGGER.warn("Could not open a connection to validate the signal data collection", e);
+                    }
+                }
             }, null, timeout, connectorConfig.getLogicalName(), "connection-validation");
         }
         catch (TimeoutException e) {
