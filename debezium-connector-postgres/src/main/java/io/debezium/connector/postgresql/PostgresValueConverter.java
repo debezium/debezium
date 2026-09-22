@@ -1619,8 +1619,11 @@ public class PostgresValueConverter extends JdbcValueConverters {
      * defect scalar {@code timestamp} and {@code timestamptz} were given a text read to avoid. Scalars
      * return before {@code getColumnValue} reaches the array branch, so arrays never benefited from it.
      * {@code TIMETZ} is here for an unrelated reason: microsecond precision is lost otherwise.
+     * <p>
+     * The decoders consult this too: an element of one of these types has to reach the converter as text,
+     * so a decoder that would otherwise materialize the elements itself must hand over the array instead.
      */
-    private static boolean isReadAsTextElementType(int elementTypeOid) {
+    public static boolean isReadAsTextElementType(int elementTypeOid) {
         switch (elementTypeOid) {
             case PgOid.TIMETZ:
             case PgOid.TIMESTAMP:
