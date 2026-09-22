@@ -1374,7 +1374,7 @@ https://docs.microsoft.com/azure/event-hubs/event-hubs-about[Azure Event Hubs] i
 |Authentication mode for the Event Hubs sink. Possible values are:
 
 - `connection-string`: Authenticate using the shared access key connection string specified by `debezium.sink.eventhubs.connectionstring`. This is the default.
-- `default-azure-credential`: Authenticate using Azure Entra ID via `DefaultAzureCredential`. When this mode is used, `debezium.sink.eventhubs.fullyqualifiednamespace` and `debezium.sink.eventhubs.hubname` must be set. The identity running {prodname} must have been granted the **Azure Event Hubs Data Sender** role on the namespace or the target event hub.
+- `default-azure-credential`: Authenticate using Azure Entra ID via `DefaultAzureCredential`. When this mode is used, `debezium.sink.eventhubs.fullyqualifiednamespace` and `debezium.sink.eventhubs.hubname` must be set. The identity running {prodname} Server must have been granted the **Azure Event Hubs Data Sender** role on the namespace or the target event hub.
 
 |[[fully-qualified-namespace]]<<fully-qualified-namespace, `debezium.sink.eventhubs.fullyqualifiednamespace`>>
 |
