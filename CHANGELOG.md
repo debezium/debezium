@@ -1,6 +1,75 @@
 # Change log
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
+## 3.7.0.CR1
+September 22nd 2026 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A3.7.0.CR1)
+
+### New features since 3.7.0.Beta2
+
+* Add support for the Evaluation window  field to accept the custome time input in the alert Rule creation [debezium/dbz#2563](https://github.com/debezium/dbz/issues/2563)
+* Add TotalAbandonedTransactionCount Oracle LogMiner JMX Metrics [debezium/dbz#2428](https://github.com/debezium/dbz/issues/2428)
+* Introduce signal to dump current transaction state to connector logs [debezium/dbz#2577](https://github.com/debezium/dbz/issues/2577)
+* Oracle: Add ORA-02002 to List of Retriable Exceptions [debezium/dbz#2625](https://github.com/debezium/dbz/issues/2625)
+* Add support for honouring MongoDB read preference in change stream after promotion pt 2 [DBZ-7101] [debezium/dbz#917](https://github.com/debezium/dbz/issues/917)
+
+
+### Breaking changes since 3.7.0.Beta2
+
+* Follow-up to #1960: Move last enqueued event map to the transaction cache [debezium/dbz#2652](https://github.com/debezium/dbz/issues/2652)
+
+
+### Fixes since 3.7.0.Beta2
+
+* Stage: signal collection verification reports success when the collection does not exist [debezium/dbz#2526](https://github.com/debezium/dbz/issues/2526)
+* Fix form value visibility issue in Alert Rules View mode in Dark Mode [debezium/dbz#2629](https://github.com/debezium/dbz/issues/2629)
+* CDC Events missing and crash on a delete operation [debezium/dbz#1862](https://github.com/debezium/dbz/issues/1862)
+* Missing validation: tasks.min must be <= tasks.max [debezium/dbz#1870](https://github.com/debezium/dbz/issues/1870)
+* JDBC Connection for offset storage validation issues [debezium/dbz#1957](https://github.com/debezium/dbz/issues/1957)
+* JDBC sink UNNEST batch writes fail when a batch contains multiple events for the same primary key [debezium/dbz#2356](https://github.com/debezium/dbz/issues/2356)
+* [MySQL] MySQL connector silently loses rows after keepalive reconnect under backpressure [debezium/dbz#2359](https://github.com/debezium/dbz/issues/2359)
+* Oracle Create Index DDL fails to parse when using ONLINE keyword [debezium/dbz#2484](https://github.com/debezium/dbz/issues/2484)
+* Cassandra 5 CDC: NullPointerException on ALTER TABLE Enabling CDC on a Pre-Existing Table [debezium/dbz#2541](https://github.com/debezium/dbz/issues/2541)
+* The internal `custom.retriable.exception` property is defined with a non-String default [debezium/dbz#2556](https://github.com/debezium/dbz/issues/2556)
+* Debezium Oracle Standby Connector. Silent skip events after DDL changes [debezium/dbz#2598](https://github.com/debezium/dbz/issues/2598)
+* LogFileCollector exception is misleading when Oracle ARC is slow to archive [debezium/dbz#2601](https://github.com/debezium/dbz/issues/2601)
+* MySQL/MariaDB error handlers pass a null throwable to super.isRetriable(), so every error is non-retriable [debezium/dbz#2611](https://github.com/debezium/dbz/issues/2611)
+* MongoDB startup validation rejects valid split-event resume tokens [debezium/dbz#2619](https://github.com/debezium/dbz/issues/2619)
+* FieldToEmbedding uses shared static factory state and OpenAiModelFactory hardcodes request/response logging [debezium/dbz#2627](https://github.com/debezium/dbz/issues/2627)
+* Conductor crashes on chart defaults: QUARKUS_MAILER_HOST="" [debezium/dbz#2630](https://github.com/debezium/dbz/issues/2630)
+* ExtractChangedRecordState false positives on unchanged binary fields and DataException on schema evolution [debezium/dbz#2635](https://github.com/debezium/dbz/issues/2635)
+* PostgreSQL guardrail test can stop the engine before startup completes [debezium/dbz#2645](https://github.com/debezium/dbz/issues/2645)
+* Oracle XMLTYPE with SCHEMA feature not supported by the parser [debezium/dbz#2656](https://github.com/debezium/dbz/issues/2656)
+* Do not fail on 'zero-year' dates in MySQL (II.) [debezium/dbz#2659](https://github.com/debezium/dbz/issues/2659)
+* [SQL Server] Arithmetic overflow error on tables > 2.14B rows during parallel chunked snapshot due to hardcoded COUNT(1) [debezium/dbz#2670](https://github.com/debezium/dbz/issues/2670)
+* ExtendedStringParser assigns schema and table names in reverse order [debezium/dbz#2671](https://github.com/debezium/dbz/issues/2671)
+* SelectLobParser.reset() does not reset the inherited parser state [debezium/dbz#2672](https://github.com/debezium/dbz/issues/2672)
+
+
+### Other changes since 3.7.0.Beta2
+
+* Improve the initial loading state managment in the Platfrom UI [debezium/dbz#1725](https://github.com/debezium/dbz/issues/1725)
+* Simplify the Oracle LogMiner buffered implementation event logic [debezium/dbz#1960](https://github.com/debezium/dbz/issues/1960)
+* PyDebeziumAI - Real-Time CDC Integration for LangChain & LangGraph [debezium/dbz#2066](https://github.com/debezium/dbz/issues/2066)
+* Stream ongoing changes from the CDC log with a clean snapshot handoff [debezium/dbz#2160](https://github.com/debezium/dbz/issues/2160)
+* Add the SQL trigger generator that fills the CDC log [debezium/dbz#2161](https://github.com/debezium/dbz/issues/2161)
+* Document set-based UNNEST batch writes for the CockroachDB sink dialect [debezium/dbz#2355](https://github.com/debezium/dbz/issues/2355)
+* Relational to Neo4J example in debezium-example repo [debezium/dbz#2453](https://github.com/debezium/dbz/issues/2453)
+* Milvus Source Connector: Wire Format Detection and Snapshot Consistency [debezium/dbz#2530](https://github.com/debezium/dbz/issues/2530)
+* Log additional in-flight transaction metadata [debezium/dbz#2576](https://github.com/debezium/dbz/issues/2576)
+* WARN incremental snapshots are disabled for Oracle read-only [debezium/dbz#2637](https://github.com/debezium/dbz/issues/2637)
+* Typo in comment on line 75 in AbstractSnapshotChangeEventSource#execute [debezium/dbz#2638](https://github.com/debezium/dbz/issues/2638)
+* Stabilize MongoDB incremental snapshot pause/resume test assertions [debezium/dbz#2641](https://github.com/debezium/dbz/issues/2641)
+* Remove obsolete orphaned Docker Machine documentation [debezium/dbz#2642](https://github.com/debezium/dbz/issues/2642)
+* Fix false positives in MongoDB replica set authentication test [debezium/dbz#2643](https://github.com/debezium/dbz/issues/2643)
+* JDBC E2E tests can miss the streaming start log during subscription [debezium/dbz#2646](https://github.com/debezium/dbz/issues/2646)
+* MongoDB test replica set startup can fail with `not primary` [debezium/dbz#2649](https://github.com/debezium/dbz/issues/2649)
+* Sort contributor files in pre-release scripts [debezium/dbz#2654](https://github.com/debezium/dbz/issues/2654)
+* Add `-DskipNonCore` to update dependency pass [debezium/dbz#2660](https://github.com/debezium/dbz/issues/2660)
+* Test binlog-client PRs also against Debezium binlog connectors [debezium/dbz#2665](https://github.com/debezium/dbz/issues/2665)
+* PostgreSQL read-only test can stop the async engine before startup completes [debezium/dbz#2676](https://github.com/debezium/dbz/issues/2676)
+* Include source state and recent Connect logs in JDBC E2E startup timeouts [debezium/dbz#2684](https://github.com/debezium/dbz/issues/2684)
+
+
 ## 3.7.0.Beta2
 September 15th 2026 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A3.7.0.Beta2)
 
