@@ -53,7 +53,6 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
 
     private final OracleConnectorConfig connectorConfig;
     private final OracleConnection jdbcConnection;
-    private final OracleDatabaseSchema databaseSchema;
 
     public OracleSnapshotChangeEventSource(OracleConnectorConfig connectorConfig, OracleConnectionFactory connectionFactory,
                                            OracleDatabaseSchema schema, EventDispatcher<OraclePartition, TableId> dispatcher, Clock clock,
@@ -62,7 +61,6 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
         super(connectorConfig, connectionFactory, schema, dispatcher, clock, snapshotProgressListener, notificationService, snapshotterService);
         this.connectorConfig = connectorConfig;
         this.jdbcConnection = connectionFactory.mainConnection();
-        this.databaseSchema = schema;
     }
 
     @Override
@@ -143,15 +141,12 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
                                       RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext,
                                       OracleOffsetContext offsetContext, SnapshottingTask snapshottingTask)
             throws SQLException, InterruptedException {
-        Set<TableId> capturedSchemaTables;
-        if (databaseSchema.storeOnlyCapturedTables()) {
-            capturedSchemaTables = snapshotContext.capturedTables;
-            LOGGER.info("Only captured tables schema should be captured, capturing: {}", capturedSchemaTables);
-        }
-        else {
-            capturedSchemaTables = snapshotContext.capturedSchemaTables;
-            LOGGER.info("All eligible tables schema should be captured, capturing: {}", capturedSchemaTables);
-        }
+        // The captured schema tables already honors schema.history.internal.store.only.captured.tables.ddl by way of
+        // eligibleForSchemaDataCollectionFilter, so they must not be narrowed again here. Using the captured tables
+        // would restrict the schemas that get read to those matched by snapshot.include.collection.list, which only
+        // limits which tables are snapshotted, leaving no relational model for the remaining captured tables.
+        final Set<TableId> capturedSchemaTables = snapshotContext.capturedSchemaTables;
+        LOGGER.info("Reading structure of tables {}", capturedSchemaTables);
 
         Set<String> schemas = capturedSchemaTables.stream().map(TableId::schema).collect(Collectors.toSet());
 
