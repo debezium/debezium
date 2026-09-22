@@ -2142,7 +2142,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     }
 
     private Scn getMinNextScnAcrossAllThreadMaxNextScnValues() {
-        return getCurrentLogFiles().stream()
+        return getSessionLogFiles().stream()
                 .filter(LogFile::isArchive)
                 .collect(Collectors.groupingBy(
                         LogFile::getThread,
