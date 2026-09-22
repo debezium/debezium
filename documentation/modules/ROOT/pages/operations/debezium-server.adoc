@@ -1365,6 +1365,7 @@ https://docs.microsoft.com/azure/event-hubs/event-hubs-about[Azure Event Hubs] i
 |[[eventhubs-type]]<<eventhubs-type, `debezium.sink.type`>>
 |
 |Must be set to `eventhubs`.
+
 |[[connection-string]]<<connection-string, `debezium.sink.eventhubs.connectionstring`>>
 |
 |https://docs.microsoft.com/azure/event-hubs/event-hubs-get-connection-string[Connection string] required to communicate with Event Hubs when `debezium.sink.eventhubs.authmode` is set to `connection-string`. The format is: `Endpoint=sb://<NAMESPACE>/;SharedAccessKeyName=<ACCESS_KEY_NAME>;SharedAccessKey=<ACCESS_KEY_VALUE>`
@@ -1379,7 +1380,6 @@ https://docs.microsoft.com/azure/event-hubs/event-hubs-about[Azure Event Hubs] i
 |[[fully-qualified-namespace]]<<fully-qualified-namespace, `debezium.sink.eventhubs.fullyqualifiednamespace`>>
 |
 |The fully qualified namespace of the Azure Event Hubs instance, for example `<namespace>.servicebus.windows.net`. Required when `debezium.sink.eventhubs.authmode` is set to `default-azure-credential`.
-
 
 |[[hub-name]]<<hub-name, `debezium.sink.eventhubs.hubname`>>
 |
