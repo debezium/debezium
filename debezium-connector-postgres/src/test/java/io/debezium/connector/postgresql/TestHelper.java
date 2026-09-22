@@ -561,6 +561,7 @@ public final class TestHelper {
                 config.binaryHandlingMode(),
                 config.intervalHandlingMode(),
                 new UnchangedToastedPlaceholder(config),
-                config.moneyFractionDigits());
+                config.moneyFractionDigits(),
+                config.isUnavailableValuePlaceholderPropagated());
     }
 }
