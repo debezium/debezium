@@ -2043,6 +2043,19 @@ If its first event is split, the connector reads all fragments and records the l
 |0
 |The maximum allowed size **in bytes** of the stored document for which change events are processed. This includes both, the size before and after database operation, more specifically this limits the size of fullDocument and fullDocumentBeforeChange filed of MongoDB change events.
 
+|[[mongodb-property-query-fetch-size]]<<mongodb-property-query-fetch-size, `+query.fetch.size+`>>
+|`0`
+|Specifies the maximum number of change stream documents that MongoDB returns in each cursor response batch.
+A positive value sets the batch size for both the initial change stream response and subsequent `getMore` responses.
+The default value (`0`) leaves the batch size unspecified and uses the server default.
+Negative values are not permitted.
+
+MongoDB can return fewer documents than the configured value, including an empty batch, and its response size limits still apply.
+When xref:mongodb-property-cursor-oversize-handling-mode[`cursor.oversize.handling.mode`] is `split`, each fragment counts as a separate change stream document.
+
+This property applies to change streams for all capture scopes.
+It is independent of xref:mongodb-property-snapshot-fetch-size[`snapshot.fetch.size`], which controls collection reads during a snapshot, and xref:mongodb-property-max-batch-size[`max.batch.size`], which controls the connector's record processing batches.
+
 |[[mongodb-property-cursor-max-await-time-ms]]<<mongodb-property-cursor-max-await-time-ms, `+cursor.max.await.time.ms+`>>
 |`0`
 |Specifies the maximum number of milliseconds the oplog/change stream cursor will wait for the server to produce a result before causing an execution timeout exception.
