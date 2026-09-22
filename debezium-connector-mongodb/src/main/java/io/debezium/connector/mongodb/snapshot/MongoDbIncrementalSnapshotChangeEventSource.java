@@ -809,6 +809,11 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     }
 
     @Override
+    public void close() {
+        shutdownIncrementalSnapshotThreadPool();
+    }
+
+    @Override
     public void processMessage(MongoDbPartition partition, DataCollectionId dataCollectionId, Object key,
                                OffsetContext offsetContext)
             throws InterruptedException {
