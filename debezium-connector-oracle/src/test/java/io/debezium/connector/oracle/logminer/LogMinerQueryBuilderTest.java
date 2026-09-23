@@ -91,8 +91,15 @@ public class LogMinerQueryBuilderTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2666")
+    public void testLogMinerQueryWithInternalEventsIncluded() {
+        assertQuery(TestHelper.defaultConfig().with(LOG_MINING_INCLUDE_INTERNAL_EVENTS, true).build());
+        assertQuery(TestHelper.defaultConfig().with(PDB_NAME, "").with(LOG_MINING_INCLUDE_INTERNAL_EVENTS, true).build());
+    }
+
+    @Test
     @FixFor("debezium/dbz#1960")
-    public void testLogMinerInternalEventsIncluded() {
+    public void testLogMinerQueryWithLobEnabledAndInternalEventsIncluded() {
         assertQuery(TestHelper.defaultConfig().with(LOB_ENABLED, true).with(LOG_MINING_INCLUDE_INTERNAL_EVENTS, true).build());
         assertQuery(TestHelper.defaultConfig().with(PDB_NAME, "").with(LOB_ENABLED, true).with(LOG_MINING_INCLUDE_INTERNAL_EVENTS, true).build());
     }
