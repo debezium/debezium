@@ -35,9 +35,9 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractLogMinerTransactionCache.class);
     private final Set<String> abandonedTransactions = new HashSet<>();
-    private final Map<String, LogMinerEvent> lastEnqueuedEventByTransactionId = new HashMap<>();
+    private final Map<Integer, LogMinerEvent> lastEnqueuedEventByTransactionId = new HashMap<>();
 
-    protected static String getUsnSlt(String transactionId) {
+    protected static int getUsnSlt(String transactionId) {
         return Transaction.getUsnSlt(transactionId);
     }
 

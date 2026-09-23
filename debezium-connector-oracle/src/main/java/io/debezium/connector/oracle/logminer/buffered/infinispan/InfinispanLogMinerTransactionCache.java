@@ -27,13 +27,13 @@ import io.debezium.connector.oracle.logminer.events.RollbackToSavepointEvent;
  */
 public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransactionCache<InfinispanTransaction> {
 
-    private final BasicCache<String, InfinispanTransaction> transactionCache;
-    private final BasicCache<String, LogMinerEvent> eventCache;
+    private final BasicCache<Integer, InfinispanTransaction> transactionCache;
+    private final BasicCache<Long, LogMinerEvent> eventCache;
 
     // Heap-backed caches for quick access to specific metadata to speed up processing
-    private final Map<String, TreeSet<Integer>> eventIdsByTransactionId = new HashMap<>();
+    private final Map<Integer, TreeSet<Integer>> eventIdsByTransactionId = new HashMap<>();
 
-    public InfinispanLogMinerTransactionCache(BasicCache<String, InfinispanTransaction> transactionCache, BasicCache<String, LogMinerEvent> eventCache) {
+    public InfinispanLogMinerTransactionCache(BasicCache<Integer, InfinispanTransaction> transactionCache, BasicCache<Long, LogMinerEvent> eventCache) {
         this.transactionCache = transactionCache;
         this.eventCache = eventCache;
 
@@ -86,8 +86,8 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
     }
 
     @Override
-    public void eventKeys(Consumer<Stream<String>> consumer) {
-        try (Stream<String> stream = eventCache.keySet().stream()) {
+    public void eventKeys(Consumer<Stream<Long>> consumer) {
+        try (Stream<Long> stream = eventCache.keySet().stream()) {
             consumer.accept(stream);
         }
     }
@@ -196,15 +196,13 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
     private void primeHeapCacheFromOffHeapCaches() {
         // Primes the heap-based cache if the Infinispan disk caches contained data on start-up
         eventKeys(keyStream -> {
-            keyStream.map(k -> k.split("-", 2))
-                    .filter(parts -> parts.length == 2)
-                    .forEach(parts -> {
-                        final String usnSlt = getUsnSlt(parts[0]);
-                        final int eventId = Integer.parseInt(parts[1]);
-                        if (transactionCache.containsKey(usnSlt)) {
-                            eventIdsByTransactionId.computeIfAbsent(usnSlt, k -> new TreeSet<>()).add(eventId);
-                        }
-                    });
+            keyStream.forEach(key -> {
+                final int usnSlt = (int) (key >>> 32);
+                final int eventId = (int) (long) key;
+                if (transactionCache.containsKey(usnSlt)) {
+                    eventIdsByTransactionId.computeIfAbsent(usnSlt, k -> new TreeSet<>()).add(eventId);
+                }
+            });
         });
     }
 }

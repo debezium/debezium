@@ -86,7 +86,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     private Scn lastProcessedScn = Scn.NULL;
     private Scn lastLoggedWindowAdvanceScn = Scn.NULL;
 
-    private final Map<String, DeferredTransaction> deferredTransactions = new HashMap<>();
+    private final Map<Integer, DeferredTransaction> deferredTransactions = new HashMap<>();
 
     /**
      * Lightweight metadata record for a deferred transaction that has not yet emitted any DML events.

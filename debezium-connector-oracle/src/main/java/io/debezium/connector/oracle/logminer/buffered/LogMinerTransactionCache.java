@@ -117,7 +117,7 @@ public interface LogMinerTransactionCache<T extends Transaction> {
      *
      * @param consumer the consumer to be applied, should not be {@code null}
      */
-    void eventKeys(Consumer<Stream<String>> consumer);
+    void eventKeys(Consumer<Stream<Long>> consumer);
 
     /**
      * Apply a predicate over all cached events associated with the specified transaction.

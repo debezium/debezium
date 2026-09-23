@@ -16,9 +16,20 @@ import io.debezium.connector.oracle.Scn;
  */
 public interface Transaction {
     String NO_SEQUENCE_TRX_ID_SUFFIX = "ffffffff";
+    int NO_TRANSACTION_ID_USN_SLT = -1; // ffffffff
 
-    static String getUsnSlt(String transactionId) {
-        return transactionId == null ? null : transactionId.substring(0, 8);
+    static int getUsnSlt(String transactionId) {
+        if (transactionId == null) {
+            return NO_TRANSACTION_ID_USN_SLT;
+        }
+        return Character.digit(transactionId.charAt(5), 16)
+                | (Character.digit(transactionId.charAt(4), 16) << 4)
+                | (Character.digit(transactionId.charAt(7), 16) << 8)
+                | (Character.digit(transactionId.charAt(6), 16) << 12)
+                | (Character.digit(transactionId.charAt(1), 16) << 16)
+                | (Character.digit(transactionId.charAt(0), 16) << 20)
+                | (Character.digit(transactionId.charAt(3), 16) << 24)
+                | (Character.digit(transactionId.charAt(2), 16) << 28);
     }
 
     static void checkSqn(String transactionId, String currentTransactionId, Scn currentStartScn) {
@@ -35,7 +46,7 @@ public interface Transaction {
      */
     String getTransactionId();
 
-    default String getUsnSlt() {
+    default int getUsnSlt() {
         return getUsnSlt(getTransactionId());
     }
 
@@ -79,11 +90,11 @@ public interface Transaction {
      * @param index the index of the event
      * @return the event id
      */
-    default String getEventId(int index) {
+    default long getEventId(int index) {
         if (index < 0 || index >= getNumberOfEvents()) {
             throw new IndexOutOfBoundsException("Index " + index + "outside the transaction " + getTransactionId() + " event list bounds");
         }
-        return getUsnSlt() + "-" + index;
+        return (long) getUsnSlt() << 32 | index;
     }
 
     /**

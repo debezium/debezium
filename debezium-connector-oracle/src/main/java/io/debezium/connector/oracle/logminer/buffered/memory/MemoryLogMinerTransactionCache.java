@@ -28,9 +28,9 @@ import io.debezium.connector.oracle.logminer.events.RollbackToSavepointEvent;
  */
 public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionCache<MemoryTransaction> {
 
-    private final Map<String, MemoryTransaction> transactionsByTransactionId = new HashMap<>();
-    private final Map<String, List<LogMinerEventEntry>> eventsByTransactionId = new HashMap<>();
-    private final Map<String, HashMap<Integer, LogMinerEvent>> eventsByEventIdByTransactionId = new HashMap<>();
+    private final Map<Integer, MemoryTransaction> transactionsByTransactionId = new HashMap<>();
+    private final Map<Integer, List<LogMinerEventEntry>> eventsByTransactionId = new HashMap<>();
+    private final Map<Integer, HashMap<Integer, LogMinerEvent>> eventsByEventIdByTransactionId = new HashMap<>();
 
     @Override
     public MemoryTransaction getTransaction(String transactionId) {
@@ -73,11 +73,11 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
     }
 
     @Override
-    public void eventKeys(Consumer<Stream<String>> consumer) {
+    public void eventKeys(Consumer<Stream<Long>> consumer) {
         consumer.accept(eventsByTransactionId.entrySet().stream()
                 .flatMap(entry -> {
-                    String outerKey = getUsnSlt(entry.getKey());
-                    return entry.getValue().stream().map(LogMinerEventEntry::eventId).map(key -> outerKey + "-" + key);
+                    long outerKey = (long) entry.getKey() << 32;
+                    return entry.getValue().stream().map(LogMinerEventEntry::eventId).map(key -> outerKey | key);
                 }));
     }
 

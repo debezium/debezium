@@ -816,11 +816,11 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
         }
 
         @SuppressWarnings("unchecked")
-        private Map<String, ?> getDeferredTransactionsForTest() {
+        private Map<Integer, ?> getDeferredTransactionsForTest() {
             try {
                 final var field = BufferedLogMinerStreamingChangeEventSource.class.getDeclaredField("deferredTransactions");
                 field.setAccessible(true);
-                return (Map<String, ?>) field.get(this);
+                return (Map<Integer, ?>) field.get(this);
             }
             catch (ReflectiveOperationException e) {
                 throw new AssertionError("Unable to read deferred transaction state", e);

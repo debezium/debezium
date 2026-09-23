@@ -1230,10 +1230,10 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         }
 
         @SuppressWarnings("unchecked")
-        public Map<String, LogMinerEvent> getLastEnqueuedEventByTransactionId() throws Exception {
+        public Map<Integer, LogMinerEvent> getLastEnqueuedEventByTransactionId() throws Exception {
             var field = AbstractLogMinerTransactionCache.class.getDeclaredField("lastEnqueuedEventByTransactionId");
             field.setAccessible(true);
-            return (Map<String, LogMinerEvent>) field.get(this.getTransactionCache());
+            return (Map<Integer, LogMinerEvent>) field.get(this.getTransactionCache());
         }
 
         @Override
