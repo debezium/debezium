@@ -402,18 +402,29 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
     @Override
     protected void handleInternalEvent(LogMinerEventRow event) throws InterruptedException {
-        if (getConfig().isLobEnabled()) {
-            final LogMinerEvent lastEvent = getTransactionCache().removeLastEnqueuedEvent(event.getTransactionId());
-            if (lastEvent != null && (lastEvent.getRowId().equals(RowIdCodec.EMPTY_ROW_ID)
-                    || lastEvent.getEventType() == EventType.SELECT_LOB_LOCATOR
-                    || lastEvent.getEventType() == EventType.LOB_WRITE
-                    || lastEvent.getEventType() == EventType.LOB_TRIM
-                    || lastEvent.getEventType() == EventType.LOB_ERASE)) {
-                enqueueEvent(event, new LogMinerEvent(event));
-            }
+        final LogMinerEvent lastEvent = getTransactionCache().removeLastEnqueuedEvent(event.getTransactionId());
+        if (lastEvent == null) {
+            return;
         }
-        else if (getTransactionCache().containsTransaction(event.getTransactionId())) {
+
+        if (lastEvent.getRowId().equals(RowIdCodec.EMPTY_ROW_ID)) {
             enqueueEvent(event, new LogMinerEvent(event));
+        }
+        else if (lastEvent.getRowId().equals(RowIdCodec.encode(event.getRowId()))) {
+            if (getConfig().isLobEnabled()) {
+                if (lastEvent.getEventType() == EventType.SELECT_LOB_LOCATOR
+                        || lastEvent.getEventType() == EventType.LOB_WRITE
+                        || lastEvent.getEventType() == EventType.LOB_TRIM
+                        || lastEvent.getEventType() == EventType.LOB_ERASE) {
+                    enqueueEvent(event, new LogMinerEvent(event));
+                }
+            }
+            else {
+                if (lastEvent.getEventType() == EventType.INTERNAL
+                        || lastEvent.getEventType() == EventType.UPDATE) {
+                    enqueueEvent(event, new LogMinerEvent(event));
+                }
+            }
         }
     }
 
@@ -1221,7 +1232,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             }
         }
 
-        if (getConfig().isLobEnabled() && getConfig().isLogMiningIncludeInternalEvents()) {
+        if (getConfig().isLogMiningIncludeInternalEvents()) {
             // Key by the resolved transaction's id rather than the event row's. When the undo above was matched
             // by the transaction prefix, the row carries the unresolved "ffffffff" id while the transaction it
             // was attributed to carries its real id. Every removal from this map is keyed by the real id, so an
