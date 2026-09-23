@@ -85,6 +85,7 @@ daha,David Haglund
 dajerome,David Jerome
 danastott,Dana Stott
 Day-dreamer0,Rajender Passi
+dayron-perez,Dayron Perez Roldan
 ddsr-ops,ddsr-ops
 debjeetsarkar,Debjeet Sarkar
 denizozogularas,Deniz Ozogul
