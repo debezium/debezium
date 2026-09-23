@@ -2321,6 +2321,19 @@ Consequently, {prodname} follows these rules to handle toasted values:
 Similarly, when receiving a `DELETE` event, no TOAST columns, if any, are  in the `before` field.
 As {prodname} cannot safely provide the column value in this case, the connector returns a placeholder value as defined by the connector configuration property, `unavailable.value.placeholder`.
 
+For an array column the placeholder is expressed in the array's element type:
+
+* Character-based elements, for example, `text[]`, `json[]`, or enum arrays, carry the placeholder string as the single element of the array.
+`uuid[]` carries a single UUID that is derived from the placeholder bytes.
+* `bytea[]` carries the placeholder bytes as the single element of the array.
+* Numeric and date elements, for example, `integer[]`, `bigint[]`, `smallint[]`, `numeric[]`, `float[]`, or `date[]`, carry one element per placeholder byte, each element holding the numeric value of that byte.
+* `boolean[]` has no placeholder representation, because every placeholder byte is non-zero, and the resulting all-`true` array could not be told apart from a real value.
+The column is omitted from the event, subject to `event.converting.failure.handling.mode`.
+* Temporal arrays with `time.precision.mode=connect` have no placeholder representation either, and the column is omitted from the event in the same way.
+
+The `ReselectColumnsPostProcessor` recognizes these placeholder representations, except for the `uuid[]` placeholder, which is not re-selected.
+Columns that are omitted from the event arrive as `null` and can be re-selected through the post-processor's `reselect.null.values` option.
+
 [id="postgresql-default-values"]
 === Default values
 If a default value is specified for a column in the database schema, the PostgreSQL connector will attempt to propagate this value to the Kafka schema whenever possible.
