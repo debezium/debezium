@@ -53,6 +53,8 @@ public class SnapshotSourceIT extends BinlogSnapshotSourceIT<MySqlConnector> imp
                         .atMost(10, TimeUnit.SECONDS)
                         .until(proxy::hasFailedRequest);
 
+                stopConnector();
+
                 Awaitility.await()
                         .atMost(10, TimeUnit.SECONDS)
                         .untilAsserted(() -> assertThat(lockHeartbeatThreads()).isEmpty());
