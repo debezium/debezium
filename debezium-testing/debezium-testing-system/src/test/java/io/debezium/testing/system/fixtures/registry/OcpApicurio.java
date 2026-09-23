@@ -9,7 +9,6 @@ import static io.debezium.testing.system.tools.ConfigProperties.APICURIO_TLS_ENA
 import static io.debezium.testing.system.tools.ConfigProperties.OCP_PROJECT_DBZ;
 import static io.debezium.testing.system.tools.ConfigProperties.OCP_PROJECT_REGISTRY;
 import static io.debezium.testing.system.tools.kafka.builders.FabricKafkaConnectBuilder.KAFKA_CERT_SECRET;
-import static io.debezium.testing.system.tools.kafka.builders.FabricKafkaConnectBuilder.KAFKA_CLIENT_CERT_SECRET;
 
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -75,16 +74,12 @@ public class OcpApicurio extends TestFixture {
     }
 
     private void prepareCertificateSecrets() {
-        LOGGER.debug("Copying Kafka certificate secrets to Apicurio namespace");
+        LOGGER.debug("Copying Kafka cluster CA certificate secret to Apicurio namespace");
+        // The Kafka listener uses TLS encryption only (no client authentication), so Apicurio only needs the
+        // cluster CA certificate as a truststore to verify the broker.
         Secret kafkaSecret = ocp.secrets().inNamespace(OCP_PROJECT_DBZ).withName(KAFKA_CERT_SECRET).get();
-        var kafkaClientSecretData = ocp.secrets().inNamespace(OCP_PROJECT_DBZ).withName(KAFKA_CLIENT_CERT_SECRET).get().getData();
-
         Secret secretNewMetadata = new SecretBuilder(kafkaSecret).withNewMetadata().withNamespace(OCP_PROJECT_REGISTRY).withName(KAFKA_CERT_SECRET).endMetadata()
                 .build();
-        Secret clientSecretRenamedCerts = new SecretBuilder().withNewMetadata().withNamespace(OCP_PROJECT_REGISTRY).withName(KAFKA_CLIENT_CERT_SECRET)
-                .endMetadata().addToData("user.p12", kafkaClientSecretData.get("ca.p12")).addToData("user.password", kafkaClientSecretData.get("ca.password"))
-                .build();
         ocp.secrets().inNamespace(OCP_PROJECT_REGISTRY).createOrReplace(secretNewMetadata);
-        ocp.secrets().inNamespace(OCP_PROJECT_REGISTRY).createOrReplace(clientSecretRenamedCerts);
     }
 }
