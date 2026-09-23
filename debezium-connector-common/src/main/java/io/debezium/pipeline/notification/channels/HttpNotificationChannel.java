@@ -239,6 +239,14 @@ public class HttpNotificationChannel implements NotificationChannel {
             problems.accept(field, url, "HTTP notification URL is not a valid URL: " + e.getMessage());
             return 1;
         }
+
+        try {
+            SsrfSafeHttpClient.validatePublicHost(url, config.getBoolean(NOTIFICATION_ALLOW_PRIVATE_NETWORKS));
+        }
+        catch (SsrfSafeHttpClient.SsrfValidationException e) {
+            problems.accept(field, url, e.getMessage());
+            return 1;
+        }
         return 0;
     }
 
