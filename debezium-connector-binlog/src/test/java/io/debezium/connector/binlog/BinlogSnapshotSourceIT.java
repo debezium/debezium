@@ -399,6 +399,56 @@ public abstract class BinlogSnapshotSourceIT<C extends SourceConnector> extends 
     }
 
     @Test
+    @FixFor("dbz#2631")
+    @SkipWhenDatabaseIs(value = SkipWhenDatabaseIs.Type.MARIADB, reason = "MariaDB field reader does not use getBlob(), not affected by this bug")
+    public void shouldSnapshotZeroTimeFieldAsZeroNotNull() throws Exception {
+        // Text protocol (default)
+        config = simpleConfig()
+                .with(BinlogConnectorConfig.DATABASE_INCLUDE_LIST, "connector_read_binary_field_test_" + BINARY_FIELD_DATABASE.getIdentifier())
+                .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, BINARY_FIELD_DATABASE.qualifiedTableName("binary_field"))
+                .build();
+
+        start(getConnectorClass(), config);
+        waitForSnapshotToBeCompleted(getConnectorName(), BINARY_FIELD_DATABASE.getServerName());
+
+        final SourceRecords sourceRecords = consumeRecordsByTopic(1);
+        final SourceRecord record = sourceRecords.recordsForTopic(BINARY_FIELD_DATABASE.topicForTable("binary_field")).get(0);
+        final Struct after = ((Struct) record.value()).getStruct("after");
+
+        // TIME 00:00:00 must not be emitted as null — it is midnight (0 microseconds since midnight).
+        assertThat(after.get("zero_time")).isNotNull();
+        assertThat(after.getInt64("zero_time")).isEqualTo(0L);
+
+        stopConnector();
+    }
+
+    @Test
+    @FixFor("dbz#2631")
+    @SkipWhenDatabaseIs(value = SkipWhenDatabaseIs.Type.MARIADB, reason = "MariaDB field reader does not use getBlob(), not affected by this bug")
+    public void shouldSnapshotZeroTimeFieldAsZeroNotNullWithBinaryProtocol() throws Exception {
+        // Binary protocol (enabled via useCursorFetch / SNAPSHOT_FETCH_SIZE)
+        config = simpleConfig()
+                .with(BinlogConnectorConfig.DATABASE_INCLUDE_LIST, "connector_read_binary_field_test_" + BINARY_FIELD_DATABASE.getIdentifier())
+                .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, BINARY_FIELD_DATABASE.qualifiedTableName("binary_field"))
+                .with(BinlogConnectorConfig.ROW_COUNT_FOR_STREAMING_RESULT_SETS, "0")
+                .with(BinlogConnectorConfig.SNAPSHOT_FETCH_SIZE, "101")
+                .build();
+
+        start(getConnectorClass(), config);
+        waitForSnapshotToBeCompleted(getConnectorName(), BINARY_FIELD_DATABASE.getServerName());
+
+        final SourceRecords sourceRecords = consumeRecordsByTopic(1);
+        final SourceRecord record = sourceRecords.recordsForTopic(BINARY_FIELD_DATABASE.topicForTable("binary_field")).get(0);
+        final Struct after = ((Struct) record.value()).getStruct("after");
+
+        // TIME 00:00:00 must not be emitted as null — binary protocol encodes midnight as zero-length blob.
+        assertThat(after.get("zero_time")).isNotNull();
+        assertThat(after.getInt64("zero_time")).isEqualTo(0L);
+
+        stopConnector();
+    }
+
+    @Test
     @SkipWhenDatabaseIs(value = SkipWhenDatabaseIs.Type.MARIADB, reason = "Does not use this transform")
     public void shouldCreateSnapshotOfSingleDatabaseUsingInsertEvents() throws Exception {
         config = simpleConfig()
