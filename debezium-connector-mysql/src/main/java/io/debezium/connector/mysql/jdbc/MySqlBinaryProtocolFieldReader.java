@@ -8,6 +8,7 @@ package io.debezium.connector.mysql.jdbc;
 import java.sql.Blob;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.util.Calendar;
 
@@ -45,8 +46,8 @@ public class MySqlBinaryProtocolFieldReader extends AbstractFieldReader {
             return null; // Don't continue parsing time field if it is null
         }
         else if (b.length() == 0) {
-            LOGGER.warn("Encountered a zero length blob for column index {}", columnIndex);
-            return null;
+            // The MySQL binary protocol encodes TIME 00:00:00 as a zero-length value (all components zero).
+            return Duration.ZERO;
         }
 
         // if micro_seconds is 0, length is 8; otherwise length is 12
