@@ -6,6 +6,7 @@
 package io.debezium.connector.oracle.logminer;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Properties;
 
@@ -17,6 +18,7 @@ import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.logminer.events.EventType;
+import io.debezium.connector.oracle.logminer.parser.DmlParserException;
 import io.debezium.connector.oracle.logminer.parser.LogMinerColumnResolverDmlParser;
 import io.debezium.connector.oracle.logminer.parser.LogMinerDmlEntry;
 import io.debezium.connector.oracle.logminer.parser.LogMinerDmlParser;
@@ -755,7 +757,7 @@ public class LogMinerDmlParserTest {
     }
 
     @Test
-    @FixFor("DBZ-2070")
+    @FixFor("dbz#2070")
     public void shouldEmitInsertUpdateRelaxedQuoteDetectionSingleQuotedValues() throws Exception {
         final Properties properties = new Properties();
         properties.put("internal.log.mining.sql.relaxed.quote.detection", "true");
@@ -787,5 +789,75 @@ public class LogMinerDmlParserTest {
         assertThat(entry.getNewValues()[0]).isEqualTo("Test");
         assertThat(entry.getNewValues()[1]).isEqualTo("'Update1'");
         assertThat(entry.getNewValues()[2]).isEqualTo("'Update2'");
+    }
+
+    @Test
+    @FixFor("dbz#2700")
+    public void shouldParseInsertWithEscapedQuotesBeforeValueBoundary() throws Exception {
+        final LogMinerDmlParser parser = new LogMinerDmlParser(new OracleConnectorConfig(Configuration.empty()));
+        assertEscapedQuotesBeforeValueBoundaryInsert(parser);
+    }
+
+    @Test
+    @FixFor("dbz#2700")
+    public void shouldParseInsertWithEscapedQuotesBeforeValueBoundaryWithRelaxedQuoteDetection() throws Exception {
+        final Properties properties = new Properties();
+        properties.put("internal.log.mining.sql.relaxed.quote.detection", "true");
+        final LogMinerDmlParser parser = new LogMinerDmlParser(new OracleConnectorConfig(Configuration.from(properties)));
+        assertEscapedQuotesBeforeValueBoundaryInsert(parser);
+    }
+
+    private static void assertEscapedQuotesBeforeValueBoundaryInsert(LogMinerDmlParser parser) {
+        final Table table = Table.editor()
+                .tableId(TableId.parse("DEBEZIUM.SIGNALTABLE"))
+                .addColumn(Column.editor().name("ID").create())
+                .addColumn(Column.editor().name("TYPE").create())
+                .addColumn(Column.editor().name("DATA").create())
+                .create();
+
+        // The DATA value contains escaped quotes immediately followed by ',' and ')', which must not be
+        // mistaken for the end of the column value.
+        final String data = "{\n" +
+                "    \"data-collections\":[\"DB.USER.TABLE\"],\n" +
+                "    \"type\":\"blocking\",\n" +
+                "    \"additional-conditions\":[\n" +
+                "      {\n" +
+                "        \"data-collection\":\"DB.USER.TABLE\",\n" +
+                "        \"filter\":\"SELECT * FROM USER.TABLE WHERE LASTUPDATE > TO_TIMESTAMP(''2025-03-17 00:01:00'', ''YYYY-MM-DD HH24:MI:SS'')\"\n" +
+                "      }\n" +
+                "    ]\n" +
+                "  }";
+
+        final String sql = "insert into \"SIGNALTABLE\"(\"ID\",\"TYPE\",\"DATA\") values ('20260924110708415763','execute-snapshot','" + data + "');";
+        final LogMinerDmlEntry entry = parser.parse(sql, table);
+        assertThat(entry.getEventType()).isEqualTo(EventType.INSERT);
+        assertThat(entry.getOldValues()).isEmpty();
+        assertThat(entry.getNewValues()).hasSize(3);
+        assertThat(entry.getNewValues()[0]).isEqualTo("20260924110708415763");
+        assertThat(entry.getNewValues()[1]).isEqualTo("execute-snapshot");
+        assertThat(entry.getNewValues()[2]).isEqualTo(data.replace("''", "'"));
+    }
+
+    @Test
+    @FixFor("dbz#2700")
+    public void shouldReportBothInterpretationsWhenRelaxedQuoteDetectionCannotParseInsert() throws Exception {
+        final Properties properties = new Properties();
+        properties.put("internal.log.mining.sql.relaxed.quote.detection", "true");
+        final LogMinerDmlParser parser = new LogMinerDmlParser(new OracleConnectorConfig(Configuration.from(properties)));
+
+        final Table table = Table.editor()
+                .tableId(TableId.parse("SCHEMA.TAB"))
+                .addColumn(Column.editor().name("NAME").create())
+                .addColumn(Column.editor().name("DATA").create())
+                .create();
+
+        // Three unescaped apostrophe-terminated values for a two column table, so neither interpretation
+        // yields exactly two column values.
+        final String sql = "insert into \"SCHEMA\".\"TAB\"(\"NAME\",\"DATA\") values (''a'',''b'',''c'');";
+        assertThatThrownBy(() -> parser.parse(sql, table))
+                .isInstanceOf(DmlParserException.class)
+                .cause()
+                .hasMessageContaining("Treating '' as an escaped quote: unterminated quoted value after parsing 0 of 2 column values")
+                .hasMessageContaining("Treating '' before a value boundary as the end of the value: parsed more than the expected 2 column values");
     }
 }

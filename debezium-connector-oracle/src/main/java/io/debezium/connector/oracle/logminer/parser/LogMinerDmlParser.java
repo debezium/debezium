@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.oracle.logminer.parser;
 
+import java.util.Arrays;
+
 import io.debezium.DebeziumException;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.logminer.LogMinerHelper;
@@ -126,7 +128,7 @@ public class LogMinerDmlParser implements DmlParser {
 
             // capture values
             Object[] newValues = new Object[table.columns().size()];
-            parseColumnValuesClause(sql, index, columnNames, newValues, table);
+            parseColumnValues(sql, index, columnNames, newValues, table);
 
             return LogMinerDmlEntryImpl.forInsert(newValues);
         }
@@ -279,15 +281,79 @@ public class LogMinerDmlParser implements DmlParser {
 
     /**
      * Parse an {@code INSERT} statement's column-values clause.
+     * <p>
+     * When relaxed quote detection is enabled, an escaped single quote ({@code ''}) that is immediately
+     * followed by a value boundary ({@code ,} or {@code )}) is ambiguous. It is either an escaped quote
+     * that belongs to the column value, e.g. a JSON payload embedding a quoted SQL fragment, or a lone
+     * apostrophe followed by the closing quote when LogMiner did not escape the apostrophe. Escaped quotes
+     * are the documented LogMiner output, so that interpretation is attempted first, and the sequence is
+     * only treated as the end of the value when that interpretation does not yield a value for every column.
      *
      * @param sql the sql statement
      * @param start the index into the sql statement to begin parsing
      * @param columnNames the column names array, already indexed based on relational table column order
      * @param values the values array that will be populated with column values
      * @param table the relational table
-     * @return the index into the sql string where the column-values clause ended
      */
-    private int parseColumnValuesClause(String sql, int start, String[] columnNames, Object[] values, Table table) {
+    private void parseColumnValues(String sql, int start, String[] columnNames, Object[] values, Table table) {
+        if (!useRelaxedQuotes) {
+            parseColumnValuesClause(sql, start, columnNames, values, table, false);
+            return;
+        }
+
+        final int archivalColumnIndex = rowArchivalColumnIndex;
+        String failure;
+        try {
+            failure = parseColumnValuesClause(sql, start, columnNames, values, table, false);
+        }
+        catch (Exception e) {
+            failure = e.toString();
+        }
+
+        if (failure == null) {
+            return;
+        }
+
+        // Treating '' as an escaped quote did not parse, retry treating '' before a value boundary as the end of the value
+        rowArchivalColumnIndex = archivalColumnIndex;
+        Arrays.fill(values, null);
+
+        final String fallbackFailure;
+        try {
+            fallbackFailure = parseColumnValuesClause(sql, start, columnNames, values, table, true);
+        }
+        catch (Exception e) {
+            throw new DebeziumException(getRelaxedQuoteFailureMessage(failure, e.toString()), e);
+        }
+
+        if (fallbackFailure != null) {
+            throw new DebeziumException(getRelaxedQuoteFailureMessage(failure, fallbackFailure));
+        }
+    }
+
+    private static String getRelaxedQuoteFailureMessage(String escapedQuoteFailure, String boundaryQuoteFailure) {
+        return ("Failed to parse DML values clause with relaxed quote detection. " +
+                "Treating '' as an escaped quote: %s. " +
+                "Treating '' before a value boundary as the end of the value: %s.")
+                .formatted(escapedQuoteFailure, boundaryQuoteFailure);
+    }
+
+    /**
+     * Parse an {@code INSERT} statement's column-values clause.
+     *
+     * @param sql the sql statement
+     * @param start the index into the sql statement to begin parsing
+     * @param columnNames the column names array, already indexed based on relational table column order
+     * @param values the values array that will be populated with column values
+     * @param table the relational table
+     * @param escapedQuoteAsBoundary whether an escaped quote followed by a value boundary ends the value,
+     *                               only applicable when relaxed quote detection is enabled
+     * @return {@code null} if the values clause was parsed, otherwise a description of why it was not; a
+     *         description is only returned when relaxed quote detection is enabled and the values clause
+     *         was not fully consumed or a value was not parsed for every column
+     */
+    private String parseColumnValuesClause(String sql, int start, String[] columnNames, Object[] values, Table table,
+                                           boolean escapedQuoteAsBoundary) {
         int index = start;
         int nested = 0;
         boolean inQuote = false;
@@ -300,6 +366,7 @@ public class LogMinerDmlParser implements DmlParser {
         index += VALUES_LENGTH;
 
         int columnIndex = 0;
+        final int columnCount = getColumnCount(columnNames);
         int sqlLength = sql.length();
         StringBuilder collectedValue = null;
         for (; index < sqlLength; ++index) {
@@ -315,7 +382,7 @@ public class LogMinerDmlParser implements DmlParser {
                     // In relaxed mode, '' before an end-of-value boundary means (lone ') + (closing ').
                     // Check whether the following after '' chars signal end-of-value.
                     lookAhead = (index + 2 < sqlLength) ? sql.charAt(index + 2) : 0;
-                    if (useRelaxedQuotes && (lookAhead == ',' || lookAhead == ')')) {
+                    if (escapedQuoteAsBoundary && (lookAhead == ',' || lookAhead == ')')) {
                         continue;
                     }
                     index = index + 1;
@@ -363,6 +430,10 @@ public class LogMinerDmlParser implements DmlParser {
                     continue;
                 }
 
+                if (useRelaxedQuotes && columnIndex >= columnCount) {
+                    return "parsed more than the expected %d column values".formatted(columnCount);
+                }
+
                 if (sql.charAt(start) == '\'' && sql.charAt(index - 1) == '\'') {
                     // value is single-quoted at the start/end, substring without the quotes.
                     int position = getColumnIndexByName(columnNames[columnIndex], table);
@@ -383,8 +454,38 @@ public class LogMinerDmlParser implements DmlParser {
             }
         }
 
-        return index;
+        if (useRelaxedQuotes) {
+            // Relaxed quote detection is heuristic, so only accept the result when the values clause
+            // was fully consumed and every column received a value.
+            if (inQuote) {
+                return "unterminated quoted value after parsing %d of %d column values".formatted(columnIndex, columnCount);
+            }
+            if (nested != 0) {
+                return "unbalanced parentheses after parsing %d of %d column values".formatted(columnIndex, columnCount);
+            }
+            if (columnIndex != columnCount) {
+                return "parsed %d of the expected %d column values".formatted(columnIndex, columnCount);
+            }
+        }
 
+        return null;
+    }
+
+    /**
+     * Returns the number of column names captured by {@link #parseColumnListClause}.
+     *
+     * @param columnNames the column names array, populated sequentially and may contain trailing nulls
+     * @return the number of captured column names
+     */
+    private static int getColumnCount(String[] columnNames) {
+        int count = 0;
+        for (String columnName : columnNames) {
+            if (columnName == null) {
+                break;
+            }
+            count++;
+        }
+        return count;
     }
 
     /**
