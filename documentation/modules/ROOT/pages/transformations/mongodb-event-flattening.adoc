@@ -484,7 +484,7 @@ Set one of the following options:
 
 `connect`::
 The SMT converts the value into a Kafka Connect Timestamp that is based on the time component of the BSON value.
-The increment component that MongoDB uses to order operations that occur during the same second is discarded, so distinct BSON values can result in the same output value.
+Because the connector discards the increment component that MongoDB uses to order operations that occur during the same second, distinct BSON values might result in the same output value.
 
 `struct`::
 The SMT emits a structure with the fields `time` and `increment`, preserving both components of the BSON value.
@@ -492,10 +492,12 @@ The SMT emits a structure with the fields `time` and `increment`, preserving bot
 [NOTE]
 .Mixed Array Types in Struct Mode
 ====
-BSON Timestamp values have a different schema than BSON date/time values.
-Using `array.encoding=array` with an array that mixes both types will trigger an `Array elements with different Bson types are not supported` SMT error.
+When you set the value of this property to `struct` and set `array.encoding=array`, the SMT cannot process arrays that contain both BSON Timestamp values and BSON date and time values, because the schemas of these types are not compatible.
+If an array mixes both types, the SMT returns the following error:
 
-Workaround: Set `array.encoding=document` to capture arrays with mixed types.
+`Array elements with different Bson types are not supported`.
+
+As a workaround, set the following property to enable the connector to capture arrays that contain mixed types: `array.encoding=document`.
 ====
 
 |[[mongodb-extract-new-record-state-flatten-struct]]<<mongodb-extract-new-record-state-flatten-struct, `flatten.struct`>>
