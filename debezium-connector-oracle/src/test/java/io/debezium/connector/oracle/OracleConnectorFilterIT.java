@@ -146,7 +146,18 @@ public class OracleConnectorFilterIT extends AbstractAsyncEngineConnectorTest {
     @Test
     @FixFor("debezium/dbz#1443")
     @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER, reason = "XStream binds a single schema, so DEBEZIUM2 is never captured")
-    public void shouldNotRestrictSchemaHistoryBySnapshotIncludeCollectionList() throws Exception {
+    public void shouldNotRestrictSchemaHistoryBySnapshotIncludeCollectionListWhenStoringOnlyCapturedTablesDdl() throws Exception {
+        shouldNotRestrictSchemaHistoryBySnapshotIncludeCollectionList(true);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1443")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER, reason = "XStream binds a single schema, so DEBEZIUM2 is never captured")
+    public void shouldNotRestrictSchemaHistoryBySnapshotIncludeCollectionListWhenStoringAllTablesDdl() throws Exception {
+        shouldNotRestrictSchemaHistoryBySnapshotIncludeCollectionList(false);
+    }
+
+    private void shouldNotRestrictSchemaHistoryBySnapshotIncludeCollectionList(boolean storeOnlyCapturedTablesDdl) throws Exception {
         connection.execute("INSERT INTO debezium.table1 VALUES (1, 'Text-1')");
         connection.execute("INSERT INTO debezium2.table2 VALUES (1, 'Text2-1')");
         connection.execute("COMMIT");
@@ -157,7 +168,7 @@ public class OracleConnectorFilterIT extends AbstractAsyncEngineConnectorTest {
                 .with(OracleConnectorConfig.SCHEMA_INCLUDE_LIST, "DEBEZIUM,DEBEZIUM2")
                 .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.TABLE1,DEBEZIUM2\\.TABLE2")
                 .with(CommonConnectorConfig.SNAPSHOT_MODE_TABLES, TestHelper.getDatabaseName() + "\\.DEBEZIUM\\.TABLE1")
-                .with(OracleConnectorConfig.STORE_ONLY_CAPTURED_TABLES_DDL, true)
+                .with(OracleConnectorConfig.STORE_ONLY_CAPTURED_TABLES_DDL, storeOnlyCapturedTablesDdl)
                 .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .build();
 
