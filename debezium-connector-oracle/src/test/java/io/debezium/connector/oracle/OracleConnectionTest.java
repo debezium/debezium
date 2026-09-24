@@ -69,6 +69,16 @@ public class OracleConnectionTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2704")
+    void whenAutonomousCheckQueryFailsThenIsAutonomousReturnsFalse() throws Exception {
+        when(statement.executeQuery(any())).thenThrow(new SQLException("ORA-00942: table or view does not exist"));
+
+        try (OracleConnection connection = new OracleConnection(jdbcConfiguration, connectionFactory, true)) {
+            assertThat(connection.isAutonomous()).isFalse();
+        }
+    }
+
+    @Test
     @FixFor("debezium/dbz#2653")
     void whenTableIdHasCatalogThenQuotedTableIdStringOmitsIt() throws Exception {
         try (OracleConnection connection = createOfflineConnection()) {
