@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.postgresql;
 
+import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.lang.management.ManagementFactory;
@@ -24,7 +25,9 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
+import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
 import io.debezium.doc.FixFor;
+import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.pipeline.AbstractMetricsTest;
 
 /**
@@ -101,6 +104,8 @@ public class PostgresMetricsIT extends AbstractMetricsTest<PostgresConnector> {
 
     @Test
     @FixFor("debezium/dbz#2624")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Only supported on PgOutput")
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 14, minor = 0, reason = "Message not supported for PG version < 14")
     public void shouldUpdateStreamingMetricsForNonTransactionalLogicalMessage() throws Exception {
         final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
 
@@ -121,6 +126,8 @@ public class PostgresMetricsIT extends AbstractMetricsTest<PostgresConnector> {
 
     @Test
     @FixFor("debezium/dbz#2624")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Only supported on PgOutput")
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 14, minor = 0, reason = "Message not supported for PG version < 14")
     public void shouldUpdateStreamingMetricsForTransactionalLogicalMessage() throws Exception {
         final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
 
@@ -141,6 +148,8 @@ public class PostgresMetricsIT extends AbstractMetricsTest<PostgresConnector> {
 
     @Test
     @FixFor("debezium/dbz#2624")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Only supported on PgOutput")
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 14, minor = 0, reason = "Message not supported for PG version < 14")
     public void shouldUpdateStreamingMetricsForFilteredLogicalMessage() throws Exception {
         final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
 
