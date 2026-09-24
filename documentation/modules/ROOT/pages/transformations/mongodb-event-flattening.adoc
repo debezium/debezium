@@ -489,16 +489,9 @@ Because the connector discards the increment component that MongoDB uses to orde
 `struct`::
 The SMT emits a structure with the fields `time` and `increment`, preserving both components of the BSON value.
 +
-[NOTE]
-.Mixed Array Types in Struct Mode
-====
-When you set the value of this property to `struct` and set `array.encoding=array`, the SMT cannot process arrays that contain both BSON Timestamp values and BSON date and time values, because the schemas of these types are not compatible.
-If an array mixes both types, the SMT returns the following error:
-
-`Array elements with different Bson types are not supported`.
-
-As a workaround, set the following property to enable the connector to capture arrays that contain mixed types: `array.encoding=document`.
-====
+When `bson.timestamp.handling.mode=struct` and `array.encoding=array`, the SMT cannot process arrays that contain both BSON Timestamp values and BSON Date values because it represents the two value types with different schemas.
++
+To capture arrays that contain these mixed value types, set `array.encoding=document`.
 
 |[[mongodb-extract-new-record-state-flatten-struct]]<<mongodb-extract-new-record-state-flatten-struct, `flatten.struct`>>
 |`false`
