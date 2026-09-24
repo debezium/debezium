@@ -1687,10 +1687,11 @@ This means that all Kafka producer https://kafka.apache.org/documentation/#produ
 At least `bootstrap.servers`, `key.serializer` and `value.serializer` properties must be provided. The `topic` is set by {prodname}.
 
 |[[kafka-producer-wait-message-delivery-timeout-ms]]<<kafka-producer-wait-message-delivery-timeout-ms, `debezium.sink.kafka.wait.message.delivery.timeout.ms`>>
-|`30000`
-|The maximum time, in milliseconds, that the server waits for a request to complete and return metadata for a record.
-The specified timeout also governs the interval that the server waits for Kafka to respond to a request.
-Set the value to `0` to disable the timeout.
+|`0`
+|The maximum time, in milliseconds, that the sink waits for a Kafka send to be confirmed as delivered.
+By default (`0`), the sink waits indefinitely and relies entirely on the underlying Kafka producer's own `delivery.timeout.ms` to bound and ultimately fail a stuck send.
+If set to a value greater than `0`, it should be greater than or equal to the effective `delivery.timeout.ms` of the producer, whether that is set explicitly via `debezium.sink.kafka.producer.delivery.timeout.ms` or left at its own default.
+A smaller value can cause the sink to report a delivery failure while the producer is still retrying the send in the background.
 |===
 
 ===== Injection points
