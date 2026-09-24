@@ -629,15 +629,19 @@ public class OracleConnection extends JdbcConnection {
      * log destination views — so logic that resolves a physical archive destination cannot work.
      *
      * @return {@code true} when connected to an Autonomous Database, {@code false} otherwise
-     * @throws SQLException if a database exception occurred
      */
-    public boolean isAutonomous() throws SQLException {
-        // CLOUD_SERVICE is set only on Autonomous Database; its values are OLTP (ATP), DWCS (ADW)
-        // and JDCS (AJD). It is null/absent on self-managed Oracle.
-        final String cloudService = singleOptionalValue(
-                "SELECT SYS_CONTEXT('USERENV', 'CLOUD_SERVICE') FROM DUAL",
-                rs -> rs.getString(1));
-        return "OLTP".equals(cloudService) || "DWCS".equals(cloudService) || "JDCS".equals(cloudService);
+    public boolean isAutonomous() {
+        try {
+            // CLOUD_SERVICE is set only on Autonomous Database; its values are OLTP (ATP), DWCS (ADW)
+            // and JDCS (AJD). It is null/absent on self-managed Oracle.
+            final String cloudService = singleOptionalValue(
+                    "SELECT SYS_CONTEXT('USERENV', 'CLOUD_SERVICE') FROM DUAL",
+                    rs -> rs.getString(1));
+            return "OLTP".equals(cloudService) || "DWCS".equals(cloudService) || "JDCS".equals(cloudService);
+        }
+        catch (SQLException e) {
+            return false;
+        }
     }
 
     public boolean isArchiveLogDestinationValid(String archiveDestinationName) throws SQLException {
