@@ -90,7 +90,8 @@ public class SqlServerConnection extends JdbcConnection {
     // Distinct from STATEMENTS_PLACEHOLDER ("#") since it appears once per UNION ALL branch in DIRECT mode and
     // must not collide with the "#db"/"#table" placeholders, which are substituted with a global String#replace.
     private static final String DIRECT_QUERY_COLUMNS_PLACEHOLDER = "#cols#";
-    private static final String GET_ALL_CHANGES_FOR_TABLE_SELECT_DIRECT = "SELECT cdc_data.[__$start_lsn], cdc_data.[__$seqval], cdc_data.[__$operation], cdc_data.[__$update_mask], cdc_data.[__$command_id], " + DIRECT_QUERY_COLUMNS_PLACEHOLDER + ", "
+    private static final String GET_ALL_CHANGES_FOR_TABLE_SELECT_DIRECT = "SELECT cdc_data.[__$start_lsn], cdc_data.[__$seqval], cdc_data.[__$operation], cdc_data.[__$update_mask], cdc_data.[__$command_id], "
+            + DIRECT_QUERY_COLUMNS_PLACEHOLDER + ", "
             + LSN_TIMESTAMP_SELECT_STATEMENT_JOIN;
     private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_FUNCTION = "FROM #db.cdc.#function(?, ?, N'all update old')";
     private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_DIRECT = "FROM #db.cdc.#table AS cdc_data WITH (NOLOCK) LEFT JOIN #db.cdc.lsn_time_mapping ltm ON ltm.start_lsn = cdc_data.[__$start_lsn]";
@@ -247,8 +248,8 @@ public class SqlServerConnection extends JdbcConnection {
         branches.add("([cdc_data].[__$start_lsn] > ?)");
 
         String commonPredicate = " AND [cdc_data].[__$start_lsn] <= ?" +
-                // Bounding the seek on both sides keeps each branch a range seek on the change table's
-                // clustered index instead of a full table scan from the lower bound.
+        // Bounding the seek on both sides keeps each branch a range seek on the change table's
+        // clustered index instead of a full table scan from the lower bound.
                 " AND [cdc_data].[__$start_lsn] >= ?";
         if (hasSkippedOperations(skippedOperations)) {
             commonPredicate += " AND " + PREFIX_CDC_DATA + "[__$operation] NOT IN (" + String.join(",", collectSkippedOperationCodes(skippedOperations)) + ")";
