@@ -7,6 +7,7 @@ package io.debezium.connector.postgresql.transforms.timescaledb;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.net.SocketException;
 import java.sql.SQLException;
@@ -43,6 +44,14 @@ class QueryInformationSchemaMetadataTest {
         var outer = new SQLException("outer", intermediate);
 
         assertThat(QueryInformationSchemaMetadata.isRetriable(outer)).isTrue();
+    }
+
+    @Test
+    void endOfStreamWrappedInSqlExceptionIsRetriable() {
+        var psqlException = new SQLException("An I/O error occurred while sending to the backend");
+        psqlException.initCause(new EOFException());
+
+        assertThat(QueryInformationSchemaMetadata.isRetriable(psqlException)).isTrue();
     }
 
     @Test

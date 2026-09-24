@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.postgresql.transforms.timescaledb;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.net.SocketException;
 import java.sql.SQLException;
@@ -126,7 +127,7 @@ public class QueryInformationSchemaMetadata extends AbstractTimescaleDbMetadata 
                     || current instanceof SQLRecoverableException) {
                 return true;
             }
-            if (current instanceof SocketException) {
+            if (current instanceof SocketException || current instanceof EOFException) {
                 return true;
             }
             current = current.getCause();
