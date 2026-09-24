@@ -114,22 +114,7 @@ public class CloudEventsConverter implements Converter, Versioned, ConfigDescrip
     private static final Map<String, CloudEventsProvider> PROVIDERS;
 
     static {
-        try {
-            // Use Kafka 3.5+ method signature
-            CONVERT_TO_CONNECT_METHOD = JsonConverter.class.getDeclaredMethod("convertToConnect", Schema.class, JsonNode.class, JsonConverterConfig.class);
-            CONVERT_TO_CONNECT_METHOD.setAccessible(true);
-            LOGGER.info("Using up-to-date JsonConverter implementation");
-        }
-        catch (NoSuchMethodException e) {
-            try {
-                CONVERT_TO_CONNECT_METHOD = JsonConverter.class.getDeclaredMethod("convertToConnect", Schema.class, JsonNode.class);
-                CONVERT_TO_CONNECT_METHOD.setAccessible(true);
-                LOGGER.info("Using legacy JsonConverter implementation");
-            }
-            catch (NoSuchMethodException ei) {
-                throw new DataException(ei);
-            }
-        }
+        CONVERT_TO_CONNECT_METHOD = resolveConvertToConnectMethod();
 
         Map<String, CloudEventsProvider> foundProviders = new HashMap<>();
 
@@ -138,6 +123,56 @@ public class CloudEventsConverter implements Converter, Versioned, ConfigDescrip
         }
 
         PROVIDERS = Collections.unmodifiableMap(foundProviders);
+    }
+
+    /**
+     * Resolves the non-public {@code JsonConverter#convertToConnect} method reflectively.
+     * <p>
+     * The method is matched by name and by parameter <em>type names</em> (fully qualified class names compared
+     * as strings), deliberately <em>not</em> by exact parameter {@link Class} identity.
+     * <p>
+     * Kafka 3.5+ uses {@code convertToConnect(Schema, JsonNode, JsonConverterConfig)} while older versions use
+     * {@code convertToConnect(Schema, JsonNode)}.
+     */
+    private static Method resolveConvertToConnectMethod() {
+        final String[] kafka35Signature = {
+                Schema.class.getName(), JsonNode.class.getName(), JsonConverterConfig.class.getName() };
+        final String[] legacySignature = {
+                Schema.class.getName(), JsonNode.class.getName() };
+
+        Method resolved = null;
+        for (Method method : JsonConverter.class.getDeclaredMethods()) {
+            if (!"convertToConnect".equals(method.getName())) {
+                continue;
+            }
+            if (!matchesSignature(method, kafka35Signature) && !matchesSignature(method, legacySignature)) {
+                continue;
+            }
+            // Prefer the richer Kafka 3.5+ signature should both ever be present.
+            if (resolved == null || method.getParameterCount() > resolved.getParameterCount()) {
+                resolved = method;
+            }
+        }
+        if (resolved == null) {
+            throw new DataException("Could not find method 'convertToConnect' on " + JsonConverter.class.getName()
+                    + ", incompatible Kafka Connect version on the class path?");
+        }
+        resolved.setAccessible(true);
+        LOGGER.info("Using JsonConverter#convertToConnect with {} parameter(s)", resolved.getParameterCount());
+        return resolved;
+    }
+
+    private static boolean matchesSignature(Method method, String[] expectedParameterTypeNames) {
+        Class<?>[] parameterTypes = method.getParameterTypes();
+        if (parameterTypes.length != expectedParameterTypeNames.length) {
+            return false;
+        }
+        for (int i = 0; i < parameterTypes.length; i++) {
+            if (!parameterTypes[i].getName().equals(expectedParameterTypeNames[i])) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private SerializerType ceSerializerType = withName(CloudEventsConverterConfig.CLOUDEVENTS_SERIALIZER_TYPE_DEFAULT);
