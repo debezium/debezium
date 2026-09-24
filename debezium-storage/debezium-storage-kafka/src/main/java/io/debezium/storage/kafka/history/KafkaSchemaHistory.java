@@ -208,6 +208,7 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
     private int maxRecoveryAttempts;
     private Duration pollInterval;
     private ExecutorService checkTopicSettingsExecutor;
+    private final Object checkTopicSettingsLock = new Object();
     private Duration kafkaQueryTimeout;
     private Duration kafkaCreateTimeout;
     private int bufferBatchSize;
@@ -506,10 +507,7 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
 
     @Override
     public void checkStorageSettings() {
-        if (checkTopicSettingsExecutor == null || checkTopicSettingsExecutor.isShutdown()) {
-            return;
-        }
-        checkTopicSettingsExecutor.execute(() -> {
+        final Runnable checkTopicSettings = () -> {
             // DBZ-2228 Avoiding id conflict with client used on the main thread
             String clientId = this.producerConfig.getString(AdminClientConfig.CLIENT_ID_CONFIG) + "-topic-check";
             Properties clientConfig = this.producerConfig.asProperties();
@@ -574,7 +572,13 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
                 LOGGER.info("Attempted to validate database schema history topic but failed", e);
             }
             stopCheckTopicSettingsExecutor();
-        });
+        };
+        synchronized (checkTopicSettingsLock) {
+            if (checkTopicSettingsExecutor == null || checkTopicSettingsExecutor.isShutdown()) {
+                return;
+            }
+            checkTopicSettingsExecutor.execute(checkTopicSettings);
+        }
     }
 
     @Override
@@ -597,8 +601,10 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
     }
 
     private void stopCheckTopicSettingsExecutor() {
-        if (checkTopicSettingsExecutor != null) {
-            checkTopicSettingsExecutor.shutdown();
+        synchronized (checkTopicSettingsLock) {
+            if (checkTopicSettingsExecutor != null) {
+                checkTopicSettingsExecutor.shutdown();
+            }
         }
     }
 
