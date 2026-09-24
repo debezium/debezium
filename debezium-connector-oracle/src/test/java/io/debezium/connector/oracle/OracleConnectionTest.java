@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.oracle;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
@@ -22,6 +23,7 @@ import org.apache.kafka.connect.errors.RetriableException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
 
@@ -62,5 +64,15 @@ public class OracleConnectionTest {
                 connection.getOracleVersion();
             }
         });
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2704")
+    void whenAutonomousCheckQueryFailsThenIsAutonomousReturnsFalse() throws Exception {
+        when(statement.executeQuery(any())).thenThrow(new SQLException("ORA-00942: table or view does not exist"));
+
+        try (OracleConnection connection = new OracleConnection(jdbcConfiguration, connectionFactory, true)) {
+            assertThat(connection.isAutonomous()).isFalse();
+        }
     }
 }
