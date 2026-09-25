@@ -137,11 +137,77 @@ public class MongoArrayConverterTest {
               ]
             }""");
 
+    private static final String REGULAR_EXPRESSION_ARRAY = lines("""
+            {
+              "patterns": [
+                { "$regularExpression": { "pattern": "^foo", "options": "i" } },
+                { "$regularExpression": { "pattern": "bar$", "options": "m" } }
+              ]
+            }""");
+
     private SchemaBuilder builder;
 
     @BeforeEach
     void setup() throws Exception {
         builder = SchemaBuilder.struct().name("array");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2562")
+    void shouldCreateArrayOfRegularExpressions() {
+        final var converter = new MongoDataConverter(ArrayEncoding.ARRAY);
+        final var value = BsonDocument.parse(REGULAR_EXPRESSION_ARRAY);
+
+        final Map<String, Map<Object, BsonType>> schemaMap = converter.parseBsonDocument(value);
+        converter.buildSchema(schemaMap, builder);
+
+        final var schema = builder.build();
+        final var struct = new Struct(schema);
+        for (final Map.Entry<String, BsonValue> entry : value.entrySet()) {
+            converter.buildStruct(entry, schema, struct);
+        }
+
+        final var arraySchema = schema.field("patterns").schema();
+        assertThat(arraySchema.type()).isEqualTo(Schema.Type.ARRAY);
+        assertThat(arraySchema.valueSchema().name()).isEqualTo(MongoDataConverter.SCHEMA_NAME_REGEX);
+        assertThat(arraySchema.valueSchema().fields()).extracting("name").containsExactly("regex", "options");
+
+        final var patterns = struct.getArray("patterns");
+        assertThat(patterns).hasSize(2);
+        assertThat(patterns).allMatch(Struct.class::isInstance);
+
+        final var firstPattern = (Struct) patterns.get(0);
+        assertThat(firstPattern.getString("regex")).isEqualTo("^foo");
+        assertThat(firstPattern.getString("options")).isEqualTo("i");
+
+        final var secondPattern = (Struct) patterns.get(1);
+        assertThat(secondPattern.getString("regex")).isEqualTo("bar$");
+        assertThat(secondPattern.getString("options")).isEqualTo("m");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2562")
+    void shouldCreateDocumentEncodedArrayOfRegularExpressions() {
+        final var converter = new MongoDataConverter(ArrayEncoding.DOCUMENT);
+        final var value = BsonDocument.parse(REGULAR_EXPRESSION_ARRAY);
+
+        final Map<String, Map<Object, BsonType>> schemaMap = converter.parseBsonDocument(value);
+        converter.buildSchema(schemaMap, builder);
+
+        final var schema = builder.build();
+        final var struct = new Struct(schema);
+        for (final Map.Entry<String, BsonValue> entry : value.entrySet()) {
+            converter.buildStruct(entry, schema, struct);
+        }
+
+        final var patterns = struct.getStruct("patterns");
+        final var firstPattern = patterns.getStruct("_0");
+        assertThat(firstPattern.getString("regex")).isEqualTo("^foo");
+        assertThat(firstPattern.getString("options")).isEqualTo("i");
+
+        final var secondPattern = patterns.getStruct("_1");
+        assertThat(secondPattern.getString("regex")).isEqualTo("bar$");
+        assertThat(secondPattern.getString("options")).isEqualTo("m");
     }
 
     @Test

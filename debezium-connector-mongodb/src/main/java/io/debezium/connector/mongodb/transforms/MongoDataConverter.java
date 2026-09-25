@@ -41,6 +41,11 @@ import io.debezium.schema.SchemaNameAdjuster;
  */
 public class MongoDataConverter {
     public static final String SCHEMA_NAME_REGEX = "io.debezium.mongodb.regex";
+    private static final Schema REGULAR_EXPRESSION_SCHEMA = SchemaBuilder.struct().name(SCHEMA_NAME_REGEX).optional()
+            .field("regex", Schema.OPTIONAL_STRING_SCHEMA)
+            .field("options", Schema.OPTIONAL_STRING_SCHEMA)
+            .build();
+
     private final ArrayEncoding arrayEncoding;
     private final FieldNamer<String> fieldNamer;
 
@@ -336,10 +341,7 @@ public class MongoDataConverter {
                 break;
 
             case REGULAR_EXPRESSION:
-                SchemaBuilder regexwop = SchemaBuilder.struct().name(SCHEMA_NAME_REGEX).optional();
-                regexwop.field("regex", Schema.OPTIONAL_STRING_SCHEMA);
-                regexwop.field("options", Schema.OPTIONAL_STRING_SCHEMA);
-                builder.field(key, regexwop.build());
+                builder.field(key, REGULAR_EXPRESSION_SCHEMA);
                 break;
 
             case DOCUMENT:
@@ -647,6 +649,9 @@ public class MongoDataConverter {
             case BOOLEAN:
                 return Schema.OPTIONAL_BOOLEAN_SCHEMA;
 
+            case REGULAR_EXPRESSION:
+                return REGULAR_EXPRESSION_SCHEMA;
+
             case ARRAY:
                 switch (arrayEncoding) {
                     case ARRAY:
@@ -694,10 +699,7 @@ public class MongoDataConverter {
                 break;
 
             case REGULAR_EXPRESSION:
-                Struct regexStruct = new Struct(schema.field(key).schema());
-                regexStruct.put("regex", value.asRegularExpression().getPattern());
-                regexStruct.put("options", value.asRegularExpression().getOptions());
-                colValue = regexStruct;
+                colValue = buildRegularExpression(value, schema.field(key).schema());
                 break;
 
             case ARRAY:
@@ -775,6 +777,13 @@ public class MongoDataConverter {
      */
     protected String arrayElementStructName(int i) {
         return "_" + i;
+    }
+
+    private Struct buildRegularExpression(BsonValue value, Schema schema) {
+        final var regexStruct = new Struct(schema);
+        regexStruct.put("regex", value.asRegularExpression().getPattern());
+        regexStruct.put("options", value.asRegularExpression().getOptions());
+        return regexStruct;
     }
 
     /**
@@ -895,6 +904,10 @@ public class MongoDataConverter {
                         buildStruct(entry, schema, struct);
                     }
                     values.add(struct);
+                    break;
+
+                case REGULAR_EXPRESSION:
+                    values.add(buildRegularExpression(value, schema));
                     break;
 
                 default:
