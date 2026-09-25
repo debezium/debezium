@@ -417,6 +417,7 @@ Juan Antonio Pedraza
 Juan Fiallo
 Juanma Barea
 Judah Rand
+Julien Riou
 Julien Roy
 Jun Du
 Jun Wang
