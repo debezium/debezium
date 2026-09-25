@@ -181,8 +181,8 @@ joontube,Seongjoon Jeong
 jorkzijlstra,JOrk Zijlstra
 joschi,Jochen Schalanda
 josetesan,Jose Luis
-jouir,Julien Riou
 JosipVukoja,Josip Vukoja
+jouir,Julien Riou
 jtanza,John Tanza
 juanfiallo,Juan Fiallo
 judahrand,Judah Rand
