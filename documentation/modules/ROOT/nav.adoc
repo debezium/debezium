@@ -1,6 +1,8 @@
 * Getting Started
 ** xref:tutorials.adoc[Tutorials]
 *** xref:kc-tutorial.adoc[Kafka Connect]
+*** xref:server-tutorial-http.adoc[Debezium Server - HTTP Sink]
+*** xref:server-tutorial-jdbc.adoc[Debezium Server - JDBC Sink]
 ** xref:install.adoc[Installation]
 *** xref:install-kafka-connect.adoc[Kafka Connect]
 *** xref:postgres-plugins.adoc[PostgreSQL Decoding Plugins]

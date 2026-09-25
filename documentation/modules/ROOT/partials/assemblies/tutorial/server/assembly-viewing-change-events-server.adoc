@@ -1,0 +1,24 @@
+:context: mysql
+
+[id="server-viewing-change-events"]
+= Viewing change events
+
+After deploying the {prodname} MySQL connector,
+it starts monitoring the `inventory` database for data change events.
+
+include::{partialsdir}/modules/tutorial/server/{selected-sink}-sink/{selected-sink}-change-events-introduction.adoc[]
+
+In this topic, you will see different types of change events to see how the connector captured them:
+
+* xref:server-viewing-create-event[Viewing a _create_ event]
+* xref:server-updating-database-viewing-update-event[Updating the database and viewing the _update_ event]
+* xref:server-deleting-record-database-viewing-delete-event[Deleting a record in the database and viewing the _delete_ event]
+* xref:server-restarting-{prodname}-server[Restarting {prodname} server and changing the database]
+
+include::{partialsdir}/modules/tutorial/server/server-viewing-create-event.adoc[leveloffset=+1]
+
+include::{partialsdir}/modules/tutorial/server/server-updating-database-viewing-update-event.adoc[leveloffset=+1]
+
+include::{partialsdir}/modules/tutorial/server/server-deleting-record-database-viewing-delete-event.adoc[leveloffset=+1]
+
+include::{partialsdir}/modules/tutorial/server/server-restarting-server.adoc[leveloffset=+1]

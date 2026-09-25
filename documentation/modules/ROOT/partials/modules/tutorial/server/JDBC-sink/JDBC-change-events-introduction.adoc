@@ -1,0 +1,4 @@
+When you watched {prodname} server and the connector start up,
+you saw that events were being streamed to the {selected-sink} sink at `jdbc:postgresql://localhost:5432/inventory`
+
+As events are received, rows are changed in the PostgreSQL database.

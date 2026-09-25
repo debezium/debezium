@@ -1,0 +1,14 @@
+[id="server-next-steps"]
+= Next steps
+
+After completing the tutorial, consider the following next steps:
+
+* Explore the tutorial further.
++
+
+include::{partialsdir}/modules/tutorial/server/{selected-sink}-sink/{selected-sink}-next-steps.adoc[]
+
+* Try running the tutorial with {prodname} connectors for Postgres, MongoDB, SQL Server, and Oracle.
++
+You can use the https://docs.docker.com/compose/[Docker Compose] version of this tutorial located in the https://github.com/debezium/debezium-examples/tree/main/tutorial[Debezium examples repository].
+Docker Compose files are provided for running the tutorial with MySQL, Postgres, MongoDB, SQL Server, and Oracle.
