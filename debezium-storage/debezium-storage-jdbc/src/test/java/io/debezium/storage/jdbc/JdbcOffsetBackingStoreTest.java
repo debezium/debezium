@@ -21,6 +21,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.doc.FixFor;
 import io.debezium.spi.storage.OffsetStore;
 import io.debezium.storage.jdbc.offset.JdbcOffsetBackingStore;
 
@@ -70,11 +71,23 @@ public class JdbcOffsetBackingStoreTest {
     }
 
     @Test
-    public void testInitialize() {
+    public void testInitializeWithCredentials() {
         // multiple initialization should not fail
         // first one should create the table and following ones should use the created table
         store.start();
         store.start();
+        store.start();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1957")
+    public void testInitializeWithoutCredentials() {
+        store.stop();
+        props.remove("offset.storage.jdbc.user");
+        props.remove("offset.storage.jdbc.password");
+        config = Configuration.from(props);
+        store = new JdbcOffsetBackingStore();
+        store.configure(config);
         store.start();
     }
 

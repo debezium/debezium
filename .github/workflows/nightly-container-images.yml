@@ -105,6 +105,17 @@ jobs:
             DEBEZIUM_DOCKER_REGISTRY_PRIMARY_NAME=quay.io/debezium
             ${{ inputs.debezium_version && format('DEBEZIUM_VERSION={0}', inputs.debezium_version) || '' }}
 
+      - name: Build and push server-native:nightly
+        uses: docker/build-push-action@v7
+        with:
+          context: ./server-native/snapshot
+          platforms: ${{ inputs.platforms }}
+          push: ${{ inputs.push }}
+          tags: quay.io/debezium/server-native:nightly
+          build-args: |
+            DEBEZIUM_DOCKER_REGISTRY_PRIMARY_NAME=quay.io/debezium
+            ${{ inputs.debezium_version && format('DEBEZIUM_VERSION={0}', inputs.debezium_version) || '' }}
+
       - name: Build and push operator:nightly
         uses: docker/build-push-action@v7
         with:

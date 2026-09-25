@@ -123,20 +123,20 @@ CREATE TABLE table_items_with_subpartitions (id INT, purchased DATE)
 #    PARTITION default_positions_rollover_partition DEFAULT ENGINE = InnoDB
 #);
 
-#NB: CREATE TABLE `tab_with_json_value` (
-#   `col0` JSON NOT NULL,
-#   `col1` VARCHAR(36) COLLATE utf8mb4_bin GENERATED ALWAYS AS (
-#      JSON_VALUE(`col0`, _utf8mb4'$._field1' RETURNING CHAR(36) CHARACTER SET latin1)
-#   ) STORED NOT NULL,
-#   `col2` VARCHAR(36) COLLATE utf8mb4_bin GENERATED ALWAYS AS (
-#      JSON_VALUE(`col0`, _utf8mb4'$._field1' ERROR ON EMPTY)
-#   ) STORED NOT NULL,
-#   `col3` VARCHAR(36) COLLATE utf8mb4_bin GENERATED ALWAYS AS (
-#      JSON_VALUE(`col0`, _utf8mb4'$._field1' DEFAULT 'xx' ON ERROR)
-#   ) STORED NOT NULL,
-#   `col4` JSON NOT NULL,
-#   PRIMARY KEY (`col1`)
-#) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_bin ROW_FORMAT = COMPRESSED;
+CREATE TABLE `tab_with_json_value` (
+   `col0` JSON NOT NULL,
+   `col1` VARCHAR(36) COLLATE utf8mb4_bin GENERATED ALWAYS AS (
+      JSON_VALUE(`col0`, _utf8mb4'$._field1' RETURNING CHAR(36) CHARACTER SET latin1)
+   ) STORED NOT NULL,
+   `col2` VARCHAR(36) COLLATE utf8mb4_bin GENERATED ALWAYS AS (
+      JSON_VALUE(`col0`, _utf8mb4'$._field1' ERROR ON EMPTY)
+   ) STORED NOT NULL,
+   `col3` VARCHAR(36) COLLATE utf8mb4_bin GENERATED ALWAYS AS (
+      JSON_VALUE(`col0`, _utf8mb4'$._field1' DEFAULT 'xx' ON ERROR)
+   ) STORED NOT NULL,
+   `col4` JSON NOT NULL,
+   PRIMARY KEY (`col1`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_bin ROW_FORMAT = COMPRESSED;
 
 #NB: CREATE TABLE CustomerTable (
 #    CustomerID varchar(5),

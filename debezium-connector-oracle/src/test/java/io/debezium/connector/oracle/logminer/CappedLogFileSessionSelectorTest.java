@@ -1083,6 +1083,54 @@ public class CappedLogFileSessionSelectorTest {
         assertThat(interceptor.containsMessage("resetting log count per redo thread to 1")).isTrue();
     }
 
+    @Test
+    @FixFor("dbz#2668")
+    void testArchiveOnlyStreamResetsGrowthOnceTheWindowHoldsEveryCollectedLog() {
+        // A physical standby mines archives only, so no window ever ends on the current online redo
+        // and the online reset is unreachable. Without a second signal the log count ratchets to the
+        // growth ceiling and stays there for the life of the connector.
+        final LogInterceptor interceptor = new LogInterceptor(CappedLogFileSessionSelector.class);
+        interceptor.setLoggerLevel(CappedLogFileSessionSelector.class, Level.DEBUG);
+
+        final Scn upperBounds = Scn.valueOf(50000);
+        CappedLogFileSessionSelector archiveSelector = new CappedLogFileSessionSelector(2, 4, ONE_GB, Scn.NULL);
+        List<LogFile> backlog = new ArrayList<>();
+        for (int i = 1; i <= 24; i++) {
+            backlog.add(createArchiveLog("arc" + i + ".log", 100L * i, 100L * (i + 1), i, 1, ONE_GB));
+        }
+
+        // A long-running transaction pins the window, so growth climbs to the ceiling.
+        for (int pass = 1; pass <= 5; pass++) {
+            archiveSelector.selectLogsForSession(new LogFilesResult(backlog, singleThreadOpen()), upperBounds);
+        }
+        assertThat(interceptor.containsMessage("growing log count per redo thread to 4")).isTrue();
+        assertThat(interceptor.containsMessage("resetting log count per redo thread")).isFalse();
+
+        // The pin clears and the window drains the backlog. Nothing here ends on an online redo log,
+        // so only the window holding every remaining archive can signal that mining has caught up.
+        Scn windowBottom = Scn.valueOf(100);
+        for (int pass = 1; pass <= 10; pass++) {
+            final Scn lower = windowBottom;
+            List<LogFile> remaining = backlog.stream()
+                    .filter(logFile -> logFile.getNextScn().compareTo(lower) > 0)
+                    .toList();
+            if (remaining.isEmpty()) {
+                break;
+            }
+
+            SessionLogSelection result = archiveSelector.selectLogsForSession(
+                    new LogFilesResult(remaining, singleThreadOpen()), upperBounds);
+
+            // The boundary stays tightened to the last archive and never reaches the unbounded
+            // upper bound, which would advance the offset past redo that was never mined.
+            assertThat(result.effectiveUpperBounds()).isLessThan(upperBounds);
+            assertThat(result.effectiveUpperBounds()).isGreaterThan(windowBottom);
+            windowBottom = result.effectiveUpperBounds();
+        }
+
+        assertThat(interceptor.containsMessage("All collected logs are within the window, resetting log count per redo thread to 2")).isTrue();
+    }
+
     private static LogFile createArchiveLog(String name, long startScn, long endScn, int seq, int thread, long bytes) {
         return LogFile.forArchive(name, Scn.valueOf(startScn), Scn.valueOf(endScn), BigInteger.valueOf(seq), thread, bytes, false, false);
     }

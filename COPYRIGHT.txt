@@ -1,3 +1,4 @@
+A. D. Blom
 Aakash Mhatre
 Aaron Brady
 Aaron Rosenberg
@@ -112,7 +113,7 @@ Benoit Audigier
 Bertrand Paquet
 Bhagyashree Goyal
 Bhumika Bayani
-bhuvan-somisetty
+Bhuvan Somisetty
 Biel Garau Estarellas
 Bin Li
 Binayak Das
@@ -190,6 +191,7 @@ Daniel Eriksson
 Daniel Petisme
 Daniele Licini
 dario
+Dario Rodrigues
 Dave Charron
 Dave Cramer
 Dave Cumberland
@@ -203,6 +205,7 @@ David Remy
 David Seapy
 David Szabo
 Davyd Eliosidze
+Dayron Perez Roldan
 ddsr-ops
 Debjeet Sarkar
 Deepak Barr
@@ -272,11 +275,14 @@ Fándly Gergő
 Gabor Andras
 Gabriel Cerioni
 Gabriel Miklós
+Gaetan Collaud
 Gagan Agrawal
 Ganesh Bankar
 Ganesh Ramasubramanian
 Ganeshan Nagarajan
+Garib Karimli
 Gaurav Miglani
+Gaétan Collaud
 Giljae Joo
 Gilles Vaquez
 Gio Gutierrez
@@ -411,6 +417,7 @@ Juan Antonio Pedraza
 Juan Fiallo
 Juanma Barea
 Judah Rand
+Julien Riou
 Julien Roy
 Jun Du
 Jun Wang
@@ -516,6 +523,7 @@ Mathijs van den Worm
 Matt Bayley
 Matt Beary
 Matt Hejnas
+Matt Langley
 Matt Vance
 Matteo Capitanio
 Matthias Crauwels
@@ -687,6 +695,7 @@ Sagnik Ghosh
 Sahan Dilshan
 Sahap Asci
 Sairam Polavarapu
+Sangeet Mishra
 Sanjay Kr Singh
 Sanne Grinovero
 Sara Fonseca
@@ -760,10 +769,12 @@ Tapani Moilanen
 Tautvydas Januskevicius
 Tayler Dunn
 Taylor Rolison
+TaylorJerry
 Teo Stocco
 Theofanis Despoudis
 Thiago Avancini
 Thiago Dantas
+Thiago Garcia
 Thierry De Leeuw
 Thomas Aregger
 Thomas Deblock

@@ -9,6 +9,7 @@ import java.time.Instant;
 
 import org.infinispan.protostream.annotations.ProtoAdapter;
 import org.infinispan.protostream.annotations.ProtoFactory;
+import org.infinispan.protostream.annotations.ProtoField;
 
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.events.EventType;
@@ -32,11 +33,23 @@ public class XmlEndEventAdapter extends LogMinerEventAdapter {
      * @param rowId the Oracle row-id the change is associated with
      * @param rsId the Oracle rollback segment identifier
      * @param changeTime the time the change occurred
+     * @param transactionSequence the transaction sequence number of the event
      * @return the constructed DmlEvent
      */
     @ProtoFactory
-    public XmlEndEvent factory(int eventType, String scn, String tableId, String rowId, String rsId, String changeTime) {
-        return new XmlEndEvent(EventType.from(eventType), Scn.valueOf(scn), TableId.parse(tableId), rowId, rsId, Instant.parse(changeTime));
+    public XmlEndEvent factory(int eventType, String scn, String tableId, String rowId, String rsId, String changeTime, long transactionSequence) {
+        return new XmlEndEvent(EventType.from(eventType), Scn.valueOf(scn), TableId.parse(tableId), rowId, rsId, Instant.parse(changeTime), transactionSequence);
+    }
+
+    /**
+     * A ProtoStream handler to extract the {@code transactionSequence} field from a {@link XmlEndEvent} type.
+     *
+     * @param event the event instance, must not be {@code null}
+     * @return the transaction sequence number
+     */
+    @ProtoField(number = 7, defaultValue = "1")
+    public long getTransactionSequence(XmlEndEvent event) {
+        return event.getTransactionSequence();
     }
 
 }

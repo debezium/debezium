@@ -45,11 +45,12 @@ benw-at-birdie,Ben White
 bep7520,Blake Peno
 BetaCat,合龙 张
 Bhagyashree,Bhagyashree Goyal
-bhuvan-somisetty,bhuvan-somisetty
+bhuvan-somisetty,Bhuvan Somisetty
 BigGillyStyle,Andy Pickler
 Binayak490-cyber,Binayak Das
 BinLi1988,Bin Li
 bisbeb,Björn Bärtschi
+Blom-10,A. D. Blom
 bmiedlar,Bartosz Miedlar
 bpaquet,Bertrand Paquet
 brandonbrown,Brandon Brown
@@ -84,6 +85,7 @@ daha,David Haglund
 dajerome,David Jerome
 danastott,Dana Stott
 Day-dreamer0,Rajender Passi
+dayron-perez,Dayron Perez Roldan
 ddsr-ops,ddsr-ops
 debjeetsarkar,Debjeet Sarkar
 denizozogularas,Deniz Ozogul
@@ -115,7 +117,10 @@ Fr0z3Nn,Ivanov Sergey Vasilevich
 FrankMormino,Frank Mormino
 fuxiao224,Xiao Fu
 fuyar,Farid Uyar
+gaetancollaud,Gaetan Collaud
+gaetancollaud,Gaétan Collaud
 ganesh-bankar,Ganesh Bankar
+GaribKarimli,Garib Karimli
 garrett528,Andrew Garrett
 gaurav7261,Gaurav Miglani
 ggaborg,Gabor Andras
@@ -165,6 +170,7 @@ jehrenzweig-pi,Jesse Ehrenzweig
 JeremyVigny,Jeremy Vigny
 jerrinot,Jaromir Hamala
 JerryGao0805,Jerry Gao
+JerryS,TaylorJerry
 jgraf50,John Graf
 jiabao.sun,Jiabao Sun
 jiangzzhu,Jiang Zhu
@@ -175,6 +181,7 @@ joontube,Seongjoon Jeong
 jorkzijlstra,JOrk Zijlstra
 joschi,Jochen Schalanda
 josetesan,Jose Luis
+jouir,Julien Riou
 jtanza,John Tanza
 juanfiallo,Juan Fiallo
 judahrand,Judah Rand
@@ -321,6 +328,7 @@ Sage-Pierce,Sage Pierce
 sagnghos,Sagnik Ghosh
 sahapasci,Sahap Asci
 Sanapalli Lokesh,Lokesh Sanapalli
+sangeet259, Sangeet Mishra
 sarumont,Richard Kolkovich
 sclarkson-zoomcare,Stephen Clarkson
 see-quick,Maros Orsak
@@ -356,10 +364,12 @@ surya-dl,Surya Dhaneshwar
 suryadanny,Surya Dhaneshwar
 SyedMuhammadSufyian,Syed Muhammad Sufyian
 SylvainMarty,Sylvain Marty
+tarqu1n,Matt Langley
 Tayler,Tayler Dunn
 taylor-rolison,Taylor Rolison
 TechIsCool,David Beck
 thangdc94,Phạm Ngọc Thắng
+Thiagoag,Thiago Garcia
 Théophile Helleboid - chtitux,Théophile Helleboid
 TimLoes,Tim Loes
 TimoWilhelm,Timo Wilhelm
@@ -380,6 +390,7 @@ tyrantlucifer,Chao Tian
 uidoyen,Hussain Ansari
 umachi,Hidetomi Umaki
 unalsurmeli,Ünal Sürmeli
+Unidade,Dario Rodrigues
 vanhoale,Hoa Le
 VanKhanhAnny,Anny Dang
 victorxiang30,Victor Xiang
@@ -417,4 +428,3 @@ Zica,Lucas Gazire
 zrlurb,Peter Urbanetz
 zxpzlp,Xiaopu Zhu
 zxxz,Giovanni De Stefano
-“vsantonastaso”,Vincenzo Santonastaso

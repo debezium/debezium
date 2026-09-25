@@ -237,6 +237,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withImportance(Importance.LOW)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED))
             .withDefault(false)
+            .withValidation(OracleConnectorConfig::validateLogMiningArchiveLogOnlyMode)
             .withDescription("When set to 'false', the default, the connector will mine both archive log and redo logs to emit change events. " +
                     "When set to 'true', the connector will only mine archive logs. There are circumstances where its advantageous to only " +
                     "mine archive logs and accept latency in event emission due to frequent revolving redo logs.");
@@ -1527,7 +1528,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
          * This strategy uses LogMiner with data dictionary in online catalog.
          * This option will not capture DDL, but acts fast on REDO LOG switch events
          */
-        ONLINE_CATALOG("online_catalog"),
+        ONLINE_CATALOG("online_catalog", false),
 
         /**
          * This strategy uses LogMiner with data dictionary in REDO LOG files.
@@ -1536,31 +1537,44 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
          * @deprecated to be removed in Debezium 3.7, use {@link #HYBRID} or {@link #ONLINE_CATALOG} instead
          */
         @Deprecated
-        CATALOG_IN_REDO("redo_log_catalog"),
+        CATALOG_IN_REDO("redo_log_catalog", false),
 
         /**
          * This strategy uses LogMiner with data dictionary located in ORACLE read-only server.
          * This option need the path location of the dictionary file.
          * This option is a combination with the {@code redo_log_catalog} strategy.
          */
-        DICTIONARY_FROM_FILE("dictionary_from_file"),
+        DICTIONARY_FROM_FILE("dictionary_from_file", true),
 
         /**
          * This strategy combines the performance of {@code online_catalog} with the schema capture capabilities of
          * the {@code redo_log_catalog} strategy. If LogMiner fails to reconstruct a DML event, this strategy will
          * default to using Debezium's schema metadata to reconstruct the DML in-flight when LogMiner cannot.
          */
-        HYBRID("hybrid");
+        HYBRID("hybrid", true);
 
         private final String value;
+        private final boolean dictionaryMismatchPossible;
 
-        LogMiningStrategy(String value) {
+        LogMiningStrategy(String value, boolean dictionaryMismatchPossible) {
             this.value = value;
+            this.dictionaryMismatchPossible = dictionaryMismatchPossible;
         }
 
         @Override
         public String getValue() {
             return value;
+        }
+
+        /**
+         * Whether LogMiner's data dictionary can describe an object differently than the database does,
+         * requiring the connector to fall back on its own relational model to resolve the object's name
+         * and columns.
+         *
+         * @return true if the dictionary may not describe the redo being mined, false otherwise
+         */
+        public boolean isDictionaryMismatchPossible() {
+            return dictionaryMismatchPossible;
         }
 
         /**
@@ -2316,6 +2330,22 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOGGER.warn("The configured '{}' of {} meets or exceeds '{}' of {}; automatic log count growth is disabled " +
                             "and each mining step targets the configured minimum.",
                             LOG_MINING_LOG_COUNT_MIN.name(), minimumLogCount, LOG_MINING_LOG_COUNT_GROWTH_MAX.name(), growthMax);
+                }
+            }
+        }
+        return 0;
+    }
+
+    public static int validateLogMiningArchiveLogOnlyMode(Configuration config, Field field, ValidationOutput problems) {
+        if (isLogMiner(config)) {
+            final CaptureMode captureMode = CaptureMode.parse(config.getString(CAPTURE_MODE));
+            if (CaptureMode.PHYSICAL_STANDBY == captureMode) {
+                final boolean archiveLogOnlyMode = config.getBoolean(LOG_MINING_ARCHIVE_LOG_ONLY_MODE);
+                if (!archiveLogOnlyMode) {
+                    problems.accept(LOG_MINING_ARCHIVE_LOG_ONLY_MODE, archiveLogOnlyMode,
+                            "The '%s' property must be set to 'true' when '%s' is '%s'".formatted(
+                                    LOG_MINING_ARCHIVE_LOG_ONLY_MODE, CAPTURE_MODE, CaptureMode.PHYSICAL_STANDBY.getValue()));
+                    return 1;
                 }
             }
         }

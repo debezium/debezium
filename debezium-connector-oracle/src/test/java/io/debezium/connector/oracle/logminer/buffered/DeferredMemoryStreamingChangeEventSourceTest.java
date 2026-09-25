@@ -25,6 +25,7 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.AfterEach;
@@ -60,6 +61,7 @@ import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
+import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
@@ -72,6 +74,7 @@ import io.debezium.schema.SchemaTopicNamingStrategy;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Clock;
 
+import ch.qos.logback.classic.Level;
 import oracle.jdbc.OracleTypes;
 import oracle.sql.CharacterSet;
 
@@ -173,6 +176,76 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
             assertThat(transaction.getUserName()).isEqualTo(TestHelper.SCHEMA_USER);
             assertThat(transaction.getClientId()).isNull();
             assertThat(transaction.getRedoThreadId()).isEqualTo(1);
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2577")
+    public void testPendingTransactionsIncludeDeferredTransactionsOrderedOldestFirst() throws Exception {
+        try (var source = getChangeEventSource(getConfig().build())) {
+            final Instant deferredStartTime = Instant.now().minusSeconds(30);
+
+            // An active transaction that started after the deferred one
+            source.processEvent(getStartLogMinerEventRow(10, TRANSACTION_ID_1));
+            source.processEvent(getInsertLogMinerEventRow(11, TRANSACTION_ID_1));
+
+            // A deferred transaction with only a start event, never promoted into the cache
+            source.processEvent(getStartLogMinerEventRow(5, TRANSACTION_ID_2, deferredStartTime));
+
+            final List<PendingTransaction> pending = source.getPendingTransactions();
+
+            assertThat(pending).hasSize(2);
+
+            final PendingTransaction deferred = pending.get(0);
+            assertThat(deferred.transactionId()).isEqualTo(TRANSACTION_ID_2);
+            assertThat(deferred.startScn()).isEqualTo(Scn.valueOf(5));
+            assertThat(deferred.changeTime()).isEqualTo(deferredStartTime);
+            assertThat(deferred.userName()).isEqualTo(TestHelper.SCHEMA_USER);
+            assertThat(deferred.clientId()).isNull();
+            assertThat(deferred.redoThreadId()).isEqualTo(1);
+            assertThat(deferred.eventCount()).isZero();
+            assertThat(deferred.deferred()).isTrue();
+
+            final PendingTransaction active = pending.get(1);
+            assertThat(active.transactionId()).isEqualTo(TRANSACTION_ID_1);
+            assertThat(active.startScn()).isEqualTo(Scn.valueOf(10));
+            assertThat(active.eventCount()).isEqualTo(1);
+            assertThat(active.deferred()).isFalse();
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2576")
+    public void testBatchDebugLoggingReportsDeferredTransactionsOnSeparateLine() throws Exception {
+        final LogInterceptor logInterceptor = new LogInterceptor(BufferedLogMinerStreamingChangeEventSource.class);
+        logInterceptor.setLoggerLevel(BufferedLogMinerStreamingChangeEventSource.class, Level.DEBUG);
+        try (var source = getChangeEventSource(getConfig().build())) {
+            final ResultSet rs = Mockito.mock(ResultSet.class);
+            Mockito.when(rs.next()).thenReturn(false);
+
+            final PreparedStatement ps = Mockito.mock(PreparedStatement.class);
+            Mockito.when(ps.executeQuery()).thenReturn(rs);
+
+            final BufferedStreamingChangeEventSource mock = Mockito.spy(source);
+            Mockito.doReturn(ps).when(mock).createQueryStatement();
+
+            final Instant activeStart = Instant.parse("2024-01-01T10:00:00Z");
+            final Instant deferredStart = Instant.parse("2024-01-01T09:00:00Z");
+            mock.processEvent(getStartLogMinerEventRow(10, TRANSACTION_ID_1, activeStart));
+            mock.processEvent(getInsertLogMinerEventRow(11, TRANSACTION_ID_1));
+            mock.processEvent(getStartLogMinerEventRow(5, TRANSACTION_ID_2, deferredStart));
+
+            mock.process(Scn.valueOf(100), Scn.valueOf(100), Scn.valueOf(200));
+
+            assertThat(logInterceptor.containsMessage("All active transactions: " + TRANSACTION_ID_1
+                    + " (startScn=10, changeTime=" + activeStart + ", userName=" + TestHelper.SCHEMA_USER
+                    + ", clientId=null, redoThread=1, events=1)")).isTrue();
+            assertThat(logInterceptor.containsMessage("All deferred transactions: " + TRANSACTION_ID_2
+                    + " (startScn=5, changeTime=" + deferredStart + ", userName=" + TestHelper.SCHEMA_USER
+                    + ", clientId=null, redoThread=1)")).isTrue();
+        }
+        finally {
+            logInterceptor.setLoggerLevel(BufferedLogMinerStreamingChangeEventSource.class, null);
         }
     }
 

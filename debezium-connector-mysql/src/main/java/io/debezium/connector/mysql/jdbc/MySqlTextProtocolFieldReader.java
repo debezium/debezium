@@ -9,6 +9,7 @@ import java.io.UnsupportedEncodingException;
 import java.sql.Blob;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.Calendar;
 
 import org.slf4j.Logger;
@@ -39,8 +40,8 @@ public class MySqlTextProtocolFieldReader extends AbstractFieldReader {
             return null; // Don't continue parsing time field if it is null
         }
         else if (b.length() == 0) {
-            LOGGER.warn("Encountered a zero length blob for column index {}", columnIndex);
-            return null;
+            // zeroDateTimeBehavior=CONVERT_TO_NULL on the JDBC URL can cause the driver to return a zero-length blob for TIME 00:00:00.
+            return Duration.ZERO;
         }
 
         try {

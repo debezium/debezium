@@ -13,6 +13,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -36,6 +37,10 @@ public class DatabaseTcpProxy implements Closeable {
 
     private volatile boolean blackholed;
     private volatile boolean closed;
+    private volatile byte[] requestToFail;
+    private volatile byte[] requestToArmFailure;
+    private volatile boolean requestFailureArmed;
+    private volatile boolean requestFailed;
 
     private DatabaseTcpProxy(String targetHost, int targetPort) throws IOException {
         this.targetHost = targetHost;
@@ -64,6 +69,15 @@ public class DatabaseTcpProxy implements Closeable {
 
     public int getPort() {
         return serverSocket.getLocalPort();
+    }
+
+    public void failRequestAfter(String request, String precedingRequest) {
+        requestToFail = request.getBytes(StandardCharsets.UTF_8);
+        requestToArmFailure = precedingRequest.getBytes(StandardCharsets.UTF_8);
+    }
+
+    public boolean hasFailedRequest() {
+        return requestFailed;
     }
 
     /**
@@ -124,6 +138,11 @@ public class DatabaseTcpProxy implements Closeable {
                         // keep draining so that the sender never blocks, but deliver nothing
                         continue;
                     }
+                    if (shouldFailRequest(buffer, read)) {
+                        closeQuietly(from);
+                        closeQuietly(to);
+                        return;
+                    }
                     output.write(buffer, 0, read);
                     output.flush();
                 }
@@ -142,6 +161,34 @@ public class DatabaseTcpProxy implements Closeable {
         }, "database-tcp-proxy-pump");
         thread.setDaemon(true);
         thread.start();
+    }
+
+    private boolean shouldFailRequest(byte[] buffer, int length) {
+        if (!requestFailureArmed && contains(buffer, length, requestToArmFailure)) {
+            requestFailureArmed = true;
+            return false;
+        }
+        if (requestFailureArmed && contains(buffer, length, requestToFail)) {
+            requestFailed = true;
+            return true;
+        }
+        return false;
+    }
+
+    private boolean contains(byte[] buffer, int length, byte[] request) {
+        if (request == null || request.length > length) {
+            return false;
+        }
+        for (int i = 0; i <= length - request.length; i++) {
+            int j = 0;
+            while (j < request.length && buffer[i + j] == request[j]) {
+                j++;
+            }
+            if (j == request.length) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static void closeQuietly(Closeable closeable) {

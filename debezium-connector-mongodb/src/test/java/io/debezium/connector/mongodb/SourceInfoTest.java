@@ -7,6 +7,7 @@ package io.debezium.connector.mongodb;
 
 import static io.debezium.data.VerifyRecord.assertConnectSchemasAreEqual;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -30,6 +31,7 @@ import com.mongodb.client.model.changestream.OperationType;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.doc.FixFor;
 import io.debezium.schema.SchemaFactory;
 
 /**
@@ -202,6 +204,21 @@ public class SourceInfoTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#1862")
+    void shouldProduceStructWithoutCollectionWhenNoEventPositionIsRecorded() {
+        // A no-event position (e.g. a heartbeat or the streaming start offset) records a position but
+        // resets the collection to null via CollectionId.parse(""). Building the source struct in that
+        // state must not fail: the collection field is optional and is simply omitted. This is the
+        // root cause behind the crash reported in debezium/dbz#1862.
+        source.noEvent(new BsonTimestamp(1666193824, 1));
+
+        assertThatCode(() -> {
+            Struct struct = source.struct();
+            assertThat(struct.getString(SourceInfo.COLLECTION)).isNull();
+        }).doesNotThrowAnyException();
+    }
+
+    @Test
     void shouldReturnOffsetForUnusedReplicaNameDuringInitialSnapshot() {
         source.startInitialSnapshot();
         assertSourceInfoContents(source, false, null, new BsonTimestamp(0), "true");
@@ -253,7 +270,7 @@ public class SourceInfoTest {
         assertThat(schema.version()).isEqualTo(SchemaFactory.SOURCE_INFO_DEFAULT_SCHEMA_VERSION);
         assertThat(schema.field(SourceInfo.SERVER_NAME_KEY).schema()).isEqualTo(Schema.STRING_SCHEMA);
         assertThat(schema.field(SourceInfo.DATABASE_NAME_KEY).schema()).isEqualTo(Schema.STRING_SCHEMA);
-        assertThat(schema.field(SourceInfo.COLLECTION).schema()).isEqualTo(Schema.STRING_SCHEMA);
+        assertThat(schema.field(SourceInfo.COLLECTION).schema()).isEqualTo(Schema.OPTIONAL_STRING_SCHEMA);
         assertThat(schema.field(SourceInfo.TIMESTAMP_KEY).schema()).isEqualTo(Schema.INT64_SCHEMA);
         assertThat(schema.field(SourceInfo.ORDER).schema()).isEqualTo(Schema.INT32_SCHEMA);
         assertThat(schema.field(SourceInfo.SNAPSHOT_KEY).schema()).isEqualTo(SchemaFactory.get().snapshotRecordSchema());
@@ -273,7 +290,7 @@ public class SourceInfoTest {
                 .field("sequence", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("ts_us", Schema.OPTIONAL_INT64_SCHEMA)
                 .field("ts_ns", Schema.OPTIONAL_INT64_SCHEMA)
-                .field("collection", Schema.STRING_SCHEMA)
+                .field("collection", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("ord", Schema.INT32_SCHEMA)
                 .field("lsid", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("txnNumber", Schema.OPTIONAL_INT64_SCHEMA)

@@ -29,6 +29,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.doc.FixFor;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableEditor;
@@ -175,12 +176,25 @@ public class JdbcSchemaHistoryTest {
     }
 
     @Test
-    public void shouldNotFailMultipleInitializeStorage() {
+    public void shouldInitializeStorageWithCredentials() {
         history.initializeStorage();
         history.initializeStorage();
         history.initializeStorage();
         assertTrue(history.storageExists());
         assertFalse(history.exists());
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1957")
+    public void shouldInitializeStorageWithoutCredentials() {
+        history.stop();
+        history = new JdbcSchemaHistory();
+        history.configure(Configuration.create()
+                .with(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + JdbcSchemaHistoryConfig.PROP_JDBC_URL.name(), "jdbc:sqlite:" + dbFile)
+                .build(), null, SchemaHistoryMetrics.NOOP, true);
+        history.start();
+        history.initializeStorage();
+        assertTrue(history.storageExists());
     }
 
     @Test

@@ -13,17 +13,22 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
+import org.awaitility.Awaitility;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Field;
 import io.debezium.connector.binlog.BinlogConnectorConfig;
 import io.debezium.connector.binlog.BinlogSnapshotSourceIT;
+import io.debezium.connector.binlog.util.DatabaseTcpProxy;
 import io.debezium.data.KeyValueStore;
 import io.debezium.data.SchemaChangeHistory;
 import io.debezium.data.VerifyRecord;
+import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
 
 /**
@@ -31,6 +36,53 @@ import io.debezium.jdbc.JdbcConnection;
  *
  */
 public class SnapshotSourceIT extends BinlogSnapshotSourceIT<MySqlConnector> implements MySqlCommon {
+
+    @Test
+    @FixFor("debezium/dbz#2694")
+    void shouldStopLockHeartbeatWhenSnapshotOffsetCannotBeRead() throws Exception {
+        Assumptions.assumeTrue(
+                "disabled".equals(System.getProperty("database.ssl.mode", "disabled")),
+                "TCP proxy request matching requires plaintext traffic");
+
+        final String binaryLogStatusStatement;
+        try (MySqlTestConnection connection = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
+            binaryLogStatusStatement = connection.binaryLogStatusStatement();
+        }
+
+        for (int i = 0; i < 3; i++) {
+            try (DatabaseTcpProxy proxy = DatabaseTcpProxy.forward(
+                    System.getProperty("database.hostname", "localhost"),
+                    Integer.parseInt(System.getProperty("database.port", "3306")))) {
+                proxy.failRequestAfter(binaryLogStatusStatement, "FLUSH TABLES WITH READ LOCK");
+                config = simpleConfig()
+                        .with(MySqlConnectorConfig.HOSTNAME, proxy.getHostname())
+                        .with(MySqlConnectorConfig.PORT, proxy.getPort())
+                        .build();
+
+                start(MySqlConnector.class, config);
+
+                Awaitility.await()
+                        .atMost(waitTimeForRecords() * 5, TimeUnit.SECONDS)
+                        .until(proxy::hasFailedRequest);
+
+                stopConnector();
+
+                Awaitility.await()
+                        .atMost(waitTimeForRecords() * 5, TimeUnit.SECONDS)
+                        .untilAsserted(() -> assertThat(lockHeartbeatThreads()).isEmpty());
+            }
+            finally {
+                stopConnector();
+            }
+        }
+    }
+
+    private List<Thread> lockHeartbeatThreads() {
+        return Thread.getAllStackTraces().keySet().stream()
+                .filter(Thread::isAlive)
+                .filter(thread -> thread.getName().contains(DATABASE.getServerName() + "-lock-heartbeat"))
+                .collect(Collectors.toList());
+    }
 
     @Test
     public void snapshotWithBackupLocksShouldNotWaitForReads() throws Exception {

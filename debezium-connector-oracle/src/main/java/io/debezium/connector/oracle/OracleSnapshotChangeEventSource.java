@@ -103,7 +103,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
                         throw new InterruptedException("Interrupted while locking table " + tableId);
                     }
 
-                    Optional<String> lockingStatement = snapshotterService.getSnapshotLock().tableLockingStatement(null, quote(tableId));
+                    Optional<String> lockingStatement = snapshotterService.getSnapshotLock().tableLockingStatement(null, jdbcConnection.quotedTableIdString(tableId));
                     if (lockingStatement.isPresent()) {
                         LOGGER.debug("Locking table {}", tableId);
                         statement.execute(lockingStatement.get());
@@ -239,15 +239,12 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     protected Optional<String> getSnapshotSelect(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext,
                                                  TableId tableId, List<String> columns) {
 
-        return snapshotterService.getSnapshotQuery().snapshotQuery(quote(tableId), columns);
+        return snapshotterService.getSnapshotQuery().snapshotQuery(jdbcConnection.quotedTableIdString(tableId), columns);
     }
 
     @Override
     protected Long rowCountForTableChunked(TableId tableId) throws SQLException {
-        // Oracle TableIds carry a CDB/PDB catalog that cannot appear in a qualified name; strip it
-        // before quoting (as getSnapshotSelect does), otherwise the shared implementation would emit
-        // an invalid "catalog"."schema"."table".
-        return jdbcConnection.getRowCount(new TableId(null, tableId.schema(), tableId.table()));
+        return jdbcConnection.getRowCount(tableId);
     }
 
     @Override
@@ -264,10 +261,6 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
         if (!Strings.isNullOrBlank(connectorConfig.getPdbName())) {
             jdbcConnection.resetSessionToCdb();
         }
-    }
-
-    private String quote(TableId tableId) {
-        return new TableId(null, tableId.schema(), tableId.table()).toDoubleQuotedString();
     }
 
     /**

@@ -84,7 +84,6 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     private final String queryString;
     private final CacheProvider<Transaction> cacheProvider;
     private final TransactionFactory<Transaction> transactionFactory;
-    private final Map<String, LogMinerEventRow> lastEventByTransactionId = new HashMap<>();
 
     private Instant lastProcessedScnChangeTime = null;
     private Scn lastProcessedScn = Scn.NULL;
@@ -145,6 +144,9 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             boolean needsConnectionRestart = false;
 
             while (getContext().isRunning()) {
+
+                // Execute pending synchronous signals now that no batch is being processed
+                getEventDispatcher().processSynchronousSignals();
 
                 // Check if we should break when using archive log only mode
                 if (getConfig().isArchiveLogOnlyMode()) {
@@ -314,7 +316,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
             executeAndProcessQuery(statement);
 
-            logActiveTransactions();
+            logPendingTransactions();
 
             return calculateNewStartScn(startScn, endScn, getOffsetContext().getCommitScn().getMaxCommittedScn());
         }
@@ -400,8 +402,8 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
     @Override
     protected void handleInternalEvent(LogMinerEventRow event) throws InterruptedException {
-        final LogMinerEventRow lastEvent = lastEventByTransactionId.get(event.getTransactionId());
-        if (lastEvent != null && (lastEvent.getRowId().endsWith(RowIdCodec.EMPTY_ROW_ID_SUFFIX)
+        final LogMinerEvent lastEvent = getTransactionCache().removeLastEnqueuedEvent(event.getTransactionId());
+        if (lastEvent != null && (lastEvent.getRowId().equals(RowIdCodec.EMPTY_ROW_ID)
                 || lastEvent.getEventType() == EventType.SELECT_LOB_LOCATOR
                 || lastEvent.getEventType() == EventType.LOB_WRITE
                 || lastEvent.getEventType() == EventType.LOB_TRIM
@@ -836,7 +838,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         final Transaction transaction = getTransactionCache().getTransaction(transactionId);
         if (transaction != null) {
             LOGGER.debug("Skipping GoldenGate replication marker for transaction {} with SCN {}", transactionId, event.getScn());
-            lastEventByTransactionId.remove(transaction.getTransactionId());
+            getTransactionCache().removeLastEnqueuedEvent(transaction.getTransactionId());
             getTransactionCache().removeTransactionEvents(transaction);
             getTransactionCache().removeTransaction(transaction);
         }
@@ -1087,7 +1089,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         else {
             getTransactionCache().removeAbandonedTransaction(transaction.getTransactionId());
         }
-        lastEventByTransactionId.remove(transaction.getTransactionId());
+        getTransactionCache().removeLastEnqueuedEvent(transaction.getTransactionId());
         getTransactionCache().removeTransactionEvents(transaction);
     }
 
@@ -1130,7 +1132,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         if (rollbackEvent) {
             final Transaction transaction = getTransactionCache().getTransaction(transactionId);
             if (transaction != null) {
-                lastEventByTransactionId.remove(transaction.getTransactionId());
+                getTransactionCache().removeLastEnqueuedEvent(transaction.getTransactionId());
                 getTransactionCache().removeTransactionEvents(transaction);
                 getTransactionCache().removeTransaction(transaction);
             }
@@ -1222,17 +1224,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         // was attributed to carries its real id. Every removal from this map is keyed by the real id, so an
         // entry stored under the row's id would never be removed and would be retained for the life of the
         // task.
-        LogMinerEventRow lastEvent = lastEventByTransactionId.get(transaction.getTransactionId());
-        if (lastEvent != null && lastEvent != event
-                && lastEvent.getEventType() == EventType.XML_END && lastEvent.getTransactionSequence() == 1
-                && event.getEventType() == EventType.XML_BEGIN && event.getTransactionSequence() > 1) {
-            LOGGER.debug(
-                    "Transaction {} is missing INTERNAL ROLLBACK=0 SEQUENCE#=1 with a real ROW_ID between XML_END at SCN {} and XML_BEGIN at SCN {}, simulate it to mark the end of the previous statement in the cache",
-                    transactionId, lastEvent.getScn(), event.getScn());
-            enqueueEvent(lastEvent, new LogMinerEvent(EventType.INTERNAL, lastEvent.getScn(),
-                    lastEvent.getTableId(), lastEvent.getRowId(), lastEvent.getRsId(), lastEvent.getChangeTime()));
-        }
-        lastEventByTransactionId.put(transaction.getTransactionId(), event);
+        getTransactionCache().putLastEnqueuedEvent(transaction.getTransactionId(), new LogMinerEvent(event));
 
         final int eventId = transaction.getNextEventId();
         if (!getTransactionCache().containsTransactionEvent(transaction, eventId)) {
@@ -1477,22 +1469,30 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     }
 
     /**
-     * Logs all active transactions.
+     * Logs all active and deferred transactions with their metadata, oldest first, at debug level.
+     * Deferred transactions are reported on a separate line and only when the deferred map is non-empty.
      */
-    private void logActiveTransactions() {
-        if (LOGGER.isDebugEnabled() && !getTransactionCache().isEmpty()) {
-            // This is wrapped in try-with-resources specifically for Infinispan performance
-            cacheProvider.getTransactionCache().transactions(transactions -> {
-                LOGGER.debug("All active transactions: {}",
-                        transactions.map(t -> t.getTransactionId() + " (" + t.getStartScn() + ")")
-                                .collect(Collectors.joining(",")));
-            });
+    private void logPendingTransactions() {
+        if (LOGGER.isDebugEnabled() && !(getTransactionCache().isEmpty() && deferredTransactions.isEmpty())) {
+            final Map<Boolean, List<PendingTransaction>> pending = getPendingTransactions().stream()
+                    .collect(Collectors.partitioningBy(PendingTransaction::deferred));
+            logPendingTransactions("All active transactions: {}", pending.get(false));
+            logPendingTransactions("All deferred transactions: {}", pending.get(true));
+        }
+    }
+
+    private static void logPendingTransactions(String format, List<PendingTransaction> transactions) {
+        if (!transactions.isEmpty()) {
+            LOGGER.debug(format, transactions.stream().map(PendingTransaction::toLogString).collect(Collectors.joining(", ")));
         }
     }
 
     /**
      * Abandons a single transaction identified by its transaction id.
-     * This method is public so it can be invoked by external signal actions.
+     * <p>
+     * The buffer is owned by the streaming thread, so this method must only be called from that thread.
+     * Signal actions that call it must request synchronous invocation via
+     * {@link io.debezium.pipeline.signal.actions.SignalAction#isSynchronous()}.
      *
      * @param transactionId the transaction id to abandon, must be in lowercase hex format
      * @return true if the transaction was found and abandoned, false otherwise
@@ -1543,6 +1543,34 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
         LOGGER.info("Successfully dropped transaction '{}' from Oracle LogMiner buffer via manual request", transactionId);
         return true;
+    }
+
+    /**
+     * Returns a snapshot of all transactions currently pending in the buffer, both the active transactions
+     * held in the transaction cache and the deferred transactions that have not yet emitted any DML events.
+     * The pending transaction list is ordered from oldest to newest by start SCN.
+     * <p>
+     * The buffer is owned by the streaming thread, so this method must only be called from that thread.
+     * Signal actions that call it must request synchronous invocation via
+     * {@link io.debezium.pipeline.signal.actions.SignalAction#isSynchronous()}.
+     *
+     * @return the pending transactions, oldest first, never {@code null}
+     */
+    public List<PendingTransaction> getPendingTransactions() {
+        final List<PendingTransaction> pending = new ArrayList<>();
+
+        getTransactionCache().transactions(stream -> stream
+                .map(t -> new PendingTransaction(t.getTransactionId(), t.getStartScn(), t.getChangeTime(), t.getUserName(),
+                        t.getClientId(), t.getRedoThreadId(), getTransactionEventCount(t), false))
+                .forEach(pending::add));
+
+        deferredTransactions.values().stream()
+                .map(t -> new PendingTransaction(t.transactionId(), t.startScn(), t.changeTime(), t.userName(),
+                        t.clientId(), t.redoThreadId(), 0, true))
+                .forEach(pending::add);
+
+        pending.sort(PendingTransaction.OLDEST_FIRST);
+        return pending;
     }
 
     /**

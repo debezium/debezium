@@ -21,6 +21,10 @@ import io.debezium.util.Strings;
 
 /**
  * Signal action to drop (abandon) a transaction from the Oracle LogMiner buffer.
+ * <p>
+ * The buffer is only safe to mutate from the streaming thread, so this action requests
+ * {@link #isSynchronous() synchronous} invocation and the mining loop executes it at its next
+ * safe point rather than on the thread that delivered the signal.
  *
  * @author Debezium Community
  */
@@ -35,6 +39,11 @@ public class DropTransactionAction<P extends Partition> implements SignalAction<
 
     public DropTransactionAction(ChangeEventSourceCoordinator<P, ?> changeEventSourceCoordinator) {
         this.changeEventSourceCoordinator = changeEventSourceCoordinator;
+    }
+
+    @Override
+    public boolean isSynchronous() {
+        return true;
     }
 
     @Override
@@ -77,9 +86,7 @@ public class DropTransactionAction<P extends Partition> implements SignalAction<
     }
 
     /**
-     * Retrieves the streaming source from the coordinator using reflection.
-     * The streamingSource field is protected in ChangeEventSourceCoordinator, so reflection is required
-     * for connector-specific signal actions to access connector-specific streaming sources.
+     * Retrieves the buffered LogMiner streaming source from the coordinator.
      *
      * @return the BufferedLogMinerStreamingChangeEventSource, or null if not available or wrong type
      */

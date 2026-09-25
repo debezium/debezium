@@ -26,6 +26,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Calendar;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.AfterEach;
@@ -56,6 +57,7 @@ import io.debezium.connector.oracle.logminer.AbstractLogMinerStreamingChangeEven
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerStreamingChangeEventSource.ProcessResult;
 import io.debezium.connector.oracle.logminer.events.EventType;
+import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope.Operation;
@@ -634,6 +636,77 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     }
 
     @Test
+    @FixFor("debezium/dbz#2576")
+    public void testBatchDebugLoggingIncludesActiveTransactionMetadataOldestFirst() throws Exception {
+        if (!isTransactionAbandonmentSupported()) {
+            return;
+        }
+
+        final LogInterceptor logInterceptor = new LogInterceptor(BufferedLogMinerStreamingChangeEventSource.class);
+        logInterceptor.setLoggerLevel(BufferedLogMinerStreamingChangeEventSource.class, Level.DEBUG);
+        try (var source = getChangeEventSource(getConfig().build())) {
+            final ResultSet rs = Mockito.mock(ResultSet.class);
+            Mockito.when(rs.next()).thenReturn(false);
+
+            final PreparedStatement ps = Mockito.mock(PreparedStatement.class);
+            Mockito.when(ps.executeQuery()).thenReturn(rs);
+
+            final BufferedStreamingChangeEventSource mock = Mockito.spy(source);
+            Mockito.doReturn(ps).when(mock).createQueryStatement();
+
+            // The second transaction is older by SCN and must be reported first
+            final Instant firstStart = Instant.parse("2024-01-01T10:00:00Z");
+            final Instant secondStart = Instant.parse("2024-01-01T09:00:00Z");
+            mock.processEvent(getStartLogMinerEventRow(10, TRANSACTION_ID_1, firstStart));
+            mock.processEvent(getInsertLogMinerEventRow(11, TRANSACTION_ID_1));
+            mock.processEvent(getInsertLogMinerEventRow(12, TRANSACTION_ID_1));
+            mock.processEvent(getStartLogMinerEventRow(5, TRANSACTION_ID_2, secondStart));
+            mock.processEvent(getInsertLogMinerEventRow(6, TRANSACTION_ID_2));
+
+            mock.process(Scn.valueOf(100), Scn.valueOf(100), Scn.valueOf(200));
+
+            assertThat(logInterceptor.messageMatches("All active transactions: "
+                    + TRANSACTION_ID_2 + " \\(startScn=5, changeTime=" + secondStart + ", userName=.*, clientId=.*, redoThread=\\d+, events=1\\), "
+                    + TRANSACTION_ID_1 + " \\(startScn=10, changeTime=" + firstStart + ", userName=.*, clientId=.*, redoThread=\\d+, events=2\\)"))
+                    .isTrue();
+            assertThat(logInterceptor.containsMessage("All deferred transactions:")).isFalse();
+        }
+        finally {
+            logInterceptor.setLoggerLevel(BufferedLogMinerStreamingChangeEventSource.class, null);
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2577")
+    public void testPendingTransactionsAreOrderedOldestFirstWithEventCounts() throws Exception {
+        try (var source = getChangeEventSource(getConfig().build())) {
+            // Second transaction starts first by SCN but is added after the first to prove the ordering is by SCN
+            source.processEvent(getStartLogMinerEventRow(10, TRANSACTION_ID_1));
+            source.processEvent(getInsertLogMinerEventRow(11, TRANSACTION_ID_1));
+            source.processEvent(getInsertLogMinerEventRow(12, TRANSACTION_ID_1));
+            source.processEvent(getStartLogMinerEventRow(5, TRANSACTION_ID_2));
+            source.processEvent(getInsertLogMinerEventRow(6, TRANSACTION_ID_2));
+
+            final List<PendingTransaction> pending = source.getPendingTransactions();
+
+            assertThat(pending).hasSize(2);
+            assertThat(pending.get(0).transactionId()).isEqualTo(TRANSACTION_ID_2);
+            assertThat(pending.get(0).startScn()).isEqualTo(Scn.valueOf(5));
+            assertThat(pending.get(0).eventCount()).isEqualTo(1);
+            assertThat(pending.get(0).deferred()).isFalse();
+            assertThat(pending.get(1).transactionId()).isEqualTo(TRANSACTION_ID_1);
+            assertThat(pending.get(1).startScn()).isEqualTo(Scn.valueOf(10));
+            assertThat(pending.get(1).eventCount()).isEqualTo(2);
+            assertThat(pending.get(1).deferred()).isFalse();
+
+            source.processEvent(getCommitLogMinerEventRow(13, TRANSACTION_ID_1));
+            source.processEvent(getCommitLogMinerEventRow(14, TRANSACTION_ID_2));
+
+            assertThat(source.getPendingTransactions()).isEmpty();
+        }
+    }
+
+    @Test
     @FixFor("DBZ-1145")
     public void testCacheIsNotEmptyWhenNoMatchingTransactionExistsForPartialTransactionId() throws Exception {
         try (var source = getChangeEventSource(getConfig().build())) {
@@ -730,22 +803,22 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
 
     @Test
     @FixFor("debezium/dbz#1960")
-    public void testLastEventIsForgottenWhenTransactionCommits() throws Exception {
+    public void testLastEnqueuedEventIsForgottenWhenTransactionCommits() throws Exception {
         try (var source = getChangeEventSource(getConfig().build())) {
             source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
             source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1));
 
-            assertThat(source.getLastEventByTransactionId()).containsOnlyKeys(TRANSACTION_ID_1);
+            assertThat(source.getLastEnqueuedEventByTransactionId()).containsOnlyKeys(TRANSACTION_ID_1);
 
             source.processEvent(getCommitLogMinerEventRow(3, TRANSACTION_ID_1));
 
-            assertThat(source.getLastEventByTransactionId()).isEmpty();
+            assertThat(source.getLastEnqueuedEventByTransactionId()).isEmpty();
         }
     }
 
     @Test
     @FixFor("debezium/dbz#1960")
-    public void testLastEventIsForgottenWhenPartialRollbackIsAppliedByPrefixAndTransactionCommits() throws Exception {
+    public void testLastEnqueuedEventIsForgottenWhenPartialRollbackIsAppliedByPrefixAndTransactionCommits() throws Exception {
         try (var source = getChangeEventSource(getConfig().build())) {
             source.processEvent(getStartLogMinerEventRow(1, PARTIAL_TXN_ID_FULL));
             source.processEvent(getInsertLogMinerEventRow(2, PARTIAL_TXN_ID_FULL, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'insert'"));
@@ -754,7 +827,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             source.processEvent(getCommitLogMinerEventRow(5, PARTIAL_TXN_ID_FULL));
 
             // The undo was attributed to PARTIAL_TXN_ID_FULL, so committing it must leave nothing behind
-            assertThat(source.getLastEventByTransactionId()).isEmpty();
+            assertThat(source.getLastEnqueuedEventByTransactionId()).isEmpty();
         }
     }
 
@@ -1177,10 +1250,10 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         }
 
         @SuppressWarnings("unchecked")
-        public Map<String, LogMinerEventRow> getLastEventByTransactionId() throws Exception {
-            var field = BufferedLogMinerStreamingChangeEventSource.class.getDeclaredField("lastEventByTransactionId");
+        public Map<String, LogMinerEvent> getLastEnqueuedEventByTransactionId() throws Exception {
+            var field = AbstractLogMinerTransactionCache.class.getDeclaredField("lastEnqueuedEventByTransactionId");
             field.setAccessible(true);
-            return (Map<String, LogMinerEventRow>) field.get(this);
+            return (Map<String, LogMinerEvent>) field.get(this.getTransactionCache());
         }
 
         @Override

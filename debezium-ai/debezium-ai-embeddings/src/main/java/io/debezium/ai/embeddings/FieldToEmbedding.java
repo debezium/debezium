@@ -73,13 +73,13 @@ public class FieldToEmbedding<R extends ConnectRecord<R>> implements Transformat
             .withDeprecatedAliases(LEGACY_EMBEDDINGS_PREFIX + "field.embedding");
 
     private static final Schema EMBEDDING_SCHEMA = FloatVector.schema();
-    private static final EmbeddingsModelFactory MODEL_FACTORY = EmbeddingsModelFactoryLoader.getModelFactory();
-    public static final Field.Set ALL_FIELDS = Field.setOf(TEXT_FIELD, EMBEDDGINS_FIELD).with(MODEL_FACTORY.getConfigFields());
+    public static final Field.Set ALL_FIELDS = Field.setOf(TEXT_FIELD, EMBEDDGINS_FIELD).with(EmbeddingsModelFactoryLoader.getModelFactory().getConfigFields());
 
     private SmtManager<R> smtManager;
     private String sourceField;
     private String embeddingsField;
     private List<String> sourceFieldPath;
+    private EmbeddingsModelFactory modelFactory;
     private EmbeddingModel model;
 
     private static final String NESTING_SPLIT_REG_EXP = "\\.";
@@ -94,11 +94,12 @@ public class FieldToEmbedding<R extends ConnectRecord<R>> implements Transformat
 
         sourceField = config.getString(TEXT_FIELD);
         embeddingsField = config.getString(EMBEDDGINS_FIELD);
-        MODEL_FACTORY.configure(config);
+        modelFactory = EmbeddingsModelFactoryLoader.getModelFactory();
+        modelFactory.configure(config);
         validateConfiguration();
 
         sourceFieldPath = Arrays.asList(sourceField.split(NESTING_SPLIT_REG_EXP));
-        model = MODEL_FACTORY.getModel();
+        model = modelFactory.getModel();
     }
 
     @Override
@@ -137,7 +138,7 @@ public class FieldToEmbedding<R extends ConnectRecord<R>> implements Transformat
         if (sourceField == null || sourceField.isBlank()) {
             throw new ConfigException(format("'%s' must be set to non-empty value.", TEXT_FIELD));
         }
-        MODEL_FACTORY.validateConfiguration();
+        modelFactory.validateConfiguration();
     }
 
     /**

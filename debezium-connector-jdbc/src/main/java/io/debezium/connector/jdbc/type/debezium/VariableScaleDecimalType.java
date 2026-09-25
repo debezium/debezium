@@ -7,6 +7,7 @@ package io.debezium.connector.jdbc.type.debezium;
 
 import java.math.BigDecimal;
 import java.sql.Types;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -43,13 +44,21 @@ public class VariableScaleDecimalType extends AbstractType {
 
     @Override
     public List<ValueBindDescriptor> bind(int index, Schema schema, Object value) {
+        return List.of(new ValueBindDescriptor(index, toDecimalValue(value)));
+    }
 
+    @Override
+    public Object[] convertArray(Schema schema, Collection<?> values) {
+        return values.stream().map(this::toDecimalValue).toArray();
+    }
+
+    private BigDecimal toDecimalValue(Object value) {
         if (value == null) {
-            return List.of(new ValueBindDescriptor(index, null));
+            return null;
         }
         if (value instanceof Struct) {
             Optional<BigDecimal> bigDecimalValue = VariableScaleDecimal.toLogical((Struct) value).getDecimalValue();
-            return List.of(new ValueBindDescriptor(index, bigDecimalValue.orElseThrow()));
+            return bigDecimalValue.orElseThrow();
         }
 
         throw new ConnectException(String.format("Unexpected %s value '%s' with type '%s'", getClass().getSimpleName(),

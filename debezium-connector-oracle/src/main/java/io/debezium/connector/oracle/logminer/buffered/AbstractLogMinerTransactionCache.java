@@ -5,8 +5,10 @@
  */
 package io.debezium.connector.oracle.logminer.buffered;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.IntFunction;
@@ -18,6 +20,8 @@ import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.events.RollbackToSavepointEvent;
 import io.debezium.connector.oracle.logminer.events.RowIdCodec;
+import io.debezium.connector.oracle.logminer.events.XmlBeginEvent;
+import io.debezium.connector.oracle.logminer.events.XmlEndEvent;
 import io.debezium.util.Loggings;
 
 /**
@@ -31,6 +35,7 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractLogMinerTransactionCache.class);
     private final Set<String> abandonedTransactions = new HashSet<>();
+    private final Map<String, LogMinerEvent> lastEnqueuedEventByTransactionId = new HashMap<>();
 
     @Override
     public void abandon(T transaction) {
@@ -45,6 +50,16 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
     @Override
     public boolean isAbandoned(String transactionId) {
         return abandonedTransactions.contains(transactionId);
+    }
+
+    @Override
+    public LogMinerEvent putLastEnqueuedEvent(String transactionId, LogMinerEvent event) {
+        return lastEnqueuedEventByTransactionId.put(transactionId, event);
+    }
+
+    @Override
+    public LogMinerEvent removeLastEnqueuedEvent(String transactionId) {
+        return lastEnqueuedEventByTransactionId.remove(transactionId);
     }
 
     @Override
@@ -203,6 +218,14 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
                     break;
                 }
                 rolledBackEntry = entry;
+            }
+            else if (event.getEventType() == EventType.XML_END
+                    && event instanceof XmlEndEvent xmlEnd
+                    && xmlEnd.getTransactionSequence() == 1
+                    && rolledBackEntry != null
+                    && rolledBackEntry.event() instanceof XmlBeginEvent xmlBegin
+                    && xmlBegin.getTransactionSequence() > 1) {
+                break;
             }
         }
 

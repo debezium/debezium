@@ -2417,6 +2417,37 @@ public class LogFileCollectorTest {
         }
     }
 
+    @Test
+    @FixFor("dbz#2601")
+    public void testGetLogsExceptionReportsAttemptsAndTheRetryProperty() throws Exception {
+        final Scn offsetScn = Scn.valueOf(12345L);
+        final RedoThreadState state = getSingleThreadOpenState(Scn.valueOf(100), Scn.valueOf(200));
+
+        final Configuration config = getDefaultConfig()
+                .with(OracleConnectorConfig.LOG_MINING_LOG_QUERY_MAX_RETRIES, 2)
+                .with(OracleConnectorConfig.LOG_MINING_LOG_BACKOFF_INITIAL_DELAY_MS, 1)
+                .with(OracleConnectorConfig.LOG_MINING_LOG_BACKOFF_MAX_DELAY_MS, 2)
+                .build();
+        final OracleConnection connection = getOracleConnectionMock(state);
+
+        final LogFileCollector collector = getLogFileCollector(config, connection);
+        final LogFileCollector spy = Mockito.spy(collector);
+        Mockito.doReturn(Collections.emptyList()).when(spy).getLogsForOffsetScn(any(Scn.class));
+        Mockito.doReturn(Collections.emptyList()).when(spy).getDeletedLogsForOffsetScn(any(Scn.class));
+
+        try {
+            spy.getLogs(offsetScn);
+            org.junit.jupiter.api.Assertions.fail("Expected LogFileNotFoundException to be thrown");
+        }
+        catch (LogFileNotFoundException e) {
+            // Two retries follow the initial attempt, so the operator is told about all three.
+            assertThat(e.getMessage()).contains("None of the log files contain offset SCN: 12345 after 3 attempts");
+            assertThat(e.getMessage()).contains("slow archiver process");
+            assertThat(e.getMessage()).contains("internal.log.mining.log.query.max.retries (the default is 5)");
+            assertThat(e.getMessage()).contains("a re-snapshot is required");
+        }
+    }
+
     private static LogFile createRedoLog(String name, long startScn, int sequence, int threadId) {
         return createRedoLog(name, startScn, Long.MAX_VALUE, sequence, threadId);
     }

@@ -31,6 +31,8 @@ import io.debezium.relational.ddl.DdlParserListener;
 import io.debezium.text.ParsingException;
 import io.debezium.util.IoUtil;
 
+import oracle.jdbc.OracleTypes;
+
 /**
  * This is the test suite for Oracle Antlr parser unit testing
  */
@@ -590,6 +592,49 @@ public class OracleDdlParserTest {
         assertThatThrownBy(() -> parser.parse("ALTER TABLE \"SCOTT\".\"TEST\" ADD (id_org_id as (org_id || '-' || id) virtual)", tables))
                 .isInstanceOf(ParsingException.class)
                 .hasMessageContaining("trying to add a virtual column in ORCLPDB1.SCOTT.TEST table: virtual columns are not supported.");
+    }
+
+    @Test
+    @FixFor("dbz#2656")
+    void shouldParseXmlTypeColumns() {
+        parser.setCurrentDatabase(PDB_NAME);
+        parser.setCurrentSchema("DEBEZIUM");
+
+        parser.parse("CREATE TABLE " + TABLE_NAME + " ("
+                + "ID numeric(9,0) primary key, "
+                + "COL1 XMLTYPE, "
+                + "COL2 \"SYS\".\"XMLTYPE\", "
+                + "COL3 SYS.XMLTYPE, "
+                + "COL4 \"XMLTYPE\")", tables);
+
+        Table table = tables.forTable(new TableId(PDB_NAME, "DEBEZIUM", TABLE_NAME));
+        assertThat(table.retrieveColumnNames()).containsExactly("ID", "COL1", "COL2", "COL3", "COL4");
+        testColumn(table, "COL1", true, OracleTypes.SQLXML, "XMLTYPE", -1, null, true, null);
+        testColumn(table, "COL2", true, OracleTypes.SQLXML, "XMLTYPE", -1, null, true, null);
+        testColumn(table, "COL3", true, OracleTypes.SQLXML, "XMLTYPE", -1, null, true, null);
+        testColumn(table, "COL4", true, OracleTypes.SQLXML, "XMLTYPE", -1, null, true, null);
+
+        parser.parse("ALTER TABLE " + TABLE_NAME + " ADD (COL5 \"SYS\".\"XMLTYPE\")", tables);
+
+        table = tables.forTable(new TableId(PDB_NAME, "DEBEZIUM", TABLE_NAME));
+        testColumn(table, "COL5", true, OracleTypes.SQLXML, "XMLTYPE", -1, null, true, null);
+    }
+
+    @Test
+    @FixFor("dbz#2656")
+    void shouldNotResolveUnrecognizedObjectTypeColumn() {
+        parser.setCurrentDatabase(PDB_NAME);
+        parser.setCurrentSchema("DEBEZIUM");
+
+        parser.parse("CREATE TABLE " + TABLE_NAME + " ("
+                + "ID numeric(9,0) primary key, "
+                + "COL1 \"MYSCHEMA\".\"MY_TYPE\")", tables);
+
+        // Object types other than MDSYS.SDO_GEOMETRY and SYS.XMLTYPE are left untouched by the
+        // listener, so the column keeps the ColumnEditor defaults rather than a resolved type.
+        Column column = tables.forTable(new TableId(PDB_NAME, "DEBEZIUM", TABLE_NAME)).columnWithName("COL1");
+        assertThat(column.jdbcType()).isEqualTo(Types.INTEGER);
+        assertThat(column.typeName()).isNull();
     }
 
     private List<DdlParserListener.EventType> getEventTypesFromChanges(DdlChanges changes) {

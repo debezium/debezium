@@ -4127,23 +4127,38 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    void shouldFailWhenReadOnlyIsNotSupported() {
+    void shouldFailWhenReadOnlyIsNotSupported() throws InterruptedException {
+        TestHelper.execute(SETUP_TABLES_STMT);
 
-        PostgresDatabaseVersionResolver databaseVersionResolver = new PostgresDatabaseVersionResolver();
+        final var databaseVersion = new PostgresDatabaseVersionResolver().getVersion();
+        final var completionStatus = new AtomicReference<Boolean>();
+        final var completionError = new AtomicReference<Throwable>();
 
         start(PostgresConnector.class, TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.READ_ONLY_CONNECTION, true)
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.a,s2.a")
                 .build(), (success, message, error) -> {
-
-                    if (databaseVersionResolver.getVersion().isLessThan(13, 0, 0)) {
-                        assertThat(error)
-                                .isInstanceOf(DebeziumException.class)
-                                .hasMessage("Read only is not supported for version minor to 13");
-                    }
-                    else {
-                        assertTrue(success);
-                    }
+                    completionError.set(error);
+                    completionStatus.set(success);
                 });
+
+        if (databaseVersion.isLessThan(13, 0, 0)) {
+            assertThat(completionStatus.get()).isFalse();
+            assertThat(completionError.get())
+                    .isInstanceOf(DebeziumException.class)
+                    .hasMessageContaining("Read only is not supported for version minor to 13");
+        }
+        else {
+            waitForStreamingRunning();
+
+            final var records = consumeRecordsByTopic(2);
+            assertThat(records.allRecordsInOrder()).hasSize(2);
+            assertThat(records.topics()).hasSize(2);
+
+            stopConnector();
+            assertThat(completionStatus.get()).isTrue();
+            assertThat(completionError.get()).isNull();
+        }
     }
 
     @Test
@@ -4358,6 +4373,11 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
             assertThat(error).isNull();
         });
         assertConnectorIsRunning();
+        waitForStreamingRunning();
+
+        final var records = consumeRecordsByTopic(10);
+        assertThat(records.allRecordsInOrder()).hasSize(10);
+        assertThat(records.topics()).hasSize(10);
         assertThat(logInterceptor.containsWarnMessage("Guardrail limit exceeded")).isTrue();
     }
 

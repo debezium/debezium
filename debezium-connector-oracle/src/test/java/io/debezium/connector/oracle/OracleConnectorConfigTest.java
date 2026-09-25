@@ -563,6 +563,19 @@ public class OracleConnectorConfigTest {
         assertThat(config.validateAndRecord(fields, LOGGER::error)).isTrue();
     }
 
+    @Test
+    @FixFor("dbz#2598")
+    public void testStrategiesWhoseDictionaryCanDriftFromTheRedoBeingMined() {
+        // Mining leans on the connector's own relational model for these strategies, because LogMiner
+        // can report an object that its data dictionary does not describe. A strategy added without
+        // deciding which side it falls on should fail here rather than silently drop such events.
+        assertThat(Stream.of(OracleConnectorConfig.LogMiningStrategy.values())
+                .filter(OracleConnectorConfig.LogMiningStrategy::isDictionaryMismatchPossible))
+                .containsExactlyInAnyOrder(
+                        OracleConnectorConfig.LogMiningStrategy.HYBRID,
+                        OracleConnectorConfig.LogMiningStrategy.DICTIONARY_FROM_FILE);
+    }
+
     private static Configuration.Builder logMinerConfig(String adapter) {
         return Configuration.create()
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")

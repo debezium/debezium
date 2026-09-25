@@ -116,7 +116,7 @@ properties([
 //   1. Add it to SOURCE_REPOSITORIES parameter in common_parameters.groovy
 //   2. Add it to the appropriate tier below (or add a new tier if it has new dependencies)
 //   The pipeline validates at startup that RELEASE_PLAN and SOURCE_REPOSITORIES are in sync.
-@Field final RELEASE_PLAN = [
+@Field RELEASE_PLAN = [
     ['debezium'],
     ['cassandra', 'cockroachdb', 'db2', 'ibmi', 'informix', 'ingres', 'milvus' ,'spanner', 'sqlite', 'vitess', 'tidb', 'yashandb'],
     ['quarkus', 'operator'],
@@ -241,6 +241,7 @@ def checkPreReleaseContent(String dbzContent, String copyrightContent, String re
 
 @Field final BUILD_ARGS = [
    'debezium': '-Poracle-all',
+   'server': '-Pnative',
  ]
 
 // Debezium Server must always ignore snapshots as it depends on Debezium Server BOM
@@ -265,9 +266,16 @@ def buildArgsForRepo(repoDir) {
     'jbang-catalog': 'debezium-jbang-catalog',
 ]
 
+// Overrides the default 'io.debezium' group ID used in artifactExists() for repos that
+// publish under a different Maven group ID.
+@Field final TEST_GROUP_IDS = [
+    'jbang-catalog': 'io.debezium.jbang',
+]
+
 def artifactExists(repoDir) {
     def artifactId = TEST_ARTIFACTS.getOrDefault(repoDir, "debezium-connector-${repoDir}")
-    def url  = "https://repo1.maven.org/maven2/io/debezium/${artifactId}/$RELEASE_VERSION/${artifactId}-${RELEASE_VERSION}.pom"
+    def groupPath = TEST_GROUP_IDS.getOrDefault(repoDir, 'io.debezium').replace('.', '/')
+    def url = "https://repo1.maven.org/maven2/${groupPath}/${artifactId}/$RELEASE_VERSION/${artifactId}-${RELEASE_VERSION}.pom"
     echo "Checking ${url}"
     sh(script: "curl -sSfI ${url} >/dev/null", returnStatus: true) == 0
 }
@@ -284,7 +292,7 @@ def branchExists(branchName) {
 }
 
 def postPerformCommitExists() {
-    sh(script: "git log --oneline | grep -qE '${POST_PERFORM_COMMIT_PATTERN}'", returnStatus: true) == 0
+    sh(script: "git log --oneline | head -2 | grep -qE '${POST_PERFORM_COMMIT_PATTERN}'", returnStatus: true) == 0
 }
 
 def gitPushCandidate(repoName) {
@@ -339,6 +347,9 @@ def serverPrePrepareSteps() {
     fileUtils.modifyFile('debezium-server-bom/pom.xml') {
         it.replaceFirst('<version>.+</version>\n    </parent>', "<version>$RELEASE_VERSION</version>\n    </parent>")
     }
+    fileUtils.modifyFile('debezium-quarkus-bridge/pom.xml') {
+        it.replaceFirst('<version>.+</version>\n    </parent>', "<version>$RELEASE_VERSION</version>\n    </parent>")
+    }
     defaultPrePrepareSteps()
 }
 
@@ -384,6 +395,9 @@ def serverPostPerformSteps() {
     fileUtils.modifyFile('debezium-server-bom/pom.xml') {
         it.replaceFirst('<version>.+</version>\n    </parent>', "<version>$DEVELOPMENT_VERSION</version>\n    </parent>")
     }
+    fileUtils.modifyFile('debezium-quarkus-bridge/pom.xml') {
+        it.replaceFirst('<version>.+</version>\n    </parent>', "<version>$DEVELOPMENT_VERSION</version>\n    </parent>")
+    }
     defaultPostPerformSteps()
 }
 
@@ -397,10 +411,16 @@ def operatorPostPerformSteps() {
     sh "git commit -a -m \"${String.format(POST_PERFORM_COMMIT_DEFAULT, DEVELOPMENT_VERSION)}\""
 }
 
+def platformPostPerformSteps() {
+    sh 'git checkout -- openapi/openapi.json openapi/openapi.yaml || true'
+    defaultPostPerformSteps()
+}
+
 @Field final POST_PERFORM_STEPS = [
     'debezium': this.&debeziumPostPerformSteps,
     'server': this.&serverPostPerformSteps,
     'operator': this.&operatorPostPerformSteps,
+    'platform': this.&platformPostPerformSteps,
 ]
 
 def releasePrepare(repoDir, repoName) {
@@ -719,8 +739,13 @@ node {
             if (!IGNORE_RELEASE_PLAN_INCONSISTENCIES) {
                 if (missing) { error "RELEASE_PLAN is missing repositories: ${missing.sort()}" }
                 if (extra) { error "RELEASE_PLAN contains unknown repositories: ${extra.sort()}" }
-            } else if (missing || extra) {
-                echo "WARNING: Ignoring release plan inconsistencies — missing: ${missing.sort()}, extra: ${extra.sort()}"
+            } else {
+                if (missing || extra) {
+                    echo "WARNING: Ignoring release plan inconsistencies — missing: ${missing.sort()}, extra: ${extra.sort()}"
+                }
+                if (extra) {
+                    RELEASE_PLAN = RELEASE_PLAN.collect { tier -> tier - extra }.findAll { !it.isEmpty() }
+                }
             }
         }
 

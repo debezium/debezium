@@ -14,8 +14,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Function;
 
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -29,25 +32,36 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.Flaky;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.kafka.KafkaClusterUtils;
+import io.debezium.pipeline.notification.channels.SinkNotificationChannel;
 import io.debezium.pipeline.signal.channels.FileSignalChannel;
 import io.debezium.pipeline.signal.channels.KafkaSignalChannel;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotChangeEventSource;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.strimzi.test.container.StrimziKafkaCluster;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+
 public abstract class BinlogReadOnlyIncrementalSnapshotIT<C extends SourceConnector> extends BinlogIncrementalSnapshotIT<C> {
 
     public static final String EXCLUDED_TABLE = "b";
 
     private static final int PARTITION_NO = 0;
+
+    private static final String NOTIFICATION_TOPIC = "io.debezium.notification";
+
+    private SnapshotStopSynchronization snapshotStopSynchronization;
 
     @BeforeEach
     void before() throws Exception {
@@ -76,7 +90,7 @@ public abstract class BinlogReadOnlyIncrementalSnapshotIT<C extends SourceConnec
     }
 
     protected Configuration.Builder config() {
-        return super.config()
+        final var builder = super.config()
                 .with(BinlogConnectorConfig.TABLE_EXCLUDE_LIST, DATABASE.getDatabaseName() + "." + EXCLUDED_TABLE)
                 .with(BinlogConnectorConfig.READ_ONLY_CONNECTION, true)
                 .with(KafkaSignalChannel.SIGNAL_TOPIC, getSignalsTopic())
@@ -84,6 +98,144 @@ public abstract class BinlogReadOnlyIncrementalSnapshotIT<C extends SourceConnec
                 .with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source,kafka")
                 .with(BinlogConnectorConfig.INCLUDE_SQL_QUERY, true)
                 .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS, String.format("%s:%s", DATABASE.qualifiedTableName("a42"), "pk1,pk2,pk3,pk4"));
+        if (snapshotStopSynchronization != null) {
+            builder.with(CommonConnectorConfig.NOTIFICATION_ENABLED_CHANNELS, "sink")
+                    .with(SinkNotificationChannel.NOTIFICATION_TOPIC, NOTIFICATION_TOPIC);
+        }
+        return builder;
+    }
+
+    @Override
+    protected void startConnector(Function<Configuration.Builder, Configuration.Builder> custConfig) {
+        if (snapshotStopSynchronization == null) {
+            super.startConnector(custConfig);
+            return;
+        }
+        // Sink notifications also report the initial schema-only snapshot; only data records are unexpected here.
+        super.startConnector(custConfig, loggingCompletion(), false);
+        waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task());
+        consumeAvailableRecords(record -> assertThat(record.topic()).isEqualTo(NOTIFICATION_TOPIC));
+    }
+
+    @Override
+    protected void removeCapturedCollectionFromInProgressIncrementalSnapshot(int collectionIndexToRemove) throws Exception {
+        try (var synchronization = new SnapshotStopSynchronization(tableDataCollectionIds().get(0), getWaitDurationInSeconds())) {
+            snapshotStopSynchronization = synchronization;
+            super.removeCapturedCollectionFromInProgressIncrementalSnapshot(collectionIndexToRemove);
+
+            // Completion follows the snapshot READ records, including those from the removed collection.
+            Awaitility.await().atMost(getWaitDurationInSeconds()).until(() -> {
+                consumeAvailableRecords(synchronization::observeRecord);
+                return synchronization.snapshotCompleted;
+            });
+            assertThat(synchronization.failure).as("First chunk and stop commit synchronization").isNull();
+
+            final String retainedTopic = topicNames().get(1 - collectionIndexToRemove);
+            // Concurrent INSERTs may also be captured if this collection's maximum key is read after they commit.
+            assertThat(synchronization.snapshotReads.getOrDefault(retainedTopic, 0))
+                    .as("Snapshot READ records for the retained collection").isGreaterThanOrEqualTo(ROW_COUNT);
+            final int removedReads = synchronization.snapshotReads.getOrDefault(topicNames().get(collectionIndexToRemove), 0);
+            if (collectionIndexToRemove == 0) {
+                assertThat(removedReads).as("Snapshot READ records for the partially captured collection").isBetween(1, ROW_COUNT - 1);
+            }
+            else {
+                assertThat(removedReads).as("Snapshot READ records for the not yet captured collection").isZero();
+            }
+        }
+        finally {
+            snapshotStopSynchronization = null;
+        }
+    }
+
+    @Override
+    protected void sendAdHocSnapshotStopSignal(String... dataCollectionIds) throws SQLException {
+        if (snapshotStopSynchronization == null) {
+            super.sendAdHocSnapshotStopSignal(dataCollectionIds);
+            return;
+        }
+        try {
+            assertThat(snapshotStopSynchronization.firstChunkStarted.await(getWaitDurationInSeconds().toMillis(), TimeUnit.MILLISECONDS))
+                    .as("First incremental snapshot chunk started").isTrue();
+            super.sendAdHocSnapshotStopSignal(dataCollectionIds);
+        }
+        catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new SQLException("Interrupted while waiting for the first incremental snapshot chunk", e);
+        }
+        finally {
+            snapshotStopSynchronization.stopCommitted.countDown();
+        }
+    }
+
+    @Override
+    protected SourceRecords consumeRecordsByTopic(int numRecords, boolean assertRecords) throws InterruptedException {
+        final SourceRecords records = super.consumeRecordsByTopic(numRecords, assertRecords);
+        if (snapshotStopSynchronization != null) {
+            records.allRecordsInOrder().forEach(snapshotStopSynchronization::observeRecord);
+        }
+        return records;
+    }
+
+    private static class SnapshotStopSynchronization extends LogInterceptor implements AutoCloseable {
+        private final Logger snapshotLogger = (Logger) LoggerFactory.getLogger(AbstractIncrementalSnapshotChangeEventSource.class);
+        private final Level previousLevel;
+        private final String firstChunkMessage;
+        private final Duration timeout;
+        private final CountDownLatch firstChunkStarted = new CountDownLatch(1);
+        private final CountDownLatch stopCommitted = new CountDownLatch(1);
+        private final AtomicBoolean firstChunk = new AtomicBoolean(true);
+        private final Map<String, Integer> snapshotReads = new HashMap<>();
+        private volatile Throwable failure;
+        private boolean snapshotCompleted;
+
+        private SnapshotStopSynchronization(String firstCollection, Duration timeout) {
+            super(AbstractIncrementalSnapshotChangeEventSource.class);
+            firstChunkMessage = "Incremental snapshot for table '" + firstCollection + "' will end at position ";
+            this.timeout = timeout;
+            previousLevel = snapshotLogger.getLevel();
+            snapshotLogger.setLevel(Level.INFO);
+        }
+
+        @Override
+        protected void append(ILoggingEvent event) {
+            if (event.getFormattedMessage().startsWith(firstChunkMessage) && firstChunk.compareAndSet(true, false)) {
+                // Commit the stop between the first chunk's low and high watermarks. With unchanged GTID
+                // watermarks, read-only snapshots can finish before the stop transaction commits.
+                // Wait only for the commit, not signal processing, which must run on this same connector thread.
+                firstChunkStarted.countDown();
+                try {
+                    if (!stopCommitted.await(timeout.toMillis(), TimeUnit.MILLISECONDS)) {
+                        failure = new IllegalStateException("Stop signal did not commit before the first chunk could continue");
+                    }
+                }
+                catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    failure = e;
+                }
+            }
+        }
+
+        private void observeRecord(SourceRecord record) {
+            if (record.value() instanceof Struct value) {
+                if (NOTIFICATION_TOPIC.equals(record.topic())) {
+                    if ("Incremental Snapshot".equals(value.getString("aggregate_type")) && "COMPLETED".equals(value.getString("type"))) {
+                        snapshotCompleted = true;
+                    }
+                }
+                else if (value.schema().field(Envelope.FieldName.OPERATION) != null
+                        && Envelope.Operation.READ.code().equals(value.getString(Envelope.FieldName.OPERATION))) {
+                    snapshotReads.merge(record.topic(), 1, Integer::sum);
+                }
+            }
+        }
+
+        @Override
+        public void close() {
+            stopCommitted.countDown();
+            snapshotLogger.detachAppender(this);
+            stop();
+            snapshotLogger.setLevel(previousLevel);
+        }
     }
 
     protected String getSignalsTopic() {

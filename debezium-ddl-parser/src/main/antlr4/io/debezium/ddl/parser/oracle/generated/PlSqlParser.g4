@@ -3418,9 +3418,7 @@ xmltype_storage
     ;
 
 xmlschema_spec
-    : (XMLSCHEMA DELIMITED_ID)? ELEMENT DELIMITED_ID (allow_or_disallow NONSCHEMA)? (
-        allow_or_disallow ANYSCHEMA
-    )?
+    : ((XMLSCHEMA DELIMITED_ID)? ELEMENT id_expression)? (allow_or_disallow (NONSCHEMA | ANYSCHEMA))*
     ;
 
 object_table
@@ -5001,6 +4999,7 @@ alter_table
         | alter_table_partitioning
         //TODO      | alter_external_table
         | move_table_clause
+        | modify_to_partitioned
     ) ((enable_disable_clause | enable_or_disable (TABLE LOCK | ALL TRIGGERS))+)?
     ;
 
@@ -5052,13 +5051,9 @@ merge_table_partition
     ;
 
 modify_table_partition
-    : MODIFY (
-        (PARTITION | SUBPARTITION) partition_name ((ADD | DROP) list_values_clause)? (ADD range_subpartition_desc)? (
-            REBUILD? UNUSABLE LOCAL INDEXES
-        )? shrink_clause?
-        // modify_to_partitioned: MODIFY table_partitioning_clauses [filter_condition] [ONLINE] [update_index_clauses]
-        | table_partitioning_clauses filter_condition? ONLINE? update_index_clauses?
-    )
+    : MODIFY (PARTITION | SUBPARTITION) partition_name ((ADD | DROP) list_values_clause)? (
+        ADD range_subpartition_desc
+    )? (REBUILD? UNUSABLE LOCAL INDEXES)? shrink_clause?
     ;
 
 split_table_partition
@@ -5218,6 +5213,7 @@ index_attributes
     : (
         physical_attributes_clause
         | logging_clause
+        | ONLINE
         | TABLESPACE (tablespace | DEFAULT)
         | key_compression
         | sort_or_nosort
@@ -5241,6 +5237,10 @@ move_table_clause
         lob_storage_clause
         | varray_col_properties
     )* parallel_clause?
+    ;
+
+modify_to_partitioned
+    : MODIFY (table_partitioning_clauses | NONPARTITIONED) filter_condition? ONLINE? update_index_clauses?
     ;
 
 index_org_table_clause
@@ -5414,7 +5414,7 @@ modify_lob_parameters
 
 lob_parameters
     : (
-        (ENABLE | DISABLE) STORAGE IN ROW
+        (ENABLE | DISABLE) STORAGE IN ROW UNSIGNED_INTEGER?
         | CHUNK UNSIGNED_INTEGER
         | PCTVERSION UNSIGNED_INTEGER
         | FREEPOOLS UNSIGNED_INTEGER

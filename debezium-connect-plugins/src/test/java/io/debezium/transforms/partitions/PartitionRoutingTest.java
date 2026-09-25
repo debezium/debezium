@@ -229,6 +229,36 @@ public class PartitionRoutingTest {
         assertThat(transformed.kafkaPartition()).isEqualTo(65);
     }
 
+    @Test
+    @FixFor("debezium/dbz#2698")
+    public void whenNestedFieldPathTraversesNullStructItWillBeIgnored() {
+
+        partitionRoutingTransformation.configure(Map.of(
+                "partition.payload.fields", "before.product",
+                "partition.topic.num", 2));
+
+        final SourceRecord eventRecord = buildSourceRecord(productRow(1L, 1.0F, "APPLE"), CREATE);
+
+        SourceRecord transformed = partitionRoutingTransformation.apply(eventRecord);
+
+        assertThat(eventRecord).isEqualTo(transformed);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2698")
+    public void whenNestedFieldPathTraversesNullStructWithOtherValidFieldItWillBeRouted() {
+
+        partitionRoutingTransformation.configure(Map.of(
+                "partition.payload.fields", "before.product,after.product",
+                "partition.topic.num", 2));
+
+        final SourceRecord eventRecord = buildSourceRecord(productRow(1L, 1.0F, "APPLE"), CREATE);
+
+        SourceRecord transformed = partitionRoutingTransformation.apply(eventRecord);
+
+        assertThat(transformed.kafkaPartition()).isZero();
+    }
+
     private SourceRecord buildSourceRecord(Struct row, Envelope.Operation operation) {
 
         SchemaBuilder sourceSchemaBuilder = SchemaBuilder.struct()

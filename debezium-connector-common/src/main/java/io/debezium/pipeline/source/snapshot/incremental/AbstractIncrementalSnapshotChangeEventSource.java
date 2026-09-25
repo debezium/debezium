@@ -24,6 +24,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalLong;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -312,6 +313,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                         LOGGER.info("Incremental snapshot for table '{}' will end at position {}", currentTableId,
                                 maybeRedactSensitiveData(context.maximumKey().orElse(new Object[0])));
                     }
+                    context.totalRows(resolveTotalRowCount(currentTable, context.currentDataCollectionId().getAdditionalCondition(), maximumKey));
                 }
 
                 try {
@@ -333,7 +335,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                         }
                         else {
 
-                            notificationService.incrementalSnapshotNotificationService().notifyInProgress(context, partition, offsetContext);
+                            notificationService.incrementalSnapshotNotificationService().notifyInProgress(context, partition, offsetContext, totalRowsScanned);
                             break;
                         }
                     }
@@ -531,6 +533,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             notificationService.incrementalSnapshotNotificationService().notifyStarted(context, partition, offsetContext);
 
             progressListener.monitoredDataCollectionsDetermined(partition, monitoredDataCollections);
+            notificationService.incrementalSnapshotNotificationService().notifyDataCollectionsResolved(context, partition, offsetContext);
             readChunk(partition, offsetContext);
         }
     }
@@ -765,6 +768,36 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                 .tableId(currentTable.id())
                 .addColumns(columns)
                 .create();
+    }
+
+    /**
+     * Resolves the best-effort total number of rows the incremental snapshot will scan for the current table.
+     * <p>
+     * When no row filter is present and the connector exposes a positive metadata estimate, the (constant-time)
+     * estimate is used; otherwise a bounded exact {@code COUNT(1)} (rows with key {@code <= maximumKey}) is used. A
+     * non-positive estimate (e.g. a table that has never been analyzed, whose statistics report zero rows) is treated
+     * as unavailable so the exact count is used instead of reporting a misleading total for a populated table. Any
+     * failure resolves to {@link OptionalLong#empty()} so the snapshot is neither failed nor slowed and the per-table
+     * progress fields are simply omitted.
+     * <p>
+     * The estimate is best-effort: when it is used it may differ from the number of rows actually scanned (statistics
+     * lag, or rows inserted after the snapshot's {@code maximumKey} was fixed), so the derived progress can settle
+     * slightly short of, or reach, 100% before the scan truly completes. It never reports more than 100%.
+     */
+    protected OptionalLong resolveTotalRowCount(Table table, Optional<String> additionalCondition, Object[] maximumKey) {
+        try {
+            if (additionalCondition.isEmpty()) {
+                final OptionalLong estimate = chunkQueryBuilder.estimateRowCount(context, table);
+                if (estimate.isPresent() && estimate.getAsLong() > 0) {
+                    return estimate;
+                }
+            }
+            return chunkQueryBuilder.countRows(context, table, additionalCondition, maximumKey);
+        }
+        catch (RuntimeException e) {
+            LOGGER.warn("Unable to resolve total row count for table '{}' during incremental snapshot; per-table progress will be omitted", table.id(), e);
+            return OptionalLong.empty();
+        }
     }
 
     private void incrementTableRowsScanned(P partition, long rows) {

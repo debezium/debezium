@@ -13,6 +13,8 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Date;
+import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
 
@@ -20,11 +22,15 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.data.Timestamp;
+import org.bson.BsonArray;
 import org.bson.BsonDocument;
+import org.bson.BsonTimestamp;
 import org.bson.BsonType;
 import org.bson.BsonValue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState.ArrayEncoding;
 import io.debezium.doc.FixFor;
@@ -47,6 +53,27 @@ public class MongoDataConverterTest {
         val = BsonDocument.parse(record);
         builder = SchemaBuilder.struct().name("pub");
         converter = new MongoDataConverter(ArrayEncoding.ARRAY);
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = { 0L, 1L, 2_147_483_647L, 2_147_483_648L, 4_294_967_295L })
+    @FixFor("debezium/dbz#1715")
+    void shouldConvertUnsignedTimestampSecondsInFieldsAndArrays(long seconds) {
+        final var timestamp = new BsonTimestamp((int) seconds, 0);
+        final var sameSecond = new BsonTimestamp((int) seconds, -1);
+        final var document = new BsonDocument("timestamp", timestamp)
+                .append("nested", new BsonDocument("timestamp", sameSecond))
+                .append("timestamps", new BsonArray(List.of(timestamp, sameSecond)));
+        converter.buildSchema(converter.parseBsonDocument(document), builder);
+        final var schema = builder.build();
+        final var result = new Struct(schema);
+        document.entrySet().forEach(entry -> converter.buildStruct(entry, schema, result));
+
+        final var expected = new Date(seconds * 1_000);
+        assertThat(result.get("timestamp")).isEqualTo(expected);
+        assertThat(result.getStruct("nested").get("timestamp")).isEqualTo(expected);
+        assertThat(result.<Date> getArray("timestamps")).containsExactly(expected, expected);
+        result.validate();
     }
 
     @Test

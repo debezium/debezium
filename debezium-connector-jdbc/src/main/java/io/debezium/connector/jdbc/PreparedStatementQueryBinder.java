@@ -35,8 +35,23 @@ public class PreparedStatementQueryBinder implements QueryBinder {
                 switch (valueBindDescriptor.getTargetSqlType()) {
                     case Types.ARRAY -> {
                         LOGGER.trace("Binding parameter #{} as ARRAY", valueBindDescriptor.getIndex());
-                        Collection<Object> collection = (Collection<Object>) valueBindDescriptor.getValue();
-                        Array array = binder.getConnection().createArrayOf(valueBindDescriptor.getElementTypeName(), collection.toArray());
+                        final Object value = valueBindDescriptor.getValue();
+                        final Object[] elements;
+                        if (value instanceof Collection<?> collection) {
+                            elements = collection.toArray();
+                        }
+                        else if (value instanceof Object[] typedArray) {
+                            // A typed array (e.g. byte[][] for bytea[]) is passed as-is: converting it through a
+                            // generic collection would lose the component type the driver selects its encoder by.
+                            elements = typedArray;
+                        }
+                        else {
+                            // This binder is shared across dialects and the enclosing catch only handles
+                            // SQLException, so reject any other representation (e.g. a primitive array) here.
+                            throw new IllegalArgumentException("Unsupported ARRAY value type: "
+                                    + (value == null ? "null" : value.getClass().getName()));
+                        }
+                        Array array = binder.getConnection().createArrayOf(valueBindDescriptor.getElementTypeName(), elements);
                         binder.setArray(valueBindDescriptor.getIndex(), array);
                     }
                     case Types.CLOB -> {
