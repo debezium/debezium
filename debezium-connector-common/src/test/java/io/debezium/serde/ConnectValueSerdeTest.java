@@ -13,9 +13,11 @@ import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.kafka.connect.data.ConnectSchema;
 import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -24,6 +26,7 @@ import org.junit.jupiter.api.Test;
 
 import io.debezium.DebeziumException;
 import io.debezium.data.VariableScaleDecimal;
+import io.debezium.doc.FixFor;
 
 /**
  * Unit tests for {@link ConnectValueSerde}, exercising exact-runtime-type round-trips for every
@@ -225,5 +228,108 @@ public class ConnectValueSerdeTest {
         final byte[] truncated = new byte[bytes.length - 5];
         System.arraycopy(bytes, 0, truncated, 0, truncated.length);
         assertThatThrownBy(() -> serde.deserialize(truncated)).isInstanceOf(DebeziumException.class);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2609")
+    public void mapInKeyStructUsesDistinctKeyTagFromList() {
+        final Schema mapSchema = SchemaBuilder.struct()
+                .field("f1", SchemaBuilder.map(Schema.STRING_SCHEMA, Schema.STRING_SCHEMA).build())
+                .build();
+        final Schema listSchema = SchemaBuilder.struct()
+                .field("f1", SchemaBuilder.array(Schema.STRING_SCHEMA).build())
+                .build();
+
+        final Struct mapStruct = new Struct(mapSchema).put("f1", Map.of("k", "v"));
+        final Struct listStruct = new Struct(listSchema).put("f1", List.of("k", "v"));
+
+        final byte[] mapBytes = serde.serializeStructIdentity(mapStruct);
+        final byte[] listBytes = serde.serializeStructIdentity(listStruct);
+
+        assertThat(mapBytes).isNotEqualTo(listBytes);
+        // The first 16 bytes are the schema fingerprint; the 17th byte is the field value tag.
+        final byte mapTag = mapBytes[16];
+        final byte listTag = listBytes[16];
+        assertThat(mapTag).isEqualTo((byte) 15);
+        assertThat(listTag).isEqualTo((byte) 14);
+        assertThat(mapTag).isNotEqualTo(listTag);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2609")
+    public void corruptedNegativeLengthThrowsDebeziumException() {
+        // Construct bytes with DBZ magic, format version 1, timestamp 0, TAG_STRING (1), and negative length (-1).
+        final byte[] corrupted = new byte[]{
+                'D', 'B', 'Z', 1,
+                0, 0, 0, 0, 0, 0, 0, 0,
+                1,
+                (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF
+        };
+        assertThatThrownBy(() -> serde.deserialize(corrupted))
+                .isInstanceOf(DebeziumException.class)
+                .hasMessageContaining("Invalid negative byte array length");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2609")
+    public void emptyStructIdentityHandledSafely() {
+        final Schema schema = SchemaBuilder.struct().build();
+        final Struct struct = new Struct(schema);
+        final byte[] bytes = serde.serializeStructIdentity(struct);
+        assertThat(bytes).isNotNull();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2609")
+    public void byteArrayLengthBeyondRemainingBytesThrows() {
+        final byte[] bytes = serde.serialize("abc", null, 0L);
+        // Overwrite the string's length prefix, which follows the tag byte, with a value larger than the remaining bytes.
+        ByteBuffer.wrap(bytes, TAG_OFFSET + 1, Integer.BYTES).putInt(100);
+        assertThatThrownBy(() -> serde.deserialize(bytes))
+                .isInstanceOf(DebeziumException.class)
+                .hasMessageContaining("Invalid byte array length: 100");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2609")
+    public void emptyStringAndByteArrayRoundTrip() {
+        // A zero length prefix is the lower boundary of the length checks and must remain valid.
+        assertThat(roundTrip("")).isEqualTo("");
+        assertThat((byte[]) roundTrip(new byte[0])).isEmpty();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2609")
+    public void mapInKeyStructIdentityIgnoresInsertionOrderButNotContent() {
+        final Schema schema = SchemaBuilder.struct()
+                .field("f1", SchemaBuilder.map(Schema.STRING_SCHEMA, Schema.INT32_SCHEMA).build())
+                .build();
+
+        final Map<String, Integer> ab = new LinkedHashMap<>();
+        ab.put("a", 1);
+        ab.put("b", 2);
+        final Map<String, Integer> ba = new LinkedHashMap<>();
+        ba.put("b", 2);
+        ba.put("a", 1);
+
+        final byte[] abBytes = serde.serializeStructIdentity(new Struct(schema).put("f1", ab));
+        final byte[] baBytes = serde.serializeStructIdentity(new Struct(schema).put("f1", ba));
+        final byte[] otherBytes = serde.serializeStructIdentity(new Struct(schema).put("f1", Map.of("a", 1, "b", 3)));
+
+        assertThat(abBytes).isEqualTo(baBytes);
+        assertThat(abBytes).isNotEqualTo(otherBytes);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2609")
+    public void arraySchemaWithoutValueSchemaInKeyStructIsFingerprinted() {
+        // SchemaBuilder.array rejects a null value schema, but ConnectSchema can be constructed with one directly.
+        final Schema arraySchema = new ConnectSchema(Schema.Type.ARRAY, true, null, null, null, null, null, null, null, null);
+        final Schema schema = SchemaBuilder.struct().field("f1", arraySchema).build();
+
+        final byte[] first = serde.serializeStructIdentity(new Struct(schema));
+        final byte[] second = serde.serializeStructIdentity(new Struct(schema));
+
+        assertThat(first).isEqualTo(second);
     }
 }
