@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.data.Schema;
@@ -28,7 +29,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.slf4j.LoggerFactory;
 
+import com.mongodb.MongoQueryException;
 import com.mongodb.event.CommandListener;
 import com.mongodb.event.CommandStartedEvent;
 
@@ -37,9 +40,14 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.SnapshotMode;
 import io.debezium.connector.mongodb.sink.MongoDbSinkConnectorConfig;
 import io.debezium.connector.mongodb.sink.MongoDbSinkConnectorTask;
+import io.debezium.doc.FixFor;
+import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.source.kafka.KafkaConnectSourceTaskContextAdapter;
 import io.debezium.storage.kafka.offset.KafkaMemoryOffsetProvider;
 import io.debezium.testing.testcontainers.MongoDbContainer;
+
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
 
 class MongoDbConnectionLifecycleIT extends AbstractMongoConnectorIT {
     private Configuration configuration(ConnectionResourceTracker tracker) {
@@ -377,6 +385,83 @@ class MongoDbConnectionLifecycleIT extends AbstractMongoConnectorIT {
                 releaseRead.countDown();
                 stopConnector();
             }
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1736")
+    void shouldPreserveSnapshotFailureWhenWorkerShutdownIsInterrupted() throws Exception {
+        insertDocuments("lifecycle", "items", new Document("_id", 1));
+        insertDocuments("lifecycle", "other", new Document("_id", 1));
+        final var otherReadStarted = new CountDownLatch(1);
+        final var releaseRead = new CountDownLatch(1);
+        final var snapshotThread = new AtomicReference<Thread>();
+        final var interruptedAtFailure = new CompletableFuture<Boolean>();
+        final var shutdownInterrupted = new CompletableFuture<Boolean>();
+        final var failed = new CompletableFuture<Throwable>();
+        final var snapshotLogger = (Logger) LoggerFactory.getLogger(MongoDbSnapshotChangeEventSource.class);
+        final var observer = new LogInterceptor(MongoDbSnapshotChangeEventSource.class) {
+            @Override
+            protected void append(ILoggingEvent event) {
+                if (event.getFormattedMessage().startsWith("Beginning snapshot at")) {
+                    snapshotThread.set(Thread.currentThread());
+                }
+                else if ("Snapshot failed".equals(event.getFormattedMessage()) && Thread.currentThread() == snapshotThread.get()) {
+                    interruptedAtFailure.complete(Thread.currentThread().isInterrupted());
+                }
+            }
+        };
+        try (var tracker = new ConnectionResourceTracker()) {
+            tracker.commandListener = new CommandListener() {
+                @Override
+                public void commandStarted(CommandStartedEvent event) {
+                    if (!"find".equals(event.getCommandName()) || !"lifecycle".equals(event.getDatabaseName())) {
+                        return;
+                    }
+                    final var collection = event.getCommand().getString("find").getValue();
+                    try {
+                        if ("items".equals(collection)) {
+                            // The invalid query must fail while another snapshot worker is still active.
+                            assertThat(otherReadStarted.await(10, TimeUnit.SECONDS)).isTrue();
+                        }
+                        else if ("other".equals(collection)) {
+                            otherReadStarted.countDown();
+                            assertThat(releaseRead.await(30, TimeUnit.SECONDS)).isTrue();
+                        }
+                    }
+                    catch (InterruptedException e) {
+                        // shutdownNow() interrupts the remaining worker after the first query fails.
+                        // Interrupt the coordinator before this worker can terminate, keeping it in the cleanup path.
+                        snapshotThread.get().interrupt();
+                        shutdownInterrupted.complete(true);
+                        Thread.currentThread().interrupt();
+                    }
+                }
+            };
+            final var config = configuration(tracker).edit()
+                    .with(MongoDbConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                    .with(MongoDbConnectorConfig.SNAPSHOT_MAX_THREADS, 2)
+                    .with(MongoDbConnectorConfig.SNAPSHOT_FILTER_QUERY_BY_COLLECTION, "lifecycle.items")
+                    .with("snapshot.collection.filter.overrides.lifecycle.items", "{\"$reviewFailure\": 1}")
+                    .with(CommonConnectorConfig.MAX_RETRIES_ON_ERROR, 0)
+                    .with(CommonConnectorConfig.EXECUTOR_SHUTDOWN_TIMEOUT_MS, 30_000)
+                    .build();
+            try {
+                start(MongoDbConnector.class, config, (success, message, error) -> failed.complete(error));
+                assertThat(shutdownInterrupted.get(30, TimeUnit.SECONDS)).isTrue();
+                assertThat(failed.get(30, TimeUnit.SECONDS)).hasRootCauseInstanceOf(MongoQueryException.class)
+                        .rootCause().hasMessageContaining("$reviewFailure");
+                assertThat(interruptedAtFailure.get(10, TimeUnit.SECONDS)).isTrue();
+            }
+            finally {
+                releaseRead.countDown();
+                stopConnector();
+            }
+            tracker.assertReleased();
+        }
+        finally {
+            snapshotLogger.detachAppender(observer);
+            observer.stop();
         }
     }
 

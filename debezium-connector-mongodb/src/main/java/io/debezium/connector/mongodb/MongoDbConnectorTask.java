@@ -223,7 +223,8 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
                         super.stop();
                     }
                     catch (InterruptedException | RuntimeException | Error shutdownFailure) {
-                        // BaseSourceTask skips doStop() when coordinator shutdown fails.
+                        // BaseSourceTask skips doStop() when coordinator shutdown fails (debezium/dbz#2709).
+                        // Remove this workaround once the common cleanup path is fixed.
                         // Active clients keep authentication alive until they close.
                         try (var ownedContext = connectionOwner) {
                             throw shutdownFailure;
