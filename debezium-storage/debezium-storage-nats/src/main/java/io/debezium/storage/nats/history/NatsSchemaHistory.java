@@ -8,12 +8,17 @@ package io.debezium.storage.nats.history;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.function.Consumer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.NotThreadSafe;
+import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.Configuration;
 import io.debezium.document.DocumentReader;
 import io.debezium.document.DocumentWriter;
@@ -31,11 +36,15 @@ import io.nats.client.JetStream;
 import io.nats.client.JetStreamApiException;
 import io.nats.client.JetStreamManagement;
 import io.nats.client.JetStreamSubscription;
+import io.nats.client.Message;
 import io.nats.client.PullSubscribeOptions;
 import io.nats.client.api.ConsumerConfiguration;
 import io.nats.client.api.DeliverPolicy;
+import io.nats.client.api.StorageType;
 import io.nats.client.api.StreamConfiguration;
 import io.nats.client.api.StreamInfo;
+import io.nats.client.impl.Headers;
+import io.nats.client.support.NatsJetStreamConstants;
 
 /**
  * A {@link SchemaHistory} implementation that records schema changes as
@@ -130,6 +139,13 @@ public class NatsSchemaHistory extends AbstractSchemaHistory {
             String recordString = writer.write(record.document());
             byte[] payload = recordString.getBytes(StandardCharsets.UTF_8);
 
+            // A publish that reaches the server but loses its acknowledgement would be
+            // written a second time by the retry below. Reusing one message ID across
+            // the attempts lets the stream discard that duplicate: JetStream remembers
+            // message IDs for its duplicate window, which defaults to two minutes and
+            // comfortably covers the retries here.
+            Headers headers = new Headers().add(NatsJetStreamConstants.MSG_ID_HDR, UUID.randomUUID().toString());
+
             // A publish failure is usually transient, so network errors are
             // retried. Whether it was instead caused by the stream disappearing
             // is decided below: recreating the stream would silently continue
@@ -138,7 +154,7 @@ public class NatsSchemaHistory extends AbstractSchemaHistory {
                     .retries(natsConnection.getRetryBudget())
                     .delayStrategy(DelayStrategy.constant(PUBLISH_RETRY_DELAY))
                     .retriableExceptions(IOException.class)
-                    .doRun(() -> jetStream.publish(config.getSubject(), payload))
+                    .doRun(() -> jetStream.publish(config.getSubject(), headers, payload))
                     .build()
                     .run();
 
@@ -215,26 +231,37 @@ public class NatsSchemaHistory extends AbstractSchemaHistory {
                     checkForInterruption();
 
                     // Fetch messages in batches
-                    subscription.fetch(100, Duration.ofMillis(pollInterval))
-                            .forEach(message -> {
-                                try {
-                                    checkForInterruption();
-                                    String recordString = new String(message.getData(), StandardCharsets.UTF_8);
-                                    if (!Strings.isNullOrBlank(recordString)) {
-                                        HistoryRecord record = new HistoryRecord(reader.read(recordString));
-                                        LOGGER.trace("Recovered schema history record: {}", record);
-                                        records.accept(record);
-                                    }
-                                    message.ack();
+                    var messages = subscription.fetch(100, Duration.ofMillis(pollInterval));
+                    for (Message message : messages) {
+                        checkForInterruption();
+                        try {
+                            String recordString = new String(message.getData(), StandardCharsets.UTF_8);
+                            if (!Strings.isNullOrBlank(recordString)) {
+                                HistoryRecord record = new HistoryRecord(reader.read(recordString));
+                                if (record.isValid()) {
+                                    LOGGER.trace("Recovered schema history record: {}", record);
+                                    records.accept(record);
                                 }
-                                catch (InterruptedException e) {
-                                    Thread.currentThread().interrupt();
-                                    LOGGER.warn("Schema history recovery interrupted", e);
+                                else {
+                                    LOGGER.warn("Skipping invalid schema history record '{}' from subject '{}'", record,
+                                            config.getSubject());
                                 }
-                                catch (Exception e) {
-                                    LOGGER.warn("Failed to process schema history record", e);
-                                }
-                            });
+                            }
+                        }
+                        catch (IOException e) {
+                            // Only a record that cannot be deserialized is skipped. Anything else,
+                            // including a failure to apply the record itself, has to fail recovery:
+                            // continuing would rebuild an incomplete schema, and the connector would
+                            // then emit events describing the wrong table structure.
+                            LOGGER.warn("Skipping schema history record from subject '{}' that could not be deserialized",
+                                    config.getSubject(), e);
+                        }
+                        finally {
+                            // Acknowledge every fetched message, including a skipped one, so the batch
+                            // makes progress exactly as a fully processed batch would.
+                            message.ack();
+                        }
+                    }
 
                     recoveryAttempts++;
 
@@ -293,7 +320,14 @@ public class NatsSchemaHistory extends AbstractSchemaHistory {
         // The stream can exist while holding no records yet, which is why the
         // interface asks the two questions separately.
         StreamInfo streamInfo = streamOrNull();
-        return streamInfo != null && streamInfo.getStreamState().getMsgCount() > 0;
+        if (streamInfo == null) {
+            return false;
+        }
+        // BaseSourceTask only calls checkStorageSettings() when a connector starts with
+        // no previous offset, so a restart would otherwise never hear about the stream
+        // settings. The metadata is already in hand, so reporting them costs nothing.
+        logStreamSettings(streamInfo.getConfiguration());
+        return streamInfo.getStreamState().getMsgCount() > 0;
     }
 
     /**
@@ -333,6 +367,96 @@ public class NatsSchemaHistory extends AbstractSchemaHistory {
     }
 
     @Override
+    public void checkStorageSettings() {
+        try {
+            StreamInfo streamInfo = streamOrNull();
+            if (streamInfo != null) {
+                logStreamSettings(streamInfo.getConfiguration());
+            }
+        }
+        catch (Exception e) {
+            // This check only advises the user, so it must not stop the connector.
+            LOGGER.warn("Failed to check the settings of stream '{}'", config.getStreamName(), e);
+        }
+    }
+
+    /**
+     * Logs everything about the stream that the user should know about but that does
+     * not stop the connector from running.
+     */
+    private void logStreamSettings(StreamConfiguration streamConfiguration) {
+        retentionWarning(streamConfiguration).ifPresent(LOGGER::warn);
+        deduplicationWarning(streamConfiguration, publishRetryWindow()).ifPresent(LOGGER::warn);
+    }
+
+    /**
+     * How long a single publish can spend being retried. The stream's duplicate
+     * window has to cover at least this long for a retried record to be recognized
+     * as a duplicate rather than stored again.
+     */
+    private Duration publishRetryWindow() {
+        return PUBLISH_RETRY_DELAY.multipliedBy(natsConnection.getRetryBudget());
+    }
+
+    /**
+     * Describes how the retention settings of the stream can cause only part of the
+     * schema history to be recovered, or empty when the stream retains all of it.
+     * <p>
+     * A stream that discards its oldest messages will lose the beginning of the
+     * history, and a later recovery will silently rebuild a schema from whatever is
+     * left. That is not necessarily wrong, so this is a warning rather than a
+     * failure, but the user should hear about it before it happens.
+     */
+    @VisibleForTesting
+    static Optional<String> retentionWarning(StreamConfiguration streamConfiguration) {
+        List<String> limits = new ArrayList<>();
+        Duration maxAge = streamConfiguration.getMaxAge();
+        if (maxAge != null && !maxAge.isZero() && !maxAge.isNegative()) {
+            limits.add(String.format("'%s' is %s", NatsSchemaHistoryConfig.PROP_MAX_AGE_MS.name(), maxAge));
+        }
+        if (streamConfiguration.getMaxBytes() > 0) {
+            limits.add(String.format("'%s' is %d bytes", NatsSchemaHistoryConfig.PROP_MAX_BYTES.name(),
+                    streamConfiguration.getMaxBytes()));
+        }
+        if (limits.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(String.format(
+                "NATS stream '%s' does not retain its schema history indefinitely (%s). Older schema history records "
+                        + "will be discarded, and a later recovery will rebuild an incomplete schema. Remove the limit, "
+                        + "or raise it enough to hold the entire history.",
+                streamConfiguration.getName(), String.join(" and ", limits)));
+    }
+
+    /**
+     * Describes how the stream's duplicate window can fail to deduplicate a retried
+     * publish, or empty when it covers the retry.
+     * <p>
+     * A window shorter than the time a publish can spend being retried allows a record
+     * whose acknowledgement was lost to be stored a second time, so recovery replays a
+     * DDL statement. A zero or negative window is left alone: the server substitutes
+     * its own default for those rather than disabling deduplication.
+     */
+    @VisibleForTesting
+    static Optional<String> deduplicationWarning(StreamConfiguration streamConfiguration, Duration publishRetryWindow) {
+        Duration window = streamConfiguration.getDuplicateWindow();
+        if (window == null || window.isZero() || window.isNegative()) {
+            // Either the server substituted its own default or the stream reports no
+            // window at all, so there is no explicit value to question.
+            return Optional.empty();
+        }
+        if (window.compareTo(publishRetryWindow) < 0) {
+            String property = NatsSchemaHistoryConfig.PROP_DUPLICATE_WINDOW_MS.name();
+            return Optional.of(String.format(
+                    "NATS stream '%s' has a message ID duplicate window of %s ('%s'), which is shorter than the %s a "
+                            + "publish can spend being retried, so a retry after a lost acknowledgement may be stored "
+                            + "twice. Raise '%s'.",
+                    streamConfiguration.getName(), window, property, publishRetryWindow, property));
+        }
+        return Optional.empty();
+    }
+
+    @Override
     public void initializeStorage() {
         try {
             // Ensure connection is established before initializing storage
@@ -340,9 +464,9 @@ public class NatsSchemaHistory extends AbstractSchemaHistory {
 
             LOGGER.info("Creating NATS stream '{}' for schema history storage", config.getStreamName());
 
-            io.nats.client.api.StorageType storageType = config.getStorageType() == NatsSchemaHistoryConfig.StorageType.MEMORY
-                    ? io.nats.client.api.StorageType.Memory
-                    : io.nats.client.api.StorageType.File;
+            StorageType storageType = config.getStorageType() == NatsSchemaHistoryConfig.StorageType.MEMORY
+                    ? StorageType.Memory
+                    : StorageType.File;
 
             StreamConfiguration.Builder streamBuilder = StreamConfiguration.builder()
                     .name(config.getStreamName())
@@ -356,6 +480,13 @@ public class NatsSchemaHistory extends AbstractSchemaHistory {
 
             if (config.getMaxBytes() > 0) {
                 streamBuilder.maxBytes(config.getMaxBytes());
+            }
+
+            if (config.getDuplicateWindowMs() > 0) {
+                // Only set explicitly when asked: a zero or negative value leaves the
+                // server default in place, and the server substitutes that default for
+                // an explicit zero anyway.
+                streamBuilder.duplicateWindow(Duration.ofMillis(config.getDuplicateWindowMs()));
             }
 
             try {

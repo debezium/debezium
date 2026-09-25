@@ -5,10 +5,12 @@
  */
 package io.debezium.storage.nats;
 
+import java.io.ByteArrayInputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.KeyStore;
+import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Duration;
 
@@ -34,11 +36,12 @@ import io.nats.client.ObjectStoreManagement;
 import io.nats.client.Options;
 import io.nats.client.api.ObjectStoreConfiguration;
 import io.nats.client.api.StorageType;
+import io.nats.client.api.StreamInfo;
 
 /**
  * Utility class for managing NATS connections and JetStream resources.
  *
- * @author Nick Babcock
+ * @author Nick Chomey
  */
 public class NatsConnection {
 
@@ -161,7 +164,7 @@ public class NatsConnection {
             probeRunnable(() -> {
                 JetStreamManagement jsm = conn.jetStreamManagement();
                 String streamName = "OBJ_" + bucketName;
-                io.nats.client.api.StreamInfo si = jsm.getStreamInfo(streamName); // throws if not present yet
+                StreamInfo si = jsm.getStreamInfo(streamName); // throws if not present yet
                 LOGGER.debug("Created ObjectStore backing stream: {}, subjects={}", streamName,
                         si.getConfiguration().getSubjects());
             }).run();
@@ -206,7 +209,7 @@ public class NatsConnection {
             try {
                 optionsBuilder.secure();
             }
-            catch (java.security.NoSuchAlgorithmException e) {
+            catch (NoSuchAlgorithmException e) {
                 throw new DebeziumException("Failed to enable TLS for NATS connection", e);
             }
             SSLContext sslContext = buildSslContext();
@@ -318,7 +321,7 @@ public class NatsConnection {
         byte[] payload = new byte[]{ 1 };
         try {
             probeRunnable(() -> {
-                os.put(key, new java.io.ByteArrayInputStream(payload));
+                os.put(key, new ByteArrayInputStream(payload));
                 try {
                     os.delete(key);
                 }

@@ -939,11 +939,15 @@ offset.storage.nats.bucket.name=debezium-offsets
 
 |[[schema-history-internal-nats-max-age-ms]]<<schema-history-internal-nats-max-age-ms, `schema.history.internal.nats.max.age.ms`>>
 |0
-|Specifies the maximum age of messages in the stream, in milliseconds. Set to `0` for unlimited.
+|Specifies the maximum age of messages in the stream, in milliseconds. Set to `0` for unlimited. A limit discards the oldest schema history records, so a later recovery can only rebuild a partial schema.
 
 |[[schema-history-internal-nats-max-bytes]]<<schema-history-internal-nats-max-bytes, `schema.history.internal.nats.max.bytes`>>
 |-1
-|Specifies the maximum size of the stream, in bytes. Set to `-1` for unlimited.
+|Specifies the maximum size of the stream, in bytes. Set to `-1` for unlimited. A limit discards the oldest schema history records, so a later recovery can only rebuild a partial schema.
+
+|[[schema-history-internal-nats-duplicate-window-ms]]<<schema-history-internal-nats-duplicate-window-ms, `schema.history.internal.nats.duplicate.window.ms`>>
+|120000
+|Specifies the JetStream duplicate window, in milliseconds, which is the period during which the stream discards a message whose ID it has already seen. This stops a schema history record from being stored twice when a publish is retried after a lost acknowledgement. A value of `0` or less leaves the server default in place, which is what the server substitutes for a window of zero.
 
 |[[schema-history-internal-nats-recovery-poll-interval-ms]]<<schema-history-internal-nats-recovery-poll-interval-ms, `schema.history.internal.nats.recovery.poll.interval.ms`>>
 |100

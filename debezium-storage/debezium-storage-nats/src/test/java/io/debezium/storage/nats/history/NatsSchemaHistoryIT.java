@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +34,8 @@ import io.debezium.storage.nats.NatsCommonConfig;
 import io.debezium.storage.nats.NatsConnection;
 import io.debezium.util.Collect;
 import io.nats.client.api.ConsumerInfo;
+import io.nats.client.api.StreamInfo;
+import io.nats.client.support.NatsJetStreamConstants;
 
 /**
  * Tests for NATS-based schema history storage.
@@ -349,5 +352,117 @@ class NatsSchemaHistoryIT {
         finally {
             impatient.stop();
         }
+    }
+
+    @Test
+    @Timeout(30)
+    @SuppressWarnings("deprecation")
+    public void shouldWarnOnlyWhenStreamRetentionIsBounded() throws Exception {
+        // A stream that discards its oldest records will lose the beginning of the
+        // schema history, so a later recovery silently rebuilds a partial schema.
+        // checkStorageSettings() warns about that, and must stay quiet otherwise.
+        NatsSchemaHistory bounded = new NatsSchemaHistory();
+        bounded.configure(Configuration.from(Collect.hashMapOf(
+                SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + NatsCommonConfig.NATS_URL.name(), natsUrl,
+                SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + NatsSchemaHistoryConfig.PROP_STREAM_NAME.name(),
+                "bounded-schema-history",
+                SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + NatsSchemaHistoryConfig.PROP_SUBJECT.name(),
+                "bounded.schema.history",
+                SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + NatsSchemaHistoryConfig.PROP_MAX_AGE_MS.name(),
+                "3600000",
+                SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + NatsSchemaHistoryConfig.PROP_MAX_BYTES.name(),
+                "1024")), null, SchemaHistoryListener.NOOP, true);
+
+        NatsCommonConfig connConfig = new NatsCommonConfig(Configuration.from(Collect.hashMapOf(
+                NatsCommonConfig.NATS_URL.name(), natsUrl)), "");
+        NatsConnection conn = new NatsConnection(connConfig);
+        try {
+            bounded.initializeStorage();
+
+            StreamInfo boundedInfo = conn.getJetStreamManagement().getStreamInfo("bounded-schema-history");
+            String warning = NatsSchemaHistory.retentionWarning(boundedInfo.getConfiguration()).orElse(null);
+            assertThat(warning).isNotNull();
+            assertThat(warning).contains(NatsSchemaHistoryConfig.PROP_MAX_AGE_MS.name());
+            assertThat(warning).contains(NatsSchemaHistoryConfig.PROP_MAX_BYTES.name());
+
+            // The stream created by createHistory() keeps everything, so the check
+            // has to report nothing about it.
+            StreamInfo unlimitedInfo = conn.getJetStreamManagement().getStreamInfo("test-schema-history");
+            assertThat(NatsSchemaHistory.retentionWarning(unlimitedInfo.getConfiguration())).isEmpty();
+
+            // The check is advisory, so it must never stop the connector.
+            bounded.checkStorageSettings();
+        }
+        finally {
+            conn.close();
+            bounded.stop();
+        }
+    }
+
+    @Test
+    @Timeout(30)
+    @SuppressWarnings("deprecation")
+    public void shouldWarnOnlyWhenDeduplicationCannotCoverARetry() throws Exception {
+        // A retried publish is only deduplicated if the stream's duplicate window
+        // covers the retry, so a disabled or too short window has to be reported.
+        NatsCommonConfig connConfig = new NatsCommonConfig(Configuration.from(Collect.hashMapOf(
+                NatsCommonConfig.NATS_URL.name(), natsUrl)), "");
+        NatsConnection conn = new NatsConnection(connConfig);
+        try {
+            // The stream created by createHistory() carries the configured window, which
+            // is the server default and therefore long enough, so nothing is reported.
+            StreamInfo defaultInfo = conn.getJetStreamManagement().getStreamInfo("test-schema-history");
+            assertThat(defaultInfo.getConfiguration().getDuplicateWindow())
+                    .isEqualTo(Duration.ofMillis(NatsJetStreamConstants.SERVER_DEFAULT_DUPLICATE_WINDOW_MS));
+            assertThat(NatsSchemaHistory.deduplicationWarning(defaultInfo.getConfiguration(), Duration.ofSeconds(2)))
+                    .isEmpty();
+
+            // Zero does not disable deduplication: the server substitutes its own
+            // default, which is why zero is documented as "leave the default in place".
+            NatsSchemaHistory zeroWindow = historyWithDuplicateWindow("zero-window-schema-history",
+                    "zero.window.schema.history", "0");
+            try {
+                StreamInfo info = conn.getJetStreamManagement().getStreamInfo("zero-window-schema-history");
+                assertThat(info.getConfiguration().getDuplicateWindow())
+                        .isEqualTo(Duration.ofMillis(NatsJetStreamConstants.SERVER_DEFAULT_DUPLICATE_WINDOW_MS));
+                assertThat(NatsSchemaHistory.deduplicationWarning(info.getConfiguration(), Duration.ofSeconds(2)))
+                        .isEmpty();
+            }
+            finally {
+                zeroWindow.stop();
+            }
+
+            // A window shorter than the time a publish can spend being retried.
+            NatsSchemaHistory shortWindow = historyWithDuplicateWindow("short-window-schema-history",
+                    "short.window.schema.history", "1000");
+            try {
+                StreamInfo info = conn.getJetStreamManagement().getStreamInfo("short-window-schema-history");
+                assertThat(info.getConfiguration().getDuplicateWindow()).isEqualTo(Duration.ofSeconds(1));
+                assertThat(NatsSchemaHistory.deduplicationWarning(info.getConfiguration(), Duration.ofSeconds(2)))
+                        .isPresent();
+            }
+            finally {
+                shortWindow.stop();
+            }
+        }
+        finally {
+            conn.close();
+        }
+    }
+
+    @SuppressWarnings("deprecation")
+    private NatsSchemaHistory historyWithDuplicateWindow(String streamName, String subject, String duplicateWindowMs) {
+        NatsSchemaHistory configured = new NatsSchemaHistory();
+        configured.configure(Configuration.from(Collect.hashMapOf(
+                SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + NatsCommonConfig.NATS_URL.name(), natsUrl,
+                SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + NatsSchemaHistoryConfig.PROP_STREAM_NAME.name(),
+                streamName,
+                SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + NatsSchemaHistoryConfig.PROP_SUBJECT.name(),
+                subject,
+                SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING
+                        + NatsSchemaHistoryConfig.PROP_DUPLICATE_WINDOW_MS.name(),
+                duplicateWindowMs)), null, SchemaHistoryListener.NOOP, true);
+        configured.initializeStorage();
+        return configured;
     }
 }

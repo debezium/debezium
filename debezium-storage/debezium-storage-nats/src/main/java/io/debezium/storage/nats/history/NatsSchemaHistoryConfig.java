@@ -13,6 +13,7 @@ import io.debezium.config.Field;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.storage.nats.NatsCommonConfig;
 import io.debezium.util.Collect;
+import io.nats.client.support.NatsJetStreamConstants;
 
 /**
  * Configuration for NATS-based schema history storage.
@@ -24,11 +25,14 @@ import io.debezium.util.Collect;
  * schema.history.internal.nats.stream.name, ...
  *
  * <p>Note: the stream retention defaults (unlimited age and size) match the
- * behavior of the file-based schema history. For long-running connectors,
- * consider setting {@link #PROP_MAX_AGE_MS} or {@link #PROP_MAX_BYTES} to
- * bound the growth of the stream.
+ * behavior of the file-based schema history. Setting {@link #PROP_MAX_AGE_MS} or
+ * {@link #PROP_MAX_BYTES} bounds the growth of the stream, but the stream then
+ * discards its oldest schema history records, and a later recovery can only
+ * rebuild a partial schema. Bound it only if the connector can tolerate that.
+ * {@link #PROP_DUPLICATE_WINDOW_MS} is what keeps a retried publish from being
+ * recorded twice.
  *
- * @author Nick Babcock
+ * @author Nick Chomey
  */
 public class NatsSchemaHistoryConfig extends NatsCommonConfig {
 
@@ -68,12 +72,24 @@ public class NatsSchemaHistoryConfig extends NatsCommonConfig {
             .withDefault(1);
 
     public static final Field PROP_MAX_AGE_MS = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "max.age.ms")
-            .withDescription("Maximum age of messages in the stream in milliseconds (0 for unlimited)")
+            .withDescription("Maximum age of messages in the stream in milliseconds (0 for unlimited). "
+                    + "A limit discards the oldest schema history records, so a later recovery can only rebuild "
+                    + "a partial schema")
             .withDefault(0L); // 0 means unlimited
 
     public static final Field PROP_MAX_BYTES = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "max.bytes")
-            .withDescription("Maximum bytes for the stream (-1 for unlimited)")
+            .withDescription("Maximum bytes for the stream (-1 for unlimited). "
+                    + "A limit discards the oldest schema history records, so a later recovery can only rebuild "
+                    + "a partial schema")
             .withDefault(-1L); // -1 means unlimited
+
+    public static final Field PROP_DUPLICATE_WINDOW_MS = Field
+            .create(CONFIGURATION_FIELD_PREFIX_STRING + "duplicate.window.ms")
+            .withDescription("The JetStream duplicate window in milliseconds: the period during which the stream "
+                    + "discards a message whose ID it has already seen. This stops a schema history record from being "
+                    + "stored twice when a publish is retried after a lost acknowledgement. A zero or negative value "
+                    + "leaves the server default in place, which is what the server substitutes for a window of zero")
+            .withDefault(NatsJetStreamConstants.SERVER_DEFAULT_DUPLICATE_WINDOW_MS);
 
     public static final Field PROP_RECOVERY_POLL_INTERVAL_MS = Field
             .create(CONFIGURATION_FIELD_PREFIX_STRING + "recovery.poll.interval.ms")
@@ -91,6 +107,7 @@ public class NatsSchemaHistoryConfig extends NatsCommonConfig {
     private int replicas;
     private long maxAgeMs;
     private long maxBytes;
+    private long duplicateWindowMs;
     private long recoveryPollIntervalMs;
     private long recoveryTimeoutMs;
 
@@ -108,6 +125,7 @@ public class NatsSchemaHistoryConfig extends NatsCommonConfig {
         this.replicas = c.getInteger(PROP_REPLICAS);
         this.maxAgeMs = c.getLong(PROP_MAX_AGE_MS);
         this.maxBytes = c.getLong(PROP_MAX_BYTES);
+        this.duplicateWindowMs = c.getLong(PROP_DUPLICATE_WINDOW_MS);
         this.recoveryPollIntervalMs = c.getLong(PROP_RECOVERY_POLL_INTERVAL_MS);
         this.recoveryTimeoutMs = c.getLong(PROP_RECOVERY_TIMEOUT_MS);
     }
@@ -121,6 +139,7 @@ public class NatsSchemaHistoryConfig extends NatsCommonConfig {
                 PROP_REPLICAS,
                 PROP_MAX_AGE_MS,
                 PROP_MAX_BYTES,
+                PROP_DUPLICATE_WINDOW_MS,
                 PROP_RECOVERY_POLL_INTERVAL_MS,
                 PROP_RECOVERY_TIMEOUT_MS);
         fields.addAll(super.getAllConfigurationFields());
@@ -149,6 +168,10 @@ public class NatsSchemaHistoryConfig extends NatsCommonConfig {
 
     public long getMaxBytes() {
         return maxBytes;
+    }
+
+    public long getDuplicateWindowMs() {
+        return duplicateWindowMs;
     }
 
     public long getRecoveryPollIntervalMs() {

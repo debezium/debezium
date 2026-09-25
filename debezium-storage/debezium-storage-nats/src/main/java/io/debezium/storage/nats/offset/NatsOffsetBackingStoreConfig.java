@@ -19,7 +19,7 @@ import io.debezium.util.Collect;
  * "nats." and are chained with the module prefix "offset.storage.".
  * For example: offset.storage.nats.url, offset.storage.nats.bucket.name, ...
  *
- * @author Nick Babcock
+ * @author Nick Chomey
  */
 public class NatsOffsetBackingStoreConfig extends NatsCommonConfig {
 

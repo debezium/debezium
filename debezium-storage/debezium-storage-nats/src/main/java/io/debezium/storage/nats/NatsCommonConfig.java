@@ -28,7 +28,7 @@ import io.debezium.util.Strings;
  * {@code offset.storage.nats.url} or {@code schema.history.internal.nats.url}
  * depending on the caller-provided prefix.
  *
- * @author Nick Babcock
+ * @author Nick Chomey
  */
 public class NatsCommonConfig {
 
