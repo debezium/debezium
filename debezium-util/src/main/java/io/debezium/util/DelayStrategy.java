@@ -6,6 +6,7 @@
 package io.debezium.util;
 
 import java.time.Duration;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.BooleanSupplier;
 
 /**
@@ -180,6 +181,62 @@ public interface DelayStrategy {
 
             private boolean maxDelayedReached() {
                 return bounded && previousDelay >= maxDelayInMilliseconds;
+            }
+        };
+    }
+
+    /**
+     * Create a delay strategy that applies an exponentially-increasing delay where each sleep is randomized within
+     * {@code +/- jitterFactor} of the current delay, so that concurrent retry loops hitting the same resource do
+     * not wake up in lockstep. The exponential progression is computed on the un-jittered delay and stays at the
+     * maximum once reached. As soon as the criteria is not met, the delay resets to the initial value.
+     *
+     * @param initialDelay the initial delay; must be positive
+     * @param maxDelay the maximum delay; must be no less than the initial delay
+     * @param backOffMultiplier the factor by which the delay increases each pass; must be greater than 1
+     * @param jitterFactor the fraction of the current delay used as randomization range; must be in [0, 1)
+     * @return the strategy
+     */
+    static DelayStrategy exponentialWithJitter(Duration initialDelay, Duration maxDelay, double backOffMultiplier, double jitterFactor) {
+        final long initialDelayInMilliseconds = initialDelay.toMillis();
+        final long maxDelayInMilliseconds = maxDelay.toMillis();
+        if (backOffMultiplier <= 1.0) {
+            throw new IllegalArgumentException("Backoff multiplier must be greater than 1");
+        }
+        if (initialDelayInMilliseconds <= 0) {
+            throw new IllegalArgumentException("Initial delay must be positive");
+        }
+        if (initialDelayInMilliseconds > maxDelayInMilliseconds) {
+            throw new IllegalArgumentException("Maximum delay must be no less than initial delay");
+        }
+        if (jitterFactor < 0.0 || jitterFactor >= 1.0) {
+            throw new IllegalArgumentException("Jitter factor must be in [0, 1)");
+        }
+        return new DelayStrategy() {
+            private long previousDelay = 0;
+
+            @Override
+            public boolean sleepWhen(boolean criteria) {
+                if (!criteria) {
+                    previousDelay = 0;
+                    return false;
+                }
+                if (previousDelay == 0) {
+                    previousDelay = initialDelayInMilliseconds;
+                }
+                else {
+                    previousDelay = Math.min((long) (previousDelay * backOffMultiplier), maxDelayInMilliseconds);
+                }
+                final long jitter = (long) (previousDelay * jitterFactor);
+                final long sleepMs = previousDelay - jitter
+                        + (jitter > 0 ? ThreadLocalRandom.current().nextLong(2 * jitter + 1) : 0);
+                try {
+                    Thread.sleep(sleepMs);
+                }
+                catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                return true;
             }
         };
     }

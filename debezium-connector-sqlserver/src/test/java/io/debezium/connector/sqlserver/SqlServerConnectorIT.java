@@ -3556,7 +3556,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
             assertConnectorIsRunning();
             scenario.run();
 
-            final String message = "Failed with retriable exception, will retry later; attempt #1 out of 1";
+            final String message = "Callable failed with exception, will try and auto heal (if configured); attempt #1 out of 1";
             Awaitility.await()
                     .alias("Checking for maximum restart messages1")
                     .pollInterval(100, TimeUnit.MILLISECONDS)

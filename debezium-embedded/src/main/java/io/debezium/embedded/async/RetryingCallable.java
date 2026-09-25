@@ -12,11 +12,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.util.DelayStrategy;
+import io.debezium.util.RetryingSupplier;
 
 /**
  * Extension to {@link Callable}, which allows to re-try the action if exception is thrown during the execution.
  * The action is re-tried {@code retries} number of times.
  * The delay between retries is defined by {@link DelayStrategy}, which needs to be provided by the implementing class.
+ * The action is re-tried when the thrown exception is a {@link RetriableException} or when its message matches the
+ * custom retriable message pattern. Only the thrown exception itself is examined, nested causes are not inspected:
+ * a terminal failure may deliberately wrap a retriable one (e.g. {@code ErrorHandler} wraps a retriable whose
+ * connector-side retries are exhausted in a {@code ConnectException} which must stop the task). If cause-chain
+ * semantics are needed, use {@link RetryingSupplier} directly. The retry loop is implemented by
+ * {@link RetryingSupplier}, to which this class delegates.
  *
  * @author vjuranek
  */
@@ -25,9 +32,15 @@ public abstract class RetryingCallable<V> implements Callable<V> {
     private static final Logger LOGGER = LoggerFactory.getLogger(RetryingCallable.class);
 
     private final int retries;
+    private final String customRetriableMessagePattern;
 
     public RetryingCallable(final int retries) {
+        this(retries, null);
+    }
+
+    public RetryingCallable(final int retries, final String customRetriableMessagePattern) {
         this.retries = retries;
+        this.customRetriableMessagePattern = customRetriableMessagePattern;
     }
 
     public abstract V doCall() throws Exception;
@@ -35,35 +48,17 @@ public abstract class RetryingCallable<V> implements Callable<V> {
     public abstract DelayStrategy delayStrategy();
 
     public V call() throws Exception {
-        final DelayStrategy delayStrategy = delayStrategy();
-        // 0 retries means retries are disabled,
-        // -1 means infinite retries; int range is not infinite, but in this case probably a sufficient approximation.
-        // We start from `retries` as the last call attempt is done out of the retry loop and this last call either
-        // succeeds or throws an exception which is propagated further. I.e. the actual number of calls is `retries+1`,
-        // meaning one ordinary call and #`retries` is it fails.
-        int attempts = retries;
-        while (attempts != 0) {
-            try {
-                return doCall();
-            }
-            catch (RetriableException e) {
-                attempts--;
-                String retriesExplained = retries == -1 ? "infinity" : String.valueOf(retries);
-                LOGGER.info("Failed with retriable exception, will retry later; attempt #{} out of {}",
-                        retries - attempts,
-                        retriesExplained,
-                        e);
-                delayStrategy.sleepWhen(true);
-                // DelayStrategy catches interrupted exception during the sleep and just set back interrupted status.
-                // We need to re-throw the InterruptedException to avoid unwanted cycles in the retry loop, e.g. when
-                // executor service running this callable shuts down. Without re-throwing the exception it would
-                // result into cycling in the retry loop without any sleep in DelayStrategy until the running thread is
-                // killed by the executor service.
-                if (Thread.currentThread().isInterrupted()) {
-                    throw new InterruptedException("Callable was interrupted while sleeping in DelayStrategy");
-                }
-            }
-        }
-        return doCall();
+        return RetryingSupplier.<V, Exception> builder()
+                .retries(retries)
+                .doGet(this::doCall)
+                .retriableExceptions(RetriableException.class)
+                .customRetriableMessagePattern(customRetriableMessagePattern)
+                // Outermost-only classification, see the class javadoc for the contract.
+                .walkCauseChain(false)
+                .delayStrategy(delayStrategy())
+                .name("Callable")
+                .logger(LOGGER)
+                .build()
+                .get();
     }
 }
