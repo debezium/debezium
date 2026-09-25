@@ -24,9 +24,11 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.oracle.OracleConnectorConfig.SnapshotMode;
+import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
@@ -139,6 +141,57 @@ public class OracleConnectorFilterIT extends AbstractAsyncEngineConnectorTest {
     @FixFor("DBZ-3009")
     public void shouldApplySchemaAndTableExcludeListConfiguration() throws Exception {
         shouldApplySchemaAndTableExclusionsConfiguration();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1443")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER, reason = "XStream binds a single schema, so DEBEZIUM2 is never captured")
+    public void shouldNotRestrictSchemaHistoryBySnapshotIncludeCollectionListWhenStoringOnlyCapturedTablesDdl() throws Exception {
+        shouldNotRestrictSchemaHistoryBySnapshotIncludeCollectionList(true);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1443")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER, reason = "XStream binds a single schema, so DEBEZIUM2 is never captured")
+    public void shouldNotRestrictSchemaHistoryBySnapshotIncludeCollectionListWhenStoringAllTablesDdl() throws Exception {
+        shouldNotRestrictSchemaHistoryBySnapshotIncludeCollectionList(false);
+    }
+
+    private void shouldNotRestrictSchemaHistoryBySnapshotIncludeCollectionList(boolean storeOnlyCapturedTablesDdl) throws Exception {
+        connection.execute("INSERT INTO debezium.table1 VALUES (1, 'Text-1')");
+        connection.execute("INSERT INTO debezium2.table2 VALUES (1, 'Text2-1')");
+        connection.execute("COMMIT");
+
+        // Two schemas are captured, but only the data of one of them is snapshot. The schema of DEBEZIUM2.TABLE2
+        // still has to be captured, otherwise there is no relational model for it once streaming starts.
+        Configuration config = TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.SCHEMA_INCLUDE_LIST, "DEBEZIUM,DEBEZIUM2")
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.TABLE1,DEBEZIUM2\\.TABLE2")
+                .with(CommonConnectorConfig.SNAPSHOT_MODE_TABLES, TestHelper.getDatabaseName() + "\\.DEBEZIUM\\.TABLE1")
+                .with(OracleConnectorConfig.STORE_ONLY_CAPTURED_TABLES_DDL, storeOnlyCapturedTablesDdl)
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .build();
+
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+
+        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        // snapshot.include.collection.list still restricts which tables are snapshot
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic("server1.DEBEZIUM.TABLE1")).hasSize(1);
+        assertThat(records.recordsForTopic("server1.DEBEZIUM2.TABLE2")).isNull();
+
+        waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        // The table that was not snapshot had its schema captured, so it can be streamed
+        connection.execute("INSERT INTO debezium2.table2 VALUES (2, 'Text2-2')");
+        connection.execute("COMMIT");
+
+        records = consumeRecordsByTopic(1);
+        List<SourceRecord> table2Records = records.recordsForTopic("server1.DEBEZIUM2.TABLE2");
+        assertThat(table2Records).hasSize(1);
+        VerifyRecord.isValidInsert(table2Records.get(0), "ID", 2);
     }
 
     @Test
