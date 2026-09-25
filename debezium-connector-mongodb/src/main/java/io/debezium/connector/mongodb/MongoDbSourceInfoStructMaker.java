@@ -10,6 +10,7 @@ import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.AbstractSourceInfoStructMaker;
+import io.debezium.data.Json;
 
 public class MongoDbSourceInfoStructMaker extends AbstractSourceInfoStructMaker<SourceInfo> {
 
@@ -25,6 +26,7 @@ public class MongoDbSourceInfoStructMaker extends AbstractSourceInfoStructMaker<
                 .field(SourceInfo.LSID, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(SourceInfo.TXN_NUMBER, Schema.OPTIONAL_INT64_SCHEMA)
                 .field(SourceInfo.WALL_TIME, Schema.OPTIONAL_INT64_SCHEMA)
+                .field(SourceInfo.RESUME_TOKEN, Json.builder().optional().build())
                 .build();
     }
 
@@ -36,7 +38,8 @@ public class MongoDbSourceInfoStructMaker extends AbstractSourceInfoStructMaker<
     @Override
     public Struct struct(SourceInfo sourceInfo) {
         Struct struct = super.commonStruct(sourceInfo)
-                .put(SourceInfo.ORDER, sourceInfo.position().getInc());
+                .put(SourceInfo.ORDER, sourceInfo.position().getInc())
+                .put(SourceInfo.RESUME_TOKEN, sourceInfo.eventResumeTokenJson());
 
         // The collection is unknown for no-event positions (e.g. heartbeats or the streaming start
         // offset), where CollectionId.parse("") resets it to null. The field is optional, so omit it.

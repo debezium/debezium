@@ -747,10 +747,11 @@ This example uses a document with an integer identifier, but any valid MongoDB d
 === Change event values
 
 The value in a change event is a bit more complicated than the key. Like the key, the value has a `schema` section and a `payload` section. The `schema` section contains the schema that describes the `Envelope` structure of the `payload` section, including its nested fields. Change events for operations that create, update or delete data all have a value payload with an envelope structure.
-The `after`, `before`, and `updateDescription.updatedFields` fields contain MongoDB Extended JSON strings.
+The `after`, `before`, `updateDescription.updatedFields`, and `source.resume_token` fields contain MongoDB Extended JSON strings.
 The connector's xref:mongodb-property-json-serialization-mode[`json.serialization.mode`] property controls how the connector serializes BSON values in these fields.
 By default, the connector preserves the legacy behavior: it serializes full document fields by using MongoDB Extended JSON v1 strict representation and serializes `updateDescription.updatedFields` by using MongoDB Extended JSON v2 relaxed representation.
 To use MongoDB Extended JSON v2 canonical representation, set `json.serialization.mode` to `extended`.
+For details about the event's resume token, see xref:mongodb-resume-tokens[Resume tokens in source metadata].
 
 Consider the same sample document that was used to show an example of a change event key:
 
@@ -772,6 +773,36 @@ The value portion of a change event for a change to this document is described f
 * <<mongodb-update-events,_update_ events>>
 * <<mongodb-delete-events,_delete_ events>>
 * <<mongodb-tombstone-events,Tombstone events>>
+
+[[mongodb-resume-tokens]]
+==== Resume tokens in source metadata
+
+For streaming create, update, and delete events, the optional `source.resume_token` field contains the complete resume token from the MongoDB change stream event's `_id` field.
+MongoDB replacement operations also include their event's token.
+The field has the Kafka Connect `STRING` type and the `io.debezium.data.Json` logical type.
+It contains an Extended JSON document, including `_data` and any other token fields, such as `_typeBits`, that MongoDB supplies.
+The connector does not decode or modify the contents of the token.
+
+The xref:mongodb-property-json-serialization-mode[`json.serialization.mode`] property controls the token's JSON representation.
+The `legacy` and `strict` modes use Extended JSON v1 strict representation, `extended` uses Extended JSON v2 canonical representation, and `relaxed` uses Extended JSON v2 relaxed representation.
+Binary values within the token use the binary representation of the selected Extended JSON mode.
+The token document itself is not Base64-encoded in the event payload.
+The connector continues to store its internal resume offset as Base64-encoded BSON, and change event keys are unchanged.
+
+Initial, blocking, and incremental snapshot read events have a null `source.resume_token`, because each read represents a document copied from a collection rather than a change stream event.
+The snapshot's starting resume position is not a token for an individual read event.
+Heartbeat and transaction metadata messages do not have this data event source field, and tombstone messages have a null value.
+For a xref:mongodb-property-cursor-oversize-handling-mode[supported split change stream event], the connector emits one reconstructed event with the final fragment's resume token.
+
+To resume an independent change stream after an event, parse the field's Extended JSON string into a BSON document and pass that document to MongoDB's `resumeAfter` option.
+Use the same change stream scope, pipeline, and options, including full document and pre-image settings.
+The token must still be valid in MongoDB's retained oplog history.
+Resuming after a reconstructed split event starts after its final fragment.
+
+Treat resume tokens as opaque MongoDB metadata.
+Do not use their textual representation as a permanent identifier across serialization modes or change stream configurations.
+When `updateLookup` supplies a full document, replaying an event can return newer document contents even if the event token is unchanged.
+Document field exclusion and masking settings do not modify the token's contents.
 
 [id="mongodb-create-events"]
 === _create_ events
@@ -1587,11 +1618,11 @@ Set xref:mongodb-property-capture-mode-full-update-type[capture.mode.full.update
 
 |[[mongodb-property-json-serialization-mode]]<<mongodb-property-json-serialization-mode, `+json.serialization.mode+`>>
 |`legacy`
-a|Specifies the MongoDB Extended JSON serialization mode that the connector uses for MongoDB document fields in change event values, including `after`, `before`, and `updateDescription.updatedFields`.
+a|Specifies the MongoDB Extended JSON serialization mode that the connector uses for BSON documents in change event values, including `after`, `before`, `updateDescription.updatedFields`, and `source.resume_token`.
 Set this property to one of the following values:
 
 `legacy`:: Preserves the historical JSON behavior.
-The connector serializes full document fields, such as `after` and `before`, by using the MongoDB Extended JSON v1 strict representation, and serializes `updateDescription.updatedFields` by using the MongoDB Extended JSON v2 relaxed representation.
+The connector serializes full document fields, such as `after` and `before`, and `source.resume_token` by using the MongoDB Extended JSON v1 strict representation, and serializes `updateDescription.updatedFields` by using the MongoDB Extended JSON v2 relaxed representation.
 
 `strict`:: Uses the MongoDB Extended JSON v1 strict representation.
 
@@ -1599,7 +1630,7 @@ The connector serializes full document fields, such as `after` and `before`, by 
 
 `relaxed`:: Uses the MongoDB Extended JSON v2 relaxed representation.
 +
-Compared with the default `legacy` mode, the non-default settings can change how BSON values are represented inside the JSON strings in `after`, `before`, and `updateDescription.updatedFields`.
+Compared with the default `legacy` mode, the non-default settings can change how BSON values are represented inside the JSON strings in `after`, `before`, `updateDescription.updatedFields`, and `source.resume_token`.
 For example, DateTime, Binary, RegExp, and Int64 values can use different Extended JSON forms.
 For the complete list of BSON type representations, see the MongoDB documentation for https://www.mongodb.com/docs/manual/reference/mongodb-extended-json-v1/[Extended JSON v1] and https://www.mongodb.com/docs/manual/reference/mongodb-extended-json/[Extended JSON v2].
 
@@ -2034,7 +2065,7 @@ Any change events for documents exceeding the maximum (specified by the `cursor.
 
 `split`::
 Change events exceeding the maximum BSON size will be split using the https://www.mongodb.com/docs/v6.0/reference/operator/aggregation/changeStreamSplitLargeEvent/[$changeStreamSplitLargeEvent] aggregation. This option requires **MongoDB 6.0.9 or newer**.
-The connector combines all fragments into a single change event and uses the last fragment's resume token for its offset.
+The connector combines all fragments into a single change event and uses the last fragment's resume token for its offset and the emitted event's `source.resume_token` field.
 When validating the saved resume token at startup, the connector applies the same full-document and pre-image options that it uses for streaming.
 The change stream used to determine the snapshot start position also uses these options.
 If its first event is split, the connector reads all fragments and records the last fragment's token before copying collection data.

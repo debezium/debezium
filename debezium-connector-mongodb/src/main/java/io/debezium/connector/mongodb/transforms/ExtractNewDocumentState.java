@@ -9,6 +9,7 @@ import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.CONFI
 import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.DELETED_FIELD;
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -312,9 +313,8 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends Abstrac
             valueSchemaBuilder = SchemaBuilder.struct().name(newValueSchemaName);
             converter.buildSchema(valueMap, valueSchemaBuilder);
 
-            if (!additionalFields.isEmpty()) {
-                addAdditionalFieldsSchema(additionalFields, record, valueSchemaBuilder);
-            }
+            final List<FieldReference> presentAdditionalFields = additionalFields.isEmpty() ? List.of()
+                    : addAdditionalFieldsSchema(additionalFields, record, valueSchemaBuilder);
 
             valueSchema = valueSchemaBuilder.build();
             valueStruct = new Struct(valueSchema);
@@ -323,8 +323,8 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends Abstrac
                 converter.buildStruct(entry, valueSchema, valueStruct);
             }
 
-            if (!additionalFields.isEmpty()) {
-                addFields(additionalFields, record, valueStruct);
+            if (!presentAdditionalFields.isEmpty()) {
+                addFields(presentAdditionalFields, record, valueStruct);
             }
         }
 
@@ -338,12 +338,17 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends Abstrac
         return newRecord;
     }
 
-    private void addAdditionalFieldsSchema(List<FieldReference> additionalFields, R originalRecord, SchemaBuilder valueSchemaBuilder) {
+    private List<FieldReference> addAdditionalFieldsSchema(List<FieldReference> additionalFields, R originalRecord, SchemaBuilder valueSchemaBuilder) {
         Schema sourceSchema = originalRecord.valueSchema();
+        final List<FieldReference> presentFields = new ArrayList<>(additionalFields.size());
         for (FieldReference fieldReference : additionalFields) {
             Optional<Schema> fieldSchema = fieldReference.getSchema(sourceSchema);
-            fieldSchema.ifPresent(schema -> valueSchemaBuilder.field(fieldReference.getNewField(), schema));
+            if (fieldSchema.isPresent()) {
+                valueSchemaBuilder.field(fieldReference.getNewField(), fieldSchema.get());
+                presentFields.add(fieldReference);
+            }
         }
+        return presentFields;
     }
 
     private void addFields(List<FieldReference> additionalFields, R originalRecord, Struct value) {
