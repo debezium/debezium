@@ -1,3 +1,6 @@
+[id="server-starting-JDBC-sink"]
+= Starting the JDBC sink
+
 .Procedure
 
 . Create an SQL file which will contain statements to set up our database.

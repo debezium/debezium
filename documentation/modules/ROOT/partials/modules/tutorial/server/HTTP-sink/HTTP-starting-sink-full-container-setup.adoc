@@ -1,3 +1,6 @@
+[id="server-starting-HTTP-sink"]
+= Starting the HTTP sink
+
 .Procedure
 
 . Get the upstream default configuration for the {selected-sink} server we will use to receive change events from {prodname} server:

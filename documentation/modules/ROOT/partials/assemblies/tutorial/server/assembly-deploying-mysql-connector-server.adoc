@@ -1,18 +1,18 @@
 :context: mysql
 
 [id="server-deploying-mysql-connector"]
-= Deploying the MySQL connector with {prodname} Server and the {selected-sink} sink
+= Deploying the MySQL connector with {prodname} Server
 
-After starting the {selected-sink} sink and MySQL services,
+After starting the sink and MySQL services,
 you are ready to deploy the {prodname} MySQL connector so that it can start monitoring the sample MySQL database (`inventory`).
 
-At this point, you are running the {selected-sink} sink services,
+At this point, you are running the sink services,
 a MySQL database server with a sample `inventory` database,
 and the MySQL command line client that is connected to the database.
 To deploy the MySQL connector,
 you must:
 
-* xref:configuring-{prodname}-server-{selected-sink}-sink[Configure the MySQL connector to monitor the `inventory` database]
+* xref:configuring-{prodname}-server[Configure the MySQL connector to monitor the `inventory` database]
 +
 After the connector is configured and {prodname} server is started,
 it will start monitoring the database server's `binlog` and it will generate change events for each row that changes.

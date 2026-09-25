@@ -1,3 +1,6 @@
+[id="watching-server-start-JDBC-sink"]
+= Watching {prodname} Server start - JDBC Sink
+
 The whole output will look like the following when starting for the first time. Each relevant section will be explained in more detail below.
 
 [source,shell,options="nowrap"]
@@ -13,11 +16,6 @@ The whole output will look like the following when starting for the first time. 
 
 
                           Powered by Quarkus 3.33.1.1
-WARN  [io.quarkus.config] (main) Unrecognized configuration file /mnt/c/Users/SeanConnaughton/Documents/Debezium Server Tutorial/debezium-server-dist-3.7.0.Alpha1/debezium-server/config/application.properties.cassandra.redis.example found; Please, check if your are providing the proper extension to load the file
-WARN  [io.quarkus.config] (main) Unrecognized configuration file /mnt/c/Users/SeanConnaughton/Documents/Debezium Server Tutorial/debezium-server-dist-3.7.0.Alpha1/debezium-server/config/application.yaml.example found; Please, check if your are providing the proper extension to load the file
-WARN  [io.quarkus.config] (main) Unrecognized configuration file /mnt/c/Users/SeanConnaughton/Documents/Debezium Server Tutorial/debezium-server-dist-3.7.0.Alpha1/debezium-server/config/application.properties.example found; Please, check if your are providing the proper extension to load the file
-WARN  [io.quarkus.config] (main) The "quarkus.log.console.json" config property is deprecated and should not be used anymore.
-
 # 1 - Server engine is created 
 
 INFO  [io.quarkus.debezium.agroal.configuration.AgroalCompatibilityDatasourceRecorder] (main) found Agroal compatible connectors: io.debezium.connector.db2.Db2Connector,io.debezium.connector.oracle.OracleConnector,io.debezium.connector.sqlserver.SqlServerConnector,io.debezium.connector.mongodb.MongoDbConnector,io.debezium.connector.postgresql.PostgresConnector,io.debezium.connector.mysql.MySqlConnector,io.debezium.connector.mariadb.MariaDbConnector

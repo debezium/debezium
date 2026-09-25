@@ -1,3 +1,6 @@
+[id="watching-server-start-HTTP-sink"]
+= Watching {prodname} Server start - HTTP Sink
+
 The first few lines show the {prodname} Server engine being created and started:
 
 [source,shell,options="nowrap"]

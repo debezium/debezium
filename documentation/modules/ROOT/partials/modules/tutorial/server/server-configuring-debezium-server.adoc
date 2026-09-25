@@ -1,6 +1,11 @@
-[id="configuring-{prodname}-server-{selected-sink}-sink"]
-= Configuring {prodname} Server for the {selected-sink} sink
+[id="configuring-{prodname}-server"]
+= Configuring {prodname} Server
 
-Configure the {prodname} server application so that it can stream change events to the {selected-sink} sink.
+Configure the {prodname} server application so that it can stream change events to the sink.
 
-include::{partialsdir}/modules/tutorial/server/{selected-sink}-sink/{selected-sink}-configuring-server.adoc[]
+* xref:configuring-{prodname}-server-HTTP-sink[Configure {prodname} Server for the HTTP sink]
+* xref:configuring-{prodname}-server-JDBC-sink[Configure {prodname} Server for the JDBC sink]
+
+include::{partialsdir}/modules/tutorial/server/HTTP-sink/HTTP-configuring-server.adoc[leveloffset=+1]
+
+include::{partialsdir}/modules/tutorial/server/JDBC-sink/JDBC-configuring-server.adoc[leveloffset=+1]

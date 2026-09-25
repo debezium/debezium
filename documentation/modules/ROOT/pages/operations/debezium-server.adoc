@@ -3614,6 +3614,7 @@ DELETE "d"          -> DELETE "d"
 RANGE_TOMBSTONE "r" -> TRUNCATE "t"
 ```
 
+include::{partialsdir}/assemblies/tutorial/server/assembly-tutorial-main-page-server.adoc[leveloffset=+1]
 
 [id="debezium-server-extensions"]
 == Extensions

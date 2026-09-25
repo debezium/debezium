@@ -1,7 +1,6 @@
 [id="server-watching-connector-start-up"]
 = Watching {prodname} Server and the connector start
 
-
 --
 To start {prodname} server, open a new terminal in the `{prodname}-server` directory (where `run.sh` is located) and run the following statement:
 [source,shell,options="nowrap"]
@@ -17,4 +16,9 @@ you can better understand the process that the connector goes through from the t
 After starting {prodname} server and the connector,
 you can review the log output in the terminal to track the connector's status.
 
-include::{partialsdir}/modules/tutorial/server/{selected-sink}-sink/{selected-sink}-watching-server-start.adoc[]
+* xref:watching-server-start-HTTP-sink[Watching {prodname} Server start - HTTP sink]
+* xref:watching-server-start-JDBC-sink[Watching {prodname} Server start - JDBC sink]
+
+include::{partialsdir}/modules/tutorial/server/HTTP-sink/HTTP-watching-server-start.adoc[leveloffset=+1]
+
+include::{partialsdir}/modules/tutorial/server/JDBC-sink/JDBC-watching-server-start.adoc[leveloffset=+1]

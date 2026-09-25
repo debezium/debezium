@@ -1,6 +1,9 @@
+[id="configuring-{prodname}-server-HTTP-sink"]
+= Configuring {prodname} Server for the HTTP sink
+
 .Prerequisites
 
-* The {selected-sink} sink and MySQL containers are running.
+* The HTTP sink and MySQL containers are running.
 * You have connected to the `inventory` database with the MySQL command line client or via the container itself.
 
 .Procedure
