@@ -27,6 +27,7 @@ import io.debezium.transforms.VectorToJsonConverter;
 import io.debezium.transforms.openlineage.OpenLineage;
 import io.debezium.transforms.outbox.EventRouter;
 import io.debezium.transforms.partitions.PartitionRouting;
+import io.debezium.transforms.predicates.FieldValueMatches;
 import io.debezium.transforms.tracing.ActivateTracingSpan;
 
 /**
@@ -56,7 +57,8 @@ public class TransformsMetadataProvider implements ComponentMetadataProvider {
                 componentMetadataFactory.createComponentMetadata(new TimezoneConverter<>(), io.debezium.Module.version()),
                 componentMetadataFactory.createComponentMetadata(new VectorToJsonConverter<>(), io.debezium.Module.version()),
                 componentMetadataFactory.createComponentMetadata(new Neo4jCudConverter<>(), io.debezium.Module.version()),
-                componentMetadataFactory.createComponentMetadata(new Neo4jDebeziumConverter<>(), io.debezium.Module.version()));
+                componentMetadataFactory.createComponentMetadata(new Neo4jDebeziumConverter<>(), io.debezium.Module.version()),
+                componentMetadataFactory.createComponentMetadata(new FieldValueMatches<>(), io.debezium.Module.version()));
     }
 
 }
