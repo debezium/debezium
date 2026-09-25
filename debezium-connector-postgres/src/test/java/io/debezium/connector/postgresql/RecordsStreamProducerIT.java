@@ -870,6 +870,26 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 Collections.singletonList(new SchemaAndValueField("modtype", SchemaBuilder.OPTIONAL_INT16_SCHEMA, (short) 2)), updatedRecord, Envelope.FieldName.AFTER);
     }
 
+    @Test
+    @FixFor("debezium/dbz#2534")
+    void shouldUpdateColumnCommentsAfterSchemaRefresh() throws Exception {
+        final String initialComment = "Initial description";
+        final String updatedComment = "Updated description";
+        TestHelper.execute("COMMENT ON COLUMN test_table.text IS '" + initialComment + "';");
+
+        startConnector(config -> config.with(PostgresConnectorConfig.INCLUDE_SCHEMA_COMMENTS, true));
+
+        consumer = testConsumer(1);
+        executeAndWait(
+                "COMMENT ON COLUMN test_table.text IS '" + updatedComment + "';" +
+                        "ALTER TABLE test_table ADD COLUMN added INTEGER;" +
+                        "INSERT INTO test_table(text, added) VALUES ('after refresh', 1);");
+
+        final SourceRecord insertedRecord = consumer.remove();
+        final Schema afterSchema = ((Struct) insertedRecord.value()).getStruct(Envelope.FieldName.AFTER).schema();
+        assertThat(afterSchema.field("text").schema().doc()).isEqualTo(updatedComment);
+    }
+
     private Header getPKUpdateNewKeyHeader(SourceRecord record) {
         return this.getHeaderField(record, RelationalChangeRecordEmitter.PK_UPDATE_NEWKEY_FIELD);
     }
