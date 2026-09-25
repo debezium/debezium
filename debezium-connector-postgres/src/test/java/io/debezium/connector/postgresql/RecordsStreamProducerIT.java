@@ -27,6 +27,8 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -106,6 +108,7 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.spatial.WkbWriter;
+import io.debezium.time.Date;
 import io.debezium.time.MicroTime;
 import io.debezium.time.MicroTimestamp;
 import io.debezium.time.ZonedTime;
@@ -639,6 +642,42 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 Collections.singletonList(
                         new SchemaAndValueField("名前", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "日本語テキスト")),
                 record, Envelope.FieldName.AFTER);
+    }
+
+    @Test
+    @FixFor("DBZ-2664")
+    void shouldStreamTemporalArraysPreservingEra() throws Exception {
+        // Runs under whichever logical decoder the build selects, which is the point: pgoutput hands the
+        // converter a PgArray, while decoderbufs would otherwise deserialize the elements itself.
+        TestHelper.execute("DROP TABLE IF EXISTS era_array_stream;");
+        TestHelper.execute("CREATE TABLE era_array_stream (pk SERIAL PRIMARY KEY, d DATE, "
+                + "ts_arr TIMESTAMP[], tstz_arr TIMESTAMPTZ[], d_arr DATE[]);");
+
+        startConnector();
+
+        final long bcMicros = LocalDateTime.of(0, 3, 7, 10, 30, 59).toInstant(ZoneOffset.UTC).getEpochSecond() * 1_000_000;
+        final long cutoverMicros = LocalDateTime.of(1582, 10, 4, 23, 59, 59).toInstant(ZoneOffset.UTC).getEpochSecond() * 1_000_000;
+
+        assertInsert(
+                "INSERT INTO era_array_stream (d, ts_arr, tstz_arr, d_arr) VALUES ("
+                        + "'0001-03-07 BC', "
+                        + "'{0001-03-07 10:30:59 BC,1582-10-04 23:59:59}', "
+                        + "'{0001-03-07 10:30:59+00 BC,1582-10-04 23:59:59+00}', "
+                        + "'{0001-03-07 BC,1582-10-04}');",
+                1,
+                Arrays.asList(
+                        new SchemaAndValueField("d", Date.builder().optional().build(),
+                                (int) LocalDate.of(0, 3, 7).toEpochDay()),
+                        new SchemaAndValueField("ts_arr",
+                                SchemaBuilder.array(MicroTimestamp.builder().optional().build()).optional().build(),
+                                Arrays.asList(bcMicros, cutoverMicros)),
+                        new SchemaAndValueField("tstz_arr",
+                                SchemaBuilder.array(ZonedTimestamp.builder().optional().build()).optional().build(),
+                                Arrays.asList("0000-03-07T10:30:59.000000Z", "1582-10-04T23:59:59.000000Z")),
+                        new SchemaAndValueField("d_arr",
+                                SchemaBuilder.array(Date.builder().optional().build()).optional().build(),
+                                Arrays.asList((int) LocalDate.of(0, 3, 7).toEpochDay(),
+                                        (int) LocalDate.of(1582, 10, 4).toEpochDay()))));
     }
 
     @Test
