@@ -251,8 +251,14 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
         }
         finally {
             executorService.shutdownNow();
-            if (!executorService.awaitTermination(connectorConfig.getExecutorShutdownTimeout().toMillis(), TimeUnit.MILLISECONDS)) {
-                LOGGER.warn("Snapshot workers did not stop within the configured shutdown timeout");
+            try {
+                if (!executorService.awaitTermination(connectorConfig.getExecutorShutdownTimeout().toMillis(), TimeUnit.MILLISECONDS)) {
+                    LOGGER.warn("Snapshot workers did not stop within the configured shutdown timeout");
+                }
+            }
+            catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                LOGGER.warn("Interrupted while waiting for snapshot workers to stop");
             }
         }
 
