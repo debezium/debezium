@@ -25,6 +25,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoException;
+import com.mongodb.ReadConcern;
 import com.mongodb.WriteConcern;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
@@ -234,7 +235,8 @@ public class MongoDbRequiredImagesIT extends AbstractMongoConnectorIT {
                 createCollection(database, true);
                 final var collection = database.getCollection(COLLECTION).withWriteConcern(WriteConcern.MAJORITY);
                 final var uuid = database.listCollections().filter(new Document("name", COLLECTION)).first().get("info", Document.class).get("uuid");
-                final var images = client.getDatabase("config").getCollection("system.preimages");
+                // Match the change stream's read concern before considering the images unavailable.
+                final var images = client.getDatabase("config").getCollection("system.preimages").withReadConcern(ReadConcern.MAJORITY);
                 final var imageFilter = new Document("_id.nsUUID", uuid);
 
                 start(MongoDbConnector.class, config);
