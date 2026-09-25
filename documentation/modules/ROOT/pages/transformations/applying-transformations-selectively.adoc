@@ -78,6 +78,65 @@ Use this predicate to apply an SMT to records based on the name of the source ta
 * link:https://cwiki.apache.org/confluence/display/KAFKA/KIP-585%3A+Filter+and+Conditional+SMTs[KIP-585: Filter and Conditional SMTs]
 * link:{link-kafka-docs}/#connect_predicates[Apache Kafka documentation for Kafka Connect predicates]
 
+// ModuleID: debezium-provided-predicates
+// Title: {prodname}-provided predicates
+[id="debezium-provided-predicates"]
+== {prodname}-provided predicates
+
+In addition to the predicate types that Kafka Connect provides, {prodname} provides the following predicate:
+
+[[field-value-matches]]
+FieldValueMatches:: Matches a record when a value field, addressed by a dot path, matches a regular expression.
+The default Kafka Connect predicates can match on the topic name (`TopicNameMatches`) or on a header (`HasHeaderKey`), but neither can match on a _value_ in the event.
+Use this predicate, in combination with a filter SMT, to retain or drop records based on the content of a field, without resorting to scripting.
+The fully-qualified type is `io.debezium.transforms.predicates.FieldValueMatches`.
++
+The predicate matches against the field value as it appears in the record's `Struct`, not against a serialized-JSON rendering of the value.
++
+.`FieldValueMatches` configuration properties
+[cols="30%a,20%a,50%a",options="header"]
+|===
+|Property |Default |Description
+
+|`field`
+|No default
+|The value field to test, addressed with dot notation.
+A bare name such as `status` targets a top-level field; a dotted name such as `after.status` descends into nested structs, for example to reach into a change event envelope.
+Every path segment except the last must resolve to a `STRUCT`.
+
+|`pattern`
+|No default
+|A Java regular expression that is tested against the string form of the field value.
+
+|`match.mode`
+|`full`
+|Specifies how the pattern is applied to the field value: +
+`full` requires the entire value to match the pattern. +
+`partial` matches when the pattern is found anywhere in the value.
+
+|`unevaluable.value`
+|`ignore`
+|Specifies the outcome when the predicate cannot evaluate the pattern against the field, for example because the record value is not a struct, the path is absent, an intermediate path segment is not a struct, the field is `null`, or the field is not a scalar: +
+`ignore` treats the record as not matching the predicate. +
+`fail` stops the connector by throwing an exception.
+|===
++
+The following example combines the `FieldValueMatches` predicate with the Kafka Connect `Filter` transformation to drop records in which the `after.status` field is `ARCHIVED`:
++
+[source,options="nowrap" subs="+quotes"]
+----
+transforms=filterArchived
+transforms.filterArchived.type=org.apache.kafka.connect.transforms.Filter
+transforms.filterArchived.predicate=IsArchived
+predicates=IsArchived
+predicates.IsArchived.type=io.debezium.transforms.predicates.FieldValueMatches
+predicates.IsArchived.field=after.status
+predicates.IsArchived.pattern=ARCHIVED
+----
++
+Because the `Filter` transformation drops the records that its predicate matches, this configuration removes archived records.
+To instead keep _only_ the archived records, add `transforms.filterArchived.negate=true`.
+
 // Type: procedure
 [id="defining-smt-predicates"]
 == Defining SMT predicates
@@ -117,6 +176,8 @@ transforms.outbox.predicate=IsOutboxTable
 * HasHeaderKey
 * RecordIsTombstone
 * TopicNameMatches
++
+Or specify the xref:field-value-matches[`FieldValueMatches`] predicate that {prodname} provides.
 +
 For example:
 +
