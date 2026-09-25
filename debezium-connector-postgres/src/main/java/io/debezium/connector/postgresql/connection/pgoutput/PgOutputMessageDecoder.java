@@ -9,7 +9,6 @@ import static java.util.stream.Collectors.toMap;
 
 import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
@@ -730,12 +729,21 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
      * @return string read from the replication stream
      */
     private static String readString(ByteBuffer buffer) {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        byte b;
-        while ((b = buffer.get()) != 0) {
-            baos.write(b);
+        // Postgres JDBC driver use array backed buffers
+        assert buffer.hasArray();
+
+        final var position = buffer.position();
+
+        while (buffer.hasRemaining()) {
+            if (buffer.get() == 0) {
+                break;
+            }
         }
-        return baos.toString(StandardCharsets.UTF_8);
+
+        return new String(buffer.array(),
+                buffer.arrayOffset() + position,
+                buffer.position() - position - 1,
+                StandardCharsets.UTF_8);
     }
 
     /**
@@ -745,10 +753,16 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
      * @return the column value as a string read from the replication stream
      */
     private static String readColumnValueAsString(ByteBuffer buffer) {
-        int length = buffer.getInt();
-        byte[] value = new byte[length];
-        buffer.get(value, 0, length);
-        return new String(value, Charset.forName("UTF-8"));
+        // Postgres JDBC driver use array backed buffers
+        assert buffer.hasArray();
+
+        final var length = buffer.getInt();
+        final var value = new String(buffer.array(),
+                buffer.arrayOffset() + buffer.position(),
+                length,
+                StandardCharsets.UTF_8);
+        buffer.position(buffer.position() + length);
+        return value;
     }
 
     /**

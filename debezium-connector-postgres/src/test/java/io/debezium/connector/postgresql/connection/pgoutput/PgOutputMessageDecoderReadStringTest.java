@@ -10,12 +10,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 
 import org.junit.jupiter.api.Test;
 
 /**
  * Tests for the {@code readString} method in {@link PgOutputMessageDecoder}.
- * Verifies correct decoding of null-terminated UTF-8 strings from a ByteBuffer,
+ * Verifies correct decoding of null-terminated and length-prefixed UTF-8 strings from a ByteBuffer,
  * including multi-byte characters used in non-ASCII table/column names.
  */
 public class PgOutputMessageDecoderReadStringTest {
@@ -26,12 +27,34 @@ public class PgOutputMessageDecoderReadStringTest {
         return (String) method.invoke(null, buffer);
     }
 
+    private static String invokeReadColumnValueAsString(final ByteBuffer buffer) throws Exception {
+        Method method = PgOutputMessageDecoder.class.getDeclaredMethod("readColumnValueAsString", ByteBuffer.class);
+        method.setAccessible(true);
+        return (String) method.invoke(null, buffer);
+    }
+
     private static ByteBuffer toNullTerminatedBuffer(String value) {
         byte[] bytes = value.getBytes(StandardCharsets.UTF_8);
         ByteBuffer buffer = ByteBuffer.allocate(bytes.length + 1);
         buffer.put(bytes);
         buffer.put((byte) 0); // null terminator
         buffer.flip();
+        return buffer;
+    }
+
+    private static ByteBuffer toLengthPrefixedBuffer(final String... values) {
+        final var length = Arrays.stream(values)
+                .mapToInt(it -> it.getBytes(StandardCharsets.UTF_8).length + Integer.BYTES)
+                .sum();
+        final var buffer = ByteBuffer.wrap(new byte[length]);
+
+        for (final var value : values) {
+            buffer.putInt(value.getBytes(StandardCharsets.UTF_8).length);
+            buffer.put(value.getBytes(StandardCharsets.UTF_8));
+        }
+
+        buffer.flip();
+
         return buffer;
     }
 
@@ -91,5 +114,16 @@ public class PgOutputMessageDecoderReadStringTest {
         assertThat(result).isEqualTo("first");
         // Buffer position should be right after the first null terminator
         assertThat(buffer.remaining()).isEqualTo(second.length + 1);
+    }
+
+    @Test
+    void shouldDecodeLengthPrefixedStrings() throws Exception {
+        final var values = new String[]{ "Fri, 25 Sep 2026 11:20:33 +0000", "{}", "Successful ✅", "Cairo القاهرة", "" };
+        final var buffer = toLengthPrefixedBuffer(values);
+
+        for (final var value : values) {
+            assertThat(invokeReadColumnValueAsString(buffer))
+                    .isEqualTo(value);
+        }
     }
 }
