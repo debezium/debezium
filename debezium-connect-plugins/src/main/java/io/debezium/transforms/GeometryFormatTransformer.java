@@ -170,13 +170,14 @@ public class GeometryFormatTransformer<R extends ConnectRecord<R>> implements Tr
      */
     private Object processGeometryStruct(Struct value) {
         final Integer srid = value.getInt32(Geometry.SRID_FIELD);
-        final byte[] wkb = value.getBytes(GeometryFormat.WKB.getValue());
+        final byte[] wkb = value.getBytes(Geometry.WKB_FIELD);
+        if (wkb == null) {
+            return value;
+        }
         final GeometryBytes geometry = new GeometryBytes(wkb, srid);
         // Check the actual format of the geometry wkb. Based on this, convert to the other format.
-        if (geometry.isExtended()) {
-            geometryFormat = GeometryFormat.EWKB;
-        }
-        switch (geometryFormat) {
+        final GeometryFormat currentFormat = geometry.isExtended() ? GeometryFormat.EWKB : GeometryFormat.WKB;
+        switch (currentFormat) {
             case WKB -> {
                 // Convert to EWKB by adding SRID. Native (non-PostGIS) geometric types such as box, lseg,
                 // path and polygon are emitted with a null SRID, and EWKB has no way to represent a missing
