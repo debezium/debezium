@@ -102,7 +102,7 @@ public class TimezoneConverter<R extends ConnectRecord<R>> implements Transforma
     private static final String FIELD_BEFORE_PREFIX = FieldName.BEFORE + ".";
     private static final String FIELD_AFTER_PREFIX = FieldName.AFTER + ".";
     private static final Pattern TIMEZONE_OFFSET_PATTERN = Pattern.compile("^[+-]\\d{2}:\\d{2}(:\\d{2})?$");
-    private static final Pattern LIST_PATTERN = Pattern.compile("^(?:(source|topic):)?[\\w_.\"\\-]+(?::[\\w_.\"\\-]+)?$");
+    private static final Pattern LIST_PATTERN = Pattern.compile("^\\[(source|topic|[\".\\w\\s_-]+):([\".\\w\\s_-]+(?::[\".\\w\\s_-]+)?(?:,|]$))+$");
     private final Map<String, Set<String>> topicFieldsMap = new HashMap<>();
     private final Map<String, Set<String>> tableFieldsMap = new HashMap<>();
     private final Map<String, Set<String>> noPrefixFieldsMap = new HashMap<>();
@@ -181,13 +181,18 @@ public class TimezoneConverter<R extends ConnectRecord<R>> implements Transforma
     }
 
     private void collectTablesAndTopics(List<String> list) {
+        String commonPrefix = null;
         for (String item : list) {
-            FieldItem parseItem = parseItem(item.trim());
+            FieldItem parseItem = parseItem(item);
             String prefix = parseItem.prefix;
             String matchName = parseItem.getMatchName();
             String field = parseItem.getFieldName();
 
-            if (Objects.equals(prefix, TOPIC)) {
+            if (prefix != null) {
+                commonPrefix = prefix;
+            }
+
+            if (Objects.equals(commonPrefix, TOPIC)) {
                 if (!topicFieldsMap.containsKey(matchName)) {
                     topicFieldsMap.put(matchName, new HashSet<>());
                 }
@@ -195,7 +200,7 @@ public class TimezoneConverter<R extends ConnectRecord<R>> implements Transforma
                     topicFieldsMap.get(matchName).add(field);
                 }
             }
-            else if (Objects.equals(prefix, SOURCE)) {
+            else if (Objects.equals(commonPrefix, SOURCE)) {
                 if (!tableFieldsMap.containsKey(matchName)) {
                     tableFieldsMap.put(matchName, new HashSet<>());
                 }
@@ -216,19 +221,15 @@ public class TimezoneConverter<R extends ConnectRecord<R>> implements Transforma
 
     private void validateConfiguration() {
         if (!includeList.isEmpty()) {
-            for (String item : includeList) {
-                if (!LIST_PATTERN.matcher(item.trim()).matches()) {
-                    throw new DebeziumException(
-                            "Invalid include list format. Please specify a list of rules in the format of \"source:<tablename>:<fieldnames>\", \"topic:<topicname>:<fieldnames>\", \"<matchname>:<fieldnames>\"");
-                }
+            if (!LIST_PATTERN.matcher(includeList.toString()).matches()) {
+                throw new DebeziumException(
+                        "Invalid include list format. Please specify a list of rules in the format of \"source:<tablename>:<fieldnames>\", \"topic:<topicname>:<fieldnames>\", \"<matchname>:<fieldnames>\"");
             }
         }
         else if (!excludeList.isEmpty()) {
-            for (String item : excludeList) {
-                if (!LIST_PATTERN.matcher(item.trim()).matches()) {
-                    throw new DebeziumException(
-                            "Invalid exclude list format. Please specify a list of rules in the format of \"source:<tablename>:<fieldnames>\", \"topic:<topicname>:<fieldnames>\", \"<matchname>:<fieldnames>\"");
-                }
+            if (!LIST_PATTERN.matcher(excludeList.toString()).matches()) {
+                throw new DebeziumException(
+                        "Invalid exclude list format. Please specify a list of rules in the format of \"source:<tablename>:<fieldnames>\", \"topic:<topicname>:<fieldnames>\", \"<matchname>:<fieldnames>\"");
             }
         }
 
@@ -518,65 +519,26 @@ public class TimezoneConverter<R extends ConnectRecord<R>> implements Transforma
 
     private MatchFieldsResult handleMatchNameAndFields(String table, String topic) {
         String matchName = null;
-        Set<String> fields = new HashSet<>();
-        boolean matched = false;
-        boolean allFields = false;
+        Set<String> fields = Collections.emptySet();
 
-        if (topic != null && topicFieldsMap.containsKey(topic)) {
+        if (topicFieldsMap.containsKey(topic)) {
             matchName = topic;
-            matched = true;
-            Set<String> f = topicFieldsMap.get(topic);
-            if (f.isEmpty()) {
-                allFields = true;
-            }
-            else {
-                fields.addAll(f);
-            }
+            fields = topicFieldsMap.get(topic);
         }
-        if (table != null && tableFieldsMap.containsKey(table)) {
-            if (matchName == null) {
-                matchName = table;
-            }
-            matched = true;
-            Set<String> f = tableFieldsMap.get(table);
-            if (f.isEmpty()) {
-                allFields = true;
-            }
-            else {
-                fields.addAll(f);
-            }
+        else if (tableFieldsMap.containsKey(table)) {
+            matchName = table;
+            fields = tableFieldsMap.get(table);
         }
-        if (table != null && noPrefixFieldsMap.containsKey(table)) {
-            if (matchName == null) {
-                matchName = table;
-            }
-            matched = true;
-            Set<String> f = noPrefixFieldsMap.get(table);
-            if (f.isEmpty()) {
-                allFields = true;
-            }
-            else {
-                fields.addAll(f);
-            }
+        else if (noPrefixFieldsMap.containsKey(topic)) {
+            matchName = topic;
+            fields = noPrefixFieldsMap.get(topic);
         }
-        if (topic != null && noPrefixFieldsMap.containsKey(topic)) {
-            if (matchName == null) {
-                matchName = topic;
-            }
-            matched = true;
-            Set<String> f = noPrefixFieldsMap.get(topic);
-            if (f.isEmpty()) {
-                allFields = true;
-            }
-            else {
-                fields.addAll(f);
-            }
+        else if (noPrefixFieldsMap.containsKey(table)) {
+            matchName = table;
+            fields = noPrefixFieldsMap.get(table);
         }
 
-        if (!matched) {
-            return new MatchFieldsResult(null, Collections.emptySet());
-        }
-        return new MatchFieldsResult(matchName, allFields ? Collections.emptySet() : fields);
+        return new MatchFieldsResult(matchName, fields);
     }
 
     private void handleInclude(Struct value, String table, String topic) {
