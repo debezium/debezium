@@ -21,7 +21,7 @@
         <version.jetty>12.1.11</version.jetty>
 
         <!-- Vitess dependencies -->
-        <version.vitess.grpc>23.0.0-rc1</version.vitess.grpc>
+        <version.vitess.grpc>23.0.6</version.vitess.grpc>
         <version.joda>2.10.1</version.joda>
         <version.google.protos>1.17.0</version.google.protos>
 
