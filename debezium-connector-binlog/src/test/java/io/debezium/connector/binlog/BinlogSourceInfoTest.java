@@ -82,6 +82,19 @@ public abstract class BinlogSourceInfoTest<S extends BinlogSourceInfo, O extends
         assertThat(offsetContext.isInitialSnapshotRunning()).isFalse();
     }
 
+    @Test
+    @FixFor("debezium/dbz#2549")
+    void shouldRetainOffsetFromBeforeCurrentSourceEvent() {
+        offsetContext.setBinlogStartPoint(FILENAME, 100);
+
+        offsetContext.markSourceEventStarted();
+        offsetContext.setRowNumber(0, 2);
+
+        assertThat(offsetContext.getOffset().get(BinlogSourceInfo.BINLOG_ROW_IN_EVENT_OFFSET_KEY)).isEqualTo(1L);
+        assertThat(offsetContext.getOffsetForIncompleteEvent())
+                .doesNotContainKey(BinlogSourceInfo.BINLOG_ROW_IN_EVENT_OFFSET_KEY);
+    }
+
     // -------------------------------------------------------------------------------------
     // Test reading the offset map and recovering the proper SourceInfo state
     // -------------------------------------------------------------------------------------
