@@ -19,6 +19,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import com.mongodb.MongoCommandException;
 import com.mongodb.client.MongoClients;
 
 import io.debezium.doc.FixFor;
@@ -78,12 +79,12 @@ class MongoDbWritablePrimaryIT {
     }
 
     @Test
-    @FixFor("debezium/dbz#2649")
+    @FixFor({ "debezium/dbz#2649", "debezium/dbz#2707" })
     void shouldWaitForWritablePrimaryWhenFirstMemberIsSecondary() {
         try (var cluster = replicaSet().memberCount(3).build()) {
             cluster.start();
             final var expectedPrimary = cluster.getMembers().get(1);
-            expectedPrimary.eval("db.adminCommand({replSetStepUp: 1})");
+            awaitPrimaryElection(expectedPrimary);
             await().atMost(30, SECONDS)
                     .ignoreException(IllegalStateException.class)
                     .until(() -> cluster.tryPrimary().filter(primary -> primary == expectedPrimary).isPresent());
@@ -92,6 +93,26 @@ class MongoDbWritablePrimaryIT {
 
             assertThat(cluster.getMembers().get(0).eval("rs.hello()").path("isWritablePrimary").asBoolean()).isFalse();
             assertThat(expectedPrimary.eval("rs.hello()").path("isWritablePrimary").asBoolean()).isTrue();
+        }
+    }
+
+    private static void awaitPrimaryElection(MongoDbContainer candidate) {
+        final var connectionString = "mongodb://" + candidate.getClientAddress() + "/?directConnection=true";
+        try (var client = MongoClients.create(connectionString)) {
+            final var admin = client.getDatabase("admin");
+            await("Primary election for " + candidate.getClientAddress()).atMost(30, SECONDS)
+                    // CommandFailed (125) can indicate that the candidate is not yet eligible for election.
+                    .ignoreExceptionsMatching(error -> error instanceof MongoCommandException commandError
+                            && commandError.getErrorCode() == 125
+                            && commandError.getErrorMessage().startsWith("Election failed"))
+                    .until(() -> {
+                        final var hello = admin.runCommand(new Document("hello", 1));
+                        if (!hello.getBoolean("secondary", false) && !hello.getBoolean("isWritablePrimary", false)) {
+                            return false;
+                        }
+                        admin.runCommand(new Document("replSetStepUp", 1));
+                        return true;
+                    });
         }
     }
 }
