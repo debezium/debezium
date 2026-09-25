@@ -1202,6 +1202,30 @@ The following _advanced_ configuration properties have defaults that work in mos
 |`10000`
 |The Spanner event queue capacity. Increase this capacity if the remaining stream event queue capacity approaches zero during connector runtime.
 
+|[[spanner-property-mutablepartitionorderingenabled]]<<spanner-property-mutablepartitionorderingenabled, `+gcp.spanner.mutable.partition.ordering.enabled+`>>
+|`true`
+|Whether move-in/move-out ordering is enabled for mutable key range change streams.
+
+|[[spanner-property-mutablewindowminutes]]<<spanner-property-mutablewindowminutes, `+gcp.spanner.mutable.window.minutes+`>>
+|`20`
+|The size, in minutes, of each sliding query window for mutable key range change streams. Must be between 1 and 30.
+
+|[[spanner-property-mutablemoveinbuffermaxevents]]<<spanner-property-mutablemoveinbuffermaxevents, `+gcp.spanner.mutable.move.in.buffer.max.events+`>>
+|`5000`
+|The maximum number of change-stream events to buffer in memory while a mutable key range destination partition waits for its source(s) to confirm their MoveOut. When the buffer reaches this limit, the connector falls back to the standard close/reopen path.
+
+|[[spanner-property-mutablemoveingatecheckintervalms]]<<spanner-property-mutablemoveingatecheckintervalms, `+gcp.spanner.mutable.move.in.gate.check.interval.ms+`>>
+|`10 ms`
+|How often the streaming thread checks whether the MoveIn gate has opened, when the Spanner result set has been exhausted before the gate opened.
+
+|[[spanner-property-mutablemoveingatetimeoutms]]<<spanner-property-mutablemoveingatetimeoutms, `+gcp.spanner.mutable.move.in.gate.timeout.ms+`>>
+|`60000 ms`
+|The maximum time the streaming thread waits for an active MoveIn gate after the Spanner result set is exhausted, before falling back to the close/reopen path.
+
+|[[spanner-property-placementtvfnames]]<<spanner-property-placementtvfnames, `+gcp.spanner.placement.tvf.names+`>>
+|No default
+|Comma-separated list of per-placement read table-valued function names (for example, `READ_MyStream_US,READ_MyStream_EU`) for change streams created with `per_placement_tvf=true`. When non-empty, the connector queries each TVF independently and uses the TVF name as part of the partition identity.
+
 |[[spanner-property-taskstatechangequeuecapacity]]<<spanner-property-taskstatechangequeuecapacity, `+connector.spanner.task.state.change.event.queue.capacity+`>>
 |`1000`
 |The task state change event queue capacity. Increase this capacity if the remaining task state change event queue capacity approaches zero during connector runtime.
