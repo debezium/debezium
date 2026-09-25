@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.postgresql;
 
+import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.lang.management.ManagementFactory;
@@ -13,6 +14,7 @@ import java.util.concurrent.TimeUnit;
 
 import javax.management.InstanceNotFoundException;
 import javax.management.MBeanServer;
+import javax.management.openmbean.TabularData;
 
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
@@ -23,6 +25,9 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
+import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
+import io.debezium.doc.FixFor;
+import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.pipeline.AbstractMetricsTest;
 
 /**
@@ -95,6 +100,88 @@ public class PostgresMetricsIT extends AbstractMetricsTest<PostgresConnector> {
     @AfterEach
     void after() throws Exception {
         stopConnector();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2624")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Only supported on PgOutput")
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 14, minor = 0, reason = "Message not supported for PG version < 14")
+    public void shouldUpdateStreamingMetricsForNonTransactionalLogicalMessage() throws Exception {
+        final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
+
+        start(PostgresConnector.class, noSnapshot(config()).build());
+        waitForStreamingRunning(connector(), server());
+
+        TestHelper.execute("SELECT pg_logical_emit_message(false, 'metrics', 'non-transactional');");
+
+        Awaitility.await()
+                .alias("non-transactional logical message metrics did not match expected values")
+                .atMost(TestHelper.waitTimeForRecords() * 5, TimeUnit.SECONDS)
+                .untilAsserted(() -> {
+                    assertIncludedLogicalMessageMetrics(mBeanServer);
+                    assertThat(mBeanServer.getAttribute(getStreamingMetricsObjectName(), "NumberOfCommittedTransactions")).isEqualTo(0L);
+                    assertThat(mBeanServer.getAttribute(getStreamingMetricsObjectName(), "LastTransactionId")).isNull();
+                });
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2624")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Only supported on PgOutput")
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 14, minor = 0, reason = "Message not supported for PG version < 14")
+    public void shouldUpdateStreamingMetricsForTransactionalLogicalMessage() throws Exception {
+        final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
+
+        start(PostgresConnector.class, noSnapshot(config()).build());
+        waitForStreamingRunning(connector(), server());
+
+        TestHelper.execute("SELECT pg_logical_emit_message(true, 'metrics', 'transactional');");
+
+        Awaitility.await()
+                .alias("transactional logical message metrics did not match expected values")
+                .atMost(TestHelper.waitTimeForRecords() * 5, TimeUnit.SECONDS)
+                .untilAsserted(() -> {
+                    assertIncludedLogicalMessageMetrics(mBeanServer);
+                    assertThat(mBeanServer.getAttribute(getStreamingMetricsObjectName(), "NumberOfCommittedTransactions")).isEqualTo(1L);
+                    assertThat(mBeanServer.getAttribute(getStreamingMetricsObjectName(), "LastTransactionId")).isNotNull();
+                });
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2624")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Only supported on PgOutput")
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 14, minor = 0, reason = "Message not supported for PG version < 14")
+    public void shouldUpdateStreamingMetricsForFilteredLogicalMessage() throws Exception {
+        final MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
+
+        start(PostgresConnector.class, noSnapshot(config())
+                .with(PostgresConnectorConfig.LOGICAL_DECODING_MESSAGE_PREFIX_EXCLUDE_LIST, "filtered")
+                .build());
+        waitForStreamingRunning(connector(), server());
+
+        TestHelper.execute("SELECT pg_logical_emit_message(false, 'filtered', 'filtered');");
+
+        Awaitility.await()
+                .alias("filtered logical message metrics did not match expected values")
+                .atMost(TestHelper.waitTimeForRecords() * 5, TimeUnit.SECONDS)
+                .untilAsserted(() -> {
+                    assertThat(mBeanServer.getAttribute(getStreamingMetricsObjectName(), "TotalNumberOfEventsSeen")).isEqualTo(1L);
+                    assertThat(mBeanServer.getAttribute(getStreamingMetricsObjectName(), "TotalNumberOfLogicalMessageEventsSeen")).isEqualTo(1L);
+                    assertThat((Long) mBeanServer.getAttribute(getStreamingMetricsObjectName(), "MilliSecondsSinceLastEvent")).isGreaterThanOrEqualTo(0L);
+                    assertThat(mBeanServer.getAttribute(getStreamingMetricsObjectName(), "NumberOfEventsFiltered")).isEqualTo(1L);
+                });
+    }
+
+    private void assertIncludedLogicalMessageMetrics(MBeanServer mBeanServer) throws Exception {
+        assertThat(mBeanServer.getAttribute(getStreamingMetricsObjectName(), "TotalNumberOfEventsSeen")).isEqualTo(1L);
+        assertThat(mBeanServer.getAttribute(getStreamingMetricsObjectName(), "TotalNumberOfLogicalMessageEventsSeen")).isEqualTo(1L);
+        assertThat(mBeanServer.getAttribute(getStreamingMetricsObjectName(), "LastEvent")).isNotNull();
+        assertThat((Long) mBeanServer.getAttribute(getStreamingMetricsObjectName(), "MilliSecondsSinceLastEvent")).isGreaterThanOrEqualTo(0L);
+
+        assertThat((Long) mBeanServer.getAttribute(getStreamingMetricsObjectName(), "MilliSecondsBehindSource")).isNotEqualTo(-1L);
+
+        final TabularData sourceEventPosition = (TabularData) mBeanServer.getAttribute(
+                getStreamingMetricsObjectName(), "SourceEventPosition");
+        assertThat(sourceEventPosition.isEmpty()).isFalse();
     }
 
     @Test
