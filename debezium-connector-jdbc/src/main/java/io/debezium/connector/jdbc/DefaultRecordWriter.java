@@ -267,6 +267,7 @@ public class DefaultRecordWriter implements RecordWriter {
                         Metronome.parker(flushRetryDelay, Clock.SYSTEM).pause();
                     }
                     catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
                         throw new ConnectException("Interrupted while waiting to retry " + description, e);
                     }
                 }

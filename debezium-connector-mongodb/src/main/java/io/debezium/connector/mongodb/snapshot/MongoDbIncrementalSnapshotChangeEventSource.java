@@ -271,7 +271,8 @@ public class MongoDbIncrementalSnapshotChangeEventSource
             readChunk(partition, offsetContext);
         }
         catch (InterruptedException e) {
-            throw new DebeziumException("Reading of an initial chunk after connector restart has been interrupted");
+            Thread.currentThread().interrupt();
+            throw new DebeziumException("Reading of an initial chunk after connector restart has been interrupted", e);
         }
         LOGGER.info("Incremental snapshot in progress, loading of initial chunk completed");
     }

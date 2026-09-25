@@ -878,6 +878,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
             }
         }
         catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             LOGGER.info("Processing interrupted");
         }
     }
