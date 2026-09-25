@@ -1,3 +1,6 @@
+[id="JDBC-deleting-record-database-viewing-delete-event"]
+= Deleting a record in the database and viewing the _delete_ event with the JDBC sink
+
 . In the terminal that is running the PostgreSQL command line client, run the following statement:
 
 +

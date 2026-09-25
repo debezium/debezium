@@ -1,3 +1,6 @@
+[id="HTTP-updating-database-viewing-update-event"]
+= Updating the database and viewing the _update_ event with the HTTP sink
+
 . Switch to the terminal running the HTTP Sink to see a _new_ fifth event.
 
 +

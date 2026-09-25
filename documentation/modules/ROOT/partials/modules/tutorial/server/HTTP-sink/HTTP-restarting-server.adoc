@@ -1,3 +1,5 @@
+[id="HTTP-restarting-{prodname}-server"]
+= Restarting the {prodname} server application - HTTP sink
 
 . Switch to the terminal running the HTTP sink container to see events for the two new records you created when {prodname} server was offline:
 +

@@ -5,6 +5,9 @@ By viewing the output of the {selected-sink} sink container,
 you can see how the MySQL connector captured _create_ events in the `inventory` database.
 In this case, the _create_ events capture new customers being added to the database.
 
-include::{partialsdir}/modules/tutorial/server/HTTP-sink/HTTP-viewing-create-event.adoc[]
+* xref:HTTP-viewing-create-event[HTTP sink]
+* xref:JDBC-viewing-create-event[JDBC sink]
 
-include::{partialsdir}/modules/tutorial/server/JDBC-sink/JDBC-viewing-create-event.adoc[]
+include::{partialsdir}/modules/tutorial/server/HTTP-sink/HTTP-viewing-create-event.adoc[leveloffset=+1]
+
+include::{partialsdir}/modules/tutorial/server/JDBC-sink/JDBC-viewing-create-event.adoc[leveloffset=+1]

@@ -1,3 +1,6 @@
+[id="JDBC-updating-database-viewing-update-event"]
+= Updating the database and viewing the _update_ event with the JDBC sink
+
 . In the terminal that is running the PostgreSQL command line client, run the following statement to check that the changes were propogated to the PostgreSQL server.:
 
 +

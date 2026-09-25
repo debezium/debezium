@@ -8,17 +8,20 @@ By updating a record in the database and observing the change event that the {pr
 . In the terminal that is running the MySQL command line client, run the following statement:
 +
 --
+
 [source,sql,options="nowrap"]
 ----
 mysql> UPDATE customers SET first_name = 'Johnathan', email = 'johnathantutorial@example.com' WHERE last_name = 'Tutorial';
 Query OK, 1 row affected (0.00 sec)
 Rows matched: 1  Changed: 1  Warnings: 0
 ----
+
 --
 
 . View the updated `customers` table:
 +
 --
+
 [source,sql,options="nowrap"]
 ----
 mysql> SELECT * FROM customers;
@@ -33,6 +36,13 @@ mysql> SELECT * FROM customers;
 +------+------------+-----------+-------------------------------+
 5 rows in set (0.00 sec)
 ----
+
 --
 
-include::{partialsdir}/modules/tutorial/server/{selected-sink}-sink/{selected-sink}-updating-database-viewing-update-event.adoc[]
+
+* xref:HTTP-updating-database-viewing-update-event[HTTP sink]
+* xref:JDBC-updating-database-viewing-update-event[JDBC sink]
+
+include::{partialsdir}/modules/tutorial/server/HTTP-sink/HTTP-updating-database-viewing-update-event.adoc[leveloffset=+1]
+
+include::{partialsdir}/modules/tutorial/server/JDBC-sink/JDBC-updating-database-viewing-update-event.adoc[leveloffset=+1]

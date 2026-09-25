@@ -103,7 +103,13 @@ started reading the `binlog` from that position,
 and generated events from any changes in the MySQL database since that point in time.
 --
 
-include::{partialsdir}/modules/tutorial/server/{selected-sink}-sink/{selected-sink}-restarting-server.adoc[]
+
+* xref:HTTP-restarting-{prodname}-server[HTTP sink]
+* xref:JDBC-restarting-{prodname}-server[JDBC sink]
+
+include::{partialsdir}/modules/tutorial/server/HTTP-sink/HTTP-restarting-server.adoc[leveloffset=+1]
+
+include::{partialsdir}/modules/tutorial/server/JDBC-sink/JDBC-restarting-server.adoc[leveloffset=+1]
 
 These events are _create_ events that are similar to what you saw previously.
 As you see, {prodname} still reports all of the changes in a database even when it is not running

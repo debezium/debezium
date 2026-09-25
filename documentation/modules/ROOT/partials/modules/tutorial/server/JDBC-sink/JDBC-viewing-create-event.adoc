@@ -1,3 +1,6 @@
+[id="JDBC-viewing-create-event"]
+= Viewing a _create_ event with the JDBC sink
+
 .Procedure
 
 . In the terminal that is running the MySQL command line client, run the following statement:

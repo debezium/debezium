@@ -1,7 +1,11 @@
+[id="JDBC-restarting-{prodname}-server"]
+= Restarting the {prodname} server application - JDBC sink
+
 . In the terminal that is running the PostgreSQL command line client, run the following statement:
 
 +
 --
+
 [source,sql,options="nowrap"]
 ----
 inventory=# SELECT * FROM tutorial_inventory_customers;
@@ -15,4 +19,5 @@ inventory=# SELECT * FROM tutorial_inventory_customers;
  1007 | Kenneth    | Anderson  | kander@acme.com
 (6 rows)
 ----
+
 --

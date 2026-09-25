@@ -1,3 +1,6 @@
+[id="HTTP-viewing-create-event"]
+= Viewing a _create_ event with the HTTP sink
+
 .Procedure
 
 ifdef::community[]
