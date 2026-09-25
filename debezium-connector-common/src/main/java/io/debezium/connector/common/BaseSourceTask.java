@@ -293,6 +293,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             }
             catch (RetriableException e) {
                 LOGGER.warn("Failed to start connector, will re-attempt during polling.", e);
+                doStop();
                 restartDelay = ElapsedTimeStrategy.constant(Clock.system(), retriableRestartWait);
                 setTaskState(DebeziumTaskState.RESTARTING);
             }
