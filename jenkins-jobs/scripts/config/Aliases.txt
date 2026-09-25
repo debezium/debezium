@@ -182,6 +182,7 @@ jorkzijlstra,JOrk Zijlstra
 joschi,Jochen Schalanda
 josetesan,Jose Luis
 jouir,Julien Riou
+JosipVukoja,Josip Vukoja
 jtanza,John Tanza
 juanfiallo,Juan Fiallo
 judahrand,Judah Rand
