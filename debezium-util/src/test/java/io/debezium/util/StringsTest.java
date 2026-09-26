@@ -197,6 +197,25 @@ public class StringsTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2718")
+    public void replaceVariablesShouldSupportDefaultValuesContainingColons() {
+        assertReplacement("${DB_HOST:localhost:3306}", vars(), "localhost:3306");
+        assertReplacement("jdbc:mysql://${DB_HOST:localhost:3306}/mydb", vars(), "jdbc:mysql://localhost:3306/mydb");
+        assertReplacement("${URL:http://localhost:8080/api}", vars(), "http://localhost:8080/api");
+        assertReplacement("some ${var1,var2:localhost:5432} text", vars(), "some localhost:5432 text");
+        assertReplacement("some ${var1,var2:localhost:5432} text", vars("var1", "remote:9999"), "some remote:9999 text");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2718")
+    public void replaceVariablesShouldSupportEmptyDefaultValue() {
+        assertReplacement("${PREFIX:}test", vars(), "test");
+        assertReplacement("some ${varName:} text", vars(), "some  text");
+        assertReplacement("some ${var1,var2:} text", vars(), "some  text");
+        assertReplacement("some ${var1,var2:} text", vars("var2", "custom"), "some custom text");
+    }
+
+    @Test
     public void replaceVariablesShouldReplaceMultipleVariables() {
         assertReplacement("${v1}${v1}", vars("v1", "first", "v2", "second"), "firstfirst");
         assertReplacement("${v1}${v2}", vars("v1", "first", "v2", "second"), "firstsecond");
@@ -406,6 +425,10 @@ public class StringsTest {
     protected void assertReplacement(String before, Map<String, String> replacements, String after) {
         String result = Strings.replaceVariables(before, replacements::get);
         assertThat(result).isEqualTo(after);
+    }
+
+    protected Map<String, String> vars() {
+        return Map.of();
     }
 
     protected Map<String, String> vars(String var1, String val1) {
