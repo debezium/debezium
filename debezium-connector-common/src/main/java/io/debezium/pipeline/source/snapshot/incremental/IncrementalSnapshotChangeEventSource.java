@@ -52,4 +52,11 @@ public interface IncrementalSnapshotChangeEventSource<P extends Partition, T ext
 
     default void processSchemaChange(P partition, OffsetContext offsetContext, DataCollectionId dataCollectionId) throws InterruptedException {
     }
+
+    /**
+     * Releases whatever the source holds on to. Called when the task stops, which is the only chance to clean up after
+     * a snapshot that was interrupted rather than completed.
+     */
+    default void close() {
+    }
 }
