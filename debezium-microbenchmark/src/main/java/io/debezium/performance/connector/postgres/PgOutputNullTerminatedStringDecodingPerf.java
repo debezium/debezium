@@ -57,10 +57,8 @@ public class PgOutputNullTerminatedStringDecodingPerf {
         this.buffer.position(16);
         final var position = this.buffer.position();
 
-        while (this.buffer.hasRemaining()) {
-            if (this.buffer.get() == 0) {
-                break;
-            }
+        while (this.buffer.get() != 0) {
+            // Scan to a null terminator; get() throws BufferedUnderflowException if we reach the end of the buffer and null was not found
         }
 
         blackhole.consume(new String(this.buffer.array(),
