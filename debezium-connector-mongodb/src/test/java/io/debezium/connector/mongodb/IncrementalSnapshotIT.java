@@ -55,6 +55,7 @@ import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.engine.DebeziumEngine;
+import io.debezium.engine.StopEngineException;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.signal.actions.snapshotting.StopSnapshot;
 import io.debezium.util.Testing;
@@ -469,6 +470,36 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         final int expectedRecordCount = ROW_COUNT;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
         for (int i = 0; i < expectedRecordCount; i++) {
+            assertThat(dbChanges).contains(entry(i + 1, i));
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2717")
+    void shouldResumeUnfinishedWindowAfterRestart() throws Exception {
+        populateDataCollection();
+        final Configuration config = config().build();
+        final var recordCounter = new AtomicInteger();
+        start(connectorClass(), config, loggingCompletion(), null, record -> {
+            // Stop delivery inside a window, even if the source has already queued later windows.
+            if (record.topic().equals(topicName()) && recordCounter.incrementAndGet() == 51) {
+                throw new StopEngineException("Restart inside an incremental snapshot window");
+            }
+        }, false);
+        waitForConnectorToStart();
+        waitForAvailableRecords(1, TimeUnit.SECONDS);
+        assertNoRecordsToConsume();
+        sendAdHocSnapshotSignal();
+
+        Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> !isEngineRunning.get());
+        stopConnector();
+        assertThat(recordCounter).hasValue(51);
+        assertConnectorNotRunning();
+
+        start(connectorClass(), config);
+        waitForConnectorToStart();
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(ROW_COUNT);
+        for (int i = 0; i < ROW_COUNT; i++) {
             assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }
