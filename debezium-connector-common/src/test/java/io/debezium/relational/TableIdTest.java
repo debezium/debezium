@@ -87,4 +87,35 @@ public class TableIdTest {
         quoted = id.toQuotedString('`');
         assertThat(quoted).isEqualTo(id.toString());
     }
+
+    @Test
+    @FixFor("debezium/dbz#2622")
+    public void shouldLowercaseAllParts() {
+        TableId lower = new TableId("CaseTest_UC", "MySchema", "MixedCase").toLowercase();
+
+        assertThat(lower.catalog()).isEqualTo("casetest_uc");
+        assertThat(lower.schema()).isEqualTo("myschema");
+        assertThat(lower.table()).isEqualTo("mixedcase");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2622")
+    public void shouldPreserveNullCatalogAndSchemaWhenLowercasing() {
+        TableId lower = new TableId(null, null, "MixedCase").toLowercase();
+
+        assertThat(lower.catalog()).isNull();
+        assertThat(lower.schema()).isNull();
+        assertThat(lower.table()).isEqualTo("mixedcase");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2622")
+    public void shouldLowercaseCatalogWithNullSchemaForMysqlLayout() {
+        // MySQL stores the database in catalogName and leaves schemaName null
+        TableId lower = new TableId("CaseTest_UC", null, "lowercase").toLowercase();
+
+        assertThat(lower.catalog()).isEqualTo("casetest_uc");
+        assertThat(lower.schema()).isNull();
+        assertThat(lower.table()).isEqualTo("lowercase");
+    }
 }
