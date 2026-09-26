@@ -31,6 +31,8 @@ import io.debezium.config.Field;
 import io.debezium.connector.common.RelationalBaseSourceConnector;
 import io.debezium.metadata.ConfigDescriptor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.relational.SignalDataCollectionValidationRequest;
+import io.debezium.relational.SignalDataCollectionValidationResult;
 import io.debezium.relational.SignalDataCollectionValidator;
 import io.debezium.util.Threads;
 
@@ -159,8 +161,9 @@ public class SqlServerConnector extends RelationalBaseSourceConnector implements
                         LOGGER.error(errorMessage);
                         userValue.addErrorMessage(errorMessage);
                     }
-                    SignalDataCollectionValidator.validate(connection, sqlServerConfig,
-                            configValues.get(CommonConnectorConfig.SIGNAL_DATA_COLLECTION.name()));
+                    SignalDataCollectionValidationResult signalResult = SignalDataCollectionValidator.validate(
+                            SignalDataCollectionValidationRequest.forConnector(sqlServerConfig, rawValue -> connection));
+                    signalResult.errors().forEach(configValues.get(CommonConnectorConfig.SIGNAL_DATA_COLLECTION.name())::addErrorMessage);
                 }
                 catch (Exception e) {
                     LOGGER.error("Failed testing connection for {} with user '{}'", config.withMaskedPasswords(),

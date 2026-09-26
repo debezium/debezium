@@ -30,6 +30,8 @@ import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ServerInfo;
 import io.debezium.metadata.ConfigDescriptor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.relational.SignalDataCollectionValidationRequest;
+import io.debezium.relational.SignalDataCollectionValidationResult;
 import io.debezium.relational.SignalDataCollectionValidator;
 import io.debezium.util.Threads;
 
@@ -111,8 +113,9 @@ public class PostgresConnector extends RelationalBaseSourceConnector implements 
                         testConnection(connection);
                         checkReadOnlyMode(connection, postgresConfig);
                         checkLoginReplicationRoles(connection);
-                        SignalDataCollectionValidator.validate(connection, postgresConfig,
-                                configValues.get(CommonConnectorConfig.SIGNAL_DATA_COLLECTION.name()));
+                        SignalDataCollectionValidationResult signalResult = SignalDataCollectionValidator.validate(
+                                SignalDataCollectionValidationRequest.forConnector(postgresConfig, rawValue -> connection));
+                        signalResult.errors().forEach(configValues.get(CommonConnectorConfig.SIGNAL_DATA_COLLECTION.name())::addErrorMessage);
                     }
                     catch (SQLException e) {
                         LOGGER.error("Failed testing connection for {} with user '{}'", connection.connectionString(),
