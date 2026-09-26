@@ -5,7 +5,7 @@
  */
 package io.debezium.storage.nats;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.File;
@@ -31,9 +31,6 @@ import io.nats.client.Connection;
  */
 class NatsTlsConnectionIT {
 
-    private static final String NATS_CONTAINER_IMAGE = "nats:2.12.0-alpine";
-    private static final int NATS_PORT = 4222;
-
     @TempDir
     Path tempDir;
 
@@ -58,13 +55,14 @@ class NatsTlsConnectionIT {
                 "-keystore", truststoreFile.getAbsolutePath(),
                 "-storepass", "changeit");
 
-        try (GenericContainer<?> tlsNats = new GenericContainer<>(DockerImageName.parse(NATS_CONTAINER_IMAGE))
-                .withExposedPorts(NATS_PORT)
+        try (GenericContainer<?> tlsNats = new GenericContainer<>(DockerImageName.parse(NatsContainer.IMAGE))
+                .withExposedPorts(NatsContainer.NATS_PORT)
                 .withCopyFileToContainer(MountableFile.forHostPath(certFile.getAbsolutePath()), "/certs/server.crt")
                 .withCopyFileToContainer(MountableFile.forHostPath(keyFile.getAbsolutePath()), "/certs/server.key")
-                .withCommand("--jetstream", "--tls", "--tlscert", "/certs/server.crt", "--tlskey", "/certs/server.key")) {
+                .withCommand("-js", "--tls", "--tlscert", "/certs/server.crt", "--tlskey", "/certs/server.key")
+                .withLogConsumer(NatsContainer.logToStdout())) {
             tlsNats.start();
-            String url = "nats://" + tlsNats.getHost() + ":" + tlsNats.getFirstMappedPort();
+            String url = NatsContainer.serverUrl(tlsNats);
 
             NatsCommonConfig natsConfig = new NatsCommonConfig(Configuration.from(Collect.hashMapOf(
                     "nats.url", url,
@@ -73,7 +71,7 @@ class NatsTlsConnectionIT {
                     "nats.tls.truststore.password", "changeit")), "");
             NatsConnection conn = new NatsConnection(natsConfig);
             try {
-                assertEquals(Connection.Status.CONNECTED, conn.getConnection().getStatus());
+                assertThat(conn.getConnection().getStatus()).isEqualTo(Connection.Status.CONNECTED);
             }
             finally {
                 conn.close();

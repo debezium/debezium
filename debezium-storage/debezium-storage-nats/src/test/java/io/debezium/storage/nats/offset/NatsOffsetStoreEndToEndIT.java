@@ -5,8 +5,7 @@
  */
 package io.debezium.storage.nats.offset;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -17,16 +16,16 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
-import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 
 import io.debezium.config.Configuration;
 import io.debezium.spi.storage.OffsetStorageReader;
 import io.debezium.spi.storage.OffsetStorageWriter;
 import io.debezium.spi.storage.OffsetStore;
 import io.debezium.spi.storage.OffsetStoreProvider;
+import io.debezium.storage.nats.NatsCommonConfig;
+import io.debezium.storage.nats.NatsContainer;
 import io.debezium.util.Collect;
 
 /**
@@ -40,31 +39,22 @@ import io.debezium.util.Collect;
 @Testcontainers
 class NatsOffsetStoreEndToEndIT {
 
-    private static final String NATS_CONTAINER_IMAGE = "nats:2.12.0-alpine";
-    private static final int NATS_PORT = 4222;
-
     @Container
     @SuppressWarnings("resource")
-    public GenericContainer<?> natsContainer = new GenericContainer<>(DockerImageName.parse(NATS_CONTAINER_IMAGE))
-            .withExposedPorts(NATS_PORT)
-            .withCommand("-js");
+    public NatsContainer natsContainer = new NatsContainer();
 
     private String natsUrl;
     private OffsetStore store;
 
     @BeforeEach
     public void setUp() {
-        natsContainer.start();
-        natsUrl = "nats://%s:%d".formatted(natsContainer.getHost(), natsContainer.getFirstMappedPort());
+        natsUrl = natsContainer.getServerUrl();
     }
 
     @AfterEach
     public void tearDown() {
         if (store != null) {
             store.stop();
-        }
-        if (natsContainer != null) {
-            natsContainer.stop();
         }
     }
 
@@ -80,8 +70,9 @@ class NatsOffsetStoreEndToEndIT {
 
         // Configure with the engine's key layout: offset.storage.nats.*
         Map<String, String> props = new HashMap<>();
-        props.put("offset.storage.nats.url", natsUrl);
-        props.put("offset.storage.nats.bucket.name", "e2e-offsets");
+        props.put(NatsOffsetBackingStoreConfig.PROP_PREFIX + NatsCommonConfig.NATS_URL.name(), natsUrl);
+        props.put(NatsOffsetBackingStoreConfig.PROP_PREFIX + NatsOffsetBackingStoreConfig.PROP_BUCKET_NAME.name(),
+                "e2e-offsets");
         Configuration config = Configuration.from(props);
 
         store = provider.create(config);
@@ -101,10 +92,10 @@ class NatsOffsetStoreEndToEndIT {
         // Read them back. Note: JSON round-trip turns Long 100L into Integer
         // 100, so compare field-wise with Number coercion.
         Map<String, Object> read = reader.offset(partition);
-        assertEquals("test.log", read.get("file"));
-        assertEquals(100L, ((Number) read.get("position")).longValue());
+        assertThat(read.get("file")).isEqualTo("test.log");
+        assertThat(((Number) read.get("position")).longValue()).isEqualTo(100L);
 
         // A partition that was never written must return null
-        assertNull(reader.offset(Collect.linkMapOf("server", "other-server")));
+        assertThat(reader.offset(Collect.linkMapOf("server", "other-server"))).isNull();
     }
 }
