@@ -35,6 +35,7 @@ import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.relational.history.SchemaHistoryListener;
 import io.debezium.storage.nats.history.NatsSchemaHistory;
+import io.debezium.storage.nats.history.NatsSchemaHistoryConfig;
 import io.debezium.storage.nats.offset.NatsOffsetBackingStore;
 import io.debezium.storage.nats.offset.NatsOffsetBackingStoreConfig;
 import io.debezium.util.Collect;
@@ -90,16 +91,16 @@ class NatsStorageIT {
         Map<String, String> config = Collect.hashMapOf(
                 SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + NatsCommonConfig.NATS_URL.name(), natsUrl,
                 SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING
-                        + io.debezium.storage.nats.history.NatsSchemaHistoryConfig.PROP_STREAM_NAME.name(),
+                        + NatsSchemaHistoryConfig.PROP_STREAM_NAME.name(),
                 "integration-schema-history",
                 SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING
-                        + io.debezium.storage.nats.history.NatsSchemaHistoryConfig.PROP_SUBJECT.name(),
+                        + NatsSchemaHistoryConfig.PROP_SUBJECT.name(),
                 "integration.schema.history",
                 SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING
-                        + io.debezium.storage.nats.history.NatsSchemaHistoryConfig.PROP_STORAGE_TYPE.name(),
+                        + NatsSchemaHistoryConfig.PROP_STORAGE_TYPE.name(),
                 "memory",
                 SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING
-                        + io.debezium.storage.nats.history.NatsSchemaHistoryConfig.PROP_REPLICAS.name(),
+                        + NatsSchemaHistoryConfig.PROP_REPLICAS.name(),
                 "1");
 
         Configuration configuration = Configuration.from(config);
