@@ -62,7 +62,7 @@ class NatsTlsConnectionIT {
                 .withExposedPorts(NATS_PORT)
                 .withCopyFileToContainer(MountableFile.forHostPath(certFile.getAbsolutePath()), "/certs/server.crt")
                 .withCopyFileToContainer(MountableFile.forHostPath(keyFile.getAbsolutePath()), "/certs/server.key")
-                .withCommand("--jetstream", "--tls", "--tlscert", "/certs/server.crt", "--tlskey", "/certs/server.key")) {
+                .withCommand("-js", "--tls", "--tlscert", "/certs/server.crt", "--tlskey", "/certs/server.key")) {
             tlsNats.start();
             String url = "nats://%s:%d".formatted(tlsNats.getHost(), tlsNats.getMappedPort(NATS_PORT));
 

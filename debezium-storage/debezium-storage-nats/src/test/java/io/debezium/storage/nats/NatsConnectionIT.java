@@ -40,7 +40,12 @@ class NatsConnectionIT {
     @SuppressWarnings("resource")
     public GenericContainer<?> natsContainer = new GenericContainer<>(DockerImageName.parse(NATS_CONTAINER_IMAGE))
             .withExposedPorts(NATS_PORT)
-            .withCommand("--jetstream");
+            .withCommand("-js")
+            .withLogConsumer(frame -> {
+                if (frame != null && frame.getUtf8String() != null) {
+                    System.out.print(frame.getUtf8String());
+                }
+            });
 
     private String natsUrl;
     private NatsConnection natsConnection;
@@ -178,7 +183,7 @@ class NatsConnectionIT {
     public void shouldConnectWithUserPassword() throws Exception {
         try (GenericContainer<?> authNats = new GenericContainer<>(DockerImageName.parse(NATS_CONTAINER_IMAGE))
                 .withExposedPorts(NATS_PORT)
-                .withCommand("--jetstream", "--user", "debezium", "--pass", "secret")) {
+                .withCommand("-js", "--user", "debezium", "--pass", "secret")) {
             authNats.start();
             String url = "nats://%s:%d".formatted(authNats.getHost(), authNats.getMappedPort(NATS_PORT));
 
@@ -200,7 +205,7 @@ class NatsConnectionIT {
     public void shouldConnectWithToken() throws Exception {
         try (GenericContainer<?> authNats = new GenericContainer<>(DockerImageName.parse(NATS_CONTAINER_IMAGE))
                 .withExposedPorts(NATS_PORT)
-                .withCommand("--jetstream", "--auth", "tokensecret")) {
+                .withCommand("-js", "--auth", "tokensecret")) {
             authNats.start();
             String url = "nats://%s:%d".formatted(authNats.getHost(), authNats.getMappedPort(NATS_PORT));
 
@@ -221,7 +226,7 @@ class NatsConnectionIT {
     public void shouldFailToConnectWithoutCredentials() {
         try (GenericContainer<?> authNats = new GenericContainer<>(DockerImageName.parse(NATS_CONTAINER_IMAGE))
                 .withExposedPorts(NATS_PORT)
-                .withCommand("--jetstream", "--user", "debezium", "--pass", "secret")) {
+                .withCommand("-js", "--user", "debezium", "--pass", "secret")) {
             authNats.start();
             String url = "nats://%s:%d".formatted(authNats.getHost(), authNats.getMappedPort(NATS_PORT));
 
