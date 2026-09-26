@@ -236,6 +236,11 @@ public class MongoUtils {
             stream = client.watch(pipeline.getStages(), BsonDocument.class);
         }
 
+        // An explicit zero would suppress documents in the initial aggregate response.
+        if (config.getQueryFetchSize() > 0) {
+            stream.batchSize(config.getQueryFetchSize());
+        }
+
         if (config.getCaptureMode().isFullUpdate()) {
             if (config.getCaptureModeFullUpdateType().isPostImage()) {
                 stream.fullDocument(FullDocument.WHEN_AVAILABLE);

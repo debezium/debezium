@@ -44,6 +44,8 @@ import org.bson.conversions.Bson;
 import org.bson.types.Decimal128;
 import org.bson.types.ObjectId;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import com.mongodb.DBRef;
 import com.mongodb.client.ClientSession;
@@ -652,9 +654,10 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         }
     }
 
-    @Test
+    @ParameterizedTest
+    @ValueSource(ints = { 0, 1 })
     @SkipWhenDatabaseVersion(check = LESS_THAN, major = 6, reason = "Pre-image support in Change Stream is officially released in Mongo 6.0.")
-    public void shouldConsumeLargeEvents() throws InterruptedException {
+    public void shouldConsumeLargeEvents(int queryFetchSize) throws InterruptedException {
         final var collName = "large";
         final var dbName = "dbit";
 
@@ -662,6 +665,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
                 .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.NO_DATA)
                 .with(MongoDbConnectorConfig.CAPTURE_MODE, MongoDbConnectorConfig.CaptureMode.CHANGE_STREAMS_UPDATE_FULL_WITH_PRE_IMAGE)
                 .with(MongoDbConnectorConfig.CURSOR_OVERSIZE_HANDLING_MODE, MongoDbConnectorConfig.OversizeHandlingMode.SPLIT)
+                .with(MongoDbConnectorConfig.QUERY_FETCH_SIZE, queryFetchSize)
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, dbName + "." + collName)
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")

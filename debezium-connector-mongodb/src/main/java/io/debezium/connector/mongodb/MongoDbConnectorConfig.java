@@ -1094,8 +1094,14 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
     public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
             .withDefault(MongoDbSourceInfoStructMaker.class.getName());
 
+    public static final Field QUERY_FETCH_SIZE = CommonConnectorConfig.QUERY_FETCH_SIZE
+            .withDisplayName("Change stream cursor batch size")
+            .withDescription("The maximum number of change stream documents returned in each batch from MongoDB. "
+                    + "A value of '0' uses the server default batch size.");
+
     private static final ConfigDefinition CONFIG_DEFINITION = CommonConnectorConfig.CONFIG_DEFINITION.edit()
             .name("MongoDB")
+            .excluding(CommonConnectorConfig.QUERY_FETCH_SIZE)
             .group(Field.Group.CONNECTION, CONNECTION_STRING, ALLOW_OFFSET_INVALIDATION, USER, PASSWORD, AUTH_SOURCE, CONNECT_TIMEOUT_MS,
                     HEARTBEAT_FREQUENCY_MS, SOCKET_TIMEOUT_MS, SERVER_SELECTION_TIMEOUT_MS, MONGODB_POLL_INTERVAL_MS, SSL_ENABLED, SSL_ALLOW_INVALID_HOSTNAMES,
                     CURSOR_MAX_AWAIT_TIME_MS)
@@ -1103,6 +1109,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
                     SNAPSHOT_FILTER_QUERY_BY_COLLECTION)
             .group(Field.Group.CONNECTOR, TOPIC_PREFIX, SNAPSHOT_MODE, CAPTURE_MODE, CAPTURE_SCOPE, CAPTURE_TARGET, JSON_SERIALIZATION_MODE, SCHEMA_NAME_ADJUSTMENT_MODE,
                     SOURCE_INFO_STRUCT_MAKER)
+            .group(Field.Group.CONNECTOR_ADVANCED, QUERY_FETCH_SIZE)
             .create();
 
     /**
