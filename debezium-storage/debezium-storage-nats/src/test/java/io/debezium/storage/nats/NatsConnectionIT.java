@@ -6,10 +6,7 @@
 package io.debezium.storage.nats;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -60,9 +57,9 @@ class NatsConnectionIT {
         NatsCommonConfig config = createConfig();
         natsConnection = new NatsConnection(config);
 
-        assertNotNull(natsConnection);
-        assertNotNull(natsConnection.getConnection());
-        assertEquals(Connection.Status.CONNECTED, natsConnection.getConnection().getStatus());
+        assertThat(natsConnection).isNotNull();
+        assertThat(natsConnection.getConnection()).isNotNull();
+        assertThat(natsConnection.getConnection().getStatus()).isEqualTo(Connection.Status.CONNECTED);
     }
 
     @Test
@@ -71,7 +68,7 @@ class NatsConnectionIT {
         natsConnection = new NatsConnection(config);
 
         JetStream jetStream = natsConnection.getJetStream();
-        assertNotNull(jetStream);
+        assertThat(jetStream).isNotNull();
     }
 
     @Test
@@ -80,7 +77,7 @@ class NatsConnectionIT {
         natsConnection = new NatsConnection(config);
 
         JetStreamManagement jsm = natsConnection.getJetStreamManagement();
-        assertNotNull(jsm);
+        assertThat(jsm).isNotNull();
     }
 
     @Test
@@ -90,10 +87,10 @@ class NatsConnectionIT {
 
         NatsCommonConfig natsConfig = new NatsCommonConfig(config);
 
-        assertThrows(Exception.class, () -> {
+        assertThatThrownBy(() -> {
             NatsConnection natsConnection = new NatsConnection(natsConfig);
             natsConnection.getConnection(); // This should trigger the connection attempt and throw an exception
-        });
+        }).isInstanceOf(Exception.class);
     }
 
     @Test
@@ -121,15 +118,15 @@ class NatsConnectionIT {
         natsConnection = new NatsConnection(config);
 
         Connection connection = natsConnection.getConnection();
-        assertTrue(connection.getStatus() == Connection.Status.CONNECTED);
+        assertThat(connection.getStatus()).isEqualTo(Connection.Status.CONNECTED);
 
         natsConnection.close();
 
         // Connection should be closed - check the original connection object
-        assertTrue(connection.getStatus() == Connection.Status.CLOSED);
+        assertThat(connection.getStatus()).isEqualTo(Connection.Status.CLOSED);
 
         // Also verify that isConnected() returns false
-        assertTrue(!natsConnection.isConnected());
+        assertThat(natsConnection.isConnected()).isFalse();
     }
 
     @Test
@@ -146,7 +143,7 @@ class NatsConnectionIT {
         NatsCommonConfig natsConfig = new NatsCommonConfig(config);
         NatsConnection connection = new NatsConnection(natsConfig);
 
-        assertThrows(Exception.class, connection::getConnection);
+        assertThatThrownBy(connection::getConnection).isInstanceOf(Exception.class);
     }
 
     @Test
@@ -164,7 +161,7 @@ class NatsConnectionIT {
                     "nats.password", "secret")), "");
             NatsConnection conn = new NatsConnection(natsConfig);
             try {
-                assertEquals(Connection.Status.CONNECTED, conn.getConnection().getStatus());
+                assertThat(conn.getConnection().getStatus()).isEqualTo(Connection.Status.CONNECTED);
             }
             finally {
                 conn.close();
@@ -186,7 +183,7 @@ class NatsConnectionIT {
                     "nats.token", "tokensecret")), "");
             NatsConnection conn = new NatsConnection(natsConfig);
             try {
-                assertEquals(Connection.Status.CONNECTED, conn.getConnection().getStatus());
+                assertThat(conn.getConnection().getStatus()).isEqualTo(Connection.Status.CONNECTED);
             }
             finally {
                 conn.close();
@@ -207,7 +204,7 @@ class NatsConnectionIT {
                     "nats.url", url)), "");
             NatsConnection conn = new NatsConnection(natsConfig);
             try {
-                assertThrows(Exception.class, conn::getConnection);
+                assertThatThrownBy(conn::getConnection).isInstanceOf(Exception.class);
             }
             finally {
                 conn.close();

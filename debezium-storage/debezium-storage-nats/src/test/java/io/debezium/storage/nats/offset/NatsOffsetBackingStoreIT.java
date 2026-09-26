@@ -6,11 +6,7 @@
 package io.debezium.storage.nats.offset;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -86,7 +82,7 @@ class NatsOffsetBackingStoreIT {
     @Test
     public void shouldStartAndStop() {
         // Should start and stop without errors
-        assertNotNull(offsetStore);
+        assertThat(offsetStore).isNotNull();
     }
 
     @Test
@@ -115,8 +111,8 @@ class NatsOffsetBackingStoreIT {
 
         // Verify
         assertThat(retrievedOffsets).hasSize(2);
-        assertEquals(value1, retrievedOffsets.get(key1));
-        assertEquals(value2, retrievedOffsets.get(key2));
+        assertThat(retrievedOffsets.get(key1)).isEqualTo(value1);
+        assertThat(retrievedOffsets.get(key2)).isEqualTo(value2);
     }
 
     @Test
@@ -164,8 +160,7 @@ class NatsOffsetBackingStoreIT {
         Map<ByteBuffer, ByteBuffer> retrievedOffsets = getFuture.get(5, TimeUnit.SECONDS);
 
         assertThat(retrievedOffsets).hasSize(1);
-        assertEquals("value1",
-                StandardCharsets.UTF_8.decode(retrievedOffsets.get(key).duplicate()).toString());
+        assertThat(StandardCharsets.UTF_8.decode(retrievedOffsets.get(key).duplicate()).toString()).isEqualTo("value1");
     }
 
     @Test
@@ -197,7 +192,7 @@ class NatsOffsetBackingStoreIT {
 
         // Should persist across restarts
         assertThat(retrievedOffsets).hasSize(1);
-        assertEquals(value, retrievedOffsets.get(key));
+        assertThat(retrievedOffsets.get(key)).isEqualTo(value);
     }
 
     @Test
@@ -219,7 +214,7 @@ class NatsOffsetBackingStoreIT {
             conn.close();
         }
 
-        assertThrows(DebeziumException.class, offsetStore::load);
+        assertThatThrownBy(offsetStore::load).isInstanceOf(DebeziumException.class);
     }
 
     @Test
@@ -236,7 +231,7 @@ class NatsOffsetBackingStoreIT {
         OffsetStore.Callback<Void> callback = new OffsetStore.Callback<Void>() {
             public void onCompletion(Throwable error, Void result) {
                 callbackInvoked[0] = true;
-                assertNull(error);
+                assertThat(error).isNull();
             }
         };
 
@@ -244,7 +239,7 @@ class NatsOffsetBackingStoreIT {
         setFuture.get(5, TimeUnit.SECONDS);
 
         // Callback should be invoked
-        assertTrue(callbackInvoked[0]);
+        assertThat(callbackInvoked[0]).isTrue();
     }
 
     @Test
@@ -296,8 +291,8 @@ class NatsOffsetBackingStoreIT {
                 Map<ByteBuffer, ByteBuffer> all = store3.get(keys).get(5, TimeUnit.SECONDS);
 
                 assertThat(all).hasSize(2);
-                assertEquals(value1, all.get(key1));
-                assertEquals(value2, all.get(key2));
+                assertThat(all.get(key1)).isEqualTo(value1);
+                assertThat(all.get(key2)).isEqualTo(value2);
             }
             finally {
                 store3.stop();
@@ -332,7 +327,7 @@ class NatsOffsetBackingStoreIT {
         keys.add(longKey);
         Map<ByteBuffer, ByteBuffer> retrieved = offsetStore.get(keys).get(5, TimeUnit.SECONDS);
         assertThat(retrieved).hasSize(1);
-        assertEquals(value, retrieved.get(longKey));
+        assertThat(retrieved.get(longKey)).isEqualTo(value);
 
         // Must also survive a restart (load path)
         offsetStore.stop();
@@ -342,6 +337,6 @@ class NatsOffsetBackingStoreIT {
 
         Map<ByteBuffer, ByteBuffer> afterRestart = offsetStore.get(keys).get(5, TimeUnit.SECONDS);
         assertThat(afterRestart).hasSize(1);
-        assertEquals(value, afterRestart.get(longKey));
+        assertThat(afterRestart.get(longKey)).isEqualTo(value);
     }
 }

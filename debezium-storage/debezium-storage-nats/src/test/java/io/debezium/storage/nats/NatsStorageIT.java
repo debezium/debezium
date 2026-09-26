@@ -6,9 +6,6 @@
 package io.debezium.storage.nats;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -144,23 +141,23 @@ class NatsStorageIT {
         offsetFuture.get(10, TimeUnit.SECONDS);
 
         // Verify schema history
-        assertTrue(schemaHistory.exists());
-        assertTrue(schemaHistory.storageExists());
+        assertThat(schemaHistory.exists()).isTrue();
+        assertThat(schemaHistory.storageExists()).isTrue();
 
         Tables recoveredTables = new Tables();
         schemaHistory.recover(source, position2, recoveredTables, parser);
 
         assertThat(recoveredTables.size()).isEqualTo(2);
-        assertTrue(recoveredTables.forTable(new TableId("testdb", null, "users")) != null);
-        assertTrue(recoveredTables.forTable(new TableId("testdb", null, "orders")) != null);
+        assertThat(recoveredTables.forTable(new TableId("testdb", null, "users"))).isNotNull();
+        assertThat(recoveredTables.forTable(new TableId("testdb", null, "orders"))).isNotNull();
 
         // Verify offsets
         Future<Map<ByteBuffer, ByteBuffer>> getFuture = offsetStore.get(Collect.arrayListOf(offsetKey1, offsetKey2));
         Map<ByteBuffer, ByteBuffer> retrievedOffsets = getFuture.get(10, TimeUnit.SECONDS);
 
         assertThat(retrievedOffsets).hasSize(2);
-        assertEquals(offsetValue1, retrievedOffsets.get(offsetKey1));
-        assertEquals(offsetValue2, retrievedOffsets.get(offsetKey2));
+        assertThat(retrievedOffsets.get(offsetKey1)).isEqualTo(offsetValue1);
+        assertThat(retrievedOffsets.get(offsetKey2)).isEqualTo(offsetValue2);
     }
 
     @Test
@@ -191,7 +188,7 @@ class NatsStorageIT {
         setupOffsetStore();
 
         // Verify data persisted
-        assertTrue(schemaHistory.exists());
+        assertThat(schemaHistory.exists()).isTrue();
 
         Tables recoveredTables = new Tables();
         schemaHistory.recover(source, position, recoveredTables, parser);
@@ -199,7 +196,7 @@ class NatsStorageIT {
 
         Future<Map<ByteBuffer, ByteBuffer>> getFuture = offsetStore.get(Collect.arrayListOf(offsetKey));
         Map<ByteBuffer, ByteBuffer> retrievedOffsets = getFuture.get(10, TimeUnit.SECONDS);
-        assertEquals(offsetValue, retrievedOffsets.get(offsetKey));
+        assertThat(retrievedOffsets.get(offsetKey)).isEqualTo(offsetValue);
     }
 
     @Test
@@ -207,8 +204,8 @@ class NatsStorageIT {
     @SuppressWarnings("deprecation")
     public void shouldHandleEmptyStorages() throws Exception {
         // Test behavior with empty storages
-        assertFalse(schemaHistory.exists());
-        assertTrue(schemaHistory.storageExists());
+        assertThat(schemaHistory.exists()).isFalse();
+        assertThat(schemaHistory.storageExists()).isTrue();
 
         // Empty recovery should work
         Tables emptyTables = new Tables();
@@ -247,7 +244,7 @@ class NatsStorageIT {
         assertThat(recoveredTables.size()).isEqualTo(10);
 
         for (int i = 0; i < 10; i++) {
-            assertTrue(recoveredTables.forTable(new TableId("testdb", null, "table_" + i)) != null);
+            assertThat(recoveredTables.forTable(new TableId("testdb", null, "table_" + i))).isNotNull();
         }
     }
 }

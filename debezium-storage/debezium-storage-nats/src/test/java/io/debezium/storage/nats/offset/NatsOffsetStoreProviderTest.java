@@ -6,8 +6,6 @@
 package io.debezium.storage.nats.offset;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Optional;
 import java.util.ServiceLoader;
@@ -33,8 +31,10 @@ class NatsOffsetStoreProviderTest {
                 .filter(p -> "nats".equals(p.getName()))
                 .findFirst();
 
-        assertTrue(provider.isPresent(), "NATS offset store provider must be registered via ServiceLoader");
-        assertEquals(NatsOffsetBackingStore.class.getName(), provider.get().getOffsetStoreClassName().orElse(null));
+        assertThat(provider)
+                .as("NATS offset store provider must be registered via ServiceLoader")
+                .isPresent();
+        assertThat(provider.get().getOffsetStoreClassName()).contains(NatsOffsetBackingStore.class.getName());
 
         OffsetStore store = provider.get().create(null);
         assertThat(store).isInstanceOf(NatsOffsetBackingStore.class);

@@ -5,10 +5,7 @@
  */
 package io.debezium.storage.nats;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -43,16 +40,16 @@ class NatsCommonConfigTest {
 
         NatsCommonConfig natsConfig = new NatsCommonConfig(config);
 
-        assertEquals("debezium", natsConfig.getUser());
-        assertEquals("secret", natsConfig.getPassword());
-        assertArrayEquals("tokensecret".toCharArray(), natsConfig.getToken());
-        assertTrue(natsConfig.isTlsEnabled());
-        assertEquals("/tmp/truststore.jks", natsConfig.getTlsTruststorePath());
-        assertEquals("changeit", natsConfig.getTlsTruststorePassword());
-        assertEquals("PKCS12", natsConfig.getTlsTruststoreType());
-        assertEquals("/tmp/keystore.jks", natsConfig.getTlsKeystorePath());
-        assertEquals("changeit", natsConfig.getTlsKeystorePassword());
-        assertEquals("PKCS12", natsConfig.getTlsKeystoreType());
+        assertThat(natsConfig.getUser()).isEqualTo("debezium");
+        assertThat(natsConfig.getPassword()).isEqualTo("secret");
+        assertThat(natsConfig.getToken()).containsExactly("tokensecret".toCharArray());
+        assertThat(natsConfig.isTlsEnabled()).isTrue();
+        assertThat(natsConfig.getTlsTruststorePath()).isEqualTo("/tmp/truststore.jks");
+        assertThat(natsConfig.getTlsTruststorePassword()).isEqualTo("changeit");
+        assertThat(natsConfig.getTlsTruststoreType()).isEqualTo("PKCS12");
+        assertThat(natsConfig.getTlsKeystorePath()).isEqualTo("/tmp/keystore.jks");
+        assertThat(natsConfig.getTlsKeystorePassword()).isEqualTo("changeit");
+        assertThat(natsConfig.getTlsKeystoreType()).isEqualTo("PKCS12");
     }
 
     @Test
@@ -63,11 +60,11 @@ class NatsCommonConfigTest {
 
         NatsCommonConfig natsConfig = new NatsCommonConfig(config);
 
-        assertFalse(natsConfig.isTlsEnabled());
-        assertEquals("", natsConfig.getUser());
-        assertEquals("", natsConfig.getPassword());
-        assertEquals(0, natsConfig.getToken().length);
-        assertEquals("JKS", natsConfig.getTlsTruststoreType());
-        assertEquals("JKS", natsConfig.getTlsKeystoreType());
+        assertThat(natsConfig.isTlsEnabled()).isFalse();
+        assertThat(natsConfig.getUser()).isEmpty();
+        assertThat(natsConfig.getPassword()).isEmpty();
+        assertThat(natsConfig.getToken()).isEmpty();
+        assertThat(natsConfig.getTlsTruststoreType()).isEqualTo("JKS");
+        assertThat(natsConfig.getTlsKeystoreType()).isEqualTo("JKS");
     }
 }

@@ -6,7 +6,7 @@
 package io.debezium.storage.nats.history;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Duration;
 import java.util.Map;
@@ -79,8 +79,8 @@ class NatsSchemaHistoryIntegrityIT {
         SchemaHistory failing = createHistory(failsOnRecovery());
         try {
             Tables tables = new Tables();
-            assertThrows(SchemaHistoryException.class,
-                    () -> failing.recover(source, position(1), tables, new MySqlAntlrDdlParser()));
+            assertThatThrownBy(() -> failing.recover(source, position(1), tables, new MySqlAntlrDdlParser()))
+                    .isInstanceOf(SchemaHistoryException.class);
         }
         finally {
             failing.stop();

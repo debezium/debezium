@@ -5,8 +5,7 @@
  */
 package io.debezium.storage.nats.offset;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -93,10 +92,10 @@ class NatsOffsetStoreEndToEndIT {
         // Read them back. Note: JSON round-trip turns Long 100L into Integer
         // 100, so compare field-wise with Number coercion.
         Map<String, Object> read = reader.offset(partition);
-        assertEquals("test.log", read.get("file"));
-        assertEquals(100L, ((Number) read.get("position")).longValue());
+        assertThat(read.get("file")).isEqualTo("test.log");
+        assertThat(((Number) read.get("position")).longValue()).isEqualTo(100L);
 
         // A partition that was never written must return null
-        assertNull(reader.offset(Collect.linkMapOf("server", "other-server")));
+        assertThat(reader.offset(Collect.linkMapOf("server", "other-server"))).isNull();
     }
 }

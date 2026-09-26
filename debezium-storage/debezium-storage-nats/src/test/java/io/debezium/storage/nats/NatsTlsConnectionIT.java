@@ -5,7 +5,7 @@
  */
 package io.debezium.storage.nats;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.File;
@@ -71,7 +71,7 @@ class NatsTlsConnectionIT {
                     "nats.tls.truststore.password", "changeit")), "");
             NatsConnection conn = new NatsConnection(natsConfig);
             try {
-                assertEquals(Connection.Status.CONNECTED, conn.getConnection().getStatus());
+                assertThat(conn.getConnection().getStatus()).isEqualTo(Connection.Status.CONNECTED);
             }
             finally {
                 conn.close();

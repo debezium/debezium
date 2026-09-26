@@ -5,7 +5,7 @@
  */
 package io.debezium.storage.nats.history;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -30,8 +30,8 @@ class NatsSchemaHistoryConfigTest {
         props.put(PREFIX + "nats.url", "nats://localhost:4222");
         NatsSchemaHistoryConfig config = new NatsSchemaHistoryConfig(Configuration.from(props));
 
-        assertEquals(100L, config.getRetryDelayMs());
-        assertEquals(20, config.getMaxRetries());
+        assertThat(config.getRetryDelayMs()).isEqualTo(100L);
+        assertThat(config.getMaxRetries()).isEqualTo(20);
     }
 
     @Test
@@ -42,7 +42,7 @@ class NatsSchemaHistoryConfigTest {
         props.put(PREFIX + "nats.max.retries", "5");
         NatsSchemaHistoryConfig config = new NatsSchemaHistoryConfig(Configuration.from(props));
 
-        assertEquals(250L, config.getRetryDelayMs());
-        assertEquals(5, config.getMaxRetries());
+        assertThat(config.getRetryDelayMs()).isEqualTo(250L);
+        assertThat(config.getMaxRetries()).isEqualTo(5);
     }
 }
