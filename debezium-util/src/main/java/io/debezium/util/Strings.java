@@ -992,16 +992,10 @@ public final class Strings {
             }
 
             String varString = sb.substring(startName + 2, endName);
-            if (varString.indexOf(DEFAULT_DELIM) > -1) {
-                List<String> defaults = split(varString, DEFAULT_DELIM);
-
-                // get the property(s) variables that are defined left of the default delimiter.
-                varString = defaults.get(0);
-
-                // if the default is defined, then capture in case none of the other properties are found
-                if (defaults.size() == 2) {
-                    defaultValue = defaults.get(1);
-                }
+            int delimIndex = varString.indexOf(DEFAULT_DELIM);
+            if (delimIndex > -1) {
+                defaultValue = varString.substring(delimIndex + 1);
+                varString = varString.substring(0, delimIndex);
             }
 
             String constValue = null;
