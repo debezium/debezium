@@ -90,9 +90,12 @@ public class SqlServerConnection extends JdbcConnection {
     // Distinct from STATEMENTS_PLACEHOLDER ("#") since it appears once per UNION ALL branch in DIRECT mode and
     // must not collide with the "#db"/"#table" placeholders, which are substituted with a global String#replace.
     private static final String DIRECT_QUERY_COLUMNS_PLACEHOLDER = "#cols#";
+    // SQL Server requires every column of a derived table (the "keyset_union" wrapper this is used in) to have a
+    // name; a plain column reference gets one implicitly, but this computed expression does not, so it needs
+    // an explicit alias.
     private static final String GET_ALL_CHANGES_FOR_TABLE_SELECT_DIRECT = "SELECT cdc_data.[__$start_lsn], cdc_data.[__$seqval], cdc_data.[__$operation], cdc_data.[__$update_mask], cdc_data.[__$command_id], "
             + DIRECT_QUERY_COLUMNS_PLACEHOLDER + ", "
-            + LSN_TIMESTAMP_SELECT_STATEMENT_JOIN;
+            + LSN_TIMESTAMP_SELECT_STATEMENT_JOIN + " AS [__$commit_ts]";
     private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_FUNCTION = "FROM #db.cdc.#function(?, ?, N'all update old')";
     private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_DIRECT = "FROM #db.cdc.#table AS cdc_data WITH (NOLOCK) LEFT JOIN #db.cdc.lsn_time_mapping ltm ON ltm.start_lsn = cdc_data.[__$start_lsn]";
     private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_FUNCTION_ORDER_BY = "ORDER BY [__$start_lsn] ASC, [__$seqval] ASC, [__$operation] ASC";
