@@ -64,7 +64,7 @@ class NatsTlsConnectionIT {
                 .withCopyFileToContainer(MountableFile.forHostPath(keyFile.getAbsolutePath()), "/certs/server.key")
                 .withCommand("--jetstream", "--tls", "--tlscert", "/certs/server.crt", "--tlskey", "/certs/server.key")) {
             tlsNats.start();
-            String url = "nats://" + tlsNats.getHost() + ":" + tlsNats.getFirstMappedPort();
+            String url = "nats://%s:%d".formatted(tlsNats.getHost(), tlsNats.getMappedPort(NATS_PORT));
 
             NatsCommonConfig natsConfig = new NatsCommonConfig(Configuration.from(Collect.hashMapOf(
                     "nats.url", url,

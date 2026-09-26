@@ -47,7 +47,7 @@ class NatsConnectionIT {
 
     @BeforeEach
     public void setUp() {
-        natsUrl = "nats://" + natsContainer.getHost() + ":" + natsContainer.getFirstMappedPort();
+        natsUrl = "nats://%s:%d".formatted(natsContainer.getHost(), natsContainer.getMappedPort(NATS_PORT));
     }
 
     @AfterEach
@@ -180,7 +180,7 @@ class NatsConnectionIT {
                 .withExposedPorts(NATS_PORT)
                 .withCommand("--jetstream", "--user", "debezium", "--pass", "secret")) {
             authNats.start();
-            String url = "nats://" + authNats.getHost() + ":" + authNats.getFirstMappedPort();
+            String url = "nats://%s:%d".formatted(authNats.getHost(), authNats.getMappedPort(NATS_PORT));
 
             NatsCommonConfig natsConfig = new NatsCommonConfig(Configuration.from(Collect.hashMapOf(
                     "nats.url", url,
@@ -202,7 +202,7 @@ class NatsConnectionIT {
                 .withExposedPorts(NATS_PORT)
                 .withCommand("--jetstream", "--auth", "tokensecret")) {
             authNats.start();
-            String url = "nats://" + authNats.getHost() + ":" + authNats.getFirstMappedPort();
+            String url = "nats://%s:%d".formatted(authNats.getHost(), authNats.getMappedPort(NATS_PORT));
 
             NatsCommonConfig natsConfig = new NatsCommonConfig(Configuration.from(Collect.hashMapOf(
                     "nats.url", url,
@@ -223,7 +223,7 @@ class NatsConnectionIT {
                 .withExposedPorts(NATS_PORT)
                 .withCommand("--jetstream", "--user", "debezium", "--pass", "secret")) {
             authNats.start();
-            String url = "nats://" + authNats.getHost() + ":" + authNats.getFirstMappedPort();
+            String url = "nats://%s:%d".formatted(authNats.getHost(), authNats.getMappedPort(NATS_PORT));
 
             NatsCommonConfig natsConfig = new NatsCommonConfig(Configuration.from(Collect.hashMapOf(
                     "nats.url", url)), "");

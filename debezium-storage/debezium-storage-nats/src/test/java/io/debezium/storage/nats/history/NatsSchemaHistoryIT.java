@@ -71,7 +71,7 @@ class NatsSchemaHistoryIT {
 
     @BeforeEach
     public void setUp() {
-        natsUrl = "nats://%s:%d".formatted(natsContainer.getHost(), natsContainer.getFirstMappedPort());
+        natsUrl = "nats://%s:%d".formatted(natsContainer.getHost(), natsContainer.getMappedPort(NATS_PORT));
         history = createHistory();
     }
 
@@ -471,7 +471,7 @@ class NatsSchemaHistoryIT {
 
             Map<String, String> config = new HashMap<>();
             config.put(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + NatsCommonConfig.NATS_URL.name(),
-                    "nats://" + plainNats.getHost() + ":" + plainNats.getMappedPort(NATS_PORT));
+                    "nats://%s:%d".formatted(plainNats.getHost(), plainNats.getMappedPort(NATS_PORT)));
             config.put(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + NatsSchemaHistoryConfig.PROP_STREAM_NAME.name(),
                     "test-schema-history");
             config.put(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + NatsSchemaHistoryConfig.PROP_SUBJECT.name(),

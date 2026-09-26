@@ -68,7 +68,7 @@ class NatsStorageIT {
     @BeforeEach
     public void setUp() {
         natsContainer.start();
-        natsUrl = "nats://" + natsContainer.getHost() + ":" + natsContainer.getFirstMappedPort();
+        natsUrl = "nats://%s:%d".formatted(natsContainer.getHost(), natsContainer.getMappedPort(NATS_PORT));
 
         parser = new MySqlAntlrDdlParser();
         setupSchemaHistory();

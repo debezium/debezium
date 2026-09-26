@@ -65,7 +65,7 @@ class NatsOffsetBackingStoreIT {
 
     @BeforeEach
     public void setUp() {
-        natsUrl = "nats://%s:%d".formatted(natsContainer.getHost(), natsContainer.getFirstMappedPort());
+        natsUrl = "nats://%s:%d".formatted(natsContainer.getHost(), natsContainer.getMappedPort(NATS_PORT));
 
         offsetStore = new NatsOffsetBackingStore();
         Map<String, String> config = createConfig();
