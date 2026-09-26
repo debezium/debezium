@@ -143,8 +143,26 @@ class BaseSourceTaskTest {
         assertEquals(DebeziumTaskState.STOPPED, baseSourceTask.getTaskState());
 
         assertEquals(4, baseSourceTask.startCount.get());
-        assertEquals(3, baseSourceTask.stopCount.get());
+        assertEquals(4, baseSourceTask.stopCount.get());
         verify(baseSourceTask.coordinator, times(1)).stop();
+    }
+
+    @Test
+    void verifyInitialRetriableStartCleansUpPartialGeneration() {
+        MyBaseSourceTask baseSourceTask = new MyBaseSourceTask() {
+            @Override
+            protected ChangeEventSourceCoordinator<Partition, OffsetContext> start(Configuration config) {
+                super.start(config);
+                throw new RetriableException("Initial start failure");
+            }
+        };
+
+        baseSourceTask.initialize(mock(SourceTaskContext.class));
+        baseSourceTask.start(Map.of(CommonConnectorConfig.RETRIABLE_RESTART_WAIT.name(), "1"));
+
+        assertEquals(DebeziumTaskState.RESTARTING, baseSourceTask.getTaskState());
+        assertEquals(1, baseSourceTask.startCount.get());
+        assertEquals(1, baseSourceTask.stopCount.get());
     }
 
     @Test
