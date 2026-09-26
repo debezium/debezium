@@ -71,6 +71,7 @@ class QueryInformationSchemaMetadataTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2695")
     void hypertableIdIsNotParsedFromOtherTableNames() {
         assertThat(QueryInformationSchemaMetadata.hypertableIdFromChunkName("custom_chunk")).isEmpty();
         assertThat(QueryInformationSchemaMetadata.hypertableIdFromChunkName("compress_hyper_2_3_chunk")).isEmpty();
