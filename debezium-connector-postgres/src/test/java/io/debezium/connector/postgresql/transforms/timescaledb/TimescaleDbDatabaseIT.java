@@ -24,6 +24,7 @@ import io.debezium.connector.postgresql.PostgresConnectorConfig;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.connector.postgresql.TestHelper;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
+import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.testing.testcontainers.ImageNames;
@@ -162,6 +163,35 @@ public class TimescaleDbDatabaseIT extends AbstractAsyncEngineConnectorTest {
 
         assertThat(records.recordsForTopic("timescaledb.public.conditions")).hasSize(3);
         assertThat(records.recordsForTopic("timescaledb._timescaledb_internal._compressed_hypertable_2")).hasSize(1);
+
+        stopConnector();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2695")
+    void shouldTransformChunkDroppedBeforeStreaming() throws Exception {
+        config = config.edit().with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, false).build();
+
+        start(PostgresConnector.class, config);
+        waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
+        insertData();
+        consumeRecordsByTopic(3);
+        stopConnector();
+
+        connection.execute(
+                "INSERT INTO conditions VALUES (now() - interval '30 days', 'Loc 1', 30, 50)",
+                "INSERT INTO conditions VALUES (now() - interval '30 days', 'Loc 1', 35, 55)",
+                "INSERT INTO conditions VALUES (now() - interval '30 days', 'Loc 1', 40, 60)",
+                "SELECT drop_chunks('conditions', older_than => now() - interval '20 days')");
+
+        start(PostgresConnector.class, config);
+        waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
+
+        var records = consumeRecordsByTopic(3);
+        assertConnectorIsRunning();
+
+        assertThat(records.topics()).containsExactly("timescaledb.public.conditions");
+        assertThat(records.recordsForTopic("timescaledb.public.conditions")).hasSize(3);
 
         stopConnector();
     }

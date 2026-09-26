@@ -14,6 +14,8 @@ import java.sql.SQLTransientException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalInt;
+import java.util.regex.Pattern;
 
 import org.apache.kafka.connect.errors.RetriableException;
 import org.slf4j.Logger;
@@ -46,12 +48,18 @@ public class QueryInformationSchemaMetadata extends AbstractTimescaleDbMetadata 
             "SELECT c.schema_name, c.table_name, ht.schema_name, ht.table_name FROM %s.chunk c "
                     + "LEFT JOIN %s.hypertable ht ON c.hypertable_id = ht.id",
             CATALOG_SCHEMA, CATALOG_SCHEMA);
+    private static final String QUERY_HYPERTABLES = String.format(
+            "SELECT id, schema_name, table_name FROM %s.hypertable",
+            CATALOG_SCHEMA);
+
+    private static final Pattern DEFAULT_CHUNK_NAME = Pattern.compile("_hyper_(\\d{1,9})_\\d+_chunk");
 
     private static final Logger LOGGER = LoggerFactory.getLogger(QueryInformationSchemaMetadata.class);
 
     private final PostgresConnection connection;
     private final Map<TableId, TableId> chunkToHypertable = new HashMap<>();
     private final Map<TableId, TableId> hypertableToAggregate = new HashMap<>();
+    private final Map<Integer, TableId> hypertablesById = new HashMap<>();
 
     public QueryInformationSchemaMetadata(Configuration config) {
         super(config);
@@ -69,7 +77,16 @@ public class QueryInformationSchemaMetadata extends AbstractTimescaleDbMetadata 
         }
         LOGGER.debug("Chunk '{}' not found, querying the catalog", chunkId);
         loadTimescaleMetadata();
-        return Optional.ofNullable(chunkToHypertable.get(chunkId));
+        final var resolvedId = Optional.ofNullable(chunkToHypertable.get(chunkId))
+                .or(() -> hypertableIdFromDroppedChunk(chunkId));
+        resolvedId.ifPresent(id -> chunkToHypertable.put(chunkId, id));
+        return resolvedId;
+    }
+
+    // A dropped chunk is gone from the catalog while its changes can still be in the WAL
+    private Optional<TableId> hypertableIdFromDroppedChunk(TableId chunkId) {
+        final var id = hypertableIdFromChunkName(chunkId.table());
+        return id.isPresent() ? Optional.ofNullable(hypertablesById.get(id.getAsInt())) : Optional.empty();
     }
 
     @Override
@@ -89,6 +106,13 @@ public class QueryInformationSchemaMetadata extends AbstractTimescaleDbMetadata 
                 while (rs.next()) {
                     chunkToHypertable.put(new TableId(null, rs.getString(1), rs.getString(2)),
                             new TableId(null, rs.getString(3), rs.getString(4)));
+                }
+            });
+
+            hypertablesById.clear();
+            connection.query(QUERY_HYPERTABLES, rs -> {
+                while (rs.next()) {
+                    hypertablesById.put(rs.getInt(1), new TableId(null, rs.getString(2), rs.getString(3)));
                 }
             });
 
@@ -118,6 +142,11 @@ public class QueryInformationSchemaMetadata extends AbstractTimescaleDbMetadata 
             }
             throw new DebeziumException("Failed to read TimescaleDB metadata", e);
         }
+    }
+
+    static OptionalInt hypertableIdFromChunkName(String chunkName) {
+        final var matcher = DEFAULT_CHUNK_NAME.matcher(chunkName);
+        return matcher.matches() ? OptionalInt.of(Integer.parseInt(matcher.group(1))) : OptionalInt.empty();
     }
 
     static boolean isRetriable(Throwable throwable) {
