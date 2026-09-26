@@ -53,7 +53,7 @@ public class LogMinerEventAdapter {
      */
     @ProtoFactory
     public LogMinerEvent factory(int eventType, String scn, String tableId, String rowId, String rsId, String changeTime) {
-        return new LogMinerEvent(EventType.from(eventType), Scn.valueOf(scn), TableId.parse(tableId), rowId, rsId, Instant.parse(changeTime));
+        return new LogMinerEvent(EventType.from(eventType), Scn.valueOf(scn), parseTableId(tableId), rowId, rsId, Instant.parse(changeTime));
     }
 
     /**
@@ -85,11 +85,12 @@ public class LogMinerEventAdapter {
      * A ProtoStream handler to extract the {@code tableId} field from the {@link LogMinerEvent}.
      *
      * @param event the event instance, must not be {@code null}
-     * @return the event's table identifier represented as a string
+     * @return the event's table identifier represented as a string, may be {@code null}
      */
     @ProtoField(number = 3)
     public String getTableId(LogMinerEvent event) {
-        return event.getTableId().toDoubleQuotedString();
+        final TableId tableId = event.getTableId();
+        return tableId == null ? null : tableId.toDoubleQuotedString();
     }
 
     /**
@@ -123,5 +124,15 @@ public class LogMinerEventAdapter {
     @ProtoField(number = 6)
     public String getChangeTime(LogMinerEvent event) {
         return event.getChangeTime().toString();
+    }
+
+    /**
+     * Parses the supplied table identifier string, tolerating a {@code null} value.
+     *
+     * @param tableId the fully-qualified table name, may be {@code null}
+     * @return the parsed table id, or {@code null} if {@code tableId} is {@code null}
+     */
+    protected static TableId parseTableId(String tableId) {
+        return tableId == null ? null : TableId.parse(tableId);
     }
 }

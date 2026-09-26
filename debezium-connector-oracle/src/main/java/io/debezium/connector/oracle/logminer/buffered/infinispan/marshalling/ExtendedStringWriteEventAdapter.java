@@ -14,7 +14,6 @@ import org.infinispan.protostream.annotations.ProtoField;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.ExtendedStringWriteEvent;
-import io.debezium.relational.TableId;
 
 /**
  * An Infinispan ProtoStream adapter to marshall {@link ExtendedStringWriteEvent} instances.
@@ -41,7 +40,7 @@ public class ExtendedStringWriteEventAdapter extends LogMinerEventAdapter {
      */
     @ProtoFactory
     public ExtendedStringWriteEvent factory(int eventType, String scn, String tableId, String rowId, String rsId, String changeTime, String data) {
-        return new ExtendedStringWriteEvent(EventType.from(eventType), Scn.valueOf(scn), TableId.parse(tableId), rowId, rsId, Instant.parse(changeTime), data);
+        return new ExtendedStringWriteEvent(EventType.from(eventType), Scn.valueOf(scn), parseTableId(tableId), rowId, rsId, Instant.parse(changeTime), data);
     }
 
     /**

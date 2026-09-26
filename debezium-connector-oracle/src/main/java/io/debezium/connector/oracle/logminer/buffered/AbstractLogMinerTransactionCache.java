@@ -113,7 +113,7 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
                 end = entry;
                 continue;
             }
-            else if (!event.getTableId().equals(rollbackEvent.getTableId())) {
+            else if (event.getTableId() != null && !event.getTableId().equals(rollbackEvent.getTableId())) {
                 logCannotApplyRollbackToSavepointWarning(transactionId, rollbackEvent, "TABLE_NAME", event.getTableId());
                 return null;
             }
@@ -170,7 +170,7 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
         while (iterator.hasNext()) {
             final LogMinerEventEntry entry = iterator.next();
             final LogMinerEvent event = entry.event();
-            if (!event.getTableId().equals(rollbackEvent.getTableId())) {
+            if (event.getTableId() != null && !event.getTableId().equals(rollbackEvent.getTableId())) {
                 logUnexpectedEventWithEmptyRowIdWarning(transactionId, rollbackEvent, "TABLE_NAME", event.getTableId());
                 break;
             }
@@ -187,7 +187,7 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
                 }
                 lobStmt = false;
             }
-            if (!RowIdCodec.EMPTY_ROW_ID.equals(event.getRowId()) || event.getEventType() == EventType.INTERNAL) {
+            if (!RowIdCodec.EMPTY_ROW_ID.equals(event.getRowId())) {
                 break;
             }
             if (event.getEventType() == EventType.INSERT || event.getEventType() == EventType.UPDATE) {

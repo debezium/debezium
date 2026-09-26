@@ -1473,11 +1473,6 @@ However, after a partial rollback of a transaction that modifies out-of-line LOB
 `true`:: The connector includes `INTERNAL` events in LogMiner queries.
 This setting increases the volume of mined redo log data, but enables the connector to accurately process `ROLLBACK TO SAVEPOINT` operations for tables with out-of-line LOB columns.
 
-[NOTE]
-====
-The `log.mining.include.internal.events` property has no effect unless `lob.enabled` is also set to `true`.
-====
-
 [TIP]
 ====
 If your application does not use `ROLLBACK TO SAVEPOINT` in transactions that modify tables with LOB columns, you can safely leave `log.mining.include.internal.events` set to `false`.
