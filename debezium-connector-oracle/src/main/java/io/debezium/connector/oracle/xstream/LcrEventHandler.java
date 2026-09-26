@@ -126,7 +126,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
         }
         // nothing to be done here if interrupted; the event loop will be stopped in the streaming source
         catch (InterruptedException e) {
-            Thread.interrupted();
+            Thread.currentThread().interrupt();
             LOGGER.info("Received signal to stop, event loop will halt");
         }
         // XStream's receiveLCRCallback() doesn't reliably propagate exceptions, so we do that ourselves here
@@ -300,6 +300,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
             dispatchDataChangeEvent(rowLCR, null);
         }
         catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             throw new RuntimeException("Interrupted", e);
         }
 
@@ -431,7 +432,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
             dispatchDataChangeEvent(currentRow, resolvedChunkValues);
         }
         catch (InterruptedException e) {
-            Thread.interrupted();
+            Thread.currentThread().interrupt();
             LOGGER.info("Received signal to stop, event loop will halt");
         }
         catch (SQLException e) {

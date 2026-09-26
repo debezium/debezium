@@ -74,6 +74,7 @@ public final class SinkConnection {
                 }
             }
             catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
                 mongoClient.close();
                 throw new ConnectException(e);
             }

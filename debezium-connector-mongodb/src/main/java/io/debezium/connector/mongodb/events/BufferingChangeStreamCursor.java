@@ -476,6 +476,7 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
             executor.awaitTermination(FETCHER_SHUTDOWN_TIMEOUT, TimeUnit.SECONDS);
         }
         catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             LOGGER.warn("Interrupted while waiting for fetcher thread shutdown");
         }
     }

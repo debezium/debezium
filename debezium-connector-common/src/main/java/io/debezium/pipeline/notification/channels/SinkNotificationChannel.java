@@ -108,6 +108,7 @@ public class SinkNotificationChannel implements NotificationChannel, ConnectChan
             consumer.accept(sourceRecord); // This sends the record to the ChangeEventQueue
         }
         catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             LOGGER.error("Notification {} not sent due to interrupt", notification);
         }
     }

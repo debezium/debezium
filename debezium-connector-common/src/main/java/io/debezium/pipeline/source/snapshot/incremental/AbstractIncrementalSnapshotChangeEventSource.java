@@ -240,7 +240,8 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             readChunk(partition, offsetContext);
         }
         catch (InterruptedException e) {
-            throw new DebeziumException("Reading of an initial chunk after connector restart has been interrupted");
+            Thread.currentThread().interrupt();
+            throw new DebeziumException("Reading of an initial chunk after connector restart has been interrupted", e);
         }
         LOGGER.info("Incremental snapshot in progress, loading of initial chunk completed");
     }
@@ -938,6 +939,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                     });
         }
         catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             LOGGER.error("Processing interrupted for table '{}'", tableId);
             throw new DebeziumException(e);
         }

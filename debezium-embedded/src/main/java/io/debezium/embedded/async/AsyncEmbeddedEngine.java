@@ -341,6 +341,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
             shutDownLatch.await(config.getLong(AsyncEngineConfig.TASK_MANAGEMENT_TIMEOUT_MS), TimeUnit.MILLISECONDS);
         }
         catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             LOGGER.warn("Interrupted while waiting for shutdown to finish.");
         }
         LOGGER.info("Engine is stopped.");
@@ -535,9 +536,13 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
             try {
                 taskCompletionService.take().get();
             }
-            catch (InterruptedException | CancellationException e) {
+            catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
                 // We may hit here also RejectedExecutionException when the is another batch submitted for processing,
                 // but for now we don't catch it and let pass it to the user in CompletionCallback so the user can react to it.
+                LOGGER.info("Task interrupted while polling.");
+            }
+            catch (CancellationException e) {
                 LOGGER.info("Task interrupted while polling.");
             }
             LOGGER.debug("Task #{} out of {} tasks has stopped polling.", i, tasks.size());
@@ -673,6 +678,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
             recordService.awaitTermination(shutdownTimeout, TimeUnit.MILLISECONDS);
         }
         catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             LOGGER.info("Timed out while waiting for record service shutdown. Shutting it down immediately.");
         }
         finally {
@@ -736,6 +742,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
             taskService.shutdown();
         }
         catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             LOGGER.warn("Stopping of the tasks was interrupted, shutting down immediately.");
         }
         catch (Exception e) {

@@ -524,6 +524,7 @@ public class PostgresConnection extends JdbcConnection {
                 Metronome.parker(Duration.ofSeconds(1), Clock.system()).pause();
             }
             catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
             }
         }
         return false;

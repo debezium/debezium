@@ -247,6 +247,7 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
             operation.run();
         }
         catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             LOGGER.error("Not able to acquire semaphore after {}s", SEMAPHORE_WAIT_TIME);
             throw new DebeziumException("Not able to acquire semaphore during signaling processing", e);
         }

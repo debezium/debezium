@@ -228,6 +228,7 @@ public final class MongoDbConnection implements AutoCloseable {
             });
         }
         catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             throw new DebeziumException("Interrupted while validating resume token", e);
         }
 

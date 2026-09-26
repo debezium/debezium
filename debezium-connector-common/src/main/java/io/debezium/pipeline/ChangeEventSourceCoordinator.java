@@ -272,7 +272,8 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
                 doSnapshot(snapshotSource, context, partition, (O) offsetContext, snapshottingTask);
             }
             catch (InterruptedException e) {
-                throw new DebeziumException("Blocking snapshot has been interrupted");
+                Thread.currentThread().interrupt();
+                throw new DebeziumException("Blocking snapshot has been interrupted", e);
             }
             catch (Exception e) {
                 LOGGER.warn("Error while executing requested blocking snapshot.", e);
@@ -283,6 +284,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
                     resumeStreaming(partition);
                 }
                 catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
                     LOGGER.warn("Streaming resume has been interrupted");
                 }
             }

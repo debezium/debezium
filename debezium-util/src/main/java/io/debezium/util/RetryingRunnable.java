@@ -54,6 +54,7 @@ public class RetryingRunnable<E extends Exception> {
             run();
         }
         catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
             throw exceptionWrapper.apply(ex);
         }
     }
