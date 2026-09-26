@@ -14,6 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -140,29 +141,20 @@ class NatsConnectionIT {
     }
 
     @Test
-    public void shouldHandleConnectionTimeout() {
+    @Timeout(30)
+    public void shouldFailToConnectWhenTheServerDoesNotRespond() {
+        // 192.0.2.1 is TEST-NET-1 (RFC 5737), which is not routable, so the connection
+        // attempt is dropped rather than refused and can only fail through the configured
+        // connection timeout. Disabling reconnects keeps that failure prompt.
         Configuration config = Configuration.from(Collect.hashMapOf(
-                "nats.url", natsUrl));
+                "nats.url", "nats://192.0.2.1:4222",
+                "nats.connection.timeout.ms", "500",
+                "nats.max.reconnects", "0"));
 
         NatsCommonConfig natsConfig = new NatsCommonConfig(config);
+        NatsConnection connection = new NatsConnection(natsConfig);
 
-        // Should still work with valid URL even with short timeout
-        natsConnection = new NatsConnection(natsConfig);
-        assertNotNull(natsConnection);
-    }
-
-    @Test
-    public void shouldConfigureConnectionName() throws Exception {
-        Configuration config = Configuration.from(Collect.hashMapOf(
-                "nats.url", natsUrl));
-
-        NatsCommonConfig natsConfig = new NatsCommonConfig(config);
-        natsConnection = new NatsConnection(natsConfig);
-
-        assertNotNull(natsConnection);
-        // Connection name should be set (though we can't easily verify it without
-        // server inspection)
-        assertTrue(natsConnection.getConnection().getStatus() == Connection.Status.CONNECTED);
+        assertThrows(Exception.class, connection::getConnection);
     }
 
     @Test
