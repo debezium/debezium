@@ -5,6 +5,7 @@
  */
 package io.debezium.transforms.predicates;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -20,6 +21,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.Module;
 import io.debezium.config.Configuration;
+import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.metadata.ConfigDescriptor;
 import io.debezium.transforms.SmtManager;
@@ -51,10 +53,17 @@ import io.debezium.util.Strings;
  * {@link java.util.regex.Matcher#find()}.</li>
  * <li>{@code unevaluable.value} &mdash; the outcome when the pattern cannot be evaluated against the
  * field: the record value is not a struct, the path is absent, an intermediate segment is not a
- * struct, the field is {@code null}, or the field is not a scalar. {@code ignore} (the default) treats
- * such a record as not matching; {@code fail} halts the stream with a {@link ConnectException} so that
- * a misconfiguration or an unexpected shape is not masked.</li>
+ * struct, the field is {@code null}, or the field is not a textual scalar (a struct, map, list, or
+ * binary {@code byte[]}/{@code ByteBuffer} value). {@code ignore} (the default) treats such a record as
+ * not matching; {@code fail} halts the stream with a {@link ConnectException} so that a
+ * misconfiguration or an unexpected shape is not masked.</li>
  * </ul>
+ * <p>
+ * A record with a {@code null} value (a tombstone) is always treated as not matching, regardless of
+ * {@code unevaluable.value}. Connect allows only one predicate per transform, so a user cannot compose
+ * this predicate with {@code RecordIsTombstone} to shield tombstones from a {@code fail} policy;
+ * exempting them keeps {@code fail} usable on a real change stream, mirroring the stock {@code Filter}
+ * transformation, which never matches tombstones and so always retains them.
  * <p>
  * The predicate matches against the field value as it stands in the record's {@code Struct} (the
  * substrate the Connect predicate contract exposes), not against a serialized-JSON rendering of the
@@ -71,11 +80,73 @@ public class FieldValueMatches<R extends ConnectRecord<R>> implements org.apache
     public static final String MATCH_MODE_CONFIG = "match.mode";
     public static final String UNEVALUABLE_VALUE_CONFIG = "unevaluable.value";
 
-    public static final String MATCH_MODE_FULL = "full";
-    public static final String MATCH_MODE_PARTIAL = "partial";
+    /**
+     * How the pattern is applied to the field's string value.
+     */
+    public enum MatchMode implements EnumeratedValue {
+        /** The whole value must match, as with {@link java.util.regex.Matcher#matches()}. */
+        FULL("full"),
+        /** The pattern must match somewhere in the value, as with {@link java.util.regex.Matcher#find()}. */
+        PARTIAL("partial");
 
-    public static final String UNEVALUABLE_IGNORE = "ignore";
-    public static final String UNEVALUABLE_FAIL = "fail";
+        private final String value;
+
+        MatchMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        public static MatchMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            final String trimmed = value.trim();
+            for (MatchMode option : values()) {
+                if (option.getValue().equalsIgnoreCase(trimmed)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+    }
+
+    /**
+     * The outcome when the pattern cannot be evaluated against the field.
+     */
+    public enum UnevaluableValue implements EnumeratedValue {
+        /** Treat a record that cannot be evaluated as not matching. */
+        IGNORE("ignore"),
+        /** Halt the stream with a {@link ConnectException} when a record cannot be evaluated. */
+        FAIL("fail");
+
+        private final String value;
+
+        UnevaluableValue(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        public static UnevaluableValue parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            final String trimmed = value.trim();
+            for (UnevaluableValue option : values()) {
+                if (option.getValue().equalsIgnoreCase(trimmed)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+    }
 
     private static final Field FIELD_FIELD = Field.create(FIELD_CONFIG)
             .withDisplayName("Value field to match")
@@ -94,20 +165,22 @@ public class FieldValueMatches<R extends ConnectRecord<R>> implements org.apache
 
     private static final Field MATCH_MODE_FIELD = Field.create(MATCH_MODE_CONFIG)
             .withDisplayName("Pattern match mode")
-            .withType(ConfigDef.Type.STRING)
+            .withEnum(MatchMode.class)
             .withImportance(ConfigDef.Importance.MEDIUM)
-            .withDefault(MATCH_MODE_FULL)
+            .withDefault(MatchMode.FULL.getValue())
             .withDescription("How the pattern is applied: 'full' requires the whole value to match, "
-                    + "'partial' matches when the pattern is found anywhere in the value.");
+                    + "'partial' matches when the pattern is found anywhere in the value.")
+            .withConfigDefValidation();
 
     private static final Field UNEVALUABLE_VALUE_FIELD = Field.create(UNEVALUABLE_VALUE_CONFIG)
             .withDisplayName("Behavior when the value cannot be evaluated")
-            .withType(ConfigDef.Type.STRING)
+            .withEnum(UnevaluableValue.class)
             .withImportance(ConfigDef.Importance.MEDIUM)
-            .withDefault(UNEVALUABLE_IGNORE)
+            .withDefault(UnevaluableValue.IGNORE.getValue())
             .withDescription("What to do when the pattern cannot be evaluated against the field (value not a "
-                    + "struct, path absent, intermediate not a struct, field null, or field not scalar): "
-                    + "'ignore' treats the record as not matching, 'fail' halts the stream.");
+                    + "struct, path absent, intermediate not a struct, field null, or field not a textual scalar): "
+                    + "'ignore' treats the record as not matching, 'fail' halts the stream.")
+            .withConfigDefValidation();
 
     private String fieldPath;
     private String[] pathSegments;
@@ -132,21 +205,10 @@ public class FieldValueMatches<R extends ConnectRecord<R>> implements org.apache
             throw new ConnectException("Invalid regular expression '" + regex + "' in '" + PATTERN_CONFIG + "'", e);
         }
 
-        final String matchMode = config.getString(MATCH_MODE_FIELD).trim().toLowerCase();
-        switch (matchMode) {
-            case MATCH_MODE_FULL -> this.fullMatch = true;
-            case MATCH_MODE_PARTIAL -> this.fullMatch = false;
-            default -> throw new ConnectException("Invalid value '" + matchMode + "' for '" + MATCH_MODE_CONFIG
-                    + "'; expected '" + MATCH_MODE_FULL + "' or '" + MATCH_MODE_PARTIAL + "'");
-        }
-
-        final String unevaluable = config.getString(UNEVALUABLE_VALUE_FIELD).trim().toLowerCase();
-        switch (unevaluable) {
-            case UNEVALUABLE_IGNORE -> this.failOnUnevaluable = false;
-            case UNEVALUABLE_FAIL -> this.failOnUnevaluable = true;
-            default -> throw new ConnectException("Invalid value '" + unevaluable + "' for '" + UNEVALUABLE_VALUE_CONFIG
-                    + "'; expected '" + UNEVALUABLE_IGNORE + "' or '" + UNEVALUABLE_FAIL + "'");
-        }
+        // withConfigDefValidation on the enum fields makes SmtManager.validate reject any other value, so
+        // by this point the configured values are one of the enum constants.
+        this.fullMatch = MatchMode.parse(config.getString(MATCH_MODE_FIELD)) == MatchMode.FULL;
+        this.failOnUnevaluable = UnevaluableValue.parse(config.getString(UNEVALUABLE_VALUE_FIELD)) == UnevaluableValue.FAIL;
     }
 
     private String[] splitPath(String path) {
@@ -163,6 +225,14 @@ public class FieldValueMatches<R extends ConnectRecord<R>> implements org.apache
     @Override
     public boolean test(R record) {
         final Object value = record.value();
+        if (value == null) {
+            // A tombstone is exempt from the fail policy. Connect allows only one predicate per transform, so a
+            // user cannot compose this with RecordIsTombstone to shield tombstones; treating a null-value record
+            // as not matching regardless of the fail setting keeps fail mode usable on a real change stream, as
+            // the stock Filter transform does by never matching tombstones.
+            LOGGER.debug("Predicate on field '{}' is not satisfied: the record is a tombstone (null value)", fieldPath);
+            return false;
+        }
         if (!(value instanceof Struct)) {
             return onUnevaluable(record, "the record value is not a struct");
         }
@@ -191,8 +261,11 @@ public class FieldValueMatches<R extends ConnectRecord<R>> implements org.apache
         if (fieldValue == null) {
             return onUnevaluable(record, "field '" + fieldPath + "' is null");
         }
-        if (fieldValue instanceof Struct || fieldValue instanceof Map || fieldValue instanceof List) {
-            return onUnevaluable(record, "field '" + fieldPath + "' is not a scalar and cannot be matched by a pattern");
+        if (fieldValue instanceof Struct || fieldValue instanceof Map || fieldValue instanceof List
+                || fieldValue instanceof byte[] || fieldValue instanceof ByteBuffer) {
+            // Struct/Map/List are not scalar; byte[]/ByteBuffer are binary and would otherwise match against
+            // an identity string such as "[B@1a2b3c" rather than the payload, so they are unevaluable too.
+            return onUnevaluable(record, "field '" + fieldPath + "' is a struct, map, list, or binary value and cannot be matched by a pattern");
         }
         final var matcher = pattern.matcher(String.valueOf(fieldValue));
         return fullMatch ? matcher.matches() : matcher.find();
@@ -201,7 +274,7 @@ public class FieldValueMatches<R extends ConnectRecord<R>> implements org.apache
     private boolean onUnevaluable(R record, String reason) {
         if (failOnUnevaluable) {
             LOGGER.error("Cannot evaluate predicate on field '{}': {}. The stream halts because '{}' is '{}'.",
-                    fieldPath, reason, UNEVALUABLE_VALUE_CONFIG, UNEVALUABLE_FAIL);
+                    fieldPath, reason, UNEVALUABLE_VALUE_CONFIG, UnevaluableValue.FAIL.getValue());
             throw new ConnectException("Cannot evaluate predicate on field '" + fieldPath + "': " + reason);
         }
         LOGGER.debug("Predicate on field '{}' is not satisfied: {}", fieldPath, reason);
