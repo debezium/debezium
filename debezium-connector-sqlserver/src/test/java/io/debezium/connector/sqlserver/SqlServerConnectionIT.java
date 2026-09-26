@@ -743,6 +743,60 @@ public class SqlServerConnectionIT {
         }
     }
 
+    @Test
+    @FixFor("debezium/dbz#2334")
+    void shouldNotBlockWhenLsnTimeMappingIsLocked() throws Exception {
+        TestHelper.createTestDatabase();
+        try (SqlServerConnection admin = TestHelper.adminConnection()) {
+            admin.connect();
+            admin.execute("USE " + TestHelper.TEST_DATABASE_1);
+            admin.execute("CREATE TABLE testTable (ID int not null identity(1, 1) primary key, NUMBER int, TEXT varchar(50))");
+            TestHelper.enableTableCdc(admin, "testTable");
+            admin.execute("INSERT INTO testTable (NUMBER, TEXT) values (1, 'aaa')");
+            TestHelper.waitForCdcRecord(admin, "testTable", rs -> rs.getInt("NUMBER") == 1);
+        }
+
+        try (SqlServerConnection locker = TestHelper.adminConnection();
+                SqlServerConnection reader = TestHelper.adminConnection()) {
+            locker.connect();
+            locker.execute("USE " + TestHelper.TEST_DATABASE_1);
+            locker.setAutoCommit(false);
+            locker.executeWithoutCommitting("SELECT TOP(0) * FROM cdc.lsn_time_mapping WITH (TABLOCKX)");
+
+            try {
+                reader.connect();
+                reader.execute("USE " + TestHelper.TEST_DATABASE_1);
+                reader.execute("SET LOCK_TIMEOUT 2000");
+
+                // Prove the lock bites (negative control)
+                assertThatThrownBy(() -> reader.execute("SELECT COUNT(*) FROM cdc.lsn_time_mapping"))
+                        .isInstanceOf(SQLException.class)
+                        .hasMessageContaining("Lock request time out period exceeded");
+
+                // Assert the hinted paths don't block
+                final Lsn maxLsn = reader.getMaxTransactionLsn(TestHelper.TEST_DATABASE_1);
+                assertThat(maxLsn).isNotNull();
+                assertThat(maxLsn.isAvailable()).isTrue();
+
+                final Lsn nthLsnBeginning = reader.getNthTransactionLsnFromBeginning(TestHelper.TEST_DATABASE_1, 1);
+                assertThat(nthLsnBeginning).isNotNull();
+                assertThat(nthLsnBeginning.isAvailable()).isTrue();
+
+                final Lsn nthLsnLast = reader.getNthTransactionLsnFromLast(TestHelper.TEST_DATABASE_1, Lsn.valueOf(new byte[10]), 1);
+                assertThat(nthLsnLast).isNotNull();
+                assertThat(nthLsnLast.isAvailable()).isTrue();
+            }
+            finally {
+                try {
+                    locker.rollback();
+                }
+                catch (SQLException e) {
+                    // Ignore during cleanup
+                }
+            }
+        }
+    }
+
     private static int currentSpid(SqlServerConnection connection) throws SQLException {
         return connection.queryAndMap("SELECT @@SPID", rs -> {
             rs.next();
