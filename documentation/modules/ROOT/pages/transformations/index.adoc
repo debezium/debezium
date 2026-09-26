@@ -51,6 +51,9 @@ The following SMTs are provided by {prodname}:
 |xref:transformations/enforce-record-size.adoc[Enforce Record Size]
 |Enforces a maximum record size by proportionally truncating large string and bytes columns when a change event exceeds the configured limit.
 
+|xref:transformations/stringify-fields.adoc[Stringify Fields]
+|Serializes the fields that you specify to JSON strings, so that nested data can be written to a column that accepts only JSON text, such as a Delta `VARIANT` column.
+
 |xref:transformations/vitess-use-local-vgtid.adoc[Vitess Use Local VGTID]
 |A transformation that reduces the size of VGTIDs that the Vitess connector emits.
 To reduce the amount of data in the event message, the SMT writes only the VGTID for the shard in which a change occurs.
