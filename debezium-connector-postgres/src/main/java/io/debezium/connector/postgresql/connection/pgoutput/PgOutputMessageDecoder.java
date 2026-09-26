@@ -7,9 +7,7 @@ package io.debezium.connector.postgresql.connection.pgoutput;
 
 import static java.util.stream.Collectors.toMap;
 
-import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
@@ -721,21 +719,33 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
     /**
      * Reads the replication stream up to the next null-terminator byte and returns the contents as a string.
      *
-     * <p>This method uses {@link ByteArrayOutputStream} which starts with a 32-byte internal buffer
-     * and grows by doubling. It is intended for short protocol-level identifiers (schema, table,
-     * column names, prefixes) and should not be used for reading column <em>values</em>, where
-     * arbitrarily large payloads would cause excessive buffer copying and memory overhead.
+     * <p>This method capture current buffer position, then it scans the buffer for a byte of value 0. It creates a string directy from
+     * the buffer underlying array using offset = arrayOffset + captured positon and a length
+     * of NULL byte position - original position - 1 (for the null byte).
+     *
+     * <p>The method doesn't copy the data into any intermediate buffers, the only data copying will happen inside {@code new String()}.
      *
      * @param buffer The replication stream buffer
      * @return string read from the replication stream
      */
     private static String readString(ByteBuffer buffer) {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        byte b;
-        while ((b = buffer.get()) != 0) {
-            baos.write(b);
+        // Postgres JDBC driver returns heap ByteBuffers, and it's documented in the API. This check is here just in case the driver changes
+        // this behavior in the future.
+        if (!buffer.hasArray()) {
+            throw new DebeziumException("pgoutput decoding requires a heap ByteBuffer, but the driver returned "
+                    + buffer.getClass().getName());
         }
-        return baos.toString(StandardCharsets.UTF_8);
+
+        final var position = buffer.position();
+
+        while (buffer.get() != 0) {
+            // Scan to a null terminator; get() throws BufferedUnderflowException if we reach the end of the buffer and null was not found
+        }
+
+        return new String(buffer.array(),
+                buffer.arrayOffset() + position,
+                buffer.position() - position - 1,
+                StandardCharsets.UTF_8);
     }
 
     /**
@@ -745,10 +755,20 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
      * @return the column value as a string read from the replication stream
      */
     private static String readColumnValueAsString(ByteBuffer buffer) {
-        int length = buffer.getInt();
-        byte[] value = new byte[length];
-        buffer.get(value, 0, length);
-        return new String(value, Charset.forName("UTF-8"));
+        // Postgres JDBC driver returns heap ByteBuffers, and it's documented in the API. This check is here just in case the driver changes
+        // this behavior in the future.
+        if (!buffer.hasArray()) {
+            throw new DebeziumException("pgoutput decoding requires a heap ByteBuffer, but the driver returned "
+                    + buffer.getClass().getName());
+        }
+
+        final var length = buffer.getInt();
+        final var value = new String(buffer.array(),
+                buffer.arrayOffset() + buffer.position(),
+                length,
+                StandardCharsets.UTF_8);
+        buffer.position(buffer.position() + length);
+        return value;
     }
 
     /**
