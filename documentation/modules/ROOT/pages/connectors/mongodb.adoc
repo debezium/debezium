@@ -1457,7 +1457,13 @@ If you change the name value, after a restart, instead of continuing to emit eve
 |[[mongodb-property-mongodb-authentication-class]]<<mongodb-property-mongodb-authentication-class, `+mongodb.authentication.class+`>>
 |_DefaultMongoDbAuthProvider_
 |A full Java class name that is an implementation of the io.debezium.connector.mongodb.connection.MongoDbAuthProvider interface.
-This class handles setting the credentials on the MongoDB connection (called on each app boot).
+This class configures credentials for MongoDB clients.
+Each connector task owns an instance, shared by its snapshot and streaming operations.
+Connection validation uses a separate instance.
+Implementations that allocate resources, such as authentication clients or HTTP connection pools, should override `close()` to release them.
+The connector calls `close()` after the clients using the provider are closed, and also if initialization fails.
+Implementations must therefore support cleanup after a partially completed `init()`.
+The default `close()` implementation does nothing, so existing providers do not need to implement it.
 Default behavior uses the xref:mongodb-property-mongodb-user[`mongodb.user`], xref:mongodb-property-mongodb-password[`mongodb.password`], and xref:mongodb-property-mongodb-authsource[`mongodb.authsource`] properties according to each of their documentation,
 but other implementations may use them differently or ignore them altogether.
 Note that any setting in xref:mongodb-property-mongodb-connection-string[`mongodb.connection.string`] will override settings set by this class

@@ -13,19 +13,20 @@ import io.debezium.connector.mongodb.MongoDbConnectorConfig;
 
 public class DefaultMongoDbAuthProvider implements MongoDbAuthProvider {
 
-    private MongoDbConnectorConfig connectorConfig;
+    private String user;
+    private String password;
+    private String authSource;
 
     @Override
     public void init(Configuration config) {
-        this.connectorConfig = new MongoDbConnectorConfig(config);
+        user = config.getString(MongoDbConnectorConfig.USER);
+        password = config.getString(MongoDbConnectorConfig.PASSWORD);
+        authSource = config.getString(MongoDbConnectorConfig.AUTH_SOURCE);
     }
 
     @Override
     public Builder addAuthConfig(Builder settings) {
         // Use credential if provided as properties
-        var user = connectorConfig.getUser();
-        var password = connectorConfig.getPassword();
-        var authSource = connectorConfig.getAuthSource();
 
         if (user != null || password != null) {
             settings.credential(MongoCredential.createCredential(user, authSource, password != null ? password.toCharArray() : null));
