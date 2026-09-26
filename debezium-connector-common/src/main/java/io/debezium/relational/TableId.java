@@ -6,6 +6,7 @@
 package io.debezium.relational;
 
 import java.util.List;
+import java.util.Locale;
 
 import io.debezium.annotation.Immutable;
 import io.debezium.relational.Selectors.TableIdToStringMapper;
@@ -336,7 +337,19 @@ public final class TableId implements DataCollectionId, Comparable<TableId> {
         return new StringBuilder().append(quotingChar).append(quotingChar).toString();
     }
 
+    /**
+     * Returns a new {@link TableId} with all parts of the identifier converted to lowercase
+     * using {@link Locale#ROOT}.
+     * <p>
+     * When case-insensitive table id matching is enabled, connectors may store the database
+     * name in either the catalog or schema field. Both are lowercased along with the table
+     * name. This is required for MySQL with {@code lower_case_table_names=2}, where the
+     * binlog lowercases database names while the data dictionary preserves them as written.
+     */
     public TableId toLowercase() {
-        return new TableId(catalogName, schemaName, tableName.toLowerCase());
+        return new TableId(
+                catalogName != null ? catalogName.toLowerCase(Locale.ROOT) : null,
+                schemaName != null ? schemaName.toLowerCase(Locale.ROOT) : null,
+                tableName != null ? tableName.toLowerCase(Locale.ROOT) : null);
     }
 }
