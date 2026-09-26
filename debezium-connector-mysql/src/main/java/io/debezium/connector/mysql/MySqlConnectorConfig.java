@@ -134,6 +134,17 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
         MINIMAL_PERCONA_NO_TABLE_LOCKS("minimal_percona_no_table_locks"),
 
         /**
+         * The connector holds an instance-level backup lock ({@code LOCK INSTANCE FOR BACKUP}, MySQL 8.0+) for just the initial
+         * portion of the snapshot while the connector reads the database schemas and other metadata. The backup lock blocks DDL
+         * statements while permitting concurrent DML, and requires the {@code BACKUP_ADMIN} privilege instead of {@code RELOAD}.
+         * The remaining work in a snapshot involves selecting all rows from each table, and this can be done in a consistent
+         * fashion using the REPEATABLE READ transaction even when the backup lock is no longer held and while other MySQL
+         * clients are updating the database. Note that unlike the global read lock, concurrent writes to non-transactional
+         * tables (e.g. MyISAM) are not blocked and may not be captured consistently.
+         */
+        MINIMAL_INSTANCE("minimal_instance"),
+
+        /**
          * This mode will avoid using ANY table locks during the snapshot process.  This mode can only be used with SnapShotMode
          * set to schema_only or schema_only_recovery.
          */
@@ -159,6 +170,7 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
             return value.equals(MINIMAL.value) ||
                     value.equals(MINIMAL_PERCONA.value) ||
                     value.equals(MINIMAL_PERCONA_NO_TABLE_LOCKS.value) ||
+                    value.equals(MINIMAL_INSTANCE.value) ||
                     value.equals(MINIMAL_AT_LEAST_ONCE.getValue());
         }
 
@@ -167,7 +179,8 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
         }
 
         public boolean flushResetsIsolationLevel() {
-            return !value.equals(MINIMAL_PERCONA.value) && !value.equals(MINIMAL_PERCONA_NO_TABLE_LOCKS.value);
+            return !value.equals(MINIMAL_PERCONA.value) && !value.equals(MINIMAL_PERCONA_NO_TABLE_LOCKS.value)
+                    && !value.equals(MINIMAL_INSTANCE.value);
         }
 
         public boolean preventsTableLocks() {
@@ -175,7 +188,8 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
         }
 
         public boolean useConsistentSnapshotTransaction() {
-            return value.equals(MINIMAL.value) || value.equals(MINIMAL_PERCONA.value) || value.equals(MINIMAL_PERCONA_NO_TABLE_LOCKS.value);
+            return value.equals(MINIMAL.value) || value.equals(MINIMAL_PERCONA.value) || value.equals(MINIMAL_PERCONA_NO_TABLE_LOCKS.value)
+                    || value.equals(MINIMAL_INSTANCE.value);
         }
 
         /**

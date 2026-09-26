@@ -43,6 +43,7 @@ import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
 import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection.DatabaseLocales;
 import io.debezium.connector.binlog.jdbc.BinlogSystemVariables;
 import io.debezium.connector.binlog.metrics.BinlogSnapshotChangeEventSourceMetrics;
+import io.debezium.connector.binlog.snapshot.lock.UnlockStatementProvider;
 import io.debezium.data.Envelope;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.jdbc.JdbcConnection;
@@ -503,8 +504,11 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
         // Stop the keep-alive first so that no other thread uses the connection while we release the lock.
         stopLockHeartbeat();
         synchronized (binlogConnectionMutex) {
+            final String unlockingStatement = snapshotterService.getSnapshotLock() instanceof UnlockStatementProvider unlockProvider
+                    ? unlockProvider.globalUnlockingStatement()
+                    : "UNLOCK TABLES";
             LOGGER.info("Releasing global read lock to enable MySQL writes");
-            connection.executeWithoutCommitting("UNLOCK TABLES");
+            connection.executeWithoutCommitting(unlockingStatement);
         }
         long lockReleased = clock.currentTimeInMillis();
         metrics.setGlobalLockReleased();
