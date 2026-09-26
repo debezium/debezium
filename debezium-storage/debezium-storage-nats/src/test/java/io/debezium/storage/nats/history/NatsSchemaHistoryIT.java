@@ -112,6 +112,7 @@ class NatsSchemaHistoryIT {
     }
 
     @Test
+    @Timeout(30)
     public void shouldCreateAndInitializeStorage() {
         // Storage should be created and initialized
         assertTrue(history.storageExists());
@@ -119,6 +120,7 @@ class NatsSchemaHistoryIT {
     }
 
     @Test
+    @Timeout(30)
     public void shouldBeIdempotentOnInitializeStorage() {
         // The stream already exists (created by createHistory() with the
         // default file storage). Re-initializing with a different stream
@@ -140,6 +142,7 @@ class NatsSchemaHistoryIT {
     }
 
     @Test
+    @Timeout(30)
     public void shouldDetectExistenceAfterStoringRecord() throws InterruptedException {
         assertFalse(history.exists());
 
@@ -153,6 +156,7 @@ class NatsSchemaHistoryIT {
     }
 
     @Test
+    @Timeout(30)
     public void shouldFailToStoreRecordBeforeStart() {
         NatsSchemaHistory newHistory = new NatsSchemaHistory();
         Map<String, String> config = Collect.hashMapOf(
@@ -176,6 +180,7 @@ class NatsSchemaHistoryIT {
     }
 
     @Test
+    @Timeout(30)
     public void shouldHandleMultipleStreams() {
         // Create a second history with different stream
         Map<String, String> config2 = Collect.hashMapOf(
@@ -218,6 +223,7 @@ class NatsSchemaHistoryIT {
     }
 
     @Test
+    @Timeout(30)
     @SuppressWarnings("deprecation")
     public void shouldRecoverFromEmptyStream() throws InterruptedException {
         // Recovery from empty stream should work
@@ -231,6 +237,7 @@ class NatsSchemaHistoryIT {
     }
 
     @Test
+    @Timeout(30)
     @SuppressWarnings("deprecation")
     public void shouldHandleInterruptionDuringRecovery() {
         // Test interruption handling
