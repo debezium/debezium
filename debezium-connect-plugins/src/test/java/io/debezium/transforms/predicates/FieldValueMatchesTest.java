@@ -82,7 +82,7 @@ class FieldValueMatchesTest {
         predicate.configure(Map.of(
                 FieldValueMatches.FIELD_CONFIG, "status",
                 FieldValueMatches.PATTERN_CONFIG, "act",
-                FieldValueMatches.MATCH_MODE_CONFIG, FieldValueMatches.MATCH_MODE_PARTIAL));
+                FieldValueMatches.MATCH_MODE_CONFIG, FieldValueMatches.MatchMode.PARTIAL.getValue()));
         Struct value = valueWith(1, "active", "active");
         assertThat(predicate.test(recordWith(value.schema(), value))).isTrue();
     }
@@ -93,7 +93,7 @@ class FieldValueMatchesTest {
                 FieldValueMatches.FIELD_CONFIG, "status",
                 FieldValueMatches.PATTERN_CONFIG, ".*",
                 FieldValueMatches.MATCH_MODE_CONFIG, "bogus")))
-                .isInstanceOf(ConnectException.class);
+                .isInstanceOf(ConfigException.class);
     }
 
     @Test
@@ -122,7 +122,7 @@ class FieldValueMatchesTest {
         predicate.configure(Map.of(
                 FieldValueMatches.FIELD_CONFIG, "missing",
                 FieldValueMatches.PATTERN_CONFIG, ".*",
-                FieldValueMatches.UNEVALUABLE_VALUE_CONFIG, FieldValueMatches.UNEVALUABLE_FAIL));
+                FieldValueMatches.UNEVALUABLE_VALUE_CONFIG, FieldValueMatches.UnevaluableValue.FAIL.getValue()));
         Struct value = valueWith(1, "active", "active");
         assertThatThrownBy(() -> predicate.test(recordWith(value.schema(), value)))
                 .isInstanceOf(ConnectException.class);
@@ -137,8 +137,42 @@ class FieldValueMatchesTest {
 
     @Test
     void treatsNonStructRecordValueAsNotMatchingByDefault() {
+        // A non-null value that is not a Struct (here a plain String) cannot be navigated by a field path.
         predicate.configure(Map.of(FieldValueMatches.FIELD_CONFIG, "status", FieldValueMatches.PATTERN_CONFIG, ".*"));
-        assertThat(predicate.test(recordWith(null, null))).isFalse();
+        assertThat(predicate.test(recordWith(Schema.STRING_SCHEMA, "not-a-struct"))).isFalse();
+    }
+
+    @Test
+    void treatsTombstoneAsNotMatchingEvenWhenConfiguredToFail() {
+        // A null-value record (tombstone) is exempt from the fail policy so fail mode stays usable on a real
+        // change stream: Connect allows only one predicate per transform, so tombstones cannot be shielded by
+        // composing with RecordIsTombstone. This mirrors the stock Filter transform, which never matches them.
+        predicate.configure(Map.of(
+                FieldValueMatches.FIELD_CONFIG, "status",
+                FieldValueMatches.PATTERN_CONFIG, ".*",
+                FieldValueMatches.UNEVALUABLE_VALUE_CONFIG, FieldValueMatches.UnevaluableValue.FAIL.getValue()));
+        assertThat(predicate.test(recordWith(valueSchema(), null))).isFalse();
+    }
+
+    @Test
+    void treatsBinaryFieldAsNotMatchingByDefault() {
+        // A byte[] would otherwise match against an identity string such as "[B@1a2b3c", so it is unevaluable.
+        Schema schema = SchemaBuilder.struct().name("V").field("payload", Schema.BYTES_SCHEMA).build();
+        Struct value = new Struct(schema).put("payload", new byte[]{ 1, 2, 3 });
+        predicate.configure(Map.of(FieldValueMatches.FIELD_CONFIG, "payload", FieldValueMatches.PATTERN_CONFIG, ".*"));
+        assertThat(predicate.test(recordWith(schema, value))).isFalse();
+    }
+
+    @Test
+    void failsOnBinaryFieldWhenConfiguredToFail() {
+        Schema schema = SchemaBuilder.struct().name("V").field("payload", Schema.BYTES_SCHEMA).build();
+        Struct value = new Struct(schema).put("payload", new byte[]{ 1, 2, 3 });
+        predicate.configure(Map.of(
+                FieldValueMatches.FIELD_CONFIG, "payload",
+                FieldValueMatches.PATTERN_CONFIG, ".*",
+                FieldValueMatches.UNEVALUABLE_VALUE_CONFIG, FieldValueMatches.UnevaluableValue.FAIL.getValue()));
+        assertThatThrownBy(() -> predicate.test(recordWith(schema, value)))
+                .isInstanceOf(ConnectException.class);
     }
 
     @Test
@@ -183,7 +217,7 @@ class FieldValueMatchesTest {
                 FieldValueMatches.FIELD_CONFIG, "status",
                 FieldValueMatches.PATTERN_CONFIG, ".*",
                 FieldValueMatches.UNEVALUABLE_VALUE_CONFIG, "bogus")))
-                .isInstanceOf(ConnectException.class);
+                .isInstanceOf(ConfigException.class);
     }
 
     @Test

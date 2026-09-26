@@ -116,10 +116,14 @@ Every path segment except the last must resolve to a `STRUCT`.
 
 |`unevaluable.value`
 |`ignore`
-|Specifies the outcome when the predicate cannot evaluate the pattern against the field, for example because the record value is not a struct, the path is absent, an intermediate path segment is not a struct, the field is `null`, or the field is not a scalar: +
+|Specifies the outcome when the predicate cannot evaluate the pattern against the field, for example because the record value is not a struct, the path is absent, an intermediate path segment is not a struct, the field is `null`, or the field is not a textual scalar (a struct, map, list, or binary `byte[]`/`ByteBuffer` value): +
 `ignore` treats the record as not matching the predicate. +
 `fail` stops the connector by throwing an exception.
 |===
++
+A record with a `null` value (a tombstone) is always treated as not matching, regardless of the `unevaluable.value` setting.
+Because Kafka Connect allows only one predicate per transformation, you cannot compose this predicate with `RecordIsTombstone` to shield tombstones from a `fail` policy; exempting them keeps `fail` usable on a change stream that contains deletes.
+This mirrors the `Filter` transformation, which never matches tombstones and so always retains them.
 +
 The following example combines the `FieldValueMatches` predicate with the Kafka Connect `Filter` transformation to drop records in which the `after.status` field is `ARCHIVED`:
 +
