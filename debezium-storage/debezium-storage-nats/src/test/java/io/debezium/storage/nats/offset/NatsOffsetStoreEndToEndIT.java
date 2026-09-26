@@ -54,7 +54,6 @@ class NatsOffsetStoreEndToEndIT {
 
     @BeforeEach
     public void setUp() {
-        natsContainer.start();
         natsUrl = "nats://%s:%d".formatted(natsContainer.getHost(), natsContainer.getMappedPort(NATS_PORT));
     }
 
@@ -62,9 +61,6 @@ class NatsOffsetStoreEndToEndIT {
     public void tearDown() {
         if (store != null) {
             store.stop();
-        }
-        if (natsContainer != null) {
-            natsContainer.stop();
         }
     }
 
