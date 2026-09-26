@@ -17,6 +17,8 @@ import io.debezium.data.Envelope.FieldName;
 public class MongoDbFieldName {
 
     // Change Streams fields
+    public static final String ID = "id";
+    public static final String DOCUMENT_KEY = "documentKey";
     public static final String UPDATE_DESCRIPTION = "updateDescription";
     public static final String REMOVED_FIELDS = "removedFields";
     public static final String UPDATED_FIELDS = "updatedFields";
