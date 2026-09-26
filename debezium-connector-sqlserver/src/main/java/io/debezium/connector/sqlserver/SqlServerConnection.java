@@ -87,12 +87,20 @@ public class SqlServerConnection extends JdbcConnection {
     private static final String LSN_TIMESTAMP_SELECT_STATEMENT_JOIN = "TODATETIMEOFFSET(ltm.tran_end_time, DATEPART(TZOFFSET, SYSDATETIMEOFFSET()))";
     private static final String GET_ALL_CHANGES_FOR_TABLE_SELECT = "SELECT [__$start_lsn], [__$seqval], [__$operation], [__$update_mask], #, "
             + LSN_TIMESTAMP_SELECT_STATEMENT;
-    private static final String GET_ALL_CHANGES_FOR_TABLE_SELECT_DIRECT = "SELECT cdc_data.[__$start_lsn], cdc_data.[__$seqval], cdc_data.[__$operation], cdc_data.[__$update_mask], cdc_data.[__$command_id], #, "
-            + LSN_TIMESTAMP_SELECT_STATEMENT_JOIN;
+    // Distinct from STATEMENTS_PLACEHOLDER ("#") since it appears once per UNION ALL branch in DIRECT mode and
+    // must not collide with the "#db"/"#table" placeholders, which are substituted with a global String#replace.
+    private static final String DIRECT_QUERY_COLUMNS_PLACEHOLDER = "#cols#";
+    // SQL Server requires every column of a derived table (the "keyset_union" wrapper this is used in) to have a
+    // name; a plain column reference gets one implicitly, but this computed expression does not, so it needs
+    // an explicit alias.
+    private static final String GET_ALL_CHANGES_FOR_TABLE_SELECT_DIRECT = "SELECT cdc_data.[__$start_lsn], cdc_data.[__$seqval], cdc_data.[__$operation], cdc_data.[__$update_mask], cdc_data.[__$command_id], "
+            + DIRECT_QUERY_COLUMNS_PLACEHOLDER + ", "
+            + LSN_TIMESTAMP_SELECT_STATEMENT_JOIN + " AS [__$commit_ts]";
     private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_FUNCTION = "FROM #db.cdc.#function(?, ?, N'all update old')";
     private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_DIRECT = "FROM #db.cdc.#table AS cdc_data WITH (NOLOCK) LEFT JOIN #db.cdc.lsn_time_mapping ltm ON ltm.start_lsn = cdc_data.[__$start_lsn]";
     private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_FUNCTION_ORDER_BY = "ORDER BY [__$start_lsn] ASC, [__$seqval] ASC, [__$operation] ASC";
-    private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_DIRECT_ORDER_BY = "ORDER BY cdc_data.[__$start_lsn] ASC, cdc_data.[__$command_id] ASC, cdc_data.[__$seqval] ASC, cdc_data.[__$operation] ASC";
+    // Applied to the outer query wrapping the UNION ALL of DIRECT-mode keyset branches, so no cdc_data prefix here.
+    private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_DIRECT_ORDER_BY = "ORDER BY [__$start_lsn] ASC, [__$command_id] ASC, [__$seqval] ASC, [__$operation] ASC";
     private static final String GET_CDC_JOB_INFO = "{call sys.sp_cdc_help_jobs}";
     private static final String CDC_JOB_INFO_JOB_TYPE_COLUMN_NAME = "job_type";
     private static final String CDC_JOB_INFO_JOB_TYPE_CAPTURE_VALUE = "capture";
@@ -197,76 +205,88 @@ public class SqlServerConnection extends JdbcConnection {
         this.optionRecompile = optionRecompile;
     }
 
-    private String buildGetAllChangesForTableQuery(SqlServerConnectorConfig.DataQueryMode dataQueryMode,
-                                                   Set<Envelope.Operation> skippedOperations) {
-        boolean isDirectMode = dataQueryMode == SqlServerConnectorConfig.DataQueryMode.DIRECT;
-        String result;
-        List<String> where = new LinkedList<>();
-        switch (dataQueryMode) {
-            case FUNCTION:
-                result = GET_ALL_CHANGES_FOR_TABLE_SELECT + " " + GET_ALL_CHANGES_FOR_TABLE_FROM_FUNCTION + " ";
-                break;
-            case DIRECT:
-            default:
-                result = GET_ALL_CHANGES_FOR_TABLE_SELECT_DIRECT + " " + GET_ALL_CHANGES_FOR_TABLE_FROM_DIRECT + " ";
-                break;
+    @VisibleForTesting
+    String buildGetAllChangesForTableQuery(SqlServerConnectorConfig.DataQueryMode dataQueryMode,
+                                           Set<Envelope.Operation> skippedOperations) {
+        if (dataQueryMode == SqlServerConnectorConfig.DataQueryMode.DIRECT) {
+            return buildGetAllChangesForTableQueryDirect(skippedOperations);
         }
 
-        if (isDirectMode) {
-            // The seqval condition is a safeguard. Every command id observed so far maps to exactly one
-            // seqval but that is not documented and the branch keeps the keyset correct if it ever stops holding.
-            where.add("(([cdc_data].[__$start_lsn] = ? AND [cdc_data].[__$command_id] = ? AND [cdc_data].[__$seqval] = ? AND [cdc_data].[__$operation] > ?) " +
-                    "OR ([cdc_data].[__$start_lsn] = ? AND [cdc_data].[__$command_id] = ? AND [cdc_data].[__$seqval] > ?) " +
-                    "OR ([cdc_data].[__$start_lsn] = ? AND [cdc_data].[__$command_id] > ?) " +
-                    "OR ([cdc_data].[__$start_lsn] > ?))");
-            where.add("[cdc_data].[__$start_lsn] <= ?");
-            // This branch is added for performance. Bounding the seek on both sides keeps it a range seek on the change table's
-            // clustered index instead of a full table scan from the lower bound.
-            where.add("[cdc_data].[__$start_lsn] >= ?");
-        }
-        else {
-            where.add("(([__$start_lsn] = ? AND [__$seqval] = ? AND [__$operation] > ?) " +
-                    "OR ([__$start_lsn] = ? AND [__$seqval] > ?) " +
-                    "OR ([__$start_lsn] > ?))");
-            where.add("[__$start_lsn] <= ?");
-        }
+        String result = GET_ALL_CHANGES_FOR_TABLE_SELECT + " " + GET_ALL_CHANGES_FOR_TABLE_FROM_FUNCTION + " ";
+        List<String> where = new LinkedList<>();
+        where.add("(([__$start_lsn] = ? AND [__$seqval] = ? AND [__$operation] > ?) " +
+                "OR ([__$start_lsn] = ? AND [__$seqval] > ?) " +
+                "OR ([__$start_lsn] > ?))");
+        where.add("[__$start_lsn] <= ?");
 
         if (hasSkippedOperations(skippedOperations)) {
-            Set<String> skippedOps = new HashSet<>();
-            skippedOperations.forEach((Envelope.Operation operation) -> {
-                // This number are the __$operation number in the SQLServer
-                // https://docs.microsoft.com/en-us/sql/relational-databases/system-functions/cdc-fn-cdc-get-all-changes-capture-instance-transact-sql?view=sql-server-ver15#table-returned
-                switch (operation) {
-                    case CREATE:
-                        skippedOps.add("2");
-                        break;
-                    case UPDATE:
-                        skippedOps.add("3");
-                        skippedOps.add("4");
-                        break;
-                    case DELETE:
-                        skippedOps.add("1");
-                        break;
-                }
-            });
-            String colPrefix = isDirectMode ? PREFIX_CDC_DATA : "";
-            where.add(colPrefix + "[__$operation] NOT IN (" + String.join(",", skippedOps) + ")");
+            where.add("[__$operation] NOT IN (" + String.join(",", collectSkippedOperationCodes(skippedOperations)) + ")");
         }
 
         if (!where.isEmpty()) {
             result += " WHERE " + String.join(" AND ", where) + " ";
         }
 
-        switch (dataQueryMode) {
-            case FUNCTION:
-                result += GET_ALL_CHANGES_FOR_TABLE_FROM_FUNCTION_ORDER_BY;
-                break;
-            case DIRECT:
-                result += GET_ALL_CHANGES_FOR_TABLE_FROM_DIRECT_ORDER_BY;
-                break;
+        result += GET_ALL_CHANGES_FOR_TABLE_FROM_FUNCTION_ORDER_BY;
+        return result;
+    }
+
+    /**
+     * DIRECT mode queries the raw change table directly, so unlike FUNCTION mode there is no upstream
+     * table-valued function bounding the rows by LSN before the keyset predicate is evaluated. A single
+     * OR'd keyset predicate over the four branches below is a well known "OR prevents seek" pattern that
+     * SQL Server's optimizer typically cannot turn into an index seek, and instead falls back to scanning
+     * the whole change table. Expressing the branches as a UNION ALL of independent, purely conjunctive
+     * (AND-only) predicates instead lets the optimizer produce a seek per branch. The branches are mutually
+     * exclusive by construction (each widens the keyset comparison by exactly one column), so UNION ALL
+     * (no de-duplication) is safe and a single ORDER BY is applied to the combined result.
+     */
+    private String buildGetAllChangesForTableQueryDirect(Set<Envelope.Operation> skippedOperations) {
+        List<String> branches = new LinkedList<>();
+        // The seqval condition is a safeguard. Every command id observed so far maps to exactly one
+        // seqval but that is not documented and the branch keeps the keyset correct if it ever stops holding.
+        branches.add("([cdc_data].[__$start_lsn] = ? AND [cdc_data].[__$command_id] = ? AND [cdc_data].[__$seqval] = ? AND [cdc_data].[__$operation] > ?)");
+        branches.add("([cdc_data].[__$start_lsn] = ? AND [cdc_data].[__$command_id] = ? AND [cdc_data].[__$seqval] > ?)");
+        branches.add("([cdc_data].[__$start_lsn] = ? AND [cdc_data].[__$command_id] > ?)");
+        branches.add("([cdc_data].[__$start_lsn] > ?)");
+
+        String commonPredicate = " AND [cdc_data].[__$start_lsn] <= ?" +
+        // Bounding the seek on both sides keeps each branch a range seek on the change table's
+        // clustered index instead of a full table scan from the lower bound.
+                " AND [cdc_data].[__$start_lsn] >= ?";
+        if (hasSkippedOperations(skippedOperations)) {
+            commonPredicate += " AND " + PREFIX_CDC_DATA + "[__$operation] NOT IN (" + String.join(",", collectSkippedOperationCodes(skippedOperations)) + ")";
         }
 
-        return result;
+        List<String> unionBranches = new LinkedList<>();
+        for (String branch : branches) {
+            unionBranches.add(GET_ALL_CHANGES_FOR_TABLE_SELECT_DIRECT + " " + GET_ALL_CHANGES_FOR_TABLE_FROM_DIRECT
+                    + " WHERE " + branch + commonPredicate);
+        }
+
+        return "SELECT * FROM (" + String.join(" UNION ALL ", unionBranches) + ") AS keyset_union "
+                + GET_ALL_CHANGES_FOR_TABLE_FROM_DIRECT_ORDER_BY;
+    }
+
+    private Set<String> collectSkippedOperationCodes(Set<Envelope.Operation> skippedOperations) {
+        Set<String> skippedOps = new HashSet<>();
+        skippedOperations.forEach((Envelope.Operation operation) -> {
+            // This number are the __$operation number in the SQLServer
+            // https://docs.microsoft.com/en-us/sql/relational-databases/system-functions/cdc-fn-cdc-get-all-changes-capture-instance-transact-sql?view=sql-server-ver15#table-returned
+            switch (operation) {
+                case CREATE:
+                    skippedOps.add("2");
+                    break;
+                case UPDATE:
+                    skippedOps.add("3");
+                    skippedOps.add("4");
+                    break;
+                case DELETE:
+                    skippedOps.add("1");
+                    break;
+            }
+        });
+        return skippedOps;
     }
 
     private boolean hasSkippedOperations(Set<Envelope.Operation> skippedOperations) {
@@ -442,8 +462,14 @@ public class SqlServerConnection extends JdbcConnection {
                 .map(column -> isDirectMode ? PREFIX_CDC_DATA + column : column)
                 .collect(Collectors.joining(", "));
 
-        String query = replaceDatabaseNamePlaceholder(getAllChangesForTable, databaseName)
-                .replaceFirst(STATEMENTS_PLACEHOLDER, Matcher.quoteReplacement(capturedColumns));
+        String query = replaceDatabaseNamePlaceholder(getAllChangesForTable, databaseName);
+        // DIRECT mode's query is a UNION ALL of several branches, each carrying its own copy of the captured
+        // columns list, so every occurrence must be substituted; FUNCTION mode has exactly one and keeps using
+        // replaceFirst so a literal "#" that happens to appear in a captured column's quoted identifier can't
+        // cause an incorrect second substitution.
+        query = isDirectMode
+                ? query.replace(DIRECT_QUERY_COLUMNS_PLACEHOLDER, Matcher.quoteReplacement(capturedColumns))
+                : query.replaceFirst(STATEMENTS_PLACEHOLDER, Matcher.quoteReplacement(capturedColumns));
 
         query = switch (config.getDataQueryMode()) {
             case FUNCTION ->
@@ -453,7 +479,9 @@ public class SqlServerConnection extends JdbcConnection {
         };
 
         if (maxRows > 0) {
-            query = query.replace("SELECT ", String.format("SELECT TOP %d ", maxRows));
+            // DIRECT mode's query wraps a UNION ALL of branches inside an outer SELECT, so only the leading
+            // (outer) SELECT may get the TOP clause - a plain replace would incorrectly add it to every branch.
+            query = query.replaceFirst("\\ASELECT ", Matcher.quoteReplacement(String.format("SELECT TOP %d ", maxRows)));
         }
 
         // If the table was added in the middle of queried buffer we need
@@ -486,21 +514,30 @@ public class SqlServerConnection extends JdbcConnection {
                 throw new IllegalStateException("command_id must not be null in direct mode");
             }
 
-            // (start_lsn = ? AND command_id = ? AND seqval = ? AND operation > ?)
+            // The query is a UNION ALL of the four keyset branches below (see buildGetAllChangesForTableQueryDirect);
+            // each branch repeats the common "start_lsn <= ? AND start_lsn >= ?" (and, if configured, the skipped-
+            // operations filter, which has no bind parameters) bound, so the shared bounds are set once per branch.
+
+            // branch: (start_lsn = ? AND command_id = ? AND seqval = ? AND operation > ?) AND start_lsn <= ? AND start_lsn >= ?
             statement.setBytes(paramIndex++, fromLsn.getBinary());
             statement.setInt(paramIndex++, commandIdFrom);
             statement.setBytes(paramIndex++, seqvalFromLsn.getBinary());
             statement.setInt(paramIndex++, operationFrom);
-            // OR (start_lsn = ? AND command_id = ? AND seqval > ?)
+            statement.setBytes(paramIndex++, intervalToLsn.getBinary());
+            statement.setBytes(paramIndex++, fromLsn.getBinary());
+            // branch: (start_lsn = ? AND command_id = ? AND seqval > ?) AND start_lsn <= ? AND start_lsn >= ?
             statement.setBytes(paramIndex++, fromLsn.getBinary());
             statement.setInt(paramIndex++, commandIdFrom);
             statement.setBytes(paramIndex++, seqvalFromLsn.getBinary());
-            // OR (start_lsn = ? AND command_id > ?)
+            statement.setBytes(paramIndex++, intervalToLsn.getBinary());
+            statement.setBytes(paramIndex++, fromLsn.getBinary());
+            // branch: (start_lsn = ? AND command_id > ?) AND start_lsn <= ? AND start_lsn >= ?
             statement.setBytes(paramIndex++, fromLsn.getBinary());
             statement.setInt(paramIndex++, commandIdFrom);
-            // OR (start_lsn > ?)
+            statement.setBytes(paramIndex++, intervalToLsn.getBinary());
             statement.setBytes(paramIndex++, fromLsn.getBinary());
-            // AND start_lsn <= ? AND start_lsn >= ?
+            // branch: (start_lsn > ?) AND start_lsn <= ? AND start_lsn >= ?
+            statement.setBytes(paramIndex++, fromLsn.getBinary());
             statement.setBytes(paramIndex++, intervalToLsn.getBinary());
             statement.setBytes(paramIndex++, fromLsn.getBinary());
         }
