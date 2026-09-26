@@ -47,7 +47,6 @@ class NatsConnectionIT {
 
     @BeforeEach
     public void setUp() {
-        natsContainer.start();
         natsUrl = "nats://" + natsContainer.getHost() + ":" + natsContainer.getFirstMappedPort();
     }
 
@@ -55,9 +54,6 @@ class NatsConnectionIT {
     public void tearDown() {
         if (natsConnection != null) {
             natsConnection.close();
-        }
-        if (natsContainer != null) {
-            natsContainer.stop();
         }
     }
 

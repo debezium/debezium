@@ -60,7 +60,7 @@ class NatsSchemaHistoryIntegrityIT {
 
     @BeforeEach
     public void setUp() {
-        natsUrl = "nats://localhost:" + natsContainer.getMappedPort(NATS_PORT);
+        natsUrl = "nats://%s:%d".formatted(natsContainer.getHost(), natsContainer.getMappedPort(NATS_PORT));
         history = createHistory(SchemaHistoryListener.NOOP);
     }
 

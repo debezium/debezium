@@ -75,13 +75,6 @@ public class NatsSchemaHistory extends AbstractSchemaHistory {
      */
     private static final int STREAM_NAME_EXIST_API_ERROR_CODE = 10058;
 
-    /**
-     * Delay between retries of a schema history publish. A publish normally
-     * fails for a transient reason, such as a timeout, a reconnect or a
-     * server-side handover.
-     */
-    private static final Duration PUBLISH_RETRY_DELAY = Duration.ofMillis(100);
-
     private final DocumentWriter writer = DocumentWriter.defaultWriter();
     private final DocumentReader reader = DocumentReader.defaultReader();
 
@@ -109,6 +102,7 @@ public class NatsSchemaHistory extends AbstractSchemaHistory {
             LOGGER.info("Started NATS schema history");
         }
         catch (Exception e) {
+            stop();
             throw new SchemaHistoryException("Failed to start NATS schema history", e);
         }
     }
@@ -151,8 +145,8 @@ public class NatsSchemaHistory extends AbstractSchemaHistory {
             // is decided below: recreating the stream would silently continue
             // with a history that has lost every record stored before it.
             RetryingRunnable.<Exception> builder()
-                    .retries(natsConnection.getRetryBudget())
-                    .delayStrategy(DelayStrategy.constant(PUBLISH_RETRY_DELAY))
+                    .retries(config.getMaxRetries())
+                    .delayStrategy(DelayStrategy.constant(Duration.ofMillis(config.getRetryDelayMs())))
                     .retriableExceptions(IOException.class)
                     .doRun(() -> jetStream.publish(config.getSubject(), headers, payload))
                     .build()
@@ -198,6 +192,9 @@ public class NatsSchemaHistory extends AbstractSchemaHistory {
     @Override
     public void stop() {
         super.stop();
+
+        jetStream = null;
+        jetStreamManagement = null;
         if (natsConnection != null) {
             natsConnection.close();
         }
@@ -395,7 +392,7 @@ public class NatsSchemaHistory extends AbstractSchemaHistory {
      * as a duplicate rather than stored again.
      */
     private Duration publishRetryWindow() {
-        return PUBLISH_RETRY_DELAY.multipliedBy(natsConnection.getRetryBudget());
+        return Duration.ofMillis(config.getRetryDelayMs()).multipliedBy(config.getMaxRetries());
     }
 
     /**

@@ -72,13 +72,15 @@ public class NatsConnection {
         // Probe retries are derived from the reconnect wait: the more patient
         // the user is with connection reconnects, the more patient we are with
         // JetStream and object store readiness probes. The default reconnect
-        // wait of 2000ms yields 20 retries at 100ms intervals (~2s).
-        this.probeRetries = (int) Math.max(2000, config.getReconnectWait().toMillis()) / 100;
+        // wait of 2000ms yields 20 retries at 100ms intervals (~2s). The budget
+        // is computed in long arithmetic and clamped: an int overflow would go
+        // negative, which RetryingRunnable treats as infinite retries.
+        this.probeRetries = (int) Math.min(Integer.MAX_VALUE,
+                Math.max(2000L, config.getReconnectWait().toMillis()) / 100);
     }
 
     /**
-     * Retry budget used for the readiness probes, and available to callers
-     * that need to ride out a short transient failure.
+     * Retry budget used for the readiness probes.
      */
     public int getRetryBudget() {
         return probeRetries;
@@ -142,7 +144,7 @@ public class NatsConnection {
             }
         }
         catch (Exception e) {
-            // will create below
+            LOGGER.debug("ObjectStore bucket '{}' lookup failed, falling through to create it", bucketName, e);
         }
 
         LOGGER.debug("ObjectStore bucket '{}' does not exist, creating it", bucketName);
@@ -180,13 +182,16 @@ public class NatsConnection {
         try {
             // Sanity check that the bucket exists and is responsive
             os.getStatus();
-            // Warm up with a tiny put/delete to avoid initial 503 No Responders races
-            warmUpObjectStore(os);
-            LOGGER.debug("Created ObjectStore bucket '{}' successfully", bucketName);
         }
         catch (Exception ex) {
-            LOGGER.warn("ObjectStore bucket '{}' creation sanity check failed", bucketName, ex);
+            // Returning the store anyway would surface this later as a confusing
+            // read or write error far from its cause; fail at creation time instead.
+            throw new IOException("ObjectStore bucket '%s' was created but is not responsive".formatted(bucketName), ex);
         }
+        // Warm up with a tiny put/delete to avoid initial 503 No Responders races;
+        // the warm-up is best effort and handles its own failures.
+        warmUpObjectStore(os);
+        LOGGER.debug("Created ObjectStore bucket '{}' successfully", bucketName);
         return os;
     }
 
@@ -202,7 +207,7 @@ public class NatsConnection {
         if (!Strings.isNullOrBlank(config.getUser())) {
             optionsBuilder.userInfo(config.getUser(), config.getPassword());
         }
-        if (!Strings.isNullOrBlank(config.getToken())) {
+        if (config.getToken().length > 0) {
             optionsBuilder.token(config.getToken());
         }
         if (config.isTlsEnabled()) {
@@ -244,9 +249,11 @@ public class NatsConnection {
             }).run();
         }
         catch (InterruptedException ie) {
+            close();
             throw ie;
         }
         catch (Exception e) {
+            close();
             // Surface a clear error if JS never became ready within the wait window
             throw new IOException("JetStream management API not ready after connection", e);
         }
@@ -325,7 +332,9 @@ public class NatsConnection {
                 try {
                     os.delete(key);
                 }
-                catch (Exception ignore) {
+                catch (Exception e) {
+                    // Harmless: readers skip the warm-up object by name, but leave a trace.
+                    LOGGER.debug("Failed to delete ObjectStore warm-up object '{}'", key, e);
                 }
             }).run();
         }

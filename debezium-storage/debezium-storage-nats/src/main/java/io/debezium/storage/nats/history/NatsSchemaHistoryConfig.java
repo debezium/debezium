@@ -91,6 +91,15 @@ public class NatsSchemaHistoryConfig extends NatsCommonConfig {
                     + "leaves the server default in place, which is what the server substitutes for a window of zero")
             .withDefault(NatsJetStreamConstants.SERVER_DEFAULT_DUPLICATE_WINDOW_MS);
 
+    public static final Field PROP_RETRY_DELAY_MS = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "retry.delay.ms")
+            .withDescription("Delay between retries of a failed schema history publish in milliseconds")
+            .withDefault(100L);
+
+    public static final Field PROP_MAX_RETRIES = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "max.retries")
+            .withDescription("Maximum number of times a failed schema history publish is retried before the "
+                    + "connector fails")
+            .withDefault(20);
+
     public static final Field PROP_RECOVERY_POLL_INTERVAL_MS = Field
             .create(CONFIGURATION_FIELD_PREFIX_STRING + "recovery.poll.interval.ms")
             .withDescription("Interval for polling during schema history recovery in milliseconds")
@@ -108,6 +117,8 @@ public class NatsSchemaHistoryConfig extends NatsCommonConfig {
     private long maxAgeMs;
     private long maxBytes;
     private long duplicateWindowMs;
+    private long retryDelayMs;
+    private int maxRetries;
     private long recoveryPollIntervalMs;
     private long recoveryTimeoutMs;
 
@@ -126,6 +137,8 @@ public class NatsSchemaHistoryConfig extends NatsCommonConfig {
         this.maxAgeMs = c.getLong(PROP_MAX_AGE_MS);
         this.maxBytes = c.getLong(PROP_MAX_BYTES);
         this.duplicateWindowMs = c.getLong(PROP_DUPLICATE_WINDOW_MS);
+        this.retryDelayMs = c.getLong(PROP_RETRY_DELAY_MS);
+        this.maxRetries = c.getInteger(PROP_MAX_RETRIES);
         this.recoveryPollIntervalMs = c.getLong(PROP_RECOVERY_POLL_INTERVAL_MS);
         this.recoveryTimeoutMs = c.getLong(PROP_RECOVERY_TIMEOUT_MS);
     }
@@ -140,6 +153,8 @@ public class NatsSchemaHistoryConfig extends NatsCommonConfig {
                 PROP_MAX_AGE_MS,
                 PROP_MAX_BYTES,
                 PROP_DUPLICATE_WINDOW_MS,
+                PROP_RETRY_DELAY_MS,
+                PROP_MAX_RETRIES,
                 PROP_RECOVERY_POLL_INTERVAL_MS,
                 PROP_RECOVERY_TIMEOUT_MS);
         fields.addAll(super.getAllConfigurationFields());
@@ -172,6 +187,14 @@ public class NatsSchemaHistoryConfig extends NatsCommonConfig {
 
     public long getDuplicateWindowMs() {
         return duplicateWindowMs;
+    }
+
+    public long getRetryDelayMs() {
+        return retryDelayMs;
+    }
+
+    public int getMaxRetries() {
+        return maxRetries;
     }
 
     public long getRecoveryPollIntervalMs() {
