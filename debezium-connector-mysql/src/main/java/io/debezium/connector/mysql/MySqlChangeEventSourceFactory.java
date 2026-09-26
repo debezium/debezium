@@ -120,7 +120,7 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
 
         if (configuration.isReadOnlyConnection()) {
             if (connectionFactory.mainConnection().isGtidModeEnabled()) {
-                return Optional.of(new MySqlReadOnlyIncrementalSnapshotChangeEventSource(
+                final var source = new MySqlReadOnlyIncrementalSnapshotChangeEventSource(
                         configuration,
                         connectionFactory.mainConnection(),
                         dispatcher,
@@ -128,7 +128,9 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
                         clock,
                         snapshotProgressListener,
                         dataChangeEventListener,
-                        notificationService));
+                        notificationService);
+                source.setErrorHandler(errorHandler);
+                return Optional.of(source);
             }
             throw new UnsupportedOperationException("Read only connection requires GTID_MODE to be ON");
         }
@@ -137,13 +139,15 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
         if (configuration.getSignalingDataCollectionIds().isEmpty()) {
             return Optional.empty();
         }
-        return Optional.of(new BinlogSignalBasedIncrementalSnapshotChangeEventSource<>(
+        final var source = new BinlogSignalBasedIncrementalSnapshotChangeEventSource<MySqlPartition>(
                 configuration,
                 connectionFactory.mainConnection(),
                 dispatcher,
                 schema,
                 clock,
                 snapshotProgressListener,
-                dataChangeEventListener, notificationService));
+                dataChangeEventListener, notificationService);
+        source.setErrorHandler(errorHandler);
+        return Optional.of(source);
     }
 }

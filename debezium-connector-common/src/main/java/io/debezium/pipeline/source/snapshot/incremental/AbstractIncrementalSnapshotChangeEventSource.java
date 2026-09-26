@@ -38,6 +38,7 @@ import io.debezium.annotation.NotThreadSafe;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.data.ValueWrapper;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.IncrementalSnapshotNotificationService.TableScanCompletionStatus;
 import io.debezium.pipeline.notification.NotificationService;
@@ -74,6 +75,11 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         implements IncrementalSnapshotChangeEventSource<P, T> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractIncrementalSnapshotChangeEventSource.class);
+    private static final int MAX_SCHEMA_MISMATCH_RETRIES = 5;
+
+    private boolean schemaMismatchRetryPending;
+    private int schemaMismatchRetries;
+    private ErrorHandler errorHandler;
 
     protected final RelationalDatabaseConnectorConfig connectorConfig;
     private final Clock clock;
@@ -318,6 +324,8 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
 
                 try {
                     if (createDataEventsForTable(partition)) {
+                        schemaMismatchRetryPending = false;
+                        schemaMismatchRetries = 0;
 
                         if (!context.snapshotRunning()) { // A stop signal has been processed and window cleared.
                             return;
@@ -356,10 +364,23 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             emitWindowClose(partition, offsetContext);
             LOGGER.trace("Window close emitted");
         }
+        catch (ColumnUtils.SchemaMismatchException e) {
+            if (supportsSchemaMismatchRecovery() && connectorConfig.isIncrementalSnapshotSchemaChangesEnabled()) {
+                retryChunkAfterSchemaMismatch(partition, offsetContext, e);
+            }
+            else {
+                rollbackChunkTransaction(e);
+                warnAndSkip(partition, offsetContext, SQL_EXCEPTION,
+                        "Schema mismatch while executing incremental snapshot for table '%s', skipping and continuing streaming"
+                                .formatted(context.currentDataCollectionId().getId()),
+                        e);
+            }
+        }
         catch (SQLException e) {
             if (e instanceof SQLNonTransientConnectionException) {
                 closeJdbcConnection();
             }
+            rollbackChunkTransaction(e);
             warnAndSkip(partition, offsetContext,
                     SQL_EXCEPTION,
                     "SQL error while executing incremental snapshot for table '%s', skipping and continuing streaming"
@@ -367,6 +388,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                     e);
         }
         catch (Exception e) {
+            rollbackChunkTransaction(e);
             warnAndSkip(partition, offsetContext,
                     SQL_EXCEPTION,
                     "Error while executing incremental snapshot for table '%s', skipping and continuing streaming".formatted(context.currentDataCollectionId().getId()),
@@ -378,6 +400,96 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                 postIncrementalSnapshotCompleted();
             }
         }
+    }
+
+    public void setErrorHandler(ErrorHandler errorHandler) {
+        this.errorHandler = errorHandler;
+    }
+
+    protected boolean supportsSchemaMismatchRecovery() {
+        return false;
+    }
+
+    protected boolean isSchemaMismatchRetryPending() {
+        return schemaMismatchRetryPending;
+    }
+
+    private void retryChunkAfterSchemaMismatch(P partition, OffsetContext offsetContext, ColumnUtils.SchemaMismatchException cause)
+            throws InterruptedException {
+        rollbackChunkTransactionForRecovery(cause);
+        // Do not publish a partially read chunk or advance to the next table. Streaming must
+        // process the intervening DDL before the next window attempts the same chunk again.
+        window.clear();
+        context.revertChunk();
+        context.setSchemaVerificationPassed(false);
+        if (schemaMismatchRetries >= MAX_SCHEMA_MISMATCH_RETRIES) {
+            throw reportFailure("Incremental snapshot for table '%s' failed after %d schema mismatch retries"
+                    .formatted(context.currentDataCollectionId().getId(), MAX_SCHEMA_MISMATCH_RETRIES), cause);
+        }
+        // Count retries scheduled after a failed read, not windows spent verifying the schema.
+        schemaMismatchRetries++;
+        schemaMismatchRetryPending = true;
+        LOGGER.warn("Retrying incremental snapshot chunk for table {} in the next watermark window after a schema mismatch (retry {} of {})",
+                context.currentDataCollectionId().getId(), schemaMismatchRetries, MAX_SCHEMA_MISMATCH_RETRIES, cause);
+        try {
+            // The failed read transaction has already been rolled back. Close the empty window
+            // so streaming can process the DDL before the next attempt reads the same chunk.
+            emitWindowClose(partition, offsetContext);
+        }
+        catch (InterruptedException e) {
+            throw e;
+        }
+        catch (Exception e) {
+            e.addSuppressed(cause);
+            throw reportFailure("Could not close incremental snapshot window after a schema mismatch", e);
+        }
+        // Capturing the high watermark can open another transaction. Its cleanup is part of
+        // recovery too; the final best-effort cleanup must not hide an earlier recovery failure.
+        rollbackChunkTransactionForRecovery(cause);
+    }
+
+    private void rollbackChunkTransactionForRecovery(Throwable chunkFailure) {
+        rollbackChunkTransaction(chunkFailure).ifPresent(failure -> {
+            throw reportFailure("Could not roll back the incremental snapshot chunk", failure);
+        });
+    }
+
+    /**
+     * Ends a chunk transaction, discarding the connection if rollback fails. The caller decides
+     * whether a cleanup failure should abort recovery or retain the existing table-skip policy.
+     */
+    protected Optional<SQLException> rollbackChunkTransaction(Throwable chunkFailure) {
+        try {
+            // A failed read can bypass the window-close transaction boundary and retain
+            // metadata locks. rollback() does not reconnect an already closed connection.
+            jdbcConnection.rollback();
+        }
+        catch (SQLException e) {
+            if (chunkFailure != null && chunkFailure != e) {
+                e.addSuppressed(chunkFailure);
+            }
+            try {
+                jdbcConnection.close();
+            }
+            catch (SQLException closeFailure) {
+                if (closeFailure != e) {
+                    e.addSuppressed(closeFailure);
+                }
+            }
+            LOGGER.warn("Could not roll back the incremental snapshot chunk; attempted to close the connection", e);
+            return Optional.of(e);
+        }
+        return Optional.empty();
+    }
+
+    private DebeziumException reportFailure(String message, Throwable cause) {
+        final var failure = new DebeziumException(message, cause);
+        // SignalProcessor catches action exceptions. Also report a fatal recovery failure to
+        // the task's queue so it cannot continue streaming with an incomplete snapshot window.
+        if (errorHandler != null) {
+            errorHandler.setProducerThrowable(failure);
+        }
+        return failure;
     }
 
     private boolean isTableInvalid(P partition, OffsetContext offsetContext) {
@@ -489,6 +601,8 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     }
 
     private void nextDataCollection(P partition, OffsetContext offsetContext) {
+        schemaMismatchRetryPending = false;
+        schemaMismatchRetries = 0;
         context.nextDataCollection();
         if (!context.snapshotRunning()) {
             progressListener.snapshotCompleted(partition);
@@ -523,6 +637,8 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         validateSignalTableConfiguration(newDataCollectionIds);
 
         if (shouldReadChunk) {
+            schemaMismatchRetryPending = false;
+            schemaMismatchRetries = 0;
 
             List<T> monitoredDataCollections = newDataCollectionIds.stream()
                     .map(DataCollection::getId).collect(Collectors.toList());
