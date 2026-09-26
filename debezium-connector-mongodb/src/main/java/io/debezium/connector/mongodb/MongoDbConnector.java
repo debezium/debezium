@@ -112,12 +112,12 @@ public class MongoDbConnector extends BaseSourceConnector implements ConfigDescr
 
         // Validate connection when connection string is otherwise valid
         if (csValidation.errorMessages().isEmpty()) {
-            validateConnection(config, csValidation);
+            validateConnection(config, csValidation, validation.get(MongoDbConnectorConfig.SIGNAL_DATA_COLLECTION.name()));
         }
         return new Config(new ArrayList<>(validation.values()));
     }
 
-    public void validateConnection(Configuration config, ConfigValue connectionStringValidation) {
+    public void validateConnection(Configuration config, ConfigValue connectionStringValidation, ConfigValue signalDataCollectionValidation) {
         // Shard specific parameters shouldn't be set after RS connection mode removal
         if (config.hasKey(DEPRECATED_SHARD_CS_PARAMS_FILED)) {
             LOGGER.warn("Field '{}' is deprecated. Use only '{}' to set connection parameters", DEPRECATED_SHARD_CS_PARAMS_FILED,
@@ -150,6 +150,11 @@ public class MongoDbConnector extends BaseSourceConnector implements ConfigDescr
                                     "Please verify credentials and database permissions.";
                             LOGGER.error("Could not validate connector config: " + errorMessage);
                             connectionStringValidation.addErrorMessage(errorMessage);
+                        }
+                        else {
+                            SignalDataCollectionValidationResult signalResult = SignalDataCollectionValidator.validate(client,
+                                    SignalDataCollectionValidationRequest.forConnector(connectorConfig));
+                            signalResult.errors().forEach(signalDataCollectionValidation::addErrorMessage);
                         }
                     }
                     catch (MongoCommandException e) {

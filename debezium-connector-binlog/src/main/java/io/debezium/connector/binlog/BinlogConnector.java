@@ -19,10 +19,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.Immutable;
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
 import io.debezium.connector.common.RelationalBaseSourceConnector;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.relational.SignalDataCollectionValidationRequest;
+import io.debezium.relational.SignalDataCollectionValidationResult;
+import io.debezium.relational.SignalDataCollectionValidator;
 import io.debezium.util.Threads;
 
 /**
@@ -68,6 +72,9 @@ public abstract class BinlogConnector<T extends BinlogConnectorConfig> extends R
                         connection.execute("SELECT version()");
                         LOGGER.info("Successfully tested connection for {} with user '{}'",
                                 connection.connectionString(), connection.connectionConfig().username());
+                        SignalDataCollectionValidationResult signalResult = SignalDataCollectionValidator.validate(
+                                SignalDataCollectionValidationRequest.forConnector(connectorConfig, rawValue -> connection));
+                        signalResult.errors().forEach(configValues.get(CommonConnectorConfig.SIGNAL_DATA_COLLECTION.name())::addErrorMessage);
                     }
                     catch (SQLException e) {
                         LOGGER.error("Failed testing connection for {} with user '{}'",
