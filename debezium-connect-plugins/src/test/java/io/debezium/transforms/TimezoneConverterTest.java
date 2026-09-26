@@ -990,6 +990,42 @@ public class TimezoneConverterTest {
         assertThat(transformedAfter.get("order_date_zoned_timestamp")).isEqualTo("2018-01-02T16:45:30.123456789+05:30");
     }
 
+    @Test
+    @FixFor("debezium/dbz#2667")
+    public void testIncludeListWithHyphenatedMatchName() {
+        final Map<String, String> props = new HashMap<>();
+        props.put("converted.timezone", "+05:30");
+        props.put("include.list", "my-orders-table:order_date_zoned_timestamp");
+        converter.configure(props);
+
+        final Struct transformedAfter = applyToHyphenatedRecord("db.server1.topic1", "my-orders-table");
+
+        assertThat(transformedAfter.get("order_date_zoned_time")).isEqualTo("11:15:30.123456789+00:00");
+        assertThat(transformedAfter.get("order_date_zoned_timestamp")).isEqualTo("2018-01-02T16:45:30.123456789+05:30");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2667")
+    public void testIncludeListWithInvalidFormat() {
+        final Map<String, String> props = new HashMap<>();
+        props.put("converted.timezone", "+05:30");
+        props.put("include.list", "topic:orders:created_at:extra");
+
+        assertThat(catchThrowable(() -> converter.configure(props))).isInstanceOf(DebeziumException.class);
+        assertThat(catchThrowable(() -> converter.configure(props))).hasMessageContaining("Invalid include list format.");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2667")
+    public void testExcludeListWithInvalidFormat() {
+        final Map<String, String> props = new HashMap<>();
+        props.put("converted.timezone", "+05:30");
+        props.put("exclude.list", "topic::created_at");
+
+        assertThat(catchThrowable(() -> converter.configure(props))).isInstanceOf(DebeziumException.class);
+        assertThat(catchThrowable(() -> converter.configure(props))).hasMessageContaining("Invalid exclude list format.");
+    }
+
     private Struct applyToHyphenatedRecord(String topic, String table) {
         final Struct before = new Struct(recordSchema);
         final Struct source = new Struct(sourceSchema);
