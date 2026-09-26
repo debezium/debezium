@@ -27,6 +27,7 @@ import io.debezium.spi.storage.OffsetStorageReader;
 import io.debezium.spi.storage.OffsetStorageWriter;
 import io.debezium.spi.storage.OffsetStore;
 import io.debezium.spi.storage.OffsetStoreProvider;
+import io.debezium.storage.nats.NatsCommonConfig;
 import io.debezium.util.Collect;
 
 /**
@@ -76,8 +77,9 @@ class NatsOffsetStoreEndToEndIT {
 
         // Configure with the engine's key layout: offset.storage.nats.*
         Map<String, String> props = new HashMap<>();
-        props.put("offset.storage.nats.url", natsUrl);
-        props.put("offset.storage.nats.bucket.name", "e2e-offsets");
+        props.put(NatsOffsetBackingStoreConfig.PROP_PREFIX + NatsCommonConfig.NATS_URL.name(), natsUrl);
+        props.put(NatsOffsetBackingStoreConfig.PROP_PREFIX + NatsOffsetBackingStoreConfig.PROP_BUCKET_NAME.name(),
+                "e2e-offsets");
         Configuration config = Configuration.from(props);
 
         store = provider.create(config);

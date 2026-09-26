@@ -23,7 +23,11 @@ import io.debezium.util.Collect;
  */
 public class NatsOffsetBackingStoreConfig extends NatsCommonConfig {
 
-    private static final String PROP_PREFIX = "offset.storage.";
+    /**
+     * The prefix the engine prepends to every offset store property. Tests use it
+     * to build the same keys the engine does.
+     */
+    public static final String PROP_PREFIX = "offset.storage.";
 
     public static final Field PROP_BUCKET_NAME = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "bucket.name")
             .withDescription("The name of the NATS Object Store bucket to store offsets")

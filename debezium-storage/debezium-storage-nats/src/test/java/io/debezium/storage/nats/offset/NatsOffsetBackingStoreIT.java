@@ -82,11 +82,15 @@ class NatsOffsetBackingStoreIT {
 
     private Map<String, String> createConfig() {
         Map<String, String> config = new HashMap<>();
-        config.put("offset.storage." + NatsCommonConfig.NATS_URL.name(), natsUrl);
-        config.put("offset.storage." + NatsOffsetBackingStoreConfig.PROP_BUCKET_NAME.name(), "test-offsets");
-        config.put("offset.storage." + NatsOffsetBackingStoreConfig.PROP_RETRY_ENABLED.name(), "true");
-        config.put("offset.storage." + NatsOffsetBackingStoreConfig.PROP_MAX_RETRIES.name(), "3");
-        config.put("offset.storage." + NatsOffsetBackingStoreConfig.PROP_RETRY_DELAY_MS.name(), "100");
+        config.put(NatsOffsetBackingStoreConfig.PROP_PREFIX + NatsCommonConfig.NATS_URL.name(), natsUrl);
+        config.put(NatsOffsetBackingStoreConfig.PROP_PREFIX + NatsOffsetBackingStoreConfig.PROP_BUCKET_NAME.name(),
+                "test-offsets");
+        config.put(NatsOffsetBackingStoreConfig.PROP_PREFIX + NatsOffsetBackingStoreConfig.PROP_RETRY_ENABLED.name(),
+                "true");
+        config.put(NatsOffsetBackingStoreConfig.PROP_PREFIX + NatsOffsetBackingStoreConfig.PROP_MAX_RETRIES.name(),
+                "3");
+        config.put(NatsOffsetBackingStoreConfig.PROP_PREFIX + NatsOffsetBackingStoreConfig.PROP_RETRY_DELAY_MS.name(),
+                "100");
         return config;
     }
 
