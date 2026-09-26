@@ -21,7 +21,15 @@ import org.testcontainers.utility.DockerImageName;
  */
 public class NatsContainer extends GenericContainer<NatsContainer> {
 
-    public static final String IMAGE = "nats:2.12.0-alpine";
+    /**
+     * The version of the NATS server the tests run against. Defaults to the newest 2.x
+     * release; override with {@code -Dversion.nats.server=2.15.0-alpine} to pin one. The
+     * {@code assembly} profile forwards the Maven property of the same name to the forked
+     * test JVM.
+     */
+    public static final String IMAGE_VERSION = System.getProperty("version.nats.server", "2-alpine");
+
+    public static final String IMAGE = "nats:" + IMAGE_VERSION;
     public static final int NATS_PORT = 4222;
     public static final int NATS_MONITOR_PORT = 8222;
 
