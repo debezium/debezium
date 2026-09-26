@@ -28,6 +28,7 @@ import org.junit.jupiter.api.Test;
 import io.debezium.DebeziumException;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
+import io.debezium.doc.FixFor;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.time.MicroTimestamp;
 import io.debezium.time.NanoTimestamp;
@@ -945,5 +946,118 @@ public class TimezoneConverterTest {
         assertThat(transformedSource.getInt64("ts_ns")).isEqualTo(1762672421071088000L);
         assertThat(transformedSource.getInt64("ts_us")).isEqualTo(1762672421071088L);
         assertThat(transformedSource.getInt64("random")).isEqualTo(125L);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2667")
+    public void testIncludeListWithHyphenatedTopicName() {
+        final Map<String, String> props = new HashMap<>();
+        props.put("converted.timezone", "+05:30");
+        props.put("include.list", "topic:orders-topic-1:order_date_zoned_time");
+        converter.configure(props);
+
+        final Struct transformedAfter = applyToHyphenatedRecord("orders-topic-1", "customers");
+
+        assertThat(transformedAfter.get("order_date_zoned_time")).isEqualTo("16:45:30.123456789+05:30");
+        assertThat(transformedAfter.get("order_date_zoned_timestamp")).isEqualTo("2018-01-02T11:15:30.123456789+00:00");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2667")
+    public void testIncludeListWithHyphenatedTableNames() {
+        final Map<String, String> props = new HashMap<>();
+        props.put("converted.timezone", "+05:30");
+        props.put("include.list", "source:other-orders-table:order_date_zoned_time,my-orders-table:order_date_zoned_timestamp");
+        converter.configure(props);
+
+        final Struct transformedAfter = applyToHyphenatedRecord("db.server1.table1", "my-orders-table");
+
+        assertThat(transformedAfter.get("order_date_zoned_time")).isEqualTo("11:15:30.123456789+00:00");
+        assertThat(transformedAfter.get("order_date_zoned_timestamp")).isEqualTo("2018-01-02T16:45:30.123456789+05:30");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2667")
+    public void testExcludeListWithHyphenatedTopicName() {
+        final Map<String, String> props = new HashMap<>();
+        props.put("converted.timezone", "+05:30");
+        props.put("exclude.list", "topic:orders-topic-1:order_date_zoned_time");
+        converter.configure(props);
+
+        final Struct transformedAfter = applyToHyphenatedRecord("orders-topic-1", "customers");
+
+        assertThat(transformedAfter.get("order_date_zoned_time")).isEqualTo("11:15:30.123456789+00:00");
+        assertThat(transformedAfter.get("order_date_zoned_timestamp")).isEqualTo("2018-01-02T16:45:30.123456789+05:30");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2667")
+    public void testIncludeListWithHyphenatedMatchName() {
+        final Map<String, String> props = new HashMap<>();
+        props.put("converted.timezone", "+05:30");
+        props.put("include.list", "my-orders-table:order_date_zoned_timestamp");
+        converter.configure(props);
+
+        final Struct transformedAfter = applyToHyphenatedRecord("db.server1.topic1", "my-orders-table");
+
+        assertThat(transformedAfter.get("order_date_zoned_time")).isEqualTo("11:15:30.123456789+00:00");
+        assertThat(transformedAfter.get("order_date_zoned_timestamp")).isEqualTo("2018-01-02T16:45:30.123456789+05:30");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2667")
+    public void testIncludeListWithInvalidFormat() {
+        final Map<String, String> props = new HashMap<>();
+        props.put("converted.timezone", "+05:30");
+        props.put("include.list", "topic:orders:created_at:extra");
+
+        assertThat(catchThrowable(() -> converter.configure(props))).isInstanceOf(DebeziumException.class);
+        assertThat(catchThrowable(() -> converter.configure(props))).hasMessageContaining("Invalid include list format.");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2667")
+    public void testExcludeListWithInvalidFormat() {
+        final Map<String, String> props = new HashMap<>();
+        props.put("converted.timezone", "+05:30");
+        props.put("exclude.list", "topic::created_at");
+
+        assertThat(catchThrowable(() -> converter.configure(props))).isInstanceOf(DebeziumException.class);
+        assertThat(catchThrowable(() -> converter.configure(props))).hasMessageContaining("Invalid exclude list format.");
+    }
+
+    private Struct applyToHyphenatedRecord(String topic, String table) {
+        final Struct before = new Struct(recordSchema);
+        final Struct source = new Struct(sourceSchema);
+
+        before.put("id", (byte) 1);
+        before.put("name", "John Doe");
+        before.put("order_date_zoned_time", "11:15:30.123456789+00:00");
+        before.put("order_date_zoned_timestamp", "2018-01-02T11:15:30.123456789+00:00");
+
+        source.put("table", table);
+        source.put("lsn", 1);
+        source.put("ts_ms", 123456789L);
+
+        final Envelope envelope = Envelope.defineSchema()
+                .withName("dummy.Envelope")
+                .withRecord(recordSchema)
+                .withSource(sourceSchema)
+                .build();
+
+        final Struct payload = envelope.create(before, source, Instant.now());
+
+        final SourceRecord record = new SourceRecord(
+                new HashMap<>(),
+                new HashMap<>(),
+                topic,
+                envelope.schema(),
+                payload);
+
+        VerifyRecord.isValid(record);
+        final SourceRecord transformedRecord = converter.apply(record);
+        VerifyRecord.isValid(transformedRecord);
+
+        return ((Struct) transformedRecord.value()).getStruct(Envelope.FieldName.AFTER);
     }
 }
