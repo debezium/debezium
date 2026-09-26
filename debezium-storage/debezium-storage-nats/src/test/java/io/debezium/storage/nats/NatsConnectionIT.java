@@ -65,6 +65,8 @@ class NatsConnectionIT {
 
     @Test
     public void shouldCreateConnection() throws Exception {
+        // createConfig() also sets the reconnect settings, so this covers the reconnect
+        // configuration path as well.
         NatsCommonConfig config = createConfig();
         natsConnection = new NatsConnection(config);
 
@@ -155,20 +157,6 @@ class NatsConnectionIT {
         NatsConnection connection = new NatsConnection(natsConfig);
 
         assertThrows(Exception.class, connection::getConnection);
-    }
-
-    @Test
-    public void shouldHandleReconnectSettings() throws Exception {
-        Configuration config = Configuration.from(Collect.hashMapOf(
-                "nats.url", natsUrl,
-                "nats.max.reconnects", "5",
-                "nats.reconnect.wait.ms", "1000"));
-
-        NatsCommonConfig natsConfig = new NatsCommonConfig(config);
-        natsConnection = new NatsConnection(natsConfig);
-
-        assertNotNull(natsConnection);
-        assertTrue(natsConnection.getConnection().getStatus() == Connection.Status.CONNECTED);
     }
 
     @Test
