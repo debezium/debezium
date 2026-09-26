@@ -8,20 +8,17 @@ package io.debezium.connector.mongodb;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.kafka.common.config.ConfigValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.mongodb.client.MongoClient;
 
-import io.debezium.pipeline.signal.channels.SourceSignalChannel;
 import io.debezium.util.Strings;
 
 /**
- * Validates {@code signal.data.collection} at connector {@code validate()} time: collection existence and
- * namespace shape. Gated by {@code signal.data.collection.validation.enabled} (default {@code false}). Unlike
- * the relational connectors, MongoDB collections have no fixed schema, so there is no equivalent of the
- * effective-column-count check.
+ * Validates {@code signal.data.collection}: collection existence and namespace shape. Unlike the relational
+ * connectors, MongoDB collections have no fixed schema, so there is no equivalent of the effective-column-count
+ * check.
  *
  * @author Debezium Authors
  */
@@ -36,36 +33,29 @@ public class SignalDataCollectionValidator {
     /**
      * Validates every configured signal data collection (multiple may be configured for multi-partition
      * deployments). No-op unless enabled and the source channel is on.
-     *
-     * @param client the MongoDB client to probe with
-     * @param connectorConfig the connector configuration
-     * @param signalDataCollectionValue the config value to report errors against
      */
-    public static void validate(MongoClient client, MongoDbConnectorConfig connectorConfig, ConfigValue signalDataCollectionValue) {
-        if (!connectorConfig.isSignalDataCollectionValidationEnabled()) {
-            return;
-        }
-        if (!connectorConfig.getEnabledChannels().contains(SourceSignalChannel.CHANNEL_NAME)) {
-            return;
-        }
-
-        for (String rawValue : connectorConfig.getSignalingDataCollectionIds()) {
-            if (Strings.isNullOrBlank(rawValue)) {
-                continue;
-            }
-            try {
-                checkSignalDataCollection(client, rawValue, signalDataCollectionValue);
-            }
-            catch (RuntimeException e) {
-                LOGGER.warn("{} Could not validate signal data collection '{}'", LOG_PREFIX, rawValue, e);
+    public static SignalDataCollectionValidationResult validate(MongoClient client, SignalDataCollectionValidationRequest request) {
+        List<String> errors = new ArrayList<>();
+        if (request.validationEnabled() && request.sourceChannelEnabled()) {
+            for (String rawValue : request.rawValues()) {
+                if (Strings.isNullOrBlank(rawValue)) {
+                    continue;
+                }
+                try {
+                    checkSignalDataCollection(client, rawValue, errors);
+                }
+                catch (RuntimeException e) {
+                    LOGGER.warn("{} Could not validate signal data collection '{}'", LOG_PREFIX, rawValue, e);
+                }
             }
         }
+        return new SignalDataCollectionValidationResult(errors);
     }
 
-    private static void checkSignalDataCollection(MongoClient client, String rawValue, ConfigValue signalDataCollectionValue) {
+    private static void checkSignalDataCollection(MongoClient client, String rawValue, List<String> errors) {
         CollectionId collectionId = CollectionId.parse(rawValue);
         if (collectionId == null) {
-            fail(signalDataCollectionValue, String.format("signal.data.collection must be specified as '<database>.<collection>', not '%s'.", rawValue));
+            fail(errors, String.format("signal.data.collection must be specified as '<database>.<collection>', not '%s'.", rawValue));
             return;
         }
 
@@ -76,12 +66,12 @@ public class SignalDataCollectionValidator {
             LOGGER.info("{} Signal data collection '{}' is valid.", LOG_PREFIX, rawValue);
         }
         else {
-            fail(signalDataCollectionValue, String.format("Signal data collection '%s' does not exist.", rawValue));
+            fail(errors, String.format("Signal data collection '%s' does not exist.", rawValue));
         }
     }
 
-    private static void fail(ConfigValue signalDataCollectionValue, String problem) {
+    private static void fail(List<String> errors, String problem) {
         LOGGER.warn("{} {}", LOG_PREFIX, problem);
-        signalDataCollectionValue.addErrorMessage(problem);
+        errors.add(problem);
     }
 }

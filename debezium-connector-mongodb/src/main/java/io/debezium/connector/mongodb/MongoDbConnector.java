@@ -152,7 +152,9 @@ public class MongoDbConnector extends BaseSourceConnector implements ConfigDescr
                             connectionStringValidation.addErrorMessage(errorMessage);
                         }
                         else {
-                            SignalDataCollectionValidator.validate(client, connectorConfig, signalDataCollectionValidation);
+                            SignalDataCollectionValidationResult signalResult = SignalDataCollectionValidator.validate(client,
+                                    SignalDataCollectionValidationRequest.forConnector(connectorConfig));
+                            signalResult.errors().forEach(signalDataCollectionValidation::addErrorMessage);
                         }
                     }
                     catch (MongoCommandException e) {

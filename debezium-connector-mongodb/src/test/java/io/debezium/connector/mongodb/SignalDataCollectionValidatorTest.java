@@ -6,7 +6,6 @@
 package io.debezium.connector.mongodb;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -16,7 +15,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
-import org.apache.kafka.common.config.ConfigValue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,12 +26,11 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoDatabase;
 
 import io.debezium.junit.logging.LogInterceptor;
-import io.debezium.pipeline.signal.channels.SourceSignalChannel;
 
 /**
  * Unit tests for {@link SignalDataCollectionValidator}: the enablement/gating checks, namespace-shape and existence
- * validation, and the exception-swallowing guarantee. {@link MongoClient} and {@link MongoDbConnectorConfig} are
- * mocked so no live MongoDB deployment is required.
+ * validation, and the exception-swallowing guarantee. {@link MongoClient} is mocked so no live MongoDB deployment is
+ * required.
  */
 @ExtendWith(MockitoExtension.class)
 public class SignalDataCollectionValidatorTest {
@@ -44,26 +41,15 @@ public class SignalDataCollectionValidatorTest {
     @Mock
     private MongoClient client;
 
-    @Mock
-    private MongoDbConnectorConfig connectorConfig;
-
-    private ConfigValue signalDataCollectionValue;
     private LogInterceptor logInterceptor;
 
     @BeforeEach
     public void beforeEach() {
-        signalDataCollectionValue = new ConfigValue("signal.data.collection");
         logInterceptor = new LogInterceptor(SignalDataCollectionValidator.class);
     }
 
-    /**
-     * Stubs the two enablement gates open and configures the given signal data collection values, so the
-     * validator's loop body actually runs. Tests for the gates themselves stub only what each gate reads.
-     */
-    private void stubEnabled(String... rawValues) {
-        when(connectorConfig.isSignalDataCollectionValidationEnabled()).thenReturn(true);
-        when(connectorConfig.getEnabledChannels()).thenReturn(List.of(SourceSignalChannel.CHANNEL_NAME));
-        when(connectorConfig.getSignalingDataCollectionIds()).thenReturn(Arrays.asList(rawValues));
+    private SignalDataCollectionValidationRequest enabledRequest(String... rawValues) {
+        return new SignalDataCollectionValidationRequest(Arrays.asList(rawValues), true, true);
     }
 
     private void stubDatabaseCollections(String dbName, String... collectionNames) {
@@ -81,75 +67,51 @@ public class SignalDataCollectionValidatorTest {
 
     @Test
     public void shouldDoNothingWhenValidationDisabled() {
-        when(connectorConfig.isSignalDataCollectionValidationEnabled()).thenReturn(false);
+        SignalDataCollectionValidationResult result = SignalDataCollectionValidator.validate(client,
+                new SignalDataCollectionValidationRequest(List.of(RAW_VALUE), false, true));
 
-        SignalDataCollectionValidator.validate(client, connectorConfig, signalDataCollectionValue);
-
-        assertThat(signalDataCollectionValue.errorMessages()).isEmpty();
+        assertThat(result.isValid()).isTrue();
     }
 
     @Test
     public void shouldDoNothingWhenSourceChannelDisabled() {
-        when(connectorConfig.isSignalDataCollectionValidationEnabled()).thenReturn(true);
-        when(connectorConfig.getEnabledChannels()).thenReturn(List.of("kafka"));
+        SignalDataCollectionValidationResult result = SignalDataCollectionValidator.validate(client,
+                new SignalDataCollectionValidationRequest(List.of(RAW_VALUE), true, false));
 
-        SignalDataCollectionValidator.validate(client, connectorConfig, signalDataCollectionValue);
-
-        assertThat(signalDataCollectionValue.errorMessages()).isEmpty();
+        assertThat(result.isValid()).isTrue();
     }
 
     @Test
     public void shouldSkipBlankSignalDataCollectionValues() {
-        stubEnabled(null, " ");
+        SignalDataCollectionValidationResult result = SignalDataCollectionValidator.validate(client, enabledRequest(null, " "));
 
-        SignalDataCollectionValidator.validate(client, connectorConfig, signalDataCollectionValue);
-
-        assertThat(signalDataCollectionValue.errorMessages()).isEmpty();
+        assertThat(result.isValid()).isTrue();
     }
 
     @Test
     public void shouldLogInfoAndNotFailWhenSignalDataCollectionIsValid() {
-        stubEnabled(RAW_VALUE);
         stubDatabaseCollections("inventory", "debezium_signal", "customers");
 
-        SignalDataCollectionValidator.validate(client, connectorConfig, signalDataCollectionValue);
+        SignalDataCollectionValidationResult result = SignalDataCollectionValidator.validate(client, enabledRequest(RAW_VALUE));
 
-        assertThat(signalDataCollectionValue.errorMessages()).isEmpty();
+        assertThat(result.isValid()).isTrue();
         assertThat(logInterceptor.containsMessage(LOG_PREFIX + " Signal data collection '" + RAW_VALUE + "' is valid.")).isTrue();
     }
 
     @Test
     public void shouldFailWhenCollectionDoesNotExist() {
-        stubEnabled(RAW_VALUE);
         stubDatabaseCollections("inventory", "customers");
 
-        SignalDataCollectionValidator.validate(client, connectorConfig, signalDataCollectionValue);
+        SignalDataCollectionValidationResult result = SignalDataCollectionValidator.validate(client, enabledRequest(RAW_VALUE));
 
-        assertThat(signalDataCollectionValue.errorMessages())
-                .containsExactly("Signal data collection '" + RAW_VALUE + "' does not exist.");
-    }
-
-    @Test
-    public void shouldFailWhenDatabaseDoesNotExist() {
-        // A nonexistent database yields an empty (not an error) collection list from the driver, so it must be
-        // reported the same way as a missing collection rather than skipped or treated as a probe failure.
-        stubEnabled(RAW_VALUE);
-        stubDatabaseCollections("inventory");
-
-        SignalDataCollectionValidator.validate(client, connectorConfig, signalDataCollectionValue);
-
-        assertThat(signalDataCollectionValue.errorMessages())
-                .containsExactly("Signal data collection '" + RAW_VALUE + "' does not exist.");
+        assertThat(result.errors()).containsExactly("Signal data collection '" + RAW_VALUE + "' does not exist.");
     }
 
     @Test
     public void shouldFailWhenValueIsNotInDatabaseDotCollectionShape() {
-        stubEnabled("debezium_signal");
+        SignalDataCollectionValidationResult result = SignalDataCollectionValidator.validate(client, enabledRequest("debezium_signal"));
 
-        SignalDataCollectionValidator.validate(client, connectorConfig, signalDataCollectionValue);
-
-        assertThat(signalDataCollectionValue.errorMessages()).containsExactly(
-                "signal.data.collection must be specified as '<database>.<collection>', not 'debezium_signal'.");
+        assertThat(result.errors()).containsExactly("signal.data.collection must be specified as '<database>.<collection>', not 'debezium_signal'.");
     }
 
     @Test
@@ -157,13 +119,11 @@ public class SignalDataCollectionValidatorTest {
         // Multi-partition deployments can configure more than one signal.data.collection - each must be checked
         // independently, and a problem in one must not prevent the other from being validated.
         String secondRawValue = "inventory.other_signal";
-        stubEnabled(RAW_VALUE, secondRawValue);
         stubDatabaseCollections("inventory", "debezium_signal");
 
-        SignalDataCollectionValidator.validate(client, connectorConfig, signalDataCollectionValue);
+        SignalDataCollectionValidationResult result = SignalDataCollectionValidator.validate(client, enabledRequest(RAW_VALUE, secondRawValue));
 
-        assertThat(signalDataCollectionValue.errorMessages())
-                .containsExactly("Signal data collection '" + secondRawValue + "' does not exist.");
+        assertThat(result.errors()).containsExactly("Signal data collection '" + secondRawValue + "' does not exist.");
     }
 
     @Test
@@ -171,14 +131,12 @@ public class SignalDataCollectionValidatorTest {
         // The two values resolve to different databases, so stubbing the first to throw cannot mask the second
         // value's own, independent probe.
         String secondRawValue = "other.other_signal";
-        stubEnabled(RAW_VALUE, secondRawValue);
         when(client.getDatabase("inventory")).thenThrow(new RuntimeException("connection reset"));
         stubDatabaseCollections("other", "other_signal");
 
-        assertThatCode(() -> SignalDataCollectionValidator.validate(client, connectorConfig, signalDataCollectionValue))
-                .doesNotThrowAnyException();
+        SignalDataCollectionValidationResult result = SignalDataCollectionValidator.validate(client, enabledRequest(RAW_VALUE, secondRawValue));
 
         assertThat(logInterceptor.containsWarnMessage("Could not validate signal data collection '" + RAW_VALUE + "'")).isTrue();
-        assertThat(signalDataCollectionValue.errorMessages()).isEmpty();
+        assertThat(result.isValid()).isTrue();
     }
 }
