@@ -363,6 +363,9 @@ include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.ado
 
 include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+3]
 
+If the connector restarts during an incremental snapshot, it re-reads the snapshot window that was in progress to avoid skipping documents that were not emitted before shutdown.
+Records already emitted from that window can be emitted again.
+
 [WARNING]
 ====
 Incremental snapshots require that the primary key for each table is stably ordered.

@@ -22,6 +22,86 @@ import io.debezium.pipeline.source.snapshot.incremental.DataCollection;
 
 public class MongoDbIncrementalSnapshotContextTest {
 
+    @Test
+    @FixFor("debezium/dbz#2717")
+    public void shouldResumeFromBeginningOfFirstWindow() {
+        final var context = snapshotContext();
+        context.startNewChunk();
+        context.nextChunkPosition(new Object[]{ 10 });
+        context.sendEvent(new Object[]{ 9 });
+
+        final var restored = roundTrip(context);
+        assertThat(restored.snapshotRunning()).isTrue();
+        assertThat(restored.chunkEndPosititon()).isNull();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2717")
+    public void shouldResumeUnorderedWindowFromItsStart() {
+        final var context = snapshotContext();
+        context.nextChunkPosition(new Object[]{ 50 });
+        context.startNewChunk();
+        context.nextChunkPosition(new Object[]{ 60 });
+        context.sendEvent(new Object[]{ 59 });
+        assertThat(roundTrip(context).chunkEndPosititon()).containsExactly(50);
+
+        context.sendEvent(new Object[]{ 53 });
+        final var restored = roundTrip(context);
+        assertThat(restored.chunkEndPosititon()).containsExactly(50);
+        // A second checkpoint before any new record must retain the restored boundary.
+        assertThat(roundTrip(restored).chunkEndPosititon()).containsExactly(50);
+
+        context.startNewChunk();
+        context.nextChunkPosition(new Object[]{ 70 });
+        context.sendEvent(new Object[]{ 69 });
+        assertThat(roundTrip(context).chunkEndPosititon()).containsExactly(60);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2717")
+    public void shouldRevertToStartOfUnfinishedWindow() {
+        final var context = snapshotContext();
+        context.nextChunkPosition(new Object[]{ 50 });
+        context.startNewChunk();
+        context.nextChunkPosition(new Object[]{ 60 });
+        context.sendEvent(new Object[]{ 59 });
+
+        context.revertChunk();
+        assertThat(context.chunkEndPosititon()).containsExactly(50);
+        context.startNewChunk();
+        assertThat(roundTrip(context).chunkEndPosititon()).containsExactly(50);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2717")
+    public void shouldClearWindowBoundaryForNextCollection() {
+        final var context = snapshotContext();
+        context.nextChunkPosition(new Object[]{ 50 });
+        context.startNewChunk();
+        context.nextChunkPosition(new Object[]{ 60 });
+        context.sendEvent(new Object[]{ 59 });
+
+        context.nextDataCollection();
+        final var restored = roundTrip(context);
+        assertThat(restored.currentDataCollectionId().getId().identifier()).isEqualTo("dbA.c2");
+        assertThat(restored.chunkEndPosititon()).isNull();
+
+        context.nextDataCollection();
+        assertThat(context.store(new HashMap<>())).isEmpty();
+        assertThat(roundTrip(context).snapshotRunning()).isFalse();
+    }
+
+    private MongoDbIncrementalSnapshotContext<CollectionId> snapshotContext() {
+        final var context = new MongoDbIncrementalSnapshotContext<CollectionId>(false);
+        context.addDataCollectionNamesToSnapshot("test-correlation", List.of("dbA.c1", "dbA.c2"), List.of(), "");
+        context.maximumKey(new Object[]{ 1_000 });
+        return context;
+    }
+
+    private MongoDbIncrementalSnapshotContext<CollectionId> roundTrip(MongoDbIncrementalSnapshotContext<CollectionId> context) {
+        return MongoDbIncrementalSnapshotContext.load(context.store(new HashMap<>()), false);
+    }
+
     /**
      * The MongoDB incremental snapshot context must preserve additional conditions across
      * serialization round-trips (i.e., across connector restarts). Previously
