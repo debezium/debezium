@@ -6,9 +6,6 @@
 package io.debezium.storage.nats;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -22,9 +19,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
-import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
@@ -34,6 +30,7 @@ import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.relational.history.SchemaHistoryListener;
 import io.debezium.storage.nats.history.NatsSchemaHistory;
+import io.debezium.storage.nats.history.NatsSchemaHistoryConfig;
 import io.debezium.storage.nats.offset.NatsOffsetBackingStore;
 import io.debezium.storage.nats.offset.NatsOffsetBackingStoreConfig;
 import io.debezium.util.Collect;
@@ -47,18 +44,9 @@ import io.debezium.util.Collect;
 @Testcontainers
 class NatsStorageIT {
 
-    private static final String NATS_CONTAINER_IMAGE = "nats:2.12.0-alpine";
-    private static final int NATS_PORT = 4222;
-
+    @Container
     @SuppressWarnings("resource")
-    public GenericContainer<?> natsContainer = new GenericContainer<>(DockerImageName.parse(NATS_CONTAINER_IMAGE))
-            .withExposedPorts(NATS_PORT)
-            .withCommand("-js")
-            .withLogConsumer(frame -> {
-                if (frame != null && frame.getUtf8String() != null) {
-                    System.out.print(frame.getUtf8String());
-                }
-            });
+    public NatsContainer natsContainer = new NatsContainer();
 
     private String natsUrl;
     private NatsSchemaHistory schemaHistory;
@@ -67,8 +55,7 @@ class NatsStorageIT {
 
     @BeforeEach
     public void setUp() {
-        natsContainer.start();
-        natsUrl = "nats://" + natsContainer.getHost() + ":" + natsContainer.getFirstMappedPort();
+        natsUrl = natsContainer.getServerUrl();
 
         parser = new MySqlAntlrDdlParser();
         setupSchemaHistory();
@@ -83,25 +70,22 @@ class NatsStorageIT {
         if (offsetStore != null) {
             offsetStore.stop();
         }
-        if (natsContainer != null) {
-            natsContainer.stop();
-        }
     }
 
     private void setupSchemaHistory() {
         Map<String, String> config = Collect.hashMapOf(
                 SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + NatsCommonConfig.NATS_URL.name(), natsUrl,
                 SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING
-                        + io.debezium.storage.nats.history.NatsSchemaHistoryConfig.PROP_STREAM_NAME.name(),
+                        + NatsSchemaHistoryConfig.PROP_STREAM_NAME.name(),
                 "integration-schema-history",
                 SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING
-                        + io.debezium.storage.nats.history.NatsSchemaHistoryConfig.PROP_SUBJECT.name(),
+                        + NatsSchemaHistoryConfig.PROP_SUBJECT.name(),
                 "integration.schema.history",
                 SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING
-                        + io.debezium.storage.nats.history.NatsSchemaHistoryConfig.PROP_STORAGE_TYPE.name(),
+                        + NatsSchemaHistoryConfig.PROP_STORAGE_TYPE.name(),
                 "memory",
                 SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING
-                        + io.debezium.storage.nats.history.NatsSchemaHistoryConfig.PROP_REPLICAS.name(),
+                        + NatsSchemaHistoryConfig.PROP_REPLICAS.name(),
                 "1");
 
         Configuration configuration = Configuration.from(config);
@@ -114,11 +98,15 @@ class NatsStorageIT {
 
     private void setupOffsetStore() {
         Map<String, String> config = new HashMap<>();
-        config.put("offset.storage." + NatsCommonConfig.NATS_URL.name(), natsUrl);
-        config.put("offset.storage." + NatsOffsetBackingStoreConfig.PROP_BUCKET_NAME.name(), "integration-offsets");
-        config.put("offset.storage." + NatsOffsetBackingStoreConfig.PROP_RETRY_ENABLED.name(), "true");
-        config.put("offset.storage." + NatsOffsetBackingStoreConfig.PROP_MAX_RETRIES.name(), "3");
-        config.put("offset.storage." + NatsOffsetBackingStoreConfig.PROP_RETRY_DELAY_MS.name(), "100");
+        config.put(NatsOffsetBackingStoreConfig.PROP_PREFIX + NatsCommonConfig.NATS_URL.name(), natsUrl);
+        config.put(NatsOffsetBackingStoreConfig.PROP_PREFIX + NatsOffsetBackingStoreConfig.PROP_BUCKET_NAME.name(),
+                "integration-offsets");
+        config.put(NatsOffsetBackingStoreConfig.PROP_PREFIX + NatsOffsetBackingStoreConfig.PROP_RETRY_ENABLED.name(),
+                "true");
+        config.put(NatsOffsetBackingStoreConfig.PROP_PREFIX + NatsOffsetBackingStoreConfig.PROP_MAX_RETRIES.name(),
+                "3");
+        config.put(NatsOffsetBackingStoreConfig.PROP_PREFIX + NatsOffsetBackingStoreConfig.PROP_RETRY_DELAY_MS.name(),
+                "100");
 
         offsetStore = new NatsOffsetBackingStore();
         offsetStore.configure(Configuration.from(config));
@@ -153,23 +141,23 @@ class NatsStorageIT {
         offsetFuture.get(10, TimeUnit.SECONDS);
 
         // Verify schema history
-        assertTrue(schemaHistory.exists());
-        assertTrue(schemaHistory.storageExists());
+        assertThat(schemaHistory.exists()).isTrue();
+        assertThat(schemaHistory.storageExists()).isTrue();
 
         Tables recoveredTables = new Tables();
         schemaHistory.recover(source, position2, recoveredTables, parser);
 
         assertThat(recoveredTables.size()).isEqualTo(2);
-        assertTrue(recoveredTables.forTable(new TableId("testdb", null, "users")) != null);
-        assertTrue(recoveredTables.forTable(new TableId("testdb", null, "orders")) != null);
+        assertThat(recoveredTables.forTable(new TableId("testdb", null, "users"))).isNotNull();
+        assertThat(recoveredTables.forTable(new TableId("testdb", null, "orders"))).isNotNull();
 
         // Verify offsets
         Future<Map<ByteBuffer, ByteBuffer>> getFuture = offsetStore.get(Collect.arrayListOf(offsetKey1, offsetKey2));
         Map<ByteBuffer, ByteBuffer> retrievedOffsets = getFuture.get(10, TimeUnit.SECONDS);
 
         assertThat(retrievedOffsets).hasSize(2);
-        assertEquals(offsetValue1, retrievedOffsets.get(offsetKey1));
-        assertEquals(offsetValue2, retrievedOffsets.get(offsetKey2));
+        assertThat(retrievedOffsets.get(offsetKey1)).isEqualTo(offsetValue1);
+        assertThat(retrievedOffsets.get(offsetKey2)).isEqualTo(offsetValue2);
     }
 
     @Test
@@ -200,7 +188,7 @@ class NatsStorageIT {
         setupOffsetStore();
 
         // Verify data persisted
-        assertTrue(schemaHistory.exists());
+        assertThat(schemaHistory.exists()).isTrue();
 
         Tables recoveredTables = new Tables();
         schemaHistory.recover(source, position, recoveredTables, parser);
@@ -208,7 +196,7 @@ class NatsStorageIT {
 
         Future<Map<ByteBuffer, ByteBuffer>> getFuture = offsetStore.get(Collect.arrayListOf(offsetKey));
         Map<ByteBuffer, ByteBuffer> retrievedOffsets = getFuture.get(10, TimeUnit.SECONDS);
-        assertEquals(offsetValue, retrievedOffsets.get(offsetKey));
+        assertThat(retrievedOffsets.get(offsetKey)).isEqualTo(offsetValue);
     }
 
     @Test
@@ -216,8 +204,8 @@ class NatsStorageIT {
     @SuppressWarnings("deprecation")
     public void shouldHandleEmptyStorages() throws Exception {
         // Test behavior with empty storages
-        assertFalse(schemaHistory.exists());
-        assertTrue(schemaHistory.storageExists());
+        assertThat(schemaHistory.exists()).isFalse();
+        assertThat(schemaHistory.storageExists()).isTrue();
 
         // Empty recovery should work
         Tables emptyTables = new Tables();
@@ -256,7 +244,7 @@ class NatsStorageIT {
         assertThat(recoveredTables.size()).isEqualTo(10);
 
         for (int i = 0; i < 10; i++) {
-            assertTrue(recoveredTables.forTable(new TableId("testdb", null, "table_" + i)) != null);
+            assertThat(recoveredTables.forTable(new TableId("testdb", null, "table_" + i))).isNotNull();
         }
     }
 }

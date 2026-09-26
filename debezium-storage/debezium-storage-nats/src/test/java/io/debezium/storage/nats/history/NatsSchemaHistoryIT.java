@@ -6,9 +6,7 @@
 package io.debezium.storage.nats.history;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -38,6 +36,7 @@ import io.debezium.relational.history.SchemaHistoryException;
 import io.debezium.relational.history.SchemaHistoryListener;
 import io.debezium.storage.nats.NatsCommonConfig;
 import io.debezium.storage.nats.NatsConnection;
+import io.debezium.storage.nats.NatsContainer;
 import io.debezium.util.Collect;
 import io.nats.client.api.ConsumerInfo;
 import io.nats.client.api.StreamInfo;
@@ -51,27 +50,16 @@ import io.nats.client.support.NatsJetStreamConstants;
 @Testcontainers
 class NatsSchemaHistoryIT {
 
-    private static final String NATS_CONTAINER_IMAGE = "nats:2.12.0-alpine";
-    private static final int NATS_PORT = 4222;
-    private static final int NATS_MONITOR_PORT = 8222;
-
     @Container
     @SuppressWarnings("resource")
-    public GenericContainer<?> natsContainer = new GenericContainer<>(DockerImageName.parse(NATS_CONTAINER_IMAGE))
-            .withExposedPorts(NATS_PORT)
-            .withCommand("-js")
-            .withLogConsumer(frame -> {
-                if (frame != null && frame.getUtf8String() != null) {
-                    System.out.print(frame.getUtf8String());
-                }
-            });
+    public NatsContainer natsContainer = new NatsContainer();
 
     private String natsUrl;
     private SchemaHistory history;
 
     @BeforeEach
     public void setUp() {
-        natsUrl = "nats://%s:%d".formatted(natsContainer.getHost(), natsContainer.getFirstMappedPort());
+        natsUrl = natsContainer.getServerUrl();
         history = createHistory();
     }
 
@@ -112,13 +100,15 @@ class NatsSchemaHistoryIT {
     }
 
     @Test
+    @Timeout(30)
     public void shouldCreateAndInitializeStorage() {
         // Storage should be created and initialized
-        assertTrue(history.storageExists());
-        assertFalse(history.exists()); // No records yet
+        assertThat(history.storageExists()).isTrue();
+        assertThat(history.exists()).isFalse(); // No records yet
     }
 
     @Test
+    @Timeout(30)
     public void shouldBeIdempotentOnInitializeStorage() {
         // The stream already exists (created by createHistory() with the
         // default file storage). Re-initializing with a different stream
@@ -140,8 +130,9 @@ class NatsSchemaHistoryIT {
     }
 
     @Test
+    @Timeout(30)
     public void shouldDetectExistenceAfterStoringRecord() throws InterruptedException {
-        assertFalse(history.exists());
+        assertThat(history.exists()).isFalse();
 
         // Store a record
         Map<String, Object> source = server("test-server");
@@ -149,10 +140,11 @@ class NatsSchemaHistoryIT {
         history.record(source, position, "testdb", "CREATE TABLE test (id INT);");
 
         // Now it should exist
-        assertTrue(history.exists());
+        assertThat(history.exists()).isTrue();
     }
 
     @Test
+    @Timeout(30)
     public void shouldFailToStoreRecordBeforeStart() {
         NatsSchemaHistory newHistory = new NatsSchemaHistory();
         Map<String, String> config = Collect.hashMapOf(
@@ -166,16 +158,17 @@ class NatsSchemaHistoryIT {
         newHistory.configure(configuration, null, SchemaHistoryListener.NOOP, true);
         // Don't call start()
 
-        assertThrows(SchemaHistoryException.class, () -> {
+        assertThatThrownBy(() -> {
             Map<String, Object> source = server("test-server");
             Map<String, Object> position = position("test.log", 1, 0);
             newHistory.record(source, position, "testdb", "CREATE TABLE test (id INT);");
-        });
+        }).isInstanceOf(SchemaHistoryException.class);
 
         newHistory.stop();
     }
 
     @Test
+    @Timeout(30)
     public void shouldHandleMultipleStreams() {
         // Create a second history with different stream
         Map<String, String> config2 = Collect.hashMapOf(
@@ -196,20 +189,20 @@ class NatsSchemaHistoryIT {
 
         try {
             // Both should be independent
-            assertFalse(history.exists());
-            assertFalse(history2.exists());
+            assertThat(history.exists()).isFalse();
+            assertThat(history2.exists()).isFalse();
 
             // Store in first history
             Map<String, Object> source = server("test-server");
             Map<String, Object> position = position("test.log", 1, 0);
             history.record(source, position, "testdb", "CREATE TABLE test1 (id INT);");
-            assertTrue(history.exists());
-            assertFalse(history2.exists());
+            assertThat(history.exists()).isTrue();
+            assertThat(history2.exists()).isFalse();
 
             // Store in second history
             history2.record(source, position, "testdb", "CREATE TABLE test2 (id INT);");
-            assertTrue(history.exists());
-            assertTrue(history2.exists());
+            assertThat(history.exists()).isTrue();
+            assertThat(history2.exists()).isTrue();
 
         }
         finally {
@@ -218,6 +211,7 @@ class NatsSchemaHistoryIT {
     }
 
     @Test
+    @Timeout(30)
     @SuppressWarnings("deprecation")
     public void shouldRecoverFromEmptyStream() throws InterruptedException {
         // Recovery from empty stream should work
@@ -231,17 +225,18 @@ class NatsSchemaHistoryIT {
     }
 
     @Test
+    @Timeout(30)
     @SuppressWarnings("deprecation")
     public void shouldHandleInterruptionDuringRecovery() {
         // Test interruption handling
         Thread.currentThread().interrupt();
 
-        assertThrows(SchemaHistoryException.class, () -> {
+        assertThatThrownBy(() -> {
             Tables tables = new Tables();
             Map<String, Object> source = server("test-server");
             Map<String, Object> position = position("test.log", 1, 0);
             history.recover(source, position, tables, null);
-        });
+        }).isInstanceOf(SchemaHistoryException.class);
 
         // Clear interrupt flag
         Thread.interrupted();
@@ -322,10 +317,10 @@ class NatsSchemaHistoryIT {
             conn.close();
         }
 
-        SchemaHistoryException failure = assertThrows(SchemaHistoryException.class,
-                () -> history.record(source, position("test.log", 2, 0), "testdb", "CREATE TABLE t2 (id INT);"));
-        assertThat(failure.getMessage()).contains("test-schema-history");
-        assertThat(failure.getMessage()).contains("recovery");
+        assertThatThrownBy(() -> history.record(source, position("test.log", 2, 0), "testdb", "CREATE TABLE t2 (id INT);"))
+                .isInstanceOf(SchemaHistoryException.class)
+                .hasMessageContaining("test-schema-history")
+                .hasMessageContaining("recovery");
     }
 
     @Test
@@ -350,11 +345,10 @@ class NatsSchemaHistoryIT {
         impatient.start();
         try {
             Tables tables = new Tables();
-            SchemaHistoryException failure = assertThrows(SchemaHistoryException.class,
-                    () -> impatient.recover(source, position("test.log", 1, 0), tables, new MySqlAntlrDdlParser()));
-            assertThat(failure.getMessage()).contains("couldn't be recovered");
-            assertThat(failure.getMessage()).contains(
-                    NatsSchemaHistoryConfig.PROP_RECOVERY_TIMEOUT_MS.name());
+            assertThatThrownBy(() -> impatient.recover(source, position("test.log", 1, 0), tables, new MySqlAntlrDdlParser()))
+                    .isInstanceOf(SchemaHistoryException.class)
+                    .hasMessageContaining("couldn't be recovered")
+                    .hasMessageContaining(NatsSchemaHistoryConfig.PROP_RECOVERY_TIMEOUT_MS.name());
         }
         finally {
             impatient.stop();
@@ -464,14 +458,15 @@ class NatsSchemaHistoryIT {
         // answers the JetStream readiness probe, so start() must fail; the
         // established connection must be closed rather than left reconnecting
         // in the background. The monitoring endpoint reports live connections.
-        try (GenericContainer<?> plainNats = new GenericContainer<>(DockerImageName.parse(NATS_CONTAINER_IMAGE))
-                .withExposedPorts(NATS_PORT, NATS_MONITOR_PORT)
-                .withCommand("-m", String.valueOf(NATS_MONITOR_PORT))) {
+        try (GenericContainer<?> plainNats = new GenericContainer<>(DockerImageName.parse(NatsContainer.IMAGE))
+                .withExposedPorts(NatsContainer.NATS_PORT, NatsContainer.NATS_MONITOR_PORT)
+                .withCommand("-m", String.valueOf(NatsContainer.NATS_MONITOR_PORT))
+                .withLogConsumer(NatsContainer.logToStdout())) {
             plainNats.start();
 
             Map<String, String> config = new HashMap<>();
             config.put(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + NatsCommonConfig.NATS_URL.name(),
-                    "nats://" + plainNats.getHost() + ":" + plainNats.getMappedPort(NATS_PORT));
+                    NatsContainer.serverUrl(plainNats));
             config.put(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + NatsSchemaHistoryConfig.PROP_STREAM_NAME.name(),
                     "test-schema-history");
             config.put(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + NatsSchemaHistoryConfig.PROP_SUBJECT.name(),
@@ -479,7 +474,7 @@ class NatsSchemaHistoryIT {
 
             NatsSchemaHistory failing = new NatsSchemaHistory();
             failing.configure(Configuration.from(config), null, SchemaHistoryListener.NOOP, true);
-            assertThrows(SchemaHistoryException.class, failing::start);
+            assertThatThrownBy(failing::start).isInstanceOf(SchemaHistoryException.class);
 
             assertThat(connectionCount(plainNats))
                     .as("a failed start() must not leave a NATS connection behind")
@@ -494,7 +489,8 @@ class NatsSchemaHistoryIT {
      */
     private int connectionCount(GenericContainer<?> container) throws Exception {
         final URI connz = URI.create(
-                "http://" + container.getHost() + ":" + container.getMappedPort(NATS_MONITOR_PORT) + "/connz");
+                "http://%s:%d/connz".formatted(container.getHost(),
+                        container.getMappedPort(NatsContainer.NATS_MONITOR_PORT)));
         final HttpClient client = HttpClient.newHttpClient();
         final Pattern numConnections = Pattern.compile("\"num_connections\"\\s*:\\s*(\\d+)");
         int connections = -1;
@@ -502,7 +498,7 @@ class NatsSchemaHistoryIT {
             final String body = client.send(HttpRequest.newBuilder(connz).build(),
                     HttpResponse.BodyHandlers.ofString()).body();
             final Matcher matcher = numConnections.matcher(body);
-            assertTrue(matcher.find(), "monitoring endpoint did not report num_connections: " + body);
+            assertThat(matcher.find()).as("monitoring endpoint did not report num_connections: %s", body).isTrue();
             connections = Integer.parseInt(matcher.group(1));
             if (connections == 0) {
                 break;

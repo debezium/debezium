@@ -5,7 +5,7 @@
  */
 package io.debezium.storage.nats;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -28,7 +28,7 @@ class NatsConnectionTest {
         NatsConnection connection = new NatsConnection(new NatsCommonConfig(Configuration.from(props)));
 
         // Default reconnect wait of 2000ms yields 20 retries at 100ms intervals
-        assertEquals(20, connection.getRetryBudget());
+        assertThat(connection.getRetryBudget()).isEqualTo(20);
     }
 
     @Test
@@ -40,7 +40,7 @@ class NatsConnectionTest {
         props.put("nats.reconnect.wait.ms", "4000000000");
         NatsConnection connection = new NatsConnection(new NatsCommonConfig(Configuration.from(props)));
 
-        assertEquals(40_000_000, connection.getRetryBudget());
+        assertThat(connection.getRetryBudget()).isEqualTo(40_000_000);
     }
 
     @Test
@@ -50,6 +50,6 @@ class NatsConnectionTest {
         props.put("nats.reconnect.wait.ms", String.valueOf(Long.MAX_VALUE));
         NatsConnection connection = new NatsConnection(new NatsCommonConfig(Configuration.from(props)));
 
-        assertEquals(Integer.MAX_VALUE, connection.getRetryBudget());
+        assertThat(connection.getRetryBudget()).isEqualTo(Integer.MAX_VALUE);
     }
 }

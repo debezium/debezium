@@ -11,6 +11,15 @@
     <name>Debezium Storage NATS Module</name>
     <packaging>jar</packaging>
 
+    <properties>
+        <!--
+        The NATS server the integration tests run against. Tracks the newest 2.x release, so the
+        suite keeps exercising a current server. Pin a specific release with
+        -Dversion.nats.server=2.15.0-alpine, either locally or from CI.
+        -->
+        <version.nats.server>2-alpine</version.nats.server>
+    </properties>
+
     <dependencyManagement>
         <dependencies>
             <dependency>
@@ -129,6 +138,7 @@
                             <enableAssertions>true</enableAssertions>
                             <systemPropertyVariables>
                                 <!-- Make these available to the tests via system properties -->
+                                <version.nats.server>${version.nats.server}</version.nats.server>
                                 <skipLongRunningTests>false</skipLongRunningTests>
                             </systemPropertyVariables>
                             <runOrder>${runOrder}</runOrder>

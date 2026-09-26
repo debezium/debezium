@@ -6,14 +6,12 @@
 package io.debezium.storage.nats;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -33,21 +31,16 @@ import io.nats.client.JetStreamManagement;
 @Testcontainers
 class NatsConnectionIT {
 
-    private static final String NATS_CONTAINER_IMAGE = "nats:2.12.0-alpine";
-    private static final int NATS_PORT = 4222;
-
     @Container
     @SuppressWarnings("resource")
-    public GenericContainer<?> natsContainer = new GenericContainer<>(DockerImageName.parse(NATS_CONTAINER_IMAGE))
-            .withExposedPorts(NATS_PORT)
-            .withCommand("--jetstream");
+    public NatsContainer natsContainer = new NatsContainer();
 
     private String natsUrl;
     private NatsConnection natsConnection;
 
     @BeforeEach
     public void setUp() {
-        natsUrl = "nats://" + natsContainer.getHost() + ":" + natsContainer.getFirstMappedPort();
+        natsUrl = natsContainer.getServerUrl();
     }
 
     @AfterEach
@@ -59,12 +52,14 @@ class NatsConnectionIT {
 
     @Test
     public void shouldCreateConnection() throws Exception {
+        // createConfig() also sets the reconnect settings, so this covers the reconnect
+        // configuration path as well.
         NatsCommonConfig config = createConfig();
         natsConnection = new NatsConnection(config);
 
-        assertNotNull(natsConnection);
-        assertNotNull(natsConnection.getConnection());
-        assertEquals(Connection.Status.CONNECTED, natsConnection.getConnection().getStatus());
+        assertThat(natsConnection).isNotNull();
+        assertThat(natsConnection.getConnection()).isNotNull();
+        assertThat(natsConnection.getConnection().getStatus()).isEqualTo(Connection.Status.CONNECTED);
     }
 
     @Test
@@ -73,7 +68,7 @@ class NatsConnectionIT {
         natsConnection = new NatsConnection(config);
 
         JetStream jetStream = natsConnection.getJetStream();
-        assertNotNull(jetStream);
+        assertThat(jetStream).isNotNull();
     }
 
     @Test
@@ -82,7 +77,7 @@ class NatsConnectionIT {
         natsConnection = new NatsConnection(config);
 
         JetStreamManagement jsm = natsConnection.getJetStreamManagement();
-        assertNotNull(jsm);
+        assertThat(jsm).isNotNull();
     }
 
     @Test
@@ -92,10 +87,10 @@ class NatsConnectionIT {
 
         NatsCommonConfig natsConfig = new NatsCommonConfig(config);
 
-        assertThrows(Exception.class, () -> {
+        assertThatThrownBy(() -> {
             NatsConnection natsConnection = new NatsConnection(natsConfig);
             natsConnection.getConnection(); // This should trigger the connection attempt and throw an exception
-        });
+        }).isInstanceOf(Exception.class);
     }
 
     @Test
@@ -123,64 +118,42 @@ class NatsConnectionIT {
         natsConnection = new NatsConnection(config);
 
         Connection connection = natsConnection.getConnection();
-        assertTrue(connection.getStatus() == Connection.Status.CONNECTED);
+        assertThat(connection.getStatus()).isEqualTo(Connection.Status.CONNECTED);
 
         natsConnection.close();
 
         // Connection should be closed - check the original connection object
-        assertTrue(connection.getStatus() == Connection.Status.CLOSED);
+        assertThat(connection.getStatus()).isEqualTo(Connection.Status.CLOSED);
 
         // Also verify that isConnected() returns false
-        assertTrue(!natsConnection.isConnected());
+        assertThat(natsConnection.isConnected()).isFalse();
     }
 
     @Test
-    public void shouldHandleConnectionTimeout() {
+    @Timeout(30)
+    public void shouldFailToConnectWhenTheServerDoesNotRespond() {
+        // 192.0.2.1 is TEST-NET-1 (RFC 5737), which is not routable, so the connection
+        // attempt is dropped rather than refused and can only fail through the configured
+        // connection timeout. Disabling reconnects keeps that failure prompt.
         Configuration config = Configuration.from(Collect.hashMapOf(
-                "nats.url", natsUrl));
+                "nats.url", "nats://192.0.2.1:4222",
+                "nats.connection.timeout.ms", "500",
+                "nats.max.reconnects", "0"));
 
         NatsCommonConfig natsConfig = new NatsCommonConfig(config);
+        NatsConnection connection = new NatsConnection(natsConfig);
 
-        // Should still work with valid URL even with short timeout
-        natsConnection = new NatsConnection(natsConfig);
-        assertNotNull(natsConnection);
-    }
-
-    @Test
-    public void shouldConfigureConnectionName() throws Exception {
-        Configuration config = Configuration.from(Collect.hashMapOf(
-                "nats.url", natsUrl));
-
-        NatsCommonConfig natsConfig = new NatsCommonConfig(config);
-        natsConnection = new NatsConnection(natsConfig);
-
-        assertNotNull(natsConnection);
-        // Connection name should be set (though we can't easily verify it without
-        // server inspection)
-        assertTrue(natsConnection.getConnection().getStatus() == Connection.Status.CONNECTED);
-    }
-
-    @Test
-    public void shouldHandleReconnectSettings() throws Exception {
-        Configuration config = Configuration.from(Collect.hashMapOf(
-                "nats.url", natsUrl,
-                "nats.max.reconnects", "5",
-                "nats.reconnect.wait.ms", "1000"));
-
-        NatsCommonConfig natsConfig = new NatsCommonConfig(config);
-        natsConnection = new NatsConnection(natsConfig);
-
-        assertNotNull(natsConnection);
-        assertTrue(natsConnection.getConnection().getStatus() == Connection.Status.CONNECTED);
+        assertThatThrownBy(connection::getConnection).isInstanceOf(Exception.class);
     }
 
     @Test
     public void shouldConnectWithUserPassword() throws Exception {
-        try (GenericContainer<?> authNats = new GenericContainer<>(DockerImageName.parse(NATS_CONTAINER_IMAGE))
-                .withExposedPorts(NATS_PORT)
-                .withCommand("--jetstream", "--user", "debezium", "--pass", "secret")) {
+        try (GenericContainer<?> authNats = new GenericContainer<>(DockerImageName.parse(NatsContainer.IMAGE))
+                .withExposedPorts(NatsContainer.NATS_PORT)
+                .withCommand("-js", "--user", "debezium", "--pass", "secret")
+                .withLogConsumer(NatsContainer.logToStdout())) {
             authNats.start();
-            String url = "nats://" + authNats.getHost() + ":" + authNats.getFirstMappedPort();
+            String url = NatsContainer.serverUrl(authNats);
 
             NatsCommonConfig natsConfig = new NatsCommonConfig(Configuration.from(Collect.hashMapOf(
                     "nats.url", url,
@@ -188,7 +161,7 @@ class NatsConnectionIT {
                     "nats.password", "secret")), "");
             NatsConnection conn = new NatsConnection(natsConfig);
             try {
-                assertEquals(Connection.Status.CONNECTED, conn.getConnection().getStatus());
+                assertThat(conn.getConnection().getStatus()).isEqualTo(Connection.Status.CONNECTED);
             }
             finally {
                 conn.close();
@@ -198,18 +171,19 @@ class NatsConnectionIT {
 
     @Test
     public void shouldConnectWithToken() throws Exception {
-        try (GenericContainer<?> authNats = new GenericContainer<>(DockerImageName.parse(NATS_CONTAINER_IMAGE))
-                .withExposedPorts(NATS_PORT)
-                .withCommand("--jetstream", "--auth", "tokensecret")) {
+        try (GenericContainer<?> authNats = new GenericContainer<>(DockerImageName.parse(NatsContainer.IMAGE))
+                .withExposedPorts(NatsContainer.NATS_PORT)
+                .withCommand("-js", "--auth", "tokensecret")
+                .withLogConsumer(NatsContainer.logToStdout())) {
             authNats.start();
-            String url = "nats://" + authNats.getHost() + ":" + authNats.getFirstMappedPort();
+            String url = NatsContainer.serverUrl(authNats);
 
             NatsCommonConfig natsConfig = new NatsCommonConfig(Configuration.from(Collect.hashMapOf(
                     "nats.url", url,
                     "nats.token", "tokensecret")), "");
             NatsConnection conn = new NatsConnection(natsConfig);
             try {
-                assertEquals(Connection.Status.CONNECTED, conn.getConnection().getStatus());
+                assertThat(conn.getConnection().getStatus()).isEqualTo(Connection.Status.CONNECTED);
             }
             finally {
                 conn.close();
@@ -219,17 +193,18 @@ class NatsConnectionIT {
 
     @Test
     public void shouldFailToConnectWithoutCredentials() {
-        try (GenericContainer<?> authNats = new GenericContainer<>(DockerImageName.parse(NATS_CONTAINER_IMAGE))
-                .withExposedPorts(NATS_PORT)
-                .withCommand("--jetstream", "--user", "debezium", "--pass", "secret")) {
+        try (GenericContainer<?> authNats = new GenericContainer<>(DockerImageName.parse(NatsContainer.IMAGE))
+                .withExposedPorts(NatsContainer.NATS_PORT)
+                .withCommand("-js", "--user", "debezium", "--pass", "secret")
+                .withLogConsumer(NatsContainer.logToStdout())) {
             authNats.start();
-            String url = "nats://" + authNats.getHost() + ":" + authNats.getFirstMappedPort();
+            String url = NatsContainer.serverUrl(authNats);
 
             NatsCommonConfig natsConfig = new NatsCommonConfig(Configuration.from(Collect.hashMapOf(
                     "nats.url", url)), "");
             NatsConnection conn = new NatsConnection(natsConfig);
             try {
-                assertThrows(Exception.class, conn::getConnection);
+                assertThatThrownBy(conn::getConnection).isInstanceOf(Exception.class);
             }
             finally {
                 conn.close();
