@@ -17,10 +17,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
-import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 
 import io.debezium.config.Configuration;
 import io.debezium.spi.storage.OffsetStorageReader;
@@ -28,6 +26,7 @@ import io.debezium.spi.storage.OffsetStorageWriter;
 import io.debezium.spi.storage.OffsetStore;
 import io.debezium.spi.storage.OffsetStoreProvider;
 import io.debezium.storage.nats.NatsCommonConfig;
+import io.debezium.storage.nats.NatsContainer;
 import io.debezium.util.Collect;
 
 /**
@@ -41,21 +40,16 @@ import io.debezium.util.Collect;
 @Testcontainers
 class NatsOffsetStoreEndToEndIT {
 
-    private static final String NATS_CONTAINER_IMAGE = "nats:2.12.0-alpine";
-    private static final int NATS_PORT = 4222;
-
     @Container
     @SuppressWarnings("resource")
-    public GenericContainer<?> natsContainer = new GenericContainer<>(DockerImageName.parse(NATS_CONTAINER_IMAGE))
-            .withExposedPorts(NATS_PORT)
-            .withCommand("-js");
+    public NatsContainer natsContainer = new NatsContainer();
 
     private String natsUrl;
     private OffsetStore store;
 
     @BeforeEach
     public void setUp() {
-        natsUrl = "nats://%s:%d".formatted(natsContainer.getHost(), natsContainer.getMappedPort(NATS_PORT));
+        natsUrl = natsContainer.getServerUrl();
     }
 
     @AfterEach

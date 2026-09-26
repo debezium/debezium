@@ -15,10 +15,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
-import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
@@ -28,6 +26,7 @@ import io.debezium.relational.history.SchemaHistory;
 import io.debezium.relational.history.SchemaHistoryException;
 import io.debezium.relational.history.SchemaHistoryListener;
 import io.debezium.storage.nats.NatsCommonConfig;
+import io.debezium.storage.nats.NatsContainer;
 import io.debezium.util.Collect;
 import io.nats.client.Connection;
 import io.nats.client.Message;
@@ -44,23 +43,19 @@ import io.nats.client.support.NatsJetStreamConstants;
 @Testcontainers
 class NatsSchemaHistoryIntegrityIT {
 
-    private static final String NATS_CONTAINER_IMAGE = "nats:2.12.0-alpine";
-    private static final int NATS_PORT = 4222;
     private static final String STREAM_NAME = "integrity-schema-history";
     private static final String SUBJECT = "integrity.schema.history";
 
     @Container
     @SuppressWarnings("resource")
-    public GenericContainer<?> natsContainer = new GenericContainer<>(DockerImageName.parse(NATS_CONTAINER_IMAGE))
-            .withExposedPorts(NATS_PORT)
-            .withCommand("-js");
+    public NatsContainer natsContainer = new NatsContainer();
 
     private String natsUrl;
     private SchemaHistory history;
 
     @BeforeEach
     public void setUp() {
-        natsUrl = "nats://%s:%d".formatted(natsContainer.getHost(), natsContainer.getMappedPort(NATS_PORT));
+        natsUrl = natsContainer.getServerUrl();
         history = createHistory(SchemaHistoryListener.NOOP);
     }
 

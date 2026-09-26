@@ -22,10 +22,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
-import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
@@ -49,19 +47,9 @@ import io.debezium.util.Collect;
 @Testcontainers
 class NatsStorageIT {
 
-    private static final String NATS_CONTAINER_IMAGE = "nats:2.12.0-alpine";
-    private static final int NATS_PORT = 4222;
-
     @Container
     @SuppressWarnings("resource")
-    public GenericContainer<?> natsContainer = new GenericContainer<>(DockerImageName.parse(NATS_CONTAINER_IMAGE))
-            .withExposedPorts(NATS_PORT)
-            .withCommand("-js")
-            .withLogConsumer(frame -> {
-                if (frame != null && frame.getUtf8String() != null) {
-                    System.out.print(frame.getUtf8String());
-                }
-            });
+    public NatsContainer natsContainer = new NatsContainer();
 
     private String natsUrl;
     private NatsSchemaHistory schemaHistory;
@@ -70,7 +58,7 @@ class NatsStorageIT {
 
     @BeforeEach
     public void setUp() {
-        natsUrl = "nats://%s:%d".formatted(natsContainer.getHost(), natsContainer.getMappedPort(NATS_PORT));
+        natsUrl = natsContainer.getServerUrl();
 
         parser = new MySqlAntlrDdlParser();
         setupSchemaHistory();

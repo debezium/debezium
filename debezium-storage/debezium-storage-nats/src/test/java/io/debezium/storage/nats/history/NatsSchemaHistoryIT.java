@@ -38,6 +38,7 @@ import io.debezium.relational.history.SchemaHistoryException;
 import io.debezium.relational.history.SchemaHistoryListener;
 import io.debezium.storage.nats.NatsCommonConfig;
 import io.debezium.storage.nats.NatsConnection;
+import io.debezium.storage.nats.NatsContainer;
 import io.debezium.util.Collect;
 import io.nats.client.api.ConsumerInfo;
 import io.nats.client.api.StreamInfo;
@@ -51,27 +52,16 @@ import io.nats.client.support.NatsJetStreamConstants;
 @Testcontainers
 class NatsSchemaHistoryIT {
 
-    private static final String NATS_CONTAINER_IMAGE = "nats:2.12.0-alpine";
-    private static final int NATS_PORT = 4222;
-    private static final int NATS_MONITOR_PORT = 8222;
-
     @Container
     @SuppressWarnings("resource")
-    public GenericContainer<?> natsContainer = new GenericContainer<>(DockerImageName.parse(NATS_CONTAINER_IMAGE))
-            .withExposedPorts(NATS_PORT)
-            .withCommand("-js")
-            .withLogConsumer(frame -> {
-                if (frame != null && frame.getUtf8String() != null) {
-                    System.out.print(frame.getUtf8String());
-                }
-            });
+    public NatsContainer natsContainer = new NatsContainer();
 
     private String natsUrl;
     private SchemaHistory history;
 
     @BeforeEach
     public void setUp() {
-        natsUrl = "nats://%s:%d".formatted(natsContainer.getHost(), natsContainer.getMappedPort(NATS_PORT));
+        natsUrl = natsContainer.getServerUrl();
         history = createHistory();
     }
 
@@ -471,14 +461,15 @@ class NatsSchemaHistoryIT {
         // answers the JetStream readiness probe, so start() must fail; the
         // established connection must be closed rather than left reconnecting
         // in the background. The monitoring endpoint reports live connections.
-        try (GenericContainer<?> plainNats = new GenericContainer<>(DockerImageName.parse(NATS_CONTAINER_IMAGE))
-                .withExposedPorts(NATS_PORT, NATS_MONITOR_PORT)
-                .withCommand("-m", String.valueOf(NATS_MONITOR_PORT))) {
+        try (GenericContainer<?> plainNats = new GenericContainer<>(DockerImageName.parse(NatsContainer.IMAGE))
+                .withExposedPorts(NatsContainer.NATS_PORT, NatsContainer.NATS_MONITOR_PORT)
+                .withCommand("-m", String.valueOf(NatsContainer.NATS_MONITOR_PORT))
+                .withLogConsumer(NatsContainer.logToStdout())) {
             plainNats.start();
 
             Map<String, String> config = new HashMap<>();
             config.put(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + NatsCommonConfig.NATS_URL.name(),
-                    "nats://%s:%d".formatted(plainNats.getHost(), plainNats.getMappedPort(NATS_PORT)));
+                    NatsContainer.serverUrl(plainNats));
             config.put(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + NatsSchemaHistoryConfig.PROP_STREAM_NAME.name(),
                     "test-schema-history");
             config.put(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + NatsSchemaHistoryConfig.PROP_SUBJECT.name(),
@@ -501,7 +492,8 @@ class NatsSchemaHistoryIT {
      */
     private int connectionCount(GenericContainer<?> container) throws Exception {
         final URI connz = URI.create(
-                "http://" + container.getHost() + ":" + container.getMappedPort(NATS_MONITOR_PORT) + "/connz");
+                "http://%s:%d/connz".formatted(container.getHost(),
+                        container.getMappedPort(NatsContainer.NATS_MONITOR_PORT)));
         final HttpClient client = HttpClient.newHttpClient();
         final Pattern numConnections = Pattern.compile("\"num_connections\"\\s*:\\s*(\\d+)");
         int connections = -1;

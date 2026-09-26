@@ -34,26 +34,16 @@ import io.nats.client.JetStreamManagement;
 @Testcontainers
 class NatsConnectionIT {
 
-    private static final String NATS_CONTAINER_IMAGE = "nats:2.12.0-alpine";
-    private static final int NATS_PORT = 4222;
-
     @Container
     @SuppressWarnings("resource")
-    public GenericContainer<?> natsContainer = new GenericContainer<>(DockerImageName.parse(NATS_CONTAINER_IMAGE))
-            .withExposedPorts(NATS_PORT)
-            .withCommand("-js")
-            .withLogConsumer(frame -> {
-                if (frame != null && frame.getUtf8String() != null) {
-                    System.out.print(frame.getUtf8String());
-                }
-            });
+    public NatsContainer natsContainer = new NatsContainer();
 
     private String natsUrl;
     private NatsConnection natsConnection;
 
     @BeforeEach
     public void setUp() {
-        natsUrl = "nats://%s:%d".formatted(natsContainer.getHost(), natsContainer.getMappedPort(NATS_PORT));
+        natsUrl = natsContainer.getServerUrl();
     }
 
     @AfterEach
@@ -161,11 +151,12 @@ class NatsConnectionIT {
 
     @Test
     public void shouldConnectWithUserPassword() throws Exception {
-        try (GenericContainer<?> authNats = new GenericContainer<>(DockerImageName.parse(NATS_CONTAINER_IMAGE))
-                .withExposedPorts(NATS_PORT)
-                .withCommand("-js", "--user", "debezium", "--pass", "secret")) {
+        try (GenericContainer<?> authNats = new GenericContainer<>(DockerImageName.parse(NatsContainer.IMAGE))
+                .withExposedPorts(NatsContainer.NATS_PORT)
+                .withCommand("-js", "--user", "debezium", "--pass", "secret")
+                .withLogConsumer(NatsContainer.logToStdout())) {
             authNats.start();
-            String url = "nats://%s:%d".formatted(authNats.getHost(), authNats.getMappedPort(NATS_PORT));
+            String url = NatsContainer.serverUrl(authNats);
 
             NatsCommonConfig natsConfig = new NatsCommonConfig(Configuration.from(Collect.hashMapOf(
                     "nats.url", url,
@@ -183,11 +174,12 @@ class NatsConnectionIT {
 
     @Test
     public void shouldConnectWithToken() throws Exception {
-        try (GenericContainer<?> authNats = new GenericContainer<>(DockerImageName.parse(NATS_CONTAINER_IMAGE))
-                .withExposedPorts(NATS_PORT)
-                .withCommand("-js", "--auth", "tokensecret")) {
+        try (GenericContainer<?> authNats = new GenericContainer<>(DockerImageName.parse(NatsContainer.IMAGE))
+                .withExposedPorts(NatsContainer.NATS_PORT)
+                .withCommand("-js", "--auth", "tokensecret")
+                .withLogConsumer(NatsContainer.logToStdout())) {
             authNats.start();
-            String url = "nats://%s:%d".formatted(authNats.getHost(), authNats.getMappedPort(NATS_PORT));
+            String url = NatsContainer.serverUrl(authNats);
 
             NatsCommonConfig natsConfig = new NatsCommonConfig(Configuration.from(Collect.hashMapOf(
                     "nats.url", url,
@@ -204,11 +196,12 @@ class NatsConnectionIT {
 
     @Test
     public void shouldFailToConnectWithoutCredentials() {
-        try (GenericContainer<?> authNats = new GenericContainer<>(DockerImageName.parse(NATS_CONTAINER_IMAGE))
-                .withExposedPorts(NATS_PORT)
-                .withCommand("-js", "--user", "debezium", "--pass", "secret")) {
+        try (GenericContainer<?> authNats = new GenericContainer<>(DockerImageName.parse(NatsContainer.IMAGE))
+                .withExposedPorts(NatsContainer.NATS_PORT)
+                .withCommand("-js", "--user", "debezium", "--pass", "secret")
+                .withLogConsumer(NatsContainer.logToStdout())) {
             authNats.start();
-            String url = "nats://%s:%d".formatted(authNats.getHost(), authNats.getMappedPort(NATS_PORT));
+            String url = NatsContainer.serverUrl(authNats);
 
             NatsCommonConfig natsConfig = new NatsCommonConfig(Configuration.from(Collect.hashMapOf(
                     "nats.url", url)), "");
