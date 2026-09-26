@@ -13,8 +13,11 @@ import java.sql.SQLException;
 import java.sql.SQLRecoverableException;
 import java.sql.SQLSyntaxErrorException;
 import java.sql.SQLTransientException;
+import java.util.OptionalInt;
 
 import org.junit.jupiter.api.Test;
+
+import io.debezium.doc.FixFor;
 
 class QueryInformationSchemaMetadataTest {
 
@@ -59,5 +62,18 @@ class QueryInformationSchemaMetadataTest {
     @Test
     void nullThrowableIsNotRetriable() {
         assertThat(QueryInformationSchemaMetadata.isRetriable(null)).isFalse();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2695")
+    void hypertableIdIsParsedFromDefaultChunkName() {
+        assertThat(QueryInformationSchemaMetadata.hypertableIdFromChunkName("_hyper_26_2403_chunk")).isEqualTo(OptionalInt.of(26));
+    }
+
+    @Test
+    void hypertableIdIsNotParsedFromOtherTableNames() {
+        assertThat(QueryInformationSchemaMetadata.hypertableIdFromChunkName("custom_chunk")).isEmpty();
+        assertThat(QueryInformationSchemaMetadata.hypertableIdFromChunkName("compress_hyper_2_3_chunk")).isEmpty();
+        assertThat(QueryInformationSchemaMetadata.hypertableIdFromChunkName("_hyper_x_1_chunk")).isEmpty();
     }
 }
