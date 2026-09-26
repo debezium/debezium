@@ -106,7 +106,7 @@ public class NatsCommonConfig {
     private long reconnectWaitMs;
     private String user;
     private String password;
-    private String token;
+    private char[] token;
     private boolean tlsEnabled;
     private String tlsTruststorePath;
     private String tlsTruststorePassword;
@@ -165,7 +165,10 @@ public class NatsCommonConfig {
         this.reconnectWaitMs = c.getLong(NATS_RECONNECT_WAIT_MS);
         this.user = c.getString(NATS_USER);
         this.password = c.getString(NATS_PASSWORD);
-        this.token = c.getString(NATS_TOKEN);
+        // Kept as char[] so it can be handed to the jnats client without an
+        // additional String copy; a blank value means no token authentication.
+        final String tokenValue = c.getString(NATS_TOKEN);
+        this.token = Strings.isNullOrBlank(tokenValue) ? new char[0] : tokenValue.toCharArray();
         this.tlsEnabled = c.getBoolean(NATS_TLS_ENABLED);
         this.tlsTruststorePath = c.getString(NATS_TLS_TRUSTSTORE_PATH);
         this.tlsTruststorePassword = c.getString(NATS_TLS_TRUSTSTORE_PASSWORD);
@@ -199,7 +202,7 @@ public class NatsCommonConfig {
         return password;
     }
 
-    public String getToken() {
+    public char[] getToken() {
         return token;
     }
 

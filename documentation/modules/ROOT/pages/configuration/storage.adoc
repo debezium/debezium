@@ -949,6 +949,14 @@ offset.storage.nats.bucket.name=debezium-offsets
 |120000
 |Specifies the JetStream duplicate window, in milliseconds, which is the period during which the stream discards a message whose ID it has already seen. This stops a schema history record from being stored twice when a publish is retried after a lost acknowledgement. A value of `0` or less leaves the server default in place, which is what the server substitutes for a window of zero.
 
+|[[schema-history-internal-nats-retry-delay-ms]]<<schema-history-internal-nats-retry-delay-ms, `schema.history.internal.nats.retry.delay.ms`>>
+|100
+|Specifies the time, in milliseconds, that {prodname} waits after a failure before it retries publishing a schema history record.
+
+|[[schema-history-internal-nats-max-retries]]<<schema-history-internal-nats-max-retries, `schema.history.internal.nats.max.retries`>>
+|20
+|Specifies the maximum number of times that {prodname} retries publishing a failed schema history record. Together with xref:schema-history-internal-nats-retry-delay-ms[`schema.history.internal.nats.retry.delay.ms`], this bounds how long a single publish can spend being retried. The stream's xref:schema-history-internal-nats-duplicate-window-ms[`schema.history.internal.nats.duplicate.window.ms`] must cover at least that long for a retried record to be recognized as a duplicate.
+
 |[[schema-history-internal-nats-recovery-poll-interval-ms]]<<schema-history-internal-nats-recovery-poll-interval-ms, `schema.history.internal.nats.recovery.poll.interval.ms`>>
 |100
 |Specifies the interval, in milliseconds, that {prodname} waits between polling requests for persisted data during recovery.

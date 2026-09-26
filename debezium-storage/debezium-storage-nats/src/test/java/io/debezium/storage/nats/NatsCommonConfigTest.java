@@ -5,6 +5,7 @@
  */
 package io.debezium.storage.nats;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -44,7 +45,7 @@ class NatsCommonConfigTest {
 
         assertEquals("debezium", natsConfig.getUser());
         assertEquals("secret", natsConfig.getPassword());
-        assertEquals("tokensecret", natsConfig.getToken());
+        assertArrayEquals("tokensecret".toCharArray(), natsConfig.getToken());
         assertTrue(natsConfig.isTlsEnabled());
         assertEquals("/tmp/truststore.jks", natsConfig.getTlsTruststorePath());
         assertEquals("changeit", natsConfig.getTlsTruststorePassword());
@@ -65,7 +66,7 @@ class NatsCommonConfigTest {
         assertFalse(natsConfig.isTlsEnabled());
         assertEquals("", natsConfig.getUser());
         assertEquals("", natsConfig.getPassword());
-        assertEquals("", natsConfig.getToken());
+        assertEquals(0, natsConfig.getToken().length);
         assertEquals("JKS", natsConfig.getTlsTruststoreType());
         assertEquals("JKS", natsConfig.getTlsKeystoreType());
     }

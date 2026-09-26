@@ -48,9 +48,9 @@ import io.nats.client.api.ObjectInfo;
  * clobbering each other's offsets. A zero-byte object represents a null
  * offset value.
  * <p>
- * Keys whose encoded name would exceed the NATS object name limit (255
- * characters) are stored under a SHA-256 hash of the key, with the original
- * key embedded in the object payload.
+ * Keys whose encoded name would be too long to embed in a NATS subject are
+ * stored under a SHA-256 hash of the key, with the original key embedded in
+ * the object payload; see {@link #MAX_OBJECT_NAME_LENGTH}.
  *
  * @author Nick Chomey
  */
@@ -61,8 +61,11 @@ public class NatsOffsetBackingStore implements OffsetStore {
     private static final Base64.Decoder OBJECT_NAME_DECODER = Base64.getUrlDecoder();
 
     /**
-     * Documented NATS object name limit. The prefix below is not part of the
-     * base64url alphabet, so names are unambiguous.
+     * Threshold above which an encoded key is stored under a hashed name.
+     * Object names are embedded in NATS subjects, which the server bounds by
+     * its control line limit (4096 bytes by default), so this keeps names
+     * comfortably below any server configuration. The prefix below is not
+     * part of the base64url alphabet, so names are unambiguous.
      */
     private static final int MAX_OBJECT_NAME_LENGTH = 255;
     private static final String LONG_KEY_PREFIX = "long:";
@@ -90,11 +93,6 @@ public class NatsOffsetBackingStore implements OffsetStore {
         this.config = new NatsOffsetBackingStoreConfig(config);
     }
 
-    @VisibleForTesting
-    public void configure(NatsOffsetBackingStoreConfig config) {
-        this.config = config;
-    }
-
     @Override
     public synchronized void start() {
         executor = Executors.newSingleThreadExecutor(r -> {
@@ -105,16 +103,6 @@ public class NatsOffsetBackingStore implements OffsetStore {
         LOGGER.info("Starting NatsOffsetBackingStore");
         connect();
         load();
-    }
-
-    @VisibleForTesting
-    synchronized void startNoLoad() {
-        executor = Executors.newSingleThreadExecutor(r -> {
-            Thread t = new Thread(r, "nats-offset-backing-store");
-            t.setDaemon(true);
-            return t;
-        });
-        connect();
     }
 
     @Override
@@ -196,13 +184,6 @@ public class NatsOffsetBackingStore implements OffsetStore {
         }
 
         LOGGER.info("Loaded {} offsets from NATS Object Store", data.size());
-    }
-
-    /**
-     * Save offsets to NATS Object Store
-     */
-    protected void save() {
-        save(data.keySet());
     }
 
     /**

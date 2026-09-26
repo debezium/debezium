@@ -10,10 +10,16 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -47,6 +53,7 @@ class NatsSchemaHistoryIT {
 
     private static final String NATS_CONTAINER_IMAGE = "nats:2.12.0-alpine";
     private static final int NATS_PORT = 4222;
+    private static final int NATS_MONITOR_PORT = 8222;
 
     @Container
     @SuppressWarnings("resource")
@@ -64,7 +71,7 @@ class NatsSchemaHistoryIT {
 
     @BeforeEach
     public void setUp() {
-        natsUrl = "nats://localhost:" + natsContainer.getMappedPort(NATS_PORT);
+        natsUrl = "nats://%s:%d".formatted(natsContainer.getHost(), natsContainer.getFirstMappedPort());
         history = createHistory();
     }
 
@@ -448,6 +455,61 @@ class NatsSchemaHistoryIT {
         finally {
             conn.close();
         }
+    }
+
+    @Test
+    @Timeout(60)
+    public void shouldNotLeakConnectionWhenJetStreamIsNotEnabled() throws Exception {
+        // A plain nats-server without -js accepts the TCP connection but never
+        // answers the JetStream readiness probe, so start() must fail; the
+        // established connection must be closed rather than left reconnecting
+        // in the background. The monitoring endpoint reports live connections.
+        try (GenericContainer<?> plainNats = new GenericContainer<>(DockerImageName.parse(NATS_CONTAINER_IMAGE))
+                .withExposedPorts(NATS_PORT, NATS_MONITOR_PORT)
+                .withCommand("-m", String.valueOf(NATS_MONITOR_PORT))) {
+            plainNats.start();
+
+            Map<String, String> config = new HashMap<>();
+            config.put(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + NatsCommonConfig.NATS_URL.name(),
+                    "nats://" + plainNats.getHost() + ":" + plainNats.getMappedPort(NATS_PORT));
+            config.put(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + NatsSchemaHistoryConfig.PROP_STREAM_NAME.name(),
+                    "test-schema-history");
+            config.put(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + NatsSchemaHistoryConfig.PROP_SUBJECT.name(),
+                    "test.schema.history");
+
+            NatsSchemaHistory failing = new NatsSchemaHistory();
+            failing.configure(Configuration.from(config), null, SchemaHistoryListener.NOOP, true);
+            assertThrows(SchemaHistoryException.class, failing::start);
+
+            assertThat(connectionCount(plainNats))
+                    .as("a failed start() must not leave a NATS connection behind")
+                    .isZero();
+        }
+    }
+
+    /**
+     * Number of live client connections the server reports on its monitoring
+     * endpoint, polled briefly because the server accounts for a closed socket
+     * asynchronously.
+     */
+    private int connectionCount(GenericContainer<?> container) throws Exception {
+        final URI connz = URI.create(
+                "http://" + container.getHost() + ":" + container.getMappedPort(NATS_MONITOR_PORT) + "/connz");
+        final HttpClient client = HttpClient.newHttpClient();
+        final Pattern numConnections = Pattern.compile("\"num_connections\"\\s*:\\s*(\\d+)");
+        int connections = -1;
+        for (int attempt = 0; attempt < 100; attempt++) {
+            final String body = client.send(HttpRequest.newBuilder(connz).build(),
+                    HttpResponse.BodyHandlers.ofString()).body();
+            final Matcher matcher = numConnections.matcher(body);
+            assertTrue(matcher.find(), "monitoring endpoint did not report num_connections: " + body);
+            connections = Integer.parseInt(matcher.group(1));
+            if (connections == 0) {
+                break;
+            }
+            Thread.sleep(100);
+        }
+        return connections;
     }
 
     @SuppressWarnings("deprecation")
