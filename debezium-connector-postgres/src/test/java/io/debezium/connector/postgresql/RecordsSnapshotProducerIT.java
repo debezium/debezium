@@ -1380,6 +1380,47 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#1175")
+    public void shouldNotIncludeChildTableRowsIntoInheritanceParentTableSnapshot() throws Exception {
+
+        // create parent table and a child table inheriting from it
+        TestHelper.dropAllSchemas();
+        TestHelper.execute(
+                "CREATE SCHEMA s1;"
+                        + "CREATE TABLE s1.parent (pk SERIAL PRIMARY KEY, aa integer);"
+                        + "CREATE TABLE s1.child (PRIMARY KEY(pk)) INHERITS (s1.parent);");
+
+        // insert records, one in the parent itself and two in the child
+        TestHelper.execute("INSERT into s1.parent VALUES(1, 1)");
+        TestHelper.execute("INSERT into s1.child VALUES(2, 2)");
+        TestHelper.execute("INSERT into s1.child VALUES(3, 3)");
+
+        // start connector
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_ONLY.getValue())
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.parent,s1.child");
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted();
+
+        // check that the child rows are only emitted for the child table
+        final int expectedCount = 3;
+        SourceRecords actualRecords = consumeRecordsByTopic(expectedCount);
+        assertThat(actualRecords.allRecordsInOrder().size()).isEqualTo(expectedCount);
+
+        List<SourceRecord> recordsForTopicParent = actualRecords.recordsForTopic(topicName("s1.parent"));
+        assertThat(recordsForTopicParent.size()).isEqualTo(1);
+        VerifyRecord.isValidRead(recordsForTopicParent.remove(0), PK_FIELD, 1);
+
+        List<SourceRecord> recordsForTopicChild = actualRecords.recordsForTopic(topicName("s1.child"));
+        assertThat(recordsForTopicChild.size()).isEqualTo(2);
+        VerifyRecord.isValidRead(recordsForTopicChild.remove(0), PK_FIELD, 2);
+        VerifyRecord.isValidRead(recordsForTopicChild.remove(0), PK_FIELD, 3);
+
+        assertNoRecordsToConsume();
+    }
+
+    @Test
     @FixFor("DBZ-6669")
     public void shouldGenerateSnapshotWhenSignalDataCollectionIsPresentWithoutTableIncludeList() throws Exception {
 

@@ -27,6 +27,7 @@ import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.OptionalLong;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -102,6 +103,7 @@ public class PostgresConnection extends JdbcConnection {
 
     private final TypeRegistry typeRegistry;
     private final PostgresDefaultValueConverter defaultValueConverter;
+    private final Map<TableId, Boolean> partitionedTables = new ConcurrentHashMap<>();
 
     /**
      * Creates a Postgres connection using the supplied configuration.
@@ -944,6 +946,46 @@ public class PostgresConnection extends JdbcConnection {
                 new String[]{ "TABLE", "PARTITIONED TABLE" });
     }
 
+    /**
+     * The table is referenced with {@code ONLY} so that rows of tables inheriting from it are not read: those rows are
+     * captured from the child tables themselves, both during snapshot and streaming. Partitioned tables are the
+     * exception, as they have no storage of their own and {@code ONLY} would always return no rows.
+     */
+    @Override
+    public String tableReferenceForDataQuery(TableId tableId) {
+        final String quotedTableId = quotedTableIdString(tableId);
+        return isPartitionedTable(tableId) ? quotedTableId : "ONLY " + quotedTableId;
+    }
+
+    /**
+     * Determines whether the given table is a partitioned table (declarative partitioning root).
+     * The result is cached, as a table cannot change its kind without being dropped and re-created.
+     *
+     * @param tableId the table id
+     * @return {@code true} if the table is partitioned, {@code false} otherwise
+     */
+    public boolean isPartitionedTable(TableId tableId) {
+        final Boolean cached = partitionedTables.get(tableId);
+        if (cached != null) {
+            return cached;
+        }
+        try {
+            final boolean partitioned = prepareQueryAndMap(
+                    "SELECT c.relkind = 'p' FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace "
+                            + "WHERE n.nspname = ? AND c.relname = ?",
+                    statement -> {
+                        statement.setString(1, tableId.schema());
+                        statement.setString(2, tableId.table());
+                    },
+                    rs -> rs.next() && rs.getBoolean(1));
+            partitionedTables.put(tableId, partitioned);
+            return partitioned;
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Failed to determine whether table " + tableId + " is partitioned", e);
+        }
+    }
+
     @Override
     public <T extends DataCollectionId> ChunkQueryBuilder<T> chunkQueryBuilder(RelationalDatabaseConnectorConfig connectorConfig) {
         // PostgreSQL definitely must use row value constructors in order to yield optimal results. See DBZ-5071.
@@ -988,7 +1030,7 @@ public class PostgresConnection extends JdbcConnection {
             throws SQLException {
         final String query = String.format("SELECT %s FROM %s WHERE %s",
                 columns.stream().map(this::quoteIdentifier).collect(Collectors.joining(",")),
-                quotedTableIdString(table.id()),
+                tableReferenceForDataQuery(table.id()),
                 keyColumns.stream()
                         .map(key -> {
                             Column column = table.columnWithName(key);
