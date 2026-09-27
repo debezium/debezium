@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -45,6 +46,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.CaptureMode;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.FullUpdateType;
 import io.debezium.connector.mongodb.connection.MongoDbConnections;
+import io.debezium.connector.mongodb.events.SplitEventHandler;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 import io.debezium.heartbeat.Heartbeat;
@@ -66,6 +68,115 @@ public class MongoDbSplitEventIT extends AbstractMongoConnectorIT {
                 Arguments.of(CaptureMode.CHANGE_STREAMS_WITH_PRE_IMAGE, FullUpdateType.LOOKUP, 2),
                 Arguments.of(CaptureMode.CHANGE_STREAMS_UPDATE_FULL_WITH_PRE_IMAGE, FullUpdateType.LOOKUP, 3),
                 Arguments.of(CaptureMode.CHANGE_STREAMS_UPDATE_FULL_WITH_PRE_IMAGE, FullUpdateType.POST_IMAGE, 3));
+    }
+
+    @ParameterizedTest
+    @MethodSource("captureModes")
+    @FixFor("debezium/dbz#2690")
+    void shouldEmitOnlyCompleteSplitEvent(CaptureMode captureMode, FullUpdateType fullUpdateType, int fragmentCount)
+            throws InterruptedException {
+        configureSnapshot(captureMode, fullUpdateType);
+        config = config.edit()
+                .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.NO_DATA)
+                .with(MongoDbConnectorConfig.MAX_BATCH_SIZE, 1)
+                .build();
+
+        final List<CountDownLatch> fragmentGates = new ArrayList<>();
+        for (int i = 1; i < fragmentCount; i++) {
+            fragmentGates.add(new CountDownLatch(1));
+        }
+        final var continueProcessing = new Semaphore(0);
+        final var gateFailure = new AtomicReference<Throwable>();
+        final var engineFailure = new AtomicReference<Throwable>();
+        final var splitLogger = (Logger) org.slf4j.LoggerFactory.getLogger(SplitEventHandler.class);
+        final var previousLevel = splitLogger.getLevel();
+        final var interceptor = new LogInterceptor(splitLogger.getName()) {
+            @Override
+            protected void append(ILoggingEvent event) {
+                if (!"streaming".equals(event.getMDCPropertyMap().get(LoggingContext.CONNECTOR_CONTEXT))
+                        || !"Change Stream event is a fragment: {} of {}".equals(event.getMessage())) {
+                    return;
+                }
+                final int fragment = (Integer) event.getArgumentArray()[0];
+                if (fragment > 1) {
+                    // This runs on the streaming thread before handling the next fragment,
+                    // so the preceding fragments have already passed through the handler.
+                    fragmentGates.get(fragment - 2).countDown();
+                    try {
+                        if (!continueProcessing.tryAcquire(30, TimeUnit.SECONDS)) {
+                            gateFailure.set(new IllegalStateException("Timed out waiting to release fragment " + fragment));
+                        }
+                    }
+                    catch (InterruptedException e) {
+                        gateFailure.set(e);
+                        Thread.currentThread().interrupt();
+                    }
+                }
+            }
+        };
+        splitLogger.setLevel(Level.TRACE);
+
+        try (var client = connect()) {
+            final var collection = createSnapshotCollection(client.getDatabase("dbit"));
+            final var before = new Document("_id", 1).append("payload", "a".repeat(9 * 1024 * 1024));
+            final var after = new Document("_id", 1).append("payload", "b".repeat(9 * 1024 * 1024));
+            final var marker = new Document("_id", 2).append("marker", "after-split-event");
+            collection.insertOne(before);
+            start(MongoDbConnector.class, config, (success, message, error) -> {
+                if (!success) {
+                    engineFailure.set(new DebeziumException(message, error));
+                }
+            });
+            waitForStreamingRunning("mongodb", "mongo");
+
+            try (var observer = openSplitStream(collection, captureMode, fullUpdateType).cursor()) {
+                collection.updateOne(new Document("_id", 1), new Document("$set", new Document("payload", after.getString("payload"))));
+                final var fragments = readSplitEvent(observer, fragmentCount);
+                collection.insertOne(marker);
+
+                for (int i = 0; i < fragmentGates.size(); i++) {
+                    assertThat(fragmentGates.get(i).await(30, TimeUnit.SECONDS))
+                            .as("Streaming reached fragment %s of %s", i + 2, fragmentCount).isTrue();
+                    assertThat(waitForAvailableRecords(1, TimeUnit.SECONDS))
+                            .as("No record is emitted after only %s of %s fragments", i + 1, fragmentCount).isFalse();
+                    assertThat(gateFailure.get()).isNull();
+                    assertThat(engineFailure.get()).isNull();
+                    assertConnectorIsRunning();
+                    continueProcessing.release();
+                }
+
+                // The marker proves that streaming has moved beyond the split event. Any
+                // extra emission for its fragments would appear before the marker.
+                final var records = consumeRecordsByTopic(2).allRecordsInOrder();
+                assertThat(records).hasSize(2);
+                final var update = records.get(0);
+                final var value = (Struct) update.value();
+                assertThat(value.getString(Envelope.FieldName.OPERATION)).isEqualTo(Envelope.Operation.UPDATE.code());
+                if (captureMode.isFullUpdate()) {
+                    assertThat(Document.parse(value.getString("after"))).isEqualTo(after);
+                }
+                if (captureMode.isIncludePreImage()) {
+                    assertThat(Document.parse(value.getString("before"))).isEqualTo(before);
+                }
+                assertThat(Document.parse(value.getStruct("updateDescription").getString("updatedFields")))
+                        .isEqualTo(new Document("payload", after.getString("payload")));
+                assertThat(update.sourceOffset().get(SourceInfo.RESUME_TOKEN))
+                        .isEqualTo(ResumeTokens.toBase64(fragments.get(fragmentCount - 1).getResumeToken()));
+                final var markerValue = (Struct) records.get(1).value();
+                assertThat(markerValue.getString(Envelope.FieldName.OPERATION)).isEqualTo(Envelope.Operation.CREATE.code());
+                assertThat(Document.parse(markerValue.getString("after"))).isEqualTo(marker);
+                assertThat(waitForAvailableRecords(1, TimeUnit.SECONDS)).isFalse();
+                assertThat(gateFailure.get()).isNull();
+                assertThat(engineFailure.get()).isNull();
+            }
+        }
+        finally {
+            continueProcessing.release(fragmentCount);
+            stopConnector();
+            splitLogger.detachAppender(interceptor);
+            splitLogger.setLevel(previousLevel);
+            interceptor.stop();
+        }
     }
 
     @ParameterizedTest
@@ -237,7 +348,7 @@ public class MongoDbSplitEventIT extends AbstractMongoConnectorIT {
         try (var client = connect()) {
             final var collection = createSnapshotCollection(client.getDatabase("dbit"));
             collection.insertOne(new Document("_id", 1).append("payload", "a".repeat(9 * 1024 * 1024)));
-            try (var probe = MongoUtils.openChangeStream(client, context).batchSize(1).cursor();
+            try (var probe = MongoUtils.openChangeStream(client, context).cursor();
                     var observer = openSplitStream(collection, captureMode, fullUpdateType).cursor()) {
                 collection.updateOne(new Document("_id", 1),
                         new Document("$set", new Document("payload", "b".repeat(9 * 1024 * 1024))));
@@ -382,7 +493,7 @@ public class MongoDbSplitEventIT extends AbstractMongoConnectorIT {
         try (var client = connect()) {
             final var collection = createSnapshotCollection(client.getDatabase("dbit"));
             collection.insertOne(new Document("_id", 1).append("payload", "a".repeat(9 * 1024 * 1024)));
-            try (var probe = MongoUtils.openChangeStream(client, context).batchSize(1).cursor()) {
+            try (var probe = MongoUtils.openChangeStream(client, context).cursor()) {
                 collection.updateOne(new Document("_id", 1),
                         new Document("$set", new Document("payload", "b".repeat(9 * 1024 * 1024))));
                 assertThat(readChangeStreamEvent(probe).getSplitEvent().getFragment()).isEqualTo(1);
@@ -398,6 +509,7 @@ public class MongoDbSplitEventIT extends AbstractMongoConnectorIT {
         config = TestHelper.getConfiguration(mongo).edit()
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.snapshotSplitEvents")
+                .with(MongoDbConnectorConfig.QUERY_FETCH_SIZE, 1)
                 .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.INITIAL)
                 .with(MongoDbConnectorConfig.CAPTURE_MODE, captureMode)
                 .with(MongoDbConnectorConfig.CAPTURE_MODE_FULL_UPDATE_TYPE, fullUpdateType)
