@@ -98,8 +98,8 @@ public final class ConnectionStrings {
         return credentials == null ? connectionString
                 : Strings.mask(
                         connectionString,
+                        "***",
                         credentials.getUserName(),
-                        credentials.getSource(),
                         credentials.getPassword() != null ? String.valueOf(credentials.getPassword()) : null);
     }
 

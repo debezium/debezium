@@ -1225,9 +1225,17 @@ public final class Strings {
      * @return original string with sensitive data masked
      */
     public static String mask(String original, String mask, String... sensitives) {
+        if (original == null) {
+            return null;
+        }
+        if (sensitives == null || sensitives.length == 0) {
+            return original;
+        }
+        String replacement = mask != null ? mask : "***";
         return Arrays.stream(sensitives)
                 .filter(Objects::nonNull)
-                .reduce(original, (masked, sensitive) -> masked.replace(sensitive, "***"));
+                .filter(s -> !s.isEmpty())
+                .reduce(original, (masked, sensitive) -> masked.replace(sensitive, replacement));
     }
 
     private Strings() {
