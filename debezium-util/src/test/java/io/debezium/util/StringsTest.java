@@ -522,4 +522,28 @@ public class StringsTest {
                 s -> s.split(","), Function.identity());
         assertThat(result).containsExactly("db1.col1", "db2.col2", "db3.col3");
     }
+
+    @Test
+    @FixFor("debezium/dbz#2719")
+    public void shouldMaskSensitiveDataWithDefaultMask() {
+        String result = Strings.mask("Server host=db.internal:3306 user=admin pass=secret", "***", "admin", "secret");
+        assertThat(result).isEqualTo("Server host=db.internal:3306 user=*** pass=***");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2719")
+    public void shouldMaskSensitiveDataWithCustomMask() {
+        String result = Strings.mask("Server host=db.internal:3306 user=admin pass=secret", "<REDACTED>", "admin", "secret");
+        assertThat(result).isEqualTo("Server host=db.internal:3306 user=<REDACTED> pass=<REDACTED>");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2719")
+    public void shouldHandleNullAndEmptyInMask() {
+        assertThat(Strings.mask(null, "***", "secret")).isNull();
+        assertThat(Strings.mask("test", "***", (String[]) null)).isEqualTo("test");
+        assertThat(Strings.mask("test", "***", (String) null)).isEqualTo("test");
+        assertThat(Strings.mask("test", "***", "")).isEqualTo("test");
+        assertThat(Strings.mask("test", null, "test")).isEqualTo("***");
+    }
 }
