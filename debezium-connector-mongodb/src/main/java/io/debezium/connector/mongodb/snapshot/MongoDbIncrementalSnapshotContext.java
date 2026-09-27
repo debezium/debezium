@@ -81,7 +81,10 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
 
     /**
      * Exclusive lower bound of the current window, captured before its end position advances.
-     * Checkpoint this boundary because window records are not emitted in primary-key order.
+     * MongoDB queries are sorted, but parallel chunk reads interleave insertions into an unordered
+     * {@code ConcurrentHashMap} buffer. Its iteration order does not preserve key order even with
+     * one snapshot thread, so {@code lastEventKeySent} may be ahead of undelivered keys.
+     * Checkpoint this boundary to replay the unfinished window without skipping those keys.
      */
     private Object[] chunkStartPosition;
 
