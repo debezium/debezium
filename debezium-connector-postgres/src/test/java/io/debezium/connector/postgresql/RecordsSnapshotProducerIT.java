@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -61,6 +62,7 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingM
 import io.debezium.spi.converter.CustomConverter;
 import io.debezium.spi.converter.RelationalColumn;
 import io.debezium.time.Date;
+import io.debezium.time.IsoTime;
 import io.debezium.time.MicroTimestamp;
 import io.debezium.time.ZonedTime;
 import io.debezium.time.ZonedTimestamp;
@@ -1121,6 +1123,48 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
 
         consumer.process(record -> assertReadRecord(record, Collect.hashMapOf("public.time_array_table", schemaAndValuesForTimeArrayTypes())));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2559")
+    public void shouldSnapshotFractionalTimeArrayIndependentOfJvmZone() throws Exception {
+        TimeZone original = TimeZone.getDefault();
+        TimeZone.setDefault(TimeZone.getTimeZone("GMT+3"));
+        try {
+            TestHelper.execute("CREATE TABLE time_precision_array_table (pk SERIAL, timea time(6)[] NOT NULL, primary key(pk));");
+            TestHelper.execute("INSERT INTO time_precision_array_table (timea) VALUES "
+                    + "('{\"02:59:59.999999\", \"02:59:59.999999\"}'), "
+                    + "('{\"03:00:00.000000\", \"03:00:00.000000\"}'), "
+                    + "('{\"03:00:00.123456\", \"03:00:00.123456\"}')");
+
+            buildNoStreamProducer(TestHelper.defaultConfig()
+                    .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, false)
+                    .with(PostgresConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.ISOSTRING)
+                    .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.time_precision_array_table"));
+
+            final TestConsumer consumer = testConsumer(3, "public");
+            consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+            final List<SourceRecord> records = new ArrayList<>();
+            consumer.process(records::add);
+            assertThat(records).hasSize(3);
+
+            assertRecordSchemaAndValues(List.of(timeArrayField(
+                    List.of("02:59:59.999999Z", "02:59:59.999999Z"))), records.get(0), Envelope.FieldName.AFTER);
+            assertRecordSchemaAndValues(List.of(timeArrayField(
+                    List.of("03:00:00Z", "03:00:00Z"))), records.get(1), Envelope.FieldName.AFTER);
+            assertRecordSchemaAndValues(List.of(timeArrayField(
+                    List.of("03:00:00.123456Z", "03:00:00.123456Z"))), records.get(2), Envelope.FieldName.AFTER);
+        }
+        finally {
+            TimeZone.setDefault(original);
+        }
+    }
+
+    private static SchemaAndValueField timeArrayField(List<String> values) {
+        return new SchemaAndValueField("timea",
+                SchemaBuilder.array(IsoTime.builder().optional().build()).build(),
+                values);
     }
 
     @Test
