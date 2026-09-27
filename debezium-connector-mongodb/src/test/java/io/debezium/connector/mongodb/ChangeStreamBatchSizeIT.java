@@ -61,6 +61,9 @@ public class ChangeStreamBatchSizeIT extends AbstractMongoConnectorIT {
             "deployment,,0",
             "database,batch_size_test,0",
             "collection,batch_size_test.events,0",
+            "deployment,,1",
+            "database,batch_size_test,1",
+            "collection,batch_size_test.events,1",
             "deployment,,2",
             "database,batch_size_test,2",
             "collection,batch_size_test.events,2"
