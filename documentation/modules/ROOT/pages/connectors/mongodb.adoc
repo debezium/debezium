@@ -363,8 +363,10 @@ include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.ado
 
 include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+3]
 
+Although incremental snapshot queries return documents sorted by `_id`, the connector does not preserve that order when emitting incremental snapshot records, even when xref:mongodb-property-snapshot-max-threads[`snapshot.max.threads`] is set to `1`.
 If the connector restarts during an incremental snapshot, it re-reads the snapshot window that was in progress to avoid skipping documents that were not emitted before shutdown.
-Records already emitted from that window can be emitted again.
+Re-reading the window can produce duplicate `read` events for documents already emitted before the restart, consistent with at-least-once delivery.
+The potential replay volume scales with the window size, which is based on the product of xref:mongodb-property-incremental-snapshot-chunk-size[`incremental.snapshot.chunk.size`] and xref:mongodb-property-snapshot-max-threads[`snapshot.max.threads`].
 
 [WARNING]
 ====
@@ -1891,7 +1893,8 @@ That is, the specified expression is matched against the entire name string of t
 
 |[[mongodb-property-snapshot-max-threads]]<<mongodb-property-snapshot-max-threads, `+snapshot.max.threads+`>>
 |`1`
-|Positive integer value that specifies the maximum number of threads used to perform an intial sync of the collections in a replica set. Defaults to 1.
+|Positive integer value that specifies the maximum number of threads used to perform an initial sync of the collections in a replica set. Defaults to 1.
+The connector also uses this number of threads to read chunks in parallel during incremental snapshots.
 
 |[[mongodb-property-snapshot-mode]]<<mongodb-property-snapshot-mode, `+snapshot.mode+`>>
 |_initial_
