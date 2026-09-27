@@ -51,6 +51,7 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
 
     protected S schema;
     protected C connectorConfig;
+    protected boolean tableIdCaseInsensitive = false;
 
     protected BinlogDatabaseSchemaTest(String ddlStatements) {
         this.ddlStatements = ddlStatements;
@@ -483,5 +484,36 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
     protected abstract P initializePartition(C connectorConfig, Configuration taskConfig);
 
     protected abstract O initializeOffset(C connectorConfig);
+
+    @Test
+    @FixFor("debezium/dbz#2622")
+    void shouldAssignTableNumberForMixedCaseCatalogWhenCaseInsensitive() throws InterruptedException {
+        tableIdCaseInsensitive = true;
+        try {
+            final Configuration config = DATABASE.defaultConfigWithoutDatabaseFilter()
+                    .with(SchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, true)
+                    .build();
+            schema = getSchema(config);
+            schema.initializeStorage();
+            final P partition = initializePartition(connectorConfig, config);
+            final O offset = initializeOffset(connectorConfig);
+
+            offset.setBinlogStartPoint("binlog.001", 400);
+            schema.parseStreamingDdl(partition, "SET " + BinlogSystemVariables.CHARSET_NAME_SERVER + "=utf8mb4", null,
+                    offset, Instant.now()).forEach(x -> schema.applySchemaChange(x));
+            schema.parseStreamingDdl(partition,
+                    "CREATE TABLE MixedCaseDb.CaseTest_UC (id INT PRIMARY KEY, val VARCHAR(64));",
+                    "db1", offset, Instant.now()).forEach(x -> schema.applySchemaChange(x));
+
+            // The snapshot registered the table under the mixed-case identifier.
+            assertThat(schema.schemaFor(new TableId("MixedCaseDb", null, "CaseTest_UC"))).isNotNull();
+
+            // The binlog TABLE_MAP emits the fully lowercased form; assignTableNumber must find it.
+            assertThat(schema.assignTableNumber(1L, new TableId("mixedcasedb", null, "casetest_uc"))).isTrue();
+        }
+        finally {
+            tableIdCaseInsensitive = false;
+        }
+    }
 
 }
