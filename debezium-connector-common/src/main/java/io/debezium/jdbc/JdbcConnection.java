@@ -1724,7 +1724,7 @@ public class JdbcConnection implements AutoCloseable {
      * @return the row count statement, returning the count as the first column of a single row
      */
     public String buildSelectRowCount(TableId tableId) {
-        return "SELECT COUNT(1) FROM %s".formatted(quotedTableIdString(tableId));
+        return "SELECT COUNT(1) FROM %s".formatted(tableReferenceForDataQuery(tableId));
     }
 
     public String buildSelectWithRowLimits(TableId tableId, int limit, String projection, Optional<String> condition,
@@ -1738,7 +1738,7 @@ public class JdbcConnection implements AutoCloseable {
         sql
                 .append(projection)
                 .append(" FROM ");
-        sql.append(quotedTableIdString(tableId));
+        sql.append(tableReferenceForDataQuery(tableId));
         tableAlias.ifPresent(alias -> sql.append(' ').append(alias));
         if (condition.isPresent()) {
             sql
@@ -1765,7 +1765,7 @@ public class JdbcConnection implements AutoCloseable {
         StringBuilder sql = new StringBuilder("SELECT ")
                 .append(projection)
                 .append(" FROM ")
-                .append(quotedTableIdString(tableId));
+                .append(tableReferenceForDataQuery(tableId));
         if (!Strings.isNullOrBlank(condition)) {
             sql.append(" WHERE ")
                     .append(condition);
@@ -1859,6 +1859,20 @@ public class JdbcConnection implements AutoCloseable {
      */
     public String quotedTableIdString(TableId tableId) {
         return tableId.toDoubleQuotedString();
+    }
+
+    /**
+     * Returns the reference to be used in the {@code FROM} clause of the queries reading the data of a table,
+     * e.g. during snapshots (chunk reads, row counts, key boundaries) or column re-selection.
+     * <p>
+     * Defaults to the quoted table id; dialects can override it to qualify the reference, e.g. to exclude
+     * rows of inheriting tables.
+     *
+     * @param tableId the table to be read
+     * @return the table reference
+     */
+    public String tableReferenceForDataQuery(TableId tableId) {
+        return quotedTableIdString(tableId);
     }
 
     /**
