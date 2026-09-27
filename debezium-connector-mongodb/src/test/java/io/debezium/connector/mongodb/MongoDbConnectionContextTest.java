@@ -46,6 +46,6 @@ public class MongoDbConnectionContextTest {
         var connectionContext = new MongoDbConnectionContext(config);
 
         var masked = connectionContext.getMaskedConnectionString();
-        assertThat(masked).isEqualTo("mongodb://***:***@localhost:27017/?authSource=admin");
+        assertThat(masked).isEqualTo("mongodb://***:***@localhost:27017/?authSource=***");
     }
 }

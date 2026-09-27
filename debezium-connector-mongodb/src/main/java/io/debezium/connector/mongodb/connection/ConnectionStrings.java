@@ -100,6 +100,7 @@ public final class ConnectionStrings {
                         connectionString,
                         "***",
                         credentials.getUserName(),
+                        credentials.getSource(),
                         credentials.getPassword() != null ? String.valueOf(credentials.getPassword()) : null);
     }
 
