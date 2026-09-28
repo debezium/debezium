@@ -10,6 +10,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -95,6 +96,14 @@ public class MongoDbConnectionContext implements AutoCloseable {
         return clientFactory.openClient();
     }
 
+    public void forEachCollectionNameInDatabase(MongoClient client, String databaseName, Consumer<String> operation) {
+        MongoUtils.forEachCollectionNameInDatabase(clientFactory, client, databaseName, operation);
+    }
+
+    public void forEachDatabaseName(MongoClient client, Consumer<String> operation) {
+        MongoUtils.forEachDatabaseName(clientFactory, client, operation);
+    }
+
     public ClusterDescription getClusterDescription() {
         try (var client = openClient()) {
             LOGGER.info("Reading description of cluster at {}", getMaskedConnectionString());
@@ -117,7 +126,7 @@ public class MongoDbConnectionContext implements AutoCloseable {
 
         var shardNames = new HashSet<String>();
         try (var client = openClient()) {
-            MongoUtils.onCollectionDocuments(client.getClient(), "config", "shards", doc -> {
+            MongoUtils.onCollectionDocuments(clientFactory, client.getClient(), "config", "shards", doc -> {
                 String shardName = doc.getString("_id");
                 shardNames.add(shardName);
             });

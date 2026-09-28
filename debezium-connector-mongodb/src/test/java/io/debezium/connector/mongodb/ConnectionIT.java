@@ -52,6 +52,11 @@ public class ConnectionIT extends AbstractMongoIT {
     }
 
     @Test
+    void shouldReadHelloOperationTimeUsingConfiguredReadPreference() throws InterruptedException {
+        assertThat(connection.hello()).isNotNull();
+    }
+
+    @Test
     void shouldUseSSL() throws InterruptedException, IOException {
         assertThrows(DebeziumException.class, () -> {
             // Use the DB configuration to define the connector's configuration ...

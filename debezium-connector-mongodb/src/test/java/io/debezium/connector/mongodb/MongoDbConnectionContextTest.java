@@ -9,6 +9,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
 
+import com.mongodb.ReadPreference;
+import com.mongodb.Tag;
+import com.mongodb.TagSet;
+
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.connection.MongoDbConnectionContext;
@@ -28,6 +32,34 @@ public class MongoDbConnectionContextTest {
                 .with(MongoDbConnectorConfig.CONNECTION_STRING, connectionString)
                 .with(MongoDbConnectorConfig.SSL_ENABLED, ssl)
                 .build();
+    }
+
+    @Test
+    void shouldDefaultToPrimaryReadPreference() {
+        var connectionContext = new MongoDbConnectionContext(getConfig("mongodb://localhost:27017/", false));
+
+        assertThat(connectionContext.getConnectionString().getReadPreference()).isNull();
+        try (var client = connectionContext.getMongoClient()) {
+            assertThat(client.getReadPreference()).isEqualTo(ReadPreference.primary());
+        }
+    }
+
+    @Test
+    void shouldParseTaggedSecondaryReadPreferenceFromStandardConnectionString() {
+        var connectionContext = new MongoDbConnectionContext(getConfig(
+                "mongodb://localhost:27017/?readPreference=secondary&readPreferenceTags=region:east", false));
+
+        assertThat(connectionContext.getConnectionString().getReadPreference())
+                .isEqualTo(ReadPreference.secondary(new TagSet(new Tag("region", "east"))));
+    }
+
+    @Test
+    void shouldParseTaggedSecondaryReadPreferenceFromSrvConnectionString() {
+        var connectionContext = new MongoDbConnectionContext(getConfig(
+                "mongodb+srv://cluster0.example.com/?readPreference=secondary&readPreferenceTags=region:east", false));
+
+        assertThat(connectionContext.getConnectionString().getReadPreference())
+                .isEqualTo(ReadPreference.secondary(new TagSet(new Tag("region", "east"))));
     }
 
     @Test
