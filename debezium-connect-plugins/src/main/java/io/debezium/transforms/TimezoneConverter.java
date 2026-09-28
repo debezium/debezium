@@ -381,7 +381,8 @@ public class TimezoneConverter<R extends ConnectRecord<R>> implements Transforma
             }
 
             if (shouldIncludeField && (supportedLogicalType || isEpochType)) {
-                if (value.get(field) != null) {
+                // Use getWithoutDefault so that an explicit null is not replaced by the schema default value
+                if (value.getWithoutDefault(field.name()) != null) {
                     handleValueForField(valueFieldName, value, field);
                 }
             }
@@ -395,11 +396,11 @@ public class TimezoneConverter<R extends ConnectRecord<R>> implements Transforma
     private void handleValueForField(String valueFieldName, Struct value, org.apache.kafka.connect.data.Field field) {
         String fieldName = field.name();
         Schema schema = field.schema();
-        Object fieldValue = value.get(fieldName);
+        Object fieldValue = value.getWithoutDefault(fieldName);
         Object newValue = fieldValue;
         if (fieldValue != null) {
             if (schema.name() != null) {
-                newValue = getTimestampWithTimezone(schema.name(), value.get(fieldName));
+                newValue = getTimestampWithTimezone(schema.name(), fieldValue);
             }
             else if (schema.name() == null && isEpochType(valueFieldName, field)) {
                 newValue = getEpochWithTimezone(fieldName, fieldValue);

@@ -1060,4 +1060,58 @@ public class TimezoneConverterTest {
 
         return ((Struct) transformedRecord.value()).getStruct(Envelope.FieldName.AFTER);
     }
+
+    @Test
+    @FixFor("debezium/dbz#2723")
+    public void testExplicitNullIsNotReplacedWithSchemaDefaultValue() {
+        final Map<String, String> props = new HashMap<>();
+        props.put("converted.timezone", "+05:30");
+        converter.configure(props);
+
+        final Schema recordSchemaWithDefaults = SchemaBuilder.struct().optional()
+                .field("id", Schema.INT8_SCHEMA)
+                .field("name", Schema.STRING_SCHEMA)
+                .field("order_date_timestamp", Timestamp.builder().optional().defaultValue(1514908810123L).build())
+                .field("order_date_zoned_timestamp", ZonedTimestamp.builder().optional().defaultValue("2023-08-01T11:50:45+00:00").build())
+                .build();
+
+        final Struct before = new Struct(recordSchemaWithDefaults);
+        final Struct source = new Struct(sourceSchema);
+
+        before.put("id", (byte) 1);
+        before.put("name", "John Doe");
+        before.put("order_date_timestamp", null);
+        before.put("order_date_zoned_timestamp", null);
+
+        source.put("table", "customers");
+        source.put("lsn", 1);
+        source.put("ts_ms", 123456789L);
+
+        final Envelope envelope = Envelope.defineSchema()
+                .withName("dummy.Envelope")
+                .withRecord(recordSchemaWithDefaults)
+                .withSource(sourceSchema)
+                .build();
+
+        final Struct payload = envelope.create(before, source, Instant.now());
+
+        SourceRecord record = new SourceRecord(
+                new HashMap<>(),
+                new HashMap<>(),
+                "db.server1.table1",
+                envelope.schema(),
+                payload);
+
+        VerifyRecord.isValid(record);
+        final SourceRecord transformedRecord = converter.apply(record);
+        VerifyRecord.isValid(transformedRecord);
+
+        final Struct transformedValue = (Struct) transformedRecord.value();
+        final Struct transformedAfter = transformedValue.getStruct(Envelope.FieldName.AFTER);
+
+        assertThat(transformedAfter.getWithoutDefault("order_date_timestamp")).isNull();
+        assertThat(transformedAfter.getWithoutDefault("order_date_zoned_timestamp")).isNull();
+        assertThat(transformedAfter.schema().field("order_date_timestamp").schema().defaultValue()).isEqualTo(1514908810123L);
+        assertThat(transformedAfter.schema().field("order_date_zoned_timestamp").schema().defaultValue()).isEqualTo("2023-08-01T11:50:45+00:00");
+    }
 }
