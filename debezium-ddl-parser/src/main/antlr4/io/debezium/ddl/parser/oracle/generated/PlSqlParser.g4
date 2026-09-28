@@ -3123,8 +3123,8 @@ create_materialized_view_log
     // table_partitioning_clauses TODO
     (
         WITH (','? ( OBJECT ID | PRIMARY KEY | ROWID | SEQUENCE | COMMIT SCN))* (
-            '(' ( ','? regular_id)+ ')' new_values_clause?
-        )? mv_log_purge_clause?
+            '(' ( ','? regular_id)+ ')'
+        )? new_values_clause? mv_log_purge_clause?
     )*
     ;
 
