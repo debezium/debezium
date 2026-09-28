@@ -135,19 +135,15 @@ public class SqlServerDatabaseDialect extends GeneralDatabaseDialect {
 
     @Override
     public String getQueryBindingWithValueCast(ColumnDescriptor column, Schema schema, JdbcType type) {
-        if (schema.type() == Schema.Type.STRING) {
+        if (column.isPrimaryKey() && schema.type() == Schema.Type.STRING) {
             final String typeName = column.getTypeName().toLowerCase();
 
             if ("varchar".equals(typeName)) {
-                final int precision = column.getPrecision();
-                final String precisionString;
-                if (precision > getMaxVarcharLengthInKey() || precision <= 0) {
-                    precisionString = "max";
+                int precision = column.getPrecision();
+                if(precision <= 0 || precision > 900) {
+                    precision = 900;
                 }
-                else {
-                    precisionString = Integer.toString(precision);
-                }
-                return "cast(? as varchar(" + precisionString + "))";
+                return "cast(? as varchar(%d))".formatted(precision);
             }
         }
         return super.getQueryBindingWithValueCast(column, schema, type);
