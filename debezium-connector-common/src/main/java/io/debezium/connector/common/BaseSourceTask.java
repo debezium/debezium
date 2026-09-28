@@ -525,6 +525,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
     private void stop(boolean restart) {
         stateLock.lock();
+        boolean interrupted = false;
 
         try {
             if (restart) {
@@ -534,6 +535,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
                 LOGGER.info("Stopping down connector");
             }
 
+            Throwable shutdownFailure = null;
             try {
                 if (coordinator != null) {
                     coordinator.stop();
@@ -542,11 +544,29 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             }
             catch (InterruptedException e) {
                 Thread.interrupted();
+                interrupted = true;
                 LOGGER.error("Interrupted while stopping coordinator", e);
-                throw new ConnectException("Interrupted while stopping coordinator, failing the task");
+                final var exception = new ConnectException("Interrupted while stopping coordinator, failing the task", e);
+                shutdownFailure = exception;
+                throw exception;
             }
-
-            doStop();
+            catch (RuntimeException | Error e) {
+                shutdownFailure = e;
+                throw e;
+            }
+            finally {
+                try {
+                    doStop();
+                }
+                catch (RuntimeException | Error cleanupFailure) {
+                    if (shutdownFailure == null) {
+                        throw cleanupFailure;
+                    }
+                    if (shutdownFailure != cleanupFailure) {
+                        shutdownFailure.addSuppressed(cleanupFailure);
+                    }
+                }
+            }
 
             if (restart) {
                 setTaskState(DebeziumTaskState.RESTARTING);
@@ -563,9 +583,15 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         }
         finally {
             stateLock.unlock();
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
         }
     }
 
+    /**
+     * Releases connector-specific resources, including when coordinator shutdown fails.
+     */
     protected abstract void doStop();
 
     @Override
