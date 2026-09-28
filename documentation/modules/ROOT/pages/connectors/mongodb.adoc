@@ -1223,8 +1223,8 @@ The MongoDB connector uses MongoDB's change streams to capture the changes, so t
 See the MongoDB documentation for setting up a https://docs.mongodb.com/manual/replication/[replica set] or https://docs.mongodb.com/manual/sharding/[sharded cluster].
 Also, be sure to understand how to enable https://docs.mongodb.com/manual/tutorial/deploy-replica-set-with-keyfile-access-control/#deploy-repl-set-with-auth[access control and authentication] with replica sets.
 
-You must also have a MongoDB user that has the appropriate roles to read the `admin` database where the oplog can be read. Additionally, the user must also be able to read the `config` database in the configuration server of a sharded cluster and must have `listDatabases` privilege action.
-When change streams are used (the default) the user also must have cluster-wide privilege actions `find` and `changeStream`.
+You must also have a MongoDB user that has the appropriate roles to read the `admin` database where the oplog can be read. Additionally, the user must also be able to read the `config` database in the configuration server of a sharded cluster, and if the connector's xref:mongodb-property-capture-scope[`capture.scope`] property is set to `deployment` (the default), the user must have the `listDatabases` privilege action.
+When change streams are used (the default) the user also must have the `find` and `changeStream` privilege actions. If `capture.scope` is set to `deployment`, these actions must be granted cluster-wide; if `capture.scope` is set to `database` or `collection`, see xref:required-user-permissions[Required user permissions] for the scope-dependent permissions to grant instead.
 
 When you intend to utilize pre-image and populate the `before` field, you need to first enable `changeStreamPreAndPostImages` for a collection using `db.createCollection()`, `create`, or `collMod`.
 
