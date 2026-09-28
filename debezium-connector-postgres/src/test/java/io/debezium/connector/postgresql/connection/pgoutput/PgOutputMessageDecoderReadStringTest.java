@@ -6,13 +6,18 @@
 package io.debezium.connector.postgresql.connection.pgoutput;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 import org.junit.jupiter.api.Test;
+
+import io.debezium.doc.FixFor;
 
 /**
  * Tests for the {@code readString} method in {@link PgOutputMessageDecoder}.
@@ -117,6 +122,7 @@ public class PgOutputMessageDecoderReadStringTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2710")
     void shouldDecodeLengthPrefixedStrings() throws Exception {
         final var values = new String[]{ "Fri, 25 Sep 2026 11:20:33 +0000", "{}", "Successful ✅", "Cairo القاهرة", "" };
         final var buffer = toLengthPrefixedBuffer(values);
@@ -125,5 +131,53 @@ public class PgOutputMessageDecoderReadStringTest {
             assertThat(invokeReadColumnValueAsString(buffer))
                     .isEqualTo(value);
         }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2710")
+    void shouldFailWhenNullTerminatorIsMissing() {
+        final var buffer = ByteBuffer.wrap("abc".getBytes(StandardCharsets.UTF_8));
+
+        assertThatThrownBy(() -> invokeReadString(buffer))
+                .isInstanceOf(InvocationTargetException.class)
+                .hasCauseInstanceOf(BufferUnderflowException.class);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2710")
+    void shouldFailOnEmptyBufferForNullTerminatedString() {
+        final var buffer = ByteBuffer.allocate(0);
+
+        assertThatThrownBy(() -> invokeReadString(buffer))
+                .isInstanceOf(InvocationTargetException.class)
+                .hasCauseInstanceOf(BufferUnderflowException.class);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2710")
+    void shouldFailWhenLengthPrefixExceedsRemainingBytes() {
+        // The backing array is larger than the buffer limit, so without a bounds check the
+        // string would be built from bytes beyond the limit
+        final var buffer = ByteBuffer.wrap(new byte[64]);
+        buffer.putInt(10);
+        buffer.put("abc".getBytes(StandardCharsets.UTF_8));
+        buffer.flip();
+
+        assertThatThrownBy(() -> invokeReadColumnValueAsString(buffer))
+                .isInstanceOf(InvocationTargetException.class)
+                .hasCauseInstanceOf(BufferUnderflowException.class);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2710")
+    void shouldFailWhenLengthPrefixIsNegative() {
+        final var buffer = ByteBuffer.allocate(Integer.BYTES + 3);
+        buffer.putInt(-1);
+        buffer.put("abc".getBytes(StandardCharsets.UTF_8));
+        buffer.flip();
+
+        assertThatThrownBy(() -> invokeReadColumnValueAsString(buffer))
+                .isInstanceOf(InvocationTargetException.class)
+                .hasCauseInstanceOf(BufferUnderflowException.class);
     }
 }
