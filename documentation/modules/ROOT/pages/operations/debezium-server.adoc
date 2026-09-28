@@ -1368,7 +1368,18 @@ https://docs.microsoft.com/azure/event-hubs/event-hubs-about[Azure Event Hubs] i
 
 |[[connection-string]]<<connection-string, `debezium.sink.eventhubs.connectionstring`>>
 |
-|https://docs.microsoft.com/azure/event-hubs/event-hubs-get-connection-string[Connection string] required to communicate with Event Hubs. The format is: `Endpoint=sb://<NAMESPACE>/;SharedAccessKeyName=<ACCESS_KEY_NAME>;SharedAccessKey=<ACCESS_KEY_VALUE>`
+|https://docs.microsoft.com/azure/event-hubs/event-hubs-get-connection-string[Connection string] required to communicate with Event Hubs when `debezium.sink.eventhubs.authmode` is set to `connection-string`. The format is: `Endpoint=sb://<NAMESPACE>/;SharedAccessKeyName=<ACCESS_KEY_NAME>;SharedAccessKey=<ACCESS_KEY_VALUE>`
+
+|[[auth-mode]]<<auth-mode, `debezium.sink.eventhubs.authmode`>>
+|`connection-string`
+|Authentication mode for the Event Hubs sink. Possible values are:
+
+- `connection-string`: Authenticate using the shared access key connection string specified by `debezium.sink.eventhubs.connectionstring`. This is the default.
+- `default-azure-credential`: Authenticate using Azure Entra ID via `DefaultAzureCredential`. When this mode is used, `debezium.sink.eventhubs.fullyqualifiednamespace` and `debezium.sink.eventhubs.hubname` must be set. The identity running {prodname} Server must have been granted the **Azure Event Hubs Data Sender** role on the namespace or the target event hub. For a user-assigned managed identity, set the standard `AZURE_CLIENT_ID` environment variable to the identity's client ID.
+
+|[[fully-qualified-namespace]]<<fully-qualified-namespace, `debezium.sink.eventhubs.fullyqualifiednamespace`>>
+|
+|The fully qualified namespace of the Azure Event Hubs instance, for example `<namespace>.servicebus.windows.net`. Required when `debezium.sink.eventhubs.authmode` is set to `default-azure-credential`.
 
 |[[hub-name]]<<hub-name, `debezium.sink.eventhubs.hubname`>>
 |
