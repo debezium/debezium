@@ -1,0 +1,2 @@
+Use the MySQL command line client to add, modify, and remove rows in the database tables, and see the resulting changes in the PostgreSQL database.
+Keep in mind that you cannot remove a row that is referenced by a foreign key.
