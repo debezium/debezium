@@ -962,6 +962,17 @@ public abstract class CommonConnectorConfig {
             .withValidation(Field::isPositiveInteger)
             .withDescription("Interval for looking for new signals in registered channels, given in milliseconds. Defaults to 5 seconds.");
 
+    public static final Field SIGNAL_PROCESSOR_SEMAPHORE_WAIT_MS = Field.createInternal("signal.processor.semaphore.wait.ms")
+            .withDisplayName("Signal processor semaphore wait time (ms)")
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED))
+            .withType(Type.LONG)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(10000L)
+            .withValidation(Field::isPositiveInteger)
+            .withDescription("The maximum time in milliseconds the signal processor waits to acquire its internal lock before "
+                    + "skipping a signal processing cycle. Defaults to 10 seconds.");
+
     public static final Field SIGNAL_ENABLED_CHANNELS = Field.create("signal.enabled.channels")
             .withDisplayName("Enabled channels names")
             .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 22))
@@ -1538,7 +1549,8 @@ public abstract class CommonConnectorConfig {
                     NOTIFICATION_ENABLED_CHANNELS,
                     SinkNotificationChannel.NOTIFICATION_TOPIC,
                     TRANSACTION_METADATA_FACTORY,
-                    CUSTOM_METRIC_TAGS)
+                    CUSTOM_METRIC_TAGS,
+                    SIGNAL_PROCESSOR_SEMAPHORE_WAIT_MS)
             .create();
 
     private final Configuration config;
@@ -1575,6 +1587,7 @@ public abstract class CommonConnectorConfig {
     private final List<TableId> signalingDataCollectionIds;
 
     private final Duration signalPollInterval;
+    private final Duration signalProcessorSemaphoreWait;
 
     private final List<String> signalEnabledChannels;
     private final EnumSet<Operation> skippedOperations;
@@ -1624,6 +1637,7 @@ public abstract class CommonConnectorConfig {
         this.binaryHandlingMode = BinaryHandlingMode.parse(config.getString(BINARY_HANDLING_MODE));
         this.signalingDataCollections = getSignalingDataCollections(config);
         this.signalPollInterval = Duration.ofMillis(config.getLong(SIGNAL_POLL_INTERVAL_MS));
+        this.signalProcessorSemaphoreWait = Duration.ofMillis(config.getLong(SIGNAL_PROCESSOR_SEMAPHORE_WAIT_MS));
         this.signalEnabledChannels = getSignalEnabledChannels(config);
         this.skippedOperations = determineSkippedOperations(config);
         this.taskId = config.getString(ConfigurationNames.TASK_ID_PROPERTY_NAME);
@@ -2212,6 +2226,10 @@ public abstract class CommonConnectorConfig {
 
     public Duration getSignalPollInterval() {
         return signalPollInterval;
+    }
+
+    public Duration getSignalProcessorSemaphoreWait() {
+        return signalProcessorSemaphoreWait;
     }
 
     public List<String> getEnabledChannels() {

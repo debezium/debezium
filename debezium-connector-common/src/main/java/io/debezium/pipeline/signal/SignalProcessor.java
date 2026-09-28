@@ -6,6 +6,7 @@
 package io.debezium.pipeline.signal;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -46,7 +47,6 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SignalProcessor.class);
 
-    public static final int SEMAPHORE_WAIT_TIME = 10;
     public static final String DATA_COLLECTIONS_FIELD_NAME = "data-collections";
     public static final String POINT_REGEX = "\\.";
 
@@ -180,15 +180,19 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
 
     private void executeWithSemaphore(Runnable operation) {
 
+        final Duration waitTime = connectorConfig.getSignalProcessorSemaphoreWait();
         boolean acquired = false;
         try {
-            acquired = semaphore.tryAcquire(SEMAPHORE_WAIT_TIME, TimeUnit.SECONDS);
-
+            acquired = semaphore.tryAcquire(waitTime.toMillis(), TimeUnit.MILLISECONDS);
+            if (!acquired) {
+                LOGGER.warn("Could not acquire the signal processing semaphore within {}, skipping this cycle to preserve mutual exclusion", waitTime);
+                return;
+            }
             operation.run();
         }
         catch (InterruptedException e) {
-            LOGGER.error("Not able to acquire semaphore after {}s", SEMAPHORE_WAIT_TIME);
-            throw new DebeziumException("Not able to acquire semaphore during signaling processing", e);
+            Thread.currentThread().interrupt();
+            throw new DebeziumException("Interrupted while acquiring the semaphore during signal processing", e);
         }
         finally {
             if (acquired) {
