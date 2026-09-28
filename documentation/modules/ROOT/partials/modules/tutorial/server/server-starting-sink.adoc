@@ -1,9 +1,9 @@
 [id="server-starting-sink"]
 = Starting the sink
 
-* xref:server-starting-HTTP-sink[HTTP sink]
-* xref:server-starting-JBDC-sink[JDBC sink]
+* xref:server-starting-http-sink[HTTP sink]
+* xref:server-starting-jdbc-sink[JDBC sink]
 
-include::{partialsdir}/modules/tutorial/server/HTTP-sink/HTTP-starting-sink-full-container-setup.adoc[leveloffset=+1]
+include::{partialsdir}/modules/tutorial/server/http-sink/http-starting-sink-full-container-setup.adoc[leveloffset=+1]
 
-include::{partialsdir}/modules/tutorial/server/JDBC-sink/JDBC-starting-sink-full-container-setup.adoc[leveloffset=+1]
+include::{partialsdir}/modules/tutorial/server/jdbc-sink/jdbc-starting-sink-full-container-setup.adoc[leveloffset=+1]

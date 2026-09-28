@@ -1,11 +1,11 @@
-[id="configuring-{prodname}-server"]
+[id="configuring-debezium-server"]
 = Configuring {prodname} Server
 
 Configure the {prodname} server application so that it can stream change events to the sink.
 
-* xref:configuring-{prodname}-server-HTTP-sink[Configure {prodname} Server for the HTTP sink]
-* xref:configuring-{prodname}-server-JDBC-sink[Configure {prodname} Server for the JDBC sink]
+* xref:configuring-debezium-server-http-sink[Configure {prodname} Server for the HTTP sink]
+* xref:configuring-debezium-server-jdbc-sink[Configure {prodname} Server for the JDBC sink]
 
-include::{partialsdir}/modules/tutorial/server/HTTP-sink/HTTP-configuring-server.adoc[leveloffset=+1]
+include::{partialsdir}/modules/tutorial/server/http-sink/http-configuring-server.adoc[leveloffset=+1]
 
-include::{partialsdir}/modules/tutorial/server/JDBC-sink/JDBC-configuring-server.adoc[leveloffset=+1]
+include::{partialsdir}/modules/tutorial/server/jdbc-sink/jdbc-configuring-server.adoc[leveloffset=+1]

@@ -18,9 +18,13 @@ Query OK, 1 row affected (0.00 sec)
 
 --
 
-* xref:HTTP-deleting-record-database-viewing-delete-event[HTTP sink]
-* xref:JDBC-deleting-record-database-viewing-delete-event[JDBC sink]
+--
 
-include::{partialsdir}/modules/tutorial/server/HTTP-sink/HTTP-deleting-record-database-viewing-delete-event.adoc[leveloffset=+1]
+* xref:http-deleting-record-database-viewing-delete-event[HTTP sink]
+* xref:http-deleting-record-database-viewing-delete-event[JDBC sink]
 
-include::{partialsdir}/modules/tutorial/server/JDBC-sink/JDBC-deleting-record-database-viewing-delete-event.adoc[leveloffset=+1]
+--
+
+include::{partialsdir}/modules/tutorial/server/http-sink/http-deleting-record-database-viewing-delete-event.adoc[leveloffset=+1]
+
+include::{partialsdir}/modules/tutorial/server/jdbc-sink/jdbc-deleting-record-database-viewing-delete-event.adoc[leveloffset=+1]

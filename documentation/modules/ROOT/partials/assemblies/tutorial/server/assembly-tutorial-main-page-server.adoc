@@ -1,6 +1,3 @@
-[id="server-tutorial"]
-= {prodname} Server Tutorial
-
 :experimental:
 :toc:
 :toc-placement: macro

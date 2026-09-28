@@ -29,7 +29,7 @@ mysql> INSERT INTO customers VALUES (default, "Kenneth", "Anderson", "kander@acm
 
 The records are added to the database.
 However, because {prodname} server is not running,
-the {selected-sink} Sink does not receive any updates.
+the sink does not receive any updates.
 --
 
 . Open a new terminal, and use `run.sh` to restart the {prodname} server application.
@@ -103,13 +103,16 @@ started reading the `binlog` from that position,
 and generated events from any changes in the MySQL database since that point in time.
 --
 
+--
 
-* xref:HTTP-restarting-{prodname}-server[HTTP sink]
-* xref:JDBC-restarting-{prodname}-server[JDBC sink]
+* xref:http-restarting-debezium-server[HTTP sink]
+* xref:jdbc-restarting-debezium-server[JDBC sink]
 
-include::{partialsdir}/modules/tutorial/server/HTTP-sink/HTTP-restarting-server.adoc[leveloffset=+1]
+--
 
-include::{partialsdir}/modules/tutorial/server/JDBC-sink/JDBC-restarting-server.adoc[leveloffset=+1]
+include::{partialsdir}/modules/tutorial/server/http-sink/http-restarting-server.adoc[leveloffset=+1]
+
+include::{partialsdir}/modules/tutorial/server/jdbc-sink/jdbc-restarting-server.adoc[leveloffset=+1]
 
 These events are _create_ events that are similar to what you saw previously.
 As you see, {prodname} still reports all of the changes in a database even when it is not running

@@ -27,13 +27,22 @@ If you are on MacOS, use kbd:[command+.] instead.
 
 +
 --
+
 [source,shell,options="nowrap"]
+.HTTP Sink
 ----
-include::{partialsdir}/modules/tutorial/server/{selected-sink}-sink/{selected-sink}-cleaning-up.adoc[]
+include::{partialsdir}/modules/tutorial/server/http-sink/http-cleaning-up.adoc[]
+----
+
+[source,shell,options="nowrap"]
+.JDBC Sink
+----
+include::{partialsdir}/modules/tutorial/server/jdbc-sink/jdbc-cleaning-up.adoc[]
 ----
 
 Docker stops each container.
 Because you used the `--rm` option when you started them, Docker also removes them.
+
 --
 
 . Verify that all of the processes have stopped and have been removed:

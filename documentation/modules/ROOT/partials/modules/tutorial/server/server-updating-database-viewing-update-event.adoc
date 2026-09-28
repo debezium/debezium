@@ -39,10 +39,13 @@ mysql> SELECT * FROM customers;
 
 --
 
+--
 
-* xref:HTTP-updating-database-viewing-update-event[HTTP sink]
-* xref:JDBC-updating-database-viewing-update-event[JDBC sink]
+* xref:http-updating-database-viewing-update-event[HTTP sink]
+* xref:jdbc-updating-database-viewing-update-event[JDBC sink]
 
-include::{partialsdir}/modules/tutorial/server/HTTP-sink/HTTP-updating-database-viewing-update-event.adoc[leveloffset=+1]
+--
 
-include::{partialsdir}/modules/tutorial/server/JDBC-sink/JDBC-updating-database-viewing-update-event.adoc[leveloffset=+1]
+include::{partialsdir}/modules/tutorial/server/http-sink/http-updating-database-viewing-update-event.adoc[leveloffset=+1]
+
+include::{partialsdir}/modules/tutorial/server/jdbc-sink/jdbc-updating-database-viewing-update-event.adoc[leveloffset=+1]

@@ -2,11 +2,13 @@
 = Watching {prodname} Server and the connector start
 
 --
-To start {prodname} server, open a new terminal in the `{prodname}-server` directory (where `run.sh` is located) and run the following statement:
+
+To start {prodname} server, open a new terminal in the `debezium-server` directory (where `run.sh` is located) and run the following statement:
 [source,shell,options="nowrap"]
 ----
 $ ./run.sh
 ----
+
 --
 
 When you start {prodname} server, a large volume of log output is generated.
@@ -16,9 +18,9 @@ you can better understand the process that the connector goes through from the t
 After starting {prodname} server and the connector,
 you can review the log output in the terminal to track the connector's status.
 
-* xref:watching-server-start-HTTP-sink[Watching {prodname} Server start - HTTP sink]
-* xref:watching-server-start-JDBC-sink[Watching {prodname} Server start - JDBC sink]
+* xref:watching-server-start-http-sink[Watching {prodname} Server start - HTTP sink]
+* xref:watching-server-start-jdbc-sink[Watching {prodname} Server start - JDBC sink]
 
-include::{partialsdir}/modules/tutorial/server/HTTP-sink/HTTP-watching-server-start.adoc[leveloffset=+1]
+include::{partialsdir}/modules/tutorial/server/http-sink/http-watching-server-start.adoc[leveloffset=+1]
 
-include::{partialsdir}/modules/tutorial/server/JDBC-sink/JDBC-watching-server-start.adoc[leveloffset=+1]
+include::{partialsdir}/modules/tutorial/server/jdbc-sink/jdbc-watching-server-start.adoc[leveloffset=+1]

@@ -6,9 +6,9 @@
 After deploying the {prodname} MySQL connector,
 it starts monitoring the `inventory` database for data change events.
 
-include::{partialsdir}/modules/tutorial/server/HTTP-sink/HTTP-change-events-introduction.adoc[leveloffset=+1]
+include::{partialsdir}/modules/tutorial/server/http-sink/http-change-events-introduction.adoc[leveloffset=+1]
 
-include::{partialsdir}/modules/tutorial/server/JDBC-sink/JDBC-change-events-introduction.adoc[leveloffset=+1]
+include::{partialsdir}/modules/tutorial/server/jdbc-sink/jdbc-change-events-introduction.adoc[leveloffset=+1]
 
 In this topic, you will see different types of change events to see how the connector captured them:
 

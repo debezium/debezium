@@ -1,3 +1,0 @@
-:selected-sink: JDBC
-
-include::{partialsdir}/assemblies/tutorial/server/assembly-tutorial-main-page-server.adoc[]
