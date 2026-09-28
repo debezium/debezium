@@ -30,8 +30,8 @@ import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.data.Xml;
+import io.debezium.doc.FixFor;
 import io.debezium.sink.column.ColumnDescriptor;
-
 
 @Tag("UnitTests")
 class SqlServerDatabaseDialectQueryBindingTest {
@@ -68,8 +68,26 @@ class SqlServerDatabaseDialectQueryBindingTest {
     }
 
     @Test
-    @DisplayName("Should bind varchar field with cast to varchar")
-    void shouldBindVarcharFieldWithCastToVarchar() {
+    @DisplayName("Should bind primary key varchar field with cast to varchar")
+    @FixFor("debezium/dbz#2554")
+    void shouldBindVarcharPrimaryKeyFieldWithCastToVarchar() {
+        final ColumnDescriptor column = ColumnDescriptor.builder()
+                .columnName("name")
+                .jdbcType(Types.VARCHAR)
+                .typeName("varchar")
+                .primarykey(true)
+                .precision(79)
+                .build();
+
+        final JdbcType type = dialect.getSchemaType(Schema.STRING_SCHEMA);
+
+        assertThat(type.getQueryBinding(column, Schema.STRING_SCHEMA, "hello")).isEqualTo("cast(? as varchar(79))");
+    }
+
+    @Test
+    @DisplayName("Should bind non-primary-key nvarchar field without cast")
+    @FixFor("debezium/dbz#2554")
+    void shouldBindVarcharNonPrimaryKeyFieldWithoutCast() {
         final ColumnDescriptor column = ColumnDescriptor.builder()
                 .columnName("name")
                 .jdbcType(Types.VARCHAR)
@@ -78,11 +96,12 @@ class SqlServerDatabaseDialectQueryBindingTest {
 
         final JdbcType type = dialect.getSchemaType(Schema.STRING_SCHEMA);
 
-        assertThat(type.getQueryBinding(column, Schema.STRING_SCHEMA, "hello")).isEqualTo("cast(? as varchar(max))");
+        assertThat(type.getQueryBinding(column, Schema.STRING_SCHEMA, "hello")).isEqualTo("?");
     }
 
     @Test
     @DisplayName("Should bind nvarchar field without cast")
+    @FixFor("debezium/dbz#2554")
     void shouldBindNvarcharFieldWithoutCast() {
         final ColumnDescriptor column = ColumnDescriptor.builder()
                 .columnName("name")
@@ -97,6 +116,7 @@ class SqlServerDatabaseDialectQueryBindingTest {
 
     @Test
     @DisplayName("Should bind xml field with cast to xml")
+    @FixFor("debezium/dbz#2554")
     void shouldBindXmlFieldWithCastToXml() {
         final Schema schema = Xml.schema();
 
