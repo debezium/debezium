@@ -1297,15 +1297,16 @@ public final class Strings {
             return "";
         }
 
-        String[] words = input.split("[._]+");
+        String[] words = java.util.Arrays.stream(input.split("[._]+"))
+                .filter(s -> !s.isEmpty())
+                .toArray(String[]::new);
         if (words.length == 0) {
             return ""; // Handle edge case where input contains only separators
         }
 
         return java.util.stream.IntStream.range(0, words.length)
-                .filter(i -> !words[i].isEmpty()) // Skip empty segments caused by consecutive separators
                 .mapToObj(i -> i == 0
-                        ? words[i].toLowerCase() // Ensure the first word starts with lowercase
+                        ? words[i].toLowerCase(Locale.ROOT) // Ensure the first word starts with lowercase
                         : capitalizeFirstLetter(words[i])) // Capitalize the first letter of subsequent words
                 .collect(java.util.stream.Collectors.joining());
     }
@@ -1320,7 +1321,7 @@ public final class Strings {
         if (word.isEmpty()) {
             return "";
         }
-        return Character.toUpperCase(word.charAt(0)) + word.substring(1).toLowerCase();
+        return Character.toUpperCase(word.charAt(0)) + word.substring(1).toLowerCase(Locale.ROOT);
     }
 
     /**
