@@ -182,6 +182,8 @@ public class FieldValueMatches<R extends ConnectRecord<R>> implements org.apache
                     + "'ignore' treats the record as not matching, 'fail' halts the stream.")
             .withConfigDefValidation();
 
+    private static final Field.Set ALL_FIELDS = Field.setOf(FIELD_FIELD, PATTERN_FIELD, MATCH_MODE_FIELD, UNEVALUABLE_VALUE_FIELD);
+
     private String fieldPath;
     private String[] pathSegments;
     private Pattern pattern;
@@ -192,7 +194,7 @@ public class FieldValueMatches<R extends ConnectRecord<R>> implements org.apache
     public void configure(Map<String, ?> configs) {
         final Configuration config = Configuration.from(configs);
         final SmtManager<R> smtManager = new SmtManager<>(config);
-        smtManager.validate(config, Field.setOf(FIELD_FIELD, PATTERN_FIELD, MATCH_MODE_FIELD, UNEVALUABLE_VALUE_FIELD));
+        smtManager.validate(config, ALL_FIELDS);
 
         this.fieldPath = config.getString(FIELD_FIELD);
         this.pathSegments = splitPath(fieldPath);
@@ -284,7 +286,7 @@ public class FieldValueMatches<R extends ConnectRecord<R>> implements org.apache
     @Override
     public ConfigDef config() {
         final ConfigDef config = new ConfigDef();
-        Field.group(config, null, FIELD_FIELD, PATTERN_FIELD, MATCH_MODE_FIELD, UNEVALUABLE_VALUE_FIELD);
+        Field.group(config, null, ALL_FIELDS.asArray());
         return config;
     }
 
@@ -295,7 +297,7 @@ public class FieldValueMatches<R extends ConnectRecord<R>> implements org.apache
 
     @Override
     public Field.Set getConfigFields() {
-        return Field.setOf(FIELD_FIELD, PATTERN_FIELD, MATCH_MODE_FIELD, UNEVALUABLE_VALUE_FIELD);
+        return ALL_FIELDS;
     }
 
     @Override
