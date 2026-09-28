@@ -7,6 +7,7 @@ package io.debezium.connector.postgresql.connection.pgoutput;
 
 import static java.util.stream.Collectors.toMap;
 
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.sql.DatabaseMetaData;
@@ -729,12 +730,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
      * @return string read from the replication stream
      */
     private static String readString(ByteBuffer buffer) {
-        // Postgres JDBC driver returns heap ByteBuffers, and it's documented in the API. This check is here just in case the driver changes
-        // this behavior in the future.
-        if (!buffer.hasArray()) {
-            throw new DebeziumException("pgoutput decoding requires a heap ByteBuffer, but the driver returned "
-                    + buffer.getClass().getName());
-        }
+        requireHeapBuffer(buffer);
 
         final var position = buffer.position();
 
@@ -755,20 +751,28 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
      * @return the column value as a string read from the replication stream
      */
     private static String readColumnValueAsString(ByteBuffer buffer) {
-        // Postgres JDBC driver returns heap ByteBuffers, and it's documented in the API. This check is here just in case the driver changes
-        // this behavior in the future.
-        if (!buffer.hasArray()) {
-            throw new DebeziumException("pgoutput decoding requires a heap ByteBuffer, but the driver returned "
-                    + buffer.getClass().getName());
-        }
+        requireHeapBuffer(buffer);
 
         final var length = buffer.getInt();
+        if (length < 0 || length > buffer.remaining()) {
+            throw new BufferUnderflowException();
+        }
+
         final var value = new String(buffer.array(),
                 buffer.arrayOffset() + buffer.position(),
                 length,
                 StandardCharsets.UTF_8);
         buffer.position(buffer.position() + length);
         return value;
+    }
+
+    private static void requireHeapBuffer(ByteBuffer buffer) {
+        // Postgres JDBC driver generally returns heap byte buffers.
+        // This check is here to assert in case a driver ever changes behavior.
+        if (!buffer.hasArray()) {
+            throw new DebeziumException("pgoutput decoding requires a heap ByteBuffer, but the driver returned "
+                    + buffer.getClass().getName());
+        }
     }
 
     /**
