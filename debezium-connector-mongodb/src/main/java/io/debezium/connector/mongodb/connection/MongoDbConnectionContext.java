@@ -8,6 +8,7 @@ package io.debezium.connector.mongodb.connection;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Consumer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,6 +69,14 @@ public class MongoDbConnectionContext {
         return clientFactory.getMongoClient();
     }
 
+    public void forEachCollectionNameInDatabase(MongoClient client, String databaseName, Consumer<String> operation) {
+        MongoUtils.forEachCollectionNameInDatabase(clientFactory, client, databaseName, operation);
+    }
+
+    public void forEachDatabaseName(MongoClient client, Consumer<String> operation) {
+        MongoUtils.forEachDatabaseName(clientFactory, client, operation);
+    }
+
     public ClusterDescription getClusterDescription() {
         try (var client = getMongoClient()) {
             LOGGER.info("Reading description of cluster at {}", getMaskedConnectionString());
@@ -90,7 +99,7 @@ public class MongoDbConnectionContext {
 
         var shardNames = new HashSet<String>();
         try (var client = getMongoClient()) {
-            MongoUtils.onCollectionDocuments(client, "config", "shards", doc -> {
+            MongoUtils.onCollectionDocuments(clientFactory, client, "config", "shards", doc -> {
                 String shardName = doc.getString("_id");
                 shardNames.add(shardName);
             });
@@ -109,14 +118,11 @@ public class MongoDbConnectionContext {
     }
 
     /**
-     * Determines if RS name is specified when required
+     * Determines if the replica set name is specified when required.
      *
-     * @return True if RS name is specified or not required. False otherwise.
+     * @return true if a replica set name is specified or the connected cluster is not a replica set
      */
     public boolean hasReplicaSetNameIfRequired() {
-        if (getRequiredReplicaSetName().isPresent()) {
-            return true;
-        }
-        return getClusterDescription().getType() != ClusterType.REPLICA_SET;
+        return getRequiredReplicaSetName().isPresent() || getClusterType() != ClusterType.REPLICA_SET;
     }
 }

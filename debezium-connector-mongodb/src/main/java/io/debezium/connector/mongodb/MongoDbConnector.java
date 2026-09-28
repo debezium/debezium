@@ -145,7 +145,7 @@ public class MongoDbConnector extends BaseSourceConnector implements ConfigDescr
                         // only when we try to fetch results a connection gets established
                         // Verify if users has rights to list databases
                         var dbNames = new ArrayList<String>();
-                        client.listDatabaseNames().into(dbNames);
+                        connectionContext.forEachDatabaseName(client, dbNames::add);
                         if (dbNames.isEmpty()) {
                             String errorMessage = "User doesn't have rights to list databases. " +
                                     "Please verify credentials and database permissions.";
@@ -182,17 +182,18 @@ public class MongoDbConnector extends BaseSourceConnector implements ConfigDescr
      * Validates that the connected cluster topology is one the connector can capture changes from.
      */
     static void validateClusterTopology(MongoDbConnectionContext connectionContext, ConfigValue connectionStringValidation) {
+        var clusterType = connectionContext.getClusterDescription().getType();
+
         // For RS clusters check that replica set name is present
         // Java driver is smart enough to work without it but the specs says it should be set
-        if (!connectionContext.hasReplicaSetNameIfRequired()) {
-            var type = connectionContext.getClusterType();
-            LOGGER.warn("Replica set not specified in connection string for {} cluster.", type);
-            connectionStringValidation.addErrorMessage("Replica set not specified in connection string for " + type + " cluster.");
+        if (clusterType == ClusterType.REPLICA_SET && connectionContext.getRequiredReplicaSetName().isEmpty()) {
+            LOGGER.warn("Replica set not specified in connection string for {} cluster.", clusterType);
+            connectionStringValidation.addErrorMessage("Replica set not specified in connection string for " + clusterType + " cluster.");
         }
 
         // Standalone servers have no oplog and reject change streams (server error 40573), so the
         // connector would pass validation here only to fail once streaming starts
-        if (connectionContext.getClusterType() == ClusterType.STANDALONE) {
+        if (clusterType == ClusterType.STANDALONE) {
             LOGGER.warn("Connection points to a standalone MongoDB server which does not support change streams.");
             connectionStringValidation.addErrorMessage("MongoDB deployed as a standalone server is not supported: "
                     + "change streams require a replica set or sharded cluster (a single-node replica set is sufficient)");

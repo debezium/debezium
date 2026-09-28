@@ -37,6 +37,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.common.config.Config;
+import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
@@ -334,6 +335,27 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.SSL_ALLOW_INVALID_HOSTNAMES);
         assertNoConfigurationErrors(result, CommonConnectorConfig.TOMBSTONES_ON_DELETE);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.CAPTURE_MODE);
+    }
+
+    @Test
+    void shouldDiscoverReplicaSetUsingSecondaryWithoutReplicaSetOption() {
+        requireThreeMemberReplicaSet();
+        var connectionString = ConnectionStrings.appendParameter(
+                removeConnectionStringParameter(mongo.getConnectionString(), "replicaSet"),
+                "readPreference",
+                "secondary");
+        config = TestHelper.getConfiguration(connectionString);
+
+        var result = new MongoDbConnector().validate(config.asMap());
+        ConfigValue connectionStringValidation = result.configValues().stream()
+                .filter(value -> value.name().equals(MongoDbConnectorConfig.CONNECTION_STRING.name()))
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(connectionStringValidation.errorMessages())
+                .singleElement()
+                .asString()
+                .contains("Replica set not specified");
     }
 
     @Test
@@ -3441,6 +3463,20 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         var replicaSet = (MongoDbReplicaSet) mongo;
         assumeTrue(replicaSet.getMembers().size() >= 3, "Read preference election tests require at least three members");
         return replicaSet;
+    }
+
+    private static String removeConnectionStringParameter(String connectionString, String parameterName) {
+        var queryStart = connectionString.indexOf('?');
+        if (queryStart == -1) {
+            return connectionString;
+        }
+
+        var parameters = Arrays.stream(connectionString.substring(queryStart + 1).split("&"))
+                .filter(parameter -> !parameter.regionMatches(true, 0, parameterName + "=", 0, parameterName.length() + 1))
+                .toList();
+        return parameters.isEmpty()
+                ? connectionString.substring(0, queryStart)
+                : connectionString.substring(0, queryStart + 1) + String.join("&", parameters);
     }
 
     private void startReadPreferenceTestConnector(String readPreference) throws InterruptedException {

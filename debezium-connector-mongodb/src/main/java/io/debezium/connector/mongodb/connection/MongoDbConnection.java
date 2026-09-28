@@ -134,7 +134,7 @@ public final class MongoDbConnection implements AutoCloseable {
         return execute("get database names", client -> {
             Set<String> databaseNames = new HashSet<>();
 
-            MongoUtils.forEachDatabaseName(
+            connectionContext.forEachDatabaseName(
                     client,
                     dbName -> {
                         if (filters.databaseFilter().test(dbName)) {
@@ -167,7 +167,7 @@ public final class MongoDbConnection implements AutoCloseable {
             Set<String> databaseNames = databaseNames();
 
             for (String dbName : databaseNames) {
-                MongoUtils.forEachCollectionNameInDatabase(client, dbName, collectionName -> {
+                connectionContext.forEachCollectionNameInDatabase(client, dbName, collectionName -> {
                     CollectionId collectionId = new CollectionId(dbName, collectionName);
 
                     if (filters.collectionFilter().test(collectionId)) {
