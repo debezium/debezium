@@ -16,6 +16,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -37,6 +40,8 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.config.Configuration;
@@ -55,6 +60,7 @@ import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
 import io.debezium.spi.converter.CustomConverter;
 import io.debezium.spi.converter.RelationalColumn;
+import io.debezium.time.Date;
 import io.debezium.time.MicroTimestamp;
 import io.debezium.time.ZonedTime;
 import io.debezium.time.ZonedTimestamp;
@@ -1464,6 +1470,126 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         assertRecordSchemaAndValues(expected1, records.get(0), Envelope.FieldName.AFTER);
         VerifyRecord.isValidRead(records.get(1), PK_FIELD, 2);
         assertRecordSchemaAndValues(expected2, records.get(1), Envelope.FieldName.AFTER);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2664")
+    public void shouldSnapshotDatePreservingEra() throws Exception {
+        TestHelper.execute("CREATE TABLE era_date_table (pk SERIAL, d DATE, PRIMARY KEY(pk));");
+        // a BC date, a pre-cutover AD date, the first Gregorian day, and an ordinary one. Only the
+        // first is era-sensitive; the others must be left exactly as they are.
+        TestHelper.execute("INSERT INTO era_date_table (d) VALUES "
+                + "('0001-03-07 BC'), ('1582-10-04'), ('1582-10-15'), ('2024-02-29'), (NULL)");
+
+        buildNoStreamProducer(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.era_date_table"));
+
+        final TestConsumer consumer = testConsumer(5, "public");
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        // io.debezium.time.Date is epoch days. LocalDate.of(0, ...) is 1 BC in proleptic ISO.
+        final Integer[] expectedEpochDays = {
+                (int) LocalDate.of(0, 3, 7).toEpochDay(),
+                (int) LocalDate.of(1582, 10, 4).toEpochDay(),
+                (int) LocalDate.of(1582, 10, 15).toEpochDay(),
+                (int) LocalDate.of(2024, 2, 29).toEpochDay(),
+                null
+        };
+
+        final var records = new ArrayList<SourceRecord>();
+        consumer.process(records::add);
+
+        assertThat(records).hasSize(5);
+        for (int i = 0; i < expectedEpochDays.length; i++) {
+            VerifyRecord.isValidRead(records.get(i), PK_FIELD, i + 1);
+            assertRecordSchemaAndValues(
+                    Arrays.asList(new SchemaAndValueField("d", Date.builder().optional().build(), expectedEpochDays[i])),
+                    records.get(i), Envelope.FieldName.AFTER);
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2664")
+    public void shouldSnapshotTemporalArraysPreservingEra() throws Exception {
+        TestHelper.execute("CREATE TABLE era_array_table (pk SERIAL, "
+                + "ts_arr TIMESTAMP[], tstz_arr TIMESTAMPTZ[], d_arr DATE[], PRIMARY KEY(pk));");
+        // each array pairs a BC element with a pre-cutover one; the three element types fail
+        // differently without the fix, so each needs its own assertion.
+        TestHelper.execute("INSERT INTO era_array_table (ts_arr, tstz_arr, d_arr) VALUES ("
+                + "'{0001-03-07 10:30:59 BC,1582-10-04 23:59:59}', "
+                + "'{0001-03-07 10:30:59+00 BC,1582-10-04 23:59:59+00}', "
+                + "'{0001-03-07 BC,1582-10-04}')");
+
+        buildNoStreamProducer(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.era_array_table"));
+
+        final TestConsumer consumer = testConsumer(1, "public");
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        final long bcMicros = LocalDateTime.of(0, 3, 7, 10, 30, 59).toInstant(ZoneOffset.UTC).getEpochSecond() * 1_000_000;
+        final long cutoverMicros = LocalDateTime.of(1582, 10, 4, 23, 59, 59).toInstant(ZoneOffset.UTC).getEpochSecond() * 1_000_000;
+
+        final List<SchemaAndValueField> expected = Arrays.asList(
+                new SchemaAndValueField("ts_arr",
+                        SchemaBuilder.array(MicroTimestamp.builder().optional().build()).optional().build(),
+                        Arrays.asList(bcMicros, cutoverMicros)),
+                new SchemaAndValueField("tstz_arr",
+                        SchemaBuilder.array(ZonedTimestamp.builder().optional().build()).optional().build(),
+                        // 0000 is 1 BC in proleptic ISO, and the cutover day must not shift by 10 days
+                        Arrays.asList("0000-03-07T10:30:59.000000Z", "1582-10-04T23:59:59.000000Z")),
+                new SchemaAndValueField("d_arr",
+                        SchemaBuilder.array(Date.builder().optional().build()).optional().build(),
+                        Arrays.asList((int) LocalDate.of(0, 3, 7).toEpochDay(), (int) LocalDate.of(1582, 10, 4).toEpochDay())));
+
+        final var records = new ArrayList<SourceRecord>();
+        consumer.process(records::add);
+
+        assertThat(records).hasSize(1);
+        VerifyRecord.isValidRead(records.get(0), PK_FIELD, 1);
+        assertRecordSchemaAndValues(expected, records.get(0), Envelope.FieldName.AFTER);
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = TemporalPrecisionMode.class, names = { "ADAPTIVE", "CONNECT", "ISOSTRING", "STRUCTURED" })
+    @FixFor("debezium/dbz#2664")
+    public void shouldSnapshotInfinityTemporalArraysMatchingScalars(TemporalPrecisionMode mode) throws Exception {
+        TestHelper.execute("DROP TABLE IF EXISTS inf_array_table;");
+        TestHelper.execute("CREATE TABLE inf_array_table (pk SERIAL, "
+                + "d DATE, d_arr DATE[], "
+                + "ts TIMESTAMP, ts_arr TIMESTAMP[], "
+                + "tstz TIMESTAMPTZ, tstz_arr TIMESTAMPTZ[], PRIMARY KEY(pk));");
+        // Reading date[]/timestamp[] elements as text (this fix) sends an infinity element down a
+        // different path than the matching scalar column. It must still emit exactly what the scalar
+        // emits, in every precision mode -- assert that invariant rather than pinning each mode's
+        // sentinel encoding, so the test documents equivalence without hard-coding overflow values.
+        TestHelper.execute("INSERT INTO inf_array_table (d, d_arr, ts, ts_arr, tstz, tstz_arr) VALUES "
+                + "('infinity','{infinity}','infinity','{infinity}','infinity','{infinity}'), "
+                + "('-infinity','{-infinity}','-infinity','{-infinity}','-infinity','{-infinity}')");
+
+        buildNoStreamProducer(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.inf_array_table")
+                .with(PostgresConnectorConfig.TIME_PRECISION_MODE, mode));
+
+        final TestConsumer consumer = testConsumer(2, "public");
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        final var records = new ArrayList<SourceRecord>();
+        consumer.process(records::add);
+
+        assertThat(records).hasSize(2);
+        for (int i = 0; i < records.size(); i++) {
+            VerifyRecord.isValidRead(records.get(i), PK_FIELD, i + 1);
+            final Struct after = ((Struct) records.get(i).value()).getStruct(Envelope.FieldName.AFTER);
+            assertArrayElementMatchesScalar(after, "d_arr", "d");
+            assertArrayElementMatchesScalar(after, "ts_arr", "ts");
+            assertArrayElementMatchesScalar(after, "tstz_arr", "tstz");
+        }
+    }
+
+    private static void assertArrayElementMatchesScalar(Struct after, String arrayField, String scalarField) {
+        final List<?> array = after.getArray(arrayField);
+        assertThat(array).as(arrayField).hasSize(1);
+        assertThat(array.get(0)).as(arrayField + " element vs scalar " + scalarField).isEqualTo(after.get(scalarField));
     }
 
     private void buildNoStreamProducer(Configuration.Builder config) {
