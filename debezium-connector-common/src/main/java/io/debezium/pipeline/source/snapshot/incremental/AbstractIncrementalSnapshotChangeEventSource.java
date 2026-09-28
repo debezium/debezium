@@ -656,17 +656,38 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
 
         return dataCollectionIds
                 .stream()
-                .flatMap(x -> {
-                    final List<String> ids = databaseSchema
-                            .tableIds()
-                            .stream()
-                            .map(databaseSchema::tableFor) // Get the id from the Table object to get original tableId case
-                            .map(Table::id)
-                            .map(TableId::identifier)
-                            .filter(t -> Pattern.compile(x).matcher(t).matches())
-                            .collect(Collectors.toList());
-                    return ids.isEmpty() ? Stream.of(x) : ids.stream();
-                }).distinct().collect(Collectors.toList());
+                .flatMap(this::expandDataCollectionId)
+                .distinct()
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Expands a single, possibly regex-based, data collection id to the ids of the data collections it
+     * matches. An id matching none is kept as it is, as it may address a data collection the database
+     * schema does not know about.
+     */
+    private Stream<String> expandDataCollectionId(String dataCollectionId) {
+
+        final Pattern pattern = Pattern.compile(dataCollectionId);
+        final List<String> ids = databaseSchema
+                .tableIds()
+                .stream()
+                .filter(tableId -> pattern.matcher(tableId.identifier()).matches())
+                .map(this::toDeclaredIdentifier)
+                .collect(Collectors.toList());
+        return ids.isEmpty() ? Stream.of(dataCollectionId) : ids.stream();
+    }
+
+    /**
+     * Returns the id of a data collection the way the database schema declares it. A connector whose data
+     * collection ids are case-insensitive keys its schema by the lower-cased ids, while the tables keep the
+     * case they were declared with. Only the declared id identifies the data collection in the snapshot
+     * context, so it is the one an expanded id has to be reported as.
+     */
+    private String toDeclaredIdentifier(TableId tableId) {
+
+        final Table table = databaseSchema.tableFor(tableId);
+        return table != null ? table.id().identifier() : tableId.identifier();
     }
 
     /**

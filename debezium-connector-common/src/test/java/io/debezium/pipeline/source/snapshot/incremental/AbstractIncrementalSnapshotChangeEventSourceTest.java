@@ -23,6 +23,8 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.debezium.config.Configuration;
@@ -31,6 +33,8 @@ import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.notification.NotificationService;
+import io.debezium.pipeline.signal.SignalPayload;
+import io.debezium.pipeline.signal.actions.snapshotting.SnapshotConfiguration;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
@@ -115,29 +119,45 @@ public class AbstractIncrementalSnapshotChangeEventSourceTest {
     }
 
     /**
-     * A stop-snapshot signal identifies the data collections to stop with regular expressions, which are
-     * matched against the ids known to the database schema. On a connector whose table ids are
-     * case-insensitive (MySQL with {@code lower_case_table_names} set to a non-zero value) those ids are
-     * kept lower-cased, while the table itself retains the case it was declared with. Matching the regular
-     * expression against the lower-cased id therefore yields an id that no longer identifies the data
-     * collection in the snapshot context, the collection is never removed and the aborted snapshot leaks
-     * into the next one.
+     * Both the start- and the stop-snapshot signal identify their data collections with regular expressions,
+     * which are expanded to the ids known to the database schema. On a connector whose table ids are
+     * case-insensitive (MySQL with {@code lower_case_table_names} set to a non-zero value) the schema keys
+     * its tables by the lower-cased ids, while the tables themselves retain the case they were declared
+     * with. Unless both signals expand to the very same id, the stop signal does not find the collection it
+     * is to remove, the aborted snapshot keeps its collections and leaks into the next one.
      */
-    @Test
+    @ParameterizedTest(name = "started with \"{0}\"")
+    @ValueSource(strings = { ".*", "testdb\\..*", "testdb\\.mytable", "testdb.MyTable" })
     @FixFor("dbz#1563")
-    public void shouldStopSnapshotOfMixedCaseTableWhenTableIdsAreCaseInsensitive() throws Exception {
-        final TableId mixedCase = new TableId("testdb", null, "MyTable");
-        final SignalBasedIncrementalSnapshotContext<TableId> context = snapshotInProgressOf(mixedCase.identifier());
-        source = newSource(caseInsensitiveSchemaContaining(mixedCase));
+    public void shouldStopSnapshotOfMixedCaseTableWhenTableIdsAreCaseInsensitive(String startedWith) throws Exception {
+        final SignalBasedIncrementalSnapshotContext<TableId> context = pausedSnapshotContext();
+        source = newSource(caseInsensitiveSchemaContaining(new TableId("testdb", null, "MyTable")));
 
-        // Pausing keeps readChunk from doing anything beyond processing the stop request, so that the
-        // outcome below is the one of the stop request alone.
-        source.pauseSnapshot(null, offsetContext);
+        startSnapshotOf(startedWith);
+        assertThat(context.snapshotRunning()).isTrue();
 
-        source.requestStopSnapshot(null, offsetContext, Map.of(), List.of("testdb\\..*"));
+        source.requestStopSnapshot(null, offsetContext, Map.of(), List.of(".*"));
         source.readChunk(null, offsetContext);
 
         assertThat(context.snapshotRunning()).isFalse();
+    }
+
+    /**
+     * Puts an empty, paused snapshot context on {@link #offsetContext}. Being paused keeps the source from
+     * doing anything beyond processing the signals it is sent, so that the outcome of a test is the one of
+     * those signals alone.
+     */
+    private SignalBasedIncrementalSnapshotContext<TableId> pausedSnapshotContext() {
+        final SignalBasedIncrementalSnapshotContext<TableId> context = new SignalBasedIncrementalSnapshotContext<>();
+        context.pauseSnapshot();
+        doReturn(context).when(offsetContext).getIncrementalSnapshotContext();
+        return context;
+    }
+
+    private void startSnapshotOf(String... dataCollectionIds) throws InterruptedException {
+        source.addDataCollectionNamesToSnapshot(
+                new SignalPayload<>(null, "signal-1", "execute-snapshot", null, offsetContext, Map.of()),
+                SnapshotConfiguration.Builder.builder().dataCollections(List.of(dataCollectionIds)).surrogateKey("").build());
     }
 
     /**
