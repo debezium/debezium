@@ -140,7 +140,7 @@ public class SqlServerDatabaseDialect extends GeneralDatabaseDialect {
 
             if ("varchar".equals(typeName)) {
                 int precision = column.getPrecision();
-                if(precision <= 0 || precision > 900) {
+                if (precision <= 0 || precision > 900) {
                     precision = 900;
                 }
                 return "cast(? as varchar(%d))".formatted(precision);
