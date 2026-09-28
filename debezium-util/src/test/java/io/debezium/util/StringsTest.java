@@ -480,6 +480,19 @@ public class StringsTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2725")
+    public void convertDotAndUnderscoreStringToCamelCaseShouldHandleLeadingAndTrailingSeparators() {
+        assertThat(Strings.convertDotAndUnderscoreStringToCamelCase("_hello_world"))
+                .isEqualTo("helloWorld");
+        assertThat(Strings.convertDotAndUnderscoreStringToCamelCase(".foo.bar"))
+                .isEqualTo("fooBar");
+        assertThat(Strings.convertDotAndUnderscoreStringToCamelCase("__leading_and_trailing__"))
+                .isEqualTo("leadingAndTrailing");
+        assertThat(Strings.convertDotAndUnderscoreStringToCamelCase("..."))
+                .isEqualTo("");
+    }
+
+    @Test
     public void listOfTrimmedWithCommaDelimiterShouldTrimWhitespace() {
         // Test with spaces after commas (like multiline YAML)
         List<String> result = Strings.listOfTrimmed("db1.col1, db2.col2 , db3.col3", Function.identity());
