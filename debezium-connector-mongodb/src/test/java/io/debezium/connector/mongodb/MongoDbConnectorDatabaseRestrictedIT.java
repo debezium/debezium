@@ -169,10 +169,12 @@ public class MongoDbConnectorDatabaseRestrictedIT extends AbstractAsyncEngineCon
         // Start the connector ...
         start(MongoDbConnector.class, config);
 
-        // Connector should fail after 2 retries
+        // Connector should fail immediately during config validation, before any task is ever started
         Awaitility.await().pollDelay(10, TimeUnit.SECONDS).timeout(30, TimeUnit.SECONDS).until(() -> !isEngineRunning.get());
         Assertions.assertThat(logInterceptor
-                .containsMessage("Could not validate connector config: User doesn't have rights to list databases. Please verify credentials and database permissions."))
+                .containsMessage(
+                        "Could not validate connector config: User doesn't have sufficient privileges: Command execution failed on MongoDB server with error 13 (Unauthorized): 'not authorized on "
+                                + TEST_DATABASE))
                 .isTrue();
     }
 

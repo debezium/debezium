@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mongodb;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -13,6 +14,7 @@ import java.util.function.Predicate;
 import org.bson.BsonDocument;
 import org.bson.BsonTimestamp;
 import org.bson.Document;
+import org.bson.conversions.Bson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -215,25 +217,36 @@ public class MongoUtils {
     public static ChangeStreamIterable<BsonDocument> openChangeStream(MongoClient client, MongoDbTaskContext taskContext) {
         var config = taskContext.getConfig();
         final ChangeStreamPipeline pipeline = new ChangeStreamPipelineFactory(config, taskContext.getFilters().getConfig()).create();
+        return openChangeStream(client, config, pipeline.getStages());
+    }
+
+    /**
+     * Opens a change stream scoped to the configured {@code capture.scope}/{@code capture.target}, using the
+     * given pipeline and applying the configured document options.
+     *
+     * @param client mongodb client
+     * @param config connector configuration
+     * @param pipeline aggregation pipeline stages to apply on top of the change stream
+     * @return change stream iterable
+     */
+    public static ChangeStreamIterable<BsonDocument> openChangeStream(MongoClient client, MongoDbConnectorConfig config, List<? extends Bson> pipeline) {
         final ChangeStreamIterable<BsonDocument> stream;
 
         // capture scope is database
         if (config.getCaptureScope() == MongoDbConnectorConfig.CaptureScope.DATABASE) {
             var database = config.getCaptureTarget().orElseThrow();
             LOGGER.info("Change stream is restricted to '{}' database", database);
-            stream = client.getDatabase(database).watch(pipeline.getStages(), BsonDocument.class);
+            stream = client.getDatabase(database).watch(pipeline, BsonDocument.class);
         }
         // capture scope is collection
         else if (config.getCaptureScope() == MongoDbConnectorConfig.CaptureScope.COLLECTION) {
-            var captureTarget = config.getCaptureTarget().orElseThrow();
-            var database = captureTarget.split("\\.")[0];
-            var collection = captureTarget.split("\\.")[1];
-            LOGGER.info("Change stream is restricted to '{}' collection", collection);
-            stream = client.getDatabase(database).getCollection(collection).watch(pipeline.getStages(), BsonDocument.class);
+            var collectionId = CollectionId.parse(config.getCaptureTarget().orElseThrow());
+            LOGGER.info("Change stream is restricted to '{}' collection", collectionId.name());
+            stream = client.getDatabase(collectionId.dbName()).getCollection(collectionId.name()).watch(pipeline, BsonDocument.class);
         }
         // capture scope is deployment
         else {
-            stream = client.watch(pipeline.getStages(), BsonDocument.class);
+            stream = client.watch(pipeline, BsonDocument.class);
         }
 
         if (config.getCaptureMode().isFullUpdate()) {

@@ -341,6 +341,18 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
     }
 
     /**
+     * Creates a custom role scoped to a single collection via primary;
+     * @param roleName name of the custom role
+     * @param database database the role is defined on, and the privilege resource's database
+     * @param collection collection the privilege is scoped to
+     * @param actions privilege actions to grant on that collection
+     */
+    public void createRole(String roleName, String database, String collection, List<String> actions) {
+        var primary = tryPrimary().orElseThrow();
+        primary.createRole(roleName, database, collection, actions);
+    }
+
+    /**
      * Upload and executes mongodb javascript file against current primary
      *
      * See {@link  MongoDbContainer#execMongoScriptInContainer(MountableFile, String)}
