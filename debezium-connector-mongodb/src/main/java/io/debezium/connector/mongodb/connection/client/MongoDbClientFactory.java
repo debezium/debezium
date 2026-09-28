@@ -14,6 +14,8 @@ import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
+import java.util.Optional;
+import java.util.function.Consumer;
 
 import javax.net.ssl.KeyManager;
 import javax.net.ssl.KeyManagerFactory;
@@ -27,6 +29,7 @@ import org.slf4j.LoggerFactory;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
+import com.mongodb.client.internal.MongoClientImpl;
 import com.mongodb.event.ClusterListener;
 
 import io.debezium.DebeziumException;
@@ -46,6 +49,24 @@ public interface MongoDbClientFactory extends AutoCloseable {
      * @return client settings
      */
     MongoClientSettings getMongoClientSettings();
+
+    static Optional<MongoDbClientFactory> adapt(MongoClient client) {
+        if (!(client instanceof MongoClientImpl mongoClient)) {
+            return Optional.empty();
+        }
+
+        return Optional.of(new MongoDbClientFactory() {
+            @Override
+            public MongoClientSettings getMongoClientSettings() {
+                return mongoClient.getSettings();
+            }
+
+            @Override
+            public MongoClient getMongoClient() {
+                return mongoClient;
+            }
+        });
+    }
 
     /**
      * Creates a native {@link MongoClient} instance. The caller must close it before closing this factory.
@@ -77,6 +98,22 @@ public interface MongoDbClientFactory extends AutoCloseable {
 
     default MongoDbClient openClient(ClusterListener listener) {
         return new MongoDbClient(getMongoClient(listener));
+    }
+
+    default MongoClient getMetadataMongoClient() {
+        return MongoClients.create(getMongoClientSettings());
+    }
+
+    default void forEachDatabaseName(MongoClient client, Consumer<String> operation) {
+        MongoDbClientOperations.forEachDatabaseName(client, this::getMetadataMongoClient, operation);
+    }
+
+    default void forEachCollectionNameInDatabase(MongoClient client, String databaseName, Consumer<String> operation) {
+        MongoDbClientOperations.forEachCollectionNameInDatabase(
+                client,
+                this::getMetadataMongoClient,
+                databaseName,
+                operation);
     }
 
     /**
