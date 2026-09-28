@@ -27,6 +27,8 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -106,6 +108,7 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.spatial.WkbWriter;
+import io.debezium.time.Date;
 import io.debezium.time.MicroTime;
 import io.debezium.time.MicroTimestamp;
 import io.debezium.time.ZonedTime;
@@ -639,6 +642,85 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 Collections.singletonList(
                         new SchemaAndValueField("名前", SchemaBuilder.OPTIONAL_STRING_SCHEMA, "日本語テキスト")),
                 record, Envelope.FieldName.AFTER);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2664")
+    void shouldStreamTemporalArraysPreservingEra() throws Exception {
+        // Runs under whichever logical decoder the build selects, which is the point: pgoutput hands the
+        // converter a PgArray, while decoderbufs would otherwise deserialize the elements itself.
+        TestHelper.execute("DROP TABLE IF EXISTS era_array_stream;");
+        TestHelper.execute("CREATE TABLE era_array_stream (pk SERIAL PRIMARY KEY, d DATE, "
+                + "ts_arr TIMESTAMP[], tstz_arr TIMESTAMPTZ[], d_arr DATE[]);");
+
+        startConnector();
+
+        final long bcMicros = LocalDateTime.of(0, 3, 7, 10, 30, 59).toInstant(ZoneOffset.UTC).getEpochSecond() * 1_000_000;
+        final long cutoverMicros = LocalDateTime.of(1582, 10, 4, 23, 59, 59).toInstant(ZoneOffset.UTC).getEpochSecond() * 1_000_000;
+
+        assertInsert(
+                "INSERT INTO era_array_stream (d, ts_arr, tstz_arr, d_arr) VALUES ("
+                        + "'0001-03-07 BC', "
+                        + "'{0001-03-07 10:30:59 BC,1582-10-04 23:59:59}', "
+                        + "'{0001-03-07 10:30:59+00 BC,1582-10-04 23:59:59+00}', "
+                        + "'{0001-03-07 BC,1582-10-04}');",
+                1,
+                Arrays.asList(
+                        new SchemaAndValueField("d", Date.builder().optional().build(),
+                                (int) LocalDate.of(0, 3, 7).toEpochDay()),
+                        new SchemaAndValueField("ts_arr",
+                                SchemaBuilder.array(MicroTimestamp.builder().optional().build()).optional().build(),
+                                Arrays.asList(bcMicros, cutoverMicros)),
+                        new SchemaAndValueField("tstz_arr",
+                                SchemaBuilder.array(ZonedTimestamp.builder().optional().build()).optional().build(),
+                                Arrays.asList("0000-03-07T10:30:59.000000Z", "1582-10-04T23:59:59.000000Z")),
+                        new SchemaAndValueField("d_arr",
+                                SchemaBuilder.array(Date.builder().optional().build()).optional().build(),
+                                Arrays.asList((int) LocalDate.of(0, 3, 7).toEpochDay(),
+                                        (int) LocalDate.of(1582, 10, 4).toEpochDay()))));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2664")
+    void shouldStreamInfinityTemporalArrays() throws Exception {
+        // Infinity array elements are read as text -- the path this fix introduces -- and must emit what
+        // they did before it: the java.sql.Date sentinel, on every decoder. timestamp and timestamptz
+        // round-trip infinity losslessly, so an element equals the scalar column of the same type. A date
+        // element is pinned to the sentinel directly instead, because io.debezium.time.Date is INT32 epoch
+        // days and cannot hold infinity, so a scalar infinity date streams as a decoder-dependent value
+        // that this fix deliberately leaves unchanged. Runs under whichever logical decoder the build selects.
+        TestHelper.execute("DROP TABLE IF EXISTS era_inf_stream;");
+        TestHelper.execute("CREATE TABLE era_inf_stream (pk SERIAL PRIMARY KEY, "
+                + "d DATE, d_arr DATE[], ts TIMESTAMP, ts_arr TIMESTAMP[], tstz TIMESTAMPTZ, tstz_arr TIMESTAMPTZ[]);");
+
+        startConnector();
+
+        for (String inf : Arrays.asList("infinity", "-infinity")) {
+            consumer.expects(1);
+            executeAndWait("INSERT INTO era_inf_stream (d, d_arr, ts, ts_arr, tstz, tstz_arr) VALUES ("
+                    + "'" + inf + "','{" + inf + "}',"
+                    + "'" + inf + "','{" + inf + "}',"
+                    + "'" + inf + "','{" + inf + "}');");
+            final Struct after = ((Struct) consumer.remove().value()).getStruct(Envelope.FieldName.AFTER);
+
+            assertArrayElementMatchesScalar(after, "ts_arr", "ts");
+            assertArrayElementMatchesScalar(after, "tstz_arr", "tstz");
+
+            // The connector builds Postgres date converters with a null adjuster, so this reproduces the
+            // exact epoch-day the sentinel yields without pinning a magic constant.
+            final java.util.Date sentinel = "infinity".equals(inf)
+                    ? PostgresValueConverter.POSITIVE_INFINITY_DATE
+                    : PostgresValueConverter.NEGATIVE_INFINITY_DATE;
+            final List<?> dateArray = after.getArray("d_arr");
+            assertThat(dateArray).as("d_arr").hasSize(1);
+            assertThat(dateArray.get(0)).as("d_arr infinity element").isEqualTo(Date.toEpochDay(sentinel, null));
+        }
+    }
+
+    private static void assertArrayElementMatchesScalar(Struct after, String arrayField, String scalarField) {
+        final List<?> array = after.getArray(arrayField);
+        assertThat(array).as(arrayField).hasSize(1);
+        assertThat(array.get(0)).as(arrayField + " element vs scalar " + scalarField).isEqualTo(after.get(scalarField));
     }
 
     @Test
