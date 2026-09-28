@@ -232,6 +232,19 @@ public class OracleConnection extends JdbcConnection {
     }
 
     @Override
+    public List<String> readPrimaryKeyNames(DatabaseMetaData metadata, TableId id) throws SQLException {
+        final List<String> pkColumnNames = super.readPrimaryKeyNames(metadata, id);
+        // A primary key can be defined on an object attribute or a system generated column, such as with
+        // an XML schema-based XMLTYPE table. These columns are not part of the table's column metadata,
+        // so rather than using only a partial key, the table is treated as if it has no primary key.
+        if (pkColumnNames.stream().anyMatch(columnName -> !isRelationalColumnName(columnName))) {
+            LOGGER.debug("Table {} primary key {} references non-relational columns and is ignored.", id, pkColumnNames);
+            return new ArrayList<>();
+        }
+        return pkColumnNames;
+    }
+
+    @Override
     public Optional<Instant> getCurrentTimestamp() throws SQLException {
         return queryAndMap("SELECT CURRENT_TIMESTAMP FROM DUAL",
                 rs -> rs.next() ? Optional.of(rs.getTimestamp(1).toInstant()) : Optional.empty());
@@ -239,6 +252,10 @@ public class OracleConnection extends JdbcConnection {
 
     @Override
     protected boolean isTableUniqueIndexIncluded(String indexName, String columnName) {
+        return isRelationalColumnName(columnName);
+    }
+
+    private static boolean isRelationalColumnName(String columnName) {
         if (columnName != null) {
             return !SYS_NC_PATTERN.matcher(columnName).matches()
                     && !ADT_INDEX_NAMES_PATTERN.matcher(columnName).matches()
