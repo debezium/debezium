@@ -7,11 +7,14 @@ package io.debezium.connector.mongodb;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.common.config.ConfigDef;
@@ -20,7 +23,10 @@ import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.connector.Connector;
 import org.junit.jupiter.api.Test;
+import org.mockito.Answers;
 
+import com.mongodb.connection.ClusterConnectionMode;
+import com.mongodb.connection.ClusterDescription;
 import com.mongodb.connection.ClusterType;
 
 import io.debezium.config.CommonConnectorConfig;
@@ -93,10 +99,40 @@ public class MongoDbConnectorTest {
                 .contains("Replica set not specified");
     }
 
+    @Test
+    void validateClusterTopologyShouldDiscoverTopologyOnceWithoutReplicaSetOption() {
+        var connectionContext = mock(MongoDbConnectionContext.class);
+        var description = new ClusterDescription(ClusterConnectionMode.MULTIPLE, ClusterType.REPLICA_SET, List.of());
+        given(connectionContext.getClusterDescription()).willReturn(description);
+        given(connectionContext.getRequiredReplicaSetName()).willReturn(Optional.empty());
+
+        var validation = new ConfigValue(MongoDbConnectorConfig.CONNECTION_STRING.name());
+        MongoDbConnector.validateClusterTopology(connectionContext, validation);
+
+        assertThat(validation.errorMessages()).hasSize(1);
+        verify(connectionContext).getClusterDescription();
+    }
+
+    @Test
+    void connectionContextCompatibilityHelperShouldRetainSemantics() throws NoSuchMethodException {
+        var replicaSetContext = mock(MongoDbConnectionContext.class, Answers.CALLS_REAL_METHODS);
+        doReturn(Optional.empty()).when(replicaSetContext).getRequiredReplicaSetName();
+        doReturn(ClusterType.REPLICA_SET).when(replicaSetContext).getClusterType();
+
+        var configuredContext = mock(MongoDbConnectionContext.class, Answers.CALLS_REAL_METHODS);
+        doReturn(Optional.of("rs0")).when(configuredContext).getRequiredReplicaSetName();
+
+        assertThat(replicaSetContext.hasReplicaSetNameIfRequired()).isFalse();
+        assertThat(configuredContext.hasReplicaSetNameIfRequired()).isTrue();
+        assertThat(MongoDbConnectionContext.class.getMethod("hasReplicaSetNameIfRequired")).isNotNull();
+    }
+
     private static List<String> validateTopology(ClusterType clusterType, boolean hasReplicaSetNameIfRequired) {
         var connectionContext = mock(MongoDbConnectionContext.class);
-        given(connectionContext.getClusterType()).willReturn(clusterType);
-        given(connectionContext.hasReplicaSetNameIfRequired()).willReturn(hasReplicaSetNameIfRequired);
+        given(connectionContext.getClusterDescription()).willReturn(
+                new ClusterDescription(ClusterConnectionMode.MULTIPLE, clusterType, List.of()));
+        given(connectionContext.getRequiredReplicaSetName()).willReturn(
+                hasReplicaSetNameIfRequired ? Optional.of("rs0") : Optional.empty());
 
         var validation = new ConfigValue(MongoDbConnectorConfig.CONNECTION_STRING.name());
         MongoDbConnector.validateClusterTopology(connectionContext, validation);
