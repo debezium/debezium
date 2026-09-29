@@ -8,6 +8,7 @@ package io.debezium.connector.oracle.logminer.buffered;
 import java.time.Instant;
 
 import io.debezium.connector.oracle.Scn;
+import io.debezium.connector.oracle.logminer.events.Xid;
 
 /**
  * Contract for an Oracle transaction.
@@ -15,40 +16,34 @@ import io.debezium.connector.oracle.Scn;
  * @author Chris Cranford
  */
 public interface Transaction {
-    String NO_SEQUENCE_TRX_ID_SUFFIX = "ffffffff";
-    int NO_TRANSACTION_ID_USN_SLT = -1; // ffffffff
-
-    static int getKey(String transactionId) {
-        if (transactionId == null) {
-            return NO_TRANSACTION_ID_USN_SLT;
-        }
-        int usnSlt = (Character.digit(transactionId.charAt(0), 16) << 28)
-                | (Character.digit(transactionId.charAt(1), 16) << 24)
-                | (Character.digit(transactionId.charAt(2), 16) << 20)
-                | (Character.digit(transactionId.charAt(3), 16) << 16)
-                | (Character.digit(transactionId.charAt(4), 16) << 12)
-                | (Character.digit(transactionId.charAt(5), 16) << 8)
-                | (Character.digit(transactionId.charAt(6), 16) << 4)
-                | Character.digit(transactionId.charAt(7), 16);
-        return usnSlt * 0x9e3779b9;
+    static int getKey(long xid) {
+        return (int) (xid >>> 32) * 0x9e3779b9;
     }
 
-    static void checkSqn(String transactionId, String currentTransactionId, Scn currentStartScn) {
-        if (!transactionId.equals(currentTransactionId) && !transactionId.endsWith(NO_SEQUENCE_TRX_ID_SUFFIX)) {
-            throw new IllegalStateException("Invalid XID %s: The slot is occupied by the transaction %s started at SCN %s".formatted(transactionId,
-                    currentTransactionId, currentStartScn));
+    static long getUsnSlt(int key) {
+        return key * 0x144cbc89;
+    }
+
+    static void checkSqn(long xid, long currentXid, Scn currentStartScn) {
+        if (xid != currentXid && (int) xid != Xid.EMPTY_SQN) {
+            throw new IllegalStateException(
+                    "Invalid XID %016x: The slot is occupied by the transaction %016x started at SCN %s".formatted(xid, currentXid, currentStartScn));
         }
     }
 
     /**
      * Get the transaction identifier
      *
-     * @return the transaction unique identifier, never {@code null}
+     * @return the transaction unique identifier
      */
-    String getTransactionId();
+    long getXid();
+
+    default String getTransactionId() {
+        return Xid.transactionId(getXid());
+    }
 
     default int getKey() {
-        return getKey(getTransactionId());
+        return getKey(getXid());
     }
 
     /**
@@ -93,9 +88,9 @@ public interface Transaction {
      */
     default long getEventId(int index) {
         if (index < 0 || index >= getNumberOfEvents()) {
-            throw new IndexOutOfBoundsException("Index " + index + "outside the transaction " + getTransactionId() + " event list bounds");
+            throw new IndexOutOfBoundsException("Index " + index + "outside the transaction " + getXid() + " event list bounds");
         }
-        return (long) getKey() << 32 | index;
+        return Xid.key(getXid() & 0xffffffff00000000L | index);
     }
 
     /**

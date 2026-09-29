@@ -17,8 +17,10 @@ import java.util.stream.Stream;
 
 import io.debezium.connector.oracle.logminer.buffered.AbstractLogMinerTransactionCache;
 import io.debezium.connector.oracle.logminer.buffered.LogMinerTransactionCache;
+import io.debezium.connector.oracle.logminer.buffered.Transaction;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.events.RollbackToSavepointEvent;
+import io.debezium.connector.oracle.logminer.events.Xid;
 
 /**
  * A concrete implementation of the {@link LogMinerTransactionCache} that stores transactions and events
@@ -33,8 +35,8 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
     private final Map<Integer, HashMap<Integer, LogMinerEvent>> eventsByEventIdByTransactionId = new HashMap<>();
 
     @Override
-    public MemoryTransaction getTransaction(String transactionId) {
-        return checkSqn(transactionId, transactionsByTransactionId.get(getKey(transactionId)));
+    public MemoryTransaction getTransaction(long xid) {
+        return checkSqn(xid, transactionsByTransactionId.get(getKey(xid)));
     }
 
     @Override
@@ -48,8 +50,8 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
     }
 
     @Override
-    public boolean containsTransaction(String transactionId) {
-        return transactionsByTransactionId.containsKey(getKey(transactionId));
+    public boolean containsTransaction(long xid) {
+        return transactionsByTransactionId.containsKey(getKey(xid));
     }
 
     @Override
@@ -76,8 +78,8 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
     public void eventKeys(Consumer<Stream<Long>> consumer) {
         consumer.accept(eventsByTransactionId.entrySet().stream()
                 .flatMap(entry -> {
-                    long outerKey = (long) entry.getKey() << 32;
-                    return entry.getValue().stream().map(LogMinerEventEntry::eventId).map(key -> outerKey | key);
+                    long outerKey = (long) Transaction.getUsnSlt(entry.getKey()) << 32;
+                    return entry.getValue().stream().map(LogMinerEventEntry::eventId).map(key -> Xid.key(outerKey | key));
                 }));
     }
 
@@ -106,20 +108,21 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
     }
 
     @Override
-    public MemoryTransaction getAndRemoveTransaction(String transactionId) {
-        return transactionsByTransactionId.remove(getKey(transactionId));
+    public MemoryTransaction getAndRemoveTransaction(long xid) {
+        return transactionsByTransactionId.remove(getKey(xid));
     }
 
     @Override
     public void addTransactionEvent(MemoryTransaction transaction, int eventKey, LogMinerEvent event) {
-        List<LogMinerEventEntry> entries = eventsByTransactionId.computeIfAbsent(transaction.getKey(), (id) -> new ArrayList<>());
+        Integer key = transaction.getKey();
+        List<LogMinerEventEntry> entries = eventsByTransactionId.computeIfAbsent(key, (id) -> new ArrayList<>());
         entries.add(new LogMinerEventEntry(eventKey, event));
-        Map<Integer, LogMinerEvent> eventsByEventId = eventsByEventIdByTransactionId.computeIfAbsent(transaction.getKey(), (id) -> new HashMap<>());
+        Map<Integer, LogMinerEvent> eventsByEventId = eventsByEventIdByTransactionId.computeIfAbsent(key, (id) -> new HashMap<>());
         eventsByEventId.put(eventKey, event);
 
         if (event instanceof RollbackToSavepointEvent) {
             ListIterator<LogMinerEventEntry> it = entries.listIterator(entries.size());
-            LogMinerEventEntryRange range = findRolledBackRange(transaction.getTransactionId(), reverseIterator(it));
+            LogMinerEventEntryRange range = findRolledBackRange(transaction.getXid(), reverseIterator(it));
             if (range != null) {
                 while (it.hasNext()) {
                     if (it.next() == range.start()) {
@@ -155,8 +158,9 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
 
     @Override
     public void removeTransactionEvents(MemoryTransaction transaction) {
-        eventsByTransactionId.remove(transaction.getKey());
-        eventsByEventIdByTransactionId.remove(transaction.getKey());
+        Integer key = transaction.getKey();
+        eventsByTransactionId.remove(key);
+        eventsByEventIdByTransactionId.remove(key);
     }
 
     @Override

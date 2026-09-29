@@ -20,6 +20,7 @@ import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.events.RollbackToSavepointEvent;
 import io.debezium.connector.oracle.logminer.events.RowIdCodec;
+import io.debezium.connector.oracle.logminer.events.Xid;
 import io.debezium.connector.oracle.logminer.events.XmlBeginEvent;
 import io.debezium.connector.oracle.logminer.events.XmlEndEvent;
 import io.debezium.util.Loggings;
@@ -34,43 +35,43 @@ import io.debezium.util.Loggings;
 public abstract class AbstractLogMinerTransactionCache<T extends Transaction> implements LogMinerTransactionCache<T> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractLogMinerTransactionCache.class);
-    private final Set<String> abandonedTransactions = new HashSet<>();
+    private final Set<Long> abandonedTransactions = new HashSet<>();
     private final Map<Integer, LogMinerEvent> lastEnqueuedEventByTransactionId = new HashMap<>();
 
-    protected static int getKey(String transactionId) {
-        return Transaction.getKey(transactionId);
+    protected static int getKey(long xid) {
+        return Transaction.getKey(xid);
     }
 
-    protected static <T extends Transaction> T checkSqn(String transactionId, T transaction) {
+    protected static <T extends Transaction> T checkSqn(long xid, T transaction) {
         if (transaction != null) {
-            Transaction.checkSqn(transactionId, transaction.getTransactionId(), transaction.getStartScn());
+            Transaction.checkSqn(xid, transaction.getXid(), transaction.getStartScn());
         }
         return transaction;
     }
 
     @Override
     public void abandon(T transaction) {
-        abandonedTransactions.add(transaction.getTransactionId());
+        abandonedTransactions.add(Xid.key(transaction.getXid()));
     }
 
     @Override
-    public void removeAbandonedTransaction(String transactionId) {
-        abandonedTransactions.remove(transactionId);
+    public void removeAbandonedTransaction(long xid) {
+        abandonedTransactions.remove(Xid.key(xid));
     }
 
     @Override
-    public boolean isAbandoned(String transactionId) {
-        return abandonedTransactions.contains(transactionId);
+    public boolean isAbandoned(long xid) {
+        return abandonedTransactions.contains(Xid.key(xid));
     }
 
     @Override
-    public LogMinerEvent putLastEnqueuedEvent(String transactionId, LogMinerEvent event) {
-        return lastEnqueuedEventByTransactionId.put(getKey(transactionId), event);
+    public LogMinerEvent putLastEnqueuedEvent(long xid, LogMinerEvent event) {
+        return lastEnqueuedEventByTransactionId.put(getKey(xid), event);
     }
 
     @Override
-    public LogMinerEvent removeLastEnqueuedEvent(String transactionId) {
-        return lastEnqueuedEventByTransactionId.remove(getKey(transactionId));
+    public LogMinerEvent removeLastEnqueuedEvent(long xid) {
+        return lastEnqueuedEventByTransactionId.remove(getKey(xid));
     }
 
     @Override
@@ -87,7 +88,7 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
                 .map(transaction -> new ScnDetails(transaction.getStartScn(), transaction.getChangeTime())));
     }
 
-    protected LogMinerEventEntryRange findRolledBackRange(String transactionId, Iterator<LogMinerEventEntry> iterator) {
+    protected LogMinerEventEntryRange findRolledBackRange(long xid, Iterator<LogMinerEventEntry> iterator) {
         // INSERT/UPDATE statements containing LOB/XML columns are stored in the cache as a sequence:
         // 1. (optional) INSERT or UPDATE with an empty ROW_ID, containing regular column values and initial LOB/XML column values
         // 2. (optional) LOB operation groups with an empty ROW_ID, one group per out-of-line LOB value:
@@ -125,7 +126,7 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
                 continue;
             }
             else if (!event.getTableId().equals(rollbackEvent.getTableId())) {
-                logCannotApplyRollbackToSavepointWarning(transactionId, rollbackEvent, "TABLE_NAME", event.getTableId());
+                logCannotApplyRollbackToSavepointWarning(xid, rollbackEvent, "TABLE_NAME", event.getTableId());
                 return null;
             }
             else if (event.getRowId().equals(rollbackEvent.getRowId())) {
@@ -136,12 +137,12 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
                     return new LogMinerEventEntryRange(entry, end);
                 }
                 else if (event.getEventType() == EventType.SELECT_LOB_LOCATOR && rollbackType == EventType.UPDATE) {
-                    logUnexpectedEventBeforeRollbackWarning(transactionId, rollbackEvent, "OPERATION", event.getEventType());
+                    logUnexpectedEventBeforeRollbackWarning(xid, rollbackEvent, "OPERATION", event.getEventType());
                     return new LogMinerEventEntryRange(entry, end);
                 }
                 else if ((event.getEventType() == EventType.LOB_WRITE || event.getEventType() == EventType.LOB_TRIM || event.getEventType() == EventType.LOB_ERASE)
                         && rollbackType == EventType.UPDATE) {
-                    logUnexpectedEventBeforeRollbackWarning(transactionId, rollbackEvent, "OPERATION", event.getEventType());
+                    logUnexpectedEventBeforeRollbackWarning(xid, rollbackEvent, "OPERATION", event.getEventType());
                     lobStmt = true;
                     break;
                 }
@@ -151,23 +152,23 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
                     lobStmt = event.getEventType() == EventType.INTERNAL && rollbackType == EventType.UPDATE;
                     break;
                 }
-                logCannotApplyRollbackToSavepointWarning(transactionId, rollbackEvent, event.getEventType());
+                logCannotApplyRollbackToSavepointWarning(xid, rollbackEvent, event.getEventType());
                 return null;
             }
             else if (RowIdCodec.EMPTY_ROW_ID.equals(event.getRowId())) {
-                logUnexpectedEventBeforeRollbackWarning(transactionId, rollbackEvent, "ROW_ID", event.getRowIdAsString());
+                logUnexpectedEventBeforeRollbackWarning(xid, rollbackEvent, "ROW_ID", event.getRowIdAsString());
                 if (event.getEventType() == EventType.INSERT) {
                     if (rollbackType == EventType.DELETE) {
                         return new LogMinerEventEntryRange(entry, end);
                     }
-                    logCannotApplyRollbackToSavepointWarning(transactionId, rollbackEvent, event.getEventType());
+                    logCannotApplyRollbackToSavepointWarning(xid, rollbackEvent, event.getEventType());
                     return null;
                 }
                 else if (event.getEventType() == EventType.UPDATE) {
                     if (rollbackType == EventType.UPDATE) {
                         return new LogMinerEventEntryRange(entry, end);
                     }
-                    logCannotApplyRollbackToSavepointWarning(transactionId, rollbackEvent, event.getEventType());
+                    logCannotApplyRollbackToSavepointWarning(xid, rollbackEvent, event.getEventType());
                     return null;
                 }
                 else if (event.getEventType() == EventType.LOB_WRITE || event.getEventType() == EventType.LOB_TRIM || event.getEventType() == EventType.LOB_ERASE) {
@@ -175,14 +176,14 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
                 }
                 break;
             }
-            logCannotApplyRollbackToSavepointWarning(transactionId, rollbackEvent, "ROW_ID", event.getRowIdAsString());
+            logCannotApplyRollbackToSavepointWarning(xid, rollbackEvent, "ROW_ID", event.getRowIdAsString());
             return null;
         }
         while (iterator.hasNext()) {
             final LogMinerEventEntry entry = iterator.next();
             final LogMinerEvent event = entry.event();
             if (!event.getTableId().equals(rollbackEvent.getTableId())) {
-                logUnexpectedEventWithEmptyRowIdWarning(transactionId, rollbackEvent, "TABLE_NAME", event.getTableId());
+                logUnexpectedEventWithEmptyRowIdWarning(xid, rollbackEvent, "TABLE_NAME", event.getTableId());
                 break;
             }
             if (lobStmt) {
@@ -203,7 +204,7 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
             }
             if (event.getEventType() == EventType.INSERT || event.getEventType() == EventType.UPDATE) {
                 if (lobStartEntry != null && !lobStartEntry.event().getRsId().equals(event.getRsId())) {
-                    logUnexpectedEventWithEmptyRowIdWarning(transactionId, rollbackEvent, "RS_ID", event.getRsId());
+                    logUnexpectedEventWithEmptyRowIdWarning(xid, rollbackEvent, "RS_ID", event.getRsId());
                     break;
                 }
                 else if (event.getEventType() == EventType.INSERT && rollbackType == EventType.DELETE) {
@@ -213,19 +214,19 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
                     return new LogMinerEventEntryRange(entry, end);
                 }
                 lobStartEntry = null;
-                logUnexpectedEventWithEmptyRowIdWarning(transactionId, rollbackEvent, "OPERATION", event.getEventType());
+                logUnexpectedEventWithEmptyRowIdWarning(xid, rollbackEvent, "OPERATION", event.getEventType());
                 break;
             }
             else if (event.getEventType() == EventType.SELECT_LOB_LOCATOR || event.getEventType() == EventType.EXTENDED_STRING_BEGIN) {
                 if (lobStartEntry != null && !lobStartEntry.event().getRsId().equals(event.getRsId())) {
-                    logUnexpectedEventWithEmptyRowIdWarning(transactionId, rollbackEvent, "RS_ID", event.getRsId());
+                    logUnexpectedEventWithEmptyRowIdWarning(xid, rollbackEvent, "RS_ID", event.getRsId());
                     break;
                 }
                 lobStartEntry = entry;
             }
             else if (event.getEventType() == EventType.XML_BEGIN) {
                 if (lobStartEntry != null) {
-                    logUnexpectedEventWithEmptyRowIdWarning(transactionId, rollbackEvent, "OPERATION", event.getEventType());
+                    logUnexpectedEventWithEmptyRowIdWarning(xid, rollbackEvent, "OPERATION", event.getEventType());
                     break;
                 }
                 rolledBackEntry = entry;
@@ -252,34 +253,35 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
                 || rolledBackType == EventType.SELECT_LOB_LOCATOR
                 || rolledBackType == EventType.EXTENDED_STRING_BEGIN
                 || rolledBackType == EventType.XML_BEGIN) && rollbackType != EventType.UPDATE) {
-            logCannotApplyRollbackToSavepointWarning(transactionId, rollbackEvent, rolledBackType);
+            logCannotApplyRollbackToSavepointWarning(xid, rollbackEvent, rolledBackType);
             return null;
         }
         return new LogMinerEventEntryRange(rolledBackEntry, end);
     }
 
-    private void logCannotApplyRollbackToSavepointWarning(String transactionId, LogMinerEvent rollbackEvent, String fieldName, Object fieldValue) {
+    private void logCannotApplyRollbackToSavepointWarning(long xid, LogMinerEvent rollbackEvent, String fieldName, Object fieldValue) {
         Loggings.logWarningAndTraceRecord(LOGGER, rollbackEvent,
                 "Cannot apply the undo change in transaction '{}' with SCN '{}' on table '{}' by row-id '{}' since the preceding event in the transaction cache has a different {} '{}'. Manual investigation is required.",
-                transactionId, rollbackEvent.getScn(), rollbackEvent.getTableId(), rollbackEvent.getRowIdAsString(), fieldName, fieldValue);
+                Xid.transactionId(xid), rollbackEvent.getScn(), rollbackEvent.getTableId(), rollbackEvent.getRowIdAsString(), fieldName, fieldValue);
     }
 
-    private void logCannotApplyRollbackToSavepointWarning(String transactionId, LogMinerEvent rollbackEvent, EventType rolledBackType) {
+    private void logCannotApplyRollbackToSavepointWarning(long xid, LogMinerEvent rollbackEvent, EventType rolledBackType) {
         Loggings.logWarningAndTraceRecord(LOGGER, rollbackEvent,
                 "Cannot apply the undo change in transaction '{}' with SCN '{}' on table '{}' by row-id '{}' since '{}' was not expected before '{}'. Manual investigation is required.",
-                transactionId, rollbackEvent.getScn(), rollbackEvent.getTableId(), rollbackEvent.getRowIdAsString(), rolledBackType, rollbackEvent.getEventType());
+                Xid.transactionId(xid), rollbackEvent.getScn(), rollbackEvent.getTableId(), rollbackEvent.getRowIdAsString(), rolledBackType,
+                rollbackEvent.getEventType());
     }
 
-    private void logUnexpectedEventBeforeRollbackWarning(String transactionId, LogMinerEvent rollbackEvent, String fieldName, Object fieldValue) {
+    private void logUnexpectedEventBeforeRollbackWarning(long xid, LogMinerEvent rollbackEvent, String fieldName, Object fieldValue) {
         Loggings.logWarningAndTraceRecord(LOGGER, rollbackEvent,
                 "An event with an unexpected {} '{}' is followed by the rollback event in transaction '{}' with SCN '{}' on table '{}' by row-id '{}'. Please enable 'log.mining.include.internal.events'.",
-                fieldName, fieldValue, transactionId, rollbackEvent.getScn(), rollbackEvent.getTableId(), rollbackEvent.getRowIdAsString());
+                fieldName, fieldValue, Xid.transactionId(xid), rollbackEvent.getScn(), rollbackEvent.getTableId(), rollbackEvent.getRowIdAsString());
     }
 
-    private void logUnexpectedEventWithEmptyRowIdWarning(String transactionId, LogMinerEvent rollbackEvent, String fieldName, Object fieldValue) {
+    private void logUnexpectedEventWithEmptyRowIdWarning(long xid, LogMinerEvent rollbackEvent, String fieldName, Object fieldValue) {
         Loggings.logWarningAndTraceRecord(LOGGER, rollbackEvent,
                 "An event with an empty ROW_ID and an unexpected {} '{}' was detected while applying the undo change in transaction '{}' with SCN '{}' on table '{}' by row-id '{}'. Please enable 'log.mining.include.internal.events'.",
-                fieldName, fieldValue, transactionId, rollbackEvent.getScn(), rollbackEvent.getTableId(), rollbackEvent.getRowIdAsString());
+                fieldName, fieldValue, Xid.transactionId(xid), rollbackEvent.getScn(), rollbackEvent.getTableId(), rollbackEvent.getRowIdAsString());
     }
 
     private int compareTransactionScnDetails(T first, T second) {

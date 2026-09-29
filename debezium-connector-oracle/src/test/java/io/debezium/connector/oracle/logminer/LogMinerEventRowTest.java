@@ -14,7 +14,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.nio.charset.StandardCharsets;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -118,10 +117,10 @@ public class LogMinerEventRowTest {
 
     @Test
     void testTransactionId() throws Exception {
-        when(resultSet.getBytes(5)).thenReturn("tr_id".getBytes(StandardCharsets.UTF_8));
+        when(resultSet.getBytes(5)).thenReturn(new byte[]{ 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00 });
 
         LogMinerEventRow row = LogMinerEventRow.fromResultSet(resultSet, null, defaultIndexes());
-        assertThat(row.getTransactionId()).isEqualToIgnoringCase("74725F6964");
+        assertThat(row.getTransactionId()).isEqualToIgnoringCase("0100010001000000");
         verify(resultSet).getBytes(5);
 
         when(resultSet.getBytes(5)).thenThrow(SQLException.class);

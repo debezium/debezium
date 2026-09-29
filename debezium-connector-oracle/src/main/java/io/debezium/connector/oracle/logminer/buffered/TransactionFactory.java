@@ -27,7 +27,7 @@ public interface TransactionFactory<T extends Transaction> {
     /**
      * Create a transaction from explicit metadata.
      *
-     * @param transactionId the transaction identifier, should not be {@code null}
+     * @param xid the transaction identifier
      * @param startScn the transaction start scn, should not be {@code null}
      * @param changeTime the transaction change time, should not be {@code null}
      * @param userName the transaction user name, may be {@code null}
@@ -35,5 +35,5 @@ public interface TransactionFactory<T extends Transaction> {
      * @param clientId the transaction client id, may be {@code null}
      * @return the constructed transaction instance, never {@code null}
      */
-    T createTransaction(String transactionId, Scn startScn, Instant changeTime, String userName, Integer redoThreadId, String clientId);
+    T createTransaction(long xid, Scn startScn, Instant changeTime, String userName, Integer redoThreadId, String clientId);
 }

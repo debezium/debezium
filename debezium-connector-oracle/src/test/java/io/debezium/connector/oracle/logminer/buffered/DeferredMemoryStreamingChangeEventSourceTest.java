@@ -59,6 +59,7 @@ import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceM
 import io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerStreamingChangeEventSource.ProcessResult;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
+import io.debezium.connector.oracle.logminer.events.Xid;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
@@ -153,7 +154,7 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
             source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1));
 
             assertThat(source.getTransactionCache().isEmpty()).isFalse();
-            assertThat(source.getTransactionCache().containsTransaction(TRANSACTION_ID_1)).isTrue();
+            assertThat(source.getTransactionCache().containsTransaction(Xid.of(TRANSACTION_ID_1))).isTrue();
         }
     }
 
@@ -170,7 +171,7 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
             source.processEvent(startEvent);
             source.processEvent(insertEvent);
 
-            final Transaction transaction = source.getTransactionCache().getTransaction(TRANSACTION_ID_1);
+            final Transaction transaction = source.getTransactionCache().getTransaction(Xid.of(TRANSACTION_ID_1));
             assertThat(transaction).isNotNull();
             assertThat(transaction.getStartScn()).isEqualTo(Scn.valueOf(10));
             assertThat(transaction.getChangeTime()).isEqualTo(startTime);
@@ -198,7 +199,7 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
             assertThat(pending).hasSize(2);
 
             final PendingTransaction deferred = pending.get(0);
-            assertThat(deferred.transactionId()).isEqualTo(TRANSACTION_ID_2);
+            assertThat(deferred.xid()).isEqualTo(Xid.of(TRANSACTION_ID_2));
             assertThat(deferred.startScn()).isEqualTo(Scn.valueOf(5));
             assertThat(deferred.changeTime()).isEqualTo(deferredStartTime);
             assertThat(deferred.userName()).isEqualTo(TestHelper.SCHEMA_USER);
@@ -208,7 +209,7 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
             assertThat(deferred.deferred()).isTrue();
 
             final PendingTransaction active = pending.get(1);
-            assertThat(active.transactionId()).isEqualTo(TRANSACTION_ID_1);
+            assertThat(active.xid()).isEqualTo(Xid.of(TRANSACTION_ID_1));
             assertThat(active.startScn()).isEqualTo(Scn.valueOf(10));
             assertThat(active.eventCount()).isEqualTo(1);
             assertThat(active.deferred()).isFalse();
@@ -341,7 +342,7 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
 
             source.processEvent(getCommitLogMinerEventRow(30, "01000100ffffffff"));
 
-            assertThat(source.getTransactionCache().containsTransaction(cachedTransactionId)).isFalse();
+            assertThat(source.getTransactionCache().containsTransaction(Xid.of(cachedTransactionId))).isFalse();
         }
     }
 
@@ -378,8 +379,8 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
             source.processEvent(getRollbackLogMinerEventRow(5, TRANSACTION_ID_1));
 
             assertThat(source.getTransactionCache().isEmpty()).isFalse();
-            assertThat(source.getTransactionCache().getTransaction(TRANSACTION_ID_1)).isNull();
-            assertThat(source.getTransactionCache().getTransaction(TRANSACTION_ID_2)).isNotNull();
+            assertThat(source.getTransactionCache().getTransaction(Xid.of(TRANSACTION_ID_1))).isNull();
+            assertThat(source.getTransactionCache().getTransaction(Xid.of(TRANSACTION_ID_2))).isNotNull();
             assertThat(metrics.getRolledBackTransactionIds()).containsExactly(TRANSACTION_ID_1);
         }
     }
@@ -499,7 +500,7 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
             // Leave TRANSACTION_ID_2 in the deferred map with startScn=150
             source.processEvent(getStartLogMinerEventRow(150, TRANSACTION_ID_2));
 
-            assertThat(source.getTransactionCache().containsTransaction(TRANSACTION_ID_1)).isTrue();
+            assertThat(source.getTransactionCache().containsTransaction(Xid.of(TRANSACTION_ID_1))).isTrue();
             assertThat(source.getDeferredTransactionCount()).isEqualTo(1);
 
             // process() triggers calculateNewStartScn. The offset SCN should be
@@ -524,8 +525,8 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
 
             source.processEvent(getInsertLogMinerEventRow(3, TRANSACTION_ID_1));
 
-            assertThat(source.getTransactionCache().containsTransaction(TRANSACTION_ID_1)).isTrue();
-            assertThat(source.getTransactionCache().containsTransaction(TRANSACTION_ID_2)).isFalse();
+            assertThat(source.getTransactionCache().containsTransaction(Xid.of(TRANSACTION_ID_1))).isTrue();
+            assertThat(source.getTransactionCache().containsTransaction(Xid.of(TRANSACTION_ID_2))).isFalse();
         }
     }
 
@@ -643,6 +644,7 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
         LogMinerEventRow row = Mockito.mock(LogMinerEventRow.class);
         Mockito.when(row.getEventType()).thenReturn(EventType.START);
         Mockito.when(row.getTransactionId()).thenReturn(transactionId);
+        Mockito.when(row.getXid()).thenReturn(Xid.of(transactionId));
         Mockito.when(row.getScn()).thenReturn(Scn.valueOf(scn));
         Mockito.when(row.getChangeTime()).thenReturn(changeTime);
         Mockito.when(row.getUserName()).thenReturn(TestHelper.SCHEMA_USER);
@@ -655,6 +657,7 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
         LogMinerEventRow row = Mockito.mock(LogMinerEventRow.class);
         Mockito.when(row.getEventType()).thenReturn(EventType.COMMIT);
         Mockito.when(row.getTransactionId()).thenReturn(transactionId);
+        Mockito.when(row.getXid()).thenReturn(Xid.of(transactionId));
         Mockito.when(row.getScn()).thenReturn(Scn.valueOf(scn));
         Mockito.when(row.getChangeTime()).thenReturn(Instant.now());
         Mockito.when(row.getThread()).thenReturn(1);
@@ -665,6 +668,7 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
         LogMinerEventRow row = Mockito.mock(LogMinerEventRow.class);
         Mockito.when(row.getEventType()).thenReturn(EventType.ROLLBACK);
         Mockito.when(row.getTransactionId()).thenReturn(transactionId);
+        Mockito.when(row.getXid()).thenReturn(Xid.of(transactionId));
         Mockito.when(row.getScn()).thenReturn(Scn.valueOf(scn));
         Mockito.when(row.getChangeTime()).thenReturn(Instant.now());
         Mockito.when(row.getThread()).thenReturn(1);
@@ -683,6 +687,7 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
         LogMinerEventRow row = Mockito.mock(LogMinerEventRow.class);
         Mockito.when(row.getEventType()).thenReturn(EventType.INSERT);
         Mockito.when(row.getTransactionId()).thenReturn(transactionId);
+        Mockito.when(row.getXid()).thenReturn(Xid.of(transactionId));
         Mockito.when(row.getScn()).thenReturn(Scn.valueOf(scn));
         Mockito.when(row.getChangeTime()).thenReturn(changeTime);
         Mockito.when(row.getRowId()).thenReturn(rowId);
@@ -790,7 +795,7 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
         }
 
         public boolean hasDeferredTransaction(String transactionId) {
-            return getDeferredTransactionsForTest().containsKey(Transaction.getKey(transactionId));
+            return getDeferredTransactionsForTest().containsKey(Transaction.getKey(Xid.of(transactionId)));
         }
 
         public Scn getOldestDeferredTransactionStartScn() {

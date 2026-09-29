@@ -20,14 +20,14 @@ public class InfinispanTransaction extends AbstractTransaction {
 
     private int numberOfEvents;
 
-    public InfinispanTransaction(String transactionId, Scn startScn, Instant changeTime, String userName, Integer redoThreadId, String clientId) {
-        super(transactionId, startScn, changeTime, userName, redoThreadId, clientId);
+    public InfinispanTransaction(long xid, Scn startScn, Instant changeTime, String userName, Integer redoThreadId, String clientId) {
+        super(xid, startScn, changeTime, userName, redoThreadId, clientId);
         start();
     }
 
     @VisibleForMarshalling
-    public InfinispanTransaction(String transactionId, Scn startScn, Instant changeTime, String userName, int numberOfEvents, Integer redoThreadId, String clientId) {
-        this(transactionId, startScn, changeTime, userName, redoThreadId, clientId);
+    public InfinispanTransaction(long xid, Scn startScn, Instant changeTime, String userName, int numberOfEvents, Integer redoThreadId, String clientId) {
+        this(xid, startScn, changeTime, userName, redoThreadId, clientId);
         this.numberOfEvents = numberOfEvents;
     }
 

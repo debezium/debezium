@@ -55,6 +55,7 @@ import io.debezium.connector.oracle.logminer.events.RedoSqlDmlEvent;
 import io.debezium.connector.oracle.logminer.events.RollbackToSavepointEvent;
 import io.debezium.connector.oracle.logminer.events.RowIdCodec;
 import io.debezium.connector.oracle.logminer.events.TruncateEvent;
+import io.debezium.connector.oracle.logminer.events.Xid;
 import io.debezium.connector.oracle.logminer.logwriter.LogWriterFlushStrategy;
 import io.debezium.data.Envelope;
 import io.debezium.pipeline.ErrorHandler;
@@ -91,13 +92,13 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     /**
      * Lightweight metadata record for a deferred transaction that has not yet emitted any DML events.
      */
-    private record DeferredTransaction(String transactionId, Scn startScn, Instant changeTime,
+    private record DeferredTransaction(long xid, Scn startScn, Instant changeTime,
             String userName, String clientId, int redoThreadId) {
     }
 
     private Transaction createTransaction(DeferredTransaction deferredTransaction) {
         return transactionFactory.createTransaction(
-                deferredTransaction.transactionId(),
+                deferredTransaction.xid(),
                 deferredTransaction.startScn(),
                 deferredTransaction.changeTime(),
                 deferredTransaction.userName(),
@@ -322,7 +323,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     }
 
     @VisibleForTesting
-    protected LogMinerCache<String, String> getProcessedTransactionsCache() {
+    protected LogMinerCache<Long, String> getProcessedTransactionsCache() {
         return cacheProvider.getProcessedTransactionsCache();
     }
 
@@ -331,8 +332,8 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         return cacheProvider.getSchemaChangesCache();
     }
 
-    private boolean isRecentlyProcessed(String transactionId) {
-        return getProcessedTransactionsCache().containsKey(transactionId);
+    private boolean isRecentlyProcessed(long xid) {
+        return getProcessedTransactionsCache().containsKey(Xid.key(xid));
     }
 
     private boolean hasSchemaChangeBeenSeen(LogMinerEventRow event) {
@@ -385,7 +386,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             }
         }
 
-        final Transaction transaction = getTransactionCache().getTransaction(event.getTransactionId());
+        final Transaction transaction = getTransactionCache().getTransaction(event.getXid());
         if (transaction != null && isTransactionOverEventThreshold(transaction)) {
             abandonTransactionOverEventThreshold(transaction);
             return true;
@@ -396,7 +397,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
     @Override
     protected void handleInternalEvent(LogMinerEventRow event) throws InterruptedException {
-        final LogMinerEvent lastEvent = getTransactionCache().removeLastEnqueuedEvent(event.getTransactionId());
+        final LogMinerEvent lastEvent = getTransactionCache().removeLastEnqueuedEvent(event.getXid());
         if (lastEvent != null && (lastEvent.getRowId().equals(RowIdCodec.EMPTY_ROW_ID)
                 || lastEvent.getEventType() == EventType.SELECT_LOB_LOCATOR
                 || lastEvent.getEventType() == EventType.LOB_WRITE
@@ -411,25 +412,25 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
     @Override
     protected void handleStartEvent(LogMinerEventRow event) {
-        final String transactionId = event.getTransactionId();
-        if (!isRecentlyProcessed(transactionId)) {
-            if (getConfig().isDeferredLogMinerTransactionStartBehaviorEnabled() && !Strings.isNullOrEmpty(transactionId)) {
-                final DeferredTransaction deferred = deferredTransactions.computeIfAbsent(Transaction.getKey(transactionId), id -> {
-                    LOGGER.trace("Deferring transaction {} start event.", transactionId);
-                    return new DeferredTransaction(transactionId, event.getScn(), event.getChangeTime(),
+        final long xid = event.getXid();
+        if (!isRecentlyProcessed(xid)) {
+            if (getConfig().isDeferredLogMinerTransactionStartBehaviorEnabled() && xid != Xid.EMPTY_XID) {
+                final DeferredTransaction deferred = deferredTransactions.computeIfAbsent(Transaction.getKey(xid), id -> {
+                    LOGGER.trace("Deferring transaction {} start event.", event.getTransactionId());
+                    return new DeferredTransaction(xid, event.getScn(), event.getChangeTime(),
                             event.getUserName(), event.getClientId(), event.getThread());
                 });
-                Transaction.checkSqn(transactionId, deferred.transactionId(), deferred.startScn());
+                Transaction.checkSqn(xid, deferred.xid(), deferred.startScn());
                 return;
             }
 
-            final Transaction transaction = getTransactionCache().getTransaction(transactionId);
+            final Transaction transaction = getTransactionCache().getTransaction(xid);
             if (transaction == null) {
                 getTransactionCache().addTransaction(transactionFactory.createTransaction(event));
                 getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
             }
             else {
-                LOGGER.trace("Transaction {} is not yet committed and START event detected.", transactionId);
+                LOGGER.trace("Transaction {} is not yet committed and START event detected.", event.getTransactionId());
                 getTransactionCache().resetTransactionToStart(transaction);
             }
         }
@@ -437,29 +438,29 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
     @Override
     protected void handleCommitEvent(LogMinerEventRow row) throws InterruptedException {
-        final String transactionId = row.getTransactionId();
-        if (isRecentlyProcessed(transactionId)) {
+        final long xid = row.getXid();
+        if (isRecentlyProcessed(xid)) {
             LOGGER.debug("\tTransaction is already committed, skipped.");
             return;
         }
 
-        final Transaction transaction = getTransactionCache().getAndRemoveTransaction(transactionId);
+        final Transaction transaction = getTransactionCache().getAndRemoveTransaction(xid);
         boolean removedDeferredTransaction = false;
         if (transaction == null) {
             // Check if the transaction was deferred and never promoted
-            if (!Strings.isNullOrEmpty(transactionId) && removeDeferredTransaction(transactionId) != null) {
-                LOGGER.debug("Transaction {} was deferred with no DML events, removing on commit.", transactionId);
+            if (xid != Xid.EMPTY_XID && removeDeferredTransaction(xid) != null) {
+                LOGGER.debug("Transaction {} was deferred with no DML events, removing on commit.", row.getTransactionId());
                 removedDeferredTransaction = true;
             }
 
             if (!getOffsetContext().getCommitScn().hasEventScnBeenHandled(row)) {
-                LOGGER.debug("Transaction {} not found in cache with SCN {}, no events to commit.", transactionId, row.getScn());
+                LOGGER.debug("Transaction {} not found in cache with SCN {}, no events to commit.", row.getTransactionId(), row.getScn());
             }
 
             // In the event the transaction was prematurely removed due to retention policy, when we do find
             // the transaction's commit in the logs in the future, we should remove the entry if it exists
             // to avoid any potential memory-leak with the cache.
-            getTransactionCache().removeAbandonedTransaction(row.getTransactionId());
+            getTransactionCache().removeAbandonedTransaction(row.getXid());
         }
 
         final Scn smallestScn = calculateSmallestScn();
@@ -470,7 +471,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                     final Scn lastCommittedScn = getOffsetContext().getCommitScn().getCommitScnForRedoThread(row.getThread());
                     LOGGER.debug("Transaction {} has already been processed. "
                             + "Offset Commit SCN {}, Transaction Commit SCN {}, Last Seen Commit SCN {}.",
-                            transactionId, getOffsetContext().getCommitScn(), commitScn, lastCommittedScn);
+                            row.getTransactionId(), getOffsetContext().getCommitScn(), commitScn, lastCommittedScn);
                 }
                 cleanupAfterTransactionRemovedFromCache(transaction, false);
                 getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
@@ -491,7 +492,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
         LOGGER.debug("{} transaction {} with {} events (scn: {}, thread: {}, oldest buffer scn: {}): {}",
                 skipCommit ? "Skipping commit for" : "Committing",
-                transactionId, numEvents, row.getScn(), row.getThread(), smallestScn, row);
+                row.getTransactionId(), numEvents, row.getScn(), row.getThread(), smallestScn, row);
 
         if (skipCommit) {
             if (transaction != null) {
@@ -512,17 +513,17 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                     getMetrics().setOldestScnDetails(event.getScn(), event.getChangeTime());
                 }
 
-                if (Objects.equals(getOffsetContext().getTransactionId(), transactionId)) {
+                if (Objects.equals(getOffsetContext().getTransactionId(), row.getTransactionId())) {
                     if (getOffsetContext().getTransactionSequence() != null) {
                         if (getOffsetContext().getTransactionSequence() >= eventIndex) {
-                            LOGGER.info("Skipping event {} in transaction {} - has already been sent.", eventIndex, transactionId);
+                            LOGGER.info("Skipping event {} in transaction {} - has already been sent.", eventIndex, row.getTransactionId());
 
                             Loggings.logDebugAndTraceRecord(
                                     LOGGER,
                                     event,
                                     "Skipping event {} in transaction {} - has already been sent.",
                                     eventIndex,
-                                    transactionId);
+                                    row.getTransactionId());
 
                             return;
                         }
@@ -531,7 +532,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
                 getOffsetContext().setEventScn(event.getScn());
                 getOffsetContext().setEventCommitScn(row.getScn());
-                getOffsetContext().setTransactionId(transactionId);
+                getOffsetContext().setTransactionId(row.getTransactionId());
                 getOffsetContext().setTransactionSequence(eventIndex);
                 getOffsetContext().setUserName(transaction.getUserName());
                 getOffsetContext().setSourceTime(event.getChangeTime().minusSeconds(databaseOffset.getTotalSeconds()));
@@ -622,7 +623,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         getBatchMetrics().commitObserved();
 
         if (transaction != null) {
-            finalizeTransaction(transactionId, commitScn, false);
+            finalizeTransaction(xid, commitScn, false);
             cleanupAfterTransactionRemovedFromCache(transaction, false);
             getMetrics().calculateLagFromSource(row.getChangeTime());
             getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
@@ -639,34 +640,34 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
     @Override
     protected void handleRollbackEvent(LogMinerEventRow event) {
-        final String transactionId = event.getTransactionId();
-        if (getTransactionCache().containsTransaction(transactionId)) {
-            LOGGER.debug("Transaction {} was rolled back.", transactionId);
-            finalizeTransaction(transactionId, event.getScn(), true);
+        final long xid = event.getXid();
+        if (getTransactionCache().containsTransaction(xid)) {
+            LOGGER.debug("Transaction {} was rolled back.", event.getTransactionId());
+            finalizeTransaction(xid, event.getScn(), true);
             getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
             getMetrics().setBufferedEventCount(getTransactionCache().getTransactionEvents());
         }
-        else if (!Strings.isNullOrEmpty(transactionId) && removeDeferredTransaction(transactionId) != null) {
-            LOGGER.debug("Transaction {} was in deferred state, removed on rollback.", transactionId);
+        else if (xid != Xid.EMPTY_XID && removeDeferredTransaction(xid) != null) {
+            LOGGER.debug("Transaction {} was in deferred state, removed on rollback.", event.getTransactionId());
         }
         else {
-            LOGGER.debug("Transaction {} not found in cache, no events to rollback.", transactionId);
+            LOGGER.debug("Transaction {} not found in cache, no events to rollback.", event.getTransactionId());
 
             // In the event the transaction was prematurely removed due to retention policy, when we do find
             // the transaction's rollback in the logs in the future, we should remove the entry if it exists
             // to avoid any potential memory-leak with the cache.
-            getTransactionCache().removeAbandonedTransaction(transactionId);
+            getTransactionCache().removeAbandonedTransaction(xid);
         }
 
         getMetrics().incrementRolledBackTransactionCount();
-        getMetrics().addRolledBackTransactionId(transactionId);
+        getMetrics().addRolledBackTransactionId(event.getTransactionId());
         getBatchMetrics().rollbackObserved();
     }
 
-    private DeferredTransaction removeDeferredTransaction(String transactionId) {
-        DeferredTransaction transaction = deferredTransactions.remove(Transaction.getKey(transactionId));
+    private DeferredTransaction removeDeferredTransaction(long xid) {
+        DeferredTransaction transaction = deferredTransactions.remove(Transaction.getKey(xid));
         if (transaction != null) {
-            Transaction.checkSqn(transactionId, transaction.transactionId(), transaction.startScn());
+            Transaction.checkSqn(xid, transaction.xid(), transaction.startScn());
         }
         return transaction;
     }
@@ -731,16 +732,16 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         // the construction of a transaction in the buffer that never has a COMMIT or ROLLBACK. When this is
         // done by Oracle, we should automatically discard the transaction from the buffer to avoid the low
         // watermark from advancing safely.
-        final String transactionId = event.getTransactionId();
-        final Transaction transaction = getTransactionCache().getTransaction(transactionId);
+        final long xid = event.getXid();
+        final Transaction transaction = getTransactionCache().getTransaction(xid);
         if (transaction != null) {
-            LOGGER.debug("Skipping GoldenGate replication marker for transaction {} with SCN {}", transactionId, event.getScn());
-            getTransactionCache().removeLastEnqueuedEvent(transaction.getTransactionId());
+            LOGGER.debug("Skipping GoldenGate replication marker for transaction {} with SCN {}", event.getTransactionId(), event.getScn());
+            getTransactionCache().removeLastEnqueuedEvent(transaction.getXid());
             getTransactionCache().removeTransactionEvents(transaction);
             getTransactionCache().removeTransaction(transaction);
         }
         // It should not exist in this cache, but in case.
-        getTransactionCache().removeAbandonedTransaction(transactionId);
+        getTransactionCache().removeAbandonedTransaction(xid);
     }
 
     @Override
@@ -984,21 +985,21 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             getTransactionCache().abandon(transaction);
         }
         else {
-            getTransactionCache().removeAbandonedTransaction(transaction.getTransactionId());
+            getTransactionCache().removeAbandonedTransaction(transaction.getXid());
         }
-        getTransactionCache().removeLastEnqueuedEvent(transaction.getTransactionId());
+        getTransactionCache().removeLastEnqueuedEvent(transaction.getXid());
         getTransactionCache().removeTransactionEvents(transaction);
     }
 
     @Override
     protected boolean hasEventBeenProcessed(LogMinerEventRow event) {
-        final String transactionId = event.getTransactionId();
-        if (isRecentlyProcessed(transactionId)) {
-            LOGGER.debug("Transaction {} has been seen by connector, skipped.", transactionId);
+        final long xid = event.getXid();
+        if (isRecentlyProcessed(xid)) {
+            LOGGER.debug("Transaction {} has been seen by connector, skipped.", event.getTransactionId());
             return true;
         }
-        else if (getTransactionCache().isAbandoned(transactionId)) {
-            LOGGER.debug("Event for abandoned transaction {}, skipped.", transactionId);
+        else if (getTransactionCache().isAbandoned(xid)) {
+            LOGGER.debug("Event for abandoned transaction {}, skipped.", event.getTransactionId());
             return true;
         }
 
@@ -1025,20 +1026,20 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
      * @param eventScn the event's system change number, should not be {@code null}
      * @param rollbackEvent true if the transaction was rolled back, false if it was committed
      */
-    private void finalizeTransaction(String transactionId, Scn eventScn, boolean rollbackEvent) {
+    private void finalizeTransaction(long xid, Scn eventScn, boolean rollbackEvent) {
         if (rollbackEvent) {
-            final Transaction transaction = getTransactionCache().getTransaction(transactionId);
+            final Transaction transaction = getTransactionCache().getTransaction(xid);
             if (transaction != null) {
-                getTransactionCache().removeLastEnqueuedEvent(transaction.getTransactionId());
+                getTransactionCache().removeLastEnqueuedEvent(transaction.getXid());
                 getTransactionCache().removeTransactionEvents(transaction);
                 getTransactionCache().removeTransaction(transaction);
             }
         }
 
-        getTransactionCache().removeAbandonedTransaction(transactionId);
+        getTransactionCache().removeAbandonedTransaction(xid);
 
         if (getConfig().isLobEnabled()) {
-            getProcessedTransactionsCache().put(transactionId, eventScn.toString());
+            getProcessedTransactionsCache().put(Xid.key(xid), eventScn.toString());
         }
     }
 
@@ -1056,27 +1057,27 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         }
         else if (cacheSize == 1) {
             // The row's transaction is the current and only active transaction.
-            return getTransactionCache().streamTransactionsAndReturn(stream -> stream.map(Transaction::getTransactionId)
-                    .allMatch(trxId -> trxId.equals(row.getTransactionId())));
+            return getTransactionCache().streamTransactionsAndReturn(stream -> stream.mapToLong(Transaction::getXid)
+                    .allMatch(xid -> xid == row.getXid()));
         }
         return false;
     }
 
     @Override
     protected void enqueueEvent(LogMinerEventRow event, LogMinerEvent dispatchedEvent) throws InterruptedException {
-        final String transactionId = event.getTransactionId();
+        final long xid = event.getXid();
 
-        Transaction transaction = getTransactionCache().getTransaction(transactionId);
+        Transaction transaction = getTransactionCache().getTransaction(xid);
         if (transaction == null) {
             if (event.getEventType() == EventType.INTERNAL || event.isRollbackFlag()) {
                 return;
             }
 
             // Check if this transaction is in the deferred state and promote it
-            if (!Strings.isNullOrEmpty(transactionId)) {
-                final DeferredTransaction deferred = removeDeferredTransaction(transactionId);
+            if (xid != Xid.EMPTY_XID) {
+                final DeferredTransaction deferred = removeDeferredTransaction(xid);
                 if (deferred != null) {
-                    LOGGER.trace("Promoting deferred transaction {} to the transaction cache.", transactionId);
+                    LOGGER.trace("Promoting deferred transaction {} to the transaction cache.", event.getTransactionId());
                     transaction = createTransaction(deferred);
                     getTransactionCache().addTransaction(transaction);
                     getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
@@ -1084,7 +1085,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             }
 
             if (transaction == null) {
-                LOGGER.trace("Transaction {} is not in cache, creating.", transactionId);
+                LOGGER.trace("Transaction {} is not in cache, creating.", event.getTransactionId());
                 transaction = transactionFactory.createTransaction(event);
                 getTransactionCache().addTransaction(transaction);
 
@@ -1097,12 +1098,12 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         // was attributed to carries its real id. Every removal from this map is keyed by the real id, so an
         // entry stored under the row's id would never be removed and would be retained for the life of the
         // task.
-        getTransactionCache().putLastEnqueuedEvent(transaction.getTransactionId(), new LogMinerEvent(event));
+        getTransactionCache().putLastEnqueuedEvent(transaction.getXid(), new LogMinerEvent(event));
 
         final int eventId = transaction.getNextEventId();
         if (!getTransactionCache().containsTransactionEvent(transaction, eventId)) {
             // Add new event at eventId offset
-            LOGGER.trace("Transaction {}, adding event reference at key {}", transactionId, transaction.getEventId(eventId));
+            LOGGER.trace("Transaction {}, adding event reference at key {}", event.getTransactionId(), transaction.getEventId(eventId));
             getTransactionCache().addTransactionEvent(transaction, eventId, dispatchedEvent);
             getMetrics().calculateLagFromSource(event.getChangeTime());
 
@@ -1143,7 +1144,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     private void abandonTransactionOverEventThreshold(Transaction transaction) {
         LOGGER.warn("Transaction {} exceeds maximum allowed number of events, transaction will be abandoned.", transaction.getTransactionId());
         getMetrics().incrementWarningCount();
-        getTransactionCache().getAndRemoveTransaction(transaction.getTransactionId());
+        getTransactionCache().getAndRemoveTransaction(transaction.getXid());
         cleanupAfterTransactionRemovedFromCache(transaction, true);
         getMetrics().incrementOversizedTransactionCount();
     }
@@ -1376,12 +1377,14 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             LOGGER.warn("Abandon transaction requested with null/empty transaction id");
             return false;
         }
-        if (!getTransactionCache().containsTransaction(transactionId)) {
+
+        final long xid = Xid.of(transactionId);
+        if (!getTransactionCache().containsTransaction(xid)) {
             LOGGER.warn("Transaction '{}' not found in cache, cannot abandon", transactionId);
             return false;
         }
 
-        final Transaction transaction = getTransactionCache().getAndRemoveTransaction(transactionId);
+        final Transaction transaction = getTransactionCache().getAndRemoveTransaction(xid);
         if (transaction == null) {
             LOGGER.warn("Transaction '{}' was not present when attempting to abandon", transactionId);
             return false;
@@ -1433,12 +1436,12 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         final List<PendingTransaction> pending = new ArrayList<>();
 
         getTransactionCache().transactions(stream -> stream
-                .map(t -> new PendingTransaction(t.getTransactionId(), t.getStartScn(), t.getChangeTime(), t.getUserName(),
+                .map(t -> new PendingTransaction(t.getXid(), t.getStartScn(), t.getChangeTime(), t.getUserName(),
                         t.getClientId(), t.getRedoThreadId(), getTransactionEventCount(t), false))
                 .forEach(pending::add));
 
         deferredTransactions.values().stream()
-                .map(t -> new PendingTransaction(t.transactionId(), t.startScn(), t.changeTime(), t.userName(),
+                .map(t -> new PendingTransaction(t.xid(), t.startScn(), t.changeTime(), t.userName(),
                         t.clientId(), t.redoThreadId(), 0, true))
                 .forEach(pending::add);
 
