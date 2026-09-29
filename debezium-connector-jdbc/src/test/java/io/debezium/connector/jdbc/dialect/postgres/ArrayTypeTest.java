@@ -10,6 +10,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
+import java.sql.Types;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Stream;
@@ -22,6 +23,8 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.ArgumentMatchers;
+import org.mockito.Mockito;
 
 import io.debezium.connector.jdbc.type.connect.ConnectDecimalType;
 import io.debezium.connector.jdbc.type.connect.ConnectStringType;
@@ -34,6 +37,83 @@ import io.debezium.doc.FixFor;
  */
 @Tag("UnitTests")
 class ArrayTypeTest {
+
+    private static ArrayType configuredArrayType() {
+        final var dialect = Mockito.mock(io.debezium.connector.jdbc.dialect.DatabaseDialect.class);
+        final var arrayType = new ArrayType();
+        final var integerType = new io.debezium.connector.jdbc.type.connect.ConnectInt32Type();
+        Mockito.when(dialect.getSchemaType(ArgumentMatchers.argThat(value -> value.type() == Schema.Type.ARRAY))).thenReturn(arrayType);
+        Mockito.when(dialect.getSchemaType(Schema.OPTIONAL_INT32_SCHEMA)).thenReturn(integerType);
+        Mockito.when(dialect.getJdbcTypeName(Types.INTEGER)).thenReturn("integer");
+        integerType.configure(null, dialect);
+        arrayType.configure(null, dialect);
+        return arrayType;
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2572")
+    @DisplayName("Should convert two-dimensional Connect arrays for JDBC binding")
+    void testConvertsTwoDimensionalArray() {
+        final var arrayType = configuredArrayType();
+        final Schema schema = SchemaBuilder.array(SchemaBuilder.array(Schema.OPTIONAL_INT32_SCHEMA).build()).build();
+
+        assertThat(arrayType.bind(1, schema, List.of(List.of(1, 2), List.of(3, 4))))
+                .singleElement().satisfies(binding -> {
+                    assertThat(binding.getElementTypeName()).isEqualTo("integer");
+                    assertThat(binding.getValue()).isEqualTo(new Object[]{ new Object[]{ 1, 2 }, new Object[]{ 3, 4 } });
+                });
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2572")
+    @DisplayName("Should convert three-dimensional Connect arrays for JDBC binding")
+    void testConvertsThreeDimensionalArray() {
+        final var arrayType = configuredArrayType();
+        final Schema schema = SchemaBuilder.array(SchemaBuilder.array(SchemaBuilder.array(Schema.OPTIONAL_INT32_SCHEMA).build()).build()).build();
+
+        assertThat(arrayType.bind(1, schema, List.of(List.of(List.of(1), List.of(2)), List.of(List.of(3), List.of(4)))))
+                .singleElement().satisfies(binding -> assertThat(binding.getValue())
+                        .isEqualTo(new Object[]{ new Object[]{ new Object[]{ 1 }, new Object[]{ 2 } }, new Object[]{ new Object[]{ 3 }, new Object[]{ 4 } } }));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2572")
+    @DisplayName("Should reject ragged nested arrays")
+    void testRejectsRaggedNestedArray() {
+        final var arrayType = configuredArrayType();
+        final Schema schema = SchemaBuilder.array(SchemaBuilder.array(Schema.OPTIONAL_INT32_SCHEMA).build()).build();
+
+        assertThatThrownBy(() -> arrayType.bind(1, schema, List.of(List.of(1), List.of(2, 3))))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("ragged")
+                .hasMessageContaining("rectangular");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2572")
+    @DisplayName("Should preserve null scalar elements in nested arrays")
+    void testPreservesNullScalarElements() {
+        final var arrayType = configuredArrayType();
+        final Schema schema = SchemaBuilder.array(SchemaBuilder.array(Schema.OPTIONAL_INT32_SCHEMA).build()).build();
+        final List<Object> value = List.of(Arrays.asList(1, null), Arrays.asList(3, 4));
+
+        assertThat(arrayType.bind(1, schema, value))
+                .singleElement().satisfies(binding -> assertThat(binding.getValue())
+                        .isEqualTo(new Object[]{ new Object[]{ 1, null }, new Object[]{ 3, 4 } }));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2572")
+    @DisplayName("Should reject null inner arrays")
+    void testRejectsNullInnerArray() {
+        final var arrayType = configuredArrayType();
+        final Schema schema = SchemaBuilder.array(SchemaBuilder.array(Schema.OPTIONAL_INT32_SCHEMA).build()).build();
+        final List<Object> value = Arrays.asList(List.of(1), null);
+
+        assertThatThrownBy(() -> arrayType.bind(1, schema, value))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("null inner array");
+    }
 
     static Stream<Schema> bytesSchemas() {
         return Stream.of(Schema.OPTIONAL_BYTES_SCHEMA,

@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.jdbc.dialect.postgres;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
@@ -84,9 +85,34 @@ public class ArrayType extends AbstractType {
             return List.of(new ValueBindDescriptor(index, null));
         }
         final String elementTypeName = baseElementTypeName(getElementTypeName(this.getDialect(), schema, false));
-        final JdbcType elementJdbcType = getDialect().getSchemaType(schema.valueSchema());
-        final Object[] elements = elementJdbcType.convertArray(schema.valueSchema(), (Collection<?>) value);
+        final Object[] elements = convertArray(schema.valueSchema(), (Collection<?>) value, new ArrayList<>(), 0);
         return List.of(new ValueBindDescriptor(index, elements, java.sql.Types.ARRAY, elementTypeName));
+    }
+
+    private Object[] convertArray(Schema elementSchema, Collection<?> values, List<Integer> dimensions, int depth) {
+        if (depth == dimensions.size()) {
+            dimensions.add(values.size());
+        }
+        else if (dimensions.get(depth) != values.size()) {
+            throw new IllegalArgumentException("Nested array is ragged; PostgreSQL requires rectangular arrays");
+        }
+
+        if (elementSchema.type() != Schema.Type.ARRAY) {
+            return getDialect().getSchemaType(elementSchema).convertArray(elementSchema, values);
+        }
+
+        final List<Object> converted = new ArrayList<>(values.size());
+        for (Object value : values) {
+            if (value == null) {
+                throw new IllegalArgumentException("Nested array contains a null inner array");
+            }
+            if (!(value instanceof Collection<?> nested)) {
+                throw new IllegalArgumentException("Nested array has non-array value of type "
+                        + value.getClass().getName());
+            }
+            converted.add(convertArray(elementSchema.valueSchema(), nested, dimensions, depth + 1));
+        }
+        return converted.toArray();
     }
 
     /**
