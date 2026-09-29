@@ -414,7 +414,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         final String transactionId = event.getTransactionId();
         if (!isRecentlyProcessed(transactionId)) {
             if (getConfig().isDeferredLogMinerTransactionStartBehaviorEnabled() && !Strings.isNullOrEmpty(transactionId)) {
-                final DeferredTransaction deferred = deferredTransactions.computeIfAbsent(Transaction.getUsnSlt(transactionId), id -> {
+                final DeferredTransaction deferred = deferredTransactions.computeIfAbsent(Transaction.getKey(transactionId), id -> {
                     LOGGER.trace("Deferring transaction {} start event.", transactionId);
                     return new DeferredTransaction(transactionId, event.getScn(), event.getChangeTime(),
                             event.getUserName(), event.getClientId(), event.getThread());
@@ -664,7 +664,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     }
 
     private DeferredTransaction removeDeferredTransaction(String transactionId) {
-        DeferredTransaction transaction = deferredTransactions.remove(Transaction.getUsnSlt(transactionId));
+        DeferredTransaction transaction = deferredTransactions.remove(Transaction.getKey(transactionId));
         if (transaction != null) {
             Transaction.checkSqn(transactionId, transaction.transactionId(), transaction.startScn());
         }

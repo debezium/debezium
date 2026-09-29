@@ -18,22 +18,23 @@ public interface Transaction {
     String NO_SEQUENCE_TRX_ID_SUFFIX = "ffffffff";
     int NO_TRANSACTION_ID_USN_SLT = -1; // ffffffff
 
-    static int getUsnSlt(String transactionId) {
+    static int getKey(String transactionId) {
         if (transactionId == null) {
             return NO_TRANSACTION_ID_USN_SLT;
         }
-        return Character.digit(transactionId.charAt(5), 16)
-                | (Character.digit(transactionId.charAt(4), 16) << 4)
-                | (Character.digit(transactionId.charAt(7), 16) << 8)
-                | (Character.digit(transactionId.charAt(6), 16) << 12)
-                | (Character.digit(transactionId.charAt(1), 16) << 16)
-                | (Character.digit(transactionId.charAt(0), 16) << 20)
-                | (Character.digit(transactionId.charAt(3), 16) << 24)
-                | (Character.digit(transactionId.charAt(2), 16) << 28);
+        int usnSlt = (Character.digit(transactionId.charAt(0), 16) << 28)
+                | (Character.digit(transactionId.charAt(1), 16) << 24)
+                | (Character.digit(transactionId.charAt(2), 16) << 20)
+                | (Character.digit(transactionId.charAt(3), 16) << 16)
+                | (Character.digit(transactionId.charAt(4), 16) << 12)
+                | (Character.digit(transactionId.charAt(5), 16) << 8)
+                | (Character.digit(transactionId.charAt(6), 16) << 4)
+                | Character.digit(transactionId.charAt(7), 16);
+        return usnSlt * 0x9e3779b9;
     }
 
     static void checkSqn(String transactionId, String currentTransactionId, Scn currentStartScn) {
-        if (!transactionId.endsWith(NO_SEQUENCE_TRX_ID_SUFFIX) && !transactionId.regionMatches(8, currentTransactionId, 8, 8)) {
+        if (!transactionId.equals(currentTransactionId) && !transactionId.endsWith(NO_SEQUENCE_TRX_ID_SUFFIX)) {
             throw new IllegalStateException("Invalid XID %s: The slot is occupied by the transaction %s started at SCN %s".formatted(transactionId,
                     currentTransactionId, currentStartScn));
         }
@@ -46,8 +47,8 @@ public interface Transaction {
      */
     String getTransactionId();
 
-    default int getUsnSlt() {
-        return getUsnSlt(getTransactionId());
+    default int getKey() {
+        return getKey(getTransactionId());
     }
 
     /**
@@ -94,7 +95,7 @@ public interface Transaction {
         if (index < 0 || index >= getNumberOfEvents()) {
             throw new IndexOutOfBoundsException("Index " + index + "outside the transaction " + getTransactionId() + " event list bounds");
         }
-        return (long) getUsnSlt() << 32 | index;
+        return (long) getKey() << 32 | index;
     }
 
     /**

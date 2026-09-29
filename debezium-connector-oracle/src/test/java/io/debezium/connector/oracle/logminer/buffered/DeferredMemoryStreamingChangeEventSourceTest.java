@@ -790,7 +790,7 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
         }
 
         public boolean hasDeferredTransaction(String transactionId) {
-            return getDeferredTransactionsForTest().containsKey(Transaction.getUsnSlt(transactionId));
+            return getDeferredTransactionsForTest().containsKey(Transaction.getKey(transactionId));
         }
 
         public Scn getOldestDeferredTransactionStartScn() {

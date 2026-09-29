@@ -37,8 +37,8 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
     private final Set<String> abandonedTransactions = new HashSet<>();
     private final Map<Integer, LogMinerEvent> lastEnqueuedEventByTransactionId = new HashMap<>();
 
-    protected static int getUsnSlt(String transactionId) {
-        return Transaction.getUsnSlt(transactionId);
+    protected static int getKey(String transactionId) {
+        return Transaction.getKey(transactionId);
     }
 
     protected static <T extends Transaction> T checkSqn(String transactionId, T transaction) {
@@ -65,12 +65,12 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
 
     @Override
     public LogMinerEvent putLastEnqueuedEvent(String transactionId, LogMinerEvent event) {
-        return lastEnqueuedEventByTransactionId.put(getUsnSlt(transactionId), event);
+        return lastEnqueuedEventByTransactionId.put(getKey(transactionId), event);
     }
 
     @Override
     public LogMinerEvent removeLastEnqueuedEvent(String transactionId) {
-        return lastEnqueuedEventByTransactionId.remove(getUsnSlt(transactionId));
+        return lastEnqueuedEventByTransactionId.remove(getKey(transactionId));
     }
 
     @Override

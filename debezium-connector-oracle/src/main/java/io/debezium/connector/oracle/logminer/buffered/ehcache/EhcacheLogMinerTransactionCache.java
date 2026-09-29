@@ -49,24 +49,24 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
 
     @Override
     public EhcacheTransaction getTransaction(String transactionId) {
-        return checkSqn(transactionId, transactionCache.get(getUsnSlt(transactionId)));
+        return checkSqn(transactionId, transactionCache.get(getKey(transactionId)));
     }
 
     @Override
     public void addTransaction(EhcacheTransaction transaction) {
-        transactionCache.put(transaction.getUsnSlt(), transaction);
+        transactionCache.put(transaction.getKey(), transaction);
         checkAndThrowIfEviction(CacheProvider.TRANSACTIONS_CACHE_NAME);
-        eventIdsByTransactionId.put(transaction.getUsnSlt(), new TreeSet<>());
+        eventIdsByTransactionId.put(transaction.getKey(), new TreeSet<>());
     }
 
     @Override
     public void removeTransaction(EhcacheTransaction transaction) {
-        transactionCache.remove(transaction.getUsnSlt());
+        transactionCache.remove(transaction.getKey());
     }
 
     @Override
     public boolean containsTransaction(String transactionId) {
-        return eventIdsByTransactionId.containsKey(getUsnSlt(transactionId));
+        return eventIdsByTransactionId.containsKey(getKey(transactionId));
     }
 
     @Override
@@ -102,7 +102,7 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
 
     @Override
     public void forEachEvent(EhcacheTransaction transaction, InterruptiblePredicate<LogMinerEvent> predicate) throws InterruptedException {
-        final var events = eventIdsByTransactionId.get(transaction.getUsnSlt());
+        final var events = eventIdsByTransactionId.get(transaction.getKey());
         if (events != null) {
             try (var stream = events.stream()) {
                 final Iterator<Integer> iterator = stream.iterator();
@@ -125,7 +125,7 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
     public EhcacheTransaction getAndRemoveTransaction(String transactionId) {
         final EhcacheTransaction transaction = getTransaction(transactionId);
         if (transaction != null) {
-            transactionCache.remove(getUsnSlt(transactionId));
+            transactionCache.remove(getKey(transactionId));
         }
         return transaction;
     }
@@ -134,7 +134,7 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
     public void addTransactionEvent(EhcacheTransaction transaction, int eventKey, LogMinerEvent event) {
         eventCache.put(transaction.getEventId(eventKey), event);
         checkAndThrowIfEviction(CacheProvider.EVENTS_CACHE_NAME);
-        final TreeSet<Integer> eventIds = eventIdsByTransactionId.get(transaction.getUsnSlt());
+        final TreeSet<Integer> eventIds = eventIdsByTransactionId.get(transaction.getKey());
         eventIds.add(eventKey);
 
         if (event instanceof RollbackToSavepointEvent) {
@@ -153,27 +153,27 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
 
     @Override
     public void removeTransactionEvents(EhcacheTransaction transaction) {
-        final var events = eventIdsByTransactionId.get(transaction.getUsnSlt());
+        final var events = eventIdsByTransactionId.get(transaction.getKey());
         if (events != null) {
             eventCache.removeAll(events
                     .stream()
                     .map(transaction::getEventId)
                     .collect(Collectors.toSet()));
         }
-        eventIdsByTransactionId.remove(transaction.getUsnSlt());
+        eventIdsByTransactionId.remove(transaction.getKey());
     }
 
     @Override
     public boolean containsTransactionEvent(EhcacheTransaction transaction, int eventKey) {
         // Uses the highest event key ever assigned rather than checking for presence directly
         // since a partial rollback may have removed the event's entry from the cache.
-        final var events = eventIdsByTransactionId.get(transaction.getUsnSlt());
+        final var events = eventIdsByTransactionId.get(transaction.getKey());
         return events != null && !events.isEmpty() && events.last() >= eventKey;
     }
 
     @Override
     public int getTransactionEventCount(EhcacheTransaction transaction) {
-        final var events = eventIdsByTransactionId.get(transaction.getUsnSlt());
+        final var events = eventIdsByTransactionId.get(transaction.getKey());
         if (events != null) {
             return events.size();
         }
@@ -205,7 +205,7 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
         // be managed in the cache's heap, in which case we can avoid this put.
 
         // Necessary to synchronize state
-        transactionCache.put(transaction.getUsnSlt(), transaction);
+        transactionCache.put(transaction.getKey(), transaction);
         checkAndThrowIfEviction(CacheProvider.TRANSACTIONS_CACHE_NAME);
     }
 

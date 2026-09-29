@@ -788,7 +788,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
             source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1));
 
-            assertThat(source.getLastEnqueuedEventByTransactionId()).containsOnlyKeys(Transaction.getUsnSlt(TRANSACTION_ID_1));
+            assertThat(source.getLastEnqueuedEventByTransactionId()).containsOnlyKeys(Transaction.getKey(TRANSACTION_ID_1));
 
             source.processEvent(getCommitLogMinerEventRow(3, TRANSACTION_ID_1));
 
