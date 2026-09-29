@@ -164,6 +164,7 @@ jackey.zhang,Jackey Zhang
 JacobF7,Jacob Falzon
 JanHendrikDolling,Jan Hendrik Dolling
 janjwerner-confluent,Jan Werner
+janwaleed09,Jan Mohr
 jbarrieault,Jacob Barrieault
 jbragg,Jordan Bragg
 jcechace,Jakub Cechacek
