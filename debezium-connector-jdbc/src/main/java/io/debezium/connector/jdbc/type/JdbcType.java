@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.jdbc.type;
 
+import java.util.Collection;
+
 import org.apache.kafka.connect.data.Schema;
 
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
@@ -37,4 +39,18 @@ public interface JdbcType extends Type {
      * @return the resolved type to be used in DDL statements
      */
     String getTypeName(Schema schema, boolean isKey);
+
+    /**
+     * Converts values of this type into an array suitable for {@link java.sql.Connection#createArrayOf}.
+     * This conversion is separate from scalar parameter binding because array elements can require
+     * a different representation. Implementations may return a typed array, whose runtime component
+     * type must be preserved when passing it to the JDBC driver.
+     *
+     * @param schema the element schema, never {@code null}
+     * @param values the array elements, never {@code null}, but may contain null elements
+     * @return the converted array, never {@code null}
+     */
+    default Object[] convertArray(Schema schema, Collection<?> values) {
+        return values.toArray();
+    }
 }

@@ -10,7 +10,7 @@
 
     <groupId>io.debezium</groupId>
     <artifactId>debezium-build-parent</artifactId>
-    <version>3.7.0-SNAPSHOT</version>
+    <version>3.8.0-SNAPSHOT</version>
     <name>Debezium Build Aggregator</name>
     <description>Debezium is an open source change data capture platform</description>
     <packaging>pom</packaging>
@@ -141,7 +141,7 @@
         <!-- Apicurio -->
         <version.apicurio>3.2.5</version.apicurio>
         <!-- hibernate -->
-        <version.hibernate>7.2.19.Final</version.hibernate>
+        <version.hibernate>7.4.10.Final</version.hibernate>
 
         <!-- Database drivers, should align with databases -->
         <version.postgresql.driver>42.7.13</version.postgresql.driver>

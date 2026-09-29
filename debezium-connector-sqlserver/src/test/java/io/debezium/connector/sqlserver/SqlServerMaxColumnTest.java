@@ -116,6 +116,20 @@ public class SqlServerMaxColumnTest {
     }
 
     @Test
+    @FixFor("dbz#2662")
+    void shouldIdentifyNvarcharMaxWhoseLengthIsReportedInBytes() {
+        // The table metadata the relational column model is built from reports nvarchar(max) with
+        // the byte length of varchar(max) rather than with half of it.
+        final var nvarcharMax = Column.editor()
+                .name("col_nvarchar_max")
+                .jdbcType(Types.NVARCHAR)
+                .length(Integer.MAX_VALUE)
+                .create();
+
+        assertThat(SqlServerDatabaseSchema.isMaxColumn(nvarcharMax)).isTrue();
+    }
+
+    @Test
     @FixFor("dbz#1164")
     void shouldConvertUnavailableValueToPlaceholderString() {
         final var converters = new SqlServerValueConverters(

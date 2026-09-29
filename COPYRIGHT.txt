@@ -2,6 +2,7 @@ A. D. Blom
 Aakash Mhatre
 Aaron Brady
 Aaron Rosenberg
+Abhishek Gawande
 Abhishek Gupta
 Abhishek Hodavdekar
 Adam Gray
@@ -177,6 +178,7 @@ Clifford Cheefoon
 Clément Loiselet
 Cobolbaby
 Cody Holmes
+Cole Knutson
 Collin Van Dyck
 Connor Szczepaniak
 Conor Gallagher
@@ -206,6 +208,7 @@ David Remy
 David Seapy
 David Szabo
 Davyd Eliosidze
+Dayron Perez Roldan
 ddsr-ops
 Debjeet Sarkar
 Deepak Barr
@@ -283,12 +286,15 @@ Ganeshan Nagarajan
 Garib Karimli
 Gaurav Miglani
 Gaétan Collaud
+Georgii Zemlianyi
 Giljae Joo
 Gilles Vaquez
+Gimin Kim
 Gio Gutierrez
 Giovanni De Stefano
 Giovanni Panice
 Gong Chang Hua
+Gor Grigoryan
 Govinda Sakhare
 Grant Cooksey
 Grzegorz Kołakowski
@@ -417,6 +423,7 @@ Juan Antonio Pedraza
 Juan Fiallo
 Juanma Barea
 Judah Rand
+Julien Riou
 Julien Roy
 Jun Du
 Jun Wang
@@ -609,6 +616,7 @@ Patrick Chu
 Paul Cheung
 Paul Mellor
 Paul Tzen
+Paulo Cezar
 Paulo Silva
 Pavel Ivanovskii
 Pavel Strashkin
@@ -680,6 +688,7 @@ Roman Kudryashov
 Ronak Jain
 Rophy Tsai
 Roshni R
+Ross Dutkiewicz
 Rotem Adhoh
 rptroberts
 Rudi Bruchez
@@ -694,6 +703,7 @@ Sagnik Ghosh
 Sahan Dilshan
 Sahap Asci
 Sairam Polavarapu
+Sangeet Mishra
 Sanjay Kr Singh
 Sanne Grinovero
 Sara Fonseca
@@ -872,6 +882,7 @@ Yuriy Vikulov
 Zach All
 Zahid Iqbal
 Zakariae Ben Allal
+Zdravko Donev
 Zheng Wang
 Zhongqiang Gong
 Zihan Dai

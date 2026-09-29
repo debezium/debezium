@@ -76,9 +76,9 @@ public class SqlServerConnection extends JdbcConnection {
     private static final String PREFIX_CDC_DATA = "[cdc_data].";
     private static final String GET_ALL_CHANGES_FUNCTION_PREFIX = "fn_cdc_get_all_changes_";
     private static final String GET_MAX_LSN = "SELECT #db.sys.fn_cdc_get_max_lsn()";
-    private static final String GET_MAX_TRANSACTION_LSN = "SELECT MAX(start_lsn) FROM #db.cdc.lsn_time_mapping WHERE tran_id <> 0x00";
-    private static final String GET_NTH_TRANSACTION_LSN_FROM_BEGINNING = "SELECT MAX(start_lsn) FROM (SELECT TOP (?) start_lsn FROM #db.cdc.lsn_time_mapping WHERE tran_id <> 0x00 ORDER BY start_lsn) as next_lsns";
-    private static final String GET_NTH_TRANSACTION_LSN_FROM_LAST = "SELECT MAX(start_lsn) FROM (SELECT TOP (? + 1) start_lsn FROM #db.cdc.lsn_time_mapping WHERE start_lsn >= ? AND tran_id <> 0x00 ORDER BY start_lsn) as next_lsns";
+    private static final String GET_MAX_TRANSACTION_LSN = "SELECT MAX(start_lsn) FROM #db.cdc.lsn_time_mapping WITH (NOLOCK) WHERE tran_id <> 0x00";
+    private static final String GET_NTH_TRANSACTION_LSN_FROM_BEGINNING = "SELECT MAX(start_lsn) FROM (SELECT TOP (?) start_lsn FROM #db.cdc.lsn_time_mapping WITH (NOLOCK) WHERE tran_id <> 0x00 ORDER BY start_lsn) as next_lsns";
+    private static final String GET_NTH_TRANSACTION_LSN_FROM_LAST = "SELECT MAX(start_lsn) FROM (SELECT TOP (? + 1) start_lsn FROM #db.cdc.lsn_time_mapping WITH (NOLOCK) WHERE start_lsn >= ? AND tran_id <> 0x00 ORDER BY start_lsn) as next_lsns";
 
     private static final String GET_MIN_LSN = "SELECT #db.sys.fn_cdc_get_min_lsn(?)";
     private static final String LOCK_TABLE = "SELECT * FROM #table WITH (TABLOCKX)";
@@ -88,12 +88,9 @@ public class SqlServerConnection extends JdbcConnection {
             + LSN_TIMESTAMP_SELECT_STATEMENT_JOIN;
     private static final String GET_ALL_CHANGES_FOR_TABLE_SELECT_DIRECT = "SELECT cdc_data.[__$start_lsn], cdc_data.[__$seqval], cdc_data.[__$operation], cdc_data.[__$update_mask], cdc_data.[__$command_id], #, "
             + LSN_TIMESTAMP_SELECT_STATEMENT_JOIN;
-    // FUNCTION mode's table-valued function already bounds its output to the requested LSN range internally, so
-    // joining it against lsn_time_mapping here only changes how the commit timestamp is computed, not which rows
-    // are returned - consistent with the same rewrite already applied to DIRECT mode (see debezium/dbz#1915).
-    private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_FUNCTION = "FROM #db.cdc.#function(?, ?, N'all update old') AS cdc_data LEFT JOIN #db.cdc.lsn_time_mapping ltm ON ltm.start_lsn = cdc_data.[__$start_lsn]";
-    private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_DIRECT = "FROM #db.cdc.#table AS cdc_data WITH (NOLOCK) LEFT JOIN #db.cdc.lsn_time_mapping ltm ON ltm.start_lsn = cdc_data.[__$start_lsn]";
-    private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_FUNCTION_ORDER_BY = "ORDER BY cdc_data.[__$start_lsn] ASC, cdc_data.[__$seqval] ASC, cdc_data.[__$operation] ASC";
+    private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_FUNCTION = "FROM #db.cdc.#function(?, ?, N'all update old')";
+    private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_DIRECT = "FROM #db.cdc.#table AS cdc_data WITH (NOLOCK) LEFT JOIN #db.cdc.lsn_time_mapping ltm WITH (NOLOCK) ON ltm.start_lsn = cdc_data.[__$start_lsn]";
+    private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_FUNCTION_ORDER_BY = "ORDER BY [__$start_lsn] ASC, [__$seqval] ASC, [__$operation] ASC";
     private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_DIRECT_ORDER_BY = "ORDER BY cdc_data.[__$start_lsn] ASC, cdc_data.[__$command_id] ASC, cdc_data.[__$seqval] ASC, cdc_data.[__$operation] ASC";
     private static final String GET_CDC_JOB_INFO = "{call sys.sp_cdc_help_jobs}";
     private static final String CDC_JOB_INFO_JOB_TYPE_COLUMN_NAME = "job_type";

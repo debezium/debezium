@@ -9,10 +9,11 @@ CREATE TABLE binary_field
     now_time       TIME,
     now_date       DATE,
     now_date_time  DATETIME,
-    now_time_stamp TIMESTAMP
+    now_time_stamp TIMESTAMP,
+    zero_time      TIME NULL
 ) ENGINE = innodb
   AUTO_INCREMENT = 1
   DEFAULT CHARSET = utf8;
 
 INSERT INTO binary_field
-VALUES (default, now(), now(), now(), now());
+VALUES (default, now(), now(), now(), now(), '00:00:00');

@@ -7,14 +7,18 @@ package io.debezium.connector.postgresql.transforms.timescaledb;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.net.SocketException;
 import java.sql.SQLException;
 import java.sql.SQLRecoverableException;
 import java.sql.SQLSyntaxErrorException;
 import java.sql.SQLTransientException;
+import java.util.OptionalInt;
 
 import org.junit.jupiter.api.Test;
+
+import io.debezium.doc.FixFor;
 
 class QueryInformationSchemaMetadataTest {
 
@@ -46,6 +50,14 @@ class QueryInformationSchemaMetadataTest {
     }
 
     @Test
+    void endOfStreamWrappedInSqlExceptionIsRetriable() {
+        var psqlException = new SQLException("An I/O error occurred while sending to the backend");
+        psqlException.initCause(new EOFException());
+
+        assertThat(QueryInformationSchemaMetadata.isRetriable(psqlException)).isTrue();
+    }
+
+    @Test
     void sqlSyntaxErrorIsNotRetriable() {
         assertThat(QueryInformationSchemaMetadata.isRetriable(new SQLSyntaxErrorException("syntax error"))).isFalse();
     }
@@ -59,5 +71,19 @@ class QueryInformationSchemaMetadataTest {
     @Test
     void nullThrowableIsNotRetriable() {
         assertThat(QueryInformationSchemaMetadata.isRetriable(null)).isFalse();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2695")
+    void hypertableIdIsParsedFromDefaultChunkName() {
+        assertThat(QueryInformationSchemaMetadata.hypertableIdFromChunkName("_hyper_26_2403_chunk")).isEqualTo(OptionalInt.of(26));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2695")
+    void hypertableIdIsNotParsedFromOtherTableNames() {
+        assertThat(QueryInformationSchemaMetadata.hypertableIdFromChunkName("custom_chunk")).isEmpty();
+        assertThat(QueryInformationSchemaMetadata.hypertableIdFromChunkName("compress_hyper_2_3_chunk")).isEmpty();
+        assertThat(QueryInformationSchemaMetadata.hypertableIdFromChunkName("_hyper_x_1_chunk")).isEmpty();
     }
 }
