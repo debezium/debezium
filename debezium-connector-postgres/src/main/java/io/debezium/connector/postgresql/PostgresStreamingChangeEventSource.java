@@ -378,13 +378,13 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 commitMessage(partition, offsetContext, lsn);
             }
 
-            dispatcher.dispatchLogicalDecodingMessage(
+            final boolean dispatched = dispatcher.dispatchLogicalDecodingMessage(
                     partition,
                     offsetContext,
                     clock.currentTimeAsInstant().toEpochMilli(),
                     logicalMessage);
 
-            maybeWarnAboutGrowingWalBacklog(true);
+            maybeWarnAboutGrowingWalBacklog(dispatched);
         }
         // ORIGIN message - update origin state in offset context
         else if (message.getOperation() == Operation.ORIGIN) {
