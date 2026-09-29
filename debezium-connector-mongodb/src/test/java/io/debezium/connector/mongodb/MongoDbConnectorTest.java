@@ -12,7 +12,6 @@ import static org.mockito.Mockito.mock;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.common.config.ConfigDef;
@@ -22,8 +21,6 @@ import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.connector.Connector;
 import org.junit.jupiter.api.Test;
 
-import com.mongodb.connection.ClusterConnectionMode;
-import com.mongodb.connection.ClusterDescription;
 import com.mongodb.connection.ClusterType;
 
 import io.debezium.config.CommonConnectorConfig;
@@ -98,10 +95,8 @@ public class MongoDbConnectorTest {
 
     private static List<String> validateTopology(ClusterType clusterType, boolean hasReplicaSetNameIfRequired) {
         var connectionContext = mock(MongoDbConnectionContext.class);
-        given(connectionContext.getClusterDescription()).willReturn(
-                new ClusterDescription(ClusterConnectionMode.MULTIPLE, clusterType, List.of()));
-        given(connectionContext.getRequiredReplicaSetName()).willReturn(
-                hasReplicaSetNameIfRequired ? Optional.of("rs0") : Optional.empty());
+        given(connectionContext.getClusterType()).willReturn(clusterType);
+        given(connectionContext.hasReplicaSetNameIfRequired()).willReturn(hasReplicaSetNameIfRequired);
 
         var validation = new ConfigValue(MongoDbConnectorConfig.CONNECTION_STRING.name());
         MongoDbConnector.validateClusterTopology(connectionContext, validation);
