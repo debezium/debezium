@@ -22,7 +22,6 @@ import org.slf4j.LoggerFactory;
 
 import com.mongodb.MongoCommandException;
 import com.mongodb.MongoException;
-import com.mongodb.client.MongoClient;
 import com.mongodb.connection.ClusterType;
 
 import io.debezium.DebeziumException;
@@ -132,15 +131,15 @@ public class MongoDbConnector extends BaseSourceConnector implements ConfigDescr
             connectionStringValidation.addErrorMessage("Deprecated field '" + DEPRECATED_CONNECTION_MODE_FILED + "' is used set to removed 'replica_set' value");
         }
 
-        MongoDbConnectionContext connectionContext = new MongoDbConnectionContext(config);
         MongoDbConnectorConfig connectorConfig = new MongoDbConnectorConfig(config);
         Duration timeout = connectorConfig.getConnectionValidationTimeout();
 
         try {
             Threads.runWithTimeout(MongoDbConnector.class, () -> {
-                try {
+                try (var connectionContext = new MongoDbConnectionContext(config)) {
                     // Check base connection by accessing first database name
-                    try (MongoClient client = connectionContext.getMongoClient()) {
+                    try (var connection = connectionContext.openClient()) {
+                        final var client = connection.getClient();
                         // only when we try to fetch results a connection gets established
                         // Verify if users has rights to list databases
                         var dbNames = new ArrayList<String>();
@@ -171,6 +170,10 @@ public class MongoDbConnector extends BaseSourceConnector implements ConfigDescr
         }
         catch (TimeoutException e) {
             connectionStringValidation.addErrorMessage("Connection validation timed out after " + timeout.toMillis() + "ms");
+        }
+        catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            connectionStringValidation.addErrorMessage("Connection validation interrupted");
         }
         catch (Exception e) {
             connectionStringValidation.addErrorMessage("Error during connection validation: " + e.getMessage());

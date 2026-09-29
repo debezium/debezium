@@ -1128,7 +1128,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
     private final String user;
     private final String password;
     private final String authSource;
-    private final MongoDbAuthProvider authProvider;
+    private MongoDbAuthProvider authProvider;
     private final boolean sslEnabled;
     private final boolean sslAllowInvalidHostnames;
     private final String sslKeyStore;
@@ -1150,7 +1150,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
         super(config, DEFAULT_SNAPSHOT_FETCH_SIZE);
 
         // Connection configuration
-        this.authProvider = config.getInstance(MongoDbConnectorConfig.AUTH_PROVIDER_CLASS, MongoDbAuthProvider.class);
         this.sslEnabled = config.getBoolean(MongoDbConnectorConfig.SSL_ENABLED);
         this.sslAllowInvalidHostnames = config.getBoolean(MongoDbConnectorConfig.SSL_ALLOW_INVALID_HOSTNAMES);
         this.sslKeyStore = config.getString(MongoDbConnectorConfig.SSL_KEYSTORE);
@@ -1386,7 +1385,10 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
         return cursorMaxAwaitTimeMs;
     }
 
-    public MongoDbAuthProvider getAuthProvider() {
+    public synchronized MongoDbAuthProvider getAuthProvider() {
+        if (authProvider == null) {
+            authProvider = getConfig().getInstance(AUTH_PROVIDER_CLASS, MongoDbAuthProvider.class);
+        }
         return authProvider;
     }
 

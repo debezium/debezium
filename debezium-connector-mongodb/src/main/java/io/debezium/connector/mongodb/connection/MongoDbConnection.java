@@ -66,12 +66,22 @@ public final class MongoDbConnection implements AutoCloseable {
     private final MongoDbConnectorConfig connectorConfig;
 
     private final MongoDbConnectionContext connectionContext;
+    private final boolean ownsConnectionContext;
 
     MongoDbConnection(Configuration config, ErrorHandler errorHandler) {
+        this.filters = new Filters(config);
         this.connectionContext = new MongoDbConnectionContext(config);
         this.connectorConfig = connectionContext.getConnectorConfig();
-        this.filters = new Filters(config);
         this.errorHandler = errorHandler;
+        this.ownsConnectionContext = true;
+    }
+
+    MongoDbConnection(MongoDbConnectionContext connectionContext, ErrorHandler errorHandler) {
+        this.connectionContext = connectionContext;
+        this.connectorConfig = connectionContext.getConnectorConfig();
+        this.filters = new Filters(connectorConfig.getConfig());
+        this.errorHandler = errorHandler;
+        this.ownsConnectionContext = false;
     }
 
     public MongoClient getMongoClient() {
@@ -99,10 +109,13 @@ public final class MongoDbConnection implements AutoCloseable {
      * @return return value of the executed operation
      */
     public <T> T execute(String desc, BlockingFunction<MongoClient, T> operation) throws InterruptedException {
+        if (!running.get()) {
+            throw new IllegalStateException("MongoDB connection is closed");
+        }
         final Metronome errorMetronome = Metronome.sleeper(PAUSE_AFTER_ERROR, Clock.SYSTEM);
         while (true) {
-            try (var client = getMongoClient()) {
-                return operation.apply(client);
+            try (var client = connectionContext.openClient()) {
+                return operation.apply(client.getClient());
             }
             catch (InterruptedException e) {
                 throw e;
@@ -236,5 +249,8 @@ public final class MongoDbConnection implements AutoCloseable {
     @Override
     public void close() {
         running.set(false);
+        if (ownsConnectionContext) {
+            connectionContext.close();
+        }
     }
 }
