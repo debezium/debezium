@@ -1,6 +1,72 @@
 # Change log
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
+## 3.7.0.Final
+September 29th 2026 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A3.7.0.Final)
+
+### New features since 3.7.0.CR1
+
+* Create dedicated SMT to convert MongoDB events into relational-style structs [debezium/dbz#1715](https://github.com/debezium/dbz/issues/1715)
+* TimescaleDB transform breaks in Timescale 2.29 [debezium/dbz#2335](https://github.com/debezium/dbz/issues/2335)
+* Introduce `modify_to_partitioned` Oracle DDL rule [debezium/dbz#2408](https://github.com/debezium/dbz/issues/2408)
+* Vitess connector: expose vitess.cells to pin the VStream to specific cell(s) [debezium/dbz#2547](https://github.com/debezium/dbz/issues/2547)
+* Provide a lossless handling mode for MongoDB BSON Timestamp values [debezium/dbz#2570](https://github.com/debezium/dbz/issues/2570)
+* Debezium Server Kafka sink does not use the partition that an SMT selects [debezium/dbz#2691](https://github.com/debezium/dbz/issues/2691)
+
+
+### Breaking changes since 3.7.0.CR1
+
+None
+
+
+### Fixes since 3.7.0.CR1
+
+* PostgreSQL TimescaleDB connector fails every day [DBZ-9697] [debezium/dbz#98](https://github.com/debezium/dbz/issues/98)
+* Schema history restricted by 'snapshot.include.collection.list' [DBZ-9717] [debezium/dbz#1443](https://github.com/debezium/dbz/issues/1443)
+* SignalProcessor.executeWithSemaphore ignores tryAcquire result and runs the critical section unguarded on timeout [debezium/dbz#2458](https://github.com/debezium/dbz/issues/2458)
+* MariaDB EventBuffer drops standalone DDL GTID events when binlog.buffer.size is enabled [debezium/dbz#2470](https://github.com/debezium/dbz/issues/2470)
+* Inconsistent epoch scaling and invalid negative year in PostgreSQL date/timestamp infinity constants [debezium/dbz#2524](https://github.com/debezium/dbz/issues/2524)
+* MongoDB ExtractNewDocumentState omits fields removed by $unset instead of emitting null [debezium/dbz#2568](https://github.com/debezium/dbz/issues/2568)
+* PostgreSQL JDBC sink cannot bind Connect ARRAY<BYTES> values to bytea[] [debezium/dbz#2571](https://github.com/debezium/dbz/issues/2571)
+* Allow the PostgreSQL JDBC sink to serialize Connect ARRAY<STRUCT> fields as JSONB [debezium/dbz#2573](https://github.com/debezium/dbz/issues/2573)
+* ConnectValueSerde tags Map keys as KEY_TAG_LIST and lacks negative length bounds check [debezium/dbz#2609](https://github.com/debezium/dbz/issues/2609)
+* PostgreSQL logical decoding messages do not update streaming metrics [debezium/dbz#2624](https://github.com/debezium/dbz/issues/2624)
+* MySQL TIME column with value 00:00:00 is emitted as null during initial snapshot, but correctly as 0 during streaming (binlog) [debezium/dbz#2631](https://github.com/debezium/dbz/issues/2631)
+* SQL Server: unavailable.value.placeholder is emitted for max columns that the CDC update mask marks as changed (3.7.0.Beta2) [debezium/dbz#2650](https://github.com/debezium/dbz/issues/2650)
+* Task reports RUNNING after the processor group has been stopped [debezium/dbz#2651](https://github.com/debezium/dbz/issues/2651)
+* MySQL/MariaDB (binlog): blank database.ssl.keystore/truststore is treated as a real path and fails the task [debezium/dbz#2655](https://github.com/debezium/dbz/issues/2655)
+* SQL Server: unavailable.value.placeholder is never applied to nvarchar(max) columns [debezium/dbz#2662](https://github.com/debezium/dbz/issues/2662)
+* Physical standby always uses CURRENT_SCN for upper boundary [debezium/dbz#2668](https://github.com/debezium/dbz/issues/2668)
+* debezium 3.6.2 DDL statement couldn't be parsed [debezium/dbz#2673](https://github.com/debezium/dbz/issues/2673)
+* LogMiner mining window can fall below `log.mining.log.count.min` when the redo log size is misreported [debezium/dbz#2678](https://github.com/debezium/dbz/issues/2678)
+* MySQL snapshot failure leaks a lock-heartbeat thread on every task restart [debezium/dbz#2694](https://github.com/debezium/dbz/issues/2694)
+* TimescaleDb SMT routes records from a dropped chunk to the chunk topic [debezium/dbz#2695](https://github.com/debezium/dbz/issues/2695)
+* CloudEventsConverter may fail to initialize [debezium/dbz#2697](https://github.com/debezium/dbz/issues/2697)
+* PartitionRouting crashes with NullPointerException when a nested field path traverses a null struct (e.g. before.name on INSERT events) [debezium/dbz#2698](https://github.com/debezium/dbz/issues/2698)
+* Regression with relaxed quote DML parsing [debezium/dbz#2700](https://github.com/debezium/dbz/issues/2700)
+* 3.7 ORA-02003: invalid USERENV parameter on oracle 12 [debezium/dbz#2704](https://github.com/debezium/dbz/issues/2704)
+* Stabilize primary election in MongoDbWritablePrimaryIT [debezium/dbz#2707](https://github.com/debezium/dbz/issues/2707)
+* Strings.mask ignores mask argument and fails to mask username in ConnectionStrings.mask [debezium/dbz#2719](https://github.com/debezium/dbz/issues/2719)
+* Oracle DDL parse failure with creating materialized views [debezium/dbz#2720](https://github.com/debezium/dbz/issues/2720)
+
+
+### Other changes since 3.7.0.CR1
+
+* Write a blog post on some of the incremental improvements in the platfrom stage UI [debezium/dbz#2565](https://github.com/debezium/dbz/issues/2565)
+* Oracle CI failure - ORA-26812: An active session currently attached to XStream server "DBZXOUT" [debezium/dbz#2497](https://github.com/debezium/dbz/issues/2497)
+* Update CONTRIBUTING guide for module exceptions [debezium/dbz#2507](https://github.com/debezium/dbz/issues/2507)
+* Add captured tables in initial snapshot new notification [debezium/dbz#2537](https://github.com/debezium/dbz/issues/2537)
+* Add Http notification channel [debezium/dbz#2538](https://github.com/debezium/dbz/issues/2538)
+* Fix Windows/Python 3.13 installation blocking dependencies and setup_jars script [debezium/dbz#2616](https://github.com/debezium/dbz/issues/2616)
+* Standardize atomic upsert semantics and error handling across vector store adapters [debezium/dbz#2618](https://github.com/debezium/dbz/issues/2618)
+* Pydebeziumai : update quickstart credentials, and add troubleshooting guide [debezium/dbz#2621](https://github.com/debezium/dbz/issues/2621)
+* Stabilize collection-removal tests for MySQL/MariaDB read-only incremental snapshots [debezium/dbz#2636](https://github.com/debezium/dbz/issues/2636)
+* Refactor Oracle `quotedTableIdString` to strip catalog automatically [debezium/dbz#2653](https://github.com/debezium/dbz/issues/2653)
+* Debezium Server dependency and container CVE findings from Wiz scans [debezium/dbz#2657](https://github.com/debezium/dbz/issues/2657)
+* Update Hibernate to 7.4.10.Final [debezium/dbz#2681](https://github.com/debezium/dbz/issues/2681)
+* Kafka schema history validation can race with executor shutdown [debezium/dbz#2702](https://github.com/debezium/dbz/issues/2702)
+
+
 ## 3.7.0.CR1
 September 22nd 2026 [Detailed release notes](https://github.com/orgs/debezium/projects/5/views/6?filterQuery=status%3AReleased+iteration%3A3.7.0.CR1)
 
