@@ -14,8 +14,6 @@ import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
-import java.util.Optional;
-import java.util.function.Consumer;
 
 import javax.net.ssl.KeyManager;
 import javax.net.ssl.KeyManagerFactory;
@@ -29,7 +27,6 @@ import org.slf4j.LoggerFactory;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
-import com.mongodb.client.internal.MongoClientImpl;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig;
@@ -46,30 +43,6 @@ public interface MongoDbClientFactory {
     MongoClientSettings getMongoClientSettings();
 
     /**
-     * Creates a factory adapter for a driver-native client.
-     *
-     * @param client the MongoDB client
-     * @return an adapter when the client exposes the native driver settings, otherwise empty
-     */
-    static Optional<MongoDbClientFactory> adapt(MongoClient client) {
-        if (!(client instanceof MongoClientImpl mongoClient)) {
-            return Optional.empty();
-        }
-
-        return Optional.of(new MongoDbClientFactory() {
-            @Override
-            public MongoClientSettings getMongoClientSettings() {
-                return mongoClient.getSettings();
-            }
-
-            @Override
-            public MongoClient getMongoClient() {
-                return mongoClient;
-            }
-        });
-    }
-
-    /**
      * Creates native {@link MongoClient} instance
      *
      * @return mongo client
@@ -77,46 +50,6 @@ public interface MongoDbClientFactory {
     default MongoClient getMongoClient() {
         var clientSettings = getMongoClientSettings();
         return MongoClients.create(clientSettings);
-    }
-
-    /**
-     * Creates a native client for metadata operations that require access to driver cursor execution.
-     * Custom factories may override this method when their client settings cannot fully describe their connection.
-     *
-     * The returned client must be a driver-native client created by {@link MongoClients}.
-     *
-     * @return driver-native metadata client
-     */
-    default MongoClient getMetadataMongoClient() {
-        return MongoClients.create(getMongoClientSettings());
-    }
-
-    /**
-     * Performs an operation for every database name.
-     *
-     * @param client the MongoDB client
-     * @param operation the operation to perform for every database name
-     */
-    default void forEachDatabaseName(MongoClient client, Consumer<String> operation) {
-        MongoDbClientOperations.forEachDatabaseName(client, this::getMetadataMongoClient, operation);
-    }
-
-    /**
-     * Performs an operation for every collection name in the given database.
-     * <p>
-     * Custom factories that cannot recreate an equivalent client from {@link #getMongoClientSettings()} may override this method
-     * to provide their own read-preference-aware cursor implementation.
-     *
-     * @param client the MongoDB client
-     * @param databaseName the database name
-     * @param operation the operation to perform for every collection name
-     */
-    default void forEachCollectionNameInDatabase(MongoClient client, String databaseName, Consumer<String> operation) {
-        MongoDbClientOperations.forEachCollectionNameInDatabase(
-                client,
-                this::getMetadataMongoClient,
-                databaseName,
-                operation);
     }
 
     /**

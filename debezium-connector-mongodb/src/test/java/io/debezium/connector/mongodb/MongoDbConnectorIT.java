@@ -37,7 +37,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.common.config.Config;
-import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
@@ -218,6 +217,82 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
+    void shouldSnapshotFromTaggedSecondaryWhilePrimaryIsUnavailable() throws InterruptedException {
+        var replicaSet = requireThreeMemberReplicaSet();
+        var primary = replicaSet.tryPrimary().orElseThrow();
+        var secondaryMembers = replicaSet.getMembers().stream()
+                .filter(member -> member != primary)
+                .toList();
+        var taggedSecondary = secondaryMembers.get(0);
+        var taggedSecondaryAddress = taggedSecondary.getClientAddress().toString();
+
+        TestHelper.cleanDatabase(mongo, "dbit");
+        insertDocuments("dbit", "secondary_snapshot", new Document("_id", 1));
+
+        var primaryPaused = false;
+        try {
+            primary.eval("(function() { var config = rs.conf(); " +
+                    "config.members.find(function(member) { return member.host === '" + taggedSecondaryAddress + "'; }).tags = { region: 'east' }; " +
+                    "return rs.reconfig(config); })()");
+            Awaitility.await()
+                    .atMost(30, TimeUnit.SECONDS)
+                    .ignoreExceptions()
+                    .until(() -> "east".equals(taggedSecondary.eval(
+                            "rs.conf().members.find(function(member) { return member.host === '" + taggedSecondaryAddress + "'; }).tags.region").asText()));
+            Awaitility.await()
+                    .atMost(30, TimeUnit.SECONDS)
+                    .ignoreExceptions()
+                    .until(() -> taggedSecondary.eval(
+                            "(function() { db.getMongo().setReadPref('secondary'); " +
+                                    "return db.getSiblingDB('dbit').secondary_snapshot.countDocuments({ _id: 1 }); })()")
+                            .asInt() == 1);
+
+            var connectionString = ConnectionStrings.appendParameter(
+                    ConnectionStrings.appendParameter(mongo.getConnectionString(), "readPreference", "secondary"),
+                    "readPreferenceTags",
+                    "region:east");
+            config = TestHelper.getConfiguration(connectionString).edit()
+                    .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.secondary_snapshot")
+                    .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                    .build();
+            context = new MongoDbTaskContext(config);
+
+            secondaryMembers.forEach(member -> member.eval("db.adminCommand({ replSetFreeze: 600 })"));
+            primary.pause();
+            primaryPaused = true;
+            assertThat(secondaryMembers)
+                    .allSatisfy(member -> assertThat(member.eval("rs.hello().isWritablePrimary").asBoolean()).isFalse());
+
+            var validation = new MongoDbConnector().validate(config.asMap());
+            assertNoConfigurationErrors(validation, MongoDbConnectorConfig.CONNECTION_STRING);
+
+            start(MongoDbConnector.class, config);
+            var records = consumeRecordsByTopic(1).allRecordsInOrder();
+
+            assertThat(records).singleElement().satisfies(record -> {
+                VerifyRecord.isValid(record);
+                verifyReadOperation(record);
+                var value = (Struct) record.value();
+                assertThat(Document.parse(value.getString(Envelope.FieldName.AFTER)).getInteger("_id")).isEqualTo(1);
+            });
+        }
+        finally {
+            stopConnector();
+            if (primaryPaused) {
+                primary.unpause();
+            }
+            replicaSet.awaitWritablePrimary();
+            var currentPrimary = replicaSet.tryPrimary().orElseThrow();
+            secondaryMembers.stream()
+                    .filter(member -> member != currentPrimary)
+                    .forEach(member -> member.eval("db.adminCommand({ replSetFreeze: 0 })"));
+            currentPrimary.eval("(function() { var config = rs.conf(); " +
+                    "delete config.members.find(function(member) { return member.host === '" + taggedSecondaryAddress + "'; }).tags; " +
+                    "return rs.reconfig(config); })()");
+        }
+    }
+
+    @Test
     void shouldThrowExceptionWhenFieldExcludeListDatabasePartIsOnlyProvided() {
         shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_EXCLUDE_LIST, "inventory", 1);
     }
@@ -335,27 +410,6 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.SSL_ALLOW_INVALID_HOSTNAMES);
         assertNoConfigurationErrors(result, CommonConnectorConfig.TOMBSTONES_ON_DELETE);
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.CAPTURE_MODE);
-    }
-
-    @Test
-    void shouldDiscoverReplicaSetUsingSecondaryWithoutReplicaSetOption() {
-        requireThreeMemberReplicaSet();
-        var connectionString = ConnectionStrings.appendParameter(
-                removeConnectionStringParameter(mongo.getConnectionString(), "replicaSet"),
-                "readPreference",
-                "secondary");
-        config = TestHelper.getConfiguration(connectionString);
-
-        var result = new MongoDbConnector().validate(config.asMap());
-        ConfigValue connectionStringValidation = result.configValues().stream()
-                .filter(value -> value.name().equals(MongoDbConnectorConfig.CONNECTION_STRING.name()))
-                .findFirst()
-                .orElseThrow();
-
-        assertThat(connectionStringValidation.errorMessages())
-                .singleElement()
-                .asString()
-                .contains("Replica set not specified");
     }
 
     @Test
@@ -3463,20 +3517,6 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         var replicaSet = (MongoDbReplicaSet) mongo;
         assumeTrue(replicaSet.getMembers().size() >= 3, "Read preference election tests require at least three members");
         return replicaSet;
-    }
-
-    private static String removeConnectionStringParameter(String connectionString, String parameterName) {
-        var queryStart = connectionString.indexOf('?');
-        if (queryStart == -1) {
-            return connectionString;
-        }
-
-        var parameters = Arrays.stream(connectionString.substring(queryStart + 1).split("&"))
-                .filter(parameter -> !parameter.regionMatches(true, 0, parameterName + "=", 0, parameterName.length() + 1))
-                .toList();
-        return parameters.isEmpty()
-                ? connectionString.substring(0, queryStart)
-                : connectionString.substring(0, queryStart + 1) + String.join("&", parameters);
     }
 
     private void startReadPreferenceTestConnector(String readPreference) throws InterruptedException {

@@ -10,7 +10,6 @@ import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
-import org.bson.BsonBoolean;
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;
 import org.bson.BsonTimestamp;
@@ -18,9 +17,8 @@ import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.mongodb.MongoException;
+import com.mongodb.MongoCommandException;
 import com.mongodb.ReadConcern;
-import com.mongodb.ReadPreference;
 import com.mongodb.client.ChangeStreamIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
@@ -34,7 +32,6 @@ import com.mongodb.connection.ClusterDescription;
 import com.mongodb.connection.ClusterType;
 import com.mongodb.connection.ServerDescription;
 
-import io.debezium.connector.mongodb.connection.client.MongoDbClientFactory;
 import io.debezium.function.BlockingConsumer;
 
 /**
@@ -49,73 +46,24 @@ public class MongoUtils {
 
     /**
      * Perform the given operation on each of the database names.
-     * Driver-native clients use the read-preference-aware metadata adapter. Other client implementations use an explicit command
-     * with the client's effective read preference and {@link ReadConcern#DEFAULT}.
      *
      * @param client the MongoDB client; may not be null
      * @param operation the operation to perform; may not be null
      */
     public static void forEachDatabaseName(MongoClient client, Consumer<String> operation) {
-        var clientFactory = MongoDbClientFactory.adapt(client);
-        if (clientFactory.isPresent()) {
-            forEachDatabaseName(clientFactory.get(), client, operation);
-            return;
-        }
-
-        var result = runReadCommand(client, ADMIN_DATABASE, new BsonDocument("listDatabases", new BsonInt32(1))
-                .append("nameOnly", BsonBoolean.TRUE));
-        result.getArray("databases").stream()
-                .map(database -> database.asDocument().getString("name").getValue())
-                .forEach(operation);
+        forEach(client.listDatabaseNames(), operation);
     }
 
     /**
-     * Perform the given operation on each of the database names.
-     *
-     * @param clientFactory the MongoDB client factory; may not be null
-     * @param client the MongoDB client; may not be null
-     * @param operation the operation to perform; may not be null
-     */
-    public static void forEachDatabaseName(MongoDbClientFactory clientFactory, MongoClient client, Consumer<String> operation) {
-        clientFactory.forEachDatabaseName(client, operation);
-    }
-
-    /**
-     * Perform the given operation on each collection name in the named database.
-     * Driver-native clients use the read-preference-aware metadata adapter. A custom client can use the legacy primary-only
-     * convenience API when its effective preference is primary. Custom clients with any other preference must use
-     * {@link #forEachCollectionNameInDatabase(MongoDbClientFactory, MongoClient, String, Consumer)} so that their factory can
-     * provide a read-preference-aware metadata implementation.
+     * Perform the given operation on each of the collection names in the named database.
      *
      * @param client the MongoDB client; may not be null
      * @param databaseName the name of the database; may not be null
      * @param operation the operation to perform; may not be null
      */
     public static void forEachCollectionNameInDatabase(MongoClient client, String databaseName, Consumer<String> operation) {
-        var clientFactory = MongoDbClientFactory.adapt(client);
-        if (clientFactory.isPresent()) {
-            forEachCollectionNameInDatabase(clientFactory.get(), client, databaseName, operation);
-            return;
-        }
-
-        if (!ReadPreference.primary().equals(client.getReadPreference())) {
-            throw new IllegalArgumentException(
-                    "A custom MongoClient with a non-primary read preference requires the MongoDbClientFactory-aware overload");
-        }
-        forEach(client.getDatabase(databaseName).listCollectionNames(), operation);
-    }
-
-    /**
-     * Perform the given operation on each of the collection names in the named database.
-     *
-     * @param clientFactory the MongoDB client factory; may not be null
-     * @param client the MongoDB client; may not be null
-     * @param databaseName the name of the database; may not be null
-     * @param operation the operation to perform; may not be null
-     */
-    public static void forEachCollectionNameInDatabase(MongoDbClientFactory clientFactory, MongoClient client,
-                                                       String databaseName, Consumer<String> operation) {
-        clientFactory.forEachCollectionNameInDatabase(client, databaseName, operation);
+        MongoDatabase db = client.getDatabase(databaseName);
+        forEach(db.listCollectionNames(), operation);
     }
 
     /**
@@ -140,26 +88,7 @@ public class MongoUtils {
      * @param dbOperation the operation to perform; may not be null
      */
     public static void onDatabase(MongoClient client, String dbName, Consumer<MongoDatabase> dbOperation) {
-        var found = new boolean[1];
-        forEachDatabaseName(client, name -> found[0] |= Objects.equals(name, dbName));
-        if (found[0]) {
-            dbOperation.accept(client.getDatabase(dbName));
-        }
-    }
-
-    /**
-     * Perform the given operation on the database with the given name, only if that database exists.
-     *
-     * @param clientFactory the MongoDB client factory; may not be null
-     * @param client the MongoDB client; may not be null
-     * @param dbName the name of the database; may not be null
-     * @param dbOperation the operation to perform; may not be null
-     */
-    public static void onDatabase(MongoDbClientFactory clientFactory, MongoClient client, String dbName,
-                                  Consumer<MongoDatabase> dbOperation) {
-        var found = new boolean[1];
-        forEachDatabaseName(clientFactory, client, name -> found[0] |= Objects.equals(name, dbName));
-        if (found[0]) {
+        if (contains(client.listDatabaseNames(), dbName)) {
             dbOperation.accept(client.getDatabase(dbName));
         }
     }
@@ -175,29 +104,7 @@ public class MongoUtils {
     public static void onCollection(MongoClient client, String dbName, String collectionName,
                                     Consumer<MongoCollection<Document>> collectionOperation) {
         onDatabase(client, dbName, db -> {
-            var found = new boolean[1];
-            forEachCollectionNameInDatabase(client, dbName, name -> found[0] |= Objects.equals(name, collectionName));
-            if (found[0]) {
-                collectionOperation.accept(db.getCollection(collectionName));
-            }
-        });
-    }
-
-    /**
-     * Perform the given operation on the named collection in the named database, if the database and collection both exist.
-     *
-     * @param clientFactory the MongoDB client factory; may not be null
-     * @param client the MongoDB client; may not be null
-     * @param dbName the name of the database; may not be null
-     * @param collectionName the name of the collection; may not be null
-     * @param collectionOperation the operation to perform; may not be null
-     */
-    public static void onCollection(MongoDbClientFactory clientFactory, MongoClient client, String dbName, String collectionName,
-                                    Consumer<MongoCollection<Document>> collectionOperation) {
-        onDatabase(clientFactory, client, dbName, db -> {
-            var found = new boolean[1];
-            forEachCollectionNameInDatabase(clientFactory, client, dbName, name -> found[0] |= Objects.equals(name, collectionName));
-            if (found[0]) {
+            if (contains(db.listCollectionNames(), collectionName)) {
                 collectionOperation.accept(db.getCollection(collectionName));
             }
         });
@@ -215,37 +122,19 @@ public class MongoUtils {
      */
     public static void onCollectionDocuments(MongoClient client, String dbName, String collectionName,
                                              BlockingConsumer<Document> documentOperation) {
-        onCollection(client, dbName, collectionName, collection -> forEachCollectionDocument(collection, documentOperation));
-    }
-
-    /**
-     * Perform the given operation on all of the documents inside the named collection in the named database, if the database and
-     * collection both exist. The operation is called once for each document, so if the collection exists but is empty then the
-     * function will not be called.
-     *
-     * @param clientFactory the MongoDB client factory; may not be null
-     * @param client the MongoDB client; may not be null
-     * @param dbName the name of the database; may not be null
-     * @param collectionName the name of the collection; may not be null
-     * @param documentOperation the operation to perform; may not be null
-     */
-    public static void onCollectionDocuments(MongoDbClientFactory clientFactory, MongoClient client, String dbName, String collectionName,
-                                             BlockingConsumer<Document> documentOperation) {
-        onCollection(clientFactory, client, dbName, collectionName, collection -> forEachCollectionDocument(collection, documentOperation));
-    }
-
-    private static void forEachCollectionDocument(MongoCollection<Document> collection, BlockingConsumer<Document> documentOperation) {
-        try (MongoCursor<Document> cursor = collection.withReadConcern(ReadConcern.DEFAULT).find().iterator()) {
-            while (cursor.hasNext()) {
-                try {
-                    documentOperation.accept(cursor.next());
-                }
-                catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    break;
+        onCollection(client, dbName, collectionName, collection -> {
+            try (MongoCursor<Document> cursor = collection.find().iterator()) {
+                while (cursor.hasNext()) {
+                    try {
+                        documentOperation.accept(cursor.next());
+                    }
+                    catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
                 }
             }
-        }
+        });
     }
 
     /**
@@ -373,8 +262,11 @@ public class MongoUtils {
         try {
             result = runReadCommand(client, dbName, new BsonDocument("hello", new BsonInt32(1)));
         }
-        catch (MongoException e) {
-            LOGGER.error(e.getMessage(), e);
+        catch (MongoCommandException e) {
+            if (e.getErrorCode() != 59) {
+                throw e;
+            }
+            LOGGER.debug("'hello' command is not supported, falling back to 'isMaster'", e);
             result = runReadCommand(client, dbName, new BsonDocument("isMaster", new BsonInt32(1)));
         }
         return result;

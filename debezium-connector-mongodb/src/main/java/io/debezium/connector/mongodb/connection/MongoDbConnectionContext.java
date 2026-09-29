@@ -10,10 +10,12 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
 
+import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.mongodb.ConnectionString;
+import com.mongodb.ReadConcern;
 import com.mongodb.client.MongoClient;
 import com.mongodb.connection.ClusterDescription;
 import com.mongodb.connection.ClusterType;
@@ -70,11 +72,11 @@ public class MongoDbConnectionContext {
     }
 
     public void forEachCollectionNameInDatabase(MongoClient client, String databaseName, Consumer<String> operation) {
-        MongoUtils.forEachCollectionNameInDatabase(clientFactory, client, databaseName, operation);
+        MongoDbClientOperations.forEachCollectionNameInDatabase(client, databaseName, operation);
     }
 
     public void forEachDatabaseName(MongoClient client, Consumer<String> operation) {
-        MongoUtils.forEachDatabaseName(clientFactory, client, operation);
+        MongoDbClientOperations.forEachDatabaseName(client, operation);
     }
 
     public ClusterDescription getClusterDescription() {
@@ -99,10 +101,13 @@ public class MongoDbConnectionContext {
 
         var shardNames = new HashSet<String>();
         try (var client = getMongoClient()) {
-            MongoUtils.onCollectionDocuments(clientFactory, client, "config", "shards", doc -> {
-                String shardName = doc.getString("_id");
-                shardNames.add(shardName);
-            });
+            var shards = client.getDatabase("config")
+                    .getCollection("shards", Document.class)
+                    .withReadPreference(client.getReadPreference())
+                    .withReadConcern(ReadConcern.DEFAULT);
+            for (var shard : shards.find()) {
+                shardNames.add(shard.getString("_id"));
+            }
         }
         catch (Throwable t) {
             LOGGER.warn("Unable to read shard topology.");
@@ -118,11 +123,14 @@ public class MongoDbConnectionContext {
     }
 
     /**
-     * Determines if the replica set name is specified when required.
+     * Determines if RS name is specified when required
      *
-     * @return true if a replica set name is specified or the connected cluster is not a replica set
+     * @return True if RS name is specified or not required. False otherwise.
      */
     public boolean hasReplicaSetNameIfRequired() {
-        return getRequiredReplicaSetName().isPresent() || getClusterType() != ClusterType.REPLICA_SET;
+        if (getRequiredReplicaSetName().isPresent()) {
+            return true;
+        }
+        return getClusterDescription().getType() != ClusterType.REPLICA_SET;
     }
 }
