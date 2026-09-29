@@ -65,6 +65,8 @@ import org.awaitility.core.ConditionTimeoutException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.postgresql.util.PSQLException;
 
 import io.debezium.config.CommonConnectorConfig;
@@ -683,12 +685,8 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     @Test
     @FixFor("debezium/dbz#2664")
     void shouldStreamInfinityTemporalArrays() throws Exception {
-        // Infinity array elements are read as text -- the path this fix introduces -- and must emit what
-        // they did before it: the java.sql.Date sentinel, on every decoder. timestamp and timestamptz
-        // round-trip infinity losslessly, so an element equals the scalar column of the same type. A date
-        // element is pinned to the sentinel directly instead, because io.debezium.time.Date is INT32 epoch
-        // days and cannot hold infinity, so a scalar infinity date streams as a decoder-dependent value
-        // that this fix deliberately leaves unchanged. Runs under whichever logical decoder the build selects.
+        // Infinity array elements are read as text -- the path this fix introduces -- and must emit exactly
+        // what the scalar column of the same type emits. Runs under whichever logical decoder the build selects.
         TestHelper.execute("DROP TABLE IF EXISTS era_inf_stream;");
         TestHelper.execute("CREATE TABLE era_inf_stream (pk SERIAL PRIMARY KEY, "
                 + "d DATE, d_arr DATE[], ts TIMESTAMP, ts_arr TIMESTAMP[], tstz TIMESTAMPTZ, tstz_arr TIMESTAMPTZ[]);");
@@ -703,17 +701,30 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                     + "'" + inf + "','{" + inf + "}');");
             final Struct after = ((Struct) consumer.remove().value()).getStruct(Envelope.FieldName.AFTER);
 
+            assertArrayElementMatchesScalar(after, "d_arr", "d");
             assertArrayElementMatchesScalar(after, "ts_arr", "ts");
             assertArrayElementMatchesScalar(after, "tstz_arr", "tstz");
+        }
+    }
 
-            // The connector builds Postgres date converters with a null adjuster, so this reproduces the
-            // exact epoch-day the sentinel yields without pinning a magic constant.
-            final java.util.Date sentinel = "infinity".equals(inf)
-                    ? PostgresValueConverter.POSITIVE_INFINITY_DATE
-                    : PostgresValueConverter.NEGATIVE_INFINITY_DATE;
-            final List<?> dateArray = after.getArray("d_arr");
-            assertThat(dateArray).as("d_arr").hasSize(1);
-            assertThat(dateArray.get(0)).as("d_arr infinity element").isEqualTo(Date.toEpochDay(sentinel, null));
+    @ParameterizedTest
+    @EnumSource(value = TemporalPrecisionMode.class, names = { "ADAPTIVE", "CONNECT", "ISOSTRING", "STRUCTURED" })
+    @FixFor("debezium/dbz#2721")
+    void shouldStreamInfinityDateAsConnectorSentinel(TemporalPrecisionMode mode) throws Exception {
+        // Runs under whichever logical decoder the build selects; the snapshot counterpart asserts the same values
+        TestHelper.execute("DROP TABLE IF EXISTS inf_date_stream;");
+        TestHelper.execute("CREATE TABLE inf_date_stream (pk SERIAL PRIMARY KEY, d DATE, d_arr DATE[]);");
+
+        startConnector(config -> config.with(PostgresConnectorConfig.TIME_PRECISION_MODE, mode));
+
+        for (String inf : Arrays.asList("infinity", "-infinity")) {
+            consumer.expects(1);
+            executeAndWait("INSERT INTO inf_date_stream (d, d_arr) VALUES ('" + inf + "', '{" + inf + "}');");
+            final Struct after = ((Struct) consumer.remove().value()).getStruct(Envelope.FieldName.AFTER);
+            final boolean positive = "infinity".equals(inf);
+            assertInfinityDate(after.get("d"), mode, positive);
+            assertThat(after.getArray("d_arr")).hasSize(1);
+            assertInfinityDate(after.getArray("d_arr").get(0), mode, positive);
         }
     }
 

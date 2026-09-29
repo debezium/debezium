@@ -856,7 +856,15 @@ public class PostgresConnection extends JdbcConnection {
                     // Read as LocalDate so that the era survives. java.sql.Date carries no era, so a date
                     // stored as BC would arrive as the same day AD. LocalDate is a proleptic ISO type and
                     // never passes through java.sql.Date's Calendar.
-                    return rs.getObject(columnIndex, LocalDate.class);
+                    final LocalDate localDate = rs.getObject(columnIndex, LocalDate.class);
+                    // The driver maps infinity to LocalDate.MAX/MIN; emit the connector's own sentinels, as streaming does
+                    if (LocalDate.MAX.equals(localDate)) {
+                        return PostgresValueConverter.POSITIVE_INFINITY_LOCAL_DATE;
+                    }
+                    if (LocalDate.MIN.equals(localDate)) {
+                        return PostgresValueConverter.NEGATIVE_INFINITY_LOCAL_DATE;
+                    }
+                    return localDate;
                 case PgOid.TIMESTAMP:
                     // Read as LocalDateTime rather than java.sql.Timestamp, whose Julian-Gregorian calendar conversion
                     // corrupts dates before 1582-10-15 (PostgreSQL uses proleptic Gregorian). The driver parses the

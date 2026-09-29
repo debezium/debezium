@@ -55,6 +55,19 @@ public class PgProtoColumnValue extends AbstractColumnValue<PgProto.DatumMessage
      */
     private static final long TIMESTAMP_MAX = 9223371331200000000L;
 
+    /**
+     * Days between the PostgreSQL epoch (2000-01-01) and the Unix epoch.
+     */
+    private static final int POSTGRES_EPOCH_OFFSET_DAYS = 10957;
+
+    /**
+     * decoderbufs shifts a {@code date} from the PostgreSQL epoch to the Unix epoch without checking for infinity,
+     * so {@code DATEVAL_NOEND} ({@code INT32_MAX}) and {@code DATEVAL_NOBEGIN} ({@code INT32_MIN}) arrive wrapped
+     * around. Both are far outside the range of a real PostgreSQL date.
+     */
+    private static final int DECODERBUFS_POSITIVE_INFINITY_DATE = Integer.MAX_VALUE + POSTGRES_EPOCH_OFFSET_DAYS;
+    private static final int DECODERBUFS_NEGATIVE_INFINITY_DATE = Integer.MIN_VALUE + POSTGRES_EPOCH_OFFSET_DAYS;
+
     private PgProto.DatumMessage value;
 
     public PgProtoColumnValue(PgProto.DatumMessage value) {
@@ -161,7 +174,14 @@ public class PgProtoColumnValue extends AbstractColumnValue<PgProto.DatumMessage
     @Override
     public LocalDate asLocalDate() {
         if (value.hasDatumInt32()) {
-            return LocalDate.ofEpochDay(value.getDatumInt32());
+            final int epochDay = value.getDatumInt32();
+            if (epochDay == DECODERBUFS_POSITIVE_INFINITY_DATE) {
+                return PostgresValueConverter.POSITIVE_INFINITY_LOCAL_DATE;
+            }
+            if (epochDay == DECODERBUFS_NEGATIVE_INFINITY_DATE) {
+                return PostgresValueConverter.NEGATIVE_INFINITY_LOCAL_DATE;
+            }
+            return LocalDate.ofEpochDay(epochDay);
         }
 
         final String s = asString();
