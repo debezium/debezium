@@ -234,7 +234,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         }
 
         eventHandlers.put(EventType.VIEW_CHANGE, (event) -> viewChange(effectiveOffsetContext, event));
-        eventHandlers.put(EventType.XA_PREPARE, (event) -> prepareTransaction(effectiveOffsetContext, event));
+        eventHandlers.put(EventType.XA_PREPARE, (event) -> handleTransactionCompletion(partition, effectiveOffsetContext, event));
         eventHandlers.put(EventType.XID, (event) -> handleTransactionCompletion(partition, effectiveOffsetContext, event));
 
         // Conditionally register ROWS_QUERY handler to parse SQL statements.
@@ -822,7 +822,9 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         String upperCasedStatementBegin = removeSetStatement(sql).toUpperCase();
 
         if (upperCasedStatementBegin.startsWith("XA ")) {
-            // This is an XA transaction, and we currently ignore these and do nothing ...
+            if (upperCasedStatementBegin.startsWith("XA START")) {
+                handleTransactionBegin(partition, offsetContext, event, command.getThreadId());
+            }
             return;
         }
         if (!TRUNCATE_STATEMENT_PATTERN.matcher(sql).matches() && schema.ddlFilter().test(sql)) {
@@ -1113,17 +1115,6 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
      */
     protected void viewChange(O offsetContext, Event event) throws InterruptedException {
         LOGGER.debug("View Change event: {}", event);
-        // do nothing
-    }
-
-    /**
-     * Handle a {@link EventType#XA_PREPARE} event.
-     *
-     * @param event the database change data event to be processed; may not be null
-     * @throws InterruptedException if this thread is interrupted while blocking
-     */
-    protected void prepareTransaction(O offsetContext, Event event) throws InterruptedException {
-        LOGGER.debug("XA Prepare event: {}", event);
         // do nothing
     }
 
