@@ -12,11 +12,14 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
+import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.mongodb.ConnectionString;
+import com.mongodb.ReadConcern;
 import com.mongodb.ReadPreference;
+import com.mongodb.client.MongoClient;
 import com.mongodb.connection.ClusterDescription;
 import com.mongodb.connection.ClusterType;
 import com.mongodb.event.ClusterDescriptionChangedEvent;
@@ -97,11 +100,11 @@ public class MongoDbConnectionContext implements AutoCloseable {
     }
 
     public void forEachCollectionNameInDatabase(MongoClient client, String databaseName, Consumer<String> operation) {
-        MongoUtils.forEachCollectionNameInDatabase(clientFactory, client, databaseName, operation);
+        MongoDbClientOperations.forEachCollectionNameInDatabase(client, databaseName, operation);
     }
 
     public void forEachDatabaseName(MongoClient client, Consumer<String> operation) {
-        MongoUtils.forEachDatabaseName(clientFactory, client, operation);
+        MongoDbClientOperations.forEachDatabaseName(client, operation);
     }
 
     public ClusterDescription getClusterDescription() {
@@ -126,10 +129,15 @@ public class MongoDbConnectionContext implements AutoCloseable {
 
         var shardNames = new HashSet<String>();
         try (var client = openClient()) {
-            MongoUtils.onCollectionDocuments(clientFactory, client.getClient(), "config", "shards", doc -> {
-                String shardName = doc.getString("_id");
+            var mongoClient = client.getClient();
+            var shards = mongoClient.getDatabase("config")
+                    .getCollection("shards", Document.class)
+                    .withReadPreference(mongoClient.getReadPreference())
+                    .withReadConcern(ReadConcern.DEFAULT);
+            for (var shard : shards.find()) {
+                String shardName = shard.getString("_id");
                 shardNames.add(shardName);
-            });
+            }
         }
         catch (Throwable t) {
             LOGGER.warn("Unable to read shard topology.");
