@@ -122,15 +122,6 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
     public static final Date NEGATIVE_INFINITY_DATE = new Date(PGStatement.DATE_NEGATIVE_INFINITY);
 
-    /**
-     * What {@code ResultSet#getObject} returned for an infinite {@code DATE} before the column was
-     * read as a {@link LocalDate}. Reading it as a {@code LocalDate} yields {@code LocalDate.MAX/MIN}
-     * instead, so the snapshot maps those back onto these, leaving the era as the only thing that
-     * the JSR-310 read changes.
-     */
-    private static final java.sql.Date POSITIVE_INFINITY_SQL_DATE = new java.sql.Date(PGStatement.DATE_POSITIVE_INFINITY);
-
-    private static final java.sql.Date NEGATIVE_INFINITY_SQL_DATE = new java.sql.Date(PGStatement.DATE_NEGATIVE_INFINITY);
     public static final Timestamp NEGATIVE_INFINITY_TIMESTAMP = new Timestamp(PGStatement.DATE_NEGATIVE_INFINITY);
     public static final Instant NEGATIVE_INFINITY_INSTANT = Conversions.toInstantFromMillis(PGStatement.DATE_NEGATIVE_INFINITY);
     public static final LocalDateTime NEGATIVE_INFINITY_LOCAL_DATE_TIME = LocalDateTime.ofInstant(NEGATIVE_INFINITY_INSTANT, ZoneOffset.UTC);
@@ -1208,39 +1199,16 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
     /**
      * Normalizes a {@code DATE} value before the superclass dispatches it on the configured
-     * {@link io.debezium.jdbc.TemporalPrecisionMode}. Two read paths need era-preserving help and reach
-     * this method with distinguishable inputs; every other value is passed through untouched.
-     * <ul>
-     * <li>A {@code date[]} element is read as text (see {@link #convertTemporalArrayAsText}) and arrives
-     * here as a {@link String}. It is parsed era-aware, and both spellings of infinity are folded onto
-     * the {@code java.sql.Date} sentinel the array path has always emitted.</li>
-     * <li>A scalar {@code date} read during snapshot arrives as a {@link LocalDate}, with infinity mapped
-     * by the driver to {@link LocalDate#MAX}/{@link LocalDate#MIN}; those are folded back onto the same
-     * sentinel so the snapshot emits infinite dates exactly as the previous {@code java.sql.Date} read
-     * did.</li>
-     * </ul>
-     * A streamed scalar {@code date} also arrives as a {@link LocalDate}, but its infinity is already the
-     * connector's own {@link #POSITIVE_INFINITY_LOCAL_DATE}/{@link #NEGATIVE_INFINITY_LOCAL_DATE} constant
-     * rather than {@code LocalDate.MAX/MIN}, so it flows through unchanged and streaming keeps emitting
-     * what it did before this fix. Aligning streamed scalar infinity onto the snapshot value is a
-     * separate behavior change tracked in its own issue.
+     * {@link io.debezium.jdbc.TemporalPrecisionMode}. A {@code date[]} element is read as text (see
+     * {@link #convertTemporalArrayAsText}) and arrives here as a {@link String}; it is parsed era-aware, with
+     * infinity mapped to {@link #POSITIVE_INFINITY_LOCAL_DATE}/{@link #NEGATIVE_INFINITY_LOCAL_DATE}. Every other
+     * value is passed through untouched: each read path (snapshot, pgoutput and decoderbufs) already delivers a
+     * scalar {@code date} as a {@link LocalDate} with infinity mapped to those same constants, so an infinite date
+     * is emitted identically whichever path read it.
      */
     protected Object convertDateValue(Column column, Field fieldDefn, Object data) {
         if (data instanceof String str) {
-            final LocalDate parsed = DateTimeFormat.get().date(str);
-            if (POSITIVE_INFINITY_LOCAL_DATE.equals(parsed)) {
-                return POSITIVE_INFINITY_SQL_DATE;
-            }
-            if (NEGATIVE_INFINITY_LOCAL_DATE.equals(parsed)) {
-                return NEGATIVE_INFINITY_SQL_DATE;
-            }
-            return parsed;
-        }
-        if (LocalDate.MAX.equals(data)) {
-            return POSITIVE_INFINITY_SQL_DATE;
-        }
-        if (LocalDate.MIN.equals(data)) {
-            return NEGATIVE_INFINITY_SQL_DATE;
+            return DateTimeFormat.get().date(str);
         }
         return data;
     }
