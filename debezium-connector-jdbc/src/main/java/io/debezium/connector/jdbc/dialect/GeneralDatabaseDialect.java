@@ -435,7 +435,12 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     public List<ValueBindDescriptor> bindValue(JdbcFieldDescriptor field, int startIndex, Object value) {
         var schemaType = getSchemaType(field.getSchema());
         LOGGER.trace("Bind field '{}' at position {} with type {}: {}", field.getName(), startIndex, schemaType.getClass().getName(), value);
-        return field.bind(startIndex, value, schemaType);
+        try {
+            return field.bind(startIndex, value, schemaType);
+        }
+        catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Unable to bind field '" + field.getName() + "': " + e.getMessage(), e);
+        }
     }
 
     @Override
