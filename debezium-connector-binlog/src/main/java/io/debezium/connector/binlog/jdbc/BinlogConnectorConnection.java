@@ -634,11 +634,13 @@ public abstract class BinlogConnectorConnection extends JdbcConnection {
      * @param gtidSourceFilter the source filter
      * @param offsetGtids the gtids from the offsets
      * @param availableServerGtidSet the GTID set currently available in the server
+     * @param binlogFilename the binlog file the offset is resuming from; may be null
      * @param purgedServerGtidSet the GTID set already purged by the server
      * @return A GTID set meant for consuming from a binlog; may return null if the SourceInfo has no GTIDs and none filtered
      */
     public abstract GtidSet filterGtidSet(Predicate<String> gtidSourceFilter,
                                           String offsetGtids,
+                                          String binlogFilename,
                                           GtidSet availableServerGtidSet,
                                           GtidSet purgedServerGtidSet);
 

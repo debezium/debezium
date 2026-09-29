@@ -279,6 +279,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
             final GtidSet filteredGtidSet = connection.filterGtidSet(
                     connectorConfig.getGtidSourceFilter(),
                     effectiveOffsetContext.gtidSet(),
+                    effectiveOffsetContext.getSource().binlogFilename(),
                     availableServerGtidSet,
                     purgedServerGtidSet);
 

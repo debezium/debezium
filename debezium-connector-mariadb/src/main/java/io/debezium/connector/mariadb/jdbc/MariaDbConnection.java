@@ -72,7 +72,8 @@ public class MariaDbConnection extends BinlogConnectorConnection {
     }
 
     @Override
-    public GtidSet filterGtidSet(Predicate<String> gtidSourceFilter, String offsetGtids, GtidSet availableServerGtidSet, GtidSet purgedServerGtidSet) {
+    public GtidSet filterGtidSet(Predicate<String> gtidSourceFilter, String offsetGtids, String binlogFilename,
+                                 GtidSet availableServerGtidSet, GtidSet purgedServerGtidSet) {
         String gtidStr = offsetGtids;
         if (gtidStr == null) {
             return null;
