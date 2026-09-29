@@ -247,6 +247,30 @@ public abstract class BinlogTransactionMetadataIT<C extends SourceConnector> ext
                 databaseName + ".products", insertsPerTable));
     }
 
+    @Test
+    @FixFor("debezium/dbz#2738")
+    public void shouldEmitTransactionMetadataForXaTransaction() throws InterruptedException {
+        config = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
+                .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with(BinlogConnectorConfig.PROVIDE_TRANSACTION_METADATA, true)
+                .with(BinlogConnectorConfig.BUFFER_SIZE_FOR_BINLOG_READER, 0)
+                .build();
+
+        start(getConnectorClass(), config);
+        assertConnectorIsRunning();
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
+
+        executeStatements(DATABASE.getDatabaseName(),
+                "XA START 'xa1'", CUSTOMER_INSERT_STMT_1, PRODUCT_INSERT_STMT, "XA END 'xa1'", "XA PREPARE 'xa1'", "XA COMMIT 'xa1'");
+
+        final List<SourceRecord> records = consumeRecordsByTopic(4).allRecordsInOrder();
+        assertThat(records).hasSize(4);
+        final String txId = assertBeginTransaction(records.get(0));
+        final String databaseName = DATABASE.getDatabaseName();
+        assertEndTransaction(records.get(3), txId, 2, Collect.hashMapOf(databaseName + ".customers", 1, databaseName + ".products", 1));
+    }
+
     private String findTransactionId(List<SourceRecord> records) {
         return records.stream()
                 .filter(record -> record.topic().equals(DATABASE.topicForTable("customers"))
