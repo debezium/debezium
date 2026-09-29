@@ -40,7 +40,7 @@ public enum SerializerType {
         if (name == null) {
             return null;
         }
-        return NAME_TO_TYPE.get(name.toLowerCase(Locale.getDefault()));
+        return NAME_TO_TYPE.get(name.toLowerCase(Locale.ROOT));
     }
 
     private String name;
