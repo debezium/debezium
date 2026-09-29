@@ -257,7 +257,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
                     .build();
             context = new MongoDbTaskContext(config);
 
-            secondaryMembers.forEach(member -> member.eval("db.adminCommand({ replSetFreeze: 600 })"));
+            secondaryMembers.forEach(member -> member.eval("db.adminCommand({ replSetFreeze: 120 })"));
             primary.pause();
             primaryPaused = true;
             assertThat(secondaryMembers)
@@ -277,18 +277,19 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
             });
         }
         finally {
-            stopConnector();
+            bestEffortCleanup("stop connector", this::stopConnector);
             if (primaryPaused) {
-                primary.unpause();
+                bestEffortCleanup("unpause original primary", primary::unpause);
             }
-            replicaSet.awaitWritablePrimary();
-            var currentPrimary = replicaSet.tryPrimary().orElseThrow();
-            secondaryMembers.stream()
-                    .filter(member -> member != currentPrimary)
-                    .forEach(member -> member.eval("db.adminCommand({ replSetFreeze: 0 })"));
-            currentPrimary.eval("(function() { var config = rs.conf(); " +
-                    "delete config.members.find(function(member) { return member.host === '" + taggedSecondaryAddress + "'; }).tags; " +
-                    "return rs.reconfig(config); })()");
+            replicaSet.getMembers().forEach(member -> bestEffortCleanup(
+                    "unfreeze replica set member",
+                    () -> member.eval("db.adminCommand({ replSetFreeze: 0 })")));
+            replicaSet.getMembers().forEach(member -> bestEffortCleanup(
+                    "remove replica set member tag",
+                    () -> removeReplicaSetMemberTag(member, taggedSecondaryAddress)));
+            bestEffortCleanup("wait for writable primary", replicaSet::awaitWritablePrimary);
+            bestEffortCleanup("remove replica set member tag after primary recovery", () -> replicaSet.tryPrimary()
+                    .ifPresent(currentPrimary -> removeReplicaSetMemberTag(currentPrimary, taggedSecondaryAddress)));
         }
     }
 
@@ -3517,6 +3518,21 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         var replicaSet = (MongoDbReplicaSet) mongo;
         assumeTrue(replicaSet.getMembers().size() >= 3, "Read preference election tests require at least three members");
         return replicaSet;
+    }
+
+    private void bestEffortCleanup(String operation, Runnable cleanup) {
+        try {
+            cleanup.run();
+        }
+        catch (Throwable t) {
+            logger.warn("Unable to {} during test cleanup", operation, t);
+        }
+    }
+
+    private static void removeReplicaSetMemberTag(MongoDbContainer member, String taggedSecondaryAddress) {
+        member.eval("(function() { var config = rs.conf(); " +
+                "delete config.members.find(function(candidate) { return candidate.host === '" + taggedSecondaryAddress + "'; }).tags; " +
+                "return rs.reconfig(config); })()");
     }
 
     private void startReadPreferenceTestConnector(String readPreference) throws InterruptedException {

@@ -17,7 +17,7 @@ import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.mongodb.MongoCommandException;
+import com.mongodb.MongoException;
 import com.mongodb.ReadConcern;
 import com.mongodb.client.ChangeStreamIterable;
 import com.mongodb.client.MongoClient;
@@ -262,11 +262,8 @@ public class MongoUtils {
         try {
             result = runReadCommand(client, dbName, new BsonDocument("hello", new BsonInt32(1)));
         }
-        catch (MongoCommandException e) {
-            if (e.getErrorCode() != 59) {
-                throw e;
-            }
-            LOGGER.debug("'hello' command is not supported, falling back to 'isMaster'", e);
+        catch (MongoException e) {
+            LOGGER.error(e.getMessage(), e);
             result = runReadCommand(client, dbName, new BsonDocument("isMaster", new BsonInt32(1)));
         }
         return result;
