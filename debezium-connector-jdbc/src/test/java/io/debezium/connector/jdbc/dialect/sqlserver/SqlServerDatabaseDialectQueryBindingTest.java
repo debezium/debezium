@@ -81,7 +81,7 @@ class SqlServerDatabaseDialectQueryBindingTest {
 
         final JdbcType type = dialect.getSchemaType(Schema.STRING_SCHEMA);
 
-        assertThat(type.getQueryBinding(column, Schema.STRING_SCHEMA, "hello")).isEqualTo("cast(? as varchar(79))");
+        assertThat(type.getQueryBinding(column, Schema.STRING_SCHEMA, "hello")).isEqualTo("cast(? as varchar(max))");
     }
 
     @Test
