@@ -3646,6 +3646,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
 
     @Test
     @FixFor("debezium/dbz#2559")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "pgoutput builds time arrays from their text form")
     public void shouldStreamFractionalTimeArrayIndependentOfJvmZone() throws Exception {
         TimeZone original = TimeZone.getDefault();
         TimeZone.setDefault(TimeZone.getTimeZone("GMT+3"));
@@ -3654,7 +3655,6 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
             startConnector(config -> config
                     .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, false)
                     .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
-                    .with(PostgresConnectorConfig.PLUGIN_NAME, PostgresConnectorConfig.LogicalDecoder.PGOUTPUT)
                     .with(PostgresConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.ISOSTRING)
                     .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.time_precision_array_table"), false);
 
