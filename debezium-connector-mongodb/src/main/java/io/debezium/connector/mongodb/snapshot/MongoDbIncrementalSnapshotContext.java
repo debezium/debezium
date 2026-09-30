@@ -478,7 +478,8 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
 
     @Override
     public String toString() {
-        return "MongoDbIncrementalSnapshotContext [windowOpened=" + windowOpened + ", chunkEndPosition="
+        return "MongoDbIncrementalSnapshotContext [windowOpened=" + windowOpened + ", chunkStartPosition="
+                + Arrays.toString(chunkStartPosition) + ", chunkEndPosition="
                 + Arrays.toString(chunkEndPosition) + ", dataCollectionsToSnapshot=" + dataCollectionsToSnapshot
                 + ", lastEventKeySent=" + Arrays.toString(lastEventKeySent) + ", maximumKey="
                 + Arrays.toString(maximumKey) + "]";
