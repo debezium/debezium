@@ -19,6 +19,7 @@ import io.debezium.doc.FixFor;
 public class SerializerTypeTest {
 
     @Test
+    @FixFor("debezium/dbz#2737")
     public void shouldReturnSerializerTypeForValidNames() {
         assertThat(SerializerType.withName("json")).isEqualTo(SerializerType.JSON);
         assertThat(SerializerType.withName("JSON")).isEqualTo(SerializerType.JSON);
@@ -29,6 +30,7 @@ public class SerializerTypeTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2737")
     public void shouldReturnNullForNullOrInvalidNames() {
         assertThat(SerializerType.withName(null)).isNull();
         assertThat(SerializerType.withName("")).isNull();
