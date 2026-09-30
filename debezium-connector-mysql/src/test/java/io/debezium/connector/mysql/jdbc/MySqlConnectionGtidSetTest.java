@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 
 import io.debezium.connector.binlog.gtid.GtidSet;
 import io.debezium.connector.mysql.gtid.MySqlGtidSet;
+import io.debezium.doc.FixFor;
 
 /**
  * Tests the GTID set adjustment that keeps a lineage missing from the offset from being replayed.
@@ -56,6 +57,7 @@ public class MySqlConnectionGtidSetTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2731")
     public void shouldClaimALineageTheOffsetDoesNotTrackButTheServerExecutedEarlier() {
         // An offset that started part-way through the binlog never observed the inherited lineage.
         final MySqlGtidSet offset = new MySqlGtidSet(OWN + ":9-8912233");
@@ -71,6 +73,7 @@ public class MySqlConnectionGtidSetTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2731")
     public void shouldLeaveAnOffsetThatTracksEveryLineageUnchanged() {
         final MySqlGtidSet offset = new MySqlGtidSet(
                 INHERITED + ":1-1472899466," + OWN + ":1-8912233");
@@ -82,6 +85,7 @@ public class MySqlConnectionGtidSetTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2731")
     public void shouldNotClaimALineageWithTransactionsAfterTheResumePosition() {
         // A promoted primary writing its own lineage: those transactions are not in Previous_gtids
         // of the resume file, so they must still be read from the earliest available position.
@@ -94,6 +98,7 @@ public class MySqlConnectionGtidSetTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2731")
     public void shouldNotOverrideAPositionTheOffsetAlreadyRecords() {
         final MySqlGtidSet offset = new MySqlGtidSet(OWN + ":1-8912233");
 
@@ -102,6 +107,7 @@ public class MySqlConnectionGtidSetTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2731")
     public void shouldToleratePreviousGtidsThatCannotBeUsed() {
         final MySqlGtidSet offset = new MySqlGtidSet(OWN + ":1-8912233");
 

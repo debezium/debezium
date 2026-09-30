@@ -16,6 +16,7 @@ import io.debezium.connector.binlog.gtid.GtidSet;
 import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
 import io.debezium.connector.binlog.jdbc.BinlogFieldReader;
 import io.debezium.connector.mysql.gtid.MySqlGtidSet;
+import io.debezium.util.Strings;
 
 /**
  * An {@link BinlogConnectorConnection} to be used with MySQL.
@@ -214,7 +215,7 @@ public class MySqlConnection extends BinlogConnectorConnection {
      * @return the GTIDs executed before the file, or an empty set if they cannot be determined
      */
     private GtidSet gtidsExecutedBefore(String binlogFilename, MySqlGtidSet knownGtidSet) {
-        if (binlogFilename == null || binlogFilename.isEmpty()) {
+        if (Strings.isNullOrEmpty(binlogFilename)) {
             return new MySqlGtidSet("");
         }
         try {
@@ -236,7 +237,7 @@ public class MySqlConnection extends BinlogConnectorConnection {
         catch (SQLException | RuntimeException e) {
             // Best effort: on any failure fall back to the behaviour without this adjustment
             // rather than preventing the connector from starting.
-            LOGGER.warn("Could not read the Previous_gtids event of '{}'; lineages missing from the "
+            LOGGER.debug("Could not read the Previous_gtids event of '{}'; lineages missing from the "
                     + "offset may be re-delivered", binlogFilename, e);
             return new MySqlGtidSet("");
         }
