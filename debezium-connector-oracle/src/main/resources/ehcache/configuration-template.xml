@@ -23,7 +23,7 @@
     <!-- Setup transactions cache -->
     <cache alias="transactions">
         <!-- Debezium specifically sets the key/value types -->
-        <key-type>java.lang.Integer</key-type>
+        <key-type>java.lang.Long</key-type>
         <value-type>io.debezium.connector.oracle.logminer.buffered.ehcache.EhcacheTransaction</value-type>
         ${log.mining.buffer.ehcache.transactions.config}
     </cache>

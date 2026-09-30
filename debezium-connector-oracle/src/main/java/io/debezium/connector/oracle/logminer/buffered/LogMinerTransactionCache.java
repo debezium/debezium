@@ -9,6 +9,7 @@ import java.time.Instant;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.LongStream;
 import java.util.stream.Stream;
 
 import io.debezium.connector.oracle.Scn;
@@ -117,7 +118,7 @@ public interface LogMinerTransactionCache<T extends Transaction> {
      *
      * @param consumer the consumer to be applied, should not be {@code null}
      */
-    void eventKeys(Consumer<Stream<Long>> consumer);
+    void eventKeys(Consumer<LongStream> consumer);
 
     /**
      * Apply a predicate over all cached events associated with the specified transaction.

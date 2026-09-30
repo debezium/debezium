@@ -386,6 +386,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             Mockito.when(rs.getString(2)).thenReturn("insert into \"DEBEZIUM\".\"ABC\"(\"ID\",\"DATA\") values ('1','test');");
             Mockito.when(rs.getInt(3)).thenReturn(EventType.INSERT.getValue());
             Mockito.when(rs.getTimestamp(eq(4), any(Calendar.class))).thenReturn(Timestamp.valueOf(LocalDateTime.now()));
+            Mockito.when(rs.getBytes(5)).thenReturn(new byte[]{ 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00 });
             Mockito.when(rs.getString(7)).thenReturn("ABC");
             Mockito.when(rs.getString(8)).thenReturn("DEBEZIUM");
             Mockito.when(rs.getString(10)).thenReturn("AAAAAAAAAAAAAAAAAB");
@@ -755,7 +756,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             source.processEvent(getInsertLogMinerEventRow(2, PARTIAL_TXN_ID_FULL, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'insert'"));
             source.processEvent(getUpdateLogMinerEventRow(3, PARTIAL_TXN_ID_FULL, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'update'"));
 
-            // The undo's sequence could not be resolved, but usnSlt alone resolves it to the cached transaction
+            // The undo's sequence could not be resolved, but XIDUSN and XIDSLT alone resolve it to the cached transaction
             source.processEvent(getRollbackToSavepointLogMinerEventRow(4, PARTIAL_TXN_ID_PARTIAL, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'insert'"));
 
             assertThat(source.getTransactionCache().containsTransaction(Xid.of(PARTIAL_TXN_ID_PARTIAL))).isTrue();
@@ -789,7 +790,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
             source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1));
 
-            assertThat(source.getLastEnqueuedEventByTransactionId()).containsOnlyKeys(Transaction.getKey(Xid.of(TRANSACTION_ID_1)));
+            assertThat(source.getLastEnqueuedEventByTransactionId()).containsOnlyKeys(Xid.usnSltKey(Xid.of(TRANSACTION_ID_1)));
 
             source.processEvent(getCommitLogMinerEventRow(3, TRANSACTION_ID_1));
 

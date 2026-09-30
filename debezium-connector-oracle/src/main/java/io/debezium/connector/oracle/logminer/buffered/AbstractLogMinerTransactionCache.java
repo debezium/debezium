@@ -38,17 +38,6 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
     private final Set<Long> abandonedTransactions = new HashSet<>();
     private final Map<Integer, LogMinerEvent> lastEnqueuedEventByTransactionId = new HashMap<>();
 
-    protected static int getKey(long xid) {
-        return Transaction.getKey(xid);
-    }
-
-    protected static <T extends Transaction> T checkSqn(long xid, T transaction) {
-        if (transaction != null) {
-            Transaction.checkSqn(xid, transaction.getXid(), transaction.getStartScn());
-        }
-        return transaction;
-    }
-
     @Override
     public void abandon(T transaction) {
         abandonedTransactions.add(Xid.key(transaction.getXid()));
@@ -66,12 +55,12 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
 
     @Override
     public LogMinerEvent putLastEnqueuedEvent(long xid, LogMinerEvent event) {
-        return lastEnqueuedEventByTransactionId.put(getKey(xid), event);
+        return lastEnqueuedEventByTransactionId.put(Xid.usnSltKey(xid), event);
     }
 
     @Override
     public LogMinerEvent removeLastEnqueuedEvent(long xid) {
-        return lastEnqueuedEventByTransactionId.remove(getKey(xid));
+        return lastEnqueuedEventByTransactionId.remove(Xid.usnSltKey(xid));
     }
 
     @Override

@@ -16,21 +16,6 @@ import io.debezium.connector.oracle.logminer.events.Xid;
  * @author Chris Cranford
  */
 public interface Transaction {
-    static int getKey(long xid) {
-        return (int) (xid >>> 32) * 0x9e3779b9;
-    }
-
-    static long getUsnSlt(int key) {
-        return key * 0x144cbc89;
-    }
-
-    static void checkSqn(long xid, long currentXid, Scn currentStartScn) {
-        if (xid != currentXid && (int) xid != Xid.EMPTY_SQN) {
-            throw new IllegalStateException(
-                    "Invalid XID %016x: The slot is occupied by the transaction %016x started at SCN %s".formatted(xid, currentXid, currentStartScn));
-        }
-    }
-
     /**
      * Get the transaction identifier
      *
@@ -40,10 +25,6 @@ public interface Transaction {
 
     default String getTransactionId() {
         return Xid.transactionId(getXid());
-    }
-
-    default int getKey() {
-        return getKey(getXid());
     }
 
     /**
@@ -90,7 +71,7 @@ public interface Transaction {
         if (index < 0 || index >= getNumberOfEvents()) {
             throw new IndexOutOfBoundsException("Index " + index + "outside the transaction " + getXid() + " event list bounds");
         }
-        return Xid.key(getXid() & 0xffffffff00000000L | index);
+        return getXid() & 0xffffffff00000000L | index;
     }
 
     /**

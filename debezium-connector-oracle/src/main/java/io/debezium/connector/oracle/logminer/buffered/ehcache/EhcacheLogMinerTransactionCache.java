@@ -5,14 +5,12 @@
  */
 package io.debezium.connector.oracle.logminer.buffered.ehcache;
 
-import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.LongStream;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -31,14 +29,12 @@ import io.debezium.connector.oracle.logminer.events.Xid;
  */
 public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransactionCache<EhcacheTransaction> {
 
-    private final Cache<Integer, EhcacheTransaction> transactionCache;
+    private final Cache<Long, EhcacheTransaction> transactionCache;
     private final Cache<Long, LogMinerEvent> eventCache;
     private final EhcacheEvictionListener evictionListener;
+    private final EhcacheSegments segments = new EhcacheSegments();
 
-    // Heap-backed caches for quick access to specific metadata to speed up processing
-    private final Map<Integer, TreeSet<Integer>> eventIdsByTransactionId = new HashMap<>();
-
-    public EhcacheLogMinerTransactionCache(Cache<Integer, EhcacheTransaction> transactionCache,
+    public EhcacheLogMinerTransactionCache(Cache<Long, EhcacheTransaction> transactionCache,
                                            Cache<Long, LogMinerEvent> eventCache,
                                            EhcacheEvictionListener evictionListener) {
         this.transactionCache = transactionCache;
@@ -50,34 +46,41 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
 
     @Override
     public EhcacheTransaction getTransaction(long xid) {
-        return checkSqn(xid, transactionCache.get(getKey(xid)));
+        final EhcacheSlot slot = segments.get(xid);
+        return slot.key == null ? null : transactionCache.get(slot.key);
     }
 
     @Override
     public void addTransaction(EhcacheTransaction transaction) {
-        transactionCache.put(transaction.getKey(), transaction);
+        final EhcacheSlot slot = segments.occupy(transaction.getXid());
+        slot.key = Xid.key(transaction.getXid());
+        slot.eventIds = new TreeSet<>();
+        transactionCache.put(slot.key, transaction);
         checkAndThrowIfEviction(CacheProvider.TRANSACTIONS_CACHE_NAME);
-        eventIdsByTransactionId.put(transaction.getKey(), new TreeSet<>());
     }
 
     @Override
     public void removeTransaction(EhcacheTransaction transaction) {
-        transactionCache.remove(transaction.getKey());
+        final EhcacheSlot slot = segments.vacate(transaction.getXid());
+        if (slot.key != null) {
+            transactionCache.remove(slot.key);
+            slot.key = null;
+        }
     }
 
     @Override
     public boolean containsTransaction(long xid) {
-        return eventIdsByTransactionId.containsKey(getKey(xid));
+        return segments.get(xid).occupied();
     }
 
     @Override
     public boolean isEmpty() {
-        return eventIdsByTransactionId.isEmpty();
+        return segments.isEmpty();
     }
 
     @Override
     public int getTransactionCount() {
-        return eventIdsByTransactionId.size();
+        return segments.size();
     }
 
     @Override
@@ -95,15 +98,15 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
     }
 
     @Override
-    public void eventKeys(Consumer<Stream<Long>> consumer) {
+    public void eventKeys(Consumer<LongStream> consumer) {
         try (var stream = StreamSupport.stream(eventCache.spliterator(), false)) {
-            consumer.accept(stream.map(Cache.Entry::getKey));
+            consumer.accept(stream.map(Cache.Entry::getKey).mapToLong(Xid::of));
         }
     }
 
     @Override
     public void forEachEvent(EhcacheTransaction transaction, InterruptiblePredicate<LogMinerEvent> predicate) throws InterruptedException {
-        final var events = eventIdsByTransactionId.get(transaction.getKey());
+        final var events = segments.get(transaction.getXid()).eventIds;
         if (events != null) {
             try (var stream = events.stream()) {
                 final Iterator<Integer> iterator = stream.iterator();
@@ -119,33 +122,38 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
 
     @Override
     public LogMinerEvent getTransactionEvent(EhcacheTransaction transaction, int eventKey) {
-        return eventCache.get(transaction.getEventId(eventKey));
+        return eventCache.get(Xid.key(transaction.getEventId(eventKey)));
     }
 
     @Override
     public EhcacheTransaction getAndRemoveTransaction(long xid) {
-        final EhcacheTransaction transaction = getTransaction(xid);
-        if (transaction != null) {
-            transactionCache.remove(getKey(xid));
+        final EhcacheSlot slot = segments.vacate(xid);
+        if (slot.key == null) {
+            return null;
         }
+        final EhcacheTransaction transaction = transactionCache.get(slot.key);
+        if (transaction != null) {
+            transactionCache.remove(slot.key);
+        }
+        slot.key = null;
         return transaction;
     }
 
     @Override
     public void addTransactionEvent(EhcacheTransaction transaction, int eventKey, LogMinerEvent event) {
-        eventCache.put(transaction.getEventId(eventKey), event);
+        eventCache.put(Xid.key(transaction.getEventId(eventKey)), event);
         checkAndThrowIfEviction(CacheProvider.EVENTS_CACHE_NAME);
-        final TreeSet<Integer> eventIds = eventIdsByTransactionId.get(transaction.getKey());
+        final TreeSet<Integer> eventIds = segments.get(transaction.getXid()).eventIds;
         eventIds.add(eventKey);
 
         if (event instanceof RollbackToSavepointEvent) {
             final Iterator<LogMinerEventEntry> reverseIterator = new LogMinerEventEntryIterator(
-                    eventIds.descendingIterator(), id -> eventCache.get(transaction.getEventId(id)));
+                    eventIds.descendingIterator(), id -> eventCache.get(Xid.key(transaction.getEventId(id))));
             final LogMinerEventEntryRange range = findRolledBackRange(transaction.getXid(), reverseIterator);
             if (range != null) {
                 final Iterator<Integer> forwardIterator = eventIds.subSet(range.start().eventId(), range.end().eventId()).iterator();
                 while (forwardIterator.hasNext()) {
-                    eventCache.remove(transaction.getEventId(forwardIterator.next()));
+                    eventCache.remove(Xid.key(transaction.getEventId(forwardIterator.next())));
                     forwardIterator.remove();
                 }
             }
@@ -154,27 +162,28 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
 
     @Override
     public void removeTransactionEvents(EhcacheTransaction transaction) {
-        final var events = eventIdsByTransactionId.get(transaction.getKey());
-        if (events != null) {
-            eventCache.removeAll(events
+        final EhcacheSlot slot = segments.get(transaction.getXid());
+        if (slot.eventIds != null) {
+            eventCache.removeAll(slot.eventIds
                     .stream()
-                    .map(transaction::getEventId)
+                    .mapToLong(transaction::getEventId)
+                    .mapToObj(Xid::key)
                     .collect(Collectors.toSet()));
         }
-        eventIdsByTransactionId.remove(transaction.getKey());
+        slot.eventIds = null;
     }
 
     @Override
     public boolean containsTransactionEvent(EhcacheTransaction transaction, int eventKey) {
         // Uses the highest event key ever assigned rather than checking for presence directly
         // since a partial rollback may have removed the event's entry from the cache.
-        final var events = eventIdsByTransactionId.get(transaction.getKey());
+        final var events = segments.get(transaction.getXid()).eventIds;
         return events != null && !events.isEmpty() && events.last() >= eventKey;
     }
 
     @Override
     public int getTransactionEventCount(EhcacheTransaction transaction) {
-        final var events = eventIdsByTransactionId.get(transaction.getKey());
+        final var events = segments.get(transaction.getXid()).eventIds;
         if (events != null) {
             return events.size();
         }
@@ -183,14 +192,20 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
 
     @Override
     public int getTransactionEvents() {
-        return eventIdsByTransactionId.values().stream().mapToInt(Set::size).sum();
+        int sum = 0;
+        for (EhcacheSlot slot : segments) {
+            if (slot.eventIds != null) {
+                sum += slot.eventIds.size();
+            }
+        }
+        return sum;
     }
 
     @Override
     public void clear() {
         transactionCache.clear();
         eventCache.clear();
-        eventIdsByTransactionId.clear();
+        segments.clear();
     }
 
     @Override
@@ -206,17 +221,23 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
         // be managed in the cache's heap, in which case we can avoid this put.
 
         // Necessary to synchronize state
-        transactionCache.put(transaction.getKey(), transaction);
+        transactionCache.put(Xid.key(transaction.getXid()), transaction);
         checkAndThrowIfEviction(CacheProvider.TRANSACTIONS_CACHE_NAME);
     }
 
     private void primeHeapCacheFromOffHeapCaches() {
         // Primes the heap-based cache if the Ehcache persistence caches contained data on start-up
+        for (Cache.Entry<Long, EhcacheTransaction> entry : transactionCache) {
+            Long key = entry.getKey();
+            EhcacheSlot slot = segments.occupy(Xid.of(key));
+            slot.key = key;
+            slot.eventIds = new TreeSet<>();
+        }
         eventKeys(keyStream -> {
-            keyStream.mapToLong(Xid::of).forEach(key -> {
-                final int usnSltKey = getKey(key);
-                if (transactionCache.containsKey(usnSltKey)) {
-                    eventIdsByTransactionId.computeIfAbsent(usnSltKey, k -> new TreeSet<>()).add((int) key);
+            keyStream.forEach(key -> {
+                final EhcacheSlot slot = segments.get(key | 0x00000000ffffffffL);
+                if (slot.eventIds != null) {
+                    slot.eventIds.add((int) key);
                 }
             });
         });

@@ -50,4 +50,8 @@ public final class Xid {
     public static long key(long xid) {
         return xid * 0x9e3779b97f4a7c15L;
     }
+
+    public static int usnSltKey(long xid) {
+        return (int) (xid >>> 32) * 0x9e3779b9;
+    }
 }

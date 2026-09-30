@@ -96,6 +96,14 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             String userName, String clientId, int redoThreadId) {
     }
 
+    private static DeferredTransaction checkSqn(long xid, DeferredTransaction deferredTransaction) {
+        if (deferredTransaction != null && deferredTransaction.xid() != xid && (int) xid != Xid.EMPTY_SQN) {
+            throw new IllegalStateException(
+                    "Invalid XID %016x: The slot is occupied by the XID %016x".formatted(xid, deferredTransaction.xid()));
+        }
+        return deferredTransaction;
+    }
+
     private Transaction createTransaction(DeferredTransaction deferredTransaction) {
         return transactionFactory.createTransaction(
                 deferredTransaction.xid(),
@@ -415,12 +423,11 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         final long xid = event.getXid();
         if (!isRecentlyProcessed(xid)) {
             if (getConfig().isDeferredLogMinerTransactionStartBehaviorEnabled() && xid != Xid.EMPTY_XID) {
-                final DeferredTransaction deferred = deferredTransactions.computeIfAbsent(Transaction.getKey(xid), id -> {
+                checkSqn(xid, deferredTransactions.computeIfAbsent(Xid.usnSltKey(xid), id -> {
                     LOGGER.trace("Deferring transaction {} start event.", event.getTransactionId());
                     return new DeferredTransaction(xid, event.getScn(), event.getChangeTime(),
                             event.getUserName(), event.getClientId(), event.getThread());
-                });
-                Transaction.checkSqn(xid, deferred.xid(), deferred.startScn());
+                }));
                 return;
             }
 
@@ -665,11 +672,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     }
 
     private DeferredTransaction removeDeferredTransaction(long xid) {
-        DeferredTransaction transaction = deferredTransactions.remove(Transaction.getKey(xid));
-        if (transaction != null) {
-            Transaction.checkSqn(xid, transaction.xid(), transaction.startScn());
-        }
-        return transaction;
+        return checkSqn(xid, deferredTransactions.remove(Xid.usnSltKey(xid)));
     }
 
     private Scn getOldestDeferredTransactionStartScn() {
@@ -1022,7 +1025,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     /**
      * Performs finalization steps for a transaction when its committed or rolled back.
      *
-     * @param transactionId the transaction identifier, should not be {@code null}
+     * @param xid the transaction identifier
      * @param eventScn the event's system change number, should not be {@code null}
      * @param rollbackEvent true if the transaction was rolled back, false if it was committed
      */
