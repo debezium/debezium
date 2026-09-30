@@ -364,8 +364,8 @@ include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.ado
 include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+3]
 
 Although incremental snapshot queries return documents sorted by `_id`, the connector does not preserve that order when emitting incremental snapshot records, even when xref:mongodb-property-snapshot-max-threads[`snapshot.max.threads`] is set to `1`.
-If the connector restarts during an incremental snapshot, it re-reads the snapshot window that was in progress to avoid skipping documents that were not emitted before shutdown.
-Re-reading the window can produce duplicate `read` events for documents already emitted before the restart, consistent with at-least-once delivery.
+If the connector restarts during an incremental snapshot, or receives a `resume-snapshot` signal after a `pause-snapshot` signal, it re-reads the current snapshot window to avoid skipping documents that have not been emitted.
+Re-reading the window can produce duplicate `read` events for documents already emitted, consistent with at-least-once delivery.
 The potential replay volume scales with the window size, which is based on the product of xref:mongodb-property-incremental-snapshot-chunk-size[`incremental.snapshot.chunk.size`] and xref:mongodb-property-snapshot-max-threads[`snapshot.max.threads`].
 
 [WARNING]
