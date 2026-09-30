@@ -2002,6 +2002,39 @@ Contains signed `years`, `months`, `days`, `hours`, `minutes`, `seconds`, `nanos
 
 
 [id="postgresql-timestamp-type"]
+=== DATE type
+
+PostgreSQL supports `infinity` and `-infinity` values in `DATE` columns.
+Because no semantic type for dates can represent infinity, the connector converts them to the dates `+5877611-06-21` and `-5877611-06-22`.
+These dates lie outside the range of dates that PostgreSQL itself supports (4713 BC to 5874897 AD), so they cannot be mistaken for a stored date.
+The connector emits the same value for a scalar `DATE` and for a `DATE[]` element, and in snapshots and in streaming, with either logical decoding plug-in.
+
+The dates are encoded in the same way as any other date for the configured `time.precision.mode`:
+
+[cols="30%a,35%a,35%a",options="header"]
+|===
+|`time.precision.mode`
+|`infinity`
+|`-infinity`
+
+|`adaptive`, `adaptive_time_microseconds`, `microseconds`, `nanoseconds` (`io.debezium.time.Date`)
+|`2146033979`
+|`-2147472691`
+
+|`connect` (`org.apache.kafka.connect.data.Date`)
+|`185417335785600000` milliseconds since the epoch
+|`-185541640502400000` milliseconds since the epoch
+
+|`isostring` (`io.debezium.time.IsoDate`)
+|`+5877611-06-21Z`
+|`-5877611-06-22Z`
+
+|`structured` (`io.debezium.time.StructuredDate`)
+|`specialValue` is `POSITIVE_INFINITY`
+|`specialValue` is `NEGATIVE_INFINITY`
+
+|===
+
 === TIMESTAMP type
 
 The `TIMESTAMP` type represents a timestamp without time zone information.
