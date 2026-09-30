@@ -17,11 +17,9 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import java.sql.SQLException;
 import java.util.Base64;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -106,10 +104,12 @@ public class LogicalDecodingMessageIT extends AbstractAsyncEngineConnectorTest {
         final int filteredCount = 10_100;
         TestHelper.execute("SELECT pg_logical_emit_message(false, 'excluded', 'content') "
                 + "FROM generate_series(1, " + filteredCount + ");");
+        TestHelper.execute("SELECT pg_logical_emit_message(false, 'included', 'content');");
 
-        Awaitility.await().alias("WAL growing log message").pollInterval(1, TimeUnit.SECONDS).atMost(5 * TestHelper.waitTimeForRecords(), TimeUnit.SECONDS)
-                .until(() -> logInterceptor.containsWarnMessage(
-                        "Received 10001 events which were all filtered out, so no offset could be committed. This prevents the replication slot from acknowledging the processed WAL offsets, causing a growing backlog of non-removeable WAL segments on the database server. Consider to either adjust your filter configuration or enable heartbeat events (via the heartbeat.interval.ms option) to avoid this situation."));
+        // Consume the single message with the 'included' prefix to ensure all preceding filtered messages have been processed
+        consumeRecordsByTopic(1);
+        assertThat(logInterceptor.getLogEntriesThatContainsMessage("Received 10001 events which were all filtered out"))
+                .hasSize(1);
     }
 
     @Test
