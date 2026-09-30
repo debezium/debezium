@@ -8,6 +8,7 @@ package io.debezium.connector.common;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -24,6 +25,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.RetriableException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTaskContext;
@@ -131,10 +133,10 @@ class BaseSourceTaskTest {
         baseSourceTask.start(config);
         sleep(1); // wait 1ms in order to satisfy retriable wait
         assertEquals(DebeziumTaskState.RESTARTING, baseSourceTask.getTaskState());
-        pollAndIgnoreRetryException(baseSourceTask);
+        baseSourceTask.poll(); // failed restart attempts are swallowed and retried on the next poll
         assertEquals(DebeziumTaskState.RESTARTING, baseSourceTask.getTaskState());
         sleep(1); // wait 1ms in order to satisfy retriable wait
-        pollAndIgnoreRetryException(baseSourceTask);
+        baseSourceTask.poll();
         assertEquals(DebeziumTaskState.RESTARTING, baseSourceTask.getTaskState());
         sleep(1); // wait 1ms in order to satisfy retriable wait
         baseSourceTask.poll();
@@ -143,12 +145,35 @@ class BaseSourceTaskTest {
         assertEquals(DebeziumTaskState.STOPPED, baseSourceTask.getTaskState());
 
         assertEquals(4, baseSourceTask.startCount.get());
-        assertEquals(3, baseSourceTask.stopCount.get());
+        assertEquals(1, baseSourceTask.stopCount.get());
         verify(baseSourceTask.coordinator, times(1)).stop();
     }
 
     @Test
-    void verifyOutOfOrderPollDoesNotStartTask() throws InterruptedException {
+    public void verifyRestartFailsWhenMaxRetriesExhausted() throws InterruptedException {
+        MyBaseSourceTask baseSourceTask = new MyBaseSourceTask() {
+            @Override
+            protected ChangeEventSourceCoordinator<Partition, OffsetContext> start(Configuration config) {
+                ChangeEventSourceCoordinator<Partition, OffsetContext> result = super.start(config);
+                throw new RetriableException("Connection refused");
+            }
+        };
+
+        baseSourceTask.initialize(mock(SourceTaskContext.class));
+        Map<String, String> config = Map.of(
+                CommonConnectorConfig.RETRIABLE_RESTART_WAIT.name(), "1",
+                CommonConnectorConfig.ERRORS_MAX_RETRIES, "2");
+        baseSourceTask.start(config);
+        assertEquals(DebeziumTaskState.RESTARTING, baseSourceTask.getTaskState());
+        sleep(1);
+        baseSourceTask.poll(); // restart attempt 1
+        assertEquals(DebeziumTaskState.RESTARTING, baseSourceTask.getTaskState());
+        sleep(1);
+        assertThrows(ConnectException.class, () -> baseSourceTask.poll()); // restart attempt 2, max reached
+    }
+
+    @Test
+    public void verifyOutOfOrderPollDoesNotStartTask() throws InterruptedException {
         baseSourceTask.start(new HashMap<>());
         assertEquals(DebeziumTaskState.RUNNING, baseSourceTask.getTaskState());
         baseSourceTask.stop();
@@ -179,15 +204,6 @@ class BaseSourceTaskTest {
 
             assertThat(baseSourceTask.startRootLoggingContext).isEqualTo(expectedStartRootLogging);
             assertThat(baseSourceTask.pollRootLoggingContext).isEqualTo(expectedRootLogging);
-        }
-    }
-
-    private static void pollAndIgnoreRetryException(BaseSourceTask<Partition, OffsetContext> baseSourceTask) throws InterruptedException {
-        try {
-            baseSourceTask.poll();
-        }
-        catch (RetriableException e) {
-            // nothing to do
         }
     }
 
