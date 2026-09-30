@@ -1208,6 +1208,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         offsetContext.commitTransaction();
         offsetContext.setBinlogThread(-1L);
         skipEvent = false;
+        startingRowNumber = 0;
         ignoreDmlEventByGtidSource = false;
     }
 
