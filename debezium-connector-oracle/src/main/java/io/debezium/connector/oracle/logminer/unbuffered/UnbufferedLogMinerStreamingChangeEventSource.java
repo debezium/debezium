@@ -551,6 +551,7 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
             getMetrics().calculateLagFromSource(dmlEvent.getChangeTime());
 
             // Set per-event details
+            getOffsetContext().markSourceEventStarted();
             getOffsetContext().setEventScn(dmlEvent.getScn());
             getOffsetContext().setTransactionId(eventTrxId);
             getOffsetContext().setTransactionSequence(eventTrxSeq);

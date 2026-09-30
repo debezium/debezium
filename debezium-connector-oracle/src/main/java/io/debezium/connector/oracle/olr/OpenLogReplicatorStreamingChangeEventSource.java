@@ -382,6 +382,7 @@ public class OpenLogReplicatorStreamingChangeEventSource implements StreamingCha
         // Update offsets. The position moves here, on a change that is about to be dispatched, so
         // that it always describes something the connector has emitted. The index identifies the
         // change within its transaction and is what a replay skips through on restart.
+        offsetContext.markSourceEventStarted();
         offsetContext.setScn(event.getCheckpointScn());
         offsetContext.setScnIndex(event.getCheckpointIndex());
         offsetContext.setEventScn(event.getCheckpointScn());

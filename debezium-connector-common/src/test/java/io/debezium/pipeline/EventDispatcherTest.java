@@ -8,10 +8,14 @@ package io.debezium.pipeline;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.StreamSupport;
 
@@ -35,11 +39,13 @@ import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.common.DebeziumHeaderProducer;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
+import io.debezium.heartbeat.Heartbeat.ScheduledHeartbeat;
 import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.signal.channels.SourceSignalChannel;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.ChangeEventCreator;
+import io.debezium.pipeline.spi.ChangeRecordEmitter;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.pipeline.txmetadata.TransactionStructMaker;
@@ -47,6 +53,7 @@ import io.debezium.pipeline.txmetadata.spi.TransactionMetadataFactory;
 import io.debezium.processors.PostProcessorRegistry;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.SnapshotChangeRecordEmitter;
+import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
 import io.debezium.schema.DataCollectionFilters;
 import io.debezium.schema.DataCollectionSchema;
@@ -250,6 +257,146 @@ public class EventDispatcherTest {
         dispatcher.dispatchSnapshotEvent(partition, dataCollectionId, changeRecordEmitter, new PartitionSnapshotReceiver());
 
         assertThat(connectHeaders).isNull();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2549")
+    public void shouldAdvanceOffsetOnlyAfterDeleteTombstone() throws InterruptedException {
+        initializeStreamingDispatcher();
+
+        final Map<String, Object> offsetBeforeEvent = Map.of("position", 1L);
+        final Map<String, Object> currentOffset = Map.of("position", 2L);
+        doReturn(offsetBeforeEvent).when(offsetContext).getOffsetForIncompleteEvent();
+        doReturn(currentOffset).when(offsetContext).getOffset();
+
+        dispatcher.dispatchDataChangeEvent(partition, dataCollectionId,
+                changeRecordEmitter((schema, receiver) -> receiver.changeRecord(
+                        partition, schema, Envelope.Operation.DELETE, "key", struct, offsetContext, new ConnectHeaders(), true),
+                        Envelope.Operation.DELETE));
+
+        verify(changeEventCreator, times(2)).createDataChangeEvent(sourceRecordCaptor.capture());
+        assertThat(sourceRecordCaptor.getAllValues())
+                .extracting(SourceRecord::sourceOffset)
+                .containsExactly(offsetBeforeEvent, currentOffset);
+        assertThat(sourceRecordCaptor.getAllValues())
+                .extracting(SourceRecord::value)
+                .containsExactly(struct, null);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2549")
+    public void shouldAdvanceOffsetOnlyAfterPrimaryKeyUpdateRecords() throws InterruptedException {
+        initializeStreamingDispatcher(true);
+
+        final Map<String, Object> offsetBeforeEvent = Map.of("position", 1L);
+        final Map<String, Object> currentOffset = Map.of("position", 2L);
+        doReturn(offsetBeforeEvent).when(offsetContext).getOffsetForIncompleteEvent();
+        doReturn(currentOffset).when(offsetContext).getOffset();
+
+        dispatcher.dispatchDataChangeEvent(partition, dataCollectionId,
+                changeRecordEmitter((schema, receiver) -> {
+                    receiver.changeRecord(partition, schema, Envelope.Operation.DELETE, "old-key", struct, offsetContext, new ConnectHeaders(), false);
+                    receiver.changeRecord(partition, schema, Envelope.Operation.CREATE, "new-key", struct, offsetContext, new ConnectHeaders(), true);
+                }, Envelope.Operation.UPDATE));
+
+        verify(changeEventCreator, times(3)).createDataChangeEvent(sourceRecordCaptor.capture());
+        assertThat(sourceRecordCaptor.getAllValues())
+                .extracting(SourceRecord::sourceOffset)
+                .containsExactly(offsetBeforeEvent, offsetBeforeEvent, currentOffset);
+        assertThat(sourceRecordCaptor.getAllValues())
+                .extracting(SourceRecord::key)
+                .containsExactly("old-key", "old-key", "new-key");
+        assertThat(sourceRecordCaptor.getAllValues())
+                .extracting(SourceRecord::value)
+                .containsExactly(struct, null, struct);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2549")
+    public void shouldAdvanceOffsetOnlyAfterPrimaryKeyUpdateWhenTombstonesAreDisabled() throws InterruptedException {
+        initializeStreamingDispatcher(false);
+
+        final Map<String, Object> offsetBeforeEvent = Map.of("position", 1L);
+        final Map<String, Object> currentOffset = Map.of("position", 2L);
+        doReturn(offsetBeforeEvent).when(offsetContext).getOffsetForIncompleteEvent();
+        doReturn(currentOffset).when(offsetContext).getOffset();
+
+        dispatcher.dispatchDataChangeEvent(partition, dataCollectionId,
+                changeRecordEmitter((schema, receiver) -> {
+                    receiver.changeRecord(partition, schema, Envelope.Operation.DELETE, "old-key", struct, offsetContext, new ConnectHeaders(), false);
+                    receiver.changeRecord(partition, schema, Envelope.Operation.CREATE, "new-key", struct, offsetContext, new ConnectHeaders(), true);
+                }, Envelope.Operation.UPDATE));
+
+        verify(changeEventCreator, times(2)).createDataChangeEvent(sourceRecordCaptor.capture());
+        assertThat(sourceRecordCaptor.getAllValues())
+                .extracting(SourceRecord::sourceOffset)
+                .containsExactly(offsetBeforeEvent, currentOffset);
+        assertThat(sourceRecordCaptor.getAllValues())
+                .extracting(SourceRecord::key)
+                .containsExactly("old-key", "new-key");
+        assertThat(sourceRecordCaptor.getAllValues())
+                .extracting(SourceRecord::value)
+                .containsExactly(struct, struct);
+    }
+
+    private void initializeStreamingDispatcher() {
+        initializeStreamingDispatcher(true);
+    }
+
+    private void initializeStreamingDispatcher(boolean emitTombstonesOnDelete) {
+        final TableId tableId = new TableId(null, null, "table");
+        when(dataCollectionSchema.getEnvelopeSchema()).thenReturn(envelope);
+        when(dataCollectionSchema.keySchema()).thenReturn(schema);
+        when(dataCollectionSchema.id()).thenReturn(tableId);
+        when(envelope.schema()).thenReturn(schema);
+        when(databaseSchema.schemaFor(dataCollectionId)).thenReturn(dataCollectionSchema);
+        when(databaseSchema.isHistorized()).thenReturn(false);
+        when(dataCollectionFilters.isIncluded(dataCollectionId)).thenReturn(true);
+        when(partition.getSourcePartition()).thenReturn(Map.of("server", "test"));
+        when(topicNamingStrategy.dataChangeTopic(tableId)).thenReturn("server.table");
+        when(topicNamingStrategy.transactionTopic()).thenReturn("server.transaction");
+        when(config.isEmitTombstoneOnDelete()).thenReturn(emitTombstonesOnDelete);
+        when(config.getSkippedOperations()).thenReturn(EnumSet.noneOf(Envelope.Operation.class));
+        when(config.supportsOperationFiltering()).thenReturn(true);
+        when(config.getServiceRegistry()).thenReturn(serviceRegistry);
+        when(serviceRegistry.tryGetService(PostProcessorRegistry.class)).thenReturn(postProcessorRegistry);
+        when(config.getSourceInfoStructMaker()).thenReturn(sourceInfoStructMaker);
+        when(sourceInfoStructMaker.schema()).thenReturn(schema);
+        when(config.getTransactionMetadataFactory()).thenReturn(transactionMetadataFactory);
+        when(transactionMetadataFactory.getTransactionStructMaker()).thenReturn(transactionStructMaker);
+        when(changeEventCreator.createDataChangeEvent(any())).thenAnswer(invocation -> new DataChangeEvent(invocation.getArgument(0)));
+
+        dispatcher = new EventDispatcher<>(config, topicNamingStrategy, databaseSchema, changeEventQueue, dataCollectionFilters, changeEventCreator,
+                eventMetadataProvider, ScheduledHeartbeat.NOOP_HEARTBEAT, SchemaNameAdjuster.NO_OP, null, null);
+    }
+
+    private ChangeRecordEmitter<Partition> changeRecordEmitter(RecordEmission emission, Envelope.Operation operation) {
+        return new ChangeRecordEmitter<>() {
+            @Override
+            public void emitChangeRecords(DataCollectionSchema schema, Receiver<Partition> receiver) throws InterruptedException {
+                emission.emit(schema, receiver);
+            }
+
+            @Override
+            public Partition getPartition() {
+                return partition;
+            }
+
+            @Override
+            public OffsetContext getOffset() {
+                return offsetContext;
+            }
+
+            @Override
+            public Envelope.Operation getOperation() {
+                return operation;
+            }
+        };
+    }
+
+    @FunctionalInterface
+    private interface RecordEmission {
+        void emit(DataCollectionSchema schema, ChangeRecordEmitter.Receiver<Partition> receiver) throws InterruptedException;
     }
 
     private static class PartitionSnapshotReceiver implements EventDispatcher.SnapshotReceiver<Partition> {

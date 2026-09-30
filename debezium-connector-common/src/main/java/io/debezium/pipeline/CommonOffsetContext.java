@@ -5,6 +5,8 @@
  */
 package io.debezium.pipeline;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 import org.apache.kafka.connect.data.Struct;
@@ -44,6 +46,8 @@ public abstract class CommonOffsetContext<T extends BaseSourceInfo> implements O
      */
     protected boolean snapshotCompleted;
 
+    private Map<String, Object> offsetBeforeEvent;
+
     public CommonOffsetContext(T sourceInfo) {
         this.sourceInfo = sourceInfo;
     }
@@ -51,6 +55,23 @@ public abstract class CommonOffsetContext<T extends BaseSourceInfo> implements O
     public CommonOffsetContext(T sourceInfo, boolean snapshotCompleted) {
         this.sourceInfo = sourceInfo;
         this.snapshotCompleted = snapshotCompleted;
+    }
+
+    @Override
+    public void markSourceEventStarted() {
+        offsetBeforeEvent = new HashMap<>(getOffset());
+    }
+
+    @Override
+    public Map<String, ?> getOffsetForIncompleteEvent() {
+        return offsetBeforeEvent == null ? getOffset() : new HashMap<>(offsetBeforeEvent);
+    }
+
+    @Override
+    public void updateTransactionContextForIncompleteEvent() {
+        if (offsetBeforeEvent != null) {
+            getTransactionContext().store(offsetBeforeEvent);
+        }
     }
 
     @Override
