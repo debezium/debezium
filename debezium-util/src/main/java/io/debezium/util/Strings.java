@@ -501,10 +501,10 @@ public final class Strings {
      * Justify the contents of the string.
      *
      * @param justify the way in which the string is to be justified
-     * @param str the string to be right justified; if null, an empty string is used
+     * @param str the string to be justified; if null, an empty string is used
      * @param width the desired width of the string; must be positive
      * @param padWithChar the character to use for padding, if needed
-     * @return the right justified string
+     * @return the justified string
      */
     public static String justify(Justify justify,
                                  String str,
@@ -608,10 +608,10 @@ public final class Strings {
      * and end of the string such that the length is that specified; one additional padding character is prepended if required.
      * All leading and trailing whitespace is removed before centering.
      *
-     * @param str the string to be left justified; if null, an empty string is used
+     * @param str the string to be centered; if null, an empty string is used
      * @param width the desired width of the string; must be positive
      * @param padWithChar the character to use for padding, if needed
-     * @return the left justified string
+     * @return the centered string
      * @see #setLength(String, int, char)
      */
     public static String justifyCenter(String str,
