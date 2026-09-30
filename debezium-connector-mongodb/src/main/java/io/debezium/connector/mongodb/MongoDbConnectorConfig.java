@@ -153,8 +153,11 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
     }
 
     /**
-     * The set of different ways how connector can capture changes.
+     * The legacy combinations of pre- and post-image policies.
+     *
+     * @deprecated Use {@link PreImageMode} and {@link PostImageMode} instead.
      */
+    @Deprecated
     public enum CaptureMode implements EnumeratedValue {
 
         /**
@@ -246,8 +249,11 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
     }
 
     /**
-     * The set off different ways how connector performs full update
+     * The legacy methods for retrieving updated documents.
+     *
+     * @deprecated Use {@link PostImageMode} instead.
      */
+    @Deprecated
     public enum FullUpdateType implements EnumeratedValue {
 
         /**
@@ -322,9 +328,54 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
     }
 
     /**
+     * Controls how the connector retrieves the full document after an update.
+     */
+    public enum PostImageMode implements EnumeratedValue {
+        OFF("off"),
+        LOOKUP("lookup"),
+        POST_IMAGE("post_image"),
+        POST_IMAGE_REQUIRED("post_image_required");
+
+        private final String value;
+
+        PostImageMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        public boolean isEnabled() {
+            return this != OFF;
+        }
+
+        public boolean isRequired() {
+            return this == POST_IMAGE_REQUIRED;
+        }
+
+        public boolean isPostImage() {
+            return this == POST_IMAGE || isRequired();
+        }
+
+        public static PostImageMode parse(String value) {
+            if (value != null) {
+                for (var mode : values()) {
+                    if (mode.value.equalsIgnoreCase(value.trim())) {
+                        return mode;
+                    }
+                }
+            }
+            return null;
+        }
+    }
+
+    /**
      * Controls whether a missing pre-image is allowed.
      */
     public enum PreImageMode implements EnumeratedValue {
+        OFF("off"),
         WHEN_AVAILABLE("when_available"),
         REQUIRED("required");
 
@@ -339,12 +390,21 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
             return value;
         }
 
+        public boolean isEnabled() {
+            return this != OFF;
+        }
+
+        public boolean isRequired() {
+            return this == REQUIRED;
+        }
+
         public static PreImageMode parse(String value) {
-            if (value != null) {
-                for (var mode : values()) {
-                    if (mode.value.equalsIgnoreCase(value.trim())) {
-                        return mode;
-                    }
+            if (value == null || value.isBlank()) {
+                return OFF;
+            }
+            for (var mode : values()) {
+                if (mode.value.equalsIgnoreCase(value.trim())) {
+                    return mode;
                 }
             }
             return null;
@@ -968,17 +1028,26 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
                     " where databaseName and collectionName may contain the wildcard (*) which matches any characters," +
                     " the colon character (:) is used to determine rename mapping of field.");
 
+    /**
+     * @deprecated Use {@link #CAPTURE_MODE_PRE_IMAGE} and {@link #CAPTURE_MODE_POST_IMAGE} instead.
+     */
+    @Deprecated
     public static final Field CAPTURE_MODE = Field.create("capture.mode")
             .withDisplayName("Capture mode")
             .withEnum(CaptureMode.class, CaptureMode.CHANGE_STREAMS_UPDATE_FULL)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
-            .withDescription("The method used to capture changes from MongoDB server. "
+            .withDescription("Deprecated. Use capture.mode.pre.image and capture.mode.post.image instead. "
+                    + "The method used to capture changes from MongoDB server. "
                     + "Options include: "
                     + "'change_streams' to capture changes via MongoDB Change Streams, update events do not contain full documents; "
                     + "'change_streams_update_full' (the default) to capture changes via MongoDB Change Streams, update events contain full documents");
 
+    /**
+     * @deprecated Use {@link #CAPTURE_MODE_POST_IMAGE} instead.
+     */
+    @Deprecated
     public static final Field CAPTURE_MODE_FULL_UPDATE_TYPE = Field.create("capture.mode.full.update.type")
             .withDisplayName("Capture mode full update type")
             .withEnum(FullUpdateType.class, FullUpdateType.LOOKUP)
@@ -986,24 +1055,40 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
-            .withDescription("The method used to perform full update lookups. "
+            .withDescription("Deprecated. Use capture.mode.post.image instead. "
+                    + "The method used to perform full update lookups. "
                     + "Options include: "
                     + "'lookup' (the default) use separate lookup to get the updated document; "
                     + "'post_image' use MongoDB post images when available; "
                     + "'post_image_required' require MongoDB post images and fail if unavailable. "
                     + "Post images require MongoDB 6.0 or newer and must be enabled on the collection.");
 
-    public static final Field CAPTURE_MODE_PRE_IMAGE = Field.create("capture.mode.pre.image")
-            .withDisplayName("Capture mode pre-image policy")
-            .withEnum(PreImageMode.class, PreImageMode.WHEN_AVAILABLE)
-            .withValidation(MongoDbConnectorConfig::validateRequiredPreImage)
+    public static final Field CAPTURE_MODE_POST_IMAGE = Field.create("capture.mode.post.image")
+            .withDisplayName("Capture mode post-image policy")
+            .withEnum(PostImageMode.class, PostImageMode.LOOKUP)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
-            .withDescription("Controls missing pre-images when capture.mode includes pre-images. "
-                    + "'when_available' (the default) allows missing pre-images; "
+            .withDescription("Controls how to retrieve the full document after an update. "
+                    + "'off' does not request the updated document; "
+                    + "'lookup' (the default) uses a separate lookup; "
+                    + "'post_image' requests MongoDB post-images when available; "
+                    + "'post_image_required' fails if a post-image is unavailable. "
+                    + "Post-images require MongoDB 6.0 or newer and must be enabled on the collection. "
+                    + "When explicitly set, this property takes precedence over capture.mode and capture.mode.full.update.type.");
+
+    public static final Field CAPTURE_MODE_PRE_IMAGE = Field.create("capture.mode.pre.image")
+            .withDisplayName("Capture mode pre-image policy")
+            .withEnum(PreImageMode.class, PreImageMode.OFF)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Controls how to retrieve the document before a change. "
+                    + "'off' (the default) does not request pre-images; "
+                    + "'when_available' requests MongoDB pre-images when available; "
                     + "'required' fails if a pre-image is unavailable. "
-                    + "Pre-images require MongoDB 6.0 or newer and must be enabled on the collection.");
+                    + "Pre-images require MongoDB 6.0 or newer and must be enabled on the collection. "
+                    + "When explicitly set, this property takes precedence over capture.mode.");
 
     public static final Field JSON_SERIALIZATION_MODE = Field.create("json.serialization.mode")
             .withDisplayName("JSON serialization mode")
@@ -1165,7 +1250,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
                     CURSOR_MAX_AWAIT_TIME_MS)
             .group(Field.Group.FILTERS, DATABASE_INCLUDE_LIST, DATABASE_EXCLUDE_LIST, COLLECTION_INCLUDE_LIST, COLLECTION_EXCLUDE_LIST, FIELD_EXCLUDE_LIST, FIELD_RENAMES,
                     SNAPSHOT_FILTER_QUERY_BY_COLLECTION)
-            .group(Field.Group.CONNECTOR, TOPIC_PREFIX, SNAPSHOT_MODE, CAPTURE_MODE, CAPTURE_MODE_PRE_IMAGE, CAPTURE_MODE_FULL_UPDATE_TYPE,
+            .group(Field.Group.CONNECTOR, TOPIC_PREFIX, SNAPSHOT_MODE, CAPTURE_MODE, CAPTURE_MODE_FULL_UPDATE_TYPE, CAPTURE_MODE_POST_IMAGE, CAPTURE_MODE_PRE_IMAGE,
                     CAPTURE_SCOPE, CAPTURE_TARGET, JSON_SERIALIZATION_MODE, SCHEMA_NAME_ADJUSTMENT_MODE,
                     SOURCE_INFO_STRUCT_MAKER, CAPTURE_START_OP_TIME, CAPTURE_START_TIMESTAMP)
             .create();
@@ -1185,6 +1270,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
     private final JsonSerializationMode jsonSerializationMode;
     private final FullUpdateType captureModeFullUpdateType;
     private final PreImageMode captureModePreImage;
+    private final PostImageMode captureModePostImage;
     private final CaptureScope captureScope;
     private final String captureTarget;
     private final boolean offsetInvalidationAllowed;
@@ -1250,7 +1336,20 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
         this.captureMode = CaptureMode.parse(captureModeValue, MongoDbConnectorConfig.CAPTURE_MODE.defaultValueAsString());
         String fullUpdateTypeValue = config.getString(MongoDbConnectorConfig.CAPTURE_MODE_FULL_UPDATE_TYPE);
         this.captureModeFullUpdateType = FullUpdateType.parse(fullUpdateTypeValue, MongoDbConnectorConfig.CAPTURE_MODE_FULL_UPDATE_TYPE.defaultValueAsString());
-        this.captureModePreImage = PreImageMode.parse(config.getString(CAPTURE_MODE_PRE_IMAGE));
+        this.captureModePreImage = config.hasKey(CAPTURE_MODE_PRE_IMAGE)
+                ? PreImageMode.parse(config.getString(CAPTURE_MODE_PRE_IMAGE))
+                : captureMode.isIncludePreImage() ? PreImageMode.WHEN_AVAILABLE : PreImageMode.OFF;
+        this.captureModePostImage = config.hasKey(CAPTURE_MODE_POST_IMAGE)
+                ? PostImageMode.parse(config.getString(CAPTURE_MODE_POST_IMAGE))
+                : captureMode.isFullUpdate() ? PostImageMode.parse(captureModeFullUpdateType.getValue()) : PostImageMode.OFF;
+        if (config.hasKey(CAPTURE_MODE)) {
+            LOGGER.warn("Configuration property '{}' is deprecated. Use '{}' and '{}' instead.",
+                    CAPTURE_MODE.name(), CAPTURE_MODE_PRE_IMAGE.name(), CAPTURE_MODE_POST_IMAGE.name());
+        }
+        if (config.hasKey(CAPTURE_MODE_FULL_UPDATE_TYPE)) {
+            LOGGER.warn("Configuration property '{}' is deprecated. Use '{}' instead.",
+                    CAPTURE_MODE_FULL_UPDATE_TYPE.name(), CAPTURE_MODE_POST_IMAGE.name());
+        }
 
         String jsonSerializationModeValue = config.getString(MongoDbConnectorConfig.JSON_SERIALIZATION_MODE);
         this.jsonSerializationMode = JsonSerializationMode.parse(jsonSerializationModeValue, MongoDbConnectorConfig.JSON_SERIALIZATION_MODE.defaultValueAsString());
@@ -1392,16 +1491,10 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
         return !CAPTURE_START_OP_TIME.defaultValue().equals(operationTime) ? new BsonTimestamp(operationTime) : null;
     }
 
-    private static int validateRequiredPreImage(Configuration config, Field field, ValidationOutput problems) {
-        final var mode = CaptureMode.parse(config.getString(CAPTURE_MODE), CAPTURE_MODE.defaultValueAsString());
-        if (PreImageMode.parse(config.getString(field)) == PreImageMode.REQUIRED && mode != null && !mode.isIncludePreImage()) {
-            problems.accept(field, config.getString(field), "Required pre-images need a capture.mode that includes pre-images");
-            return 1;
-        }
-        return 0;
-    }
-
     private static int validateRequiredPostImage(Configuration config, Field field, ValidationOutput problems) {
+        if (config.hasKey(CAPTURE_MODE_POST_IMAGE)) {
+            return 0;
+        }
         final var mode = CaptureMode.parse(config.getString(CAPTURE_MODE), CAPTURE_MODE.defaultValueAsString());
         if (FullUpdateType.parse(config.getString(field)) == FullUpdateType.POST_IMAGE_REQUIRED && mode != null && !mode.isFullUpdate()) {
             problems.accept(field, config.getString(field), "Required post-images need a capture.mode that retrieves full documents");
@@ -1454,13 +1547,10 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
     }
 
     /**
-     * Provides statically configured capture mode. The configured value can be overrided upon
-     * connector start if offsets stored were created by a different capture mode.
-     *
-     * See {@link MongoDbTaskContext#getCaptureMode()}
-     *
-     * @return capture mode requested by configuration
+     * @return the legacy capture mode requested by configuration
+     * @deprecated Use {@link #getCaptureModePreImage()} and {@link #getCaptureModePostImage()} instead.
      */
+    @Deprecated
     public CaptureMode getCaptureMode() {
         return captureMode;
     }
@@ -1469,8 +1559,17 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
         return Optional.ofNullable(startOperationTime);
     }
 
+    /**
+     * @return the legacy full update type requested by configuration
+     * @deprecated Use {@link #getCaptureModePostImage()} instead.
+     */
+    @Deprecated
     public FullUpdateType getCaptureModeFullUpdateType() {
         return captureModeFullUpdateType;
+    }
+
+    public PostImageMode getCaptureModePostImage() {
+        return captureModePostImage;
     }
 
     public PreImageMode getCaptureModePreImage() {

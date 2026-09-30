@@ -459,7 +459,8 @@ To summarize, the MongoDB connector continues running in most situations. Commun
 === Pre-image support
 In MongoDB 6.0 and later, you can configure change streams to emit the pre-image state of a document to populate the `before` field for MongoDB change events.
 To enable the use of pre-images in MongoDB, you must set the `changeStreamPreAndPostImages` for a collection by using `db.createCollection()`, `create`, or `collMod`.
-To enable the {prodname} MongoDB to include pre-images in change events, set the `capture.mode` for the connector to one of the `*_with_pre_image` options.
+To include pre-images in change events, set xref:mongodb-property-capture-mode-pre-image[`capture.mode.pre.image`] to `when_available` or `required`.
+The `required` value causes the connector to fail if MongoDB cannot provide a required pre-image.
 
 [NOTE]
 .Size limits on MongoDB change stream events
@@ -991,8 +992,8 @@ An optional field that specifies the state of the document after the event occur
 In this example, the `after` field contains the values of the new document's `\_id`, `first_name`, `last_name`, and `email` fields.
 The `after` value is always a string.
 By convention, it contains a JSON representation of the document.
-MongoDB oplog entries contain the full state of a document only for _create_ events and also for `update` events, when the `capture.mode` option is set to `change_streams_update_full`;
-in other words, a _create_ event is the only kind of event that contains an _after_ field regardless of `capture.mode` option.
+MongoDB change streams include the full document for insert and replacement operations regardless of the image settings.
+For update operations, xref:mongodb-property-capture-mode-post-image[`capture.mode.post.image`] determines how the connector requests the full document.
 
 `payload.source`::
 Mandatory field that describes the source metadata for the event.
@@ -1029,14 +1030,15 @@ By comparing the value for `payload.source.ts_ms` with the value for `payload.ts
 === _update_ events
 
 The connector emits an `update` event whenever an existing document in a collection is modified.
-The content of the event payload varies based on the value of the `capture.mode` connector property, which controls whether the full document state and pre-image are included.
+The xref:mongodb-property-capture-mode-pre-image[`capture.mode.pre.image`] and xref:mongodb-property-capture-mode-post-image[`capture.mode.post.image`] properties independently control whether the event includes the document before and after a change.
 
 ==== Change streams capture mode
 The value of a change event for an update in the sample `customers` collection has the same schema as a _create_ event for that collection.
 Likewise, the event value's payload has the same structure.
 However, the event value payload contains different values in an _update_ event.
-An _update_ event includes an `after` value only if the `capture.mode` option is set to `change_streams_update_full`.
-A `before` value is provided if the `capture.mode` option is set to one of the `*_with_pre_image` option.
+For MongoDB update operations, the connector requests an `after` value when `capture.mode.post.image` is `lookup`, `post_image`, or `post_image_required`.
+MongoDB replacement operations include the full document even when `capture.mode.post.image` is `off`.
+The connector requests a `before` value when `capture.mode.pre.image` is `when_available` or `required`.
 There is a new structured field `updateDescription` with a few additional fields in this case:
 
 * `updatedFields` is a string field that contains the JSON representation of the updated document fields with their values
@@ -1101,12 +1103,13 @@ By comparing the value for `payload.source.ts_ms` with the value for `payload.ts
 `payload.before`::
 Contains the JSON string representation of the actual MongoDB document before change.
 +
-An _update_ event value does not contain a `before` field if the capture mode is not set to one of the `*_with_preimage` options.
+The `before` value is `null` when `capture.mode.pre.image` is `off`, or when it is `when_available` and MongoDB cannot provide the pre-image.
 
 `payload.after`::
 Contains the JSON string representation of the actual MongoDB document.
 +
-An _update_ event value does not contain an `after` field if the capture mode is not set to `change_streams_update_full`.
+For MongoDB update operations, the `after` value is `null` when `capture.mode.post.image` is `off`, or when `lookup` or `post_image` cannot retrieve the document.
+Replacement operations include the full document regardless of this setting.
 
 `payload.updateDescription.updatedFields`::
 Contains the JSON string representation of the updated field values of the document.
@@ -1190,7 +1193,7 @@ By comparing the value for `payload.source.ts_ms` with the value for `payload.ts
 `payload.before`::
 Contains the JSON string representation of the actual MongoDB document before change.
 +
-An _update_ event value does not contain a `before` field if the capture mode is not set to one of the `*_with_preimage` options.
+The `before` value is `null` when `capture.mode.pre.image` is `off`, or when it is `when_available` and MongoDB cannot provide the pre-image.
 
 `payload.source`::
 Mandatory field that describes the source metadata for the event.
@@ -1595,31 +1598,22 @@ If you include this property in the configuration, do not set the `collection.in
 
 |[[mongodb-property-capture-mode]]<<mongodb-property-capture-mode, `+capture.mode+`>>
 |`change_streams_update_full`
-|Specifies the method that the connector uses to capture `update` event changes from a MongoDB server.
-Set this property to one of the following values:
+|Deprecated. Use xref:mongodb-property-capture-mode-pre-image[`capture.mode.pre.image`] and xref:mongodb-property-capture-mode-post-image[`capture.mode.post.image`] instead.
+Existing configurations retain their behavior.
+For each new property that you explicitly set, its value takes precedence over this property, including an explicit `off`.
+If you omit a new property, the connector derives its value from the legacy settings as follows:
 
-`change_streams`:: `update` event messages do not include the full document.
-Messages do not include a field that represents the state of the document `before` the change.
+`change_streams`:: Uses `capture.mode.pre.image=off` and `capture.mode.post.image=off`.
 
-`change_streams_update_full`:: `update` event messages include the full document.
-Messages do not include a `before` field that represents the state of the document before the update.
-The event message returns the full state of the document in the `after` field.
-Set xref:mongodb-property-capture-mode-full-update-type[capture.mode.full.update.type] to specify how the connector fetches full documents from the database.
-+
-[NOTE]
-====
-In some situations, when `capture.mode` is configured to return full documents, the `updateDescription` and `after` fields of the update event message might report inconsistent values.
-Such discrepancies can result after multiple updates are applied to a document in rapid succession.
-The connector requests the full document from the MongoDB database only after it receives the update described in the event's `updateDescription` field.
-If a later update modifies the source document before the connector can retrieve it from the database, the connector receives the document that is modified by this later update.
-====
+`change_streams_update_full`:: Uses `capture.mode.pre.image=off`.
+The post-image policy uses the value of xref:mongodb-property-capture-mode-full-update-type[`capture.mode.full.update.type`], which defaults to `lookup`.
 
-`change_streams_update_full_with_pre_image`::
-`update` event event messages include the full document, and include a field that represents the state of the document `before` the change.
-Set xref:mongodb-property-capture-mode-full-update-type[capture.mode.full.update.type] to specify how the connector fetches full documents from the database.
+`change_streams_with_pre_image`:: Uses `capture.mode.pre.image=when_available` and `capture.mode.post.image=off`.
 
-`change_streams_with_pre_image`::
-`update` events do not include the full document, but include a field that represents the state of the document `before` the change.
+`change_streams_update_full_with_pre_image`:: Uses `capture.mode.pre.image=when_available`.
+The post-image policy uses the value of xref:mongodb-property-capture-mode-full-update-type[`capture.mode.full.update.type`], which defaults to `lookup`.
+
+For example, if you retain `capture.mode=change_streams_with_pre_image` and add `capture.mode.post.image=post_image_required`, the connector continues to request pre-images when available and requires post-images.
 
 |[[mongodb-property-json-serialization-mode]]<<mongodb-property-json-serialization-mode, `+json.serialization.mode+`>>
 |`legacy`
@@ -1821,16 +1815,62 @@ The default values are suitable for most environments, but you can adjust them t
 |Default
 |Description
 
+|[[mongodb-property-capture-mode-full-update-type]]<<mongodb-property-capture-mode-full-update-type, `+capture.mode.full.update.type+`>>
+|`lookup`
+|Deprecated. Use xref:mongodb-property-capture-mode-post-image[`capture.mode.post.image`] instead.
+This property accepts `lookup`, `post_image`, and `post_image_required`.
+It applies only when `capture.mode.post.image` is omitted and xref:mongodb-property-capture-mode[`capture.mode`] enables full updated documents (`change_streams_update_full` or `change_streams_update_full_with_pre_image`).
+For legacy capture modes that do not request full updated documents, an existing `lookup` or `post_image` setting remains ignored.
+
+|[[mongodb-property-capture-mode-post-image]]<<mongodb-property-capture-mode-post-image, `+capture.mode.post.image+`>>
+|`lookup`
+|Specifies how the connector retrieves the full document after an update.
+This policy is independent of xref:mongodb-property-capture-mode-pre-image[`capture.mode.pre.image`].
+An explicit value takes precedence over xref:mongodb-property-capture-mode[`capture.mode`] and xref:mongodb-property-capture-mode-full-update-type[`capture.mode.full.update.type`].
+If this property is omitted, the connector preserves the behavior of the legacy settings.
+If all image settings are omitted, the connector uses `lookup` and does not request pre-images.
+
+`off`:: Does not request the full document for MongoDB update operations.
+Insert and replacement operations still include the full document, and snapshot records are unaffected.
+
+`lookup`:: The connector requests `fullDocument=updateLookup` to fetch the updated full MongoDB document.
+The lookup can return a more recent document if another update occurs before MongoDB retrieves it.
++
+[WARNING]
+====
+If the lookup process fails to retrieve a document, the connector emits an event message that contains a `null` value in the `after` field.
+Failed lookups can occur because a delete operation removed the document, or because a change to the sharding key moved the document to a different location.
+====
+
+`post_image`:: The connector requests `fullDocument=whenAvailable` to obtain the document as it appeared immediately after the update.
+If the post-image is unavailable, the `after` field is `null`.
+
+`post_image_required`:: The connector requests `fullDocument=required` to obtain the document as it appeared immediately after each update.
+If the required post-image is unavailable, MongoDB reports an error and the connector fails instead of retrying it as a connection failure.
+It does not fall back to `lookup`.
+Delete events do not have post-images and are unaffected by this requirement.
+
+To use `post_image` or `post_image_required`, the database must run MongoDB 6.0 or later, and you must configure the collection to https://www.mongodb.com/docs/manual/changeStreams/#change-streams-with-document-pre--and-post-images[return document pre- and post-images].
+The configuration must be in place before the operation occurs.
+The collection configuration, image retention, and restart considerations described for xref:mongodb-property-capture-mode-pre-image[`capture.mode.pre.image`] also apply.
+
 |[[mongodb-property-capture-mode-pre-image]]<<mongodb-property-capture-mode-pre-image, `+capture.mode.pre.image+`>>
-|`when_available`
-|Specifies how the connector handles missing pre-images when xref:mongodb-property-capture-mode[`capture.mode`] is `change_streams_with_pre_image` or `change_streams_update_full_with_pre_image`.
+|`off`
+|Specifies how the connector retrieves the document before a change.
+This policy is independent of xref:mongodb-property-capture-mode-post-image[`capture.mode.post.image`].
+An explicit value takes precedence over xref:mongodb-property-capture-mode[`capture.mode`], including an explicit `off`.
+If this property is omitted and the legacy capture mode includes pre-images, the connector uses `when_available`; otherwise it uses `off`.
+
+`off`:: Does not request pre-images.
+The event's `before` field is `null`.
 
 `when_available`:: Requests MongoDB pre-images when available.
 If an image is unavailable, the event's `before` field is `null`.
+
 `required`:: Requests MongoDB's `fullDocumentBeforeChange=required` behavior.
 If the pre-image of an update, replacement, or delete is unavailable, MongoDB reports an error and the connector fails instead of treating the error as a connection failure to retry.
-This value requires a capture mode that includes pre-images.
 
+Using `when_available` or `required` requires MongoDB 6.0 or later.
 This property does not enable `changeStreamPreAndPostImages` on MongoDB collections.
 You must enable it separately before the changes occur, and the images must remain available until the connector reads them.
 Disabling image recording is detected only when the connector reads an event whose required image is missing.
@@ -1839,41 +1879,6 @@ Re-enabling image recording does not restore missing images for earlier changes.
 An image error during resume token validation does not trigger a new snapshot, including in `when_needed` mode.
 
 Insert events and snapshot records do not have pre-images and are unaffected by this requirement.
-The pre-image policy is independent of xref:mongodb-property-capture-mode-full-update-type[`capture.mode.full.update.type`].
-
-|[[mongodb-property-capture-mode-full-update-type]]<<mongodb-property-capture-mode-full-update-type, `+capture.mode.full.update.type+`>>
-|`lookup`
-|Specifies how the connector looks up the full value of an updated document when the xref:mongodb-property-capture-mode[`capture.mode`] is set retrieve full documents.
-The connector retrieves full documents when its `capture.mode` is set to one of the following options:
-
-* `change_streams_update_full`
-* `change_streams_update_full_with_pre_image`
-
-To use `post_image` or `post_image_required`, you must configure the collection to https://www.mongodb.com/docs/manual/changeStreams/#change-streams-with-document-pre--and-post-images[return document pre- and post-images].
-Pre- and post-images for an operation are available only if the required configuration is in place before the operation occurs.
-
-Set this property to one of the following values:
-
-`lookup`:: The connector uses a separate lookup to fetch the updated full MongoDB document.
-
-[WARNING]
-====
-If the lookup process fails to retrieve a document, it cannot populate the full document to the `after` state in the event payload.
-In such a situation, the connector emits an event message that contains a `null` value in the `after` field.
-
-Failed lookups can occur because a delete operation removed the document immediately after it was created, or because a change to the sharding key results in the document being moved to a different location.
-Sharding key changes can result when you modify any of the properties that make up the key.
-====
-`post_image`:: The connector uses MongoDB post images to populate events with the full MongoDB document.
-The database must be running MongoDB 6.0 or later to use this option.
-The connector requests `fullDocument=whenAvailable`; if the post-image is unavailable, the `after` field is `null`.
-
-`post_image_required`:: The connector requests `fullDocument=required` to obtain the document as it appeared immediately after each update.
-If the required post-image is unavailable, MongoDB reports an error and the connector fails instead of retrying it as a connection failure.
-This value requires MongoDB 6.0 or later and a capture mode that retrieves full documents.
-It does not fall back to `lookup`.
-The collection configuration, image retention, and restart considerations described for xref:mongodb-property-capture-mode-pre-image[`capture.mode.pre.image`] also apply.
-Delete events do not have post-images and are unaffected by this requirement.
 
 |[[mongodb-property-max-batch-size]]<<mongodb-property-max-batch-size, `+max.batch.size+`>>
 |`2048`
