@@ -11,6 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Stream;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.RetriableException;
@@ -20,7 +21,9 @@ import org.bson.BsonDocument;
 import org.bson.Document;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
@@ -46,22 +49,56 @@ public class MongoDbRequiredImagesIT extends AbstractMongoConnectorIT {
     private static final String COLLECTION = "documents";
     private static final String TOPIC = "mongo." + DATABASE + "." + COLLECTION;
 
+    static Stream<Arguments> imagePolicies() {
+        return Stream.of("deployment", "database", "collection").flatMap(scope -> Stream.of(
+                Arguments.of(scope, "off", "off", null, null),
+                Arguments.of(scope, "off", "lookup", null, "updateLookup"),
+                Arguments.of(scope, "off", "post_image", null, "whenAvailable"),
+                Arguments.of(scope, "off", "post_image_required", null, "required"),
+                Arguments.of(scope, "when_available", "off", "whenAvailable", null),
+                Arguments.of(scope, "when_available", "lookup", "whenAvailable", "updateLookup"),
+                Arguments.of(scope, "when_available", "post_image", "whenAvailable", "whenAvailable"),
+                Arguments.of(scope, "when_available", "post_image_required", "whenAvailable", "required"),
+                Arguments.of(scope, "required", "off", "required", null),
+                Arguments.of(scope, "required", "lookup", "required", "updateLookup"),
+                Arguments.of(scope, "required", "post_image", "required", "whenAvailable"),
+                Arguments.of(scope, "required", "post_image_required", "required", "required")));
+    }
+
     @ParameterizedTest
-    @CsvSource({
-            "deployment, required, post_image, required, whenAvailable",
-            "database, required, post_image, required, whenAvailable",
-            "collection, required, post_image, required, whenAvailable",
-            "deployment, when_available, post_image_required, whenAvailable, required",
-            "database, when_available, post_image_required, whenAvailable, required",
-            "collection, when_available, post_image_required, whenAvailable, required",
-            "collection, required, lookup, required, updateLookup",
-            "collection, required, post_image_required, required, required"
-    })
-    void shouldSendImagePoliciesToMongoDb(String scope, String preImage, String fullUpdate, String expectedPreImage, String expectedFullDocument) {
-        config = imageConfiguration(preImage, fullUpdate).edit()
+    @MethodSource("imagePolicies")
+    void shouldSendImagePoliciesToMongoDb(String scope, String preImage, String postImage, String expectedPreImage, String expectedFullDocument) {
+        config = imageConfiguration(preImage, postImage).edit()
                 .with(MongoDbConnectorConfig.CAPTURE_SCOPE, scope)
                 .with(MongoDbConnectorConfig.CAPTURE_TARGET, scope.equals("collection") ? DATABASE + "." + COLLECTION : DATABASE)
                 .build();
+        assertChangeStreamOptions(expectedPreImage, expectedFullDocument);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            ", , , updateLookup",
+            "change_streams, post_image, , ",
+            "change_streams_update_full, , , updateLookup",
+            "change_streams_update_full, post_image, , whenAvailable",
+            "change_streams_with_pre_image, post_image, whenAvailable, ",
+            "change_streams_update_full_with_pre_image, , whenAvailable, updateLookup",
+            "change_streams_update_full_with_pre_image, post_image, whenAvailable, whenAvailable"
+    })
+    void shouldSendLegacyImagePoliciesToMongoDb(String captureMode, String fullUpdate, String expectedPreImage, String expectedFullDocument) {
+        final var builder = TestHelper.getConfiguration(mongo).edit()
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, DATABASE + "." + COLLECTION);
+        if (captureMode != null) {
+            builder.with(MongoDbConnectorConfig.CAPTURE_MODE, captureMode);
+        }
+        if (fullUpdate != null) {
+            builder.with(MongoDbConnectorConfig.CAPTURE_MODE_FULL_UPDATE_TYPE, fullUpdate);
+        }
+        config = builder.build();
+        assertChangeStreamOptions(expectedPreImage, expectedFullDocument);
+    }
+
+    private void assertChangeStreamOptions(String expectedPreImage, String expectedFullDocument) {
         final var options = new AtomicReference<BsonDocument>();
         final var settings = MongoClientSettings.builder()
                 .applyConnectionString(new ConnectionString(mongo.getConnectionString()))
@@ -80,8 +117,18 @@ public class MongoDbRequiredImagesIT extends AbstractMongoConnectorIT {
             createCollection(client.getDatabase(DATABASE), true);
             try (var ignored = MongoUtils.openChangeStream(client, new MongoDbTaskContext(config)).cursor()) {
                 assertThat(options.get()).isNotNull();
-                assertThat(options.get().getString("fullDocumentBeforeChange").getValue()).isEqualTo(expectedPreImage);
-                assertThat(options.get().getString("fullDocument").getValue()).isEqualTo(expectedFullDocument);
+                if (expectedPreImage == null) {
+                    assertThat(options.get()).doesNotContainKey("fullDocumentBeforeChange");
+                }
+                else {
+                    assertThat(options.get().getString("fullDocumentBeforeChange").getValue()).isEqualTo(expectedPreImage);
+                }
+                if (expectedFullDocument == null) {
+                    assertThat(options.get()).doesNotContainKey("fullDocument");
+                }
+                else {
+                    assertThat(options.get().getString("fullDocument").getValue()).isEqualTo(expectedFullDocument);
+                }
             }
         }
     }
@@ -92,8 +139,8 @@ public class MongoDbRequiredImagesIT extends AbstractMongoConnectorIT {
             "when_available, post_image_required",
             "required, post_image_required"
     })
-    void shouldConsumeSnapshotAndAllOperations(String preImage, String fullUpdate) throws Exception {
-        config = imageConfiguration(preImage, fullUpdate);
+    void shouldConsumeSnapshotAndAllOperations(String preImage, String postImage) throws Exception {
+        config = imageConfiguration(preImage, postImage);
         try (var client = connect()) {
             final var database = client.getDatabase(DATABASE);
             createCollection(database, true);
@@ -114,6 +161,31 @@ public class MongoDbRequiredImagesIT extends AbstractMongoConnectorIT {
             assertImage(records.get(2), Envelope.Operation.UPDATE, document(1, 1), document(1, 2));
             assertImage(records.get(3), Envelope.Operation.DELETE, document(1, 2), null);
             assertThat(records.get(4).value()).isNull();
+        }
+    }
+
+    @Test
+    void shouldKeepInsertAndReplaceDocumentsWhenImagesAreOff() throws Exception {
+        config = imageConfiguration("off", "off");
+        try (var client = connect()) {
+            final var database = client.getDatabase(DATABASE);
+            createCollection(database, false);
+            final var collection = database.getCollection(COLLECTION).withWriteConcern(WriteConcern.MAJORITY);
+            collection.insertOne(document(1, 0));
+            start(MongoDbConnector.class, config);
+            assertImage(consumeRecordsByTopic(1).allRecordsInOrder().get(0), Envelope.Operation.READ, null, document(1, 0));
+            waitForStreamingRunning("mongodb", "mongo");
+
+            collection.insertOne(document(2, 0));
+            assertImage(consumeRecordsByTopic(1).allRecordsInOrder().get(0), Envelope.Operation.CREATE, null, document(2, 0));
+            collection.updateOne(new Document("_id", 1), new Document("$set", new Document("value", 1)));
+            assertImage(consumeRecordsByTopic(1).allRecordsInOrder().get(0), Envelope.Operation.UPDATE, null, null);
+            collection.replaceOne(new Document("_id", 1), document(1, 2));
+            assertImage(consumeRecordsByTopic(1).allRecordsInOrder().get(0), Envelope.Operation.UPDATE, null, document(1, 2));
+            collection.deleteOne(new Document("_id", 1));
+            final var records = consumeRecordsByTopic(2).recordsForTopic(TOPIC);
+            assertImage(records.get(0), Envelope.Operation.DELETE, null, null);
+            assertThat(records.get(1).value()).isNull();
         }
     }
 
@@ -148,8 +220,8 @@ public class MongoDbRequiredImagesIT extends AbstractMongoConnectorIT {
             "when_available, post_image_required, true",
             "required, post_image_required, true"
     })
-    void shouldFailOnMissingImageWhileStreaming(String preImage, String fullUpdate, boolean disableAtRuntime) throws Exception {
-        config = imageConfiguration(preImage, fullUpdate);
+    void shouldFailOnMissingImageWhileStreaming(String preImage, String postImage, boolean disableAtRuntime) throws Exception {
+        config = imageConfiguration(preImage, postImage);
         try (var client = connect()) {
             final var database = client.getDatabase(DATABASE);
             createCollection(database, disableAtRuntime);
@@ -178,8 +250,8 @@ public class MongoDbRequiredImagesIT extends AbstractMongoConnectorIT {
             "when_available, post_image_required",
             "required, post_image_required"
     })
-    void shouldFailOnHistoricalMissingImageEvenAfterReenablingPapi(String preImage, String fullUpdate) throws Exception {
-        config = imageConfiguration(preImage, fullUpdate).edit()
+    void shouldFailOnHistoricalMissingImageEvenAfterReenablingPapi(String preImage, String postImage) throws Exception {
+        config = imageConfiguration(preImage, postImage).edit()
                 .with(MongoDbConnectorConfig.SNAPSHOT_MODE, "when_needed")
                 .build();
         try (var client = connect()) {
@@ -222,8 +294,8 @@ public class MongoDbRequiredImagesIT extends AbstractMongoConnectorIT {
 
     @ParameterizedTest
     @CsvSource({ "required, post_image", "when_available, post_image_required" })
-    void shouldFailWhenRecordedImagesExpire(String preImage, String fullUpdate) throws Exception {
-        config = imageConfiguration(preImage, fullUpdate).edit()
+    void shouldFailWhenRecordedImagesExpire(String preImage, String postImage) throws Exception {
+        config = imageConfiguration(preImage, postImage).edit()
                 .with(MongoDbConnectorConfig.SNAPSHOT_MODE, "when_needed")
                 .build();
         try (var client = connect()) {
@@ -267,13 +339,12 @@ public class MongoDbRequiredImagesIT extends AbstractMongoConnectorIT {
         }
     }
 
-    private Configuration imageConfiguration(String preImage, String fullUpdate) {
+    private Configuration imageConfiguration(String preImage, String postImage) {
         return TestHelper.getConfiguration(mongo).edit()
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, DATABASE + "." + COLLECTION)
-                .with(MongoDbConnectorConfig.CAPTURE_MODE, "change_streams_update_full_with_pre_image")
                 .with("capture.mode.pre.image", preImage)
-                .with("capture.mode.full.update.type", fullUpdate)
+                .with("capture.mode.post.image", postImage)
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .build();
     }
