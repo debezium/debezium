@@ -377,7 +377,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
     // authentication/authorization failures: those are permanent misconfigurations that would otherwise spin on
     // every restart until retries are exhausted (cf. debezium/dbz#2139).
     private static boolean isCommunicationFailure(Throwable throwable) {
-        if (MongoDbErrorHandler.isRequiredImageMissing(throwable)) {
+        if (MongoUtils.isRequiredImageMissing(throwable)) {
             return false;
         }
         boolean communicationFailure = false;

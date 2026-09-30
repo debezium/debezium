@@ -270,6 +270,23 @@ public class MongoUtils {
         return result.getTimestamp("operationTime");
     }
 
+    /**
+     * Missing required images cannot be recovered by reopening the stream, even if image recording is enabled later.
+     * Check the server message as NoMatchingDocument (47) is also used by operations unrelated to change stream images.
+     */
+    public static boolean isRequiredImageMissing(Throwable throwable) {
+        for (Throwable cause = throwable; cause != null; cause = cause.getCause()) {
+            if (cause instanceof MongoException mongoException && mongoException.getCode() == 47) {
+                final var message = mongoException.getMessage();
+                if (message != null && (message.contains("Change stream was configured to require a pre-image")
+                        || message.contains("Change stream was configured to require a post-image"))) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     private MongoUtils() {
     }
 }
