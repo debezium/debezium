@@ -22,6 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.common.RelationalBaseSourceConnector;
@@ -29,6 +30,9 @@ import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ServerInfo;
 import io.debezium.metadata.ConfigDescriptor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.relational.SignalDataCollectionValidationRequest;
+import io.debezium.relational.SignalDataCollectionValidationResult;
+import io.debezium.relational.SignalDataCollectionValidator;
 import io.debezium.util.Threads;
 
 /**
@@ -109,6 +113,9 @@ public class PostgresConnector extends RelationalBaseSourceConnector implements 
                         testConnection(connection);
                         checkReadOnlyMode(connection, postgresConfig);
                         checkLoginReplicationRoles(connection);
+                        SignalDataCollectionValidationResult signalResult = SignalDataCollectionValidator.validate(
+                                SignalDataCollectionValidationRequest.forConnector(postgresConfig, rawValue -> connection));
+                        signalResult.errors().forEach(configValues.get(CommonConnectorConfig.SIGNAL_DATA_COLLECTION.name())::addErrorMessage);
                     }
                     catch (SQLException e) {
                         LOGGER.error("Failed testing connection for {} with user '{}'", connection.connectionString(),

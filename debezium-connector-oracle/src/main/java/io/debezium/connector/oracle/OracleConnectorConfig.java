@@ -758,9 +758,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withValidation(Field::isPositiveLong)
             .withDescription("The interval that the resume position is updated");
 
-    public static final Field SIGNAL_DATA_COLLECTION = CommonConnectorConfig.SIGNAL_DATA_COLLECTION
-            .withValidation(OracleConnectorConfig::validateSignalDataCollection);
-
     public static final Field LOG_MINING_BUFFER_DEFERRED_TRANSACTION_START = Field.create("log.mining.buffer.deferred.transaction.start")
             .withDisplayName("Use deferred transaction start behavior")
             .withType(Type.BOOLEAN)
@@ -863,7 +860,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LEGACY_DECIMAL_HANDLING_STRATEGY)
             .group(Field.Group.CONNECTOR_ADVANCED, QUERY_FETCH_SIZE, OBJECT_ID_CACHE_SIZE)
             .group(Field.Group.CONNECTOR_SNAPSHOT, SNAPSHOT_MODE, SNAPSHOT_ENHANCEMENT_TOKEN, SNAPSHOT_LOCKING_MODE, SNAPSHOT_DATABASE_ERRORS_MAX_RETRIES)
-            .group(Field.Group.CONNECTOR, SOURCE_INFO_STRUCT_MAKER, SIGNAL_DATA_COLLECTION)
+            .group(Field.Group.CONNECTOR, SOURCE_INFO_STRUCT_MAKER, CommonConnectorConfig.SIGNAL_DATA_COLLECTION)
             .create();
 
     /**
@@ -2506,21 +2503,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                 problems.accept(field, config.getBoolean(field), String.format(
                         "The configuration property '%s' cannot be disabled when '%s' or '%s' is configured.",
                         field.name(), includeList.name(), excludeList.name()));
-                return 1;
-            }
-        }
-        return 0;
-    }
-
-    public static int validateSignalDataCollection(Configuration config, Field field, ValidationOutput problems) {
-        final String signalDataCollection = config.getString(SIGNAL_DATA_COLLECTION);
-        if (!Strings.isNullOrEmpty(signalDataCollection)) {
-            final TableId tableId = TableId.parse(signalDataCollection);
-            if (Strings.isNullOrEmpty(tableId.catalog())
-                    || Strings.isNullOrEmpty(tableId.schema())
-                    || Strings.isNullOrEmpty(tableId.table())) {
-                problems.accept(SIGNAL_DATA_COLLECTION, signalDataCollection,
-                        "Please specify the signal data collection as '<database>.<schema>.<table>'.");
                 return 1;
             }
         }
