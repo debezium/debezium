@@ -526,10 +526,9 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
     @SuppressWarnings("deprecation")
     protected Object convertYearToInt(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, 0, (r) -> {
-            Object mutData = data;
             if (data instanceof java.time.Year) {
                 // The binlog always returns a Year object ...
-                r.deliver(adjustTemporal(java.time.Year.of(((java.time.Year) data).getValue())).get(ChronoField.YEAR));
+                r.deliver(((java.time.Year) data).getValue());
             }
             else if (data instanceof java.sql.Date) {
                 // JDBC driver sometimes returns a Java SQL Date object ...
@@ -537,11 +536,14 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
                 r.deliver(((java.sql.Date) data).getYear() + 1900);
             }
             else if (data instanceof String) {
-                mutData = Integer.valueOf((String) data);
+                // Unlike numeric zero, the strings "0" and "00" represent 2000. Only "0000" denotes the zero year.
+                final int year = Integer.parseInt((String) data);
+                r.deliver("0000".equals(data) ? 0 : adjustTemporal(java.time.Year.of(year)).get(ChronoField.YEAR));
             }
-            if (mutData instanceof Number) {
+            else if (data instanceof Number) {
                 // JDBC driver sometimes returns a short ...
-                r.deliver(adjustTemporal(java.time.Year.of(((Number) mutData).intValue())).get(ChronoField.YEAR));
+                final int year = ((Number) data).intValue();
+                r.deliver(year == 0 ? 0 : adjustTemporal(java.time.Year.of(year)).get(ChronoField.YEAR));
             }
         });
     }

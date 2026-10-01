@@ -6,6 +6,8 @@
 
 package io.debezium.connector.mysql.antlr.listener;
 
+import static io.debezium.connector.binlog.jdbc.BinlogDefaultValueConverter.normalizeNumericDefaultValue;
+
 import java.sql.Types;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -109,7 +111,7 @@ public class DefaultValueParserListener extends MySqlParserBaseListener {
 
                     // Handle signed number
                     if (signed.ulong_number() != null) {
-                        getColumnEditor().defaultValueExpression(sign + signed.ulong_number().getText());
+                        getColumnEditor().defaultValueExpression(normalizeNumericDefaultValue(getColumnEditor().typeName(), sign + signed.ulong_number().getText()));
                         exitDefaultValue(true);
                         return;
                     }
@@ -136,7 +138,7 @@ public class DefaultValueParserListener extends MySqlParserBaseListener {
 
         // Numeric literal
         if (literalCtx.numLiteral() != null) {
-            getColumnEditor().defaultValueExpression(sign + literalCtx.numLiteral().getText());
+            getColumnEditor().defaultValueExpression(normalizeNumericDefaultValue(getColumnEditor().typeName(), sign + literalCtx.numLiteral().getText()));
             return;
         }
 

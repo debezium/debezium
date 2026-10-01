@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.mariadb.antlr.listener;
 
+import static io.debezium.connector.binlog.jdbc.BinlogDefaultValueConverter.normalizeNumericDefaultValue;
+
 import java.sql.Types;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.UnaryOperator;
@@ -59,7 +61,7 @@ public class DefaultValueParserListener extends MariaDBParserBaseListener {
                 columnEditor.defaultValueExpression(sign + parser.parseStringLiteral(ctx.constant().stringLiteral()));
             }
             else if (ctx.constant().decimalLiteral() != null) {
-                columnEditor.defaultValueExpression(sign + ctx.constant().decimalLiteral().getText());
+                columnEditor.defaultValueExpression(normalizeNumericDefaultValue(columnEditor.typeName(), sign + ctx.constant().decimalLiteral().getText()));
             }
             else if (ctx.constant().hexadecimalLiteral() != null) {
                 final var literal = ctx.constant().hexadecimalLiteral();
@@ -77,7 +79,7 @@ public class DefaultValueParserListener extends MariaDBParserBaseListener {
                 columnEditor.defaultValueExpression(ctx.constant().booleanLiteral().getText());
             }
             else if (ctx.constant().REAL_LITERAL() != null) {
-                columnEditor.defaultValueExpression(ctx.constant().REAL_LITERAL().getText());
+                columnEditor.defaultValueExpression(normalizeNumericDefaultValue(columnEditor.typeName(), ctx.constant().REAL_LITERAL().getText()));
             }
         }
         else if (ctx.currentTimestamp() != null && !ctx.currentTimestamp().isEmpty()) {
