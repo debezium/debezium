@@ -855,13 +855,22 @@ public final class Strings {
      * @return the readable duration.
      */
     public static String duration(long durationInMillis) {
-        long seconds = durationInMillis / 1000;
+        if (durationInMillis == Long.MIN_VALUE) {
+            // Avoid overflow when taking absolute value of Long.MIN_VALUE
+            return "-2562047788:00:54.775";
+        }
+        boolean negative = durationInMillis < 0;
+        long absDuration = Math.abs(durationInMillis);
+        long seconds = absDuration / 1000;
         long s = seconds % 60;
         long m = (seconds / 60) % 60;
         long h = (seconds / (60 * 60));
-        long q = durationInMillis % 1000;
+        long q = absDuration % 1000;
 
-        StringBuilder result = new StringBuilder(15);
+        StringBuilder result = new StringBuilder(16);
+        if (negative) {
+            result.append("-");
+        }
 
         if (h < 10) {
             result.append("0");
