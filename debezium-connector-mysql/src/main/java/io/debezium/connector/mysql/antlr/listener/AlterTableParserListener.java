@@ -415,10 +415,7 @@ public class AlterTableParserListener extends TableCommonParserListener {
                 // Extract the default value directly from the context
                 // Grammar: SET DEFAULT (exprWithParentheses | signedLiteralOrNull)
                 if (ctx.signedLiteralOrNull() != null) {
-                    String defaultValue = extractDefaultValue(ctx.signedLiteralOrNull());
-                    if (defaultValue != null) {
-                        defaultValueColumnEditor.defaultValueExpression(defaultValue);
-                    }
+                    defaultValueColumnEditor.defaultValueExpression(extractDefaultValue(ctx.signedLiteralOrNull()));
                 }
                 else if (ctx.exprWithParentheses() != null) {
                     // Expression-based default - set to null
@@ -452,6 +449,9 @@ public class AlterTableParserListener extends TableCommonParserListener {
 
         // Handle literal (text, numeric, temporal, etc.)
         if (signed.literal() != null) {
+            if (signed.literal().nullLiteral() != null) {
+                return null;
+            }
             return sign + extractLiteralValue(signed.literal());
         }
 
