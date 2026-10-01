@@ -58,7 +58,7 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
 
     private final EventFetcher<TResult> fetcher;
     private final ExecutorService executor;
-    private final DelayStrategy throttler;
+    private final long maxSleepMillis;
     private BsonDocument lastResumeToken = null;
 
     /**
@@ -136,7 +136,10 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
         private int noMessageIterations = 0;
         private final Lock lock = new ReentrantLock();
         private final Condition resumed = lock.newCondition();
+        private final Condition eventAvailable = lock.newCondition();
         private volatile boolean paused;
+        private volatile boolean closed;
+        private volatile boolean consumerWaiting;
 
         public EventFetcher(ChangeStreamIterable<TResult> stream,
                             int capacity,
@@ -168,7 +171,7 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
          * @return true if running, false otherwise
          */
         public boolean isRunning() {
-            return running.get();
+            return running.get() && !closed;
         }
 
         /**
@@ -191,7 +194,15 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
 
         @Override
         public void close() {
+            closed = true;
             running.set(false);
+            lock.lock();
+            try {
+                eventAvailable.signalAll();
+            }
+            finally {
+                lock.unlock();
+            }
         }
 
         public boolean isPaused() {
@@ -241,6 +252,36 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
             return event;
         }
 
+        void awaitEvent(long timeoutMillis) throws InterruptedException {
+            lock.lockInterruptibly();
+            try {
+                // Register before checking the queue so that an enqueue cannot be missed
+                // between the empty check and releasing the lock in awaitNanos().
+                consumerWaiting = true;
+                long remainingNanos = TimeUnit.MILLISECONDS.toNanos(timeoutMillis);
+                while (queue.isEmpty() && !hasError() && !closed && remainingNanos > 0) {
+                    remainingNanos = eventAvailable.awaitNanos(remainingNanos);
+                }
+            }
+            finally {
+                consumerWaiting = false;
+                lock.unlock();
+            }
+        }
+
+        private void signalEventAvailable() {
+            // Avoid taking a lock for every event while the consumer is draining a backlog.
+            if (consumerWaiting) {
+                lock.lock();
+                try {
+                    eventAvailable.signal();
+                }
+                finally {
+                    lock.unlock();
+                }
+            }
+        }
+
         public boolean isEmpty() {
             return queue.isEmpty();
         }
@@ -257,6 +298,9 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
 
         @Override
         public void run() {
+            if (closed) {
+                return;
+            }
             try (MongoChangeStreamCursor<ChangeStreamDocument<TResult>> cursor = stream.cursor()) {
                 cursorRef.compareAndSet(null, cursor);
                 running.set(true);
@@ -264,9 +308,11 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
                 fetchEvents(cursor);
             }
             catch (InterruptedException e) {
-                LOGGER.error("Fetcher thread interrupted", e);
+                if (!closed) {
+                    error.set(e);
+                    LOGGER.error("Fetcher thread interrupted", e);
+                }
                 Thread.currentThread().interrupt();
-                throw new DebeziumException("Fetcher thread interrupted", e);
             }
             catch (Throwable e) {
                 error.set(e);
@@ -328,8 +374,10 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
                 LOGGER.warn("Unable to acquire buffer lock, buffer queue is likely full");
                 return false;
             }
-            // always true
-            return queue.offer(event);
+            // ConcurrentLinkedQueue.offer() always succeeds.
+            queue.offer(event);
+            signalEventAvailable();
+            return true;
         }
     }
 
@@ -351,16 +399,15 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
      *
      * @param fetcher MongoDB change event fetcher
      * @param executor executor used to dispatch buffering thread
-     * @param throttler throttling mechanism
+     * @param throttleMaxSleep maximum duration of an individual wait for a buffered event
      */
-    public BufferingChangeStreamCursor(EventFetcher<TResult> fetcher, ExecutorService executor, DelayStrategy throttler) {
+    public BufferingChangeStreamCursor(EventFetcher<TResult> fetcher, ExecutorService executor, Duration throttleMaxSleep) {
         this.fetcher = fetcher;
         this.executor = executor;
-        this.throttler = throttler;
-    }
-
-    public BufferingChangeStreamCursor(EventFetcher<TResult> fetcher, ExecutorService executor, Duration throttleMaxSleep) {
-        this(fetcher, executor, DelayStrategy.boundedExponential(Duration.ofMillis(1), throttleMaxSleep, 2));
+        this.maxSleepMillis = throttleMaxSleep.toMillis();
+        if (maxSleepMillis <= 1) {
+            throw new IllegalArgumentException("Maximum delay must be greater than initial delay");
+        }
     }
 
     public BufferingChangeStreamCursor<TResult> start() {
@@ -371,6 +418,20 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
 
     @Override
     public ResumableChangeStreamEvent<TResult> tryNext() {
+        try {
+            return tryNextInterruptibly();
+        }
+        catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new DebeziumException("Interrupted while waiting for change stream events", e);
+        }
+    }
+
+    /**
+     * Reads the next buffered event, allowing the streaming loop to handle shutdown
+     * interruption separately from a failure to fetch events.
+     */
+    public ResumableChangeStreamEvent<TResult> tryNextInterruptibly() throws InterruptedException {
         var event = pollWithDelay();
         if (event != null) {
             lastResumeToken = event.resumeToken;
@@ -398,15 +459,23 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
      *
      * @return event or null if not available within time limit
      */
-    private ResumableChangeStreamEvent<TResult> pollWithDelay() {
-        boolean slept;
-        ResumableChangeStreamEvent<TResult> event;
-        do {
-            event = fetcher.poll();
-            slept = throttler.sleepWhen(event == null);
-        } while (slept);
+    private ResumableChangeStreamEvent<TResult> pollWithDelay() throws InterruptedException {
+        long delayMillis = 1;
+        while (true) {
+            final var event = fetcher.poll();
+            if (event != null || fetcher.closed) {
+                return event;
+            }
 
-        return event;
+            fetcher.awaitEvent(delayMillis);
+
+            // Keep the existing bounded exponential timeout (1, 2, ... max), but
+            // let an arriving event end any individual wait immediately.
+            if (delayMillis == maxSleepMillis) {
+                return fetcher.poll();
+            }
+            delayMillis += Math.min(delayMillis, maxSleepMillis - delayMillis);
+        }
     }
 
     public void resume() {
@@ -476,6 +545,7 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
             executor.awaitTermination(FETCHER_SHUTDOWN_TIMEOUT, TimeUnit.SECONDS);
         }
         catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             LOGGER.warn("Interrupted while waiting for fetcher thread shutdown");
         }
     }
