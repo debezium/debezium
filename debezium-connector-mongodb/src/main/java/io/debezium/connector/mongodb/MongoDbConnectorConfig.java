@@ -1579,8 +1579,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
         final String[] result = new String[3];
         int idx = 0;
         for (Object fieldValue : fields.values()) {
-            if (fieldValue instanceof Document) {
-                result[idx++] = ((Document) fieldValue).toJson();
+            if (fieldValue instanceof Document document) {
+                result[idx++] = document.toJson();
             }
             else {
                 result[idx++] = fieldValue.toString();
