@@ -51,6 +51,10 @@ public abstract class BinlogFieldReader {
      * @throws SQLException if there is a database exception or failure reading the column's value
      */
     public Object readField(ResultSet rs, int columnIndex, Column column, Table table) throws SQLException {
+        if ("YEAR".equalsIgnoreCase(column.typeName())) {
+            // JDBC date conversion cannot reliably represent the zero year. Read YEAR as a number instead.
+            return rs.getString(columnIndex) == null ? null : rs.getInt(columnIndex);
+        }
         switch (column.jdbcType()) {
             case Types.TIME:
                 return readTimeField(rs, columnIndex, column, table);

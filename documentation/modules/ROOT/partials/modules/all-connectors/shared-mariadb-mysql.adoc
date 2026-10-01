@@ -2072,7 +2072,10 @@ Repeated quotation marks that escape a quote in a SQL option are represented as 
 
 |`YEAR[(4)]`
 |`INT32`
-|`io.debezium.time.Year`
+a|`io.debezium.time.Year`
+
+The special zero-year value `0000` is represented as `0`, distinct from SQL `NULL`.
+Numeric `DEFAULT 0` and quoted `DEFAULT '0000'` produce a zero-year default, while quoted `DEFAULT '0'` and `DEFAULT '00'` produce a default of `2000`.
 
 |`TIMESTAMP[(fsp)]`
 |`STRING`

@@ -79,6 +79,22 @@ public abstract class BinlogDefaultValueConverter implements DefaultValueConvert
     }
 
     /**
+     * Preserves numeric YEAR zero when a parser stores a default as an unquoted string.
+     * The canonical four-digit form distinguishes it from a quoted zero, which represents 2000.
+     * Other numeric defaults are returned unchanged.
+     *
+     * @param typeName the column's database type name
+     * @param value the numeric literal, including its sign
+     * @return the default expression to store in the column and schema history
+     */
+    public static String normalizeNumericDefaultValue(String typeName, String value) {
+        if ("YEAR".equalsIgnoreCase(typeName) && value.matches("[+-]?(?:0+(?:\\.0*)?|\\.0+)(?:[eE][+-]?\\d+)?")) {
+            return "0000";
+        }
+        return value;
+    }
+
+    /**
      * This interface is used by a DDL parser to convert the string default value to a Java type
      * recognized by value converters for a subset of types.
      *
