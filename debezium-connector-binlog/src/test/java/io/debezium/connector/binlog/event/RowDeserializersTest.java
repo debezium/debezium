@@ -8,10 +8,13 @@ package io.debezium.connector.binlog.event;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
+import java.time.Year;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import com.github.shyiko.mysql.binlog.io.ByteArrayInputStream;
 
@@ -24,6 +27,13 @@ import com.github.shyiko.mysql.binlog.io.ByteArrayInputStream;
  * {@link io.debezium.connector.binlog.BinlogConnectorConfig}.
  */
 class RowDeserializersTest {
+
+    @ParameterizedTest
+    @CsvSource({ "0,0", "1,1901", "69,1969", "70,1970", "99,1999", "100,2000", "255,2155" })
+    void deserializeYearPreservesZeroAndValidYears(int encoded, int expected) throws IOException {
+        final var input = new ByteArrayInputStream(new byte[]{ (byte) encoded });
+        assertThat(RowDeserializers.deserializeYear(input)).isEqualTo(Year.of(expected));
+    }
 
     /**
      * MySQL stores {@code TIMESTAMP '0000-00-00 00:00:00'} as 4 zero bytes on the wire. Because the

@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.mariadb.antlr.listener;
 
+import static io.debezium.connector.binlog.jdbc.BinlogDefaultValueConverter.normalizeNumericDefaultValue;
+
 import java.util.concurrent.atomic.AtomicReference;
 
 import io.debezium.ddl.parser.mariadb.generated.MariaDBParser.CurrentTimestampContext;
@@ -50,7 +52,7 @@ public class DefaultValueParserListener extends MariaDBParserBaseListener {
                 }
             }
             else if (ctx.constant().decimalLiteral() != null) {
-                columnEditor.defaultValueExpression(sign + ctx.constant().decimalLiteral().getText());
+                columnEditor.defaultValueExpression(normalizeNumericDefaultValue(columnEditor.typeName(), sign + ctx.constant().decimalLiteral().getText()));
             }
             else if (ctx.constant().BIT_STRING() != null) {
                 columnEditor.defaultValueExpression(unquoteBinary(ctx.constant().BIT_STRING().getText()));
@@ -59,7 +61,7 @@ public class DefaultValueParserListener extends MariaDBParserBaseListener {
                 columnEditor.defaultValueExpression(ctx.constant().booleanLiteral().getText());
             }
             else if (ctx.constant().REAL_LITERAL() != null) {
-                columnEditor.defaultValueExpression(ctx.constant().REAL_LITERAL().getText());
+                columnEditor.defaultValueExpression(normalizeNumericDefaultValue(columnEditor.typeName(), ctx.constant().REAL_LITERAL().getText()));
             }
         }
         else if (ctx.currentTimestamp() != null && !ctx.currentTimestamp().isEmpty()) {

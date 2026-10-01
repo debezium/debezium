@@ -2067,7 +2067,10 @@ The `allowed` schema parameter contains the comma-separated list of allowed valu
 
 |`YEAR[(4)]`
 |`INT32`
-|`io.debezium.time.Year`
+a|`io.debezium.time.Year`
+
+The special zero-year value `0000` is represented as `0`, distinct from SQL `NULL`.
+Numeric `DEFAULT 0` and quoted `DEFAULT '0000'` produce a zero-year default, while quoted `DEFAULT '0'` and `DEFAULT '00'` produce a default of `2000`.
 
 |`TIMESTAMP[(fsp)]`
 |`STRING`
@@ -3294,4 +3297,3 @@ If the snapshot is disabled, the connector fails with an error.
 
 See xref:{context}-snapshots[snapshots] for details about how {connector-name} connectors perform initial snapshots.
 end::wrong-things[]
-
