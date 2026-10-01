@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.stream.Stream;
 
-public abstract class Segments<S extends Slot> {
+public abstract class Segments<S extends Slot> implements Iterable<S> {
     private final S nullSlot = newSlot();
     private final List<S> slots = new ArrayList<>();
     private final S[][] segments = newSegments(65536);

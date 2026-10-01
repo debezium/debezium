@@ -9,13 +9,19 @@ import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 
 public abstract class AbstractCacheSlot extends Slot {
     LogMinerEvent lastEnqueuedEvent;
+    Transaction deferredTransaction;
 
     LogMinerEvent lastEnqueuedEvent() {
         return lastEnqueuedEvent;
     }
 
+    Transaction deferredTransaction() {
+        return deferredTransaction;
+    }
+
     @Override
     public void clear() {
         lastEnqueuedEvent = null;
+        deferredTransaction = null;
     }
 }

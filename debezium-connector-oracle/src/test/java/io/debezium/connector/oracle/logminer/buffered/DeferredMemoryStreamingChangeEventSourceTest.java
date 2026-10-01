@@ -279,11 +279,11 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
         try (var source = getChangeEventSource(getConfig().build())) {
             source.processEvent(getStartLogMinerEventRow(1, deferredTransactionId));
 
-            assertThat(source.getDeferredTransactionCount()).isEqualTo(1);
+            assertThat(source.segments().get(Xid.of(deferredTransactionId)).deferredTransaction()).isNotNull();
 
             source.processEvent(getRollbackLogMinerEventRow(2, "01000100ffffffff"));
 
-            assertThat(source.getDeferredTransactionCount()).isZero();
+            assertThat(source.segments().get(Xid.of(deferredTransactionId)).deferredTransaction()).isNull();
             assertThat(source.getTransactionCache().isEmpty()).isTrue();
         }
     }
@@ -321,11 +321,11 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
         try (var source = getChangeEventSource(getConfig().build())) {
             source.processEvent(getStartLogMinerEventRow(1, deferredTransactionId));
 
-            assertThat(source.getDeferredTransactionCount()).isEqualTo(1);
+            assertThat(source.segments().get(Xid.of(deferredTransactionId)).deferredTransaction()).isNotNull();
 
             source.processEvent(getCommitLogMinerEventRow(2, "01000100ffffffff"));
 
-            assertThat(source.getDeferredTransactionCount()).isZero();
+            assertThat(source.segments().get(Xid.of(deferredTransactionId)).deferredTransaction()).isNull();
             assertThat(source.getTransactionCache().isEmpty()).isTrue();
             Mockito.verify(commitScn).recordCommit(any(LogMinerEventRow.class));
         }
@@ -501,7 +501,8 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
             source.processEvent(getStartLogMinerEventRow(150, TRANSACTION_ID_2));
 
             assertThat(source.getTransactionCache().containsTransaction(Xid.of(TRANSACTION_ID_1))).isTrue();
-            assertThat(source.getDeferredTransactionCount()).isEqualTo(1);
+            assertThat(source.segments().get(Xid.of(TRANSACTION_ID_1)).deferredTransaction()).isNull();
+            assertThat(source.segments().get(Xid.of(TRANSACTION_ID_2)).deferredTransaction()).isNotNull();
 
             // process() triggers calculateNewStartScn. The offset SCN should be
             // min(oldestDeferredScn=150, minCacheScn=100) - 1 = 99, not just 150.
@@ -536,13 +537,13 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
             source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
             source.processEvent(getStartLogMinerEventRow(3, TRANSACTION_ID_2));
 
-            assertThat(source.getDeferredTransactionCount()).isEqualTo(2);
+            assertThat(source.segments().get(Xid.of(TRANSACTION_ID_1)).deferredTransaction()).isNotNull();
+            assertThat(source.segments().get(Xid.of(TRANSACTION_ID_2)).deferredTransaction()).isNotNull();
 
             source.cleanupDeferredTransactionsForTest(Duration.ofHours(1));
 
-            assertThat(source.getDeferredTransactionCount()).isEqualTo(1);
-            assertThat(source.hasDeferredTransaction(TRANSACTION_ID_1)).isFalse();
-            assertThat(source.hasDeferredTransaction(TRANSACTION_ID_2)).isTrue();
+            assertThat(source.segments().get(Xid.of(TRANSACTION_ID_1)).deferredTransaction()).isNull();
+            assertThat(source.segments().get(Xid.of(TRANSACTION_ID_2)).deferredTransaction()).isNotNull();
         }
     }
 
@@ -790,23 +791,8 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
             field.set(this, state);
         }
 
-        public int getDeferredTransactionCount() {
-            return getDeferredTransactionsForTest().size();
-        }
-
-        public boolean hasDeferredTransaction(String transactionId) {
-            return getDeferredTransactionsForTest().containsKey(Xid.usnSltKey(Xid.of(transactionId)));
-        }
-
         public Scn getOldestDeferredTransactionStartScn() {
-            try {
-                final var method = BufferedLogMinerStreamingChangeEventSource.class.getDeclaredMethod("getOldestDeferredTransactionStartScn");
-                method.setAccessible(true);
-                return (Scn) method.invoke(this);
-            }
-            catch (ReflectiveOperationException e) {
-                throw new AssertionError("Unable to invoke getOldestDeferredTransactionStartScn", e);
-            }
+            return this.getTransactionCache().getOldestDeferredTransactionStartScn();
         }
 
         public void cleanupDeferredTransactionsForTest(Duration retention) {
@@ -821,14 +807,14 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
         }
 
         @SuppressWarnings("unchecked")
-        private Map<Integer, ?> getDeferredTransactionsForTest() {
+        public Segments<AbstractCacheSlot> segments() {
             try {
-                final var field = BufferedLogMinerStreamingChangeEventSource.class.getDeclaredField("deferredTransactions");
+                var field = AbstractLogMinerTransactionCache.class.getDeclaredField("segments");
                 field.setAccessible(true);
-                return (Map<Integer, ?>) field.get(this);
+                return (Segments<AbstractCacheSlot>) field.get(this.getTransactionCache());
             }
             catch (ReflectiveOperationException e) {
-                throw new AssertionError("Unable to read deferred transaction state", e);
+                throw new AssertionError("Unable to read segments", e);
             }
         }
     }

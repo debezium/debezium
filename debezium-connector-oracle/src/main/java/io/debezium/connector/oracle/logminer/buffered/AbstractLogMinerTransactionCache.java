@@ -7,13 +7,17 @@ package io.debezium.connector.oracle.logminer.buffered;
 
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.IntFunction;
+import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.events.RollbackToSavepointEvent;
@@ -36,6 +40,7 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction, S 
     private final Set<Long> abandonedTransactions = new HashSet<>();
 
     protected final Segments<S> segments;
+    protected int deferredTransactionCount = 0;
 
     protected AbstractLogMinerTransactionCache(Segments<S> segments) {
         this.segments = segments;
@@ -58,17 +63,18 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction, S 
 
     @Override
     public boolean containsTransaction(long xid) {
-        return segments.get(xid).occupied();
+        S slot = segments.get(xid);
+        return slot.occupied() && slot.deferredTransaction == null;
     }
 
     @Override
     public boolean isEmpty() {
-        return segments.isEmpty();
+        return segments.size() == deferredTransactionCount;
     }
 
     @Override
     public int getTransactionCount() {
-        return segments.size();
+        return segments.size() - deferredTransactionCount;
     }
 
     @Override
@@ -82,6 +88,61 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction, S 
     @Override
     public LogMinerEvent removeLastEnqueuedEvent(long xid) {
         return putLastEnqueuedEvent(xid, null);
+    }
+
+    @Override
+    public void deferredTransactions(Consumer<Stream<Transaction>> consumer) {
+        consumer.accept(segments.stream().map(S::deferredTransaction).filter(Objects::nonNull));
+    };
+
+    @Override
+    public boolean isDeferredTransactionsEmpty() {
+        return deferredTransactionCount == 0;
+    }
+
+    @Override
+    public void addDeferredTransaction(Transaction transaction) {
+        S slot = segments.occupy(transaction.getXid());
+        if (slot.deferredTransaction == null) {
+            deferredTransactionCount++;
+        }
+        slot.deferredTransaction = transaction;
+    }
+
+    @Override
+    public Transaction removeDeferredTransaction(long xid) {
+        S slot = segments.vacate(xid);
+        Transaction deferredTransaction = slot.deferredTransaction;
+        if (deferredTransaction != null) {
+            deferredTransactionCount--;
+            slot.deferredTransaction = null;
+        }
+        return deferredTransaction;
+    }
+
+    @Override
+    public int removeDeferredTransactionsOlderThan(Scn thresholdScn) {
+        int count = deferredTransactionCount;
+        Iterator<S> it = segments.iterator();
+        while (it.hasNext()) {
+            S slot = it.next();
+            if (slot.deferredTransaction != null && slot.deferredTransaction.getStartScn().compareTo(thresholdScn) <= 0) {
+                slot.deferredTransaction = null;
+                deferredTransactionCount--;
+                it.remove();
+            }
+        }
+        return count - deferredTransactionCount;
+    }
+
+    @Override
+    public Scn getOldestDeferredTransactionStartScn() {
+        return segments.stream()
+                .map(S::deferredTransaction)
+                .filter(Objects::nonNull)
+                .map(Transaction::getStartScn)
+                .min(Scn::compareTo)
+                .orElse(Scn.NULL);
     }
 
     @Override

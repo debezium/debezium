@@ -14,7 +14,6 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -86,33 +85,6 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     private Instant lastProcessedScnChangeTime = null;
     private Scn lastProcessedScn = Scn.NULL;
     private Scn lastLoggedWindowAdvanceScn = Scn.NULL;
-
-    private final Map<Integer, DeferredTransaction> deferredTransactions = new HashMap<>();
-
-    /**
-     * Lightweight metadata record for a deferred transaction that has not yet emitted any DML events.
-     */
-    private record DeferredTransaction(long xid, Scn startScn, Instant changeTime,
-            String userName, String clientId, int redoThreadId) {
-    }
-
-    private static DeferredTransaction checkSqn(long xid, DeferredTransaction deferredTransaction) {
-        if (deferredTransaction != null && deferredTransaction.xid() != xid && (int) xid != Xid.EMPTY_SQN) {
-            throw new IllegalStateException(
-                    "Invalid XID %016x: The slot is occupied by the XID %016x".formatted(xid, deferredTransaction.xid()));
-        }
-        return deferredTransaction;
-    }
-
-    private Transaction createTransaction(DeferredTransaction deferredTransaction) {
-        return transactionFactory.createTransaction(
-                deferredTransaction.xid(),
-                deferredTransaction.startScn(),
-                deferredTransaction.changeTime(),
-                deferredTransaction.userName(),
-                deferredTransaction.redoThreadId(),
-                deferredTransaction.clientId());
-    }
 
     public BufferedLogMinerStreamingChangeEventSource(OracleConnectorConfig connectorConfig,
                                                       OracleConnectionFactory connectionFactory,
@@ -422,23 +394,18 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     protected void handleStartEvent(LogMinerEventRow event) {
         final long xid = event.getXid();
         if (!isRecentlyProcessed(xid)) {
-            if (getConfig().isDeferredLogMinerTransactionStartBehaviorEnabled() && xid != Xid.EMPTY_XID) {
-                checkSqn(xid, deferredTransactions.computeIfAbsent(Xid.usnSltKey(xid), id -> {
-                    LOGGER.trace("Deferring transaction {} start event.", event.getTransactionId());
-                    return new DeferredTransaction(xid, event.getScn(), event.getChangeTime(),
-                            event.getUserName(), event.getClientId(), event.getThread());
-                }));
-                return;
-            }
-
             final Transaction transaction = getTransactionCache().getTransaction(xid);
-            if (transaction == null) {
-                getTransactionCache().addTransaction(transactionFactory.createTransaction(event));
-                getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
-            }
-            else {
+            if (transaction != null) {
                 LOGGER.trace("Transaction {} is not yet committed and START event detected.", event.getTransactionId());
                 getTransactionCache().resetTransactionToStart(transaction);
+            }
+            else if (getConfig().isDeferredLogMinerTransactionStartBehaviorEnabled() && xid != Xid.EMPTY_XID) {
+                LOGGER.trace("Deferring transaction {} start event.", event.getTransactionId());
+                getTransactionCache().addDeferredTransaction(transactionFactory.createTransaction(event));
+            }
+            else {
+                getTransactionCache().addTransaction(transactionFactory.createTransaction(event));
+                getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
             }
         }
     }
@@ -455,7 +422,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         boolean removedDeferredTransaction = false;
         if (transaction == null) {
             // Check if the transaction was deferred and never promoted
-            if (xid != Xid.EMPTY_XID && removeDeferredTransaction(xid) != null) {
+            if (xid != Xid.EMPTY_XID && getTransactionCache().removeDeferredTransaction(xid) != null) {
                 LOGGER.debug("Transaction {} was deferred with no DML events, removing on commit.", row.getTransactionId());
                 removedDeferredTransaction = true;
             }
@@ -654,7 +621,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
             getMetrics().setBufferedEventCount(getTransactionCache().getTransactionEvents());
         }
-        else if (xid != Xid.EMPTY_XID && removeDeferredTransaction(xid) != null) {
+        else if (xid != Xid.EMPTY_XID && getTransactionCache().removeDeferredTransaction(xid) != null) {
             LOGGER.debug("Transaction {} was in deferred state, removed on rollback.", event.getTransactionId());
         }
         else {
@@ -669,17 +636,6 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         getMetrics().incrementRolledBackTransactionCount();
         getMetrics().addRolledBackTransactionId(event.getTransactionId());
         getBatchMetrics().rollbackObserved();
-    }
-
-    private DeferredTransaction removeDeferredTransaction(long xid) {
-        return checkSqn(xid, deferredTransactions.remove(Xid.usnSltKey(xid)));
-    }
-
-    private Scn getOldestDeferredTransactionStartScn() {
-        return deferredTransactions.values().stream()
-                .map(DeferredTransaction::startScn)
-                .min(Scn::compareTo)
-                .orElse(Scn.NULL);
     }
 
     @Override
@@ -821,7 +777,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             // cache. This ensures that on restart the connector goes back far enough to re-mine
             // the START events of deferred transactions and to reconstruct any non-persisted
             // transactions that were already promoted into the cache.
-            final Scn oldestDeferredScn = getOldestDeferredTransactionStartScn();
+            final Scn oldestDeferredScn = getTransactionCache().getOldestDeferredTransactionStartScn();
             final Scn oldestScn;
             if (oldestDeferredScn.isNull()) {
                 oldestScn = minCacheScn;
@@ -1078,10 +1034,9 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
             // Check if this transaction is in the deferred state and promote it
             if (xid != Xid.EMPTY_XID) {
-                final DeferredTransaction deferred = removeDeferredTransaction(xid);
-                if (deferred != null) {
+                transaction = getTransactionCache().removeDeferredTransaction(xid);
+                if (transaction != null) {
                     LOGGER.trace("Promoting deferred transaction {} to the transaction cache.", event.getTransactionId());
-                    transaction = createTransaction(deferred);
                     getTransactionCache().addTransaction(transaction);
                     getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
                 }
@@ -1235,7 +1190,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
      * @param retention the retention duration, should not be {@code null}
      */
     private void cleanupDeferredTransactions(Duration retention) {
-        if (Duration.ZERO.equals(retention) || deferredTransactions.isEmpty()) {
+        if (Duration.ZERO.equals(retention) || getTransactionCache().isDeferredTransactionsEmpty()) {
             return;
         }
 
@@ -1245,9 +1200,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         }
 
         final Scn thresholdScn = lastScnToAbandon.get();
-        final int removedBefore = deferredTransactions.size();
-        deferredTransactions.values().removeIf(deferred -> deferred.startScn().compareTo(thresholdScn) <= 0);
-        final int removed = removedBefore - deferredTransactions.size();
+        final int removed = getTransactionCache().removeDeferredTransactionsOlderThan(thresholdScn);
         if (removed > 0) {
             LOGGER.debug("Cleaned up {} deferred transactions with start SCN <= {}", removed, thresholdScn);
         }
@@ -1350,7 +1303,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
      * Deferred transactions are reported on a separate line and only when the deferred map is non-empty.
      */
     private void logPendingTransactions() {
-        if (LOGGER.isDebugEnabled() && !(getTransactionCache().isEmpty() && deferredTransactions.isEmpty())) {
+        if (LOGGER.isDebugEnabled() && !(getTransactionCache().isEmpty() && getTransactionCache().isDeferredTransactionsEmpty())) {
             final Map<Boolean, List<PendingTransaction>> pending = getPendingTransactions().stream()
                     .collect(Collectors.partitioningBy(PendingTransaction::deferred));
             logPendingTransactions("All active transactions: {}", pending.get(false));
@@ -1443,10 +1396,10 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                         t.getClientId(), t.getRedoThreadId(), getTransactionEventCount(t), false))
                 .forEach(pending::add));
 
-        deferredTransactions.values().stream()
-                .map(t -> new PendingTransaction(t.xid(), t.startScn(), t.changeTime(), t.userName(),
-                        t.clientId(), t.redoThreadId(), 0, true))
-                .forEach(pending::add);
+        getTransactionCache().deferredTransactions(stream -> stream
+                .map(t -> new PendingTransaction(t.getXid(), t.getStartScn(), t.getChangeTime(), t.getUserName(),
+                        t.getClientId(), t.getRedoThreadId(), 0, true))
+                .forEach(pending::add));
 
         pending.sort(PendingTransaction.OLDEST_FIRST);
         return pending;

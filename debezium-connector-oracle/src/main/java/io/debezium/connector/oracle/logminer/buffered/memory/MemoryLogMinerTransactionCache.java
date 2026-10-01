@@ -51,12 +51,12 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
 
     @Override
     public <R> R streamTransactionsAndReturn(Function<Stream<MemoryTransaction>, R> consumer) {
-        return consumer.apply(segments.stream().map(MemorySlot::transaction));
+        return consumer.apply(segments.stream().map(MemorySlot::transaction).filter(Objects::nonNull));
     }
 
     @Override
     public void transactions(Consumer<Stream<MemoryTransaction>> consumer) {
-        consumer.accept(segments.stream().map(MemorySlot::transaction));
+        consumer.accept(segments.stream().map(MemorySlot::transaction).filter(Objects::nonNull));
     }
 
     @Override

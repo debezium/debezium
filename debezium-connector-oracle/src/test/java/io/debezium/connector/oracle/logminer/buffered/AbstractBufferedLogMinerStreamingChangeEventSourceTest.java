@@ -1242,7 +1242,8 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
                 var field = AbstractLogMinerTransactionCache.class.getDeclaredField("segments");
                 field.setAccessible(true);
                 return (Segments<AbstractCacheSlot>) field.get(this.getTransactionCache());
-            } catch (ReflectiveOperationException e) {
+            }
+            catch (ReflectiveOperationException e) {
                 throw new AssertionError("Unable to read segments", e);
             }
         }

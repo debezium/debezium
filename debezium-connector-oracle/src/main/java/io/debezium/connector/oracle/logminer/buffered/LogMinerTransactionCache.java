@@ -212,6 +212,18 @@ public interface LogMinerTransactionCache<T extends Transaction> {
      */
     LogMinerEvent removeLastEnqueuedEvent(long xid);
 
+    void deferredTransactions(Consumer<Stream<Transaction>> consumer);
+
+    boolean isDeferredTransactionsEmpty();
+
+    void addDeferredTransaction(Transaction transaction);
+
+    Transaction removeDeferredTransaction(long xid);
+
+    int removeDeferredTransactionsOlderThan(Scn thresholdScn);
+
+    Scn getOldestDeferredTransactionStartScn();
+
     /**
      * Clears the contents of the cache.
      */
