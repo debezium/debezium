@@ -194,8 +194,8 @@ public class MongoDbOffsetContext extends CommonOffsetContext<SourceInfo> {
         if (obj == null) {
             return 0;
         }
-        if (obj instanceof Number) {
-            return ((Number) obj).intValue();
+        if (obj instanceof Number number) {
+            return number.intValue();
         }
         try {
             return Integer.parseInt(obj.toString());
