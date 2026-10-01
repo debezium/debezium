@@ -6,6 +6,7 @@
 
 package io.debezium.connector.mysql.antlr.listener;
 
+import java.sql.Types;
 import java.util.concurrent.atomic.AtomicReference;
 
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
@@ -75,6 +76,12 @@ public class DefaultValueParserListener extends MySqlParserBaseListener {
             // Handle signedLiteralOrNull
             if (literalCtx.signedLiteralOrNull() != null) {
                 MySqlParser.SignedLiteralOrNullContext signedLitCtx = literalCtx.signedLiteralOrNull();
+
+                if (getColumnEditor().jdbcType() == Types.BIT) {
+                    getColumnEditor().defaultValueExpression(BitDefaultValueParser.parse(signedLitCtx, parser));
+                    exitDefaultValue(true);
+                    return;
+                }
 
                 // Check for NULL
                 if (signedLitCtx.nullAsLiteral() != null) {
