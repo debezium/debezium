@@ -129,7 +129,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                 try (var cursor = BufferingChangeStreamCursor.fromIterable(stream, taskContext, streamingMetrics, clock).start()) {
                     while (context.isRunning()) {
                         waitWhenStreamingPaused(context, cursor);
-                        var resumableEvent = cursor.tryNext();
+                        var resumableEvent = cursor.tryNextInterruptibly();
                         if (resumableEvent != null) {
                             var result = resumableEvent.document
                                     .map(doc -> processChangeStreamDocument(doc, splitHandler, partition, effectiveOffset))
@@ -178,7 +178,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             }
         }
         catch (InterruptedException e) {
-            LOGGER.info("Interrupted while waiting for a server that satisfies read preference '{}'", readPreferenceMonitor.getReadPreference());
+            LOGGER.info("Interrupted while reading the change stream");
             Thread.currentThread().interrupt();
         }
         catch (MongoException e) {
