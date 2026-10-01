@@ -87,7 +87,7 @@ public class LogicalDecodingMessageIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    @FixFor("DBZ-2733")
+    @FixFor("debezium/dbz#2733")
     @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Only supported on PgOutput")
     @SkipWhenDatabaseVersion(check = LESS_THAN, major = 14, minor = 0, reason = "Message not supported for PG version < 14")
     public void shouldWarnOnMissingHeartbeatForFilteredLogicalDecodingMessages() throws Exception {
