@@ -636,7 +636,7 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
 
     protected abstract BinlogDefaultValueConverter getDefaultValueConverter(V valueConverters);
 
-    private Schema getColumnSchema(Table table, String column) {
+    protected Schema getColumnSchema(Table table, String column) {
         return getColumnSchema(table, column, tableSchemaBuilder);
     }
 
