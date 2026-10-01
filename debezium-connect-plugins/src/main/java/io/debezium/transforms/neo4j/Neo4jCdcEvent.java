@@ -89,7 +89,18 @@ public class Neo4jCdcEvent {
                             + "(is the Neo4j source connector emitting EXTENDED-payload CDC?)",
                     schemaName(root)));
         }
+        final var eventType = optString(event, "eventType");
+        if (!isNeo4jEvent(eventType)) {
+            return Result.notRecognized(String.format(
+                    "record value Struct (schema=%s) has an 'event' field whose eventType is '%s', not %s/%s, "
+                            + "so it is not a Neo4j CDC change event",
+                    schemaName(root), eventType, NODE, RELATIONSHIP));
+        }
         return Result.recognized(new Neo4jCdcEvent(root, event, optStruct(root, "metadata")));
+    }
+
+    private static boolean isNeo4jEvent(String eventType) {
+        return NODE.equals(eventType) || RELATIONSHIP.equals(eventType);
     }
 
     private static String type(Object value) {

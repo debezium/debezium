@@ -422,6 +422,16 @@ class Neo4jDebeziumConverterTest {
         }
 
         @Test
+        @DisplayName("a foreign record carrying an unrelated 'event' field passes through rather than being dropped")
+        void foreignEventFieldPassesThrough() {
+            final var eventSchema = SchemaBuilder.struct().field("eventType", Schema.STRING_SCHEMA).build();
+            final var rootSchema = SchemaBuilder.struct().name("some.Other").field("event", eventSchema).build();
+            final var value = new Struct(rootSchema).put("event", new Struct(eventSchema).put("eventType", "ORDER"));
+            final var record = recordOf(value);
+            assertThat(newTransform(Map.of()).apply(record)).isSameAs(record);
+        }
+
+        @Test
         @DisplayName("tombstones pass through by default and drop when disabled")
         void tombstones() {
             final var tombstone = new SourceRecord(null, null, "t", null, null);

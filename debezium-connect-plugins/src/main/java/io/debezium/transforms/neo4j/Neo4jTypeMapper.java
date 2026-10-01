@@ -244,7 +244,7 @@ public final class Neo4jTypeMapper {
             }
             return map;
         }
-        if (value instanceof java.util.List<?> list) {
+        if (value instanceof List<?> list) {
             return list.stream().map(Neo4jTypeMapper::toPlain).toList();
         }
         return value;

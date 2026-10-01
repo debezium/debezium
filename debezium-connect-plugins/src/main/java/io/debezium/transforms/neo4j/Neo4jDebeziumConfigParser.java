@@ -44,16 +44,12 @@ class Neo4jDebeziumConfigParser {
 
     static Neo4jDebeziumConverterConfig parse(Configuration config, Map<String, ?> rawProps) {
         final var tableNaming = NamingStrategy.parse(
-                Neo4jDebeziumConverterConfig.TABLE_NAMING.name(),
                 config.getString(Neo4jDebeziumConverterConfig.TABLE_NAMING));
         final var columnNaming = NamingStrategy.parse(
-                Neo4jDebeziumConverterConfig.COLUMN_NAMING.name(),
                 config.getString(Neo4jDebeziumConverterConfig.COLUMN_NAMING));
         final var fkNaming = FkNaming.parse(
-                Neo4jDebeziumConverterConfig.RELATIONSHIP_FK_NAMING.name(),
                 config.getString(Neo4jDebeziumConverterConfig.RELATIONSHIP_FK_NAMING));
         final var fieldMissingBehavior = FieldMissingBehavior.parse(
-                Neo4jDebeziumConverterConfig.FIELD_MISSING_BEHAVIOR.name(),
                 config.getString(Neo4jDebeziumConverterConfig.FIELD_MISSING_BEHAVIOR));
         final var tombstonesEnabled = config.getBoolean(Neo4jDebeziumConverterConfig.TOMBSTONES_ENABLED);
 
@@ -123,8 +119,8 @@ class Neo4jDebeziumConfigParser {
             final var type = atIndex < 0 ? entity : entity.substring(0, atIndex);
             final var qualifier = atIndex < 0 ? null : entity.substring(atIndex + 1);
 
-            final var mode = RelationshipMode.parse(RELATIONSHIP_PREFIX + entity + ".mode", subKeys.get("mode"));
-            final var owner = Owner.parse(RELATIONSHIP_PREFIX + entity + ".owner", subKeys.get("owner"));
+            final var mode = RelationshipMode.parse(subKeys.get("mode"));
+            final var owner = Owner.parse(subKeys.get("owner"));
             validateModeKeys(entity, subKeys, mode);
 
             mappings.put(entity, new RelationshipMappingConfig(

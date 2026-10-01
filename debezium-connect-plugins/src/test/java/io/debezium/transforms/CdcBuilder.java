@@ -127,7 +127,6 @@ final class CdcBuilder {
         }
     }
 
-
     /** Wraps the operation code {@code c}/{@code u}/{@code d} into the connector's wire value. */
     private static String wire(String operation) {
         return switch (operation) {

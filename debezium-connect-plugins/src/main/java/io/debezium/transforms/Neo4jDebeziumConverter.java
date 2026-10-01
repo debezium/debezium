@@ -36,12 +36,15 @@ public class Neo4jDebeziumConverter<R extends ConnectRecord<R>> implements Trans
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Neo4jDebeziumConverter.class);
 
+    private SmtManager<R> smtManager;
     private Neo4jDebeziumConverterConfig converterConfig;
     private DebeziumEnvelopeFactory debeziumEnvelopeFactory;
 
     @Override
     public void configure(Map<String, ?> props) {
         final var config = Configuration.from(props);
+        this.smtManager = new SmtManager<>(config);
+        this.smtManager.validate(config, Neo4jDebeziumConverterConfig.ALL_FIELDS);
         this.converterConfig = Neo4jDebeziumConverterConfig.from(config, props);
         this.debeziumEnvelopeFactory = new DebeziumEnvelopeFactory(converterConfig);
     }

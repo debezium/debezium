@@ -10,6 +10,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -75,14 +76,7 @@ public class DebeziumEnvelopeFactory {
         if (op == null) {
             throw onMissingField("Neo4j CDC event has an unrecognized or absent operation", "skipping record");
         }
-        if (event.isNode()) {
-            return buildNode(event, op);
-        }
-        if (event.isRelationship()) {
-            return buildRelationship(event, op);
-        }
-        throw onMissingField(String.format("Neo4j CDC event has an unsupported eventType '%s'", event.eventType()),
-                "skipping record");
+        return event.isNode() ? buildNode(event, op) : buildRelationship(event, op);
     }
 
     private EmittedRecord buildNode(Neo4jCdcEvent event, Operation op) {
@@ -162,7 +156,7 @@ public class DebeziumEnvelopeFactory {
             final var beforeValue = before.get(name);
             final var afterValue = after.get(name);
             if (beforeValue != null && afterValue != null
-                    && !java.util.Objects.equals(Neo4jTypeMapper.convert(beforeValue).value(),
+                    && !Objects.equals(Neo4jTypeMapper.convert(beforeValue).value(),
                             Neo4jTypeMapper.convert(afterValue).value())) {
                 return true;
             }

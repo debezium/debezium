@@ -58,4 +58,29 @@ class Neo4jCdcEventTest {
         assertThat(result.skipReason()).isNull();
         assertThat(result.event().isNode()).isTrue();
     }
+
+    @Test
+    @DisplayName("a foreign Struct carrying an 'event' sub-struct with an unrelated eventType is not recognized")
+    void structWithForeignEventTypeIsNotRecognized() {
+        final var eventSchema = SchemaBuilder.struct().field("eventType", Schema.STRING_SCHEMA).build();
+        final var rootSchema = SchemaBuilder.struct().name("some.Other").field("event", eventSchema).build();
+        final var value = new Struct(rootSchema).put("event", new Struct(eventSchema).put("eventType", "CUSTOMER"));
+
+        final var result = Neo4jCdcEvent.from(value);
+        assertThat(result.recognized()).isFalse();
+        assertThat(result.event()).isNull();
+        assertThat(result.skipReason()).contains("eventType is 'CUSTOMER'").contains("some.Other");
+    }
+
+    @Test
+    @DisplayName("a Struct whose 'event' sub-struct has no eventType is not recognized")
+    void structWithoutEventTypeIsNotRecognized() {
+        final var eventSchema = SchemaBuilder.struct().optional().field("eventType", Schema.OPTIONAL_STRING_SCHEMA).build();
+        final var rootSchema = SchemaBuilder.struct().name("neo4j.cdc").field("event", eventSchema).build();
+        final var value = new Struct(rootSchema).put("event", new Struct(eventSchema));
+
+        final var result = Neo4jCdcEvent.from(value);
+        assertThat(result.recognized()).isFalse();
+        assertThat(result.skipReason()).contains("eventType is 'null'");
+    }
 }

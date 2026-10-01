@@ -16,11 +16,11 @@ The `Neo4jDebeziumConverter` SMT converts Neo4j CDC change events into the {prod
 Neo4j -> Neo4j source connector (CDC) -> Kafka -> [Neo4jDebeziumConverter] -> Debezium JDBC sink -> RDBMS
 ----
 
-It is the inverse of the xref:transformations/neo4j-cud-converter.adoc[Neo4j CUD Converter]: together the two keep a graph database and a relational database in sync in either direction.
+It's the complement of the xref:transformations/neo4j-cud-converter.adoc[Neo4j CUD Converter]: together the two keep a graph database and a relational database in sync in either direction.
 
 The SMT is stateless and processes one message at a time.
 It is *zero-config by default*: Neo4j CDC events are self-describing, so the SMT derives the target table, primary key, and columns from each event.
-Every configuration option is an optional override and allow customization to be compliant with sink db.
+Every configuration option is an optional override that lets you adapt the output to the target database.
 
 For each change event the SMT emits a new record whose:
 

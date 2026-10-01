@@ -14,6 +14,7 @@ import java.time.LocalTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -23,6 +24,7 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
@@ -431,10 +433,27 @@ public class Neo4jDebeziumConverterIT extends AbstractAsyncEngineConnectorTest {
             session.run("CREATE DATABASE " + database + " WAIT").consume();
             session.run("ALTER DATABASE " + database + " SET OPTION txLogEnrichment 'FULL'").consume();
         }
-        // The enrichment setting is applied asynchronously to subsequent transactions; give it a moment.
-        sleep(1500);
+        // The enrichment setting is applied asynchronously to subsequent transactions; wait until the database
+        // actually reports txLogEnrichment=FULL
+        awaitEnrichmentFull(database);
         createConstraints(database);
         return database;
+    }
+
+    /** Polls {@code SHOW DATABASE} until the asynchronously-applied {@code txLogEnrichment} option reads {@code FULL}. */
+    private static void awaitEnrichmentFull(String database) {
+        Awaitility.await("txLogEnrichment=FULL for database " + database)
+                .atMost(30, TimeUnit.SECONDS)
+                .pollInterval(250, TimeUnit.MILLISECONDS)
+                .until(() -> isEnrichmentFull(database));
+    }
+
+    private static boolean isEnrichmentFull(String database) {
+        try (var session = driver.session(SessionConfig.forDatabase("system"))) {
+            return session.run("SHOW DATABASE " + database + " YIELD options").list().stream()
+                    .anyMatch(record -> "FULL".equals(
+                            String.valueOf(record.get("options").asMap().get("txLogEnrichment"))));
+        }
     }
 
     private static void createConstraints(String database) {
@@ -442,7 +461,7 @@ public class Neo4jDebeziumConverterIT extends AbstractAsyncEngineConnectorTest {
             for (final var label : KEY_LABELS) {
                 session.run(String.format(
                         "CREATE CONSTRAINT %s_id IF NOT EXISTS FOR (n:%s) REQUIRE n.id IS NODE KEY",
-                        label.toLowerCase(), label)).consume();
+                        label.toLowerCase(Locale.ROOT), label)).consume();
             }
         }
     }
@@ -450,15 +469,6 @@ public class Neo4jDebeziumConverterIT extends AbstractAsyncEngineConnectorTest {
     private void run(String database, String cypher) {
         try (var session = driver.session(SessionConfig.forDatabase(database))) {
             session.run(cypher).consume();
-        }
-    }
-
-    private static void sleep(long millis) {
-        try {
-            Thread.sleep(millis);
-        }
-        catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
         }
     }
 

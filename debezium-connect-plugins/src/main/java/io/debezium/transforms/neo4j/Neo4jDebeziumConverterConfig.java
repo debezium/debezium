@@ -5,13 +5,10 @@
  */
 package io.debezium.transforms.neo4j;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef;
-import org.apache.kafka.common.config.ConfigException;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
@@ -180,27 +177,6 @@ public class Neo4jDebeziumConverterConfig {
     }
 
     /**
-     * Resolves an {@link EnumeratedValue} enum from a configured string, failing fast on an unrecognized value.
-     * A blank/absent value yields {@code defaultValue}; an invalid value throws a {@link ConfigException} naming
-     * the offending key and listing the allowed values. This keeps every enum option consistent with the
-     * fail-fast handling of unknown structural keys in {@link Neo4jDebeziumConfigParser}.
-     */
-    static <T extends Enum<T> & EnumeratedValue> T parseEnum(Class<T> enumType, String key, String value, T defaultValue) {
-        if (Strings.isNullOrBlank(value)) {
-            return defaultValue;
-        }
-        for (final T candidate : enumType.getEnumConstants()) {
-            if (candidate.getValue().equalsIgnoreCase(value.trim())) {
-                return candidate;
-            }
-        }
-        final String allowed = Arrays.stream(enumType.getEnumConstants())
-                .map(EnumeratedValue::getValue)
-                .collect(Collectors.joining(", "));
-        throw new ConfigException(key, value, "Must be one of: " + allowed);
-    }
-
-    /**
      * Thrown when a multi-label node has more than one label carrying a {@code label.<Label>.*} mapping, so the
      * owning label (and hence the target table and primary key) is genuinely ambiguous.
      */
@@ -235,8 +211,8 @@ public class Neo4jDebeziumConverterConfig {
             return this == SNAKE_CASE ? Strings.toSnakeCase(name) : name;
         }
 
-        public static NamingStrategy parse(String key, String value) {
-            return parseEnum(NamingStrategy.class, key, value, AS_IS);
+        public static NamingStrategy parse(String value) {
+            return EnumeratedValue.parse(NamingStrategy.class, value, AS_IS.value);
         }
     }
 
@@ -263,8 +239,8 @@ public class Neo4jDebeziumConverterConfig {
             return label + "_" + keyProperty;
         }
 
-        public static FkNaming parse(String key, String value) {
-            return parseEnum(FkNaming.class, key, value, LABEL_KEY);
+        public static FkNaming parse(String value) {
+            return EnumeratedValue.parse(FkNaming.class, value, LABEL_KEY.value);
         }
     }
 
@@ -283,8 +259,8 @@ public class Neo4jDebeziumConverterConfig {
             return value;
         }
 
-        public static RelationshipMode parse(String key, String value) {
-            return parseEnum(RelationshipMode.class, key, value, JOIN_TABLE);
+        public static RelationshipMode parse(String value) {
+            return EnumeratedValue.parse(RelationshipMode.class, value, JOIN_TABLE.value);
         }
     }
 
@@ -303,8 +279,8 @@ public class Neo4jDebeziumConverterConfig {
             return value;
         }
 
-        public static Owner parse(String key, String value) {
-            return parseEnum(Owner.class, key, value, START);
+        public static Owner parse(String value) {
+            return EnumeratedValue.parse(Owner.class, value, START.value);
         }
     }
 
@@ -324,8 +300,8 @@ public class Neo4jDebeziumConverterConfig {
             return value;
         }
 
-        public static FieldMissingBehavior parse(String key, String value) {
-            return parseEnum(FieldMissingBehavior.class, key, value, WARN);
+        public static FieldMissingBehavior parse(String value) {
+            return EnumeratedValue.parse(FieldMissingBehavior.class, value, WARN.value);
         }
     }
 }
