@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test;
 
 import io.debezium.data.Envelope;
 import io.debezium.data.geometry.Geometry;
+import io.debezium.doc.FixFor;
 import io.debezium.util.HexConverter;
 
 /**
@@ -458,5 +459,53 @@ public class GeometryFormatTransformerTest {
         final Struct geo = transformedAfter.getStruct("geo");
         assertThat(HexConverter.convertToHexString(geo.getBytes(Geometry.WKB_FIELD))).isEqualTo(wkb);
         assertThat(geo.get(Geometry.SRID_FIELD)).isNull();
+    }
+
+    /**
+     * Test that transforming multiple sequential records with alternating formats (EWKB and WKB)
+     * using a single configured transformer instance correctly converts each record without
+     * mutating transformer state.
+     */
+    @Test
+    @FixFor("debezium/dbz#2706")
+    public void testSequentialInterleavedRecords() {
+        final GeometryFormatTransformer<SourceRecord> transformer = new GeometryFormatTransformer<>();
+        transformer.configure(new HashMap<>());
+
+        // Record 1: EWKB -> should be converted to WKB
+        final byte[] ewkbBytes1 = HexConverter.convertFromHex(POINT_GEO_EWKB_HEX);
+        final Struct payload1 = new Struct(RECORD_SCHEMA);
+        payload1.put("id", (byte) 1);
+        payload1.put("geo", Geometry.createValue(Geometry.schema(), ewkbBytes1, 4326));
+        final SourceRecord record1 = new SourceRecord(
+                new HashMap<>(), new HashMap<>(), "db.server1.table1", payload1.schema(), payload1);
+
+        final SourceRecord transformed1 = transformer.apply(record1);
+        final Struct geo1 = requireStruct(transformed1.value(), "value should be a struct").getStruct("geo");
+        assertThat(HexConverter.convertToHexString(geo1.getBytes(Geometry.WKB_FIELD))).isEqualTo(POINT_GEO_WKB_HEX);
+
+        // Record 2: WKB -> should be converted to EWKB
+        final byte[] wkbBytes2 = HexConverter.convertFromHex(POINT_GEO_WKB_HEX);
+        final Struct payload2 = new Struct(RECORD_SCHEMA);
+        payload2.put("id", (byte) 2);
+        payload2.put("geo", Geometry.createValue(Geometry.schema(), wkbBytes2, 4326));
+        final SourceRecord record2 = new SourceRecord(
+                new HashMap<>(), new HashMap<>(), "db.server1.table1", payload2.schema(), payload2);
+
+        final SourceRecord transformed2 = transformer.apply(record2);
+        final Struct geo2 = requireStruct(transformed2.value(), "value should be a struct").getStruct("geo");
+        assertThat(HexConverter.convertToHexString(geo2.getBytes(Geometry.WKB_FIELD))).isEqualTo(POINT_GEO_EWKB_HEX);
+
+        // Record 3: EWKB -> should be converted to WKB again
+        final byte[] ewkbBytes3 = HexConverter.convertFromHex(POINT_GEO_EWKB_HEX);
+        final Struct payload3 = new Struct(RECORD_SCHEMA);
+        payload3.put("id", (byte) 3);
+        payload3.put("geo", Geometry.createValue(Geometry.schema(), ewkbBytes3, 4326));
+        final SourceRecord record3 = new SourceRecord(
+                new HashMap<>(), new HashMap<>(), "db.server1.table1", payload3.schema(), payload3);
+
+        final SourceRecord transformed3 = transformer.apply(record3);
+        final Struct geo3 = requireStruct(transformed3.value(), "value should be a struct").getStruct("geo");
+        assertThat(HexConverter.convertToHexString(geo3.getBytes(Geometry.WKB_FIELD))).isEqualTo(POINT_GEO_WKB_HEX);
     }
 }

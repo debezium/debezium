@@ -761,6 +761,10 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
         this.eventListener = eventListener;
     }
 
+    protected DataChangeEventListener<P> getEventListener() {
+        return eventListener;
+    }
+
     /**
      * Enable support for incremental snapshotting.
      */
@@ -796,6 +800,9 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
     public void close() {
         if (heartbeatsEnabled()) {
             heartbeat.close();
+        }
+        if (incrementalSnapshotChangeEventSource != null) {
+            incrementalSnapshotChangeEventSource.close();
         }
     }
 

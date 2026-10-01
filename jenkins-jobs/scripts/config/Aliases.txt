@@ -2,6 +2,7 @@
 42790076+Alan-zhangzf@users.noreply.github.com,Alan Zhang
 =,Hong Xia
 Aangbaeck,Björn Ångbäck
+Abhishek-Gawande,Abhishek Gawande
 AChangFeng,胡琴
 adasari,Anil Dasari
 adriank-convoy,Adrian Kreuziger
@@ -27,6 +28,7 @@ AndreyIg,Andrey Ignatenko
 angsdey2,Angshuman Dey
 ani-sha,Anisha Mohanty
 anilabhabaral,Anilabha Baral
+anjeongkyun,Jeongkyun An
 antonio0,Antonio Marino
 aqhil07,Mohammad Akhil
 archiedx,Archie David
@@ -45,11 +47,12 @@ benw-at-birdie,Ben White
 bep7520,Blake Peno
 BetaCat,合龙 张
 Bhagyashree,Bhagyashree Goyal
-bhuvan-somisetty,bhuvan-somisetty
+bhuvan-somisetty,Bhuvan Somisetty
 BigGillyStyle,Andy Pickler
 Binayak490-cyber,Binayak Das
 BinLi1988,Bin Li
 bisbeb,Björn Bärtschi
+Blom-10,A. D. Blom
 bmiedlar,Bartosz Miedlar
 bpaquet,Bertrand Paquet
 brandonbrown,Brandon Brown
@@ -84,6 +87,7 @@ daha,David Haglund
 dajerome,David Jerome
 danastott,Dana Stott
 Day-dreamer0,Rajender Passi
+dayron-perez,Dayron Perez Roldan
 ddsr-ops,ddsr-ops
 debjeetsarkar,Debjeet Sarkar
 denizozogularas,Deniz Ozogul
@@ -115,7 +119,11 @@ Fr0z3Nn,Ivanov Sergey Vasilevich
 FrankMormino,Frank Mormino
 fuxiao224,Xiao Fu
 fuyar,Farid Uyar
+g-zemlianyi,Georgii Zemlianyi
+gaetancollaud,Gaetan Collaud
+gaetancollaud,Gaétan Collaud
 ganesh-bankar,Ganesh Bankar
+GaribKarimli,Garib Karimli
 garrett528,Andrew Garrett
 gaurav7261,Gaurav Miglani
 ggaborg,Gabor Andras
@@ -130,6 +138,7 @@ gpanice,Giovanni Panice
 GraySmog,Wang-Yu-Chao
 gurpiarbassi,Gurps Bassi
 gvaquez-ubi,Gilles Vaquez
+gzemlianyi,Georgii Zemlianyi
 hagar-yasser1,Hagar Yasser
 HarisBinSaif,Haris Bin Saif
 harveyyue,Harvey Yue
@@ -165,6 +174,7 @@ jehrenzweig-pi,Jesse Ehrenzweig
 JeremyVigny,Jeremy Vigny
 jerrinot,Jaromir Hamala
 JerryGao0805,Jerry Gao
+JerryS,TaylorJerry
 jgraf50,John Graf
 jiabao.sun,Jiabao Sun
 jiangzzhu,Jiang Zhu
@@ -175,11 +185,13 @@ joontube,Seongjoon Jeong
 jorkzijlstra,JOrk Zijlstra
 joschi,Jochen Schalanda
 josetesan,Jose Luis
+jouir,Julien Riou
 jtanza,John Tanza
 juanfiallo,Juan Fiallo
 judahrand,Judah Rand
 jun-su-lee,Junsu Lee
 JunWang222,Jun Wang
+justing-bq,Georgii Zemlianyi
 jw-itq,Shiwanming
 kanha gupta,Kanha Gupta
 karamel,Michael Wang
@@ -314,6 +326,7 @@ Rohith,Rohith Devarshetty
 roldanbob,Robert Roldan
 rolevinks,Stein Rolevink
 Roshr2211,Roshni R
+rossd-bitquill,Ross Dutkiewicz
 rrh,René Rütter
 ryanvanhuuksloot,Ryan van Huuksloot
 s0r01ed,Sagar Rao
@@ -321,6 +334,7 @@ Sage-Pierce,Sage Pierce
 sagnghos,Sagnik Ghosh
 sahapasci,Sahap Asci
 Sanapalli Lokesh,Lokesh Sanapalli
+sangeet259, Sangeet Mishra
 sarumont,Richard Kolkovich
 sclarkson-zoomcare,Stephen Clarkson
 see-quick,Maros Orsak
@@ -361,6 +375,7 @@ Tayler,Tayler Dunn
 taylor-rolison,Taylor Rolison
 TechIsCool,David Beck
 thangdc94,Phạm Ngọc Thắng
+Thiagoag,Thiago Garcia
 Théophile Helleboid - chtitux,Théophile Helleboid
 TimLoes,Tim Loes
 TimoWilhelm,Timo Wilhelm
@@ -381,6 +396,7 @@ tyrantlucifer,Chao Tian
 uidoyen,Hussain Ansari
 umachi,Hidetomi Umaki
 unalsurmeli,Ünal Sürmeli
+Unidade,Dario Rodrigues
 vanhoale,Hoa Le
 VanKhanhAnny,Anny Dang
 victorxiang30,Victor Xiang
@@ -412,6 +428,7 @@ yw,Yang Wu
 zach-all,Zach All
 Zakariae BEN ALLAL,Zakariae Ben Allal
 zalmane,Oren Elias
+ZdravkoDonev-redis,Zdravko Donev
 zeldanerd24,Kevin Rothenberger
 zhanghelong,Helong Zhang
 Zica,Lucas Gazire

@@ -52,7 +52,6 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
-import org.postgresql.jdbc.PgStatement;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -712,8 +711,8 @@ public abstract class AbstractRecordsProducerTest extends AbstractAsyncEngineCon
                 new SchemaAndValueField("ts_min", MicroTimestamp.builder().optional().build(), -1L).assertWithCondition(largeNegativeTimestamp),
                 new SchemaAndValueField("tz_max", ZonedTimestamp.builder().optional().build(), "+294247-01-01T23:59:59.999999Z"),
                 new SchemaAndValueField("tz_min", ZonedTimestamp.builder().optional().build(), "").assertWithCondition(largeNegativeTzTimestamp),
-                new SchemaAndValueField("ts_pinf", MicroTimestamp.builder().optional().build(), PgStatement.DATE_POSITIVE_INFINITY),
-                new SchemaAndValueField("ts_ninf", MicroTimestamp.builder().optional().build(), PgStatement.DATE_NEGATIVE_INFINITY),
+                new SchemaAndValueField("ts_pinf", MicroTimestamp.builder().optional().build(), Long.MAX_VALUE),
+                new SchemaAndValueField("ts_ninf", MicroTimestamp.builder().optional().build(), Long.MIN_VALUE),
                 new SchemaAndValueField("tz_pinf", ZonedTimestamp.builder().optional().build(), "infinity"),
                 new SchemaAndValueField("tz_ninf", ZonedTimestamp.builder().optional().build(), "-infinity"),
                 new SchemaAndValueField("tz_zero", ZonedTimestamp.builder().optional().build(), expectedTzLargeZero));

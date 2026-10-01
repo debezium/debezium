@@ -149,6 +149,16 @@ public class InitialSnapshotNotificationService<P extends Partition, O extends O
                 Map.of()), Offsets.of(partition, offsetContext));
     }
 
+    public <T extends DataCollectionId> void notifyDataCollectionsResolved(P partition, OffsetContext offsetContext, Set<T> capturedDataCollections) {
+
+        String dataCollections = capturedDataCollections.stream()
+                .map(DataCollectionId::identifier)
+                .collect(Collectors.joining(LIST_DELIMITER));
+
+        notificationService.notify(buildNotificationWith(SnapshotStatus.DATA_COLLECTIONS_RESOLVED.name(),
+                Map.of(DATA_COLLECTIONS, dataCollections)), Offsets.of(partition, offsetContext));
+    }
+
     public <T extends DataCollectionId> void notifyAborted(P partition, OffsetContext offsetContext) {
 
         notificationService.notify(buildNotificationWith(SnapshotResult.SnapshotResultStatus.ABORTED.name(),

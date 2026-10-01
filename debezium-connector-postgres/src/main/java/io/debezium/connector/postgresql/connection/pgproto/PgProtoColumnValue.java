@@ -341,7 +341,10 @@ public class PgProtoColumnValue extends AbstractColumnValue<PgProto.DatumMessage
             }
             String dataString = new String(data, Charset.forName("UTF-8"));
             PgArray arrayData = new PgArray(connection.get(), (int) value.getColumnType(), dataString);
-            if (type.getElementType().getOid() == PgOid.TIMETZ) {
+            if (PostgresValueConverter.isReadAsTextElementType(type.getElementType().getOid())) {
+                // Hand over the array rather than its deserialized elements. Array#getArray() materializes
+                // them as java.sql.Timestamp/java.sql.Date, which drops the era and applies a
+                // Julian-Gregorian conversion below 1582-10-15; the converter reads them as text instead.
                 return arrayData;
             }
 

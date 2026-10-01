@@ -501,10 +501,10 @@ public final class Strings {
      * Justify the contents of the string.
      *
      * @param justify the way in which the string is to be justified
-     * @param str the string to be right justified; if null, an empty string is used
+     * @param str the string to be justified; if null, an empty string is used
      * @param width the desired width of the string; must be positive
      * @param padWithChar the character to use for padding, if needed
-     * @return the right justified string
+     * @return the justified string
      */
     public static String justify(Justify justify,
                                  String str,
@@ -608,10 +608,10 @@ public final class Strings {
      * and end of the string such that the length is that specified; one additional padding character is prepended if required.
      * All leading and trailing whitespace is removed before centering.
      *
-     * @param str the string to be left justified; if null, an empty string is used
+     * @param str the string to be centered; if null, an empty string is used
      * @param width the desired width of the string; must be positive
      * @param padWithChar the character to use for padding, if needed
-     * @return the left justified string
+     * @return the centered string
      * @see #setLength(String, int, char)
      */
     public static String justifyCenter(String str,
@@ -992,16 +992,10 @@ public final class Strings {
             }
 
             String varString = sb.substring(startName + 2, endName);
-            if (varString.indexOf(DEFAULT_DELIM) > -1) {
-                List<String> defaults = split(varString, DEFAULT_DELIM);
-
-                // get the property(s) variables that are defined left of the default delimiter.
-                varString = defaults.get(0);
-
-                // if the default is defined, then capture in case none of the other properties are found
-                if (defaults.size() == 2) {
-                    defaultValue = defaults.get(1);
-                }
+            int delimIndex = varString.indexOf(DEFAULT_DELIM);
+            if (delimIndex > -1) {
+                defaultValue = varString.substring(delimIndex + 1);
+                varString = varString.substring(0, delimIndex);
             }
 
             String constValue = null;
@@ -1225,9 +1219,17 @@ public final class Strings {
      * @return original string with sensitive data masked
      */
     public static String mask(String original, String mask, String... sensitives) {
+        if (original == null) {
+            return null;
+        }
+        if (sensitives == null || sensitives.length == 0) {
+            return original;
+        }
+        String replacement = mask != null ? mask : "***";
         return Arrays.stream(sensitives)
                 .filter(Objects::nonNull)
-                .reduce(original, (masked, sensitive) -> masked.replace(sensitive, "***"));
+                .filter(s -> !s.isEmpty())
+                .reduce(original, (masked, sensitive) -> masked.replace(sensitive, replacement));
     }
 
     private Strings() {
@@ -1289,15 +1291,16 @@ public final class Strings {
             return "";
         }
 
-        String[] words = input.split("[._]+");
+        String[] words = java.util.Arrays.stream(input.split("[._]+"))
+                .filter(s -> !s.isEmpty())
+                .toArray(String[]::new);
         if (words.length == 0) {
             return ""; // Handle edge case where input contains only separators
         }
 
         return java.util.stream.IntStream.range(0, words.length)
-                .filter(i -> !words[i].isEmpty()) // Skip empty segments caused by consecutive separators
                 .mapToObj(i -> i == 0
-                        ? words[i].toLowerCase() // Ensure the first word starts with lowercase
+                        ? words[i].toLowerCase(Locale.ROOT) // Ensure the first word starts with lowercase
                         : capitalizeFirstLetter(words[i])) // Capitalize the first letter of subsequent words
                 .collect(java.util.stream.Collectors.joining());
     }
@@ -1312,7 +1315,7 @@ public final class Strings {
         if (word.isEmpty()) {
             return "";
         }
-        return Character.toUpperCase(word.charAt(0)) + word.substring(1).toLowerCase();
+        return Character.toUpperCase(word.charAt(0)) + word.substring(1).toLowerCase(Locale.ROOT);
     }
 
     /**

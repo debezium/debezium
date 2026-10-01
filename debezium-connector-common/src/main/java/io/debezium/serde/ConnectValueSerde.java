@@ -123,6 +123,7 @@ public final class ConnectValueSerde {
     private static final byte KEY_TAG_DATE = 12;
     private static final byte KEY_TAG_STRUCT = 13;
     private static final byte KEY_TAG_LIST = 14;
+    private static final byte KEY_TAG_MAP = 15;
 
     private final JsonConverter structConverter;
 
@@ -391,6 +392,9 @@ public final class ConnectValueSerde {
     }
 
     private static void describeSchema(DataOutputStream dos, Schema schema) throws IOException {
+        if (schema == null) {
+            return;
+        }
         writeNullableString(dos, schema.name());
         dos.writeByte(schema.type().ordinal());
         dos.writeBoolean(schema.isOptional());
@@ -495,7 +499,7 @@ public final class ConnectValueSerde {
         else if (value instanceof Map<?, ?> map) {
             // Maps have no deterministic iteration order; entries are sorted by their encoded bytes so the
             // same logical map always produces the same key bytes.
-            dos.writeByte(KEY_TAG_LIST);
+            dos.writeByte(KEY_TAG_MAP);
             final List<byte[]> encodedEntries = new ArrayList<>(map.size());
             for (Map.Entry<?, ?> entry : map.entrySet()) {
                 try (ByteArrayOutputStream entryBaos = new ByteArrayOutputStream();
@@ -595,7 +599,14 @@ public final class ConnectValueSerde {
     }
 
     private static byte[] readBytes(DataInputStream dis) throws IOException {
-        final byte[] bytes = new byte[dis.readInt()];
+        final int length = dis.readInt();
+        if (length < 0) {
+            throw new DebeziumException("Invalid negative byte array length: " + length);
+        }
+        if (length > dis.available()) {
+            throw new DebeziumException("Invalid byte array length: " + length);
+        }
+        final byte[] bytes = new byte[length];
         dis.readFully(bytes);
         return bytes;
     }

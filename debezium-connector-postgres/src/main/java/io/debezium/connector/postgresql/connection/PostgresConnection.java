@@ -14,6 +14,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -852,6 +853,11 @@ public class PostgresConnection extends JdbcConnection {
                     // Read as string to avoid java.sql.Timestamp's Julian-Gregorian calendar conversion
                     // which corrupts dates before 1582-10-15 (PostgreSQL uses proleptic Gregorian).
                     return rs.getString(columnIndex);
+                case PgOid.DATE:
+                    // Read as LocalDate so that the era survives. java.sql.Date carries no era, so a date
+                    // stored as BC would arrive as the same day AD. LocalDate is a proleptic ISO type and
+                    // never passes through java.sql.Date's Calendar.
+                    return rs.getObject(columnIndex, LocalDate.class);
                 default:
                     Object x = rs.getObject(columnIndex);
                     if (x != null) {

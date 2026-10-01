@@ -55,6 +55,7 @@ import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.engine.DebeziumEngine;
+import io.debezium.engine.StopEngineException;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.signal.actions.snapshotting.StopSnapshot;
 import io.debezium.util.Testing;
@@ -311,6 +312,15 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
             }
             dataRecords.forEach(record -> {
                 Testing.print(record);
+                final var envelope = (Struct) record.value();
+                final var token = envelope.getStruct(Envelope.FieldName.SOURCE).getString(SourceInfo.RESUME_TOKEN);
+                if (Envelope.Operation.READ.code().equals(envelope.getString(Envelope.FieldName.OPERATION))) {
+                    assertThat(token).isNull();
+                }
+                else {
+                    assertThat(BsonDocument.parse(token))
+                            .isEqualTo(ResumeTokens.fromBase64((String) record.sourceOffset().get(SourceInfo.RESUME_TOKEN)));
+                }
                 final K id = idCalculator.apply((Struct) record.key());
                 final V value = valueConverter.apply(record);
                 dbChanges.put(id, value);
@@ -411,6 +421,40 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
     }
 
     @Test
+    @FixFor("debezium/dbz#2677")
+    void shouldReleaseSnapshotThreadsOnceTheSnapshotCompletes() throws Exception {
+        assertThat(incrementalSnapshotThreadNames()).isEmpty();
+
+        final Map<Integer, Document> documents = new LinkedHashMap<>();
+        for (int i = 0; i < ROW_COUNT; i++) {
+            documents.put(i, new Document().append(DOCUMENT_ID, i).append(valueFieldName(), i));
+        }
+        insertDocumentsInTx(DATABASE_NAME, COLLECTION_NAME, documents.values().toArray(Document[]::new));
+
+        startConnector();
+        sendAdHocSnapshotSignal();
+
+        consumeMixedWithIncrementalSnapshot(
+                ROW_COUNT,
+                x -> true,
+                k -> k.getString(pkFieldName()),
+                this::extractFieldValue,
+                topicName(), null);
+
+        Awaitility.await("incremental snapshot threads to be released")
+                .atMost(waitTimeForRecords() * 10L, TimeUnit.SECONDS)
+                .until(() -> incrementalSnapshotThreadNames().isEmpty());
+    }
+
+    private static List<String> incrementalSnapshotThreadNames() {
+        return Thread.getAllStackTraces().keySet().stream()
+                .filter(Thread::isAlive)
+                .map(Thread::getName)
+                .filter(name -> name.contains("incremental-snapshot"))
+                .collect(Collectors.toList());
+    }
+
+    @Test
     void snapshotOnlyInt32() throws Exception {
         snapshotOnly(0, k -> k + 1);
     }
@@ -469,6 +513,36 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         final int expectedRecordCount = ROW_COUNT;
         final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
         for (int i = 0; i < expectedRecordCount; i++) {
+            assertThat(dbChanges).contains(entry(i + 1, i));
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2717")
+    void shouldResumeUnfinishedWindowAfterRestart() throws Exception {
+        populateDataCollection();
+        final Configuration config = config().build();
+        final var recordCounter = new AtomicInteger();
+        start(connectorClass(), config, loggingCompletion(), null, record -> {
+            // Stop delivery inside a window, even if the source has already queued later windows.
+            if (record.topic().equals(topicName()) && recordCounter.incrementAndGet() == 51) {
+                throw new StopEngineException("Restart inside an incremental snapshot window");
+            }
+        }, false);
+        waitForConnectorToStart();
+        waitForAvailableRecords(1, TimeUnit.SECONDS);
+        assertNoRecordsToConsume();
+        sendAdHocSnapshotSignal();
+
+        Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> !isEngineRunning.get());
+        stopConnector();
+        assertThat(recordCounter).hasValue(51);
+        assertConnectorNotRunning();
+
+        start(connectorClass(), config);
+        waitForConnectorToStart();
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(ROW_COUNT);
+        for (int i = 0; i < ROW_COUNT; i++) {
             assertThat(dbChanges).contains(entry(i + 1, i));
         }
     }

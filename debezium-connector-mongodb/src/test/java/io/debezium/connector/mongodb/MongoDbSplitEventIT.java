@@ -123,6 +123,8 @@ public class MongoDbSplitEventIT extends AbstractMongoConnectorIT {
             }
             final var resumeToken = ResumeTokens.toBase64(lastFragmentToken);
             assertThat(record.sourceOffset().get(SourceInfo.RESUME_TOKEN)).isEqualTo(resumeToken);
+            final var payloadToken = BsonDocument.parse(value.getStruct(Envelope.FieldName.SOURCE).getString(SourceInfo.RESUME_TOKEN));
+            assertThat(payloadToken).isEqualTo(lastFragmentToken);
             stopConnector();
 
             final var committedOffset = readLastCommittedOffset(config, record.sourcePartition());
@@ -142,6 +144,9 @@ public class MongoDbSplitEventIT extends AbstractMongoConnectorIT {
             waitForStreamingRunning("mongodb", "mongo");
             final var marker = new Document("_id", 2).append("marker", "resumed");
             collection.insertOne(marker);
+            try (var resumed = stream.resumeAfter(payloadToken).cursor()) {
+                assertThat(readChangeStreamEvent(resumed).getFullDocument()).isEqualTo(marker.toBsonDocument());
+            }
             final var resumedRecords = consumeRecordsByTopic(1);
             assertThat(resumedRecords.recordsForTopic("mongo." + dbName + "." + collectionName)).hasSize(1);
             final var resumedRecord = resumedRecords.allRecordsInOrder().get(0);
@@ -345,6 +350,7 @@ public class MongoDbSplitEventIT extends AbstractMongoConnectorIT {
                 offset.initEvent(probe);
                 assertThat(probe.getResumeToken()).isNotNull();
                 assertThat(offset.lastResumeTokenDoc()).isEqualTo(probe.getResumeToken());
+                assertThat(offset.getSourceInfo().getString(SourceInfo.RESUME_TOKEN)).isNull();
             }
         }
     }
@@ -364,6 +370,7 @@ public class MongoDbSplitEventIT extends AbstractMongoConnectorIT {
                 assertThat(event.getSplitEvent()).isNull();
                 assertThat(offset.lastResumeTokenDoc()).isEqualTo(event.getResumeToken());
                 assertThat(offset.lastTimestamp()).isEqualTo(event.getClusterTime());
+                assertThat(offset.getSourceInfo().getString(SourceInfo.RESUME_TOKEN)).isNull();
             }
         }
     }
@@ -411,6 +418,7 @@ public class MongoDbSplitEventIT extends AbstractMongoConnectorIT {
         assertThat(offset.lastResumeTokenDoc()).isEqualTo(fragments.get(fragments.size() - 1).getResumeToken());
         assertThat(offset.lastTimestamp()).isEqualTo(fragments.get(0).getClusterTime());
         assertThat(offset.sourceInfo().collectionId()).isEqualTo(new CollectionId("dbit", "snapshotSplitEvents"));
+        assertThat(offset.getSourceInfo().getString(SourceInfo.RESUME_TOKEN)).isNull();
     }
 
     private ChangeStreamIterable<BsonDocument> openSplitStream(MongoCollection<Document> collection, CaptureMode captureMode, FullUpdateType fullUpdateType) {
@@ -423,17 +431,6 @@ public class MongoDbSplitEventIT extends AbstractMongoConnectorIT {
             stream.fullDocumentBeforeChange(FullDocumentBeforeChange.WHEN_AVAILABLE);
         }
         return stream;
-    }
-
-    private ChangeStreamDocument<BsonDocument> readChangeStreamEvent(MongoChangeStreamCursor<ChangeStreamDocument<BsonDocument>> cursor) {
-        final var event = new AtomicReference<ChangeStreamDocument<BsonDocument>>();
-        Awaitility.await("Receiving a change stream event")
-                .atMost(waitTimeForRecords() * 30L, TimeUnit.SECONDS)
-                .until(() -> {
-                    event.set(cursor.tryNext());
-                    return event.get() != null;
-                });
-        return event.get();
     }
 
     private BsonDocument readSplitEventResumeToken(MongoChangeStreamCursor<ChangeStreamDocument<BsonDocument>> cursor, int fragmentCount) {

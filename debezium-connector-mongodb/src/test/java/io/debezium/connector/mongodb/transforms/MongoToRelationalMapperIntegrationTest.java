@@ -1,0 +1,446 @@
+/*
+ * Copyright Debezium Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
+package io.debezium.connector.mongodb.transforms;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import java.math.BigDecimal;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
+
+import org.apache.kafka.connect.connector.ConnectRecord;
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.DataException;
+import org.apache.kafka.connect.header.Header;
+import org.apache.kafka.connect.json.JsonConverter;
+import org.apache.kafka.connect.sink.SinkRecord;
+import org.apache.kafka.connect.source.SourceRecord;
+import org.bson.BsonDocument;
+import org.bson.json.JsonMode;
+import org.bson.json.JsonWriterSettings;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
+
+import io.debezium.connector.mongodb.MongoDbFieldName;
+import io.debezium.connector.mongodb.MongoDbSchema;
+import io.debezium.data.Json;
+import io.debezium.doc.FixFor;
+import io.debezium.pipeline.txmetadata.TransactionMonitor;
+import io.debezium.transforms.ExtractChangedRecordState;
+
+/**
+ * Component integration tests using real SMTs and schema-enabled JSON converters.
+ */
+class MongoToRelationalMapperIntegrationTest {
+
+    private static final String PROJECTION = """
+            {"customer_city":{"path":"/customer/address/city","type":"string"},
+             "second_sku":{"path":"/items/1/sku","type":"string"},
+             "amount":{"path":"/amount","type":"org.apache.kafka.connect.data.Decimal","scale":2,"precision":10},
+             "updated_at":{"path":"/updated_at","type":"org.apache.kafka.connect.data.Timestamp"},
+             "document_json":{"path":"","type":"io.debezium.data.Json"}}
+            """;
+    private static final String BEFORE = """
+             {"_id":1,"customer":{"address":{"city":"Seoul"}},"items":[{"sku":"A"},{"sku":"B"}],
+              "amount":{"$numberDecimal":"12.34"},"updated_at":{"$date":"2026-01-01T00:00:00Z"},"unselected":[1,true,{"x":"y"}]}
+            """;
+    private static final String AFTER = """
+             {"_id":1,"customer":{"address":{}},"items":[{"sku":"A"}],
+              "amount":{"$numberDecimal":"12.34"},"updated_at":{"$date":"2026-01-01T00:00:00Z"},"unselected":[false,"text"]}
+            """;
+
+    private final MongoToRelationalMapper<SourceRecord> mapper = new MongoToRelationalMapper<>();
+    private final ExtractChangedRecordState<SourceRecord> changes = new ExtractChangedRecordState<>();
+
+    @BeforeEach
+    void configure() {
+        mapper.configure(Map.of());
+        changes.configure(Map.of("header.changed.name", "Changed", "header.unchanged.name", "Unchanged"));
+    }
+
+    @AfterEach
+    void close() {
+        changes.close();
+        mapper.close();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1715")
+    void shouldIdentifyRemovedFieldsAndShrinkingArraysAfterInference() {
+        final var original = record("u", """
+                {"_id":1,"address":{"city":"Seoul","removed":42},"items":[1,2],"removed":true}
+                """, """
+                {"_id":1,"address":{"city":"Seoul"},"items":[]}
+                """);
+        final var result = changes.apply(mapper.apply(original));
+        assertChangedFields(result, List.of("address", "items", "removed"), List.of("_id"));
+        final var after = ((Struct) result.value()).getStruct("after");
+        assertThat(after.getStruct("address").get("removed")).isNull();
+        assertThat(after.get("removed")).isNull();
+        assertThat(after.getArray("items")).isEmpty();
+        assertPreservedMetadata(original, result);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1715")
+    void shouldCompareProjectedFieldsWhilePreservingBothOriginalDocuments() {
+        mapper.configure(Map.of("schema.mapping.shop.orders", PROJECTION));
+        final var original = record("u", BEFORE, AFTER);
+        final var result = changes.apply(mapper.apply(original));
+        assertChangedFields(result, List.of("customer_city", "second_sku", "document_json"), List.of("amount", "updated_at"));
+        assertProjection((Struct) result.value());
+        assertPreservedMetadata(original, result);
+
+        final var restored = changes.apply(mapper.apply(record("u", AFTER, BEFORE)));
+        final var restoredValue = (Struct) restored.value();
+        assertThat(restoredValue.getStruct("after").schema()).isSameAs(((Struct) result.value()).getStruct("after").schema());
+        assertThat(restoredValue.getStruct("after").getString("second_sku")).isEqualTo("B");
+        assertChangedFields(restored, List.of("customer_city", "second_sku", "document_json"), List.of("amount", "updated_at"));
+    }
+
+    @ParameterizedTest
+    @CsvSource({ "c,false,true", "r,false,true", "u,false,true", "d,true,false", "d,false,false" })
+    @FixFor("debezium/dbz#1715")
+    void shouldKeepLifecycleEventsWithEmptyChangeHeaders(String operation, boolean hasBefore, boolean hasAfter) {
+        for (boolean fixedProjection : List.of(false, true)) {
+            mapper.configure(fixedProjection ? Map.of("schema.mapping.shop.orders", PROJECTION) : Map.of());
+            final var original = record(operation, hasBefore ? "{\"_id\":1}" : null, hasAfter ? "{\"_id\":1}" : null);
+            final var result = changes.apply(mapper.apply(original));
+            final var envelope = (Struct) result.value();
+            assertChangedFields(result, List.of(), List.of());
+            assertThat(envelope.getStruct("before") != null).isEqualTo(hasBefore);
+            assertThat(envelope.getStruct("after") != null).isEqualTo(hasAfter);
+            assertThat(envelope.schema().field("before").schema().isOptional()).isTrue();
+            assertThat(envelope.schema().field("after").schema().isOptional()).isTrue();
+            assertPreservedMetadata(original, result);
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1715")
+    void shouldPassTombstonesThroughBothTransformations() {
+        final var original = record("d", null, null);
+        final var tombstone = original.newRecord(original.topic(), original.kafkaPartition(), original.keySchema(), original.key(), null, null,
+                original.timestamp(), original.headers());
+        assertThat(changes.apply(mapper.apply(tombstone))).isSameAs(tombstone);
+        assertThat(tombstone.headers().lastWithName("Changed")).isNull();
+        assertThat(tombstone.key()).isEqualTo(original.key());
+        assertThat(tombstone.headers()).containsExactlyElementsOf(original.headers());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "c", "r", "u" })
+    @FixFor("debezium/dbz#1715")
+    void shouldRejectMissingFullAfterDocuments(String operation) {
+        for (boolean fixedProjection : List.of(false, true)) {
+            mapper.configure(fixedProjection ? Map.of("schema.mapping.shop.orders", PROJECTION) : Map.of());
+            assertThatThrownBy(() -> mapper.apply(record(operation, null, null)))
+                    .isInstanceOf(DataException.class)
+                    .hasMessageContaining("full after document")
+                    .hasMessageContaining("change_streams_update_full");
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1715")
+    void shouldFallBackToInferenceForAnUnmappedCollection() {
+        mapper.configure(Map.of("schema.mapping.shop.other", PROJECTION));
+        final var result = changes.apply(mapper.apply(record("u", "{\"_id\":1,\"removed\":42}", "{\"_id\":1}")));
+        assertChangedFields(result, List.of("removed"), List.of("_id"));
+        assertThat(((Struct) result.value()).getStruct("after").schema().field("document_json")).isNull();
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("incompleteSourceMetadata")
+    @FixFor("debezium/dbz#1715")
+    void shouldRejectIncompleteSourceMetadataWithCollectionMappings(String description, Schema sourceSchema, Struct source) {
+        mapper.configure(Map.of("schema.mapping.shop.orders", PROJECTION));
+        final var original = record("c", null, "{\"_id\":1}", sourceSchema, source);
+        assertThatThrownBy(() -> mapper.apply(original))
+                .as(description)
+                .isInstanceOf(DataException.class)
+                .hasMessage("Collection schema mappings require source.db and source.collection metadata");
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("incompleteSourceMetadata")
+    @FixFor("debezium/dbz#1715")
+    void shouldInferWithIncompleteSourceMetadataWhenNoMappingsAreConfigured(String description, Schema sourceSchema, Struct source) {
+        final var original = record("u", "{\"_id\":1,\"removed\":42}", "{\"_id\":1}", sourceSchema, source);
+        final var result = changes.apply(mapper.apply(original));
+        assertChangedFields(result, List.of("removed"), List.of("_id"));
+        final var envelope = (Struct) result.value();
+        assertThat(envelope.getStruct("after").getInt32("_id")).as(description).isEqualTo(1);
+        envelope.validate();
+    }
+
+    private static Stream<Arguments> incompleteSourceMetadata() {
+        final var sourceSchema = SchemaBuilder.struct().name("server.Source").optional()
+                .field("db", Schema.OPTIONAL_STRING_SCHEMA).field("collection", Schema.OPTIONAL_STRING_SCHEMA).build();
+        final var sourceWithoutDbSchema = SchemaBuilder.struct().name("server.Source")
+                .field("collection", Schema.STRING_SCHEMA).build();
+        final var sourceWithoutCollectionSchema = SchemaBuilder.struct().name("server.Source")
+                .field("db", Schema.STRING_SCHEMA).build();
+        return Stream.of(
+                Arguments.of("missing source field", null, null),
+                Arguments.of("null source value", sourceSchema, null),
+                Arguments.of("missing db field", sourceWithoutDbSchema, new Struct(sourceWithoutDbSchema).put("collection", "orders")),
+                Arguments.of("missing collection field", sourceWithoutCollectionSchema, new Struct(sourceWithoutCollectionSchema).put("db", "shop")),
+                Arguments.of("null db value", sourceSchema, new Struct(sourceSchema).put("db", null).put("collection", "orders")),
+                Arguments.of("null collection value", sourceSchema, new Struct(sourceSchema).put("db", "shop").put("collection", null)));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1715")
+    void shouldApplyTheSinkChainAfterSchemaEnabledJsonDeserialization() {
+        final var original = record("u", BEFORE, AFTER);
+        try (var keyConverter = new JsonConverter();
+                var valueConverter = new JsonConverter();
+                var sinkMapper = new MongoToRelationalMapper<SinkRecord>();
+                var sinkChanges = new ExtractChangedRecordState<SinkRecord>()) {
+            keyConverter.configure(Map.of("schemas.enable", true), true);
+            valueConverter.configure(Map.of("schemas.enable", true), false);
+            sinkMapper.configure(Map.of("schema.mapping.shop.orders", PROJECTION));
+            sinkChanges.configure(Map.of("header.changed.name", "Changed", "header.unchanged.name", "Unchanged"));
+
+            final var key = keyConverter.toConnectData(original.topic(), keyConverter.fromConnectData(original.topic(), original.keySchema(), original.key()));
+            final var value = valueConverter.toConnectData(original.topic(),
+                    valueConverter.fromConnectData(original.topic(), original.valueSchema(), original.value()));
+            assertThat(((Struct) value.value()).getString("before")).isEqualTo(BEFORE);
+            assertThat(((Struct) value.value()).getString("after")).isEqualTo(AFTER);
+            final var input = new SinkRecord(original.topic(), original.kafkaPartition(), key.schema(), key.value(), value.schema(), value.value(), 123L);
+            final var result = sinkChanges.apply(sinkMapper.apply(input));
+            assertThat(result.kafkaOffset()).isEqualTo(123L);
+            assertThat(result.keySchema()).isEqualTo(original.keySchema());
+            assertThat(result.key()).isEqualTo(original.key());
+            assertChangedFields(result, List.of("customer_city", "second_sku", "document_json"), List.of("amount", "updated_at"));
+
+            final var restored = valueConverter.toConnectData(result.topic(),
+                    valueConverter.fromConnectData(result.topic(), result.valueSchema(), result.value()));
+            assertThat(restored.schema()).isEqualTo(result.valueSchema());
+            assertThat(restored.value()).isEqualTo(result.value());
+            assertProjection((Struct) restored.value());
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1715")
+    void shouldRetainInferredMissingFieldsThroughSchemaEnabledJson() {
+        final var result = mapper.apply(record("u", "{\"_id\":1,\"details\":{\"removed\":42}}", "{\"_id\":1,\"details\":{}}"));
+        try (var converter = new JsonConverter()) {
+            converter.configure(Map.of("schemas.enable", true), false);
+            final var restored = converter.toConnectData(result.topic(), converter.fromConnectData(result.topic(), result.valueSchema(), result.value()));
+            assertThat(restored.schema()).isEqualTo(result.valueSchema());
+            assertThat(restored.value()).isEqualTo(result.value());
+            final var envelope = (Struct) restored.value();
+            assertThat(envelope.getStruct("before").getStruct("details").getInt32("removed")).isEqualTo(42);
+            assertThat(envelope.getStruct("after").getStruct("details").get("removed")).isNull();
+            final var deserializedRecord = result.newRecord(result.topic(), result.kafkaPartition(), result.keySchema(), result.key(), restored.schema(),
+                    restored.value(), result.timestamp());
+            assertChangedFields(changes.apply(deserializedRecord), List.of("details"), List.of("_id"));
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "input", "canonical" })
+    @FixFor("debezium/dbz#1715")
+    void shouldApplyJsonOutputModeThroughTheSinkChain(String mode) {
+        final String projection = """
+                {"document_json":{"path":"","type":"io.debezium.data.Json"},
+                 "profile_json":{"path":"/profile","type":"io.debezium.data.Json"},
+                 "age":{"path":"/profile/age","type":"int32"}}
+                """;
+        final String beforeProfile = "{ \"age\" : 30, \"date\" : {\"$date\":0} }";
+        final String afterProfile = "{ \"age\" : 31, \"date\" : {\"$date\":0} }";
+        final String before = " {\"profile\":" + beforeProfile + "} ";
+        final String after = " {\"profile\":" + afterProfile + "} ";
+        final var original = record("u", before, after);
+        mapper.configure(Map.of("json.output.mode", mode, "schema.mapping.shop.orders", projection));
+        final var sourceResult = changes.apply(mapper.apply(original));
+        assertPreservedMetadata(original, sourceResult);
+
+        try (var converter = new JsonConverter();
+                var sinkMapper = new MongoToRelationalMapper<SinkRecord>();
+                var sinkChanges = new ExtractChangedRecordState<SinkRecord>()) {
+            converter.configure(Map.of("schemas.enable", true), false);
+            sinkMapper.configure(Map.of("json.output.mode", mode, "schema.mapping.shop.orders", projection));
+            sinkChanges.configure(Map.of("header.changed.name", "Changed", "header.unchanged.name", "Unchanged"));
+            final var decoded = converter.toConnectData(original.topic(),
+                    converter.fromConnectData(original.topic(), original.valueSchema(), original.value()));
+            final var input = new SinkRecord(original.topic(), original.kafkaPartition(), original.keySchema(), original.key(), decoded.schema(), decoded.value(), 123L);
+            final var result = sinkChanges.apply(sinkMapper.apply(input));
+            final var envelope = (Struct) result.value();
+            final var canonical = JsonWriterSettings.builder().outputMode(JsonMode.EXTENDED).build();
+            assertThat(envelope.getStruct("before").getString("document_json"))
+                    .isEqualTo(mode.equals("input") ? before : BsonDocument.parse(before).toJson(canonical));
+            assertThat(envelope.getStruct("after").getString("document_json"))
+                    .isEqualTo(mode.equals("input") ? after : BsonDocument.parse(after).toJson(canonical));
+            assertThat(envelope.getStruct("before").getString("profile_json"))
+                    .isEqualTo(mode.equals("input") ? beforeProfile : BsonDocument.parse(beforeProfile).toJson(canonical));
+            assertThat(envelope.getStruct("after").getString("profile_json"))
+                    .isEqualTo(mode.equals("input") ? afterProfile : BsonDocument.parse(afterProfile).toJson(canonical));
+            assertThat(envelope.getStruct("before").getInt32("age")).isEqualTo(30);
+            assertThat(envelope.getStruct("after").getInt32("age")).isEqualTo(31);
+            assertChangedFields(result, List.of("document_json", "profile_json", "age"), List.of());
+            assertThat(result.kafkaOffset()).isEqualTo(123L);
+            assertThat(result.key()).isEqualTo(original.key());
+            assertThat(result.value()).isEqualTo(sourceResult.value());
+            final var restored = converter.toConnectData(result.topic(), converter.fromConnectData(result.topic(), result.valueSchema(), result.value()));
+            assertThat(restored.value()).isEqualTo(result.value());
+            assertThat(restored.schema()).isEqualTo(result.valueSchema());
+
+            final var deletion = changes.apply(mapper.apply(record("d", before, null)));
+            assertThat(((Struct) deletion.value()).getStruct("before").getString("profile_json"))
+                    .isEqualTo(envelope.getStruct("before").getString("profile_json"));
+            assertThat(((Struct) deletion.value()).getStruct("after")).isNull();
+            assertChangedFields(deletion, List.of(), List.of());
+            final var tombstone = original.newRecord(original.topic(), original.kafkaPartition(), original.keySchema(), original.key(), null, null, original.timestamp());
+            assertThat(mapper.apply(tombstone)).isSameAs(tombstone);
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1715")
+    void shouldResetJsonOutputModeWhenReconfiguredAndLeaveInferenceUnchanged() {
+        final String projection = """
+                {"document_json":{"path":"","type":"io.debezium.data.Json"},
+                 "nested":{"path":"/age","type":"io.debezium.data.Json"}}
+                """;
+        final String json = " {\"age\":30} ";
+        final var original = record("c", null, json);
+        mapper.configure(Map.of("json.output.mode", "canonical", "schema.mapping.shop.orders", projection));
+        assertThat(((Struct) mapper.apply(original).value()).getStruct("after").getString("nested")).contains("$numberInt");
+        mapper.configure(Map.of("schema.mapping.shop.orders", projection));
+        final var input = ((Struct) mapper.apply(original).value()).getStruct("after");
+        assertThat(input.getString("document_json")).isEqualTo(json);
+        assertThat(input.getString("nested")).isEqualTo("30");
+        mapper.configure(Map.of("json.output.mode", "canonical", "schema.mapping.shop.other", projection));
+        final var inferred = ((Struct) mapper.apply(original).value()).getStruct("after");
+        assertThat(inferred.getInt32("age")).isEqualTo(30);
+        assertThat(inferred.schema().fields()).hasSize(1);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "input", "canonical" })
+    @FixFor("debezium/dbz#1715")
+    void shouldReportRemovedJsonFieldsAndShrinkingArrays(String mode) {
+        mapper.configure(Map.of("json.output.mode", mode, "schema.mapping.shop.orders", """
+                {"removed":{"path":"/removed","type":"io.debezium.data.Json"},
+                 "second":{"path":"/items/1","type":"io.debezium.data.Json"},
+                 "items":{"path":"/items","type":"io.debezium.data.Json"}}
+                """));
+        final var original = record("u", "{\"removed\":{\"n\":1},\"items\":[1,{\"n\":2}]}", "{\"items\":[]}");
+        final var result = changes.apply(mapper.apply(original));
+        final var envelope = (Struct) result.value();
+        final var before = envelope.getStruct("before");
+        final var after = envelope.getStruct("after");
+        assertThat(before.getString("removed")).isNotNull();
+        assertThat(before.getString("second")).isNotNull();
+        assertThat(after.get("removed")).isNull();
+        assertThat(after.get("second")).isNull();
+        assertThat(after.getString("items")).isEqualTo("[]");
+        assertThat(after.schema()).isSameAs(before.schema());
+        assertChangedFields(result, List.of("removed", "second", "items"), List.of());
+        assertPreservedMetadata(original, result);
+    }
+
+    private static void assertProjection(Struct envelope) {
+        final var before = envelope.getStruct("before");
+        final var after = envelope.getStruct("after");
+        assertThat(before.schema()).isEqualTo(after.schema());
+        assertThat(after.schema().fields()).hasSize(5);
+        assertThat(before.getString("customer_city")).isEqualTo("Seoul");
+        assertThat(before.getString("second_sku")).isEqualTo("B");
+        assertThat(after.get("customer_city")).isNull();
+        assertThat(after.get("second_sku")).isNull();
+        assertThat(after.get("amount")).isEqualTo(new BigDecimal("12.34"));
+        assertThat(after.get("updated_at")).isEqualTo(new Date(1767225600000L));
+        assertThat(before.getString("document_json")).isEqualTo(BEFORE);
+        assertThat(after.getString("document_json")).isEqualTo(AFTER);
+        assertThat(after.schema().field("document_json").schema().name()).isEqualTo(Json.LOGICAL_NAME);
+    }
+
+    private static void assertChangedFields(ConnectRecord<?> record, List<String> changed, List<String> unchanged) {
+        assertThat(record.headers().lastWithName("Changed").value()).isEqualTo(changed);
+        assertThat(record.headers().lastWithName("Unchanged").value()).isEqualTo(unchanged);
+    }
+
+    private static void assertPreservedMetadata(SourceRecord original, SourceRecord result) {
+        assertThat(result.topic()).isEqualTo(original.topic());
+        assertThat(result.kafkaPartition()).isEqualTo(original.kafkaPartition());
+        assertThat(result.timestamp()).isEqualTo(original.timestamp());
+        assertThat(result.sourcePartition()).isEqualTo(original.sourcePartition());
+        assertThat(result.sourceOffset()).isEqualTo(original.sourceOffset());
+        assertThat(result.keySchema()).isSameAs(original.keySchema());
+        assertThat(result.key()).isSameAs(original.key());
+        assertThat(result.headers()).containsAll(original.headers());
+        assertThat(result.headers()).filteredOn(header -> header.key().equals("trace"))
+                .extracting(Header::value).containsExactly("first", "second");
+        assertThat(result.headers().lastWithName("attempt").value()).isEqualTo(1);
+        assertThat(result.headers().lastWithName("attempt").schema()).isEqualTo(Schema.INT32_SCHEMA);
+        assertThat(result.valueSchema().name()).isEqualTo(original.valueSchema().name());
+        assertThat(result.valueSchema().version()).isEqualTo(original.valueSchema().version());
+        assertThat(result.valueSchema().doc()).isEqualTo(original.valueSchema().doc());
+        assertThat(result.valueSchema().parameters()).isEqualTo(original.valueSchema().parameters());
+        final var envelope = (Struct) result.value();
+        for (String field : List.of("source", "op", "ts_ms", "ts_us", "ts_ns", "transaction", "updateDescription", "custom_metadata")) {
+            assertThat(envelope.get(field)).as(field).isEqualTo(((Struct) original.value()).get(field));
+            assertThat(envelope.schema().field(field).schema()).as(field).isEqualTo(original.valueSchema().field(field).schema());
+        }
+        envelope.validate();
+    }
+
+    private static SourceRecord record(String operation, String before, String after) {
+        final var sourceSchema = SchemaBuilder.struct().name("server.Source")
+                .field("db", Schema.STRING_SCHEMA).field("collection", Schema.STRING_SCHEMA).build();
+        return record(operation, before, after, sourceSchema, new Struct(sourceSchema).put("db", "shop").put("collection", "orders"));
+    }
+
+    private static SourceRecord record(String operation, String before, String after, Schema sourceSchema, Struct source) {
+        final var envelopeSchemaBuilder = SchemaBuilder.struct().name("server.shop.orders.Envelope").version(1)
+                .doc("MongoDB event with additional envelope metadata").parameter("custom", "retained")
+                .field("before", Json.builder().optional().build()).field("after", Json.builder().optional().build());
+        if (sourceSchema != null) {
+            envelopeSchemaBuilder.field("source", sourceSchema);
+        }
+        final var envelopeSchema = envelopeSchemaBuilder.field("op", Schema.STRING_SCHEMA)
+                .field("ts_ms", Schema.INT64_SCHEMA).field("ts_us", Schema.INT64_SCHEMA).field("ts_ns", Schema.INT64_SCHEMA)
+                .field("transaction", TransactionMonitor.TRANSACTION_BLOCK_SCHEMA)
+                .field("updateDescription", MongoDbSchema.UPDATED_DESCRIPTION_SCHEMA)
+                .field("custom_metadata", Schema.OPTIONAL_STRING_SCHEMA).build();
+        final var transaction = new Struct(TransactionMonitor.TRANSACTION_BLOCK_SCHEMA)
+                .put("id", "transaction-1").put("total_order", 1L).put("data_collection_order", 1L);
+        final var updateDescription = new Struct(MongoDbSchema.UPDATED_DESCRIPTION_SCHEMA)
+                .put("removedFields", List.of("customer.address.city"))
+                .put("updatedFields", "{}")
+                .put("truncatedArrays", List.of(new Struct(MongoDbSchema.TRUNCATED_ARRAY_SCHEMA)
+                        .put(MongoDbFieldName.ARRAY_FIELD_NAME, "items").put(MongoDbFieldName.ARRAY_NEW_SIZE, 1)));
+        final var envelope = new Struct(envelopeSchema).put("before", before).put("after", after)
+                .put("op", operation).put("ts_ms", 123L).put("ts_us", 123000L).put("ts_ns", 123000000L)
+                .put("transaction", transaction).put("updateDescription", updateDescription).put("custom_metadata", "preserved");
+        if (sourceSchema != null) {
+            envelope.put("source", source);
+        }
+        final var keySchema = SchemaBuilder.struct().name("server.shop.orders.Key").field("id", Schema.STRING_SCHEMA).build();
+        final var key = new Struct(keySchema).put("id", "1");
+        // Topic routing must not change which collection projection is selected.
+        final var record = new SourceRecord(Map.of("server", "server"), Map.of("resume_token", "token-1"), "routed.orders", 2,
+                keySchema, key, envelopeSchema, envelope, 456L);
+        record.headers().addString("trace", "first").addString("trace", "second").addInt("attempt", 1);
+        return record;
+    }
+}

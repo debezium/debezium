@@ -34,6 +34,8 @@ import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
+import io.debezium.relational.Table;
+import io.debezium.relational.Tables;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.util.Testing;
 
@@ -56,6 +58,8 @@ public class OracleXmlDataTypesIT extends AbstractAsyncEngineConnectorTest {
     // Long XML files
     private static final String XML_LONG_DATA = Testing.Files.readResourceAsString("data/test_xml_data_long.xml");
     private static final String XML_LONG_DATA2 = Testing.Files.readResourceAsString("data/test_xml_data_long2.xml");
+
+    private static final String DBZ1160_XML_SCHEMA_URL = "http://debezium.io/dbz1160.xsd";
 
     private OracleConnection connection;
 
@@ -845,8 +849,215 @@ public class OracleXmlDataTypesIT extends AbstractAsyncEngineConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("dbz#2656")
+    public void shouldSnapshotTableWithBinaryXmlStorageXmlTypeColumn() throws Exception {
+        TestHelper.dropTable(connection, "dbz2656");
+        try {
+            connection.execute("CREATE TABLE dbz2656 (ID numeric(9,0), DATA xmltype, primary key(ID)) " +
+                    "XMLTYPE COLUMN DATA STORE AS SECUREFILE BINARY XML (CHUNK 8192) " +
+                    "ALLOW NONSCHEMA DISALLOW ANYSCHEMA");
+            TestHelper.streamTable(connection, "dbz2656");
+
+            connection.prepareUpdate("INSERT INTO dbz2656 values (1,?)", ps -> ps.setObject(1, toXmlType(XML_DATA)));
+            connection.commit();
+
+            Configuration config = getDefaultXmlConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ2656")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            List<SourceRecord> topicRecords = consumeRecordsByTopic(1).recordsForTopic(topicName("DBZ2656"));
+            assertThat(topicRecords).hasSize(1);
+
+            SourceRecord record = topicRecords.get(0);
+            VerifyRecord.isValidRead(record, "ID", 1);
+
+            Struct after = after(record);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertXmlFieldIsEqual(after, "DATA", XML_DATA);
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz2656");
+        }
+    }
+
+    @Test
+    @FixFor("dbz#2656")
+    public void shouldStreamTableCreatedWithBinaryXmlStorageXmlTypeColumn() throws Exception {
+        TestHelper.dropTable(connection, "dbz2656");
+        try {
+            Configuration config = getDefaultXmlConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ2656")
+                    .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, "true")
+                    .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, "true")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("CREATE TABLE dbz2656 (ID numeric(9,0), DATA xmltype, primary key(ID)) " +
+                    "XMLTYPE COLUMN DATA STORE AS SECUREFILE BINARY XML (CHUNK 8192) " +
+                    "ALLOW NONSCHEMA DISALLOW ANYSCHEMA");
+            TestHelper.streamTable(connection, "dbz2656");
+
+            List<SourceRecord> schemaChanges = consumeRecordsByTopic(2).recordsForTopic(TestHelper.SERVER_NAME);
+            assertThat(schemaChanges).hasSize(2);
+
+            List<Object> tableChanges = ((Struct) schemaChanges.get(0).value()).getArray("tableChanges");
+            assertThat(tableChanges).hasSize(1);
+
+            Struct tableChange = (Struct) tableChanges.get(0);
+            assertThat(tableChange.getString("type")).isEqualTo("CREATE");
+            assertThat(tableChange.getString("id")).contains("\"DBZ2656\"");
+
+            Struct dataColumn = null;
+            for (Object column : tableChange.getStruct("table").getArray("columns")) {
+                if ("DATA".equals(((Struct) column).getString("name"))) {
+                    dataColumn = (Struct) column;
+                }
+            }
+            assertThat(dataColumn).isNotNull();
+            assertThat(dataColumn.get("jdbcType")).isEqualTo(OracleTypes.SQLXML);
+            assertThat(dataColumn.get("typeName")).isEqualTo("XMLTYPE");
+
+            connection.prepareUpdate("INSERT INTO dbz2656 values (1,?)", ps -> ps.setObject(1, toXmlType(XML_DATA)));
+            connection.commit();
+
+            List<SourceRecord> topicRecords = consumeRecordsByTopic(1).recordsForTopic(topicName("DBZ2656"));
+            assertThat(topicRecords).hasSize(1);
+
+            SourceRecord record = topicRecords.get(0);
+            VerifyRecord.isValidInsert(record, "ID", 1);
+
+            Struct after = after(record);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertXmlFieldIsEqual(after, "DATA", XML_DATA);
+
+            connection.prepareUpdate("UPDATE dbz2656 SET DATA = ? WHERE ID = 1", ps -> ps.setObject(1, toXmlType(XML_DATA2)));
+            connection.commit();
+
+            topicRecords = consumeRecordsByTopic(1).recordsForTopic(topicName("DBZ2656"));
+            assertThat(topicRecords).hasSize(1);
+
+            record = topicRecords.get(0);
+            VerifyRecord.isValidUpdate(record, "ID", 1);
+
+            after = after(record);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertXmlFieldIsEqual(after, "DATA", XML_DATA2);
+
+            assertNoRecordsToConsume();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz2656");
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1160")
+    public void shouldReadXmlSchemaBasedTableWithObjectAttributePrimaryKeyAsKeyless() throws Exception {
+        TestHelper.dropTable(connection, "dbz1160");
+        try {
+            createXmlSchemaBasedTableWithObjectAttributePrimaryKey();
+
+            final Tables tables = new Tables();
+            connection.readSchema(tables, null, "DEBEZIUM", Tables.TableFilter.fromPredicate(id -> "DBZ1160".equals(id.table())), null, false);
+
+            final Table table = tables.tableIds().stream().filter(id -> "DBZ1160".equals(id.table())).findFirst().map(tables::forTable).orElse(null);
+            assertThat(table).isNotNull();
+            assertThat(table.primaryKeyColumnNames()).isEmpty();
+        }
+        finally {
+            dropXmlSchemaBasedTable();
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1160")
+    public void shouldSnapshotWhenSchemaContainsXmlSchemaBasedTableWithObjectAttributePrimaryKey() throws Exception {
+        TestHelper.dropTables(connection, "dbz1160", "dbz1160_data");
+        try {
+            createXmlSchemaBasedTableWithObjectAttributePrimaryKey();
+
+            connection.execute("CREATE TABLE dbz1160_data (ID numeric(9,0) primary key, NAME varchar2(50))");
+            TestHelper.streamTable(connection, "dbz1160_data");
+            connection.execute("INSERT INTO dbz1160_data values (1, 'Debezium')");
+            connection.execute("COMMIT");
+
+            // The XML schema-based table is not captured, but its schema is read during the snapshot
+            // because the connector stores the structure of all tables by default.
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ1160_DATA")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            List<SourceRecord> topicRecords = consumeRecordsByTopic(1).recordsForTopic(topicName("DBZ1160_DATA"));
+            assertThat(topicRecords).hasSize(1);
+            VerifyRecord.isValidRead(topicRecords.get(0), "ID", 1);
+
+            assertNoRecordsToConsume();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz1160_data");
+            dropXmlSchemaBasedTable();
+        }
+    }
+
     private Configuration.Builder getDefaultXmlConfig() {
         return TestHelper.defaultConfig().with(OracleConnectorConfig.LOB_ENABLED, true);
+    }
+
+    private void createXmlSchemaBasedTableWithObjectAttributePrimaryKey() throws SQLException {
+        // Registering the XML schema generates object types for its object-relational storage.
+        TestHelper.grantRole("CREATE ANY TYPE");
+
+        final String xsd = "<xs:schema xmlns:xs=\"http://www.w3.org/2001/XMLSchema\" xmlns:xdb=\"http://xmlns.oracle.com/xdb\" " +
+                "elementFormDefault=\"qualified\" version=\"1.0\">" +
+                "<xs:element name=\"Order\">" +
+                "<xs:complexType xdb:SQLType=\"DBZ1160_ORDER_T\">" +
+                "<xs:sequence>" +
+                "<xs:element name=\"Reference\" xdb:SQLName=\"REFERENCE\">" +
+                "<xs:simpleType><xs:restriction base=\"xs:string\"><xs:maxLength value=\"30\"/></xs:restriction></xs:simpleType>" +
+                "</xs:element>" +
+                "</xs:sequence>" +
+                "</xs:complexType>" +
+                "</xs:element>" +
+                "</xs:schema>";
+
+        connection.execute("BEGIN DBMS_XMLSCHEMA.registerSchema(SCHEMAURL => '" + DBZ1160_XML_SCHEMA_URL + "', " +
+                "SCHEMADOC => '" + xsd + "', LOCAL => TRUE, GENTYPES => TRUE, GENTABLES => FALSE); END;");
+
+        // The primary key is defined on an attribute of the object-relational storage, which is
+        // reported by the JDBC metadata as "XMLDATA"."REFERENCE" and is not a column of the table.
+        connection.execute("CREATE TABLE dbz1160 OF XMLTYPE XMLTYPE STORE AS OBJECT RELATIONAL " +
+                "XMLSCHEMA \"" + DBZ1160_XML_SCHEMA_URL + "\" ELEMENT \"Order\"");
+        connection.execute("ALTER TABLE dbz1160 ADD CONSTRAINT dbz1160_pk PRIMARY KEY (XMLDATA.\"REFERENCE\")");
+        connection.execute("GRANT SELECT ON DEBEZIUM.DBZ1160 TO " + TestHelper.getConnectorUserName());
+
+        connection.execute("INSERT INTO dbz1160 values (xmltype('<Order><Reference>ORDER-1</Reference></Order>'))");
+        connection.execute("COMMIT");
+    }
+
+    private void dropXmlSchemaBasedTable() {
+        TestHelper.dropTable(connection, "dbz1160");
+        try {
+            connection.execute("BEGIN DBMS_XMLSCHEMA.deleteSchema('" + DBZ1160_XML_SCHEMA_URL + "', DBMS_XMLSCHEMA.DELETE_CASCADE_FORCE); END;");
+        }
+        catch (SQLException e) {
+            // The schema was not registered
+        }
+        TestHelper.revokeRole("CREATE ANY TYPE");
     }
 
     private XMLType toXmlType(String data) throws SQLException {

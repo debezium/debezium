@@ -232,6 +232,19 @@ public class OracleConnection extends JdbcConnection {
     }
 
     @Override
+    public List<String> readPrimaryKeyNames(DatabaseMetaData metadata, TableId id) throws SQLException {
+        final List<String> pkColumnNames = super.readPrimaryKeyNames(metadata, id);
+        // A primary key can be defined on an object attribute or a system generated column, such as with
+        // an XML schema-based XMLTYPE table. These columns are not part of the table's column metadata,
+        // so rather than using only a partial key, the table is treated as if it has no primary key.
+        if (pkColumnNames.stream().anyMatch(columnName -> !isRelationalColumnName(columnName))) {
+            LOGGER.debug("Table {} primary key {} references non-relational columns and is ignored.", id, pkColumnNames);
+            return new ArrayList<>();
+        }
+        return pkColumnNames;
+    }
+
+    @Override
     public Optional<Instant> getCurrentTimestamp() throws SQLException {
         return queryAndMap("SELECT CURRENT_TIMESTAMP FROM DUAL",
                 rs -> rs.next() ? Optional.of(rs.getTimestamp(1).toInstant()) : Optional.empty());
@@ -239,6 +252,10 @@ public class OracleConnection extends JdbcConnection {
 
     @Override
     protected boolean isTableUniqueIndexIncluded(String indexName, String columnName) {
+        return isRelationalColumnName(columnName);
+    }
+
+    private static boolean isRelationalColumnName(String columnName) {
         if (columnName != null) {
             return !SYS_NC_PATTERN.matcher(columnName).matches()
                     && !ADT_INDEX_NAMES_PATTERN.matcher(columnName).matches()
@@ -385,7 +402,7 @@ public class OracleConnection extends JdbcConnection {
      * @throws SQLException if a database exception occurred
      */
     public long getRowCount(TableId tableId) throws SQLException {
-        return queryAndMap("SELECT COUNT(1) FROM " + tableId.toDoubleQuotedString(), rs -> {
+        return queryAndMap("SELECT COUNT(1) FROM " + quotedTableIdString(tableId), rs -> {
             if (rs.next()) {
                 return rs.getLong(1);
             }
@@ -438,6 +455,16 @@ public class OracleConnection extends JdbcConnection {
         return scn -> scn.compareTo(storedOffset) <= 0;
     }
 
+    /**
+     * Oracle table identifiers carry the CDB/PDB name as the catalog, but a query always executes
+     * inside a single pluggable database and cannot qualify a table with it. The catalog is dropped
+     * here so that every caller gets {@code "schema"."table"} without stripping it beforehand.
+     */
+    @Override
+    public String quotedTableIdString(TableId tableId) {
+        return super.quotedTableIdString(new TableId(null, tableId.schema(), tableId.table()));
+    }
+
     @Override
     public String buildSelectWithRowLimits(TableId tableId,
                                            int limit,
@@ -446,12 +473,11 @@ public class OracleConnection extends JdbcConnection {
                                            Optional<String> additionalCondition,
                                            String orderBy,
                                            Optional<String> tableAlias) {
-        final TableId table = new TableId(null, tableId.schema(), tableId.table());
         final StringBuilder sql = new StringBuilder("SELECT ");
         sql
                 .append(projection)
                 .append(" FROM ");
-        sql.append(quotedTableIdString(table));
+        sql.append(quotedTableIdString(tableId));
         tableAlias.ifPresent(alias -> sql.append(' ').append(alias));
         if (condition.isPresent()) {
             sql
@@ -488,7 +514,6 @@ public class OracleConnection extends JdbcConnection {
 
     @Override
     public String buildSelectPrimaryKeyBoundaries(TableId tableId, long size, String projection, String orderBy, String condition) {
-        final TableId truncatedTableId = new TableId(null, tableId.schema(), tableId.table());
         // Oracle 11g and earlier
         if (getOracleVersion().getMajor() < 12) {
             StringBuilder innerSql = new StringBuilder("SELECT ")
@@ -496,7 +521,7 @@ public class OracleConnection extends JdbcConnection {
                     .append(", ROWNUM AS RNUM FROM (SELECT ")
                     .append(projection)
                     .append(" FROM ")
-                    .append(quotedTableIdString(truncatedTableId));
+                    .append(quotedTableIdString(tableId));
             if (!Strings.isNullOrBlank(condition)) {
                 innerSql.append(" WHERE ").append(condition);
             }
@@ -515,7 +540,7 @@ public class OracleConnection extends JdbcConnection {
         StringBuilder sql = new StringBuilder("SELECT ")
                 .append(projection)
                 .append(" FROM ")
-                .append(quotedTableIdString(truncatedTableId));
+                .append(quotedTableIdString(tableId));
         if (!Strings.isNullOrBlank(condition)) {
             sql.append(" WHERE ")
                     .append(condition);
@@ -621,15 +646,19 @@ public class OracleConnection extends JdbcConnection {
      * log destination views — so logic that resolves a physical archive destination cannot work.
      *
      * @return {@code true} when connected to an Autonomous Database, {@code false} otherwise
-     * @throws SQLException if a database exception occurred
      */
-    public boolean isAutonomous() throws SQLException {
-        // CLOUD_SERVICE is set only on Autonomous Database; its values are OLTP (ATP), DWCS (ADW)
-        // and JDCS (AJD). It is null/absent on self-managed Oracle.
-        final String cloudService = singleOptionalValue(
-                "SELECT SYS_CONTEXT('USERENV', 'CLOUD_SERVICE') FROM DUAL",
-                rs -> rs.getString(1));
-        return "OLTP".equals(cloudService) || "DWCS".equals(cloudService) || "JDCS".equals(cloudService);
+    public boolean isAutonomous() {
+        try {
+            // CLOUD_SERVICE is set only on Autonomous Database; its values are OLTP (ATP), DWCS (ADW)
+            // and JDCS (AJD). It is null/absent on self-managed Oracle.
+            final String cloudService = singleOptionalValue(
+                    "SELECT SYS_CONTEXT('USERENV', 'CLOUD_SERVICE') FROM DUAL",
+                    rs -> rs.getString(1));
+            return "OLTP".equals(cloudService) || "DWCS".equals(cloudService) || "JDCS".equals(cloudService);
+        }
+        catch (SQLException e) {
+            return false;
+        }
     }
 
     public boolean isArchiveLogDestinationValid(String archiveDestinationName) throws SQLException {
@@ -702,19 +731,18 @@ public class OracleConnection extends JdbcConnection {
     public boolean reselectColumns(Table table, List<String> columns, List<String> keyColumns, List<Object> keyValues, Struct source,
                                    ResultSetConsumer resultConsumer)
             throws SQLException {
-        final TableId oracleTableId = new TableId(null, table.id().schema(), table.id().table());
         if (source != null) {
             final String commitScn = source.getString(SourceInfo.COMMIT_SCN_KEY);
             if (!Strings.isNullOrEmpty(commitScn)) {
                 final String query = String.format("SELECT %s FROM (SELECT * FROM %s AS OF SCN ?) WHERE %s",
                         columns.stream().map(this::quoteIdentifier).collect(Collectors.joining(",")),
-                        quotedTableIdString(oracleTableId),
+                        quotedTableIdString(table.id()),
                         keyColumns.stream().map(this::quoteIdentifier).map(key -> key + "=?").collect(Collectors.joining(" AND ")));
                 final List<Object> bindValues = new ArrayList<>(keyValues.size() + 1);
                 bindValues.add(commitScn);
                 bindValues.addAll(keyValues);
                 try {
-                    return reselectColumns(query, oracleTableId, columns, bindValues, resultConsumer);
+                    return reselectColumns(query, table.id(), columns, bindValues, resultConsumer);
                 }
                 catch (Exception e) {
                     if (shouldReselectFallbackToNonFlashbackQuery(e)) {
@@ -730,10 +758,10 @@ public class OracleConnection extends JdbcConnection {
 
         final String query = String.format("SELECT %s FROM %s WHERE %s",
                 columns.stream().map(this::quoteIdentifier).collect(Collectors.joining(",")),
-                quotedTableIdString(oracleTableId),
+                quotedTableIdString(table.id()),
                 keyColumns.stream().map(this::quoteIdentifier).map(key -> key + "=?").collect(Collectors.joining(" AND ")));
 
-        return reselectColumns(query, oracleTableId, columns, keyValues, resultConsumer);
+        return reselectColumns(query, table.id(), columns, keyValues, resultConsumer);
     }
 
     private static final Set<Integer> ORACLE_RESELECT_ERROR_CODE_FALLBACK = Set.of(
@@ -1017,9 +1045,4 @@ public class OracleConnection extends JdbcConnection {
         }
     }
 
-    public long getMaximumRedoLogFileSize() throws SQLException {
-        return queryAndMap(
-                "SELECT MAX(BYTES) FROM V$LOG",
-                singleResultMapper(rs -> rs.getLong(1), "Failed to get maximum redo log file size"));
-    }
 }

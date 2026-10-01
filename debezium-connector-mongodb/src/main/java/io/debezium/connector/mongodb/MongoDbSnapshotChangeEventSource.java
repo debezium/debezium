@@ -7,6 +7,7 @@ package io.debezium.connector.mongodb;
 
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -95,8 +96,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
     protected SnapshotResult<MongoDbOffsetContext> doExecute(ChangeEventSourceContext context,
                                                              MongoDbOffsetContext prevOffsetCtx,
                                                              SnapshotContext<MongoDbPartition, MongoDbOffsetContext> snapshotContext,
-                                                             SnapshottingTask snapshottingTask)
-            throws Exception {
+                                                             SnapshottingTask snapshottingTask) {
         final MongoDbSnapshotContext mongoDbSnapshotContext = (MongoDbSnapshotContext) snapshotContext;
 
         LOGGER.info("Snapshot step 1 - Preparing");
@@ -109,7 +109,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
 
         LOGGER.info("Snapshot step 3 - Snapshotting data");
         try {
-            doSnapshot(context, mongoDbSnapshotContext, snapshottingTask);
+            doSnapshot(context, prevOffsetCtx, mongoDbSnapshotContext, snapshottingTask);
         }
         catch (Throwable t) {
             LOGGER.error("Snapshot failed", t);
@@ -162,14 +162,14 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
         return new MongoDbSnapshotContext(partition);
     }
 
-    private void doSnapshot(ChangeEventSourceContext sourceCtx, MongoDbSnapshotContext snapshotCtx, SnapshottingTask snapshottingTask)
+    private void doSnapshot(ChangeEventSourceContext sourceCtx, MongoDbOffsetContext prevOffsetCtx, MongoDbSnapshotContext snapshotCtx, SnapshottingTask snapshottingTask)
             throws Throwable {
         try (MongoDbConnection mongo = MongoDbConnections.create(taskContext.getRawConfig(), dispatcher, snapshotCtx.partition)) {
             initSnapshotStartOffsets(snapshotCtx, mongo);
             SnapshotReceiver<MongoDbPartition> snapshotReceiver = dispatcher.getSnapshotChangeEventReceiver();
             snapshotCtx.offset.preSnapshotStart(snapshottingTask.isOnDemand());
 
-            createDataEvents(sourceCtx, snapshotCtx, snapshotReceiver, mongo, snapshottingTask);
+            createDataEvents(sourceCtx, prevOffsetCtx, snapshotCtx, snapshotReceiver, mongo, snapshottingTask);
 
             snapshotCtx.offset.preSnapshotCompletion();
             snapshotReceiver.completeSnapshot();
@@ -197,7 +197,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
      * Dispatches the data change events for the records of a single replica-set.
      */
     private void createDataEvents(ChangeEventSourceContext sourceContext,
-                                  MongoDbSnapshotContext snapshotContext,
+                                  MongoDbOffsetContext prevOffsetCtx, MongoDbSnapshotContext snapshotContext,
                                   SnapshotReceiver<MongoDbPartition> snapshotReceiver,
                                   MongoDbConnection mongo,
                                   SnapshottingTask snapshottingTask)
@@ -214,6 +214,8 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
                 .collect(Collectors.toList());
         final List<CollectionId> collections = determineDataCollectionsToBeSnapshotted(allCollections, dataCollectionPattern)
                 .collect(Collectors.toList());
+        notificationService.initialSnapshotNotificationService().notifyDataCollectionsResolved(snapshotContext.partition, prevOffsetCtx,
+                new LinkedHashSet<>(collections));
         snapshotProgressListener.monitoredDataCollectionsDetermined(snapshotContext.partition, collections);
 
         // Since multiple snapshot threads are to be used, create a thread pool and initiate the snapshot.
