@@ -109,7 +109,7 @@ class BaseSourceTaskShutdownTest {
     @ParameterizedTest
     @ValueSource(booleans = { false, true })
     @FixFor("debezium/dbz#2709")
-    void shouldCleanUpBeforeRestoringInterrupt(boolean cleanupFails) {
+    void shouldCleanUpAfterCoordinatorInterruption(boolean cleanupFails) {
         final var failure = new InterruptedException("Coordinator interrupted");
         final var cleanupFailure = new IllegalStateException("Cleanup failed");
         final var task = new ShutdownTask(() -> {
@@ -127,7 +127,7 @@ class BaseSourceTaskShutdownTest {
 
             assertThat(task.shutdownSteps).containsExactly("coordinator", "task");
             assertThat(thrown).isInstanceOf(ConnectException.class).hasCause(failure);
-            assertThat(Thread.currentThread().isInterrupted()).isTrue();
+            assertThat(Thread.currentThread().isInterrupted()).isFalse();
             if (cleanupFails) {
                 assertThat(thrown.getSuppressed()).containsExactly(cleanupFailure);
             }
