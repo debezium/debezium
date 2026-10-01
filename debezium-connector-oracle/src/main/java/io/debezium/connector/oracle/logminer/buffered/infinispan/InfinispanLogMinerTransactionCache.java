@@ -24,13 +24,13 @@ import io.debezium.connector.oracle.logminer.events.Xid;
  *
  * @author Chris Cranford
  */
-public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransactionCache<InfinispanTransaction> {
+public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransactionCache<InfinispanTransaction, InfinispanSlot> {
 
     private final BasicCache<Long, InfinispanTransaction> transactionCache;
     private final BasicCache<Long, LogMinerEvent> eventCache;
-    private final InfinispanSegments segments = new InfinispanSegments();
 
     public InfinispanLogMinerTransactionCache(BasicCache<Long, InfinispanTransaction> transactionCache, BasicCache<Long, LogMinerEvent> eventCache) {
+        super(new InfinispanSegments());
         this.transactionCache = transactionCache;
         this.eventCache = eventCache;
 
@@ -58,21 +58,6 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
             transactionCache.remove(slot.key);
             slot.key = null;
         }
-    }
-
-    @Override
-    public boolean containsTransaction(long xid) {
-        return segments.get(xid).occupied();
-    }
-
-    @Override
-    public boolean isEmpty() {
-        return segments.isEmpty();
-    }
-
-    @Override
-    public int getTransactionCount() {
-        return segments.size();
     }
 
     @Override

@@ -8,11 +8,11 @@ package io.debezium.connector.oracle.logminer.buffered.memory;
 import java.util.List;
 import java.util.Map;
 
+import io.debezium.connector.oracle.logminer.buffered.AbstractCacheSlot;
 import io.debezium.connector.oracle.logminer.buffered.AbstractLogMinerTransactionCache.LogMinerEventEntry;
-import io.debezium.connector.oracle.logminer.buffered.Slot;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 
-final class MemorySlot extends Slot {
+final class MemorySlot extends AbstractCacheSlot {
     MemoryTransaction transaction;
     List<LogMinerEventEntry> events;
     Map<Integer, LogMinerEvent> eventsByEventId;

@@ -28,8 +28,11 @@ import io.debezium.connector.oracle.logminer.events.RollbackToSavepointEvent;
  *
  * @author Chris Cranford
  */
-public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionCache<MemoryTransaction> {
-    private final MemorySegments segments = new MemorySegments();
+public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionCache<MemoryTransaction, MemorySlot> {
+
+    public MemoryLogMinerTransactionCache() {
+        super(new MemorySegments());
+    }
 
     @Override
     public MemoryTransaction getTransaction(long xid) {
@@ -44,21 +47,6 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
     @Override
     public void removeTransaction(MemoryTransaction transaction) {
         segments.vacate(transaction.getXid()).transaction = null;
-    }
-
-    @Override
-    public boolean containsTransaction(long xid) {
-        return segments.get(xid).occupied();
-    }
-
-    @Override
-    public boolean isEmpty() {
-        return segments.isEmpty();
-    }
-
-    @Override
-    public int getTransactionCount() {
-        return segments.size();
     }
 
     @Override

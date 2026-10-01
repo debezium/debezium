@@ -7,9 +7,9 @@ package io.debezium.connector.oracle.logminer.buffered.infinispan;
 
 import java.util.TreeSet;
 
-import io.debezium.connector.oracle.logminer.buffered.Slot;
+import io.debezium.connector.oracle.logminer.buffered.AbstractCacheSlot;
 
-final class InfinispanSlot extends Slot {
+final class InfinispanSlot extends AbstractCacheSlot {
     Long key;
     TreeSet<Integer> eventIds;
 

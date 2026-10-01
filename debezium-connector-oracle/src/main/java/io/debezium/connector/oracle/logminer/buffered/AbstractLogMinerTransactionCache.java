@@ -5,10 +5,8 @@
  */
 package io.debezium.connector.oracle.logminer.buffered;
 
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.IntFunction;
@@ -32,11 +30,16 @@ import io.debezium.util.Loggings;
  *
  * @author Chris Cranford
  */
-public abstract class AbstractLogMinerTransactionCache<T extends Transaction> implements LogMinerTransactionCache<T> {
+public abstract class AbstractLogMinerTransactionCache<T extends Transaction, S extends AbstractCacheSlot> implements LogMinerTransactionCache<T> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractLogMinerTransactionCache.class);
     private final Set<Long> abandonedTransactions = new HashSet<>();
-    private final Map<Integer, LogMinerEvent> lastEnqueuedEventByTransactionId = new HashMap<>();
+
+    protected final Segments<S> segments;
+
+    protected AbstractLogMinerTransactionCache(Segments<S> segments) {
+        this.segments = segments;
+    }
 
     @Override
     public void abandon(T transaction) {
@@ -54,13 +57,31 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
     }
 
     @Override
+    public boolean containsTransaction(long xid) {
+        return segments.get(xid).occupied();
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return segments.isEmpty();
+    }
+
+    @Override
+    public int getTransactionCount() {
+        return segments.size();
+    }
+
+    @Override
     public LogMinerEvent putLastEnqueuedEvent(long xid, LogMinerEvent event) {
-        return lastEnqueuedEventByTransactionId.put(Xid.usnSltKey(xid), event);
+        S slot = segments.get(xid);
+        LogMinerEvent lastEnqueuedEvent = slot.lastEnqueuedEvent;
+        slot.lastEnqueuedEvent = event;
+        return lastEnqueuedEvent;
     }
 
     @Override
     public LogMinerEvent removeLastEnqueuedEvent(long xid) {
-        return lastEnqueuedEventByTransactionId.remove(Xid.usnSltKey(xid));
+        return putLastEnqueuedEvent(xid, null);
     }
 
     @Override

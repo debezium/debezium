@@ -28,7 +28,6 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Calendar;
 import java.util.List;
-import java.util.Map;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -58,7 +57,6 @@ import io.debezium.connector.oracle.logminer.AbstractLogMinerStreamingChangeEven
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerStreamingChangeEventSource.ProcessResult;
 import io.debezium.connector.oracle.logminer.events.EventType;
-import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 import io.debezium.connector.oracle.logminer.events.Xid;
 import io.debezium.connector.oracle.util.TestHelper;
@@ -790,11 +788,11 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
             source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1));
 
-            assertThat(source.getLastEnqueuedEventByTransactionId()).containsOnlyKeys(Xid.usnSltKey(Xid.of(TRANSACTION_ID_1)));
+            assertThat(source.segments().get(Xid.of(TRANSACTION_ID_1)).lastEnqueuedEvent()).isNotNull();
 
             source.processEvent(getCommitLogMinerEventRow(3, TRANSACTION_ID_1));
 
-            assertThat(source.getLastEnqueuedEventByTransactionId()).isEmpty();
+            assertThat(source.segments().get(Xid.of(TRANSACTION_ID_1)).lastEnqueuedEvent()).isNull();
         }
     }
 
@@ -809,7 +807,8 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             source.processEvent(getCommitLogMinerEventRow(5, PARTIAL_TXN_ID_FULL));
 
             // The undo was attributed to PARTIAL_TXN_ID_FULL, so committing it must leave nothing behind
-            assertThat(source.getLastEnqueuedEventByTransactionId()).isEmpty();
+            assertThat(source.segments().get(Xid.of(PARTIAL_TXN_ID_FULL)).lastEnqueuedEvent()).isNull();
+            assertThat(source.segments().get(Xid.of(PARTIAL_TXN_ID_PARTIAL)).lastEnqueuedEvent()).isNull();
         }
     }
 
@@ -1238,10 +1237,14 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         }
 
         @SuppressWarnings("unchecked")
-        public Map<Integer, LogMinerEvent> getLastEnqueuedEventByTransactionId() throws Exception {
-            var field = AbstractLogMinerTransactionCache.class.getDeclaredField("lastEnqueuedEventByTransactionId");
-            field.setAccessible(true);
-            return (Map<Integer, LogMinerEvent>) field.get(this.getTransactionCache());
+        public Segments<AbstractCacheSlot> segments() {
+            try {
+                var field = AbstractLogMinerTransactionCache.class.getDeclaredField("segments");
+                field.setAccessible(true);
+                return (Segments<AbstractCacheSlot>) field.get(this.getTransactionCache());
+            } catch (ReflectiveOperationException e) {
+                throw new AssertionError("Unable to read segments", e);
+            }
         }
 
         @Override

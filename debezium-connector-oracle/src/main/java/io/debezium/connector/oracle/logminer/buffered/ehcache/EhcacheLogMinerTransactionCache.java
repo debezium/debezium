@@ -27,16 +27,16 @@ import io.debezium.connector.oracle.logminer.events.Xid;
  *
  * @author Chris Cranford
  */
-public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransactionCache<EhcacheTransaction> {
+public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransactionCache<EhcacheTransaction, EhcacheSlot> {
 
     private final Cache<Long, EhcacheTransaction> transactionCache;
     private final Cache<Long, LogMinerEvent> eventCache;
     private final EhcacheEvictionListener evictionListener;
-    private final EhcacheSegments segments = new EhcacheSegments();
 
     public EhcacheLogMinerTransactionCache(Cache<Long, EhcacheTransaction> transactionCache,
                                            Cache<Long, LogMinerEvent> eventCache,
                                            EhcacheEvictionListener evictionListener) {
+        super(new EhcacheSegments());
         this.transactionCache = transactionCache;
         this.eventCache = eventCache;
         this.evictionListener = evictionListener;
@@ -66,21 +66,6 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
             transactionCache.remove(slot.key);
             slot.key = null;
         }
-    }
-
-    @Override
-    public boolean containsTransaction(long xid) {
-        return segments.get(xid).occupied();
-    }
-
-    @Override
-    public boolean isEmpty() {
-        return segments.isEmpty();
-    }
-
-    @Override
-    public int getTransactionCount() {
-        return segments.size();
     }
 
     @Override

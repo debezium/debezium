@@ -13,6 +13,5 @@ public abstract class Slot {
         return index > -1;
     }
 
-    public void clear() {
-    }
+    public abstract void clear();
 }

@@ -7,9 +7,9 @@ package io.debezium.connector.oracle.logminer.buffered.ehcache;
 
 import java.util.TreeSet;
 
-import io.debezium.connector.oracle.logminer.buffered.Slot;
+import io.debezium.connector.oracle.logminer.buffered.AbstractCacheSlot;
 
-final class EhcacheSlot extends Slot {
+final class EhcacheSlot extends AbstractCacheSlot {
     Long key;
     TreeSet<Integer> eventIds;
 
