@@ -31,6 +31,7 @@ import io.debezium.antlr.mysql.SqlModes;
 import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
 import io.debezium.connector.binlog.jdbc.BinlogSystemVariables;
 import io.debezium.connector.mysql.antlr.listener.MySqlAntlrDdlParserListener;
+import io.debezium.connector.mysql.charset.MySqlCharsetRegistry;
 import io.debezium.ddl.parser.mysql.generated.MySqlLexer;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser.CharsetNameContext;
@@ -88,7 +89,7 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
 
     @VisibleForTesting
     public MySqlAntlrDdlParser(TableFilter tableFilter) {
-        this(true, false, false, tableFilter, null);
+        this(true, false, false, tableFilter, new MySqlCharsetRegistry());
     }
 
     public MySqlAntlrDdlParser(boolean throwErrorsFromTreeWalk, boolean includeViews, boolean includeComments,
@@ -467,6 +468,10 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
     public String charsetForTable(TableId tableId) {
         final String defaultDatabaseCharset = tableId.catalog() != null ? charsetNameForDatabase().get(tableId.catalog()) : null;
         return defaultDatabaseCharset != null ? defaultDatabaseCharset : currentDatabaseCharset();
+    }
+
+    public String getJavaEncodingForCharSet(String charsetName) {
+        return charsetRegistry.getJavaEncodingForCharSet(charsetName);
     }
 
     /**

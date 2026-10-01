@@ -8,6 +8,7 @@ package io.debezium.connector.mysql.antlr.listener;
 
 import static io.debezium.antlr.AntlrDdlParser.getText;
 
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -415,9 +416,14 @@ public class AlterTableParserListener extends TableCommonParserListener {
                 // Extract the default value directly from the context
                 // Grammar: SET DEFAULT (exprWithParentheses | signedLiteralOrNull)
                 if (ctx.signedLiteralOrNull() != null) {
-                    String defaultValue = extractDefaultValue(ctx.signedLiteralOrNull());
-                    if (defaultValue != null) {
-                        defaultValueColumnEditor.defaultValueExpression(defaultValue);
+                    if (defaultValueColumnEditor.jdbcType() == Types.BIT) {
+                        defaultValueColumnEditor.defaultValueExpression(BitDefaultValueParser.parse(ctx.signedLiteralOrNull(), parser));
+                    }
+                    else {
+                        String defaultValue = extractDefaultValue(ctx.signedLiteralOrNull());
+                        if (defaultValue != null) {
+                            defaultValueColumnEditor.defaultValueExpression(defaultValue);
+                        }
                     }
                 }
                 else if (ctx.exprWithParentheses() != null) {
