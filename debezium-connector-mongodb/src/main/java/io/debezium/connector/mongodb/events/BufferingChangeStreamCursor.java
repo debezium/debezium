@@ -15,7 +15,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -122,13 +121,19 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
      */
     public static final class EventFetcher<TResult> implements Runnable, Closeable {
 
+        enum State {
+            NEW,
+            RUNNING,
+            CLOSED
+        }
+
         public static final long QUEUE_OFFER_TIMEOUT_MS = 100;
 
         private final ChangeStreamIterable<TResult> stream;
         private final Semaphore capacity;
         private final Queue<ResumableChangeStreamEvent<TResult>> queue;
         private final DelayStrategy throttler;
-        private final AtomicBoolean running;
+        private final AtomicReference<State> state;
         private final AtomicReference<MongoChangeStreamCursor<ChangeStreamDocument<TResult>>> cursorRef;
         private final AtomicReference<Throwable> error;
         private final MongoDbStreamingChangeEventSourceMetrics metrics;
@@ -138,7 +143,6 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
         private final Condition resumed = lock.newCondition();
         private final Condition eventAvailable = lock.newCondition();
         private volatile boolean paused;
-        private volatile boolean closed;
         private volatile boolean consumerWaiting;
 
         public EventFetcher(ChangeStreamIterable<TResult> stream,
@@ -151,7 +155,7 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
             this.metrics = metrics;
             this.clock = clock;
             this.throttler = throttler;
-            this.running = new AtomicBoolean(false);
+            this.state = new AtomicReference<>(State.NEW);
             this.cursorRef = new AtomicReference<>(null);
             this.queue = new ConcurrentLinkedQueue<>();
             this.error = new AtomicReference<>(null);
@@ -166,12 +170,17 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
         }
 
         /**
-         * Indicates whether event fetching is running and the internal cursor is open
+         * Indicates whether the internal cursor has been opened and the fetcher has not been closed.
+         * Pausing event fetching does not change this lifecycle state.
          *
          * @return true if running, false otherwise
          */
         public boolean isRunning() {
-            return running.get() && !closed;
+            return state.get() == State.RUNNING;
+        }
+
+        private boolean isClosed() {
+            return state.get() == State.CLOSED;
         }
 
         /**
@@ -194,8 +203,7 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
 
         @Override
         public void close() {
-            closed = true;
-            running.set(false);
+            state.set(State.CLOSED);
             lock.lock();
             try {
                 eventAvailable.signalAll();
@@ -259,7 +267,7 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
                 // between the empty check and releasing the lock in awaitNanos().
                 consumerWaiting = true;
                 long remainingNanos = TimeUnit.MILLISECONDS.toNanos(timeoutMillis);
-                while (queue.isEmpty() && !hasError() && !closed && remainingNanos > 0) {
+                while (queue.isEmpty() && !hasError() && !isClosed() && remainingNanos > 0) {
                     remainingNanos = eventAvailable.awaitNanos(remainingNanos);
                 }
             }
@@ -298,17 +306,20 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
 
         @Override
         public void run() {
-            if (closed) {
+            if (isClosed()) {
                 return;
             }
             try (MongoChangeStreamCursor<ChangeStreamDocument<TResult>> cursor = stream.cursor()) {
                 cursorRef.compareAndSet(null, cursor);
-                running.set(true);
+                // close() may have been called while opening the MongoDB cursor.
+                if (!state.compareAndSet(State.NEW, State.RUNNING)) {
+                    return;
+                }
                 noMessageIterations = 0;
                 fetchEvents(cursor);
             }
             catch (InterruptedException e) {
-                if (!closed) {
+                if (!isClosed()) {
                     error.set(e);
                     LOGGER.error("Fetcher thread interrupted", e);
                 }
@@ -463,7 +474,7 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
         long delayMillis = 1;
         while (true) {
             final var event = fetcher.poll();
-            if (event != null || fetcher.closed) {
+            if (event != null || fetcher.isClosed()) {
                 return event;
             }
 

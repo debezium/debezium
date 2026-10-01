@@ -35,6 +35,7 @@ import com.mongodb.client.model.changestream.ChangeStreamDocument;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.mongodb.events.BufferingChangeStreamCursor.EventFetcher;
+import io.debezium.connector.mongodb.events.BufferingChangeStreamCursor.EventFetcher.State;
 import io.debezium.connector.mongodb.events.BufferingChangeStreamCursor.ResumableChangeStreamEvent;
 import io.debezium.function.ThrowingRunnable;
 import io.debezium.util.Clock;
@@ -247,6 +248,82 @@ class BufferingChangeStreamCursorTest {
         }
     }
 
+    @ParameterizedTest
+    @ValueSource(booleans = { false, true })
+    void shouldPreserveLifecycleWhenPausingAndResuming(boolean running) throws Exception {
+        try (var fixture = new CursorFixture(4, POLL_INTERVAL)) {
+            if (running) {
+                fixture.markFetcherRunning();
+            }
+            assertThat(fixture.fetcher.isRunning()).isEqualTo(running);
+            assertThat(fixture.cursor.isPaused()).isFalse();
+
+            fixture.cursor.pause();
+
+            assertThat(fixture.fetcher.isRunning()).isEqualTo(running);
+            assertThat(fixture.cursor.isPaused()).isTrue();
+
+            fixture.cursor.resume();
+
+            assertThat(fixture.fetcher.isRunning()).isEqualTo(running);
+            assertThat(fixture.cursor.isPaused()).isFalse();
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = { false, true })
+    void shouldRemainClosedAfterRepeatedClosePauseAndResume(boolean running) throws Exception {
+        try (var fixture = new CursorFixture(4, POLL_INTERVAL)) {
+            if (running) {
+                fixture.markFetcherRunning();
+            }
+            fixture.cursor.pause();
+            fixture.cursor.close();
+
+            assertThat(fixture.fetcher.isRunning()).isFalse();
+            assertThat(fixture.cursor.isPaused()).isTrue();
+
+            fixture.cursor.close();
+            fixture.cursor.resume();
+            fixture.cursor.pause();
+
+            assertThat(fixture.fetcher.isRunning()).isFalse();
+            assertThat(fixture.cursor.isPaused()).isTrue();
+
+            fixture.cursor.resume();
+            fixture.fetcher.run();
+
+            assertThat(fixture.fetcher.isRunning()).isFalse();
+            assertThat(fixture.cursor.isPaused()).isFalse();
+            assertThat(fixture.fetcher.hasError()).isFalse();
+            try (var waiting = new AsyncOperation<>(() -> {
+                fixture.fetcher.awaitEvent(Long.MAX_VALUE);
+                return fixture.cursor.tryNext();
+            })) {
+                assertThat(waiting.get()).isNull();
+            }
+        }
+    }
+
+    @Test
+    void shouldDrainBufferedEventsAfterClosing() throws Exception {
+        try (var fixture = new CursorFixture(4, POLL_INTERVAL)) {
+            final var events = List.of(event(1, true), event(2, false));
+            for (final var event : events) {
+                assertThat(fixture.enqueue(event)).isTrue();
+            }
+
+            fixture.cursor.close();
+
+            for (final var event : events) {
+                assertThat(fixture.cursor.tryNext()).isSameAs(event);
+                assertThat(fixture.cursor.getResumeToken()).isEqualTo(event.resumeToken);
+            }
+            assertThat(fixture.cursor.tryNext()).isNull();
+            assertThat(fixture.cursor.getResumeToken()).isEqualTo(events.get(events.size() - 1).resumeToken);
+        }
+    }
+
     @Test
     void shouldObserveAnEventEnqueuedBeforeAcquiringTheWaitLock() throws Exception {
         try (var fixture = new CursorFixture(4, POLL_INTERVAL)) {
@@ -371,6 +448,15 @@ class BufferingChangeStreamCursorTest {
             ((AtomicReference<Throwable>) error.get(fetcher)).set(failure);
             // run() publishes the failure before close() in its finally block.
             fetcher.close();
+        }
+
+        @SuppressWarnings("unchecked")
+        private void markFetcherRunning() throws ReflectiveOperationException {
+            // Seed the lifecycle without opening a MongoDB connection. The tests
+            // exercise the real pause, resume, close, and buffer operations.
+            final var state = EventFetcher.class.getDeclaredField("state");
+            state.setAccessible(true);
+            assertThat(((AtomicReference<State>) state.get(fetcher)).compareAndSet(State.NEW, State.RUNNING)).isTrue();
         }
 
         private void awaitBlockedOnWaitLock(Thread thread) {
