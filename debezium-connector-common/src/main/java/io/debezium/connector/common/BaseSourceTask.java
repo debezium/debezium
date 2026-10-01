@@ -519,7 +519,6 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
     private void stop(boolean restart) {
         stateLock.lock();
-        boolean interrupted = false;
 
         try {
             if (restart) {
@@ -538,7 +537,6 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             }
             catch (InterruptedException e) {
                 Thread.interrupted();
-                interrupted = true;
                 LOGGER.error("Interrupted while stopping coordinator", e);
                 final var exception = new ConnectException("Interrupted while stopping coordinator, failing the task", e);
                 shutdownFailure = exception;
@@ -577,9 +575,6 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         }
         finally {
             stateLock.unlock();
-            if (interrupted) {
-                Thread.currentThread().interrupt();
-            }
         }
     }
 
