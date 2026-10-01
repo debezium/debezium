@@ -71,6 +71,9 @@ public class ActivateTracingSpanTest {
         final Map<String, String> tracingContext = new HashMap<>();
         // example valid traceparent value taken from https://www.w3.org/TR/trace-context/#relationship-between-the-headers
         tracingContext.put("traceparent", propagatedTraceParent);
+        final String propagatedBaggage = "testprop=testvalue";
+        // example baggage value taken from https://www.w3.org/TR/baggage/#header-name
+        tracingContext.put("baggage", propagatedBaggage);
         final StringBuilder tracingContextSb = new StringBuilder();
         for (var prop : tracingContext.entrySet()) {
             tracingContextSb.append(prop.getKey())
@@ -115,6 +118,8 @@ public class ActivateTracingSpanTest {
         assertThat(headers.lastWithName("traceparent").value().toString()).contains(propagatedTraceId);
         // the produced Kafka record should have a traceparent header holding the "db-log-write" span Id as a parent
         assertThat(headers.lastWithName("traceparent").value().toString()).contains(spans.get(1).getSpanId());
+        // the produced Kafka record should have a baggage header holding the propagated baggage value
+        assertThat(headers.lastWithName("baggage").value().toString()).isEqualTo(propagatedBaggage);
     }
 
     @Test
