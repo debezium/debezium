@@ -20,11 +20,10 @@ One way to implement this conversion is through so-called _text embeddings_, a p
 Representing text as a vector enables computers to perform semantic similarity searches and other advanced operations.
 
 {prodname} offers a built-in feature to transform specified text fields into numerical embeddings vectors, and to add the resulting embeddings to the event record.
-Embedding inference is performed according to the embeddings model served by the configured provider.
-{prodname} offers several embeddings model providers.
+Embedding inference is performed by communicating with an inference service (such as a Cloud Service Provider, a self-hosted inference server, or an in-process runtime) that serves the configured embedding model.
 
 {prodname} can use a link:{link-kafka-docs}/#connect_transforms[single message transformation] (SMT) to generate embeddings.
-To interact with different embeddings providers, this Embeddings transformation uses the link:https://docs.langchain4j.dev/[langchain4j] framework.
+To interact with different inference service APIs and protocols, this Embeddings transformation uses the link:https://docs.langchain4j.dev/[langchain4j] framework.
 
 [IMPORTANT]
 ====
@@ -67,8 +66,8 @@ transforms.embeddings.field.source=after.product
 transforms.embeddings.field.embedding=after.product_embedding
 ----
 
-Finally, you must place the model provider JAR file in the connector class path, and configure the provider.
-For example, for the Ollama provider, add `debezium-ai-embeddings-ollama-$VERSION.jar` to your connector class path, and add the Ollama URL and model name to the connector configuration, as shown in the following example:
+Finally, you must place the corresponding integration JAR file in the connector class path, and configure the inference service and model properties.
+For example, for the Ollama inference server, add `debezium-ai-embeddings-ollama-$VERSION.jar` to your connector class path, and add the Ollama server URL and model name to the connector configuration, as shown in the following example:
 
 [source]
 ----
@@ -107,11 +106,17 @@ The data type of the specified field must be `string`.
 If no value is specified, the resulting record contains only the embedding value.
 |===
 
-== Model provider configuration
+== Inference service configuration
+
+{prodname} supports generating embeddings through several types of inference environments:
+
+* **Cloud Service Providers (CSPs) & Managed APIs**: Hosted embedding services such as OpenAI, Hugging Face Inference API, or Voyage AI.
+* **Self-Hosted & Local Inference Servers**: Inference servers such as Ollama or any OpenAI-compatible server (for example, vLLM, LiteLLM, or LocalAI) running on local or private infrastructure.
+* **In-Process Runtimes**: Embedded runtimes (such as ONNX) that run models directly inside the JVM without external network requests.
 
 === Hugging Face
 
-Embeddings provided by models available via link:https://huggingface.co//[Hugging Face].
+Embeddings served via the link:https://huggingface.co/docs/api-inference/index[Hugging Face Inference API].
 
 .Configuration options for Hugging Face embeddings
 [cols="30%a,25%a,45%a",subs="+attributes",options="header"]
@@ -125,7 +130,7 @@ Embeddings provided by models available via link:https://huggingface.co//[Huggin
 |Hugging Face access token.
 |[[embeddings-huggingface-model-name]]xref:embeddings-huggingface-model-name[`embeddings.huggingface.model.name`]
 |No default value
-|Name of the embedding model.
+|Name or repository ID of the embedding model to execute on the inference endpoint.
 Use the REST API to retrieve the list of available models.
 Specify the provider in the REST call, for example, link:https://huggingface.co/api/models?inference_provider=hf-inference[Hugging Face inference provider].
 |[[embeddings-huggingface-baseurl]]xref:embeddings-huggingface-baseurl[`embeddings.huggingface.baseUrl`]
@@ -146,7 +151,7 @@ As a result, the only inference provider currently available for use with the {p
 
 === Ollama
 
-Supports any model provided by link:https://ollama.com/[Ollama] server.
+Connects to an link:https://ollama.com/[Ollama] inference server to compute embeddings using any embedding model hosted on that server.
 
 .Ollama embeddings configuration options
 [cols="30%a,25%a,45%a",subs="+attributes",options="header"]
@@ -160,7 +165,7 @@ Supports any model provided by link:https://ollama.com/[Ollama] server.
 |URL of the Ollama server, including port number, for example, `http://localhost:11434`.
 |[[embeddings-ollama-model-name]]xref:embeddings-ollama-model-name[`embeddings.ollama.model.name`]
 |No default value
-|Name of the embedding model.
+|Name of the embedding model pulled and served by the Ollama instance (for example, `all-minilm` or `nomic-embed-text`).
 |[[embeddings-ollama-operation-timeout-ms]]xref:embeddings-ollama-operation-timeout-ms[`embeddings.ollama.operation.timeout.ms`]
 |15000 (15 seconds)
 |Maximum amount of time in milliseconds to wait for the embeddings reply.
@@ -168,16 +173,17 @@ Supports any model provided by link:https://ollama.com/[Ollama] server.
 
 === ONNX MiniLM
 
-Provides the link:https://docs.langchain4j.dev/integrations/embedding-models/in-process[ONNX in-process] `all-minilm-l6-v2` model, which is included directly in the jar file.
-No other configuration besides the general one is needed.
+Provides the link:https://docs.langchain4j.dev/integrations/embedding-models/in-process[ONNX in-process] `all-minilm-l6-v2` model, which is included directly in the JAR file and executed within the connector JVM process.
+No external inference server or remote network connection is required.
 
-This model is especially suited to prototyping and testing, because it does not depend on any external infrastructure or remote requests. 
+This model is especially suited to prototyping and testing, because it does not depend on external infrastructure.
 
-=== OpenAI
+=== OpenAI API & OpenAI-Compatible Endpoints
 
-Embeddings provided by link:https://platform.openai.com/[OpenAI] models.
+Connects to inference endpoints that implement the OpenAI REST API specification.
+This includes official link:https://platform.openai.com/[OpenAI] cloud services, Cloud Service Provider endpoints (such as Azure OpenAI), or self-hosted OpenAI-compatible inference servers (such as vLLM, LiteLLM, or LocalAI) serving open-source embedding models.
 
-.OpenAI embeddings configuration options
+.OpenAI protocol configuration options
 [cols="30%a,25%a,45%a",subs="+attributes",options="header"]
 |===
 |Option
@@ -186,18 +192,21 @@ Embeddings provided by link:https://platform.openai.com/[OpenAI] models.
 
 |[[embeddings-openai-api-key]]xref:embeddings-openai-api-key[`embeddings.openai.api.key`]
 |No default value
-|The OpenAI API key.
+|The API key used to authenticate with the inference service.
+When connecting to local OpenAI-compatible endpoints that do not require authentication, a placeholder value (such as `dummy`) can be specified.
 |[[embeddings-openai-model-name]]xref:embeddings-openai-model-name[`embeddings.openai.model.name`]
 |No default value
-|Name of the embedding model.
-The list of OpenAI embedding models can be found in the link:https://platform.openai.com/docs/guides/embeddings[OpenAI Embeddings documentation].
+|Name of the embedding model served by the target inference endpoint.
+For OpenAI-hosted services, see the link:https://platform.openai.com/docs/guides/embeddings[OpenAI Embeddings documentation].
+For custom or self-hosted endpoints, specify the model identifier loaded on that inference server.
 |[[embeddings-openai-baseurl]]xref:embeddings-openai-baseurl[`embeddings.openai.baseUrl`]
 |Default OpenAI API URL
-|Base OpenAI API URL.
-If not provided, the default OpenAI client URL is used.
+|Base URL of the inference endpoint.
+If not specified, the official OpenAI API URL is used.
+Set this property to point to self-hosted or alternative OpenAI-compatible inference servers.
 |[[embeddings-openai-organization-id]]xref:embeddings-openai-organization-id[`embeddings.openai.organization.id`]
 |No default value
-|Organization ID for the OpenAI API.
+|Organization ID for the OpenAI API account (optional).
 |[[embeddings-openai-operation-timeout-ms]]xref:embeddings-openai-operation-timeout-ms[`embeddings.openai.operation.timeout.ms`]
 |15000 (15 seconds)
 |Maximum amount of time in milliseconds to wait for the embeddings reply.
@@ -205,7 +214,7 @@ If not provided, the default OpenAI client URL is used.
 
 === Voyage AI
 
-Embeddings provided by link:https://www.voyageai.com/[Voyage AI] models.
+Embeddings provided by link:https://www.voyageai.com/[Voyage AI] Inference API.
 
 .Voyage AI embeddings configuration options
 [cols="30%a,25%a,45%a",subs="+attributes",options="header"]
@@ -223,7 +232,7 @@ Embeddings provided by link:https://www.voyageai.com/[Voyage AI] models.
 The list of Voyage AI models can be found in the link:https://docs.voyageai.com/docs/embeddings[Voyage AI Text Embeddings documentation].
 |[[embeddings-voyageai-baseurl]]xref:embeddings-voyageai-baseurl[`embeddings.voyageai.baseUrl`]
 |https://api.voyageai.com/v1/
-|Base Voyage AI API server.
+|Base Voyage AI API server URL.
 |[[embeddings-voyageai-operation-timeout-ms]]xref:embeddings-voyageai-operation-timeout-ms[`embeddings.voyageai.operation.timeout.ms`]
 |15000 (15 seconds)
 |Maximum amount of time in milliseconds to wait for the embeddings reply.

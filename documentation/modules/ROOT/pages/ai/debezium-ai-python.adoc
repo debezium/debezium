@@ -35,7 +35,7 @@ Every database `INSERT`, `UPDATE`, or `DELETE` transaction is captured from the 
 - **LangChain & LangGraph Native**: Maps CDC change events to standard `langchain_core.documents.Document` instances and provides retriever nodes for LangGraph agents.
 - **Deterministic ID Strategies**: Generates idempotent, primary-key-based UUID document identifiers to ensure database updates and deletes map correctly to existing vector embeddings without duplicates.
 - **Pluggable Vector DB Adapters**: Built-in adapters for Chroma, PGVector, and Milvus.
-- **Pluggable Embedding Providers**: Compatible with any LangChain embedding model provider, including `OpenAIEmbeddings`, `HuggingFaceEmbeddings`, `OllamaEmbeddings`, `CohereEmbeddings`, and `VertexAIEmbeddings`.
+- **Pluggable Embedding Integrations**: Compatible with any LangChain embedding model integration or inference service, including Cloud Service Providers (OpenAI, Google Cloud Vertex AI, AWS Bedrock, Cohere), self-hosted inference servers (Ollama, OpenAI-compatible endpoints), and local offline models (Sentence-Transformers, HuggingFace).
 - **Event Compaction**: Automatically compacts batches under high write loads to collapse redundant mutations to identical primary keys before flushing.
 
 == Supported Sources & Vector Stores
@@ -50,8 +50,8 @@ Every database `INSERT`, `UPDATE`, or `DELETE` transaction is captured from the 
 | **Vector Databases**
 | Chroma (`chromadb`), PGVector (`pgvector`), Milvus (`pymilvus`, `milvus-lite`)
 
-| **Embedding Providers**
-| OpenAI, HuggingFace / Local Sentence-Transformers, Ollama, Cohere, Vertex AI, AWS Bedrock
+| **Embedding Providers & Inference Services**
+| Cloud Service Providers (OpenAI, Vertex AI, AWS Bedrock, Cohere), Local/Self-Hosted Inference Servers (Ollama, OpenAI-compatible APIs), and Local Offline Models (Sentence-Transformers, HuggingFace)
 |===
 
 == Quickstart
