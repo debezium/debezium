@@ -273,4 +273,17 @@ public interface SchemaHistory {
      */
     default void stopBuffering() {
     }
+
+    /**
+     * Stops buffering and either commits or aborts the buffered records.
+     *
+     * Implementations that do not support transactional buffering retain the
+     * existing {@link #stopBuffering()} behavior.
+     *
+     * @param commit {@code true} when the buffered operation completed successfully,
+     *               or {@code false} when it should be aborted
+     */
+    default void stopBuffering(boolean commit) {
+        stopBuffering();
+    }
 }
