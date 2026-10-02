@@ -137,6 +137,12 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     }
 
     private void initSchema() {
+        if (!connectorConfig.refreshSchemaOnStartup()) {
+            // Tables are loaded when their first change is received: from the pgoutput relation message,
+            // or from the database for decoderbufs.
+            LOGGER.info("Skipping the initial schema load, tables are loaded when their first change is received");
+            return;
+        }
         try {
             schema.refresh(connection, true);
         }
