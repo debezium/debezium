@@ -252,6 +252,7 @@ miyajimakatsumi,Katsumi Miyajima
 mj-db,Minjae Lee
 mkobayas,Masazumi Kobayashi
 mly-zju,Lingyang Ma
+moggaa,Jaeyeon Park
 mokkara,Ram Satish
 Monish,Kodukulla Mohnish Mythreya
 mpermar,Martín Pérez
