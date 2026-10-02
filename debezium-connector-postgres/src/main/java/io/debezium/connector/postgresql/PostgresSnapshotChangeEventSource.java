@@ -26,6 +26,7 @@ import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.SnapshottingTask;
+import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.Table;
@@ -174,16 +175,22 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
             throws Exception {
         PostgresOffsetContext offset = ctx.offset;
         if (offset == null) {
+            // A fresh context would silently drop a pending incremental snapshot restored from the offsets.
+            @SuppressWarnings("unchecked")
+            final IncrementalSnapshotContext<TableId> carriedIncrementalContext = previousOffset != null
+                    ? (IncrementalSnapshotContext<TableId>) previousOffset.getIncrementalSnapshotContext()
+                    : null;
             if (previousOffset != null && !snapshotterService.getSnapshotter().shouldStreamEventsStartingFromSnapshot()) {
                 // The connect framework, not the connector, manages triggering committing offset state so the
                 // replication stream may not have flushed the latest offset state during catch up streaming.
                 // The previousOffset variable is shared between the catch up streaming and snapshot phases and
                 // has the latest known offset state.
                 offset = PostgresOffsetContext.initialContext(connectorConfig, jdbcConnection, getClock(),
-                        previousOffset.lastCommitLsn(), previousOffset.lastCompletelyProcessedLsn());
+                        previousOffset.lastCommitLsn(), previousOffset.lastCompletelyProcessedLsn(), carriedIncrementalContext);
             }
             else {
-                offset = PostgresOffsetContext.initialContext(connectorConfig, jdbcConnection, getClock());
+                offset = PostgresOffsetContext.initialContext(connectorConfig, jdbcConnection, getClock(),
+                        null, null, carriedIncrementalContext);
             }
             ctx.offset = offset;
         }
