@@ -102,6 +102,7 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
     public void addTransactionEvent(MemoryTransaction transaction, int eventKey, LogMinerEvent event) {
         List<LogMinerEventEntry> entries = eventsByTransactionId.computeIfAbsent(transaction.getTransactionId(), (id) -> new ArrayList<>());
         entries.add(new LogMinerEventEntry(eventKey, event));
+        transactionEvents++;
 
         if (event instanceof RollbackToSavepointEvent) {
             ListIterator<LogMinerEventEntry> it = entries.listIterator(entries.size());
@@ -119,6 +120,7 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
                         break;
                     }
                     it.remove();
+                    transactionEvents--;
                 }
             }
         }
@@ -140,7 +142,10 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
 
     @Override
     public void removeTransactionEvents(MemoryTransaction transaction) {
-        eventsByTransactionId.remove(transaction.getTransactionId());
+        final List<LogMinerEventEntry> entries = eventsByTransactionId.remove(transaction.getTransactionId());
+        if (entries != null) {
+            transactionEvents -= entries.size();
+        }
     }
 
     @Override
@@ -161,14 +166,10 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
     }
 
     @Override
-    public int getTransactionEvents() {
-        return eventsByTransactionId.values().stream().mapToInt(List::size).sum();
-    }
-
-    @Override
     public void clear() {
         transactionsByTransactionId.clear();
         eventsByTransactionId.clear();
+        transactionEvents = 0;
     }
 
     @Override
