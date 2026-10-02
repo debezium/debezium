@@ -100,7 +100,8 @@ else
       | grep -P "^${MAJOR_MINOR//./\\.}\." \
       | grep -v "^${MICRO//./\\.}\." \
       | sort -t. -k1,1n -k2,2n -k3,3n -k4,4 \
-      | tail -1)
+      | tail -1 \
+      || true)
 fi
 
 if [ -z "$PREVIOUS_VERSION" ]; then

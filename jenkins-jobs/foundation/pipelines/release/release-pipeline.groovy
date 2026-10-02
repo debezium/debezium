@@ -94,6 +94,7 @@ properties([
 @Field final IMAGES = ['connect', 'connect-base', 'examples/mysql', 'examples/mysql-gtids', 'examples/mysql-replication/master', 'examples/mysql-replication/replica', 'examples/mariadb', 'examples/postgres', 'examples/mongodb', 'kafka', 'server', 'operator', 'platform-conductor', 'platform-stage']
 @Field final MAVEN_CENTRAL = 'https://repo1.maven.org/maven2'
 @Field final LOCAL_MAVEN_REPO = "$HOME_DIR/.m2/repository"
+@Field final MAVEN_MEMORY = '-Xmx16g -Xms1g'
 
 @Field final PUBLISH_TIMEOUT_MINUTES = 90
 @Field final PUBLISH_POLL_INTERVAL_MS = 15000
@@ -241,8 +242,13 @@ def checkPreReleaseContent(String dbzContent, String copyrightContent, String re
 
 @Field final BUILD_ARGS = [
    'debezium': '-Poracle-all',
-   'server': '-Pnative',
+   'server': '-Pnative -Dquarkus.native.builder-image=quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-25 -Dversion.debezium=$RELEASE_VERSION',
  ]
+
+// Build args used in the post-perform step (building the new development version).
+// If present, the value is used instead of BUILD_ARGS for that repo.
+// An empty string means no extra args.
+@Field final POST_PERFORM_BUILD_ARGS = [:]
 
 // Debezium Server must always ignore snapshots as it depends on Debezium Server BOM
 // and it is not possible to override it with a stable version
@@ -436,7 +442,7 @@ def releasePrepare(repoDir, repoName) {
     PRE_PREPARE_STEPS.getOrDefault(repoDir, this.&defaultPrePrepareSteps)()
 
     echo 'Executing release:prepare'
-    sh "env MAVEN_OPTS='-Xmx8g -Xms1g' ./mvnw release:clean release:prepare -DreleaseVersion=$RELEASE_VERSION -Dtag=$VERSION_TAG -DdevelopmentVersion=$DEVELOPMENT_VERSION -DpushChanges=${!DRY_RUN} -DignoreSnapshots=$ignoreSnaphots -DpreparationGoals='clean install' -Darguments=\"-DskipTests -DskipITs -Passembly $buildArgs\" $buildArgs"
+    sh "env MAVEN_OPTS='$MAVEN_MEMORY' ./mvnw release:clean release:prepare -DreleaseVersion=$RELEASE_VERSION -Dtag=$VERSION_TAG -DdevelopmentVersion=$DEVELOPMENT_VERSION -DpushChanges=${!DRY_RUN} -DignoreSnapshots=$ignoreSnaphots -DpreparationGoals='clean install' -Darguments=\"-DskipTests -DskipITs -Passembly $buildArgs\" $buildArgs"
 
     gitPushCandidate(repoName)
 }
@@ -447,15 +453,15 @@ def releasePerformUpload(repoDir, repoName) {
     echo 'Executing release:perform'
     sendZulipNotification("Publishing version $RELEASE_VERSION of $repoDir")
 
-    executeShell('.', "env MAVEN_USERNAME=\${MAVEN_USERNAME} MAVEN_TOKEN=\${MAVEN_TOKEN} MAVEN_OPTS='-Xmx8g -Xms1g' ./mvnw release:perform -DstagingProgressTimeoutMinutes=60 -DlocalCheckout=$DRY_RUN -Dpublish.auto=${!DRY_RUN} -Dpublish.skip=${DRY_RUN} -Dpublish.wait.until=uploaded -DconnectionUrl=\"scm:git:https://\${GITHUB_USERNAME}:\${GITHUB_PASSWORD}@${repoName}\" -Darguments=\"-s \\\$HOME/.m2/settings-snapshots.xml -DstagingProgressTimeoutMinutes=60 -Dpublish.auto=${!DRY_RUN} -Dpublish.skip=${DRY_RUN} -Dpublish.wait.until=uploaded -Dgpg.homedir=\\\$WORKSPACE/$GPG_DIR -Dgpg.passphrase=\${GPG_PASSPHRASE} -DskipTests -DskipITs -Dschema.generator.output.dir=${DESCRIPTORS_OUTPUT_DIR} $buildArgs\" $buildArgs")
+    executeShell('.', "env MAVEN_USERNAME=\${MAVEN_USERNAME} MAVEN_TOKEN=\${MAVEN_TOKEN} MAVEN_OPTS='$MAVEN_MEMORY' ./mvnw release:perform -DstagingProgressTimeoutMinutes=60 -DlocalCheckout=$DRY_RUN -Dpublish.auto=${!DRY_RUN} -Dpublish.skip=${DRY_RUN} -Dpublish.wait.until=uploaded -DconnectionUrl=\"scm:git:https://\${GITHUB_USERNAME}:\${GITHUB_PASSWORD}@${repoName}\" -Darguments=\"-s \\\$HOME/.m2/settings-snapshots.xml -DstagingProgressTimeoutMinutes=60 -Dpublish.auto=${!DRY_RUN} -Dpublish.skip=${DRY_RUN} -Dpublish.wait.until=uploaded -Dgpg.homedir=\\\$WORKSPACE/$GPG_DIR -Dgpg.passphrase=\${GPG_PASSPHRASE} -DskipTests -DskipITs -Dschema.generator.output.dir=${DESCRIPTORS_OUTPUT_DIR} $buildArgs\" $buildArgs")
 }
 
 def releasePerformPostSteps(repoDir, repoName) {
-    def buildArgs = buildArgsForRepo(repoDir)
+    def buildArgs = POST_PERFORM_BUILD_ARGS.containsKey(repoDir) ? POST_PERFORM_BUILD_ARGS[repoDir] : buildArgsForRepo(repoDir)
 
     echo "Building new development version"
     def threads = repoDir in DISABLE_PARALLEL_BUILD ? '' : '-T 1C'
-    sh "env MAVEN_OPTS='-Xmx8g -Xms1g' ./mvnw clean install $threads -DskipTests -DskipITs -Passembly $buildArgs"
+    sh "env MAVEN_OPTS='$MAVEN_MEMORY' ./mvnw clean install $threads -DskipTests -DskipITs -Passembly $buildArgs"
 
     echo 'Executing post-perform steps'
     POST_PERFORM_STEPS.getOrDefault(repoDir, this.&defaultPostPerformSteps)()
