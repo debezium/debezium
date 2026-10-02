@@ -11,12 +11,14 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import org.bson.BsonDocument;
+import org.bson.BsonInt32;
 import org.bson.BsonTimestamp;
 import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.mongodb.MongoException;
+import com.mongodb.ReadConcern;
 import com.mongodb.client.ChangeStreamIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
@@ -40,6 +42,7 @@ import io.debezium.function.BlockingConsumer;
 public class MongoUtils {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoUtils.class);
+    private static final String ADMIN_DATABASE = "admin";
 
     /**
      * Perform the given operation on each of the database names.
@@ -189,7 +192,7 @@ public class MongoUtils {
 
         if (description.getType() == ClusterType.UNKNOWN) {
             // force the connection and try again
-            client.listDatabaseNames().first(); // force the connection
+            runHelloCommand(client, ADMIN_DATABASE);
             description = client.getClusterDescription();
         }
 
@@ -251,16 +254,25 @@ public class MongoUtils {
     }
 
     public static BsonTimestamp hello(MongoClient client, String dbName) {
-        var database = client.getDatabase(dbName);
+        return runHelloCommand(client, dbName).getTimestamp("operationTime");
+    }
+
+    private static BsonDocument runHelloCommand(MongoClient client, String dbName) {
         BsonDocument result;
         try {
-            result = database.runCommand(new Document("hello", 1), BsonDocument.class);
+            result = runReadCommand(client, dbName, new BsonDocument("hello", new BsonInt32(1)));
         }
         catch (MongoException e) {
             LOGGER.error(e.getMessage(), e);
-            result = database.runCommand(new Document("isMaster", 1), BsonDocument.class);
+            result = runReadCommand(client, dbName, new BsonDocument("isMaster", new BsonInt32(1)));
         }
-        return result.getTimestamp("operationTime");
+        return result;
+    }
+
+    private static BsonDocument runReadCommand(MongoClient client, String databaseName, BsonDocument command) {
+        return client.getDatabase(databaseName)
+                .withReadConcern(ReadConcern.DEFAULT)
+                .runCommand(command, client.getReadPreference(), BsonDocument.class);
     }
 
     private MongoUtils() {

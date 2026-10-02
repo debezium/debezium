@@ -145,7 +145,7 @@ public class MongoDbConnector extends BaseSourceConnector implements ConfigDescr
                         // only when we try to fetch results a connection gets established
                         // Verify if users has rights to list databases
                         var dbNames = new ArrayList<String>();
-                        client.listDatabaseNames().into(dbNames);
+                        connectionContext.forEachDatabaseName(client, dbNames::add);
                         if (dbNames.isEmpty()) {
                             String errorMessage = "User doesn't have rights to list databases. " +
                                     "Please verify credentials and database permissions.";

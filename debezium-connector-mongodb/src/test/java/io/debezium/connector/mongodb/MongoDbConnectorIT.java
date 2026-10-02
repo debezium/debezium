@@ -217,6 +217,83 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
+    void shouldSnapshotFromTaggedSecondaryWhilePrimaryIsUnavailable() throws InterruptedException {
+        var replicaSet = requireThreeMemberReplicaSet();
+        var primary = replicaSet.tryPrimary().orElseThrow();
+        var secondaryMembers = replicaSet.getMembers().stream()
+                .filter(member -> member != primary)
+                .toList();
+        var taggedSecondary = secondaryMembers.get(0);
+        var taggedSecondaryAddress = taggedSecondary.getClientAddress().toString();
+
+        TestHelper.cleanDatabase(mongo, "dbit");
+        insertDocuments("dbit", "secondary_snapshot", new Document("_id", 1));
+
+        var primaryPaused = false;
+        try {
+            primary.eval("(function() { var config = rs.conf(); " +
+                    "config.members.find(function(member) { return member.host === '" + taggedSecondaryAddress + "'; }).tags = { region: 'east' }; " +
+                    "return rs.reconfig(config); })()");
+            Awaitility.await()
+                    .atMost(30, TimeUnit.SECONDS)
+                    .ignoreExceptions()
+                    .until(() -> "east".equals(taggedSecondary.eval(
+                            "rs.conf().members.find(function(member) { return member.host === '" + taggedSecondaryAddress + "'; }).tags.region").asText()));
+            Awaitility.await()
+                    .atMost(30, TimeUnit.SECONDS)
+                    .ignoreExceptions()
+                    .until(() -> taggedSecondary.eval(
+                            "(function() { db.getMongo().setReadPref('secondary'); " +
+                                    "return db.getSiblingDB('dbit').secondary_snapshot.countDocuments({ _id: 1 }); })()")
+                            .asInt() == 1);
+
+            var connectionString = ConnectionStrings.appendParameter(
+                    ConnectionStrings.appendParameter(mongo.getConnectionString(), "readPreference", "secondary"),
+                    "readPreferenceTags",
+                    "region:east");
+            config = TestHelper.getConfiguration(connectionString).edit()
+                    .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.secondary_snapshot")
+                    .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                    .build();
+            context = new MongoDbTaskContext(config);
+
+            secondaryMembers.forEach(member -> member.eval("db.adminCommand({ replSetFreeze: 120 })"));
+            primary.pause();
+            primaryPaused = true;
+            assertThat(secondaryMembers)
+                    .allSatisfy(member -> assertThat(member.eval("rs.hello().isWritablePrimary").asBoolean()).isFalse());
+
+            var validation = new MongoDbConnector().validate(config.asMap());
+            assertNoConfigurationErrors(validation, MongoDbConnectorConfig.CONNECTION_STRING);
+
+            start(MongoDbConnector.class, config);
+            var records = consumeRecordsByTopic(1).allRecordsInOrder();
+
+            assertThat(records).singleElement().satisfies(record -> {
+                VerifyRecord.isValid(record);
+                verifyReadOperation(record);
+                var value = (Struct) record.value();
+                assertThat(Document.parse(value.getString(Envelope.FieldName.AFTER)).getInteger("_id")).isEqualTo(1);
+            });
+        }
+        finally {
+            bestEffortCleanup("stop connector", this::stopConnector);
+            if (primaryPaused) {
+                bestEffortCleanup("unpause original primary", primary::unpause);
+            }
+            replicaSet.getMembers().forEach(member -> bestEffortCleanup(
+                    "unfreeze replica set member",
+                    () -> member.eval("db.adminCommand({ replSetFreeze: 0 })")));
+            replicaSet.getMembers().forEach(member -> bestEffortCleanup(
+                    "remove replica set member tag",
+                    () -> removeReplicaSetMemberTag(member, taggedSecondaryAddress)));
+            bestEffortCleanup("wait for writable primary", replicaSet::awaitWritablePrimary);
+            bestEffortCleanup("remove replica set member tag after primary recovery", () -> replicaSet.tryPrimary()
+                    .ifPresent(currentPrimary -> removeReplicaSetMemberTag(currentPrimary, taggedSecondaryAddress)));
+        }
+    }
+
+    @Test
     void shouldThrowExceptionWhenFieldExcludeListDatabasePartIsOnlyProvided() {
         shouldValidateFilterFieldConfiguration(MongoDbConnectorConfig.FIELD_EXCLUDE_LIST, "inventory", 1);
     }
@@ -3441,6 +3518,21 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         var replicaSet = (MongoDbReplicaSet) mongo;
         assumeTrue(replicaSet.getMembers().size() >= 3, "Read preference election tests require at least three members");
         return replicaSet;
+    }
+
+    private void bestEffortCleanup(String operation, Runnable cleanup) {
+        try {
+            cleanup.run();
+        }
+        catch (Throwable t) {
+            logger.warn("Unable to {} during test cleanup", operation, t);
+        }
+    }
+
+    private static void removeReplicaSetMemberTag(MongoDbContainer member, String taggedSecondaryAddress) {
+        member.eval("(function() { var config = rs.conf(); " +
+                "delete config.members.find(function(candidate) { return candidate.host === '" + taggedSecondaryAddress + "'; }).tags; " +
+                "return rs.reconfig(config); })()");
     }
 
     private void startReadPreferenceTestConnector(String readPreference) throws InterruptedException {
