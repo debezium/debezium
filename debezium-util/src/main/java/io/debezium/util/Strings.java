@@ -672,7 +672,7 @@ public final class Strings {
     /**
      * Parse the supplied string as a number.
      *
-     * @param value the string representation of a integer value
+     * @param value the string representation of a number
      * @return the number, or {@code null} if the value is not a number
      */
     public static Number asNumber(String value) {
@@ -682,7 +682,7 @@ public final class Strings {
     /**
      * Parse the supplied string as a number.
      *
-     * @param value the string representation of a integer value
+     * @param value the string representation of a number
      * @param defaultValueProvider the function that returns a value to be used when the string value is null or cannot be parsed
      *            as a number; may be null if no default value is to be used
      * @return the number, or {@code null} if the value is not a number and no default value is supplied
@@ -729,9 +729,9 @@ public final class Strings {
     }
 
     /**
-     * Parse the supplied string as a integer value.
+     * Parse the supplied string as an integer value.
      *
-     * @param value the string representation of a integer value
+     * @param value the string representation of an integer value
      * @param defaultValue the value to return if the string value is null or cannot be parsed as an int
      * @return the int value
      */
