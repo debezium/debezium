@@ -8,7 +8,6 @@ package io.debezium.connector.oracle.logminer.buffered.infinispan;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -48,7 +47,10 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
     @Override
     public void addTransaction(InfinispanTransaction transaction) {
         transactionCache.put(transaction.getTransactionId(), transaction);
-        eventIdsByTransactionId.put(transaction.getTransactionId(), new TreeSet<>());
+        final TreeSet<Integer> previousEventIds = eventIdsByTransactionId.put(transaction.getTransactionId(), new TreeSet<>());
+        if (previousEventIds != null) {
+            transactionEvents -= previousEventIds.size();
+        }
     }
 
     @Override
@@ -114,7 +116,9 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
     public void addTransactionEvent(InfinispanTransaction transaction, int eventKey, LogMinerEvent event) {
         eventCache.put(transaction.getEventId(eventKey), event);
         final TreeSet<Integer> eventIds = eventIdsByTransactionId.get(transaction.getTransactionId());
-        eventIds.add(eventKey);
+        if (eventIds.add(eventKey)) {
+            transactionEvents++;
+        }
 
         if (event instanceof RollbackToSavepointEvent) {
             final Iterator<LogMinerEventEntry> reverseIterator = new LogMinerEventEntryIterator(
@@ -125,6 +129,7 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
                 while (forwardIterator.hasNext()) {
                     eventCache.remove(transaction.getEventId(forwardIterator.next()));
                     forwardIterator.remove();
+                    transactionEvents--;
                 }
             }
         }
@@ -132,11 +137,11 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
 
     @Override
     public void removeTransactionEvents(InfinispanTransaction transaction) {
-        final var events = eventIdsByTransactionId.get(transaction.getTransactionId());
+        final var events = eventIdsByTransactionId.remove(transaction.getTransactionId());
         if (events != null) {
             events.descendingSet().stream().map(transaction::getEventId).forEach(eventCache::remove);
+            transactionEvents -= events.size();
         }
-        eventIdsByTransactionId.remove(transaction.getTransactionId());
     }
 
     @Override
@@ -157,15 +162,11 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
     }
 
     @Override
-    public int getTransactionEvents() {
-        return eventIdsByTransactionId.values().stream().mapToInt(Set::size).sum();
-    }
-
-    @Override
     public void clear() {
         transactionCache.clear();
         eventCache.clear();
         eventIdsByTransactionId.clear();
+        transactionEvents = 0;
     }
 
     @Override
@@ -192,8 +193,9 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
                     .forEach(parts -> {
                         final String transactionId = parts[0];
                         final int eventId = Integer.parseInt(parts[1]);
-                        if (transactionCache.containsKey(transactionId)) {
-                            eventIdsByTransactionId.computeIfAbsent(transactionId, k -> new TreeSet<>()).add(eventId);
+                        if (transactionCache.containsKey(transactionId)
+                                && eventIdsByTransactionId.computeIfAbsent(transactionId, k -> new TreeSet<>()).add(eventId)) {
+                            transactionEvents++;
                         }
                     });
         });
