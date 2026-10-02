@@ -268,6 +268,7 @@ nickchomey,Nick Chomey
 nirlevy,Nir Levy
 nirnx,Pawel Torbus
 nirolevy,Niro Levy
+NiteeshK21,Niteesh Kumar Pandey
 nivolg,Nick Golubev
 nonononoonononon,Yuang Li
 nrkeli,Emil Lindström
