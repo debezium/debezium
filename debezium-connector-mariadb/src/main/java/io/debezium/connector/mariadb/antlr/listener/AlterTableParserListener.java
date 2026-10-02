@@ -262,7 +262,7 @@ public class AlterTableParserListener extends TableCommonParserListener {
                 defaultValueColumnEditor = column.edit();
                 if (ctx.SET() != null) {
                     defaultValueListener = new DefaultValueParserListener(defaultValueColumnEditor,
-                            new AtomicReference<>(column.isOptional()));
+                            new AtomicReference<>(column.isOptional()), parser);
                     listeners.add(defaultValueListener);
                 }
                 else if (ctx.DROP() != null) {
