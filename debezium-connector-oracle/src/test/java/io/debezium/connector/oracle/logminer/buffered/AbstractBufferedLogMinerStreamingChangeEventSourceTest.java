@@ -925,6 +925,39 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         }
     }
 
+    @Test
+    @FixFor("dbz#2777")
+    void testTransactionEventsCountTracksCachedEvents() throws Exception {
+        try (var source = getChangeEventSource(getConfig().build())) {
+            final LogMinerTransactionCache<Transaction> cache = source.getTransactionCache();
+            assertTransactionEvents(cache, 0);
+
+            source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
+            source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'insert'"));
+            source.processEvent(getUpdateLogMinerEventRow(3, TRANSACTION_ID_1, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'update'"));
+            source.processEvent(getStartLogMinerEventRow(4, TRANSACTION_ID_2));
+            source.processEvent(getInsertLogMinerEventRow(5, TRANSACTION_ID_2));
+            assertTransactionEvents(cache, 3);
+
+            // The undo of the update removes the update and keeps the rollback event itself
+            source.processEvent(getRollbackToSavepointLogMinerEventRow(6, TRANSACTION_ID_1, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'insert'"));
+            assertTransactionEvents(cache, 3);
+
+            source.processEvent(getCommitLogMinerEventRow(7, TRANSACTION_ID_1));
+            assertTransactionEvents(cache, 1);
+
+            source.processEvent(getRollbackLogMinerEventRow(8, TRANSACTION_ID_2));
+            assertTransactionEvents(cache, 0);
+        }
+    }
+
+    private static void assertTransactionEvents(LogMinerTransactionCache<Transaction> cache, int expected) {
+        // The running count must always match the events of the cached transactions
+        final int cachedEvents = cache.streamTransactionsAndReturn(stream -> stream.mapToInt(cache::getTransactionEventCount).sum());
+        assertThat(cachedEvents).isEqualTo(expected);
+        assertThat(cache.getTransactionEvents()).isEqualTo(expected);
+    }
+
     private OracleDatabaseSchema createOracleDatabaseSchema() throws Exception {
         Configuration configuration = getConfig().build();
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(configuration);
