@@ -445,7 +445,7 @@ public class AlterTableParserListener extends TableCommonParserListener {
 
         // Handle signed number
         if (signed.ulong_number() != null) {
-            return normalizeNumericDefaultValue(defaultValueColumnEditor.typeName(), sign + signed.ulong_number().getText());
+            return normalizeNumericDefaultValue(defaultValueColumnEditor.typeName(), defaultValueColumnEditor.length(), sign + signed.ulong_number().getText());
         }
 
         // Handle literal (text, numeric, temporal, etc.)
@@ -454,7 +454,8 @@ public class AlterTableParserListener extends TableCommonParserListener {
                 return null;
             }
             if (signed.literal().numLiteral() != null) {
-                return normalizeNumericDefaultValue(defaultValueColumnEditor.typeName(), sign + signed.literal().numLiteral().getText());
+                return normalizeNumericDefaultValue(defaultValueColumnEditor.typeName(), defaultValueColumnEditor.length(),
+                        sign + signed.literal().numLiteral().getText());
             }
             return sign + extractLiteralValue(signed.literal());
         }

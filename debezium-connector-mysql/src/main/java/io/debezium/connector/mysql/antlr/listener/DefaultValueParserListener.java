@@ -96,7 +96,8 @@ public class DefaultValueParserListener extends MySqlParserBaseListener {
 
                     // Handle signed number
                     if (signed.ulong_number() != null) {
-                        getColumnEditor().defaultValueExpression(normalizeNumericDefaultValue(getColumnEditor().typeName(), sign + signed.ulong_number().getText()));
+                        getColumnEditor().defaultValueExpression(
+                                normalizeNumericDefaultValue(getColumnEditor().typeName(), getColumnEditor().length(), sign + signed.ulong_number().getText()));
                         exitDefaultValue(true);
                         return;
                     }
@@ -139,7 +140,8 @@ public class DefaultValueParserListener extends MySqlParserBaseListener {
 
         // Numeric literal
         if (literalCtx.numLiteral() != null) {
-            getColumnEditor().defaultValueExpression(normalizeNumericDefaultValue(getColumnEditor().typeName(), sign + literalCtx.numLiteral().getText()));
+            getColumnEditor().defaultValueExpression(
+                    normalizeNumericDefaultValue(getColumnEditor().typeName(), getColumnEditor().length(), sign + literalCtx.numLiteral().getText()));
             return;
         }
 
