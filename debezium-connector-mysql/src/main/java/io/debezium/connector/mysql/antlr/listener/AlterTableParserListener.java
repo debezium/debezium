@@ -468,8 +468,7 @@ public class AlterTableParserListener extends TableCommonParserListener {
     private String extractLiteralValue(MySqlParser.LiteralContext literalCtx) {
         // Text literal
         if (literalCtx.textLiteral() != null) {
-            String text = literalCtx.textLiteral().getText();
-            return unquote(text);
+            return parser.parseTextLiteral(literalCtx.textLiteral());
         }
 
         // Numeric literal
@@ -488,14 +487,6 @@ public class AlterTableParserListener extends TableCommonParserListener {
         }
 
         return null;
-    }
-
-    private String unquote(String stringLiteral) {
-        if (stringLiteral != null && ((stringLiteral.startsWith("'") && stringLiteral.endsWith("'"))
-                || (stringLiteral.startsWith("\"") && stringLiteral.endsWith("\"")))) {
-            return stringLiteral.substring(1, stringLiteral.length() - 1);
-        }
-        return stringLiteral;
     }
 
     private void handleExitAlterDefault(MySqlParser.AlterListItemContext ctx) {

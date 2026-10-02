@@ -118,6 +118,22 @@ public class MariaDbOnlyAntlrDdlParserTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2764")
+    public void shouldPreserveDdlWithNoBackslashEscapes() {
+        parser.parse("SET sql_mode = 'NO_BACKSLASH_ESCAPES'", tables);
+        final var ddl = "CREATE TABLE `t\\x` (v VARCHAR(64) DEFAULT n'한😀\\', /* \\' */ nullable INT DEFAULT \\N)";
+        final var changes = parser.parse(ddl, tables);
+
+        final var table = tables.forTable(new TableId(null, null, "t\\x"));
+        assertThat(table.columnWithName("v").defaultValueExpression()).contains("한😀\\");
+        assertThat(table.columnWithName("nullable").isOptional()).isTrue();
+        assertThat(getColumnSchema(table, "nullable").defaultValue()).isNull();
+        assertThat(changes.isEmpty()).isFalse();
+        changes.getEventsByDatabase((database, events) -> assertThat(events)
+                .extracting(event -> event.statement()).containsExactly(ddl));
+    }
+
+    @Test
     @FixFor("DBZ-4661")
     public void shouldSupportCreateTableWithEncryption() {
         parser.parse(
