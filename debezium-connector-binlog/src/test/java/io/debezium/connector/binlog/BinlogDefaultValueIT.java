@@ -44,6 +44,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.jdbc.BinlogValueConverters;
+import io.debezium.connector.binlog.junit.BinlogDatabaseVersionResolver;
 import io.debezium.connector.binlog.util.BinlogTestConnection;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
@@ -124,14 +125,21 @@ public abstract class BinlogDefaultValueIT<C extends SourceConnector> extends Ab
     }
 
     protected static Stream<Arguments> integerSchemaDefaults() {
+        final var databaseVersionResolver = new BinlogDatabaseVersionResolver();
+        // MariaDB 12.3 rejects DEFAULT -1.5 with error 1067, even with sql_mode=''.
+        // DEFAULT '-1.5' is accepted and rounds to -2. Use the quoted form on 12.3+
+        // to retain snapshot, MODIFY COLUMN, and SET DEFAULT coverage without skipping tests.
+        final var fractionalDefault = databaseVersionResolver.isMariaDb() && databaseVersionResolver.getVersion().isGreaterThanEqualTo(12, 3, -1)
+                ? "'-1.5'"
+                : "-1.5";
         return Stream.of("snapshot", "modify", "set").flatMap(stage -> Stream.of(
                 Arguments.of(stage, "BIGINT", "9007199254740993", 9007199254740993L),
                 Arguments.of(stage, "BIGINT", "9223372036854775806", Long.MAX_VALUE - 1),
-                Arguments.of(stage, "TINYINT", "-1.5", -2L),
-                Arguments.of(stage, "SMALLINT", "-1.5", -2L),
-                Arguments.of(stage, "MEDIUMINT", "-1.5", -2L),
-                Arguments.of(stage, "INT", "-1.5", -2L),
-                Arguments.of(stage, "BIGINT", "-1.5", -2L)));
+                Arguments.of(stage, "TINYINT", fractionalDefault, -2L),
+                Arguments.of(stage, "SMALLINT", fractionalDefault, -2L),
+                Arguments.of(stage, "MEDIUMINT", fractionalDefault, -2L),
+                Arguments.of(stage, "INT", fractionalDefault, -2L),
+                Arguments.of(stage, "BIGINT", fractionalDefault, -2L)));
     }
 
     private void assertIntegerSchemaDefault(String table, int id, String operation, long expected) throws Exception {
