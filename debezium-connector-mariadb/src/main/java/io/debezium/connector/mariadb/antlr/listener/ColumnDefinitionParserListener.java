@@ -75,7 +75,7 @@ public class ColumnDefinitionParserListener extends MariaDBParserBaseListener {
         optionalColumn = new AtomicReference<>();
         resolveColumnDataType(ctx.dataType());
         parser.runIfNotNull(() -> {
-            defaultValueListener = new DefaultValueParserListener(columnEditor, optionalColumn);
+            defaultValueListener = new DefaultValueParserListener(columnEditor, optionalColumn, parser);
             listeners.add(defaultValueListener);
         }, tableEditor);
         super.enterColumnDefinition(ctx);

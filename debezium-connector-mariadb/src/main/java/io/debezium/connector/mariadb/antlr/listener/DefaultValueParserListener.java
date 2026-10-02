@@ -7,6 +7,7 @@ package io.debezium.connector.mariadb.antlr.listener;
 
 import java.util.concurrent.atomic.AtomicReference;
 
+import io.debezium.connector.mariadb.antlr.MariaDbAntlrDdlParser;
 import io.debezium.ddl.parser.mariadb.generated.MariaDBParser.CurrentTimestampContext;
 import io.debezium.ddl.parser.mariadb.generated.MariaDBParser.DefaultValueContext;
 import io.debezium.ddl.parser.mariadb.generated.MariaDBParserBaseListener;
@@ -21,12 +22,14 @@ public class DefaultValueParserListener extends MariaDBParserBaseListener {
 
     private final ColumnEditor columnEditor;
     private final AtomicReference<Boolean> optionalColumn;
+    private final MariaDbAntlrDdlParser parser;
 
     private boolean converted;
 
-    public DefaultValueParserListener(ColumnEditor columnEditor, AtomicReference<Boolean> optionalColumn) {
+    public DefaultValueParserListener(ColumnEditor columnEditor, AtomicReference<Boolean> optionalColumn, MariaDbAntlrDdlParser parser) {
         this.columnEditor = columnEditor;
         this.optionalColumn = optionalColumn;
+        this.parser = parser;
         this.converted = false;
     }
 
@@ -41,13 +44,7 @@ public class DefaultValueParserListener extends MariaDBParserBaseListener {
         }
         if (ctx.constant() != null) {
             if (ctx.constant().stringLiteral() != null) {
-                if (ctx.constant().stringLiteral().COLLATE() == null) {
-                    columnEditor.defaultValueExpression(sign + unquote(ctx.constant().stringLiteral().getText()));
-                }
-                else {
-                    columnEditor.defaultValueExpression(
-                            sign + unquote(ctx.constant().stringLiteral().STRING_LITERAL(0).getText()));
-                }
+                columnEditor.defaultValueExpression(sign + parser.parseStringLiteral(ctx.constant().stringLiteral()));
             }
             else if (ctx.constant().decimalLiteral() != null) {
                 columnEditor.defaultValueExpression(sign + ctx.constant().decimalLiteral().getText());
@@ -90,14 +87,6 @@ public class DefaultValueParserListener extends MariaDBParserBaseListener {
             }
             converted = true;
         }
-    }
-
-    private String unquote(String stringLiteral) {
-        if (stringLiteral != null && ((stringLiteral.startsWith("'") && stringLiteral.endsWith("'"))
-                || (stringLiteral.startsWith("\"") && stringLiteral.endsWith("\"")))) {
-            return stringLiteral.substring(1, stringLiteral.length() - 1);
-        }
-        return stringLiteral;
     }
 
     private String unquoteBinary(String stringLiteral) {
