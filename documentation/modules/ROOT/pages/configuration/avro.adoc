@@ -5,6 +5,7 @@
 [id="avro-serialization"]
 = Avro Serialization
 
+ifdef::community[]
 :toc:
 :toc-placement: macro
 :linkattrs:
@@ -12,6 +13,7 @@
 :source-highlighter: highlight.js
 
 toc::[]
+endif::community[]
 
 A {prodname} connector works in the Kafka Connect framework to capture each row-level change in a database by generating a change event record.
 For each change event record, the {prodname} connector completes the following actions:
