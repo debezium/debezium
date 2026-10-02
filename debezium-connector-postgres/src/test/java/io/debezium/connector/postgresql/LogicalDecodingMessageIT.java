@@ -31,6 +31,7 @@ import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.SkipWhenDatabaseVersion;
+import io.debezium.junit.logging.LogInterceptor;
 
 /**
  * Integration test for logical decoding messages.
@@ -83,6 +84,32 @@ public class LogicalDecodingMessageIT extends AbstractAsyncEngineConnectorTest {
         List<SourceRecord> logicalMessageRecords = records.recordsForTopic(topicName("message"));
         assertThat(insertRecords).hasSize(1);
         assertNull(logicalMessageRecords);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2733")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Only supported on PgOutput")
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 14, minor = 0, reason = "Message not supported for PG version < 14")
+    public void shouldWarnOnMissingHeartbeatForFilteredLogicalDecodingMessages() throws Exception {
+        final LogInterceptor logInterceptor = new LogInterceptor(PostgresStreamingChangeEventSource.class);
+        final Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.LOGICAL_DECODING_MESSAGE_PREFIX_EXCLUDE_LIST, "excluded")
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.NO_DATA)
+                .build();
+
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+        waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
+
+        final int filteredCount = 10_100;
+        TestHelper.execute("SELECT pg_logical_emit_message(false, 'excluded', 'content') "
+                + "FROM generate_series(1, " + filteredCount + ");");
+        TestHelper.execute("SELECT pg_logical_emit_message(false, 'included', 'content');");
+
+        // Consume the single message with the 'included' prefix to ensure all preceding filtered messages have been processed
+        consumeRecordsByTopic(1);
+        assertThat(logInterceptor.getLogEntriesThatContainsMessage("Received 10001 events which were all filtered out"))
+                .hasSize(1);
     }
 
     @Test
