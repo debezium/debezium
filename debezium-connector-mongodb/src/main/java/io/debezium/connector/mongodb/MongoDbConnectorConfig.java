@@ -1061,7 +1061,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
                     + "'lookup' (the default) use separate lookup to get the updated document; "
                     + "'post_image' use MongoDB post images when available; "
                     + "'post_image_required' require MongoDB post images and fail if unavailable. "
-                    + "Post images require MongoDB 6.0 or newer and must be enabled on the collection.");
+                    + "Post images require MongoDB 6.0 or newer and must be enabled on the collection. "
+                    + "With regex filters and deployment or database capture scope, required images can be needed for events from excluded collections.");
 
     public static final Field CAPTURE_MODE_POST_IMAGE = Field.create("capture.mode.post.image")
             .withDisplayName("Capture mode post-image policy")
@@ -1075,6 +1076,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
                     + "'post_image' requests MongoDB post-images when available; "
                     + "'post_image_required' fails if a post-image is unavailable. "
                     + "Post-images require MongoDB 6.0 or newer and must be enabled on the collection. "
+                    + "With regex filters and deployment or database capture scope, required images can be needed for events from excluded collections. "
                     + "When explicitly set, this property takes precedence over capture.mode and capture.mode.full.update.type.");
 
     public static final Field CAPTURE_MODE_PRE_IMAGE = Field.create("capture.mode.pre.image")
@@ -1088,6 +1090,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
                     + "'when_available' requests MongoDB pre-images when available; "
                     + "'required' fails if a pre-image is unavailable. "
                     + "Pre-images require MongoDB 6.0 or newer and must be enabled on the collection. "
+                    + "With regex filters and deployment or database capture scope, required images can be needed for events from excluded collections. "
                     + "When explicitly set, this property takes precedence over capture.mode.");
 
     public static final Field JSON_SERIALIZATION_MODE = Field.create("json.serialization.mode")
