@@ -21,6 +21,8 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import io.debezium.antlr.AntlrDdlParser;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
@@ -67,6 +69,46 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
                 FieldNameSelector.defaultSelector(SchemaNameAdjuster.NO_OP), false,
                 EventConvertingFailureHandlingMode.WARN);
 
+    }
+
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', quoteCharacter = '"', textBlock = """
+            0       | 0
+            +0      | 0
+            -0      | 0
+            0000    | 0
+            0.0     | 0
+            0e0     | 0
+            '0000'  | 0
+            '0'     | 2000
+            '00'    | 2000
+            '000'   | 2000
+            '00000' | 2000
+            1       | 2001
+            69      | 2069
+            70      | 1970
+            99      | 1999
+            1901    | 1901
+            2000    | 2000
+            2155    | 2155
+            """)
+    @FixFor("debezium/dbz#2757")
+    void shouldPreserveYearDefaults(String literal, int expected) {
+        final String definition = "y YEAR NULL DEFAULT " + literal;
+        parser.parse("CREATE TABLE year_defaults (" + definition + ")", tables);
+        final var tableId = new TableId(null, null, "year_defaults");
+        assertThat(getColumnSchema(tables.forTable(tableId), "y").defaultValue()).isEqualTo(expected);
+
+        parser.parse("ALTER TABLE year_defaults DROP COLUMN y", tables);
+        parser.parse("ALTER TABLE year_defaults ADD COLUMN " + definition, tables);
+        assertThat(getColumnSchema(tables.forTable(tableId), "y").defaultValue()).isEqualTo(expected);
+
+        for (String alteration : new String[]{ "MODIFY COLUMN " + definition,
+                "CHANGE COLUMN y " + definition, "ALTER COLUMN y SET DEFAULT " + literal }) {
+            parser.parse("ALTER TABLE year_defaults MODIFY COLUMN y YEAR NULL DEFAULT 2026", tables);
+            parser.parse("ALTER TABLE year_defaults " + alteration, tables);
+            assertThat(getColumnSchema(tables.forTable(tableId), "y").defaultValue()).as(alteration).isEqualTo(expected);
+        }
     }
 
     @Test

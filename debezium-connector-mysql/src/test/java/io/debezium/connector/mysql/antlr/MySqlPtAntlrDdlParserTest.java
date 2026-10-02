@@ -10,6 +10,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode;
@@ -24,6 +26,7 @@ import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.relational.TableId;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.ddl.DdlChanges;
 import io.debezium.relational.ddl.SimpleDdlParserListener;
@@ -73,6 +76,22 @@ public class MySqlPtAntlrDdlParserTest
     @Override
     protected List<String> extractEnumAndSetOptions(List<String> enumValues) {
         return MySqlPtAntlrDdlParser.extractEnumAndSetOptions(enumValues);
+    }
+
+    @ParameterizedTest
+    @CsvSource(value = { "0,0", "0.0,0", "0e0,0", "'0000',0", "'0',2000", "'00',2000" }, quoteCharacter = '"')
+    @FixFor("debezium/dbz#2757")
+    void shouldPreserveZeroYearDefaults(String literal, int expected) {
+        final var tableId = new TableId(null, null, "year_defaults");
+        final var converters = getDefaultValueConverters(getValueConverters());
+        parser.parse("CREATE TABLE year_defaults (y YEAR DEFAULT " + literal + ")", tables);
+        final var created = tables.forTable(tableId).columnWithName("y");
+        assertThat(converters.parseDefaultValue(created, created.defaultValueExpression().orElse(null))).contains(expected);
+
+        parser.parse("ALTER TABLE year_defaults ALTER COLUMN y SET DEFAULT 2026", tables);
+        parser.parse("ALTER TABLE year_defaults ALTER COLUMN y SET DEFAULT " + literal, tables);
+        final var altered = tables.forTable(tableId).columnWithName("y");
+        assertThat(converters.parseDefaultValue(altered, altered.defaultValueExpression().orElse(null))).contains(expected);
     }
 
     @Test
