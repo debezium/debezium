@@ -71,6 +71,8 @@ public class HistoryRecordTest {
                         .optional(true)
                         .defaultValueExpression("1")
                         .comment("third comment")
+                        .generated(true)
+                        .invisible(true)
                         .create())
                 .setPrimaryKeyNames("first")
                 .setComment("table comment")
@@ -109,6 +111,14 @@ public class HistoryRecordTest {
 
         assertThat(secondColumn.get("defaultValueExpression")).isEqualTo("1");
 
+        Document thirdColumn = deserialized.tableChanges()
+                .get(0).asDocument()
+                .getDocument("table")
+                .getArray("columns")
+                .get(2).asDocument();
+        assertThat(thirdColumn.getBoolean("generated")).isTrue();
+        assertThat(thirdColumn.getBoolean("invisible")).isTrue();
+
         Document firstAttribute = deserialized.tableChanges()
                 .get(0).asDocument()
                 .getDocument("table")
@@ -128,7 +138,43 @@ public class HistoryRecordTest {
         List<Struct> columnStructs = (List<Struct>) tableStruct.get(ConnectTableChangeSerializer.COLUMNS_KEY);
         assertThat(columnStructs.get(0).get(ConnectTableChangeSerializer.COMMENT_KEY)).isEqualTo("first comment");
         assertThat(columnStructs.get(0).get(ConnectTableChangeSerializer.ENUM_VALUES)).isNull();
+        assertThat((Boolean) columnStructs.get(0).get(ConnectTableChangeSerializer.GENERATED_KEY)).isFalse();
+        assertThat((Boolean) columnStructs.get(0).get(ConnectTableChangeSerializer.INVISIBLE_KEY)).isFalse();
         assertThat(columnStructs.get(1).get(ConnectTableChangeSerializer.DEFAULT_VALUE_EXPRESSION)).isEqualTo("1");
         assertThat(columnStructs.get(1).get(ConnectTableChangeSerializer.ENUM_VALUES)).isEqualTo(Collect.arrayListOf("1", "2"));
+        assertThat((Boolean) columnStructs.get(2).get(ConnectTableChangeSerializer.GENERATED_KEY)).isTrue();
+        assertThat((Boolean) columnStructs.get(2).get(ConnectTableChangeSerializer.INVISIBLE_KEY)).isTrue();
+    }
+
+    @Test
+    public void shouldDefaultInvisibleToFalseWhenMissingFromOlderHistory() {
+        Document column = Document.create()
+                .setString("name", "col")
+                .setNumber("jdbcType", Types.INTEGER)
+                .setString("typeName", "INT")
+                .setString("typeExpression", "INT")
+                .setNumber("position", 1)
+                .setBoolean("optional", false)
+                .setBoolean("autoIncremented", false)
+                .setBoolean("generated", false)
+                .setBoolean("hasDefaultValue", false);
+
+        Document table = Document.create();
+        table.setString("defaultCharsetName", null);
+        table.setArray("columns", column);
+        table.setArray("primaryKeyColumnNames", Array.create("col"));
+        table.setArray("attributes");
+
+        Document change = Document.create();
+        change.setString("type", "CREATE");
+        change.setString("id", "\"db\".\"myschema\".\"foo\"");
+        change.setDocument("table", table);
+
+        Array tableChangesArray = Array.create();
+        tableChangesArray.add(change);
+        TableChanges deserialized = new JsonTableChangeSerializer().deserialize(tableChangesArray, true);
+        Column deserializedColumn = deserialized.iterator().next().getTable().columnWithName("col");
+        assertThat(deserializedColumn.isInvisible()).isFalse();
+        assertThat(deserializedColumn.isGenerated()).isFalse();
     }
 }

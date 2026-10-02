@@ -49,6 +49,10 @@ public class PostgresSignalBasedIncrementalSnapshotChangeEventSource
         super(config, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener, notificationService);
         this.jdbcConnection = (PostgresConnection) jdbcConnection;
         this.schema = (PostgresSchema) databaseSchema;
+        // Replace the default RowValueConstructor builder with one that consults the generated-column
+        // side map, so buildProjection still expands when refreshFromIncrementalSnapshot has pruned
+        // generated columns from the Table (DBZ-2020 / pgoutput).
+        this.chunkQueryBuilder = new PostgresChunkQueryBuilder<>(config, jdbcConnection, this.schema);
     }
 
     @Override
