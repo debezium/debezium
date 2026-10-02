@@ -61,7 +61,8 @@ public class DefaultValueParserListener extends MariaDBParserBaseListener {
                 columnEditor.defaultValueExpression(sign + parser.parseStringLiteral(ctx.constant().stringLiteral()));
             }
             else if (ctx.constant().decimalLiteral() != null) {
-                columnEditor.defaultValueExpression(normalizeNumericDefaultValue(columnEditor.typeName(), sign + ctx.constant().decimalLiteral().getText()));
+                columnEditor.defaultValueExpression(
+                        normalizeNumericDefaultValue(columnEditor.typeName(), columnEditor.length(), sign + ctx.constant().decimalLiteral().getText()));
             }
             else if (ctx.constant().hexadecimalLiteral() != null) {
                 final var literal = ctx.constant().hexadecimalLiteral();
@@ -79,7 +80,8 @@ public class DefaultValueParserListener extends MariaDBParserBaseListener {
                 columnEditor.defaultValueExpression(ctx.constant().booleanLiteral().getText());
             }
             else if (ctx.constant().REAL_LITERAL() != null) {
-                columnEditor.defaultValueExpression(normalizeNumericDefaultValue(columnEditor.typeName(), ctx.constant().REAL_LITERAL().getText()));
+                columnEditor
+                        .defaultValueExpression(normalizeNumericDefaultValue(columnEditor.typeName(), columnEditor.length(), ctx.constant().REAL_LITERAL().getText()));
             }
         }
         else if (ctx.currentTimestamp() != null && !ctx.currentTimestamp().isEmpty()) {
