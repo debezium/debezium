@@ -6,6 +6,7 @@
 [id="convert-between-geometry-formats"]
 = Convert between geometry formats
 
+ifdef::community[]
 :toc:
 :toc-placement: macro
 :linkattrs:
@@ -13,6 +14,7 @@
 :source-highlighter: highlight.js
 
 toc::[]
+endif::community[]
 The GeometryFormatTransformer single message transform (SMT) converts geometry values in change events between `WKB` and `EWKB` format to ensure that target systems receive spatial data in the most compatible format.
 The transformation supports all geometry types (`Point`, `LineString`, `Polygon`, `MultiPoint`, `MultiLineString`, `MultiPolygon`, and `GeometryCollection`), and is particularly useful when integrating with systems that require a specific format.
 By optimizing the data format, you can prevent data processing failures and help to ensure efficient data flows across the heterogeneous systems in your data pipeline.
