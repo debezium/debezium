@@ -620,6 +620,7 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
 
         final SchemaHistory schemaHistory = databaseSchema.getSchemaHistory();
         schemaHistory.startBuffering();
+        boolean completed = false;
         try {
             for (final SchemaChangeEvent event : schemaEvents) {
                 if (!sourceContext.isRunning()) {
@@ -640,9 +641,10 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
                 snapshotContext.offset.event(tableId, getClock().currentTime());
                 dispatcher.dispatchSchemaChangeEvent(snapshotContext.partition, snapshotContext.offset, tableId, (receiver) -> receiver.schemaChangeEvent(event));
             }
+            completed = true;
         }
         finally {
-            schemaHistory.stopBuffering();
+            schemaHistory.stopBuffering(completed);
         }
 
         // Make schema available for snapshot source

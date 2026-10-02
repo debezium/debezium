@@ -467,6 +467,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
         final SchemaHistory schemaHistory = ((HistorizedRelationalDatabaseSchema) schema).getSchemaHistory();
         schemaHistory.startBuffering();
+        boolean completed = false;
         try {
             for (Iterator<TableId> iterator = getTablesForSchemaChange(snapshotContext).iterator(); iterator.hasNext();) {
                 final TableId tableId = iterator.next();
@@ -504,9 +505,10 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                     }
                 });
             }
+            completed = true;
         }
         finally {
-            schemaHistory.stopBuffering();
+            schemaHistory.stopBuffering(completed);
         }
     }
 
