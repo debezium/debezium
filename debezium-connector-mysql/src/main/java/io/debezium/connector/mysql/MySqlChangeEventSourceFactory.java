@@ -128,7 +128,8 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
                         clock,
                         snapshotProgressListener,
                         dataChangeEventListener,
-                        notificationService));
+                        notificationService,
+                        connectionFactory.mainConnection()::isUndefinedColumnError));
             }
             throw new UnsupportedOperationException("Read only connection requires GTID_MODE to be ON");
         }
@@ -144,6 +145,7 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
                 schema,
                 clock,
                 snapshotProgressListener,
-                dataChangeEventListener, notificationService));
+                dataChangeEventListener, notificationService,
+                connectionFactory.mainConnection()::isUndefinedColumnError));
     }
 }

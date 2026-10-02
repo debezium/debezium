@@ -13,12 +13,22 @@ import org.junit.jupiter.api.Test;
 
 import com.mysql.cj.jdbc.exceptions.MySQLTimeoutException;
 
+import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.BinlogConnectionIT;
+import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
 import io.debezium.connector.binlog.util.BinlogTestConnection;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
+import io.debezium.connector.mysql.jdbc.MySqlConnection;
+import io.debezium.connector.mysql.jdbc.MySqlConnectionConfiguration;
+import io.debezium.connector.mysql.jdbc.MySqlFieldReaderResolver;
 
 public class ConnectionIT extends BinlogConnectionIT<MySqlConnector> implements MySqlCommon {
+
+    @Override
+    protected BinlogConnectorConnection connectorConnection(Configuration config) {
+        return new MySqlConnection(new MySqlConnectionConfiguration(config), MySqlFieldReaderResolver.resolve(new MySqlConnectorConfig(config)));
+    }
 
     @Test
     public void whenQueryTakesMoreThenConfiguredQueryTimeoutAnExceptionMustBeThrown() throws SQLException {

@@ -10,6 +10,7 @@ import java.sql.SQLException;
 import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
+import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource.UndefinedColumnClassifier;
 import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
@@ -40,8 +41,10 @@ public class BinlogSignalBasedIncrementalSnapshotChangeEventSource<P extends Bin
                                                                  Clock clock,
                                                                  SnapshotProgressListener<P> progressListener,
                                                                  DataChangeEventListener<P> dataChangeEventListener,
-                                                                 NotificationService<P, ? extends OffsetContext> notificationService) {
-        super(config, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener, notificationService);
+                                                                 NotificationService<P, ? extends OffsetContext> notificationService,
+                                                                 UndefinedColumnClassifier undefinedColumnClassifier) {
+        super(config, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener, notificationService,
+                undefinedColumnClassifier);
         this.schema = databaseSchema;
         this.binlogConnectorConnection = jdbcConnection;
     }
