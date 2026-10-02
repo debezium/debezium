@@ -60,7 +60,7 @@ public class EhcacheCacheProvider extends AbstractCacheProvider<EhcacheTransacti
     private final boolean dropBufferOnStop;
     private final CacheManager cacheManager;
     private final EhcacheLogMinerTransactionCache transactionCache;
-    private final EhcacheLogMinerCache<String, String> processedTransactionsCache;
+    private final EhcacheLogMinerCache<Long, String> processedTransactionsCache;
     private final EhcacheLogMinerCache<String, String> schemaChangesCache;
 
     public EhcacheCacheProvider(OracleConnectorConfig connectorConfig) {
@@ -87,7 +87,7 @@ public class EhcacheCacheProvider extends AbstractCacheProvider<EhcacheTransacti
     }
 
     @Override
-    public LogMinerCache<String, String> getProcessedTransactionsCache() {
+    public LogMinerCache<Long, String> getProcessedTransactionsCache() {
         return processedTransactionsCache;
     }
 
@@ -197,14 +197,14 @@ public class EhcacheCacheProvider extends AbstractCacheProvider<EhcacheTransacti
 
     private EhcacheLogMinerTransactionCache createTransactionCache(EhcacheEvictionListener evictionListener) {
         return new EhcacheLogMinerTransactionCache(
-                getCache(TRANSACTIONS_CACHE_NAME, String.class, EhcacheTransaction.class, evictionListener),
-                getCache(EVENTS_CACHE_NAME, String.class, LogMinerEvent.class, evictionListener),
+                getCache(TRANSACTIONS_CACHE_NAME, Long.class, EhcacheTransaction.class, evictionListener),
+                getCache(EVENTS_CACHE_NAME, Long.class, LogMinerEvent.class, evictionListener),
                 evictionListener);
     }
 
-    private EhcacheLogMinerCache<String, String> createProcessedTransactionCache(EhcacheEvictionListener evictionListener) {
+    private EhcacheLogMinerCache<Long, String> createProcessedTransactionCache(EhcacheEvictionListener evictionListener) {
         return new EhcacheLogMinerCache<>(
-                getCache(PROCESSED_TRANSACTIONS_CACHE_NAME, String.class, String.class, evictionListener),
+                getCache(PROCESSED_TRANSACTIONS_CACHE_NAME, Long.class, String.class, evictionListener),
                 PROCESSED_TRANSACTIONS_CACHE_NAME,
                 evictionListener);
     }

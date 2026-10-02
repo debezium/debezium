@@ -19,12 +19,12 @@ import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 public class InfinispanTransactionFactory implements TransactionFactory<InfinispanTransaction> {
     @Override
     public InfinispanTransaction createTransaction(LogMinerEventRow event) {
-        return new InfinispanTransaction(event.getTransactionId(), event.getScn(), event.getChangeTime(),
+        return new InfinispanTransaction(event.getXid(), event.getScn(), event.getChangeTime(),
                 event.getUserName(), event.getThread(), event.getClientId());
     }
 
     @Override
-    public InfinispanTransaction createTransaction(String transactionId, Scn startScn, Instant changeTime, String userName, Integer redoThreadId, String clientId) {
-        return new InfinispanTransaction(transactionId, startScn, changeTime, userName, redoThreadId, clientId);
+    public InfinispanTransaction createTransaction(long xid, Scn startScn, Instant changeTime, String userName, Integer redoThreadId, String clientId) {
+        return new InfinispanTransaction(xid, startScn, changeTime, userName, redoThreadId, clientId);
     }
 }

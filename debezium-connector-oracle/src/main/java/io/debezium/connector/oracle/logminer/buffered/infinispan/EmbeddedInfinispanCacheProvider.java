@@ -45,7 +45,7 @@ public class EmbeddedInfinispanCacheProvider extends AbstractCacheProvider<Infin
     private final boolean dropBufferOnStop;
     private final EmbeddedCacheManager cacheManager;
     private final InfinispanLogMinerTransactionCache transactionCache;
-    private final InfinispanLogMinerCache<String, String> processedTransactionsCache;
+    private final InfinispanLogMinerCache<Long, String> processedTransactionsCache;
     private final InfinispanLogMinerCache<String, String> schemaChangesCache;
 
     public EmbeddedInfinispanCacheProvider(OracleConnectorConfig connectorConfig) {
@@ -72,7 +72,7 @@ public class EmbeddedInfinispanCacheProvider extends AbstractCacheProvider<Infin
     }
 
     @Override
-    public LogMinerCache<String, String> getProcessedTransactionsCache() {
+    public LogMinerCache<Long, String> getProcessedTransactionsCache() {
         return processedTransactionsCache;
     }
 
@@ -108,7 +108,7 @@ public class EmbeddedInfinispanCacheProvider extends AbstractCacheProvider<Infin
                 createCache(EVENTS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_EVENTS));
     }
 
-    private InfinispanLogMinerCache<String, String> createProcessedTransactionsCache(OracleConnectorConfig connectorConfig) {
+    private InfinispanLogMinerCache<Long, String> createProcessedTransactionsCache(OracleConnectorConfig connectorConfig) {
         return new InfinispanLogMinerCache<>(
                 createCache(PROCESSED_TRANSACTIONS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_PROCESSED_TRANSACTIONS));
     }

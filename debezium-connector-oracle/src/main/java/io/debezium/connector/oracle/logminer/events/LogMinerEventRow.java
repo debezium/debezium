@@ -23,7 +23,6 @@ import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.LogMinerColumnIndexes;
 import io.debezium.connector.oracle.logminer.ResultSetValueResolver;
 import io.debezium.relational.TableId;
-import io.debezium.util.HexConverter;
 import io.debezium.util.Strings;
 
 /**
@@ -50,6 +49,7 @@ public class LogMinerEventRow {
     private String tablespaceName;
     private EventType eventType;
     private Instant changeTime;
+    private long xid = Xid.EMPTY_XID;
     private String transactionId;
     private String operation;
     private String userName;
@@ -97,6 +97,10 @@ public class LogMinerEventRow {
 
     public Instant getChangeTime() {
         return changeTime;
+    }
+
+    public long getXid() {
+        return xid;
     }
 
     public String getTransactionId() {
@@ -257,7 +261,9 @@ public class LogMinerEventRow {
         this.tablespaceName = resultSet.getString(LogMinerColumnIndexes.SEG_OWNER);
         this.eventType = EventType.from(resultSet.getInt(LogMinerColumnIndexes.OPERATION_CODE));
         this.changeTime = getTime(resultSet, LogMinerColumnIndexes.TIMESTAMP);
-        this.transactionId = getTransactionId(resultSet);
+        byte[] xid = resultSet.getBytes(LogMinerColumnIndexes.XID);
+        this.xid = Xid.of(xid);
+        this.transactionId = Xid.transactionId(xid);
         this.operation = resultSet.getString(LogMinerColumnIndexes.OPERATION);
         this.rowId = resultSet.getString(LogMinerColumnIndexes.ROW_ID);
         this.rollbackFlag = resultSet.getInt(LogMinerColumnIndexes.ROLLBACK) == 1;
@@ -287,11 +293,6 @@ public class LogMinerEventRow {
                 this.tableId = new TableId(indexes.getCatalogName(), tablespaceName, tableName);
             }
         }
-    }
-
-    private static String getTransactionId(ResultSet rs) throws SQLException {
-        byte[] result = rs.getBytes(LogMinerColumnIndexes.XID);
-        return result != null ? HexConverter.convertToHexString(result) : null;
     }
 
     private static Instant getTime(ResultSet rs, int columnIndex) throws SQLException {

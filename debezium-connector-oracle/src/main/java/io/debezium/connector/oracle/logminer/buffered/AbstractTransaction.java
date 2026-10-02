@@ -6,7 +6,6 @@
 package io.debezium.connector.oracle.logminer.buffered;
 
 import java.time.Instant;
-import java.util.Objects;
 
 import io.debezium.connector.oracle.Scn;
 
@@ -19,15 +18,15 @@ public abstract class AbstractTransaction implements Transaction {
 
     private static final String UNKNOWN = "UNKNOWN";
 
-    private final String transactionId;
+    private final long xid;
     private final Scn startScn;
     private final Instant changeTime;
     private final String userName;
     private final Integer redoThreadId;
     private final String clientId;
 
-    public AbstractTransaction(String transactionId, Scn startScn, Instant changeTime, String userName, Integer redoThreadId, String clientId) {
-        this.transactionId = transactionId;
+    public AbstractTransaction(long xid, Scn startScn, Instant changeTime, String userName, Integer redoThreadId, String clientId) {
+        this.xid = xid;
         this.startScn = startScn;
         this.changeTime = changeTime;
         this.userName = !UNKNOWN.equalsIgnoreCase(userName) ? userName : null;
@@ -36,8 +35,8 @@ public abstract class AbstractTransaction implements Transaction {
     }
 
     @Override
-    public String getTransactionId() {
-        return transactionId;
+    public long getXid() {
+        return xid;
     }
 
     @Override
@@ -74,18 +73,18 @@ public abstract class AbstractTransaction implements Transaction {
             return false;
         }
         AbstractTransaction that = (AbstractTransaction) o;
-        return Objects.equals(transactionId, that.transactionId);
+        return xid == that.xid;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(transactionId);
+        return Long.hashCode(xid);
     }
 
     @Override
     public String toString() {
         return "AbstractTransaction{" +
-                "transactionId='" + transactionId + '\'' +
+                "transactionId='" + getTransactionId() + '\'' +
                 ", startScn=" + startScn +
                 ", changeTime=" + changeTime +
                 ", userName='" + userName + '\'' +

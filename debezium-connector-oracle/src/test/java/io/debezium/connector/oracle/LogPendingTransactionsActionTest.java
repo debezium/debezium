@@ -62,9 +62,9 @@ public class LogPendingTransactionsActionTest {
     public void shouldLogActiveAndDeferredTransactions() throws Exception {
         final LogInterceptor logInterceptor = new LogInterceptor(LogPendingTransactionsAction.class);
 
-        final PendingTransaction active = new PendingTransaction("0a.000b.0000000c", Scn.valueOf(100), Instant.parse("2024-01-01T00:00:00Z"),
+        final PendingTransaction active = new PendingTransaction(0x0a000b000c000000L, Scn.valueOf(100), Instant.parse("2024-01-01T00:00:00Z"),
                 "DEBEZIUM", "client-1", 1, 5, false);
-        final PendingTransaction deferred = new PendingTransaction("0d.000e.0000000f", Scn.valueOf(200), Instant.parse("2024-01-01T00:00:01Z"),
+        final PendingTransaction deferred = new PendingTransaction(0x0d000e000f000000L, Scn.valueOf(200), Instant.parse("2024-01-01T00:00:01Z"),
                 "OTHER", null, 2, 0, true);
         when(streamingSource.getPendingTransactions()).thenReturn(List.of(active, deferred));
 
@@ -74,10 +74,10 @@ public class LogPendingTransactionsActionTest {
         assertThat(result).isTrue();
         assertThat(logInterceptor.containsMessage("2 total (1 active, 1 deferred)")).isTrue();
         assertThat(logInterceptor.containsMessage(
-                "Active transaction 0a.000b.0000000c: startScn=100, changeTime=2024-01-01T00:00:00Z, userName=DEBEZIUM, clientId=client-1, redoThread=1, events=5"))
+                "Active transaction 0a000b000c000000: startScn=100, changeTime=2024-01-01T00:00:00Z, userName=DEBEZIUM, clientId=client-1, redoThread=1, events=5"))
                 .isTrue();
         assertThat(logInterceptor.containsMessage(
-                "Deferred transaction 0d.000e.0000000f: startScn=200, changeTime=2024-01-01T00:00:01Z, userName=OTHER, clientId=null, redoThread=2"))
+                "Deferred transaction 0d000e000f000000: startScn=200, changeTime=2024-01-01T00:00:01Z, userName=OTHER, clientId=null, redoThread=2"))
                 .isTrue();
     }
 

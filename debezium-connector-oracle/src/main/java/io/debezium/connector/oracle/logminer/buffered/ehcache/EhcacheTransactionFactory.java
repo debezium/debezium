@@ -19,12 +19,12 @@ import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 public class EhcacheTransactionFactory implements TransactionFactory<EhcacheTransaction> {
     @Override
     public EhcacheTransaction createTransaction(LogMinerEventRow event) {
-        return new EhcacheTransaction(event.getTransactionId(), event.getScn(), event.getChangeTime(),
+        return new EhcacheTransaction(event.getXid(), event.getScn(), event.getChangeTime(),
                 event.getUserName(), event.getThread(), event.getClientId());
     }
 
     @Override
-    public EhcacheTransaction createTransaction(String transactionId, Scn startScn, Instant changeTime, String userName, Integer redoThreadId, String clientId) {
-        return new EhcacheTransaction(transactionId, startScn, changeTime, userName, redoThreadId, clientId);
+    public EhcacheTransaction createTransaction(long xid, Scn startScn, Instant changeTime, String userName, Integer redoThreadId, String clientId) {
+        return new EhcacheTransaction(xid, startScn, changeTime, userName, redoThreadId, clientId);
     }
 }
