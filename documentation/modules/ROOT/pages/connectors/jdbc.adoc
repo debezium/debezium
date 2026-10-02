@@ -146,6 +146,7 @@ By default, the {prodname} JDBC sink connector does not transform any of the fie
 Unfortunately, the lack of a stable primary key can complicate event processing, depending on your business requirements, or when the sink connector uses upsert semantics.
 To define a consistent primary key, you can configure the connector to use one of the primary key modes described in the following table:
 
+[cols="25%a,75%a",options="header"]
 |===
 |Mode|Description
 
@@ -155,9 +156,9 @@ To define a consistent primary key, you can configure the connector to use one o
 |`kafka`
 a|The primary key consists of the following three columns:
 
-* `__connect_topic`
-* `__connect_partition`
-* `__connect_offset`
+* `+__connect_topic+`
+* `+__connect_partition+`
+* `+__connect_offset+`
 
 The values for these columns are sourced from the coordinates of the Kafka event.
 
@@ -230,6 +231,7 @@ If the specified primary key value doesn't exist, an `insert` adds a new row.
 Each database dialect handles idempotent writes differently, because there is no SQL standard for _upsert_ operations.
 The following table shows, for each database dialect that {prodname} supports, the upsert DML syntax and the constraints that trigger an update action during an upsert operation.
 
+[cols="25%a,40%a,35%a",options="header"]
 |===
 |Dialect |Upsert Syntax |Constraint that triggers the update action
 
@@ -296,7 +298,7 @@ If a uniqueness rule is required, enforce the rule in the source database, and o
 If dependent records are routed to different partitions, the sink connector might apply records out of source order, which can lead to inconsistent results.
 The following table shows how different database dialects handle conflicts involving secondary unique constraints:
 
-.Dialect-specific behavior when secondary unique constraint conflicts occur
+[cols="50%a,50%a",options="header"]
 |===
 |Dialect |Behavior
 
@@ -337,6 +339,7 @@ In each of these cases, the batch fails.
 The `schema.evolution` property controls whether the connector automatically creates or alters destination tables when event schemas change.
 The following table describes the available modes, from no evolution (`none`) through startup validation (`validate-only`) to automatic table creation and column addition (`basic`).
 
+[cols="25%a,75%a",options="header"]
 |===
 |Mode |Description
 
@@ -670,7 +673,7 @@ The actual final column type varies with for each database type.
 
 The following table maps each Kafka Connect primitive type to its corresponding JDBC SQL type, which the {prodname} JDBC sink connector uses when creating or altering columns in the destination database.
 
-.Mappings between Kafka Connect primitive data types and column data types
+[cols="50%a,50%a",options="header"]
 |===
 |Primitive Type |JDBC SQL Type
 
@@ -719,7 +722,7 @@ As a workaround, if you need a BOOLEAN data type for an Oracle 23 sink, add the 
 
 The following table maps each Kafka Connect logical type to its corresponding JDBC SQL type, which the {prodname} JDBC sink connector uses when writing structured data such as dates, times, and decimals to the destination database.
 
-.Mappings between Kafka Connect logical data types and column data types
+[cols="50%a,50%a",options="header"]
 |===
 |Logical Type |JDBC SQL Type
 
@@ -744,7 +747,7 @@ The following table maps each Kafka Connect logical type to its corresponding JD
 
 The following table maps {prodname} logical types to their corresponding JDBC SQL types, which the connector uses when writing {prodname} change event fields — such as timestamps, durations, and variable-scale decimals — to the destination database.
 
-.Mappings between {prodname} logical types and column data types
+[cols="50%a,50%a",options="header"]
 |===
 |Logical Type |JDBC SQL Type
 
@@ -1008,7 +1011,9 @@ ifdef::community[]
 For SingleStore, `FloatVector` maps to `vector(n, F32)` and `DoubleVector` maps to `vector(n, F64)`.
 If the source column length is unavailable, the connector uses default dimensions of `2048` for `FloatVector` and `16383` for `DoubleVector`.
 
-.Mappings between {prodname} Vector Types and Column Data Types
+The following table maps {prodname} logical vector types to their corresponding column data types for each supported sink database.
+
+[cols="30%a,12%a,12%a,12%a,12%a,12%a,10%a",options="header"]
 |===
 |Logical Type |Db2 |MySQL |PostgreSQL |Oracle |SQL Server |SingleStore
 
@@ -1041,7 +1046,9 @@ If the source column length is unavailable, the connector uses default dimension
 endif::community[]
 
 ifdef::product[]
-.Mappings between {prodname} Vector Types and Column Data Types
+The following table maps {prodname} logical vector types to their corresponding column data types for each supported sink database.
+
+[cols="30%a,14%a,14%a,14%a,14%a,14%a",options="header"]
 |===
 |Logical Type |Db2 |MySQL |PostgreSQL |Oracle |SQL Server
 
@@ -1166,7 +1173,7 @@ CollectionNameTransformation::
 The `CollectionNameTransformation` provides a way to change the case of the topic names before the event is consumed.
 This transformation has the following configuration properties:
 +
-[cols="30%a,25%a,45%a"]
+[cols="30%a,25%a,45%a",options="header"]
 |===
 |Property |Default |Description
 
@@ -1207,7 +1214,7 @@ When the event is not a {prodname} source connector event, all top-level field n
 +
 This transformation has the following configuration properties:
 +
-[cols="30%a,25%a,45%a"]
+[cols="30%a,25%a,45%a",options="header"]
 |===
 |Property |Default |Description
 
@@ -1415,8 +1422,6 @@ The drivers that are required for {prodname} to connect to these databases are n
 The example provides the Maven URL for the Oracle Database JDBC driver.
 The Db2 JDBC driver is available at the following Maven location: `https://repo1.maven.org/maven2/com/ibm/db2/jcc/{db2-version}/jcc-{db2-version}.jar`
 
-|===
-
 3. Apply the `KafkaConnect` build specification to the OpenShift cluster by entering the following command:
 +
 [source,shell,options="nowrap"]
@@ -1617,7 +1622,7 @@ For non-delete records, the connector increments the insert, update, or upsert m
 
 The connector registers the following MBean while the task is running:
 
-`debezium.jdbc:type=connector-metrics,context=sink,server=__<connector_name>__,task=__<task_id>__`
+`debezium.jdbc:type=connector-metrics,context=sink,server=+__<connector_name>__+,task=+__<task_id>__+`
 
 The following table describes the available metrics.
 
@@ -1690,7 +1695,7 @@ Information about the properties is organized as follows:
 
 The following table describes the Kafka consumer properties that control how the {prodname} JDBC sink connector identifies itself to Kafka Connect and specifies the topics it consumes.
 
-[cols="30%a,25%a,45%a"]
+[cols="30%a,25%a,45%a",options="header"]
 |===
 |Property |Default |Description
 
@@ -1737,7 +1742,7 @@ Do not use this property in combination with the xref:jdbc-property-connection-t
 
 The following table describes the properties that control how the {prodname} JDBC sink connector connects to and authenticates with the destination database, including connection pool settings.
 
-[cols="30%a,25%a,45%a"]
+[cols="30%a,25%a,45%a",options="header"]
 |===
 |Property |Default |Description
 
@@ -1791,7 +1796,7 @@ Use with caution where strong data consistency is required.
 
 The following table describes the runtime properties that control how the {prodname} JDBC sink connector processes events and writes data to the destination database, including insert mode, primary key resolution, schema evolution, and batching behavior.
 
-[cols="30%a,25%a,45%a"]
+[cols="30%a,25%a,45%a",options="header"]
 |===
 |Property |Default |Description
 
@@ -1842,9 +1847,9 @@ When idempotent writes are required, the connector should be configured to use t
 `kafka`:: Specifies that the connector uses Kafka coordinates as the primary key columns.
 The key coordinates are defined from the topic name, partition, and offset of the event, and are mapped to columns with the following names:
 
-* `__connect_topic`
-* `__connect_partition`
-* `__connect_offset`
+* `+__connect_topic+`
+* `+__connect_partition+`
+* `+__connect_offset+`
 
 `record_key`:: Specifies that the primary key columns are sourced from the event's record key.
 If the record key is a primitive type, the xref:jdbc-property-primary-key-fields[`primary.key.fields`] property is required to specify the name of the primary key column.
@@ -2006,7 +2011,7 @@ Clamping alters the stored value; enable this option only when a lossy represent
 
 The following table describes the properties that allow you to customize the naming strategies the {prodname} JDBC sink connector uses to resolve destination table names and column names from incoming event data.
 
-[cols="30%a,25%a,45%a"]
+[cols="30%a,25%a,45%a",options="header"]
 |===
 |Property |Default |Description
 
