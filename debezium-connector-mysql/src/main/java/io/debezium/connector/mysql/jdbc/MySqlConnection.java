@@ -16,6 +16,7 @@ import io.debezium.connector.binlog.gtid.GtidSet;
 import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
 import io.debezium.connector.binlog.jdbc.BinlogFieldReader;
 import io.debezium.connector.mysql.gtid.MySqlGtidSet;
+import io.debezium.util.Strings;
 
 /**
  * An {@link BinlogConnectorConnection} to be used with MySQL.
@@ -162,7 +163,8 @@ public class MySqlConnection extends BinlogConnectorConnection {
     }
 
     @Override
-    public GtidSet filterGtidSet(Predicate<String> gtidSourceFilter, String offsetGtids, GtidSet availableServerGtidSet, GtidSet purgedServerGtidSet) {
+    public GtidSet filterGtidSet(Predicate<String> gtidSourceFilter, String offsetGtids, String binlogFilename,
+                                 GtidSet availableServerGtidSet, GtidSet purgedServerGtidSet) {
         String gtidStr = offsetGtids;
         if (gtidStr == null) {
             return null;
@@ -185,9 +187,75 @@ public class MySqlConnection extends BinlogConnectorConnection {
         GtidSet mergedGtidSet = relevantAvailableServerGtidSet
                 .retainAllKnownTsids(knownGtidSet)
                 .with(purgedServerGtidSet)
-                .with(filteredGtidSet);
+                .with(filteredGtidSet)
+                .with(gtidsExecutedBefore(binlogFilename, knownGtidSet));
 
         LOGGER.info("Final merged GTID set to use when connecting to MySQL: {}", mergedGtidSet);
         return mergedGtidSet;
+    }
+
+    /**
+     * Returns the GTIDs the server executed before {@code binlogFilename}, restricted to the
+     * lineages the offset does not track.
+     * <p>
+     * {@code retainAllKnownTsids} drops any lineage missing from the offset, so it is only claimed
+     * as far as {@code gtid_purged} and everything the server still retains for it is re-delivered.
+     * That is correct for a lineage which is genuinely new and receiving writes (DBZ-923), but not
+     * for one inherited from a previous primary and no longer written to: an offset that started
+     * part-way through the binlog never observes such a lineage and so never records it.
+     * <p>
+     * The two cases are indistinguishable from the GTID sets alone and are separated by binlog
+     * order instead. A file's {@code Previous_gtids} event lists exactly what was executed before
+     * it, so a lineage it covers lies entirely behind the resume position and can be treated as
+     * consumed, while a lineage with transactions at or after that position is absent from it and
+     * continues to be read from its earliest available position.
+     *
+     * @param binlogFilename the binlog file the offset is resuming from; may be null
+     * @param knownGtidSet the lineages the offset already tracks, which are left untouched
+     * @return the GTIDs executed before the file, or an empty set if they cannot be determined
+     */
+    private GtidSet gtidsExecutedBefore(String binlogFilename, MySqlGtidSet knownGtidSet) {
+        if (Strings.isNullOrEmpty(binlogFilename)) {
+            return new MySqlGtidSet("");
+        }
+        try {
+            final String previousGtids = queryAndMap(
+                    String.format("SHOW BINLOG EVENTS IN '%s' LIMIT 3", binlogFilename),
+                    rs -> {
+                        while (rs.next()) {
+                            if ("Previous_gtids".equalsIgnoreCase(rs.getString("Event_type"))) {
+                                final String info = rs.getString("Info");
+                                // Multiple lineages are separated by a comma and a newline.
+                                return info == null ? "" : info.replace("\n", "").trim();
+                            }
+                        }
+                        return "";
+                    });
+            LOGGER.info("GTIDs executed before '{}': {}", binlogFilename, previousGtids);
+            return untrackedGtids(previousGtids, knownGtidSet);
+        }
+        catch (SQLException | RuntimeException e) {
+            // Best effort: on any failure fall back to the behaviour without this adjustment
+            // rather than preventing the connector from starting.
+            LOGGER.debug("Could not read the Previous_gtids event of '{}'; lineages missing from the "
+                    + "offset may be re-delivered", binlogFilename, e);
+            return new MySqlGtidSet("");
+        }
+    }
+
+    /**
+     * Restricts {@code previousGtids} to the lineages {@code knownGtidSet} does not track, so that
+     * a position already recorded in the offset can never be overridden.
+     *
+     * @param previousGtids the GTIDs executed before the resume file; may be null or blank
+     * @param knownGtidSet the lineages the offset tracks
+     * @return the untracked subset, empty when there is none or the input is unusable
+     */
+    static GtidSet untrackedGtids(String previousGtids, MySqlGtidSet knownGtidSet) {
+        if (previousGtids == null || previousGtids.trim().isEmpty()) {
+            return new MySqlGtidSet("");
+        }
+        return new MySqlGtidSet(previousGtids)
+                .retainAll(uuid -> knownGtidSet.forServerWithId(uuid) == null);
     }
 }
