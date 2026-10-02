@@ -1,0 +1,430 @@
+[id="neo4j-debezium-converter"]
+= Neo4j Debezium Converter
+
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+
+The `Neo4jDebeziumConverter` SMT converts Neo4j CDC change events into the {prodname} change event envelope, enabling CDC pipelines from Neo4j to relational databases via the {prodname} JDBC sink connector:
+
+[source]
+----
+Neo4j -> Neo4j source connector (CDC) -> Kafka -> [Neo4jDebeziumConverter] -> Debezium JDBC sink -> RDBMS
+----
+
+It's the complement of the xref:transformations/neo4j-cud-converter.adoc[Neo4j CUD Converter]: together the two keep a graph database and a relational database in sync in either direction.
+
+The SMT is stateless and processes one message at a time.
+It is *zero-config by default*: Neo4j CDC events are self-describing, so the SMT derives the target table, primary key, and columns from each event.
+Every configuration option is an optional override that lets you adapt the output to the target database.
+
+For each change event the SMT emits a new record whose:
+
+* value is a {prodname} envelope `Struct` (`before`, `after`, `source`, `op`, `ts_ms`),
+* key is a primary-key `Struct`
+* topic is set to the derived target table name, so a JDBC sink configured with `collection.name.format=${topic}` writes to the right table.
+
+[NOTE]
+====
+This SMT expects a schema-typed `Struct` value produced by a Neo4j source connector in `EXTENDED` payload mode (for example via the Avro or JSON-with-schema converter).
+A record whose value is not a Neo4j CDC event `Struct` passes through *unchanged*, so the SMT is safe to place on a shared topic.
+====
+
+[[neo4j-debezium-converter-nodes]]
+== Node mapping
+
+A node change event maps to a row in the table named after the node's label (subject to `table.naming` or a `label.<Label>.table` override).
+
+The primary key is derived from the node's `keys` entry, which the Neo4j source connector populates from the label's key or uniqueness constraint.
+Override it with `label.<Label>.key.properties` when no constraint exists or a different key is desired.
+
+Node properties become columns, renamed by `column.naming`.
+Use `label.<Label>.properties.include` or `label.<Label>.properties.exclude` to select columns; the key columns are always retained.
+
+Operations map directly: `c` -> `c` (with `after`), `u` -> `u` (with `after`), `d` -> `d` (with `before`).
+
+[[neo4j-debezium-converter-multi-label]]
+=== Multi-label nodes
+
+A node may carry several labels.
+The SMT resolves the *owning* label (and therefore the target table and key) as follows:
+
+* If exactly one of the labels has a `label.<Label>.*` mapping, that label owns the row.
+* If the node has a single label and no mapping, that label owns the row by convention.
+* If a multi-label node has no mapped label, or more than one mapped label, the owner is ambiguous and the record is handled per `field.missing.behavior`.
+
+[[neo4j-debezium-converter-relationships]]
+== Relationship mapping
+
+A relationship change event is mapped in one of two modes, selected per relationship type with `relationship.<TYPE>.mode`.
+
+[[neo4j-debezium-converter-join-table]]
+=== Join-table mode (default)
+
+The relationship becomes a row in a join table named after the relationship type.
+The two endpoint keys become the composite primary key (foreign-key columns), and the relationship properties become the remaining columns.
+
+Each endpoint column name is composed from the endpoint label and its key property according to `relationship.fk.naming` (for example `Order` + `id` -> `Order_id`), then cased by `column.naming`.
+For a single-key endpoint you can override the column name directly with `relationship.<TYPE>.start.column` / `relationship.<TYPE>.end.column`.
+
+A relationship delete emits `op=d` keyed by the two endpoints.
+
+[[neo4j-debezium-converter-foreign-key]]
+=== Foreign-key mode
+
+The relationship becomes a foreign-key column update on the *owner* endpoint's table (default: the `start` endpoint; set `relationship.<TYPE>.owner=end` to make the end endpoint the owner).
+
+The event is always emitted as a partial update (`op=u`): the `after` image contains the owner's primary key plus the foreign-key column pointing at the other endpoint's key.
+On a relationship delete the foreign-key column is set to `null` (still `op=u`), clearing the reference.
+
+The foreign-key column name follows `relationship.fk.naming` + `column.naming`, or the `relationship.<TYPE>.fk.column` override.
+
+[[neo4j-debezium-converter-qualified]]
+=== Qualifying a relationship by endpoints
+
+The same relationship type can connect different endpoint labels.
+To map a specific pair, qualify the type with `@<Start>-<End>`, for example `relationship.KNOWS@Person-Person.table=friendships`.
+A qualified mapping takes precedence over the unqualified `relationship.<TYPE>.*` fallback for matching endpoints.
+
+[[neo4j-debezium-converter-type-mapping]]
+== Type mapping
+
+In `EXTENDED` payload mode the Neo4j source connector wraps every property value in a self-describing type union.
+The SMT reads that union and maps each Neo4j property type to the Kafka Connect / {prodname} column type the JDBC sink can persist.
+Neo4j primitives map by identity, Neo4j temporals become the matching `io.debezium.time.*` logical types, and values with no flat relational representation (durations, spatial points, and structured lists) are serialized to a JSON `STRING`.
+Every mapped column is optional so the sink can persist nulls (primary-key columns are made required).
+
+.Type mapping from Neo4j to {prodname}
+[cols="30%a,30%a,40%a",options="header"]
+|===
+|Neo4j property type
+|Relational column (Kafka Connect / {prodname} type)
+|Notes
+
+|`Boolean`
+|`BOOLEAN`
+|
+
+|`Integer`
+|`INT64`
+|Neo4j stores all integers as 64-bit.
+
+|`Float`
+|`FLOAT64`
+|Neo4j stores all floating-point numbers as 64-bit.
+
+|`String`
+|`STRING`
+|
+
+|`ByteArray`
+|`BYTES`
+|
+
+|`Date`
+|`io.debezium.time.Date`
+|Number of days since the epoch (`INT32`).
+
+|`LocalTime`
+|`io.debezium.time.MicroTime`
+|Microseconds since midnight (`INT64`).
+
+|`Time` (zoned)
+|`io.debezium.time.ZonedTime`
+|ISO-8601 time of day with its original zone offset, for example `12:30:00+01:00`. Carried as a `STRING`.
+
+|`LocalDateTime`
+|`io.debezium.time.Timestamp`
+|Milliseconds since the epoch (`INT64`), interpreted at UTC.
+
+|`DateTime` (zoned)
+|`io.debezium.time.ZonedTimestamp`
+|ISO-8601 date-time with its original zone offset, for example `2021-06-15T10:15:30+01:00`. Carried as a `STRING`.
+
+|`Duration`
+|`STRING`
+|ISO-8601 duration, for example `P14M3DT4H5M6S`. Neo4j folds years into months and hours/minutes/seconds into the time part.
+
+|`Point`
+|`STRING` (JSON)
+|JSON object `{"srid":<n>,"x":<longitude>,"y":<latitude>[,"z":<height>]}`.
+
+|Homogeneous list of primitives (`Boolean`, `Integer`, `Float`, `String`)
+|`ARRAY`
+|An array column of the same element type.
+
+|List of `Duration`, `Point`, or any temporal
+|`STRING` (JSON)
+|A JSON array; `Duration` and `Point` elements use the same rendering as their scalar forms.
+
+|Nested or otherwise structured value
+|`STRING` (JSON)
+|Serialized as a JSON string, because relational columns are flat.
+|===
+
+[NOTE]
+====
+The `io.debezium.time.*` logical types produced here (`Date`, `MicroTime`, `Timestamp`, `ZonedTime`, `ZonedTimestamp`) are the {prodname} temporal types the JDBC sink already understands, so it materializes them as the corresponding native SQL column types.
+`LocalDateTime` values are interpreted at UTC; `Time` and `DateTime` keep their original zone offset.
+====
+
+[[neo4j-debezium-converter-tombstones]]
+== Tombstone handling
+
+A tombstone record (null value) is passed through unchanged by default so downstream delete semantics are preserved.
+Set `tombstones.enabled=false` to drop tombstones instead.
+
+[[neo4j-debezium-converter-limitations]]
+== Limitations
+
+* *Primary-key value changes are not supported.* A stateless one-record SMT cannot represent a key change as the delete+create pair the JDBC sink expects, so an update that changes a key value is handled per `field.missing.behavior`.
+* A node label with no `keys` entry (no Neo4j key/uniqueness constraint) yields no portable primary key; provide `label.<Label>.key.properties` or the record is handled per `field.missing.behavior`.
+* The SMT requires schema-typed `Struct` values (`EXTENDED` payload mode); schemaless `Map` values are not supported.
+
+[[neo4j-debezium-converter-source-connector]]
+== Recommended Neo4j source connector configuration
+
+The SMT consumes the events emitted by the https://neo4j.com/docs/kafka/[Neo4j Kafka source connector].
+For the SMT to work, that upstream connector must be configured to produce *self-describing, schema-typed CDC events*.
+The settings below are the ones the SMT relies on, all other Neo4j connector options can be set as usual.
+
+.Recommended Neo4j source connector settings
+[cols="35%a,20%a,45%a",options="header"]
+|===
+|Property
+|Recommended value
+|Why
+
+|`neo4j.source-strategy`
+|`CDC`
+|The SMT reads Neo4j Change Data Capture events. Query-based strategies do not produce the CDC event shape the SMT expects.
+
+|`neo4j.payload-mode`
+|`EXTENDED`
+|*Required.* `EXTENDED` wraps every property value in a self-describing type union, which the SMT needs to map Neo4j temporal, spatial, and array types to the correct relational columns. The `COMPACT` mode drops this type information.
+
+|`value.converter`
+|A schema-typed converter
+|Use Avro (`io.confluent.connect.avro.AvroConverter`) or JSON with schemas enabled (`org.apache.kafka.connect.json.JsonConverter` with `value.converter.schemas.enable=true`) so the SMT receives a typed `Struct`. Schemaless values pass through unchanged.
+
+
+
+|`neo4j.cdc.topic.<topic>.key-strategy`
+|`SKIP`
+|The SMT derives its own primary-key record key from the change event, so the source connector need not compute one.
+|===
+
+CDC must also be enabled on the Neo4j database itself (CDC is a Neo4j *Enterprise* feature)
+
+A minimal source connector configuration that produces events this SMT can consume:
+
+[source,json]
+----
+{
+  "connector.class": "org.neo4j.connectors.kafka.source.Neo4jConnector",
+  "neo4j.uri": "bolt://neo4j:7687",
+  "neo4j.authentication.type": "BASIC",
+  "neo4j.authentication.basic.username": "neo4j",
+  "neo4j.authentication.basic.password": "<password>",
+  "neo4j.database": "neo4j",
+  "neo4j.source-strategy": "CDC",
+  "neo4j.start-from": "EARLIEST",
+  "neo4j.payload-mode": "EXTENDED",
+  "neo4j.cdc.topic.persons.patterns": "(:Person)",
+  "neo4j.cdc.topic.persons.key-strategy": "SKIP",
+  "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+  "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+  "value.converter.schemas.enable": true
+}
+----
+
+[[neo4j-debezium-converter-configuration-options]]
+== Configuration
+
+All options are optional.
+The global options below carry no prefix.
+Per-entity overrides use the `label.<Label>.*` and `relationship.<TYPE>.*` namespaces (`<TYPE>` may be qualified with `@<Start>-<End>`).
+
+=== Global configuration
+
+.Neo4jDebeziumConverter global configuration options
+[cols="30%a,10%a,10%a,50%a",options="header"]
+|===
+|Property
+|Default
+|Importance
+|Description
+
+|[[neo4j-dbz-table-naming]]<<neo4j-dbz-table-naming, `table.naming`>>
+|`as_is`
+|medium
+a|How a Neo4j label or relationship type becomes a target table name:
+
+* `as_is`: keep the Neo4j casing.
+* `snake_case`: lowercase and snake-case it.
+
+|[[neo4j-dbz-column-naming]]<<neo4j-dbz-column-naming, `column.naming`>>
+|`as_is`
+|medium
+|How a Neo4j property (and a composed foreign-key column name) becomes a relational column name: `as_is` or `snake_case`.
+
+|[[neo4j-dbz-fk-naming]]<<neo4j-dbz-fk-naming, `relationship.fk.naming`>>
+|`label_key`
+|low
+|The structure of a foreign-key / join-table endpoint column name before casing. `label_key` joins the endpoint label and key property with an underscore (for example `Order_id`). The composed name is then cased by `column.naming`.
+
+|[[neo4j-dbz-field-missing-behavior]]<<neo4j-dbz-field-missing-behavior, `field.missing.behavior`>>
+|`warn`
+|medium
+a|How to react when a Neo4j CDC event is missing something the mapping needs (an empty `keys` map, no mapped owning label, an ambiguous multi-label node, a missing before/after image, or a primary-key value change):
+
+* `fail`: throw so the record is routed by the connector's error handling.
+* `warn`: log and drop the record.
+* `ignore`: drop the record silently.
+
+|[[neo4j-dbz-tombstones-enabled]]<<neo4j-dbz-tombstones-enabled, `tombstones.enabled`>>
+|`true`
+|low
+|Whether an incoming tombstone record (null value) is passed through unchanged (`true`) or dropped (`false`).
+|===
+
+=== Label (node) configuration
+
+.Neo4jDebeziumConverter label configuration options
+[cols="30%a,10%a,10%a,50%a",options="header"]
+|===
+|Property
+|Default
+|Importance
+|Description
+
+|[[neo4j-dbz-label-table]]<<neo4j-dbz-label-table, `label.<Label>.table`>>
+|Derived from the label via `table.naming`
+|medium
+|Target table name override for nodes owned by this label.
+
+|[[neo4j-dbz-label-key-properties]]<<neo4j-dbz-label-key-properties, `label.<Label>.key.properties`>>
+|Derived from the node's `keys` entry
+|medium
+|Comma-separated list of properties to use as the primary key, overriding the constraint-derived key.
+
+|[[neo4j-dbz-label-properties-include]]<<neo4j-dbz-label-properties-include, `label.<Label>.properties.include`>>
+|
+|medium
+|Comma-separated list of properties to include as columns. Key columns are always retained. Mutually exclusive with `properties.exclude`.
+
+|[[neo4j-dbz-label-properties-exclude]]<<neo4j-dbz-label-properties-exclude, `label.<Label>.properties.exclude`>>
+|
+|medium
+|Comma-separated list of properties to exclude from columns. Key columns are always retained. Mutually exclusive with `properties.include`.
+|===
+
+=== Relationship configuration
+
+.Neo4jDebeziumConverter relationship configuration options
+[cols="30%a,10%a,10%a,50%a",options="header"]
+|===
+|Property
+|Default
+|Importance
+|Description
+
+|[[neo4j-dbz-rel-mode]]<<neo4j-dbz-rel-mode, `relationship.<TYPE>.mode`>>
+|`join_table`
+|high
+a|How the relationship is mapped:
+
+* `join_table`: a row in a join table with the two endpoint keys as a composite key.
+* `foreign_key`: a foreign-key column update on the owner endpoint's table.
+
+|[[neo4j-dbz-rel-table]]<<neo4j-dbz-rel-table, `relationship.<TYPE>.table`>>
+|Derived from the type (join-table) or the owner label (foreign-key)
+|medium
+|Target table name override.
+
+|[[neo4j-dbz-rel-start-column]]<<neo4j-dbz-rel-start-column, `relationship.<TYPE>.start.column`>>
+|Composed via `relationship.fk.naming`
+|medium
+|(`join_table` only) Column name for the start endpoint key. Applied only for a single-key endpoint; ignored for a composite-key endpoint (the composed names are used instead).
+
+|[[neo4j-dbz-rel-end-column]]<<neo4j-dbz-rel-end-column, `relationship.<TYPE>.end.column`>>
+|Composed via `relationship.fk.naming`
+|medium
+|(`join_table` only) Column name for the end endpoint key. Applied only for a single-key endpoint; ignored for a composite-key endpoint (the composed names are used instead).
+
+|[[neo4j-dbz-rel-properties]]<<neo4j-dbz-rel-properties, `relationship.<TYPE>.properties`>>
+|
+|medium
+|Comma-separated list of relationship properties to include as columns. Empty means all. Applies in `join_table` mode; ignored in `foreign_key` mode (which emits only key and foreign-key columns).
+
+|[[neo4j-dbz-rel-owner]]<<neo4j-dbz-rel-owner, `relationship.<TYPE>.owner`>>
+|`start`
+|medium
+|(`foreign_key` only) Which endpoint owns the row that receives the foreign-key column: `start` or `end`.
+
+|[[neo4j-dbz-rel-fk-column]]<<neo4j-dbz-rel-fk-column, `relationship.<TYPE>.fk.column`>>
+|Composed via `relationship.fk.naming`
+|medium
+|(`foreign_key` only) Foreign-key column name. Applied only for a single-key other endpoint; ignored for a composite-key endpoint (the composed names are used instead).
+|===
+
+[[example-neo4j-debezium-converter]]
+=== Examples
+
+==== Zero configuration
+
+With no options, the SMT maps each node to a table named after its (single) label, keyed by the label's constraint key:
+
+[source]
+----
+transforms=neo4j
+transforms.neo4j.type=io.debezium.transforms.Neo4jDebeziumConverter
+----
+
+A `Customer` node with key `id` is written to a `Customer` table keyed by `id`.
+
+==== Snake-case naming for a relational sink
+
+[source]
+----
+transforms=neo4j
+transforms.neo4j.type=io.debezium.transforms.Neo4jDebeziumConverter
+transforms.neo4j.table.naming=snake_case
+transforms.neo4j.column.naming=snake_case
+----
+
+An `OrderItem` node becomes an `order_item` table; a `unitPrice` property becomes a `unit_price` column.
+
+==== Join-table relationship
+
+Map a `CONTAINS` relationship between `Order` and `Product` to an `order_items` join table:
+
+[source]
+----
+transforms=neo4j
+transforms.neo4j.type=io.debezium.transforms.Neo4jDebeziumConverter
+transforms.neo4j.column.naming=snake_case
+transforms.neo4j.relationship.CONTAINS.table=order_items
+transforms.neo4j.relationship.CONTAINS.properties=quantity
+----
+
+Each `CONTAINS` event becomes an `order_items` row with columns `order_id`, `product_id`, and `quantity`, keyed by (`order_id`, `product_id`).
+
+==== Foreign-key relationship
+
+Map a `PLACED_BY` relationship from `Order` to `Customer` as a foreign key on the `orders` table:
+
+[source]
+----
+transforms=neo4j
+transforms.neo4j.type=io.debezium.transforms.Neo4jDebeziumConverter
+transforms.neo4j.column.naming=snake_case
+transforms.neo4j.relationship.PLACED_BY.mode=foreign_key
+transforms.neo4j.relationship.PLACED_BY.table=orders
+----
+
+Each `PLACED_BY` event becomes a partial update (`op=u`) of the `orders` row identified by `id`, setting the `customer_id` foreign-key column. A relationship delete sets `customer_id` to `null`.
