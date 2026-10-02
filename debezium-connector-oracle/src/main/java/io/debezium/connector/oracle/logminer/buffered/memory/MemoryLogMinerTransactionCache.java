@@ -84,12 +84,9 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
     public void forEachEvent(MemoryTransaction transaction, InterruptiblePredicate<LogMinerEvent> predicate) throws InterruptedException {
         final var events = eventsByTransactionId.get(transaction.getTransactionId());
         if (events != null) {
-            try (var stream = events.stream()) {
-                final Iterator<LogMinerEventEntry> iterator = stream.iterator();
-                while (iterator.hasNext()) {
-                    if (!predicate.test(iterator.next().event())) {
-                        break;
-                    }
+            for (LogMinerEventEntry entry : events) {
+                if (!predicate.test(entry.event())) {
+                    break;
                 }
             }
         }
