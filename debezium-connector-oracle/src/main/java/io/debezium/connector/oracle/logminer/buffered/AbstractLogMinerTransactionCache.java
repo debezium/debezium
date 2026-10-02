@@ -7,7 +7,6 @@ package io.debezium.connector.oracle.logminer.buffered;
 
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -92,7 +91,11 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction, S 
 
     @Override
     public void deferredTransactions(Consumer<Stream<Transaction>> consumer) {
-        consumer.accept(segments.stream().map(S::deferredTransaction).filter(Objects::nonNull));
+        consumer.accept(segments.stream().<Transaction> mapMulti((slot, downstream) -> {
+            if (slot.deferredTransaction != null) {
+                downstream.accept(slot.deferredTransaction);
+            }
+        }));
     };
 
     @Override
@@ -137,12 +140,16 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction, S 
 
     @Override
     public Scn getOldestDeferredTransactionStartScn() {
-        return segments.stream()
-                .map(S::deferredTransaction)
-                .filter(Objects::nonNull)
-                .map(Transaction::getStartScn)
-                .min(Scn::compareTo)
-                .orElse(Scn.NULL);
+        Scn oldest = Scn.NULL;
+        if (deferredTransactionCount > 0) {
+            for (S slot : segments) {
+                final Transaction deferredTransaction = slot.deferredTransaction;
+                if (deferredTransaction != null && (oldest.isNull() || deferredTransaction.getStartScn().compareTo(oldest) < 0)) {
+                    oldest = deferredTransaction.getStartScn();
+                }
+            }
+        }
+        return oldest;
     }
 
     @Override

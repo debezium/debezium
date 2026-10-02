@@ -11,7 +11,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
-import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.LongStream;
@@ -51,19 +50,27 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
 
     @Override
     public <R> R streamTransactionsAndReturn(Function<Stream<MemoryTransaction>, R> consumer) {
-        return consumer.apply(segments.stream().map(MemorySlot::transaction).filter(Objects::nonNull));
+        return consumer.apply(segments.stream().<MemoryTransaction> mapMulti((slot, downstream) -> {
+            if (slot.transaction != null) {
+                downstream.accept(slot.transaction);
+            }
+        }));
     }
 
     @Override
     public void transactions(Consumer<Stream<MemoryTransaction>> consumer) {
-        consumer.accept(segments.stream().map(MemorySlot::transaction).filter(Objects::nonNull));
+        consumer.accept(segments.stream().<MemoryTransaction> mapMulti((slot, downstream) -> {
+            if (slot.transaction != null) {
+                downstream.accept(slot.transaction);
+            }
+        }));
     }
 
     @Override
     public void eventKeys(Consumer<LongStream> consumer) {
         consumer.accept(segments.stream()
                 .flatMapToLong(slot -> slot.transaction == null || slot.events == null ? LongStream.of()
-                        : slot.events.stream().mapToInt(LogMinerEventEntry::eventId).mapToLong(slot.transaction::getEventId)));
+                        : slot.events.stream().mapToLong(event -> slot.transaction.getEventId(event.eventId()))));
     }
 
     @Override
