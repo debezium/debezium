@@ -248,10 +248,11 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends Abstrac
         }
 
         final boolean keyHoldsDocumentKey = holdsDocumentKey(record.keySchema());
+        final String keyFieldName = keyHoldsDocumentKey ? MongoDbFieldName.DOCUMENT_KEY : MongoDbFieldName.ID;
         final R keyRecord = (keyHoldsDocumentKey ? documentKeyExtractor : keyExtractor).apply(record);
 
-        BsonDocument keyDocument = BsonDocument.parse("{ \"id\" : " + keyRecord.key().toString() + "}");
-        BsonValue documentId = documentIdOf(keyDocument, keyHoldsDocumentKey);
+        BsonDocument keyDocument = BsonDocument.parse("{ \"" + keyFieldName + "\" : " + keyRecord.key().toString() + "}");
+        BsonValue documentId = documentIdOf(keyDocument, keyFieldName, keyHoldsDocumentKey);
         BsonDocument valueDocument = new BsonDocument();
 
         // Handling tombstone record
@@ -330,8 +331,8 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends Abstrac
      * Returns the {@code _id} of the document that the record key identifies. A key that holds the change stream
      * documentKey carries the shard key fields as well, so the id has to be taken out of it.
      */
-    private static BsonValue documentIdOf(BsonDocument keyDocument, boolean keyHoldsDocumentKey) {
-        BsonValue key = keyDocument.get(MongoDbFieldName.ID);
+    private static BsonValue documentIdOf(BsonDocument keyDocument, String keyFieldName, boolean keyHoldsDocumentKey) {
+        BsonValue key = keyDocument.get(keyFieldName);
         if (!keyHoldsDocumentKey || key == null || !key.isDocument()) {
             return key;
         }
