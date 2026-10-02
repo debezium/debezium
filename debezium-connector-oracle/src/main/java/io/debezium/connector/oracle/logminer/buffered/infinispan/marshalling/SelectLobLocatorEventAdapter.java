@@ -14,7 +14,6 @@ import org.infinispan.protostream.annotations.ProtoField;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.SelectLobLocatorEvent;
-import io.debezium.relational.TableId;
 
 /**
  * An Infinispan ProtoStream adapter to marshall {@link SelectLobLocatorEvent} instances.
@@ -58,7 +57,7 @@ public class SelectLobLocatorEventAdapter extends DmlEventAdapter {
         return new SelectLobLocatorEvent(
                 EventType.from(eventType),
                 Scn.valueOf(scn),
-                TableId.parse(tableId),
+                parseTableId(tableId),
                 rowId,
                 rsId,
                 Instant.parse(changeTime),

@@ -13,7 +13,6 @@ import org.infinispan.protostream.annotations.ProtoFactory;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.TruncateEvent;
-import io.debezium.relational.TableId;
 
 @ProtoAdapter(TruncateEvent.class)
 public class TruncateEventAdapter extends DmlEventAdapter {
@@ -37,7 +36,7 @@ public class TruncateEventAdapter extends DmlEventAdapter {
         return new TruncateEvent(
                 EventType.from(eventType),
                 Scn.valueOf(scn),
-                TableId.parse(tableId),
+                parseTableId(tableId),
                 rowId,
                 rsId,
                 Instant.parse(changeTime),

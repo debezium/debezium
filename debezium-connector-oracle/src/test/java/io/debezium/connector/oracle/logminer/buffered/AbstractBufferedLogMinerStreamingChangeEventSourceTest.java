@@ -804,7 +804,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     @Test
     @FixFor("debezium/dbz#1960")
     public void testLastEnqueuedEventIsForgottenWhenTransactionCommits() throws Exception {
-        try (var source = getChangeEventSource(getConfig().build())) {
+        try (var source = getChangeEventSource(getConfig().with(OracleConnectorConfig.LOG_MINING_INCLUDE_INTERNAL_EVENTS, "true").build())) {
             source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
             source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1));
 
@@ -819,7 +819,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     @Test
     @FixFor("debezium/dbz#1960")
     public void testLastEnqueuedEventIsForgottenWhenPartialRollbackIsAppliedByPrefixAndTransactionCommits() throws Exception {
-        try (var source = getChangeEventSource(getConfig().build())) {
+        try (var source = getChangeEventSource(getConfig().with(OracleConnectorConfig.LOG_MINING_INCLUDE_INTERNAL_EVENTS, "true").build())) {
             source.processEvent(getStartLogMinerEventRow(1, PARTIAL_TXN_ID_FULL));
             source.processEvent(getInsertLogMinerEventRow(2, PARTIAL_TXN_ID_FULL, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'insert'"));
             source.processEvent(getUpdateLogMinerEventRow(3, PARTIAL_TXN_ID_FULL, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'update'"));
