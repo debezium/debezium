@@ -1130,6 +1130,21 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     "have TOASTed data that are rarely part of these updates. However, it is possible for the in-memory schema to " +
                     "become outdated if TOASTable columns are dropped from the table.");
 
+    public static final Field SCHEMA_REFRESH_ON_STARTUP = Field.create("schema.refresh.on.startup")
+            .withDisplayName("Schema refresh on startup")
+            .withType(Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
+            .withDefault(true)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Specify whether the connector loads the schema of all captured tables from the database when streaming starts. " +
+                    "'true' (the default) loads all captured tables before the first change is read. " +
+                    "'false' skips this load and loads each table when the first change for it is received, " +
+                    "which reduces the startup time for databases with a large number of captured tables. " +
+                    "A snapshot still loads the schema of the tables that it captures. " +
+                    "With 'false', regular expressions in incremental snapshot signals only match tables whose schema has already been loaded.")
+            .withValidation(Field::isBoolean);
+
     public static final Field XMIN_FETCH_INTERVAL = Field.create("xmin.fetch.interval.ms")
             .withDisplayName("Xmin fetch interval (ms)")
             .withType(Type.LONG)
@@ -1512,6 +1527,10 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return SchemaRefreshMode.COLUMNS_DIFF_EXCLUDE_UNCHANGED_TOAST == this.schemaRefreshMode;
     }
 
+    protected boolean refreshSchemaOnStartup() {
+        return getConfig().getBoolean(SCHEMA_REFRESH_ON_STARTUP);
+    }
+
     protected Duration xminFetchInterval() {
         return Duration.ofMillis(getConfig().getLong(PostgresConnectorConfig.XMIN_FETCH_INTERVAL));
     }
@@ -1583,7 +1602,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .group(Field.Group.CONNECTOR, HSTORE_HANDLING_MODE, BINARY_HANDLING_MODE, SCHEMA_NAME_ADJUSTMENT_MODE, INTERVAL_HANDLING_MODE,
                     LOGICAL_DECODING_MESSAGE_PREFIX_INCLUDE_LIST, LOGICAL_DECODING_MESSAGE_PREFIX_EXCLUDE_LIST, PUBLISH_VIA_PARTITION_ROOT, LSN_FLUSH_MODE,
                     SHOULD_FLUSH_LSN_IN_SOURCE_DB, UNAVAILABLE_VALUE_PLACEHOLDER, SKIPPED_OPERATIONS)
-            .group(Field.Group.CONNECTOR_ADVANCED, SCHEMA_REFRESH_MODE, INCLUDE_UNKNOWN_DATATYPES, SOURCE_INFO_STRUCT_MAKER)
+            .group(Field.Group.CONNECTOR_ADVANCED, SCHEMA_REFRESH_MODE, SCHEMA_REFRESH_ON_STARTUP, INCLUDE_UNKNOWN_DATATYPES, SOURCE_INFO_STRUCT_MAKER)
             .group(Field.Group.CONNECTOR_SNAPSHOT, SNAPSHOT_MODE, SNAPSHOT_ISOLATION_MODE, SNAPSHOT_QUERY_MODE, SNAPSHOT_QUERY_MODE_CUSTOM_NAME, SNAPSHOT_LOCKING_MODE,
                     SNAPSHOT_LOCKING_MODE_CUSTOM_NAME, INCREMENTAL_SNAPSHOT_CHUNK_SIZE)
             .excluding(INCLUDE_SCHEMA_CHANGES)

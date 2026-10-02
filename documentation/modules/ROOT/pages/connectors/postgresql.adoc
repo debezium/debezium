@@ -4369,6 +4369,28 @@ This setting can significantly improve connector performance if there are freque
 However, it is possible for the in-memory schema to
 become outdated if TOASTable columns are dropped from the table.
 
+|[[postgresql-property-schema-refresh-on-startup]]<<postgresql-property-schema-refresh-on-startup, `+schema.refresh.on.startup+`>>
+|`true`
+|Specifies whether the connector loads the schema of all captured tables from the database when streaming starts.
+
+`true` loads the schema of every table that matches the table filters before the connector reads the first change.
+The connector performs this load every time that streaming starts, also when it resumes from a stored offset.
+
+`false` skips this load.
+The connector loads the schema of a table when it receives the first change for that table.
+With the `pgoutput` plug-in, the connector builds the schema from the relation message that PostgreSQL sends before the first change for a table, together with metadata queries to the database.
+With the `decoderbufs` plug-in, the connector reads the schema of the table from the database.
+This setting can significantly reduce the startup time for databases with a large number of captured tables.
+The setting affects only the load when streaming starts; a snapshot still loads the schema of the tables that it captures.
+
+When this property is set to `false`, the following behavior changes:
+
+* Regular expressions in the `data-collections` of an incremental snapshot signal match only tables whose schema the connector has already loaded.
+To snapshot other tables, specify their names explicitly.
+* The `CapturedTables` streaming metric lists only tables whose schema the connector has already loaded.
+* The connector does not log the `REPLICA IDENTITY` of the captured tables when it starts.
+* With the `decoderbufs` plug-in, if a table is dropped before the connector processes the first change for that table, the connector cannot load its schema and skips its changes.
+
 |[[postgresql-property-snapshot-delay-ms]]<<postgresql-property-snapshot-delay-ms, `+snapshot.delay.ms+`>>
 |No default
 |An interval in milliseconds that the connector should wait before performing a snapshot when the connector starts.

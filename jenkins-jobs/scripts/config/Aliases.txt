@@ -21,6 +21,7 @@ AleksejsSibanovs,Aleksejs Sibanovs
 Alex-pvl,Aleksandr Pavlyuk
 AlexMiroshnikov,Alexey Miroshnikov
 alisator,Alisa Houskova
+alon-zeltser-cyera,Alon Zeltser
 AlvarVG,Alvar Viana
 alwaysbemark,Mark Bereznitsky
 AndreiLeib,Andrei Leibovski
