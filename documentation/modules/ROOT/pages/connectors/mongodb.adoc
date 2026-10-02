@@ -1704,9 +1704,8 @@ The key of a document also changes if you enable sharding on a collection that a
 Restart the connector task after you enable sharding on a captured collection, or after you change its shard key.
 The connector reads the shard key of a collection once and keeps it for the lifetime of the task, so until it restarts, an incremental snapshot keys a document by the shard key that was in place earlier while streaming already keys it by the new one.
 
-In `document_key` mode, the connector reads the shard key of each captured collection from the `config.collections` collection so that snapshot events and streaming events for the same document share a key.
-The database user that the connector uses must be able to read `config.collections`; otherwise the connector fails.
-The connector also fails if the entry that it reads for a sharded collection carries no shard key, rather than falling back to `_id`, because such a key would not match the `documentKey` that the change stream reports for the same document.
+On a sharded cluster in `document_key` mode, the connector reads the shard key of each captured collection from the `config.collections` collection so that snapshot events and streaming events for the same document share a key.
+The database user that the connector uses must then be able to read `config.collections`; otherwise the connector fails.
 ====
 
 |[[mongodb-property-capture-start-op-time]]<<mongodb-property-capture-start-op-time, `+capture.start.op.time+`>>

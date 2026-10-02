@@ -53,7 +53,8 @@ public class ShardKeys {
     }
 
     /**
-     * Returns an instance that treats every collection as unsharded, for use where no connection is available.
+     * Returns an instance that treats every collection as unsharded, for a deployment that is not a sharded cluster
+     * or where no connection is available.
      *
      * @return the shard keys; never null
      */

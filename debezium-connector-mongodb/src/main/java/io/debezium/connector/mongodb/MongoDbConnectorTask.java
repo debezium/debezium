@@ -109,7 +109,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
 
         final Schema structSchema = connectorConfig.getSourceInfoStructMaker().schema();
         this.schema = new MongoDbSchema(connectorConfig, taskContext, connectorConfig.getTopicNamingStrategy(MongoDbConnectorConfig.TOPIC_NAMING_STRATEGY),
-                structSchema, schemaNameAdjuster, new ShardKeys(connectionContext::getMongoClient));
+                structSchema, schemaNameAdjuster, shardKeys(connectorConfig));
 
         final Offsets<MongoDbPartition, MongoDbOffsetContext> previousOffsets = getPreviousOffsets(connectorConfig);
         final Clock clock = Clock.system();
@@ -210,6 +210,14 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
     @Override
     protected String connectorName() {
         return Module.name();
+    }
+
+    private ShardKeys shardKeys(MongoDbConnectorConfig connectorConfig) {
+        if (connectorConfig.getChangeEventKeyMode() == MongoDbConnectorConfig.ChangeEventKeyMode.ID
+                || !connectionContext.isShardedCluster()) {
+            return ShardKeys.unsharded();
+        }
+        return new ShardKeys(connectionContext::getMongoClient);
     }
 
     private Offsets<MongoDbPartition, MongoDbOffsetContext> getPreviousOffsets(MongoDbConnectorConfig connectorConfig) {
