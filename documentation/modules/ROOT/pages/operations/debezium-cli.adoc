@@ -1,6 +1,3 @@
-// Category: debezium-using
-// Type: assembly
-// Title: {prodname} Command-Line Interface (CLI)
 [id="debezium-cli"]
 = {prodname} Command-Line Interface (CLI)
 
@@ -39,7 +36,7 @@ It supports multi-environment profiles (`dev`, `staging`, `prod`), live database
 === Prerequisites
 
 * Java 21 or later
-* https://www.jbang.dev/[JBang] version 0.138.0 or later (for JBang execution)
+* https://www.jbang.dev/[JBang] version {jbang-version} or later (for JBang execution)
 * Optional: Access to a container registry (Docker Hub, Quay.io, GitHub Packages, or a local registry) when using `debezium push`
 * Optional: A running {prodname} Management Platform instance when using Platform Subsystem commands
 
@@ -52,7 +49,7 @@ You can execute the CLI directly from the official {prodname} JBang catalog, or 
 
 To run the CLI on-demand via JBang:
 
-[source,shell]
+[source,bash]
 ----
 $ jbang debezium@debezium --help
 ----
@@ -63,23 +60,23 @@ JBang automatically downloads the required dependencies and executes the CLI.
 
 To install the CLI as a standalone executable command:
 
-[source,shell]
+[source,bash]
 ----
 $ jbang app install --name debezium debezium@debezium
 ----
 
 After installation, verify that the CLI is accessible:
 
-[source,shell]
+[source,bash,subs="attributes"]
 ----
 $ debezium --version
-JBang 0.138.0
-Debezium Core 3.7.0-SNAPSHOT
+JBang {jbang-version}
+Debezium Core {debezium-version}
 ----
 
 To update the CLI to the latest release:
 
-[source,shell]
+[source,bash]
 ----
 $ jbang app setup
 $ jbang app install --force --name debezium debezium@debezium
@@ -95,7 +92,7 @@ This file maintains environment URLs and container registry defaults.
 
 When interacting with {prodname} Management Platform instances across different stages (for example, development, testing, and production), you can register environment URLs and switch between them:
 
-[source,shell]
+[source,bash]
 ----
 # Register environment URLs
 $ debezium config set --env=dev platform-url http://localhost:8080
@@ -124,23 +121,23 @@ Alternatively, you can override the target platform address for any command usin
 The Build Subsystem provides a declarative, reproducible method to assemble custom {prodname} Server distributions and container images.
 
 [[debezium-cli-init]]
-=== 1. Scaffolding a Project (`init`)
+=== Scaffolding a Project (`init`)
 
 To scaffold a new CDC project, run `debezium init` specifying the source database connector and target sink:
 
-[source,shell]
+[source,bash]
 ----
 $ debezium init --source postgres --sink kafka
 ----
 
 This creates a `dbz.yaml` project descriptor with default configuration templates:
 
-[source,yaml]
+[source,yaml,subs="attributes"]
 ----
 version: "1.0"
 
 debezium:
-  version: "3.7.0.Alpha2"
+  version: "{debezium-version}"
   source:
     connector: "postgres"
     config:
@@ -167,11 +164,11 @@ build:
 You can overwrite an existing `dbz.yaml` by passing the `--force` option.
 
 [[debezium-cli-validate]]
-=== 2. Validating Project Configuration (`validate`)
+=== Validating Project Configuration (`validate`)
 
 The `validate` command parses `dbz.yaml` to ensure required fields are present, syntax is valid, and required environment variables are set:
 
-[source,shell]
+[source,bash]
 ----
 $ export DBZ_DB_USER=postgres
 $ export DBZ_DB_PASS=secretpassword
@@ -181,7 +178,7 @@ Project descriptor dbz.yaml is valid!
 
 If a mandatory variable is missing or a configuration property is invalid, the command returns exit code `1` and outputs descriptive errors:
 
-[source,shell]
+[source,bash]
 ----
 $ unset DBZ_DB_PASS
 $ debezium validate
@@ -190,19 +187,19 @@ Validation failed with 1 error(s):
 ----
 
 [[debezium-cli-build]]
-=== 3. Building Distributions and Container Images (`build`)
+=== Building Distributions and Container Images (`build`)
 
 The `build` command resolves the runtime dependencies specified in `dbz.yaml` using embedded Eclipse Aether (fetching only the required connector and sink JARs from Maven Central) and packages the distribution.
 
 ==== Building a standalone ZIP distribution
 
-[source,shell]
+[source,bash]
 ----
 $ debezium build
 ----
 
 This generates a standalone archive in the `target/` directory:
-`target/debezium-server-3.7.0.Alpha2.zip`
+`target/debezium-server-{debezium-version}.zip`
 
 The archive contains:
 * The {prodname} Server runner JAR
@@ -212,9 +209,9 @@ The archive contains:
 
 To run the distribution directly on a host:
 
-[source,shell]
+[source,bash,subs="attributes"]
 ----
-$ unzip target/debezium-server-3.7.0.Alpha2.zip -d target/dist
+$ unzip target/debezium-server-{debezium-version}.zip -d target/dist
 $ cd target/dist
 $ ./run.sh
 ----
@@ -223,14 +220,14 @@ $ ./run.sh
 
 To build a container image without needing a local Docker daemon:
 
-[source,shell]
+[source,bash]
 ----
 $ debezium build --image
 ----
 
-[source,console]
+[source,console,subs="attributes"]
 ----
-Resolving dependencies for Debezium Server 3.7.0.Alpha2 (postgres -> kafka)...
+Resolving dependencies for Debezium Server {debezium-version} (postgres -> kafka)...
 Resolved 48 artifacts (184 MB) in 4.2s.
 Assembling layered OCI image target/debezium-server.tar...
   [Layer 1/3] Base runtime: eclipse-temurin:21-jre-jammy
@@ -242,11 +239,11 @@ Built OCI image archive: target/debezium-server.tar (image: debezium-server:post
 Because Google Jib Core constructs the image layers directly in memory, this command can run in unprivileged CI/CD environments, rootless containers, and Kubernetes pods.
 
 [[debezium-cli-push]]
-=== 4. Pushing Images to a Registry (`push`)
+=== Pushing Images to a Registry (`push`)
 
 Once `debezium build --image` produces `target/debezium-server.tar`, use `debezium push` to publish the image to a container registry:
 
-[source,shell]
+[source,bash]
 ----
 # Push using the registry configured in dbz.yaml
 $ debezium push
@@ -272,13 +269,13 @@ The `push` command resolves registry credentials in the following order:
 The Platform Subsystem connects to the {prodname} Management Platform REST API (Platform Conductor) to discover resources, manage connections, inspect live database schemas, and orchestrate streaming pipelines.
 
 [[debezium-cli-catalog]]
-=== 1. Discovering Components (`catalog`)
+=== Discovering Components (`catalog`)
 
 The `catalog` commands allow you to explore registered source connectors, destinations, and transforms available in the platform:
 
 ==== Listing available catalog components
 
-[source,shell]
+[source,bash]
 ----
 $ debezium catalog list
 TYPE    CLASS
@@ -292,16 +289,16 @@ source  io.debezium.connector.mongodb.MongoDbConnector
 
 To view the configuration properties and validation rules for a specific connector:
 
-[source,shell]
+[source,bash]
 ----
 $ debezium catalog get source io.debezium.connector.postgresql.PostgresConnector
 ----
 
-[source,console]
+[source,console,subs="attributes"]
 ----
 Name:        Debezium PostgreSQL Connector
 Type:        source-connector
-Version:     3.7.0-SNAPSHOT
+Version:     {debezium-version}
 Description: Captures row-level changes from a PostgreSQL database in near real-time.
 
 NAME               TYPE    REQUIRED  DEFAULT  DESCRIPTION
@@ -313,13 +310,13 @@ database.user      string  true               Name of the database user.
 
 To output the raw descriptor in JSON format for automated scripting:
 
-[source,shell]
+[source,bash]
 ----
 $ debezium catalog get source io.debezium.connector.postgresql.PostgresConnector --format=json
 ----
 
 [[debezium-cli-connection]]
-=== 2. Connection Management and Live Schema Discovery (`connection`)
+=== Connection Management and Live Schema Discovery (`connection`)
 
 The `connection` commands manage database connectivity profiles and provide live introspection capabilities.
 
@@ -340,7 +337,7 @@ config:
   database: conductor
 ----
 
-[source,shell]
+[source,bash]
 ----
 $ debezium connection validate -f connection.yaml
 Connection is valid.
@@ -350,7 +347,7 @@ Connection is valid.
 
 Once a connection is registered, you can introspect the live database to view available schemas and tables:
 
-[source,shell]
+[source,bash]
 ----
 $ debezium connection create -f connection.yaml
 Connection created with id: 1
@@ -366,11 +363,11 @@ $ debezium connection collections 1
 This allows operators to verify table names and schemas directly from the command line without opening database management tools.
 
 [[debezium-cli-sources-destinations-transforms]]
-=== 3. Managing Sources, Destinations, and Transforms
+=== Managing Sources, Destinations, and Transforms
 
 Sources, destinations, and transforms represent reusable platform building blocks:
 
-[source,shell]
+[source,bash]
 ----
 # Manage Sources
 $ debezium source create -f source.yaml
@@ -392,7 +389,7 @@ $ debezium transform delete 1
 ----
 
 [[debezium-cli-pipeline]]
-=== 4. Pipeline Lifecycle and Signaling (`pipeline`)
+=== Pipeline Lifecycle and Signaling (`pipeline`)
 
 Pipelines bind a source, one or more optional transforms, and a destination into an active data streaming workflow.
 
@@ -409,7 +406,7 @@ destination:
   id: 1
 ----
 
-[source,shell]
+[source,bash]
 ----
 $ debezium pipeline create -f pipeline.yaml
 Pipeline created with id: 1
@@ -424,7 +421,7 @@ ID    NAME                    SOURCE         DESTINATION    LOG LEVEL
 
 The `pipeline signal` command dispatches control signals to running {prodname} pipelines without restarting containers or interrupting execution:
 
-[source,shell]
+[source,bash]
 ----
 # Trigger an ad-hoc incremental snapshot for specific collections
 $ debezium pipeline signal --type=execute-snapshot \
@@ -447,59 +444,59 @@ Signal sent to pipeline 1.
 [[debezium-cli-command-reference]]
 == Command Reference Summary
 
-[cols="1,2,3",options="header"]
+[cols="35%a,10%a,55%a",options="header"]
 |===
 | Command | Subcommands | Description
 
-| `version`
+|[[debezium-cli-command-version]]<<debezium-cli-command-version, `+version+`>>
 | _None_
 | Displays version information for JBang and {prodname} Core.
 
-| `switch`
+|[[debezium-cli-command-switch]]<<debezium-cli-command-switch, `+switch+`>>
 | `<env>`
 | Switches the active target platform environment.
 
-| `config`
+|[[debezium-cli-command-config]]<<debezium-cli-command-config, `+config+`>>
 | `get`, `set`
 | Manages CLI settings and multi-environment platform URLs.
 
-| `init`
+|[[debezium-cli-command-init]]<<debezium-cli-command-init, `+init+`>>
 | _None_
 | Scaffolds a new `dbz.yaml` project file for a given `--source` and `--sink`.
 
-| `validate`
+|[[debezium-cli-command-validate]]<<debezium-cli-command-validate, `+validate+`>>
 | _None_
 | Statically validates `dbz.yaml` syntax, connector properties, and environment variables.
 
-| `build`
+|[[debezium-cli-command-build]]<<debezium-cli-command-build, `+build+`>>
 | _None_
 | Assembles standalone distribution ZIP archives or layered OCI container images (`--image`).
 
-| `push`
+|[[debezium-cli-command-push]]<<debezium-cli-command-push, `+push+`>>
 | _None_
 | Publishes the assembled OCI image to a container registry.
 
-| `catalog`
+|[[debezium-cli-command-catalog]]<<debezium-cli-command-catalog, `+catalog+`>>
 | `list`, `get`
 | Queries available source connectors, sinks, and transforms from the platform catalog.
 
-| `connection`
+|[[debezium-cli-command-connection]]<<debezium-cli-command-connection, `+connection+`>>
 | `list`, `get`, `create`, `update`, `delete`, `validate`, `schemas`, `collections`
 | Manages database connections, validates credentials, and introspects live tables.
 
-| `source`
+|[[debezium-cli-command-source]]<<debezium-cli-command-source, `+source+`>>
 | `list`, `get`, `create`, `update`, `delete`, `verify-signals`
 | Manages {prodname} Platform source connectors.
 
-| `destination`
+|[[debezium-cli-command-destination]]<<debezium-cli-command-destination, `+destination+`>>
 | `list`, `get`, `create`, `update`, `delete`
 | Manages {prodname} Platform sink destinations.
 
-| `transform`
+|[[debezium-cli-command-transform]]<<debezium-cli-command-transform, `+transform+`>>
 | `list`, `get`, `create`, `update`, `delete`
 | Manages {prodname} Platform Single Message Transforms (SMTs).
 
-| `pipeline`
+|[[debezium-cli-command-pipeline]]<<debezium-cli-command-pipeline, `+pipeline+`>>
 | `list`, `get`, `create`, `update`, `delete`, `logs`, `signal`
 | Orchestrates pipelines, sends runtime signals, and retrieves logs.
 |===
@@ -507,56 +504,56 @@ Signal sent to pipeline 1.
 [[debezium-cli-project-file-reference]]
 == `dbz.yaml` Schema Reference
 
-[cols="2,1,1,3",options="header"]
+[cols="35%a,10%a,10%a,45%a",options="header"]
 |===
 | Property | Type | Required | Description
 
-| `version`
+|[[debezium-cli-property-version]]<<debezium-cli-property-version, `+version+`>>
 | `string`
 | Yes
 | Project descriptor schema version (for example, `"1.0"`).
 
-| `debezium.version`
+|[[debezium-cli-property-debezium-version]]<<debezium-cli-property-debezium-version, `+debezium.version+`>>
 | `string`
 | Yes
-| Target {prodname} release version (for example, `"3.7.0.Alpha2"`).
+| Target {prodname} release version (for example, `"{debezium-version}"`).
 
-| `debezium.source.connector`
+|[[debezium-cli-property-debezium-source-connector]]<<debezium-cli-property-debezium-source-connector, `+debezium.source.connector+`>>
 | `string`
 | Yes
 | Source connector identifier (`postgres`, `mysql`, `mongodb`, `sqlserver`, `oracle`).
 
-| `debezium.source.config`
+|[[debezium-cli-property-debezium-source-config]]<<debezium-cli-property-debezium-source-config, `+debezium.source.config+`>>
 | `map`
 | Yes
 | Key-value configuration map for the source connector. Supports `${ENV_VAR:-default}` syntax.
 
-| `debezium.sink.type`
+|[[debezium-cli-property-debezium-sink-type]]<<debezium-cli-property-debezium-sink-type, `+debezium.sink.type+`>>
 | `string`
 | Yes
 | Sink adapter identifier (`kafka`, `http`, `pulsar`, `redis`).
 
-| `debezium.sink.config`
+|[[debezium-cli-property-debezium-sink-config]]<<debezium-cli-property-debezium-sink-config, `+debezium.sink.config+`>>
 | `map`
 | Yes
 | Key-value configuration map for the sink adapter. Supports `${ENV_VAR:-default}` syntax.
 
-| `build.target`
+|[[debezium-cli-property-build-target]]<<debezium-cli-property-build-target, `+build.target+`>>
 | `string`
 | No
 | Packaging target format (`"tar"` for OCI image, `"zip"` for distribution archive).
 
-| `build.image.name`
+|[[debezium-cli-property-build-image-name]]<<debezium-cli-property-build-image-name, `+build.image.name+`>>
 | `string`
 | No
 | Name of the container image (default: `"debezium-server"`).
 
-| `build.image.registry`
+|[[debezium-cli-property-build-image-registry]]<<debezium-cli-property-build-image-registry, `+build.image.registry+`>>
 | `string`
 | No
 | Target container registry prefix (for example, `"ghcr.io/my-org"`).
 
-| `build.image.tag`
+|[[debezium-cli-property-build-image-tag]]<<debezium-cli-property-build-image-tag, `+build.image.tag+`>>
 | `string`
 | No
 | Image tag (default: `"<connector>-<sink>-latest"`).
