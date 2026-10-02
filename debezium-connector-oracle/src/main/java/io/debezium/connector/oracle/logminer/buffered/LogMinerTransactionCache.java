@@ -103,15 +103,6 @@ public interface LogMinerTransactionCache<T extends Transaction> {
     void transactions(Consumer<Stream<T>> consumer);
 
     /**
-     * Get the transaction event by transaction reference and event key.
-     *
-     * @param transaction the transaction, should not be {@code null}
-     * @param eventKey the event key, should not be {@code null}
-     * @return the event if found, {@code null} if not found
-     */
-    LogMinerEvent getTransactionEvent(T transaction, int eventKey);
-
-    /**
      * Applies a consumer to all event keys in the cache.
      * No assumptions should be made about the order of the event keys.
      *
