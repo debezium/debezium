@@ -34,7 +34,7 @@ public abstract class BinlogYearIT<C extends SourceConnector> extends AbstractBi
 
     private static final Path SCHEMA_HISTORY_PATH = Files.createTestingPath("file-schema-history-year.txt")
             .toAbsolutePath();
-    private final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase("yearit", "year_test")
+    protected final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase("yearit", "year_test")
             .withDbHistoryPath(SCHEMA_HISTORY_PATH);
 
     private Configuration config;
