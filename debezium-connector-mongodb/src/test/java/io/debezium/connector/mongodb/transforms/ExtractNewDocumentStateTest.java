@@ -446,6 +446,19 @@ public class ExtractNewDocumentStateTest {
 
     @Test
     @FixFor("debezium/dbz#2337")
+    public void shouldKeepTheKeyFieldNameOfTheSourceRecord() {
+        SourceRecord fromDocumentKey = rewriteDelete("documentKey", "{\"caseNo\": \"201907130000200001\",\"_id\": 1}");
+        SourceRecord fromId = rewriteDelete("id", "{\"_id\": 1,\"tenant\": \"a\"}");
+
+        // The name says which of the two shapes the key holds, downstream of the transformation as well.
+        assertThat(fromDocumentKey.keySchema().fields()).singleElement()
+                .satisfies(field -> assertThat(field.name()).isEqualTo("documentKey"));
+        assertThat(fromId.keySchema().fields()).singleElement()
+                .satisfies(field -> assertThat(field.name()).isEqualTo("id"));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2337")
     public void shouldTakeIdOutOfDocumentKeyWhenRewritingDeletes() {
         SourceRecord transformed = rewriteDelete("documentKey", "{\"caseNo\": \"201907130000200001\",\"_id\": 1}");
 
