@@ -4,6 +4,7 @@
 [id="debezium-logging"]
 = {prodname} logging
 
+ifdef::community[]
 :linkattrs:
 :icons: font
 :source-highlighter: highlight.js
@@ -11,6 +12,7 @@
 :toc-placement: macro
 
 toc::[]
+endif::community[]
 
 {prodname} has extensive logging built into its connectors,
 and you can change the logging configuration to control which of these log statements appear in the logs

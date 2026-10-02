@@ -6,6 +6,7 @@
 [id="mongodb-new-document-state-extraction"]
 = MongoDB New Document State Extraction
 
+ifdef::community[]
 :toc:
 :toc-placement: macro
 :linkattrs:
@@ -13,6 +14,7 @@
 :source-highlighter: highlight.js
 
 toc::[]
+endif::community[]
 The {prodname} MongoDB connector emits data change messages to represent each operation that occurs in a MongoDB collection.
 The complex structure of these event messages faithfully represent the details of the original database event.
 However, some downstream consumers might not be able to process the messages in their original format.
@@ -354,13 +356,13 @@ These fields are present in the event message that a connector emits only if the
 
 `before` field:: Provides the state of the document before the change.
 This field is present only when `capture.mode` is set to one of the following values:
-** `change_streams_with_pre_image`
-** `change_streams_update_full_with_pre_image`.
+* `change_streams_with_pre_image`
+* `change_streams_update_full_with_pre_image`.
 
 `after` field:: Provides the full state of the document after a change.
 This field is present only when `capture.mode` is set to one of the following values:
-** `change_streams_update_full`
-** `change_streams_update_full_with_pre_image`.
+* `change_streams_update_full`
+* `change_streams_update_full_with_pre_image`.
 
 Assuming a connector that is configured to capture full documents, when the `ExtractNewDocumentState` SMT receives an `update` message for an `$unset` event, the SMT re-encodes the message by representing the removed field has a `null` value, as shown in the following example:
 
@@ -413,7 +415,7 @@ The assigned string value is based on the `op` field value in the original {link
 == Adding metadata fields
 
 The event flattening SMT for MongoDB can add metadata fields from the original change event message to the simplified message.
-The added metadata fields are prefixed with a double underscore (`"__"`).
+The added metadata fields are prefixed with a double underscore (`+"__"+`).
 Adding metadata to the event record makes it possible to include content such as the name of the collection in which a change event occurred, or to include connector-specific fields, such as a replica set name.
 Currently, the SMT can add fields from the following change event sub-structures only: `source`, `transaction` and `updateDescription`.
 

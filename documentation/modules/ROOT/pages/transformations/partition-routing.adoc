@@ -6,6 +6,7 @@
 [id="partition-routing"]
 = Partition Routing
 
+ifdef::community[]
 :toc:
 :toc-placement: macro
 :linkattrs:
@@ -13,6 +14,7 @@
 :source-highlighter: highlight.js
 
 toc::[]
+endif::community[]
 
 By default, when {prodname} detects a change in a data collection, the change event that it emits is sent to a topic that uses a single Apache Kafka partition.
 As described in {link-prefix}:{link-topic-auto-creation}#customizing-debezium-automatically-created-topics[Customization of Kafka Connect automatic topic creation], you can customize the default configuration to route events to multiple partitions, based on a hash of the primary key.

@@ -6,6 +6,7 @@
 [id="header-to-value"]
 = HeaderToValue
 
+ifdef::community[]
 :toc:
 :toc-placement: macro
 :linkattrs:
@@ -13,6 +14,7 @@
 :source-highlighter: highlight.js
 
 toc::[]
+endif::community[]
 
 The `HeaderToValue` SMT extracts specified header fields from event records, and then copies or moves the header fields to values in the event record.
 The `move` options removes the fields from the header entirely before adding them as values in the payload.
