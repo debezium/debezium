@@ -5,12 +5,14 @@
 [id="monitoring-debezium"]
 = Monitoring {prodname}
 
+ifdef::community[]
 :linkattrs:
 :icons: font
 :toc:
 :toc-placement: macro
 
 toc::[]
+endif::community[]
 
 You can use the JMX metrics provided by link:https://kafka.apache.org/documentation/#monitoring[Apache Kafka] and https://kafka.apache.org/documentation/#connect_monitoring[Kafka Connect] to monitor {prodname}.
 To use these metrics, you must enable them when you start the Kafka and Kafka Connect services.
