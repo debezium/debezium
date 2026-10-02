@@ -10,6 +10,7 @@ import static io.debezium.config.CommonConnectorConfig.EventConvertingFailureHan
 import java.io.IOException;
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.nio.ByteOrder;
 import java.nio.charset.Charset;
 import java.nio.charset.IllegalCharsetNameException;
@@ -360,7 +361,7 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
     protected Object convertTinyInt(Column column, Field fieldDefn, Object data) {
         // Allows decimal default values for tinyint columns
         if (data instanceof String) {
-            data = Math.round(Double.parseDouble((String) data));
+            data = new BigDecimal((String) data).setScale(0, RoundingMode.HALF_UP);
         }
         return super.convertTinyInt(column, fieldDefn, data);
     }
@@ -369,7 +370,7 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
     protected Object convertSmallInt(Column column, Field fieldDefn, Object data) {
         // Allows decimal default values for smallint columns
         if (data instanceof String) {
-            data = Math.round(Double.parseDouble((String) data));
+            data = new BigDecimal((String) data).setScale(0, RoundingMode.HALF_UP);
         }
         return super.convertSmallInt(column, fieldDefn, data);
     }
@@ -378,7 +379,7 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
     protected Object convertInteger(Column column, Field fieldDefn, Object data) {
         // Allows decimal default values for integer columns
         if (data instanceof String) {
-            data = Math.round(Double.parseDouble((String) data));
+            data = new BigDecimal((String) data).setScale(0, RoundingMode.HALF_UP);
         }
         return super.convertInteger(column, fieldDefn, data);
     }
@@ -387,7 +388,7 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
     protected Object convertBigInt(Column column, Field fieldDefn, Object data) {
         // Allows decimal default values for bigint columns
         if (data instanceof String) {
-            data = Math.round(Double.parseDouble((String) data));
+            data = new BigDecimal((String) data).setScale(0, RoundingMode.HALF_UP);
         }
         return super.convertBigInt(column, fieldDefn, data);
     }
