@@ -30,7 +30,6 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
 
     private final Map<String, MemoryTransaction> transactionsByTransactionId = new HashMap<>();
     private final Map<String, List<LogMinerEventEntry>> eventsByTransactionId = new HashMap<>();
-    private final Map<String, HashMap<Integer, LogMinerEvent>> eventsByEventIdByTransactionId = new HashMap<>();
 
     @Override
     public MemoryTransaction getTransaction(String transactionId) {
@@ -85,24 +84,12 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
     public void forEachEvent(MemoryTransaction transaction, InterruptiblePredicate<LogMinerEvent> predicate) throws InterruptedException {
         final var events = eventsByTransactionId.get(transaction.getTransactionId());
         if (events != null) {
-            try (var stream = events.stream()) {
-                final Iterator<LogMinerEventEntry> iterator = stream.iterator();
-                while (iterator.hasNext()) {
-                    if (!predicate.test(iterator.next().event())) {
-                        break;
-                    }
+            for (LogMinerEventEntry entry : events) {
+                if (!predicate.test(entry.event())) {
+                    break;
                 }
             }
         }
-    }
-
-    @Override
-    public LogMinerEvent getTransactionEvent(MemoryTransaction transaction, int eventKey) {
-        final var eventsByEventId = eventsByEventIdByTransactionId.get(transaction.getTransactionId());
-        if (eventsByEventId != null) {
-            return eventsByEventId.get(eventKey);
-        }
-        return null;
     }
 
     @Override
@@ -114,8 +101,6 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
     public void addTransactionEvent(MemoryTransaction transaction, int eventKey, LogMinerEvent event) {
         List<LogMinerEventEntry> entries = eventsByTransactionId.computeIfAbsent(transaction.getTransactionId(), (id) -> new ArrayList<>());
         entries.add(new LogMinerEventEntry(eventKey, event));
-        Map<Integer, LogMinerEvent> eventsByEventId = eventsByEventIdByTransactionId.computeIfAbsent(transaction.getTransactionId(), (id) -> new HashMap<>());
-        eventsByEventId.put(eventKey, event);
 
         if (event instanceof RollbackToSavepointEvent) {
             ListIterator<LogMinerEventEntry> it = entries.listIterator(entries.size());
@@ -132,7 +117,6 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
                     if (entry == range.end()) {
                         break;
                     }
-                    eventsByEventId.remove(entry.eventId());
                     it.remove();
                 }
             }
@@ -156,7 +140,6 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
     @Override
     public void removeTransactionEvents(MemoryTransaction transaction) {
         eventsByTransactionId.remove(transaction.getTransactionId());
-        eventsByEventIdByTransactionId.remove(transaction.getTransactionId());
     }
 
     @Override
@@ -185,7 +168,6 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
     public void clear() {
         transactionsByTransactionId.clear();
         eventsByTransactionId.clear();
-        eventsByEventIdByTransactionId.clear();
     }
 
     @Override

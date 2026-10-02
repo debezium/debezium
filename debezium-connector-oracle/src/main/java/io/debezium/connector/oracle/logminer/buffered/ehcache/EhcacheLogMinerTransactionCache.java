@@ -104,21 +104,12 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
     public void forEachEvent(EhcacheTransaction transaction, InterruptiblePredicate<LogMinerEvent> predicate) throws InterruptedException {
         final var events = eventIdsByTransactionId.get(transaction.getTransactionId());
         if (events != null) {
-            try (var stream = events.stream()) {
-                final Iterator<Integer> iterator = stream.iterator();
-                while (iterator.hasNext()) {
-                    final LogMinerEvent event = getTransactionEvent(transaction, iterator.next());
-                    if (!predicate.test(event)) {
-                        break;
-                    }
+            for (int eventId : events) {
+                if (!predicate.test(eventCache.get(transaction.getEventId(eventId)))) {
+                    break;
                 }
             }
         }
-    }
-
-    @Override
-    public LogMinerEvent getTransactionEvent(EhcacheTransaction transaction, int eventKey) {
-        return eventCache.get(transaction.getEventId(eventKey));
     }
 
     @Override
