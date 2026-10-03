@@ -115,6 +115,13 @@ public interface ColumnEditor {
     boolean isGenerated();
 
     /**
+     * Determine whether this column is a synthetic column.
+     *
+     * @return {@code true} if it is a synthetic column, or {@code false} otherwise
+     */
+    boolean isSynthetic();
+
+    /**
      * Get the database-specific complete expression defining the column's default value.
      *
      * @return the complete type expression
@@ -239,6 +246,14 @@ public interface ColumnEditor {
      * @return this editor so callers can chain methods together
      */
     ColumnEditor generated(boolean generated);
+
+    /**
+     * Set whether the column is a synthetic column.
+     *
+     * @param synthetic {@code true} if the column is a synthetic column, or {@code false} otherwise
+     * @return this editor so callers can chain methods together
+     */
+    ColumnEditor synthetic(boolean synthetic);
 
     /**
      * Set the position of the column within the table definition.
