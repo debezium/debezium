@@ -80,6 +80,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
     private static final String NO_SEQUENCE_TRX_ID_SUFFIX = "ffffffff";
     private static final int ORACLE_TRANSACTION_ID_PREFIX_LENGTH = 8;
+    private static final String NO_TRANSACTION_ID = "0000000000000000";
 
     private final String queryString;
     private final CacheProvider<Transaction> cacheProvider;
@@ -337,6 +338,10 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         return cacheProvider.getSchemaChangesCache();
     }
 
+    private boolean isNoTransactionId(String transactionId) {
+        return NO_TRANSACTION_ID.equals(transactionId);
+    }
+
     private boolean isRecentlyProcessed(String transactionId) {
         return getProcessedTransactionsCache().containsKey(transactionId);
     }
@@ -418,6 +423,10 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     @Override
     protected void handleStartEvent(LogMinerEventRow event) {
         final String transactionId = event.getTransactionId();
+        if (isNoTransactionId(transactionId)) {
+            LOGGER.debug("Skipping START event at SCN {} that has no transaction identifier.", event.getScn());
+            return;
+        }
         if (!isRecentlyProcessed(transactionId)) {
             if (getConfig().isDeferredLogMinerTransactionStartBehaviorEnabled() && !Strings.isNullOrEmpty(transactionId)) {
                 deferredTransactions.computeIfAbsent(transactionId, id -> {
@@ -1168,6 +1177,10 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     @Override
     protected void enqueueEvent(LogMinerEventRow event, LogMinerEvent dispatchedEvent) throws InterruptedException {
         final String transactionId = event.getTransactionId();
+        if (isNoTransactionId(transactionId)) {
+            LOGGER.debug("Skipping {} event at SCN {} that has no transaction identifier.", event.getEventType(), event.getScn());
+            return;
+        }
 
         Transaction transaction = getTransactionCache().getTransaction(transactionId);
         if (transaction == null) {
