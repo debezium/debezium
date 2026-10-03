@@ -55,7 +55,7 @@ public abstract class BinlogJdbcSinkDataTypeConverterIT<C extends SourceConnecto
     }
 
     @Test
-    @FixFor("DBZ-6225")
+    @FixFor({ "DBZ-6225", "debezium/dbz#2189" })
     public void testBooleanDataTypeMapping() throws Exception {
         final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase("booleanit", "boolean_test").withDbHistoryPath(SCHEMA_HISTORY_PATH);
         DATABASE.createAndInitialize();
@@ -116,17 +116,67 @@ public abstract class BinlogJdbcSinkDataTypeConverterIT<C extends SourceConnecto
         afterSchema = record.valueSchema().field("after").schema();
 
         // Assert how the BOOLEAN data type is mapped during the streaming phase.
-        // During streaming the DDL that gets parsed provides the column type as BOOLEAN and this is what gets passed
-        // into the Column's relational model and gets propagated. Despite being BOOLEAN, it should still be sent as
-        // an INT16 data type into Kafka. The sink connector should be able to deduce the type as TINYINT(1) when the
-        // column propagation is enabled because of type being BOOLEAN.
+        // During streaming the DDL parser normalizes BOOLEAN to TINYINT(1), matching the snapshot phase. The custom
+        // converter still emits an INT16 data type into Kafka, while the propagated source type remains TINYINT(1).
         assertThat(afterSchema.field("b1").schema().type()).isEqualTo(Schema.Type.INT16);
-        assertThat(afterSchema.field("b1").schema().parameters().get("__debezium.source.column.type")).isEqualTo("BOOLEAN");
-        assertThat(afterSchema.field("b1").schema().parameters().get("__debezium.source.column.length")).isNull();
+        assertThat(afterSchema.field("b1").schema().parameters().get("__debezium.source.column.type")).isEqualTo("TINYINT");
+        assertThat(afterSchema.field("b1").schema().parameters().get("__debezium.source.column.length")).isEqualTo("1");
         assertThat(after.get("b1")).isEqualTo((short) 1);
         assertThat(afterSchema.field("b2").schema().type()).isEqualTo(Schema.Type.INT16);
-        assertThat(afterSchema.field("b2").schema().parameters().get("__debezium.source.column.type")).isEqualTo("BOOLEAN");
-        assertThat(afterSchema.field("b2").schema().parameters().get("__debezium.source.column.length")).isNull();
+        assertThat(afterSchema.field("b2").schema().parameters().get("__debezium.source.column.type")).isEqualTo("TINYINT");
+        assertThat(afterSchema.field("b2").schema().parameters().get("__debezium.source.column.length")).isEqualTo("1");
+        assertThat(after.get("b2")).isEqualTo((short) 0);
+
+        stopConnector();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2189")
+    public void testBooleanColumnDefaultsWithNotNullConstraint() throws Exception {
+        final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase("booleandefit", "boolean_default_test").withDbHistoryPath(SCHEMA_HISTORY_PATH);
+        DATABASE.createAndInitialize();
+        Files.delete(SCHEMA_HISTORY_PATH);
+
+        config = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.INITIAL)
+                .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("BOOLEAN_DEFAULT_TEST"))
+                .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with(BinlogConnectorConfig.CUSTOM_CONVERTERS, "jdbc-sink")
+                .with("jdbc-sink.type", JdbcSinkDataTypesConverter.class.getName())
+                .with("jdbc-sink.selector.boolean", ".*BOOLEAN_DEFAULT_TEST.b.*")
+                .build();
+
+        start(getConnectorClass(), config);
+
+        // Snapshot phase: with BOOLEAN normalized to TINYINT(1), the parsed column default is a
+        // Number and must flow through the converter into the Connect field default.
+        SourceRecords records = consumeRecordsByTopic(1);
+        List<SourceRecord> tableRecords = records.recordsForTopic(DATABASE.topicForTable("BOOLEAN_DEFAULT_TEST"));
+        assertThat(tableRecords).hasSize(1);
+
+        Struct after = ((Struct) tableRecords.get(0).value()).getStruct(Envelope.FieldName.AFTER);
+        Schema afterSchema = tableRecords.get(0).valueSchema().field("after").schema();
+        assertThat(afterSchema.field("b1").schema().type()).isEqualTo(Schema.Type.INT16);
+        assertThat(afterSchema.field("b1").schema().defaultValue()).isEqualTo((short) 1);
+        assertThat(after.get("b1")).isEqualTo((short) 1);
+
+        // Streaming phase: a column added by DDL carries its default through the same path.
+        try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
+            try (JdbcConnection conn = db.connect()) {
+                conn.execute("ALTER TABLE BOOLEAN_DEFAULT_TEST ADD COLUMN b2 BOOLEAN NOT NULL DEFAULT FALSE");
+                conn.execute("INSERT INTO BOOLEAN_DEFAULT_TEST (id) VALUES (2)");
+            }
+        }
+
+        records = consumeRecordsByTopic(1);
+        tableRecords = records.recordsForTopic(DATABASE.topicForTable("BOOLEAN_DEFAULT_TEST"));
+        assertThat(tableRecords).hasSize(1);
+
+        after = ((Struct) tableRecords.get(0).value()).getStruct(Envelope.FieldName.AFTER);
+        afterSchema = tableRecords.get(0).valueSchema().field("after").schema();
+        assertThat(afterSchema.field("b2").schema().type()).isEqualTo(Schema.Type.INT16);
+        assertThat(afterSchema.field("b2").schema().defaultValue()).isEqualTo((short) 0);
+        assertThat(after.get("b1")).isEqualTo((short) 1);
         assertThat(after.get("b2")).isEqualTo((short) 0);
 
         stopConnector();

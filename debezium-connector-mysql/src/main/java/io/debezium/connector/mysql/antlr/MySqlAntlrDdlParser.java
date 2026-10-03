@@ -236,8 +236,12 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
                 new DataTypeEntry(Types.VARCHAR, MySqlParser.LONG_SYMBOL, MySqlParser.CHAR_SYMBOL, MySqlParser.VARYING_SYMBOL),
                 new DataTypeEntry(Types.VARCHAR, MySqlParser.LONG_SYMBOL, MySqlParser.VARCHAR_SYMBOL),
                 // Boolean types
-                new DataTypeEntry(Types.BOOLEAN, MySqlParser.BOOL_SYMBOL),
-                new DataTypeEntry(Types.BOOLEAN, MySqlParser.BOOLEAN_SYMBOL),
+                new DataTypeEntry(Types.TINYINT, MySqlParser.BOOL_SYMBOL)
+                        .setDataTypeName("TINYINT")
+                        .setDefaultLengthDimension(1),
+                new DataTypeEntry(Types.TINYINT, MySqlParser.BOOLEAN_SYMBOL)
+                        .setDataTypeName("TINYINT")
+                        .setDefaultLengthDimension(1),
                 new DataTypeEntry(Types.BIGINT, MySqlParser.SERIAL_SYMBOL),
                 // Collection types
                 new DataTypeEntry(Types.CHAR, MySqlParser.ENUM_SYMBOL).setSuffixTokens(MySqlParser.BINARY_SYMBOL),
