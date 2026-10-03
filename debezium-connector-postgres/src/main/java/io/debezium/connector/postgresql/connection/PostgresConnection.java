@@ -13,6 +13,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
+import java.time.DateTimeException;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -857,7 +858,23 @@ public class PostgresConnection extends JdbcConnection {
                     // Read as LocalDate so that the era survives. java.sql.Date carries no era, so a date
                     // stored as BC would arrive as the same day AD. LocalDate is a proleptic ISO type and
                     // never passes through java.sql.Date's Calendar.
-                    return rs.getObject(columnIndex, LocalDate.class);
+                    final LocalDate localDate;
+                    try {
+                        localDate = rs.getObject(columnIndex, LocalDate.class);
+                    }
+                    catch (DateTimeException e) {
+                        // pgjdbc validates the date against the year-of-era before applying BC, so February 29
+                        // of a BC leap year (1 BC, 5 BC, ...) is rejected; the converters parse the text form correctly
+                        return rs.getString(columnIndex);
+                    }
+                    // The driver maps infinity to LocalDate.MAX/MIN; emit the connector's own sentinels, as streaming does
+                    if (LocalDate.MAX.equals(localDate)) {
+                        return PostgresValueConverter.POSITIVE_INFINITY_LOCAL_DATE;
+                    }
+                    if (LocalDate.MIN.equals(localDate)) {
+                        return PostgresValueConverter.NEGATIVE_INFINITY_LOCAL_DATE;
+                    }
+                    return localDate;
                 default:
                     Object x = rs.getObject(columnIndex);
                     if (x != null) {

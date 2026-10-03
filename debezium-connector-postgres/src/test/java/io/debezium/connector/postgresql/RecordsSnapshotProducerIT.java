@@ -1509,6 +1509,37 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2721")
+    public void shouldSnapshotBcLeapDayDate() throws Exception {
+        TestHelper.execute("CREATE TABLE bc_leap_date_table (pk SERIAL, d DATE, PRIMARY KEY(pk));");
+        // February 29 of a BC leap year: pgjdbc rejects it in the typed read, so it must fall back to the text form
+        TestHelper.execute("INSERT INTO bc_leap_date_table (d) VALUES ('0005-02-29 BC'), ('0001-02-29 BC')");
+
+        buildNoStreamProducer(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.bc_leap_date_table"));
+
+        final TestConsumer consumer = testConsumer(2, "public");
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        // 5 BC is year -4 and 1 BC is year 0 in proleptic ISO
+        final Integer[] expectedEpochDays = {
+                (int) LocalDate.of(-4, 2, 29).toEpochDay(),
+                (int) LocalDate.of(0, 2, 29).toEpochDay()
+        };
+
+        final var records = new ArrayList<SourceRecord>();
+        consumer.process(records::add);
+
+        assertThat(records).hasSize(2);
+        for (int i = 0; i < expectedEpochDays.length; i++) {
+            VerifyRecord.isValidRead(records.get(i), PK_FIELD, i + 1);
+            assertRecordSchemaAndValues(
+                    Arrays.asList(new SchemaAndValueField("d", Date.builder().optional().build(), expectedEpochDays[i])),
+                    records.get(i), Envelope.FieldName.AFTER);
+        }
+    }
+
+    @Test
     @FixFor("debezium/dbz#2664")
     public void shouldSnapshotTemporalArraysPreservingEra() throws Exception {
         TestHelper.execute("CREATE TABLE era_array_table (pk SERIAL, "
@@ -1583,6 +1614,35 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
             assertArrayElementMatchesScalar(after, "d_arr", "d");
             assertArrayElementMatchesScalar(after, "ts_arr", "ts");
             assertArrayElementMatchesScalar(after, "tstz_arr", "tstz");
+        }
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = TemporalPrecisionMode.class, names = { "ADAPTIVE", "CONNECT", "ISOSTRING", "STRUCTURED" })
+    @FixFor("debezium/dbz#2721")
+    public void shouldSnapshotInfinityDateAsConnectorSentinel(TemporalPrecisionMode mode) throws Exception {
+        TestHelper.execute("DROP TABLE IF EXISTS inf_date_table;");
+        TestHelper.execute("CREATE TABLE inf_date_table (pk SERIAL, d DATE, d_arr DATE[], PRIMARY KEY(pk));");
+        TestHelper.execute("INSERT INTO inf_date_table (d, d_arr) VALUES ('infinity', '{infinity}'), ('-infinity', '{-infinity}')");
+
+        buildNoStreamProducer(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.inf_date_table")
+                .with(PostgresConnectorConfig.TIME_PRECISION_MODE, mode));
+
+        final TestConsumer consumer = testConsumer(2, "public");
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        final var records = new ArrayList<SourceRecord>();
+        consumer.process(records::add);
+
+        assertThat(records).hasSize(2);
+        for (int i = 0; i < records.size(); i++) {
+            VerifyRecord.isValidRead(records.get(i), PK_FIELD, i + 1);
+            final Struct after = ((Struct) records.get(i).value()).getStruct(Envelope.FieldName.AFTER);
+            final boolean positive = i == 0;
+            assertInfinityDate(after.get("d"), mode, positive);
+            assertThat(after.getArray("d_arr")).hasSize(1);
+            assertInfinityDate(after.getArray("d_arr").get(0), mode, positive);
         }
     }
 

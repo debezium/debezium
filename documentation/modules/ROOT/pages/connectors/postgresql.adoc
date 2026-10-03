@@ -1461,6 +1461,7 @@ Details are in the following sections:
 
 * xref:postgresql-basic-types[]
 * xref:postgresql-temporal-types[]
+* xref:postgresql-date-type[]
 * xref:postgresql-timestamp-type[]
 * xref:postgresql-decimal-types[]
 * xref:postgresql-hstore-type[]
@@ -2000,6 +2001,40 @@ Contains signed `years`, `months`, `days`, `hours`, `minutes`, `seconds`, `nanos
 
 |===
 
+
+[id="postgresql-date-type"]
+=== DATE type
+
+PostgreSQL supports `infinity` and `-infinity` values in `DATE` columns.
+Only the `structured` precision mode can represent infinity directly, so in every other `time.precision.mode`, the connector converts these values to a specific sentinel value.
+The sentinel values are the dates `+5877611-06-21` and `-5877611-06-22`, which lie outside the range of dates that PostgreSQL itself supports (4713 BC to 5874897 AD), so they cannot be mistaken for a stored date.
+The connector emits the same value for a scalar `DATE` and for a `DATE[]` element, and in snapshots and in streaming, with either logical decoding plug-in.
+
+The following table shows the value that the connector emits for each `time.precision.mode` setting:
+
+[cols="30%a,35%a,35%a",options="header"]
+|===
+|`time.precision.mode`
+|`infinity`
+|`-infinity`
+
+|`adaptive`, `adaptive_time_microseconds`, `microseconds`, `nanoseconds` (`io.debezium.time.Date`)
+|`2146033979`
+|`-2147472691`
+
+|`connect` (`org.apache.kafka.connect.data.Date`)
+|`185417335785600000` milliseconds since the epoch
+|`-185541640502400000` milliseconds since the epoch
+
+|`isostring` (`io.debezium.time.IsoDate`)
+|`+5877611-06-21Z`
+|`-5877611-06-22Z`
+
+|`structured` (`io.debezium.time.StructuredDate`)
+|`specialValue` is `POSITIVE_INFINITY`
+|`specialValue` is `NEGATIVE_INFINITY`
+
+|===
 
 [id="postgresql-timestamp-type"]
 === TIMESTAMP type
