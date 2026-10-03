@@ -271,7 +271,7 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
                 fieldName, fieldValue, transactionId, rollbackEvent.getScn(), rollbackEvent.getTableId(), rollbackEvent.getRowIdAsString());
     }
 
-    private int compareTransactionScnDetails(T first, T second) {
+    protected int compareTransactionScnDetails(T first, T second) {
         int scnComparison = first.getStartScn().compareTo(second.getStartScn());
         if (scnComparison != 0) {
             return scnComparison;
