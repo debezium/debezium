@@ -140,23 +140,20 @@ public class MongoDbConnector extends BaseSourceConnector implements ConfigDescr
         try {
             Threads.runWithTimeout(MongoDbConnector.class, () -> {
                 try {
-                    // Check base connection by accessing first database name
+                    // Check base connection and that changes can actually be captured for the configured
+                    // capture.scope/capture.target, rather than requiring broader access than the connector needs
                     try (MongoClient client = connectionContext.getMongoClient()) {
-                        // only when we try to fetch results a connection gets established
-                        // Verify if users has rights to list databases
-                        var dbNames = new ArrayList<String>();
-                        client.listDatabaseNames().into(dbNames);
-                        if (dbNames.isEmpty()) {
-                            String errorMessage = "User doesn't have rights to list databases. " +
-                                    "Please verify credentials and database permissions.";
-                            LOGGER.error("Could not validate connector config: " + errorMessage);
-                            connectionStringValidation.addErrorMessage(errorMessage);
+                        // an empty pipeline is enough to trigger the server-side authorization check for
+                        // find/changeStream on the configured capture.scope/capture.target
+                        try (var cursor = MongoUtils.openChangeStream(client, connectorConfig, List.of()).cursor()) {
+                            // reaching here means the account is authorized for the configured target
                         }
                     }
                     catch (MongoCommandException e) {
                         if (e.getErrorCode() == 13) { // Unauthorized
-                            connectionStringValidation.addErrorMessage(
-                                    "User doesn't have sufficient privileges: " + e.getMessage());
+                            String errorMessage = "User doesn't have sufficient privileges: " + e.getMessage();
+                            LOGGER.error("Could not validate connector config: {}", errorMessage);
+                            connectionStringValidation.addErrorMessage(errorMessage);
                         }
                         else {
                             connectionStringValidation.addErrorMessage("Unable to connect: " + e.getMessage());
