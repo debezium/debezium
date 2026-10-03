@@ -1,0 +1,72 @@
+<?xml version="1.0"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>${groupId}</groupId>
+    <artifactId>${artifactId}</artifactId>
+    <version>${version}</version>
+    <name>Debezium Connector for ${connectorName}</name>
+    <packaging>jar</packaging>
+
+    <properties>
+        <maven.compiler.release>21</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <version.debezium>${debeziumVersion}</version.debezium>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- Debezium manages the versions of its own artifacts and the Kafka, logging, and test libraries they align with -->
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-bom</artifactId>
+                <version>#[[${version.debezium}]]#</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <!-- Debezium pipeline and connector framework -->
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-connector-common</artifactId>
+        </dependency>
+
+        <!-- Kafka Connect API (provided by the Connect runtime) -->
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>connect-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- TODO: add your database's JDBC driver so ${connectorName}Connection can reach it, for example:
+        <dependency>
+            <groupId>org.example</groupId>
+            <artifactId>example-jdbc-driver</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+        -->
+
+        <!-- Logging (provided by the Connect runtime) -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Testing -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>
