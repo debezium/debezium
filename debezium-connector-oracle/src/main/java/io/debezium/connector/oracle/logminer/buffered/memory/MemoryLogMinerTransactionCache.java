@@ -11,6 +11,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
@@ -186,6 +187,18 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
         transactionsByTransactionId.clear();
         eventsByTransactionId.clear();
         eventsByEventIdByTransactionId.clear();
+    }
+
+    @Override
+    public Optional<ScnDetails> getEldestTransactionScnDetailsInCache() {
+        // Called for every commit, so a plain loop over the transactions is used rather than a stream
+        MemoryTransaction eldest = null;
+        for (MemoryTransaction transaction : transactionsByTransactionId.values()) {
+            if (eldest == null || compareTransactionScnDetails(transaction, eldest) < 0) {
+                eldest = transaction;
+            }
+        }
+        return eldest == null ? Optional.empty() : Optional.of(new ScnDetails(eldest.getStartScn(), eldest.getChangeTime()));
     }
 
     @Override
