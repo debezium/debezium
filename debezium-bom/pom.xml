@@ -18,6 +18,7 @@
         <!-- Connectors -->
         <version.dropwizard>4.2.39</version.dropwizard>
         <version.jaxb>2.3.1</version.jaxb>
+        <version.jakarta.validation>3.0.2</version.jakarta.validation>
         <version.jetty>12.1.11</version.jetty>
 
         <!-- Vitess dependencies -->
@@ -535,6 +536,11 @@
                 <groupId>javax.xml.bind</groupId>
                 <artifactId>jaxb-api</artifactId>
                 <version>${version.jaxb}</version>
+            </dependency>
+            <dependency>
+                <groupId>jakarta.validation</groupId>
+                <artifactId>jakarta.validation-api</artifactId>
+                <version>${version.jakarta.validation}</version>
             </dependency>
 
             <!-- Oracle dependencies -->
