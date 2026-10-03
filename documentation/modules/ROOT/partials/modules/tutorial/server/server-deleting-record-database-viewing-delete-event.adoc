@@ -1,0 +1,30 @@
+[id="server-deleting-record-database-viewing-delete-event"]
+= Deleting a record in the database and viewing the _delete_ event
+
+By deleting a record in the database and observing the change event that the {prodname} MySQL connector captures, you can learn how {prodname} represents deletions.
+
+.Procedure
+
+. In the terminal that is running the MySQL command line client, run the following statement:
+
++
+--
+
+[source,sql,options="nowrap"]
+----
+mysql> DELETE FROM customers WHERE last_name = 'Tutorial';
+Query OK, 1 row affected (0.00 sec)
+----
+
+--
+
+--
+
+* xref:http-deleting-record-database-viewing-delete-event[HTTP sink]
+* xref:http-deleting-record-database-viewing-delete-event[JDBC sink]
+
+--
+
+include::{partialsdir}/modules/tutorial/server/http-sink/http-deleting-record-database-viewing-delete-event.adoc[leveloffset=+1]
+
+include::{partialsdir}/modules/tutorial/server/jdbc-sink/jdbc-deleting-record-database-viewing-delete-event.adoc[leveloffset=+1]
