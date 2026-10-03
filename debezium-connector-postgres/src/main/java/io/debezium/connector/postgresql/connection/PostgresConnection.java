@@ -13,8 +13,11 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
+import java.time.DateTimeException;
 import java.time.Duration;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -848,16 +851,51 @@ public class PostgresConnection extends JdbcConnection {
                 case PgOid.TIMETZ:
                     // In order to guarantee that we resolve TIMETZ columns with proper microsecond precision,
                     // read the column as a string instead and then re-parse inside the converter.
-                case PgOid.TIMESTAMP:
-                case PgOid.TIMESTAMPTZ:
-                    // Read as string to avoid java.sql.Timestamp's Julian-Gregorian calendar conversion
-                    // which corrupts dates before 1582-10-15 (PostgreSQL uses proleptic Gregorian).
                     return rs.getString(columnIndex);
                 case PgOid.DATE:
                     // Read as LocalDate so that the era survives. java.sql.Date carries no era, so a date
                     // stored as BC would arrive as the same day AD. LocalDate is a proleptic ISO type and
                     // never passes through java.sql.Date's Calendar.
                     return rs.getObject(columnIndex, LocalDate.class);
+                case PgOid.TIMESTAMP:
+                    // Read as LocalDateTime rather than java.sql.Timestamp, whose Julian-Gregorian calendar conversion
+                    // corrupts dates before 1582-10-15 (PostgreSQL uses proleptic Gregorian). The driver parses the
+                    // value natively, which is considerably cheaper than re-parsing its text form in the converter.
+                    final LocalDateTime localDateTime;
+                    try {
+                        localDateTime = rs.getObject(columnIndex, LocalDateTime.class);
+                    }
+                    catch (DateTimeException e) {
+                        // pgjdbc validates the date against the year-of-era before applying BC, so February 29
+                        // of a BC leap year (1 BC, 5 BC, ...) is rejected; the converters parse the text form correctly
+                        return rs.getString(columnIndex);
+                    }
+                    // The driver maps infinity to LocalDateTime.MAX/MIN; the converters expect the connector's own sentinels
+                    if (LocalDateTime.MAX.equals(localDateTime)) {
+                        return PostgresValueConverter.POSITIVE_INFINITY_LOCAL_DATE_TIME;
+                    }
+                    if (LocalDateTime.MIN.equals(localDateTime)) {
+                        return PostgresValueConverter.NEGATIVE_INFINITY_LOCAL_DATE_TIME;
+                    }
+                    return localDateTime;
+                case PgOid.TIMESTAMPTZ:
+                    // Read as OffsetDateTime for the same reasons as TIMESTAMP; the driver normalizes it to UTC
+                    final OffsetDateTime offsetDateTime;
+                    try {
+                        offsetDateTime = rs.getObject(columnIndex, OffsetDateTime.class);
+                    }
+                    catch (DateTimeException e) {
+                        // Same BC leap day limitation as TIMESTAMP
+                        return rs.getString(columnIndex);
+                    }
+                    // The driver maps infinity to OffsetDateTime.MAX/MIN; the converters expect the connector's own sentinels
+                    if (OffsetDateTime.MAX.equals(offsetDateTime)) {
+                        return PostgresValueConverter.POSITIVE_INFINITY_OFFSET_DATE_TIME;
+                    }
+                    if (OffsetDateTime.MIN.equals(offsetDateTime)) {
+                        return PostgresValueConverter.NEGATIVE_INFINITY_OFFSET_DATE_TIME;
+                    }
+                    return offsetDateTime;
                 default:
                     Object x = rs.getObject(columnIndex);
                     if (x != null) {

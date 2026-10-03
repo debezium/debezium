@@ -1473,6 +1473,47 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2686")
+    public void shouldSnapshotBcLeapDayTimestamp() throws Exception {
+        TestHelper.execute("CREATE TABLE bc_leap_ts_table (pk SERIAL, ts TIMESTAMP, tstz TIMESTAMPTZ, PRIMARY KEY(pk));");
+        // February 29 of a BC leap year: pgjdbc rejects it in the typed read, so it must fall back to the text form
+        TestHelper.execute("INSERT INTO bc_leap_ts_table (ts, tstz) VALUES "
+                + "('0005-02-29 12:34:56 BC'::TIMESTAMP, NULL), "
+                + "(NULL, '0005-02-29 12:34:56+00 BC'::TIMESTAMPTZ), "
+                + "('0001-02-29 00:00:00.5 BC'::TIMESTAMP, '0001-02-29 00:00:00.5+00 BC'::TIMESTAMPTZ)");
+
+        buildNoStreamProducer(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.bc_leap_ts_table"));
+
+        final TestConsumer consumer = testConsumer(3, "public");
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        // 5 BC is year -4 and 1 BC is year 0 in proleptic ISO
+        final long fiveBcMicros = LocalDateTime.of(-4, 2, 29, 12, 34, 56).toInstant(ZoneOffset.UTC).getEpochSecond() * 1_000_000;
+        final long oneBcMicros = LocalDateTime.of(0, 2, 29, 0, 0, 0).toInstant(ZoneOffset.UTC).getEpochSecond() * 1_000_000 + 500_000;
+
+        final List<List<SchemaAndValueField>> expected = Arrays.asList(
+                Arrays.asList(
+                        new SchemaAndValueField("ts", MicroTimestamp.builder().optional().build(), fiveBcMicros),
+                        new SchemaAndValueField("tstz", ZonedTimestamp.builder().optional().build(), null)),
+                Arrays.asList(
+                        new SchemaAndValueField("ts", MicroTimestamp.builder().optional().build(), null),
+                        new SchemaAndValueField("tstz", ZonedTimestamp.builder().optional().build(), "-0004-02-29T12:34:56.000000Z")),
+                Arrays.asList(
+                        new SchemaAndValueField("ts", MicroTimestamp.builder().optional().build(), oneBcMicros),
+                        new SchemaAndValueField("tstz", ZonedTimestamp.builder().optional().build(), "0000-02-29T00:00:00.500000Z")));
+
+        final var records = new ArrayList<SourceRecord>();
+        consumer.process(records::add);
+
+        assertThat(records).hasSize(3);
+        for (int i = 0; i < expected.size(); i++) {
+            VerifyRecord.isValidRead(records.get(i), PK_FIELD, i + 1);
+            assertRecordSchemaAndValues(expected.get(i), records.get(i), Envelope.FieldName.AFTER);
+        }
+    }
+
+    @Test
     @FixFor("debezium/dbz#2664")
     public void shouldSnapshotDatePreservingEra() throws Exception {
         TestHelper.execute("CREATE TABLE era_date_table (pk SERIAL, d DATE, PRIMARY KEY(pk));");
