@@ -5,6 +5,8 @@
  */
 package io.debezium.pipeline.source.snapshot.incremental;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
@@ -15,11 +17,14 @@ import static org.mockito.Mockito.when;
 import java.sql.SQLException;
 import java.sql.SQLNonTransientConnectionException;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.debezium.config.Configuration;
@@ -28,18 +33,22 @@ import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.notification.NotificationService;
+import io.debezium.pipeline.signal.SignalPayload;
+import io.debezium.pipeline.signal.actions.snapshotting.SnapshotConfiguration;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.ColumnFilterMode;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.relational.RelationalDatabaseSchema;
+import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
+import io.debezium.relational.Tables;
 
 /**
- * Verifies how {@link AbstractIncrementalSnapshotChangeEventSource#readChunk} reacts when reading a
- * chunk fails with a JDBC error. A non-transient connection error (the server closed the connection)
- * must lead to the stale connection being discarded so that a fresh one is opened on the next chunk
- * read, rather than the connector getting stuck retrying a broken connection.
+ * Tests for {@link AbstractIncrementalSnapshotChangeEventSource} that drive the source through its
+ * public entry points with a mocked environment, covering behaviour that cannot be reproduced in a
+ * connector integration test.
  */
 @ExtendWith(MockitoExtension.class)
 public class AbstractIncrementalSnapshotChangeEventSourceTest {
@@ -59,21 +68,32 @@ public class AbstractIncrementalSnapshotChangeEventSourceTest {
         jdbcConnection = mock(JdbcConnection.class);
         progressListener = mock(SnapshotProgressListener.class);
         notificationService = mock(NotificationService.class, RETURNS_DEEP_STUBS);
-        source = new SignalBasedIncrementalSnapshotChangeEventSource<>(config(), jdbcConnection, null, null, null, progressListener, null,
-                notificationService);
-
-        // A snapshot with a single pending data collection so that readChunk proceeds past its
-        // guard clauses and starts reading a chunk.
-        SignalBasedIncrementalSnapshotContext<TableId> context = new SignalBasedIncrementalSnapshotContext<>();
-        context.addDataCollectionNamesToSnapshot("signal-1", List.of("public.a"), List.of(), "");
-
         offsetContext = mock(OffsetContext.class);
+        source = newSource(null);
+    }
+
+    private SignalBasedIncrementalSnapshotChangeEventSource<TestPartition, TableId> newSource(RelationalDatabaseSchema databaseSchema) {
+        return new SignalBasedIncrementalSnapshotChangeEventSource<>(config(), jdbcConnection, null, databaseSchema, null, progressListener, null,
+                notificationService);
+    }
+
+    /**
+     * Puts a snapshot of the given data collections in progress on {@link #offsetContext}.
+     */
+    private SignalBasedIncrementalSnapshotContext<TableId> snapshotInProgressOf(String... dataCollectionIds) {
+        SignalBasedIncrementalSnapshotContext<TableId> context = new SignalBasedIncrementalSnapshotContext<>();
+        context.addDataCollectionNamesToSnapshot("signal-1", List.of(dataCollectionIds), List.of(), "");
         doReturn(context).when(offsetContext).getIncrementalSnapshotContext();
+        return context;
     }
 
     @Test
     @FixFor("dbz#2275")
     public void shouldCloseConnectionWhenChunkReadFailsWithNonTransientConnectionError() throws Exception {
+        // A snapshot with a single pending data collection so that readChunk proceeds past its
+        // guard clauses and starts reading a chunk.
+        snapshotInProgressOf("public.a");
+
         // The server has closed the connection: the first JDBC call while reading the chunk fails
         // with a non-transient connection error.
         when(jdbcConnection.commit()).thenThrow(new SQLNonTransientConnectionException("connection closed by server"));
@@ -87,6 +107,8 @@ public class AbstractIncrementalSnapshotChangeEventSourceTest {
     @Test
     @FixFor("dbz#2275")
     public void shouldNotCloseConnectionWhenChunkReadFailsWithOtherSqlError() throws Exception {
+        snapshotInProgressOf("public.a");
+
         // A generic (potentially transient) SQL error is not a broken connection and must not cause
         // the connection to be discarded.
         when(jdbcConnection.commit()).thenThrow(new SQLException("transient failure"));
@@ -94,6 +116,64 @@ public class AbstractIncrementalSnapshotChangeEventSourceTest {
         source.readChunk(null, offsetContext);
 
         verify(jdbcConnection, never()).close();
+    }
+
+    /**
+     * Both the start- and the stop-snapshot signal identify their data collections with regular expressions,
+     * which are expanded to the ids known to the database schema. On a connector whose table ids are
+     * case-insensitive (MySQL with {@code lower_case_table_names} set to a non-zero value) the schema keys
+     * its tables by the lower-cased ids, while the tables themselves retain the case they were declared
+     * with. Unless both signals expand to the very same id, the stop signal does not find the collection it
+     * is to remove, the aborted snapshot keeps its collections and leaks into the next one.
+     */
+    @ParameterizedTest(name = "started with \"{0}\"")
+    @ValueSource(strings = { ".*", "testdb\\..*", "testdb\\.mytable", "testdb.MyTable" })
+    @FixFor("dbz#1563")
+    public void shouldStopSnapshotOfMixedCaseTableWhenTableIdsAreCaseInsensitive(String startedWith) throws Exception {
+        final SignalBasedIncrementalSnapshotContext<TableId> context = pausedSnapshotContext();
+        source = newSource(caseInsensitiveSchemaContaining(new TableId("testdb", null, "MyTable")));
+
+        startSnapshotOf(startedWith);
+        assertThat(context.snapshotRunning()).isTrue();
+
+        source.requestStopSnapshot(null, offsetContext, Map.of(), List.of(".*"));
+        source.readChunk(null, offsetContext);
+
+        assertThat(context.snapshotRunning()).isFalse();
+    }
+
+    /**
+     * Puts an empty, paused snapshot context on {@link #offsetContext}. Being paused keeps the source from
+     * doing anything beyond processing the signals it is sent, so that the outcome of a test is the one of
+     * those signals alone.
+     */
+    private SignalBasedIncrementalSnapshotContext<TableId> pausedSnapshotContext() {
+        final SignalBasedIncrementalSnapshotContext<TableId> context = new SignalBasedIncrementalSnapshotContext<>();
+        context.pauseSnapshot();
+        doReturn(context).when(offsetContext).getIncrementalSnapshotContext();
+        return context;
+    }
+
+    private void startSnapshotOf(String... dataCollectionIds) throws InterruptedException {
+        source.addDataCollectionNamesToSnapshot(
+                new SignalPayload<>(null, "signal-1", "execute-snapshot", null, offsetContext, Map.of()),
+                SnapshotConfiguration.Builder.builder().dataCollections(List.of(dataCollectionIds)).surrogateKey("").build());
+    }
+
+    /**
+     * A schema that holds the given tables the way a connector with case-insensitive table ids does: the
+     * ids are lower-cased, the tables keep their original case.
+     */
+    private RelationalDatabaseSchema caseInsensitiveSchemaContaining(TableId... tableIds) {
+        final Tables tables = new Tables(true);
+        for (TableId tableId : tableIds) {
+            tables.overwriteTable(Table.editor().tableId(tableId).create());
+        }
+
+        final RelationalDatabaseSchema databaseSchema = mock(RelationalDatabaseSchema.class);
+        when(databaseSchema.tableIds()).thenReturn(tables.tableIds());
+        when(databaseSchema.tableFor(any())).thenAnswer(invocation -> tables.forTable(invocation.getArgument(0, TableId.class)));
+        return databaseSchema;
     }
 
     private RelationalDatabaseConnectorConfig config() {
