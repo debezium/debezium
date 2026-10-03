@@ -49,7 +49,9 @@ public abstract class BinlogHistoryRecordComparator extends HistoryRecordCompara
      *
      * This logic makes a significant assumption: once a server enables GTID, they are never disabled.
      * This is the only way to compare a position with a GTID to a position without a GTID, and any
-     * change with a GTID is <em>after</em> positions without.<p></p>
+     * change with a GTID is <em>after</em> positions without. An offset can also lose its GTID while
+     * the server keeps handing them out, so when only the recorded position has one and both positions
+     * carry a binlog file name, they are compared by file and position instead.<p></p>
      *
      * When both positions have GTIDs, the positions are compared using the GTIDs. If the GTID values
      * are identical, then we compare whether they have snapshots enabled.
@@ -104,13 +106,15 @@ public abstract class BinlogHistoryRecordComparator extends HistoryRecordCompara
             // copied from the primary, in which case we know that recorded not having GTID is before desired.
             return true;
         }
-        else if (recordedGtid != null) {
-            // The recorded has a GTID but the desired does not.
-            // We assume that previous is not at or before based on previous paragraph.
+        else if (recordedGtid != null && !(hasBinlogFileName(recorded) && hasBinlogFileName(desired))) {
+            // The recorded has a GTID but the desired does not, and there are no binlog coordinates to
+            // compare instead, so the assumption above is all there is to go on. An offset can lose its
+            // GTID while the server keeps handing them out, and the connector then resumes from the file
+            // and position below, which is why those are preferred whenever both positions carry them.
             return false;
         }
 
-        // Both positions are missing GTIDs, compare servers. A missing server id is not a different server:
+        // The positions cannot be compared by GTID, compare servers. A missing server id is not a different server:
         // snapshot offsets never carry one, as there is no way to tell which primary of a topology wrote the change.
         if (hasServerId(recorded) && hasServerId(desired) && getServerId(recorded) != getServerId(desired)) {
             // These are from different servers.
@@ -215,6 +219,19 @@ public abstract class BinlogHistoryRecordComparator extends HistoryRecordCompara
      */
     protected long getTimestamp(Document document) {
         return document.getLong(BinlogOffsetContext.TIMESTAMP_KEY, 0);
+    }
+
+    /**
+     * Get whether the position carries a binlog file name that can be compared. Offsets are created with
+     * an empty file name and keep it until the connector reads a position from the server, and an empty
+     * name cannot be parsed into a base name and an extension.
+     *
+     * @param document the document to inspect, should not be null
+     * @return true if the document has a non-empty binlog file name, false otherwise
+     */
+    protected boolean hasBinlogFileName(Document document) {
+        final String fileName = document.getString(BinlogSourceInfo.BINLOG_FILENAME_OFFSET_KEY);
+        return fileName != null && !fileName.isEmpty();
     }
 
     /**

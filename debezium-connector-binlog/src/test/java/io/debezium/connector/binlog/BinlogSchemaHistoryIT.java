@@ -19,6 +19,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.binlog.junit.SkipWhenGtidModeIs;
 import io.debezium.connector.binlog.util.BinlogTestConnection;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
@@ -35,6 +36,10 @@ public abstract class BinlogSchemaHistoryIT<C extends SourceConnector> extends A
             .toAbsolutePath();
 
     private static final int TABLE_COUNT = 2;
+
+    private static final String FIRST_TABLE = "t-1";
+
+    private static final int RUNS_UNTIL_RECOVERY_MATTERS = 3;
 
     private UniqueDatabase DATABASE;
 
@@ -486,6 +491,38 @@ public abstract class BinlogSchemaHistoryIT<C extends SourceConnector> extends A
         List<SourceRecord> ddlRecords = records.recordsForTopic(DATABASE.getServerName());
         assertThat(ddlRecords).hasSize(1);
         assertThat(((Struct) ddlRecords.get(0).value()).getString("ddl")).contains("CREATE TABLE employees");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2689")
+    @SkipWhenGtidModeIs(value = SkipWhenGtidModeIs.GtidMode.OFF, reason = "The offset only carries a GTID when the server uses GTIDs")
+    void shouldRecoverSchemaHistoryWhenTheOffsetLostItsGtid() throws SQLException, InterruptedException {
+        skipAvroValidation();
+        config = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
+                .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with(BinlogConnectorConfig.IGNORE_GTID_ON_RECOVERY, true)
+                .build();
+
+        // The first run writes its schema history while the server hands out GTIDs, so those records carry
+        // the executed GTID set. The second drops the GTID from the offset, which is what the option asks
+        // for. The third has to recover the history the first one wrote.
+        for (int id = 1; id <= RUNS_UNTIL_RECOVERY_MATTERS; id++) {
+            runConnectorAndInsertRow(id);
+        }
+    }
+
+    private void runConnectorAndInsertRow(int id) throws SQLException, InterruptedException {
+        start(getConnectorClass(), config);
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName(), getStreamingNamespace());
+
+        try (BinlogTestConnection connection = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
+            connection.execute(String.format("INSERT INTO `%s` VALUES(%d)", FIRST_TABLE, id));
+        }
+
+        final SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(DATABASE.topicForTable(FIRST_TABLE))).hasSize(1);
+        stopConnector();
     }
 
     private void assertDdls(SourceRecords records) {
