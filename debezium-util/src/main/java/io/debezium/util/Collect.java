@@ -36,11 +36,10 @@ public class Collect {
     public static <K, V> Map<K, V> fixedSizeMap(int maximumNumberOfEntries) {
         return new LinkedHashMap<K, V>(maximumNumberOfEntries + 1, .75F, true) { // throws illegal argument if < 0
             private static final long serialVersionUID = 1L;
-            final int evictionSize = maximumNumberOfEntries - 1;
 
             @Override
             public boolean removeEldestEntry(Map.Entry<K, V> eldest) {
-                return size() > evictionSize;
+                return size() > maximumNumberOfEntries;
             }
         };
     }
