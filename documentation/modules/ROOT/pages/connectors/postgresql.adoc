@@ -1461,6 +1461,7 @@ Details are in the following sections:
 
 * xref:postgresql-basic-types[]
 * xref:postgresql-temporal-types[]
+* xref:postgresql-date-type[]
 * xref:postgresql-timestamp-type[]
 * xref:postgresql-decimal-types[]
 * xref:postgresql-hstore-type[]
@@ -2001,15 +2002,15 @@ Contains signed `years`, `months`, `days`, `hours`, `minutes`, `seconds`, `nanos
 |===
 
 
-[id="postgresql-timestamp-type"]
+[id="postgresql-date-type"]
 === DATE type
 
 PostgreSQL supports `infinity` and `-infinity` values in `DATE` columns.
-Because no semantic type for dates can represent infinity, the connector converts them to the dates `+5877611-06-21` and `-5877611-06-22`.
-These dates lie outside the range of dates that PostgreSQL itself supports (4713 BC to 5874897 AD), so they cannot be mistaken for a stored date.
+Only the `structured` precision mode can represent infinity directly, so in every other `time.precision.mode`, the connector converts these values to a specific sentinel value.
+The sentinel values are the dates `+5877611-06-21` and `-5877611-06-22`, which lie outside the range of dates that PostgreSQL itself supports (4713 BC to 5874897 AD), so they cannot be mistaken for a stored date.
 The connector emits the same value for a scalar `DATE` and for a `DATE[]` element, and in snapshots and in streaming, with either logical decoding plug-in.
 
-The dates are encoded in the same way as any other date for the configured `time.precision.mode`:
+The following table shows the value that the connector emits for each `time.precision.mode` setting:
 
 [cols="30%a,35%a,35%a",options="header"]
 |===
@@ -2035,6 +2036,7 @@ The dates are encoded in the same way as any other date for the configured `time
 
 |===
 
+[id="postgresql-timestamp-type"]
 === TIMESTAMP type
 
 The `TIMESTAMP` type represents a timestamp without time zone information.
