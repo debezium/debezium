@@ -1550,6 +1550,37 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2721")
+    public void shouldSnapshotBcLeapDayDate() throws Exception {
+        TestHelper.execute("CREATE TABLE bc_leap_date_table (pk SERIAL, d DATE, PRIMARY KEY(pk));");
+        // February 29 of a BC leap year: pgjdbc rejects it in the typed read, so it must fall back to the text form
+        TestHelper.execute("INSERT INTO bc_leap_date_table (d) VALUES ('0005-02-29 BC'), ('0001-02-29 BC')");
+
+        buildNoStreamProducer(TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.bc_leap_date_table"));
+
+        final TestConsumer consumer = testConsumer(2, "public");
+        consumer.await(TestHelper.waitTimeForRecords() * 30, TimeUnit.SECONDS);
+
+        // 5 BC is year -4 and 1 BC is year 0 in proleptic ISO
+        final Integer[] expectedEpochDays = {
+                (int) LocalDate.of(-4, 2, 29).toEpochDay(),
+                (int) LocalDate.of(0, 2, 29).toEpochDay()
+        };
+
+        final var records = new ArrayList<SourceRecord>();
+        consumer.process(records::add);
+
+        assertThat(records).hasSize(2);
+        for (int i = 0; i < expectedEpochDays.length; i++) {
+            VerifyRecord.isValidRead(records.get(i), PK_FIELD, i + 1);
+            assertRecordSchemaAndValues(
+                    Arrays.asList(new SchemaAndValueField("d", Date.builder().optional().build(), expectedEpochDays[i])),
+                    records.get(i), Envelope.FieldName.AFTER);
+        }
+    }
+
+    @Test
     @FixFor("debezium/dbz#2664")
     public void shouldSnapshotTemporalArraysPreservingEra() throws Exception {
         TestHelper.execute("CREATE TABLE era_array_table (pk SERIAL, "
