@@ -42,7 +42,9 @@ public final class ByteBuffers {
         // For HeapByteBuffer, use the backing array directly
         if (buffer.hasArray()) {
             byte[] bufferArray = buffer.array();
-            int bufferOffset = buffer.arrayOffset();
+            // Start at the buffer's current position, not index 0, so a partially-consumed buffer is
+            // compared over the same [position, limit) window as remaining() and the direct branch.
+            int bufferOffset = buffer.arrayOffset() + buffer.position();
             int bufferLength = buffer.remaining();
 
             // Compare the relevant portion of the buffer's backing array
