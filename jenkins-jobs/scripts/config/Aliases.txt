@@ -39,6 +39,7 @@ ArthurLR,Arthur Le Ray
 ashishbinu,Ashish Binu
 ashwinmk,Ashwin Murali Krishnan
 asibanovs,Aleksejs Sibanovs
+Asthenia0412,Stochastic
 avis408,Avinash Vishwakarma
 baabgai,baabgai
 backtrack5r3,Tom Flenner
