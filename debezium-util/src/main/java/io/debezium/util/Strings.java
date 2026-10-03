@@ -855,13 +855,17 @@ public final class Strings {
      * @return the readable duration.
      */
     public static String duration(long durationInMillis) {
-        long seconds = durationInMillis / 1000;
+        boolean negative = durationInMillis < 0;
+        long seconds = Math.abs(durationInMillis / 1000);
         long s = seconds % 60;
         long m = (seconds / 60) % 60;
         long h = (seconds / (60 * 60));
-        long q = durationInMillis % 1000;
+        long q = Math.abs(durationInMillis % 1000);
 
-        StringBuilder result = new StringBuilder(15);
+        StringBuilder result = new StringBuilder(16);
+        if (negative) {
+            result.append("-");
+        }
 
         if (h < 10) {
             result.append("0");
