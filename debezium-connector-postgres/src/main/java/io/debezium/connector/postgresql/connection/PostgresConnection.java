@@ -13,6 +13,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
+import java.time.DateTimeException;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -860,7 +861,15 @@ public class PostgresConnection extends JdbcConnection {
                     // Read as LocalDateTime rather than java.sql.Timestamp, whose Julian-Gregorian calendar conversion
                     // corrupts dates before 1582-10-15 (PostgreSQL uses proleptic Gregorian). The driver parses the
                     // value natively, which is considerably cheaper than re-parsing its text form in the converter.
-                    final LocalDateTime localDateTime = rs.getObject(columnIndex, LocalDateTime.class);
+                    final LocalDateTime localDateTime;
+                    try {
+                        localDateTime = rs.getObject(columnIndex, LocalDateTime.class);
+                    }
+                    catch (DateTimeException e) {
+                        // pgjdbc validates the date against the year-of-era before applying BC, so February 29
+                        // of a BC leap year (1 BC, 5 BC, ...) is rejected; the converters parse the text form correctly
+                        return rs.getString(columnIndex);
+                    }
                     // The driver maps infinity to LocalDateTime.MAX/MIN; the converters expect the connector's own sentinels
                     if (LocalDateTime.MAX.equals(localDateTime)) {
                         return PostgresValueConverter.POSITIVE_INFINITY_LOCAL_DATE_TIME;
@@ -871,7 +880,14 @@ public class PostgresConnection extends JdbcConnection {
                     return localDateTime;
                 case PgOid.TIMESTAMPTZ:
                     // Read as OffsetDateTime for the same reasons as TIMESTAMP; the driver normalizes it to UTC
-                    final OffsetDateTime offsetDateTime = rs.getObject(columnIndex, OffsetDateTime.class);
+                    final OffsetDateTime offsetDateTime;
+                    try {
+                        offsetDateTime = rs.getObject(columnIndex, OffsetDateTime.class);
+                    }
+                    catch (DateTimeException e) {
+                        // Same BC leap day limitation as TIMESTAMP
+                        return rs.getString(columnIndex);
+                    }
                     // The driver maps infinity to OffsetDateTime.MAX/MIN; the converters expect the connector's own sentinels
                     if (OffsetDateTime.MAX.equals(offsetDateTime)) {
                         return PostgresValueConverter.POSITIVE_INFINITY_OFFSET_DATE_TIME;
