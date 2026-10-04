@@ -17,6 +17,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledIfSystemProperty;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.junit.SkipWhenGtidModeIs;
@@ -496,6 +497,7 @@ public abstract class BinlogSchemaHistoryIT<C extends SourceConnector> extends A
     @Test
     @FixFor("debezium/dbz#2689")
     @SkipWhenGtidModeIs(value = SkipWhenGtidModeIs.GtidMode.OFF, reason = "The offset only carries a GTID when the server uses GTIDs")
+    @DisabledIfSystemProperty(named = "database.innodb.binlog", matches = "(?i)true", disabledReason = "InnoDB binlog requires GTID-based replication")
     void shouldRecoverSchemaHistoryWhenTheOffsetLostItsGtid() throws SQLException, InterruptedException {
         skipAvroValidation();
         config = DATABASE.defaultConfig()
