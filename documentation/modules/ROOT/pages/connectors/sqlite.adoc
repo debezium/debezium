@@ -211,7 +211,7 @@ Because the capture triggers record the complete `OLD` and `NEW` row for every c
 The key of a change event contains the primary key of the table in which the change occurred.
 For a table named `orders` whose primary key is an `INTEGER` column named `id`, and a connector for which `topic.prefix` is set to `sqlite`, the key of every change event has the following structure:
 
-[source,json,indent=0]
+[source,json,options="nowrap",indent=0,subs="+attributes"]
 ----
 {
   "schema": {
@@ -240,7 +240,7 @@ The value of a change event uses the standard {prodname} envelope, which contain
 .Example: create event
 The following example shows the value of a change event that the connector emits after a row is inserted into the `orders` table:
 
-[source,json,indent=0]
+[source,json,options="nowrap",indent=0,subs="+attributes"]
 ----
 {
   "payload": {
@@ -270,7 +270,7 @@ The following example shows the value of a change event that the connector emits
 The following example shows an update to the same row.
 The `before` field holds the row as it existed before the change, and the `after` field holds the row as it exists after the change:
 
-[source,json,indent=0]
+[source,json,options="nowrap",indent=0,subs="+attributes"]
 ----
 {
   "payload": {
@@ -304,7 +304,7 @@ The `before` field holds the row as it existed before the change, and the `after
 The following example shows the deletion of the same row.
 The `before` field holds the row as it existed before the delete, and the `after` field is `null`:
 
-[source,json,indent=0]
+[source,json,options="nowrap",indent=0,subs="+attributes"]
 ----
 {
   "payload": {
@@ -373,7 +373,7 @@ The connector emits a separate schema change event for each.
 .Example: schema change event
 The following example shows the value of a schema change event that the connector emits after a `note` column is added to the `orders` table:
 
-[source,json,indent=0]
+[source,json,options="nowrap",indent=0,subs="+attributes"]
 ----
 {
   "source": {
@@ -530,7 +530,7 @@ To deploy a {prodname} SQLite connector, you install the connector archive on a 
 
 The following example shows the configuration of a connector that captures the `orders` and `customers` tables from a SQLite database file:
 
-[source,json,indent=0]
+[source,json,options="nowrap",indent=0,subs="+attributes"]
 ----
 {
   "name": "sqlite-connector",  // <1>
