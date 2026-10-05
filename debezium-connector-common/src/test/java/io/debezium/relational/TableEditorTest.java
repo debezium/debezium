@@ -178,6 +178,25 @@ public class TableEditorTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2501")
+    public void shouldReorderMixedCaseColumnAfterLastColumn() {
+        editor.tableId(id);
+        Column c1 = columnEditor.name("C1").type("VARCHAR").jdbcType(Types.VARCHAR).length(10).position(1).create();
+        Column c2 = columnEditor.name("C2").type("NUMBER").jdbcType(Types.NUMERIC).length(5).autoIncremented(true).create();
+        Column c3 = columnEditor.name("C3").type("DATE").jdbcType(Types.DATE).autoIncremented(true).create();
+        editor.addColumns(c1, c2, c3);
+
+        // Move the first column to after the current last column. This exercises the append fast-path
+        // with a mixed-case name: the column must move, not be duplicated.
+        editor.reorderColumn("C1", "C3");
+
+        assertThat(editor.columns()).containsExactly(editor.columnWithName("C2"),
+                editor.columnWithName("C3"),
+                editor.columnWithName("C1"));
+        assertValidPositions(editor);
+    }
+
+    @Test
     void shouldNotReorderColumnIfNameDoesNotMatch() {
         assertThrows(IllegalArgumentException.class, () -> {
             editor.tableId(id);
