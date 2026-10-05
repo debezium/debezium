@@ -6,6 +6,7 @@
 [id="new-record-state-extraction"]
 = New Record State Extraction
 
+ifdef::community[]
 :toc:
 :toc-placement: macro
 :linkattrs:
@@ -13,6 +14,7 @@
 :source-highlighter: highlight.js
 
 toc::[]
+endif::community[]
 
 
 {prodname} connectors emits data change messages to represent each operation that they capture from a source database.

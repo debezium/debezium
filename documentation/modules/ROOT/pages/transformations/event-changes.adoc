@@ -6,13 +6,17 @@
 [id="event-record-changes"]
 = Event Record Changes
 
+ifdef::community[]
 :toc:
 :toc-placement: macro
 :linkattrs:
 :icons: font
+endif::community[]
 :source-highligher: highlight.js
 
+ifdef::community[]
 toc::[]
+endif::community[]
 
 ifdef::community[]
 [NOTE]
