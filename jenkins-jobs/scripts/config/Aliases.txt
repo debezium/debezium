@@ -87,6 +87,7 @@ daanroosen-DS,Daan Roosen
 daha,David Haglund
 dajerome,David Jerome
 danastott,Dana Stott
+daniilzabludovsky,Daniil Zabludovsky
 Day-dreamer0,Rajender Passi
 dayron-perez,Dayron Perez Roldan
 ddsr-ops,ddsr-ops
