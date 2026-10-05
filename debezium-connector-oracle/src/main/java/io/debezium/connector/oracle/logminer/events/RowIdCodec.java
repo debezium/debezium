@@ -15,6 +15,10 @@ public class RowIdCodec {
 
     /** Lossless 108-bit container for an Oracle ROWID. */
     public record Packed(long high, long low) {
+        public boolean hasEmptySuffix() {
+            // equivalent to decode(this).endsWith(EMPTY_ROW_ID_SUFFIX), but without allocating a string
+            return low == 0 && (high & 0xffL) == 0;
+        }
     }
 
     // Oracle ROWID base64 alphabet
