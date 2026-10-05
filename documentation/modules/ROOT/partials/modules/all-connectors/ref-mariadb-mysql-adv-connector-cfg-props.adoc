@@ -188,12 +188,13 @@ Specify a password only if the xref:{context}-property-database-ssl-keystore[`da
 [id="{context}-property-database-ssl-mode"]
 xref:{context}-property-database-ssl-mode[`database.ssl.mode`]::
 
-Default value::: `preferred`
-
 Description:::
 Specifies whether the connector uses an encrypted connection.
 +
 The following settings are available:
+
+ifdef::MYSQL[]
+Default value::: `preferred`
 
 `disabled`:::: Specifies the use of an unencrypted connection.
 
@@ -207,6 +208,19 @@ If it is unable to establish an encrypted connection, the connector fails.
 If the server TLS certificate does not match any valid CA certificates, the connector fails.
 
 `verify_identity`:::: The connector behaves as when you set the `verify_ca` option, but it also verifies that the server certificate matches the host of the remote connection.
+endif::MYSQL[]
+ifdef::MARIADB[]
+Default value::: `disable`
+
+`disable`:::: Specifies the use of an unencrypted connection.
+
+`trust`:::: The connector establishes an encrypted connection, but does not verify the server TLS certificate or hostname.
+
+`verify-ca`:::: The connector behaves as when you set the `trust` option, but it also verifies the server TLS certificate against the configured Certificate Authority (CA) certificates.
+If the server TLS certificate does not match any valid CA certificates, the connector fails.
+
+`verify-full`:::: The connector behaves as when you set the `verify-ca` option, but it also verifies that the server certificate matches the host of the remote connection.
+endif::MARIADB[]
 
 [id="{context}-property-database-ssl-truststore"]
 xref:{context}-property-database-ssl-truststore[`database.ssl.truststore`]::
