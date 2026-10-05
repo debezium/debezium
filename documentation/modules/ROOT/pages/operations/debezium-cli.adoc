@@ -27,7 +27,7 @@ Governed by a declarative `dbz.yaml` project descriptor, the Build Subsystem use
 
 * **Platform Subsystem (`catalog`, `connection`, `source`, `destination`, `transform`, `pipeline`, `switch`, `config`):**
 Interfaces directly with the REST API of the {prodname} Management Platform (Platform Conductor).
-It supports multi-environment profiles (`dev`, `staging`, `prod`), live database schema discovery, credential validation against live source databases, and runtime signal dispatching to active pipelines.
+It supports multi-environment profiles, live database schema discovery, credential validation against live source databases, and runtime signal dispatching to active pipelines.
 
 [[debezium-cli-installation]]
 == Prerequisites and Installation
@@ -35,7 +35,6 @@ It supports multi-environment profiles (`dev`, `staging`, `prod`), live database
 [[debezium-cli-prerequisites]]
 === Prerequisites
 
-* Java 21 or later
 * https://www.jbang.dev/[JBang] version {jbang-version} or later (for JBang execution)
 * Optional: Access to a container registry (Docker Hub, Quay.io, GitHub Packages, or a local registry) when using `debezium push`
 * Optional: A running {prodname} Management Platform instance when using Platform Subsystem commands
@@ -43,26 +42,11 @@ It supports multi-environment profiles (`dev`, `staging`, `prod`), live database
 [[debezium-cli-installing]]
 === Installing the CLI
 
-You can execute the CLI directly from the official {prodname} JBang catalog, or install it as a persistent command on your `PATH`.
-
-==== Running directly without installation
-
-To run the CLI on-demand via JBang:
+You can install the CLI with the official {prodname} JBang catalog:
 
 [source,bash]
 ----
-$ jbang debezium@debezium --help
-----
-
-JBang automatically downloads the required dependencies and executes the CLI.
-
-==== Installing globally
-
-To install the CLI as a standalone executable command:
-
-[source,bash]
-----
-$ jbang app install --name debezium debezium@debezium
+$ jbang app install debezium@debezium
 ----
 
 After installation, verify that the CLI is accessible:
@@ -78,8 +62,7 @@ To update the CLI to the latest release:
 
 [source,bash]
 ----
-$ jbang app setup
-$ jbang app install --force --name debezium debezium@debezium
+$ jbang app install --force debezium@debezium
 ----
 
 [[debezium-cli-configuration]]
@@ -95,25 +78,28 @@ When interacting with {prodname} Management Platform instances across different 
 [source,bash]
 ----
 # Register environment URLs
-$ debezium config set --env=dev platform-url http://localhost:8080
-$ debezium config set --env=staging platform-url https://platform.staging.example.com:8080
-$ debezium config set --env=prod platform-url https://platform.prod.example.com:8080
+$ debezium config set --env=dev platform-url https://dev.debezium.io
+$ debezium config set --env=staging platform-url https://staging.debezium.io
+$ debezium config set --env=prod platform-url https://prod.debezium.io
 
 # View configured environments and active target
 $ debezium config get
-NAME                 URL                                      ACTIVE
-----                 ---                                      ------
-dev                  http://localhost:8080                    *
-staging              https://platform.staging.example.com:8080
-prod                 https://platform.prod.example.com:8080
-Effective platform URL: http://localhost:8080
+NAME                 URL                               ACTIVE
+----                 ---                               ------
+dev                  https://dev.debezium.io           *
+staging              https://staging.debezium.io
+prod                 https://prod.debezium.io
+Effective platform URL: https://dev.debezium.io
 
 # Switch the active environment
 $ debezium switch staging
 Switched to environment: staging
 ----
 
+[NOTE]
+====
 Alternatively, you can override the target platform address for any command using the `--platform-address` flag.
+====
 
 [[debezium-cli-build-subsystem]]
 == Build Subsystem: Standalone Distributions and Containers
