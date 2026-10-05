@@ -52,7 +52,7 @@ For each captured table, the connector installs three triggers, one each for `IN
 Every trigger appends a single row to the `_debezium_cdc_log` table within the same transaction as the change that fired it, so a change and its log row commit together, or not at all.
 The CDC log table has the following structure:
 
-[cols="2,2,5",options="header"]
+[cols="22%a,22%a,56%a",options="header"]
 |===
 |Column |Type |Description
 
@@ -178,7 +178,7 @@ The structure of the key and the value depends on the table that was changed.
 
 The connector emits the following operations:
 
-[cols="1,1,3,3",options="header"]
+[cols="12%a,12%a,38%a,38%a",options="header"]
 |===
 |Operation |`op` |`before` |`after`
 
@@ -335,7 +335,7 @@ After a delete event, the connector emits a tombstone event, unless you set the 
 .Descriptions of `source` fields
 The `source` block of a SQLite change event contains the following connector-specific fields, in addition to the fields that all {prodname} connectors provide:
 
-[cols="1,4",options="header"]
+[cols="20%a,80%a",options="header"]
 |===
 |Field |Description
 
@@ -429,7 +429,7 @@ The rules are substring matches, so a column declared `BOOLEAN`, `DATE`, `DATETI
 
 The connector maps each affinity to a Kafka Connect schema type:
 
-[cols="2,2,3",options="header"]
+[cols="29%a,29%a,42%a",options="header"]
 |===
 |SQLite affinity |Kafka Connect schema type |Notes
 
@@ -561,7 +561,7 @@ Because SQLite is a single file with no server, no schema, and no separate datab
 The `hostname`, `port`, `user`, `password`, and `database.name` properties, and the `schema.include.list` and `schema.exclude.list` properties, do not apply.
 
 .Required connector configuration properties
-[cols="3,2,5",options="header"]
+[cols="30%a,25%a,45%a",options="header"]
 |===
 |Property |Default |Description
 
@@ -593,7 +593,7 @@ The SQLite connector always uses a single task and therefore does not use this v
 |===
 
 .Snapshot and streaming properties
-[cols="3,2,5",options="header"]
+[cols="30%a,25%a,45%a",options="header"]
 |===
 |Property |Default |Description
 
@@ -620,7 +620,7 @@ The fallback takes effect only under the `warn` and `skip` values of `event.conv
 |===
 
 .Filter and event properties
-[cols="3,2,5",options="header"]
+[cols="30%a,25%a,45%a",options="header"]
 |===
 |Property |Default |Description
 
@@ -680,7 +680,7 @@ The connector exposes streaming metrics through the following JMX object name:
 `debezium.sqlite:type=connector-metrics,context=streaming,server=_<topic.prefix>_`
 
 .SQLite-specific streaming metrics
-[cols="2,1,4",options="header"]
+[cols="29%a,14%a,57%a",options="header"]
 |===
 |Attribute |Type |Description
 
