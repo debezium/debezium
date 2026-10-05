@@ -70,6 +70,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.SnapshotType;
 import io.debezium.connector.oracle.OracleConnectorConfig.ConnectorAdapter;
 import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningStrategy;
+import io.debezium.connector.oracle.OracleConnectorConfig.SnapshotLockingMode;
 import io.debezium.connector.oracle.OracleConnectorConfig.SnapshotMode;
 import io.debezium.connector.oracle.OracleConnectorConfig.TransactionSnapshotBoundaryMode;
 import io.debezium.connector.oracle.junit.SkipOnDatabaseOption;
@@ -6423,6 +6424,63 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
         }
         finally {
             TestHelper.dropTable(connection, "dbz1676");
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2787")
+    public void shouldHoldSharedTableLockUntilDataSnapshotCompletes() throws Exception {
+        TestHelper.dropTable(connection, "dbz2787");
+        try {
+            connection.execute("CREATE TABLE dbz2787 (id NUMERIC(9,0) NOT NULL, data VARCHAR2(50), PRIMARY KEY (id))");
+            TestHelper.streamTable(connection, "dbz2787");
+            // More rows than the test's record buffer plus the connector queue can hold, so that the
+            // snapshot blocks on back pressure while it still holds the table locks
+            final int rowCount = 2000;
+            for (int i = 1; i <= rowCount; i++) {
+                connection.executeWithoutCommitting("INSERT INTO dbz2787 VALUES (" + i + ", 'row " + i + "')");
+            }
+            connection.commit();
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                    .with(OracleConnectorConfig.SNAPSHOT_LOCKING_MODE, SnapshotLockingMode.SHARED)
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ2787")
+                    .with(CommonConnectorConfig.MAX_BATCH_SIZE, 2)
+                    .with(CommonConnectorConfig.MAX_QUEUE_SIZE, 4)
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            // Once the record buffer is full the snapshot is in the data phase and cannot complete until
+            // the records are consumed, so the ROW SHARE locks taken before the SCN was read are still held
+            Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> consumedLines.remainingCapacity() == 0);
+
+            try (OracleConnection otherSession = TestHelper.testConnection()) {
+                // DDL requires an exclusive table lock, which the held ROW SHARE lock denies (ORA-00054)
+                assertThatThrownBy(() -> otherSession.execute("ALTER TABLE dbz2787 ADD (extra NUMBER)"))
+                        .isInstanceOf(SQLException.class)
+                        .satisfies(e -> LOGGER.info("DDL during the snapshot failed as expected", e))
+                        .extracting(e -> ((SQLException) e).getErrorCode())
+                        .isEqualTo(54);
+
+                // DML is not affected by the held lock
+                otherSession.execute("INSERT INTO dbz2787 VALUES (" + (rowCount + 1) + ", 'written during snapshot')");
+            }
+
+            SourceRecords records = consumeRecordsByTopic(rowCount + 1);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ2787")).hasSize(rowCount + 1);
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Once the data snapshot has completed the locks are released and the DDL goes through
+            try (OracleConnection otherSession = TestHelper.testConnection()) {
+                Awaitility.await().atMost(60, TimeUnit.SECONDS).ignoreExceptions()
+                        .untilAsserted(() -> otherSession.execute("ALTER TABLE dbz2787 ADD (extra NUMBER)"));
+            }
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz2787");
         }
     }
 
