@@ -162,7 +162,9 @@ transforms.unwrap.delete.tombstone.handling.mode=rewrite
 transforms.unwrap.add.fields=table,lsn
 ----
 
-`delete.tombstone.handling.mode=rewrite`:: For `DELETE` operations, removes tombstones, and edits the Kafka record by flattening the `value` field that was in the change event. The `value` field directly contains the key/value pairs that were in the `before` field. The SMT adds `__deleted` and sets it to `true`, for example:
+`delete.tombstone.handling.mode=rewrite`:: For `DELETE` operations, removes tombstones, and edits the Kafka record by flattening the `value` field that was in the change event.
+The `value` field directly contains the key/value pairs that were in the `before` field.
+The SMT adds `+__deleted+` and sets it to `true`, for example:
 +
 [source,json,indent=0]
 ----
@@ -197,7 +199,10 @@ endif::community[]
 
 To add metadata to the simplified Kafka record's header, specify the `add.headers` option.
 To add metadata to the simplified Kafka record's value, specify the `add.fields` option.
-Each of these options takes a comma separated list of change event field names. Do not specify spaces. When there are duplicate field names, to add metadata for one of those fields, specify the struct as well as the field. For example:
+Each of these options takes a comma separated list of change event field names.
+Do not specify spaces.
+When there are duplicate field names, to add metadata for one of those fields, specify the struct as well as the field.
+For example:
 
 ----
 transforms=unwrap,...
@@ -221,9 +226,10 @@ With that configuration, a simplified Kafka record would contain something like 
 }
 ----
 
-Also, simplified Kafka records would have a `__db` header.
+Also, simplified Kafka records would have a `+__db+` header.
 
-In the simplified Kafka record, the SMT prefixes the metadata field names with a double underscore. When you specify a struct, the SMT also inserts an underscore between the struct name and the field name.
+In the simplified Kafka record, the SMT prefixes the metadata field names with a double underscore.
+When you specify a struct, the SMT also inserts an underscore between the struct name and the field name.
 
 To add metadata to a simplified Kafka record that is for a `DELETE` operation, you must also configure `delete.tombstone.handling.mode=rewrite`.
 
