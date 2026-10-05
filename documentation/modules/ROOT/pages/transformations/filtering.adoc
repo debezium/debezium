@@ -319,7 +319,7 @@ return debezium.SetBool(op != "d" || beforeId != 2)
 The following table lists the configuration options that you can use with the filter SMT.
 
 .filter SMT configuration options
-[cols="30%a,25%a,45%a"]
+[cols="30%a,25%a,45%a",options="header"]
 |===
 |Property
 |Default

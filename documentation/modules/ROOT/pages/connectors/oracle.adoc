@@ -3734,7 +3734,7 @@ Information about the properties is organized as follows:
 
 The following configuration properties are required to configure the {prodname} Oracle connector unless a default value is specified.
 
-[cols="30%a,25%a,45%a"]
+[cols="30%a,25%a,45%a",options="header"]
 |===
 |Property
 |Default
@@ -5124,7 +5124,7 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming
 The {prodname} Oracle connector also provides the following additional streaming metrics:
 
 .Descriptions of additional streaming metrics
-[cols="45%a,25%a,30%a"]
+[cols="45%a,25%a,30%a",options="header"]
 |===
 |Attributes |Type |Description
 
@@ -5870,12 +5870,49 @@ Specifies the bind host and port that OpenLogReplicator listens for connections 
 This should be accessible by the {prodname} Oracle connector.
 ====
 
+ifdef::community[]
+[id="oracle-openlogreplicator-flags"]
+==== OpenLogReplicator flags
+
+The `flags` property is the sum of a set of bit flags that determine what OpenLogReplicator includes in the stream.
+It applies to the source, alongside `format`, rather than within it.
+
+A column that OpenLogReplicator omits because of a missing flag is not reported as an error.
+The connector receives no value for it, and the field is `null` in the change event, so a missing flag looks like missing data rather than a configuration problem.
+
+.OpenLogReplicator flags used by {prodname}
+[cols="35%a,15%a,50%a",options="header"]
+|===
+|Flag
+|Value
+|Description
+
+|`SHOW_DDL`
+|`32`
+|Includes DDL statements in the stream. Required for the connector to track schema changes.
+
+|`SHOW_HIDDEN_COLUMNS`
+|`64`
+|Includes columns that Oracle marks as hidden. Required to capture columns that are declared `INVISIBLE`; without it, such a column is silently absent from every change event.
+
+|`SHOW_CHECKPOINT`
+|`4096`
+|Includes checkpoint markers in the stream. Required for the connector to advance its offsets while no captured table is changing.
+
+|`EXPERIMENTAL_XMLTYPE`
+|`65536`
+|Includes the values of `XMLTYPE` columns. Required to capture them; without it, such a column is silently absent from every change event. This flag is experimental in OpenLogReplicator.
+|===
+
+The value `69728` in the preceding example is the sum of all four.
+Omit `65536` if the tables you capture contain no `XMLTYPE` columns, and `64` if they contain no `INVISIBLE` columns.
+endif::community[]
 [[oracle-openlogreplicator-connector-properties]]
 === OpenLogReplicator connector properties
 
 The following configuration properties are required when using OpenLogReplicator.
 
-[cols="30%a,25%a,45%a"]
+[cols="30%a,25%a,45%a",options="header"]
 |===
 |Property
 |Default
@@ -6181,7 +6218,7 @@ LD_LIBRARY_PATH=/path/to/instant_client/
 
 The following configuration properties are _required_ when using XStream unless a default value is available.
 
-[cols="30%a,25%a,45%a"]
+[cols="30%a,25%a,45%a",options="header"]
 |===
 |Property
 |Default
