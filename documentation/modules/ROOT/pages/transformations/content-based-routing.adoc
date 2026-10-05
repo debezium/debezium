@@ -246,7 +246,7 @@ return debezium.SetNull()
 // Title: Options for configuring the content-based routing transformation
 [[content-based-router-configuration-options]]
 == Configuration options
-[cols="30%a,25%a,45%a"]
+[cols="30%a,25%a,45%a",options="header"]
 |===
 |Property
 |Default

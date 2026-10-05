@@ -4021,7 +4021,7 @@ Information about the properties is organized as follows:
 
 The following configuration properties are required to configure the {prodname} Oracle connector unless a default value is specified.
 
-[cols="30%a,25%a,45%a"]
+[cols="30%a,25%a,45%a",options="header"]
 |===
 |Property
 |Default
@@ -5422,7 +5422,7 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming
 The {prodname} Oracle connector also provides the following additional streaming metrics:
 
 .Descriptions of additional streaming metrics
-[cols="45%a,25%a,30%a"]
+[cols="45%a,25%a,30%a",options="header"]
 |===
 |Attributes |Type |Description
 
@@ -6183,7 +6183,7 @@ A column that OpenLogReplicator omits because of a missing flag is not reported 
 The connector receives no value for it, and the field is `null` in the change event, so a missing flag looks like missing data rather than a configuration problem.
 
 .OpenLogReplicator flags used by {prodname}
-[cols="35%a,15%a,50%a"]
+[cols="35%a,15%a,50%a",options="header"]
 |===
 |Flag
 |Value
@@ -6214,7 +6214,7 @@ Omit `65536` if the tables you capture contain no `XMLTYPE` columns, and `64` if
 
 The following configuration properties are required when using OpenLogReplicator.
 
-[cols="30%a,25%a,45%a"]
+[cols="30%a,25%a,45%a",options="header"]
 |===
 |Property
 |Default
@@ -6520,7 +6520,7 @@ LD_LIBRARY_PATH=/path/to/instant_client/
 
 The following configuration properties are _required_ when using XStream unless a default value is available.
 
-[cols="30%a,25%a,45%a"]
+[cols="30%a,25%a,45%a",options="header"]
 |===
 |Property
 |Default
