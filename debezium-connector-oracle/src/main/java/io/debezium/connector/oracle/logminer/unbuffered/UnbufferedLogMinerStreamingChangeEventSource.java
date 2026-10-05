@@ -305,9 +305,6 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
 
             clearSchemaChangeQueue();
 
-            // Check heartbeats even when there are no captured row changes.
-            getEventDispatcher().dispatchHeartbeatEvent(getPartition(), getOffsetContext());
-
             return lastCommitScn;
         }
     }
