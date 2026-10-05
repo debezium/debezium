@@ -1577,7 +1577,10 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     @Test
     @FixFor("DBZ-1226")
     public void shouldParseDoubledDoubleQuotesInEnumOptions() {
-        assertParseEnumAndSetOptions("ENUM(\"a\"\"\",'b','c')", "a\"\"", "b", "c");
+        assertParseEnumAndSetOptions("ENUM(\"a\"\"\",'b','c')", "a\"", "b", "c");
+        assertParseEnumAndSetOptions("SET(\"a\"\"\",'b','c')", "a\"", "b", "c");
+        assertParseEnumAndSetOptions("ENUM(\"a''b\",'a\"\"b')", "a''b", "a\"\"b");
+        assertParseEnumAndSetOptions("SET(\"a''b\",'a\"\"b')", "a''b", "a\"\"b");
     }
 
     @Test
@@ -3594,7 +3597,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
         parser.parse(ddl, tables);
 
         final Column column = tables.forTable(null, null, "enum_set_option_test_table").columnWithName("options");
-        assertThat(extractEnumAndSetOptions(column.enumValues())).contains(expectedValues);
+        assertThat(extractEnumAndSetOptions(column.enumValues())).containsExactly(expectedValues);
     }
 
     protected abstract List<String> extractEnumAndSetOptions(List<String> enumValues);

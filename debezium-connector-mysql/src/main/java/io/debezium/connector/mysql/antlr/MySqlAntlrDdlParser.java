@@ -511,6 +511,7 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
      */
     public static List<String> extractEnumAndSetOptions(List<String> enumValues) {
         return enumValues.stream()
+                .map(literal -> StringLiteralParser.normalizeQuotes(literal, false))
                 .map(MySqlAntlrDdlParser::withoutQuotes)
                 .map(MySqlAntlrDdlParser::unescapeOption)
                 .collect(Collectors.toList());

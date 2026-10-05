@@ -84,8 +84,9 @@ public class MariaDbAntlrDdlParser extends AntlrDdlParser<MariaDBLexer, MariaDBP
     protected MariaDBLexer createNewLexerInstance(CharStream charStreams) {
         final var lexer = new MariaDBLexer(charStreams);
         if (isNoBackslashEscapesMode()) {
-            // The upstream grammar always treats backslashes as escapes. Hide them from
-            // lookahead within string tokens, while retaining the original text and positions.
+            // Keep the upstream grammar unchanged until it supports SQL modes. It always treats
+            // backslashes as escapes, so hide them from lookahead within string tokens only.
+            // Preserve token text and positions for schema history and error reporting.
             lexer.setInputStream(new CaseChangingCharStream(charStreams, true) {
                 @Override
                 public int LA(int i) {
@@ -477,6 +478,10 @@ public class MariaDbAntlrDdlParser extends AntlrDdlParser<MariaDBLexer, MariaDBP
         function.run();
     }
 
+    public String normalizeStringLiteral(String literal) {
+        return StringLiteralParser.normalizeQuotes(literal, isNoBackslashEscapesMode());
+    }
+
     /**
      * Extracts the enumeration values properly parsed and unescaped.
      *
@@ -485,6 +490,7 @@ public class MariaDbAntlrDdlParser extends AntlrDdlParser<MariaDBLexer, MariaDBP
      */
     public static List<String> extractEnumAndSetOptions(List<String> enumValues) {
         return enumValues.stream()
+                .map(literal -> StringLiteralParser.normalizeQuotes(literal, false))
                 .map(MariaDbAntlrDdlParser::withoutQuotes)
                 .map(MariaDbAntlrDdlParser::unescapeOption)
                 .collect(Collectors.toList());

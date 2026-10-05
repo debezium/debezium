@@ -78,13 +78,6 @@ public class MySqlAntlrDdlParserTest
         return MySqlAntlrDdlParser.extractEnumAndSetOptions(enumValues);
     }
 
-    @Override
-    @Test
-    @FixFor("debezium/dbz#2764")
-    public void shouldParseDoubledDoubleQuotesInEnumOptions() {
-        assertParseEnumAndSetOptions("ENUM(\"a\"\"\",'b','c')", "a\"", "b", "c");
-    }
-
     @Test
     @Override
     public void parseTableWithPageChecksum() {

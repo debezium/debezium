@@ -8,7 +8,7 @@ package io.debezium.connector.mysql.antlr;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import io.debezium.util.Strings;
+import io.debezium.connector.binlog.util.StringLiteralParser;
 
 /**
  * Converts double-quoted string literals to single-quoted strings in MySQL DDL.
@@ -30,10 +30,7 @@ public class DdlNormalizer {
     // Regex group indices for clarity
     private static final int COMMENT_GROUP = 1;
     private static final int SINGLE_QUOTED_STRING_GROUP = 2;
-    private static final int DOUBLE_QUOTED_STRING_GROUP = 3;
     private static final int BACKTICK_IDENTIFIER_GROUP = 4;
-
-    private static final Pattern DOUBLE_QUOTED_ESCAPE_PATTERN = Pattern.compile("\\\\.|\"\"", Pattern.DOTALL);
 
     /**
      * Pattern matches either:
@@ -235,14 +232,7 @@ public class DdlNormalizer {
      * Converts a double-quoted string to single-quoted, escaping apostrophes.
      */
     private static void convertToSingleQuoted(Matcher matcher, StringBuilder result, boolean noBackslashEscapes) {
-        final var content = noBackslashEscapes ? Strings.unquoteIdentifierPart(matcher.group())
-                : DOUBLE_QUOTED_ESCAPE_PATTERN.matcher(matcher.group(DOUBLE_QUOTED_STRING_GROUP))
-                        .replaceAll(escape -> Matcher.quoteReplacement(switch (escape.group()) {
-                            case "\\'" -> "'";
-                            case "\"\"" -> "\"";
-                            default -> escape.group();
-                        }));
-        result.append('\'').append(content.replace("'", "''")).append('\'');
+        result.append(StringLiteralParser.normalizeQuotes(matcher.group(), noBackslashEscapes));
     }
 
     /**
