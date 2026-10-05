@@ -26,6 +26,7 @@ import io.debezium.antlr.DataTypeResolver;
 import io.debezium.antlr.DataTypeResolver.DataTypeEntry;
 import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
 import io.debezium.connector.binlog.jdbc.BinlogSystemVariables;
+import io.debezium.connector.binlog.util.StringLiteralParser;
 import io.debezium.connector.mysql.antlr.listener.legacy.MySqlAntlrDdlParserListener;
 import io.debezium.ddl.parser.mysql.legacy.MySqlLexer;
 import io.debezium.ddl.parser.mysql.legacy.MySqlParser;
@@ -426,6 +427,7 @@ public class MySqlPtAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParse
      */
     public static List<String> extractEnumAndSetOptions(List<String> enumValues) {
         return enumValues.stream()
+                .map(literal -> StringLiteralParser.normalizeQuotes(literal, false))
                 .map(MySqlPtAntlrDdlParser::withoutQuotes)
                 .map(MySqlPtAntlrDdlParser::unescapeOption)
                 .collect(Collectors.toList());

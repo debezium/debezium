@@ -6,6 +6,9 @@
 
 package io.debezium.connector.binlog.util;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import io.debezium.util.Strings;
 
 /**
@@ -13,7 +16,27 @@ import io.debezium.util.Strings;
  */
 public final class StringLiteralParser {
 
+    private static final Pattern DOUBLE_QUOTED_ESCAPE_PATTERN = Pattern.compile("\\\\.|\"\"", Pattern.DOTALL);
+
     private StringLiteralParser() {
+    }
+
+    /**
+     * Converts double-quoted string tokens to single-quoted tokens, preserving non-quote escapes.
+     * Other tokens are returned unchanged.
+     */
+    public static String normalizeQuotes(String literal, boolean noBackslashEscapes) {
+        if (!literal.startsWith("\"")) {
+            return literal;
+        }
+        final var content = noBackslashEscapes ? Strings.unquoteIdentifierPart(literal)
+                : DOUBLE_QUOTED_ESCAPE_PATTERN.matcher(literal.substring(1, literal.length() - 1))
+                        .replaceAll(escape -> Matcher.quoteReplacement(switch (escape.group()) {
+                            case "\\'" -> "'";
+                            case "\"\"" -> "\"";
+                            default -> escape.group();
+                        }));
+        return "'" + content.replace("'", "''") + "'";
     }
 
     /**
