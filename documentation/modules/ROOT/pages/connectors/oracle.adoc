@@ -1155,7 +1155,6 @@ Transitioning a thread from `PRIVATE` to `PUBLIC` can lead to unexpected results
 If a redo thread transition is required, a re-snapshot of data may be required to avoid data loss and to remain consistent.
 ====
 
-ifdef::community[]
 [[oracle-downstream-mining-database]]
 === Using a downstream mining database
 
@@ -1163,11 +1162,23 @@ You can use the {prodname} Oracle connector to capture changes from a real-time 
 Log mining operations consume system resources and increase the load on a database, which can result in decreased performance.
 Configuring the connector to perform change data capture processing on a secondary mining database, can reduce the load on the primary database.
 
+ifdef::community[]
 [NOTE]
 ====
 This feature is in an incubating state. This means that exact semantics, configuration options, and other details may change in future revisions based on feedback.
 Please let us know your specific requirements or if you encounter any problems while using this feature.
 ====
+endif::community[]
+ifdef::product[]
+[IMPORTANT]
+====
+The ability of the {prodname} Oracle connector to capture changes from a downstream mining database is a Technology Preview feature.
+Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
+Red{nbsp}Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+endif::product[]
 
 .Prerequisites
 
@@ -1209,8 +1220,6 @@ When Oracle Remove File Server (RFS) replicates changes, the replication should 
 
 If a log fails to register and a gap in log sequences occurs, the {prodname} connector pauses capture. A database administrator must review the registered logs and register any missing logs to close the gap. 
 Typically, this should be necessary only during the initial set up and synchronization with the primary.
-
-endif::community[]
 
 [[oracle-logminer-query-modes]]
 === Query Modes
@@ -1484,7 +1493,7 @@ If your application does not use `ROLLBACK TO SAVEPOINT` in transactions that mo
 Enable it only when you need accurate partial rollback handling for tables that store LOB data out-of-line.
 ====
 
-As an alternative to enabling LOB mining and capturing `INTERNAL` events, you can set `lob.enabled` to `false` and configure the xref:post-processors/reselect-columns.adoc[Reselect columns post processor] to re-query LOB column values directly from the database.
+As an alternative to enabling LOB mining and capturing `INTERNAL` events, you can set `lob.enabled` to `false` and configure the {link-prefix}:{link-reselect-columns}#reselect-columns-post-processor[Reselect columns post processor] to re-query LOB column values directly from the database.
 
 This approach avoids the overhead of mining LOB-specific redo log entries and `INTERNAL` events while still ensuring that change events contain correct LOB values, because the post processor retrieves the values directly from the source table.
 
