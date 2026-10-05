@@ -31,11 +31,6 @@ Instead, the connector captures changes with SQL triggers.
 For each table that it captures, the connector installs `AFTER INSERT`, `AFTER UPDATE`, and `AFTER DELETE` triggers.
 Every trigger writes one row that describes the change into an internal table named `_debezium_cdc_log`, in commit order.
 
-The first time that the connector starts, it reads a consistent snapshot of the tables that it is configured to capture.
-After the snapshot completes, the connector streams changes by reading the new rows that the triggers append to the CDC log table.
-By default, change events for a particular table go to a Kafka topic that is named after the table.
-Applications and services can then consume change event records from these topics.
-
 ifdef::community[]
 [NOTE]
 ====
