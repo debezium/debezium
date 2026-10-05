@@ -12,7 +12,7 @@ toc::[]
 endif::community[]
 
 The {prodname} Command-Line Interface (CLI) provides a unified terminal tool for managing the entire lifecycle of change data capture (CDC) pipelines.
-Whether you are developing and packaging standalone {prodname} Server distributions locally or managing distributed pipelines across multiple {prodname} Platform environments, the CLI provides a consistent, developer-friendly interface.
+Whether you are developing and packaging standalone {prodname} Server distributions locally or managing distributed pipelines across multiple xref:debezium-platform[{prodname} Management Platform], the CLI provides a consistent, developer-friendly interface.
 
 The CLI is packaged and distributed via https://www.jbang.dev/[JBang], allowing you to run or install it instantly without manually configuring Java classpaths or installing complex local toolchains.
 
@@ -23,7 +23,7 @@ The {prodname} CLI is structured into two complementary subsystems designed for 
 
 * **Build Subsystem (`init`, `validate`, `build`, `push`):**
 Focuses on local development, packaging, and distribution.
-Governed by a declarative `dbz.yaml` project descriptor, the Build Subsystem uses embedded **Eclipse Aether (Maven Resolver)** to fetch runtime dependencies without a local Maven install, and **Google Jib Core** to assemble layered OCI container images without needing a running Docker daemon.
+Governed by a declarative `dbz.yaml` project descriptor, the `build` subsystem uses embedded **Eclipse Aether (Maven Resolver)** to fetch runtime dependencies without a local Maven install, and **Google Jib Core** to assemble layered OCI container images without needing a running Docker daemon.
 
 * **Platform Subsystem (`catalog`, `connection`, `source`, `destination`, `transform`, `pipeline`, `switch`, `config`):**
 Interfaces directly with the REST API of the {prodname} Management Platform (Platform Conductor).
@@ -37,7 +37,7 @@ It supports multi-environment profiles, live database schema discovery, credenti
 
 * https://www.jbang.dev/[JBang] version {jbang-version} or later (for JBang execution)
 * Optional: Access to a container registry (Docker Hub, Quay.io, GitHub Packages, or a local registry) when using `debezium push`
-* Optional: A running {prodname} Management Platform instance when using Platform Subsystem commands
+* Optional: A running {prodname} Management Platform instance when using `platform` subsystem commands
 
 [[debezium-cli-installing]]
 === Installing the CLI
@@ -252,12 +252,12 @@ The `push` command resolves registry credentials in the following order:
 [[debezium-cli-platform-subsystem]]
 == Platform Subsystem: Remote Orchestration
 
-The Platform Subsystem connects to the {prodname} Management Platform REST API (Platform Conductor) to discover resources, manage connections, inspect live database schemas, and orchestrate streaming pipelines.
+The `platform` subsystem connects to the {prodname} Management Platform REST API (Platform Conductor) to discover resources, manage connections, inspect live database schemas, and orchestrate streaming pipelines.
 
 [[debezium-cli-catalog]]
 === Discovering Components (`catalog`)
 
-The `catalog` commands allow you to explore registered source connectors, destinations, and transforms available in the platform:
+The `catalog` commands allow you to explore source connectors, destinations, and transforms available in the platform:
 
 ==== Listing available catalog components
 
