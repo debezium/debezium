@@ -829,7 +829,7 @@ To use all available cores on given machine, set the placeholder value, `AVAILAB
 |1000
 |Maximum time, in milliseconds, that the engine allows for processing pending records after a task shutdown is called.
 
-|[[debezium-server-property-task-management-timeout.ms]]<<debezium-server-property-task-management-timeout.ms, `+task.management.timeout.ms+`>>
+|[[debezium-server-property-task-management-timeout-ms]]<<debezium-server-property-task-management-timeout-ms, `+task.management.timeout.ms+`>>
 |180,000 (3 min)
 |Time, in milliseconds, that the engine waits for a task's lifecycle management operations (starting and stopping) to complete.
 |===
