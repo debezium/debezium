@@ -583,7 +583,8 @@ Only alphanumeric characters, hyphens, dots and underscores must be used in the 
 
 |[[sqlite-property-tasks-max]]<<sqlite-property-tasks-max, `+tasks.max+`>>
 |`1`
-|The connector supports a single task. If you set a higher value, the connector logs a warning and uses a single task.
+|The maximum number of tasks that should be created for this connector.
+The SQLite connector always uses a single task and therefore does not use this value, so the default is always acceptable.
 |===
 
 .Snapshot and streaming properties
