@@ -1529,7 +1529,7 @@ The schema portion of the key specifies a Kafka Connect schema that describes wh
 Specifies each field that is expected in the `payload`, including each field's name, index, and schema.
 
 `schema.fields.type`::
-Specifies that the data type of the `ID`field is `int32`.
+Specifies that the data type of the `ID` field is `int32`.
 
 `schema.fields.optional`::
 Indicates whether the event key must contain a value in its `payload` field.
