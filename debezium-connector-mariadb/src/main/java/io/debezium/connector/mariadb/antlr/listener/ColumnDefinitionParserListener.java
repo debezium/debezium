@@ -251,6 +251,7 @@ public class ColumnDefinitionParserListener extends MariaDBParserBaseListener {
 
             List<String> collectionOptions = collectionDataTypeContext.collectionOptions().collectionOption().stream()
                     .map(AntlrDdlParser::getText)
+                    .map(parser::normalizeStringLiteral)
                     .collect(Collectors.toList());
 
             columnEditor.type(dataTypeName);
