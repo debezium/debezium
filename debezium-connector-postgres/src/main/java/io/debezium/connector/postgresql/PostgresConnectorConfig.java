@@ -1141,8 +1141,9 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     "'true' (the default) loads all captured tables before the first change is read. " +
                     "'false' skips this load and loads each table when the first change for it is received, " +
                     "which reduces the startup time for databases with a large number of captured tables. " +
-                    "A snapshot still loads the schema of the tables that it captures. " +
-                    "With 'false', regular expressions in incremental snapshot signals only match tables whose schema has already been loaded.")
+                    "The load still happens when an incremental snapshot is in progress at startup. " +
+                    "A snapshot still loads the schema of the tables that it captures, " +
+                    "and an incremental snapshot signal loads the schema of the tables to snapshot.")
             .withValidation(Field::isBoolean);
 
     public static final Field XMIN_FETCH_INTERVAL = Field.create("xmin.fetch.interval.ms")
