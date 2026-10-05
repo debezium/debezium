@@ -178,7 +178,7 @@ public class Iterators {
         return new Iterator<V>() {
             @Override
             public boolean hasNext() {
-                return second.hasNext();
+                return first.hasNext() && second.hasNext();
             }
 
             @Override
@@ -325,7 +325,9 @@ public class Iterators {
                 if (!completedFirst) {
                     first.remove();
                 }
-                second.remove();
+                else {
+                    second.remove();
+                }
             }
         };
     }
@@ -423,17 +425,19 @@ public class Iterators {
         }
         return new PreviewIterator<T>() {
             private T nextValue;
+            private boolean hasPeeked = false;
 
             @Override
             public boolean hasNext() {
-                return nextValue != null || iter.hasNext();
+                return hasPeeked || iter.hasNext();
             }
 
             @Override
             public T next() {
-                if (nextValue != null) {
+                if (hasPeeked) {
                     T next = nextValue;
                     nextValue = null;
+                    hasPeeked = false;
                     return next;
                 }
                 return iter.next();
@@ -446,11 +450,12 @@ public class Iterators {
 
             @Override
             public T peek() {
-                if (nextValue != null) {
+                if (hasPeeked) {
                     return nextValue;
                 }
                 if (iter.hasNext()) {
                     nextValue = iter.next();
+                    hasPeeked = true;
                     return nextValue;
                 }
                 return null;
