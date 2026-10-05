@@ -440,6 +440,9 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
 
             getBatchMetrics().updateStreamingMetrics();
 
+            // Check heartbeats even when there are no captured row changes.
+            getEventDispatcher().dispatchHeartbeatEvent(getPartition(), getOffsetContext());
+
             // This is purposely buried inside this method so that the initial delay waiting for
             // archive log only mode to advanced into the streaming loop does not create any
             // false-positive on the first mining iteration.
