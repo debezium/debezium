@@ -184,7 +184,7 @@ These compile dependencies must be included in your project's `pom.xml`, as show
 </dependency>
 ----
 
-The following list describes the purpose of the compile dependency versions in the preceding `pom.xml`example:
+The following list describes the purpose of the compile dependency versions in the preceding `pom.xml` example:
 
 `${version.debezium}`::
 Represents the version of the {prodname} connector.
