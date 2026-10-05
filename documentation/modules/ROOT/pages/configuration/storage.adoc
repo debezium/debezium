@@ -28,9 +28,9 @@ For connectors that work with schema-based databases, you configure internal sch
 
 == Kafka
 
-{prodname} can use Kafka to store its state, including source offsets and schema history.
+{prodname} can use Kafka to store its state, including source offsets and schema history. 
 Connectors implement `KafkaOffsetBackingStore` to store offsets in a Kafka topic (for example, `connect-offsets`).
-These offsets ensure that after a connector restarts, it is able to resume reading from the correct position.
+These offsets ensure that after a connector restarts, it is able to resume reading from the correct position. 
 Connectors store their schema history in a separate compacted topic, such as `schema-changes.inventory`.
 
 === Offset Store
@@ -48,12 +48,12 @@ Connectors store their schema history in a separate compacted topic, such as `sc
 
 |[[offset-storage-topic]]<<offset-storage-topic,`offset.storage.topic`>>
 |No default
-|Specifies the Kafka topic where the connector stores its offsets.
+|Specifies the Kafka topic where the connector stores its offsets. 
 To ensure that the topic retains the latest offset information, you must enable log compaction for this topic.
 
 |[[offset-storage-partitions]]<<offset-storage-partitions,`offset.storage.partitions`>>
 |25
-|Specifies the number of partitions for the offset storage topic.
+|Specifies the number of partitions for the offset storage topic. 
 Ensure that the value of this setting aligns with the partitioning strategy of the Kafka cluster.
 
 |[[offset-storage-replication-factor]]<<offset-storage-replication-factor,`offset.storage.replication.factor`>>
@@ -81,7 +81,7 @@ Replicating data across multiple brokers improves fault tolerance.
 
 |[[schema-history-internal-kafka-bootstrap-servers]]<<schema-history-internal-kafka-bootstrap-servers,`schema.history.internal.kafka.bootstrap.servers`>>
 |No default
-|A list of host and port pairs that the connector uses to establish the initial connection to the Kafka cluster to retrieve its database schema history.
+|A list of host and port pairs that the connector uses to establish the initial connection to the Kafka cluster to retrieve its database schema history. 
 This value must match the connection settings that the Kafka Connect process uses to connect to the Kafka cluster.
 
 |[[schema-history-internal-kafka-recovery-poll-interval-ms]]<<schema-history-internal-kafka-recovery-poll-interval-ms,`schema.history.internal.kafka.recovery.poll.interval.ms`>>
@@ -91,7 +91,7 @@ This value must match the connection settings that the Kafka Connect process use
 |[[schema-history-internal-kafka-recovery-attempts]]<<schema-history-internal-kafka-recovery-attempts,`schema.history.internal.kafka.recovery.attempts`>>
 |100
 |Specifies the number of consecutive unsuccessful attempts to retrieve schema history data from Kafka that the connector allows.
-Recovery attempts stop after the number of attempts exceeds this value.
+Recovery attempts stop after the number of attempts exceeds this value. 
 The maximum time that the connector waits after it is unable to retrieve data is `recovery.attempts` x `recovery.poll.interval.ms`.
 
 |[[schema-history-internal-kafka-query-timeout-ms]]<<schema-history-internal-kafka-query-timeout-ms,`schema.history.internal.kafka.query.timeout.ms`>>
@@ -115,8 +115,8 @@ The maximum time that the connector waits after it is unable to retrieve data is
 
 == File
 
-It's possible to persist the position (offsets) of the connector in a local file on disk.
-These offsets ensure that after a connector restarts, {prodname} can resume reading from the last read position.
+It's possible to persist the position (offsets) of the connector in a local file on disk. 
+These offsets ensure that after a connector restarts, {prodname} can resume reading from the last read position. 
 File storage provides a simple, fast mechanism for storing offsets that is ideal for single-node applications or testing scenarios.
 
 === Offset Store
@@ -160,9 +160,9 @@ File storage provides a simple, fast mechanism for storing offsets that is ideal
 
 == Memory
 
-`MemoryOffsetBackingStore` is a volatile, in-memory store that {prodname} Embedded uses to track source offsets.
+`MemoryOffsetBackingStore` is a volatile, in-memory store that {prodname} Embedded uses to track source offsets. 
 Storing offsets in memory preserves the offset state only during the application's runtime.
-Offset records are lost if the connector shuts down or crashes.
+Offset records are lost if the connector shuts down or crashes. 
 Memory storage is ideal for testing, or for short-lived tasks, but it is not suitable for production environments that require persistent offsets.
 
 === Offset Store
@@ -631,7 +631,7 @@ Set the value to `true` to configure {prodname} to use a https://redis.io/docs/l
 
 |[[schema-history-internal-redis-password]]<<schema-history-internal-redis-password, `schema.history.internal.redis.password`>>
 |No default
-|The password for the user account through which {prodname} connects to Redis to store schema history data.
+|The password for the user account through which {prodname} connects to Redis to store schema history data. 
 
 |[[schema-history-internal-redis-db-index]]<<schema-history-internal-redis-db-index, `schema.history.internal.redis.db.index`>>
 |0
@@ -1013,12 +1013,12 @@ Typically, you would use S3 storage when you deploy {prodname} with link:https:/
 
 |[[s3-history-object-name]]<<s3-history-object-name, `schema.history.internal.s3.object.name`>>
 |No default
-|Specifies the object name in the bucket that stores the schema history.
+|Specifies the object name in the bucket that stores the schema history. 
 
 |[[s3-history-endpoint]]<<s3-history-endpoint, `schema.history.internal.s3.endpoint`>>
 |No default
 |(Optional) Specifies a custom URL that {prodname} uses to access the S3 service. +
-Provide the URL in the following format:
+Provide the URL in the following format: 
 `http://<server>:<port>;`
 
 |===
@@ -1056,7 +1056,7 @@ Should not be set together with `schema.history.internal.azure.storage.account.n
 
 |[[schema-history-internal-azure-storage-account-container-name]]<<schema-history-internal-azure-storage-account-container-name,`schema.history.internal.azure.storage.account.container.name`>>
 |No default
-|The name of the Azure container in which {prodname} stores data.
+|The name of the Azure container in which {prodname} stores data. 
 
 |[[schema-history-internal-azure-storage-blob-name]]<<schema-history-internal-azure-storage-blob-name,`schema.history.internal.azure.storage.blob.name`>>
 |No default
@@ -1093,12 +1093,12 @@ Should not be set together with `schema.history.internal.azure.storage.account.n
 
 |[[schema-history-internal-rocketmq-access-key]]<<schema-history-internal-rocketmq-access-key,`schema.history.internal.rocketmq.access.key`>>
 |No Default
-|Specifies the RocketMQ access key.
+|Specifies the RocketMQ access key. 
 This field must include a value if xref:schema-history-internal-rocketmq-acl-enabled[`schema.history.internal.rocketmq.acl.enabled`] is set to `true`.
 
 |[[schema-history-internal-rocketmq-secret-key]]<<schema-history-internal-rocketmq-secret-key,`schema.history.internal.rocketmq.secret.key`>>
 |No Default
-|Specifies the RocketMQ secret key.
+|Specifies the RocketMQ secret key. 
 This field must include a value if xref:schema-history-internal-rocketmq-acl-enabled[`schema.history.internal.rocketmq.acl.enabled`] is set to `true`.
 
 |[[schema-history-internal-rocketmq-recovery-attempts]]<<schema-history-internal-rocketmq-recovery-attempts,`schema.history.internal.rocketmq.recovery.attempts`>>
