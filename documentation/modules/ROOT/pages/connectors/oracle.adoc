@@ -158,12 +158,13 @@ For more information about the error, and about the steps that you can take to r
 
 [IMPORTANT]
 ====
-During a table's snapshot, it's possible for Oracle to raise an ORA-01466 exception.
-This happens when a user modifies the schema of the table or adds, changes, or drops an index or related object associated with the table being snapshot.
-In the event this happens, the connector will stop and the initial snapshot will need to be taken from the beginning.
+The connector reads table data with flashback queries at the SCN that it determined at the start of the snapshot.
+Oracle raises an ORA-01466 exception for a flashback query when the table's definition changed after that SCN, for example when a user modifies the schema of the table or adds, changes, or drops an index or related object associated with the table.
+Such a failure cannot be retried, because the same flashback query fails until the connector determines a new SCN; the connector stops and the initial snapshot must be taken from the beginning.
 
-To remediate the problem, you can configure the xref:oracle-property-snapshot-database-errors-max-retries[`snapshot.database.errors.max.retries`] property with a value greater than `0` so that the specific table's snapshot will restart.
-While the entire snapshot will not start from the beginning when retrying, the specific table in question will be re-read from the beginning and the table's topic will contain duplicate snapshot events.
+To prevent this, the default xref:oracle-property-snapshot-locking-mode[`snapshot.locking.mode`] of `shared` holds a `ROW SHARE` lock on each captured table for the duration of the snapshot.
+The lock allows other sessions to read and write the tables but prevents any DDL until the snapshot completes.
+If you set `snapshot.locking.mode` to `none`, no DDL must occur on the captured tables while the snapshot is in progress.
 ====
 
 ifdef::product[]
@@ -194,7 +195,7 @@ If you want the connector to capture data only from specific tables you can dire
 
 3. Obtain a `ROW SHARE MODE` lock on each of the captured tables to prevent structural changes from occurring during creation of the snapshot.
 +
-NOTE: {prodname} holds the locks for only a short time.
+NOTE: {prodname} holds the locks until the table data has been read in Step 6. The locks do not prevent other database clients from reading or writing to the tables.
 
 4. Read the current system change number (SCN) position from the server's redo log.
 
@@ -209,10 +210,7 @@ If tables are not configured for capture, the initial snapshot captures only the
 For more information about why snapshots persist schema information for tables that you did not include in the initial snapshot, see xref:understanding-why-initial-snapshots-capture-the-schema-history-for-all-tables[Understanding why initial snapshots capture the schema for all tables].
 ====
 
-6. Release the locks obtained in Step 3.
-Other database clients can now write to any previously locked tables.
-
-7. At the SCN position that was read in Step 4, the connector scans the tables that are designated for capture (`SELECT * FROM ... AS OF SCN 123`).
+6. At the SCN position that was read in Step 4, the connector scans the tables that are designated for capture (`SELECT * FROM ... AS OF SCN 123`).
 During the scan, the connector completes the following tasks:
 
 .. Confirms that the table was created before the snapshot began.
@@ -224,9 +222,9 @@ All `read` events contain the same SCN position, which is the SCN position that 
 
 .. Emits each `read` event to the Kafka topic for the source table.
 
-.. Releases data table locks, if applicable.
+.. Releases the locks obtained in Step 3.
 
-8. Record the successful completion of the snapshot in the connector offsets.
+7. Record the successful completion of the snapshot in the connector offsets.
 
 The resulting initial snapshot captures the current state of each row in the captured tables.
 From this baseline state, the connector captures subsequent changes as they occur.
@@ -4207,7 +4205,7 @@ a|Controls whether and for how long the connector holds a table lock. Table lock
 You can set the following values:
 
 `shared`:: Enables concurrent access to the table, but prevents any session from acquiring an exclusive table lock.
-  The connector acquires a `ROW SHARE` level lock while it captures table schema.
+  The connector acquires a `ROW SHARE` level lock when it captures the table schema and holds it until the table data has been read, so that no DDL can invalidate the flashback query that reads the data.
 
 `none`:: Prevents the connector from acquiring any table locks during the snapshot.
   Use this setting only if no schema changes might occur during the creation of the snapshot.
@@ -5240,12 +5238,6 @@ These features provide early access to upcoming product features, enabling custo
 For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
 ====
 endif::product[]
-
-|[[oracle-property-snapshot-database-errors-max-retries]]<<oracle-property-snapshot-database-errors-max-retries, `snapshot.database.errors.max.retries`>>
-|`0`
-|Specifies the number of retry attempts to snapshot a table when a database error occurs.
-This configuration property currently only retries failures related to `ORA-01466` exceptions.
-By default, no additional retries will be performed.
 
 |[[oracle-property-custom-metric-tags]]<<oracle-property-custom-metric-tags, `custom.metric.tags`>>
 |`No default`
