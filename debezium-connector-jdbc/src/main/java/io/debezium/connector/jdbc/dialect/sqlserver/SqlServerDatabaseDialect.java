@@ -139,7 +139,8 @@ public class SqlServerDatabaseDialect extends GeneralDatabaseDialect {
             final String typeName = column.getTypeName().toLowerCase();
 
             if ("varchar".equals(typeName)) {
-                return "cast(? as varchar(max))";
+                int precision = column.getPrecision();
+                return "cast(? as varchar(%d))".formatted(precision);
             }
         }
         return super.getQueryBindingWithValueCast(column, schema, type);
