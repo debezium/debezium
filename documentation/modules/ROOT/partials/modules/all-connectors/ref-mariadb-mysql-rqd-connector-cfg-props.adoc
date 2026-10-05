@@ -400,6 +400,17 @@ When set to `true`, the connector starts from the stored binlog file and positio
 +
 After streaming resumes, the connector captures GTIDs normally and stores refreshed GTID state in subsequent offsets.
 
+ifdef::product[]
+[IMPORTANT]
+====
+The `gtid.ignore.on.recovery` property is a Technology Preview feature.
+Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
+Red{nbsp}Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+endif::product[]
+
 
 [id="{context}-property-include-query"]
 xref:{context}-property-include-query[`include.query`]::
