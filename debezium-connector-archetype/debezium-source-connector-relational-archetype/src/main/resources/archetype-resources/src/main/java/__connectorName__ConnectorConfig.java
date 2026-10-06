@@ -37,8 +37,26 @@ public class ${connectorName}ConnectorConfig extends RelationalDatabaseConnector
 
     public enum SnapshotMode implements EnumeratedValue {
 
+        /** Snapshot schema and data on every start. */
+        ALWAYS("always"),
+
+        /** Snapshot schema and data when no offset exists, then stream. */
         INITIAL("initial"),
-        NO_DATA("no_data");
+
+        /** Snapshot as {@code initial} does, then stop without streaming. */
+        INITIAL_ONLY("initial_only"),
+
+        /** Capture only the schema, never the data. */
+        NO_DATA("no_data"),
+
+        /** Snapshot when the stored offset can no longer be used. */
+        WHEN_NEEDED("when_needed"),
+
+        /** Control the snapshot with the {@code snapshot.mode.configuration.based.*} properties. */
+        CONFIGURATION_BASED("configuration_based"),
+
+        /** Use a custom {@code Snapshotter}, selected by {@code snapshot.mode.custom.name}. */
+        CUSTOM("custom");
 
         private final String value;
 
@@ -64,8 +82,15 @@ public class ${connectorName}ConnectorConfig extends RelationalDatabaseConnector
             .withEnum(SnapshotMode.class, SnapshotMode.INITIAL)
             .withImportance(ConfigDef.Importance.LOW)
             .withDescription("Specifies the criteria for performing a snapshot on startup. "
-                    + "Options include: 'initial' (default) to snapshot schema and data when no offset exists; "
-                    + "'no_data' to capture only the schema. The value maps to a registered Snapshotter.");
+                    + "Options include: "
+                    + "'always' to snapshot every time the connector starts, then stream; "
+                    + "'initial' (default) to snapshot schema and data when no offset exists, then stream; "
+                    + "'initial_only' to snapshot as 'initial' does and then stop without streaming; "
+                    + "'no_data' to capture only the schema; "
+                    + "'when_needed' to snapshot when the stored offset is missing or no longer valid; "
+                    + "'configuration_based' to control the snapshot with the snapshot.mode.configuration.based.* properties; "
+                    + "'custom' to use the Snapshotter named by snapshot.mode.custom.name. "
+                    + "Each value maps to a registered Snapshotter.");
 
     // Add connector-specific fields below, then register them in CONFIG_DEFINITION.
     // public static final Field MY_FIELD = Field.create("my.setting") ...
