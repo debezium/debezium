@@ -53,19 +53,29 @@ class ${connectorName}StreamingChangeEventSource
 
         LOGGER.info("Starting ${connectorName} streaming from position {}", offsetContext.getPosition());
 
-        while (context.isRunning()) {
-            // TODO: poll or watch the data source for new change events.
-            // For each event, determine the operation and the changed column values, then dispatch:
-            //   Envelope.Operation operation = ...; // CREATE, UPDATE, or DELETE
-            //   Object[] oldValues = ...; // before image, or null for an insert
-            //   Object[] newValues = ...; // after image, or null for a delete
-            //   dispatcher.dispatchDataChangeEvent(partition, tableId,
-            //       new ${connectorName}ChangeRecordEmitter(
-            //           partition, offsetContext, operation, oldValues, newValues, clock, config));
-            // Then advance offsetContext.setPosition(...) and persist it.
+        try {
+            while (context.isRunning()) {
+                // TODO: poll or watch the data source for new change events.
+                // For each event, determine the operation and the changed column values, then dispatch:
+                //   Envelope.Operation operation = ...; // CREATE, UPDATE, or DELETE
+                //   Object[] oldValues = ...; // before image, or null for an insert
+                //   Object[] newValues = ...; // after image, or null for a delete
+                //   dispatcher.dispatchDataChangeEvent(partition, tableId,
+                //       new ${connectorName}ChangeRecordEmitter(
+                //           partition, offsetContext, operation, oldValues, newValues, clock, config));
+                // Then advance offsetContext.setPosition(...) and persist it.
 
-            // Remove this placeholder sleep once real polling is implemented.
-            Thread.sleep(1_000);
+                // Remove this placeholder sleep once real polling is implemented.
+                Thread.sleep(1_000);
+            }
+        }
+        catch (InterruptedException e) {
+            // The coordinator interrupts the thread to stop streaming, which is a normal shutdown, not a failure.
+            Thread.currentThread().interrupt();
+        }
+        catch (Exception e) {
+            // Hand streaming failures to the runtime: the error handler fails or restarts the connector.
+            errorHandler.setProducerThrowable(e);
         }
 
         LOGGER.info("${connectorName} streaming stopped");
