@@ -160,10 +160,20 @@ For more information about the error, and about the steps that you can take to r
 ====
 The connector reads table data with flashback queries at the SCN that it determined at the start of the snapshot.
 Oracle raises an ORA-01466 exception for a flashback query when the table's definition changed after that SCN, for example when a user modifies the schema of the table or adds, changes, or drops an index or related object associated with the table.
-Such a failure cannot be retried, because the same flashback query fails until the connector determines a new SCN; the connector stops and the initial snapshot must be taken from the beginning.
+Such a failure cannot be retried, because the same flashback query fails until the connector determines a new SCN; the connector stops and the initial snapshot must be restarted from the beginning.
 
-To prevent this, the default xref:oracle-property-snapshot-locking-mode[`snapshot.locking.mode`] of `shared` holds a `ROW SHARE` lock on each captured table for the duration of the snapshot.
-The lock allows other sessions to read and write the tables but prevents any DDL until the snapshot completes.
+The default xref:oracle-property-snapshot-locking-mode[`snapshot.locking.mode`] of `shared` holds a `ROW SHARE` lock on each captured table for the duration of the snapshot.
+The lock allows other sessions to read and write the tables, and prevents DDL that requires an exclusive table lock.
+However, it does not prevent all DDL operations on the tables while their data is being read.
+Oracle non-blocking DDL, such as `ALTER TABLE ... ADD COLUMN` in Oracle 23.3 and later, does not require an exclusive table lock, and can still change a table's definition while the snapshot is in progress and cause an ORA-01466 exception.
+
+To mitigate this, evaluate one of the following options:
+
+* Set `snapshot.locking.mode` to `extended`, which holds a `SHARE` lock on each captured table for the duration of the snapshot.
+The lock prevents all DDL, including non-blocking DDL, but it also blocks all writes to the captured tables until the snapshot completes.
+* Keep the default `shared` locking mode, and ensure that no DDL is performed on the captured tables while the snapshot is in progress.
+* Set the xref:oracle-property-snapshot-mode[`snapshot.mode`] to `no_data` so that the initial snapshot captures only the table schemas, and then capture the historical data by using an xref:debezium-oracle-incremental-snapshots[incremental snapshot], which reads the data in chunks and does not rely on flashback queries.
+
 If you set `snapshot.locking.mode` to `none`, no DDL must occur on the captured tables while the snapshot is in progress.
 ====
 
@@ -195,7 +205,7 @@ If you want the connector to capture data only from specific tables you can dire
 
 3. Obtain a `ROW SHARE MODE` lock on each of the captured tables to prevent structural changes from occurring during creation of the snapshot.
 +
-NOTE: {prodname} holds the locks until the table data has been read in Step 6. The locks do not prevent other database clients from reading or writing to the tables.
+NOTE: {prodname} holds the locks until the table data has been read in Step 6. The locks do not prevent other database clients from reading or writing to the tables, and do not prevent Oracle non-blocking DDL. To prevent all DDL, set the xref:oracle-property-snapshot-locking-mode[`snapshot.locking.mode`] property to `extended`, which obtains a `SHARE MODE` lock that also blocks writes to the tables until the snapshot completes.
 
 4. Read the current system change number (SCN) position from the server's redo log.
 
@@ -4205,7 +4215,12 @@ a|Controls whether and for how long the connector holds a table lock. Table lock
 You can set the following values:
 
 `shared`:: Enables concurrent access to the table, but prevents any session from acquiring an exclusive table lock.
-  The connector acquires a `ROW SHARE` level lock when it captures the table schema and holds it until the table data has been read, so that no DDL can invalidate the flashback query that reads the data.
+  The connector acquires a `ROW SHARE` level lock when it captures the table schema and holds it until the table data has been read.
+  The lock prevents DDL that requires an exclusive table lock, but it does not prevent Oracle non-blocking DDL, such as `ALTER TABLE ... ADD COLUMN` in Oracle 23.3 and later, which can invalidate the flashback query that reads the data and cause an ORA-01466 exception.
+
+`extended`:: Prevents all DDL on the table, including Oracle non-blocking DDL, for the duration of the snapshot.
+  The connector acquires a `SHARE` level lock when it captures the table schema and holds it until the table data has been read.
+  Other sessions can read the table, but any write to the table is blocked until the snapshot completes.
 
 `none`:: Prevents the connector from acquiring any table locks during the snapshot.
   Use this setting only if no schema changes might occur during the creation of the snapshot.
