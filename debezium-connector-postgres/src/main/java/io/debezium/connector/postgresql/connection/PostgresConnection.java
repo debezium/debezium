@@ -27,7 +27,6 @@ import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.OptionalLong;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -103,7 +102,6 @@ public class PostgresConnection extends JdbcConnection {
 
     private final TypeRegistry typeRegistry;
     private final PostgresDefaultValueConverter defaultValueConverter;
-    private final Map<TableId, Boolean> partitionedTables = new ConcurrentHashMap<>();
 
     /**
      * Creates a Postgres connection using the supplied configuration.
@@ -959,18 +957,13 @@ public class PostgresConnection extends JdbcConnection {
 
     /**
      * Determines whether the given table is a partitioned table (declarative partitioning root).
-     * The result is cached, as a table cannot change its kind without being dropped and re-created.
      *
      * @param tableId the table id
      * @return {@code true} if the table is partitioned, {@code false} otherwise
      */
     public boolean isPartitionedTable(TableId tableId) {
-        final Boolean cached = partitionedTables.get(tableId);
-        if (cached != null) {
-            return cached;
-        }
         try {
-            final boolean partitioned = prepareQueryAndMap(
+            return prepareQueryAndMap(
                     "SELECT c.relkind = 'p' FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace "
                             + "WHERE n.nspname = ? AND c.relname = ?",
                     statement -> {
@@ -978,8 +971,6 @@ public class PostgresConnection extends JdbcConnection {
                         statement.setString(2, tableId.table());
                     },
                     rs -> rs.next() && rs.getBoolean(1));
-            partitionedTables.put(tableId, partitioned);
-            return partitioned;
         }
         catch (SQLException e) {
             throw new DebeziumException("Failed to determine whether table " + tableId + " is partitioned", e);
