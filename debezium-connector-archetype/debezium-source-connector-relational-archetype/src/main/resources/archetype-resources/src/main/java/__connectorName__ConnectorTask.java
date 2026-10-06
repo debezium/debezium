@@ -26,12 +26,14 @@ import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.document.DocumentReader;
 import io.debezium.heartbeat.HeartbeatFactory;
 import io.debezium.jdbc.DefaultMainConnectionProvidingConnectionFactory;
+import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.GuardrailValidator;
 import io.debezium.pipeline.metrics.DefaultChangeEventSourceMetricsFactory;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalProcessor;
@@ -192,6 +194,14 @@ public class ${connectorName}ConnectorTask
         final SnapshotterService snapshotterService =
                 connectorConfig.getServiceRegistry().tryGetService(SnapshotterService.class);
 
+        // Refuse to load an excessive number of table schemas into memory (guardrail.collections.max).
+        if (connectorConfig.getGuardrailCollectionsMax() <= 0) {
+            LOGGER.info("Guardrail validation skipped");
+        }
+        else {
+            validateGuardrailLimits();
+        }
+
         // Fails fast when the stored offset cannot be used: a snapshot that was interrupted but is now
         // disabled, or a log position the source no longer retains.
         validateSchemaHistory(connectorConfig, jdbcConnection::validateLogPosition, previousOffsets, schema,
@@ -253,6 +263,16 @@ public class ${connectorName}ConnectorTask
 
         if (queue != null) {
             queue.close();
+        }
+    }
+
+    private void validateGuardrailLimits() {
+        try {
+            final String catalogName = connectorConfig.getJdbcConfig().getString(JdbcConfiguration.DATABASE);
+            new GuardrailValidator(connectorConfig, schema).validate(jdbcConnection.getAllTableIds(catalogName));
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Failed to validate guardrail limits", e);
         }
     }
 
