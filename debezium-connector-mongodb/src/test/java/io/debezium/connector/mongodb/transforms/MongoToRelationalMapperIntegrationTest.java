@@ -151,7 +151,7 @@ class MongoToRelationalMapperIntegrationTest {
             assertThatThrownBy(() -> mapper.apply(record(operation, null, null)))
                     .isInstanceOf(DataException.class)
                     .hasMessageContaining("full after document")
-                    .hasMessageContaining("change_streams_update_full");
+                    .hasMessageContaining("capture.mode.post.image");
         }
     }
 

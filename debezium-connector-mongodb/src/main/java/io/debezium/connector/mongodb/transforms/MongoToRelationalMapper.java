@@ -133,7 +133,8 @@ public class MongoToRelationalMapper<R extends ConnectRecord<R>> implements Tran
         final var operation = Envelope.Operation.forCode(value.getString(Envelope.FieldName.OPERATION));
         if (afterJson == null && (operation == Envelope.Operation.UPDATE || operation == Envelope.Operation.CREATE || operation == Envelope.Operation.READ)) {
             throw new DataException("MongoToRelationalMapper requires a full after document for create, snapshot, and update events. "
-                    + "Use a change_streams_update_full capture mode and ensure that the document image is available.");
+                    + "For streaming updates, configure capture.mode.post.image as lookup, post_image, "
+                    + "or post_image_required, and ensure that the document image is available.");
         }
         final var beforeDoc = beforeJson != null ? BsonDocument.parse(beforeJson) : null;
         final var afterDoc = afterJson != null ? BsonDocument.parse(afterJson) : null;
