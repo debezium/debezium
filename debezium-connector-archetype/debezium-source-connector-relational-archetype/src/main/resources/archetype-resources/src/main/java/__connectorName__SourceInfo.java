@@ -22,6 +22,7 @@ public class ${connectorName}SourceInfo extends BaseSourceInfo {
     private final CommonConnectorConfig config;
 
     private Instant timestamp;
+    private long position;
     private String schemaName = "";
     private String tableName = "";
 
@@ -48,6 +49,14 @@ public class ${connectorName}SourceInfo extends BaseSourceInfo {
         // with the time the change was committed in the source database; it becomes the ts_ms field of the
         // event's source block.
         return timestamp;
+    }
+
+    long getPosition() {
+        return position;
+    }
+
+    void setPosition(long position) {
+        this.position = position;
     }
 
     String schemaName() {

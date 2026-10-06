@@ -30,7 +30,6 @@ public class ${connectorName}OffsetContext extends CommonOffsetContext<${connect
 
     static final String POSITION_KEY = "position";
 
-    private long position;
     private final TransactionContext transactionContext;
 
     public ${connectorName}OffsetContext(${connectorName}SourceInfo sourceInfo) {
@@ -55,17 +54,17 @@ public class ${connectorName}OffsetContext extends CommonOffsetContext<${connect
     }
 
     public long getPosition() {
-        return position;
+        return sourceInfo.getPosition();
     }
 
     public void setPosition(long position) {
-        this.position = position;
+        sourceInfo.setPosition(position);
     }
 
     @Override
     public Map<String, ?> getOffset() {
         final Map<String, Object> result = new HashMap<>();
-        result.put(POSITION_KEY, position);
+        result.put(POSITION_KEY, getPosition());
         // Persist the snapshot state so a restart in the middle of a snapshot is detected and the snapshot
         // is re-run instead of being mistaken for a completed one.
         if (getSnapshot().isPresent()) {
