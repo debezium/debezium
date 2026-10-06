@@ -5,6 +5,7 @@
  */
 package ${package};
 
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -13,6 +14,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.bean.StandardBeanNames;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -123,6 +125,16 @@ public class ${connectorName}ConnectorTask
 
         schema =
                 new ${connectorName}DatabaseSchema(connectorConfig, topicNamingStrategy, taskContext);
+
+        // A non-historized schema is not persisted, so rebuild it from the database on every start. The
+        // snapshot refreshes it too, but it is skipped when a previous offset exists and streaming
+        // would otherwise begin without knowing the captured tables.
+        try {
+            schema.refresh(jdbcConnection);
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Failed to read the schema of the captured tables", e);
+        }
 
         final ${connectorName}EventMetadataProvider metadataProvider = new ${connectorName}EventMetadataProvider();
 
