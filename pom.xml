@@ -154,7 +154,7 @@
         <version.db2.driver>11.5.0.0</version.db2.driver>
         <version.informix.driver>15.0.1.4</version.informix.driver>
         <version.cassandra.driver>4.14.0</version.cassandra.driver>
-        <version.mariadb.driver>3.5.3</version.mariadb.driver>
+        <version.mariadb.driver>3.5.10</version.mariadb.driver>
         <version.jt400>11.1</version.jt400> <!-- IBM Toolbox for Java (JT400) for Debezium JDBC connector Db2i dialect -->
         <!-- These two should be aligned by major versions but minor could vary -->
         <!-- Oracle publishes the driver versions more frequently than the instant client -->
