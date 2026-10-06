@@ -1902,7 +1902,7 @@ public class JdbcConnection implements AutoCloseable {
             throws SQLException {
         final String query = String.format("SELECT %s FROM %s WHERE %s",
                 columns.stream().map(this::quoteIdentifier).collect(Collectors.joining(",")),
-                quotedTableIdString(table.id()),
+                tableReferenceForDataQuery(table.id()),
                 keyColumns.stream().map(key -> key + "=?").collect(Collectors.joining(" AND ")));
         return reselectColumns(query, table.id(), columns, keyValues, resultConsumer);
     }
