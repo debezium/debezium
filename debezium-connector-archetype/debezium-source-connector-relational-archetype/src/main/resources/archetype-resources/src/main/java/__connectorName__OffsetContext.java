@@ -6,10 +6,14 @@
 package ${package};
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
 
+import io.debezium.connector.AbstractSourceInfo;
+import io.debezium.connector.SnapshotRecord;
+import io.debezium.connector.SnapshotType;
 import io.debezium.pipeline.CommonOffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.spi.schema.DataCollectionId;
@@ -29,8 +33,24 @@ public class ${connectorName}OffsetContext extends CommonOffsetContext<${connect
     private final TransactionContext transactionContext;
 
     public ${connectorName}OffsetContext(${connectorName}SourceInfo sourceInfo) {
-        super(sourceInfo);
-        this.transactionContext = new TransactionContext();
+        this(sourceInfo, null, false, new TransactionContext());
+    }
+
+    /**
+     * Restores an offset from what {@link #getOffset()} stored, including whether a snapshot was
+     * running when the connector stopped.
+     */
+    ${connectorName}OffsetContext(${connectorName}SourceInfo sourceInfo, SnapshotType snapshot,
+                                  boolean snapshotCompleted, TransactionContext transactionContext) {
+        super(sourceInfo, snapshotCompleted);
+        if (snapshotCompleted) {
+            postSnapshotCompletion();
+        }
+        else {
+            setSnapshot(snapshot);
+            sourceInfo.setSnapshot(snapshot != null ? SnapshotRecord.TRUE : SnapshotRecord.FALSE);
+        }
+        this.transactionContext = transactionContext;
     }
 
     public long getPosition() {
@@ -43,7 +63,16 @@ public class ${connectorName}OffsetContext extends CommonOffsetContext<${connect
 
     @Override
     public Map<String, ?> getOffset() {
-        return Map.of(POSITION_KEY, position);
+        final Map<String, Object> result = new HashMap<>();
+        result.put(POSITION_KEY, position);
+        // Persist the snapshot state so a restart in the middle of a snapshot is detected and the snapshot
+        // is re-run instead of being mistaken for a completed one.
+        if (getSnapshot().isPresent()) {
+            result.put(AbstractSourceInfo.SNAPSHOT_KEY, getSnapshot().get().toString());
+            result.put(SNAPSHOT_COMPLETED_KEY, snapshotCompleted);
+        }
+        // Transaction metadata is only tracked for streamed events.
+        return sourceInfo.isSnapshot() ? result : transactionContext.store(result);
     }
 
     @Override

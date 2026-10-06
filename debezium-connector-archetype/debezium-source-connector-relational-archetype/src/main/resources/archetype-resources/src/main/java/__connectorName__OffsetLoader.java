@@ -8,6 +8,7 @@ package ${package};
 import java.util.Map;
 
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.txmetadata.TransactionContext;
 
 /**
  * Restores a {@link ${connectorName}OffsetContext} from Kafka Connect's persisted offset storage.
@@ -26,16 +27,18 @@ public class ${connectorName}OffsetLoader implements OffsetContext.Loader<${conn
 
     @Override
     public ${connectorName}OffsetContext load(Map<String, ?> offset) {
-        ${connectorName}SourceInfo sourceInfo = new ${connectorName}SourceInfo(config);
-        ${connectorName}OffsetContext ctx = new ${connectorName}OffsetContext(sourceInfo);
+        final ${connectorName}SourceInfo sourceInfo = new ${connectorName}SourceInfo(config);
 
         if (offset == null || offset.isEmpty()) {
-            ctx.setPosition(0);
+            return new ${connectorName}OffsetContext(sourceInfo);
         }
-        else {
-            long position = ((Number) offset.get(${connectorName}OffsetContext.POSITION_KEY)).longValue();
-            ctx.setPosition(position);
-        }
+
+        final ${connectorName}OffsetContext ctx = new ${connectorName}OffsetContext(
+                sourceInfo,
+                loadSnapshot(offset).orElse(null),
+                loadSnapshotCompleted(offset),
+                TransactionContext.load(offset));
+        ctx.setPosition(((Number) offset.get(${connectorName}OffsetContext.POSITION_KEY)).longValue());
         return ctx;
     }
 }
