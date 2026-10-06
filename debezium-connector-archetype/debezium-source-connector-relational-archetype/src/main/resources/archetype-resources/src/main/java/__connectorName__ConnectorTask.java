@@ -24,6 +24,7 @@ import io.debezium.connector.base.QueueProviderService;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.document.DocumentReader;
+import io.debezium.heartbeat.HeartbeatFactory;
 import io.debezium.jdbc.DefaultMainConnectionProvidingConnectionFactory;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
@@ -156,6 +157,14 @@ public class ${connectorName}ConnectorTask
                         connectorConfig.getTableFilters().dataCollectionFilter(),
                         DataChangeEvent::new,
                         metadataProvider,
+                        new HeartbeatFactory<>().getScheduledHeartbeat(
+                                connectorConfig,
+                                connectionFactory::newConnection,
+                                exception -> {
+                                    throw new DebeziumException(
+                                            "Could not execute heartbeat action query (Error: " + exception.getMessage() + ")", exception);
+                                },
+                                queue),
                         schemaNameAdjuster,
                         signalProcessor,
                         null);
