@@ -10,6 +10,7 @@ import java.util.Objects;
 import java.util.Set;
 
 import io.debezium.pipeline.spi.Partition;
+import io.debezium.relational.AbstractPartition;
 
 /**
  * Identifies the offset partition for a ${connectorName} connector instance.
@@ -18,13 +19,14 @@ import io.debezium.pipeline.spi.Partition;
  * offset storage. Connector instances with different {@code topic.prefix} values keep
  * independent offsets.
  */
-public class ${connectorName}Partition implements Partition {
+public class ${connectorName}Partition extends AbstractPartition {
 
     private static final String SERVER_KEY = "server";
 
     private final String serverName;
 
     public ${connectorName}Partition(String serverName) {
+        super(serverName);
         this.serverName = serverName;
     }
 
