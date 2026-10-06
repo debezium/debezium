@@ -15,7 +15,24 @@
     <description>Maven archetypes for bootstrapping new Debezium connectors</description>
     <packaging>pom</packaging>
 
+    <properties>
+        <!-- Shared by the archetype-packaging build extension and the maven-archetype-plugin; they are released together -->
+        <version.archetype.plugin>3.2.1</version.archetype.plugin>
+    </properties>
+
     <modules>
         <module>debezium-source-connector-relational-archetype</module>
     </modules>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-archetype-plugin</artifactId>
+                    <version>${version.archetype.plugin}</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
 </project>
