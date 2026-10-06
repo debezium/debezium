@@ -179,7 +179,7 @@ a|The primary key is composed of the Kafka event's headers.
 
 Kafka event's headers contains could contain multiple header that each one could be `Struct` or primitives data types,
 the connectors makes a  `Struct` of these headers. Hence, all fields in this `Struct` become columns of the primary key.
-To use a subset of fields in the primary key, set the xref:jdbc-property-primary-key-fields[`primary.key.fields`] property to specify a comma-separated list of fields in the value from which you want to derive the primary key columns.
+To use a subset of headers in the primary key, set the xref:jdbc-property-primary-key-fields[`primary.key.fields`] property to specify a comma-separated list of header names from which you want to derive the primary key columns.
 
 |===
 
@@ -1851,6 +1851,8 @@ If the record key is a primitive type, the xref:jdbc-property-primary-key-fields
 If the record key is a struct type, the xref:jdbc-property-primary-key-fields[`primary.key.fields`] property is optional, and can be used to specify a subset of columns from the event's key as the table's primary key.
 `record_value`:: Specifies that the primary key columns is sourced from the event's value.
 You can set the xref:jdbc-property-primary-key-fields[`primary.key.fields`] property to define the primary key as a subset of fields from the event's value; otherwise all fields are used by default.
+`record_header`:: Specifies that the primary key columns are sourced from the event's headers.
+You can set the xref:jdbc-property-primary-key-fields[`primary.key.fields`] property to define the primary key as a subset of the event's headers; otherwise all headers are used by default.
 
 |[[jdbc-property-primary-key-fields]]<<jdbc-property-primary-key-fields, `+primary.key.fields+`>>
 |No default
@@ -1858,8 +1860,8 @@ You can set the xref:jdbc-property-primary-key-fields[`primary.key.fields`] prop
 
 When xref:jdbc-property-primary-key-mode[`primary.key.mode`] is set to `record_key` and the event's key is a primitive type, it is expected that this property specifies the column name to be used for the key.
 
-When the xref:jdbc-property-primary-key-mode[`primary.key.mode`] is set to `record_key` with a non-primitive key, or `record_value`, it is expected that this property specifies a comma-separated list of field names from either the key or value.
-If the xref:jdbc-property-primary-key-mode[`primary.key.mode`] is set to `record_key` with a non-primitive key, or `record_value`, and this property is not specified, the connector derives the primary key from all fields of either the record key or record value, depending on the specified mode.
+When the xref:jdbc-property-primary-key-mode[`primary.key.mode`] is set to `record_key` with a non-primitive key, `record_value`, or `record_header`, it is expected that this property specifies a comma-separated list of field names from the key, value, or headers.
+If the xref:jdbc-property-primary-key-mode[`primary.key.mode`] is set to `record_key` with a non-primitive key, `record_value`, or `record_header`, and this property is not specified, the connector derives the primary key from all fields of the record key, record value, or record headers, depending on the specified mode.
 
 |[[jdbc-property-quote-identifiers]]<<jdbc-property-quote-identifiers, `+quote.identifiers+`>>
 |`false`
