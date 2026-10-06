@@ -57,6 +57,8 @@ public class ${connectorName}ConnectorTask
     private volatile CdcSourceTaskContext<${connectorName}ConnectorConfig> taskContext;
     private volatile ErrorHandler errorHandler;
     private volatile ${connectorName}Connection beanRegistryJdbcConnection;
+    private volatile ${connectorName}Connection jdbcConnection;
+    private volatile ${connectorName}DatabaseSchema schema;
 
     @Override
     public String version() {
@@ -117,7 +119,9 @@ public class ${connectorName}ConnectorTask
                 new DefaultMainConnectionProvidingConnectionFactory<>(
                         () -> new ${connectorName}Connection(connectorConfig.getJdbcConfig()));
 
-        final ${connectorName}DatabaseSchema schema =
+        jdbcConnection = connectionFactory.mainConnection();
+
+        schema =
                 new ${connectorName}DatabaseSchema(connectorConfig, topicNamingStrategy, taskContext);
 
         final ${connectorName}EventMetadataProvider metadataProvider = new ${connectorName}EventMetadataProvider();
@@ -202,6 +206,19 @@ public class ${connectorName}ConnectorTask
         }
         catch (Exception e) {
             LOGGER.trace("Error while closing JDBC bean registry connection", e);
+        }
+
+        try {
+            if (jdbcConnection != null) {
+                jdbcConnection.close();
+            }
+        }
+        catch (Exception e) {
+            LOGGER.trace("Error while closing JDBC connection", e);
+        }
+
+        if (schema != null) {
+            schema.close();
         }
 
         if (queue != null) {
