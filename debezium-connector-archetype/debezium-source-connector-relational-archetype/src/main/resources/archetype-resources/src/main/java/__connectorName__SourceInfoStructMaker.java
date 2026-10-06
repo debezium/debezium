@@ -9,6 +9,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.AbstractSourceInfoStructMaker;
 
 /**
@@ -27,6 +28,8 @@ class ${connectorName}SourceInfoStructMaker extends AbstractSourceInfoStructMake
         super.init(connector, version, config);
         schema = commonSchemaBuilder()
                 .name("${package}.Source")
+                .field(AbstractSourceInfo.SCHEMA_NAME_KEY, Schema.STRING_SCHEMA)
+                .field(AbstractSourceInfo.TABLE_NAME_KEY, Schema.STRING_SCHEMA)
                 // Add connector-specific source fields here, for example:
                 // .field("position", Schema.INT64_SCHEMA)
                 .build();
@@ -39,8 +42,11 @@ class ${connectorName}SourceInfoStructMaker extends AbstractSourceInfoStructMake
 
     @Override
     public Struct struct(${connectorName}SourceInfo info) {
-        return commonStruct(info);
+        final Struct result = commonStruct(info);
+        result.put(AbstractSourceInfo.SCHEMA_NAME_KEY, info.schemaName());
+        result.put(AbstractSourceInfo.TABLE_NAME_KEY, info.tableName());
         // Populate connector-specific fields here, for example:
-        // .put("position", info.getPosition())
+        // result.put("position", info.getPosition());
+        return result;
     }
 }
