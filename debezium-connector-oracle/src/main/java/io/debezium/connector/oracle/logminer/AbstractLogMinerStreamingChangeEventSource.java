@@ -440,9 +440,6 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
 
             getBatchMetrics().updateStreamingMetrics();
 
-            // Check heartbeats even when there are no captured row changes.
-            getEventDispatcher().dispatchHeartbeatEvent(getPartition(), getOffsetContext());
-
             // This is purposely buried inside this method so that the initial delay waiting for
             // archive log only mode to advanced into the streaming loop does not create any
             // false-positive on the first mining iteration.
@@ -455,6 +452,18 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
                     getMetrics().getNumberOfActiveTransactions(),
                     getOffsetContext());
         }
+    }
+
+    /**
+     * Checks whether a heartbeat should be emitted after a mining iteration.
+     * <p>
+     * This must be called once the iteration's offset bookkeeping is complete so that any heartbeat
+     * that is emitted carries the up-to-date offsets, even when no captured row changes were dispatched.
+     *
+     * @throws InterruptedException if the thread is interrupted
+     */
+    protected void dispatchHeartbeatEvent() throws InterruptedException {
+        getEventDispatcher().dispatchHeartbeatEvent(getPartition(), getOffsetContext());
     }
 
     /**
