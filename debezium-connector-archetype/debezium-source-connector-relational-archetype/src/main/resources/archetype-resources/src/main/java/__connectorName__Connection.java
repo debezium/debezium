@@ -5,8 +5,11 @@
  */
 package ${package};
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Partition;
 
 /**
  * JDBC connection to the ${connectorName} database.
@@ -25,5 +28,17 @@ public class ${connectorName}Connection extends JdbcConnection {
         // The last two arguments are the opening and closing identifier-quoting characters;
         // change them if your database does not quote identifiers with double quotes.
         super(config, JdbcConnection.patternBasedFactory(URL_PATTERN), "\"", "\"");
+    }
+
+    /**
+     * Tells whether the position stored in the offset can still be read from the source's change log.
+     * The task calls this on startup with the restored offset; returning {@code false} makes the
+     * connector fail, or snapshot again, depending on the snapshot mode, instead of streaming from a
+     * position the source has already discarded.
+     */
+    public boolean validateLogPosition(Partition partition, OffsetContext offset, CommonConnectorConfig config) {
+        // TODO: compare the stored position with the oldest position the source still retains (for
+        // example the first available log file or sequence number). Returning true skips the check.
+        return true;
     }
 }

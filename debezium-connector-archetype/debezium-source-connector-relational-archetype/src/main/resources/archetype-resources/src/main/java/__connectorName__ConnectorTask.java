@@ -192,6 +192,11 @@ public class ${connectorName}ConnectorTask
         final SnapshotterService snapshotterService =
                 connectorConfig.getServiceRegistry().tryGetService(SnapshotterService.class);
 
+        // Fails fast when the stored offset cannot be used: a snapshot that was interrupted but is now
+        // disabled, or a log position the source no longer retains.
+        validateSchemaHistory(connectorConfig, jdbcConnection::validateLogPosition, previousOffsets, schema,
+                snapshotterService.getSnapshotter());
+
         final ChangeEventSourceCoordinator<${connectorName}Partition, ${connectorName}OffsetContext> coordinator =
                 new ChangeEventSourceCoordinator<>(
                         previousOffsets,
