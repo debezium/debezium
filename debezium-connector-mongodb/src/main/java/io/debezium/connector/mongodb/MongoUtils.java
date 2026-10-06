@@ -32,8 +32,6 @@ import com.mongodb.connection.ClusterDescription;
 import com.mongodb.connection.ClusterType;
 import com.mongodb.connection.ServerDescription;
 
-import io.debezium.function.BlockingConsumer;
-
 /**
  * Utilities for working with MongoDB.
  *
@@ -43,28 +41,6 @@ public class MongoUtils {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoUtils.class);
     private static final String ADMIN_DATABASE = "admin";
-
-    /**
-     * Perform the given operation on each of the database names.
-     *
-     * @param client the MongoDB client; may not be null
-     * @param operation the operation to perform; may not be null
-     */
-    public static void forEachDatabaseName(MongoClient client, Consumer<String> operation) {
-        forEach(client.listDatabaseNames(), operation);
-    }
-
-    /**
-     * Perform the given operation on each of the collection names in the named database.
-     *
-     * @param client the MongoDB client; may not be null
-     * @param databaseName the name of the database; may not be null
-     * @param operation the operation to perform; may not be null
-     */
-    public static void forEachCollectionNameInDatabase(MongoClient client, String databaseName, Consumer<String> operation) {
-        MongoDatabase db = client.getDatabase(databaseName);
-        forEach(db.listCollectionNames(), operation);
-    }
 
     /**
      * Perform the given operation on each of the values in the iterable container.
@@ -106,33 +82,6 @@ public class MongoUtils {
         onDatabase(client, dbName, db -> {
             if (contains(db.listCollectionNames(), collectionName)) {
                 collectionOperation.accept(db.getCollection(collectionName));
-            }
-        });
-    }
-
-    /**
-     * Perform the given operation on all of the documents inside the named collection in the named database, if the database and
-     * collection both exist. The operation is called once for each document, so if the collection exists but is empty then the
-     * function will not be called.
-     *
-     * @param client the MongoDB client; may not be null
-     * @param dbName the name of the database; may not be null
-     * @param collectionName the name of the collection; may not be null
-     * @param documentOperation the operation to perform; may not be null
-     */
-    public static void onCollectionDocuments(MongoClient client, String dbName, String collectionName,
-                                             BlockingConsumer<Document> documentOperation) {
-        onCollection(client, dbName, collectionName, collection -> {
-            try (MongoCursor<Document> cursor = collection.find().iterator()) {
-                while (cursor.hasNext()) {
-                    try {
-                        documentOperation.accept(cursor.next());
-                    }
-                    catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        break;
-                    }
-                }
             }
         });
     }
@@ -270,6 +219,7 @@ public class MongoUtils {
     }
 
     private static BsonDocument runReadCommand(MongoClient client, String databaseName, BsonDocument command) {
+        // Keep metadata commands independent of the client's application read concern.
         return client.getDatabase(databaseName)
                 .withReadConcern(ReadConcern.DEFAULT)
                 .runCommand(command, client.getReadPreference(), BsonDocument.class);

@@ -83,6 +83,7 @@ public class MongoDbConnectionContext {
                 .nameOnly(true)
                 .retryReads(nativeClient.getSettings().getRetryReads());
 
+        // Match the driver's listCollections behavior rather than inheriting the client's application read concern.
         try (var cursor = nativeClient.getOperationExecutor().execute(
                 listCollections,
                 client.getReadPreference(),
@@ -98,6 +99,7 @@ public class MongoDbConnectionContext {
     public void forEachDatabaseName(MongoClient client, Consumer<String> operation) {
         var command = new BsonDocument("listDatabases", new BsonInt32(1))
                 .append("nameOnly", BsonBoolean.TRUE);
+        // Keep metadata commands independent of the client's application read concern.
         var result = client.getDatabase("admin")
                 .withReadConcern(ReadConcern.DEFAULT)
                 .runCommand(command, client.getReadPreference(), BsonDocument.class);

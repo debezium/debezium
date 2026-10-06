@@ -47,6 +47,7 @@ import com.mongodb.internal.operation.BatchCursor;
 import com.mongodb.internal.operation.ListCollectionsOperation;
 
 import io.debezium.connector.mongodb.connection.MongoDbConnectionContext;
+import io.debezium.doc.FixFor;
 import io.debezium.util.Collect;
 
 /**
@@ -99,6 +100,7 @@ public class MongoUtilTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2728")
     void shouldRunHelloUsingTaggedSecondaryAndDefaultReadConcern() {
         var client = mock(MongoClient.class);
         var database = mock(MongoDatabase.class);
@@ -118,6 +120,7 @@ public class MongoUtilTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2728")
     void shouldFallBackToIsMasterForAnyMongoException() {
         var client = mock(MongoClient.class);
         var database = mock(MongoDatabase.class);
@@ -141,6 +144,7 @@ public class MongoUtilTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2728")
     void shouldListDatabaseNamesUsingTaggedSecondaryAndDefaultReadConcern() {
         var connectionContext = new MongoDbConnectionContext(TestHelper.getConfiguration("mongodb://localhost:27017/"));
         var client = mock(MongoClient.class);
@@ -166,6 +170,7 @@ public class MongoUtilTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2728")
     void shouldListCollectionNamesAcrossBatchesUsingTaggedSecondaryAndDefaultReadConcern() {
         var connectionContext = new MongoDbConnectionContext(TestHelper.getConfiguration("mongodb://localhost:27017/"));
         var client = mock(MongoClientImpl.class);
@@ -198,6 +203,7 @@ public class MongoUtilTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2728")
     void shouldRejectNonNativeClientForCollectionEnumeration() {
         var connectionContext = new MongoDbConnectionContext(TestHelper.getConfiguration("mongodb://localhost:27017/"));
         var client = mock(MongoClient.class);
