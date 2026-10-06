@@ -1120,9 +1120,6 @@ Valid values are `docker` to push into a container registry such as Quay, or `im
 To use an ImageStream, an ImageStream resource must be deployed to the cluster.
 For more information about specifying the `build.output` in the KafkaConnect configuration, see the link:{LinkStreamsAPIReference}#type-Build-reference[Build schema reference] in the {NameStreamsAPIReference}.
 
-//     Future changes to the Streams content or structure could break this link in future releases.
-//     Consider removing it. 
-
 `spec.plugins`::
 Lists all of the connectors that you want to include in the Kafka Connect image.
 For each entry in the list, specify a plug-in `name`, and information about the artifacts that are required to build the connector.
