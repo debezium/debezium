@@ -52,6 +52,9 @@ When an event exceeds `max.bytes`, the SMT serializes the complete source record
 After the storage implementation acknowledges the write, the SMT copies the event and replaces each configured non-null string or unnamed bytes column in its `before` and `after` sections with a claim-check marker.
 The `claim.check.columns.include.list` entries are case-insensitive regular expressions that match either an unqualified column name, such as `payload`, or a topic-qualified name, such as `inventory.customers.payload`.
 Use a topic-qualified expression to scope claim-check replacement to a single topic.
+Patterns that do not match a column in the current record are ignored, allowing different patterns for different topics.
+If no pattern matches, the record passes through unchanged without a storage write or truncation, even if it exceeds `max.bytes`.
+Such a record can still exceed a downstream message size limit.
 
 The following example stores oversized records in Amazon S3:
 

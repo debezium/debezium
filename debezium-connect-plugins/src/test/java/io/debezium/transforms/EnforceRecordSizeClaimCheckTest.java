@@ -105,11 +105,29 @@ class EnforceRecordSizeClaimCheckTest {
 
         SourceRecord nonMatchingRecord = createStringRecord("x".repeat(5_000), sourceOffset(101L), "inventory.orders");
 
-        assertThatThrownBy(() -> transform.apply(nonMatchingRecord))
-                .isInstanceOf(ConnectException.class)
-                .hasMessageContaining("inventory[.]customers[.]payload")
-                .hasMessageContaining("not found");
+        assertThat(transform.apply(nonMatchingRecord)).isSameAs(nonMatchingRecord);
+        assertThat(after(nonMatchingRecord).getString("payload")).isEqualTo("x".repeat(5_000));
         assertThat(RecordingStorage.records).hasSize(1);
+    }
+
+    @Test
+    void shouldApplyQualifiedPatternsIndependentlyAcrossTables() throws Exception {
+        transform.configure(claimCheckConfig("inventory[.]customers[.]payload,inventory[.]orders[.]notes"));
+        SourceRecord customer = createStringRecord("x".repeat(5_000), sourceOffset(100L));
+        Schema orderSchema = SchemaBuilder.struct()
+                .field("notes", Schema.OPTIONAL_STRING_SCHEMA)
+                .field("id", Schema.INT32_SCHEMA)
+                .optional()
+                .build();
+        SourceRecord order = createRecord(orderSchema,
+                new Struct(orderSchema).put("notes", "y".repeat(5_000)).put("id", 1),
+                sourceOffset(101L), "inventory.orders", new Struct(KEY_SCHEMA).put("id", 1));
+
+        assertThat(marker(transform.apply(customer), "payload").path("__debezium_claim_check").asBoolean()).isTrue();
+        assertThat(marker(transform.apply(order), "notes").path("__debezium_claim_check").asBoolean()).isTrue();
+        assertThat(RecordingStorage.records).hasSize(2);
+        assertThat(after(customer).getString("payload")).isEqualTo("x".repeat(5_000));
+        assertThat(after(order).getString("notes")).isEqualTo("y".repeat(5_000));
     }
 
     @Test
@@ -198,14 +216,25 @@ class EnforceRecordSizeClaimCheckTest {
     }
 
     @Test
-    void shouldValidateConfiguredColumnsBeforeWriting() {
+    void shouldPassThroughWhenNoConfiguredColumnMatches() {
         transform.configure(claimCheckConfig("missing_column"));
         SourceRecord sourceRecord = createStringRecord("x".repeat(5_000), sourceOffset(100L));
 
+        assertThat(transform.apply(sourceRecord)).isSameAs(sourceRecord);
+        assertThat(after(sourceRecord).getString("payload")).isEqualTo("x".repeat(5_000));
+        assertThat(RecordingStorage.records).isEmpty();
+    }
+
+    @Test
+    void shouldRejectMatchingNullColumnsBeforeWriting() {
+        Map<String, Object> config = claimCheckConfig("inventory[.]customers[.]payload,inventory[.]orders[.]notes");
+        config.put(EnforceRecordSize.MAX_BYTES_CONF, "1");
+        transform.configure(config);
+        SourceRecord sourceRecord = createStringRecord(null, sourceOffset(100L));
+
         assertThatThrownBy(() -> transform.apply(sourceRecord))
                 .isInstanceOf(ConnectException.class)
-                .hasMessageContaining("missing_column")
-                .hasMessageContaining("not found");
+                .hasMessageContaining("present but null");
         assertThat(RecordingStorage.records).isEmpty();
     }
 
