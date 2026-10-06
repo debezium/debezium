@@ -6,6 +6,7 @@
 package ${package};
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import io.debezium.pipeline.spi.Partition;
@@ -30,6 +31,28 @@ public class ${connectorName}Partition implements Partition {
     @Override
     public Map<String, String> getSourcePartition() {
         return Map.of(SERVER_KEY, serverName);
+    }
+
+    // Partitions are used as map keys (offsets, metrics), so two instances for the same server must be equal.
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null || getClass() != obj.getClass()) {
+            return false;
+        }
+        return Objects.equals(serverName, ((${connectorName}Partition) obj).serverName);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(serverName);
+    }
+
+    @Override
+    public String toString() {
+        return "${connectorName}Partition [sourcePartition=" + getSourcePartition() + "]";
     }
 
     public static class Provider implements Partition.Provider<${connectorName}Partition> {
