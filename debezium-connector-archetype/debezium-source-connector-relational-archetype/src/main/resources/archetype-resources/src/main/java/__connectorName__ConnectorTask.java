@@ -8,7 +8,6 @@ package ${package};
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
@@ -186,10 +185,7 @@ public class ${connectorName}ConnectorTask
 
     @Override
     public List<SourceRecord> doPoll() throws InterruptedException {
-        return queue.poll()
-                .stream()
-                .map(DataChangeEvent::getRecord)
-                .collect(Collectors.toList());
+        return pollRecords(queue);
     }
 
     @Override
