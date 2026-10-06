@@ -57,13 +57,13 @@ The coordinator runs the snapshot source first, then hands off to the streaming 
 
 **Partition.** The key under which the framework stores your offsets in Kafka Connect's offset topic. The default implementation maps a single server name (the `topic.prefix` config value) to one offset slot. If your source has multiple independently resumable streams (shards, replicas, ...), model each one as a separate `Partition` via the inner `Provider`.
 
-**OffsetContext.** Your connector's in-memory representation of "where am I in the source." Right now it tracks `position` as a `long`; replace that with whatever your source needs (LSN, log filename plus byte position, change vector, timestamp, ...). Whatever `getOffset()` returns is what gets persisted, and what `${connectorName}OffsetLoader` must be able to deserialize on restart.
+**OffsetContext.** Your connector's in-memory representation of "where am I in the source." Right now it tracks `position` as a `long`; replace that with whatever your source needs (LSN, log filename plus byte position, change vector, timestamp, ...). Whatever `getOffset()` returns is what gets persisted, and what `${connectorName}OffsetLoader` must be able to deserialize on restart. Besides the position, it already persists the snapshot state and the transaction context; keep both when you replace the position, or a restart in the middle of a snapshot would be mistaken for a finished one.
 
-**SourceInfo and SourceInfoStructMaker.** Every change event has a `source` block describing where the event came from. `${connectorName}SourceInfo` is the data holder; `${connectorName}SourceInfoStructMaker` builds the Kafka Connect `Schema` for it. When you add a field to one, register it in the other.
+**SourceInfo and SourceInfoStructMaker.** Every change event has a `source` block describing where the event came from. `${connectorName}SourceInfo` is the data holder; `${connectorName}SourceInfoStructMaker` builds the Kafka Connect `Schema` for it. The block already carries the schema, table and position of each event. When you add a field to one, register it in the other.
 
 **Connection.** A thin `JdbcConnection` subclass that reaches your database. Set its JDBC URL pattern and identifier-quoting characters, and add the matching driver to the pom. The task opens one and reuses it for schema reads and the snapshot.
 
-**DatabaseSchema.** Extends `RelationalDatabaseSchema`. `refresh(connection)` reads the captured tables' structure from the database through `JdbcConnection.readSchema`; the base then builds a `TableSchema` (key, value, and envelope) for each table. Tables are identified by the framework's `TableId`, and the dispatcher routes each to its topic via the configured `TopicNamingStrategy`.
+**DatabaseSchema.** Extends `RelationalDatabaseSchema`. `refresh(connection)` reads the captured tables' structure from the database through `JdbcConnection.readSchema`; the base then builds a `TableSchema` (key, value, and envelope) for each table. Tables are identified by the framework's `TableId`, and the dispatcher routes each to its topic via the configured `TopicNamingStrategy`. Because the schema is not historized, nothing else fills it: the task refreshes it on every start and the snapshot refreshes it again after reading the table structure.
 
 **ChangeRecordEmitter.** What the streaming source emits per change. It extends `RelationalChangeRecordEmitter` and carries only the operation and the old/new column values; the base builds the key, value, and envelope `Struct`s from the table's `TableSchema`. You implement `getOperation`, `getOldColumnValues`, and `getNewColumnValues`. The snapshot path uses the relational base's own read-record emitter, so you do not call this class during the snapshot.
 
@@ -77,11 +77,11 @@ The skeleton compiles, but emits no events until you fill in the steps below. Do
 
 1. **`${connectorName}ConnectorConfig`** — declare every configuration `Field` your connector accepts beyond the inherited `database.*` connection fields (batching limits, capture options, ...). Register them in `CONFIG_DEFINITION` so they appear in `ALL_FIELDS` and `configDef()`. Narrow the `SystemTablesPredicate` to skip your database's system tables.
 
-2. **`${connectorName}Connection`** — set the JDBC URL pattern and the identifier-quoting characters for your database, and add the driver dependency to the pom. Implement `validateConnection` in `${connectorName}SourceConnector` to surface connection errors during validation.
+2. **`${connectorName}Connection`** — set the JDBC URL pattern and the identifier-quoting characters for your database, and add the driver dependency to the pom. Implement `validateConnection` in `${connectorName}SourceConnector` to surface connection errors during validation, and `validateLogPosition` so the task can refuse a stored offset that the source has already discarded.
 
-3. **`${connectorName}OffsetContext`** — replace the placeholder `position` field with a real model of your source's streaming position (LSN, log filename plus offset, change vector, ...). Update `getOffset()` to serialize it and `${connectorName}OffsetLoader` to read it back. This is the contract that makes restarts work.
+3. **`${connectorName}OffsetContext`** — replace the placeholder `position` field with a real model of your source's streaming position (LSN, log filename plus offset, change vector, ...). Update `getOffset()` to serialize it and `${connectorName}OffsetLoader` to read it back, keeping the snapshot and transaction state that are stored alongside it. This is the contract that makes restarts work.
 
-4. **`${connectorName}SourceInfo` and `${connectorName}SourceInfoStructMaker`** — add whatever per-event source metadata you want to expose. Keep both files in sync — fields exposed on `SourceInfo` must appear in the struct maker.
+4. **`${connectorName}SourceInfo` and `${connectorName}SourceInfoStructMaker`** — add whatever per-event source metadata you want to expose. Keep both files in sync — fields exposed on `SourceInfo` must appear in the struct maker. Replace the placeholder timestamp with the time the change was committed in the source, and do the same in `${connectorName}EventMetadataProvider`.
 
 5. **`${connectorName}SnapshotChangeEventSource`** — fill in the overrides: `determineSnapshotOffset` records the streaming position the snapshot reads at, `getAllTableIds` and `readTableStructure` are wired to the connection already, and locking is left empty for databases with a consistent read view. The base handles row reading and read-record emission.
 
@@ -90,10 +90,9 @@ The skeleton compiles, but emits no events until you fill in the steps below. Do
 ## What you usually don't need to touch
 
 - **`${connectorName}SourceConnector`** — the one-task-per-connector pattern is correct for almost every source.
-- **`${connectorName}ConnectorTask.start(...)`** — the wiring is standard. You generally only swap in different *inputs* (e.g., a richer `Partition.Provider`); the queue, dispatcher, and coordinator construction is the same across connectors.
+- **`${connectorName}ConnectorTask.start(...)`** — the wiring is standard and matches what the core relational connectors do: queue and queue provider, signal processor, heartbeat, error handler with retry carry-over, bean registry, startup validation (offset and guardrail), and resource cleanup in `doStop`. You generally only swap in different *inputs* (e.g., a richer `Partition.Provider`).
 - **`${connectorName}Partition`** — fine as-is unless your source has multiple resumable streams.
 - **`${connectorName}ErrorHandler`** — the passthrough behavior is correct unless your source has specific error categories that should be retried instead of fatal.
-- **`${connectorName}EventMetadataProvider`** — the defaults return what JMX metrics need.
 - **`Module`** — the version constant is wired from your project's POM at generation time. You only edit `name()` if you want a different SLF4J/JMX context name.
 
 ## Build and run
@@ -130,7 +129,8 @@ Add any other `Field`s you declared in `${connectorName}ConnectorConfig` to the 
 ## Optional next steps
 
 - **Custom `Snapshotter`** — the standard snapshot modes (`initial`, `no_data`, ...) are already wired through the `SnapshotterService`. Register your own `io.debezium.spi.snapshot.Snapshotter` if you need a mode the built-ins do not cover.
-- **Signal channel** — support `io.debezium.pipeline.signal.SignalAction` so users can drive ad-hoc snapshots and pauses from outside.
+- **Signals and incremental snapshots** — the signal processor is already wired, so users can send signals through the configured channels. Register your own `io.debezium.pipeline.signal.SignalAction` for custom signals. Ad-hoc incremental snapshots need more: store an incremental snapshot context in your offset and return an `IncrementalSnapshotChangeEventSource` from `${connectorName}ChangeEventSourceFactory`; `PostgresSignalBasedIncrementalSnapshotChangeEventSource` is a good model.
+- **Offset commits and exactly-once** — override `commitOffset` in the streaming source if the source needs to know how far Kafka Connect has committed, and override `exactlyOnceSupport` in `${connectorName}SourceConnector` to return `SUPPORTED` once your offsets identify each change deterministically. Both have safe defaults in the framework.
 - **Notification service** — already wired in `${connectorName}ConnectorTask`. Emit framework notifications for milestones (snapshot started, snapshot completed, ...) so external systems can react.
 - **JMX metrics** — base classes register standard metrics automatically. Add custom metrics by extending the metrics factory passed to the coordinator.
 - **Integration tests** — `debezium-core` provides `AbstractConnectorTest` and friends. A real test usually spins up a Docker container running your source database and exercises the full pipeline.
