@@ -153,7 +153,7 @@ public class ${connectorName}ConnectorTask
                         topicNamingStrategy,
                         schema,
                         queue,
-                        id -> true,
+                        connectorConfig.getTableFilters().dataCollectionFilter(),
                         DataChangeEvent::new,
                         metadataProvider,
                         schemaNameAdjuster,
