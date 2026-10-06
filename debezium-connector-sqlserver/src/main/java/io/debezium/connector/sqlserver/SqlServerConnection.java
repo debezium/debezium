@@ -15,6 +15,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.Duration;
 import java.time.Instant;
@@ -24,6 +25,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -119,23 +121,23 @@ public class SqlServerConnection extends JdbcConnection {
     /**
      * Queries the list of capture instances in the given database.
      *
-     * If two or more capture instances with the same start LSN are available for a given source table,
-     * only the newest one will be returned.
+     * The result is deliberately not de-duplicated in SQL. If two or more capture instances with the same
+     * start LSN exist for a source table, {@link #getChangeTables(String, Lsn)} keeps only the newest one,
+     * but it does so after the capture instance filter has been applied, so that an excluded capture
+     * instance can never shadow an included one.
      *
      * We use a query instead of {@code sys.sp_cdc_help_change_data_capture} because:
      *   1. The stored procedure doesn't allow filtering capture instances by start LSN.
      *   2. There is no way to use the result returned by a stored procedure in a query.
      */
-    private static final String GET_CHANGE_TABLES = "WITH ordered_change_tables" +
-            " AS (SELECT ROW_NUMBER() OVER (PARTITION BY ct.source_object_id, ct.start_lsn ORDER BY ct.create_date DESC) AS ct_sequence," +
-            " ct.*" +
-            " FROM #db.cdc.change_tables AS ct#)" +
-            " SELECT OBJECT_SCHEMA_NAME(source_object_id, DB_ID(?))," +
-            " OBJECT_NAME(source_object_id, DB_ID(?))," +
-            " capture_instance," +
-            " object_id," +
-            " start_lsn" +
-            " FROM ordered_change_tables WHERE ct_sequence = 1";
+    private static final String GET_CHANGE_TABLES = "SELECT OBJECT_SCHEMA_NAME(ct.source_object_id, DB_ID(?))," +
+            " OBJECT_NAME(ct.source_object_id, DB_ID(?))," +
+            " ct.capture_instance," +
+            " ct.object_id," +
+            " ct.start_lsn," +
+            " ct.source_object_id," +
+            " ct.create_date" +
+            " FROM #db.cdc.change_tables AS ct#";
 
     private static final String GET_NEW_CHANGE_TABLES = "SELECT * FROM #db.cdc.change_tables WHERE start_lsn BETWEEN ? AND ?";
     private static final String GET_MIN_LSN_FROM_ALL_CHANGE_TABLES = "select min(start_lsn) from #db.cdc.change_tables";
@@ -594,22 +596,24 @@ public class SqlServerConnection extends JdbcConnection {
                     return result;
                 });
         final ResultSetMapper<List<SqlServerChangeTable>> mapper = rs -> {
-            final List<SqlServerChangeTable> changeTables = new ArrayList<>();
+            final List<CaptureInstanceCandidate> candidates = new ArrayList<>();
             while (rs.next()) {
                 final String captureInstance = rs.getString(3);
                 if (!config.getCaptureInstanceFilter().test(captureInstance)) {
                     continue;
                 }
                 int changeTableObjectId = rs.getInt(4);
-                changeTables.add(
+                candidates.add(new CaptureInstanceCandidate(
+                        rs.getInt(6),
+                        rs.getTimestamp(7),
                         new SqlServerChangeTable(
                                 new TableId(databaseName, rs.getString(1), rs.getString(2)),
                                 captureInstance,
                                 changeTableObjectId,
                                 Lsn.valueOf(rs.getBytes(5)),
-                                columns.get(changeTableObjectId)));
+                                columns.get(changeTableObjectId))));
             }
-            return changeTables;
+            return newestCaptureInstancePerStartLsn(candidates);
         };
 
         String query = replaceDatabaseNamePlaceholder(GET_CHANGE_TABLES, databaseName);
@@ -617,9 +621,9 @@ public class SqlServerConnection extends JdbcConnection {
         if (toLsn.isAvailable()) {
             return prepareQueryAndMap(query.replace(STATEMENTS_PLACEHOLDER, " WHERE ct.start_lsn <= ?"),
                     ps -> {
-                        ps.setBytes(1, toLsn.getBinary());
+                        ps.setString(1, databaseName);
                         ps.setString(2, databaseName);
-                        ps.setString(3, databaseName);
+                        ps.setBytes(3, toLsn.getBinary());
                     },
                     mapper);
         }
@@ -630,6 +634,41 @@ public class SqlServerConnection extends JdbcConnection {
                         ps.setString(2, databaseName);
                     },
                     mapper);
+        }
+    }
+
+    /**
+     * Keeps, for every (source table, start LSN) pair, only the newest capture instance by creation date.
+     *
+     * This must run after the capture instance filter: de-duplicating first would let an excluded capture
+     * instance shadow an included one that shares its start LSN, leaving the source table uncaptured.
+     */
+    static List<SqlServerChangeTable> newestCaptureInstancePerStartLsn(List<CaptureInstanceCandidate> candidates) {
+        final Map<Integer, Map<Lsn, CaptureInstanceCandidate>> newest = new LinkedHashMap<>();
+        for (CaptureInstanceCandidate candidate : candidates) {
+            newest.computeIfAbsent(candidate.sourceObjectId, k -> new LinkedHashMap<>())
+                    .merge(candidate.changeTable.getStartLsn(), candidate,
+                            (current, other) -> other.createDate.after(current.createDate) ? other : current);
+        }
+        return newest.values().stream()
+                .flatMap(byStartLsn -> byStartLsn.values().stream())
+                .map(candidate -> candidate.changeTable)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * A row of {@code cdc.change_tables} that passed the capture instance filter.
+     */
+    static final class CaptureInstanceCandidate {
+
+        private final int sourceObjectId;
+        private final Timestamp createDate;
+        private final SqlServerChangeTable changeTable;
+
+        CaptureInstanceCandidate(int sourceObjectId, Timestamp createDate, SqlServerChangeTable changeTable) {
+            this.sourceObjectId = sourceObjectId;
+            this.createDate = createDate;
+            this.changeTable = changeTable;
         }
     }
 
