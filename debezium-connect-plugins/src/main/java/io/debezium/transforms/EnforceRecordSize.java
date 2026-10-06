@@ -259,6 +259,13 @@ public class EnforceRecordSize<R extends ConnectRecord<R>> implements Transforma
         Struct value = (Struct) sourceRecord.value();
         List<ClaimCheckField> fields = findClaimCheckFields(value, sourceRecord.topic());
 
+        Set<String> availableColumns = new LinkedHashSet<>();
+        collectSectionColumns(value, "before", availableColumns);
+        collectSectionColumns(value, "after", availableColumns);
+        if (availableColumns.stream().noneMatch(column -> isClaimCheckColumn(sourceRecord.topic(), column))) {
+            return record;
+        }
+
         validateClaimCheckFields(value, fields, sourceRecord.topic());
 
         ClaimCheckRecordSerializer.SerializedRecord serialized = ClaimCheckRecordSerializer.serialize(sourceRecord);
@@ -330,22 +337,6 @@ public class EnforceRecordSize<R extends ConnectRecord<R>> implements Transforma
     }
 
     private void validateClaimCheckFields(Struct envelope, List<ClaimCheckField> fields, String topic) {
-        Set<String> availableColumns = new LinkedHashSet<>();
-        collectSectionColumns(envelope, "before", availableColumns);
-        collectSectionColumns(envelope, "after", availableColumns);
-
-        Set<String> missingColumns = new LinkedHashSet<>();
-        for (int index = 0; index < claimCheckColumns.size(); index++) {
-            Predicate<String> selector = claimCheckColumnSelectors.get(index);
-            boolean matched = availableColumns.stream()
-                    .anyMatch(availableColumn -> matchesClaimCheckColumn(selector, topic, availableColumn));
-            if (!matched) {
-                missingColumns.add(claimCheckColumns.get(index));
-            }
-        }
-        if (!missingColumns.isEmpty()) {
-            throw new ConnectException("Claim-check columns " + missingColumns + " were not found in record for topic " + topic);
-        }
         if (fields.isEmpty()) {
             throw new ConnectException("Claim-check columns are present but null in record for topic " + topic);
         }
