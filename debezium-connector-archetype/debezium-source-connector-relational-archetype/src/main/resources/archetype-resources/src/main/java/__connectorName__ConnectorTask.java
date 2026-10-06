@@ -26,6 +26,7 @@ import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.document.DocumentReader;
 import io.debezium.heartbeat.HeartbeatFactory;
 import io.debezium.jdbc.DefaultMainConnectionProvidingConnectionFactory;
+import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
@@ -124,8 +125,10 @@ public class ${connectorName}ConnectorTask
 
         jdbcConnection = connectionFactory.mainConnection();
 
+        final JdbcValueConverters valueConverters = new JdbcValueConverters();
+
         schema =
-                new ${connectorName}DatabaseSchema(connectorConfig, topicNamingStrategy, taskContext);
+                new ${connectorName}DatabaseSchema(connectorConfig, topicNamingStrategy, valueConverters, taskContext);
 
         // A non-historized schema is not persisted, so rebuild it from the database on every start. The
         // snapshot refreshes it too, but it is skipped when a previous offset exists and streaming
@@ -184,6 +187,7 @@ public class ${connectorName}ConnectorTask
         connectorConfig.getBeanRegistry().add(StandardBeanNames.OFFSETS, previousOffsets);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.CDC_SOURCE_TASK_CONTEXT, taskContext);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.JDBC_CONNECTION, beanRegistryJdbcConnection);
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.VALUE_CONVERTER, valueConverters);
 
         final SnapshotterService snapshotterService =
                 connectorConfig.getServiceRegistry().tryGetService(SnapshotterService.class);
