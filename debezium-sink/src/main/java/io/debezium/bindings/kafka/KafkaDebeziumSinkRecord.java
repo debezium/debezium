@@ -361,7 +361,13 @@ public class KafkaDebeziumSinkRecord implements DebeziumSinkRecord {
                 if (originalKafkaRecord.headers().isEmpty()) {
                     throw new ConnectException("Configured primary key mode 'record_header' cannot have empty message headers");
                 }
-                return getRecordHeaders();
+
+                final Struct headers = getRecordHeaders();
+                if (allowedPrimaryKeyFields.isEmpty()) {
+                    return headers;
+                }
+
+                return filterFields(headers, topicName(), allowedPrimaryKeyFields, fieldsFilter);
             }
             case KAFKA -> {
                 return kafkaCoordinates();
