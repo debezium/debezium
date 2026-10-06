@@ -27,6 +27,8 @@ public class ${connectorName}SourceInfo extends BaseSourceInfo {
 
     @Override
     protected Instant timestamp() {
+        // TODO: Instant.now() is a placeholder. Return the time the change was committed in the source
+        // database; it becomes the ts_ms field of the event's source block.
         return Instant.now();
     }
 
