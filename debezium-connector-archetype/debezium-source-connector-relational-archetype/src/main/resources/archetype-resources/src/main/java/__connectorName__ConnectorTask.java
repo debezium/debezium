@@ -207,6 +207,10 @@ public class ${connectorName}ConnectorTask
         catch (Exception e) {
             LOGGER.trace("Error while closing JDBC bean registry connection", e);
         }
+
+        if (queue != null) {
+            queue.close();
+        }
     }
 
     @Override
