@@ -111,7 +111,7 @@ public class ${connectorName}ConnectorTask
                 .queueProvider(connectorConfig.getServiceRegistry().tryGetService(QueueProviderService.class).getQueueProvider())
                 .build();
 
-        this.errorHandler = new ${connectorName}ErrorHandler(connectorConfig, queue, null);
+        this.errorHandler = new ${connectorName}ErrorHandler(connectorConfig, queue, errorHandler);
 
         final TopicNamingStrategy<TableId> topicNamingStrategy =
                 connectorConfig.getTopicNamingStrategy(CommonConnectorConfig.TOPIC_NAMING_STRATEGY);
