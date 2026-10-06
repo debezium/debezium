@@ -173,7 +173,7 @@ public class ${connectorName}ConnectorTask
                         new DefaultChangeEventSourceMetricsFactory<>(),
                         dispatcher,
                         schema,
-                        null,
+                        signalProcessor,
                         notificationService,
                         null);
 
