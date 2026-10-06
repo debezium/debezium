@@ -32,12 +32,13 @@ public class ${connectorName}DatabaseSchema extends RelationalDatabaseSchema {
 
     public ${connectorName}DatabaseSchema(${connectorName}ConnectorConfig config,
                                           TopicNamingStrategy<TableId> topicNamingStrategy,
+                                          JdbcValueConverters valueConverters,
                                           CdcSourceTaskContext<${connectorName}ConnectorConfig> taskContext) {
         super(config, topicNamingStrategy,
                 config.getTableFilters().dataCollectionFilter(),
                 config.getColumnFilter(),
                 new TableSchemaBuilder(
-                        new JdbcValueConverters(),
+                        valueConverters,
                         null,
                         config.schemaNameAdjuster(),
                         config.getServiceRegistry().tryGetService(CustomConverterRegistry.class),
