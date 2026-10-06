@@ -21,6 +21,8 @@ import io.debezium.connector.AbstractSourceInfoStructMaker;
  */
 class ${connectorName}SourceInfoStructMaker extends AbstractSourceInfoStructMaker<${connectorName}SourceInfo> {
 
+    private static final String POSITION_KEY = "position";
+
     private Schema schema;
 
     @Override
@@ -30,8 +32,8 @@ class ${connectorName}SourceInfoStructMaker extends AbstractSourceInfoStructMake
                 .name("${package}.Source")
                 .field(AbstractSourceInfo.SCHEMA_NAME_KEY, Schema.STRING_SCHEMA)
                 .field(AbstractSourceInfo.TABLE_NAME_KEY, Schema.STRING_SCHEMA)
-                // Add connector-specific source fields here, for example:
-                // .field("position", Schema.INT64_SCHEMA)
+                .field(POSITION_KEY, Schema.INT64_SCHEMA)
+                // Add further connector-specific source fields here.
                 .build();
     }
 
@@ -45,8 +47,8 @@ class ${connectorName}SourceInfoStructMaker extends AbstractSourceInfoStructMake
         final Struct result = commonStruct(info);
         result.put(AbstractSourceInfo.SCHEMA_NAME_KEY, info.schemaName());
         result.put(AbstractSourceInfo.TABLE_NAME_KEY, info.tableName());
-        // Populate connector-specific fields here, for example:
-        // result.put("position", info.getPosition());
+        result.put(POSITION_KEY, info.getPosition());
+        // Populate further connector-specific fields here.
         return result;
     }
 }
