@@ -23,6 +23,7 @@ import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.base.QueueProviderService;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.common.CdcSourceTaskContext;
+import io.debezium.connector.common.DebeziumHeaderProducer;
 import io.debezium.document.DocumentReader;
 import io.debezium.heartbeat.HeartbeatFactory;
 import io.debezium.jdbc.DefaultMainConnectionProvidingConnectionFactory;
@@ -172,7 +173,7 @@ public class ${connectorName}ConnectorTask
                                 queue),
                         schemaNameAdjuster,
                         signalProcessor,
-                        null);
+                        connectorConfig.getServiceRegistry().tryGetService(DebeziumHeaderProducer.class));
 
         final NotificationService<${connectorName}Partition, ${connectorName}OffsetContext> notificationService =
                 new NotificationService<>(
