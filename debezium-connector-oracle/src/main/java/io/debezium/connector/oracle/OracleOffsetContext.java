@@ -298,6 +298,16 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
         return snapshotPendingTransactions;
     }
 
+    /**
+     * Retire a snapshot exception only after its COMMIT has been recorded and all transaction
+     * output has been dispatched. Previously emitted offsets retain their own encoded pending map.
+     */
+    public void removeSnapshotPendingTransaction(String transactionId) {
+        if (snapshotPendingTransactions != null && !snapshotPendingTransactions.isEmpty()) {
+            snapshotPendingTransactions.remove(transactionId);
+        }
+    }
+
     public String getTransactionId() {
         return sourceInfo.getTransactionId();
     }
