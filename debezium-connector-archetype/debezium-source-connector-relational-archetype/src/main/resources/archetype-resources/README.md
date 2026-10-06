@@ -67,7 +67,7 @@ The coordinator runs the snapshot source first, then hands off to the streaming 
 
 **ChangeRecordEmitter.** What the streaming source emits per change. It extends `RelationalChangeRecordEmitter` and carries only the operation and the old/new column values; the base builds the key, value, and envelope `Struct`s from the table's `TableSchema`. You implement `getOperation`, `getOldColumnValues`, and `getNewColumnValues`. The snapshot path uses the relational base's own read-record emitter, so you do not call this class during the snapshot.
 
-**SnapshotMode.** Defined as an enum on `${connectorName}ConnectorConfig` with `initial` and `no_data`. The value maps to a registered Debezium `Snapshotter`, and `${connectorName}SnapshotChangeEventSource` reads the decision from the `SnapshotterService` rather than the enum directly. Add more modes (for example `always`, `initial_only`) by listing their registered values.
+**SnapshotMode.** Defined as an enum on `${connectorName}ConnectorConfig` with `always`, `initial`, `initial_only`, `no_data`, `when_needed`, `configuration_based` and `custom`. Each value maps to a Snapshotter that Debezium registers for every connector, and `${connectorName}SnapshotChangeEventSource` reads the decision from the `SnapshotterService` rather than the enum directly. For `custom`, set `snapshot.mode.custom.name` to the name of your own `Snapshotter`.
 
 **SelectAllSnapshotQuery.** The SQL the snapshot runs against each table, registered as a `SnapshotQuery` SPI service. The default selects every requested column; override `snapshotQuery` if your database needs a different SELECT.
 
