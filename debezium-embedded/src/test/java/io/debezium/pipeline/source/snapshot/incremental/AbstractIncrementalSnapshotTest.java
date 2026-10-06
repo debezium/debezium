@@ -1444,7 +1444,12 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     public void preservesPendingIncrementalSnapshotAcrossConfigurationBasedStartupSnapshot() throws Exception {
         // Testing.Print.enable();
 
-        populateTable();
+        // Three times the usual table: PostgreSQL drained 1000 rows in 40 windows in 166 ms, faster than the
+        // consumer callback could react, so the snapshot was over before the connector could be stopped.
+        final int rowCount = 3 * ROW_COUNT;
+        try (JdbcConnection connection = databaseConnection()) {
+            populateTable(connection, tableName(), rowCount);
+        }
         // The startup pass takes a data snapshot limited to another (empty) table, mirroring the
         // setups where the startup snapshot does not cover the data a pending incremental snapshot
         // moves.
@@ -1455,12 +1460,6 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
                 .with(CommonConnectorConfig.SNAPSHOT_MODE_CONFIGURATION_BASED_START_STREAM, true)
                 .with(CommonConnectorConfig.SNAPSHOT_MODE_TABLES, noPKTableName())
                 .with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 25)
-                // The stop below has to land while the snapshot still has chunks left, and small chunks alone do
-                // not buy that: PostgreSQL drained all 40 windows in 166 ms, 82 ms before the consumer callback
-                // could stop the connector. A queue barely larger than a batch makes the source block until the
-                // consumer drains it, so the snapshot cannot run ahead of the thread that stops it.
-                .with(CommonConnectorConfig.MAX_QUEUE_SIZE, 50)
-                .with(CommonConnectorConfig.MAX_BATCH_SIZE, 25)
                 .with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_PRESERVE_STATE, true)
                 .build();
         final LogInterceptor logInterceptor = new LogInterceptor(RelationalSnapshotChangeEventSource.class);
@@ -1472,29 +1471,44 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         // the startup data snapshot only covers the empty no-PK table: no data records
         assertNoRecordsToConsume();
 
-        assertRowsVisibleToTheConnector(ROW_COUNT);
+        assertRowsVisibleToTheConnector(rowCount);
 
         sendAdHocSnapshotSignal();
 
         final AtomicBoolean restarted = new AtomicBoolean();
-        final Map<Integer, SourceRecord> dbChanges = consumeRecordsMixedWithIncrementalSnapshot(ROW_COUNT, x -> true,
+        final Map<Integer, SourceRecord> dbChanges = consumeRecordsMixedWithIncrementalSnapshot(rowCount, x -> true,
                 x -> {
                     if (!restarted.get()) {
                         assertThat(chunkInterceptor.containsMessage("incremental snapshotting of table"))
                                 .describedAs("the incremental snapshot finished before the connector was stopped, "
                                         + "so no pending state could be carried across the startup snapshot")
                                 .isFalse();
-                        // Stop at the first delivered chunk: the committed offset carries the pending incremental
-                        // snapshot, and the restart runs the configuration-based startup snapshot again, which
-                        // without the preserve option would discard it.
+                        // Pause first: the snapshot then stops between windows, with no chunk in flight and no read
+                        // transaction left open, which a Db2 connection refuses to be closed with.
+                        try {
+                            sendPauseSignal();
+                        }
+                        catch (SQLException e) {
+                            throw new IllegalStateException("Failed to pause the incremental snapshot", e);
+                        }
+                        Awaitility.await().atMost(getWaitDurationInSeconds())
+                                .until(() -> chunkInterceptor.containsMessage("Incremental snapshot was paused."));
+                        // The committed offset carries the pending incremental snapshot, and the restart runs the
+                        // configuration-based startup snapshot again, which without the preserve option discards it.
                         stopConnector();
                         assertConnectorNotRunning();
                         start(connectorClass(), config);
                         waitForConnectorToStart();
+                        try {
+                            sendResumeSignal();
+                        }
+                        catch (SQLException e) {
+                            throw new IllegalStateException("Failed to resume the incremental snapshot", e);
+                        }
                         restarted.set(true);
                     }
                 });
-        for (int i = 0; i < ROW_COUNT; i++) {
+        for (int i = 0; i < rowCount; i++) {
             assertThat(dbChanges).containsKey(i + 1);
         }
         assertThat(logInterceptor.containsMessage("Preserving the pending incremental snapshot"))
