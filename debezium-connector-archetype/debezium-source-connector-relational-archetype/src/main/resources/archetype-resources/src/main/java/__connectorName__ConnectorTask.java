@@ -22,6 +22,7 @@ import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.base.QueueProviderService;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.common.CdcSourceTaskContext;
+import io.debezium.document.DocumentReader;
 import io.debezium.jdbc.DefaultMainConnectionProvidingConnectionFactory;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
@@ -30,6 +31,7 @@ import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.metrics.DefaultChangeEventSourceMetricsFactory;
 import io.debezium.pipeline.notification.NotificationService;
+import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.TableId;
 import io.debezium.snapshot.SnapshotterService;
@@ -119,6 +121,15 @@ public class ${connectorName}ConnectorTask
                 new ${connectorName}DatabaseSchema(connectorConfig, topicNamingStrategy, taskContext);
 
         final ${connectorName}EventMetadataProvider metadataProvider = new ${connectorName}EventMetadataProvider();
+
+        final SignalProcessor<${connectorName}Partition, ${connectorName}OffsetContext> signalProcessor =
+                new SignalProcessor<>(
+                        ${connectorName}SourceConnector.class,
+                        connectorConfig,
+                        Map.of(),
+                        getAvailableSignalChannels(),
+                        DocumentReader.defaultReader(),
+                        previousOffsets);
 
         final EventDispatcher<${connectorName}Partition, TableId> dispatcher =
                 new EventDispatcher<>(
