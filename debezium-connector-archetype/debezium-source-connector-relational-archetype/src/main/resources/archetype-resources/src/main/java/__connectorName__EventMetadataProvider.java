@@ -26,6 +26,8 @@ public class ${connectorName}EventMetadataProvider implements EventMetadataProvi
     @Override
     public Instant getEventTimestamp(DataCollectionId source, OffsetContext offset,
                                      Object key, Struct value) {
+        // TODO: Instant.now() is a placeholder. Return the time the change was committed in the source
+        // database; the lag metrics (e.g. MilliSecondsBehindSource) are computed from this value.
         return Instant.now();
     }
 
