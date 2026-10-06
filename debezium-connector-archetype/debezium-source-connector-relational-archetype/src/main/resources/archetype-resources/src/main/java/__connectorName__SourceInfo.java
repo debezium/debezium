@@ -9,6 +9,7 @@ import java.time.Instant;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.common.BaseSourceInfo;
+import io.debezium.relational.TableId;
 
 /**
  * Carries the {@code source} metadata block included in every change event.
@@ -20,16 +21,41 @@ public class ${connectorName}SourceInfo extends BaseSourceInfo {
 
     private final CommonConnectorConfig config;
 
+    private Instant timestamp;
+    private String schemaName = "";
+    private String tableName = "";
+
     public ${connectorName}SourceInfo(CommonConnectorConfig config) {
         super(config);
         this.config = config;
     }
 
+    /**
+     * Records the table and time of the event about to be emitted; called through
+     * {@link ${connectorName}OffsetContext#event}.
+     */
+    void update(Instant timestamp, TableId tableId) {
+        this.timestamp = timestamp;
+        if (tableId != null) {
+            this.schemaName = tableId.schema() != null ? tableId.schema() : "";
+            this.tableName = tableId.table() != null ? tableId.table() : "";
+        }
+    }
+
     @Override
     protected Instant timestamp() {
-        // TODO: Instant.now() is a placeholder. Return the time the change was committed in the source
-        // database; it becomes the ts_ms field of the event's source block.
-        return Instant.now();
+        // TODO: this is the time the connector processed the event, passed in by the framework. Replace it
+        // with the time the change was committed in the source database; it becomes the ts_ms field of the
+        // event's source block.
+        return timestamp;
+    }
+
+    String schemaName() {
+        return schemaName;
+    }
+
+    String tableName() {
+        return tableName;
     }
 
     @Override

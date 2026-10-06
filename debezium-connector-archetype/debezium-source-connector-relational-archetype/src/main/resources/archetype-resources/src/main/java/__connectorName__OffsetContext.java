@@ -16,6 +16,7 @@ import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.SnapshotType;
 import io.debezium.pipeline.CommonOffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
+import io.debezium.relational.TableId;
 import io.debezium.spi.schema.DataCollectionId;
 
 /**
@@ -82,7 +83,8 @@ public class ${connectorName}OffsetContext extends CommonOffsetContext<${connect
 
     @Override
     public void event(DataCollectionId dataCollectionId, Instant instant) {
-        // Update sourceInfo with the current position before each event is enqueued.
+        // Record the table and time of the event before it is enqueued; they end up in the source block.
+        sourceInfo.update(instant, (TableId) dataCollectionId);
     }
 
     @Override
