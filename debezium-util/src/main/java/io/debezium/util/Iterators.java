@@ -297,6 +297,7 @@ public class Iterators {
     public static <T> Iterator<T> join(Iterator<T> first, Iterator<T> second) {
         return new Iterator<T>() {
             private boolean completedFirst = false;
+            private Iterator<T> lastReturned;
 
             @Override
             public boolean hasNext() {
@@ -313,21 +314,24 @@ public class Iterators {
             public T next() {
                 if (!completedFirst) {
                     if (first.hasNext()) {
-                        return first.next();
+                        final T result = first.next();
+                        lastReturned = first;
+                        return result;
                     }
                     completedFirst = true;
                 }
-                return second.next();
+                final T result = second.next();
+                lastReturned = second;
+                return result;
             }
 
             @Override
             public void remove() {
-                if (!completedFirst) {
-                    first.remove();
+                if (lastReturned == null) {
+                    throw new IllegalStateException();
                 }
-                else {
-                    second.remove();
-                }
+                lastReturned.remove();
+                lastReturned = null;
             }
         };
     }

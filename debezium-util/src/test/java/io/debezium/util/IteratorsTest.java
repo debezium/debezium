@@ -73,9 +73,8 @@ class IteratorsTest {
         assertThat(list1).containsExactly("b");
         assertThat(list2).containsExactly("c", "d");
 
-        assertThat(joined.next()).isEqualTo("b");
-
         // Remove from second iterator
+        assertThat(joined.next()).isEqualTo("b");
         assertThat(joined.next()).isEqualTo("c");
         joined.remove();
         assertThat(list1).containsExactly("b");
@@ -83,6 +82,41 @@ class IteratorsTest {
 
         assertThat(joined.next()).isEqualTo("d");
         assertThat(joined.hasNext()).isFalse();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2790")
+    public void joinRemoveShouldSupportRemoveAfterHasNextAtBoundary() {
+        List<String> list1 = new ArrayList<>(Arrays.asList("a", "b"));
+        List<String> list2 = new ArrayList<>(Arrays.asList("c", "d"));
+        Iterator<String> joined = Iterators.join(list1.iterator(), list2.iterator());
+
+        // next, next, hasNext, remove
+        assertThat(joined.next()).isEqualTo("a");
+        assertThat(joined.next()).isEqualTo("b");
+        assertThat(joined.hasNext()).isTrue();
+        joined.remove();
+
+        assertThat(list1).containsExactly("a");
+        assertThat(list2).containsExactly("c", "d");
+
+        assertThat(joined.next()).isEqualTo("c");
+        assertThat(joined.next()).isEqualTo("d");
+        assertThat(joined.hasNext()).isFalse();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2790")
+    public void joinRemoveShouldThrowIllegalStateExceptionWhenNoCurrentElement() {
+        List<String> list1 = new ArrayList<>(Arrays.asList("a"));
+        List<String> list2 = new ArrayList<>(Arrays.asList("b"));
+        Iterator<String> joined = Iterators.join(list1.iterator(), list2.iterator());
+
+        assertThatThrownBy(joined::remove).isInstanceOf(IllegalStateException.class);
+
+        assertThat(joined.next()).isEqualTo("a");
+        joined.remove();
+        assertThatThrownBy(joined::remove).isInstanceOf(IllegalStateException.class);
     }
 
     @Test
