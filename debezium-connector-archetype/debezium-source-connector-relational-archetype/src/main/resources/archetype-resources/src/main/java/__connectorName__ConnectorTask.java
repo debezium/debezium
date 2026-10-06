@@ -57,6 +57,7 @@ public class ${connectorName}ConnectorTask
     private volatile ${connectorName}ConnectorConfig connectorConfig;
     private volatile CdcSourceTaskContext<${connectorName}ConnectorConfig> taskContext;
     private volatile ErrorHandler errorHandler;
+    private volatile ${connectorName}Connection beanRegistryJdbcConnection;
 
     @Override
     public String version() {
@@ -152,11 +153,13 @@ public class ${connectorName}ConnectorTask
                         dispatcher::enqueueNotification);
 
         // Beans the snapshotter service and other framework services look up by name.
+        beanRegistryJdbcConnection = connectionFactory.newConnection();
         connectorConfig.getBeanRegistry().add(StandardBeanNames.CONFIGURATION, config);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.CONNECTOR_CONFIG, connectorConfig);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.DATABASE_SCHEMA, schema);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.OFFSETS, previousOffsets);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.CDC_SOURCE_TASK_CONTEXT, taskContext);
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.JDBC_CONNECTION, beanRegistryJdbcConnection);
 
         final SnapshotterService snapshotterService =
                 connectorConfig.getServiceRegistry().tryGetService(SnapshotterService.class);
@@ -196,6 +199,14 @@ public class ${connectorName}ConnectorTask
 
     @Override
     protected void doStop() {
+        try {
+            if (beanRegistryJdbcConnection != null) {
+                beanRegistryJdbcConnection.close();
+            }
+        }
+        catch (Exception e) {
+            LOGGER.trace("Error while closing JDBC bean registry connection", e);
+        }
     }
 
     @Override
