@@ -37,6 +37,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -6432,15 +6433,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
     public void shouldHoldSharedTableLockUntilDataSnapshotCompletes() throws Exception {
         TestHelper.dropTable(connection, "dbz2787");
         try {
-            connection.execute("CREATE TABLE dbz2787 (id NUMERIC(9,0) NOT NULL, data VARCHAR2(50), PRIMARY KEY (id))");
-            TestHelper.streamTable(connection, "dbz2787");
-            // More rows than the test's record buffer plus the connector queue can hold, so that the
-            // snapshot blocks on back pressure while it still holds the table locks
-            final int rowCount = 2000;
-            for (int i = 1; i <= rowCount; i++) {
-                connection.executeWithoutCommitting("INSERT INTO dbz2787 VALUES (" + i + ", 'row " + i + "')");
-            }
-            connection.commit();
+            final int rowCount = createAndPopulateSnapshotLockTestTable("dbz2787");
 
             Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
@@ -6453,17 +6446,13 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
             start(OracleConnector.class, config);
             assertConnectorIsRunning();
 
-            // Once the record buffer is full the snapshot is in the data phase and cannot complete until
-            // the records are consumed, so the ROW SHARE locks taken before the SCN was read are still held
-            Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> consumedLines.remainingCapacity() == 0);
+            waitForSnapshotToBlockOnBackPressure();
 
             try (OracleConnection otherSession = TestHelper.testConnection()) {
-                // DDL requires an exclusive table lock, which the held ROW SHARE lock denies (ORA-00054)
-                assertThatThrownBy(() -> otherSession.execute("ALTER TABLE dbz2787 ADD (extra NUMBER)"))
-                        .isInstanceOf(SQLException.class)
-                        .satisfies(e -> LOGGER.info("DDL during the snapshot failed as expected", e))
-                        .extracting(e -> ((SQLException) e).getErrorCode())
-                        .isEqualTo(54);
+                // Modifying a column requires an exclusive table lock, which the held ROW SHARE lock denies (ORA-00054).
+                // Note that ALTER TABLE ADD COLUMN is a non-blocking DDL in Oracle 23.3+ and is not prevented by the
+                // ROW SHARE lock; preventing it requires the EXTENDED locking mode, see the test below.
+                assertDdlFailsWithResourceBusy(otherSession, "ALTER TABLE dbz2787 MODIFY (data VARCHAR2(100))");
 
                 // DML is not affected by the held lock
                 otherSession.execute("INSERT INTO dbz2787 VALUES (" + (rowCount + 1) + ", 'written during snapshot')");
@@ -6476,12 +6465,99 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
             // Once the data snapshot has completed the locks are released and the DDL goes through
             try (OracleConnection otherSession = TestHelper.testConnection()) {
                 Awaitility.await().atMost(60, TimeUnit.SECONDS).ignoreExceptions()
-                        .untilAsserted(() -> otherSession.execute("ALTER TABLE dbz2787 ADD (extra NUMBER)"));
+                        .untilAsserted(() -> otherSession.execute("ALTER TABLE dbz2787 MODIFY (data VARCHAR2(100))"));
             }
         }
         finally {
             TestHelper.dropTable(connection, "dbz2787");
         }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2787")
+    public void shouldHoldExtendedTableLockUntilDataSnapshotCompletes() throws Exception {
+        TestHelper.dropTable(connection, "dbz2787");
+        try {
+            final int rowCount = createAndPopulateSnapshotLockTestTable("dbz2787");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                    .with(OracleConnectorConfig.SNAPSHOT_LOCKING_MODE, SnapshotLockingMode.EXTENDED)
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ2787")
+                    .with(CommonConnectorConfig.MAX_BATCH_SIZE, 2)
+                    .with(CommonConnectorConfig.MAX_QUEUE_SIZE, 4)
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForSnapshotToBlockOnBackPressure();
+
+            final ExecutorService executor = Executors.newSingleThreadExecutor();
+            try (OracleConnection ddlSession = TestHelper.testConnection();
+                    OracleConnection dmlSession = TestHelper.testConnection()) {
+                // The SHARE lock prevents all DDL, including ALTER TABLE ADD COLUMN, which is a non-blocking DDL
+                // in Oracle 23.3+ that only the SHARE lock prevents (ORA-00054)
+                assertDdlFailsWithResourceBusy(ddlSession, "ALTER TABLE dbz2787 ADD (extra NUMBER)");
+                assertDdlFailsWithResourceBusy(ddlSession, "ALTER TABLE dbz2787 MODIFY (data VARCHAR2(100))");
+
+                // Writes require a ROW EXCLUSIVE lock that is incompatible with the SHARE lock, so they wait until the snapshot completes
+                final Future<?> insert = executor.submit(() -> {
+                    dmlSession.execute("INSERT INTO dbz2787 VALUES (" + (rowCount + 1) + ", 'written after snapshot')");
+                    return null;
+                });
+                assertThatThrownBy(() -> insert.get(5, TimeUnit.SECONDS)).isInstanceOf(TimeoutException.class);
+                assertThat(consumedLines.remainingCapacity()).isEqualTo(0);
+
+                SourceRecords records = consumeRecordsByTopic(rowCount);
+                assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ2787")).hasSize(rowCount);
+                assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ2787")).allSatisfy(VerifyRecord::isValidRead);
+                waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+                // Once the data snapshot has completed the locks are released and the blocked write is applied and streamed
+                insert.get(60, TimeUnit.SECONDS);
+                records = consumeRecordsByTopic(1);
+                assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ2787")).hasSize(1);
+                VerifyRecord.isValidInsert(records.recordsForTopic("server1.DEBEZIUM.DBZ2787").get(0), "ID", rowCount + 1);
+
+                Awaitility.await().atMost(60, TimeUnit.SECONDS).ignoreExceptions()
+                        .untilAsserted(() -> ddlSession.execute("ALTER TABLE dbz2787 ADD (extra NUMBER)"));
+            }
+            finally {
+                executor.shutdownNow();
+            }
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz2787");
+        }
+    }
+
+    private static int createAndPopulateSnapshotLockTestTable(String tableName) throws SQLException {
+        connection.execute("CREATE TABLE " + tableName + " (id NUMERIC(9,0) NOT NULL, data VARCHAR2(50), PRIMARY KEY (id))");
+        TestHelper.streamTable(connection, tableName);
+        // More rows than the test's record buffer plus the connector queue can hold, so that the
+        // snapshot blocks on back pressure while it still holds the table locks
+        final int rowCount = 2000;
+        for (int i = 1; i <= rowCount; i++) {
+            connection.executeWithoutCommitting("INSERT INTO " + tableName + " VALUES (" + i + ", 'row " + i + "')");
+        }
+        connection.commit();
+        return rowCount;
+    }
+
+    private void waitForSnapshotToBlockOnBackPressure() {
+        // Once the record buffer is full the snapshot is in the data phase and cannot complete until
+        // the records are consumed, so the locks taken before the SCN was read are still held
+        Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> consumedLines.remainingCapacity() == 0);
+    }
+
+    private static void assertDdlFailsWithResourceBusy(OracleConnection session, String ddl) {
+        // DDL fails immediately with ORA-00054 when the required exclusive table lock cannot be acquired
+        assertThatThrownBy(() -> session.execute(ddl))
+                .isInstanceOf(SQLException.class)
+                .satisfies(e -> LOGGER.info("DDL '{}' during the snapshot failed as expected: {}", ddl, e.getMessage()))
+                .extracting(e -> ((SQLException) e).getErrorCode())
+                .isEqualTo(54);
     }
 
     public static class ErrorCausingCustomConverter implements CustomConverter<SchemaBuilder, RelationalColumn> {

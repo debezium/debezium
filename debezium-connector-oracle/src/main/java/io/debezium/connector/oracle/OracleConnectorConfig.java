@@ -132,9 +132,11 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT))
             .withDescription("Controls how the connector holds locks on tables while performing the snapshot. The default is 'shared', "
                     + "which means the connector will hold a ROW SHARE table lock for the duration of the snapshot. The lock allows other sessions "
-                    + "to read and write the table but prevents any DDL on it, which would otherwise invalidate the flashback query used to read "
-                    + "the table data (ORA-01466). However, in some cases it may be desirable to avoid locks entirely which can be done by "
-                    + "specifying 'none'. This mode is only safe to use if no schema changes are happening while the snapshot is taken.");
+                    + "to read and write the table and prevents most DDL on it; however, Oracle non-blocking DDL such as ALTER TABLE ADD COLUMN is "
+                    + "still permitted and would invalidate the flashback query used to read the table data (ORA-01466). Specifying 'extended' "
+                    + "holds a SHARE table lock instead, which prevents all DDL but also blocks writes to the table for the duration of the snapshot. "
+                    + "In some cases it may be desirable to avoid locks entirely which can be done by specifying 'none'. This mode is only safe "
+                    + "to use if no schema changes are happening while the snapshot is taken.");
 
     public static final Field CONNECTOR_ADAPTER = Field.create(ConfigurationNames.DATABASE_CONFIG_PREFIX + "connection.adapter")
             .withDisplayName("Connector adapter")
@@ -1251,10 +1253,18 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     public enum SnapshotLockingMode implements EnumeratedValue {
         /**
          * This mode will allow concurrent access to the table during the snapshot but prevents any
-         * session from acquiring a table-level exclusive lock, and therefore any DDL on the table,
-         * for the duration of the snapshot.
+         * session from acquiring a table-level exclusive lock for the duration of the snapshot. This
+         * prevents most DDL on the table, but Oracle non-blocking DDL such as {@code ALTER TABLE ADD COLUMN}
+         * does not require an exclusive lock and is still permitted.
          */
         SHARED("shared"),
+
+        /**
+         * This mode prevents any DDL on the table, including Oracle non-blocking DDL, for the duration
+         * of the snapshot. Other sessions can still read the table but any write is blocked until the
+         * snapshot completes.
+         */
+        EXTENDED("extended"),
 
         /**
          * This mode will avoid using ANY table locks during the snapshot process.

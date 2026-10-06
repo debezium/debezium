@@ -20,6 +20,7 @@ import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -28,6 +29,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
@@ -103,6 +105,7 @@ public abstract class AbstractConnectorTest implements Testing {
     protected final Logger logger = LoggerFactory.getLogger(getClass());
     protected final AtomicBoolean isEngineRunning = new AtomicBoolean(false);
     private final AtomicBoolean stopRequestedByConsumer = new AtomicBoolean(false);
+    private final AtomicReference<Throwable> lastEngineFailure = new AtomicReference<>();
     private CountDownLatch latch;
     private JsonConverter keyJsonConverter = new JsonConverter();
     private JsonConverter valueJsonConverter = new JsonConverter();
@@ -136,6 +139,7 @@ public abstract class AbstractConnectorTest implements Testing {
         valueJsonDeserializer.configure(deserializerConfig.asMap(), false);
 
         resetBeforeEachTest();
+        lastEngineFailure.set(null);
         consumedLines = new ArrayBlockingQueue<>(getMaximumEnqueuedRecordCount());
         Testing.Files.delete(OFFSET_STORE_PATH);
         OFFSET_STORE_PATH.getParent().toFile().mkdirs();
@@ -249,6 +253,18 @@ public abstract class AbstractConnectorTest implements Testing {
      */
     protected int getMaximumEnqueuedRecordCount() {
         return 100;
+    }
+
+    /**
+     * Returns the error with which the engine most recently completed during the current test, if any.
+     * <p>
+     * The error is cleared before each test, so it can be inspected by test fixtures after a test
+     * failed to determine whether the connector stopped due to a specific error.
+     *
+     * @return the most recent engine failure during the current test, or empty if the engine has not failed
+     */
+    public Optional<Throwable> getLastEngineFailure() {
+        return Optional.ofNullable(lastEngineFailure.get());
     }
 
     /**
@@ -442,6 +458,9 @@ public abstract class AbstractConnectorTest implements Testing {
                 }
             }
             finally {
+                if (!success && error != null) {
+                    lastEngineFailure.set(error);
+                }
                 if (!success) {
                     // we only unblock if there was an error; in all other cases we're unblocking when a task has been started
                     latch.countDown();
