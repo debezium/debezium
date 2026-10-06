@@ -141,6 +141,7 @@ public class ${connectorName}ConnectorTask
                         DataChangeEvent::new,
                         metadataProvider,
                         schemaNameAdjuster,
+                        signalProcessor,
                         null);
 
         final NotificationService<${connectorName}Partition, ${connectorName}OffsetContext> notificationService =
