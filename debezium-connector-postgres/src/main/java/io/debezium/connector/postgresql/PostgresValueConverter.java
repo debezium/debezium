@@ -406,7 +406,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 else if (resolvedType.isArrayType()) {
                     if (resolvedType.getElementType().isEnumType()) {
                         Set<String> enumValues = resolvedType.getElementType().getEnumValues();
-                        return SchemaBuilder.array(io.debezium.data.Enum.builder(Strings.join(",", enumValues)));
+                        return SchemaBuilder.array(io.debezium.data.Enum.builder(Strings.join(",", enumValues)).optional().build());
                     }
                     else {
                         // unfortunately, this does not work for array columns of domain types; the element type will have a

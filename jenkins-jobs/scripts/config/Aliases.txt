@@ -93,6 +93,7 @@ dayron-perez,Dayron Perez Roldan
 ddsr-ops,ddsr-ops
 debjeetsarkar,Debjeet Sarkar
 denizozogularas,Deniz Ozogul
+dilraj-vyas,Dilraj vyas
 divyanshu_Kumar,Divyanshu Kumar
 dleibovic,David Leibovic
 DLiseichykau,Victar Malinouski
