@@ -175,7 +175,7 @@ public class ${connectorName}ConnectorTask
                         schema,
                         signalProcessor,
                         notificationService,
-                        null);
+                        snapshotterService);
 
         coordinator.start(taskContext, this.queue, metadataProvider);
         return coordinator;
