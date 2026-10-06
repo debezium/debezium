@@ -19,6 +19,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.connector.base.QueueProviderService;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.jdbc.DefaultMainConnectionProvidingConnectionFactory;
@@ -89,6 +90,10 @@ public class ${connectorName}ConnectorTask
                         new ${connectorName}Partition.Provider(connectorConfig),
                         new ${connectorName}OffsetLoader(connectorConfig));
 
+        // Register the connector's SPI service providers (queue provider, snapshotter, ...). This must
+        // happen before the queue is built because the queue looks up the QueueProviderService.
+        registerServiceProviders(connectorConfig.getServiceRegistry());
+
         // Build the change event queue used to buffer records between threads.
         this.queue = new ChangeEventQueue.Builder<DataChangeEvent>()
                 .pollInterval(connectorConfig.getPollInterval())
@@ -97,15 +102,13 @@ public class ${connectorName}ConnectorTask
                 .maxQueueSize(connectorConfig.getMaxQueueSize())
                 .maxQueueSizeInBytes(connectorConfig.getMaxQueueSizeInBytes())
                 .loggingContextSupplier(() -> taskContext.configureLoggingContext(CONTEXT_NAME))
+                .queueProvider(connectorConfig.getServiceRegistry().tryGetService(QueueProviderService.class).getQueueProvider())
                 .build();
 
         this.errorHandler = new ${connectorName}ErrorHandler(connectorConfig, queue, null);
 
         final TopicNamingStrategy<TableId> topicNamingStrategy =
                 connectorConfig.getTopicNamingStrategy(CommonConnectorConfig.TOPIC_NAMING_STRATEGY);
-
-        // Register the connector's SPI service providers (snapshotter, custom converters, ...).
-        registerServiceProviders(connectorConfig.getServiceRegistry());
 
         // The connection factory's mainConnection() is reused for schema reads and the snapshot.
         final MainConnectionProvidingConnectionFactory<${connectorName}Connection> connectionFactory =
