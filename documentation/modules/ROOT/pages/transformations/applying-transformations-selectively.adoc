@@ -121,6 +121,13 @@ Every path segment except the last must resolve to a `STRUCT`.
 `fail` stops the connector by throwing an exception.
 |===
 +
+The string form of the value is the Java `toString()` rendering of the raw field value, so for some logical types it might not be what you expect.
+`Decimal` fields, which connectors emit when `decimal.handling.mode` is set to `precise` (the default), render through `BigDecimal.toString()`.
+The result depends on the scale of the value, for example `10.50` rather than `10.5`, and can use scientific notation, for example `1E-7`.
+The `Date`, `Time`, and `Timestamp` logical types of Kafka Connect, which connectors emit when `time.precision.mode` is set to `connect`, are backed by `java.util.Date` and render through `Date.toString()`, for example `Mon Oct 05 14:30:00 UTC 2026`.
+That rendering depends on the default time zone of the JVM that runs the connector.
+To match these fields reliably, configure the connector to emit a deterministic representation, for example `decimal.handling.mode=string`, or the default `time.precision.mode`, in which temporal values are numeric epoch offsets and zoned timestamps are ISO-8601 strings.
++
 A record with a `null` value (a tombstone) is always treated as not matching, regardless of the `unevaluable.value` setting.
 Because Kafka Connect allows only one predicate per transformation, you cannot compose this predicate with `RecordIsTombstone` to shield tombstones from a `fail` policy; exempting them keeps `fail` usable on a change stream that contains deletes.
 This mirrors the `Filter` transformation, which never matches tombstones and so always retains them.
