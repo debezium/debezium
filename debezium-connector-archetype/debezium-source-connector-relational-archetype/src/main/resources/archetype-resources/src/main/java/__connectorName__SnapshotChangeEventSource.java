@@ -37,6 +37,7 @@ public class ${connectorName}SnapshotChangeEventSource
 
     private final ${connectorName}ConnectorConfig connectorConfig;
     private final ${connectorName}Connection jdbcConnection;
+    private final ${connectorName}DatabaseSchema databaseSchema;
 
     public ${connectorName}SnapshotChangeEventSource(${connectorName}ConnectorConfig connectorConfig,
                                                      MainConnectionProvidingConnectionFactory<${connectorName}Connection> connectionFactory,
@@ -50,6 +51,7 @@ public class ${connectorName}SnapshotChangeEventSource
                 notificationService, snapshotterService);
         this.connectorConfig = connectorConfig;
         this.jdbcConnection = connectionFactory.mainConnection();
+        this.databaseSchema = schema;
     }
 
     @Override
@@ -105,6 +107,11 @@ public class ${connectorName}SnapshotChangeEventSource
                 connectorConfig.getTableFilters().dataCollectionFilter(),
                 null,
                 false);
+
+        // The base class only fills snapshotContext.tables. A non-historized schema is never populated
+        // from schema change events, so build it here; the snapshot reads it through schema.tableFor(...)
+        // and schema.schemaFor(...) to select columns and shape each record.
+        databaseSchema.refresh(jdbcConnection);
     }
 
     @Override
