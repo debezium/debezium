@@ -823,7 +823,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
 
         if (upperCasedStatementBegin.startsWith("XA ")) {
             if (upperCasedStatementBegin.startsWith("XA START")) {
-                handleTransactionBegin(partition, offsetContext, event, command.getThreadId());
+                handleXaStart(partition, offsetContext, event, command.getThreadId());
             }
             return;
         }
@@ -1116,6 +1116,15 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
     protected void viewChange(O offsetContext, Event event) throws InterruptedException {
         LOGGER.debug("View Change event: {}", event);
         // do nothing
+    }
+
+    /**
+     * Handle a {@link EventType#QUERY} event with an {@code XA START} statement.
+     *
+     * @param event the database change data event to be processed; may not be null
+     * @throws InterruptedException if this thread is interrupted while blocking
+     */
+    protected void handleXaStart(P partition, O offsetContext, Event event, Long threadId) throws InterruptedException {
     }
 
     protected void handleTransactionBegin(P partition, O offsetContext, Event event, Long threadId) throws InterruptedException {

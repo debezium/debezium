@@ -129,6 +129,17 @@ public class MySqlStreamingChangeEventSource extends BinlogStreamingChangeEventS
         }
     }
 
+    /**
+     * Handle the supplied {@code XA START} query event by beginning a transaction, because MySQL starts
+     * an XA transaction with this event.
+     *
+     * @param event the database change data event to be processed; may not be null
+     */
+    @Override
+    protected void handleXaStart(MySqlPartition partition, MySqlOffsetContext offsetContext, Event event, Long threadId) throws InterruptedException {
+        handleTransactionBegin(partition, offsetContext, event, threadId);
+    }
+
     @Override
     public void init(MySqlOffsetContext offsetContext) {
         setEffectiveOffsetContext(offsetContext != null ? offsetContext : MySqlOffsetContext.initial(connectorConfig));
