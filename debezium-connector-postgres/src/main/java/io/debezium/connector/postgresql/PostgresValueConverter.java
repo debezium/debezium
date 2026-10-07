@@ -28,7 +28,6 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collections;
 import java.util.Date;
@@ -798,14 +797,18 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 String s = new String((byte[]) data, databaseCharset);
                 // remove '{' and '}'
                 s = s.substring(1, s.length() - 1);
-                List<String> ltrees = Arrays.asList(s.split(","));
+                List<String> ltrees = new ArrayList<>();
+                for (String element : s.split(",")) {
+                    // PostgreSQL renders a NULL array element as the unquoted token NULL
+                    ltrees.add("NULL".equals(element) ? null : element);
+                }
                 r.deliver(ltrees);
             }
             else if (data instanceof List) {
                 List<Object> list = (List<Object>) data;
                 List<String> ltrees = new ArrayList<>(list.size());
                 for (Object value : list) {
-                    ltrees.add(value.toString());
+                    ltrees.add(value == null ? null : value.toString());
                 }
                 r.deliver(ltrees);
             }
@@ -815,7 +818,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
                     Object[] array = (Object[]) pgArray.getArray();
                     List<String> ltrees = new ArrayList<>(array.length);
                     for (Object value : array) {
-                        ltrees.add(value.toString());
+                        ltrees.add(value == null ? null : value.toString());
                     }
                     r.deliver(ltrees);
                 }
