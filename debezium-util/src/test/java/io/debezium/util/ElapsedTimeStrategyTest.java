@@ -13,6 +13,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import io.debezium.doc.FixFor;
+
 /**
  * @author Randall Hauch
  *
@@ -295,7 +297,34 @@ public class ElapsedTimeStrategyTest {
         assertElapsed();
         clock.advanceTo(100000000000001L);
         assertNotElapsed();
-        clock.advanceTo(100000000006400L);
+        clock.advanceTo(100000000002400L);
+        assertElapsed();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2811")
+    public void testExponentialDelayWhenCurrentExceedsNextTimestampAtMaxDelay() {
+        clock.advanceTo(100);
+        delay = ElapsedTimeStrategy.exponential(clock, Duration.ofMillis(100), Duration.ofMillis(1000));
+        assertNotElapsed();
+
+        // Advance through exponential phases:
+        clock.advanceTo(200);
+        assertElapsed(); // next: 400 (delay 200)
+        clock.advanceTo(400);
+        assertElapsed(); // next: 800 (delay 400)
+        clock.advanceTo(800);
+        assertElapsed(); // next: 1600 (delay 800)
+        clock.advanceTo(1600);
+        assertElapsed(); // next: 2600 (capped at maxDelay 1000)
+
+        // Advance slightly past nextTimestamp (2601 vs 2600)
+        clock.advanceTo(2601);
+        assertElapsed(); // next should advance by 1000 ms from 2600 -> 3600
+
+        clock.advanceTo(3599);
+        assertNotElapsed();
+        clock.advanceTo(3600);
         assertElapsed();
     }
 
