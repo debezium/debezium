@@ -4695,10 +4695,14 @@ Required when `log.mining.strategy` is set to `dictionary_from_file`.
 `physical_standby`:: Captures and streams changes from a physical standby instance.
 `downstream`:: Captures and streams changes from a downstream mining database.
 
+NOTE: The `physical_standby` and `downstream` options are Technology Preview features.
+
 |[[oracle-property-secondary-hostname]]<<oracle-property-secondary-hostname, `+secondary.hostname+`>>
 |No default
 |Specifies the hostname of the secondary database from which the connector streams changes.
 When set, the connector uses the primary database (configured via `database.hostname`) for snapshots and metadata queries, and the secondary for streaming.
+
+NOTE: This property and the other `secondary.*` properties are Technology Preview features.
 
 |[[oracle-property-secondary-port]]<<oracle-property-secondary-port, `+secondary.port+`>>
 |Same as `database.port`
