@@ -3273,11 +3273,12 @@ secondary.url=jdbc:oracle:thin:@standby-host:1521/ORCLPDB1
 If the standby uses a different port than the primary, you can also set `secondary.port`.
 If the standby uses a different database name than the primary, you can also set `secondary.dbname`.
 
-When configured with these properties, the connector:
+Configuring these properties changes how the connector reads from the database.
+After you configure the properties, the connector exhibits the following behavior:
 
-1. Connects to the primary database (configured via `database.hostname`) for snapshot operations and metadata queries.
-2. Connects to the standby database (configured via `secondary.hostname` or `secondary.url`) in read-only mode for LogMiner streaming operations.
-3. Uses the flat file data dictionary to resolve table and column names during log mining on the standby.
+* Connects to the primary database (configured via `database.hostname`) for snapshot operations and metadata queries.
+* Connects to the standby database (configured via `secondary.hostname` or `secondary.url`) in read-only mode for LogMiner streaming operations.
+* Uses the flat file data dictionary to resolve table and column names during log mining on the standby database.
 
 // Type: procedure
 [id="configuring-the-debezium-oracle-connector-to-capture-events-from-a-logical-standby"]
