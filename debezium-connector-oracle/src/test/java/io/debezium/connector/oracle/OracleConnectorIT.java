@@ -71,7 +71,6 @@ import io.debezium.connector.SnapshotType;
 import io.debezium.connector.oracle.OracleConnectorConfig.ConnectorAdapter;
 import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningStrategy;
 import io.debezium.connector.oracle.OracleConnectorConfig.SnapshotMode;
-import io.debezium.connector.oracle.OracleConnectorConfig.TransactionSnapshotBoundaryMode;
 import io.debezium.connector.oracle.junit.SkipOnDatabaseOption;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIs;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
@@ -327,7 +326,6 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
     public void shouldSkipCheckingArchiveLogIfNoCdc() throws Exception {
         Configuration config = TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL_ONLY)
-                .with(OracleConnectorConfig.LOG_MINING_TRANSACTION_SNAPSHOT_BOUNDARY_MODE, TransactionSnapshotBoundaryMode.SKIP)
                 .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER")
                 .build();
 
@@ -3278,7 +3276,6 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
 
             Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ4367")
-                    .with(OracleConnectorConfig.LOG_MINING_TRANSACTION_SNAPSHOT_BOUNDARY_MODE, TransactionSnapshotBoundaryMode.TRANSACTION_VIEW_ONLY)
                     .build();
             start(OracleConnector.class, config);
             waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
@@ -3316,7 +3313,6 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
 
             Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ4367")
-                    .with(OracleConnectorConfig.LOG_MINING_TRANSACTION_SNAPSHOT_BOUNDARY_MODE, TransactionSnapshotBoundaryMode.TRANSACTION_VIEW_ONLY)
                     .build();
             start(OracleConnector.class, config);
             waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
@@ -3377,7 +3373,6 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
             Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ4367,DEBEZIUM\\.DBZ4367_EXTRA")
                     .with(OracleConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                    .with(OracleConnectorConfig.LOG_MINING_TRANSACTION_SNAPSHOT_BOUNDARY_MODE, TransactionSnapshotBoundaryMode.TRANSACTION_VIEW_ONLY)
                     .build();
             start(OracleConnector.class, config);
             waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
@@ -3452,7 +3447,6 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
 
             Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ5085")
-                    .with(OracleConnectorConfig.LOG_MINING_TRANSACTION_SNAPSHOT_BOUNDARY_MODE, TransactionSnapshotBoundaryMode.ALL)
                     .build();
 
             final int expected = 50;
@@ -3475,7 +3469,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
             assertConnectorIsRunning();
 
             // make sure transaction doesn't commit too early
-            Awaitility.await().atMost(Duration.ofMinutes(3)).until(() -> logInterceptor.containsMessage("Pending Transaction '"));
+            Awaitility.await().atMost(Duration.ofMinutes(3)).until(() -> logInterceptor.containsMessage("Snapshot boundary resolved"));
 
             connection.commit();
 
@@ -3527,7 +3521,6 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
 
             Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ5085")
-                    .with(OracleConnectorConfig.LOG_MINING_TRANSACTION_SNAPSHOT_BOUNDARY_MODE, TransactionSnapshotBoundaryMode.ALL)
                     .build();
 
             final int expected = 50;
@@ -3550,7 +3543,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
             assertConnectorIsRunning();
 
             // make sure transaction doesn't commit too early
-            Awaitility.await().atMost(Duration.ofMinutes(3)).until(() -> logInterceptor.containsMessage("Pending Transaction '"));
+            Awaitility.await().atMost(Duration.ofMinutes(3)).until(() -> logInterceptor.containsMessage("Snapshot boundary resolved"));
 
             connection.commit();
 
@@ -3585,6 +3578,117 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
         finally {
             TestHelper.dropTable(connection, "dbz5085");
         }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2779")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER, reason = "Only applies to LogMiner")
+    public void shouldRetireSnapshotBoundaryOffsetsOnceCommitScnPassesSnapshot() throws Exception {
+        TestHelper.dropTable(connection, "dbz2779");
+        try {
+            connection.execute("CREATE TABLE dbz2779 (id numeric(9,0) primary key, data varchar2(50))");
+            TestHelper.streamTable(connection, "dbz2779");
+
+            // Committed before the snapshot, so it must only be captured by the snapshot.
+            connection.execute("INSERT INTO dbz2779 (id,data) values (3, 'committed before snapshot')");
+            // In progress when the snapshot is taken, so it must only be captured by streaming.
+            connection.executeWithoutCommitting("INSERT INTO dbz2779 (id,data) values (1, 'in progress at snapshot')");
+
+            // Without heartbeats, streaming emits no offset while no captured transaction commits.
+            final Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ2779")
+                    .build();
+            final Configuration heartbeatConfig = config.edit().with(Heartbeat.HEARTBEAT_INTERVAL, 1000).build();
+            final Map<String, String> partition = new OraclePartition(TestHelper.SERVER_NAME, TestHelper.DATABASE).getSourcePartition();
+            final String topicName = "server1.DEBEZIUM.DBZ2779";
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // The snapshot completion offset carries both snapshot SCNs.
+            final List<SourceRecord> snapshotRecords = consumeRecordsUntilId(topicName, 3);
+            assertThat(snapshotRecords).hasSize(1);
+            assertThat(((Struct) snapshotRecords.get(0).value()).getString("op")).isEqualTo(Envelope.Operation.READ.code());
+            final Map<String, ?> snapshotOffset = snapshotRecords.get(0).sourceOffset();
+            // The last snapshot record's offset is rebuilt after the snapshot is marked completed.
+            assertThat(snapshotOffset.get(OracleOffsetContext.SNAPSHOT_COMPLETED_KEY)).isEqualTo(true);
+            final Scn snapshotScn = OracleOffsetContext.loadSnapshotScn(snapshotOffset);
+            final Scn snapshotCommitScn = OracleOffsetContext.loadSnapshotCommitScn(snapshotOffset);
+            assertThat(snapshotScn).isNotNull();
+            assertThat(snapshotCommitScn).isNotNull();
+            assertThat(snapshotScn).isLessThanOrEqualTo(snapshotCommitScn);
+
+            // Recover after the snapshot completion offset is persisted but before any streaming offset is.
+            stopConnector();
+            Map<String, Object> offset = readLastCommittedOffset(config, partition);
+            // The restart does not take a new snapshot, so it must rewind the offset SCN to the snapshot SCN again.
+            assertThat(offset.get(OracleOffsetContext.SNAPSHOT_COMPLETED_KEY)).isEqualTo(true);
+            assertThat(OracleOffsetContext.getScnFromOffsetMapByKey(offset, SourceInfo.SCN_KEY)).isEqualTo(snapshotCommitScn);
+            assertThat(OracleOffsetContext.loadSnapshotScn(offset)).isEqualTo(snapshotScn);
+            assertThat(OracleOffsetContext.loadSnapshotCommitScn(offset)).isEqualTo(snapshotCommitScn);
+
+            start(OracleConnector.class, heartbeatConfig);
+            assertConnectorIsRunning();
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Once streaming persists its rewound mining position, the snapshot SCN is retired.
+            Awaitility.await().atMost(Duration.ofMinutes(2)).until(() -> {
+                final Map<String, Object> committedOffset = readLastCommittedOffset(config, partition);
+                return committedOffset != null
+                        && !committedOffset.containsKey(OracleOffsetContext.SNAPSHOT_SCN_KEY)
+                        && OracleOffsetContext.getScnFromOffsetMapByKey(committedOffset, SourceInfo.SCN_KEY).compareTo(snapshotCommitScn) < 0;
+            });
+
+            // Recover after the first streaming offset is persisted but before the in-progress transaction commits.
+            stopConnector();
+            start(OracleConnector.class, heartbeatConfig);
+            assertConnectorIsRunning();
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // The transaction in progress at the snapshot commits after the snapshot commit SCN, and must be
+            // emitted exactly once, while the transaction committed before the snapshot must not be emitted again.
+            connection.commit();
+            final List<SourceRecord> streamingRecords = consumeRecordsUntilId(topicName, 1);
+            assertThat(streamingRecords).hasSize(1);
+            assertThat(((Struct) streamingRecords.get(0).value()).getString("op")).isEqualTo(Envelope.Operation.CREATE.code());
+
+            // Once every redo thread has committed past the snapshot commit SCN, it is retired too.
+            Awaitility.await().atMost(Duration.ofMinutes(2)).until(() -> {
+                final Map<String, Object> committedOffset = readLastCommittedOffset(config, partition);
+                return committedOffset != null
+                        && CommitScn.load(committedOffset).compareTo(snapshotCommitScn) > 0
+                        && !committedOffset.containsKey(OracleOffsetContext.SNAPSHOT_COMMIT_SCN_KEY)
+                        && !committedOffset.containsKey(OracleOffsetContext.SNAPSHOT_SCN_KEY);
+            });
+
+            // Restarting from the retired offsets resumes streaming without emitting earlier changes again.
+            stopConnector();
+            start(OracleConnector.class, heartbeatConfig);
+            assertConnectorIsRunning();
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO dbz2779 (id,data) values (4, 'after restart')");
+            final List<SourceRecord> restartRecords = consumeRecordsUntilId(topicName, 4);
+            assertThat(restartRecords).hasSize(1);
+            assertThat(((Struct) restartRecords.get(0).value()).getString("op")).isEqualTo(Envelope.Operation.CREATE.code());
+        }
+        finally {
+            stopConnector();
+            TestHelper.dropTable(connection, "dbz2779");
+        }
+    }
+
+    /**
+     * Consumes records until the record for the given identifier arrives on the topic.
+     *
+     * @return the records consumed from the topic, ignoring other topics such as heartbeats
+     */
+    private List<SourceRecord> consumeRecordsUntilId(String topicName, int id) throws InterruptedException {
+        final SourceRecords records = consumeRecordsByTopicUntil((count, record) -> topicName.equals(record.topic())
+                && getAfter(record) != null && getAfter(record).getInt32("ID") == id);
+        final List<SourceRecord> topicRecords = records.recordsForTopic(topicName);
+        return topicRecords == null ? List.of() : topicRecords;
     }
 
     @Test

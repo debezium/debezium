@@ -6,7 +6,6 @@
 package io.debezium.connector.oracle.olr;
 
 import java.sql.SQLException;
-import java.util.Collections;
 import java.util.Optional;
 
 import org.slf4j.Logger;
@@ -124,7 +123,6 @@ public class OpenLogReplicatorAdapter extends AbstractStreamingAdapter<OpenLogRe
                 .logicalName(connectorConfig)
                 .scn(currentScn)
                 .snapshotScn(currentScn)
-                .snapshotPendingTransactions(Collections.emptyMap())
                 .transactionContext(new TransactionContext())
                 .incrementalSnapshotContext(new SignalBasedIncrementalSnapshotContext<>())
                 .build();

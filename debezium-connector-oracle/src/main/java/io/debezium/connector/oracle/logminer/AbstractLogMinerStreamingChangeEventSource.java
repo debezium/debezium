@@ -203,13 +203,22 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             final Scn snapshotScn = getOffsetContext().getSnapshotScn();
             final Scn firstScn = getFirstScnAvailableInLogs();
 
-            if (offsetScn.compareTo(snapshotScn) == 0) {
-                // This is the initial run of the streaming change event source.
-                // We need to compute the correct start offset for mining. That is not the snapshot offset,
-                // but the start offset of the oldest transaction that was still pending when the snapshot
-                // was taken.
-                final Scn startScn = computeStartScnForFirstMiningSession(firstScn, offsetScn, snapshotScn);
-                getOffsetContext().setScn(startScn);
+            final Scn snapshotCommitScn = getOffsetContext().getSnapshotCommitScn();
+            if (!snapshotScn.isNull() && offsetScn.compareTo(snapshotCommitScn) == 0) {
+                // This is the initial run of the streaming change event source, and the offset SCN is still the
+                // SCN the snapshot was taken at. Mining must start at the snapshot SCN instead, the start of the
+                // oldest transaction that was still pending when the snapshot was taken.
+                Scn startScn = snapshotScn;
+                if (startScn.compareTo(firstScn) < 0) {
+                    LOGGER.warn("Transactions were still ongoing while snapshot was taken, but are no longer completely " +
+                            "recorded in the archive logs. Events will be lost. Oldest SCN in logs = {}, snapshot SCN = {}",
+                            firstScn, snapshotScn);
+                    startScn = firstScn;
+                }
+                LOGGER.info("Resetting start SCN from {} (snapshot commit SCN) to {} (snapshot SCN).", offsetScn, startScn);
+                // The offset SCN is an exclusive lower bound, and from now on it is the position where mining resumes.
+                getOffsetContext().setScn(startScn.subtract(Scn.ONE));
+                getOffsetContext().retireSnapshotScn();
             }
 
             // Fail-fast check: makes sure the offset SCN is still available in the logs
@@ -1359,21 +1368,21 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     /**
      * Check whether the specific event was included as part of the initial snapshot.
      * <p>
-     * This check is necessary when users use specific transaction boundary configurations and the changes pulled
-     * from LogMiner go back in time to get all in-progress transactions that existed during the boundary where
-     * the initial snapshot was taken. This makes sure we don't reemit an event that we already sent.
+     * Mining starts before the snapshot was taken to capture the transactions that were in progress at that
+     * time, so it also reads transactions that committed before the snapshot was taken. This makes sure we
+     * don't reemit those changes, using the event's commit SCN, or its SCN for schema changes.
      *
      * @param event the event, should not be {@code null}
      * @return true if the event was included in the snapshot, false otherwise
      */
     protected boolean isEventIncludedInSnapshot(LogMinerEventRow event) {
-        if (event.getScn().compareTo(getOffsetContext().getSnapshotScn()) < 0) {
-            final Map<String, Scn> snapshotPendingTrxs = getOffsetContext().getSnapshotPendingTransactions();
-            if (snapshotPendingTrxs == null || !snapshotPendingTrxs.containsKey(event.getTransactionId())) {
-                LOGGER.info("Skipping event {} (SCN {}) because it is already included by the initial snapshot",
-                        event.getEventType(), event.getScn());
-                return true;
-            }
+        // Schema changes and their START and COMMIT markers carry no commit SCN, they are committed at
+        // their own SCN. Buffered DML rows carry no commit SCN either, so callers must not pass them here.
+        final Scn commitScn = event.getCommitScn() == null || event.getCommitScn().isNull() ? event.getScn() : event.getCommitScn();
+        if (getOffsetContext().isCommitIncludedInSnapshot(commitScn)) {
+            LOGGER.info("Skipping event {} (SCN {}) because it is already included by the initial snapshot",
+                    event.getEventType(), event.getScn());
+            return true;
         }
         return false;
     }
@@ -1997,66 +2006,6 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     }
 
     /**
-     * Computes the start SCN for the first mining session.
-     * <p>
-     * Normally, this would be the snapshot SCN, but if there were pending transactions at the time
-     * the snapshot was taken, we'd miss the events in those transactions that have an SCN smaller
-     * than the snapshot SCN.
-     *
-     * @param firstScn the oldest SCN still available in the REDO logs
-     * @param offsetScn the SCN from the offsets
-     * @param snapshotScn the SCN used to take the snapshot
-     */
-    private Scn computeStartScnForFirstMiningSession(Scn firstScn, Scn offsetScn, Scn snapshotScn) {
-        // This is the initial run of the streaming change event source.
-        // We need to compute the correct start offset for mining. That is not the snapshot offset,
-        // but the start offset of the oldest transaction that was still pending when the snapshot
-        // was taken.
-        Map<String, Scn> snapshotPendingTransactions = getOffsetContext().getSnapshotPendingTransactions();
-        if (snapshotPendingTransactions == null || snapshotPendingTransactions.isEmpty()) {
-            // no pending transactions, we can start mining from the snapshot SCN
-            return snapshotScn;
-        }
-        else {
-            // find the oldest transaction we can still fully process, and start from there.
-            Scn minScn = snapshotScn;
-            for (Map.Entry<String, Scn> entry : snapshotPendingTransactions.entrySet()) {
-                String transactionId = entry.getKey();
-                Scn scn = entry.getValue();
-
-                LOGGER.info("Transaction {} was pending across snapshot boundary. Start SCN = {}, snapshot SCN = {}",
-                        transactionId, scn, offsetScn);
-
-                if (scn.compareTo(firstScn) < 0) {
-                    LOGGER.warn("Transaction {} was still ongoing while snapshot was taken, but is no longer completely " +
-                            "recorded in the archive logs. Events will be lost. Oldest SCN in logs = {}, TX start SCN = {}",
-                            transactionId, firstScn, scn);
-                    minScn = firstScn;
-                }
-                else if (scn.compareTo(minScn) < 0) {
-                    minScn = scn;
-                }
-            }
-
-            // Make sure the commit SCN is at least the snapshot SCN - 1.
-            // This ensures we'll never emit events for transactions that were complete before the snapshot was
-            // taken.
-            if (getOffsetContext().getCommitScn().compareTo(snapshotScn) < 0) {
-                LOGGER.info("Setting commit SCN to {} (snapshot SCN - 1) to ensure we don't double-emit events from pre-snapshot transactions.",
-                        snapshotScn.subtract(Scn.ONE));
-                getOffsetContext().getCommitScn().setCommitScnOnAllThreads(snapshotScn.subtract(Scn.ONE));
-            }
-
-            // set start SCN to minScn
-            if (minScn.compareTo(offsetScn) <= 0) {
-                LOGGER.info("Resetting start SCN from {} (snapshot SCN) to {} (start of oldest complete pending transaction)", offsetScn, minScn);
-                return minScn.subtract(Scn.ONE);
-            }
-        }
-        return offsetScn;
-    }
-
-    /**
      * Get the first system change number in all available database transaction logs.
      *
      * @return the first system change number, never {@code null}
@@ -2167,7 +2116,6 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
 
     private OracleOffsetContext emptyContext() {
         return OracleOffsetContext.create().logicalName(connectorConfig)
-                .snapshotPendingTransactions(Collections.emptyMap())
                 .transactionContext(new TransactionContext())
                 .incrementalSnapshotContext(new SignalBasedIncrementalSnapshotContext<>()).build();
     }

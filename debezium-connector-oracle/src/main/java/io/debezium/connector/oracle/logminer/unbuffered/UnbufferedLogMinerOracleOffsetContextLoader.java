@@ -32,12 +32,10 @@ public class UnbufferedLogMinerOracleOffsetContextLoader implements OffsetContex
 
     @Override
     public OracleOffsetContext load(Map<String, ?> offset) {
-        return OracleOffsetContext.create()
+        return OracleOffsetContext.loadLogMinerSnapshotScns(offset, OracleOffsetContext.create())
                 .logicalName(connectorConfig)
                 .scn(OracleOffsetContext.getScnFromOffsetMapByKey(offset, SourceInfo.SCN_KEY))
                 .commitScn(CommitScn.load(offset))
-                .snapshotScn(OracleOffsetContext.loadSnapshotScn(offset))
-                .snapshotPendingTransactions(OracleOffsetContext.loadSnapshotPendingTransactions(offset))
                 .snapshot(loadSnapshot(offset).orElse(null))
                 .snapshotCompleted(loadSnapshotCompleted(offset))
                 .transactionContext(TransactionContext.load(offset))

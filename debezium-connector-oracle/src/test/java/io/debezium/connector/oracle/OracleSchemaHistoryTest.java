@@ -6,7 +6,6 @@
 package io.debezium.connector.oracle;
 
 import java.time.Instant;
-import java.util.Collections;
 import java.util.Map;
 
 import io.debezium.config.CommonConnectorConfig;
@@ -80,7 +79,6 @@ public class OracleSchemaHistoryTest extends AbstractSchemaHistoryTest {
                 .scn(Scn.valueOf(999))
                 .commitScn(CommitScn.valueOf(999L))
                 .snapshotScn(Scn.valueOf(999))
-                .snapshotPendingTransactions(Collections.emptyMap())
                 .snapshotCompleted(true)
                 .transactionContext(new TransactionContext())
                 .incrementalSnapshotContext(new SignalBasedIncrementalSnapshotContext<>())

@@ -321,6 +321,15 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
             // It's safe to do this for all commits because this implementation does not overlap
             // transactions, they're emitted in commit chronological order.
             skipCurrentTransaction = false;
+
+            if (getOffsetContext().isCommitIncludedInSnapshot(event.getCommitScn())
+                    && !getOffsetContext().getCommitScn().hasEventScnBeenHandled(event)) {
+                // The transaction is already part of the snapshot, so its events were skipped. Its commit
+                // is still recorded so that the redo thread counts towards retiring the snapshot commit SCN
+                // once it has committed past it. An already handled commit is not recorded again, because
+                // the thread may have committed past it since, and its commit SCN must never move backwards.
+                getOffsetContext().getCommitScn().recordCommit(event);
+            }
         }
     }
 
@@ -431,7 +440,6 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
 
         getMetrics().setActiveTransactionCount(0L);
         updateCommitMetrics(event, Duration.between(commitStartTime, Instant.now()), numEvents);
-        getOffsetContext().removeSnapshotPendingTransaction(event.getTransactionId());
     }
 
     @Override

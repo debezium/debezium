@@ -481,7 +481,17 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
         final Scn smallestScn = calculateSmallestScn();
         final Scn commitScn = row.getScn();
-        if (getOffsetContext().getCommitScn().hasEventScnBeenHandled(row)) {
+        final boolean alreadyHandled = getOffsetContext().getCommitScn().hasEventScnBeenHandled(row);
+        final boolean includedInSnapshot = getOffsetContext().isCommitIncludedInSnapshot(commitScn);
+        if (alreadyHandled || includedInSnapshot) {
+            if (includedInSnapshot && !alreadyHandled && row.getThread() != 0) {
+                // The transaction is already part of the snapshot, so its events are not emitted. Its commit
+                // is still recorded so that the redo thread counts towards retiring the snapshot commit SCN
+                // once it has committed past it. An already handled commit is not recorded again, because
+                // the thread may have committed past it since, and its commit SCN must never move backwards.
+                // Commits that LogMiner could not assign to a redo thread are not recorded, see below.
+                getOffsetContext().getCommitScn().recordCommit(row);
+            }
             if (transaction != null) {
                 if (transaction.getNumberOfEvents() > 0) {
                     final Scn lastCommittedScn = getOffsetContext().getCommitScn().getCommitScnForRedoThread(row.getThread());
@@ -652,7 +662,6 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         }
 
         updateCommitMetrics(row, Duration.between(start, Instant.now()), numEvents);
-        getOffsetContext().removeSnapshotPendingTransaction(transactionId);
     }
 
     @Override
@@ -1106,7 +1115,15 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             return true;
         }
 
-        return isEventIncludedInSnapshot(event);
+        // Rows carry no commit SCN in this mode, and a row's own SCN says when it was written, not when its
+        // transaction committed. A transaction that started before the snapshot but committed after it must
+        // have its START processed and its DML buffered, so START, DML and COMMIT rows are never checked
+        // here. If the transaction committed at or before the snapshot commit SCN, its changes are already in
+        // the snapshot, so handleCommitEvent drops its buffered events instead of emitting them.
+        // A schema change is committed at its own SCN and is not buffered: its START and COMMIT markers are
+        // always treated as an empty transaction, while the DDL row itself is dispatched immediately by
+        // handleSchemaChangeEvent. This is the only place where it can be filtered.
+        return EventType.DDL.equals(event.getEventType()) && isEventIncludedInSnapshot(event);
     }
 
     /**

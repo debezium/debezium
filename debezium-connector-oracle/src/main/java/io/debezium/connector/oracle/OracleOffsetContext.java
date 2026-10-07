@@ -10,7 +10,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Schema;
 
@@ -21,13 +20,30 @@ import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotConte
 import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.TableId;
 import io.debezium.spi.schema.DataCollectionId;
-import io.debezium.util.Strings;
 
+/**
+ * The Oracle connector offset context.
+ * <p>
+ * For LogMiner, the {@code scn} offset value has a different meaning depending on the phase:
+ * <ul>
+ * <li>During the initial snapshot, it is the SCN the snapshot is taken at, which is used for the
+ * {@code AS OF SCN} snapshot queries and equals {@link #getSnapshotCommitScn()}.</li>
+ * <li>Once streaming starts, it is the exclusive lower bound where mining resumes, which is before
+ * the start of the oldest transaction still in progress. The first streaming run rewinds it from
+ * the snapshot commit SCN to just before {@link #getSnapshotScn()}.</li>
+ * </ul>
+ */
 public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
 
-    public static final String SNAPSHOT_PENDING_TRANSACTIONS_KEY = "snapshot_pending_tx";
     public static final String SNAPSHOT_SCN_KEY = "snapshot_scn";
+    public static final String SNAPSHOT_COMMIT_SCN_KEY = "snapshot_commit_scn";
     public static final String WINDOW_ADVANCE_ENABLED_KEY = "window_advance_enabled";
+
+    /**
+     * Written by older versions to track the transactions in progress at the snapshot boundary.
+     * It is only read to resolve where mining starts for such offsets.
+     */
+    private static final String LEGACY_SNAPSHOT_PENDING_TRANSACTIONS_KEY = "snapshot_pending_tx";
 
     private final Schema sourceInfoSchema;
 
@@ -37,22 +53,29 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
     private final IncrementalSnapshotContext<TableId> incrementalSnapshotContext;
 
     /**
-     * SCN that was used for the initial consistent snapshot.
-     *
-     * We keep track of this field because it's a cutoff for emitting DDL statements,
-     * in case we start mining _before_ the snapshot SCN to cover transactions that were
-     * ongoing at the time the snapshot was taken.
+     * SCN where mining starts on the first streaming run.
+     * <p>
+     * This is the start SCN of the oldest transaction that was in progress when the snapshot
+     * position was resolved, or the SCN read before that when no transaction was in progress, so
+     * that transactions spanning the snapshot boundary are mined in full.
+     * <p>
+     * It is only persisted until the first streaming offset, because the snapshot completion offset
+     * is committed before streaming rewinds {@code scn}. A restart in that window does not take a
+     * new snapshot and must repeat the rewind.
      */
-    private final Scn snapshotScn;
+    private Scn snapshotScn;
 
     /**
-     * Map of (txid, start SCN) for all transactions in progress at the time the
-     * snapshot was taken.
+     * SCN the initial snapshot was taken at.
+     * <p>
+     * Every transaction that committed at or before this SCN is already part of the snapshot and is
+     * discarded by streaming. It is persisted until every redo thread has committed past it, after
+     * which no such transaction can be mined again.
      */
-    private Map<String, Scn> snapshotPendingTransactions;
+    private final Scn snapshotCommitScn;
 
     private OracleOffsetContext(OracleConnectorConfig connectorConfig, Scn scn, Long scnIndex, CommitScn commitScn, String lcrPosition,
-                                Scn snapshotScn, Map<String, Scn> snapshotPendingTransactions, SnapshotType snapshot,
+                                Scn snapshotScn, Scn snapshotCommitScn, SnapshotType snapshot,
                                 boolean snapshotCompleted, TransactionContext transactionContext,
                                 IncrementalSnapshotContext<TableId> incrementalSnapshotContext,
                                 String transactionId, Long transactionSequence, boolean windowAdvanceEnabled) {
@@ -69,11 +92,11 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
         sourceInfo.setCommitScn(commitScn);
         sourceInfoSchema = sourceInfo.schema();
 
-        // Snapshot SCN is a new field and may be null in cases where the offsets are being read from
-        // and older version of Debezium. In this case, we need to explicitly enforce Scn#NULL usage
-        // when the value is null.
+        // Snapshot SCNs may be null in cases where the offsets are being read from an older version
+        // of Debezium or after they have been retired. In this case, we need to explicitly enforce
+        // Scn#NULL usage when the value is null.
         this.snapshotScn = snapshotScn == null ? Scn.NULL : snapshotScn;
-        this.snapshotPendingTransactions = snapshotPendingTransactions;
+        this.snapshotCommitScn = snapshotCommitScn == null ? Scn.NULL : snapshotCommitScn;
 
         this.transactionContext = transactionContext;
         this.incrementalSnapshotContext = incrementalSnapshotContext;
@@ -97,8 +120,8 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
         private boolean snapshotCompleted;
         private TransactionContext transactionContext;
         private IncrementalSnapshotContext<TableId> incrementalSnapshotContext;
-        private Map<String, Scn> snapshotPendingTransactions;
         private Scn snapshotScn;
+        private Scn snapshotCommitScn;
         private String transactionId;
         private Long transactionSequence;
         private CommitScn commitScn = CommitScn.empty();
@@ -144,13 +167,13 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
             return this;
         }
 
-        public Builder snapshotPendingTransactions(Map<String, Scn> snapshotPendingTransactions) {
-            this.snapshotPendingTransactions = snapshotPendingTransactions;
+        public Builder snapshotScn(Scn scn) {
+            this.snapshotScn = scn;
             return this;
         }
 
-        public Builder snapshotScn(Scn scn) {
-            this.snapshotScn = scn;
+        public Builder snapshotCommitScn(Scn scn) {
+            this.snapshotCommitScn = scn;
             return this;
         }
 
@@ -176,7 +199,7 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
 
         public OracleOffsetContext build() {
             return new OracleOffsetContext(connectorConfig, scn, scnIndex, commitScn, lcrPosition, snapshotScn,
-                    snapshotPendingTransactions, snapshot, snapshotCompleted, transactionContext,
+                    snapshotCommitScn, snapshot, snapshotCompleted, transactionContext,
                     incrementalSnapshotContext, transactionId, transactionSequence, windowAdvanceEnabled);
         }
     }
@@ -208,15 +231,20 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
             }
         }
 
-        if (snapshotScn != null && !snapshotScn.isNull()) {
-            result.put(SNAPSHOT_SCN_KEY, snapshotScn.toString());
+        if (snapshotCommitScn.isNull()) {
+            // XStream and OpenLogReplicator only track the snapshot SCN, so it can be present while
+            // the snapshot commit SCN is null. For LogMiner, a null snapshot commit SCN means that
+            // the snapshot SCN has been retired as well, because the snapshot SCN is retired before
+            // the snapshot commit SCN is retired.
+            if (!snapshotScn.isNull()) {
+                result.put(SNAPSHOT_SCN_KEY, snapshotScn.toString());
+            }
         }
-
-        // These transactions belong to the original snapshot boundary, not the snapshot phase.
-        // Keep them with snapshot_scn so recovery does not filter their pre-boundary changes.
-        final String encodedPendingTransactions = getEncodedSnapshotPendingTransactions();
-        if (!Strings.isNullOrEmpty(encodedPendingTransactions)) {
-            result.put(SNAPSHOT_PENDING_TRANSACTIONS_KEY, encodedPendingTransactions);
+        else if (!isSnapshotCommitScnRetired()) {
+            result.put(SNAPSHOT_COMMIT_SCN_KEY, snapshotCommitScn.toString());
+            if (!snapshotScn.isNull()) {
+                result.put(SNAPSHOT_SCN_KEY, snapshotScn.toString());
+            }
         }
 
         if (sourceInfo.getCommitScn() != null) {
@@ -294,18 +322,34 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
         return snapshotScn;
     }
 
-    public Map<String, Scn> getSnapshotPendingTransactions() {
-        return snapshotPendingTransactions;
+    public Scn getSnapshotCommitScn() {
+        return snapshotCommitScn;
     }
 
     /**
-     * Retire a snapshot exception only after its COMMIT has been recorded and all transaction
-     * output has been dispatched. Previously emitted offsets retain their own encoded pending map.
+     * Retires the snapshot SCN once streaming has rewound the offset SCN to it, after which the
+     * offset SCN is the position where mining resumes.
      */
-    public void removeSnapshotPendingTransaction(String transactionId) {
-        if (snapshotPendingTransactions != null && !snapshotPendingTransactions.isEmpty()) {
-            snapshotPendingTransactions.remove(transactionId);
+    public void retireSnapshotScn() {
+        this.snapshotScn = Scn.NULL;
+    }
+
+    /**
+     * Checks whether changes committed at the given SCN are already part of the initial snapshot.
+     *
+     * @param commitScn the commit SCN of a transaction, or the SCN of a schema change, may be {@code null}
+     * @return true if the changes committed at or before the snapshot was taken
+     */
+    public boolean isCommitIncludedInSnapshot(Scn commitScn) {
+        if (snapshotCommitScn.isNull() || commitScn == null || commitScn.isNull()) {
+            return false;
         }
+        return commitScn.compareTo(snapshotCommitScn) <= 0;
+    }
+
+    private boolean isSnapshotCommitScnRetired() {
+        final CommitScn commitScn = sourceInfo.getCommitScn();
+        return commitScn != null && commitScn.compareTo(snapshotCommitScn) > 0;
     }
 
     public String getTransactionId() {
@@ -314,10 +358,6 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
 
     public Long getTransactionSequence() {
         return sourceInfo.getTransactionSequence();
-    }
-
-    public void setSnapshotPendingTransactions(Map<String, Scn> snapshotPendingTransactions) {
-        this.snapshotPendingTransactions = snapshotPendingTransactions;
     }
 
     public boolean isWindowAdvanceEnabled() {
@@ -449,17 +489,6 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
         return incrementalSnapshotContext;
     }
 
-    private String getEncodedSnapshotPendingTransactions() {
-        if (snapshotPendingTransactions == null || snapshotPendingTransactions.isEmpty()) {
-            return null;
-        }
-
-        return snapshotPendingTransactions.entrySet()
-                .stream()
-                .map(e -> e.getKey() + ":" + e.getValue().toString())
-                .collect(Collectors.joining(","));
-    }
-
     /**
      * Helper method to resolve a {@link Scn} by key from the offset map.
      *
@@ -479,29 +508,6 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
     }
 
     /**
-     * Helper method to read the in-progress transaction map from the offset map.
-     *
-     * @param offset the offset map
-     * @return the in-progress transaction map
-     */
-    public static Map<String, Scn> loadSnapshotPendingTransactions(Map<String, ?> offset) {
-        Map<String, Scn> snapshotPendingTransactions = new HashMap<>();
-        final String encoded = readOffsetValue(offset, SNAPSHOT_PENDING_TRANSACTIONS_KEY, String.class);
-        if (encoded != null) {
-            Arrays.stream(encoded.split(","))
-                    .map(String::trim)
-                    .filter(s -> !s.isEmpty())
-                    .forEach(e -> {
-                        String[] parts = e.split(":", 2);
-                        String txid = parts[0];
-                        Scn startScn = Scn.valueOf(parts[1]);
-                        snapshotPendingTransactions.put(txid, startScn);
-                    });
-        }
-        return snapshotPendingTransactions;
-    }
-
-    /**
      * Helper method to read the snapshot SCN from the offset map.
      *
      * @param offset the offset map
@@ -509,6 +515,66 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
      */
     public static Scn loadSnapshotScn(Map<String, ?> offset) {
         return getScnFromOffsetMapByKey(offset, SNAPSHOT_SCN_KEY);
+    }
+
+    /**
+     * Helper method to read the snapshot commit SCN from the offset map.
+     *
+     * @param offset the offset map
+     * @return the snapshot commit SCN, may be {@code null}
+     */
+    public static Scn loadSnapshotCommitScn(Map<String, ?> offset) {
+        return getScnFromOffsetMapByKey(offset, SNAPSHOT_COMMIT_SCN_KEY);
+    }
+
+    /**
+     * Helper method to read the snapshot SCNs for LogMiner from the offset map.
+     * <p>
+     * Offsets written by older versions only contain {@code snapshot_scn}, the SCN the snapshot was
+     * taken at, which becomes the snapshot commit SCN. Such versions only serialized
+     * {@code snapshot_pending_tx} while the snapshot was still in progress or had just completed,
+     * when the offset SCN is still the snapshot SCN:
+     * <ul>
+     * <li>If the offset SCN equals {@code snapshot_scn}, streaming has not yet persisted its mining
+     * position, so mining starts at the oldest start SCN in {@code snapshot_pending_tx}, or at
+     * {@code snapshot_scn} when no transaction was in progress.</li>
+     * <li>Otherwise the offset SCN is already the streaming resume position, so the snapshot SCN
+     * is not needed and is left unset.</li>
+     * </ul>
+     *
+     * @param offset the offset map
+     * @param builder the offset context builder to apply the snapshot SCNs to
+     * @return the builder
+     */
+    public static Builder loadLogMinerSnapshotScns(Map<String, ?> offset, Builder builder) {
+        Scn snapshotScn = loadSnapshotScn(offset);
+        Scn snapshotCommitScn = loadSnapshotCommitScn(offset);
+        if (snapshotCommitScn == null && snapshotScn != null) {
+            snapshotCommitScn = snapshotScn;
+            if (snapshotScn.equals(getScnFromOffsetMapByKey(offset, SourceInfo.SCN_KEY))) {
+                final Scn pendingTransactionStartScn = loadLegacyMinimumPendingTransactionStartScn(offset);
+                if (pendingTransactionStartScn != null && pendingTransactionStartScn.compareTo(snapshotScn) < 0) {
+                    snapshotScn = pendingTransactionStartScn;
+                }
+            }
+            else {
+                snapshotScn = null;
+            }
+        }
+        return builder.snapshotScn(snapshotScn).snapshotCommitScn(snapshotCommitScn);
+    }
+
+    private static Scn loadLegacyMinimumPendingTransactionStartScn(Map<String, ?> offset) {
+        final String encoded = readOffsetValue(offset, LEGACY_SNAPSHOT_PENDING_TRANSACTIONS_KEY, String.class);
+        if (encoded == null) {
+            return null;
+        }
+        return Arrays.stream(encoded.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(s -> Scn.valueOf(s.split(":", 2)[1]))
+                .min(Scn::compareTo)
+                .orElse(null);
     }
 
     /**
