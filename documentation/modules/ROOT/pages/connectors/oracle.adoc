@@ -2692,7 +2692,7 @@ The default value type will be numeric except if the column is a `TIMESTAMP WITH
 
 By default, the {prodname} Oracle connector provides several `CustomConverter` implementations specific to Oracle data types.
 These custom converters provide alternative mappings for specific data types based on the connector configuration.
-To add a `CustomConverter` to the connector, follow the instructions in the link:../development/converters.adoc[Custom Converters documentation].
+To add a `CustomConverter` to the connector, follow the instructions in the {link-prefix}:{link-custom-converters}#custom-converters[Custom Converters documentation].
 
 The {prodname} Oracle connector provides the following custom converters:
 
