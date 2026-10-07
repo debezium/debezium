@@ -5,18 +5,8 @@
  */
 package io.debezium.connector.oracle.logminer;
 
-import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,8 +16,6 @@ import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.oracle.AbstractStreamingAdapter;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
-import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningStrategy;
-import io.debezium.connector.oracle.OracleConnectorConfig.TransactionSnapshotBoundaryMode;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.OracleTaskContext;
@@ -39,8 +27,6 @@ import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.RelationalSnapshotChangeEventSource.RelationalSnapshotContext;
 import io.debezium.relational.history.HistoryRecordComparator;
-import io.debezium.util.HexConverter;
-import io.debezium.util.Strings;
 
 /**
  * An abstract base class for LogMiner streaming adapters.
@@ -75,6 +61,19 @@ public abstract class AbstractLogMinerStreamingAdapter
         return new LogMinerStreamingChangeEventSourceMetrics(taskContext, changeEventQueueMetrics, metadataProvider, connectorConfig, capturedTablesSupplier);
     }
 
+    /**
+     * Resolves the snapshot offset so that transactions in progress at the snapshot boundary are
+     * neither lost nor emitted twice:
+     * <ol>
+     * <li>Read the current SCN as {@code S0}.</li>
+     * <li>Read the oldest start SCN of the transactions in progress as {@code M}.</li>
+     * <li>Read the current SCN again as {@code S}, the SCN the snapshot is taken at.</li>
+     * </ol>
+     * Mining starts at {@code LEAST(S0, M)}, stored as the snapshot SCN. A transaction that commits
+     * after {@code S} and started before {@code S0} was still in progress when {@code M} was read,
+     * so its start is mined. A transaction that commits at or before {@code S}, stored as the
+     * snapshot commit SCN, is already part of the snapshot and is discarded by streaming.
+     */
     @Override
     public OracleOffsetContext determineSnapshotOffset(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> ctx,
                                                        OracleConnectorConfig connectorConfig,
@@ -82,33 +81,39 @@ public abstract class AbstractLogMinerStreamingAdapter
             throws SQLException {
 
         final Scn latestTableDdlScn = getLatestTableDdlScn(ctx, connection).orElse(null);
-        final String tableName = getTransactionTableName(connectorConfig);
+        final String transactionTableName = getTransactionTableName(connectorConfig);
 
-        final Map<String, Scn> pendingTransactions = new LinkedHashMap<>();
+        final Scn initialScn = getCurrentScn(latestTableDdlScn, connection);
+        final Optional<Scn> pendingTransactionStartScn = getMinimumPendingTransactionStartScn(connection, transactionTableName);
+        final Scn snapshotCommitScn = getCurrentScn(latestTableDdlScn, connection);
 
-        final Optional<Scn> currentScn;
-        if (isPendingTransactionSkip(connectorConfig)) {
-            currentScn = getCurrentScn(latestTableDdlScn, connection);
+        final Scn snapshotScn = pendingTransactionStartScn
+                .filter(startScn -> startScn.compareTo(initialScn) < 0)
+                .orElse(initialScn);
+
+        if (pendingTransactionStartScn.isEmpty()) {
+            LOGGER.info("\tFound no in-progress transactions.");
+        }
+        else if (snapshotScn.equals(pendingTransactionStartScn.get())) {
+            LOGGER.info("\tOldest in-progress transaction started at SCN {}.", snapshotScn);
         }
         else {
-            currentScn = getPendingTransactions(latestTableDdlScn, connection, pendingTransactions, tableName);
+            LOGGER.info("\tOldest in-progress transaction started at SCN {}, after the initial SCN {}.",
+                    pendingTransactionStartScn.get(), snapshotScn);
         }
+        LOGGER.info("\tSnapshot boundary resolved, mining starts at snapshot SCN {} and the snapshot is taken at snapshot commit SCN {}.",
+                snapshotScn, snapshotCommitScn);
 
-        if (currentScn.isEmpty()) {
-            throw new DebeziumException("Failed to resolve current SCN");
-        }
-
-        // The provided snapshot connection already has an in-progress transaction with a save point
-        // that prevents switching from a PDB to the root CDB and if invoking the LogMiner APIs on
-        // such a connection, the use of commit/rollback by LogMiner will drop/invalidate the save
-        // point as well. A separate connection is necessary to preserve the save point.
-        try (OracleConnection conn = new OracleConnection(connectorConfig, connection.config(), false)) {
-            if (!Strings.isNullOrEmpty(connectorConfig.getPdbName())) {
-                // The next stage cannot be run within the PDB, reset the connection to the CDB.
-                conn.resetSessionToCdb();
-            }
-            return determineSnapshotOffset(connectorConfig, conn, currentScn.get(), pendingTransactions, tableName);
-        }
+        // During the snapshot, the offset SCN is the SCN the snapshot is taken at. The first streaming
+        // run rewinds it to the snapshot SCN, after which it is the position where mining resumes.
+        return OracleOffsetContext.create()
+                .logicalName(connectorConfig)
+                .scn(snapshotCommitScn)
+                .snapshotScn(snapshotScn)
+                .snapshotCommitScn(snapshotCommitScn)
+                .transactionContext(new TransactionContext())
+                .incrementalSnapshotContext(new SignalBasedIncrementalSnapshotContext<>())
+                .build();
     }
 
     @Override
@@ -116,7 +121,7 @@ public abstract class AbstractLogMinerStreamingAdapter
         return offsetContext.getScn();
     }
 
-    private Optional<Scn> getCurrentScn(Scn latestTableDdlScn, OracleConnection connection) throws SQLException {
+    private Scn getCurrentScn(Scn latestTableDdlScn, OracleConnection connection) throws SQLException {
         final String query = "SELECT CURRENT_SCN FROM V$DATABASE";
 
         Scn currentScn;
@@ -124,178 +129,47 @@ public abstract class AbstractLogMinerStreamingAdapter
             currentScn = connection.queryAndMap(query, rs -> rs.next() ? Scn.valueOf(rs.getString(1)) : Scn.NULL);
         } while (areSameTimestamp(latestTableDdlScn, currentScn, connection));
 
-        return Optional.ofNullable(currentScn);
+        if (currentScn == null || currentScn.isNull()) {
+            throw new DebeziumException("Failed to resolve current SCN");
+        }
+        return currentScn;
     }
 
-    private Optional<Scn> getPendingTransactions(Scn latestTableDdlScn, OracleConnection connection,
-                                                 Map<String, Scn> transactions, String transactionTableName)
+    /**
+     * Reads the oldest start SCN of the transactions currently in progress.
+     *
+     * @param connection the database connection, should not be {@code null}
+     * @param transactionTableName the transaction view name, should not be {@code null}
+     * @return the oldest known start SCN, or empty if no transaction with a known start SCN is in progress
+     */
+    private Optional<Scn> getMinimumPendingTransactionStartScn(OracleConnection connection, String transactionTableName)
             throws SQLException {
-        final String query = "SELECT d.CURRENT_SCN, t.XID, t.START_SCN "
-                + "FROM V$DATABASE d "
-                + "LEFT OUTER JOIN " + transactionTableName + " t "
-                + "ON t.START_SCN < d.CURRENT_SCN ";
+        // If the archive logs do not contain the redo where a transaction started, Oracle reports a START_SCN
+        // of 0 for it, which would unintentionally cause mining to start from the beginning of time. Such
+        // transactions are excluded from the minimum and only counted.
+        final String query = "SELECT MIN(CASE WHEN START_SCN > 1 THEN START_SCN END), COUNT(CASE WHEN START_SCN <= 1 THEN 1 END) FROM "
+                + transactionTableName;
 
-        Scn currentScn = null;
-        do {
-            // Clear iterative state
-            currentScn = null;
-            transactions.clear();
-
-            try (Statement s = connection.connection().createStatement(); ResultSet rs = s.executeQuery(query)) {
-                while (rs.next()) {
-                    if (currentScn == null) {
-                        // Only need to set this once per iteration
-                        currentScn = Scn.valueOf(rs.getString(1));
-                    }
-                    final String pendingTxStartScn = rs.getString(3);
-                    if (!Strings.isNullOrEmpty(pendingTxStartScn)) {
-                        final String transactionId = HexConverter.convertToHexString(rs.getBytes(2));
-                        final Scn transactionStartScn = Scn.valueOf(pendingTxStartScn);
-                        // There is a use case where if the archive logs do not contain sufficient logs where the
-                        // transaction started, LogMiner will return a value of 0 as the START_SCN and this can
-                        // unintentionally cause starting from the beginning of time.
-                        if (transactionStartScn.compareTo(Scn.ONE) > 0) {
-                            // There is a pending transaction, capture state
-                            transactions.put(transactionId, transactionStartScn);
-                        }
-                        else {
-                            LOGGER.warn("Unable to determine the start SCN, transaction {} will not be included", transactionId);
-                        }
-                    }
-                }
-            }
-            catch (SQLException e) {
-                LOGGER.warn("Could not query the {} view: {}", transactionTableName, e.getMessage(), e);
-                throw e;
-            }
-
-        } while (areSameTimestamp(latestTableDdlScn, currentScn, connection));
-
-        for (Map.Entry<String, Scn> transaction : transactions.entrySet()) {
-            LOGGER.trace("\tPending Transaction '{}' started at SCN {}", transaction.getKey(), transaction.getValue());
-        }
-
-        return Optional.ofNullable(currentScn);
-    }
-
-    private OracleOffsetContext determineSnapshotOffset(OracleConnectorConfig connectorConfig,
-                                                        OracleConnection connection,
-                                                        Scn currentScn,
-                                                        Map<String, Scn> pendingTransactions,
-                                                        String transactionTableName)
-            throws SQLException {
-
-        if (isPendingTransactionSkip(connectorConfig)) {
-            LOGGER.info("\tNo in-progress transactions will be captured.");
-        }
-        else if (isPendingTransactionViewOnly(connectorConfig)) {
-            LOGGER.info("\tSkipping transaction logs for resolving snapshot offset, only using {}.", transactionTableName);
-        }
-        else {
-            LOGGER.info("\tConsulting {} and transaction logs for resolving snapshot offset.", transactionTableName);
-            getPendingTransactionsFromLogs(connection, currentScn, pendingTransactions);
-        }
-
-        if (!pendingTransactions.isEmpty()) {
-            for (Map.Entry<String, Scn> entry : pendingTransactions.entrySet()) {
-                LOGGER.info("\tFound in-progress transaction {}, starting at SCN {}", entry.getKey(), entry.getValue());
-            }
-        }
-        else if (!isPendingTransactionSkip(connectorConfig)) {
-            LOGGER.info("\tFound no in-progress transactions.");
-        }
-
-        return OracleOffsetContext.create()
-                .logicalName(connectorConfig)
-                .scn(currentScn)
-                .snapshotScn(currentScn)
-                .snapshotPendingTransactions(pendingTransactions)
-                .transactionContext(new TransactionContext())
-                .incrementalSnapshotContext(new SignalBasedIncrementalSnapshotContext<>())
-                .build();
-    }
-
-    protected Scn getOldestScnAvailableInLogs(OracleConnectorConfig config, OracleConnection connection) throws SQLException {
-        final Duration archiveLogRetention = config.getArchiveLogRetention();
-        final List<String> archiveLogDestinationNames = config.getArchiveDestinationNameResolver().getDestinationNames(connection);
-        return connection.queryAndMap(SqlUtils.oldestFirstChangeQuery(archiveLogRetention, archiveLogDestinationNames),
-                rs -> {
-                    if (rs.next()) {
-                        final String value = rs.getString(1);
-                        if (!Strings.isNullOrEmpty(value)) {
-                            return Scn.valueOf(value);
-                        }
-                    }
+        final Scn startScn;
+        try {
+            startScn = connection.queryAndMap(query, rs -> {
+                if (!rs.next()) {
                     return Scn.NULL;
-                });
-    }
-
-    protected List<LogFile> getOrderedLogsFromScn(OracleConnectorConfig config, Scn sinceScn, OracleConnection connection) throws SQLException {
-        final LogFileCollector collector = new LogFileCollector(config, connection);
-        return collector.getLogs(sinceScn).logFiles()
-                .stream()
-                .sorted(Comparator.comparing(LogFile::getSequence))
-                .collect(Collectors.toList());
-    }
-
-    protected void getPendingTransactionsFromLogs(OracleConnection connection, Scn currentScn, Map<String, Scn> pendingTransactions) throws SQLException {
-        final Scn oldestScn = getOldestScnAvailableInLogs(connectorConfig, connection);
-        final List<LogFile> logFiles = getOrderedLogsFromScn(connectorConfig, oldestScn, connection);
-        if (!logFiles.isEmpty()) {
-            try (var context = new LogMinerSessionContext(connection, LogMiningStrategy.ONLINE_CATALOG, connectorConfig.getLogMiningPathToDictionary())) {
-                context.addLogFiles(getMostRecentLogFilesForSearch(logFiles));
-                context.startSession(Scn.NULL, Scn.NULL, false);
-
-                LOGGER.info("\tQuerying transaction logs, please wait...");
-                connection.query("SELECT START_SCN, XID FROM V$LOGMNR_CONTENTS WHERE OPERATION_CODE=7 AND SCN >= " + currentScn + " AND START_SCN <= " + currentScn,
-                        rs -> {
-                            while (rs.next()) {
-                                final String transactionId = HexConverter.convertToHexString(rs.getBytes("XID"));
-                                final String startScnStr = rs.getString("START_SCN");
-                                if (!Strings.isNullOrBlank(startScnStr)) {
-                                    final Scn startScn = Scn.valueOf(rs.getString("START_SCN"));
-                                    if (!pendingTransactions.containsKey(transactionId)) {
-                                        LOGGER.info("\tTransaction '{}' started at SCN '{}'", transactionId, startScn);
-                                        pendingTransactions.put(transactionId, startScn);
-                                    }
-                                }
-                            }
-                        });
-            }
-            catch (Exception e) {
-                throw new DebeziumException("Failed to resolve snapshot offset", e);
-            }
-        }
-    }
-
-    protected List<LogFile> getMostRecentLogFilesForSearch(List<LogFile> allLogFiles) {
-        Map<Integer, List<LogFile>> recentLogsPerThread = new HashMap<>();
-        for (LogFile logFile : allLogFiles) {
-            if (!recentLogsPerThread.containsKey(logFile.getThread())) {
-                if (logFile.isCurrent()) {
-                    recentLogsPerThread.put(logFile.getThread(), new ArrayList<>());
-                    recentLogsPerThread.get(logFile.getThread()).add(logFile);
-                    final Optional<LogFile> maxArchiveLogFile = allLogFiles.stream()
-                            .filter(f -> logFile.getThread() == f.getThread() && logFile.getSequence().compareTo(f.getSequence()) > 0)
-                            .max(Comparator.comparing(LogFile::getSequence));
-                    maxArchiveLogFile.ifPresent(file -> recentLogsPerThread.get(logFile.getThread()).add(file));
                 }
-            }
+                final long unknownStartScnCount = rs.getLong(2);
+                if (unknownStartScnCount > 0) {
+                    LOGGER.warn("Unable to determine the start SCN of {} in-progress transaction(s), they will not be included", unknownStartScnCount);
+                }
+                final String value = rs.getString(1);
+                return value != null ? Scn.valueOf(value) : Scn.NULL;
+            });
+        }
+        catch (SQLException e) {
+            LOGGER.warn("Could not query the {} view: {}", transactionTableName, e.getMessage(), e);
+            throw e;
         }
 
-        final List<LogFile> logs = new ArrayList<>();
-        for (Map.Entry<Integer, List<LogFile>> entry : recentLogsPerThread.entrySet()) {
-            logs.addAll(entry.getValue());
-        }
-        return logs;
-    }
-
-    private boolean isPendingTransactionSkip(OracleConnectorConfig config) {
-        return config.getLogMiningTransactionSnapshotBoundaryMode() == TransactionSnapshotBoundaryMode.SKIP;
-    }
-
-    public boolean isPendingTransactionViewOnly(OracleConnectorConfig config) {
-        return config.getLogMiningTransactionSnapshotBoundaryMode() == TransactionSnapshotBoundaryMode.TRANSACTION_VIEW_ONLY;
+        return startScn.isNull() ? Optional.empty() : Optional.of(startScn);
     }
 
     /**
