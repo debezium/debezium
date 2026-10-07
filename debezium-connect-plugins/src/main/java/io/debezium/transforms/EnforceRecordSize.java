@@ -195,7 +195,6 @@ public class EnforceRecordSize<R extends ConnectRecord<R>> implements Transforma
     private double compressionRatio;
     private int minFieldSize;
     private Strategy strategy = Strategy.TRUNCATE;
-    private List<String> claimCheckColumns = List.of();
     private List<Predicate<String>> claimCheckColumnSelectors = List.of();
     private OversizedRecordStorage claimCheckStorage;
 
@@ -550,7 +549,6 @@ public class EnforceRecordSize<R extends ConnectRecord<R>> implements Transforma
             configureClaimCheck(config, props);
         }
         else {
-            this.claimCheckColumns = List.of();
             this.claimCheckColumnSelectors = List.of();
         }
     }
@@ -563,7 +561,7 @@ public class EnforceRecordSize<R extends ConnectRecord<R>> implements Transforma
         }
 
         List<String> configuredColumns = config.getList(CLAIM_CHECK_COLUMNS_CONF);
-        this.claimCheckColumns = configuredColumns.stream()
+        List<String> claimCheckColumns = configuredColumns.stream()
                 .filter(column -> !Strings.isNullOrBlank(column))
                 .map(String::trim)
                 .collect(Collectors.toList());
@@ -580,7 +578,8 @@ public class EnforceRecordSize<R extends ConnectRecord<R>> implements Transforma
             storage = Instantiator.getInstance(storageClass);
         }
         catch (IllegalArgumentException e) {
-            throw new ConfigException("Unable to instantiate claim-check storage class " + storageClass, e);
+            throw new ConfigException(CLAIM_CHECK_STORAGE_CLASS_CONF, storageClass,
+                    "Unable to instantiate claim-check storage class: " + e.getMessage());
         }
         if (!(storage instanceof OversizedRecordStorage oversizedRecordStorage)) {
             throw new ConfigException(CLAIM_CHECK_STORAGE_CLASS_CONF, storageClass,
@@ -600,7 +599,8 @@ public class EnforceRecordSize<R extends ConnectRecord<R>> implements Transforma
         }
         catch (RuntimeException e) {
             oversizedRecordStorage.close();
-            throw new ConfigException("Unable to configure claim-check storage class " + storageClass, e);
+            throw new ConfigException(CLAIM_CHECK_STORAGE_CLASS_CONF, storageClass,
+                    "Unable to configure claim-check storage class: " + e.getMessage());
         }
     }
 
