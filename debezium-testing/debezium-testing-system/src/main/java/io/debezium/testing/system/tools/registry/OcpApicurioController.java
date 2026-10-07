@@ -112,6 +112,8 @@ public class OcpApicurioController implements RegistryController {
                 .until(() -> !getRegistryDeployments(name).isEmpty());
 
         Deployment deployment = getRegistryDeployments(name).get(0);
+        patchProbeDelay(deployment, 60);
+        
         ocp.apps()
                 .deployments()
                 .inNamespace(project)
@@ -119,6 +121,22 @@ public class OcpApicurioController implements RegistryController {
                 .waitUntilCondition(WaitConditions::deploymentAvailableCondition, scaled(5), MINUTES);
 
         registry = registryOperation().withName(name).get();
+    }
+
+    private void patchProbeDelay(Deployment deployment, int delaySeconds) {
+        final var deploymentName = deployment.getMetadata().getName();
+        LOGGER.info("Patching liveness probe initialDelaySeconds to {} for deployment '{}'", delaySeconds, deploymentName);
+        ocp.apps().deployments().inNamespace(project).withName(deploymentName).edit(d -> {
+            d.getSpec().getTemplate().getSpec().getContainers().forEach(container -> {
+                if (container.getLivenessProbe() != null) {
+                    container.getLivenessProbe().setInitialDelaySeconds(delaySeconds);
+                }
+                if (container.getReadinessProbe() != null) {
+                    container.getReadinessProbe().setInitialDelaySeconds(delaySeconds);
+                }
+            });
+            return d;
+        });
     }
 
     private List<Deployment> getRegistryDeployments(String name) {
