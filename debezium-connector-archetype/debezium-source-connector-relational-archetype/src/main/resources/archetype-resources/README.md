@@ -92,7 +92,7 @@ The skeleton compiles, but emits no events until you fill in the steps below. Do
 - **`${connectorName}SourceConnector`** — the one-task-per-connector pattern is correct for almost every source.
 - **`${connectorName}ConnectorTask.start(...)`** — the wiring is standard and matches what the core relational connectors do: queue and queue provider, signal processor, heartbeat, error handler with retry carry-over, bean registry, startup validation (offset and guardrail), and resource cleanup in `doStop`. You generally only swap in different *inputs* (e.g., a richer `Partition.Provider`).
 - **`${connectorName}Partition`** — fine as-is unless your source has multiple resumable streams.
-- **`${connectorName}ErrorHandler`** — the passthrough behavior is correct unless your source has specific error categories that should be retried instead of fatal.
+- **`${connectorName}ErrorHandler`** — it retries `IOException` and `SQLException`, which covers a lost JDBC connection. Extend it only if your source has other error categories that should be retried, or permanent ones that should not.
 - **`Module`** — the version constant is wired from your project's POM at generation time. You only edit `name()` if you want a different SLF4J/JMX context name.
 
 ## Build and run
