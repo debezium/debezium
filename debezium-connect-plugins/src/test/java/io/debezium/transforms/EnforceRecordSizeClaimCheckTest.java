@@ -61,6 +61,30 @@ class EnforceRecordSizeClaimCheckTest {
     }
 
     @Test
+    void shouldReportStorageInstantiationFailureAsConfigurationError() {
+        Map<String, Object> config = claimCheckConfig("payload");
+        config.put(EnforceRecordSize.CLAIM_CHECK_STORAGE_CLASS_CONF, "io.debezium.storage.MissingStorage");
+
+        assertThatThrownBy(() -> transform.configure(config))
+                .isInstanceOf(org.apache.kafka.common.config.ConfigException.class)
+                .hasMessageContaining("Invalid value io.debezium.storage.MissingStorage for configuration "
+                        + EnforceRecordSize.CLAIM_CHECK_STORAGE_CLASS_CONF)
+                .hasMessageContaining("Unable to instantiate claim-check storage class:");
+    }
+
+    @Test
+    void shouldReportStorageConfigurationFailureAndCloseStorage() {
+        RecordingStorage.failConfigure = true;
+
+        assertThatThrownBy(() -> transform.configure(claimCheckConfig("payload")))
+                .isInstanceOf(org.apache.kafka.common.config.ConfigException.class)
+                .hasMessageContaining("Invalid value " + RecordingStorage.class.getName() + " for configuration "
+                        + EnforceRecordSize.CLAIM_CHECK_STORAGE_CLASS_CONF)
+                .hasMessageContaining("Unable to configure claim-check storage class: invalid storage configuration");
+        assertThat(RecordingStorage.closed).isTrue();
+    }
+
+    @Test
     void shouldStoreCompleteRecordBeforeReplacingConfiguredColumn() throws Exception {
         transform.configure(claimCheckConfig("inventory.customers.payload"));
         String payload = "complete-value-" + "x".repeat(5_000);
@@ -411,6 +435,7 @@ class EnforceRecordSizeClaimCheckTest {
 
         private static final List<OversizedRecord> records = new ArrayList<>();
         private static boolean failWrites;
+        private static boolean failConfigure;
         private static boolean returnNullReference;
         private static boolean closed;
         private static String configuredBasePath;
@@ -418,6 +443,7 @@ class EnforceRecordSizeClaimCheckTest {
         static void reset() {
             records.clear();
             failWrites = false;
+            failConfigure = false;
             returnNullReference = false;
             closed = false;
             configuredBasePath = null;
@@ -425,6 +451,9 @@ class EnforceRecordSizeClaimCheckTest {
 
         @Override
         public void configure(Configuration config) {
+            if (failConfigure) {
+                throw new IllegalArgumentException("invalid storage configuration");
+            }
             configuredBasePath = config.getString("base.path");
         }
 
