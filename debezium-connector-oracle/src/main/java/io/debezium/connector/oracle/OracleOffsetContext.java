@@ -72,7 +72,7 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
      * discarded by streaming. It is persisted until every redo thread has committed past it, after
      * which no such transaction can be mined again.
      */
-    private final Scn snapshotCommitScn;
+    private Scn snapshotCommitScn;
 
     private OracleOffsetContext(OracleConnectorConfig connectorConfig, Scn scn, Long scnIndex, CommitScn commitScn, String lcrPosition,
                                 Scn snapshotScn, Scn snapshotCommitScn, SnapshotType snapshot,
@@ -235,12 +235,18 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
             // XStream and OpenLogReplicator only track the snapshot SCN, so it can be present while
             // the snapshot commit SCN is null. For LogMiner, a null snapshot commit SCN means that
             // the snapshot SCN has been retired as well, because the snapshot SCN is retired before
-            // the snapshot commit SCN is retired.
+            // or together with the snapshot commit SCN.
             if (!snapshotScn.isNull()) {
                 result.put(SNAPSHOT_SCN_KEY, snapshotScn.toString());
             }
         }
-        else if (!isSnapshotCommitScnRetired()) {
+        else if (isSnapshotCommitScnRetired()) {
+            // Every redo thread has committed past the snapshot, so nothing mined from now on can be
+            // part of it. The snapshot SCN cannot be needed any longer either.
+            retireSnapshotScn();
+            retireSnapshotCommitScn();
+        }
+        else {
             result.put(SNAPSHOT_COMMIT_SCN_KEY, snapshotCommitScn.toString());
             if (!snapshotScn.isNull()) {
                 result.put(SNAPSHOT_SCN_KEY, snapshotScn.toString());
@@ -332,6 +338,14 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
      */
     public void retireSnapshotScn() {
         this.snapshotScn = Scn.NULL;
+    }
+
+    /**
+     * Retires the snapshot commit SCN once every redo thread has committed past it, after which no
+     * transaction that is part of the snapshot can be mined again.
+     */
+    private void retireSnapshotCommitScn() {
+        this.snapshotCommitScn = Scn.NULL;
     }
 
     /**
