@@ -4385,7 +4385,6 @@ Set the value to `0` to use the JDBC driver's default fetch size.
 
 See xref:oracle-transaction-metadata[Transaction Metadata] for additional details.
 
-ifdef::community[]
 |[[oracle-property-log-mining-read-only]]<<oracle-property-log-mining-read-only, `+log.mining.read.only+`>>
 |`false`
 |When set to `true`, the connector does not attempt to flush the LGWR buffer to disk, allowing it to connect to read-only databases such as logical standbys or physical standbys.
@@ -4420,7 +4419,6 @@ When set, the connector uses the primary database (configured via `database.host
 |No default
 |Specifies the full JDBC connection string to the secondary database used for streaming.
 Use this as an alternative to `secondary.hostname`, `secondary.port`, and `secondary.dbname` when the connection string requires additional parameters.
-endif::community[]
 
 |[[oracle-property-log-mining-strategy]]<<oracle-property-log-mining-strategy, `+log.mining.strategy+`>>
 |`online_catalog`
