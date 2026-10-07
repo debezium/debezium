@@ -288,7 +288,7 @@ public class MongoDbConnectorConfigTest {
         private MongoDbConnectorConfig connectionConfig;
 
         @Override
-        public void validateConnection(Configuration config, ConfigValue connectionStringValidation) {
+        public void validateConnection(Configuration config, ConfigValue connectionStringValidation, ConfigValue signalDataCollectionValidation) {
             // Exercise configuration construction without opening a MongoDB connection.
             connectionConfig = new MongoDbConnectionContext(config).getConnectorConfig();
             connectionStringValidation.addErrorMessage(CONNECTION_ERROR);
