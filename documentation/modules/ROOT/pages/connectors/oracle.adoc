@@ -1215,10 +1215,10 @@ When {prodname} Oracle connector is configured to capture changes from a downstr
 
 To use the connector with a downstream mining database, you must first register transaction logs with that database.
 
-When Oracle Remove File Server (RFS) replicates changes, the replication should happen automatically when using a real-time downstream mining configuration. 
+When Oracle Remove File Server (RFS) replicates changes, the replication should happen automatically when using a real-time downstream mining configuration.
 {prodname} does not perform any log registration.
 
-If a log fails to register and a gap in log sequences occurs, the {prodname} connector pauses capture. A database administrator must review the registered logs and register any missing logs to close the gap. 
+If a log fails to register and a gap in log sequences occurs, the {prodname} connector pauses capture. A database administrator must review the registered logs and register any missing logs to close the gap.
 Typically, this should be necessary only during the initial set up and synchronization with the primary.
 
 [[oracle-logminer-query-modes]]
@@ -3505,6 +3505,9 @@ To enable the connector to capture from the new primary, edit the database hostn
 [id="configuring-the-debezium-oracle-connector-to-capture-events-from-a-physical-standby"]
 ==== Configuring the {prodname} Oracle connector to capture events from a physical standby
 
+The {prodname} Oracle connector can stream changes directly from a physical standby database while using the primary for snapshots and metadata queries.
+This reduces the load on the primary by offloading LogMiner operations to the standby.
+
 ifdef::community[]
 [NOTE]
 ====
@@ -3512,8 +3515,17 @@ The ability to use the connector with a physical standby is in an incubating sta
 ====
 endif::community[]
 
-The {prodname} Oracle connector can stream changes directly from a physical standby database while using the primary for snapshots and metadata queries.
-This reduces the load on the primary by offloading LogMiner operations to the standby.
+ifdef::product[]
+[IMPORTANT]
+====
+The ability for the {prodname} Oracle connector to ingest changes from a read-only physical standby database is a Technology Preview feature.
+Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
+Red{nbsp}Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+
+For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+endif::product[]
 
 .Prerequisites
 
@@ -3563,17 +3575,6 @@ The flush process requires that the user account through which the connector acc
 However, a logical stand-by database typically permits read-only access, preventing the connector from writing to the database.
 You can modify the connector configuration to enable the connector to capture events from a logical standby, or the DBA can create a new writable tablespace in which the connector can store the flush table.
 
-ifdef::product[]
-[IMPORTANT]
-====
-The ability for the {prodname} Oracle connector to ingest changes from a read-only logical standby database is a Technology Preview feature.
-Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
-Red{nbsp}Hat does not recommend using them in production.
-These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
-
-For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
-====
-endif::product[]
 
 ifdef::community[]
 [WARNING]
@@ -5904,7 +5905,7 @@ To configure the connector to use OpenLogReplicator, you must apply specific dat
 .Prerequisites
 
 * Download and compile OpenLogReplicator for your database environment.
-* OpenLogReplicator is installed with direct access to the archive and redo log files. 
+* OpenLogReplicator is installed with direct access to the archive and redo log files.
 This does not necessarily require installation on the physical database server if the archive and redo logs can be accessed via some shared filesystem.
 
 === How OpenLogReplicator works
