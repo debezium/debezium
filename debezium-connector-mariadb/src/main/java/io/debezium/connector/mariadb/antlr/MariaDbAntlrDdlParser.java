@@ -21,7 +21,6 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import io.debezium.annotation.VisibleForTesting;
 import io.debezium.antlr.AntlrDdlParser;
 import io.debezium.antlr.AntlrDdlParserListener;
-import io.debezium.antlr.CaseChangingCharStream;
 import io.debezium.antlr.DataTypeResolver;
 import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
 import io.debezium.connector.binlog.jdbc.BinlogSystemVariables;
@@ -83,24 +82,7 @@ public class MariaDbAntlrDdlParser extends AntlrDdlParser<MariaDBLexer, MariaDBP
     @Override
     protected MariaDBLexer createNewLexerInstance(CharStream charStreams) {
         final var lexer = new MariaDBLexer(charStreams);
-        if (isNoBackslashEscapesMode()) {
-            // Keep the upstream grammar unchanged until it supports SQL modes. It always treats
-            // backslashes as escapes, so hide them from lookahead within string tokens only.
-            // Preserve token text and positions for schema history and error reporting.
-            lexer.setInputStream(new CaseChangingCharStream(charStreams, true) {
-                @Override
-                public int LA(int i) {
-                    final int character = super.LA(i);
-                    if (character == '\\' && lexer._tokenStartCharIndex >= 0) {
-                        final var prefix = getText(Interval.of(lexer._tokenStartCharIndex, lexer._tokenStartCharIndex + 1));
-                        if (prefix.startsWith("'") || prefix.startsWith("\"") || prefix.equalsIgnoreCase("N'")) {
-                            return ' ';
-                        }
-                    }
-                    return character;
-                }
-            });
-        }
+        lexer.setNoBackslashEscapes(isNoBackslashEscapesMode());
         return lexer;
     }
 
