@@ -157,18 +157,6 @@
                     </argLine>
                 </configuration>
             </plugin>
-            <plugin>
-                <!--
-                    Exclude neo4j IT from the default test compilation. the profile neo4j-source-it re-includes it.
-                -->
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <testExcludes>
-                        <testExclude>**/Neo4jDebeziumConverterIT.java</testExclude>
-                    </testExcludes>
-                </configuration>
-            </plugin>
         </plugins>
     </build>
 
@@ -197,12 +185,22 @@
             <build>
                 <plugins>
                     <plugin>
-                        <!-- Re-include the IT that the default build excludes from test compilation. -->
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-compiler-plugin</artifactId>
-                        <configuration>
-                            <testExcludes combine.self="override"/>
-                        </configuration>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>build-helper-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>add-neo4j-it-source</id>
+                                <phase>generate-test-sources</phase>
+                                <goals>
+                                    <goal>add-test-source</goal>
+                                </goals>
+                                <configuration>
+                                    <sources>
+                                        <source>src/test/java-neo4j-it</source>
+                                    </sources>
+                                </configuration>
+                            </execution>
+                        </executions>
                     </plugin>
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>

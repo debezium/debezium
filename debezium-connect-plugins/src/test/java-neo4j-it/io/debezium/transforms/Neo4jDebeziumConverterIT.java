@@ -43,9 +43,9 @@ import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
  * End-to-end integration tests for {@link Neo4jDebeziumConverter} against a <em>real</em> Neo4j source: a Neo4j
  * Enterprise container with CDC enabled, streamed through the official Neo4j Kafka source connector via the Debezium
  * embedded engine. Each consumed CDC {@link Struct} is fed to the SMT and the emitted Debezium envelope is asserted.
- * This IT is <strong>disabled by default</strong>: it is not compiled or run unless the {@code neo4j-source-it}
- * Maven profile is active (that profile adds the Neo4j connector + testcontainers dependencies and re-includes
- * this class in test compilation, and runs it).
+ * This IT is <strong>disabled by default</strong>: it lives in the dedicated {@code src/test/java-neo4j-it} source
+ * directory, which is added as a test-source root only when the {@code neo4j-source-it} Maven profile is active
+ * (that profile adds the Neo4j connector + testcontainers dependencies and re-includes this class in test compilation, and runs it).
  * The main reason to disable it by default is that <strong>the connector isn't on Maven Central</strong>, org.neo4j.connectors.kafka:neo4j-kafka-connect-neo4j:5.5.4 is installed by hand into local .m2 from a GitHub release (that's why the profile exists and the IT is testExcluded).
  * A default build would simply fail to resolve the dependency on any machine or CI runner that hasn't run the manual install:install-file step.
  * To run manually:
