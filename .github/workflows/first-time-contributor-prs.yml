@@ -51,11 +51,13 @@ jobs:
             # List open PRs from first-time contributors
             PRS=$(gh api --paginate "repos/${REPO}/pulls?state=open&per_page=100" \
               --jq '.[] | select(.author_association == "FIRST_TIME_CONTRIBUTOR") | {number: .number, url: .html_url, title: .title, head_sha: .head.sha}' \
-              2>/dev/null || true)
+              2>&1) || { echo "  Warning: failed to fetch PRs for ${REPO}: ${PRS}"; continue; }
 
             if [ -z "$PRS" ]; then
               continue
             fi
+
+            echo "  Found $(echo "$PRS" | wc -l) first-time contributor PR(s)"
 
             # For each first-time contributor PR check if CI has been triggered
             while IFS= read -r PR_JSON; do
@@ -69,7 +71,7 @@ jobs:
               # Check if any workflow run for this commit is waiting for approval
               ACTION_REQUIRED=$(gh api "repos/${REPO}/actions/runs?event=pull_request&head_sha=${HEAD_SHA}" \
                 --jq '[.workflow_runs[] | select(.conclusion == "action_required")] | length' \
-                2>/dev/null || echo "0")
+                2>&1) || { echo "  Warning: failed to fetch action runs for PR #${PR_NUMBER}: ${ACTION_REQUIRED}"; ACTION_REQUIRED="0"; }
 
               if [ "$ACTION_REQUIRED" != "0" ]; then
                 echo "  PR #${PR_NUMBER} in ${REPO} is waiting for CI approval: ${PR_URL}"
