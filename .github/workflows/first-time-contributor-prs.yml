@@ -5,6 +5,11 @@ on:
     - cron: "0 */4 * * *"
   workflow_dispatch:
 
+env:
+  # Space-separated list of debezium org repositories to skip (without the org prefix).
+  IGNORED_REPOS: >-
+    debezium-design-documents
+
 jobs:
   check-first-time-contributor-prs:
     name: "Find first-time contributor PRs awaiting CI"
@@ -17,11 +22,30 @@ jobs:
         run: |
           PR_LIST=""
 
+          # Build ignored repos list from env var (space-separated repo names)
+          IGNORED_REPOS=()
+          for repo in $IGNORED_REPOS; do
+            IGNORED_REPOS+=("debezium/${repo}")
+          done
+          echo "Ignoring repositories: ${IGNORED_REPOS[*]:-none}"
+
+          is_ignored() {
+            local repo="$1"
+            for ignored in "${IGNORED_REPOS[@]:-}"; do
+              [ "$repo" = "$ignored" ] && return 0
+            done
+            return 1
+          }
+
           # Fetch all non-archived public repositories of the debezium organization
           REPOS=$(gh api --paginate "orgs/debezium/repos?type=public" \
             --jq '.[] | select(.archived == false) | .full_name')
 
           for REPO in $REPOS; do
+            if is_ignored "$REPO"; then
+              echo "Skipping ignored repository: $REPO"
+              continue
+            fi
             echo "Checking repository: $REPO"
 
             # List open PRs from first-time contributors
@@ -42,12 +66,13 @@ jobs:
               PR_TITLE=$(echo "$PR_JSON" | jq -r '.title')
               HEAD_SHA=$(echo "$PR_JSON" | jq -r '.head_sha')
 
-              # Get check runs for the head commit
-              CHECK_COUNT=$(gh api "repos/${REPO}/commits/${HEAD_SHA}/check-runs" \
-                --jq '.total_count' 2>/dev/null || echo "0")
+              # Check if any workflow run for this commit is waiting for approval
+              ACTION_REQUIRED=$(gh api "repos/${REPO}/actions/runs?event=pull_request&head_sha=${HEAD_SHA}" \
+                --jq '[.workflow_runs[] | select(.conclusion == "action_required")] | length' \
+                2>/dev/null || echo "0")
 
-              if [ "$CHECK_COUNT" = "0" ]; then
-                echo "  PR #${PR_NUMBER} in ${REPO} has no CI runs yet: ${PR_URL}"
+              if [ "$ACTION_REQUIRED" != "0" ]; then
+                echo "  PR #${PR_NUMBER} in ${REPO} is waiting for CI approval: ${PR_URL}"
                 PR_LIST="${PR_LIST}\n- [${REPO} #${PR_NUMBER}](${PR_URL}): ${PR_TITLE}"
               fi
             done < <(echo "$PRS" | jq -c '.')
