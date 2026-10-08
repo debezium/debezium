@@ -1037,7 +1037,6 @@ In the example that follows, the Kafka Connect custom resource is configured to 
 * A JDBC driver that is required to connect to an Oracle or Db2 sink database.
 You can omit this entry for other sink destinations.
 +
-.A `dbz-jdbc-connect.yaml` file that defines a `KafkaConnect` custom resource that includes a {prodname} connector
 [source,yaml,subs="+attributes"]
 ----
 apiVersion: {KafkaConnectApiVersion}
@@ -1121,7 +1120,6 @@ The connector artifacts that you listed in the configuration are available in th
 +
 For example, create the following `KafkaConnector` CR, and save it as `orders-to-postgresql-jdbc-connector.yaml`
 +
-.`orders-to-postgresql-jdbc-connector.yaml` file that defines the `KafkaConnector` custom resource for a {prodname} connector
 [source,yaml,subs="+attributes"]
 ----
 apiVersion: kafka.strimzi.io/v1beta2
