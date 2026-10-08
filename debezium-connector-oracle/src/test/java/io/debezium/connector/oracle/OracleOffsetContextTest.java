@@ -91,7 +91,7 @@ public class OracleOffsetContextTest {
         assertThat(writeValues.get(SourceInfo.SCN_KEY)).isEqualTo("745688898023");
         assertThat(writeValues.get(SourceInfo.COMMIT_SCN_KEY)).isEqualTo("745688898024:1:");
         assertThat(writeValues.get(OracleOffsetContext.SNAPSHOT_COMMIT_SCN_KEY)).isNull();
-        assertThat(writeValues.get(OracleOffsetContext.SNAPSHOT_SCN_KEY)).isNull();
+        assertThat(writeValues.get("snapshot_scn")).isNull();
 
         // Simulate reloading of Debezium 1.9 values
         offsetContext = (OracleOffsetContext) offsetLoader.load(writeValues);
@@ -101,36 +101,49 @@ public class OracleOffsetContextTest {
         assertThat(writeValues.get(SourceInfo.SCN_KEY)).isEqualTo("745688898023");
         assertThat(writeValues.get(SourceInfo.COMMIT_SCN_KEY)).isEqualTo("745688898024:1:");
         assertThat(writeValues.get(OracleOffsetContext.SNAPSHOT_COMMIT_SCN_KEY)).isNull();
-        assertThat(writeValues.get(OracleOffsetContext.SNAPSHOT_SCN_KEY)).isNull();
+        assertThat(writeValues.get("snapshot_scn")).isNull();
     }
 
     @Test
     @FixFor("debezium/dbz#2779")
-    public void shouldRoundTripSnapshotScnAndSnapshotCommitScn() throws Exception {
+    public void shouldRoundTripSnapshotCommitScn() throws Exception {
         final Map<String, Object> offsetValues = new HashMap<>();
-        offsetValues.put(SourceInfo.SCN_KEY, "120");
-        offsetValues.put(OracleOffsetContext.SNAPSHOT_SCN_KEY, "100");
+        offsetValues.put(SourceInfo.SCN_KEY, "100");
         offsetValues.put(OracleOffsetContext.SNAPSHOT_COMMIT_SCN_KEY, "120");
 
         final OracleOffsetContext offsetContext = (OracleOffsetContext) offsetLoader.load(offsetValues);
-        assertThat(offsetContext.getSnapshotScn()).isEqualTo(Scn.valueOf(100));
+        assertThat(offsetContext.getScn()).isEqualTo(Scn.valueOf(100));
         assertThat(offsetContext.getSnapshotCommitScn()).isEqualTo(Scn.valueOf(120));
+        assertThat(offsetContext.getSnapshotAsOfScn()).isEqualTo(Scn.valueOf(120));
+        assertThat(offsetContext.getEventScn()).isEqualTo(Scn.valueOf(120));
         assertThat(offsetContext.isCommitIncludedInSnapshot(Scn.valueOf(120))).isTrue();
         assertThat(offsetContext.isCommitIncludedInSnapshot(Scn.valueOf(121))).isFalse();
 
         final Map<String, ?> writeValues = offsetContext.getOffset();
-        assertThat(writeValues.get(OracleOffsetContext.SNAPSHOT_SCN_KEY)).isEqualTo("100");
+        assertThat(writeValues.get(SourceInfo.SCN_KEY)).isEqualTo("100");
         assertThat(writeValues.get(OracleOffsetContext.SNAPSHOT_COMMIT_SCN_KEY)).isEqualTo("120");
+        assertThat(writeValues.get("snapshot_scn")).isNull();
     }
 
     @Test
     @FixFor("debezium/dbz#2779")
-    public void shouldRetireSnapshotScnAndSnapshotCommitScnSeparately() throws Exception {
-        // Streaming has rewound the offset SCN, but thread 1 has not committed past the snapshot yet.
+    public void shouldUseOffsetScnAsSnapshotAsOfScnWithoutSnapshotCommitScn() throws Exception {
+        final Map<String, Object> offsetValues = new HashMap<>();
+        offsetValues.put(SourceInfo.SCN_KEY, "100");
+
+        final OracleOffsetContext offsetContext = (OracleOffsetContext) offsetLoader.load(offsetValues);
+        assertThat(offsetContext.getSnapshotCommitScn()).isEqualTo(Scn.NULL);
+        assertThat(offsetContext.getSnapshotAsOfScn()).isEqualTo(Scn.valueOf(100));
+        assertThat(offsetContext.getEventScn()).isEqualTo(Scn.valueOf(100));
+        assertThat(offsetContext.isCommitIncludedInSnapshot(Scn.valueOf(100))).isFalse();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2779")
+    public void shouldRetireSnapshotCommitScnOnceEveryRedoThreadCommittedPastIt() throws Exception {
+        // Thread 1 has not committed past the snapshot yet.
         OracleOffsetContext offsetContext = loadSnapshotBoundaryOffset("700:1:");
-        offsetContext.retireSnapshotScn();
         Map<String, ?> writeValues = offsetContext.getOffset();
-        assertThat(writeValues.get(OracleOffsetContext.SNAPSHOT_SCN_KEY)).isNull();
         assertThat(writeValues.get(OracleOffsetContext.SNAPSHOT_COMMIT_SCN_KEY)).isEqualTo("800");
 
         // Thread 2 has not committed past the snapshot yet.
@@ -141,33 +154,41 @@ public class OracleOffsetContextTest {
         // Every redo thread has committed past the snapshot.
         offsetContext = loadSnapshotBoundaryOffset("900:1:,950:2:");
         writeValues = offsetContext.getOffset();
-        assertThat(writeValues.get(OracleOffsetContext.SNAPSHOT_SCN_KEY)).isNull();
         assertThat(writeValues.get(OracleOffsetContext.SNAPSHOT_COMMIT_SCN_KEY)).isNull();
+        assertThat(offsetContext.getSnapshotCommitScn()).isEqualTo(Scn.NULL);
     }
 
     @Test
     @FixFor("debezium/dbz#2779")
-    public void shouldLoadSnapshotScnsFromOffsetsWithoutSnapshotCommitScn() throws Exception {
-        // The snapshot completion offset still records the transactions in progress at the snapshot.
+    public void shouldLoadLegacySnapshotScnAsSnapshotCommitScn() throws Exception {
+        // The snapshot completion offset still records the transactions in progress at the snapshot,
+        // and its offset SCN is still the SCN the snapshot was taken at.
         Map<String, Object> offsetValues = new HashMap<>();
         offsetValues.put(SourceInfo.SCN_KEY, "100");
-        offsetValues.put(OracleOffsetContext.SNAPSHOT_SCN_KEY, "100");
+        offsetValues.put("snapshot_scn", "100");
         offsetValues.put("snapshot_pending_tx", "abc:95,def:90");
 
         OracleOffsetContext offsetContext = (OracleOffsetContext) offsetLoader.load(offsetValues);
-        assertThat(offsetContext.getSnapshotScn()).isEqualTo(Scn.valueOf(90));
+        assertThat(offsetContext.getScn()).isEqualTo(Scn.valueOf(89));
         assertThat(offsetContext.getSnapshotCommitScn()).isEqualTo(Scn.valueOf(100));
+
+        Map<String, ?> writeValues = offsetContext.getOffset();
+        assertThat(writeValues.get(SourceInfo.SCN_KEY)).isEqualTo("89");
+        assertThat(writeValues.get(OracleOffsetContext.SNAPSHOT_COMMIT_SCN_KEY)).isEqualTo("100");
+        assertThat(writeValues.get("snapshot_scn")).isNull();
+        assertThat(writeValues.get("snapshot_pending_tx")).isNull();
 
         // No transaction was in progress at the snapshot.
         offsetValues.remove("snapshot_pending_tx");
         offsetContext = (OracleOffsetContext) offsetLoader.load(offsetValues);
-        assertThat(offsetContext.getSnapshotScn()).isEqualTo(Scn.valueOf(100));
+        assertThat(offsetContext.getScn()).isEqualTo(Scn.valueOf(100));
         assertThat(offsetContext.getSnapshotCommitScn()).isEqualTo(Scn.valueOf(100));
 
         // The offset SCN is already the streaming resume position.
         offsetValues.put(SourceInfo.SCN_KEY, "89");
+        offsetValues.put("snapshot_pending_tx", "abc:95,def:90");
         offsetContext = (OracleOffsetContext) offsetLoader.load(offsetValues);
-        assertThat(offsetContext.getSnapshotScn()).isEqualTo(Scn.NULL);
+        assertThat(offsetContext.getScn()).isEqualTo(Scn.valueOf(89));
         assertThat(offsetContext.getSnapshotCommitScn()).isEqualTo(Scn.valueOf(100));
     }
 
@@ -193,7 +214,6 @@ public class OracleOffsetContextTest {
         final Map<String, Object> offsetValues = new HashMap<>();
         offsetValues.put(SourceInfo.SCN_KEY, "790");
         offsetValues.put(SourceInfo.COMMIT_SCN_KEY, commitScn);
-        offsetValues.put(OracleOffsetContext.SNAPSHOT_SCN_KEY, "780");
         offsetValues.put(OracleOffsetContext.SNAPSHOT_COMMIT_SCN_KEY, "800");
         return (OracleOffsetContext) offsetLoader.load(offsetValues);
     }

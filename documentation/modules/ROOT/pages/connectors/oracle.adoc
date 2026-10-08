@@ -6570,9 +6570,9 @@ The {prodname} Oracle connector does not rely on this option to function, and th
 The {prodname} Oracle connector maintains two critical values in the offsets, a field named `scn` and another named `commit_scn`.
 The `scn` field is a string that represents the low-watermark starting position the connector used when capturing changes.
 +
-After an initial snapshot, the offsets can temporarily contain two more fields, `snapshot_scn` and `snapshot_commit_scn`.
-The connector uses `snapshot_scn` to start mining at the oldest transaction that was in progress when the snapshot was taken, and `snapshot_commit_scn` to skip the transactions that the snapshot already captured.
-It removes `snapshot_scn` once streaming records its first position, and `snapshot_commit_scn` once every redo thread has committed changes after the snapshot.
+After an initial snapshot, the `scn` field already points before the oldest transaction that was in progress when the snapshot was taken, so that the connector mines such transactions in full.
+The offsets then temporarily contain one more field, `snapshot_commit_scn`, the SCN the snapshot was taken at, which the connector uses to skip the transactions that the snapshot already captured.
+It removes `snapshot_commit_scn` once every redo thread has committed changes after the snapshot.
 
 . Find out the name of the topic that contains the connector offsets.
 This is configured based on the value set as the  `offset.storage.topic` configuration property.

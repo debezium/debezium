@@ -122,7 +122,6 @@ public class OpenLogReplicatorAdapter extends AbstractStreamingAdapter<OpenLogRe
         return OracleOffsetContext.create()
                 .logicalName(connectorConfig)
                 .scn(currentScn)
-                .snapshotScn(currentScn)
                 .transactionContext(new TransactionContext())
                 .incrementalSnapshotContext(new SignalBasedIncrementalSnapshotContext<>())
                 .build();

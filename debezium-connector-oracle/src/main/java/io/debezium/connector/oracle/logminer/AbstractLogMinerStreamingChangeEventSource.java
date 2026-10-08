@@ -200,28 +200,12 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             logOnlineRedoLogSizes();
 
             final Scn offsetScn = getOffsetContext().getScn();
-            final Scn snapshotScn = getOffsetContext().getSnapshotScn();
             final Scn firstScn = getFirstScnAvailableInLogs();
 
-            final Scn snapshotCommitScn = getOffsetContext().getSnapshotCommitScn();
-            if (!snapshotScn.isNull() && offsetScn.compareTo(snapshotCommitScn) == 0) {
-                // This is the initial run of the streaming change event source, and the offset SCN is still the
-                // SCN the snapshot was taken at. Mining must start at the snapshot SCN instead, the start of the
-                // oldest transaction that was still pending when the snapshot was taken.
-                Scn startScn = snapshotScn;
-                if (startScn.compareTo(firstScn) < 0) {
-                    LOGGER.warn("Transactions were still ongoing while snapshot was taken, but are no longer completely " +
-                            "recorded in the archive logs. Events will be lost. Oldest SCN in logs = {}, snapshot SCN = {}",
-                            firstScn, snapshotScn);
-                    startScn = firstScn;
-                }
-                LOGGER.info("Resetting start SCN from {} (snapshot commit SCN) to {} (snapshot SCN).", offsetScn, startScn);
-                // The offset SCN is an exclusive lower bound, and from now on it is the position where mining resumes.
-                getOffsetContext().setScn(startScn.subtract(Scn.ONE));
-                getOffsetContext().retireSnapshotScn();
-            }
-
-            // Fail-fast check: makes sure the offset SCN is still available in the logs
+            // Fail-fast check: makes sure the offset SCN is still available in the logs. After the initial
+            // snapshot, the offset SCN is just before the start of the oldest transaction that was in progress
+            // when the snapshot was taken, so this also fails when that transaction can no longer be mined in
+            // full, rather than silently losing its changes.
             if (offsetScn.compareTo(firstScn.subtract(Scn.ONE)) < 0) {
                 // offsetScn is the exclusive lower bound, so must be >= (firstScn - 1)
                 throw new DebeziumException("Online REDO LOG files or archive log files do not contain the offset scn " +

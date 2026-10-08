@@ -69,10 +69,11 @@ public abstract class AbstractLogMinerStreamingAdapter
      * <li>Read the oldest start SCN of the transactions in progress as {@code M}.</li>
      * <li>Read the current SCN again as {@code S}, the SCN the snapshot is taken at.</li>
      * </ol>
-     * Mining starts at {@code LEAST(S0, M)}, stored as the snapshot SCN. A transaction that commits
-     * after {@code S} and started before {@code S0} was still in progress when {@code M} was read,
-     * so its start is mined. A transaction that commits at or before {@code S}, stored as the
-     * snapshot commit SCN, is already part of the snapshot and is discarded by streaming.
+     * The offset SCN is set just before {@code LEAST(S0, M)}, so that mining starts there. A
+     * transaction that commits after {@code S} and started before {@code S0} was still in progress
+     * when {@code M} was read, so its start is mined. A transaction that commits at or before
+     * {@code S}, stored as the snapshot commit SCN, is already part of the snapshot and is discarded
+     * by streaming.
      */
     @Override
     public OracleOffsetContext determineSnapshotOffset(RelationalSnapshotContext<OraclePartition, OracleOffsetContext> ctx,
@@ -87,29 +88,28 @@ public abstract class AbstractLogMinerStreamingAdapter
         final Optional<Scn> pendingTransactionStartScn = getMinimumPendingTransactionStartScn(connection, transactionTableName);
         final Scn snapshotCommitScn = getCurrentScn(latestTableDdlScn, connection);
 
-        final Scn snapshotScn = pendingTransactionStartScn
+        final Scn miningStartScn = pendingTransactionStartScn
                 .filter(startScn -> startScn.compareTo(initialScn) < 0)
                 .orElse(initialScn);
 
         if (pendingTransactionStartScn.isEmpty()) {
             LOGGER.info("\tFound no in-progress transactions.");
         }
-        else if (snapshotScn.equals(pendingTransactionStartScn.get())) {
-            LOGGER.info("\tOldest in-progress transaction started at SCN {}.", snapshotScn);
+        else if (miningStartScn.equals(pendingTransactionStartScn.get())) {
+            LOGGER.info("\tOldest in-progress transaction started at SCN {}.", miningStartScn);
         }
         else {
             LOGGER.info("\tOldest in-progress transaction started at SCN {}, after the initial SCN {}.",
-                    pendingTransactionStartScn.get(), snapshotScn);
+                    pendingTransactionStartScn.get(), miningStartScn);
         }
-        LOGGER.info("\tSnapshot boundary resolved, mining starts at snapshot SCN {} and the snapshot is taken at snapshot commit SCN {}.",
-                snapshotScn, snapshotCommitScn);
+        LOGGER.info("\tSnapshot boundary resolved, mining starts at SCN {} and the snapshot is taken at snapshot commit SCN {}.",
+                miningStartScn, snapshotCommitScn);
 
-        // During the snapshot, the offset SCN is the SCN the snapshot is taken at. The first streaming
-        // run rewinds it to the snapshot SCN, after which it is the position where mining resumes.
+        // The offset SCN is the exclusive lower bound where mining resumes, so it is set just before the
+        // mining start SCN. The snapshot itself is taken as of the snapshot commit SCN.
         return OracleOffsetContext.create()
                 .logicalName(connectorConfig)
-                .scn(snapshotCommitScn)
-                .snapshotScn(snapshotScn)
+                .scn(miningStartScn.subtract(Scn.ONE))
                 .snapshotCommitScn(snapshotCommitScn)
                 .transactionContext(new TransactionContext())
                 .incrementalSnapshotContext(new SignalBasedIncrementalSnapshotContext<>())

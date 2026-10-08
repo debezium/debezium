@@ -3606,38 +3606,45 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
             assertConnectorIsRunning();
             waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
-            // The snapshot completion offset carries both snapshot SCNs.
+            // The snapshot offset already points before the in-progress transaction, where mining resumes,
+            // and carries the SCN the snapshot was taken at as the snapshot commit SCN.
             final List<SourceRecord> snapshotRecords = consumeRecordsUntilId(topicName, 3);
             assertThat(snapshotRecords).hasSize(1);
             assertThat(((Struct) snapshotRecords.get(0).value()).getString("op")).isEqualTo(Envelope.Operation.READ.code());
             final Map<String, ?> snapshotOffset = snapshotRecords.get(0).sourceOffset();
             // The last snapshot record's offset is rebuilt after the snapshot is marked completed.
             assertThat(snapshotOffset.get(OracleOffsetContext.SNAPSHOT_COMPLETED_KEY)).isEqualTo(true);
-            final Scn snapshotScn = OracleOffsetContext.loadSnapshotScn(snapshotOffset);
+            final Scn resumeScn = OracleOffsetContext.getScnFromOffsetMapByKey(snapshotOffset, SourceInfo.SCN_KEY);
             final Scn snapshotCommitScn = OracleOffsetContext.loadSnapshotCommitScn(snapshotOffset);
-            assertThat(snapshotScn).isNotNull();
+            assertThat(resumeScn).isNotNull();
             assertThat(snapshotCommitScn).isNotNull();
-            assertThat(snapshotScn).isLessThanOrEqualTo(snapshotCommitScn);
+            assertThat(resumeScn).isLessThan(snapshotCommitScn);
+            assertThat(snapshotOffset).doesNotContainKey("snapshot_scn");
+
+            // The snapshot record is read as of the snapshot commit SCN.
+            final Struct snapshotSource = ((Struct) snapshotRecords.get(0).value()).getStruct("source");
+            assertThat(snapshotSource.getString(SourceInfo.EVENT_SCN_KEY)).isEqualTo(snapshotCommitScn.toString());
 
             // Recover after the snapshot completion offset is persisted but before any streaming offset is.
             stopConnector();
             Map<String, Object> offset = readLastCommittedOffset(config, partition);
-            // The restart does not take a new snapshot, so it must rewind the offset SCN to the snapshot SCN again.
+            // The restart does not take a new snapshot and resumes mining from the persisted offset SCN.
             assertThat(offset.get(OracleOffsetContext.SNAPSHOT_COMPLETED_KEY)).isEqualTo(true);
-            assertThat(OracleOffsetContext.getScnFromOffsetMapByKey(offset, SourceInfo.SCN_KEY)).isEqualTo(snapshotCommitScn);
-            assertThat(OracleOffsetContext.loadSnapshotScn(offset)).isEqualTo(snapshotScn);
+            assertThat(OracleOffsetContext.getScnFromOffsetMapByKey(offset, SourceInfo.SCN_KEY)).isEqualTo(resumeScn);
             assertThat(OracleOffsetContext.loadSnapshotCommitScn(offset)).isEqualTo(snapshotCommitScn);
 
             start(OracleConnector.class, heartbeatConfig);
             assertConnectorIsRunning();
             waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
-            // Once streaming persists its rewound mining position, the snapshot SCN is retired.
+            // Streaming persists its position without moving the offset SCN backwards, and keeps the snapshot
+            // commit SCN while the in-progress transaction has not committed past it.
             Awaitility.await().atMost(Duration.ofMinutes(2)).until(() -> {
                 final Map<String, Object> committedOffset = readLastCommittedOffset(config, partition);
                 return committedOffset != null
-                        && !committedOffset.containsKey(OracleOffsetContext.SNAPSHOT_SCN_KEY)
-                        && OracleOffsetContext.getScnFromOffsetMapByKey(committedOffset, SourceInfo.SCN_KEY).compareTo(snapshotCommitScn) < 0;
+                        && !committedOffset.containsKey(OracleOffsetContext.SNAPSHOT_COMPLETED_KEY)
+                        && OracleOffsetContext.getScnFromOffsetMapByKey(committedOffset, SourceInfo.SCN_KEY).compareTo(resumeScn) >= 0
+                        && snapshotCommitScn.equals(OracleOffsetContext.loadSnapshotCommitScn(committedOffset));
             });
 
             // Recover after the first streaming offset is persisted but before the in-progress transaction commits.
@@ -3658,8 +3665,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
                 final Map<String, Object> committedOffset = readLastCommittedOffset(config, partition);
                 return committedOffset != null
                         && CommitScn.load(committedOffset).compareTo(snapshotCommitScn) > 0
-                        && !committedOffset.containsKey(OracleOffsetContext.SNAPSHOT_COMMIT_SCN_KEY)
-                        && !committedOffset.containsKey(OracleOffsetContext.SNAPSHOT_SCN_KEY);
+                        && !committedOffset.containsKey(OracleOffsetContext.SNAPSHOT_COMMIT_SCN_KEY);
             });
 
             // Restarting from the retired offsets resumes streaming without emitting earlier changes again.

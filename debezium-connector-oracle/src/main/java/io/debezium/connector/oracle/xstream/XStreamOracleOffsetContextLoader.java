@@ -34,7 +34,6 @@ public class XStreamOracleOffsetContextLoader implements OffsetContext.Loader<Or
                 .logicalName(connectorConfig)
                 .scn(resolveScn(offset))
                 .lcrPosition(loadLcrPosition(offset))
-                .snapshotScn(OracleOffsetContext.loadSnapshotScn(offset))
                 .snapshot(loadSnapshot(offset).orElse(null))
                 .snapshotCompleted(loadSnapshotCompleted(offset))
                 .transactionContext(TransactionContext.load(offset))

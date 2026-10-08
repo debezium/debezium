@@ -143,7 +143,6 @@ public class XStreamAdapter extends AbstractStreamingAdapter<XStreamStreamingCha
         return OracleOffsetContext.create()
                 .logicalName(connectorConfig)
                 .scn(currentScn)
-                .snapshotScn(currentScn)
                 .transactionContext(new TransactionContext())
                 .incrementalSnapshotContext(new SignalBasedIncrementalSnapshotContext<>())
                 .build();
