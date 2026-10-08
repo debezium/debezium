@@ -3,30 +3,18 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
+    <!-- Inherits Debezium's dependency and plugin management. The version is inherited from the parent, so this
+         project is always built against the Debezium version it was generated for. -->
+    <parent>
+        <groupId>io.debezium</groupId>
+        <artifactId>debezium-parent</artifactId>
+        <version>${debeziumVersion}</version>
+    </parent>
+
     <groupId>${groupId}</groupId>
     <artifactId>${artifactId}</artifactId>
-    <version>${version}</version>
     <name>Debezium Connector for ${connectorName}</name>
     <packaging>jar</packaging>
-
-    <properties>
-        <maven.compiler.release>21</maven.compiler.release>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <version.debezium>${debeziumVersion}</version.debezium>
-    </properties>
-
-    <dependencyManagement>
-        <dependencies>
-            <!-- Debezium manages the versions of its own artifacts and the Kafka, logging, and test libraries they align with -->
-            <dependency>
-                <groupId>io.debezium</groupId>
-                <artifactId>debezium-bom</artifactId>
-                <version>#[[${version.debezium}]]#</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
 
     <dependencies>
         <!-- Debezium pipeline and connector framework -->
