@@ -1,0 +1,48 @@
+name: "Build Quarkus Extensions"
+description: "Builds the Quarkus Extensions"
+
+inputs:
+  path-core:
+    description: "Debezium core repository checkout path"
+    required: true
+  path-quarkus:
+    description: "Quarkus Extensions repository checkout path"
+    required: true
+  only-build:
+    description: "Only build without tests, checkstyle, and format"
+    required: false
+    default: 'false'
+  shell:
+    description: "The shell to use"
+    required: false
+    default: bash
+
+runs:
+  using: "composite"
+  steps:
+    - name: Build Debezium (Core)
+      shell: ${{ inputs.shell }}
+      run: >
+        ./${{ inputs.path-core }}/mvnw clean install -B -ntp -f ${{ inputs.path-core }}/pom.xml
+        -DskipTests=true
+        -DskipITs=true
+        -Dcheckstyle.skip=true
+        -Dformat.skip=true
+        -Drevapi.skip
+        -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+        -Dmaven.wagon.http.pool=false
+        -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+
+    - name: Build Quarkus Extensions
+      shell: ${{ inputs.shell }}
+      run: >
+        ./${{ inputs.path-core }}/mvnw clean install -B -ntp -fae -f ${{ inputs.path-quarkus }}/pom.xml
+        -Passembly
+        -Dcheckstyle.skip=${{ inputs.only-build == 'true' && 'true' || 'false' }}
+        -Dformat.skip=${{ inputs.only-build == 'true' && 'true' || 'false' }}
+        -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+        -Dmaven.wagon.http.pool=false
+        -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        -DskipNonCore
+        -DfailFlakyTests=false
+        ${{ inputs.only-build == 'true' && '-DskipTests=true -DskipITs=true' || '' }}        
