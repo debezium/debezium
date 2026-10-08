@@ -145,26 +145,43 @@ To use a subset of fields in the primary key, set the xref:jdbc-property-primary
 |`record_header`
 a|The primary key is composed of the Kafka event's headers.
 
-Kafka event's headers contains could contain multiple header that each one could be `Struct` or primitives data types,
-the connectors makes a  `Struct` of these headers. Hence, all fields in this `Struct` become columns of the primary key.
-To use a subset of fields in the primary key, set the xref:jdbc-property-primary-key-fields[`primary.key.fields`] property to specify a comma-separated list of fields in the value from which you want to derive the primary key columns.
+When `primary.key.mode` is set to `record_header`, the connector derives the primary key from the Kafka record headers.
+The connector creates a `Struct` from all headers present in the Kafka record, using each header's key as the field name and the corresponding header value as the field value.
+Each header is included as a primary key column.
+
+[NOTE]
+====
+When `primary.key.mode` is set to `record_header`, the `primary.key.fields` property has no effect.
+All record headers are included as primary key columns, with no filtering available.
+This limitation is tracked in https://github.com/debezium/dbz/issues/2795[dbz#2795].
+====
+
+[WARNING]
+====
+Avoid using nested `Struct` values in record headers when `primary.key.mode` is set to `record_header`.
+The way that the connector converts nested `Struct` types varies and depends on both the `header.converter` setting at the source and on the database dialect of the sink database.
+The `SimpleHeaderConverter` converts nested header values to `MAP` types, while the `JsonConverter` maps them to `Struct` types.
+In either case, the resulting JSON, JSONB, HSTORE, or VARCHAR column types might not be valid primary keys in the target database.
+If the target database does not permit the converted type in primary key columns, the sink operation can fail.
+This limitation is tracked in https://github.com/debezium/dbz/issues/2796[dbz#2796].
+====
 
 |===
 
 [IMPORTANT]
 ====
-Some database dialects might throw an exception if you set the `primary.key.mode` to `kafka` and set `schema.evolution` to `basic`.
+Some database dialects might throw an exception if you set the `primary.key.mode` to `kafka` and set xref:jdbc-property-schema-evolution[`schema.evolution`] to `basic`.
 This exception occurs when a dialect maps a `STRING` data type mapping to a variable length string data type such as `TEXT` or `CLOB`, and the dialect does not allow primary key columns to have unbounded lengths.
 To avoid this problem, apply the following settings in your environment:
 
-* Do not set `schema.evolution` to `basic`.
+* Set `schema.evolution` to a value other than `basic`.
 * Create the database table and primary key mappings in advance.
 ====
 
 [IMPORTANT]
 ====
-If a column maps to a data type that isn't permitted as a primary key for your target database, an explicit list of columns will be necessary in `primary.key.fields` excluding such columns.
-Consult your specific database vendor's documentation for what data types are and are not permissible.
+If a column maps to a data type that the target database does not permit, explicitly specify the permissible columns in the `primary.key.fields` list.
+Consult the documentation for your database vendor to determine the permissible data types.
 ====
 
 // Type: procedure
@@ -1148,7 +1165,7 @@ The following list describes select fields in the preceding `KafkaConnector` con
 The name of the Kafka connector instance that {StreamsName} creates in Kafka Connect.
 
 `metadata.labels: strimzi.io/cluster`::
-Identifies the KafkaConnect cluster resource that hosts the connector. 
+Identifies the KafkaConnect cluster resource that hosts the connector.
 {StreamsName} uses this label to associate the KafkaConnector with a specific KafkaConnect deployment.
 
 `spec.class`::
