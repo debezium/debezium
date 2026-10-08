@@ -113,7 +113,7 @@ public class OcpApicurioController implements RegistryController {
 
         Deployment deployment = getRegistryDeployments(name).get(0);
         patchProbeDelay(deployment, 60);
-        
+
         ocp.apps()
                 .deployments()
                 .inNamespace(project)
