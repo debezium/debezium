@@ -22,16 +22,16 @@ jobs:
         run: |
           PR_LIST=""
 
-          # Build ignored repos list from env var (space-separated repo names)
-          IGNORED_REPOS=()
+          # Build ignored repos array from the IGNORED_REPOS env var (space-separated names)
+          IGNORED_REPOS_ARRAY=()
           for repo in $IGNORED_REPOS; do
-            IGNORED_REPOS+=("debezium/${repo}")
+            IGNORED_REPOS_ARRAY+=("debezium/${repo}")
           done
-          echo "Ignoring repositories: ${IGNORED_REPOS[*]:-none}"
+          echo "Ignoring repositories: ${IGNORED_REPOS_ARRAY[*]:-none}"
 
           is_ignored() {
             local repo="$1"
-            for ignored in "${IGNORED_REPOS[@]:-}"; do
+            for ignored in "${IGNORED_REPOS_ARRAY[@]:-}"; do
               [ "$repo" = "$ignored" ] && return 0
             done
             return 1
