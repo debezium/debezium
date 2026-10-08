@@ -9,6 +9,7 @@ import java.time.Instant;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.LongStream;
 import java.util.stream.Stream;
 
 import io.debezium.connector.oracle.Scn;
@@ -27,10 +28,10 @@ public interface LogMinerTransactionCache<T extends Transaction> {
     /**
      * Get the transaction by transaction identifier.
      *
-     * @param transactionId the transaction identifier, should not be {@code null}
+     * @param xid the transaction identifier
      * @return the transaction instance if found, {@code null} if the lookup fails
      */
-    T getTransaction(String transactionId);
+    T getTransaction(long xid);
 
     /**
      * Get the transaction by identifier and remove it from the cache if it exists.
@@ -38,10 +39,10 @@ public interface LogMinerTransactionCache<T extends Transaction> {
      * This method only removes the transaction from the transaction cache, but it does
      * remove the events associated with the transaction.
      *
-     * @param transactionId the transaction identifier, should not be {@code null}
+     * @param xid the transaction identifier
      * @return the transaction instance if found, {@code null} if the lookup fails
      */
-    T getAndRemoveTransaction(String transactionId);
+    T getAndRemoveTransaction(long xid);
 
     /**
      * Adds the transaction to the cache.
@@ -60,10 +61,10 @@ public interface LogMinerTransactionCache<T extends Transaction> {
     /**
      * Check whether the cache has a specific transaction by transaction identifier.
      *
-     * @param transactionId the transaction identifier, should not be {@code null}
+     * @param xid the transaction identifier
      * @return {@code true} if the transaction is cached, {@code false} if it is not cached
      */
-    boolean containsTransaction(String transactionId);
+    boolean containsTransaction(long xid);
 
     /**
      * Returns whether the transaction cache is empty.
@@ -106,7 +107,7 @@ public interface LogMinerTransactionCache<T extends Transaction> {
      * Get the transaction event by transaction reference and event key.
      *
      * @param transaction the transaction, should not be {@code null}
-     * @param eventKey the event key, should not be {@code null}
+     * @param eventKey the event key
      * @return the event if found, {@code null} if not found
      */
     LogMinerEvent getTransactionEvent(T transaction, int eventKey);
@@ -117,7 +118,7 @@ public interface LogMinerTransactionCache<T extends Transaction> {
      *
      * @param consumer the consumer to be applied, should not be {@code null}
      */
-    void eventKeys(Consumer<Stream<String>> consumer);
+    void eventKeys(Consumer<LongStream> consumer);
 
     /**
      * Apply a predicate over all cached events associated with the specified transaction.
@@ -133,7 +134,7 @@ public interface LogMinerTransactionCache<T extends Transaction> {
      * Add a transaction event to the cache.
      *
      * @param transaction the transaction, should not be {@code null}
-     * @param eventKey the event key, should not be {@code null}
+     * @param eventKey the event key
      * @param event the event, should not be {@code null}
      */
     void addTransactionEvent(T transaction, int eventKey, LogMinerEvent event);
@@ -181,35 +182,47 @@ public interface LogMinerTransactionCache<T extends Transaction> {
     /**
      * Removes the specific transaction identifier from the abandoned transaction cache.
      *
-     * @param transactionId the transaction identifier, should not be {@code null}
+     * @param xid the transaction identifier
      */
-    void removeAbandonedTransaction(String transactionId);
+    void removeAbandonedTransaction(long xid);
 
     /**
      * Check whether the specified transaction identifier is marked as abandoned.
      *
-     * @param transactionId the transaction identifier, should not be {@code null}
+     * @param xid the transaction identifier
      * @return {@code true} if the transaction is abandoned, {@code false} otherwise
      */
-    boolean isAbandoned(String transactionId);
+    boolean isAbandoned(long xid);
 
     /**
      * Records the given event as the most recently enqueued event for the specified transaction.
      *
-     * @param transactionId the transaction identifier, should not be {@code null}
+     * @param xid the transaction identifier
      * @param event the event to track, should not be {@code null}
      * @return the previously tracked event for the transaction, or {@code null} if there was none
      */
-    LogMinerEvent putLastEnqueuedEvent(String transactionId, LogMinerEvent event);
+    LogMinerEvent putLastEnqueuedEvent(long xid, LogMinerEvent event);
 
     /**
      * Removes the tracked last enqueued event for the specified transaction. This should be done
      * whenever the transaction is removed from the cache, e.g. on commit, rollback, or abandonment.
      *
-     * @param transactionId the transaction identifier, should not be {@code null}
+     * @param xid the transaction identifier
      * @return the removed event, or {@code null} if none was tracked
      */
-    LogMinerEvent removeLastEnqueuedEvent(String transactionId);
+    LogMinerEvent removeLastEnqueuedEvent(long xid);
+
+    void deferredTransactions(Consumer<Stream<Transaction>> consumer);
+
+    boolean isDeferredTransactionsEmpty();
+
+    void addDeferredTransaction(Transaction transaction);
+
+    Transaction removeDeferredTransaction(long xid);
+
+    int removeDeferredTransactionsOlderThan(Scn thresholdScn);
+
+    Scn getOldestDeferredTransactionStartScn();
 
     /**
      * Clears the contents of the cache.

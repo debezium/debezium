@@ -64,5 +64,5 @@ public interface CacheProvider<T extends Transaction> extends AutoCloseable {
      *
      * @return the processed transactions cache, never {@code null}
      */
-    LogMinerCache<String, String> getProcessedTransactionsCache();
+    LogMinerCache<Long, String> getProcessedTransactionsCache();
 }

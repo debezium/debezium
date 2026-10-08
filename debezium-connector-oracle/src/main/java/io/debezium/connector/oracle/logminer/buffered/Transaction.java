@@ -8,6 +8,7 @@ package io.debezium.connector.oracle.logminer.buffered;
 import java.time.Instant;
 
 import io.debezium.connector.oracle.Scn;
+import io.debezium.connector.oracle.logminer.events.Xid;
 
 /**
  * Contract for an Oracle transaction.
@@ -18,9 +19,13 @@ public interface Transaction {
     /**
      * Get the transaction identifier
      *
-     * @return the transaction unique identifier, never {@code null}
+     * @return the transaction unique identifier
      */
-    String getTransactionId();
+    long getXid();
+
+    default String getTransactionId() {
+        return Xid.transactionId(getXid());
+    }
 
     /**
      * Get the system change number of when the transaction started
@@ -62,11 +67,11 @@ public interface Transaction {
      * @param index the index of the event
      * @return the event id
      */
-    default String getEventId(int index) {
+    default long getEventId(int index) {
         if (index < 0 || index >= getNumberOfEvents()) {
-            throw new IndexOutOfBoundsException("Index " + index + "outside the transaction " + getTransactionId() + " event list bounds");
+            throw new IndexOutOfBoundsException("Index " + index + "outside the transaction " + getXid() + " event list bounds");
         }
-        return getTransactionId() + "-" + index;
+        return getXid() & 0xffffffff00000000L | index;
     }
 
     /**

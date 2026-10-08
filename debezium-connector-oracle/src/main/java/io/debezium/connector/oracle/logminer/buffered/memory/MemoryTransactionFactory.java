@@ -19,12 +19,12 @@ import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 public class MemoryTransactionFactory implements TransactionFactory<MemoryTransaction> {
     @Override
     public MemoryTransaction createTransaction(LogMinerEventRow event) {
-        return new MemoryTransaction(event.getTransactionId(), event.getScn(), event.getChangeTime(),
+        return new MemoryTransaction(event.getXid(), event.getScn(), event.getChangeTime(),
                 event.getUserName(), event.getThread(), event.getClientId());
     }
 
     @Override
-    public MemoryTransaction createTransaction(String transactionId, Scn startScn, Instant changeTime, String userName, Integer redoThreadId, String clientId) {
-        return new MemoryTransaction(transactionId, startScn, changeTime, userName, redoThreadId, clientId);
+    public MemoryTransaction createTransaction(long xid, Scn startScn, Instant changeTime, String userName, Integer redoThreadId, String clientId) {
+        return new MemoryTransaction(xid, startScn, changeTime, userName, redoThreadId, clientId);
     }
 }

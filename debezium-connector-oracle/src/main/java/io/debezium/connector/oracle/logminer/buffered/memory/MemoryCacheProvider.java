@@ -24,7 +24,7 @@ public class MemoryCacheProvider extends AbstractCacheProvider<MemoryTransaction
     private static final Logger LOGGER = LoggerFactory.getLogger(MemoryCacheProvider.class);
 
     private final MemoryLogMinerTransactionCache transactionCache;
-    private final MemoryBasedLogMinerCache<String, String> processedTransactionsCache;
+    private final MemoryBasedLogMinerCache<Long, String> processedTransactionsCache;
     private final MemoryBasedLogMinerCache<String, String> schemaChangesCache;
 
     public MemoryCacheProvider(OracleConnectorConfig connectorConfig) {
@@ -46,7 +46,7 @@ public class MemoryCacheProvider extends AbstractCacheProvider<MemoryTransaction
     }
 
     @Override
-    public LogMinerCache<String, String> getProcessedTransactionsCache() {
+    public LogMinerCache<Long, String> getProcessedTransactionsCache() {
         return processedTransactionsCache;
     }
 

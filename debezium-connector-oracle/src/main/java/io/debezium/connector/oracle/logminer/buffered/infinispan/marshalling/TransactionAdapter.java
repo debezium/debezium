@@ -29,7 +29,7 @@ public class TransactionAdapter {
     /**
      * A ProtoStream factory that creates a {@link InfinispanTransaction} instance from field values.
      *
-     * @param transactionId the transaction identifier
+     * @param xid the transaction identifier
      * @param scn the starting system change number of the transaction
      * @param changeTime the starting time of the transaction
      * @param numberOfEvents the number of events in the transaction
@@ -39,20 +39,20 @@ public class TransactionAdapter {
      * @return the constructed Transaction instance
      */
     @ProtoFactory
-    public InfinispanTransaction factory(String transactionId, String scn, String changeTime, int numberOfEvents, String userName, Integer redoThreadId,
+    public InfinispanTransaction factory(long xid, String scn, String changeTime, int numberOfEvents, String userName, Integer redoThreadId,
                                          String clientId) {
-        return new InfinispanTransaction(transactionId, Scn.valueOf(scn), Instant.parse(changeTime), userName, numberOfEvents, redoThreadId, clientId);
+        return new InfinispanTransaction(xid, Scn.valueOf(scn), Instant.parse(changeTime), userName, numberOfEvents, redoThreadId, clientId);
     }
 
     /**
-     * A ProtoStream handler to extract the {@code transactionId} field from the {@link InfinispanTransaction}.
+     * A ProtoStream handler to extract the {@code xid} field from the {@link InfinispanTransaction}.
      *
      * @param transaction the transaction instance, must not be {@code null}
-     * @return the transaction identifier, never {@code null}
+     * @return the transaction identifier
      */
-    @ProtoField(number = 1)
-    public String getTransactionId(InfinispanTransaction transaction) {
-        return transaction.getTransactionId();
+    @ProtoField(number = 1, defaultValue = "-1")
+    public long getXid(InfinispanTransaction transaction) {
+        return transaction.getXid();
     }
 
     /**

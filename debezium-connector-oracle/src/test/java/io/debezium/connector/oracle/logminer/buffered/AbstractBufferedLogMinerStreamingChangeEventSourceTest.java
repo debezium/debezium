@@ -10,6 +10,7 @@ import static io.debezium.config.CommonConnectorConfig.DEFAULT_MAX_QUEUE_SIZE;
 import static io.debezium.config.CommonConnectorConfig.DEFAULT_POLL_DISPATCH_INTERVAL_MILLIS;
 import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -27,7 +28,6 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Calendar;
 import java.util.List;
-import java.util.Map;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -57,8 +57,8 @@ import io.debezium.connector.oracle.logminer.AbstractLogMinerStreamingChangeEven
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerStreamingChangeEventSource.ProcessResult;
 import io.debezium.connector.oracle.logminer.events.EventType;
-import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
+import io.debezium.connector.oracle.logminer.events.Xid;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.doc.FixFor;
@@ -88,13 +88,13 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractBufferedLogMinerStreamingChangeEventSourceTest.class);
 
-    private static final String TRANSACTION_ID_1 = "1234567890";
-    private static final String TRANSACTION_ID_2 = "9876543210";
-    private static final String TRANSACTION_ID_3 = "9880212345";
-    private static final String PARTIAL_TXN_ID_FULL = "0e001c0012345678";
-    private static final String PARTIAL_TXN_ID_PARTIAL = "0e001c00ffffffff";
-    private static final String PARTIAL_TXN_ID_OTHER = "0f001d0087654321";
-    private static final String PARTIAL_TXN_ID_SAME_PREFIX = "0e001c0087654321";
+    private static final String TRANSACTION_ID_1 = "0100010001000000";
+    private static final String TRANSACTION_ID_2 = "0100020001000000";
+    private static final String TRANSACTION_ID_3 = "0100030001000000";
+    private static final String PARTIAL_TXN_ID_FULL = "0100040001000000";
+    private static final String PARTIAL_TXN_ID_PARTIAL = "01000400ffffffff";
+    private static final String PARTIAL_TXN_ID_OTHER = "0100050001000000";
+    private static final String PARTIAL_TXN_ID_SAME_PREFIX = "0100040002000000";
 
     protected ChangeEventSourceContext context;
     protected EventDispatcher<OraclePartition, TableId> dispatcher;
@@ -384,6 +384,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             Mockito.when(rs.getString(2)).thenReturn("insert into \"DEBEZIUM\".\"ABC\"(\"ID\",\"DATA\") values ('1','test');");
             Mockito.when(rs.getInt(3)).thenReturn(EventType.INSERT.getValue());
             Mockito.when(rs.getTimestamp(eq(4), any(Calendar.class))).thenReturn(Timestamp.valueOf(LocalDateTime.now()));
+            Mockito.when(rs.getBytes(5)).thenReturn(new byte[]{ 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00 });
             Mockito.when(rs.getString(7)).thenReturn("ABC");
             Mockito.when(rs.getString(8)).thenReturn("DEBEZIUM");
             Mockito.when(rs.getString(10)).thenReturn("AAAAAAAAAAAAAAAAAB");
@@ -472,8 +473,8 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             source.abandonTransactions(Duration.ofHours(1L));
 
             assertThat(source.getTransactionCache().isEmpty()).isFalse();
-            assertThat(source.getTransactionCache().getTransaction(TRANSACTION_ID_1)).isNull();
-            assertThat(source.getTransactionCache().getTransaction(TRANSACTION_ID_2)).isNotNull();
+            assertThat(source.getTransactionCache().getTransaction(Xid.of(TRANSACTION_ID_1))).isNull();
+            assertThat(source.getTransactionCache().getTransaction(Xid.of(TRANSACTION_ID_2))).isNotNull();
         }
     }
 
@@ -494,8 +495,8 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             source.abandonTransactions(Duration.ofHours(1L));
 
             assertThat(source.getTransactionCache().isEmpty()).isFalse();
-            assertThat(source.getTransactionCache().getTransaction(TRANSACTION_ID_1)).isNull();
-            assertThat(source.getTransactionCache().getTransaction(TRANSACTION_ID_2)).isNotNull();
+            assertThat(source.getTransactionCache().getTransaction(Xid.of(TRANSACTION_ID_1))).isNull();
+            assertThat(source.getTransactionCache().getTransaction(Xid.of(TRANSACTION_ID_2))).isNotNull();
         }
     }
 
@@ -529,9 +530,9 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             source.abandonTransactions(Duration.ofHours(1L));
 
             assertThat(source.getTransactionCache().isEmpty()).isFalse();
-            assertThat(source.getTransactionCache().getTransaction(TRANSACTION_ID_1)).isNull();
-            assertThat(source.getTransactionCache().getTransaction(TRANSACTION_ID_2)).isNull();
-            assertThat(source.getTransactionCache().getTransaction(TRANSACTION_ID_3)).isNotNull();
+            assertThat(source.getTransactionCache().getTransaction(Xid.of(TRANSACTION_ID_1))).isNull();
+            assertThat(source.getTransactionCache().getTransaction(Xid.of(TRANSACTION_ID_2))).isNull();
+            assertThat(source.getTransactionCache().getTransaction(Xid.of(TRANSACTION_ID_3))).isNotNull();
         }
     }
 
@@ -562,9 +563,9 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             source.abandonTransactions(Duration.ofHours(1L));
 
             assertThat(source.getTransactionCache().isEmpty()).isFalse();
-            assertThat(source.getTransactionCache().getTransaction(TRANSACTION_ID_1)).isNull();
-            assertThat(source.getTransactionCache().getTransaction(TRANSACTION_ID_2)).isNull();
-            assertThat(source.getTransactionCache().getTransaction(TRANSACTION_ID_3)).isNotNull();
+            assertThat(source.getTransactionCache().getTransaction(Xid.of(TRANSACTION_ID_1))).isNull();
+            assertThat(source.getTransactionCache().getTransaction(Xid.of(TRANSACTION_ID_2))).isNull();
+            assertThat(source.getTransactionCache().getTransaction(Xid.of(TRANSACTION_ID_3))).isNotNull();
         }
     }
 
@@ -607,11 +608,11 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             source.processEvent(getInsertLogMinerEventRow(2, PARTIAL_TXN_ID_FULL));
 
             assertThat(source.getTransactionCache().isEmpty()).isFalse();
-            assertThat(source.getTransactionCache().containsTransaction(PARTIAL_TXN_ID_FULL)).isTrue();
+            assertThat(source.getTransactionCache().containsTransaction(Xid.of(PARTIAL_TXN_ID_FULL))).isTrue();
 
             source.processEvent(getRollbackLogMinerEventRow(3, PARTIAL_TXN_ID_PARTIAL));
 
-            assertThat(source.getTransactionCache().containsTransaction(PARTIAL_TXN_ID_FULL)).isFalse();
+            assertThat(source.getTransactionCache().containsTransaction(Xid.of(PARTIAL_TXN_ID_FULL))).isFalse();
             assertThat(metrics.getRolledBackTransactionIds()).contains(PARTIAL_TXN_ID_PARTIAL);
         }
     }
@@ -625,13 +626,13 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             source.processEvent(getStartLogMinerEventRow(3, PARTIAL_TXN_ID_OTHER));
             source.processEvent(getInsertLogMinerEventRow(4, PARTIAL_TXN_ID_OTHER));
 
-            assertThat(source.getTransactionCache().containsTransaction(PARTIAL_TXN_ID_FULL)).isTrue();
-            assertThat(source.getTransactionCache().containsTransaction(PARTIAL_TXN_ID_OTHER)).isTrue();
+            assertThat(source.getTransactionCache().containsTransaction(Xid.of(PARTIAL_TXN_ID_FULL))).isTrue();
+            assertThat(source.getTransactionCache().containsTransaction(Xid.of(PARTIAL_TXN_ID_OTHER))).isTrue();
 
             source.processEvent(getRollbackLogMinerEventRow(5, PARTIAL_TXN_ID_PARTIAL));
 
-            assertThat(source.getTransactionCache().containsTransaction(PARTIAL_TXN_ID_FULL)).isFalse();
-            assertThat(source.getTransactionCache().containsTransaction(PARTIAL_TXN_ID_OTHER)).isTrue();
+            assertThat(source.getTransactionCache().containsTransaction(Xid.of(PARTIAL_TXN_ID_FULL))).isFalse();
+            assertThat(source.getTransactionCache().containsTransaction(Xid.of(PARTIAL_TXN_ID_OTHER))).isTrue();
         }
     }
 
@@ -690,11 +691,11 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             final List<PendingTransaction> pending = source.getPendingTransactions();
 
             assertThat(pending).hasSize(2);
-            assertThat(pending.get(0).transactionId()).isEqualTo(TRANSACTION_ID_2);
+            assertThat(pending.get(0).xid()).isEqualTo(Xid.of(TRANSACTION_ID_2));
             assertThat(pending.get(0).startScn()).isEqualTo(Scn.valueOf(5));
             assertThat(pending.get(0).eventCount()).isEqualTo(1);
             assertThat(pending.get(0).deferred()).isFalse();
-            assertThat(pending.get(1).transactionId()).isEqualTo(TRANSACTION_ID_1);
+            assertThat(pending.get(1).xid()).isEqualTo(Xid.of(TRANSACTION_ID_1));
             assertThat(pending.get(1).startScn()).isEqualTo(Scn.valueOf(10));
             assertThat(pending.get(1).eventCount()).isEqualTo(2);
             assertThat(pending.get(1).deferred()).isFalse();
@@ -713,11 +714,11 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             source.processEvent(getStartLogMinerEventRow(1, PARTIAL_TXN_ID_OTHER));
             source.processEvent(getInsertLogMinerEventRow(2, PARTIAL_TXN_ID_OTHER));
 
-            assertThat(source.getTransactionCache().containsTransaction(PARTIAL_TXN_ID_OTHER)).isTrue();
+            assertThat(source.getTransactionCache().containsTransaction(Xid.of(PARTIAL_TXN_ID_OTHER))).isTrue();
 
             source.processEvent(getRollbackLogMinerEventRow(3, PARTIAL_TXN_ID_PARTIAL));
 
-            assertThat(source.getTransactionCache().containsTransaction(PARTIAL_TXN_ID_OTHER)).isTrue();
+            assertThat(source.getTransactionCache().containsTransaction(Xid.of(PARTIAL_TXN_ID_OTHER))).isTrue();
         }
     }
 
@@ -732,8 +733,8 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             // The undo refers to a prefix that no cached transaction shares
             source.processEvent(getRollbackToSavepointLogMinerEventRow(4, PARTIAL_TXN_ID_PARTIAL, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'insert'"));
 
-            assertThat(source.getTransactionCache().containsTransaction(PARTIAL_TXN_ID_PARTIAL)).isFalse();
-            assertThat(source.getTransactionCache().getTransactionEventCount(source.getTransactionCache().getTransaction(PARTIAL_TXN_ID_OTHER))).isEqualTo(2);
+            assertThat(source.getTransactionCache().containsTransaction(Xid.of(PARTIAL_TXN_ID_PARTIAL))).isFalse();
+            assertThat(source.getTransactionCache().getTransactionEventCount(source.getTransactionCache().getTransaction(Xid.of(PARTIAL_TXN_ID_OTHER)))).isEqualTo(2);
             assertThat(metrics.getNumberOfPartialRollbackCount()).isZero();
 
             source.processEvent(getCommitLogMinerEventRow(5, PARTIAL_TXN_ID_OTHER));
@@ -753,11 +754,11 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             source.processEvent(getInsertLogMinerEventRow(2, PARTIAL_TXN_ID_FULL, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'insert'"));
             source.processEvent(getUpdateLogMinerEventRow(3, PARTIAL_TXN_ID_FULL, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'update'"));
 
-            // The undo's sequence could not be resolved, but exactly one cached transaction shares its prefix
+            // The undo's sequence could not be resolved, but XIDUSN and XIDSLT alone resolve it to the cached transaction
             source.processEvent(getRollbackToSavepointLogMinerEventRow(4, PARTIAL_TXN_ID_PARTIAL, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'insert'"));
 
-            assertThat(source.getTransactionCache().containsTransaction(PARTIAL_TXN_ID_PARTIAL)).isFalse();
-            assertThat(source.getTransactionCache().containsTransaction(PARTIAL_TXN_ID_FULL)).isTrue();
+            assertThat(source.getTransactionCache().containsTransaction(Xid.of(PARTIAL_TXN_ID_PARTIAL))).isTrue();
+            assertThat(source.getTransactionCache().containsTransaction(Xid.of(PARTIAL_TXN_ID_FULL))).isTrue();
             assertThat(metrics.getNumberOfPartialRollbackCount()).isEqualTo(1);
 
             source.processEvent(getCommitLogMinerEventRow(5, PARTIAL_TXN_ID_FULL));
@@ -772,32 +773,11 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     @Test
     @FixFor("debezium/dbz#1960")
     public void testPartialRollbackIsNotAppliedWhenMultipleTransactionsMatchPrefix() throws Exception {
-        final LogInterceptor logInterceptor = new LogInterceptor(BufferedLogMinerStreamingChangeEventSource.class);
         try (var source = getChangeEventSource(getConfig().build())) {
             source.processEvent(getStartLogMinerEventRow(1, PARTIAL_TXN_ID_FULL));
             source.processEvent(getInsertLogMinerEventRow(2, PARTIAL_TXN_ID_FULL, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'insert'"));
             source.processEvent(getUpdateLogMinerEventRow(3, PARTIAL_TXN_ID_FULL, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'update'"));
-            source.processEvent(getStartLogMinerEventRow(4, PARTIAL_TXN_ID_SAME_PREFIX));
-            source.processEvent(getInsertLogMinerEventRow(5, PARTIAL_TXN_ID_SAME_PREFIX, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAC", "'insert'"));
-            source.processEvent(getUpdateLogMinerEventRow(6, PARTIAL_TXN_ID_SAME_PREFIX, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAC", "'update'"));
-
-            // Two cached transactions share the undo's prefix, so it cannot be attributed safely
-            source.processEvent(getRollbackToSavepointLogMinerEventRow(7, PARTIAL_TXN_ID_PARTIAL, Instant.now(), "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'insert'"));
-
-            assertThat(logInterceptor.containsWarnMessage("Unable to match partial transaction '" + PARTIAL_TXN_ID_PARTIAL + "' to a single cached transaction"))
-                    .isTrue();
-            assertThat(source.getTransactionCache().containsTransaction(PARTIAL_TXN_ID_PARTIAL)).isFalse();
-            assertThat(source.getTransactionCache().getTransactionEventCount(source.getTransactionCache().getTransaction(PARTIAL_TXN_ID_FULL))).isEqualTo(2);
-            assertThat(source.getTransactionCache().getTransactionEventCount(source.getTransactionCache().getTransaction(PARTIAL_TXN_ID_SAME_PREFIX))).isEqualTo(2);
-            assertThat(metrics.getNumberOfPartialRollbackCount()).isZero();
-
-            source.processEvent(getCommitLogMinerEventRow(8, PARTIAL_TXN_ID_FULL));
-            source.processEvent(getCommitLogMinerEventRow(9, PARTIAL_TXN_ID_SAME_PREFIX));
-
-            Mockito.verify(dispatcher, Mockito.times(2))
-                    .dispatchDataChangeEvent(any(), any(), argThat(emitter -> emitter.getOperation() == Operation.CREATE));
-            Mockito.verify(dispatcher, Mockito.times(2))
-                    .dispatchDataChangeEvent(any(), any(), argThat(emitter -> emitter.getOperation() == Operation.UPDATE));
+            assertThrows(IllegalStateException.class, () -> source.processEvent(getStartLogMinerEventRow(4, PARTIAL_TXN_ID_SAME_PREFIX)));
         }
     }
 
@@ -808,11 +788,11 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
             source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1));
 
-            assertThat(source.getLastEnqueuedEventByTransactionId()).containsOnlyKeys(TRANSACTION_ID_1);
+            assertThat(source.segments().get(Xid.of(TRANSACTION_ID_1)).lastEnqueuedEvent()).isNotNull();
 
             source.processEvent(getCommitLogMinerEventRow(3, TRANSACTION_ID_1));
 
-            assertThat(source.getLastEnqueuedEventByTransactionId()).isEmpty();
+            assertThat(source.segments().get(Xid.of(TRANSACTION_ID_1)).lastEnqueuedEvent()).isNull();
         }
     }
 
@@ -827,7 +807,8 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             source.processEvent(getCommitLogMinerEventRow(5, PARTIAL_TXN_ID_FULL));
 
             // The undo was attributed to PARTIAL_TXN_ID_FULL, so committing it must leave nothing behind
-            assertThat(source.getLastEnqueuedEventByTransactionId()).isEmpty();
+            assertThat(source.segments().get(Xid.of(PARTIAL_TXN_ID_FULL)).lastEnqueuedEvent()).isNull();
+            assertThat(source.segments().get(Xid.of(PARTIAL_TXN_ID_PARTIAL)).lastEnqueuedEvent()).isNull();
         }
     }
 
@@ -892,8 +873,8 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             source.processEvent(insert2);
 
             assertThat(source.getTransactionCache().isEmpty()).isFalse();
-            assertThat(source.getTransactionCache().getTransaction(TRANSACTION_ID_1)).isNull();
-            assertThat(source.getTransactionCache().getTransaction(TRANSACTION_ID_2)).isNotNull();
+            assertThat(source.getTransactionCache().getTransaction(Xid.of(TRANSACTION_ID_1))).isNull();
+            assertThat(source.getTransactionCache().getTransaction(Xid.of(TRANSACTION_ID_2))).isNotNull();
         }
     }
 
@@ -1024,6 +1005,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         LogMinerEventRow row = Mockito.mock(LogMinerEventRow.class);
         Mockito.when(row.getEventType()).thenReturn(EventType.START);
         Mockito.when(row.getTransactionId()).thenReturn(transactionId);
+        Mockito.when(row.getXid()).thenReturn(Xid.of(transactionId));
         Mockito.when(row.getScn()).thenReturn(Scn.valueOf(scn));
         Mockito.when(row.getChangeTime()).thenReturn(changeTime);
         return row;
@@ -1033,6 +1015,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         LogMinerEventRow row = Mockito.mock(LogMinerEventRow.class);
         Mockito.when(row.getEventType()).thenReturn(EventType.COMMIT);
         Mockito.when(row.getTransactionId()).thenReturn(transactionId);
+        Mockito.when(row.getXid()).thenReturn(Xid.of(transactionId));
         Mockito.when(row.getScn()).thenReturn(Scn.valueOf(scn));
         Mockito.when(row.getChangeTime()).thenReturn(Instant.now());
         return row;
@@ -1042,6 +1025,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         LogMinerEventRow row = Mockito.mock(LogMinerEventRow.class);
         Mockito.when(row.getEventType()).thenReturn(EventType.ROLLBACK);
         Mockito.when(row.getTransactionId()).thenReturn(transactionId);
+        Mockito.when(row.getXid()).thenReturn(Xid.of(transactionId));
         Mockito.when(row.getScn()).thenReturn(Scn.valueOf(scn));
         Mockito.when(row.getChangeTime()).thenReturn(Instant.now());
         return row;
@@ -1059,6 +1043,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         LogMinerEventRow row = Mockito.mock(LogMinerEventRow.class);
         Mockito.when(row.getEventType()).thenReturn(EventType.INSERT);
         Mockito.when(row.getTransactionId()).thenReturn(transactionId);
+        Mockito.when(row.getXid()).thenReturn(Xid.of(transactionId));
         Mockito.when(row.getScn()).thenReturn(Scn.valueOf(scn));
         Mockito.when(row.getChangeTime()).thenReturn(changeTime);
         Mockito.when(row.getRowId()).thenReturn(rowId);
@@ -1076,6 +1061,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         LogMinerEventRow row = Mockito.mock(LogMinerEventRow.class);
         Mockito.when(row.getEventType()).thenReturn(EventType.UPDATE);
         Mockito.when(row.getTransactionId()).thenReturn(transactionId);
+        Mockito.when(row.getXid()).thenReturn(Xid.of(transactionId));
         Mockito.when(row.getScn()).thenReturn(Scn.valueOf(scn));
         Mockito.when(row.getChangeTime()).thenReturn(changeTime);
         Mockito.when(row.getRowId()).thenReturn(rowId);
@@ -1096,6 +1082,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         Mockito.when(row.getEventType()).thenReturn(EventType.UPDATE);
         Mockito.when(row.isRollbackFlag()).thenReturn(true);
         Mockito.when(row.getTransactionId()).thenReturn(transactionId);
+        Mockito.when(row.getXid()).thenReturn(Xid.of(transactionId));
         Mockito.when(row.getScn()).thenReturn(Scn.valueOf(scn));
         Mockito.when(row.getChangeTime()).thenReturn(changeTime);
         Mockito.when(row.getRowId()).thenReturn(rowId);
@@ -1250,10 +1237,15 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         }
 
         @SuppressWarnings("unchecked")
-        public Map<String, LogMinerEvent> getLastEnqueuedEventByTransactionId() throws Exception {
-            var field = AbstractLogMinerTransactionCache.class.getDeclaredField("lastEnqueuedEventByTransactionId");
-            field.setAccessible(true);
-            return (Map<String, LogMinerEvent>) field.get(this.getTransactionCache());
+        public Segments<AbstractCacheSlot> segments() {
+            try {
+                var field = AbstractLogMinerTransactionCache.class.getDeclaredField("segments");
+                field.setAccessible(true);
+                return (Segments<AbstractCacheSlot>) field.get(this.getTransactionCache());
+            }
+            catch (ReflectiveOperationException e) {
+                throw new AssertionError("Unable to read segments", e);
+            }
         }
 
         @Override
