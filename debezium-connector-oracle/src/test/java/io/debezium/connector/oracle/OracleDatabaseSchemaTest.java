@@ -17,6 +17,7 @@ import org.mockito.Mockito;
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.doc.FixFor;
+import io.debezium.relational.Attribute;
 import io.debezium.relational.Column;
 import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.Table;
@@ -65,6 +66,24 @@ public class OracleDatabaseSchemaTest {
         // Try ti again - here the item should be in a cache with NO_SUCH_TABLE placeholder,
         // but we should still get null as before.
         assertThat(schema.getTableIdByObjectId(0L, 0L)).isNull();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2798")
+    public void shouldResolveObjectIdOnceTableIsRegistered() {
+        // The first lookup records the object id as unknown, both in the cache and in the last-lookup fast path.
+        assertThat(schema.getTableIdByObjectId(250282L, null)).isNull();
+
+        final TableId tableId = TableId.parse("ORCLPDB1.DEBEZIUM.DBZ2798");
+        schema.refresh(Table.editor()
+                .tableId(tableId)
+                .addColumn(Column.editor().name("ID").type("VARCHAR2(50)").create())
+                .addAttribute(Attribute.editor().name(OracleDatabaseSchema.ATTRIBUTE_OBJECT_ID).value(250282L).create())
+                .addAttribute(Attribute.editor().name(OracleDatabaseSchema.ATTRIBUTE_DATA_OBJECT_ID).value(250282L).create())
+                .create());
+
+        // Registering the table must supersede the unknown answer for the same object id.
+        assertThat(schema.getTableIdByObjectId(250282L, null)).isEqualTo(tableId);
     }
 
     private OracleDatabaseSchema createOracleDatabaseSchema() {

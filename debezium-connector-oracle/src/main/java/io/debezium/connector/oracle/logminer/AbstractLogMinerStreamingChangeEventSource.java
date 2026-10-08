@@ -86,6 +86,7 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.text.ParsingException;
 import io.debezium.util.Clock;
+import io.debezium.util.LRUCacheMap;
 import io.debezium.util.Loggings;
 import io.debezium.util.Metronome;
 import io.debezium.util.Stopwatch;
@@ -126,6 +127,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     private final ExtendedStringParser extendedStringParser;
     private final XmlBeginParser xmlBeginParser;
     private final Tables.TableFilter tableFilter;
+    private final LRUCacheMap<Long, PrimaryObjectLookup> primaryObjectLookups;
     private final List<String> archiveDestinationNames;
     private final LogMinerColumnIndexes columnIndexes;
     private final OffsetActivityMonitorService offsetActivityMonitorService;
@@ -153,6 +155,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
                                                       LogMinerStreamingChangeEventSourceMetrics metrics) {
         this.connectorConfig = connectorConfig;
         this.connectionFactory = connectionFactory;
+        this.primaryObjectLookups = new LRUCacheMap<>(connectorConfig.getObjectIdToTableIdCacheSize());
         this.streamingConnection = connectionFactory.streamingConnectionFactory().mainConnection();
         this.dispatcher = dispatcher;
         this.errorHandler = errorHandler;
@@ -1649,8 +1652,13 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             if (isTableLookupByObjectIdRequired(event)) {
                 // Special use case where the table has been dropped and purged, or where the dictionary used
                 // for mining predates a schema change, and we are processing an event for that table.
-                LOGGER.trace("Found DML for dropped table in history with object-id based table name {}.", event.getTableId().table());
-                final TableId tableId = getSchema().getTableIdByObjectId(event.getObjectId(), null);
+                LOGGER.trace("Found DML for a table that requires an object-id lookup {}.", event.getTableId());
+
+                TableId tableId = getSchema().getTableIdByObjectId(event.getObjectId(), null);
+                if (tableId == null && CaptureMode.PHYSICAL_STANDBY.equals(connectorConfig.getCaptureMode())) {
+                    tableId = getTableIdByObjectIdFromPrimary(event);
+                }
+
                 if (tableId == null) {
                     // The object cannot be named, so the filters cannot decide whether it is captured.
                     // Rather than drop the event silently, defer to the event processing failure mode.
@@ -1662,6 +1670,54 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             }
         }
         return true;
+    }
+
+    /**
+     * Resolves the table identifier for an object that neither the mining dictionary nor the connector's
+     * relational model can name by consulting the primary database's catalog.
+     * <p>
+     * When streaming from a physical standby, the dictionary file can lag behind the redo being mined, so
+     * events for tables unknown to the dictionary arrive with object-id based names. The primary's catalog
+     * is the only remaining source that can name such an object, which the filters need in order to decide
+     * whether the event belongs to a captured table.
+     * <p>
+     * Answers are cached for the lifetime of the streaming session, including the absence of an answer, so
+     * that a busy non-captured table does not cost one round trip to the primary per change. The cache is
+     * keyed on the object id and validated against the data object id, so a {@code TRUNCATE} or a table
+     * move invalidates an entry. A rename keeps both ids and therefore goes unnoticed until the dictionary
+     * file is rebuilt, at which point LogMiner names the table again and this lookup is no longer consulted.
+     *
+     * @param event the event, should not be {@code null}
+     * @return the resolved table identifier carrying the event's catalog, or {@code null} if the object is unknown
+     */
+    private TableId getTableIdByObjectIdFromPrimary(LogMinerEventRow event) {
+        final PrimaryObjectLookup cached = primaryObjectLookups.get(event.getObjectId());
+        if (cached != null && cached.dataObjectId() == event.getDataObjectId()) {
+            return cached.tableId();
+        }
+
+        LOGGER.debug("Querying primary for object={} and data object={}", event.getObjectId(), event.getDataObjectId());
+        final OracleConnection primary = connectionFactory.mainConnection();
+        if (isUsingPluggableDatabase()) {
+            primary.setSessionToPdb(connectorConfig.getPdbName());
+        }
+        try {
+            final TableId tableId = primary.getTableIdByObjectId(event.getTableId().catalog(), event.getObjectId(), event.getDataObjectId());
+            primaryObjectLookups.put(event.getObjectId(), new PrimaryObjectLookup(event.getDataObjectId(), tableId));
+            return tableId;
+        }
+        finally {
+            if (isUsingPluggableDatabase()) {
+                primary.resetSessionToCdb();
+            }
+        }
+    }
+
+    /**
+     * A cached answer from the primary's catalog for an object id; a {@code null} table id records that
+     * the primary could not name the object either.
+     */
+    private record PrimaryObjectLookup(long dataObjectId, TableId tableId) {
     }
 
     /**
