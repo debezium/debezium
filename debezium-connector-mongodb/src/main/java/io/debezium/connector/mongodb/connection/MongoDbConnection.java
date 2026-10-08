@@ -107,6 +107,10 @@ public final class MongoDbConnection implements AutoCloseable {
             catch (InterruptedException e) {
                 throw e;
             }
+            catch (MongoDbConnectionContext.UnsupportedMongoClientException e) {
+                errorHandler.onError(desc, e);
+                throw new DebeziumException("Operation failed because the MongoDB client does not support connector metadata operations", e);
+            }
             catch (Throwable t) {
                 errorHandler.onError(desc, t);
                 if (!isRunning()) {
@@ -134,7 +138,7 @@ public final class MongoDbConnection implements AutoCloseable {
         return execute("get database names", client -> {
             Set<String> databaseNames = new HashSet<>();
 
-            MongoUtils.forEachDatabaseName(
+            connectionContext.forEachDatabaseName(
                     client,
                     dbName -> {
                         if (filters.databaseFilter().test(dbName)) {
@@ -167,7 +171,7 @@ public final class MongoDbConnection implements AutoCloseable {
             Set<String> databaseNames = databaseNames();
 
             for (String dbName : databaseNames) {
-                MongoUtils.forEachCollectionNameInDatabase(client, dbName, collectionName -> {
+                connectionContext.forEachCollectionNameInDatabase(client, dbName, collectionName -> {
                     CollectionId collectionId = new CollectionId(dbName, collectionName);
 
                     if (filters.collectionFilter().test(collectionId)) {

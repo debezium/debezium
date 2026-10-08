@@ -108,6 +108,10 @@ Because the change streams API can read data from secondary nodes, you can confi
 You specify the replica member that the connector reads from by configuring the MongoDB link:https://www.mongodb.com/docs/manual/core/read-preference/[`readPreference`] parameter in the xref:mongodb-property-mongodb-connection-string[`mongodb.connection.string`].
 If you do not specify a read preference, the driver default of `primary` applies, and the connector streams changes from the primary node.
 
+The configured read preference also applies to connection validation, metadata discovery, and database and collection enumeration, as well as to streaming and snapshot document reads.
+Exact `primary` and `secondary` modes require an eligible replica set member that satisfies the configured read preference, including any read preference tags.
+If no eligible member is available, validation and startup can fail after the driver's server selection timeout rather than falling back to a member with a different role.
+
 To reduce the load on the primary, it's possible to configure the connector to read from a secondary node, by setting `readPreference=secondaryPreferred`.
 Under normal operating conditions, configuring the connector to read from a secondary node does not significantly increase data-capture latency.
 However, events captured from a secondary can arrive later than they would from the primary due to resource contention or network latency.
