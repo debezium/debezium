@@ -632,6 +632,42 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
         assertThat(getColumnSchema(schema, "c6").defaultValue()).isEqualTo(1.0);
     }
 
+    @Test
+    @FixFor("debezium/dbz#2821")
+    void shouldBuildStructuredTemporalSchemaWhenColumnsHaveDefaults() {
+        final var converters = getValueConverter(JdbcValueConverters.DecimalMode.DOUBLE,
+                TemporalPrecisionMode.STRUCTURED,
+                JdbcValueConverters.BigIntUnsignedMode.LONG,
+                BinaryHandlingMode.BYTES);
+        final var tableSchemaBuilder = new TableSchemaBuilder(
+                converters,
+                getDefaultValueConverter(converters),
+                SchemaNameAdjuster.NO_OP, new CustomConverterRegistry(null), SchemaBuilder.struct().build(),
+                FieldNameSelector.defaultSelector(SchemaNameAdjuster.NO_OP), false,
+                EventConvertingFailureHandlingMode.FAIL);
+        final var ddl = "CREATE TABLE structured_defaults (" +
+                "  id INT NOT NULL PRIMARY KEY," +
+                "  d DATE NOT NULL DEFAULT '2020-01-02'," +
+                "  dt DATETIME NULL DEFAULT '1970-01-01 00:00:00'," +
+                "  ts TIMESTAMP NOT NULL DEFAULT '2020-01-02 03:04:05'," +
+                "  t TIME NULL DEFAULT '01:02:03'," +
+                "  n INT NOT NULL DEFAULT 7" +
+                ");";
+        parser.parse(ddl, tables);
+        final var table = tables.forTable(new TableId(null, null, "structured_defaults"));
+
+        final var schema = tableSchemaBuilder.create(defaultTopicNamingStrategy(), table, null, null, null);
+
+        for (final var column : List.of("d", "dt", "ts", "t")) {
+            final var columnSchema = getColumnSchema(schema, column);
+            assertThat(columnSchema.type()).as(column).isEqualTo(Schema.Type.STRUCT);
+            assertThat(columnSchema.defaultValue()).as(column).isNull();
+        }
+        assertThat(getColumnSchema(schema, "d").isOptional()).isFalse();
+        assertThat(getColumnSchema(schema, "dt").isOptional()).isTrue();
+        assertThat(getColumnSchema(schema, "n").defaultValue()).isEqualTo(7);
+    }
+
     @ParameterizedTest
     @MethodSource("integerDefaults")
     @FixFor("debezium/dbz#2763")
