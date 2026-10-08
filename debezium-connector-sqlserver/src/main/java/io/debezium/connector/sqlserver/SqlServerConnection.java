@@ -468,7 +468,7 @@ public class SqlServerConnection extends JdbcConnection {
         // replaceFirst so a literal "#" that happens to appear in a captured column's quoted identifier can't
         // cause an incorrect second substitution.
         query = isDirectMode
-                ? query.replace(DIRECT_QUERY_COLUMNS_PLACEHOLDER, Matcher.quoteReplacement(capturedColumns))
+                ? query.replace(DIRECT_QUERY_COLUMNS_PLACEHOLDER, capturedColumns)
                 : query.replaceFirst(STATEMENTS_PLACEHOLDER, Matcher.quoteReplacement(capturedColumns));
 
         query = switch (config.getDataQueryMode()) {
