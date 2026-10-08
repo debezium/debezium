@@ -95,6 +95,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     private static final String PARTIAL_TXN_ID_PARTIAL = "0e001c00ffffffff";
     private static final String PARTIAL_TXN_ID_OTHER = "0f001d0087654321";
     private static final String PARTIAL_TXN_ID_SAME_PREFIX = "0e001c0087654321";
+    private static final String ZERO_TXN_ID = "0000000000000000";
 
     protected ChangeEventSourceContext context;
     protected EventDispatcher<OraclePartition, TableId> dispatcher;
@@ -153,6 +154,16 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             source.processEvent(getInsertLogMinerEventRow(1, TRANSACTION_ID_1));
 
             assertThat(source.getTransactionCache().isEmpty()).isFalse();
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2683")
+    public void testCacheIsEmptyWhenStartEventHasAllZeroTransactionId() throws Exception {
+        try (var source = getChangeEventSource(getConfig().build())) {
+            source.processEvent(getStartLogMinerEventRow(1, ZERO_TXN_ID));
+
+            assertThat(source.getTransactionCache().isEmpty()).isTrue();
         }
     }
 
