@@ -36,6 +36,11 @@ You can configure the post processor to reselect the following column types:
  * `null` columns.
  * Columns that contain the `unavailable.value.placeholder` sentinel value.
 
+By default, the post processor recognizes sentinel values by inferring them from the shape of the column value.
+A connector can instead declare the exact placeholder representation of a column in the `__debezium.unavailable.value.placeholder` schema parameter.
+The PostgreSQL connector declares it when `column.propagate.unavailable.value.placeholder` is set to `true`.
+For a column that carries the parameter, the post processor compares the value against the declared representation, which works for any column type.
+
 
 NOTE: You can use the `ReselectColumnsPostProcessor` post processor only with {prodname} source connectors.
 The post processor is not designed to work with the {prodname} JDBC sink connector.
