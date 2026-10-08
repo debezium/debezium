@@ -716,7 +716,7 @@ jobs:
           path-quarkus: quarkus
   build_server:
     name: "Debezium Server"
-    needs: [ check_style, file_changes, build_core ]
+    needs: [ check_style, file_changes, build_core, build_quarkus-extensions ]
     runs-on: ubuntu-latest
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' || needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' || needs.file_changes.outputs.jdbc-changed == 'true' }}
     steps:

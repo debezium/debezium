@@ -476,7 +476,7 @@ jobs:
   # Approx 26m
   build_debezium_server:
     name: "Debezium Server"
-    needs: [ check_style, build_core, build_jdbc ]
+    needs: [ check_style, build_core, build_jdbc, build_quarkus-extensions ]
     if: always() && needs.check_style.result == 'success' && needs.build_core.result == 'success'
     runs-on: ubuntu-latest
     steps:
