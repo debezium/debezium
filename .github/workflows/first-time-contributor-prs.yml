@@ -1,0 +1,87 @@
+name: First-Time Contributor PRs
+
+on:
+  schedule:
+    - cron: "0 */4 * * *"
+  workflow_dispatch:
+
+jobs:
+  check-first-time-contributor-prs:
+    name: "Find first-time contributor PRs awaiting CI"
+    runs-on: ubuntu-latest
+    if: github.repository == 'debezium/debezium'
+
+    steps:
+      - name: Find PRs from first-time contributors awaiting CI
+        id: find-prs
+        run: |
+          PR_LIST=""
+
+          # Fetch all non-archived public repositories of the debezium organization
+          REPOS=$(gh api --paginate "orgs/debezium/repos?type=public" \
+            --jq '.[] | select(.archived == false) | .full_name')
+
+          for REPO in $REPOS; do
+            echo "Checking repository: $REPO"
+
+            # List open PRs from first-time contributors
+            PRS=$(gh api --paginate "repos/${REPO}/pulls?state=open&per_page=100" \
+              --jq '.[] | select(.author_association == "FIRST_TIME_CONTRIBUTOR") | {number: .number, url: .html_url, title: .title, head_sha: .head.sha}' \
+              2>/dev/null || true)
+
+            if [ -z "$PRS" ]; then
+              continue
+            fi
+
+            # For each first-time contributor PR check if CI has been triggered
+            while IFS= read -r PR_JSON; do
+              [ -z "$PR_JSON" ] && continue
+
+              PR_NUMBER=$(echo "$PR_JSON" | jq -r '.number')
+              PR_URL=$(echo "$PR_JSON" | jq -r '.url')
+              PR_TITLE=$(echo "$PR_JSON" | jq -r '.title')
+              HEAD_SHA=$(echo "$PR_JSON" | jq -r '.head_sha')
+
+              # Get check runs for the head commit
+              CHECK_COUNT=$(gh api "repos/${REPO}/commits/${HEAD_SHA}/check-runs" \
+                --jq '.total_count' 2>/dev/null || echo "0")
+
+              if [ "$CHECK_COUNT" = "0" ]; then
+                echo "  PR #${PR_NUMBER} in ${REPO} has no CI runs yet: ${PR_URL}"
+                PR_LIST="${PR_LIST}\n- [${REPO} #${PR_NUMBER}](${PR_URL}): ${PR_TITLE}"
+              fi
+            done < <(echo "$PRS" | jq -c '.')
+          done
+
+          if [ -n "$PR_LIST" ]; then
+            echo "found=true" >> $GITHUB_OUTPUT
+            {
+              echo "pr_list<<EOF"
+              echo -e "$PR_LIST"
+              echo "EOF"
+            } >> $GITHUB_OUTPUT
+          else
+            echo "found=false" >> $GITHUB_OUTPUT
+            echo "No first-time contributor PRs awaiting CI found."
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Send Zulip notification
+        if: steps.find-prs.outputs.found == 'true'
+        uses: zulip/github-actions-zulip/send-message@v2
+        with:
+          api-key: ${{ secrets.ZULIP_TOKEN }}
+          email: ${{ secrets.ZULIP_TOKEN_EMAIL_ADDRESS }}
+          organization-url: "https://debezium.zulipchat.com"
+          to: dev
+          type: "stream"
+          topic: alerts
+          content: |
+            👋 **First-Time Contributor PRs Awaiting CI**
+
+            The following open pull requests are from first-time contributors and have no CI runs triggered yet. Please review and approve CI to run:
+
+            ${{ steps.find-prs.outputs.pr_list }}
+
+            **Workflow Run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
