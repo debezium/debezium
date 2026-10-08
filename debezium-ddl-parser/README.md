@@ -138,3 +138,12 @@ To upgrade to a newer version of the Oracle MySQL grammar:
 
 - The grammar files must be named with `MySql` casing (not `MySQL`) to match Java naming conventions used in Debezium.
 - The base classes (`MySqlLexerBase` and `MySqlParserBase`) are implemented in this module (`debezium-ddl-parser`) and provide runtime support for MySQL-specific features like charset introducers and version-specific syntax.
+
+# MariaDB Grammar Customizations
+
+`src/main/antlr4/io/debezium/ddl/parser/mariadb/generated/MariaDBLexer.g4` uses `MariaDbLexerBase` as its superclass, imported through the grammar's header.
+The `SQUOTA_STRING` and `DQUOTA_STRING` fragments use predicates to treat backslashes as ordinary characters when `NO_BACKSLASH_ESCAPES` is enabled, and as escape characters otherwise.
+`MariaDbAntlrDdlParser` initializes this mode on each lexer from its current `sql_mode` system variable.
+This follows the predicate approach used by the MySQL lexer and preserves the original token text and positions.
+
+Retain these customizations when updating the MariaDB grammar from upstream.
