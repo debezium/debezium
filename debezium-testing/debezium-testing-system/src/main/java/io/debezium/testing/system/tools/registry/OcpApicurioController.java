@@ -125,7 +125,7 @@ public class OcpApicurioController implements RegistryController {
 
     private void patchProbeDelay(Deployment deployment, int delaySeconds) {
         final var deploymentName = deployment.getMetadata().getName();
-        LOGGER.info("Patching liveness probe initialDelaySeconds to {} for deployment '{}'", delaySeconds, deploymentName);
+        LOGGER.info("Patching liveness and readiness probes initialDelaySeconds to {} for deployment '{}'", delaySeconds, deploymentName);
         ocp.apps().deployments().inNamespace(project).withName(deploymentName).edit(d -> {
             d.getSpec().getTemplate().getSpec().getContainers().forEach(container -> {
                 if (container.getLivenessProbe() != null) {

@@ -63,7 +63,6 @@ public final class ConfigProperties {
     public static final String STRIMZI_OPERATOR_VERSION = System.getProperty("test.strimzi.operator.version", "0.51.0");
     public static final boolean STRIMZI_OPERATOR_CONNECTORS = booleanProperty("test.strimzi.operator.connectors", true);
     public static final String STRIMZI_VERSION_KAFKA = System.getProperty("test.strimzi.version.kafka", "4.1.0");
-    public static final String STRIMZI_KC_LOG_LEVEL_DBZ = System.getProperty("test.strimzi.kc.log.level.dbz", "INFO");
     public static final boolean FORCE_KRAFT = booleanProperty("test.force.kraft", true);
 
     // Apicurio Registry configuration

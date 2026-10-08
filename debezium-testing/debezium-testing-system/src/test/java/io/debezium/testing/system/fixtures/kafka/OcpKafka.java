@@ -45,7 +45,7 @@ public class OcpKafka extends TestFixture {
     private static final Logger LOGGER = LoggerFactory.getLogger(OcpKafka.class);
 
     // Kafka resources
-    String KAFKA_CONNECT_LOGGING_LOG4J2 = "/kafka-resources/020-kafka-connect-cfg.yaml";
+    String KAFKA_CONNECT_LOGGING = "/kafka-resources/020-kafka-connect-cfg.yaml";
     String KAFKA_CONNECT_LOGGING_LOG4J1 = "/kafka-resources/020-kafka-connect-cfg-log4j1.yaml";
     // Artifact Server resources
     String ARTIFACT_SERVER_DEPLOYMENT = "/artifact-server/010-deployment.yaml";
@@ -95,7 +95,7 @@ public class OcpKafka extends TestFixture {
         if (!Strings.isNullOrEmpty(kafkaVersion) && kafkaVersion.startsWith("3.")) {
             return KAFKA_CONNECT_LOGGING_LOG4J1;
         }
-        return KAFKA_CONNECT_LOGGING_LOG4J2;
+        return KAFKA_CONNECT_LOGGING;
     }
 
     private void deployConnectCluster(StrimziOperatorController operatorController, OcpKafkaController kafkaController) throws Exception {
