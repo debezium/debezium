@@ -92,7 +92,7 @@ jobs:
             echo "No first-time contributor PRs awaiting CI found."
           fi
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.DEBEZIUM_GH_TOKEN }}
 
       - name: Send Zulip notification
         if: steps.find-prs.outputs.found == 'true'
