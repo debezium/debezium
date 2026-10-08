@@ -1,0 +1,1721 @@
+[id="debezium-connector-for-elasticsearch"]
+= {prodname} connector for Elasticsearch
+:context: elasticsearch
+:mbean-name: {context}
+:connector-file: {context}
+:connector-name: Elasticsearch
+ifdef::community[]
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+
+[[elasticsearch-overview]]
+== Overview
+endif::community[]
+
+The {prodname} Elasticsearch connector is a Kafka Connect sink connector implementation that consumes events from one or more Kafka topics and writes them as documents to link:https://www.elastic.co/elasticsearch[Elasticsearch] indices.
+The connector consumes native {prodname} change events, flattened {prodname} events, and plain structured events, and applies them as document writes and deletes while preserving the meaning of {prodname} logical types.
+Decimals arrive as numbers, temporal values as ISO-8601 strings, JSON columns as embedded objects, geometry as GeoJSON, and vectors as arrays.
+
+The connector supports Elasticsearch 8.x and 9.x clusters.
+It is built against the 8.x Elasticsearch Java client and reaches 9.x clusters through the REST API compatibility headers that Elasticsearch provides for that purpose.
+OpenSearch and other forks of Elasticsearch are not supported, and the connector refuses to start when the endpoint identifies itself as a distribution other than Elasticsearch.
+
+ifdef::community[]
+[NOTE]
+====
+The {prodname} connector for Elasticsearch is currently in the Incubating stage of development.
+You are encouraged to explore and test the connector, but it is not yet recommended for production use.
+Configuration properties, defaults, and behavior may change before the connector is production-ready.
+====
+endif::community[]
+
+[[how-the-elasticsearch-connector-works]]
+== How the Elasticsearch connector works
+
+The {prodname} Elasticsearch connector is a Kafka Connect sink connector, and therefore requires the Kafka Connect runtime.
+The connector periodically polls the Kafka topics that it subscribes to, consumes events from those topics, converts each event into an Elasticsearch bulk operation, and issues the operations to the cluster in bulk requests.
+Offsets are committed only for records that a bulk response has confirmed.
+
+The {prodname} Elasticsearch connector provides the following features:
+
+* xref:elasticsearch-consume-debezium-events[Consuming {prodname} change events]
+* xref:elasticsearch-delivery-semantics[Delivery semantics]
+* xref:elasticsearch-multiple-tasks[Multiple tasks]
+* xref:elasticsearch-document-identity[Document identity]
+* xref:elasticsearch-resource-naming[Index naming]
+* xref:elasticsearch-write-methods[Write methods]
+* xref:elasticsearch-delete-handling[Delete handling]
+* xref:elasticsearch-truncate-handling[Truncate handling]
+* xref:elasticsearch-ordering[Ordering guarantees]
+* xref:elasticsearch-batching-and-backpressure[Batching and backpressure]
+* xref:elasticsearch-error-handling-and-dead-letter-queues[Error handling and dead letter queues]
+* xref:elasticsearch-mapping-management[Index mapping management]
+* xref:elasticsearch-routing-and-ingest-pipelines[Routing and ingest pipelines]
+* xref:elasticsearch-connecting[Connecting to Elasticsearch]
+* xref:elasticsearch-changing-how-index-names-are-resolved[Changing how index names are resolved]
+
+[[elasticsearch-consume-debezium-events]]
+=== Consuming {prodname} change events
+
+By default, {prodname} source connectors produce complex, hierarchical change events.
+When {prodname} connectors are used with other Elasticsearch sink connector implementations, you might need to apply the `ExtractNewRecordState` single message transformation (SMT) to flatten the payload of change events, so that they can be consumed by the sink implementation.
+If you run the {prodname} Elasticsearch sink connector, it is not necessary to deploy the SMT, because the connector consumes native {prodname} change events directly.
+
+The connector recognizes three shapes of event, and the xref:elasticsearch-property-event-format[`event.format`] property controls how it detects them:
+
+[cols="25%a,75%a",options="header"]
+|===
+|Event shape |How the connector handles it
+
+|{prodname} envelope
+a|The connector reads the `op` field and acts on it:
+
+* `c`, `r`, and `u` events write the content of the `after` block as the document body.
+* `d` events delete the document whose `_id` is derived from the record key.
+* `t` events are handled according to xref:elasticsearch-property-truncate-mode[`truncate.mode`].
+* `m` (logical message) events are skipped and counted as filtered events.
+
+|Flattened {prodname} event
+a|An event that was flattened by the `ExtractNewRecordState` SMT.
+The connector reads the `+__op+` and `+__deleted+` markers from the value fields (`add.fields`) or, when they are absent there, from the record headers (`add.headers`).
+A value of `+__deleted=true+`, an `+__op+` of `d`, or a null value that still carries a value schema (`delete.handling.mode=none`) is treated as a delete.
+Any other flattened record is written as the document body.
+The `+__source_*+` fields that the SMT adds are available to the xref:elasticsearch-resource-naming[naming placeholders] in the same way that the `source` block of an envelope is.
+
+|Plain structured event
+a|Any other Kafka Connect `Struct`, or a schemaless `Map` value, is written whole as the document body.
+This is a supported mode, not a degraded one, and it is how the connector serves topics that are not populated by {prodname}.
+Schemaless values are written through unchanged; the logical type conversions described in xref:elasticsearch-field-types[Data type mappings] require a schema and do not apply to them.
+The connector logs this once at `INFO` the first time that it encounters a schemaless record.
+
+|===
+
+When `event.format` is `auto` (the default), the connector detects the shape of each record individually.
+Set `event.format` to `debezium` to require a {prodname} envelope or flattened {prodname} record, in which case a plain record is a record-level error that is routed to the error reporter rather than a silent pass-through.
+Set `event.format` to `plain` to treat every value as an opaque document body, even a value that is shaped like an envelope.
+
+CloudEvents-wrapped values are unwrapped automatically by matching the value schema name against xref:elasticsearch-property-cloud-events-schema-name-pattern[`cloud.events.schema.name.pattern`], so both the {prodname} CloudEvents converter and the Kafka Connect CloudEvents converter work without additional configuration.
+
+[IMPORTANT]
+====
+The {prodname} Elasticsearch sink connector is not designed to read from schema change topics.
+If your source connector is configured to capture schema changes, in the Elasticsearch connector configuration, set the xref:elasticsearch-property-connection-topics[`topics`] or xref:elasticsearch-property-connection-topics-regex[`topics.regex`] properties so that the connector does not consume from schema change topics.
+====
+
+==== Tombstone events
+
+A tombstone is a Kafka record with a non-null key and a null value.
+The xref:elasticsearch-property-tombstone-mode[`tombstone.mode`] property governs what the connector does with one.
+The default, `auto`, resolves to `delete` for every input contract.
+This is deliberate: the connector reduces each batch to one operation per document, so a `d` event and the tombstone that follows it collapse into just the tombstone.
+Ignoring the tombstone would lose the delete entirely, whereas the redundant delete that results from acting on it is harmless, because deleting an absent document is reported as a success.
+
+Set `tombstone.mode` to `ignore` to skip tombstones, to `fail` to stop the task when one arrives, or to `delete` to make the default behavior explicit.
+A tombstone that has a null key has nothing to act on; it is skipped under `ignore` and is a record-level error under every other mode.
+
+[[elasticsearch-delivery-semantics]]
+=== Delivery semantics
+
+Kafka Connect delivers records to a sink connector at least once.
+After a restart or rebalance the connector can receive the same event more than once.
+Because the connector addresses every write and delete by a stable `_id`, a redelivered record converges on the same document rather than producing a second one, so the document state in Elasticsearch is effectively exactly-once.
+
+This guarantee holds only while `_id` is derived from something stable in the record:
+
+* xref:elasticsearch-property-primary-key-mode[`primary.key.mode`] values `record_key` (the default), `record_value`, and `record_header` all derive `_id` from record content and satisfy this.
+* `primary.key.mode=kafka` derives `_id` from the topic, partition, and offset.
+Offsets are stable under redelivery, but they do not survive a topic being recreated or offsets being reset, after which the same logical row occupies a new `_id`.
+* `primary.key.mode=none` forfeits the guarantee outright.
+Elasticsearch generates a fresh `_id` per write, so a redelivered record is a duplicate document.
+
+Idempotence does not supply ordering.
+Replaying two events for one `_id` out of order converges on whichever arrived last, which is why the connector removes reordering by construction, as described in xref:elasticsearch-ordering[Ordering guarantees].
+
+[[elasticsearch-multiple-tasks]]
+=== Multiple tasks
+
+You can run the {prodname} Elasticsearch sink connector across multiple Kafka Connect tasks.
+To run the connector across multiple tasks, set the `tasks.max` configuration property to the number of tasks that you want the connector to use.
+The Kafka Connect runtime starts the specified number of tasks, and runs one instance of the connector per task.
+Each task issues one bulk request at a time, so additional throughput comes from adding partitions and tasks rather than from pipelining requests within a task.
+
+[[elasticsearch-document-identity]]
+=== Document identity
+
+The connector derives the Elasticsearch document `_id` through the xref:elasticsearch-property-primary-key-mode[`primary.key.mode`] and xref:elasticsearch-property-primary-key-fields[`primary.key.fields`] properties that are shared with the other {prodname} sink connectors.
+The following table describes the available modes:
+
+[cols="25%a,75%a",options="header"]
+|===
+|Mode|Description
+
+|`record_key`
+a|The default.
+The `_id` is derived from the Kafka record key.
+
+A primitive key is converted to a string.
+A `Struct` key uses the fields named in `primary.key.fields`, or all key fields in schema order when that property is unset, joined with xref:elasticsearch-property-document-id-separator[`document.id.separator`].
+
+|`record_value`
+a|The `_id` is composed from the fields named in `primary.key.fields`, taken from the document body.
+`primary.key.fields` is required in this mode.
+
+Because the `_id` is no longer the record key, events for one document can span Kafka partitions.
+This mode therefore requires an explicit ordering decision through xref:elasticsearch-property-document-id-non-key-ordering[`document.id.non.key.ordering`].
+
+|`record_header`
+a|The `_id` is composed from the record headers named in `primary.key.fields`.
+`primary.key.fields` is required in this mode, and the same ordering decision as for `record_value` is required.
+
+|`kafka`
+a|The `_id` is composed from the topic name, partition, and offset of the Kafka record, joined with `document.id.separator`.
+
+Combining this mode with deletes is permitted but the connector warns at startup, because a delete keyed on topic, partition, and offset cannot address the document that an earlier offset created.
+
+|`none`
+a|No `_id` is sent and Elasticsearch generates one.
+This mode is suitable for append-only indices.
+
+Because there is no document identity to update or delete, an explicit `delete.enabled=true`, `write.method=upsert`, or `write.method=update` is a startup error in this mode.
+When those properties are left at their defaults, the connector resolves `delete.enabled` to `false` and `write.method` to `create` and logs a warning for each resolution.
+
+|===
+
+The order of composite key fields is fixed by `primary.key.fields`, or by the schema field order when that property is unset.
+Reordering the fields silently changes every `_id` in the index, so treat the order as part of the index contract.
+
+Byte array and `ByteBuffer` key values are Base64-encoded, and decimal key values are rendered in plain notation without an exponent.
+An `_id` that exceeds the 512-byte limit that Elasticsearch imposes, or an `_id` that resolves to null under any mode other than `none`, is a record-level error that is routed to the error reporter with the record coordinates attached.
+
+==== Kafka metadata as document fields
+
+Consuming the record key to derive the `_id` does not place the key in the document.
+To make the key searchable, or to retain the Kafka coordinates of each record as an audit trail, set xref:elasticsearch-property-document-metadata-fields[`document.metadata.fields`] to any combination of `key`, `topic`, `partition`, `offset`, and `timestamp`.
+The connector adds the selected values to the document body under the prefix set by xref:elasticsearch-property-document-metadata-prefix[`document.metadata.prefix`], which defaults to `+_kafka_+`.
+A `Struct` key is projected as a nested object, and a primitive key as a scalar.
+
+Metadata fields are added after xref:elasticsearch-property-field-include-list[`field.include.list`] and xref:elasticsearch-property-field-exclude-list[`field.exclude.list`] are applied, so an exclusion list that is written for source columns cannot accidentally strip them.
+
+[[elasticsearch-resource-naming]]
+=== Index naming
+
+The connector resolves the target index for each record from the xref:elasticsearch-property-collection-name-format[`collection.name.format`] property.
+The default value, `+${topic}+`, writes each topic to an index of the same name.
+The Elasticsearch connector extends the placeholder vocabulary that other {prodname} sink connectors offer, which removes the need for routing transformations in most deployments:
+
+[cols="35%a,65%a",options="header"]
+|===
+|Placeholder |Resolves to
+
+|`+${topic}+`
+|The topic name.
+
+|`+${source.db}+`, `+${source.schema}+`, `+${source.table}+`, `+${source.connector}+`
+|The named field of the `source` block in a {prodname} envelope, or the corresponding `+__source_*+` field of a flattened {prodname} record.
+
+|`+${field:path.to.field}+`
+|The value of a field in the document body, addressed by a dotted path.
+
+|`+${header:name}+`
+|The value of the named record header.
+
+|`+${date:pattern}+`
+|The event timestamp, formatted with a `java.time` pattern such as `yyyy.MM.dd`, in the time zone set by xref:elasticsearch-property-resource-name-timezone[`resource.name.timezone`].
+The timestamp is taken from the `source.ts_ms` field of a {prodname} envelope when it is present, and from the Kafka record timestamp otherwise.
+
+|===
+
+For example, a `collection.name.format` of `+orders-${source.table}-${date:yyyy.MM}+` writes events for the `line_items` table that were committed in March 2026 to the index `orders-line_items-2026.03`.
+
+A placeholder that cannot be resolved for a record, for example a `+${source.table}+` placeholder on a record that carries no source metadata, is a record-level error that is routed to the error reporter.
+It is never replaced with an empty string.
+
+The xref:elasticsearch-property-topic-to-resource-mapping[`topic.to.resource.mapping`] property provides explicit overrides in the form `topic:index,topic:index`.
+An override is consulted before `collection.name.format` for every record from the named topic, regardless of any other setting.
+
+==== Invalid index names
+
+Elasticsearch constrains index names: they must be lowercase, must not contain `\`, `/`, `*`, `?`, `"`, `<`, `>`, `|`, `,`, `#`, `:`, or a space, must not start with `-`, `+_+`, or `+`, must not be `.` or `..`, and must not exceed 255 bytes.
+A topic name such as `inventory.Customers` violates these rules, and the xref:elasticsearch-property-resource-name-invalid-handling[`resource.name.invalid.handling`] property controls what happens:
+
+`fail`:: The default.
+The task stops with a message that names the resolved index name and the rule that it broke.
+`sanitize`:: The connector lowercases the name and replaces each disallowed character with xref:elasticsearch-property-resource-name-replacement[`resource.name.replacement`], which defaults to `+_+`.
+Each distinct transformation is logged once at `WARN`.
+This mode is opt-in because a silent rename can merge two logically distinct sources into one index.
+`error_handler`:: The record is routed to the error reporter.
+
+==== Resource types and automatic creation
+
+The xref:elasticsearch-property-resource-type[`resource.type`] property names the kind of Elasticsearch resource that the connector writes to.
+In this release only `index` is supported.
+The values `alias_index`, `data_stream`, and `alias_data_stream`, and the related `data.stream.*` properties, are accepted by the configuration but rejected at startup until support for them lands in a later release.
+
+When xref:elasticsearch-property-resource-auto-create[`resource.auto.create`] is `true` (the default), the connector creates the index and applies the generated mapping before the first write to it, as described in xref:elasticsearch-mapping-management[Index mapping management], and skips both steps when the index already exists.
+
+When `resource.auto.create` is `false`, the connector makes no existence call at all.
+The setting asserts that the index exists; if it does not, the first write fails with the error that Elasticsearch returns.
+Deployments that pre-create indices with their own analyzers and mappings can use this setting to avoid an existence check per index.
+
+[[elasticsearch-write-methods]]
+=== Write methods
+
+The xref:elasticsearch-property-write-method[`write.method`] property selects the bulk action that the connector uses for document writes:
+
+[cols="20%a,30%a,50%a",options="header"]
+|===
+|Method |Bulk action |Description
+
+|`upsert`
+|`update` with `doc_as_upsert: true`
+|The default.
+Creates the document if it does not exist and merges the fields of the event into it if it does.
+
+|`index`
+|`index`
+|Replaces the whole document.
+Fields that are absent from the event are removed from the document.
+
+|`create`
+|`create`
+|Creates the document and fails with a record-level error if a document with the same `_id` already exists.
+
+|`update`
+|`update`
+|Updates an existing document and fails with a record-level error if the document does not exist.
+
+|===
+
+`upsert` is the default because a change event stream that begins mid-table, for example after a re-snapshot or an incremental snapshot that overlaps streaming, produces updates for documents that the sink has never seen.
+Under `index` each such update would write a whole document built from the `after` block of the event, so wherever the source emits a partial `after` block the result is a document with missing fields rather than a document with merged fields.
+
+The `upsert` and `update` methods operate through the Elasticsearch Update API, which reconstructs the document from `_source`.
+An index whose mapping disables `_source` cannot serve them; use `index` or `create` against such an index.
+
+The xref:elasticsearch-property-write-method-per-operation[`write.method.per.operation`] property overrides the write method for individual envelope operations, for example `c:create,u:upsert` so that creates never overwrite an existing document while updates still merge.
+Keys are the envelope operation codes `c`, `r`, and `u`.
+
+[[elasticsearch-delete-handling]]
+=== Delete handling
+
+Unlike other {prodname} sink connectors, the Elasticsearch connector propagates deletes by default: xref:elasticsearch-property-delete-enabled[`delete.enabled`] defaults to `true`.
+A change data capture sink that silently drops deletes is precisely the failure that this connector exists to eliminate.
+Set `delete.enabled=false` explicitly for an append-only index; the connector then logs a startup warning that delete events will be discarded, and counts each discarded delete as a filtered event in the xref:elasticsearch-monitoring[connector metrics].
+
+Deletes are addressed by `_id`, so they require a `primary.key.mode` other than `none`.
+Deleting a document that does not exist is reported by Elasticsearch as `not_found`, which the connector treats as a success.
+
+[[elasticsearch-truncate-handling]]
+=== Truncate handling
+
+A truncate is the only operation that the connector performs that can destroy data it did not write, because an index can hold documents produced by another connector, another application, or a backfill.
+The xref:elasticsearch-property-truncate-mode[`truncate.mode`] property controls what the connector does with a `t` event:
+
+[cols="20%a,45%a,35%a",options="header"]
+|===
+|Mode |On a `t` event |Requirements
+
+|`ignore`
+|The default.
+The event is discarded and the index is untouched.
+|None.
+
+|`delete_by_query`
+|The connector refreshes the index and issues a `delete_by_query` request that matches all documents, with `wait_for_completion=true`, `conflicts=abort`, and `refresh=true`.
+A concurrent write during the scan makes the truncate fail loudly rather than applying to part of the index and reporting success.
+|The resolved index name must match an entry in xref:elasticsearch-property-truncate-allowed-resources[`truncate.allowed.resources`].
+
+|`recreate`
+|The connector deletes the index outright.
+The next write recreates it from the generated index template.
+Where the connector exclusively owns the index this is safer than `delete_by_query`: it is atomic, has no conflict window, and reclaims disk immediately.
+|The same allow-list requirement, plus `resource.auto.create=true` and a `mapping.mode` other than `none`.
+
+|`fail`
+|The task stops, for deployments that prefer to handle a truncate manually.
+|None.
+
+|===
+
+The destructive modes require an acknowledgement in the form of an allow-list rather than a confirmation flag.
+`truncate.allowed.resources` is a comma-separated list of exact index names or glob patterns using `*` and `?`, matched against the resolved index name and not the topic, because the topic is not what gets emptied and the naming rules can map many topics onto one index.
+An empty or unset list while a destructive mode is configured is a startup error.
+A truncate event whose resolved index does not match any entry is a record-level error that is routed to the error reporter, naming the index and the configured list; it is not silently ignored.
+A pattern that matches every index, such as a bare `*`, is rejected unless xref:elasticsearch-property-truncate-allow-wildcard[`truncate.allow.wildcard`] is also `true`.
+
+The shared `truncate.enabled` property is derived from `truncate.mode`: it is `false` when the mode is `ignore` and `true` otherwise.
+Configure `truncate.mode` only.
+An explicit `truncate.enabled` value that contradicts the derived value is a startup error that names both properties.
+
+A truncate is not a bulk item and is never pipelined against one.
+The connector first writes every bulk operation that it has accumulated, then issues the truncate and waits for it to complete, and only then builds the next bulk request.
+A `delete_by_query` truncate deletes the documents that are visible in the search snapshot taken when the query starts; a document written by another producer between that snapshot and completion survives the truncate.
+
+[[elasticsearch-ordering]]
+=== Ordering guarantees
+
+{prodname} keys each change event by the primary key of the row, and the default Kafka partitioner hashes that key, so every event for a given row lands in one partition and Kafka preserves order within it.
+Kafka Connect assigns each partition to exactly one task and delivers records in per-partition order.
+Every event for a given `_id` therefore arrives at a single task, in order, and the obligation of the connector is not to establish ordering but to avoid destroying it.
+The connector does this by construction:
+
+One bulk request in flight per task::
+The next bulk request is built only after the response to the previous one has been fully processed.
+Issuing request N+1 before request N has responded would let the network and Elasticsearch apply them out of order, which is the source of the well-known corruption scenario in which records that arrived in perfect order are reordered by the connector itself.
+For this reason the connector does not offer a `max.in.flight.requests` setting.
+
+One operation per index and `_id` in each batch::
+Before writing a batch, the connector reduces it to the last operation for each combination of resolved index and `_id`.
+Elasticsearch holds current state, so intermediate states of a document within one batch have no observable value, and with one item per `_id` per request a retried item can never be overtaken by a sibling for the same document.
+The reduction is keyed on the index as well as the `_id`, so two topics that resolve to different indices never reduce against each other even when they carry identical `_id` values.
+A `c`, `u`, `d` sequence for one document reduces to the `d`, never to nothing, because the index might still hold a document for that `_id` from an earlier run.
++
+This reduction is part of the correctness argument, not an optimization, so the shared `keyed.message.batch.mode` property is fixed to `deduplication` and an explicit `passthrough` value is rejected at startup.
+
+One bulk request spans every index in the batch::
+The bulk API takes the target index per item, so a batch that touches many indices is issued as a single request.
+A connector that fans out across many indices pays nothing extra for the single-in-flight rule.
+
+==== When `_id` is not the record key
+
+Deriving the `_id` from a payload field or header (`primary.key.mode=record_value` or `record_header`) breaks the alignment that the preceding guarantees depend on: events for one document can now live in several partitions, and Kafka never ordered them relative to each other.
+Restricting the connector to one task does not help, because a task polls multiple partitions and interleaves them arbitrarily.
+
+For this reason the connector requires an explicit ordering decision at startup whenever `_id` is derived from something other than the record key.
+Set xref:elasticsearch-property-document-id-non-key-ordering[`document.id.non.key.ordering`] to `last_write_wins` to acknowledge that the connector resolves conflicting events arbitrarily, or to `version` to enforce ordering through the xref:elasticsearch-property-version-strategy[`version.strategy`] property.
+There is no default.
+
+[NOTE]
+====
+External versioning through `version.strategy`, `version.enforcement`, and `version.conflict.mode` is part of the connector configuration surface but is not yet implemented.
+In this release `version.strategy` must remain `none`, and setting `version.enforcement` or `version.conflict.mode` is rejected at startup.
+Until versioning lands, `document.id.non.key.ordering=last_write_wins` is the only valid choice for the `record_value` and `record_header` modes.
+====
+
+[[elasticsearch-batching-and-backpressure]]
+=== Batching and backpressure
+
+The connector accumulates the records of each `put()` call into batches of at most xref:elasticsearch-property-batch-size[`batch.size`] records and issues each batch as one bulk request.
+The xref:elasticsearch-property-bulk-size-bytes[`bulk.size.bytes`] property bounds the serialized size of one request, so that a batch of large documents cannot exceed the `http.max_content_length` setting of the cluster; a batch that exceeds the bound is split into several requests.
+Partial batches are written immediately by default.
+Set xref:elasticsearch-property-linger-ms[`linger.ms`] to accumulate partial batches for up to the given number of milliseconds under low throughput.
+A flush that Kafka Connect requests before an offset commit always drains everything that is buffered.
+
+==== Adaptive throttling
+
+A `429` rejection from Elasticsearch, typically an `es_rejected_execution_exception`, is a backpressure signal and not an error.
+When a bulk response contains a rejected item, the connector halves the effective batch size, retries the rejected items, and recovers the batch size additively toward `batch.size` after three consecutive clean responses.
+Throttle retries are never counted against xref:elasticsearch-property-max-retries[`max.retries`], because counting a backpressure signal as a failure is what converts a busy cluster into a dead task.
+The current effective batch size and the number of throttle events are exposed as xref:elasticsearch-monitoring[metrics].
+
+Operators who share a cluster with other workloads can cap the connector proactively with xref:elasticsearch-property-max-requests-per-second[`max.requests.per.second`] and xref:elasticsearch-property-max-bytes-per-second[`max.bytes.per.second`].
+Both are unset by default.
+The ceilings compose with the adaptive throttle: the effective rate is the lower of the configured ceiling and whatever the throttle has currently backed off to.
+
+==== Retries and task health
+
+Transient failures that are not rejections, such as `unavailable_shards_exception`, a `503` response, or a transport-level I/O error, are retried with an exponential backoff that starts at xref:elasticsearch-property-retry-backoff-ms[`retry.backoff.ms`] and doubles up to xref:elasticsearch-property-retry-backoff-max-ms[`retry.backoff.max.ms`].
+Each consecutive failed round counts against `max.retries`; a successful round resets the budget.
+When the budget is exhausted the task fails with the last Elasticsearch error attached.
+
+Thread liveness is not health.
+A task that has made no observable progress for longer than xref:elasticsearch-property-progress-stall-timeout-ms[`progress.stall.timeout.ms`] transitions to `FAILED` with the last Elasticsearch error attached, rather than reporting `RUNNING` while retrying forever.
+The milliseconds since the last successful bulk response are exposed as a metric so that this condition can be observed before the timeout elapses.
+
+[[elasticsearch-error-handling-and-dead-letter-queues]]
+=== Error handling and dead letter queues
+
+The connector classifies every bulk item outcome and transport failure into one of five buckets, keyed on the HTTP status and the Elasticsearch error `type`:
+
+[cols="20%a,45%a,35%a",options="header"]
+|===
+|Bucket |Examples |Action
+
+|Success
+|`created`, `updated`, `deleted`, `noop`, and `not_found` on a delete
+|The record is confirmed and its offset can be committed.
+
+|Transient
+|`es_rejected_execution_exception`, `unavailable_shards_exception`, `node_not_connected_exception`, `node_disconnected_exception`, `circuit_breaking_exception`, `no_shard_available_action_exception`, `process_cluster_event_timeout_exception`, any `429` or `503` response, and I/O errors on the transport
+|The item is retried, as a throttle signal for `429` rejections and against the retry budget otherwise.
+
+|Record
+|`mapper_parsing_exception`, `document_parsing_exception`, `strict_dynamic_mapping_exception`, `illegal_argument_exception`, `version_conflict_engine_exception`, `document_missing_exception`, `routing_missing_exception`, and any other `400` or `409` response
+|The record is routed to the error reporter with the Elasticsearch error type, reason, and status attached.
+
+|Resource-fatal
+|`cluster_block_exception` (for example a read-only index), `index_closed_exception`, `index_not_found_exception`, and a `403` `security_exception` that names a single index
+|The connector stops writing to that index and keeps writing to the others.
+If the block does not clear within `progress.stall.timeout.ms`, the records for that index are routed to the error reporter so that offsets stay sound.
+The task fails only when every index in the batch is blocked.
+
+|Task-fatal
+|A `401` `security_exception`, a `403` that is not scoped to an index, and any outcome that the table does not classify
+|The task fails with a diagnostic message.
+
+|===
+
+The default for an unmatched outcome is task-fatal, not transient.
+No unclassified condition is well enough understood to be assumed recoverable, and defaulting the unknown case to transient is how a connector arrives at retrying forever while reporting `RUNNING`.
+An operator who knows better can move a specific Elasticsearch error type between buckets with xref:elasticsearch-property-error-classification-overrides[`error.classification.overrides`], for example `circuit_breaking_exception:record`.
+The `success` bucket is deliberately not assignable, because reclassifying a failure as a success is how a document is lost silently.
+
+Record-level failures, including naming failures, oversized or null document identifiers, and truncate events outside the allow-list, are routed to the errant record reporter that the Kafka Connect runtime provides (link:https://cwiki.apache.org/confluence/display/KAFKA/KIP-610%3A+Error+Reporting+in+Sink+Connectors[KIP-610]).
+Whether a reported record stops the task or is written to a dead letter queue is controlled by the standard Kafka Connect error handling options:
+
+.Example dead letter queue configuration
+[source,json]
+----
+{
+  "errors.tolerance": "all",
+  "errors.deadletterqueue.topic.name": "dlq-topic",
+  "errors.deadletterqueue.context.headers.enable": "true"
+}
+----
+
+When `errors.tolerance` is set to `none` (the default), or when no dead letter queue topic is configured, a reported record stops the connector task.
+Because a dead letter queue topic can never receive records while `errors.tolerance` is `none`, the connector rejects that combination at startup.
+
+By default, error logs include the record coordinates, the index, and the Elasticsearch error, but never the document body or the `_id`.
+Set xref:elasticsearch-property-log-sensitive-data[`log.sensitive.data`] to `true` to include them.
+
+[[elasticsearch-mapping-management]]
+=== Index mapping management
+
+Elasticsearch dynamic mapping infers the type of each field from the first document that carries it, and then enforces one type per field name per index forever.
+Because the connector has the Kafka Connect schema of each record, it can do better.
+The xref:elasticsearch-property-mapping-mode[`mapping.mode`] property controls how:
+
+`create_if_absent`:: The default.
+Before the first write to an index, the connector generates a mapping from the Connect schema of the record value and applies it unless an index template for that index already exists.
+`overwrite`:: The connector always applies the generated template.
+A template change does not retroactively alter an index that already exists.
+`none`:: The connector leaves mapping entirely to Elasticsearch.
+This is a first-class escape hatch for users who have already modeled their index.
+
+The connector owns mappings; it does not own lifecycle.
+For each index it creates a component template named `debezium-<connector-name>-<index>` that contains only the generated `mappings`, and composes it into an index template of the same name whose pattern is the index name.
+Index lifecycle management (ILM), rollover aliases, and retention policies are reached through xref:elasticsearch-property-mapping-composed-of[`mapping.composed.of`]: author a lifecycle component template once in Elasticsearch and name it in that property, and the connector composes it into the generated index template ahead of its own.
+The xref:elasticsearch-property-mapping-settings[`mapping.settings`] property is a narrow passthrough for the index settings that materially affect a sink: `number_of_shards`, `number_of_replicas`, `refresh_interval`, and `index.default_pipeline`.
+
+Templates only shape indices that are created after them.
+When the index already exists, for example because the record schema gained a column or because the index was created by someone else, the connector applies the generated fields to the existing index directly with a put mapping request.
+An added column is absorbed, and a change of a field type is rejected by Elasticsearch once, with a message that names reindexing as the remedy, rather than once per document forever.
+
+The generated mapping is regenerated whenever the record value schema for an index changes, so schema evolution that adds fields is handled without intervention.
+
+==== Dynamic mapping behavior
+
+The xref:elasticsearch-property-mapping-dynamic[`mapping.dynamic`] property sets the `dynamic` setting of the generated mapping.
+The default, `strict_but_dlq`, sets `dynamic: strict` so that a field that is not in the mapping is rejected rather than silently typed, and the connector routes the rejected record to the error reporter with a message that names the field.
+The values `true`, `false`, and `runtime` are passed through to Elasticsearch unchanged.
+
+==== Field type choices
+
+Three properties adjust the field types that the generated mapping uses for the most common Connect types:
+
+* xref:elasticsearch-property-string-mapping-mode[`string.mapping.mode`] maps `STRING` fields as `text` with a `keyword` sub-field (the default), as `text` only, or as `keyword` only.
+* xref:elasticsearch-property-struct-mapping-mode[`struct.mapping.mode`] maps `STRUCT` fields as `object` (the default) or `nested`.
+* xref:elasticsearch-property-json-mapping-mode[`json.mapping.mode`] maps `io.debezium.data.Json` fields as a dynamic `object` (the default) or as `flattened`.
+
+The complete set of mappings is listed in xref:elasticsearch-field-types[Data type mappings].
+
+==== Field names
+
+Elasticsearch interprets a dot in a field name as object nesting, which is a hazard for source columns with names such as `user.name`.
+The xref:elasticsearch-property-field-name-adjustment-mode[`field.name.adjustment.mode`] property controls whether and how field names are adjusted.
+The `elasticsearch` mode replaces each dot with xref:elasticsearch-property-field-name-separator-replacement[`field.name.separator.replacement`], and the `avro` and `avro_unicode` modes apply the same adjustments that {prodname} source connectors offer under the same property name.
+The default is `none`.
+
+[[elasticsearch-routing-and-ingest-pipelines]]
+=== Routing and ingest pipelines
+
+Set xref:elasticsearch-property-index-routing-field[`index.routing.field`] to the dotted path of a document field whose value should become the `_routing` of each document.
+A record that is missing the field is a record-level error, because routing that silently defaults to the `_id` places the document on the wrong shard, which is unrecoverable without a reindex.
+
+Set xref:elasticsearch-property-ingest-pipeline[`ingest.pipeline`] to the name of an ingest pipeline to apply on writes, or to a placeholder expression that uses the xref:elasticsearch-resource-naming[naming vocabulary], for example `+pipeline-${source.table}+`.
+When the pipeline name is static and xref:elasticsearch-property-ingest-pipeline-validate[`ingest.pipeline.validate`] is `true` (the default), the connector verifies at startup that the pipeline exists.
+Pipelines are applied to `index` and `create` operations; the Elasticsearch Update API that serves `upsert` and `update` does not accept a pipeline parameter.
+
+[[elasticsearch-connecting]]
+=== Connecting to Elasticsearch
+
+The connector connects to a cluster through either xref:elasticsearch-property-connection-url[`connection.url`], a comma-separated list of node URLs, or xref:elasticsearch-property-connection-cloud-id[`connection.cloud.id`], an Elastic Cloud deployment identifier.
+Exactly one of the two must be configured.
+Each URL must include a scheme; the port defaults to `9200` for `http` and `443` for `https`.
+A context path on the URL, for example `https://gateway.internal/es`, is honored for clusters behind a reverse proxy, and every URL in the list must share the same path.
+
+==== Authentication
+
+The xref:elasticsearch-property-connection-auth-mode[`connection.auth.mode`] property selects how the connector authenticates:
+
+[cols="20%a,80%a",options="header"]
+|===
+|Mode |Credentials
+
+|`none`
+|No credentials are sent.
+
+|`basic`
+|HTTP basic authentication with xref:elasticsearch-property-connection-username[`connection.username`] and xref:elasticsearch-property-connection-password[`connection.password`].
+
+|`api_key`
+|An `Authorization: ApiKey` header carrying the Base64-encoded `id:api_key` value of xref:elasticsearch-property-connection-api-key[`connection.api.key`].
+
+|`bearer`
+|An `Authorization: Bearer` header carrying xref:elasticsearch-property-connection-bearer-token[`connection.bearer.token`].
+
+|`kerberos`
+|SPNEGO negotiation using the principal and keytab in xref:elasticsearch-property-connection-kerberos-principal[`connection.kerberos.principal`] and xref:elasticsearch-property-connection-kerberos-keytab[`connection.kerberos.keytab`].
+
+|`custom`
+|An implementation of `io.debezium.connector.elasticsearch.client.ConnectionCredentialsProvider` named by xref:elasticsearch-property-connection-credentials-provider-class[`connection.credentials.provider.class`], for schemes that live outside the connector such as cloud-vendor request signing.
+
+|===
+
+When `connection.auth.mode` is not set, the connector uses `basic` if a username or password is configured and `none` otherwise.
+Credentials that do not match the selected mode, or a mode whose credentials are missing, are a startup error.
+The connector never falls through silently to unauthenticated access.
+
+==== TLS and proxies
+
+The xref:elasticsearch-property-connection-tls-verification-mode[`connection.tls.verification.mode`] property uses the same vocabulary as Elasticsearch itself.
+The default, `full`, verifies the certificate chain and the host name.
+`certificate` verifies the chain but not the host name, and `none` performs no verification at all, which defeats TLS against an active attacker.
+Anything other than `full` logs a warning at startup.
+
+To trust a cluster that uses a self-signed certificate authority without abandoning verification, set xref:elasticsearch-property-connection-tls-ca-fingerprint[`connection.tls.ca.fingerprint`] to the SHA-256 fingerprint that Elasticsearch prints when it first starts.
+Alternatively, provide a truststore through the `connection.tls.truststore.*` properties, and a client certificate for mutual TLS through the `connection.tls.keystore.*` properties.
+The `connection.tls.protocols` and `connection.tls.cipher.suites` properties restrict the enabled protocol versions and cipher suites.
+
+Requests can be routed through an HTTP proxy with the `connection.proxy.*` properties, optionally with proxy credentials.
+Request bodies can be GZip-compressed with xref:elasticsearch-property-connection-compression[`connection.compression`], which requires `http.compression` to be enabled on the cluster.
+Set xref:elasticsearch-property-connection-sniff-enabled[`connection.sniff.enabled`] to let the client periodically discover the nodes of the cluster and add them to its round-robin set.
+
+==== Cluster version handshake
+
+At startup the connector requests the root endpoint of the cluster and reads the reported version and distribution.
+A cluster whose major version is outside the supported range, or an endpoint that reports a distribution other than Elasticsearch, fails the task with a message that names the version and the supported range.
+A probe that fails to answer is retried within the `max.retries` budget and then fails with the transport error attached; the connector never starts with an assumed compatibility mode.
+
+The xref:elasticsearch-property-connection-api-compatibility-mode[`connection.api.compatibility.mode`] property controls the REST API compatibility headers that let the 8.x client address a 9.x cluster.
+The default, `auto`, sends them when the handshake reports a cluster major version greater than that of the client.
+A compatibility-shaped error later on, such as a `406` or `415` response, invalidates the cached version and forces a new probe before the next request, which covers a cluster that is upgraded underneath a long-running task.
+The detected cluster version and the effective compatibility mode are exposed as xref:elasticsearch-monitoring[metrics].
+
+[[elasticsearch-changing-how-index-names-are-resolved]]
+=== Changing how index names are resolved
+
+The {prodname} Elasticsearch sink connector uses an `io.debezium.sink.naming.CollectionNamingStrategy` to control how an event is mapped to a target index.
+The default implementation, `io.debezium.connector.elasticsearch.naming.ElasticsearchCollectionNamingStrategy`, applies the following rules:
+
+* Consult xref:elasticsearch-property-topic-to-resource-mapping[`topic.to.resource.mapping`] for an override of the topic name.
+* Otherwise, resolve every placeholder in xref:elasticsearch-property-collection-name-format[`collection.name.format`] as described in xref:elasticsearch-resource-naming[Index naming].
+* Validate the resolved name against the Elasticsearch index naming rules and apply xref:elasticsearch-property-resource-name-invalid-handling[`resource.name.invalid.handling`].
+
+If this behavior does not fit your needs, you can implement your own `io.debezium.sink.naming.CollectionNamingStrategy`.
+Place the custom implementation alongside the {prodname} Elasticsearch sink connector files, and set xref:elasticsearch-property-collection-naming-strategy[`collection.naming.strategy`] to the fully qualified class name of the implementation.
+A custom strategy is responsible for producing names that Elasticsearch accepts.
+
+[[elasticsearch-field-types]]
+== Data type mappings
+
+Before the {prodname} Elasticsearch sink connector writes a document, it converts each field of the source record into a JSON value, and, when it generates the index mapping, it chooses an Elasticsearch field type for the field.
+Both decisions are driven by the Kafka Connect schema of the field: by the logical schema name when the field has one, and by the primitive schema type otherwise.
+
+The following examples show representative structures of primitive and logical data types:
+
+.Primitive field schema
+====
+[source,json]
+----
+{
+  "schema": {
+    "type": "INT64"
+  }
+}
+----
+====
+
+.Logical field schema
+====
+[source,json]
+----
+{
+  "schema": {
+    "type": "INT64",
+    "name": "io.debezium.time.MicroTimestamp"
+  }
+}
+----
+====
+
+The following tables describe the JSON representation and the generated field type for each primitive and logical type.
+Where a type has more than one representation, the `*.output.mode` property that selects between them is named, and the generated field type follows the selected representation so that the mapping always matches what the connector writes.
+
+. xref:elasticsearch-kafka-connect-primitive-mappings[]
+. xref:elasticsearch-kafka-connect-logical-mappings[]
+. xref:elasticsearch-debezium-logical-mappings[]
+. xref:elasticsearch-debezium-vector-logical-mappings[]
+
+[[elasticsearch-kafka-connect-primitive-mappings]]
+=== Kafka Connect primitive data type mappings
+
+The following table maps each Kafka Connect primitive type to its JSON representation in the document and to the field type that the connector uses when it generates the index mapping.
+
+[cols="20%a,40%a,40%a",options="header"]
+|===
+|Primitive type |JSON representation |Elasticsearch field type
+
+|`INT8`
+|Number
+|`short`
+
+|`INT16`
+|Number
+|`short`
+
+|`INT32`
+|Number
+|`integer`
+
+|`INT64`
+|Number
+|`long`
+
+|`FLOAT32`
+|Number
+|`float`
+
+|`FLOAT64`
+|Number
+|`double`
+
+|`BOOLEAN`
+|Boolean
+|`boolean`
+
+|`STRING`
+|String
+|`text` with a `keyword` sub-field by default; `text` or `keyword` per xref:elasticsearch-property-string-mapping-mode[`string.mapping.mode`]
+
+|`BYTES`
+|Base64 string by default, or a hex string when xref:elasticsearch-property-binary-output-mode[`binary.output.mode`] is `hex`
+|`binary`
+
+|`STRUCT`
+|Nested JSON object
+|`object` by default, or `nested` per xref:elasticsearch-property-struct-mapping-mode[`struct.mapping.mode`]
+
+|`ARRAY`
+|JSON array
+|The field type of the element schema
+
+|`MAP` with string keys
+|Compact object `{"k": "v"}` by default, or an array of `{"key": .., "value": ..}` entries when xref:elasticsearch-property-map-output-mode[`map.output.mode`] is `entries`
+|Dynamic `object`
+
+|`MAP` with non-string keys
+|Array of `{"key": .., "value": ..}` entries; the compact form is not possible
+|Dynamic `object`
+
+|===
+
+Null field values are omitted from the document by default, so that an `upsert` does not clobber fields that the source did not send.
+Set xref:elasticsearch-property-null-value-handling[`null.value.handling`] to `write_null` for sources whose `after` block is always complete and where an explicit null must overwrite the stored value.
+
+[[elasticsearch-kafka-connect-logical-mappings]]
+=== Kafka Connect logical data type mappings
+
+The following table maps each Kafka Connect logical type to its JSON representation and generated field type.
+
+[cols="30%a,35%a,35%a",options="header"]
+|===
+|Logical type |JSON representation |Elasticsearch field type
+
+|`org.apache.kafka.connect.data.Decimal`
+|Number by default, written as a string when the value cannot be represented exactly as an IEEE-754 double; always a string under `string`, and always a double under `double`, per xref:elasticsearch-property-decimal-output-mode[`decimal.output.mode`]
+|`scaled_float` with a scaling factor of 10^scale^ when the scale is greater than zero, `long` otherwise; `keyword` under `string`; `double` under `double`
+
+|`org.apache.kafka.connect.data.Date`
+|`yyyy-MM-dd` string by default, epoch milliseconds under `epoch_millis`, or epoch nanoseconds under `epoch_nanos`, per xref:elasticsearch-property-temporal-output-mode[`temporal.output.mode`]
+|`date` with format `strict_date\|\|epoch_millis`; `date` with format `epoch_millis` under `epoch_millis`; `long` under `epoch_nanos`
+
+|`org.apache.kafka.connect.data.Time`
+|`HH:mm:ss[.fraction]` string by default, milliseconds of the day under `epoch_millis`, or nanoseconds of the day under `epoch_nanos`
+|`keyword` by default; `long` under `epoch_millis` and `epoch_nanos`
+
+|`org.apache.kafka.connect.data.Timestamp`
+|`yyyy-MM-dd'T'HH:mm:ss[.fraction]Z` string by default, epoch milliseconds under `epoch_millis`, or epoch nanoseconds under `epoch_nanos`
+|`date` with format `strict_date_optional_time\|\|epoch_millis`; `date` with format `epoch_millis` under `epoch_millis`; `long` under `epoch_nanos`
+
+|===
+
+[[elasticsearch-debezium-logical-mappings]]
+=== {prodname} logical data type mappings
+
+The following table maps {prodname} logical types to their JSON representation and generated field type.
+
+[cols="30%a,35%a,35%a",options="header"]
+|===
+|Logical type |JSON representation |Elasticsearch field type
+
+|`io.debezium.time.Date`
+|As `org.apache.kafka.connect.data.Date`
+|As `org.apache.kafka.connect.data.Date`
+
+|`io.debezium.time.Time`
+
+`io.debezium.time.MicroTime`
+
+`io.debezium.time.NanoTime`
+|As `org.apache.kafka.connect.data.Time`, retaining the fractional precision of the source
+|As `org.apache.kafka.connect.data.Time`
+
+|`io.debezium.time.Timestamp`
+
+`io.debezium.time.MicroTimestamp`
+|As `org.apache.kafka.connect.data.Timestamp`, retaining the fractional precision of the source
+|As `org.apache.kafka.connect.data.Timestamp`
+
+|`io.debezium.time.NanoTimestamp`
+|As `org.apache.kafka.connect.data.Timestamp`, retaining nanosecond precision
+|`date_nanos` with format `strict_date_optional_time_nanos` by default; `date` with format `epoch_millis` under `epoch_millis`; `long` under `epoch_nanos`
+
+|`io.debezium.time.ZonedTimestamp`
+|Passed through as its ISO-8601 string with offset, in every `temporal.output.mode`
+|`date` with format `strict_date_optional_time\|\|epoch_millis`
+
+|`io.debezium.time.ZonedTime`
+|Passed through as its ISO-8601 string with offset
+|`keyword`
+
+|`io.debezium.time.Year`
+|Number
+|`integer`
+
+|`io.debezium.time.Interval`
+|Passed through as its ISO-8601 duration string
+|`keyword`
+
+|`io.debezium.time.MicroDuration`
+|ISO-8601 duration string by default, or a number of microseconds when xref:elasticsearch-property-interval-output-mode[`interval.output.mode`] is `numeric`
+|`keyword` by default; `double` under `numeric`
+
+|`io.debezium.data.VariableScaleDecimal`
+|As `org.apache.kafka.connect.data.Decimal`, reconstructed from the `scale` and `value` fields
+|`double` by default and under `double`; `keyword` under `string`
+
+|`io.debezium.data.Json`
+|Embedded JSON object or array by default, or the original JSON text as a string when xref:elasticsearch-property-json-output-mode[`json.output.mode`] is `string`
+|Dynamic `object` by default, or `flattened` per xref:elasticsearch-property-json-mapping-mode[`json.mapping.mode`]; the `STRING` mapping under `string`
+
+|`io.debezium.data.Xml`
+|String
+|`keyword`
+
+|`io.debezium.data.Uuid`
+|String
+|`keyword`
+
+|`io.debezium.data.Enum`
+|String
+|`keyword`
+
+|`io.debezium.data.EnumSet`
+|Array of strings
+|`keyword`
+
+|`io.debezium.data.Ltree`
+|String
+|`keyword`
+
+|`io.debezium.data.Bits`
+|Base64 string by default, an array of booleans under `boolean_array`, or a number under `integer` for widths of at most 64 bits, per xref:elasticsearch-property-bits-output-mode[`bits.output.mode`]
+|`binary` by default; `boolean` under `boolean_array`; `long` under `integer`
+
+|`io.debezium.data.geometry.Point`
+|GeoJSON `Point` object by default, or an object with the Base64-encoded `wkb` and the `srid` when xref:elasticsearch-property-geometry-output-mode[`geometry.output.mode`] is `wkb`
+|`geo_point` by default; dynamic `object` under `wkb`
+
+|`io.debezium.data.geometry.Geometry`
+
+`io.debezium.data.geometry.Geography`
+|GeoJSON object converted from the WKB value by default, or an object with the Base64-encoded `wkb` and the `srid` under `wkb`
+|`geo_shape` by default; dynamic `object` under `wkb`
+
+|===
+
+When a JSON column value cannot be parsed for embedding, or a WKB value cannot be converted to GeoJSON, the record is a record-level error whose message names the `string` or `wkb` output mode as the way to write the raw value instead.
+
+[[elasticsearch-debezium-vector-logical-mappings]]
+=== {prodname} logical vector type mappings
+
+The connector maps {prodname} vector logical types directly to the Elasticsearch vector field types, which makes a change data capture stream of embeddings searchable without a transformation.
+
+[cols="30%a,35%a,35%a",options="header"]
+|===
+|Logical type |JSON representation |Elasticsearch field type
+
+|`io.debezium.data.vector.FloatVector`
+
+`io.debezium.data.vector.DoubleVector`
+|JSON array of numbers by default, or the array rendered as a string when xref:elasticsearch-property-vector-output-mode[`vector.output.mode`] is `string`
+|`dense_vector` by default; `keyword` under `string`
+
+|`io.debezium.data.vector.SparseDoubleVector`
+|JSON object of index-to-value pairs by default, or the object rendered as a string under `string`
+|`sparse_vector` by default; `keyword` under `string`
+
+|===
+
+[[elasticsearch-deployment]]
+== Deployment
+
+To deploy the {prodname} Elasticsearch sink connector, install the connector archive in your Kafka Connect environment, configure the connector properties, and register the connector with Kafka Connect.
+
+.Prerequisites
+* link:http://kafka.apache.org/[Apache Kafka] and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
+* You have a Kafka topic from which the connector can read change event records.
+* An Elasticsearch 8.x or 9.x cluster is reachable from the Kafka Connect workers, and you have credentials with permission to create indices and templates and to write documents to them.
+
+.Procedure
+
+. Download the {prodname} https://repo1.maven.org/maven2/io/debezium/debezium-connector-elasticsearch/{debezium-version}/debezium-connector-elasticsearch-{debezium-version}-plugin.tar.gz[Elasticsearch connector plug-in archive].
+. Extract the files into your Kafka Connect environment.
+. Add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`].
+. Restart the Kafka Connect process to pick up the new JAR files.
+
+The connector archive includes the Elasticsearch Java client and its dependencies; no additional client library is required.
+
+[[elasticsearch-connector-configuration]]
+=== {prodname} Elasticsearch connector configuration
+
+Typically, you register a {prodname} Elasticsearch connector by submitting a JSON request that specifies the configuration properties for the connector.
+The following example shows a JSON request for registering an instance of the connector that consumes events from a topic called `inventory.customers` with the most common configuration settings:
+
+.Example: {prodname} Elasticsearch connector configuration
+[source,json,indent=0,subs="+quotes"]
+----
+{
+    "name": "elasticsearch-connector",
+    "config": {
+        "connector.class": "io.debezium.connector.elasticsearch.ElasticsearchSinkConnector",
+        "tasks.max": "1",
+        "connection.url": "https://elasticsearch:9200",
+        "connection.auth.mode": "basic",
+        "connection.username": "elastic",
+        "connection.password": "changeme",
+        "topics": "inventory.customers",
+        "collection.name.format": "customers",
+        "write.method": "upsert",
+        "primary.key.mode": "record_key",
+        "mapping.mode": "create_if_absent"
+    }
+}
+----
+
+The following list describes select fields in the preceding connector configuration example:
+
+`name`::
+The name that is assigned to the connector when you register it with the Kafka Connect service.
+
+`connector.class`::
+The name of the Elasticsearch sink connector class.
+
+`tasks.max`::
+The maximum number of tasks to create for this connector.
+
+`connection.url`::
+The URL of the Elasticsearch cluster that the connector writes to.
+
+`connection.auth.mode`, `connection.username`, `connection.password`::
+The authentication mode and the credentials that it requires.
+For more information, see xref:elasticsearch-connecting[Connecting to Elasticsearch].
+
+`topics`::
+List of topics to consume, separated by commas.
+
+`collection.name.format`::
+The name of the target index.
+The example uses a literal name because the topic name `inventory.customers` would otherwise be used verbatim.
+For more information, see xref:elasticsearch-property-collection-name-format[`collection.name.format`].
+
+`write.method`::
+The bulk action used for document writes.
+For more information, see xref:elasticsearch-property-write-method[`write.method`].
+
+`primary.key.mode`::
+Specifies how the document `_id` is derived.
+For more information, see xref:elasticsearch-property-primary-key-mode[`primary.key.mode`].
+
+`mapping.mode`::
+Specifies whether the connector generates the index mapping from the record schema.
+For more information, see xref:elasticsearch-property-mapping-mode[`mapping.mode`].
+
+For a complete list of configuration properties that you can set for the {prodname} Elasticsearch connector, see xref:elasticsearch-connector-properties[Elasticsearch connector properties].
+
+You can send this configuration with a `POST` command to a running Kafka Connect service.
+The service records the configuration and starts one or more sink connector tasks that perform the following operations:
+
+* Connect to the Elasticsearch cluster and verify its version.
+* Consume events from the subscribed Kafka topics.
+* Create indices and mappings as needed, and write the events to the cluster in bulk requests.
+
+[[elasticsearch-monitoring]]
+== Monitoring
+
+In addition to the built-in JMX metrics that Kafka Connect provides for every sink task (for example, record-throughput and batch metrics), the {prodname} Elasticsearch sink connector exposes its own metrics under the `debezium.elasticsearch` JMX domain.
+These metrics describe what the connector applies to Elasticsearch and what the connection resolved to, which the Kafka Connect metrics do not report.
+
+The connector registers the following MBean while the task is running:
+
+`debezium.elasticsearch:type=connector-metrics,context=sink,server=+__<connector_name>__+,task=+__<task_id>__+`
+
+The following table describes the available metrics.
+
+[cols="35%a,15%a,50%a",options="header"]
+|===
+|Attribute |Type |Description
+
+|`TotalNumberOfWrites`
+|`long`
+|The total number of documents that the connector indexed, created, updated, or upserted.
+
+|`TotalNumberOfDeletes`
+|`long`
+|The total number of document deletes that the connector applied, including deletes of documents that did not exist.
+
+|`TotalNumberOfTruncates`
+|`long`
+|The total number of truncate operations that the connector applied.
+
+|`TotalNumberOfFilteredEvents`
+|`long`
+|The number of records that the connector skipped without applying them, for example tombstones under `tombstone.mode=ignore`, logical message events, or deletes while `delete.enabled` is `false`.
+
+|`TotalNumberOfErrantRecords`
+|`long`
+|The total number of records that the connector routed to the errant record reporter (dead letter queue).
+For more information, see xref:elasticsearch-error-handling-and-dead-letter-queues[Error handling and dead letter queues].
+
+|`TotalNumberOfBulkRequests`
+|`long`
+|The total number of bulk requests that completed successfully.
+
+|`TotalNumberOfThrottleEvents`
+|`long`
+|The number of `429` rejections that the connector handled as backpressure.
+
+|`TotalNumberOfRetries`
+|`long`
+|The number of retried bulk rounds that counted against the `max.retries` budget.
+
+|`TotalNumberOfVersionConflicts`
+|`long`
+|The number of writes that Elasticsearch rejected with a version conflict.
+
+|`EffectiveBatchSize`
+|`int`
+|The current batch size after adaptive throttling.
+Equal to `batch.size` while the cluster is not rejecting requests.
+
+|`MillisSinceLastSuccessfulBulkResponse`
+|`long`
+|The milliseconds elapsed since the last successful bulk response, or `-1` before the first.
+This is the observable behind `progress.stall.timeout.ms`.
+
+|`BlockedResourceCount`
+|`int`
+|The number of indices that are currently blocked by a resource-fatal outcome and are being retried.
+
+|`DistinctResourceCount`
+|`int`
+|The number of distinct indices that the connector has written to since the task started.
+
+|`ClusterVersion`
+|`string`
+|The Elasticsearch version that the startup handshake detected, or empty before the handshake.
+
+|`ApiCompatibilityMode`
+|`string`
+|The effective REST API compatibility mode that was resolved at startup.
+
+|===
+
+[[elasticsearch-connector-properties]]
+== Connector properties
+
+The {prodname} Elasticsearch sink connector has several configuration properties that you can use to achieve the connector behavior that meets your needs.
+Many properties have default values.
+Information about the properties is organized as follows:
+
+* xref:elasticsearch-connector-properties-kafka-consumer[Elasticsearch connector Kafka consumer properties]
+* xref:elasticsearch-connector-properties-connection[Elasticsearch connector connection properties]
+* xref:elasticsearch-connector-properties-runtime[Elasticsearch connector runtime properties]
+* xref:elasticsearch-connector-properties-advanced[Elasticsearch connector advanced properties]
+* xref:elasticsearch-connector-properties-extendable[Elasticsearch connector extendable properties]
+
+[[elasticsearch-connector-properties-kafka-consumer]]
+=== Elasticsearch connector Kafka consumer properties
+
+The following table describes the Kafka consumer properties that control how the {prodname} Elasticsearch sink connector identifies itself to Kafka Connect and specifies the topics that it consumes.
+
+[cols="30%a,25%a,45%a",options="header"]
+|===
+|Property |Default |Description
+
+|[[elasticsearch-property-connection-name]]<<elasticsearch-property-connection-name, `+name+`>>
+|No default
+|Unique name for the connector.
+A failure results if you attempt to reuse this name when registering a connector.
+This property is required by all Kafka Connect connectors.
+
+|[[elasticsearch-property-connection-class]]<<elasticsearch-property-connection-class, `+connector.class+`>>
+|No default
+|The name of the Java class for the connector.
+For the {prodname} Elasticsearch connector, specify the value `io.debezium.connector.elasticsearch.ElasticsearchSinkConnector`.
+
+|[[elasticsearch-property-connection-task]]<<elasticsearch-property-connection-task, `+tasks.max+`>>
+|1
+|Maximum number of tasks to use for this connector.
+
+|[[elasticsearch-property-connection-topics]]<<elasticsearch-property-connection-topics, `+topics+`>>
+|No default
+|List of topics to consume, separated by commas.
+Do not use this property in combination with the xref:elasticsearch-property-connection-topics-regex[`topics.regex`] property.
+
+|[[elasticsearch-property-connection-topics-regex]]<<elasticsearch-property-connection-topics-regex, `+topics.regex+`>>
+|No default
+|A regular expression that specifies the topics to consume.
+Internally, the regular expression is compiled to a `java.util.regex.Pattern`.
+Do not use this property in combination with the xref:elasticsearch-property-connection-topics[`topics`] property.
+
+|===
+
+[[elasticsearch-connector-properties-connection]]
+=== Elasticsearch connector connection properties
+
+The following table describes the properties that control how the {prodname} Elasticsearch sink connector connects to and authenticates with the Elasticsearch cluster.
+
+[cols="30%a,25%a,45%a",options="header"]
+|===
+|Property |Default |Description
+
+|[[elasticsearch-property-connection-url]]<<elasticsearch-property-connection-url, `+connection.url+`>>
+|No default
+|Comma-separated list of Elasticsearch node URLs, for example `https://es1:9200,https://es2:9200`.
+Each URL must include a scheme.
+A context path is honored, for example `https://gateway.internal/es`, and must be the same for every URL in the list.
+Mutually exclusive with xref:elasticsearch-property-connection-cloud-id[`connection.cloud.id`]; exactly one of the two is required.
+
+|[[elasticsearch-property-connection-cloud-id]]<<elasticsearch-property-connection-cloud-id, `+connection.cloud.id+`>>
+|No default
+|An Elastic Cloud deployment identifier, which the connector decodes into the HTTPS endpoint of the deployment.
+Mutually exclusive with xref:elasticsearch-property-connection-url[`connection.url`].
+
+|[[elasticsearch-property-connection-auth-mode]]<<elasticsearch-property-connection-auth-mode, `+connection.auth.mode+`>>
+|`basic` when `connection.username` or `connection.password` is set, `none` otherwise
+|How the connector authenticates: `none`, `basic`, `api_key`, `bearer`, `kerberos`, or `custom`.
+A mode whose credentials are not configured, or credentials that belong to a different mode, are a startup error.
+For more information, see xref:elasticsearch-connecting[Connecting to Elasticsearch].
+
+|[[elasticsearch-property-connection-username]]<<elasticsearch-property-connection-username, `+connection.username+`>>
+|No default
+|User name for basic authentication.
+Required, together with `connection.password`, when the authentication mode is `basic`.
+
+|[[elasticsearch-property-connection-password]]<<elasticsearch-property-connection-password, `+connection.password+`>>
+|No default
+|Password for basic authentication.
+
+|[[elasticsearch-property-connection-api-key]]<<elasticsearch-property-connection-api-key, `+connection.api.key+`>>
+|No default
+|Base64-encoded Elasticsearch API key in the form `id:api_key`, used when the authentication mode is `api_key`.
+
+|[[elasticsearch-property-connection-bearer-token]]<<elasticsearch-property-connection-bearer-token, `+connection.bearer.token+`>>
+|No default
+|Bearer token used when the authentication mode is `bearer`.
+
+|[[elasticsearch-property-connection-kerberos-principal]]<<elasticsearch-property-connection-kerberos-principal, `+connection.kerberos.principal+`>>
+|No default
+|Kerberos user principal used when the authentication mode is `kerberos`.
+
+|[[elasticsearch-property-connection-kerberos-keytab]]<<elasticsearch-property-connection-kerberos-keytab, `+connection.kerberos.keytab+`>>
+|No default
+|Path to the Kerberos keytab file used when the authentication mode is `kerberos`.
+
+|[[elasticsearch-property-connection-credentials-provider-class]]<<elasticsearch-property-connection-credentials-provider-class, `+connection.credentials.provider.class+`>>
+|No default
+|Fully qualified name of a class that implements `io.debezium.connector.elasticsearch.client.ConnectionCredentialsProvider`, used when the authentication mode is `custom`.
+The provider receives the connector configuration and installs its credentials on the REST client builder, for example as default headers or an interceptor.
+
+|[[elasticsearch-property-connection-headers]]<<elasticsearch-property-connection-headers, `+connection.headers+`>>
+|No default
+|Comma-separated list of static HTTP headers in `Name:Value` form that are sent with every request, for example for an API gateway.
+
+|[[elasticsearch-property-connection-compression]]<<elasticsearch-property-connection-compression, `+connection.compression+`>>
+|`false`
+|Specifies whether request bodies are GZip-compressed.
+Requires `http.compression` to be enabled on the cluster.
+
+|[[elasticsearch-property-connection-timeout-ms]]<<elasticsearch-property-connection-timeout-ms, `+connection.timeout.ms+`>>
+|`5000`
+|TCP connect timeout in milliseconds.
+
+|[[elasticsearch-property-connection-read-timeout-ms]]<<elasticsearch-property-connection-read-timeout-ms, `+connection.read.timeout.ms+`>>
+|`60000`
+|Socket read timeout in milliseconds.
+The default allows for a routine bulk request against a loaded cluster.
+
+|[[elasticsearch-property-connection-idle-timeout-ms]]<<elasticsearch-property-connection-idle-timeout-ms, `+connection.idle.timeout.ms+`>>
+|`60000`
+|Time in milliseconds after which an idle pooled connection is dropped, so that the client closes it before the server does.
+
+|[[elasticsearch-property-connection-sniff-enabled]]<<elasticsearch-property-connection-sniff-enabled, `+connection.sniff.enabled+`>>
+|`false`
+|Specifies whether the client periodically discovers the nodes of the cluster and adds them to its round-robin set.
+
+|[[elasticsearch-property-connection-api-compatibility-mode]]<<elasticsearch-property-connection-api-compatibility-mode, `+connection.api.compatibility.mode+`>>
+|`auto`
+|Controls the REST API compatibility headers toward a cluster with a newer major version than the client.
+`auto` sends them when the startup handshake reports a cluster major version greater than that of the client; `enabled` and `disabled` force the choice.
+The version handshake runs in every mode.
+
+|[[elasticsearch-property-connection-tls-verification-mode]]<<elasticsearch-property-connection-tls-verification-mode, `+connection.tls.verification.mode+`>>
+|`full`
+|TLS verification mode, using the Elasticsearch vocabulary.
+`full` verifies the certificate chain and the host name; `certificate` verifies the chain but not the host name; `none` performs no verification at all, which defeats TLS against an active attacker.
+Prefer `connection.tls.ca.fingerprint` for clusters with a self-signed certificate authority.
+
+|[[elasticsearch-property-connection-tls-ca-fingerprint]]<<elasticsearch-property-connection-tls-ca-fingerprint, `+connection.tls.ca.fingerprint+`>>
+|No default
+|SHA-256 fingerprint of the self-signed certificate authority of the cluster, as printed by Elasticsearch at first start.
+This is the supported way to trust a self-signed cluster without abandoning verification.
+
+|[[elasticsearch-property-connection-tls-truststore-location]]<<elasticsearch-property-connection-tls-truststore-location, `+connection.tls.truststore.location+`>>
+|No default
+|Path to the truststore that holds the certificate authority of the cluster.
+
+|[[elasticsearch-property-connection-tls-truststore-password]]<<elasticsearch-property-connection-tls-truststore-password, `+connection.tls.truststore.password+`>>
+|No default
+|Password of the TLS truststore.
+
+|[[elasticsearch-property-connection-tls-truststore-type]]<<elasticsearch-property-connection-tls-truststore-type, `+connection.tls.truststore.type+`>>
+|`PKCS12`
+|Type of the TLS truststore, for example `PKCS12` or `JKS`.
+
+|[[elasticsearch-property-connection-tls-keystore-location]]<<elasticsearch-property-connection-tls-keystore-location, `+connection.tls.keystore.location+`>>
+|No default
+|Path to the keystore that holds the client certificate for mutual TLS.
+
+|[[elasticsearch-property-connection-tls-keystore-password]]<<elasticsearch-property-connection-tls-keystore-password, `+connection.tls.keystore.password+`>>
+|No default
+|Password of the TLS keystore.
+
+|[[elasticsearch-property-connection-tls-keystore-type]]<<elasticsearch-property-connection-tls-keystore-type, `+connection.tls.keystore.type+`>>
+|`PKCS12`
+|Type of the TLS keystore, for example `PKCS12` or `JKS`.
+
+|[[elasticsearch-property-connection-tls-key-password]]<<elasticsearch-property-connection-tls-key-password, `+connection.tls.key.password+`>>
+|No default
+|Password of the private key within the TLS keystore, when it differs from the keystore password.
+
+|[[elasticsearch-property-connection-tls-protocols]]<<elasticsearch-property-connection-tls-protocols, `+connection.tls.protocols+`>>
+|No default
+|Comma-separated list of enabled TLS protocol versions, for example `TLSv1.3`.
+
+|[[elasticsearch-property-connection-tls-cipher-suites]]<<elasticsearch-property-connection-tls-cipher-suites, `+connection.tls.cipher.suites+`>>
+|No default
+|Comma-separated list of enabled TLS cipher suites.
+
+|[[elasticsearch-property-connection-proxy-host]]<<elasticsearch-property-connection-proxy-host, `+connection.proxy.host+`>>
+|No default
+|HTTP proxy host.
+
+|[[elasticsearch-property-connection-proxy-port]]<<elasticsearch-property-connection-proxy-port, `+connection.proxy.port+`>>
+|`8080`
+|HTTP proxy port.
+
+|[[elasticsearch-property-connection-proxy-username]]<<elasticsearch-property-connection-proxy-username, `+connection.proxy.username+`>>
+|No default
+|HTTP proxy user name.
+
+|[[elasticsearch-property-connection-proxy-password]]<<elasticsearch-property-connection-proxy-password, `+connection.proxy.password+`>>
+|No default
+|HTTP proxy password.
+
+|===
+
+[[elasticsearch-connector-properties-runtime]]
+=== Elasticsearch connector runtime properties
+
+The following table describes the runtime properties that control how the {prodname} Elasticsearch sink connector interprets events, derives document identity, names indices, writes documents, and batches requests.
+
+[cols="30%a,25%a,45%a",options="header"]
+|===
+|Property |Default |Description
+
+|[[elasticsearch-property-event-format]]<<elasticsearch-property-event-format, `+event.format+`>>
+|`auto`
+|Specifies how the connector interprets the shape of incoming events.
+For more information, see xref:elasticsearch-consume-debezium-events[Consuming {prodname} change events].
+
+`auto`:: Detects per record whether the value is a {prodname} envelope, a flattened {prodname} record, or a plain record.
+`debezium`:: Requires a {prodname} envelope or flattened {prodname} record, and treats a plain record as a record-level error.
+`plain`:: Treats every value as an opaque document body.
+
+|[[elasticsearch-property-tombstone-mode]]<<elasticsearch-property-tombstone-mode, `+tombstone.mode+`>>
+|`auto`
+|Specifies what a record with a null value means.
+
+`auto`:: Resolves to `delete` for every input contract, because batch reduction can collapse a `d` event and its tombstone into just the tombstone.
+`ignore`:: Skips tombstones and counts them as filtered events.
+`delete`:: Deletes the document whose `_id` is derived from the record key.
+`fail`:: Stops the task.
+
+|[[elasticsearch-property-primary-key-mode]]<<elasticsearch-property-primary-key-mode, `+primary.key.mode+`>>
+|`record_key`
+|Specifies how the connector derives the document `_id`.
+For more information, see xref:elasticsearch-document-identity[Document identity].
+
+`record_key`:: The `_id` is derived from the record key.
+A primitive key is stringified, and a `Struct` key uses the fields in xref:elasticsearch-property-primary-key-fields[`primary.key.fields`], or all key fields when that property is unset.
+`record_value`:: The `_id` is composed from the value fields named in `primary.key.fields`, which is required.
+`record_header`:: The `_id` is composed from the record headers named in `primary.key.fields`, which is required.
+`kafka`:: The `_id` is composed from the topic, partition, and offset of the record.
+`none`:: No `_id` is sent and Elasticsearch generates one.
+This forfeits idempotent redelivery, so a redelivered record becomes a duplicate document.
+
+|[[elasticsearch-property-primary-key-fields]]<<elasticsearch-property-primary-key-fields, `+primary.key.fields+`>>
+|No default
+|A comma-separated list of the fields from which the `_id` is derived, in the order in which they are joined.
+
+With `primary.key.mode=record_key` and a `Struct` key, the property is optional and restricts the `_id` to a subset of the key fields.
+With `record_value` or `record_header`, the property is required and names the value fields or headers to use.
+
+|[[elasticsearch-property-document-id-separator]]<<elasticsearch-property-document-id-separator, `+document.id.separator+`>>
+|`:`
+|The separator that joins composite key fields into the `_id`.
+The order of the fields is fixed by `primary.key.fields`, or by schema order when that property is unset; reordering them silently changes every `_id` in the index.
+
+|[[elasticsearch-property-document-id-non-key-ordering]]<<elasticsearch-property-document-id-non-key-ordering, `+document.id.non.key.ordering+`>>
+|No default
+|Required when `primary.key.mode` is `record_value` or `record_header`, because events for one document can then span partitions that Kafka never ordered relative to each other.
+For more information, see xref:elasticsearch-ordering[Ordering guarantees].
+
+`version`:: Enforces ordering through xref:elasticsearch-property-version-strategy[`version.strategy`], which must then be a value other than `none`.
+Not yet available in this release.
+`last_write_wins`:: Acknowledges that conflicting events are resolved arbitrarily.
+
+|[[elasticsearch-property-document-metadata-fields]]<<elasticsearch-property-document-metadata-fields, `+document.metadata.fields+`>>
+|No default
+|A comma-separated list of the Kafka record attributes to project into the document body: any of `key`, `topic`, `partition`, `offset`, and `timestamp`.
+Projected fields are added after field include and exclude filtering.
+
+|[[elasticsearch-property-document-metadata-prefix]]<<elasticsearch-property-document-metadata-prefix, `+document.metadata.prefix+`>>
+|`+_kafka_+`
+|The prefix that namespaces projected Kafka metadata fields away from source columns.
+
+|[[elasticsearch-property-collection-name-format]]<<elasticsearch-property-collection-name-format, `+collection.name.format+`>>
+|`+${topic}+`
+|Specifies a string pattern that the connector uses to construct the names of target indices.
+When the property is set to its default value, after the connector reads an event from Kafka, it writes the document to an index with the same name as the source topic.
+
+The pattern can combine literal text with the placeholders `+${topic}+`, `+${source.db}+`, `+${source.schema}+`, `+${source.table}+`, `+${source.connector}+`, `+${field:path}+`, `+${header:name}+`, and `+${date:pattern}+`.
+For example, `+${source.schema}_${source.table}+` writes an event whose `source` block contains `schema=public` and `table=orders` to the index `public_orders`.
+For more information, see xref:elasticsearch-resource-naming[Index naming].
+
+|[[elasticsearch-property-topic-to-resource-mapping]]<<elasticsearch-property-topic-to-resource-mapping, `+topic.to.resource.mapping+`>>
+|No default
+|Comma-separated `topic:index` pairs that override `collection.name.format` for the named topics unconditionally.
+
+|[[elasticsearch-property-resource-name-timezone]]<<elasticsearch-property-resource-name-timezone, `+resource.name.timezone+`>>
+|`UTC`
+|The time zone in which `+${date:pattern}+` placeholders format the event timestamp.
+
+|[[elasticsearch-property-resource-name-invalid-handling]]<<elasticsearch-property-resource-name-invalid-handling, `+resource.name.invalid.handling+`>>
+|`fail`
+|Specifies what the connector does with a resolved name that Elasticsearch cannot accept.
+
+`fail`:: Stops the task, naming the rule that the name broke.
+`sanitize`:: Lowercases the name and replaces disallowed characters with xref:elasticsearch-property-resource-name-replacement[`resource.name.replacement`], logging each distinct transformation once.
+`error_handler`:: Routes the record to the error reporter.
+
+|[[elasticsearch-property-resource-name-replacement]]<<elasticsearch-property-resource-name-replacement, `+resource.name.replacement+`>>
+|`+_+`
+|The replacement for disallowed characters when `resource.name.invalid.handling` is `sanitize`.
+
+|[[elasticsearch-property-resource-type]]<<elasticsearch-property-resource-type, `+resource.type+`>>
+|`index`
+|The kind of Elasticsearch resource that the connector writes to: `index`, `alias_index`, `data_stream`, or `alias_data_stream`.
+In this release only `index` is supported; any other value is rejected at startup.
+
+|[[elasticsearch-property-data-stream-type]]<<elasticsearch-property-data-stream-type, `+data.stream.type+`>>
+|`logs`
+|The first component of the composed data stream name `{type}-{dataset}-{namespace}`, for example `logs` or `metrics`.
+Applies only to the data stream resource types, which are not yet supported.
+
+|[[elasticsearch-property-data-stream-dataset]]<<elasticsearch-property-data-stream-dataset, `+data.stream.dataset+`>>
+|No default
+|The second component of the composed data stream name.
+Applies only to the data stream resource types, which are not yet supported.
+
+|[[elasticsearch-property-data-stream-namespace]]<<elasticsearch-property-data-stream-namespace, `+data.stream.namespace+`>>
+|`+${topic}+`
+|The third component of the composed data stream name.
+Applies only to the data stream resource types, which are not yet supported.
+
+|[[elasticsearch-property-data-stream-timestamp-field]]<<elasticsearch-property-data-stream-timestamp-field, `+data.stream.timestamp.field+`>>
+|No default
+|Comma-separated list of record fields to map onto `@timestamp`; the first field that is present in the record wins.
+When unset, the Kafka record timestamp is used.
+Applies only to the data stream resource types, which are not yet supported.
+
+|[[elasticsearch-property-resource-auto-create]]<<elasticsearch-property-resource-auto-create, `+resource.auto.create+`>>
+|`true`
+|When `true`, the connector creates the index and applies the generated mapping before the first write, skipping both if the index exists.
+When `false`, the connector makes no existence call at all; the setting asserts that the index exists, and if it does not, the first write fails with the Elasticsearch error.
+
+|[[elasticsearch-property-index-routing-field]]<<elasticsearch-property-index-routing-field, `+index.routing.field+`>>
+|No default
+|Dotted path of a document field whose value becomes the `_routing` of the document.
+A record that is missing the field is a record-level error.
+
+|[[elasticsearch-property-ingest-pipeline]]<<elasticsearch-property-ingest-pipeline, `+ingest.pipeline+`>>
+|No default
+|The name of an ingest pipeline to apply to `index` and `create` operations, or a placeholder expression using the naming vocabulary, for example `+pipeline-${source.table}+`.
+
+|[[elasticsearch-property-ingest-pipeline-validate]]<<elasticsearch-property-ingest-pipeline-validate, `+ingest.pipeline.validate+`>>
+|`true`
+|Specifies whether the connector verifies at startup that a statically named ingest pipeline exists.
+
+|[[elasticsearch-property-write-method]]<<elasticsearch-property-write-method, `+write.method+`>>
+|`upsert`
+|Specifies the bulk action that the connector uses for document writes.
+For more information, see xref:elasticsearch-write-methods[Write methods].
+
+`upsert`:: An `update` with `doc_as_upsert`, which creates or merges the document.
+`index`:: Replaces the whole document.
+`create`:: Fails with a record-level error if the document exists.
+`update`:: Fails with a record-level error if the document does not exist.
+
+When `primary.key.mode` is `none` and this property is not set, the connector resolves it to `create`, because `upsert` requires a document identity.
+
+|[[elasticsearch-property-write-method-per-operation]]<<elasticsearch-property-write-method-per-operation, `+write.method.per.operation+`>>
+|No default
+|Comma-separated `operation:method` pairs that override `write.method` for individual envelope operations, for example `c:create,u:upsert`.
+Keys are the envelope operation codes `c`, `r`, and `u`.
+
+|[[elasticsearch-property-delete-enabled]]<<elasticsearch-property-delete-enabled, `+delete.enabled+`>>
+|`true`
+|Specifies whether the connector propagates `DELETE` and tombstone events as document deletes.
+Unlike other {prodname} sink connectors, the default is `true`.
+Set the property to `false` explicitly for an append-only index.
+An explicit `true` cannot be combined with `primary.key.mode=none`.
+
+|[[elasticsearch-property-truncate-mode]]<<elasticsearch-property-truncate-mode, `+truncate.mode+`>>
+|`ignore`
+|Specifies what the connector does with a truncate (`t`) event.
+For more information, see xref:elasticsearch-truncate-handling[Truncate handling].
+
+`ignore`:: Discards the event.
+`delete_by_query`:: Empties the resolved index with a `delete_by_query` request.
+`recreate`:: Deletes the index and rebuilds it from the generated template on the next write.
+Requires `resource.auto.create=true` and a `mapping.mode` other than `none`.
+`fail`:: Stops the task.
+
+The shared `truncate.enabled` property is derived from this one and must not contradict it.
+The destructive modes require xref:elasticsearch-property-truncate-allowed-resources[`truncate.allowed.resources`].
+
+|[[elasticsearch-property-truncate-allowed-resources]]<<elasticsearch-property-truncate-allowed-resources, `+truncate.allowed.resources+`>>
+|No default
+|Comma-separated list of exact index names or glob patterns, using `*` and `?`, that a truncate may destroy.
+Patterns are matched against the resolved index name, not the topic.
+Required whenever `truncate.mode` is `delete_by_query` or `recreate`.
+A truncate for an index outside the list is a record-level error.
+
+|[[elasticsearch-property-truncate-allow-wildcard]]<<elasticsearch-property-truncate-allow-wildcard, `+truncate.allow.wildcard+`>>
+|`false`
+|Must be `true` to permit a pattern in `truncate.allowed.resources` that matches every index, such as a bare `*`.
+
+|[[elasticsearch-property-version-strategy]]<<elasticsearch-property-version-strategy, `+version.strategy+`>>
+|`none`
+|Specifies where the ordering key for external versioning comes from: `none`, `source_lsn`, `source_ts_ms`, `record_header`, or `kafka_offset`.
+External versioning is not yet implemented; in this release the property must remain `none`.
+
+|[[elasticsearch-property-version-enforcement]]<<elasticsearch-property-version-enforcement, `+version.enforcement+`>>
+|`auto`
+|Specifies how versioned writes are made conditional: `auto`, `external`, or `script`.
+Reserved for external versioning; setting this property is rejected at startup in this release.
+
+|[[elasticsearch-property-version-conflict-mode]]<<elasticsearch-property-version-conflict-mode, `+version.conflict.mode+`>>
+|`skip`
+|Specifies what a write that is rejected as stale does beyond incrementing the version conflict metric: `skip`, `warn`, or `fail`.
+Reserved for external versioning; setting this property is rejected at startup in this release.
+
+|[[elasticsearch-property-batch-size]]<<elasticsearch-property-batch-size, `+batch.size+`>>
+|`500`
+|Specifies how many records to attempt to batch together into one bulk request.
+
+[NOTE]
+====
+If you set `consumer.max.poll.records` in the Connect worker properties to a value lower than `batch.size`, batch processing is capped by `consumer.max.poll.records` and the desired `batch.size` is not reached.
+You can also configure the `max.poll.records` setting of the connector's underlying consumer by using `consumer.override.max.poll.records` in the connector configuration.
+====
+
+|[[elasticsearch-property-bulk-size-bytes]]<<elasticsearch-property-bulk-size-bytes, `+bulk.size.bytes+`>>
+|`5242880` (5 MiB)
+|Upper bound on the serialized size of one bulk request, so that a batch of large documents cannot exceed the `http.max_content_length` setting of the cluster.
+Set the value to `-1` to disable the bound.
+
+|[[elasticsearch-property-linger-ms]]<<elasticsearch-property-linger-ms, `+linger.ms+`>>
+|`0`
+|How long, in milliseconds, to accumulate a partial batch under low throughput before writing it.
+The default writes partial batches immediately.
+
+|[[elasticsearch-property-flush-timeout-ms]]<<elasticsearch-property-flush-timeout-ms, `+flush.timeout.ms+`>>
+|`180000`
+|Upper bound on one flush cycle.
+This property is not yet honored; the flush cycle is bounded by `max.retries` and `progress.stall.timeout.ms`, and setting this property is rejected at startup in this release.
+
+|[[elasticsearch-property-max-retries]]<<elasticsearch-property-max-retries, `+max.retries+`>>
+|`5`
+|The number of consecutive failed bulk rounds that the connector tolerates for transient failures before the task fails.
+`429` rejections are handled as backpressure and are not counted against this budget.
+The budget also bounds the startup cluster version probe.
+
+|[[elasticsearch-property-retry-backoff-ms]]<<elasticsearch-property-retry-backoff-ms, `+retry.backoff.ms+`>>
+|`100`
+|The initial backoff between retries, in milliseconds.
+The backoff doubles on each retry up to `retry.backoff.max.ms`.
+
+|[[elasticsearch-property-retry-backoff-max-ms]]<<elasticsearch-property-retry-backoff-max-ms, `+retry.backoff.max.ms+`>>
+|`30000`
+|The ceiling for the exponential retry backoff, in milliseconds.
+Must not be smaller than `retry.backoff.ms`.
+
+|[[elasticsearch-property-progress-stall-timeout-ms]]<<elasticsearch-property-progress-stall-timeout-ms, `+progress.stall.timeout.ms+`>>
+|`300000`
+|A task that has made no observable progress within this window, in milliseconds, transitions to `FAILED` with the last Elasticsearch error attached rather than reporting `RUNNING` while retrying forever.
+The same window bounds how long a blocked index is retried before its records are routed to the error reporter.
+
+|[[elasticsearch-property-max-requests-per-second]]<<elasticsearch-property-max-requests-per-second, `+max.requests.per.second+`>>
+|No default
+|Optional ceiling on bulk requests per second, for clusters that are shared with other workloads.
+Unset means no ceiling.
+The effective rate is the lower of this ceiling and the adaptive throttle.
+
+|[[elasticsearch-property-max-bytes-per-second]]<<elasticsearch-property-max-bytes-per-second, `+max.bytes.per.second+`>>
+|No default
+|Optional ceiling on bytes written per second.
+Unset means no ceiling.
+
+|[[elasticsearch-property-field-include-list]]<<elasticsearch-property-field-include-list, `+field.include.list+`>>
+|_empty string_
+|An optional, comma-separated list of regular expressions that match the fully qualified names of fields to include from the change event value.
+Fully qualified names for fields are of the form `_fieldName_` or `_topicName_:_fieldName_`.
+Excluded fields never reach Elasticsearch and never influence the generated mapping.
+
+If you include this property in the configuration, do not set the `field.exclude.list` property.
+
+|[[elasticsearch-property-field-exclude-list]]<<elasticsearch-property-field-exclude-list, `+field.exclude.list+`>>
+|_empty string_
+|An optional, comma-separated list of regular expressions that match the fully qualified names of fields to exclude from the change event value.
+Fully qualified names for fields are of the form `_fieldName_` or `_topicName_:_fieldName_`.
+
+If you include this property in the configuration, do not set the `field.include.list` property.
+
+|[[elasticsearch-property-cloud-events-schema-name-pattern]]<<elasticsearch-property-cloud-events-schema-name-pattern, `+cloud.events.schema.name.pattern+`>>
+|`+.*CloudEvents\.Envelope$+`
+|A regular expression that identifies CloudEvents messages by matching the value schema name.
+Matching values are unwrapped before the event shape is detected.
+
+|===
+
+[[elasticsearch-connector-properties-advanced]]
+=== Elasticsearch connector advanced properties
+
+The following table describes the properties that control how the {prodname} Elasticsearch sink connector represents logical types in documents, generates index mappings, and classifies errors.
+
+[cols="30%a,25%a,45%a",options="header"]
+|===
+|Property |Default |Description
+
+|[[elasticsearch-property-decimal-output-mode]]<<elasticsearch-property-decimal-output-mode, `+decimal.output.mode+`>>
+|`numeric`
+|Specifies how `org.apache.kafka.connect.data.Decimal` and `io.debezium.data.VariableScaleDecimal` values are written.
+
+`numeric`:: A JSON number, or a string where the value cannot be represented exactly as a double.
+`string`:: Always a string in plain notation.
+`double`:: Always a double, which may lose precision.
+
+|[[elasticsearch-property-temporal-output-mode]]<<elasticsearch-property-temporal-output-mode, `+temporal.output.mode+`>>
+|`iso8601`
+|Specifies how date, time, and timestamp logical types are written: `iso8601`, `epoch_millis`, or `epoch_nanos`.
+Zoned types are always written as ISO-8601 strings.
+Under `epoch_nanos` temporal fields are mapped as `long`, because the Elasticsearch date types do not parse raw nanosecond numbers.
+
+|[[elasticsearch-property-interval-output-mode]]<<elasticsearch-property-interval-output-mode, `+interval.output.mode+`>>
+|`string`
+|Specifies how `io.debezium.time.MicroDuration` values are written: `string` for an ISO-8601 duration, or `numeric` for a number of microseconds.
+
+|[[elasticsearch-property-json-output-mode]]<<elasticsearch-property-json-output-mode, `+json.output.mode+`>>
+|`object`
+|Specifies how `io.debezium.data.Json` values are written: `object` embeds the parsed JSON in the document, and `string` writes the JSON text as a string.
+
+|[[elasticsearch-property-bits-output-mode]]<<elasticsearch-property-bits-output-mode, `+bits.output.mode+`>>
+|`base64`
+|Specifies how `io.debezium.data.Bits` values are written: `base64`, `boolean_array`, or `integer`.
+The `integer` mode supports bit widths of at most 64.
+
+|[[elasticsearch-property-binary-output-mode]]<<elasticsearch-property-binary-output-mode, `+binary.output.mode+`>>
+|`base64`
+|Specifies how `BYTES` values without a logical type are written: `base64` or `hex`.
+
+|[[elasticsearch-property-geometry-output-mode]]<<elasticsearch-property-geometry-output-mode, `+geometry.output.mode+`>>
+|`geojson`
+|Specifies how geometry logical types are written: `geojson` converts the value to a GeoJSON object that is mapped as `geo_point` or `geo_shape`, and `wkb` writes an object with the Base64-encoded WKB value and the SRID.
+
+|[[elasticsearch-property-vector-output-mode]]<<elasticsearch-property-vector-output-mode, `+vector.output.mode+`>>
+|`array`
+|Specifies how vector logical types are written: `array` writes a JSON array of numbers, or an index-to-value object for sparse vectors, and `string` writes the rendered value as a string.
+
+|[[elasticsearch-property-map-output-mode]]<<elasticsearch-property-map-output-mode, `+map.output.mode+`>>
+|`compact`
+|Specifies how `MAP` values with string keys are written: `compact` writes `{"k": "v"}`, and `entries` writes `[{"key": .., "value": ..}]`.
+Maps with non-string keys always use the entries form.
+
+|[[elasticsearch-property-null-value-handling]]<<elasticsearch-property-null-value-handling, `+null.value.handling+`>>
+|`omit`
+|Specifies whether null-valued fields appear in documents.
+`omit` keeps upserts from clobbering fields that the source did not send; `write_null` writes an explicit null, for sources whose `after` block is always complete.
+
+|[[elasticsearch-property-field-name-adjustment-mode]]<<elasticsearch-property-field-name-adjustment-mode, `+field.name.adjustment.mode+`>>
+|`none`
+|Specifies how field names are adjusted: `none`, `avro`, `avro_unicode`, or `elasticsearch`.
+The `elasticsearch` mode replaces `.` with `field.name.separator.replacement` to avoid implicit object nesting from dotted column names.
+
+|[[elasticsearch-property-field-name-separator-replacement]]<<elasticsearch-property-field-name-separator-replacement, `+field.name.separator.replacement+`>>
+|`+_+`
+|The replacement for `.` when `field.name.adjustment.mode` is `elasticsearch`.
+
+|[[elasticsearch-property-mapping-mode]]<<elasticsearch-property-mapping-mode, `+mapping.mode+`>>
+|`create_if_absent`
+|Specifies whether the connector derives the index mapping from the Connect schema.
+For more information, see xref:elasticsearch-mapping-management[Index mapping management].
+
+`create_if_absent`:: Generates and applies the mapping before the first write unless an index template already exists for the index.
+`overwrite`:: Always applies the generated template.
+A template change does not retroactively alter existing indices.
+`none`:: Leaves mapping entirely to Elasticsearch.
+
+|[[elasticsearch-property-mapping-dynamic]]<<elasticsearch-property-mapping-dynamic, `+mapping.dynamic+`>>
+|`strict_but_dlq`
+|The `dynamic` setting of the generated mapping.
+`strict_but_dlq` sets `strict`, so that an unmapped field is rejected rather than silently typed, and routes the rejected record to the error reporter naming the field.
+The values `true`, `false`, and `runtime` are passed through.
+
+|[[elasticsearch-property-mapping-composed-of]]<<elasticsearch-property-mapping-composed-of, `+mapping.composed.of+`>>
+|No default
+|Comma-separated list of user-managed component template names that are composed into the generated index template ahead of the connector's own.
+This is how index lifecycle management and other lifecycle policies are reached: author them once in Elasticsearch and name them here.
+
+|[[elasticsearch-property-mapping-settings]]<<elasticsearch-property-mapping-settings, `+mapping.settings+`>>
+|No default
+|Comma-separated `key=value` pairs for the index settings that the generated index template applies.
+The supported keys are `number_of_shards`, `number_of_replicas`, `refresh_interval`, and `index.default_pipeline`; any other key is a startup error.
+
+|[[elasticsearch-property-string-mapping-mode]]<<elasticsearch-property-string-mapping-mode, `+string.mapping.mode+`>>
+|`text_with_keyword`
+|Specifies how `STRING` fields are mapped: `text_with_keyword` maps them as `text` with a `keyword` sub-field that ignores values above 256 characters, `text` maps them as `text` only, and `keyword` maps them as `keyword` only.
+
+|[[elasticsearch-property-struct-mapping-mode]]<<elasticsearch-property-struct-mapping-mode, `+struct.mapping.mode+`>>
+|`object`
+|Specifies how `STRUCT` fields are mapped: `object` or `nested`.
+
+|[[elasticsearch-property-json-mapping-mode]]<<elasticsearch-property-json-mapping-mode, `+json.mapping.mode+`>>
+|`object`
+|Specifies how `io.debezium.data.Json` fields are mapped when `json.output.mode` is `object`: as a dynamic `object` or as `flattened`.
+
+|[[elasticsearch-property-error-classification-overrides]]<<elasticsearch-property-error-classification-overrides, `+error.classification.overrides+`>>
+|No default
+|Comma-separated `<error-type>:<bucket>` pairs that move a specific Elasticsearch error type between the classification buckets `transient`, `record`, `resource_fatal`, and `task_fatal`, for example `circuit_breaking_exception:record`.
+The error type is the `type` string exactly as it appears in a bulk item response.
+The `success` bucket is deliberately not assignable.
+For more information, see xref:elasticsearch-error-handling-and-dead-letter-queues[Error handling and dead letter queues].
+
+|[[elasticsearch-property-log-sensitive-data]]<<elasticsearch-property-log-sensitive-data, `+log.sensitive.data+`>>
+|`false`
+|Specifies whether document bodies and document identifiers may appear in error logs.
+When `false`, failures log the record coordinates, the index, and the Elasticsearch error, but never the payload.
+
+|===
+
+[[elasticsearch-connector-properties-extendable]]
+=== Elasticsearch connector extendable properties
+
+The following table describes the properties that allow you to plug custom implementations into the {prodname} Elasticsearch sink connector.
+
+[cols="30%a,25%a,45%a",options="header"]
+|===
+|Property |Default |Description
+
+|[[elasticsearch-property-collection-naming-strategy]]<<elasticsearch-property-collection-naming-strategy, `+collection.naming.strategy+`>>
+|`io.debezium.connector.elasticsearch.naming.ElasticsearchCollectionNamingStrategy`
+|Specifies the fully qualified class name of a `io.debezium.sink.naming.CollectionNamingStrategy` implementation that the connector uses to resolve index names from incoming events.
+
+The default implementation consults `topic.to.resource.mapping`, resolves the placeholders of `collection.name.format`, and validates the result against the Elasticsearch index naming rules.
+For more information, see xref:elasticsearch-changing-how-index-names-are-resolved[Changing how index names are resolved].
+
+|===
+
+The xref:elasticsearch-property-connection-credentials-provider-class[`connection.credentials.provider.class`] connection property is the other extension point of the connector, for authentication schemes that are not built in.
+
+[[elasticsearch-faq]]
+== Frequently asked questions
+
+The following questions and answers address common decisions and scenarios when you configure and operate the {prodname} Elasticsearch sink connector.
+
+*Is the* `ExtractNewRecordState` *single message transformation required?*::
+No.
+The connector consumes the complex {prodname} change event structure natively, and it also consumes flattened events for pipelines that already apply the transformation.
+Either shape works without additional configuration under the default `event.format=auto`.
+
+*Why do my topics fail with "the name must be lowercase" or "the name must not contain '.'"?*::
+Elasticsearch index names are more constrained than Kafka topic names, and a {prodname} topic such as `inventory.Customers` breaks two of the rules.
+By default the connector stops rather than renaming the index silently.
+Either set `collection.name.format` to a pattern that produces a valid name, for example `+${source.schema}_${source.table}+` combined with lowercase table names, use `topic.to.resource.mapping` to name the index explicitly, or set `resource.name.invalid.handling=sanitize` to let the connector lowercase and replace the disallowed characters.
+
+*Why does the connector refuse to start with* `primary.key.mode=record_value`*?*::
+Deriving the `_id` from a value field means that events for one document can arrive on different partitions in an order that Kafka never guaranteed.
+The connector requires an explicit decision about how to resolve that: set `document.id.non.key.ordering=last_write_wins` to accept arbitrary resolution.
+The `version` setting will become available when external versioning is implemented.
+
+*How do I add a prefix or suffix to the index name without changing the Kafka topic name?*::
+Adjust the xref:elasticsearch-property-collection-name-format[`collection.name.format`] property.
+For example, to prefix all index names with `cdc-`, set the property to `+cdc-${topic}+`.
+If the connector is subscribed to a topic called `orders`, the resulting index is `cdc-orders`.
+
+*How do I apply an index lifecycle management policy to the indices that the connector creates?*::
+Create a component template in Elasticsearch that carries the lifecycle settings, and name it in xref:elasticsearch-property-mapping-composed-of[`mapping.composed.of`].
+The connector composes it into the generated index template ahead of its own mapping template, so the policy applies to every index that the connector creates.
+The connector deliberately does not manage lifecycle itself.
+
+*If a column's type changes, is the index mapping updated?*::
+No.
+Elasticsearch cannot change the type of a field in place, so the connector reports the conflict once with the Elasticsearch diagnostic and names reindexing as the remedy.
+Added columns are absorbed automatically: the connector regenerates the mapping when the record schema changes and applies the new fields to the existing index.
+
+*Why is there no* `max.in.flight.requests` *setting?*::
+Issuing a bulk request before the previous one has responded lets the network and Elasticsearch apply them out of order, which is the source of the well-known corruption scenario in which a connector reorders records that arrived in perfect order.
+The connector keeps one request in flight per task by construction and scales throughput through partitions and tasks instead.
+
+*Why does my task fail instead of retrying when Elasticsearch returns an error I have not seen before?*::
+The connector classifies an unknown outcome as task-fatal rather than transient, because no unclassified condition is well enough understood to be assumed recoverable, and retrying it forever would leave the task reporting `RUNNING` while making no progress.
+If you know that a specific error type is recoverable in your environment, move it into the `transient` bucket with xref:elasticsearch-property-error-classification-overrides[`error.classification.overrides`].
