@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mariadb.antlr.listener;
 
+import java.sql.Types;
 import java.util.concurrent.atomic.AtomicReference;
 
 import io.debezium.connector.mariadb.antlr.MariaDbAntlrDdlParser;
@@ -35,6 +36,12 @@ public class DefaultValueParserListener extends MariaDBParserBaseListener {
 
     @Override
     public void enterDefaultValue(DefaultValueContext ctx) {
+        if (columnEditor.jdbcType() == Types.BIT) {
+            columnEditor.defaultValueExpression(BitDefaultValueParser.parse(ctx, parser));
+            exitDefaultValue(true);
+            super.enterDefaultValue(ctx);
+            return;
+        }
         String sign = "";
         if (ctx.NULL_LITERAL() != null) {
             return;
@@ -50,7 +57,9 @@ public class DefaultValueParserListener extends MariaDBParserBaseListener {
                 columnEditor.defaultValueExpression(sign + ctx.constant().decimalLiteral().getText());
             }
             else if (ctx.constant().BIT_STRING() != null) {
-                columnEditor.defaultValueExpression(unquoteBinary(ctx.constant().BIT_STRING().getText()));
+                final var literal = ctx.constant().BIT_STRING().getText();
+                // Preserve unknown defaults for 0b literals outside BIT columns until their type-specific conversion is supported.
+                columnEditor.defaultValueExpression(literal.endsWith("'") ? unquoteBinary(literal) : null);
             }
             else if (ctx.constant().booleanLiteral() != null) {
                 columnEditor.defaultValueExpression(ctx.constant().booleanLiteral().getText());
