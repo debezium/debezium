@@ -3562,6 +3562,19 @@ After you configure the properties, the connector exhibits the following behavio
 * Connects to the primary database (configured via `database.hostname`) for snapshot operations and metadata queries.
 * Connects to the standby database (configured via `secondary.hostname` or `secondary.url`) in read-only mode for LogMiner streaming operations.
 * Uses the flat file data dictionary to resolve table and column names during log mining on the standby database.
+* Resolves tables that the flat file data dictionary cannot name by querying the catalog of the primary database.
+
+.Resolving tables that are missing from the dictionary file
+
+The dictionary file is a point-in-time copy of the data dictionary.
+LogMiner reports a table that is created or altered after the file is built as `OBJ#` followed by the object identifier of the table.
+When the schema model of the connector cannot name such a table either, the connector reads the owner and table name from the `DBA_OBJECTS` view on the primary database, and applies the table filters to the result.
+The connector caches the result for each object identifier for the lifetime of the streaming session, so that changes to a table that is not captured do not query the primary database for every change.
+
+Because a table keeps its object identifier when it is renamed, the connector does not notice a rename that occurs while the dictionary file is out of date.
+Until the dictionary file is rebuilt, or the connector restarts, the connector continues to apply the table filters to the name that it resolved first.
+A table that is renamed so that its new name matches the include list is therefore not captured until then, and a captured table that is renamed so that its new name no longer matches the include list continues to be captured.
+Rebuild the dictionary file after renaming tables on the primary database.
 
 The data dictionary is exported once, so it does not describe schema changes that are applied to the primary afterwards.
 The connector resolves the affected tables and columns from its own schema model, and rebuilding the dictionary file restores resolution on the LogMiner side.
@@ -4740,7 +4753,8 @@ This strategy is required when streaming changes from a physical standby databas
 The file is a point-in-time copy, so LogMiner cannot name an object that is created or altered after the file is built, and reports it as `OBJ#` followed by the object identifier.
 The connector resolves such objects from its own schema model, and reconstructs the column names that LogMiner reports as `COL 1`, `COL 2`, and so forth.
 An object that the connector has no schema for, such as a table created after the initial snapshot ran, cannot be resolved this way.
-The connector then applies the xref:oracle-property-event-processing-failure-handling-mode[`event.processing.failure.handling.mode`] property, which stops the connector by default.
+When `capture.mode` is set to `physical_standby`, the connector resolves such an object from the catalog of the primary database, as described in xref:configuring-the-debezium-oracle-connector-to-capture-events-from-a-physical-standby[Configuring the {prodname} Oracle connector to capture events from a physical standby].
+If the object cannot be resolved, the connector applies the xref:oracle-property-event-processing-failure-handling-mode[`event.processing.failure.handling.mode`] property, which stops the connector by default.
 Rebuild the dictionary file to have LogMiner resolve these objects again.
 endif::community[]
 

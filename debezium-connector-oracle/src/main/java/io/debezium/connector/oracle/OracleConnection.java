@@ -838,6 +838,33 @@ public class OracleConnection extends JdbcConnection {
     }
 
     /**
+     * Resolves the table identifier of a table object from the database catalog.
+     * <p>
+     * The lookup reads {@code DBA_OBJECTS} rather than {@code ALL_OBJECTS}, because the latter only lists objects
+     * the connector user can access and omits {@code SYS}-owned tables, which are exactly the non-captured tables
+     * this lookup must be able to name.
+     *
+     * @param catalogName the catalog name to assign to the resolved identifier, may be {@code null}
+     * @param objectId the table's object id
+     * @param dataObjectId the table's data object id
+     * @return the resolved table identifier, or {@code null} if no table matches both ids or the lookup failed
+     */
+    public TableId getTableIdByObjectId(String catalogName, long objectId, long dataObjectId) {
+        try {
+            return prepareQueryAndMap(
+                    "SELECT OWNER, OBJECT_NAME FROM DBA_OBJECTS WHERE OBJECT_TYPE='TABLE' AND OBJECT_ID=? AND DATA_OBJECT_ID=?",
+                    ps -> {
+                        ps.setLong(1, objectId);
+                        ps.setLong(2, dataObjectId);
+                    }, rs -> rs.next() ? new TableId(catalogName, rs.getString(1), rs.getString(2)) : null);
+        }
+        catch (SQLException e) {
+            LOGGER.error("Failed to resolve table id from object id {} and data object id {}", objectId, dataObjectId, e);
+            return null;
+        }
+    }
+
+    /**
      * Get the database character set used for {@code VARCHAR2}, {@code CHAR}, and {@code CLOB} data types.
      *
      * This method queries the {@code NLS_CHARACTERSET} database parameter and returns the corresponding

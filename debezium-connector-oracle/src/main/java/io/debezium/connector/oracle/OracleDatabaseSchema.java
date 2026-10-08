@@ -267,6 +267,9 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
         final Attribute attribute = table.attributeWithName(ATTRIBUTE_OBJECT_ID);
         if (attribute != null) {
             objectIdToTableId.put(attribute.asLong(), table.id());
+            // The last lookup may have recorded this object id as unknown before the table was registered,
+            // so it must not keep answering for it.
+            lastObjectTableIdLookup = null;
         }
     }
 
