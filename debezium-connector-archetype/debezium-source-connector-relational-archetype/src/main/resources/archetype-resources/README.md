@@ -101,9 +101,9 @@ The skeleton compiles, but emits no events until you fill in the steps below. Do
 mvn package
 ```
 
-Produces an uber-jar at `target/${artifactId}-${version}.jar` containing all the runtime dependencies Kafka Connect needs. To run it:
+Produces `target/${artifactId}-${debeziumVersion}.jar` with your connector classes only. The project inherits `debezium-parent`, so its version is the Debezium version it was generated for (`${debeziumVersion}`); to move to another Debezium release, change the version in the `<parent>` block. To run it:
 
-1. Copy the jar into a directory listed in Kafka Connect's `plugin.path`.
+1. Copy the jar, together with the Debezium runtime jars and your JDBC driver (for example the output of `mvn dependency:copy-dependencies`), into a directory listed in Kafka Connect's `plugin.path`.
 2. Restart Connect (or use the REST API to install if your distribution supports it).
 3. POST a connector config to Connect's REST API. Minimal example:
 
