@@ -1081,6 +1081,8 @@ endif::product[]
 If there is not a direct mapping between one of the vector logical types and your target relational database's column types, you can use the `VectorToJsonConverter` to convert the vector logical type to JSON so that it can be written to any target relational database.
 ====
 
+endif::product[]
+
 [id="debezium-jdbc-sink-column-and-data-type-propagation"]
 // Type: concept
 === Column and data type propagation
