@@ -5,16 +5,18 @@
  */
 package io.debezium.connector.mysql.antlr.listener;
 
+import static io.debezium.connector.binlog.util.BitDefaultValueUtils.parseNumber;
+import static io.debezium.connector.binlog.util.BitDefaultValueUtils.unquote;
+
 import java.io.ByteArrayOutputStream;
-import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.math.RoundingMode;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 
 import io.debezium.antlr.mysql.SqlMode;
 import io.debezium.antlr.mysql.SqlModes;
 import io.debezium.connector.binlog.jdbc.BinlogSystemVariables;
+import io.debezium.connector.binlog.util.BitDefaultValueUtils;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
 
@@ -23,8 +25,6 @@ import io.debezium.ddl.parser.mysql.generated.MySqlParser;
  * The literal kind must be preserved until this conversion: 10, b'10', x'10', and '10' have different values.
  */
 final class BitDefaultValueParser {
-
-    private static final BigInteger UNSIGNED_LONG_MASK = BigInteger.ONE.shiftLeft(Long.SIZE).subtract(BigInteger.ONE);
 
     private BitDefaultValueParser() {
     }
@@ -67,25 +67,16 @@ final class BitDefaultValueParser {
             return null;
         }
 
-        // Negative defaults accepted by MySQL BIT(64) retain their unsigned 64-bit representation.
-        return value.and(UNSIGNED_LONG_MASK).toString(2);
-    }
-
-    private static BigInteger parseNumber(String value, boolean approximate) {
-        if (approximate) {
-            // MySQL truncates approximate numbers and clamps them to the signed long range.
-            return BigInteger.valueOf((long) Double.parseDouble(value));
-        }
-        return new BigDecimal(value).setScale(0, RoundingMode.HALF_UP).toBigIntegerExact();
+        return BitDefaultValueUtils.asBinaryString(value);
     }
 
     private static BigInteger parseBinaryLiteral(String literal, int radix) {
         final var digits = literal.endsWith("'") ? literal.substring(2, literal.length() - 1) : literal.substring(2);
         // Oversized binary strings accepted in non-strict mode saturate, even when padded with leading zeroes.
         if (digits.length() > (radix == 16 ? Long.SIZE / 4 : Long.SIZE)) {
-            return UNSIGNED_LONG_MASK;
+            return BitDefaultValueUtils.UNSIGNED_LONG_MAX;
         }
-        return digits.isEmpty() ? BigInteger.ZERO : new BigInteger(digits, radix);
+        return BitDefaultValueUtils.parseBinaryLiteral(literal, radix);
     }
 
     private static BigInteger parseTextLiteral(MySqlParser.TextLiteralContext literal, MySqlAntlrDdlParser parser) {
@@ -112,32 +103,4 @@ final class BitDefaultValueParser {
         return encoding == null ? StandardCharsets.UTF_8 : Charset.forName(encoding);
     }
 
-    private static String unquote(String literal, boolean backslashEscapes) {
-        final var result = new StringBuilder();
-        final char quote = literal.charAt(0);
-        for (int index = 1; index < literal.length() - 1; index++) {
-            final char character = literal.charAt(index);
-            if (character == quote && index + 1 < literal.length() - 1 && literal.charAt(index + 1) == quote) {
-                result.append(quote);
-                index++;
-            }
-            else if (character == '\\' && backslashEscapes && index + 1 < literal.length() - 1) {
-                final char escaped = literal.charAt(++index);
-                switch (escaped) {
-                    case '0' -> result.append('\0');
-                    case 'b' -> result.append('\b');
-                    case 'n' -> result.append('\n');
-                    case 'r' -> result.append('\r');
-                    case 't' -> result.append('\t');
-                    case 'Z' -> result.append('\u001a');
-                    case '%', '_' -> result.append('\\').append(escaped);
-                    default -> result.append(escaped);
-                }
-            }
-            else {
-                result.append(character);
-            }
-        }
-        return result.toString();
-    }
 }
