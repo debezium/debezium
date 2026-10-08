@@ -31,7 +31,7 @@ public class UnbufferedLogMinerOracleOffsetContextLoader implements OffsetContex
 
     @Override
     public OracleOffsetContext load(Map<String, ?> offset) {
-        return OracleOffsetContext.loadLogMinerScns(offset, OracleOffsetContext.create())
+        return OracleOffsetContext.loadLogMinerScnAndSnapshotCommitScn(offset, OracleOffsetContext.create())
                 .logicalName(connectorConfig)
                 .commitScn(CommitScn.load(offset))
                 .snapshot(loadSnapshot(offset).orElse(null))

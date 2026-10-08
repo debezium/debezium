@@ -523,7 +523,7 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
      * @param builder the offset context builder to apply the SCNs to
      * @return the builder
      */
-    public static Builder loadLogMinerScns(Map<String, ?> offset, Builder builder) {
+    public static Builder loadLogMinerScnAndSnapshotCommitScn(Map<String, ?> offset, Builder builder) {
         Scn scn = getScnFromOffsetMapByKey(offset, SourceInfo.SCN_KEY);
         Scn snapshotCommitScn = loadSnapshotCommitScn(offset);
         if (snapshotCommitScn == null) {
