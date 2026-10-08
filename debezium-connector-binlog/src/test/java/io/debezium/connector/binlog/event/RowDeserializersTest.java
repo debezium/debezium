@@ -18,6 +18,8 @@ import org.junit.jupiter.params.provider.CsvSource;
 
 import com.github.shyiko.mysql.binlog.io.ByteArrayInputStream;
 
+import io.debezium.doc.FixFor;
+
 /**
  * Unit tests for {@link RowDeserializers}, in particular the zero-date detection in the
  * {@code TIMESTAMP} deserializers. {@code DATE} / {@code DATETIME} already detected zero-date
@@ -30,6 +32,7 @@ class RowDeserializersTest {
 
     @ParameterizedTest
     @CsvSource({ "0,0", "1,1901", "69,1969", "70,1970", "99,1999", "100,2000", "255,2155" })
+    @FixFor("debezium/dbz#2757")
     void deserializeYearPreservesZeroAndValidYears(int encoded, int expected) throws IOException {
         final var input = new ByteArrayInputStream(new byte[]{ (byte) encoded });
         assertThat(RowDeserializers.deserializeYear(input)).isEqualTo(Year.of(expected));
