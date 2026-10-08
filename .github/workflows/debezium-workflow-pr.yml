@@ -690,7 +690,30 @@ jobs:
       - uses: ./.github/actions/build-debezium-openlineage
         with:
           maven-cache-key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
-
+  build_quarkus-extensions:
+    name: "Build Quarkus Extensions"
+    needs: [ check_style, file_changes, build_core ]
+    runs-on: ubuntu-latest
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' || needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' || needs.file_changes.outputs.jdbc-changed == 'true' }}
+    steps:
+      - name: Checkout Action (Core)
+        uses: actions/checkout@v7
+        with:
+          path: core
+      - name: Checkout Action (Quarkus Extensions)
+        uses: actions/checkout@v7
+        with:
+          repository: debezium/debezium-quarkus
+          path: quarkus
+          ref: ${{ github.event.pull_request.base.ref }}
+      - uses: ./core/.github/actions/setup-java
+      - uses: ./core/.github/actions/maven-cache
+        with:
+          key: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
+      - uses: ./core/.github/actions/build-quarkus-extensions
+        with:
+          path-core: core
+          path-quarkus: quarkus
   build_server:
     name: "Debezium Server"
     needs: [ check_style, file_changes, build_core ]
