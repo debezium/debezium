@@ -119,7 +119,7 @@ public class UnbufferedLogMinerAdapterIT extends AbstractAsyncEngineConnectorTes
             final Map<String, Object> committedOffsets = readLastCommittedOffset(config, partition.getSourcePartition());
 
             // Get the SCN the snapshot was taken at, which is retired from the offsets once streaming commits past it
-            final Scn snapshotScn = (Scn) adapterLogInterceptor.getLoggingEvents("Snapshot boundary resolved").get(0).getArgumentArray()[1];
+            final Scn snapshotCommitScn = (Scn) adapterLogInterceptor.getLoggingEvents("Snapshot boundary resolved").get(0).getArgumentArray()[1];
             assertThat(OracleOffsetContext.loadSnapshotCommitScn(committedOffsets)).isNull();
 
             // Get the SCN low watermark updated by the streaming phase
@@ -127,9 +127,9 @@ public class UnbufferedLogMinerAdapterIT extends AbstractAsyncEngineConnectorTes
             assertThat(lowWatermarkScn).isNotNull();
 
             // Verify the SCN values were updated
-            // Before this fix, the lowWatermarkScn was always the same as the snapshotScn
+            // Before this fix, the lowWatermarkScn was always the same as the snapshot commit SCN
             // With the fix, the low watermark should be after the snapshot scn
-            assertThat(lowWatermarkScn.asBigInteger()).isGreaterThan(snapshotScn.asBigInteger());
+            assertThat(lowWatermarkScn.asBigInteger()).isGreaterThan(snapshotCommitScn.asBigInteger());
         }
         finally {
             TestHelper.dropTable(connection, "dbz9013");

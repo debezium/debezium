@@ -121,7 +121,6 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         this.offsetContext = Mockito.mock(OracleOffsetContext.class);
         final CommitScn commitScn = CommitScn.valueOf((String) null);
         Mockito.when(this.offsetContext.getCommitScn()).thenReturn(commitScn);
-        Mockito.when(this.offsetContext.getSnapshotScn()).thenReturn(Scn.valueOf("1"));
         Mockito.when(this.offsetContext.getSnapshotCommitScn()).thenReturn(Scn.NULL);
         this.connectionFactory = createOracleConnectionFactory(false);
         this.schema = createOracleDatabaseSchema();
@@ -478,7 +477,6 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
 
         try (var source = getChangeEventSource(getConfig().build())) {
             Mockito.when(offsetContext.getScn()).thenReturn(Scn.valueOf(1L));
-            Mockito.when(offsetContext.getSnapshotScn()).thenReturn(Scn.NULL);
 
             final Instant changeTime = Instant.now().minus(24, ChronoUnit.HOURS);
 
@@ -499,7 +497,6 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
 
         try (var source = getChangeEventSource(getConfig().build())) {
             Mockito.when(offsetContext.getScn()).thenReturn(Scn.valueOf(1L));
-            Mockito.when(offsetContext.getSnapshotScn()).thenReturn(Scn.NULL);
 
             final Instant changeTime = Instant.now().minus(24, ChronoUnit.HOURS);
             source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1, changeTime));
@@ -517,7 +514,6 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
 
         try (var source = getChangeEventSource(getConfig().build())) {
             Mockito.when(offsetContext.getScn()).thenReturn(Scn.valueOf(1L));
-            Mockito.when(offsetContext.getSnapshotScn()).thenReturn(Scn.NULL);
 
             final Instant changeTime = Instant.now().minus(24, ChronoUnit.HOURS);
             source.processEvent(getStartLogMinerEventRow(2, TRANSACTION_ID_1, changeTime));
@@ -541,7 +537,6 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
 
         try (var source = getChangeEventSource(getConfig().build())) {
             Mockito.when(offsetContext.getScn()).thenReturn(Scn.valueOf(1L));
-            Mockito.when(offsetContext.getSnapshotScn()).thenReturn(Scn.NULL);
 
             final Instant changeTime = Instant.now().minus(24, ChronoUnit.HOURS);
             source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1, changeTime));
@@ -569,7 +564,6 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         metrics = createMetrics(schema);
 
         Mockito.when(offsetContext.getScn()).thenReturn(Scn.valueOf(1L));
-        Mockito.when(offsetContext.getSnapshotScn()).thenReturn(Scn.NULL);
 
         final Instant changeTime1 = Instant.now().minus(24, ChronoUnit.HOURS);
         final Instant changeTime2 = Instant.now().minus(23, ChronoUnit.HOURS);
@@ -605,7 +599,6 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         metrics = createMetrics(schema);
 
         Mockito.when(offsetContext.getScn()).thenReturn(Scn.valueOf(1L));
-        Mockito.when(offsetContext.getSnapshotScn()).thenReturn(Scn.NULL);
 
         final Instant changeTime1 = Instant.now().minus(24, ChronoUnit.HOURS);
         final Instant changeTime2 = Instant.now().minus(23, ChronoUnit.HOURS);
@@ -637,7 +630,6 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         detailsLogger.setLevel(Level.DEBUG);
         try (var source = getChangeEventSource(getConfig().build())) {
             Mockito.when(offsetContext.getScn()).thenReturn(Scn.valueOf(1L));
-            Mockito.when(offsetContext.getSnapshotScn()).thenReturn(Scn.NULL);
 
             final Instant changeTime = Instant.now().minus(24, ChronoUnit.HOURS);
             source.processEvent(getInsertLogMinerEventRow(2, TRANSACTION_ID_1, changeTime, "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'insert'"));

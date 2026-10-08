@@ -11,7 +11,6 @@ import io.debezium.common.annotation.Incubating;
 import io.debezium.connector.oracle.CommitScn;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleOffsetContext;
-import io.debezium.connector.oracle.SourceInfo;
 import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotContext;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
@@ -32,9 +31,8 @@ public class UnbufferedLogMinerOracleOffsetContextLoader implements OffsetContex
 
     @Override
     public OracleOffsetContext load(Map<String, ?> offset) {
-        return OracleOffsetContext.loadLogMinerSnapshotScns(offset, OracleOffsetContext.create())
+        return OracleOffsetContext.loadLogMinerScns(offset, OracleOffsetContext.create())
                 .logicalName(connectorConfig)
-                .scn(OracleOffsetContext.getScnFromOffsetMapByKey(offset, SourceInfo.SCN_KEY))
                 .commitScn(CommitScn.load(offset))
                 .snapshot(loadSnapshot(offset).orElse(null))
                 .snapshotCompleted(loadSnapshotCompleted(offset))

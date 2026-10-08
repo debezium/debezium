@@ -113,7 +113,6 @@ public class UnbufferedStreamingChangeEventSourceTest extends AbstractAsyncEngin
         this.offsetContext = Mockito.mock(OracleOffsetContext.class);
         final CommitScn commitScn = CommitScn.valueOf((String) null);
         Mockito.when(this.offsetContext.getCommitScn()).thenReturn(commitScn);
-        Mockito.when(this.offsetContext.getSnapshotScn()).thenReturn(Scn.valueOf("1"));
         this.connectionFactory = createOracleConnectionFactory();
         this.schema = createOracleDatabaseSchema();
         this.metrics = createMetrics(schema);
