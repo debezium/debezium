@@ -248,27 +248,56 @@ public abstract class AbstractLogMinerTransactionCache<T extends Transaction> im
     }
 
     private void logCannotApplyRollbackToSavepointWarning(String transactionId, LogMinerEvent rollbackEvent, String fieldName, Object fieldValue) {
+        dumpCachedEvents(transactionId);
         Loggings.logWarningAndTraceRecord(LOGGER, rollbackEvent,
                 "Cannot apply the undo change in transaction '{}' with SCN '{}' on table '{}' by row-id '{}' since the preceding event in the transaction cache has a different {} '{}'. Manual investigation is required.",
                 transactionId, rollbackEvent.getScn(), rollbackEvent.getTableId(), rollbackEvent.getRowIdAsString(), fieldName, fieldValue);
     }
 
     private void logCannotApplyRollbackToSavepointWarning(String transactionId, LogMinerEvent rollbackEvent, EventType rolledBackType) {
+        dumpCachedEvents(transactionId);
         Loggings.logWarningAndTraceRecord(LOGGER, rollbackEvent,
                 "Cannot apply the undo change in transaction '{}' with SCN '{}' on table '{}' by row-id '{}' since '{}' was not expected before '{}'. Manual investigation is required.",
                 transactionId, rollbackEvent.getScn(), rollbackEvent.getTableId(), rollbackEvent.getRowIdAsString(), rolledBackType, rollbackEvent.getEventType());
     }
 
     private void logUnexpectedEventBeforeRollbackWarning(String transactionId, LogMinerEvent rollbackEvent, String fieldName, Object fieldValue) {
+        dumpCachedEvents(transactionId);
         Loggings.logWarningAndTraceRecord(LOGGER, rollbackEvent,
                 "An event with an unexpected {} '{}' is followed by the rollback event in transaction '{}' with SCN '{}' on table '{}' by row-id '{}'. Please enable 'log.mining.include.internal.events'.",
                 fieldName, fieldValue, transactionId, rollbackEvent.getScn(), rollbackEvent.getTableId(), rollbackEvent.getRowIdAsString());
     }
 
     private void logUnexpectedEventWithEmptyRowIdWarning(String transactionId, LogMinerEvent rollbackEvent, String fieldName, Object fieldValue) {
+        dumpCachedEvents(transactionId);
         Loggings.logWarningAndTraceRecord(LOGGER, rollbackEvent,
                 "An event with an empty ROW_ID and an unexpected {} '{}' was detected while applying the undo change in transaction '{}' with SCN '{}' on table '{}' by row-id '{}'. Please enable 'log.mining.include.internal.events'.",
                 fieldName, fieldValue, transactionId, rollbackEvent.getScn(), rollbackEvent.getTableId(), rollbackEvent.getRowIdAsString());
+    }
+
+    // DBZ2634 instrumentation: dump the whole cached sequence whenever the walk warns
+    private void dumpCachedEvents(String transactionId) {
+        try {
+            final T transaction = getTransaction(transactionId);
+            if (transaction == null) {
+                LOGGER.warn("DBZ2634 cached sequence for transaction {}: <transaction not found>", transactionId);
+                return;
+            }
+            final StringBuilder sb = new StringBuilder();
+            forEachEvent(transaction, e -> {
+                sb.append(e.getEventType()).append('/').append(e.getRowIdAsString()).append('/')
+                        .append(e.getRsId() == null ? "-" : e.getRsId().trim()).append('/').append(e.getScn())
+                        .append(e instanceof RollbackToSavepointEvent ? "/RB" : "").append(' ');
+                return true;
+            });
+            LOGGER.warn("DBZ2634 cached sequence for transaction {}: {}", transactionId, sb.toString().trim());
+        }
+        catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        catch (Exception e) {
+            LOGGER.warn("DBZ2634 cached sequence dump failed for transaction {}", transactionId, e);
+        }
     }
 
     private int compareTransactionScnDetails(T first, T second) {
