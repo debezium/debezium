@@ -27,6 +27,7 @@ import io.debezium.service.spi.InjectService;
 import io.debezium.service.spi.ServiceProvider;
 import io.debezium.service.spi.ServiceRegistry;
 import io.debezium.service.spi.ServiceRegistryAware;
+import io.debezium.service.spi.ServiceRegistryBuilder;
 import io.debezium.service.spi.Startable;
 
 /**
@@ -36,7 +37,7 @@ import io.debezium.service.spi.Startable;
  */
 @Incubating
 @ThreadSafe
-public class DefaultServiceRegistry implements ServiceRegistry {
+public class DefaultServiceRegistry implements ServiceRegistry, ServiceRegistryBuilder {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultServiceRegistry.class);
 
@@ -47,7 +48,8 @@ public class DefaultServiceRegistry implements ServiceRegistry {
     private final Configuration configuration;
 
     /**
-     * Creates the default service registry, which registers the {@link BeanRegistry} as a service.
+     * Creates the default service registry, which registers the {@link BeanRegistry} as a service
+     * followed by Debezium's default service providers.
      *
      * @param configuration the user configuration, should not be {@code null}
      * @param beanRegistry the bean registry instance, should not be {@code null}
@@ -55,6 +57,8 @@ public class DefaultServiceRegistry implements ServiceRegistry {
     public DefaultServiceRegistry(Configuration configuration, BeanRegistry beanRegistry) {
         this.configuration = configuration;
         registerService(new ServiceRegistration<>(BeanRegistry.class, beanRegistry), beanRegistry);
+
+        new DefaultServiceProviderContributor().contribute(this);
     }
 
     @Override
