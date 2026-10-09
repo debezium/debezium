@@ -1197,6 +1197,36 @@ public abstract class AbstractFindRolledBackRangeTest<T extends Transaction> {
         assertThat(logInterceptor.containsWarnMessage("Manual investigation is required")).isFalse();
     }
 
+    // Index-organized tables
+
+    @Test
+    @FixFor("debezium/dbz#2785")
+    public void testRollbackInOrganizationIndexTable() throws Exception {
+        // CREATE TABLE DBZ2785_1(ID NUMERIC(9,0) PRIMARY KEY, STR0 VARCHAR2(50));
+        // CREATE TABLE DBZ2785_1_INDEX(ID NUMERIC(9,0) PRIMARY KEY, STR0 VARCHAR2(50)) ORGANIZATION INDEX;
+        // INSERT INTO DBZ2785_1 (ID, STR0) VALUES (1, 'STR0-1-0');
+        // INSERT INTO DBZ2785_1_INDEX (ID, STR0) VALUES (1, 'STR0-1-0');
+        // SAVEPOINT s1;
+        // INSERT INTO DBZ2785_1 (ID, STR0) VALUES (2, 'STR0-2-0');
+        // INSERT INTO DBZ2785_1_INDEX (ID, STR0) VALUES (2, 'STR0-2-0');
+        // ROLLBACK TO SAVEPOINT s1;
+        LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerTransactionCache.class);
+        LogMinerEvent[] events = new LogMinerEvent[]{
+                event(EventType.INSERT, 0, "BBBBBBBBBBBBBBBBBB", "1"),
+                event(EventType.INSERT, 0, "CCCCCCAAAAAAAAAAAA", "2", OTHER_TABLE),
+                event(EventType.INSERT, 0, "DDDDDDDDDDDDDDDDDD", "3"),
+                event(EventType.INSERT, 0, "EEEEEEAAAAAAAAAAAA", "4", OTHER_TABLE),
+                // event(EventType.INTERNAL, 1, "EEEEEEAAAAAAAAAAAA", "5", OTHER_TABLE), // SEQUENCE#=1
+                event(EventType.DELETE, 1, "DDDDDDDDDDDDDDDDDD", "6"), };
+        LogMinerEvent[] expected = new LogMinerEvent[]{
+                event(EventType.INSERT, 0, "BBBBBBBBBBBBBBBBBB", "1"),
+                event(EventType.INSERT, 0, "CCCCCCAAAAAAAAAAAA", "2", OTHER_TABLE),
+                event(EventType.DELETE, 1, "DDDDDDDDDDDDDDDDDD", "6"), };
+        assertThat(cache(events)).isEqualTo(expected);
+        assertThat(logInterceptor.containsWarnMessage("Please enable 'log.mining.include.internal.events'")).isFalse();
+        assertThat(logInterceptor.containsWarnMessage("Manual investigation is required")).isFalse();
+    }
+
     private LogMinerEvent event(EventType eventType, int rollback, String rowId, String rsId) {
         return event(eventType, rollback, rowId, rsId, TABLE);
     }
