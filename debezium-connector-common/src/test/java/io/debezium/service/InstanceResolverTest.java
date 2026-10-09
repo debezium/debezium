@@ -20,6 +20,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.junit.jupiter.api.Test;
@@ -28,6 +29,8 @@ import org.junit.jupiter.api.io.TempDir;
 import io.debezium.bean.DefaultBeanRegistry;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.connector.AbstractSourceInfo;
+import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.converters.custom.CustomConverterServiceProvider;
 import io.debezium.heartbeat.DebeziumHeartbeatFactory;
@@ -69,6 +72,7 @@ class InstanceResolverTest {
     private static final CustomConverter<SchemaBuilder, ConvertedField> SUPPLIED_CUSTOM_CONVERTER = new TestCustomConverter();
     private static final TestHeartbeatFactory SUPPLIED_HEARTBEAT_FACTORY = new TestHeartbeatFactory();
     private static final SchemaHistory SUPPLIED_SCHEMA_HISTORY = new MemorySchemaHistory();
+    private static final TestSourceInfoStructMaker SUPPLIED_SOURCE_INFO_STRUCT_MAKER = new TestSourceInfoStructMaker();
 
     private static final TableId TABLE = new TableId("db", null, "t");
     private static final Column COLUMN = Column.editor().name("id").type("INT").jdbcType(Types.INTEGER).create();
@@ -85,6 +89,11 @@ class InstanceResolverTest {
     private final Configuration schemaHistoryConfig = Configuration.create()
             .with(CommonConnectorConfig.TOPIC_PREFIX, "server1")
             .with(HistorizedRelationalDatabaseConnectorConfig.SCHEMA_HISTORY, MemorySchemaHistory.class.getName())
+            .build();
+
+    private final Configuration sourceInfoStructMakerConfig = Configuration.create()
+            .with(CommonConnectorConfig.TOPIC_PREFIX, "server1")
+            .with(CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER, TestSourceInfoStructMaker.class.getName())
             .build();
 
     private final Configuration postProcessorConfig = Configuration.create()
@@ -237,6 +246,43 @@ class InstanceResolverTest {
         });
     }
 
+    @Test
+    void shouldCreateSourceInfoStructMakerFromConfigurationByDefault() {
+        SUPPLIED_SOURCE_INFO_STRUCT_MAKER.connector = null;
+
+        final var connectorConfig = sourceInfoStructMakerConfig(sourceInfoStructMakerConfig);
+
+        assertThat(connectorConfig.getSourceInfoStructMaker())
+                .isExactlyInstanceOf(TestSourceInfoStructMaker.class)
+                .isNotSameAs(SUPPLIED_SOURCE_INFO_STRUCT_MAKER);
+        assertThat(SUPPLIED_SOURCE_INFO_STRUCT_MAKER.connector).isNull();
+    }
+
+    @Test
+    void shouldUseSourceInfoStructMakerSuppliedByContributedResolver(@TempDir Path classpathRoot) throws Exception {
+        SUPPLIED_SOURCE_INFO_STRUCT_MAKER.connector = null;
+
+        TestContributors.runWith(classpathRoot, TestContributor.class, () -> {
+            final var connectorConfig = sourceInfoStructMakerConfig(sourceInfoStructMakerConfig);
+
+            assertThat(connectorConfig.getSourceInfoStructMaker()).isSameAs(SUPPLIED_SOURCE_INFO_STRUCT_MAKER);
+            assertThat(SUPPLIED_SOURCE_INFO_STRUCT_MAKER.connector).isEqualTo("test");
+        });
+    }
+
+    /**
+     * Creates a connector configuration that resolves its source info struct maker from the configuration,
+     * as the connectors do, rather than the test default of none.
+     */
+    private static CommonConnectorConfig sourceInfoStructMakerConfig(Configuration config) {
+        return new TestRelationalDatabaseConfig(config, null, null, 0) {
+            @Override
+            protected SourceInfoStructMaker<?> getSourceInfoStructMaker(Version version) {
+                return getSourceInfoStructMaker(CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER, "test", "1.0", this);
+            }
+        };
+    }
+
     private static ChangeEventQueue<DataChangeEvent> queue() {
         return new ChangeEventQueue.Builder<DataChangeEvent>()
                 .pollInterval(Duration.ofMillis(100))
@@ -278,6 +324,9 @@ class InstanceResolverTest {
             if (contract == SchemaHistory.class) {
                 return contract.cast(SUPPLIED_SCHEMA_HISTORY);
             }
+            if (contract == SourceInfoStructMaker.class) {
+                return contract.cast(SUPPLIED_SOURCE_INFO_STRUCT_MAKER);
+            }
             return fallback.get();
         }
 
@@ -315,6 +364,26 @@ class InstanceResolverTest {
                     return true;
                 }
             });
+        }
+    }
+
+    public static class TestSourceInfoStructMaker implements SourceInfoStructMaker<AbstractSourceInfo> {
+
+        private String connector;
+
+        @Override
+        public void init(String connector, String version, CommonConnectorConfig connectorConfig) {
+            this.connector = connector;
+        }
+
+        @Override
+        public Schema schema() {
+            return SchemaBuilder.struct().build();
+        }
+
+        @Override
+        public Struct struct(AbstractSourceInfo sourceInfo) {
+            return null;
         }
     }
 
