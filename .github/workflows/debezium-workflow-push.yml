@@ -38,6 +38,12 @@ jobs:
         with:
           path: core
 
+      - name: Checkout Action (Debezium Quarkus)
+        uses: actions/checkout@v7
+        with:
+          repository: debezium/debezium-quarkus
+          path: quarkus
+
       - name: Checkout Action (Debezium Server)
         uses: actions/checkout@v7
         with:
@@ -83,8 +89,19 @@ jobs:
           -DskipTests=true
           -DskipITs=true
 
+      - name: Download dependencies (Debezium Quarkus)
+        run: >
+          ./quarkus/mvnw -B -ntp clean install -f quarkus/pom.xml
+          -Passembly
+          -Dformat.skip=true
+          -Dcheckstyle.skip=true
+          -Dorg.slf4j.simpleLogger.showDateTime=true
+          -Dorg.slf4j.simpleLogger.dateTimeFormat="YYYY-MM-dd HH:mm:ss,SSS"
+          -DskipTests=true
+          -DskipITs=true
+          -DskipNonCore
+
       - name: Download dependencies (Debezium Server)
-        if: steps.maven-cache-check.outputs.cache-hit != 'true'
         run: >
           ./server/mvnw -B -ntp clean install -f server/pom.xml
           -Dformat.skip=true
@@ -448,35 +465,10 @@ jobs:
     with:
       maven-cache-key: maven-debezium-test-push-build
 
-  build_quarkus-extensions:
-    name: "Build Quarkus Extensions"
-    needs: [ check_style, build_core ]
-    runs-on: ubuntu-latest
-    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' || needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' || needs.file_changes.outputs.jdbc-changed == 'true' }}
-    steps:
-      - name: Checkout Action (Core)
-        uses: actions/checkout@v7
-        with:
-          path: core
-      - name: Checkout Action (Quarkus Extensions)
-        uses: actions/checkout@v7
-        with:
-          repository: debezium/debezium-quarkus
-          path: quarkus
-          ref: ${{ github.event.pull_request.base.ref }}
-      - uses: ./core/.github/actions/setup-java
-      - uses: ./core/.github/actions/maven-cache
-        with:
-          key: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
-      - uses: ./core/.github/actions/build-quarkus-extensions
-        with:
-          path-core: core
-          path-quarkus: quarkus
-
   # Approx 26m
   build_debezium_server:
     name: "Debezium Server"
-    needs: [ check_style, build_core, build_jdbc, build_quarkus-extensions ]
+    needs: [ check_style, build_core, build_jdbc ]
     if: always() && needs.check_style.result == 'success' && needs.build_core.result == 'success'
     runs-on: ubuntu-latest
     steps:
@@ -492,6 +484,13 @@ jobs:
           path: server
           ref: ${{ github.ref_name }}
 
+      - name: Checkout Action (Debezium Quarkus)
+        uses: actions/checkout@v7
+        with:
+          repository: debezium/debezium-quarkus
+          path: quarkus
+          ref: ${{ github.ref_name }}
+
       - uses: ./core/.github/actions/setup-java
 
       - uses: ./core/.github/actions/maven-cache
@@ -502,6 +501,7 @@ jobs:
       - uses: ./core/.github/actions/build-debezium-server
         with:
           path-core: core
+          path-quarkus: quarkus
           path-server: server
 
   build_ai:

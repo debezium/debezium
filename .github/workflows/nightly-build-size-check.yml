@@ -312,6 +312,12 @@ jobs:
           repository: debezium/debezium-server
           path: server
           ref: main
+      - name: Checkout Action (Debezium Quarkus)
+        uses: actions/checkout@v7
+        with:
+          repository: debezium/debezium-quarkus
+          path: quarkus
+          ref: main
       - uses: ./core/.github/actions/setup-java
       - uses: ./core/.github/actions/maven-cache
         with:
@@ -319,6 +325,7 @@ jobs:
       - uses: ./core/.github/actions/build-debezium-server
         with:
           path-core: core
+          path-quarkus: quarkus
           path-server: server
           only-build: 'true'
       - name: Upload build artifacts
