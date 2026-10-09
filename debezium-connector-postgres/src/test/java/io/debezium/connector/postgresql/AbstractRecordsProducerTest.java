@@ -74,13 +74,16 @@ import io.debezium.data.geometry.Line;
 import io.debezium.data.geometry.Point;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
+import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.TableId;
 import io.debezium.spatial.WkbWriter;
 import io.debezium.time.Date;
 import io.debezium.time.Interval;
+import io.debezium.time.IsoDate;
 import io.debezium.time.MicroDuration;
 import io.debezium.time.MicroTime;
 import io.debezium.time.MicroTimestamp;
+import io.debezium.time.StructuredTemporal;
 import io.debezium.time.Time;
 import io.debezium.time.Timestamp;
 import io.debezium.time.ZonedTime;
@@ -1510,5 +1513,31 @@ public abstract class AbstractRecordsProducerTest extends AbstractAsyncEngineCon
             });
         }
         return recordsByTopic;
+    }
+
+    /**
+     * Asserts that an infinite {@code date} was emitted as the connector's own
+     * {@link PostgresValueConverter#POSITIVE_INFINITY_LOCAL_DATE}/{@link PostgresValueConverter#NEGATIVE_INFINITY_LOCAL_DATE}
+     * sentinel, encoded the way the given precision mode encodes any other date.
+     */
+    protected static void assertInfinityDate(Object value, TemporalPrecisionMode mode, boolean positive) {
+        final LocalDate sentinel = positive ? PostgresValueConverter.POSITIVE_INFINITY_LOCAL_DATE : PostgresValueConverter.NEGATIVE_INFINITY_LOCAL_DATE;
+        switch (mode) {
+            case ADAPTIVE:
+                assertThat(value).isEqualTo((int) sentinel.toEpochDay());
+                break;
+            case CONNECT:
+                assertThat(value).isEqualTo(new java.util.Date(TimeUnit.DAYS.toMillis(sentinel.toEpochDay())));
+                break;
+            case ISOSTRING:
+                assertThat(value).isEqualTo(IsoDate.toIsoString(sentinel, null));
+                break;
+            case STRUCTURED:
+                assertThat(((Struct) value).getString(StructuredTemporal.SPECIAL_VALUE_FIELD))
+                        .isEqualTo(positive ? StructuredTemporal.POSITIVE_INFINITY : StructuredTemporal.NEGATIVE_INFINITY);
+                break;
+            default:
+                throw new IllegalArgumentException("Unsupported precision mode " + mode);
+        }
     }
 }
