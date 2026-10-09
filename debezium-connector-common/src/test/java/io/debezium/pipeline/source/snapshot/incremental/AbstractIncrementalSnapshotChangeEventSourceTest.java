@@ -127,7 +127,7 @@ public class AbstractIncrementalSnapshotChangeEventSourceTest {
      * is to remove, the aborted snapshot keeps its collections and leaks into the next one.
      */
     @ParameterizedTest(name = "started with \"{0}\"")
-    @ValueSource(strings = { ".*", "testdb\\..*", "testdb\\.mytable", "testdb.MyTable" })
+    @ValueSource(strings = { ".*", "testdb\\..*", "testdb\\.mytable", "testdb.MyTable", "testdb.MYTABLE" })
     @FixFor("dbz#1563")
     public void shouldStopSnapshotOfMixedCaseTableWhenTableIdsAreCaseInsensitive(String startedWith) throws Exception {
         final SignalBasedIncrementalSnapshotContext<TableId> context = pausedSnapshotContext();
@@ -140,6 +140,24 @@ public class AbstractIncrementalSnapshotChangeEventSourceTest {
         source.readChunk(null, offsetContext);
 
         assertThat(context.snapshotRunning()).isFalse();
+    }
+
+    /**
+     * A regular expression that matches none of the data collections known to the database schema is kept
+     * as it is, even though it does not parse as a table id. It is up to the snapshot context to skip it,
+     * without affecting the other data collections of the signal.
+     */
+    @Test
+    @FixFor("dbz#1563")
+    public void shouldSkipRegexMatchingNoTable() throws Exception {
+        final SignalBasedIncrementalSnapshotContext<TableId> context = pausedSnapshotContext();
+        source = newSource(caseInsensitiveSchemaContaining(new TableId("testdb", null, "MyTable")));
+
+        startSnapshotOf("otherdb\\..*", "testdb.MYTABLE");
+
+        assertThat(context.getDataCollections())
+                .extracting(DataCollection::getId)
+                .containsExactly(new TableId("testdb", null, "MyTable"));
     }
 
     /**

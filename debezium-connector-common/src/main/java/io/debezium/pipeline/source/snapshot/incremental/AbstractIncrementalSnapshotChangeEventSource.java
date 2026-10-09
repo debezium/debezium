@@ -663,8 +663,9 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
 
     /**
      * Expands a single, possibly regex-based, data collection id to the ids of the data collections it
-     * matches. An id matching none is kept as it is, as it may address a data collection the database
-     * schema does not know about.
+     * matches. An id matching none may still be the literal id of a data collection, spelled in another
+     * case than the declared one, so it is reported as the declared id of that data collection. Otherwise it
+     * is kept as it is, as it may address a data collection the database schema does not know about.
      */
     private Stream<String> expandDataCollectionId(String dataCollectionId) {
 
@@ -675,7 +676,24 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                 .filter(tableId -> pattern.matcher(tableId.identifier()).matches())
                 .map(this::toDeclaredIdentifier)
                 .collect(Collectors.toList());
-        return ids.isEmpty() ? Stream.of(dataCollectionId) : ids.stream();
+        return ids.isEmpty() ? Stream.of(toDeclaredIdentifier(dataCollectionId)) : ids.stream();
+    }
+
+    /**
+     * Returns the declared id of the data collection a literal data collection id identifies, or the given id
+     * as it is, if it identifies none. The id may as well be a regular expression that did not match any
+     * data collection, which need not even parse as a table id.
+     */
+    private String toDeclaredIdentifier(String dataCollectionId) {
+
+        try {
+            final TableId tableId = TableId.parse(dataCollectionId);
+            final Table table = tableId != null ? databaseSchema.tableFor(tableId) : null;
+            return table != null ? table.id().identifier() : dataCollectionId;
+        }
+        catch (IllegalArgumentException e) {
+            return dataCollectionId;
+        }
     }
 
     /**
