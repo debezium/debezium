@@ -465,15 +465,19 @@ class MongoDbConnectionLifecycleIT extends AbstractMongoConnectorIT {
         }
     }
 
-    @Test
-    void shouldReleaseResourcesWhenCoordinatorStopIsInterrupted() throws Exception {
+    @ParameterizedTest
+    @EnumSource(value = SnapshotMode.class, names = { "INITIAL", "NO_DATA" })
+    void shouldReleaseResourcesWhenCoordinatorStopIsInterrupted(SnapshotMode mode) throws Exception {
         insertDocuments("lifecycle", "items", new Document("_id", 1));
         final var reading = new CountDownLatch(1);
         final var releaseRead = new CountDownLatch(1);
         try (var tracker = new ConnectionResourceTracker()) {
-            tracker.commandListener = blockSnapshotRead(reading, releaseRead, false);
+            tracker.commandListener = blockSnapshotRead(reading, releaseRead, mode == SnapshotMode.NO_DATA);
             final var config = configuration(tracker).edit()
                     .with(MongoDbConnectorConfig.TASK_ID, 0)
+                    .with(MongoDbConnectorConfig.SNAPSHOT_MODE, mode)
+                    .with(MongoDbConnectorConfig.SNAPSHOT_MAX_THREADS, 2)
+                    .with(MongoDbConnectorConfig.SIGNAL_POLL_INTERVAL_MS, 10)
                     .with(CommonConnectorConfig.CONNECTOR_CLASS, MongoDbConnector.class)
                     .with(CommonConnectorConfig.EXECUTOR_SHUTDOWN_TIMEOUT_MS, 30_000)
                     .build();
@@ -494,14 +498,24 @@ class MongoDbConnectionLifecycleIT extends AbstractMongoConnectorIT {
             try {
                 task.initialize(new KafkaConnectSourceTaskContextAdapter(config.asMap(), offsets.createReader("lifecycle")).getDelegate());
                 task.start(config.asMap());
+                assertThat(task).extracting("queue", "schema", "connectionContext").doesNotContainNull();
+                if (mode == SnapshotMode.NO_DATA) {
+                    waitForStreamingRunning("mongodb", "mongo1");
+                    insertDocuments("lifecycle", "signals", new Document("type", "execute-snapshot")
+                            .append("payload", new Document("data-collections", List.of("lifecycle.items"))));
+                }
                 assertThat(reading.await(10, TimeUnit.SECONDS)).isTrue();
+                if (mode == SnapshotMode.NO_DATA) {
+                    tracker.assertSnapshotWorkersCreated();
+                }
                 stopper.start();
                 Awaitility.await().atMost(Duration.ofSeconds(10)).until(() -> stopper.getState() == Thread.State.TIMED_WAITING);
                 stopper.interrupt();
                 assertThat(stopped.get(10, TimeUnit.SECONDS)).isInstanceOf(ConnectException.class)
                         .hasMessage("Interrupted while stopping coordinator, failing the task");
+                // BaseSourceTask must release all task resources even when coordinator shutdown fails.
+                assertThat(task).extracting("queue", "schema", "connectionContext").containsExactly(null, null, null);
                 releaseRead.countDown();
-                // BaseSourceTask skips doStop() on this path. Resources must still be released.
                 Awaitility.await().atMost(Duration.ofSeconds(10)).untilAsserted(tracker::assertReleased);
             }
             finally {

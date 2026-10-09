@@ -8,6 +8,8 @@ package io.debezium.connector.mongodb;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
@@ -97,6 +99,23 @@ class MongoDbConnectionLifecycleTest {
             assertThatThrownBy(task::getConnectionContext).isInstanceOf(IllegalStateException.class);
             tracker.assertReleased();
         }
+    }
+
+    @Test
+    void shouldRecreateIncrementalSnapshotExecutorAfterSnapshotCompletes() throws Exception {
+        final ExecutorService replacement;
+        try (var task = new MongoDbTaskContext(TestHelper.getConfiguration())) {
+            final var initial = task.getIncrementalSnapshotExecutor();
+            assertThat(initial.submit(() -> "first snapshot").get(10, TimeUnit.SECONDS)).isEqualTo("first snapshot");
+            initial.shutdown();
+            assertThat(initial.awaitTermination(10, TimeUnit.SECONDS)).isTrue();
+
+            replacement = task.getIncrementalSnapshotExecutor();
+            assertThat(replacement).isNotSameAs(initial);
+            assertThat(replacement.submit(() -> "next snapshot").get(10, TimeUnit.SECONDS)).isEqualTo("next snapshot");
+        }
+        assertThat(replacement.isShutdown()).isTrue();
+        assertThat(replacement.isTerminated()).isTrue();
     }
 
     @Test
