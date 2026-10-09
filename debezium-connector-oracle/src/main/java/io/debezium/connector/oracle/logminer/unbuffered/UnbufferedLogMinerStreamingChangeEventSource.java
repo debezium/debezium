@@ -21,7 +21,6 @@ import org.slf4j.LoggerFactory;
 import io.debezium.DebeziumException;
 import io.debezium.common.annotation.Incubating;
 import io.debezium.config.Configuration;
-import io.debezium.connector.oracle.CommitScn;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OraclePartition;
@@ -321,15 +320,6 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
             // It's safe to do this for all commits because this implementation does not overlap
             // transactions, they're emitted in commit chronological order.
             skipCurrentTransaction = false;
-
-            if (getOffsetContext().isCommitIncludedInSnapshot(event.getCommitScn())
-                    && !getOffsetContext().getCommitScn().hasEventScnBeenHandled(event)) {
-                // The transaction is already part of the snapshot, so its events were skipped. Its commit
-                // is still recorded so that the redo thread counts towards retiring the snapshot commit SCN
-                // once it has committed past it. An already handled commit is not recorded again, because
-                // the thread may have committed past it since, and its commit SCN must never move backwards.
-                getOffsetContext().getCommitScn().recordCommit(event);
-            }
         }
     }
 
@@ -338,15 +328,28 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
         if (super.isEventSkipped(event)) {
             return true;
         }
-        return skipCurrentTransaction || isEventIncludedInSnapshot(event) || isNonSchemaChangeEventSkipped(event);
+        return skipCurrentTransaction || isNonSchemaChangeEventSkipped(event);
     }
 
     @Override
     protected boolean hasEventBeenProcessed(LogMinerEventRow event) {
-        // DDL events and their corresponding START events do not have a COMMIT_SCN value.
-        // In such cases, we default to the event's SCN instead.
-        final Scn scn = event.getCommitScn().isNull() ? event.getScn() : event.getCommitScn();
-        if (getOffsetContext().getCommitScn().hasBeenHandled(event.getThread(), scn, event.getTransactionId())) {
+        if (EventType.COMMIT.equals(event.getEventType())) {
+            // COMMIT events are always delegated to handleCommitEvent, which decides whether the commit is recorded.
+            return false;
+        }
+
+        // Schema changes and the START rows of their transactions do not have a COMMIT_SCN value. The schema
+        // change is checked by its own SCN in isSchemaChangeEventSkipped, and its START row only records the
+        // current transaction, so neither is checked here.
+        if (getOffsetContext().getCommitScn().hasEventCommitScnBeenHandled(event)) {
+            return true;
+        }
+
+        // Checked before the transaction sequence below, which only applies to the transaction currently being
+        // emitted, because dispatching a row makes its transaction the current one.
+        if (getOffsetContext().isEventCommitScnLessThanOrEqualToSnapshotCommitScn(event)) {
+            LOGGER.info("Skipping event {} (SCN {}) because it is already included by the initial snapshot",
+                    event.getEventType(), event.getScn());
             return true;
         }
 
@@ -362,16 +365,6 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
     @Override
     protected void handleStartEvent(LogMinerEventRow event) {
         skipCurrentTransaction = false;
-
-        if (!event.getCommitScn().isNull()) {
-            final CommitScn offsetCommitScn = getOffsetContext().getCommitScn();
-            if (offsetCommitScn.hasBeenHandled(event.getThread(), event.getCommitScn(), event.getTransactionId())) {
-                // Transaction has already been fully handled, skip.
-                LOGGER.info("Skipping transaction {} with SCN {}, already committed.", event.getTransactionId(), event.getScn());
-                skipCurrentTransaction = true;
-                return;
-            }
-        }
 
         // Check whether transaction should be skipped by USERNAME or CLIENT_ID field
         if (isUserNameSkipped(event.getUserName()) || isClientIdSkipped(event.getClientId())) {
@@ -421,6 +414,23 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
                 event.getScn());
 
         final Instant commitStartTime = Instant.now();
+
+        final boolean alreadyHandled = getOffsetContext().getCommitScn().hasEventScnBeenHandled(event);
+        final boolean includedInSnapshot = getOffsetContext().isEventScnLessThanOrEqualToSnapshotCommitScn(event);
+        if (alreadyHandled || includedInSnapshot) {
+            if (includedInSnapshot && !alreadyHandled && event.getThread() != 0) {
+                // The transaction is already part of the snapshot, so its events were skipped and it is not emitted.
+                // Its commit is still recorded so that the redo thread counts towards retiring the snapshot commit SCN
+                // once it has committed past it. An already handled commit is not recorded again, because the thread
+                // may have committed past it since, and its commit SCN must never move backwards. Commits that
+                // LogMiner could not assign to a redo thread are not recorded either.
+                getOffsetContext().getCommitScn().recordCommit(event);
+            }
+            LOGGER.debug("Skipping commit of transaction {} with SCN {}, {}.", event.getTransactionId(), event.getScn(),
+                    alreadyHandled ? "already handled" : "already included by the initial snapshot");
+            getMetrics().setActiveTransactionCount(0L);
+            return;
+        }
 
         // These are COMMIT specific attributes that must be recorded
         getOffsetContext().getCommitScn().recordCommit(event);

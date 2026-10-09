@@ -1350,28 +1350,6 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     }
 
     /**
-     * Check whether the specific event was included as part of the initial snapshot.
-     * <p>
-     * Mining starts before the snapshot was taken to capture the transactions that were in progress at that
-     * time, so it also reads transactions that committed before the snapshot was taken. This makes sure we
-     * don't reemit those changes, using the event's commit SCN, or its SCN for schema changes.
-     *
-     * @param event the event, should not be {@code null}
-     * @return true if the event was included in the snapshot, false otherwise
-     */
-    protected boolean isEventIncludedInSnapshot(LogMinerEventRow event) {
-        // Schema changes and their START and COMMIT markers carry no commit SCN, they are committed at
-        // their own SCN. Buffered DML rows carry no commit SCN either, so callers must not pass them here.
-        final Scn commitScn = event.getCommitScn() == null || event.getCommitScn().isNull() ? event.getScn() : event.getCommitScn();
-        if (getOffsetContext().isCommitIncludedInSnapshot(commitScn)) {
-            LOGGER.info("Skipping event {} (SCN {}) because it is already included by the initial snapshot",
-                    event.getEventType(), event.getScn());
-            return true;
-        }
-        return false;
-    }
-
-    /**
      * Checks whether any event that isn't a schema change is skipped.
      *
      * @param event the event, should not be {@code null}
@@ -1412,6 +1390,11 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         else if (tableId != null && getSchema().storeOnlyCapturedTables() && !tableFilter.isIncluded(tableId)) {
             Loggings.logDebugAndTraceRecord(LOGGER, event,
                     "Skipped DDL associated with table '{}' because schema history only stores included tables.", tableId);
+            return true;
+        }
+        else if (getOffsetContext().isEventScnLessThanOrEqualToSnapshotCommitScn(event)) {
+            // A schema change is committed at its own SCN.
+            LOGGER.info("Skipping DDL with SCN {} because it is already included by the initial snapshot", event.getScn());
             return true;
         }
         else if (getOffsetContext().getCommitScn().hasEventScnBeenHandled(event)) {

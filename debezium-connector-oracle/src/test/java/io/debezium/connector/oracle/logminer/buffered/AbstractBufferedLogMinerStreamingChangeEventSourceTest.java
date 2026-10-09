@@ -211,19 +211,46 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
 
     @Test
     @FixFor("debezium/dbz#2779")
-    void testUnreconstructableEventBeforeSnapshotCommitScnIsDiscardedWhenTransactionIsRolledBack() throws Exception {
+    void testUnreconstructableEventBeforeSnapshotCommitScnIsRaisedWhenTransactionIsRolledBack() throws Exception {
         Mockito.when(offsetContext.getSnapshotCommitScn()).thenReturn(Scn.valueOf(10));
         try (var source = getChangeEventSource(getConfig().build())) {
             source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
             source.processEvent(getUnreconstructableInsertLogMinerEventRow(2, TRANSACTION_ID_1));
-            source.processEvent(getRollbackLogMinerEventRow(3, TRANSACTION_ID_1));
 
-            // A later transaction reusing the id must not inherit the discarded failure
+            // A rolled back transaction is not assumed to be discarded, so the held failure is raised
+            assertThatThrownBy(() -> source.processEvent(getRollbackLogMinerEventRow(3, TRANSACTION_ID_1)))
+                    .isInstanceOf(DebeziumException.class)
+                    .hasMessageContaining("unable to re-construct the SQL for 'INSERT' event with SCN 2");
+
+            // The failure is raised once, a later transaction reusing the id must not raise it again
             source.processEvent(getStartLogMinerEventRow(11, TRANSACTION_ID_1));
             source.processEvent(getInsertLogMinerEventRow(12, TRANSACTION_ID_1));
             source.processEvent(getCommitLogMinerEventRow(13, TRANSACTION_ID_1));
 
             assertThat(source.getTransactionCache().isEmpty()).isTrue();
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2779")
+    void testUnreconstructableEventBeforeSnapshotCommitScnIsRaisedWhenTransactionIsAbandoned() throws Exception {
+        if (!isTransactionAbandonmentSupported()) {
+            return;
+        }
+
+        Mockito.when(offsetContext.getSnapshotCommitScn()).thenReturn(Scn.valueOf(10));
+        try (var source = getChangeEventSource(getConfig().build())) {
+            Mockito.when(offsetContext.getScn()).thenReturn(Scn.valueOf(1L));
+
+            final Instant changeTime = Instant.now().minus(24, ChronoUnit.HOURS);
+            source.processEvent(getStartLogMinerEventRow(2, TRANSACTION_ID_1, changeTime));
+            source.processEvent(getInsertLogMinerEventRow(3, TRANSACTION_ID_1, changeTime));
+            source.processEvent(getUnreconstructableInsertLogMinerEventRow(4, TRANSACTION_ID_1));
+
+            // An abandoned transaction is not assumed to be discarded, so the held failure is raised
+            assertThatThrownBy(() -> source.abandonTransactions(Duration.ofHours(1L)))
+                    .isInstanceOf(DebeziumException.class)
+                    .hasMessageContaining("unable to re-construct the SQL for 'INSERT' event with SCN 4");
         }
     }
 

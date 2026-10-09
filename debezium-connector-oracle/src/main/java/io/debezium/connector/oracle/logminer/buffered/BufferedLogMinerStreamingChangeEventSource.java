@@ -105,8 +105,10 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
      * Processing failures of data change events written at or before the snapshot commit SCN, keyed by
      * transaction id. Such an event may belong to a transaction that committed before the snapshot was taken,
      * whose changes are already part of the snapshot and which is dropped at its COMMIT rather than emitted, so
-     * its failure must not stop the connector. The failure is held until the transaction's COMMIT or ROLLBACK
-     * is mined and is then either discarded or raised. Only the first failure per transaction is kept.
+     * its failure must not stop the connector. The failure is held until the transaction ends. It is discarded
+     * only when the transaction is dropped at its COMMIT, and raised when the transaction is emitted, rolled
+     * back or abandoned, as a rolled back or abandoned transaction is not assumed to be discarded. Only the
+     * first failure per transaction is kept.
      * <p>
      * Entries are only added while the snapshot commit SCN has not been retired, as no event written at or
      * before it can be mined once every redo thread has committed past it.
@@ -498,7 +500,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         final Scn smallestScn = calculateSmallestScn();
         final Scn commitScn = row.getScn();
         final boolean alreadyHandled = getOffsetContext().getCommitScn().hasEventScnBeenHandled(row);
-        final boolean includedInSnapshot = getOffsetContext().isCommitIncludedInSnapshot(commitScn);
+        final boolean includedInSnapshot = getOffsetContext().isEventScnLessThanOrEqualToSnapshotCommitScn(row);
         if (alreadyHandled || includedInSnapshot) {
             if (includedInSnapshot && !alreadyHandled && row.getThread() != 0) {
                 // The transaction is already part of the snapshot, so its events are not emitted. Its commit
@@ -527,11 +529,9 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             return;
         }
 
-        if (snapshotBoundaryEventFailure != null) {
-            // The transaction committed after the snapshot was taken and is emitted, so the failure that was held
-            // back while that was undecided is now handled as if it had happened when the event was mined.
-            super.notifyEventProcessingFailure(snapshotBoundaryEventFailure.event(), snapshotBoundaryEventFailure.cause());
-        }
+        // The transaction committed after the snapshot was taken and is emitted, so the failure that was held
+        // back while that was undecided is now handled as if it had happened when the event was mined.
+        raiseSnapshotBoundaryEventFailure(snapshotBoundaryEventFailure);
 
         int numEvents = (transaction == null) ? 0 : getTransactionEventCount(transaction);
 
@@ -694,7 +694,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     @Override
     protected void handleRollbackEvent(LogMinerEventRow event) {
         final String transactionId = event.getTransactionId();
-        snapshotBoundaryEventFailures.remove(transactionId);
+        raiseSnapshotBoundaryEventFailure(snapshotBoundaryEventFailures.remove(transactionId));
         if (getTransactionCache().containsTransaction(transactionId)) {
             LOGGER.debug("Transaction {} was rolled back.", transactionId);
             finalizeTransaction(transactionId, event.getScn(), true);
@@ -739,7 +739,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                             matched.startScn(),
                             matched.changeTime());
 
-                    snapshotBoundaryEventFailures.remove(matched.transactionId());
+                    raiseSnapshotBoundaryEventFailure(snapshotBoundaryEventFailures.remove(matched.transactionId()));
                     if (matched.deferred()) {
                         removeDeferredTransaction(matched.transactionId());
                     }
@@ -1124,7 +1124,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     private void cleanupAfterTransactionRemovedFromCache(Transaction transaction, boolean isAbandoned) {
         if (isAbandoned) {
             getTransactionCache().abandon(transaction);
-            snapshotBoundaryEventFailures.remove(transaction.getTransactionId());
+            raiseSnapshotBoundaryEventFailure(snapshotBoundaryEventFailures.remove(transaction.getTransactionId()));
         }
         else {
             getTransactionCache().removeAbandonedTransaction(transaction.getTransactionId());
@@ -1145,15 +1145,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             return true;
         }
 
-        // Rows carry no commit SCN in this mode, and a row's own SCN says when it was written, not when its
-        // transaction committed. A transaction that started before the snapshot but committed after it must
-        // have its START processed and its DML buffered, so START, DML and COMMIT rows are never checked
-        // here. If the transaction committed at or before the snapshot commit SCN, its changes are already in
-        // the snapshot, so handleCommitEvent drops its buffered events instead of emitting them.
-        // A schema change is committed at its own SCN and is not buffered: its START and COMMIT markers are
-        // always treated as an empty transaction, while the DDL row itself is dispatched immediately by
-        // handleSchemaChangeEvent. This is the only place where it can be filtered.
-        return EventType.DDL.equals(event.getEventType()) && isEventIncludedInSnapshot(event);
+        return false;
     }
 
     @Override
@@ -1170,7 +1162,9 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
      * then already part of the snapshot and the transaction is dropped at its COMMIT, so the event is never
      * emitted and its failure must not stop the connector. Rows carry no commit SCN in this mode, so whether
      * that is the case is only known once the COMMIT is mined, where {@link #handleCommitEvent} discards or
-     * raises the held failure. Such failures are expected with the online catalog, which describes the current
+     * raises the held failure. A ROLLBACK or abandonment does not mean the transaction is discarded, so
+     * {@link #raiseSnapshotBoundaryEventFailure} raises the held failure there, as if the transaction were
+     * emitted. Such failures are expected with the online catalog, which describes the current
      * table structure only, when the table was altered after the event was written but before the snapshot was
      * taken. An event written after the snapshot commit SCN belongs to a transaction that is emitted and its
      * failure is not held.
@@ -1192,6 +1186,19 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                 event.getEventType(), event.getScn(), transactionId, snapshotCommitScn);
         snapshotBoundaryEventFailures.putIfAbsent(transactionId, new SnapshotBoundaryEventFailure(event, cause));
         return true;
+    }
+
+    /**
+     * Raises a held failure through the configured failure handling mode, as if it had happened when the
+     * event was mined. Called when the transaction ends without being dropped as part of the snapshot: when it
+     * is emitted, rolled back or abandoned.
+     *
+     * @param failure the held failure, can be {@code null} if none was held for the transaction
+     */
+    private void raiseSnapshotBoundaryEventFailure(SnapshotBoundaryEventFailure failure) {
+        if (failure != null) {
+            super.notifyEventProcessingFailure(failure.event(), failure.cause());
+        }
     }
 
     /**
@@ -1455,7 +1462,15 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
         final Scn thresholdScn = lastScnToAbandon.get();
         final int removedBefore = deferredTransactions.size();
-        deferredTransactions.values().removeIf(deferred -> deferred.startScn().compareTo(thresholdScn) <= 0);
+        deferredTransactions.values().removeIf(deferred -> {
+            if (deferred.startScn().compareTo(thresholdScn) > 0) {
+                return false;
+            }
+            // A deferred transaction whose only data change events failed to process never entered the
+            // cache, so it is not abandoned there. Its held failure is raised here, as for an abandoned one.
+            raiseSnapshotBoundaryEventFailure(snapshotBoundaryEventFailures.remove(deferred.transactionId()));
+            return true;
+        });
         final int removed = removedBefore - deferredTransactions.size();
         if (removed > 0) {
             LOGGER.debug("Cleaned up {} deferred transactions with start SCN <= {}", removed, thresholdScn);
