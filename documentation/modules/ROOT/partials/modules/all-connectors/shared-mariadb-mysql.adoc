@@ -1547,6 +1547,7 @@ The source metadata provides the following information:
 `ts_ms, ts_us, ts_ns`::: Displays timestamps in milliseconds, microseconds, and nanoseconds that indicate when the change was made in the database.
 `snapshot`::: Specifies whether the event resulted from a snapshot operation.
 `db`, `table`::: Names of the database and table that contain the new row.
+The `table` value uses the name recorded in the connector's table schema, including its letter case, for snapshot and streaming row events.
 `server_id`::: {connector-name} server ID (if available).
 `file`::: Binary log name where the event was recorded.
 `pos`::: Binary log position.
