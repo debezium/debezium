@@ -3604,6 +3604,78 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2771")
+    public void shouldPreserveNullElementsInEnumArray() throws Exception {
+        TestHelper.execute(CREATE_TABLES_STMT);
+        // Create the enum type, table, and a row BEFORE the connector starts, so it is captured by the snapshot.
+        TestHelper.execute("CREATE TYPE enum2771 AS ENUM ('plain', 'other', '')");
+        TestHelper.execute("CREATE TABLE s1.enum_array_table (pk SERIAL, v enum2771[], primary key (pk))");
+        TestHelper.execute("INSERT INTO s1.enum_array_table (pk, v) VALUES (1, ARRAY['plain'::enum2771, NULL])");
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.enum_array_table")
+                .build();
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+
+        // Snapshot phase: the pre-existing row must preserve its NULL element.
+        SourceRecords snapshotRecords = consumeRecordsByTopic(1);
+        List<SourceRecord> snapshotForTopic = snapshotRecords.recordsForTopic(topicName("s1.enum_array_table"));
+        assertThat(snapshotForTopic).hasSize(1);
+        Struct snapshotAfter = ((Struct) snapshotForTopic.get(0).value()).getStruct("after");
+        assertThat(snapshotAfter.schema().field("v").schema().valueSchema().isOptional()).isTrue();
+        assertThat(snapshotAfter.<Object> getArray("v")).containsExactly("plain", null);
+
+        // Streaming phase: a newly inserted row must also preserve its NULL element.
+        waitForStreamingRunning();
+        TestHelper.execute("INSERT INTO s1.enum_array_table (pk, v) VALUES (2, ARRAY['other'::enum2771, NULL])");
+
+        SourceRecords streamRecords = consumeRecordsByTopic(1);
+        List<SourceRecord> streamForTopic = streamRecords.recordsForTopic(topicName("s1.enum_array_table"));
+        assertThat(streamForTopic).hasSize(1);
+        SourceRecord streamRecord = streamForTopic.get(0);
+        assertInsert(streamRecord, PK_FIELD, 2);
+        Struct streamAfter = ((Struct) streamRecord.value()).getStruct("after");
+        assertThat(streamAfter.schema().field("v").schema().valueSchema().isOptional()).isTrue();
+        assertThat(streamAfter.<Object> getArray("v")).containsExactly("other", null);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2770")
+    public void shouldPreserveNullElementsInLtreeArray() throws Exception {
+        TestHelper.execute(CREATE_TABLES_STMT);
+        TestHelper.execute("CREATE EXTENSION IF NOT EXISTS ltree");
+        TestHelper.execute("CREATE TABLE s1.ltree_array_table (pk SERIAL, v ltree[], primary key (pk))");
+        TestHelper.execute("INSERT INTO s1.ltree_array_table (pk, v) VALUES (1, ARRAY['Top.A'::ltree, NULL])");
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.ltree_array_table")
+                .build();
+        start(PostgresConnector.class, config);
+        assertConnectorIsRunning();
+
+        SourceRecords snapshotRecords = consumeRecordsByTopic(1);
+        List<SourceRecord> snapshotForTopic = snapshotRecords.recordsForTopic(topicName("s1.ltree_array_table"));
+        assertThat(snapshotForTopic).hasSize(1);
+        Struct snapshotAfter = ((Struct) snapshotForTopic.get(0).value()).getStruct("after");
+        assertThat(snapshotAfter.schema().field("v").schema().valueSchema().isOptional()).isTrue();
+        assertThat(snapshotAfter.<Object> getArray("v")).containsExactly("Top.A", null);
+
+        waitForStreamingRunning();
+        TestHelper.execute("INSERT INTO s1.ltree_array_table (pk, v) VALUES (2, ARRAY['Top.B'::ltree, NULL])");
+        SourceRecords streamRecords = consumeRecordsByTopic(1);
+        List<SourceRecord> streamForTopic = streamRecords.recordsForTopic(topicName("s1.ltree_array_table"));
+        assertThat(streamForTopic).hasSize(1);
+        SourceRecord streamRecord = streamForTopic.get(0);
+        assertInsert(streamRecord, PK_FIELD, 2);
+        Struct streamAfter = ((Struct) streamRecord.value()).getStruct("after");
+        assertThat(streamAfter.schema().field("v").schema().valueSchema().isOptional()).isTrue();
+        assertThat(streamAfter.<Object> getArray("v")).containsExactly("Top.B", null);
+    }
+
+    @Test
     @FixFor("DBZ-5204")
     public void testShouldNotCloseConnectionFetchingMetadataWithNewDataTypes() throws Exception {
         TestHelper.execute(CREATE_TABLES_STMT);
@@ -4127,23 +4199,38 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    void shouldFailWhenReadOnlyIsNotSupported() {
+    void shouldFailWhenReadOnlyIsNotSupported() throws InterruptedException {
+        TestHelper.execute(SETUP_TABLES_STMT);
 
-        PostgresDatabaseVersionResolver databaseVersionResolver = new PostgresDatabaseVersionResolver();
+        final var databaseVersion = new PostgresDatabaseVersionResolver().getVersion();
+        final var completionStatus = new AtomicReference<Boolean>();
+        final var completionError = new AtomicReference<Throwable>();
 
         start(PostgresConnector.class, TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.READ_ONLY_CONNECTION, true)
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.a,s2.a")
                 .build(), (success, message, error) -> {
-
-                    if (databaseVersionResolver.getVersion().isLessThan(13, 0, 0)) {
-                        assertThat(error)
-                                .isInstanceOf(DebeziumException.class)
-                                .hasMessage("Read only is not supported for version minor to 13");
-                    }
-                    else {
-                        assertTrue(success);
-                    }
+                    completionError.set(error);
+                    completionStatus.set(success);
                 });
+
+        if (databaseVersion.isLessThan(13, 0, 0)) {
+            assertThat(completionStatus.get()).isFalse();
+            assertThat(completionError.get())
+                    .isInstanceOf(DebeziumException.class)
+                    .hasMessageContaining("Read only is not supported for version minor to 13");
+        }
+        else {
+            waitForStreamingRunning();
+
+            final var records = consumeRecordsByTopic(2);
+            assertThat(records.allRecordsInOrder()).hasSize(2);
+            assertThat(records.topics()).hasSize(2);
+
+            stopConnector();
+            assertThat(completionStatus.get()).isTrue();
+            assertThat(completionError.get()).isNull();
+        }
     }
 
     @Test
@@ -4358,6 +4445,11 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
             assertThat(error).isNull();
         });
         assertConnectorIsRunning();
+        waitForStreamingRunning();
+
+        final var records = consumeRecordsByTopic(10);
+        assertThat(records.allRecordsInOrder()).hasSize(10);
+        assertThat(records.topics()).hasSize(10);
         assertThat(logInterceptor.containsWarnMessage("Guardrail limit exceeded")).isTrue();
     }
 

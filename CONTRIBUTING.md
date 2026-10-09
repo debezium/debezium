@@ -83,13 +83,17 @@ To build the source code locally, checkout and update the `main` branch:
     $ git checkout main
     $ git pull upstream main
 
-Then use Maven to compile everything, run all unit and integration tests, build all artifacts, and install all JAR, ZIP, and TAR files into your local Maven repository:
+Then use Maven to compile everything, run all unit and integration tests, and install all JAR files into your local Maven repository:
 
-    $ ./mvnw clean install -Passembly
+    $ ./mvnw clean install
 
 If you want to skip the integration tests (e.g., if you don't have Docker installed) or the unit tests, you can add `-DskipITs` and/or `-DskipTests` to that command:
 
-    $ ./mvnw clean install -Passembly -DskipITs -DskipTests
+    $ ./mvnw clean install -DskipITs -DskipTests
+
+The `assembly` profile (`-Passembly`) is used during release builds or when you want to produce the connector plug-in distribution archives (`.tar.gz` and `.zip`) to copy into containers. Building the whole repository with this profile requires the Oracle Instant Client `xstreams.jar` to be installed manually in your local Maven repository. See the [Oracle connector README](debezium-connector-oracle/README.md#building) for setup instructions.
+
+For more details on build profiles and Docker setup, see the [Building the code](README.md#building-the-code) section in the main README.
 
 ### Running and debugging tests
 
@@ -189,9 +193,13 @@ To run the build, navigate to the project's root directory and run:
 
 It might be useful to simply run a _validate_ check against the code instead of automatically applying code style changes.  If you want to simply run validation, navigate to the project's root directory and run:
 
-    $ ./mvnw clean install -Dformat.formatter.goal=validate -Dformat.imports.goal=check     
+    $ ./mvnw clean install -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dformat.names.goal=check     
 
-Please note that when running _validate_ checks, the build will stop as soon as it encounters its first violation.  This means it is necessary to run the build multiple times until no violations are detected.
+Please note that when running _validate_ checks, the build will stop as soon as it encounters its first violation.  This means it is necessary to run the build multiple times until no violations are detected.  
+
+If there are violations with `COPYRIGHT.txt`, `Aliases.txt`, or `FilteredNames.txt` because you've added your name and GitHub handle, you can resolve those automatically by having the build sort the files automatically.  Navigate to the project root directory and run:
+
+    $ ./mvnw clean install -Dformat.names.goal=sort
 
 ### Rebasing
 

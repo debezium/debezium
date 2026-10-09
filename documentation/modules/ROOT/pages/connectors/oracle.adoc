@@ -423,6 +423,12 @@ After the snapshot completes, the connector transitions to streaming.
 7. (Optional) To capture any data that changed while the connector was off-line, initiate an xref:debezium-oracle-incremental-snapshots[incremental snapshot].
 
 // Type: concept
+[id="debezium-oracle-chunk-based-parallel-snapshots"]
+=== Chunk-based parallel snapshots
+
+include::{partialsdir}/modules/all-connectors/con-connector-chunk-based-parallel-snapshots.adoc[leveloffset=+3]
+
+// Type: concept
 // ModuleID: debezium-oracle-ad-hoc-snapshots
 [id="oracle-ad-hoc-snapshots"]
 === Ad hoc snapshots
@@ -510,6 +516,9 @@ After you drop a transaction, the connector abandons uncommitted changes for tha
 Use the `drop-transaction` signal only when you are certain that the transaction should not be processed.
 ====
 
+The connector processes the signal on its streaming thread at the start of the next mining iteration, so that the buffer is modified in a consistent state.
+On a busy connector the transaction is therefore removed a few seconds after the signal is received, and the connector log reports whether it was found and dropped.
+
 ifdef::community[]
 [NOTE]
 ====
@@ -541,6 +550,56 @@ INSERT INTO debezium.debezium_signal VALUES('drop-tx-1', 'drop-transaction', '{"
 }
 ----
 
+[id="oracle-log-pending-transactions-signal"]
+=== Logging pending transactions
+
+You can use {prodname} signaling to send a `log-pending-transactions` signal to the connector at run time to write the details of every transaction that is currently pending in the LogMiner buffer to the connector log.
+
+The connector's mining window is bounded by the oldest transaction that it has seen but that has not yet committed or rolled back.
+Identifying these transactions normally requires that you enable verbose logging before the situation occurs, or that you have access to query LogMiner directly.
+The `log-pending-transactions` signal provides an on-demand view of the transactions that the connector currently tracks, so that you can decide whether to wait for a transaction, or remove it by using the xref:oracle-drop-transaction-signal[`drop-transaction`] signal.
+
+The signal reports two kinds of transactions:
+
+Active transactions:: Transactions for which the connector has buffered one or more change events.
+Deferred transactions:: Transactions that the connector has seen start, but for which it has not yet buffered any change events.
+
+For each transaction, the connector logs the transaction ID, the SCN and time at which the transaction started, the database user name and client identifier associated with the transaction, and the redo thread on which the transaction was mined.
+For active transactions, the connector also logs the number of buffered events.
+Entries are ordered from the oldest transaction to the newest, so that the first entry is the transaction that currently holds back the mining window.
+
+The connector processes the signal on its streaming thread at the start of the next mining iteration, so that the buffer is read in a consistent state.
+On a busy connector the entries can therefore appear a few seconds after the signal is received.
+
+.Prerequisites
+* The connector is configured to use one of the available link:{link-signalling}#sending-signals-to-a-debezium-connector[{prodname} signaling channels].
+* You have access to the connector log file.
+
+.Procedure
+* Send a signal that includes the standard `id` and `type` properties of a {prodname} signal to your preferred signaling channel.
+The signal does not require any `data`.
++
+.Example SQL using the `source` signal channel
+[source,sql,indent=0,subs="+attributes"]
+----
+INSERT INTO debezium.debezium_signal (id, type) VALUES('log-tx-1', 'log-pending-transactions');
+----
++
+.Example message payload using the `kafka` signal channel
+[source,json,indent=0,subs="+attributes"]
+----
+{
+  "type": "log-pending-transactions"
+}
+----
++
+The connector writes entries similar to the following to its log:
++
+----
+Pending transactions in Oracle LogMiner buffer as requested by signal 'log-tx-1': 2 total (1 active, 1 deferred)
+Active transaction 1a.2b.001f: startScn=12345678, changeTime=2024-01-01T10:15:30Z, userName=APP, clientId=batch-loader, redoThread=1, events=1500
+Deferred transaction 1c.2d.0020: startScn=12345900, changeTime=2024-01-01T10:16:02Z, userName=APP, clientId=null, redoThread=1
+----
 
 // Type: concept
 // ModuleID: default-names-of-kafka-topics-that-receive-debezium-oracle-change-event-records
@@ -1096,7 +1155,6 @@ Transitioning a thread from `PRIVATE` to `PUBLIC` can lead to unexpected results
 If a redo thread transition is required, a re-snapshot of data may be required to avoid data loss and to remain consistent.
 ====
 
-ifdef::community[]
 [[oracle-downstream-mining-database]]
 === Using a downstream mining database
 
@@ -1104,11 +1162,23 @@ You can use the {prodname} Oracle connector to capture changes from a real-time 
 Log mining operations consume system resources and increase the load on a database, which can result in decreased performance.
 Configuring the connector to perform change data capture processing on a secondary mining database, can reduce the load on the primary database.
 
+ifdef::community[]
 [NOTE]
 ====
 This feature is in an incubating state. This means that exact semantics, configuration options, and other details may change in future revisions based on feedback.
 Please let us know your specific requirements or if you encounter any problems while using this feature.
 ====
+endif::community[]
+ifdef::product[]
+[IMPORTANT]
+====
+The ability of the {prodname} Oracle connector to capture changes from a downstream mining database is a Technology Preview feature.
+Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
+Red{nbsp}Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+endif::product[]
 
 .Prerequisites
 
@@ -1145,13 +1215,11 @@ When {prodname} Oracle connector is configured to capture changes from a downstr
 
 To use the connector with a downstream mining database, you must first register transaction logs with that database.
 
-When Oracle Remove File Server (RFS) replicates changes, the replication should happen automatically when using a real-time downstream mining configuration. 
+When Oracle Remove File Server (RFS) replicates changes, the replication should happen automatically when using a real-time downstream mining configuration.
 {prodname} does not perform any log registration.
 
-If a log fails to register and a gap in log sequences occurs, the {prodname} connector pauses capture. A database administrator must review the registered logs and register any missing logs to close the gap. 
+If a log fails to register and a gap in log sequences occurs, the {prodname} connector pauses capture. A database administrator must review the registered logs and register any missing logs to close the gap.
 Typically, this should be necessary only during the initial set up and synchronization with the primary.
-
-endif::community[]
 
 [[oracle-logminer-query-modes]]
 === Query Modes
@@ -1239,7 +1307,7 @@ Additionally, the location where the cache is kept is defined by the `path` attr
 [IMPORTANT]
 ====
 The {prodname} Infinispan buffer implementation requires that you configure a set of distinct cache configurations, each identified by a {prodname}-defined cache name.
-You must configure caches for the following identifiers: `transactions`, `events`, `processed-transactions`, `rollbacks`, and `schema-changes`.
+You must configure caches for the following identifiers: `transactions`, `events`, `processed-transactions`, and `schema-changes`.
 
 Each cache name is a hardcoded identifier that you specify in the XML of a {prodname} Oracle connector configuration property in the `log.mining.buffer.infinispan.cache` namespace.
 For example, the property `log.mining.buffer.infinispan.cache.transactions` contains the XML configuration for the cache that must include `name="transactions"` in its XML definition.
@@ -1321,7 +1389,7 @@ Additionally, the following example shows some settings that you might configure
     <disk unit="B">1024000000</disk>
 </resources>
 ----
-The following example shows an Ehcache configuration that includes both a global setting and specific settings for the `transactions`, `processedtransactions`, `schemachanges`, `events`, and `rollbacks` caches.
+The following example shows an Ehcache configuration that includes both a global setting and specific settings for the `transactions`, `processedtransactions`, `schemachanges`, and `events` caches.
 
 .Example configuration
 [source,json]
@@ -1332,8 +1400,7 @@ The following example shows an Ehcache configuration that includes both a global
   "log.mining.buffer.ehcache.transactions.config": "<resources><heap unit=\"entries\">512</entries><disk unit=\"B\">1024000000</disk></resources>",
   "log.mining.buffer.ehcache.processedtransactions.config": "<resources><heap unit=\"entries\">512</entries><disk unit=\"B\">1024000000</disk></resources>",
   "log.mining.buffer.ehcache.schemachanges.config": "<resources><heap unit=\"entries\">512</entries><disk unit=\"B\">1024000000</disk></resources>",
-  "log.mining.buffer.ehcache.events.config": "<resources><heap unit=\"entries\">512</entries><disk unit=\"B\">1024000000</disk></resources>",
-  "log.mining.buffer.ehcache.rollbacks.config": "<resources><heap unit=\"entries\">512</entries><disk unit=\"B\">1024000000</disk></resources>"
+  "log.mining.buffer.ehcache.events.config": "<resources><heap unit=\"entries\">512</entries><disk unit=\"B\">1024000000</disk></resources>"
 }
 ----
 endif::community[]
@@ -1360,6 +1427,75 @@ At regular intervals, the heartbeat action query causes the connector to insert 
 ====
 For the connector to use the `heartbeat.action.query` with tables that are not owned by the xref:creating-users-for-the-connector[connector user account], you must grant the connector user permission to run the necessary `INSERT` or `UPDATE` queries on those tables.
 ====
+
+// Type: concept
+// ModuleID: how-debezium-captures-large-object-data
+// Title: How {prodname} captures large object data
+[[capturing-large-object-data]]
+=== Capturing large object data
+
+Capturing Oracle LOB data during streaming requires special handling.
+Configure the connector to capture LOB values accurately while balancing mining overhead and performance.
+
+To accurately capture LOB column values during streaming, set the `lob.enabled` connector configuration property to `true`.
+With this property enabled, the connector can capture the following data types:
+
+`CLOB`:: Character large objects.
+`NCLOB`:: National character set large objects.
+`BLOB`:: Binary large objects.
+`XMLTYPE`:: XML data stored as a LOB.
+`JSON`:: JSON data (Oracle 21c and later).
+`Extended strings`:: `VARCHAR2`, `NVARCHAR2`, and `RAW` columns that exceed the legacy maximum lengths when the database parameter `max_string_size` is set to `EXTENDED`.
+For more information about how the connector supports extended strings, see xref:support-for-extended-max-string-size[Extended max string size].
+
+When `lob.enabled` is set to `false` (the default), snapshot events include the current LOB column values, but streamed change events represent LOB columns with the xref:oracle-property-unavailable-value-placeholder[`unavailable.value.placeholder`] constant.
+Disabling mining of LOB values reduces the volume of data that LogMiner processes by excluding LOB-specific redo log entries.
+
+When `lob.enabled` is `true`, the connector mines additional redo log operation types that Oracle uses to represent LOB writes.
+During streaming, Oracle includes LOB column values in redo data only when a SQL DML statement explicitly sets or changes an LOB column value.
+If a DML statement does not modify an LOB column, the change event contains the configured unavailable value placeholder rather than the column's current value.
+
+// Type: concept
+// Title: How Oracle processes INTERNAL events and savepoint rollbacks
+// ModuleID: how-oracle-processes-internal-events-and-savepoint-rollbacks
+[id="oracle-internal-events-and-rollback-to-savepoint-handling"]
+==== INTERNAL events and ROLLBACK TO SAVEPOINT handling
+
+Oracle records INTERNAL events in the redo log for out-of-line LOB operations.
+These events serve two purposes: they associate `ROW_ID` values with LOB data, and they mark the boundary between successive DML statements.
+The connector uses these boundaries to identify which events belong to a rolled-back statement during `ROLLBACK TO SAVEPOINT` processing.
+Set the `log.mining.include.internal.events` property to specify whether the connector captures `INTERNAL` events.
+The connector requires these events to accurately process `ROLLBACK TO SAVEPOINT` operations in transactions that modify LOB columns.
+
+When a table stores LOB data out-of-line, these events provide the connector with the row identifier that it needs to correctly correlate LOB changes with their parent DML operation.
+This correlation becomes critical when a transaction uses `ROLLBACK TO SAVEPOINT` to partially undo changes.
+In the absence of the `ROW_ID` information that an `INTERNAL` event provides, the connector cannot reliably determine which row a rolled-back LOB operation affects.
+In such scenarios, the connector might emit change events that contain stale LOB field values.
+
+The `log.mining.include.internal.events` property controls whether the connector includes Oracle `INTERNAL` events in LogMiner queries.
+The `log.mining.include.internal.events` property accepts the following values:
+
+`false`:: (Default) The connector excludes `INTERNAL` events from LogMiner queries.
+This setting reduces the volume of mined redo log data.
+However, after a partial rollback of a transaction that modifies out-of-line LOB columns, the connector might emit change events that contain stale values for affected LOB fields.
+
+`true`:: The connector includes `INTERNAL` events in LogMiner queries.
+This setting increases the volume of mined redo log data, but enables the connector to accurately process `ROLLBACK TO SAVEPOINT` operations for tables with out-of-line LOB columns.
+
+[NOTE]
+====
+The `log.mining.include.internal.events` property has no effect unless `lob.enabled` is also set to `true`.
+====
+
+[TIP]
+====
+If your application does not use `ROLLBACK TO SAVEPOINT` in transactions that modify tables with LOB columns, you can safely leave `log.mining.include.internal.events` set to `false`.
+Enable it only when you need accurate partial rollback handling for tables that store LOB data out-of-line.
+====
+
+As an alternative to enabling LOB mining and capturing `INTERNAL` events, you can set `lob.enabled` to `false` and configure the {link-prefix}:{link-reselect-columns}#reselect-columns-post-processor[Reselect columns post processor] to re-query LOB column values directly from the database.
+
+This approach avoids the overhead of mining LOB-specific redo log entries and `INTERNAL` events while still ensuring that change events contain correct LOB values, because the post processor retrieves the values directly from the source table.
 
 // Type: assembly
 // ModuleID: descriptions-of-debezium-oracle-connector-data-change-events
@@ -1455,7 +1591,7 @@ The schema portion of the key specifies a Kafka Connect schema that describes wh
 Specifies each field that is expected in the `payload`, including each field's name, index, and schema.
 
 `schema.fields.type`::
-Specifies that the data type of the `ID`field is `int32`.
+Specifies that the data type of the `ID` field is `int32`.
 
 `schema.fields.optional`::
 Indicates whether the event key must contain a value in its `payload` field.
@@ -2839,7 +2975,7 @@ The default value type will be numeric except if the column is a `TIMESTAMP WITH
 
 By default, the {prodname} Oracle connector provides several `CustomConverter` implementations specific to Oracle data types.
 These custom converters provide alternative mappings for specific data types based on the connector configuration.
-To add a `CustomConverter` to the connector, follow the instructions in the link:../development/converters.adoc[Custom Converters documentation].
+To add a `CustomConverter` to the connector, follow the instructions in the {link-prefix}:{link-custom-converters}#custom-converters[Custom Converters documentation].
 
 The {prodname} Oracle connector provides the following custom converters:
 
@@ -3369,6 +3505,9 @@ To enable the connector to capture from the new primary, edit the database hostn
 [id="configuring-the-debezium-oracle-connector-to-capture-events-from-a-physical-standby"]
 ==== Configuring the {prodname} Oracle connector to capture events from a physical standby
 
+The {prodname} Oracle connector can stream changes directly from a physical standby database while using the primary for snapshots and metadata queries.
+This reduces the load on the primary by offloading LogMiner operations to the standby.
+
 ifdef::community[]
 [NOTE]
 ====
@@ -3376,8 +3515,17 @@ The ability to use the connector with a physical standby is in an incubating sta
 ====
 endif::community[]
 
-The {prodname} Oracle connector can stream changes directly from a physical standby database while using the primary for snapshots and metadata queries.
-This reduces the load on the primary by offloading LogMiner operations to the standby.
+ifdef::product[]
+[IMPORTANT]
+====
+The ability for the {prodname} Oracle connector to ingest changes from a read-only physical standby database is a Technology Preview feature.
+Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
+Red{nbsp}Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+
+For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+endif::product[]
 
 .Prerequisites
 
@@ -3395,6 +3543,7 @@ capture.mode=physical_standby
 log.mining.strategy=dictionary_from_file
 log.mining.path.dictionary=/path/to/dictionary.ora
 log.mining.read.only=true
+log.mining.archive.log.only.mode=true
 secondary.hostname=standby-host
 ```
 +
@@ -3407,11 +3556,16 @@ secondary.url=jdbc:oracle:thin:@standby-host:1521/ORCLPDB1
 If the standby uses a different port than the primary, you can also set `secondary.port`.
 If the standby uses a different database name than the primary, you can also set `secondary.dbname`.
 
-When configured with these properties, the connector:
+Configuring these properties changes how the connector reads from the database.
+After you configure the properties, the connector exhibits the following behavior:
 
-1. Connects to the primary database (configured via `database.hostname`) for snapshot operations and metadata queries.
-2. Connects to the standby database (configured via `secondary.hostname` or `secondary.url`) in read-only mode for LogMiner streaming operations.
-3. Uses the flat file data dictionary to resolve table and column names during log mining on the standby.
+* Connects to the primary database (configured via `database.hostname`) for snapshot operations and metadata queries.
+* Connects to the standby database (configured via `secondary.hostname` or `secondary.url`) in read-only mode for LogMiner streaming operations.
+* Uses the flat file data dictionary to resolve table and column names during log mining on the standby database.
+
+The data dictionary is exported once, so it does not describe schema changes that are applied to the primary afterwards.
+The connector resolves the affected tables and columns from its own schema model, and rebuilding the dictionary file restores resolution on the LogMiner side.
+For details of what happens when an object cannot be resolved by either, see the xref:oracle-property-log-mining-strategy[`log.mining.strategy`] property.
 
 // Type: procedure
 [id="configuring-the-debezium-oracle-connector-to-capture-events-from-a-logical-standby"]
@@ -3422,17 +3576,6 @@ The flush process requires that the user account through which the connector acc
 However, a logical stand-by database typically permits read-only access, preventing the connector from writing to the database.
 You can modify the connector configuration to enable the connector to capture events from a logical standby, or the DBA can create a new writable tablespace in which the connector can store the flush table.
 
-ifdef::product[]
-[IMPORTANT]
-====
-The ability for the {prodname} Oracle connector to ingest changes from a read-only logical standby database is a Technology Preview feature.
-Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
-Red{nbsp}Hat does not recommend using them in production.
-These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
-
-For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
-====
-endif::product[]
 
 ifdef::community[]
 [WARNING]
@@ -3527,14 +3670,7 @@ endif::product[]
 endif::community[]
 
 ifdef::product[]
-You can use either of the following methods to deploy a {prodname} Oracle connector:
-
-* xref:openshift-streams-oracle-connector-deployment[Use {StreamsName} to automatically create an image that includes the connector plug-in].
-+
-This is the preferred method.
-* xref:deploying-debezium-oracle-connectors[Build a custom Kafka Connect container image from a Dockerfile].
-This Containerfile deployment method is deprecated.
-The instructions for this method are scheduled for removal in future versions of the documentation.
+To deploy a {prodname} Oracle connector, use {StreamsName} to automatically create a Kafka Connect image that includes the connector plug-in.
 
 [IMPORTANT]
 ====
@@ -3553,11 +3689,7 @@ For more information, see xref:obtaining-the-oracle-jdbc-driver[Obtaining the Or
 
 Due to licensing requirements, the Oracle JDBC driver file that {prodname} requires to connect to an Oracle database is not included in the {prodname} Oracle connector archive.
 The driver is available for download from Maven Central.
-Depending on the deployment method that you use, you retrieve the driver by adding a command to the Kafka Connect custom resource or to the Dockerfile that you use to build the connector image.
-
-* If you use {StreamsName} to add the connector to your Kafka Connect image, add the Maven Central location for the driver to `builds.plugins.artifact.url` in the `KafkaConnect` custom resource as shown in xref:using-streams-to-deploy-debezium-oracle-connectors[].
-* If you use a Dockerfile to build a container image for the connector, insert a `curl` command in the Dockerfile to specify the URL for downloading the required driver file from Maven Central.
-For more information, see xref:deploying-debezium-oracle-connectors[Deploying a {prodname} Oracle connector by building a custom Kafka Connect container image from a Dockerfile].
+To add the connector to your Kafka Connect image, add the Maven Central location for the driver to `builds.plugins.artifact.url` in the `KafkaConnect` custom resource as shown in xref:using-streams-to-deploy-debezium-oracle-connectors[].
 
 // Type: concept
 [id="openshift-streams-oracle-connector-deployment"]
@@ -3570,221 +3702,6 @@ include::{partialsdir}/modules/all-connectors/con-connector-streams-deployment.a
 === Using {StreamsName} to deploy a {prodname} Oracle connector
 include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-db2-ifx-ora-pg-connector.adoc[leveloffset=+1]
 
-// Type: procedure
-[id="deploying-debezium-oracle-connectors"]
-=== Deploying a {prodname} Oracle connector by building a custom Kafka Connect container image from a Dockerfile
-
-To deploy a {prodname} Oracle connector, you must build a custom Kafka Connect container image that contains the {prodname} connector archive, and then push this container image to a container registry.
-You then need to create the following custom resources (CRs):
-
-* A `KafkaConnect` CR that defines your Kafka Connect instance.
-  The `image` property in the CR specifies the name of the container image that you create to run your {prodname} connector.
-  You apply this CR to the OpenShift instance where link:https://access.redhat.com/products/red-hat-amq#streams[Red Hat {StreamsName}] is deployed.
-  {StreamsName} offers operators and images that bring Apache Kafka to OpenShift.
-
-* A `KafkaConnector` CR that defines your {prodname} Oracle connector.
-  Apply this CR to the same OpenShift instance where you apply the `KafkaConnect` CR.
-
-.Prerequisites
-
-* Oracle Database is running and you completed the steps to xref:setting-up-oracle-to-work-with-debezium[set up Oracle to work with a {prodname} connector].
-
-* {StreamsName} is deployed on OpenShift and is running Apache Kafka and Kafka Connect.
-  For more information, see link:{LinkDeployManageStreamsOpenShift}[{NameDeployManageStreamsOpenShift}]
-
-* Podman or Docker is installed.
-
-* You have an account and permissions to create and manage containers in the container registry (such as `quay.io` or `docker.io`) to which you plan to add the container that will run your {prodname} connector.
-
-* The Kafka Connect server has access to Maven Central to download the required JDBC driver for Oracle.
-  You can also use a local copy of the driver, or one that is available from a local Maven repository or other HTTP server.
-+
-For more information, see xref:obtaining-the-oracle-jdbc-driver[Obtaining the Oracle JDBC driver].
-
-.Procedure
-
-. Create the {prodname} Oracle container for Kafka Connect:
-
-.. Create a Dockerfile that uses `{DockerKafkaConnect}` as the base image.
-For example, from a terminal window, enter the following command:
-+
-=====================================================================
-
-[source,shell,subs="+attributes,+quotes"]
-----
-cat <<EOF >debezium-container-for-{context}.yaml
-FROM {DockerKafkaConnect}
-USER root:root
-RUN mkdir -p /opt/kafka/plugins/debezium
-RUN cd /opt/kafka/plugins/debezium/ \
-&& curl -O {red-hat-maven-repository}debezium/debezium-connector-{connector-file}/{debezium-version}-redhat-{debezium-build-number}/debezium-connector-{connector-file}-{debezium-version}-redhat-{debezium-build-number}-plugin.zip \
-&& unzip debezium-connector-{connector-file}-{debezium-version}-redhat-{debezium-build-number}-plugin.zip \
-&& rm debezium-connector-{connector-file}-{debezium-version}-redhat-{debezium-build-number}-plugin.zip
-RUN cd /opt/kafka/plugins/debezium/ \
-&& curl -O https://repo1.maven.org/maven2/com/oracle/ojdbc/ojdbc11/{ojdbc-version}/ojdbc11-{ojdbc-version}.jar
-USER 1001
-EOF
-----
-=====================================================================
-+
-The following list describes the purpose of select lines in the preceding command:
-
-`debezium-container-for-{context}.yaml`::
-Defines the name for the Dockerfile.
-You can specify any file name that you want.
-
-`/opt/kafka/plugins/debezium`::
-Specifies the path to your Kafka Connect plug-ins directory.
-If your Kafka Connect plug-ins directory is in a different location, replace this path with the actual path of your directory.
-
-+
-The command creates a Dockerfile with the name `debezium-container-for-oracle.yaml` in the current directory.
-
-.. Build the container image from the `debezium-container-for-oracle.yaml` Docker file that you created in the previous step.
-From the directory that contains the file, open a terminal window and enter one of the following commands:
-+
-[source,shell,options="nowrap"]
-----
-podman build -t debezium-container-for-oracle:latest .
-----
-+
-[source,shell,options="nowrap"]
-----
-docker build -t debezium-container-for-oracle:latest .
-----
-The preceding commands build a container image with the name `debezium-container-for-oracle`.
-
-.. Push your custom image to a container registry, such as quay.io or an internal container registry.
-The container registry must be available to the OpenShift instance where you want to deploy the image.
-Enter one of the following commands:
-+
-[source,shell,subs="+quotes"]
-----
-podman push _<myregistry.io>_/debezium-container-for-oracle:latest
-----
-+
-[source,shell,subs="+quotes"]
-----
-docker push _<myregistry.io>_/debezium-container-for-oracle:latest
-----
-
-.. Create a new {prodname} Oracle KafkaConnect custom resource (CR).
-For example, create a `KafkaConnect` CR with the name `dbz-connect.yaml` that specifies `annotations` and `image` properties.
-The following example shows an excerpt from a `dbz-connect.yaml` file that describes a `KafkaConnect` custom resource.
-+
-=====================================================================
-[source,yaml,subs="+attributes"]
-----
-apiVersion: {KafkaConnectApiVersion}
-kind: KafkaConnect
-metadata:
-  name: my-connect-cluster
-  annotations:
-    strimzi.io/use-connector-resources: "true"
-spec:
-  image: debezium-container-for-oracle
-
-  ...
-----
-=====================================================================
-+
-The following list describes select fields in the preceding `KafkaConnect` custom resource example:
-
-`metadata.annotations` (`strimzi.io/use-connector-resources`)::
-Indicates to the Cluster Operator that `KafkaConnector` resources are used to configure connectors in this Kafka Connect cluster.
-
-`spec.image`::
-Specifies the name of the image that you created to run your {prodname} connector.
-This property overrides the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable in the Cluster Operator.
-
-.. Apply the `KafkaConnect` CR to the OpenShift Kafka Connect environment by entering the following command:
-+
-[source,shell,options="nowrap"]
-----
-oc create -f dbz-connect.yaml
-----
-+
-The command adds a Kafka Connect instance that specifies the name of the image that you created to run your {prodname} connector.
-
-. Create a `KafkaConnector` custom resource that configures your {prodname} Oracle connector instance.
-+
-You configure a {prodname} Oracle connector in a `.yaml` file that specifies the configuration properties for the connector.
-The connector configuration might instruct {prodname} to produce events for a subset of the schemas and tables, or it might set properties so that {prodname} ignores, masks, or truncates values in specified columns that are sensitive, too large, or not needed.
-+
-The following example configures a {prodname} connector that connects to an Oracle host IP address, on port `1521`.
-This host has a database named `ORCLCDB`, and `server1` is the server's logical name.
-+
-.Oracle `inventory-connector.yaml`
-[source,yaml,subs="+attributes,+quotes",options="nowrap"]
-----
-apiVersion: {KafkaConnectorApiVersion}
-kind: KafkaConnector
-metadata:
-  name: inventory-connector-{context}
-  labels:
-    strimzi.io/cluster: my-connect-cluster
-  annotations:
-    strimzi.io/use-connector-resources: 'true'
-spec:
-  class: io.debezium.connector.oracle.OracleConnector
-  config:
-    database.hostname: _<oracle_ip_address>_
-    database.port: 1521
-    database.user: c##dbzuser
-    database.password: dbz
-    database.dbname: ORCLCDB
-    database.pdb.name : ORCLPDB1,
-    topic.prefix: inventory-connector-{context}
-    schema.history.internal.kafka.bootstrap.servers: kafka:9092
-    schema.history.internal.kafka.topic: schema-changes.inventory
-----
-+
-The following list describes select fields in the preceding `KafkaConnector` configuration example:
-
-`metadata.name`::
-The name of our connector when we register it with a Kafka Connect service.
-
-`spec.class`::
-The name of this Oracle connector class.
-
-`database.hostname`::
-The address of the Oracle instance.
-
-`database.port`::
-The port number of the Oracle instance.
-
-`database.user`::
-The name of the Oracle user, as specified in xref:creating-users-for-the-connector[Creating users for the connector].
-
-`database.password`::
-The password for the Oracle user, as specified in xref:creating-users-for-the-connector[Creating users for the connector].
-
-`database.dbname`::
-The name of the database to capture changes from.
-
-`database.pdb.name`::
-The name of the Oracle pluggable database that the connector captures changes from.
-Used in container database (CDB) installations only.
-
-`topic.prefix`::
-Identifies and provides a namespace for the Oracle database server from which the connector captures changes.
-
-`schema.history.internal.kafka.bootstrap.servers`::
-The list of Kafka brokers that this connector uses to write and recover DDL statements to the database schema history topic.
-
-`schema.history.internal.kafka.topic`::
-The name of the database schema history topic where the connector writes and recovers DDL statements.
-This topic is for internal use only and should not be used by consumers.
-
-. Create your connector instance with Kafka Connect.
-  For example, if you saved your `KafkaConnector` resource in the `inventory-connector.yaml` file, you would run the following command:
-+
-[source,shell,options="nowrap"]
-----
-oc apply -f inventory-connector.yaml
-----
-+
-The preceding command registers `inventory-connector` and the connector starts to run against the `server1` database as defined in the `KafkaConnector` CR.
 endif::product[]
 
 ifdef::community[]
@@ -4115,7 +4032,7 @@ Information about the properties is organized as follows:
 
 The following configuration properties are required to configure the {prodname} Oracle connector unless a default value is specified.
 
-[cols="30%a,25%a,45%a"]
+[cols="30%a,25%a,45%a",options="header"]
 |===
 |Property
 |Default
@@ -4761,7 +4678,6 @@ Set the value to `0` to use the JDBC driver's default fetch size.
 
 See xref:oracle-transaction-metadata[Transaction Metadata] for additional details.
 
-ifdef::community[]
 |[[oracle-property-log-mining-read-only]]<<oracle-property-log-mining-read-only, `+log.mining.read.only+`>>
 |`false`
 |When set to `true`, the connector does not attempt to flush the LGWR buffer to disk, allowing it to connect to read-only databases such as logical standbys or physical standbys.
@@ -4779,10 +4695,14 @@ Required when `log.mining.strategy` is set to `dictionary_from_file`.
 `physical_standby`:: Captures and streams changes from a physical standby instance.
 `downstream`:: Captures and streams changes from a downstream mining database.
 
+NOTE: The `physical_standby` and `downstream` options are Technology Preview features.
+
 |[[oracle-property-secondary-hostname]]<<oracle-property-secondary-hostname, `+secondary.hostname+`>>
 |No default
 |Specifies the hostname of the secondary database from which the connector streams changes.
 When set, the connector uses the primary database (configured via `database.hostname`) for snapshots and metadata queries, and the secondary for streaming.
+
+NOTE: This property and the other `secondary.*` properties are Technology Preview features.
 
 |[[oracle-property-secondary-port]]<<oracle-property-secondary-port, `+secondary.port+`>>
 |Same as `database.port`
@@ -4796,7 +4716,6 @@ When set, the connector uses the primary database (configured via `database.host
 |No default
 |Specifies the full JDBC connection string to the secondary database used for streaming.
 Use this as an alternative to `secondary.hostname`, `secondary.port`, and `secondary.dbname` when the connection string requires additional parameters.
-endif::community[]
 
 |[[oracle-property-log-mining-strategy]]<<oracle-property-log-mining-strategy, `+log.mining.strategy+`>>
 |`online_catalog`
@@ -4818,6 +4737,11 @@ This mode performs at the level of the `online_catalog` LogMiner strategy with t
 ifdef::community[]
 `dictionary_from_file`:: The connector uses the dictionary from a flat file located on the database server.
 This strategy is required when streaming changes from a physical standby database.
+The file is a point-in-time copy, so LogMiner cannot name an object that is created or altered after the file is built, and reports it as `OBJ#` followed by the object identifier.
+The connector resolves such objects from its own schema model, and reconstructs the column names that LogMiner reports as `COL 1`, `COL 2`, and so forth.
+An object that the connector has no schema for, such as a table created after the initial snapshot ran, cannot be resolved this way.
+The connector then applies the xref:oracle-property-event-processing-failure-handling-mode[`event.processing.failure.handling.mode`] property, which stops the connector by default.
+Rebuild the dictionary file to have LogMiner resolve these objects again.
 endif::community[]
 
 |[[oracle-property-log-mining-query-filter-mode]]<<oracle-property-log-mining-query-filter-mode, `+log.mining.query.filter.mode+`>>
@@ -4925,11 +4849,6 @@ For more information, see xref:oracle-event-buffering-infinispan[Infinispan even
 |The XML configuration for the Infinispan events cache.
 For more information, see xref:oracle-event-buffering-infinispan[Infinispan event buffering].
 
-|[[oracle-property-log-mining-buffer-infinispan-cache-rollbacks]]<<oracle-property-log-mining-buffer-infinispan-cache-rollbacks, `+log.mining.buffer.infinispan.cache.rollbacks+`>>
-|No default
-|The XML configuration for the Infinispan rollback events cache.
-For more information, see xref:oracle-event-buffering-infinispan[Infinispan event buffering].
-
 |[[oracle-property-log-mining-buffer-infinispan-cache-processed-transactions]]<<oracle-property-log-mining-buffer-infinispan-cache-processed-transactions, `+log.mining.buffer.infinispan.cache.processed_transactions+`>>
 |No default
 |The XML configuration for the Infinispan processed transactions cache.
@@ -4962,11 +4881,6 @@ For more information, see xref:oracle-event-buffering-ehcache[Ehcache event buff
 |[[oracle-property-log-mining-buffer-ehcache-events-config]]<<oracle-property-log-mining-buffer-ehcache-events-config, `+log.mining.buffer.ehcache.events.config+`>>
 |No default
 |The XML configuration for the Ehcache events configuration.
-For more information, see xref:oracle-event-buffering-ehcache[Ehcache event buffering].
-
-|[[oracle-property-log-mining-buffer-ehcache-rollbacks-config]]<<oracle-property-log-mining-buffer-ehcache-rollbacks-config, `+log.mining.buffer.ehcache.rollbacks.config+`>>
-|No default
-|The XML configuration for the Ehcache rollback events configuration.
 For more information, see xref:oracle-event-buffering-ehcache[Ehcache event buffering].
 
 |[[oracle-property-log-mining-buffer-drop-on-stop]]<<oracle-property-log-mining-buffer-drop-on-stop, `+log.mining.buffer.drop.on.stop+`>>
@@ -5105,6 +5019,19 @@ endif::product[]
 ifdef::community[]
 This configuration is ignored when using the XStream or OpenLogReplicator adapters.
 endif::community[]
+
+|[[oracle-property-log-mining-include-internal-events]]<<oracle-property-log-mining-include-internal-events, `+log.mining.include.internal.events+`>>
+|`false`
+|Specifies whether the connector captures `INTERNAL` events.
+Set one of the following values:
+`false`:: (default) The connector does not capture `INTERNAL` events.
+Set this option to reduce the volume of redo log data that the connector processes.
+After a partial rollback of a transaction that modifies externally stored LOB data, the change events that the connector emits might contain stale values for the affected LOB fields.
+
+`true`:: The connector captures `INTERNAL` events.
+Set this option to enable the connector to accurately handle `ROLLBACK TO SAVEPOINT` operations for tables with out-of-line LOB columns.
+This option can result in an increased volume of redo log data.
+For more information, see xref:capturing-large-object-data[Capturing large object data].
 
 |[[oracle-property-lob-enabled]]<<oracle-property-lob-enabled, `+lob.enabled+`>>
 |`false`
@@ -5254,24 +5181,78 @@ For example, if the topic prefix is `fulfillment`, the default topic name is `fu
 |[[oracle-property-snapshot-max-threads]]<<oracle-property-snapshot-max-threads, `snapshot.max.threads`>>
 |`1`
 |Specifies the number of threads that the connector uses when performing an initial snapshot.
-To enable parallel initial snapshots, set the property to a value greater than 1.
-In a parallel initial snapshot, the connector processes multiple tables concurrently.
+The value must be a positive integer greater than or equal to `1`.
+When set to a value greater than `1`, the connector performs a parallel snapshot by dividing each table into chunks based on primary key ranges and processing the chunks concurrently across all available threads.
+
+ifdef::product[]
+[IMPORTANT]
+====
+Chunk-based parallel snapshotting is a Technology Preview feature.
+Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
+Red{nbsp}Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+endif::product[]
 
 [NOTE]
 ====
-When you enable parallel initial snapshots, the threads that perform each table snapshot can require varying times to complete their work.
-If a snapshot for one table requires significantly more time to complete than the snapshots for other tables, threads that have completed their work sit idle.
-In some environments, a network device such as a load balancer or firewall, terminates connections that remain idle for an extended interval.
-After the snapshot completes, the connector is unable to close the connection, resulting in an exception, and an incomplete snapshot, even in cases where the connector successfully transmitted all snapshot data.
-
-If you experience this problem, revert the value of `snapshot.max.threads` to `1`, and retry the snapshot.
+Tables without a primary key, and tables that use snapshot select overrides, are processed as a single chunk and fall back to single-threaded snapshotting.
 ====
+
+|[[oracle-property-snapshot-max-threads-multiplier]]<<oracle-property-snapshot-max-threads-multiplier, `+snapshot.max.threads.multiplier+`>>
+|`1`
+|A global multiplier that controls the number of chunks created per table during a parallel snapshot.
+By default, {prodname} creates one chunk per thread.
+A higher value causes the connector to create more, smaller chunks per table when running a snapshot.
+Smaller chunks keep threads more evenly loaded.
+For example, with 4 threads and a multiplier of `2`, {prodname} creates 8 chunks instead of 4.
+
+To override the multiplier for a specific table, set `snapshot.max.threads.multiplier.<fully_qualified_table_name>` to the desired value.
+
+[TIP]
+====
+Increasing the number of threads is generally more effective for improving snapshot throughput than increasing the multiplier.
+====
+
+ifdef::product[]
+[IMPORTANT]
+====
+Chunk-based parallel snapshotting is a Technology Preview feature.
+Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
+Red{nbsp}Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+endif::product[]
 
 |[[oracle-property-legacy-snapshot-max-threads]]<<oracle-property-legacy-snapshot-max-threads, `+legacy.snapshot.max.threads+`>>
 |`false`
-|Specifies whether the parallel initial snapshot uses the legacy table-per-thread algorithm.
-When set to `false` (the default), the connector will chunk the contents of the source table across all parallel initial snapshot threads for maximum performance.
-When set to `true`, the connector will process each table per thread.
+|The default value (`false`) enables the connector to accelerate initial snapshots by dividing tables into chunks and using separate threads to process each chunk concurrently.
+To revert to the legacy parallel snapshot behavior of processing one table per thread, set the value to `true`.
+
+[NOTE]
+====
+When the legacy behavior is enabled, threads that complete their table snapshot remain idle while waiting for other threads to complete.
+In environments that enforce connection timeouts, idle connections can prevent the connector from closing connections cleanly after the snapshot finishes.
+An exception can then result, even if the snapshot captures all data successfully.
+If you experience this problem, set `snapshot.max.threads` to `1` and retry the snapshot.
+====
+ifdef::community[]
+
+NOTE: The property `internal.legacy.snapshot.max.threads` is a deprecated alias for `legacy.snapshot.max.threads` and should not be used in new configurations.
+endif::community[]
+ifdef::product[]
+
+[IMPORTANT]
+====
+Chunk-based parallel snapshotting is a Technology Preview feature.
+Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
+Red{nbsp}Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+endif::product[]
 
 |[[oracle-property-snapshot-database-errors-max-retries]]<<oracle-property-snapshot-database-errors-max-retries, `snapshot.database.errors.max.retries`>>
 |`0`
@@ -5454,7 +5435,7 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming
 The {prodname} Oracle connector also provides the following additional streaming metrics:
 
 .Descriptions of additional streaming metrics
-[cols="45%a,25%a,30%a"]
+[cols="45%a,25%a,30%a",options="header"]
 |===
 |Attributes |Type |Description
 
@@ -5672,6 +5653,11 @@ See <<oracle-property-log-mining-transaction-retention-ms, `log.mining.transacti
 |[[oracle-streaming-metrics-abandoned-transaction-count]]<<oracle-streaming-metrics-abandoned-transaction-count, `+AbandonedTransactionCount+`>>
 |`long`
 |Current number of entries in the xref:oracle-streaming-metrics-abandoned-transaction-ids[abandoned transactions] list.
+
+|[[oracle-streaming-metrics-total-abandoned-transaction-count]]<<oracle-streaming-metrics-total-abandoned-transaction-count, `+TotalAbandonedTransactionCount+`>>
+|`long`
+|The total number of transactions abandoned from the transaction buffer since the connector started.
+Unlike xref:oracle-streaming-metrics-abandoned-transaction-count[`AbandonedTransactionCount`], this value is not capped by the size of the abandoned transactions list and increments every time a transaction is abandoned.
 
 |[[oracle-streaming-metrics-rolled-back-transaction-ids]]<<oracle-streaming-metrics-rolled-back-transaction-ids, `+RolledBackTransactionIds+`>>
 |`string[]`
@@ -5922,7 +5908,7 @@ To configure the connector to use OpenLogReplicator, you must apply specific dat
 .Prerequisites
 
 * Download and compile OpenLogReplicator for your database environment.
-* OpenLogReplicator is installed with direct access to the archive and redo log files. 
+* OpenLogReplicator is installed with direct access to the archive and redo log files.
 This does not necessarily require installation on the physical database server if the archive and redo logs can be accessed via some shared filesystem.
 
 === How OpenLogReplicator works
@@ -6210,7 +6196,7 @@ A column that OpenLogReplicator omits because of a missing flag is not reported 
 The connector receives no value for it, and the field is `null` in the change event, so a missing flag looks like missing data rather than a configuration problem.
 
 .OpenLogReplicator flags used by {prodname}
-[cols="35%a,15%a,50%a"]
+[cols="35%a,15%a,50%a",options="header"]
 |===
 |Flag
 |Value
@@ -6241,7 +6227,7 @@ Omit `65536` if the tables you capture contain no `XMLTYPE` columns, and `64` if
 
 The following configuration properties are required when using OpenLogReplicator.
 
-[cols="30%a,25%a,45%a"]
+[cols="30%a,25%a,45%a",options="header"]
 |===
 |Property
 |Default
@@ -6547,7 +6533,7 @@ LD_LIBRARY_PATH=/path/to/instant_client/
 
 The following configuration properties are _required_ when using XStream unless a default value is available.
 
-[cols="30%a,25%a,45%a"]
+[cols="30%a,25%a,45%a",options="header"]
 |===
 |Property
 |Default
@@ -6565,14 +6551,17 @@ The following configuration properties are _required_ when using XStream unless 
 === XStream and DBMS_LOB
 
 Oracle provides a database package called `DBMS_LOB` that consists of a collection of programs to operate on BLOB, CLOB, and NCLOB columns.
-Most of these programs manipulate the LOB column in totality, however, one program, `WRITEAPPEND`, is capable of manipulating a subset of the LOB data buffer.
+Most of these programs manipulate the LOB column in totality, however, some programs, such as `WRITE`, `WRITEAPPEND`, `TRIM`, and `ERASE`, manipulate only a subset of the LOB data buffer.
 
-When using XStream, `WRITEAPPEND` emits a logical change record (LCR) event for each invocation of the program.
-These LCR events are not combined into a single change event as they are when using the Oracle LogMiner adapter.
-As a result, consumers of the topic might receive events with partial column values.
-ifdef::community[]
-This diverged behavior is captured in https://issues.redhat.com/browse/DBZ-4741[DBZ-4741] and will be addressed in a future release.
-endif::community[]
+When using XStream, each invocation of one of these programs emits a dedicated `LOB_WRITE`, `LOB_TRIM`, or `LOB_ERASE` logical change record (LCR).
+Such an LCR carries only the portion of the LOB that the program changed, not the complete column value.
+
+The connector emits each of these LCRs as an update change event.
+Because the LCR does not contain the full column value, the connector re-selects the current value of the row's LOB columns from the database, using the primary key of the row and the commit SCN of the event, and places the complete values in the `after` element of the change event.
+The `before` element contains the unavailable value placeholder for the LOB columns, as described in the xref:oracle-property-unavailable-value-placeholder[`unavailable.value.placeholder`] property.
+
+For the re-selection to succeed, the table must have a primary key, and the connector must be able to read the table.
+If the table has no primary key, or the row was deleted before the connector could re-select it, the connector logs a warning and emits the unavailable value placeholder for the LOB columns in the `after` element.
 
 // Type: concept
 // ModuleID: debezium-oracle-connector-frequently-asked-questions

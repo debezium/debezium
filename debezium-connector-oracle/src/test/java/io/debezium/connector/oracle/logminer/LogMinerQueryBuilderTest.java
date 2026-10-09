@@ -8,6 +8,7 @@ package io.debezium.connector.oracle.logminer;
 import static io.debezium.config.CommonConnectorConfig.SIGNAL_DATA_COLLECTION;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOB_ENABLED;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_TYPE;
+import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_INCLUDE_INTERNAL_EVENTS;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_QUERY_FILTER_MODE;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_USERNAME_EXCLUDE_LIST;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_USERNAME_INCLUDE_LIST;
@@ -37,6 +38,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningQueryFilterMode;
+import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningStrategy;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerQueryBuilder;
 import io.debezium.connector.oracle.util.TestHelper;
@@ -86,6 +88,13 @@ public class LogMinerQueryBuilderTest {
     public void testLogMinerQueryWithLobEnabled() {
         assertQuery(TestHelper.defaultConfig().with(LOB_ENABLED, true).build());
         assertQuery(TestHelper.defaultConfig().with(PDB_NAME, "").with(LOB_ENABLED, true).build());
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1960")
+    public void testLogMinerInternalEventsIncluded() {
+        assertQuery(TestHelper.defaultConfig().with(LOB_ENABLED, true).with(LOG_MINING_INCLUDE_INTERNAL_EVENTS, true).build());
+        assertQuery(TestHelper.defaultConfig().with(PDB_NAME, "").with(LOB_ENABLED, true).with(LOG_MINING_INCLUDE_INTERNAL_EVENTS, true).build());
     }
 
     @Test
@@ -152,6 +161,36 @@ public class LogMinerQueryBuilderTest {
                 .with(OracleConnectorConfig.LOG_MINING_BUFFER_TRACK_CLIENT_ID, "false")
                 .with(OracleConnectorConfig.LOG_MINING_BUFFER_TRACK_START_TIMESTAMP, "false")
                 .with(OracleConnectorConfig.LOG_MINING_BUFFER_TRACK_COMMIT_TIMESTAMP, "false"));
+    }
+
+    @Test
+    @FixFor("dbz#2598")
+    public void testUnresolvedObjectsAreMinedWhenTheDictionaryCanDriftFromTheRedo() {
+        final String tables = "DEBEZIUM\\.T1,DEBEZIUM\\.T2";
+        final String unresolvedObjectClause = "TABLE_NAME LIKE 'OBJ#%'";
+
+        for (LogMiningQueryFilterMode mode : List.of(LogMiningQueryFilterMode.IN, LogMiningQueryFilterMode.REGEX)) {
+            // A dictionary built from a file is a point-in-time copy, so objects created or changed after
+            // the build are reported as OBJ#<id> and must still be returned to be resolved by object id.
+            final OracleConnectorConfig dictionaryFromFile = getBuilderForStrategy(mode, LogMiningStrategy.DICTIONARY_FROM_FILE)
+                    .with(TABLE_INCLUDE_LIST, tables)
+                    .build();
+            assertThat(new BufferedLogMinerQueryBuilder(dictionaryFromFile).getQuery()).contains(unresolvedObjectClause);
+            assertQuery(dictionaryFromFile);
+
+            // The online catalog always describes the redo being mined, so the rows are of no use.
+            final OracleConnectorConfig onlineCatalog = getBuilderForStrategy(mode, LogMiningStrategy.ONLINE_CATALOG)
+                    .with(TABLE_INCLUDE_LIST, tables)
+                    .build();
+            assertThat(new BufferedLogMinerQueryBuilder(onlineCatalog).getQuery()).doesNotContain(unresolvedObjectClause);
+            assertQuery(onlineCatalog);
+        }
+    }
+
+    private ConfigBuilder getBuilderForStrategy(LogMiningQueryFilterMode mode, LogMiningStrategy strategy) {
+        return getBuilderForMode(mode)
+                .with(OracleConnectorConfig.LOG_MINING_STRATEGY, strategy.getValue())
+                .with(OracleConnectorConfig.LOG_MINING_PATH_DICTIONARY, "/tmp/dictionary.dat");
     }
 
     private void testLogMinerQueryFilterMode(LogMiningQueryFilterMode mode) {
@@ -263,6 +302,7 @@ public class LogMinerQueryBuilderTest {
     }
 
     private String getBufferedQuery(OracleConnectorConfig config) {
+        final String internalEventsPredicate = " OR (OPERATION_CODE = 0 AND ROLLBACK = 0 AND ROW_ID NOT LIKE '%AAAAAAAAAAAA' AND SEQUENCE# > 1)";
         final String operationDdlPredicate = " OR (OPERATION_CODE = 5 AND INFO NOT LIKE 'INTERNAL DDL%')";
 
         String query = "SELECT " + buildSelectColumns(config) + "FROM V$LOGMNR_CONTENTS WHERE ";
@@ -281,6 +321,7 @@ public class LogMinerQueryBuilderTest {
 
         query += "(";
         query += "OPERATION_CODE IN (" + codes + ")";
+        query += config.isLobEnabled() && config.isLogMiningIncludeInternalEvents() ? internalEventsPredicate : "";
         query += config.storeOnlyCapturedTables() ? operationDdlPredicate : "";
         query += ")";
 
@@ -408,8 +449,8 @@ public class LogMinerQueryBuilderTest {
             final String signalDataClause = getSignalDataCollectionTableClause(config);
 
             String result = " AND (TABLE_NAME IS NULL OR ";
-            if (config.getLogMiningStrategy() == OracleConnectorConfig.LogMiningStrategy.HYBRID) {
-                result += "TABLE_NAME LIKE 'OBJ#% OR ";
+            if (config.getLogMiningStrategy().isDictionaryMismatchPossible()) {
+                result += "TABLE_NAME LIKE 'OBJ#%' OR ";
             }
 
             if (Strings.isNullOrEmpty(includeList)) {
@@ -430,7 +471,7 @@ public class LogMinerQueryBuilderTest {
             final String signalDataClause = getSignalDataCollectionTableClause(config);
 
             String result = " AND (TABLE_NAME IS NULL OR ";
-            if (config.getLogMiningStrategy() == OracleConnectorConfig.LogMiningStrategy.HYBRID) {
+            if (config.getLogMiningStrategy().isDictionaryMismatchPossible()) {
                 result += "TABLE_NAME LIKE 'OBJ#%' OR ";
             }
 

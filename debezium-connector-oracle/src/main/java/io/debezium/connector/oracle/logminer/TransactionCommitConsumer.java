@@ -121,17 +121,17 @@ public class TransactionCommitConsumer implements AutoCloseable {
         dispatchEventIndex = 0;
     }
 
-    public void accept(LogMinerEvent event, boolean rolledBack, String transactionId, long transactionSequence) throws InterruptedException {
+    public void accept(LogMinerEvent event, String transactionId, long transactionSequence) throws InterruptedException {
         totalEvents++;
 
         if (!connectorConfig.isLobEnabled()) {
             // LOB support is not enabled, perform immediate dispatch
-            dispatchChangeEvent(event, rolledBack, transactionId, transactionSequence);
+            dispatchChangeEvent(event, transactionId, transactionSequence);
             return;
         }
 
         if (event instanceof DmlEvent dmlEvent) {
-            acceptDmlEvent(dmlEvent, rolledBack, transactionId, transactionSequence);
+            acceptDmlEvent(dmlEvent, transactionId, transactionSequence);
         }
         else {
             acceptManipulationEvent(event);
@@ -142,7 +142,7 @@ public class TransactionCommitConsumer implements AutoCloseable {
         return totalEvents;
     }
 
-    private void acceptDmlEvent(DmlEvent event, boolean rolledBack, String transactionId, long transactionSequence) throws InterruptedException {
+    private void acceptDmlEvent(DmlEvent event, String transactionId, long transactionSequence) throws InterruptedException {
         enqueueEventIndex++;
 
         final Table table = schema.tableFor(event.getTableId());
@@ -166,12 +166,11 @@ public class TransactionCommitConsumer implements AutoCloseable {
             // queue with the logic below. Therefore, there is no need to attempt to dispatch the
             // accumulator as it should be null.
             LOGGER.debug("\tEvent for table {} has no LOB columns, dispatching.", table.id());
-            dispatchChangeEvent(event, rolledBack, transactionId, transactionSequence);
+            dispatchChangeEvent(event, transactionId, transactionSequence);
             return;
         }
 
         if (tryMerge(accumulatorEvent, event)) {
-            rowState.rolledBack = rolledBack;
             rowState.transactionSequence = transactionSequence;
         }
         else {
@@ -185,7 +184,7 @@ public class TransactionCommitConsumer implements AutoCloseable {
             else if (rowId.equals(currentXmlDetails.rowId)) {
                 currentXmlDetails.reset();
             }
-            rows.put(rowId, new RowState(event, rolledBack, enqueueEventIndex, transactionId, transactionSequence));
+            rows.put(rowId, new RowState(event, enqueueEventIndex, transactionId, transactionSequence));
             accumulatorEvent = event;
         }
 
@@ -332,7 +331,7 @@ public class TransactionCommitConsumer implements AutoCloseable {
                 return;
             }
         }
-        dispatchChangeEvent(event, rowState.rolledBack, rowState.transactionId, rowState.transactionSequence);
+        dispatchChangeEvent(event, rowState.transactionId, rowState.transactionSequence);
     }
 
     private boolean tryMerge(DmlEvent prev, DmlEvent next) {
@@ -507,11 +506,7 @@ public class TransactionCommitConsumer implements AutoCloseable {
         return BLOB_TYPE.equalsIgnoreCase(column.typeName()) || CLOB_TYPE.equalsIgnoreCase(column.typeName());
     }
 
-    private void dispatchChangeEvent(LogMinerEvent event, boolean rolledBack, String transactionId, long transactionSequence) throws InterruptedException {
-        if (rolledBack) {
-            LOGGER.debug("Skipping rolled-back event for table '{}' with row-id '{}'.", event.getTableId(), event.getRowIdAsString());
-            return;
-        }
+    private void dispatchChangeEvent(LogMinerEvent event, String transactionId, long transactionSequence) throws InterruptedException {
         // Must be one based so that START_SCN/START_SCN_TS assignment works in delegate
         final long eventIndex = ++dispatchEventIndex;
         LOGGER.trace("\tEmitting event #{}: {} {}", eventIndex, event.getEventType(), event);
@@ -974,14 +969,12 @@ public class TransactionCommitConsumer implements AutoCloseable {
 
     private static class RowState {
         final DmlEvent event;
-        boolean rolledBack;
         final long transactionIndex;
         final String transactionId;
         long transactionSequence;
 
-        RowState(final DmlEvent event, boolean rolledBack, final long transactionIndex, String transactionId, long transactionSequence) {
+        RowState(final DmlEvent event, final long transactionIndex, String transactionId, long transactionSequence) {
             this.event = event;
-            this.rolledBack = rolledBack;
             this.transactionIndex = transactionIndex;
             this.transactionId = transactionId;
             this.transactionSequence = transactionSequence;

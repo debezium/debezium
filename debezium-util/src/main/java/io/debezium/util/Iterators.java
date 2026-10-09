@@ -178,7 +178,7 @@ public class Iterators {
         return new Iterator<V>() {
             @Override
             public boolean hasNext() {
-                return second.hasNext();
+                return first.hasNext() && second.hasNext();
             }
 
             @Override
@@ -297,6 +297,7 @@ public class Iterators {
     public static <T> Iterator<T> join(Iterator<T> first, Iterator<T> second) {
         return new Iterator<T>() {
             private boolean completedFirst = false;
+            private Iterator<T> lastReturned;
 
             @Override
             public boolean hasNext() {
@@ -313,19 +314,24 @@ public class Iterators {
             public T next() {
                 if (!completedFirst) {
                     if (first.hasNext()) {
-                        return first.next();
+                        final T result = first.next();
+                        lastReturned = first;
+                        return result;
                     }
                     completedFirst = true;
                 }
-                return second.next();
+                final T result = second.next();
+                lastReturned = second;
+                return result;
             }
 
             @Override
             public void remove() {
-                if (!completedFirst) {
-                    first.remove();
+                if (lastReturned == null) {
+                    throw new IllegalStateException();
                 }
-                second.remove();
+                lastReturned.remove();
+                lastReturned = null;
             }
         };
     }
@@ -423,17 +429,19 @@ public class Iterators {
         }
         return new PreviewIterator<T>() {
             private T nextValue;
+            private boolean hasPeeked = false;
 
             @Override
             public boolean hasNext() {
-                return nextValue != null || iter.hasNext();
+                return hasPeeked || iter.hasNext();
             }
 
             @Override
             public T next() {
-                if (nextValue != null) {
+                if (hasPeeked) {
                     T next = nextValue;
                     nextValue = null;
+                    hasPeeked = false;
                     return next;
                 }
                 return iter.next();
@@ -446,11 +454,12 @@ public class Iterators {
 
             @Override
             public T peek() {
-                if (nextValue != null) {
+                if (hasPeeked) {
                     return nextValue;
                 }
                 if (iter.hasNext()) {
                     nextValue = iter.next();
+                    hasPeeked = true;
                     return nextValue;
                 }
                 return null;

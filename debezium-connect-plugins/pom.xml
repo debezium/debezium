@@ -3,7 +3,7 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-parent</artifactId>
-        <version>3.7.0-SNAPSHOT</version>
+        <version>3.8.0-SNAPSHOT</version>
         <relativePath>../debezium-parent/pom.xml</relativePath>
     </parent>
 
@@ -123,6 +123,11 @@
             <artifactId>debezium-archunit</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.awaitility</groupId>
+            <artifactId>awaitility</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -154,4 +159,70 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!--
+            Profile for the E2E Neo4j-source integration test (Neo4jDebeziumConverterIT).
+            It drives real Neo4j CDC through the official Neo4j Kafka source connector, so it needs that connector plus a Neo4j
+            Enterprise testcontainer (CDC is Enterprise-only) and Docker
+        -->
+        <profile>
+            <id>neo4j-source-it</id>
+            <dependencies>
+                <dependency>
+                    <groupId>org.neo4j.connectors.kafka</groupId>
+                    <artifactId>neo4j-kafka-connect-neo4j</artifactId>
+                    <version>5.5.4</version>
+                    <scope>test</scope>
+                </dependency>
+                <!-- Only the IT uses the Neo4j testcontainer, so it lives in this profile, not the default build. -->
+                <dependency>
+                    <groupId>org.testcontainers</groupId>
+                    <artifactId>testcontainers-neo4j</artifactId>
+                    <scope>test</scope>
+                </dependency>
+            </dependencies>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>build-helper-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>add-neo4j-it-source</id>
+                                <phase>generate-test-sources</phase>
+                                <goals>
+                                    <goal>add-test-source</goal>
+                                </goals>
+                                <configuration>
+                                    <sources>
+                                        <source>src/test/java-neo4j-it</source>
+                                    </sources>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <argLine>
+                                -Dnet.bytebuddy.experimental=${net.bytebuddy.experimental}
+                                -javaagent:${io.opentelemetry.javaagent:opentelemetry-agent-for-testing:jar}
+                            </argLine>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>integration-test</id>
+                                <goals>
+                                    <goal>integration-test</goal>
+                                    <goal>verify</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

@@ -12,6 +12,7 @@ import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 import static java.time.temporal.ChronoUnit.MILLIS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -23,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +32,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -38,11 +41,14 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
 import org.bson.BsonDocument;
+import org.bson.BsonTimestamp;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.bson.types.Decimal128;
 import org.bson.types.ObjectId;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import com.mongodb.DBRef;
 import com.mongodb.client.ClientSession;
@@ -60,6 +66,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.FiltersMatchMode;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.FullUpdateType;
+import io.debezium.connector.mongodb.connection.ConnectionStrings;
 import io.debezium.connector.mongodb.events.BufferingChangeStreamCursor;
 import io.debezium.converters.CloudEventsConverterTest;
 import io.debezium.data.Envelope;
@@ -70,6 +77,8 @@ import io.debezium.heartbeat.Heartbeat;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.schema.DatabaseSchema;
+import io.debezium.testing.testcontainers.MongoDbContainer;
+import io.debezium.testing.testcontainers.MongoDbReplicaSet;
 import io.debezium.util.Collect;
 import io.debezium.util.IoUtil;
 import io.debezium.util.Testing;
@@ -132,6 +141,79 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         Config result = connector.validate(config.asMap());
 
         assertConfigurationErrors(result, MongoDbConnectorConfig.CONNECTION_STRING, 2);
+    }
+
+    @Test
+    void shouldReopenPrimaryChangeStreamAfterElection() throws InterruptedException {
+        var replicaSet = requireThreeMemberReplicaSet();
+        var previousPrimary = replicaSet.tryPrimary().orElseThrow();
+
+        startReadPreferenceTestConnector("primary");
+        assertReadPreferenceTestDocument(1);
+
+        replicaSet.stepDown();
+        awaitPrimaryChange(replicaSet, previousPrimary);
+        awaitReadPreferenceReopen();
+
+        assertReadPreferenceTestDocument(2);
+    }
+
+    @Test
+    void shouldKeepConnectorRunningWhileWaitingForExactReadPreference() throws InterruptedException {
+        var replicaSet = requireThreeMemberReplicaSet();
+        var previousPrimary = replicaSet.tryPrimary().orElseThrow();
+        var secondaryMembers = replicaSet.getMembers().stream()
+                .filter(member -> member != previousPrimary)
+                .toList();
+
+        startReadPreferenceTestConnector("primary");
+        assertReadPreferenceTestDocument(1);
+
+        try {
+            secondaryMembers.forEach(member -> member.eval("db.adminCommand({ replSetFreeze: 30 })"));
+            previousPrimary.eval("db.adminCommand({ replSetStepDown: 30, force: true })");
+
+            awaitReadPreferencePause();
+            assertConnectorIsRunning();
+
+            var replacementPrimary = secondaryMembers.get(0);
+            replacementPrimary.eval("db.adminCommand({ replSetFreeze: 0 })");
+            replacementPrimary.eval("db.adminCommand({ replSetStepUp: 1 })");
+            awaitPrimary(replicaSet, replacementPrimary);
+            awaitReadPreferenceResume();
+
+            assertConnectorIsRunning();
+            assertReadPreferenceTestDocument(2);
+        }
+        finally {
+            var currentPrimary = replicaSet.tryPrimary().orElse(null);
+            replicaSet.getMembers().stream()
+                    .filter(member -> member != currentPrimary)
+                    .forEach(member -> member.eval("db.adminCommand({ replSetFreeze: 0 })"));
+        }
+    }
+
+    @Test
+    void shouldReopenSecondaryChangeStreamAfterElection() throws InterruptedException {
+        var replicaSet = requireThreeMemberReplicaSet();
+        var previousPrimary = replicaSet.tryPrimary().orElseThrow();
+        var secondaryMembers = replicaSet.getMembers().stream()
+                .filter(member -> member != previousPrimary)
+                .toList();
+
+        startReadPreferenceTestConnector("secondary");
+        assertReadPreferenceTestDocument(1);
+
+        for (var secondary : secondaryMembers) {
+            secondary.eval("db.adminCommand({ replSetStepUp: 1 })");
+            awaitPrimary(replicaSet, secondary);
+            if (awaitReadPreferenceReopen(5)) {
+                break;
+            }
+        }
+        awaitReadPreferenceReopen();
+
+        assertReadPreferenceTestDocument(2);
     }
 
     @Test
@@ -575,9 +657,10 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         }
     }
 
-    @Test
+    @ParameterizedTest
+    @ValueSource(ints = { 0, 1 })
     @SkipWhenDatabaseVersion(check = LESS_THAN, major = 6, reason = "Pre-image support in Change Stream is officially released in Mongo 6.0.")
-    public void shouldConsumeLargeEvents() throws InterruptedException {
+    public void shouldConsumeLargeEvents(int queryFetchSize) throws InterruptedException {
         final var collName = "large";
         final var dbName = "dbit";
 
@@ -585,6 +668,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
                 .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.NO_DATA)
                 .with(MongoDbConnectorConfig.CAPTURE_MODE, MongoDbConnectorConfig.CaptureMode.CHANGE_STREAMS_UPDATE_FULL_WITH_PRE_IMAGE)
                 .with(MongoDbConnectorConfig.CURSOR_OVERSIZE_HANDLING_MODE, MongoDbConnectorConfig.OversizeHandlingMode.SPLIT)
+                .with(MongoDbConnectorConfig.QUERY_FETCH_SIZE, queryFetchSize)
                 .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, dbName + "." + collName)
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
@@ -872,40 +956,46 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         assertThat(deleteId).isEqualTo(id.get());
     }
 
-    @Test
+    @ParameterizedTest
+    @ValueSource(strings = { "packed", "unix", "iso", "extended" })
     /*
      * Verifies that streaming starts from the specified timestamp.
      *
      * The following procedure is used:
-     * 1) Two documents are inserted,
+     * 1) Two documents are inserted (in different seconds for Unix and ISO inputs),
      * 2) Capture timestamp is retrieved (insert of the second doc)
      * 3) Insert additional document
      *
      * Connector should capture only second and third insert
      */
-    public void shouldConsumeEventsFromTimestamp() throws InterruptedException, IOException {
+    public void shouldConsumeEventsFromTimestamp(String format) throws InterruptedException {
         // Cleanup database
         TestHelper.cleanDatabase(mongo, "dbit");
 
         // insert some data
-        long startOpTime = -1;
+        final BsonTimestamp startOpTime;
         var expectedDocs = List.of(
                 Document.parse("{\"_id\": 0}"),
                 Document.parse("{\"_id\": 1}"),
                 Document.parse("{\"_id\": 2}"));
-        try (var client = connect()) {
+        try (var client = connect(); var session = client.startSession()) {
             var db = client.getDatabase("dbit");
-            // insert two documents
-            db.getCollection("test").insertOne(expectedDocs.get(0));
-            db.getCollection("test").insertOne(expectedDocs.get(1));
+            db.getCollection("test").insertOne(session, expectedDocs.get(0));
+            final var firstInsertSecond = Integer.toUnsignedLong(session.getOperationTime().getTime());
 
-            // get capture start timestamps
-            var serverStatus = db.runCommand(new Document("serverStatus", 1), BsonDocument.class);
-            startOpTime = serverStatus.getTimestamp("operationTime").getValue();
+            // Unix and ISO timestamps start at the beginning of a second, so keep the excluded insert in an earlier second.
+            if ("unix".equals(format) || "iso".equals(format)) {
+                Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> db.runCommand(new Document("serverStatus", 1))
+                        .getDate("localTime").toInstant().getEpochSecond() > firstInsertSecond);
+            }
+            db.getCollection("test").insertOne(session, expectedDocs.get(1));
+            startOpTime = session.getOperationTime();
 
             // insert additional document
             db.getCollection("test").insertOne(expectedDocs.get(2));
         }
+
+        final var startTimeValue = formatStartTimestamp(format, startOpTime);
 
         // Use the DB configuration to define the connector's configuration ...
         config = TestHelper.getConfiguration(mongo).edit()
@@ -913,7 +1003,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.NO_DATA)
-                .with(MongoDbConnectorConfig.CAPTURE_START_OP_TIME, startOpTime)
+                .with("packed".equals(format) ? MongoDbConnectorConfig.CAPTURE_START_OP_TIME : MongoDbConnectorConfig.CAPTURE_START_TIMESTAMP, startTimeValue)
                 .build();
 
         // Set up the replication context for connections ...
@@ -924,7 +1014,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         waitForStreamingRunning("mongodb", "mongo");
 
         // Check consumed records
-        final SourceRecords records = consumeAvailableRecordsByTopic();
+        final SourceRecords records = consumeRecordsByTopic(2);
         assertThat(records.allRecordsInOrder().size()).isEqualTo(2);
         assertNoRecordsToConsume();
 
@@ -935,6 +1025,140 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
                 .toList();
         assertThat(actualDocs.get(0)).isEqualTo(expectedDocs.get(1));
         assertThat(actualDocs.get(1)).isEqualTo(expectedDocs.get(2));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "packed", "unix", "iso", "extended" })
+    void shouldRespectTimestampIncrementWithinSameSecond(String format) throws InterruptedException {
+        record TimestampedInserts(String collectionName, List<BsonTimestamp> timestamps) {
+        }
+        final List<Document> documents = List.of(
+                new Document("_id", "earlier"),
+                new Document("_id", "boundary"),
+                new Document("_id", "after"));
+        final TimestampedInserts inserts;
+        try (var client = connect(); var session = client.startSession()) {
+            final var database = client.getDatabase("dbit");
+            final var attempt = new AtomicInteger();
+            // Retry only data preparation if the inserts cross a second boundary. Each attempt uses an isolated namespace.
+            inserts = Awaitility.await().atMost(30, TimeUnit.SECONDS).until(() -> {
+                final var collectionName = "timestamp" + attempt.getAndIncrement();
+                final var collection = database.getCollection(collectionName);
+                final List<BsonTimestamp> timestamps = new ArrayList<>();
+                for (var document : documents) {
+                    collection.insertOne(session, document);
+                    timestamps.add(session.getOperationTime());
+                }
+                return new TimestampedInserts(collectionName, timestamps);
+            }, candidate -> candidate.timestamps().stream()
+                    .allMatch(timestamp -> timestamp.getTime() == candidate.timestamps().get(0).getTime()));
+        }
+
+        final var timestamps = inserts.timestamps();
+        final var startTimestamp = timestamps.get(1);
+        assertThat(timestamps).extracting(BsonTimestamp::getTime).containsOnly(startTimestamp.getTime());
+        assertThat(Integer.toUnsignedLong(timestamps.get(0).getInc())).isLessThan(Integer.toUnsignedLong(startTimestamp.getInc()));
+        assertThat(Integer.toUnsignedLong(timestamps.get(2).getInc())).isGreaterThan(Integer.toUnsignedLong(startTimestamp.getInc()));
+
+        config = TestHelper.getConfiguration(mongo).edit()
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit\\." + inserts.collectionName())
+                .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.NO_DATA)
+                .with("packed".equals(format) ? MongoDbConnectorConfig.CAPTURE_START_OP_TIME : MongoDbConnectorConfig.CAPTURE_START_TIMESTAMP,
+                        formatStartTimestamp(format, startTimestamp))
+                .build();
+
+        start(MongoDbConnector.class, config);
+        waitForStreamingRunning("mongodb", "mongo");
+
+        // Whole-second inputs include the earlier insert; precise BSON timestamps include the boundary and later insert only.
+        final var expectedDocuments = "unix".equals(format) || "iso".equals(format) ? documents : documents.subList(1, 3);
+        final var records = consumeRecordsByTopic(expectedDocuments.size());
+        final var actualDocuments = records.allRecordsInOrder().stream()
+                .map(record -> Document.parse(((Struct) record.value()).getString("after")))
+                .toList();
+        assertThat(actualDocuments).containsExactlyElementsOf(expectedDocuments);
+        assertNoRecordsToConsume();
+    }
+
+    private static String formatStartTimestamp(String format, BsonTimestamp timestamp) {
+        return switch (format) {
+            case "packed" -> Long.toString(timestamp.getValue());
+            case "unix" -> Integer.toUnsignedString(timestamp.getTime());
+            case "iso" -> Instant.ofEpochSecond(Integer.toUnsignedLong(timestamp.getTime())).toString();
+            case "extended" -> "{\"$timestamp\":{\"t\":%s,\"i\":%s}}".formatted(
+                    Integer.toUnsignedString(timestamp.getTime()), Integer.toUnsignedString(timestamp.getInc()));
+            default -> throw new IllegalArgumentException("Unknown timestamp format: " + format);
+        };
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = { true, false })
+    void shouldResumeFromOffsetBeforeConfiguredTimestamp(boolean hasResumeToken) throws InterruptedException {
+        final BsonDocument resumeToken;
+        final BsonTimestamp operationTime;
+        try (var client = connect()) {
+            final var collection = client.getDatabase("dbit").getCollection("test");
+            collection.insertOne(new Document("_id", 0));
+            try (var cursor = collection.watch().cursor()) {
+                collection.insertOne(new Document("_id", 1));
+                final var event = cursor.next();
+                resumeToken = event.getResumeToken();
+                operationTime = event.getClusterTime();
+            }
+            collection.insertOne(new Document("_id", 2));
+        }
+        config = TestHelper.getConfiguration(mongo).edit()
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.test")
+                .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.NO_DATA)
+                // Startup log position validation requires a resume token; exercise timestamp-only streaming separately.
+                .with(CommonConnectorConfig.LOG_POSITION_CHECK_ENABLED, hasResumeToken)
+                .with(MongoDbConnectorConfig.CAPTURE_START_TIMESTAMP, "2106-02-07T06:28:15Z")
+                .build();
+        final Map<String, Object> offset = new HashMap<>(Map.of(
+                SourceInfo.TIMESTAMP, operationTime.getTime(),
+                SourceInfo.ORDER, operationTime.getInc()));
+        if (hasResumeToken) {
+            offset.put(SourceInfo.RESUME_TOKEN, ResumeTokens.toBase64(resumeToken));
+        }
+        storeOffsets(config, Map.of(Map.of("server_id", "mongo"), offset));
+
+        start(MongoDbConnector.class, config);
+        waitForStreamingRunning("mongodb", "mongo");
+
+        final var records = consumeRecordsByTopic(hasResumeToken ? 1 : 2);
+        final var documents = records.allRecordsInOrder().stream()
+                .map(record -> Document.parse(((Struct) record.value()).getString("after")))
+                .toList();
+        // Timestamp-based resumption is inclusive; resumeAfter excludes the already processed event.
+        assertThat(documents).containsExactlyElementsOf(hasResumeToken
+                ? List.of(new Document("_id", 2))
+                : List.of(new Document("_id", 1), new Document("_id", 2)));
+        assertNoRecordsToConsume();
+    }
+
+    @Test
+    void shouldSnapshotBeforeStreamingWithConfiguredTimestamp() throws InterruptedException {
+        insertDocuments("dbit", "test", new Document("_id", 0));
+        config = TestHelper.getConfiguration(mongo).edit()
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.test")
+                .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.INITIAL)
+                .with(MongoDbConnectorConfig.CAPTURE_START_TIMESTAMP, "2106-02-07T06:28:15Z")
+                .build();
+
+        start(MongoDbConnector.class, config);
+        final var snapshotRecords = consumeRecordsByTopic(1);
+        assertThat(((Struct) snapshotRecords.allRecordsInOrder().get(0).value()).getString("op")).isEqualTo("r");
+        waitForStreamingRunning("mongodb", "mongo");
+
+        insertDocuments("dbit", "test", new Document("_id", 1));
+        final var streamingRecords = consumeRecordsByTopic(1);
+        final var value = (Struct) streamingRecords.allRecordsInOrder().get(0).value();
+        assertThat(value.getString("op")).isEqualTo("c");
+        assertThat(Document.parse(value.getString("after"))).isEqualTo(new Document("_id", 1));
+        assertNoRecordsToConsume();
     }
 
     @Test
@@ -3212,6 +3436,88 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         MongoDbConnector connector = new MongoDbConnector();
         Config result = connector.validate(config.asMap());
         assertNoConfigurationErrors(result, MongoDbConnectorConfig.CONNECTION_STRING);
+    }
+
+    private MongoDbReplicaSet requireThreeMemberReplicaSet() {
+        assumeTrue(mongo instanceof MongoDbReplicaSet, "Read preference election tests require a Docker replica set");
+        var replicaSet = (MongoDbReplicaSet) mongo;
+        assumeTrue(replicaSet.getMembers().size() >= 3, "Read preference election tests require at least three members");
+        return replicaSet;
+    }
+
+    private void startReadPreferenceTestConnector(String readPreference) throws InterruptedException {
+        var connectionString = ConnectionStrings.appendParameter(mongo.getConnectionString(), "readPreference", readPreference);
+        config = TestHelper.getConfiguration(connectionString).edit()
+                .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.NO_DATA)
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.read_preference")
+                .with(MongoDbConnectorConfig.HEARTBEAT_FREQUENCY_MS, 500)
+                .with(MongoDbConnectorConfig.CURSOR_MAX_AWAIT_TIME_MS, 500)
+                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                .build();
+
+        context = new MongoDbTaskContext(config);
+        logInterceptor = new LogInterceptor(MongoDbStreamingChangeEventSource.class);
+        start(MongoDbConnector.class, config);
+        waitForStreamingRunning("mongodb", "mongo");
+    }
+
+    private void assertReadPreferenceTestDocument(int id) throws InterruptedException {
+        insertDocuments("dbit", "read_preference", new Document("_id", id));
+        var records = consumeRecordsByTopic(1).allRecordsInOrder();
+
+        assertThat(records).hasSize(1);
+        var value = (Struct) records.get(0).value();
+        assertThat(Document.parse(value.getString(Envelope.FieldName.AFTER)).getInteger("_id")).isEqualTo(id);
+    }
+
+    private void awaitPrimaryChange(MongoDbReplicaSet replicaSet, MongoDbContainer previousPrimary) {
+        Awaitility.await()
+                .atMost(30, TimeUnit.SECONDS)
+                .pollInterval(100, TimeUnit.MILLISECONDS)
+                .ignoreExceptions()
+                .until(() -> replicaSet.tryPrimary()
+                        .filter(primary -> primary != previousPrimary)
+                        .isPresent());
+    }
+
+    private void awaitPrimary(MongoDbReplicaSet replicaSet, MongoDbContainer expectedPrimary) {
+        Awaitility.await()
+                .atMost(30, TimeUnit.SECONDS)
+                .pollInterval(100, TimeUnit.MILLISECONDS)
+                .ignoreExceptions()
+                .until(() -> replicaSet.tryPrimary()
+                        .filter(primary -> primary == expectedPrimary)
+                        .isPresent());
+    }
+
+    private void awaitReadPreferenceReopen() {
+        Awaitility.await()
+                .atMost(30, TimeUnit.SECONDS)
+                .until(() -> logInterceptor.containsMessage("no longer matches read preference"));
+    }
+
+    private void awaitReadPreferencePause() {
+        Awaitility.await()
+                .atMost(30, TimeUnit.SECONDS)
+                .until(() -> logInterceptor.containsMessage("no eligible server is available"));
+    }
+
+    private void awaitReadPreferenceResume() {
+        Awaitility.await()
+                .atMost(30, TimeUnit.SECONDS)
+                .until(() -> logInterceptor.containsMessage("An eligible server for read preference"));
+    }
+
+    private boolean awaitReadPreferenceReopen(long timeoutSeconds) throws InterruptedException {
+        var deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(timeoutSeconds);
+        while (System.nanoTime() < deadline) {
+            if (logInterceptor.containsMessage("no longer matches read preference")) {
+                return true;
+            }
+            Thread.sleep(100);
+        }
+        return logInterceptor.containsMessage("no longer matches read preference");
     }
 
     /**

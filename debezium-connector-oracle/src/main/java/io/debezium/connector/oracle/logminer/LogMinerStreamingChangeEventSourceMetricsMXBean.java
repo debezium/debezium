@@ -302,6 +302,11 @@ public interface LogMinerStreamingChangeEventSourceMetricsMXBean
     long getAbandonedTransactionCount();
 
     /**
+     * @return the total number of transactions abandoned from the transaction buffer since the connector started
+     */
+    long getTotalAbandonedTransactionCount();
+
+    /**
      * @return the number of events that were partially rolled back in committed transactions
      */
     long getNumberOfPartialRollbackCount();

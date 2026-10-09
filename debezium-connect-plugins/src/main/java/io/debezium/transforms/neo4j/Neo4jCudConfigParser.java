@@ -16,6 +16,7 @@ import java.util.function.Function;
 import org.apache.kafka.common.config.ConfigException;
 
 import io.debezium.config.Configuration;
+import io.debezium.transforms.neo4j.Neo4jCudConverterConfig.FieldMissingBehavior;
 import io.debezium.transforms.neo4j.Neo4jCudConverterConfig.NodeMode;
 import io.debezium.transforms.neo4j.Neo4jCudConverterConfig.OutputMode;
 import io.debezium.util.Strings;
@@ -36,6 +37,7 @@ class Neo4jCudConfigParser {
     static Neo4jCudConverterConfig parse(Configuration config, Map<String, ?> rawProps) {
         final var outputMode = OutputMode.parse(config.getString(Neo4jCudConverterConfig.OUTPUT_MODE));
         final var tombstonesEnabled = config.getBoolean(Neo4jCudConverterConfig.TOMBSTONES_ENABLED);
+        final var fieldMissingBehavior = FieldMissingBehavior.parse(config.getString(Neo4jCudConverterConfig.FIELD_MISSING_BEHAVIOR));
 
         final var byTable = groupByTable(rawProps);
         final Map<String, TableMappingConfig> tableMappings = new LinkedHashMap<>();
@@ -44,7 +46,7 @@ class Neo4jCudConfigParser {
         }
 
         return new Neo4jCudConverterConfig(
-                outputMode, tombstonesEnabled, Collections.unmodifiableMap(tableMappings));
+                outputMode, tombstonesEnabled, fieldMissingBehavior, Collections.unmodifiableMap(tableMappings));
     }
 
     /**

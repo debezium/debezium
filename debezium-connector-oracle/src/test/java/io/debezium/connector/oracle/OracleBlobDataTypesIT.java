@@ -28,7 +28,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
-import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIs;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.junit.SkipWhenLogMiningStrategyIs;
 import io.debezium.connector.oracle.util.TestHelper;
@@ -899,7 +898,7 @@ public class OracleBlobDataTypesIT extends AbstractAsyncEngineConnectorTest {
 
     @Test
     @FixFor({ "DBZ-2948", "DBZ-5773" })
-    @SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.OLR, reason = "OpenLogReplicator does not differentiate between LOB operations")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER, reason = "LOB_ERASE is propagated as an UPDATE by XStream (debezium/dbz#579); OpenLogReplicator does not differentiate between LOB operations")
     public void shouldNotStreamAnyChangesWhenLobEraseIsDetected() throws Exception {
         String ddl = "CREATE TABLE BLOB_TEST ("
                 + "ID numeric(9,0), "
@@ -1004,6 +1003,281 @@ public class OracleBlobDataTypesIT extends AbstractAsyncEngineConnectorTest {
         assertThat(after.get("VAL_BLOB")).isEqualTo(getUnavailableValuePlaceholder(config));
 
         assertNoRecordsToConsume();
+    }
+
+    @Test
+    @FixFor("debezium/dbz#579")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.XSTREAM, reason = "debezium/dbz#579 XStream-specific: LOB_WRITE re-reads BLOB from source")
+    public void shouldStreamUpdateWithReselectedValueForXStreamLobWriteAppend() throws Exception {
+        String ddl = "CREATE TABLE BLOB_TEST ("
+                + "ID numeric(9,0), "
+                + "VAL_BLOB blob, "
+                + "primary key(id))";
+
+        connection.execute(ddl);
+        TestHelper.streamTable(connection, "debezium.blob_test");
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.BLOB_TEST")
+                .with(OracleConnectorConfig.LOB_ENABLED, true)
+                .build();
+
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        // Insert with a known BLOB value.
+        Blob initial = createBlob(part(BIN_DATA, 0, 8000));
+        connection.prepareQuery("INSERT INTO debezium.blob_test values (1, ?)", p -> p.setBlob(1, initial), null);
+        connection.commit();
+
+        // Consume (and discard) the insert record.
+        consumeRecordsByTopic(1);
+
+        // WRITEAPPEND 4 bytes of additional data. XStream emits LOB_WRITE LCRs; the
+        // adapter should re-read the full BLOB and surface an UPDATE with the new value.
+        final byte[] appended = new byte[]{ 0x41, 0x42, 0x43, 0x44 };
+        connection.prepareQuery(
+                "DECLARE loc BLOB; BEGIN "
+                        + "  SELECT VAL_BLOB INTO loc FROM BLOB_TEST WHERE ID = 1 FOR UPDATE; "
+                        + "  DBMS_LOB.OPEN(loc, DBMS_LOB.LOB_READWRITE); "
+                        + "  DBMS_LOB.WRITEAPPEND(loc, ?, ?); "
+                        + "  DBMS_LOB.CLOSE(loc); "
+                        + "END;",
+                p -> {
+                    p.setInt(1, appended.length);
+                    p.setBytes(2, appended);
+                },
+                null);
+        connection.commit();
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(topicName("BLOB_TEST"))).hasSize(1);
+
+        SourceRecord record = records.recordsForTopic(topicName("BLOB_TEST")).get(0);
+        VerifyRecord.isValidUpdate(record, "ID", 1);
+
+        // Full post-append value should be surfaced via reselect, not the 4-byte chunk
+        // that DBMS_LOB.WRITEAPPEND actually sent.
+        byte[] expected = Arrays.copyOf(part(BIN_DATA, 0, 8000), 8000 + appended.length);
+        System.arraycopy(appended, 0, expected, 8000, appended.length);
+
+        Struct after = after(record);
+        assertThat(after.get("ID")).isEqualTo(1);
+        assertThat(after.get("VAL_BLOB")).isEqualTo(ByteBuffer.wrap(expected));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#579")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.XSTREAM, reason = "debezium/dbz#579 XStream-specific: LOB_TRIM re-reads BLOB from source")
+    public void shouldStreamUpdateWithReselectedValueForXStreamLobTrim() throws Exception {
+        String ddl = "CREATE TABLE BLOB_TEST ("
+                + "ID numeric(9,0), "
+                + "VAL_BLOB blob, "
+                + "primary key(id))";
+
+        connection.execute(ddl);
+        TestHelper.streamTable(connection, "debezium.blob_test");
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.BLOB_TEST")
+                .with(OracleConnectorConfig.LOB_ENABLED, true)
+                .build();
+
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        Blob initial = createBlob(part(BIN_DATA, 0, 8000));
+        connection.prepareQuery("INSERT INTO debezium.blob_test values (1, ?)", p -> p.setBlob(1, initial), null);
+        connection.commit();
+        consumeRecordsByTopic(1); // discard INSERT
+
+        // Trim the BLOB to the first 5000 bytes. XStream emits LOB_TRIM with no chunk data;
+        // the adapter should reselect and emit an UPDATE whose value reflects the truncated BLOB.
+        connection.execute(
+                "DECLARE loc BLOB; BEGIN "
+                        + "  SELECT VAL_BLOB INTO loc FROM BLOB_TEST WHERE ID = 1 FOR UPDATE; "
+                        + "  DBMS_LOB.TRIM(loc, 5000); "
+                        + "END;");
+        connection.commit();
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(topicName("BLOB_TEST"))).hasSize(1);
+
+        SourceRecord record = records.recordsForTopic(topicName("BLOB_TEST")).get(0);
+        VerifyRecord.isValidUpdate(record, "ID", 1);
+
+        Struct after = after(record);
+        assertThat(after.get("ID")).isEqualTo(1);
+        assertThat(after.get("VAL_BLOB")).isEqualTo(ByteBuffer.wrap(part(BIN_DATA, 0, 5000)));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#579")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.XSTREAM, reason = "debezium/dbz#579 XStream-specific: LOB_ERASE re-reads BLOB from source")
+    public void shouldStreamUpdateWithReselectedValueForXStreamLobErase() throws Exception {
+        String ddl = "CREATE TABLE BLOB_TEST ("
+                + "ID numeric(9,0), "
+                + "VAL_BLOB blob, "
+                + "primary key(id))";
+
+        connection.execute(ddl);
+        TestHelper.streamTable(connection, "debezium.blob_test");
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.BLOB_TEST")
+                .with(OracleConnectorConfig.LOB_ENABLED, true)
+                .build();
+
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        Blob initial = createBlob(part(BIN_DATA, 0, 8000));
+        connection.prepareQuery("INSERT INTO debezium.blob_test values (1, ?)", p -> p.setBlob(1, initial), null);
+        connection.commit();
+        consumeRecordsByTopic(1); // discard INSERT
+
+        // ERASE 100 bytes starting at offset 1. Erased bytes are zero-filled by Oracle,
+        // so the reselected value has zeros over the affected range.
+        connection.execute(
+                "DECLARE loc BLOB; amount integer := 100; BEGIN "
+                        + "  SELECT VAL_BLOB INTO loc FROM BLOB_TEST WHERE ID = 1 FOR UPDATE; "
+                        + "  DBMS_LOB.ERASE(loc, amount, 1); "
+                        + "END;");
+        connection.commit();
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(topicName("BLOB_TEST"))).hasSize(1);
+
+        SourceRecord record = records.recordsForTopic(topicName("BLOB_TEST")).get(0);
+        VerifyRecord.isValidUpdate(record, "ID", 1);
+
+        byte[] expected = Arrays.copyOf(part(BIN_DATA, 0, 8000), 8000);
+        for (int i = 0; i < 100; i++) {
+            expected[i] = 0;
+        }
+
+        Struct after = after(record);
+        assertThat(after.get("ID")).isEqualTo(1);
+        assertThat(after.get("VAL_BLOB")).isEqualTo(ByteBuffer.wrap(expected));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#579")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.XSTREAM, reason = "debezium/dbz#579 XStream-specific: LOB_WRITE cannot be re-read without a primary key")
+    public void shouldStreamUpdateWithUnavailablePlaceholderForXStreamLobWriteWithoutPrimaryKey() throws Exception {
+        String ddl = "CREATE TABLE BLOB_TEST ("
+                + "ID numeric(9,0), "
+                + "VAL_BLOB blob)";
+
+        connection.execute(ddl);
+        TestHelper.streamTable(connection, "debezium.blob_test");
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.BLOB_TEST")
+                .with(OracleConnectorConfig.LOB_ENABLED, true)
+                .build();
+
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        Blob initial = createBlob(part(BIN_DATA, 0, 8000));
+        connection.prepareQuery("INSERT INTO debezium.blob_test values (1, ?)", p -> p.setBlob(1, initial), null);
+        connection.commit();
+        consumeRecordsByTopic(1); // discard INSERT
+
+        // Without a primary key the connector cannot re-select the full BLOB, so the LOB_WRITE
+        // must surface as an UPDATE carrying the unavailable value placeholder rather than the
+        // partial chunk that DBMS_LOB.WRITEAPPEND sent.
+        final byte[] appended = new byte[]{ 0x41, 0x42, 0x43, 0x44 };
+        connection.prepareQuery(
+                "DECLARE loc BLOB; BEGIN "
+                        + "  SELECT VAL_BLOB INTO loc FROM BLOB_TEST WHERE ID = 1 FOR UPDATE; "
+                        + "  DBMS_LOB.OPEN(loc, DBMS_LOB.LOB_READWRITE); "
+                        + "  DBMS_LOB.WRITEAPPEND(loc, ?, ?); "
+                        + "  DBMS_LOB.CLOSE(loc); "
+                        + "END;",
+                p -> {
+                    p.setInt(1, appended.length);
+                    p.setBytes(2, appended);
+                },
+                null);
+        connection.commit();
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(topicName("BLOB_TEST"))).hasSize(1);
+
+        SourceRecord record = records.recordsForTopic(topicName("BLOB_TEST")).get(0);
+        VerifyRecord.isValidUpdate(record);
+
+        Struct after = after(record);
+        assertThat(after.get("ID")).isEqualTo(1);
+        assertThat(after.get("VAL_BLOB")).isEqualTo(getUnavailableValuePlaceholder(config));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#579")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.XSTREAM, reason = "debezium/dbz#579 XStream-specific: LOB_WRITE re-read finds no row at the commit SCN")
+    public void shouldStreamUpdateWithUnavailablePlaceholderForXStreamLobWriteWhenRowDeletedInSameTransaction() throws Exception {
+        String ddl = "CREATE TABLE BLOB_TEST ("
+                + "ID numeric(9,0), "
+                + "VAL_BLOB blob, "
+                + "primary key(id))";
+
+        connection.execute(ddl);
+        TestHelper.streamTable(connection, "debezium.blob_test");
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.BLOB_TEST")
+                .with(OracleConnectorConfig.LOB_ENABLED, true)
+                .build();
+
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        Blob initial = createBlob(part(BIN_DATA, 0, 8000));
+        connection.prepareQuery("INSERT INTO debezium.blob_test values (1, ?)", p -> p.setBlob(1, initial), null);
+        connection.commit();
+        consumeRecordsByTopic(1); // discard INSERT
+
+        // Append to the BLOB and delete the row in the same transaction. The re-select runs
+        // AS OF the commit SCN, where the row no longer exists, so the LOB_WRITE must surface
+        // as an UPDATE carrying the unavailable value placeholder, followed by the DELETE.
+        final byte[] appended = new byte[]{ 0x41, 0x42, 0x43, 0x44 };
+        connection.prepareQuery(
+                "DECLARE loc BLOB; BEGIN "
+                        + "  SELECT VAL_BLOB INTO loc FROM BLOB_TEST WHERE ID = 1 FOR UPDATE; "
+                        + "  DBMS_LOB.OPEN(loc, DBMS_LOB.LOB_READWRITE); "
+                        + "  DBMS_LOB.WRITEAPPEND(loc, ?, ?); "
+                        + "  DBMS_LOB.CLOSE(loc); "
+                        + "  DELETE FROM BLOB_TEST WHERE ID = 1; "
+                        + "END;",
+                p -> {
+                    p.setInt(1, appended.length);
+                    p.setBytes(2, appended);
+                },
+                null);
+        connection.commit();
+
+        SourceRecords records = consumeRecordsByTopic(3);
+        assertThat(records.recordsForTopic(topicName("BLOB_TEST"))).hasSize(3);
+
+        SourceRecord update = records.recordsForTopic(topicName("BLOB_TEST")).get(0);
+        VerifyRecord.isValidUpdate(update, "ID", 1);
+
+        Struct after = after(update);
+        assertThat(after.get("ID")).isEqualTo(1);
+        assertThat(after.get("VAL_BLOB")).isEqualTo(getUnavailableValuePlaceholder(config));
+
+        SourceRecord delete = records.recordsForTopic(topicName("BLOB_TEST")).get(1);
+        VerifyRecord.isValidDelete(delete, "ID", 1);
+
+        SourceRecord tombstone = records.recordsForTopic(topicName("BLOB_TEST")).get(2);
+        VerifyRecord.isValidTombstone(tombstone, "ID", 1);
     }
 
     @Test
@@ -2221,6 +2495,59 @@ public class OracleBlobDataTypesIT extends AbstractAsyncEngineConnectorTest {
         }
         finally {
             TestHelper.dropTable(connection, "DBZ7790");
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1917")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER_BUFFERED)
+    public void shouldRollbackExactlyOneOperation() throws Exception {
+        TestHelper.dropTable(connection, "DBZ1917");
+        try {
+            connection.execute("CREATE TABLE DBZ1917(id numeric(9,0), DATA BLOB, DATA2 BLOB)");
+            TestHelper.streamTable(connection, "DBZ1917");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ1917")
+                    .with(OracleConnectorConfig.LOB_ENABLED, "true")
+                    .build();
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            final Blob insert1Blob = createBlob("insert 1".getBytes(StandardCharsets.UTF_8));
+            connection.prepareQuery("INSERT INTO DBZ1917(id,data) VALUES (1,?)", ps -> ps.setBlob(1, insert1Blob), null);
+            final Blob update1Blob = createBlob("update 1".getBytes(StandardCharsets.UTF_8));
+            connection.executeWithoutCommitting("SAVEPOINT s1");
+            connection.prepareQuery("UPDATE DBZ1917 SET data2 = ? WHERE id = 1", ps -> ps.setBlob(1, update1Blob), null);
+            connection.executeWithoutCommitting("ROLLBACK TO SAVEPOINT s1");
+
+            final Blob update2Blob = createBlob("update 2".getBytes(StandardCharsets.UTF_8));
+            connection.prepareQuery("UPDATE DBZ1917 SET data = ? WHERE id = 1", ps -> ps.setBlob(1, update2Blob), null);
+            final Blob update3Blob = createBlob("update 3".getBytes(StandardCharsets.UTF_8));
+            connection.executeWithoutCommitting("SAVEPOINT s2");
+            connection.prepareQuery("UPDATE DBZ1917 SET data = ? WHERE id = 1", ps -> ps.setBlob(1, update3Blob), null);
+            connection.executeWithoutCommitting("ROLLBACK TO SAVEPOINT s2");
+
+            final Blob update4Blob = createBlob("update 4".getBytes(StandardCharsets.UTF_8));
+            connection.executeWithoutCommitting("SAVEPOINT s3");
+            connection.prepareQuery("UPDATE DBZ1917 SET data2 = ? WHERE id = 1", ps -> ps.setBlob(1, update4Blob), null);
+            connection.executeWithoutCommitting("ROLLBACK TO SAVEPOINT s3");
+            final Blob insert2Blob = createBlob("insert 2".getBytes(StandardCharsets.UTF_8));
+            connection.prepareQuery("INSERT INTO DBZ1917 (id,data) VALUES (2,?)", ps -> ps.setBlob(1, insert2Blob), null);
+            connection.commit();
+
+            List<SourceRecord> tableRecords = consumeRecordsByTopic(2).recordsForTopic(topicName("DBZ1917"));
+            assertThat(tableRecords).hasSize(2);
+            SourceRecord insert1 = tableRecords.get(0);
+            assertThat(getAfterField(insert1, "ID")).isEqualTo(1);
+            assertThat(getAfterField(insert1, "DATA")).isEqualTo(getByteBufferFromBlob(update2Blob));
+            assertThat(getAfterField(insert1, "DATA2")).isNull();
+
+            stopConnector();
+        }
+        finally {
+            TestHelper.dropTable(connection, "DBZ1917");
         }
     }
 

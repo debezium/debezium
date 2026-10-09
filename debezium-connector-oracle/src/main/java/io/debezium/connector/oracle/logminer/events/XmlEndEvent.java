@@ -17,12 +17,20 @@ import io.debezium.relational.TableId;
  */
 public class XmlEndEvent extends LogMinerEvent {
 
+    private final long transactionSequence;
+
     public XmlEndEvent(LogMinerEventRow row) {
         super(row);
+        this.transactionSequence = row.getTransactionSequence() == null ? 1L : row.getTransactionSequence();
     }
 
-    public XmlEndEvent(EventType eventType, Scn scn, TableId tableId, String rowId, String rsId, Instant changeTime) {
+    public XmlEndEvent(EventType eventType, Scn scn, TableId tableId, String rowId, String rsId, Instant changeTime, long transactionSequence) {
         super(eventType, scn, tableId, rowId, rsId, changeTime);
+        this.transactionSequence = transactionSequence;
+    }
+
+    public long getTransactionSequence() {
+        return transactionSequence;
     }
 
 }

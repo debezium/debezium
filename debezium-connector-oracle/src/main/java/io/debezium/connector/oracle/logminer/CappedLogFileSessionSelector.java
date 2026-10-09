@@ -32,7 +32,6 @@ public class CappedLogFileSessionSelector implements LogFileSessionSelector {
 
     private final int minimumLogsPerRedoThread;
     private final int maximumLogsPerRedoThread;
-    private final long redoLogSizeInBytes;
 
     private int logsPerRedoThread;
     private Map<Integer, List<LogFile>> previousBudgetLogsByThread;
@@ -50,13 +49,11 @@ public class CappedLogFileSessionSelector implements LogFileSessionSelector {
      *
      * @param minimumLogsPerRedoThread minimum number of logs to mine per redo thread
      * @param maximumLogsPerRedoThread growth ceiling for the log count per redo thread; a minimum above it takes precedence
-     * @param redoLogSizeInBytes maximum size of an online redo log in bytes
      * @param previouslyMinedBoundary lower bound on the previously mined upper boundary; ignored when null or none
      */
-    public CappedLogFileSessionSelector(int minimumLogsPerRedoThread, int maximumLogsPerRedoThread, long redoLogSizeInBytes, Scn previouslyMinedBoundary) {
+    public CappedLogFileSessionSelector(int minimumLogsPerRedoThread, int maximumLogsPerRedoThread, Scn previouslyMinedBoundary) {
         this.minimumLogsPerRedoThread = minimumLogsPerRedoThread;
         this.maximumLogsPerRedoThread = maximumLogsPerRedoThread;
-        this.redoLogSizeInBytes = redoLogSizeInBytes;
         this.logsPerRedoThread = minimumLogsPerRedoThread;
         if (previouslyMinedBoundary != null && !previouslyMinedBoundary.isNull()) {
             this.previousEffectiveUpperBoundary = previouslyMinedBoundary;
@@ -66,20 +63,22 @@ public class CappedLogFileSessionSelector implements LogFileSessionSelector {
 
     @Override
     public SessionLogSelection selectLogsForSession(LogFilesResult logFilesResult, Scn upperBoundary) {
-        Scn effectiveUpperBoundary = upperBoundary;
-
         // Groups all collected logs by redo thread, sorted in ascending order by sequence.
         // The ordering is important for this algorithm when inspecting what is the first/last logs per thread.
         final Map<Integer, List<LogFile>> logsByThread = logFilesResult.logFiles().stream()
                 .sorted(Comparator.comparing(LogFile::getSequence))
                 .collect(Collectors.groupingBy(LogFile::getThread));
 
+        // Resolved once per selection so the budget and the count derived back out of it share the
+        // same unit; a value that drifted between the two would skew the round trip.
+        final long redoLogSizeInBytes = resolveRedoLogSizeInBytes(logsByThread);
+
         if (deriveLogCountFromSeed) {
             deriveLogCountFromSeed = false;
             // The seeded boundary alone preserves the pre-restart window via the extension, so
             // clamping the derived count costs no coverage; it bounds the slice width carried into
             // catch-up when the pin clears before any stall can apply the growth ceiling.
-            logsPerRedoThread = clampToGrowthCeiling(deriveLogsPerRedoThread(logsByThread));
+            logsPerRedoThread = clampToGrowthCeiling(deriveLogsPerRedoThread(logsByThread, redoLogSizeInBytes));
         }
 
         Map<Integer, List<LogFile>> budgetLogsByThread = getThreadLogsCappedByBudget(logsByThread, (long) logsPerRedoThread * redoLogSizeInBytes);
@@ -88,7 +87,7 @@ public class CappedLogFileSessionSelector implements LogFileSessionSelector {
             // Derive the window width from the stall distance so the budget covers the already mined
             // ground in one step instead of one log per session. The +1 floor preserves the previous
             // linear-growth guarantee.
-            final int derivedLogsPerRedoThread = deriveLogsPerRedoThread(logsByThread);
+            final int derivedLogsPerRedoThread = deriveLogsPerRedoThread(logsByThread, redoLogSizeInBytes);
             logsPerRedoThread = clampToGrowthCeiling(Math.max(derivedLogsPerRedoThread, logsPerRedoThread + 1));
             LOGGER.debug("Capped log set unchanged, growing log count per redo thread to {}.", logsPerRedoThread);
             budgetLogsByThread = getThreadLogsCappedByBudget(logsByThread, (long) logsPerRedoThread * redoLogSizeInBytes);
@@ -98,6 +97,74 @@ public class CappedLogFileSessionSelector implements LogFileSessionSelector {
 
         Map<Integer, List<LogFile>> cappedLogsByThread = extendPastPreviousBoundary(logsByThread, budgetLogsByThread);
 
+        final WindowInspection inspection = inspectWindow(logFilesResult, cappedLogsByThread, logsByThread, upperBoundary);
+
+        if (inspection.allThreadsMineOnline()) {
+            LOGGER.debug("All threads are reading online redo, using all logs and reading up to {}.", upperBoundary);
+            resetWindowGrowth("All threads reading online redo");
+            recordEffectiveUpperBoundary(upperBoundary);
+            return new SessionLogSelection(
+                    logFilesResult.logFiles().stream()
+                            .sorted(Comparator.comparingInt(LogFile::getThread)
+                                    .thenComparing(LogFile::getSequence))
+                            .toList(),
+                    upperBoundary);
+        }
+
+        if (inspection.atEndOfAvailableLogs()) {
+            // The window covers everything on offer, so the growth accrued while catching up has
+            // nothing left to widen. The boundary still comes from the capped path below, as the
+            // logs stop short of the unbounded upper boundary.
+            resetWindowGrowth("All collected logs are within the window");
+        }
+
+        LOGGER.debug("Using capped logs, reading up to {}.", inspection.effectiveUpperBoundary());
+        // Use the calculated effective upper boundary
+        // Resort the capped log files in thread+sequence order for application
+        recordEffectiveUpperBoundary(inspection.effectiveUpperBoundary());
+        return new SessionLogSelection(
+                cappedLogsByThread.entrySet().stream()
+                        .sorted(Map.Entry.comparingByKey())
+                        .flatMap(entry -> entry.getValue().stream())
+                        .toList(),
+                inspection.effectiveUpperBoundary());
+    }
+
+    /**
+     * The outcome of measuring the selected window against the logs that were collected.
+     *
+     * @param allThreadsMineOnline every open redo thread's window ends on the current online redo log,
+     *            so the unbounded upper boundary is covered and every collected log can be mined
+     * @param effectiveUpperBoundary the boundary to mine up to, tightened to the smallest next SCN
+     *            across the threads whose window ends on an archive
+     * @param atEndOfAvailableLogs the window already holds every collected log, so the budget is no
+     *            longer the binding constraint
+     */
+    private record WindowInspection(boolean allThreadsMineOnline, Scn effectiveUpperBoundary, boolean atEndOfAvailableLogs) {
+    }
+
+    /**
+     * Measures the selected window against the collected logs.
+     *
+     * <p>Two independent signals come out of this. A window ending on the current online redo log for
+     * every open redo thread covers the unbounded upper boundary, so the session may mine every log up
+     * to it. Separately, a window already holding every collected log means the budget stopped being
+     * the binding constraint. A stream that never collects an online redo log, such as a physical
+     * standby or archive-only mining, can never raise the first signal, leaving the second as its only
+     * indication that there is nothing further to mine. The two are kept apart because only the first
+     * makes the unbounded upper boundary safe to record.
+     *
+     * @param logFilesResult the collected logs and the redo thread state they were collected against
+     * @param cappedLogsByThread the window selected for this session, grouped by redo thread
+     * @param logsByThread every collected log, grouped by redo thread
+     * @param upperBoundary the boundary to tighten from
+     * @return the measurements taken of the window
+     */
+    private WindowInspection inspectWindow(LogFilesResult logFilesResult,
+                                           Map<Integer, List<LogFile>> cappedLogsByThread,
+                                           Map<Integer, List<LogFile>> logsByThread,
+                                           Scn upperBoundary) {
+        Scn effectiveUpperBoundary = upperBoundary;
         boolean allThreadsMineOnline = true;
         for (RedoThread redoThread : logFilesResult.redoThreadState().getThreads()) {
             if (redoThread.isOpen()) {
@@ -124,35 +191,30 @@ public class CappedLogFileSessionSelector implements LogFileSessionSelector {
             }
         }
 
-        if (allThreadsMineOnline) {
-            LOGGER.debug("All threads are reading online redo, using all logs and reading up to {}.", upperBoundary);
-            if (logsPerRedoThread > minimumLogsPerRedoThread) {
-                logsPerRedoThread = minimumLogsPerRedoThread;
-                LOGGER.debug("All threads reading online redo, resetting log count per redo thread to {}.", logsPerRedoThread);
-            }
-            // Growth only widens a window capped below the online redo logs; after an online pass
-            // there is no cap to widen, so clear the baseline to avoid growing the log count on
-            // the next iteration only to reset it within the same call.
-            previousBudgetLogsByThread = null;
-            recordEffectiveUpperBoundary(upperBoundary);
-            return new SessionLogSelection(
-                    logFilesResult.logFiles().stream()
-                            .sorted(Comparator.comparingInt(LogFile::getThread)
-                                    .thenComparing(LogFile::getSequence))
-                            .toList(),
-                    upperBoundary);
-        }
+        // Restricted to streams that collected no online redo log so that mining from a primary keeps
+        // resetting solely off the branch above. A larger budget cannot select more than the window
+        // already holds, so raising this signal can never narrow the window it was raised for.
+        final boolean atEndOfAvailableLogs = !allThreadsMineOnline
+                && cappedLogsByThread.equals(logsByThread)
+                && logsByThread.values().stream().flatMap(List::stream).allMatch(LogFile::isArchive);
 
-        LOGGER.debug("Using capped logs, reading up to {}.", effectiveUpperBoundary);
-        // Use the calculated effective upper boundary
-        // Resort the capped log files in thread+sequence order for application
-        recordEffectiveUpperBoundary(effectiveUpperBoundary);
-        return new SessionLogSelection(
-                cappedLogsByThread.entrySet().stream()
-                        .sorted(Map.Entry.comparingByKey())
-                        .flatMap(entry -> entry.getValue().stream())
-                        .toList(),
-                effectiveUpperBoundary);
+        return new WindowInspection(allThreadsMineOnline, effectiveUpperBoundary, atEndOfAvailableLogs);
+    }
+
+    /**
+     * Returns the window to its configured width once growth has nothing left to widen.
+     *
+     * @param reason why the growth is being reset, for the debug log
+     */
+    private void resetWindowGrowth(String reason) {
+        if (logsPerRedoThread > minimumLogsPerRedoThread) {
+            logsPerRedoThread = minimumLogsPerRedoThread;
+            LOGGER.debug("{}, resetting log count per redo thread to {}.", reason, logsPerRedoThread);
+        }
+        // Growth only widens a window capped below the logs on offer; once the window holds them all
+        // there is no cap to widen, so clear the baseline to avoid growing the log count on the next
+        // iteration only to reset it within the same call.
+        previousBudgetLogsByThread = null;
     }
 
     /**
@@ -172,7 +234,35 @@ public class CappedLogFileSessionSelector implements LogFileSessionSelector {
         return Math.min(logCount, Math.max(maximumLogsPerRedoThread, minimumLogsPerRedoThread));
     }
 
-    private int deriveLogsPerRedoThread(Map<Integer, List<LogFile>> logsByThread) {
+    /**
+     * Resolves the size of a full redo log, in bytes, from the collected logs.
+     *
+     * The budget is carried in bytes rather than in a log count so that a burst of forced log
+     * switches, which archives logs far smaller than a full redo log, is swept into a single mining
+     * session instead of crawling one small log at a time. The unit that converts the configured log
+     * count into that byte budget is the largest collected log, because an archive is a copy of a
+     * filled redo log and a forced switch only ever makes it smaller, never larger. Reading the unit
+     * back off the logs keeps it correct wherever the session mines, including a physical standby
+     * whose local online redo logs may be sized differently from the primary's.
+     *
+     * @param logsByThread the collected logs grouped by redo thread
+     * @return the largest collected log size in bytes, or {@code 0} when no sizes are available
+     */
+    private static long resolveRedoLogSizeInBytes(Map<Integer, List<LogFile>> logsByThread) {
+        return logsByThread.values().stream()
+                .flatMap(List::stream)
+                .mapToLong(LogFile::getBytes)
+                .max()
+                .orElse(0L);
+    }
+
+    private int deriveLogsPerRedoThread(Map<Integer, List<LogFile>> logsByThread, long redoLogSizeInBytes) {
+        if (redoLogSizeInBytes <= 0) {
+            // Without a usable unit there is no byte span to translate, so the configured minimum is
+            // the only width the selection can promise.
+            return minimumLogsPerRedoThread;
+        }
+
         // The previously mined boundary marks ground already covered; the per-thread byte span up
         // to it re-expresses the window width required to cover that ground, so a seeded restart
         // or a stalled budget resumes at that width rather than re-climbing from the minimum.
@@ -204,7 +294,11 @@ public class CappedLogFileSessionSelector implements LogFileSessionSelector {
                 accumulatedSize += logFile.getBytes();
                 cappedLogs.add(logFile);
 
-                if (accumulatedSize >= thresholdBytes) {
+                // The log count is the user-facing contract, so the byte budget never closes the
+                // window below it. The unit resolved from the collected logs already implies this,
+                // as no single log can exceed it, but stating it here keeps the guarantee from
+                // resting on that and holds when no log reports a size.
+                if (accumulatedSize >= thresholdBytes && cappedLogs.size() >= minimumLogsPerRedoThread) {
                     break;
                 }
             }

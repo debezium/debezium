@@ -75,6 +75,7 @@ import com.github.shyiko.mysql.binlog.network.ServerException;
 
 import io.debezium.DebeziumException;
 import io.debezium.annotation.SingleThreadAccess;
+import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMode;
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.BinlogConnectorConfig.SecureConnectionMode;
@@ -102,6 +103,7 @@ import io.debezium.snapshot.SnapshotterService;
 import io.debezium.time.Conversions;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
+import io.debezium.util.Strings;
 import io.debezium.util.Threads;
 
 /**
@@ -232,7 +234,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         }
 
         eventHandlers.put(EventType.VIEW_CHANGE, (event) -> viewChange(effectiveOffsetContext, event));
-        eventHandlers.put(EventType.XA_PREPARE, (event) -> prepareTransaction(effectiveOffsetContext, event));
+        eventHandlers.put(EventType.XA_PREPARE, (event) -> handleTransactionCompletion(partition, effectiveOffsetContext, event));
         eventHandlers.put(EventType.XID, (event) -> handleTransactionCompletion(partition, effectiveOffsetContext, event));
 
         // Conditionally register ROWS_QUERY handler to parse SQL statements.
@@ -820,7 +822,9 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         String upperCasedStatementBegin = removeSetStatement(sql).toUpperCase();
 
         if (upperCasedStatementBegin.startsWith("XA ")) {
-            // This is an XA transaction, and we currently ignore these and do nothing ...
+            if (upperCasedStatementBegin.startsWith("XA START")) {
+                handleXaStart(partition, offsetContext, event, command.getThreadId());
+            }
             return;
         }
         if (!TRUNCATE_STATEMENT_PATTERN.matcher(sql).matches() && schema.ddlFilter().test(sql)) {
@@ -1115,14 +1119,12 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
     }
 
     /**
-     * Handle a {@link EventType#XA_PREPARE} event.
+     * Handle a {@link EventType#QUERY} event with an {@code XA START} statement.
      *
      * @param event the database change data event to be processed; may not be null
      * @throws InterruptedException if this thread is interrupted while blocking
      */
-    protected void prepareTransaction(O offsetContext, Event event) throws InterruptedException {
-        LOGGER.debug("XA Prepare event: {}", event);
-        // do nothing
+    protected void handleXaStart(P partition, O offsetContext, Event event, Long threadId) throws InterruptedException {
     }
 
     protected void handleTransactionBegin(P partition, O offsetContext, Event event, Long threadId) throws InterruptedException {
@@ -1559,7 +1561,8 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
 
     protected abstract SSLMode sslModeFor(SecureConnectionMode mode);
 
-    private SSLSocketFactory getBinlogSslSocketFactory(BinlogConnectorConfig connectorConfig, BinlogConnectorConnection connection) {
+    @VisibleForTesting
+    SSLSocketFactory getBinlogSslSocketFactory(BinlogConnectorConfig connectorConfig, BinlogConnectorConnection connection) {
         String acceptedTlsVersion = connection.getSessionVariableForSslVersion();
         if (!isNullOrEmpty(acceptedTlsVersion)) {
             SSLMode sslMode = sslModeFor(connectorConfig.getSslMode());
@@ -1570,7 +1573,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
             final char[] trustPasswordArray = connection.connectionConfig().sslTrustStorePassword();
             final String trustFilename = connection.connectionConfig().sslTrustStore();
             KeyManager[] keyManagers = null;
-            if (keyFilename != null) {
+            if (!Strings.isNullOrBlank(keyFilename)) {
                 try {
                     KeyStore ks = connection.loadKeyStore(keyFilename, keyPasswordArray);
 
@@ -1586,7 +1589,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
             TrustManager[] trustManagers;
             try {
                 KeyStore ks = null;
-                if (trustFilename != null) {
+                if (!Strings.isNullOrBlank(trustFilename)) {
                     ks = connection.loadKeyStore(trustFilename, trustPasswordArray);
                 }
 

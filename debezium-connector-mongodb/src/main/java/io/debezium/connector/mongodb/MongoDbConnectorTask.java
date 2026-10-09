@@ -100,12 +100,27 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
 
     @Override
     public ChangeEventSourceCoordinator<MongoDbPartition, MongoDbOffsetContext> start(Configuration config) {
+        try {
+            return startTask(config);
+        }
+        catch (RuntimeException | Error initializationException) {
+            try {
+                closeResources();
+            }
+            catch (RuntimeException | Error resourceReleasingException) {
+                initializationException.addSuppressed(resourceReleasingException);
+            }
+            throw initializationException;
+        }
+    }
+
+    private ChangeEventSourceCoordinator<MongoDbPartition, MongoDbOffsetContext> startTask(Configuration config) {
         final MongoDbConnectorConfig connectorConfig = new MongoDbConnectorConfig(config);
         final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
 
         this.taskName = "task" + config.getInteger(MongoDbConnectorConfig.TASK_ID);
 
-        this.connectionContext = new MongoDbConnectionContext(config);
+        this.connectionContext = taskContext.getConnectionContext();
 
         final Schema structSchema = connectorConfig.getSourceInfoStructMaker().schema();
         this.schema = new MongoDbSchema(connectorConfig, taskContext, connectorConfig.getTopicNamingStrategy(MongoDbConnectorConfig.TOPIC_NAMING_STRATEGY),
@@ -162,15 +177,18 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
                     signalProcessor,
                     connectorConfig.getServiceRegistry().tryGetService(DebeziumHeaderProducer.class));
 
-            validate(connectorConfig, MongoDbConnections.create(config, dispatcher, previousOffsets.getTheOnlyPartition()), previousOffsets,
-                    snapshotterService.getSnapshotter());
+            try (var connection = MongoDbConnections.create(connectionContext, dispatcher, previousOffsets.getTheOnlyPartition())) {
+                validate(connectorConfig, connection, previousOffsets, snapshotterService.getSnapshotter());
+            }
 
             // Validate guardrail limits for captured collections to prevent loading excessive collection schemas into memory
             if (connectorConfig.getGuardrailCollectionsMax() <= 0) {
                 LOGGER.info("Guardrail validation skipped");
             }
             else {
-                validateGuardrailLimits(connectorConfig, MongoDbConnections.create(config, dispatcher, previousOffsets.getTheOnlyPartition()));
+                try (var connection = MongoDbConnections.create(connectionContext, dispatcher, previousOffsets.getTheOnlyPartition())) {
+                    validateGuardrailLimits(connectorConfig, connection);
+                }
             }
 
             NotificationService<MongoDbPartition, MongoDbOffsetContext> notificationService = new NotificationService<>(getNotificationChannels(),
@@ -289,16 +307,24 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
     public void doStop() {
         PreviousContext previousLogContext = this.taskContext.configureLoggingContext(taskName);
         try {
-            if (schema != null) {
-                schema.close();
-            }
+            closeResources();
+        }
+        finally {
+            previousLogContext.restore();
+        }
+    }
 
+    @SuppressWarnings("try")
+    private void closeResources() {
+        try (var ownedContext = taskContext; var ownedSchema = schema) {
             if (queue != null) {
                 queue.close();
             }
         }
         finally {
-            previousLogContext.restore();
+            schema = null;
+            queue = null;
+            connectionContext = null;
         }
     }
 

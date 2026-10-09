@@ -1,4 +1,4 @@
-brolda// Category: debezium-using
+// Category: debezium-using
 // Type: assembly
 [id="debezium-connector-for-mongodb"]
 = {prodname} connector for MongoDB
@@ -109,11 +109,21 @@ You specify the replica member that the connector reads from by configuring the 
 If you do not specify a read preference, the driver default of `primary` applies, and the connector streams changes from the primary node.
 
 To reduce the load on the primary, it's possible to configure the connector to read from a secondary node, by setting `readPreference=secondaryPreferred`.
-Under normal operating conditions, configuring the connector to read from a secondary node does not significantly increase data-capture latency. 
+Under normal operating conditions, configuring the connector to read from a secondary node does not significantly increase data-capture latency.
 However, events captured from a secondary can arrive later than they would from the primary due to resource contention or network latency.
-Additional latency can also occur because change streams emit events only after changes are majority committed. 
-A change is majority committed when a majority of voting replica set members confirm that they have written the change to their journals. 
+Additional latency can also occur because change streams emit events only after changes are majority committed.
+A change is majority committed when a majority of voting replica set members confirm that they have written the change to their journals.
 As a result, a secondary node can emit an event only after it receives confirmation that the change has been majority committed.
+
+When the connection string identifies a replica set and does not set `directConnection=true`, the connector periodically verifies that the member serving the change stream still satisfies the configured read preference.
+The verification interval is controlled by xref:mongodb-property-mongodb-heartbeat-frequency-ms[`mongodb.heartbeat.frequency.ms`], so the connector does not detect role changes instantaneously.
+After a replica set election, the MongoDB driver's topology view must be updated and the next verification must run before the connector detects that the member's role changed.
+During this interval, the connector might continue to receive change stream events from that member.
+If a replica set election causes that member to stop satisfying the read preference, the connector closes the change stream and resumes it on an eligible member from the last processed offset.
+For the exact `primary` and `secondary` modes, if no eligible member is available, change stream consumption waits while the connector task remains running.
+Consumption resumes from the last processed offset when an eligible member becomes available.
+The `primaryPreferred` and `secondaryPreferred` modes continue to use the fallback behavior defined by the MongoDB driver.
+When the connector connects to a sharded cluster, `mongos` is responsible for applying the read preference to the members of each shard.
 
 // Type: assembly
 // ModuleID: how-debezium-mongodb-connectors-work
@@ -352,6 +362,11 @@ include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.ado
 === Incremental snapshots
 
 include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+3]
+
+Although incremental snapshot queries return documents sorted by `_id`, the connector does not preserve that order when emitting incremental snapshot records, even when xref:mongodb-property-snapshot-max-threads[`snapshot.max.threads`] is set to `1`.
+If the connector restarts during an incremental snapshot, or receives a `resume-snapshot` signal after a `pause-snapshot` signal, it re-reads the current snapshot window to avoid skipping documents that have not been emitted.
+Re-reading the window can produce duplicate `read` events for documents already emitted, consistent with at-least-once delivery.
+The potential replay volume scales with the window size, which is based on the product of xref:mongodb-property-incremental-snapshot-chunk-size[`incremental.snapshot.chunk.size`] and xref:mongodb-property-snapshot-max-threads[`snapshot.max.threads`].
 
 [WARNING]
 ====
@@ -737,10 +752,11 @@ This example uses a document with an integer identifier, but any valid MongoDB d
 === Change event values
 
 The value in a change event is a bit more complicated than the key. Like the key, the value has a `schema` section and a `payload` section. The `schema` section contains the schema that describes the `Envelope` structure of the `payload` section, including its nested fields. Change events for operations that create, update or delete data all have a value payload with an envelope structure.
-The `after`, `before`, and `updateDescription.updatedFields` fields contain MongoDB Extended JSON strings.
+The `after`, `before`, `updateDescription.updatedFields`, and `source.resume_token` fields contain MongoDB Extended JSON strings.
 The connector's xref:mongodb-property-json-serialization-mode[`json.serialization.mode`] property controls how the connector serializes BSON values in these fields.
 By default, the connector preserves the legacy behavior: it serializes full document fields by using MongoDB Extended JSON v1 strict representation and serializes `updateDescription.updatedFields` by using MongoDB Extended JSON v2 relaxed representation.
 To use MongoDB Extended JSON v2 canonical representation, set `json.serialization.mode` to `extended`.
+For details about the event's resume token, see xref:mongodb-resume-tokens[Resume tokens in source metadata].
 
 Consider the same sample document that was used to show an example of a change event key:
 
@@ -762,6 +778,36 @@ The value portion of a change event for a change to this document is described f
 * <<mongodb-update-events,_update_ events>>
 * <<mongodb-delete-events,_delete_ events>>
 * <<mongodb-tombstone-events,Tombstone events>>
+
+[[mongodb-resume-tokens]]
+==== Resume tokens in source metadata
+
+For streaming create, update, and delete events, the optional `source.resume_token` field contains the complete resume token from the MongoDB change stream event's `_id` field.
+MongoDB replacement operations also include their event's token.
+The field has the Kafka Connect `STRING` type and the `io.debezium.data.Json` logical type.
+It contains an Extended JSON document, including `_data` and any other token fields, such as `_typeBits`, that MongoDB supplies.
+The connector does not decode or modify the contents of the token.
+
+The xref:mongodb-property-json-serialization-mode[`json.serialization.mode`] property controls the token's JSON representation.
+The `legacy` and `strict` modes use Extended JSON v1 strict representation, `extended` uses Extended JSON v2 canonical representation, and `relaxed` uses Extended JSON v2 relaxed representation.
+Binary values within the token use the binary representation of the selected Extended JSON mode.
+The token document itself is not Base64-encoded in the event payload.
+The connector continues to store its internal resume offset as Base64-encoded BSON, and change event keys are unchanged.
+
+Initial, blocking, and incremental snapshot read events have a null `source.resume_token`, because each read represents a document copied from a collection rather than a change stream event.
+The snapshot's starting resume position is not a token for an individual read event.
+Heartbeat and transaction metadata messages do not have this data event source field, and tombstone messages have a null value.
+For a xref:mongodb-property-cursor-oversize-handling-mode[supported split change stream event], the connector emits one reconstructed event with the final fragment's resume token.
+
+To resume an independent change stream after an event, parse the field's Extended JSON string into a BSON document and pass that document to MongoDB's `resumeAfter` option.
+Use the same change stream scope, pipeline, and options, including full document and pre-image settings.
+The token must still be valid in MongoDB's retained oplog history.
+Resuming after a reconstructed split event starts after its final fragment.
+
+Treat resume tokens as opaque MongoDB metadata.
+Do not use their textual representation as a permanent identifier across serialization modes or change stream configurations.
+When `updateLookup` supplies a full document, replaying an event can return newer document contents even if the event token is unchanged.
+Document field exclusion and masking settings do not modify the token's contents.
 
 [id="mongodb-create-events"]
 === _create_ events
@@ -842,7 +888,7 @@ The following example shows the value portion of a change event that the connect
             },
             {
               "type": "string",
-              "optional": false,
+              "optional": true,
               "field": "collection"
             },
             {
@@ -1177,8 +1223,8 @@ The MongoDB connector uses MongoDB's change streams to capture the changes, so t
 See the MongoDB documentation for setting up a https://docs.mongodb.com/manual/replication/[replica set] or https://docs.mongodb.com/manual/sharding/[sharded cluster].
 Also, be sure to understand how to enable https://docs.mongodb.com/manual/tutorial/deploy-replica-set-with-keyfile-access-control/#deploy-repl-set-with-auth[access control and authentication] with replica sets.
 
-You must also have a MongoDB user that has the appropriate roles to read the `admin` database where the oplog can be read. Additionally, the user must also be able to read the `config` database in the configuration server of a sharded cluster and must have `listDatabases` privilege action.
-When change streams are used (the default) the user also must have cluster-wide privilege actions `find` and `changeStream`.
+You must also have a MongoDB user that has the appropriate roles to read the `admin` database where the oplog can be read. Additionally, the user must also be able to read the `config` database in the configuration server of a sharded cluster, and if the connector's xref:mongodb-property-capture-scope[`capture.scope`] property is set to `deployment` (the default), the user must have the `listDatabases` privilege action.
+When change streams are used (the default) the user also must have the `find` and `changeStream` privilege actions. If `capture.scope` is set to `deployment`, these actions must be granted cluster-wide; if `capture.scope` is set to `database` or `collection`, see xref:required-user-permissions[Required user permissions] for the scope-dependent permissions to grant instead.
 
 When you intend to utilize pre-image and populate the `before` field, you need to first enable `changeStreamPreAndPostImages` for a collection using `db.createCollection()`, `create`, or `collMod`.
 
@@ -1271,14 +1317,7 @@ The {prodname} xref:kc-tutorial.adoc[tutorial] walks you through using these ima
 endif::community[]
 
 ifdef::product[]
-You can use either of the following methods to deploy a {prodname} MongoDB connector:
-
-* xref:openshift-streams-mongodb-connector-deployment[Use {StreamsName} to automatically create an image that includes the connector plug-in].
-+
-This is the preferred method.
-* xref:deploying-debezium-mongodb-connectors[Build a custom Kafka Connect container image from a Dockerfile].
-This Containerfile deployment method is deprecated.
-The instructions for this method are scheduled for removal in future versions of the documentation.
+To deploy a {prodname} MongoDB connector, use {StreamsName} to automatically create a Kafka Connect image that includes the connector plug-in.
 
 .Additional resources
 
@@ -1296,191 +1335,6 @@ include::{partialsdir}/modules/all-connectors/con-connector-streams-deployment.a
 
 include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-mongodb-connector.adoc[leveloffset=+1]
 
-// Type: procedure
-[id="deploying-debezium-mongodb-connectors"]
-=== Deploying a {prodname} MongoDB connector by building a custom Kafka Connect container image from a Dockerfile
-
-To deploy a {prodname} MongoDB connector, you must build a custom Kafka Connect container image that contains the {prodname} connector archive and then push this container image to a container registry.
-You then create two custom resources (CRs):
-
-* A `KafkaConnect` CR that defines your Kafka Connect instance.
-  The `image` property in the CR specifies the name of the container image that you create to run your {prodname} connector.
-  You apply this CR to the OpenShift instance where link:https://access.redhat.com/products/red-hat-amq#streams[Red Hat {StreamsName}] is deployed.
-  {StreamsName} offers operators and images that bring Apache Kafka to OpenShift.
-
-* A `KafkaConnector` CR that defines your {prodname} MongoDB connector.
-  Apply this CR to the same OpenShift instance where you apply the `KafkaConnect` CR.
-
-.Prerequisites
-
-* MongoDB is running and you completed the steps to xref:setting-up-mongodb-to-work-with-debezium[set up MongoDB to work with a {prodname} connector].
-
-* {StreamsName} is deployed on OpenShift and is running Apache Kafka and Kafka Connect.
-  For more information, see link:{LinkDeployManageStreamsOpenShift}[{NameDeployManageStreamsOpenShift}].
-
-* Podman or Docker is installed.
-
-* You have an account and permissions to create and manage containers in the container registry (such as `quay.io` or `docker.io`) to which you plan to add the container that will run your Debezium connector.
-
-.Procedure
-
-. Create the {prodname} MongoDB container for Kafka Connect:
-
-.. Create a Dockerfile that uses `{DockerKafkaConnect}` as the base image.
-For example, from a terminal window, enter the following command:
-+
-=====================================================================
-
-[source,shell,subs="+attributes,+quotes"]
-----
-cat <<EOF >debezium-container-for-{context}.yaml
-FROM {DockerKafkaConnect}
-USER root:root
-RUN mkdir -p /opt/kafka/plugins/debezium
-RUN cd /opt/kafka/plugins/debezium/ \
-&& curl -O {red-hat-maven-repository}debezium/debezium-connector-{connector-file}/{debezium-version}-redhat-{debezium-build-number}/debezium-connector-{connector-file}-{debezium-version}-redhat-{debezium-build-number}-plugin.zip \
-&& unzip debezium-connector-{connector-file}-{debezium-version}-redhat-{debezium-build-number}-plugin.zip \
-&& rm debezium-connector-{connector-file}-{debezium-version}-redhat-{debezium-build-number}-plugin.zip
-RUN cd /opt/kafka/plugins/debezium/
-USER 1001
-EOF
-----
-=====================================================================
-+
-The following list describes the purpose of select lines in the preceding command:
-
-`cat <<EOF >debezium-container-for-{context}.yaml`::
-You can specify any file name that you want.
-
-`RUN mkdir -p /opt/kafka/plugins/debezium`::
-Specifies the path to your Kafka Connect plug-ins directory.
-If your Kafka Connect plug-ins directory is in a different location, replace this path with the actual path of your directory.
-+
-The command creates a Dockerfile with the name `debezium-container-for-mongodb.yaml` in the current directory.
-
-.. Build the container image from the `debezium-container-for-mongodb.yaml` Docker file that you created in the previous step.
-From the directory that contains the file, open a terminal window and enter one of the following commands:
-+
-[source,shell,options="nowrap"]
-----
-podman build -t debezium-container-for-mongodb:latest .
-----
-+
-[source,shell,options="nowrap"]
-----
-docker build -t debezium-container-for-mongodb:latest .
-----
-The preceding commands build a container image with the name `debezium-container-for-mongodb`.
-
-.. Push your custom image to a container registry, such as `quay.io` or an internal container registry.
-The container registry must be available to the OpenShift instance where you want to deploy the image.
-Enter one of the following commands:
-+
-[source,shell,subs="+quotes"]
-----
-podman push _<myregistry.io>_/debezium-container-for-mongodb:latest
-----
-+
-[source,shell,subs="+quotes"]
-----
-docker push _<myregistry.io>_/debezium-container-for-mongodb:latest
-----
-
-.. Create a new {prodname} MongoDB `KafkaConnect` custom resource (CR).
-For example, create a `KafkaConnect` CR with the name `dbz-connect.yaml` that specifies `annotations` and `image` properties.
-The following example shows an excerpt from a `dbz-connect.yaml` file that describes a `KafkaConnect` custom resource.
-+
-=====================================================================
-[source,yaml,subs="+attributes"]
-----
-apiVersion: {KafkaConnectApiVersion}
-kind: KafkaConnect
-metadata:
-  name: my-connect-cluster
-  annotations:
-    strimzi.io/use-connector-resources: "true"
-spec:
-  #...
-  image: debezium-container-for-mongodb
-
-  ...
-----
-=====================================================================
-+
-The following list describes select fields in the preceding `KafkaConnect` custom resource example:
-
-`metadata.annotations`::
-`metadata.annotations` indicates to the Cluster Operator that `KafkaConnector` resources are used to configure connectors in this Kafka Connect cluster.
-
-`spec.image`::
-`spec.image` specifies the name of the image that you created to run your Debezium connector.
-This property overrides the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable in the Cluster Operator.
-
-.. Apply the `KafkaConnect` CR to the OpenShift Kafka Connect environment by entering the following command:
-+
-[source,shell,options="nowrap"]
-----
-oc create -f dbz-connect.yaml
-----
-+
-The command adds a Kafka Connect instance that specifies the name of the image that you created to run your {prodname} connector.
-
-. Create a `KafkaConnector` custom resource that configures your {prodname} MongoDB connector instance.
-+
-You configure a {prodname} MongoDB connector in a `.yaml` file that specifies the configuration properties for the connector.
-The connector configuration might instruct {prodname} to produce change events for a subset of MongoDB replica sets or sharded clusters.
-Optionally, you can set properties that filter out collections that are not needed.
-+
-The following example configures a {prodname} connector that connects to a MongoDB replica set `rs0` at port `27017` on `192.168.99.100`,
-and captures changes that occur in the `inventory` collection.
-`inventory-connector-{context}` is the logical name of the replica set.
-+
-=====================================================================
-.MongoDB `inventory-connector.yaml`
-[source,yaml,options="nowrap",subs="+attributes"]
-----
-apiVersion: {KafkaConnectApiVersion}
-kind: KafkaConnector
-metadata:
-  name: inventory-connector-{context}
-  labels:
-    strimzi.io/cluster: my-connect-cluster
-spec:
-  class: io.debezium.connector.mongodb.MongoDbConnector
-  config:
-    mongodb.connection.string: mongodb://192.168.99.100:27017/?replicaSet=rs0
-    topic.prefix: inventory-connector-{context}
-    collection.include.list: inventory[.]*
-----
-=====================================================================
-+
-The following list describes select fields in the preceding `KafkaConnector` configuration example:
-
-`metadata.name`::
-The name that is used to register the connector with Kafka Connect.
-
-`spec.class`::
-The name of the MongoDB connector class.
-
-`config.mongodb.connection.string`::
-The host addresses to use to connect to the MongoDB replica set.
-
-`config.topic.prefix`::
-The _logical name_ of the MongoDB replica set.
-The logical name forms a namespace for generated events, and is used in the names of the Kafka topics to which the connector writes, the Kafka Connect schema names, and the namespaces of the corresponding Avro schema when the Avro converter is used.
-
-`config.collection.include.list`::
-An optional list of regular expressions that match the collection namespaces (for example, __<dbName>.<collectionName>__) of all collections to be monitored.
-
-. Create your connector instance with Kafka Connect.
-For example, if you saved your `KafkaConnector` resource in the `inventory-connector.yaml` file, you would run the following command:
-+
-[source,shell,options="nowrap"]
-----
-oc apply -f inventory-connector.yaml
-----
-+
-The preceding command registers `inventory-connector` and the connector starts to run against the `inventory` collection as defined in the `KafkaConnector` CR.
 endif::product[]
 
 ifdef::community[]
@@ -1639,7 +1493,13 @@ If you change the name value, after a restart, instead of continuing to emit eve
 |[[mongodb-property-mongodb-authentication-class]]<<mongodb-property-mongodb-authentication-class, `+mongodb.authentication.class+`>>
 |_DefaultMongoDbAuthProvider_
 |A full Java class name that is an implementation of the io.debezium.connector.mongodb.connection.MongoDbAuthProvider interface.
-This class handles setting the credentials on the MongoDB connection (called on each app boot).
+This class configures credentials for MongoDB clients.
+Each connector task owns an instance, shared by its snapshot and streaming operations.
+Connection validation uses a separate instance.
+Implementations that allocate resources, such as authentication clients or HTTP connection pools, should override `close()` to release them.
+The connector calls `close()` after the clients using the provider are closed, and also if initialization fails.
+Implementations must therefore support cleanup after a partially completed `init()`.
+The default `close()` implementation does nothing, so existing providers do not need to implement it.
 Default behavior uses the xref:mongodb-property-mongodb-user[`mongodb.user`], xref:mongodb-property-mongodb-password[`mongodb.password`], and xref:mongodb-property-mongodb-authsource[`mongodb.authsource`] properties according to each of their documentation,
 but other implementations may use them differently or ignore them altogether.
 Note that any setting in xref:mongodb-property-mongodb-connection-string[`mongodb.connection.string`] will override settings set by this class
@@ -1769,11 +1629,11 @@ Set xref:mongodb-property-capture-mode-full-update-type[capture.mode.full.update
 
 |[[mongodb-property-json-serialization-mode]]<<mongodb-property-json-serialization-mode, `+json.serialization.mode+`>>
 |`legacy`
-a|Specifies the MongoDB Extended JSON serialization mode that the connector uses for MongoDB document fields in change event values, including `after`, `before`, and `updateDescription.updatedFields`.
+a|Specifies the MongoDB Extended JSON serialization mode that the connector uses for BSON documents in change event values, including `after`, `before`, `updateDescription.updatedFields`, and `source.resume_token`.
 Set this property to one of the following values:
 
 `legacy`:: Preserves the historical JSON behavior.
-The connector serializes full document fields, such as `after` and `before`, by using the MongoDB Extended JSON v1 strict representation, and serializes `updateDescription.updatedFields` by using the MongoDB Extended JSON v2 relaxed representation.
+The connector serializes full document fields, such as `after` and `before`, and `source.resume_token` by using the MongoDB Extended JSON v1 strict representation, and serializes `updateDescription.updatedFields` by using the MongoDB Extended JSON v2 relaxed representation.
 
 `strict`:: Uses the MongoDB Extended JSON v1 strict representation.
 
@@ -1781,7 +1641,7 @@ The connector serializes full document fields, such as `after` and `before`, by 
 
 `relaxed`:: Uses the MongoDB Extended JSON v2 relaxed representation.
 +
-Compared with the default `legacy` mode, the non-default settings can change how BSON values are represented inside the JSON strings in `after`, `before`, and `updateDescription.updatedFields`.
+Compared with the default `legacy` mode, the non-default settings can change how BSON values are represented inside the JSON strings in `after`, `before`, `updateDescription.updatedFields`, and `source.resume_token`.
 For example, DateTime, Binary, RegExp, and Int64 values can use different Extended JSON forms.
 For the complete list of BSON type representations, see the MongoDB documentation for https://www.mongodb.com/docs/manual/reference/mongodb-extended-json-v1/[Extended JSON v1] and https://www.mongodb.com/docs/manual/reference/mongodb-extended-json/[Extended JSON v2].
 
@@ -1811,13 +1671,17 @@ For the complete list of BSON type representations, see the MongoDB documentatio
 This setting does not affect the representation of document identifiers in change event keys.
 
 |[[mongodb-property-capture-start-op-time]]<<mongodb-property-capture-start-op-time, `+capture.start.op.time+`>>
-|No default value
+|`-1` (disabled)
 |Specifies the https://www.mongodb.com/docs/manual/changeStreams/#ref-start-time-id1[startAtOperationTime] change stream parameter.
-Set the value to be a long representation of the BSON timestamp.
+Set the value to the packed 64-bit long representation of a BSON timestamp, which contains both seconds and the operation increment.
+This value is not a Unix timestamp in seconds or milliseconds.
+The connector uses it only if no offset is available when streaming starts.
+For readable timestamp formats, use xref:mongodb-property-capture-start-timestamp[`capture.start.timestamp`].
+You cannot configure both properties unless `capture.start.op.time` is `-1` (disabled).
 
 [IMPORTANT]
 ====
-The ability to set the `capture.start.op.time`` property to override the normal offset-based behavior and begin streaming from a specific timestamp is a Technology Preview feature.
+The ability to set the `capture.start.op.time` property to begin streaming from a specific timestamp when no offset is available is a Technology Preview feature.
 Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
 Red{nbsp}Hat does not recommend using them in production.
 These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
@@ -1825,6 +1689,47 @@ These features provide early access to upcoming product features, enabling custo
 For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
 
 ====
+
+|[[mongodb-property-capture-start-timestamp]]<<mongodb-property-capture-start-timestamp, `+capture.start.timestamp+`>>
+|No default value
+|Specifies the starting position for a change stream when no offset is available.
+An empty or whitespace-only value is treated as unset.
+This property is an alternative to xref:mongodb-property-capture-start-op-time[`capture.start.op.time`] and has the same Technology Preview status.
+Set the value to a string in one of the following formats:
+
+* Integer Unix seconds, for example, `1789084800`.
+* ISO-8601 with `Z` or an explicit UTC offset, for example, `2026-09-11T00:00:00Z` or `2026-09-11T09:00:00+09:00`.
+* A BSON timestamp in Extended JSON v2 format, for example, `{"$timestamp":{"t":1789084800,"i":7}}`.
+
+Unix seconds and ISO-8601 values use an operation increment of `0`, so capture starts at the beginning of the specified second.
+Extended JSON preserves the `i` value, which is an operation increment within a second, not a fractional second.
+Events at the specified BSON timestamp are included.
+
+Seconds and the Extended JSON `i` value must be integers in the range `0` through `4294967295`.
+For ISO-8601 values, the corresponding UTC instant must be between `1970-01-01T00:00:00Z` and `2106-02-07T06:28:15Z`, inclusive.
+Nonzero fractional seconds, timestamps without a UTC offset, and out-of-range values cause configuration errors.
+Numeric values are always interpreted as seconds; Unix milliseconds are not supported.
+An ISO-8601 fractional part containing only zeros, such as `.000`, is accepted.
+You cannot configure this property together with `capture.start.op.time` unless that property is `-1` (disabled).
+Configuration validation reports conflicting settings as errors on both properties.
+
+To start streaming from the configured timestamp without an initial snapshot, set xref:mongodb-property-snapshot-mode[`snapshot.mode`] to `no_data` and use a connector with no stored offset.
+For example:
+
+[source,json]
+----
+{
+  "snapshot.mode": "no_data",
+  "capture.start.timestamp": "2026-09-11T00:00:00Z"
+}
+----
+
+A stored resume token or offset timestamp takes precedence over this property.
+Changing the property does not rewind an existing connector.
+If the connector performs a snapshot, streaming uses the position established by the snapshot.
+This setting does not create a historical snapshot.
+MongoDB must still retain the requested starting position in the oplog; configuring a timestamp does not restore expired oplog history.
+
 |[[mongodb-property-capture-scope]]<<mongodb-property-capture-scope, `+capture.scope+`>>
 |`deployment`
 |Specifies the https://www.mongodb.com/docs/manual/changeStreams/#watch-a-collection--database--or-deployment[scope of the change streams] that the connector opens.
@@ -1880,7 +1785,7 @@ Fully-qualified names for fields are of the form _databaseName_._collectionName_
 |Specifies whether a _delete_ event is followed by a tombstone event.
 Set one of the following options:
 
-`true`:: A delete operation is represented by a _delete_ event and a subsequent tombstone event. 
+`true`:: A delete operation is represented by a _delete_ event and a subsequent tombstone event.
 
 `false`:: After a delete operation, the connector emits only a _delete_ event.
 
@@ -1888,7 +1793,7 @@ After a source record is deleted, emitting a tombstone event (the default behavi
 
 |[[mongodb-property-schema-name-adjustment-mode]]<<mongodb-property-schema-name-adjustment-mode,`+schema.name.adjustment.mode+`>>
 |none
-|Specifies how schema names should be adjusted for compatibility with the message converter used by the connector. Possible settings: 
+|Specifies how schema names should be adjusted for compatibility with the message converter used by the connector. Possible settings:
 
 * `none` does not apply any adjustment.
 * `avro` replaces the characters that cannot be used in the Avro type name with underscore.
@@ -1896,12 +1801,12 @@ After a source record is deleted, emitting a tombstone event (the default behavi
 
 |[[mongodb-property-field-name-adjustment-mode]]<<mongodb-property-field-name-adjustment-mode,`+field.name.adjustment.mode+`>>
 |none
-|Specifies how the connector adjusts field names for compatibility with the message converter used by the connector. 
-Set one of the following options: 
+|Specifies how the connector adjusts field names for compatibility with the message converter used by the connector.
+Set one of the following options:
 
 `none`:: The connector does not adjust field names.
 `avro`:: The connector replaces characters that cannot are not valid in Avro type names with underscores.
-`avro_unicode`:: The connector replaces underscores and characters that are not valid in Avro type names with the equivalent unicode, such as _uxxxx. 
+`avro_unicode`:: The connector replaces underscores and characters that are not valid in Avro type names with the equivalent unicode, such as _uxxxx.
 +
 Note: The underscore character ('`_`') represents an escape sequence similar to a backslash in Java.
 
@@ -2001,7 +1906,7 @@ For example, if you set `max.queue.size=1000`, and `max.queue.size.in.bytes=5000
 ifdef::community[]
 |[[mongodb-property-source-struct-version]]<<mongodb-property-source-struct-version, `+source.struct.version+`>>
 |v2
-|Schema version for the `source` block in CDC events. 
+|Schema version for the `source` block in CDC events.
 {prodname} 0.10 introduced a few breaking changes to the structure of the `source` block in order to unify the exposed structure across all the connectors.
 Set this option to `v1` if you want the connector to produce events that use the source block structure from earlier versions.
 Note that this setting is not recommended and is planned for removal in a future {prodname} version.
@@ -2070,7 +1975,8 @@ That is, the specified expression is matched against the entire name string of t
 
 |[[mongodb-property-snapshot-max-threads]]<<mongodb-property-snapshot-max-threads, `+snapshot.max.threads+`>>
 |`1`
-|Positive integer value that specifies the maximum number of threads used to perform an intial sync of the collections in a replica set. Defaults to 1.
+|Positive integer value that specifies the maximum number of threads used to perform an initial sync of the collections in a replica set. Defaults to 1.
+The connector also uses this number of threads to read chunks in parallel during incremental snapshots.
 
 |[[mongodb-property-snapshot-mode]]<<mongodb-property-snapshot-mode, `+snapshot.mode+`>>
 |_initial_
@@ -2216,10 +2122,27 @@ Any change events for documents exceeding the maximum (specified by the `cursor.
 
 `split`::
 Change events exceeding the maximum BSON size will be split using the https://www.mongodb.com/docs/v6.0/reference/operator/aggregation/changeStreamSplitLargeEvent/[$changeStreamSplitLargeEvent] aggregation. This option requires **MongoDB 6.0.9 or newer**.
+The connector combines all fragments into a single change event and uses the last fragment's resume token for its offset and the emitted event's `source.resume_token` field.
+When validating the saved resume token at startup, the connector applies the same full-document and pre-image options that it uses for streaming.
+The change stream used to determine the snapshot start position also uses these options.
+If its first event is split, the connector reads all fragments and records the last fragment's token before copying collection data.
 
 |[[mongodb-property-cursor-oversize-skip-threshold]]<<mongodb-property-cursor-oversize-skip-threshold, `+cursor.oversize.skip.threshold+`>>
 |0
 |The maximum allowed size **in bytes** of the stored document for which change events are processed. This includes both, the size before and after database operation, more specifically this limits the size of fullDocument and fullDocumentBeforeChange filed of MongoDB change events.
+
+|[[mongodb-property-query-fetch-size]]<<mongodb-property-query-fetch-size, `+query.fetch.size+`>>
+|`0`
+|Specifies the maximum number of change stream documents that MongoDB returns in each cursor response batch.
+A positive value sets the batch size for both the initial change stream response and subsequent `getMore` responses.
+The default value (`0`) leaves the batch size unspecified and uses the server default.
+Negative values are not permitted.
+
+MongoDB can return fewer documents than the configured value, including an empty batch, and its response size limits still apply.
+When xref:mongodb-property-cursor-oversize-handling-mode[`cursor.oversize.handling.mode`] is `split`, each fragment counts as a separate change stream document.
+
+This property applies to change streams for all capture scopes.
+It is independent of xref:mongodb-property-snapshot-fetch-size[`snapshot.fetch.size`], which controls collection reads during a snapshot, and xref:mongodb-property-max-batch-size[`max.batch.size`], which controls the connector's record processing batches.
 
 |[[mongodb-property-cursor-max-await-time-ms]]<<mongodb-property-cursor-max-await-time-ms, `+cursor.max.await.time.ms+`>>
 |`0`
@@ -2323,7 +2246,7 @@ For example, if the topic prefix is `fulfillment`, the default topic name is `fu
 |`No default`
 |Defines tags that customize MBean object names by adding metadata that provides contextual information.
 Specify a comma-separated list of key-value pairs.
-Each key represents a tag for the MBean object name, and the corresponding value represents a value for the key, for example, 
+Each key represents a tag for the MBean object name, and the corresponding value represents a value for the key, for example,
 `k1=v1,k2=v2`
 
 The connector appends the specified tags to the base MBean object name.

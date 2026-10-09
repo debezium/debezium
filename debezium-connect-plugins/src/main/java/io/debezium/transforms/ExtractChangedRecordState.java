@@ -86,13 +86,23 @@ public class ExtractChangedRecordState<R extends ConnectRecord<R>> implements Tr
             Struct afterValue = requireStruct(after, "After value should be struct.");
             Struct beforeValue = requireStruct(before, "Before value should be struct.");
             afterValue.schema().fields().forEach(field -> {
-                Object afterFieldValue = afterValue.getWithoutDefault(field.name());
-                Object beforeFieldValue = beforeValue.getWithoutDefault(field.name());
-                if (!Objects.equals(afterFieldValue, beforeFieldValue)) {
+                if (beforeValue.schema().field(field.name()) == null) {
                     changedNames.add(field.name());
                 }
                 else {
-                    unchangedNames.add(field.name());
+                    Object afterFieldValue = afterValue.getWithoutDefault(field.name());
+                    Object beforeFieldValue = beforeValue.getWithoutDefault(field.name());
+                    if (!fieldValuesEqual(afterFieldValue, beforeFieldValue)) {
+                        changedNames.add(field.name());
+                    }
+                    else {
+                        unchangedNames.add(field.name());
+                    }
+                }
+            });
+            beforeValue.schema().fields().forEach(field -> {
+                if (afterValue.schema().field(field.name()) == null) {
+                    changedNames.add(field.name());
                 }
             });
         }
@@ -108,6 +118,28 @@ public class ExtractChangedRecordState<R extends ConnectRecord<R>> implements Tr
         }
 
         return record;
+    }
+
+    /**
+     * Compares two field values for equality, recursing into {@link List} elements so that
+     * binary values nested in a list (e.g. {@code List<byte[]>}) are compared by content
+     * rather than by reference, which is what {@link List#equals(Object)} would otherwise do.
+     */
+    private static boolean fieldValuesEqual(Object first, Object second) {
+        if (first instanceof List && second instanceof List) {
+            List<?> firstList = (List<?>) first;
+            List<?> secondList = (List<?>) second;
+            if (firstList.size() != secondList.size()) {
+                return false;
+            }
+            for (int i = 0; i < firstList.size(); i++) {
+                if (!fieldValuesEqual(firstList.get(i), secondList.get(i))) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return Objects.deepEquals(first, second);
     }
 
     @Override

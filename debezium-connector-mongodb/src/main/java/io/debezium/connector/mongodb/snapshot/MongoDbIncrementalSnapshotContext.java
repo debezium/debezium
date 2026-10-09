@@ -16,6 +16,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalLong;
 import java.util.Queue;
 import java.util.UUID;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -64,6 +65,7 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
 
     public static final String EVENT_PRIMARY_KEY = INCREMENTAL_SNAPSHOT_KEY + "_primary_key";
     public static final String TABLE_MAXIMUM_KEY = INCREMENTAL_SNAPSHOT_KEY + "_maximum_key";
+    public static final String TABLE_TOTAL_ROWS = INCREMENTAL_SNAPSHOT_KEY + "_total_rows";
 
     public static final String CORRELATION_ID = INCREMENTAL_SNAPSHOT_KEY + "_correlation_id";
 
@@ -77,14 +79,23 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
      */
     private Object[] chunkEndPosition;
 
+    /**
+     * Exclusive lower bound of the current window, captured before its end position advances.
+     * MongoDB queries are sorted, but parallel chunk reads interleave insertions into an unordered
+     * {@code ConcurrentHashMap} buffer. Its iteration order does not preserve key order even with
+     * one snapshot thread, so {@code lastEventKeySent} may be ahead of undelivered keys.
+     * Checkpoint this boundary to replay the unfinished window without skipping those keys.
+     */
+    private Object[] chunkStartPosition;
+
     // TODO After extracting add into source info optional block
     // incrementalSnapshotWindow{String from, String to}
     // State to be stored and recovered from offsets
     private final Queue<DataCollection<T>> dataCollectionsToSnapshot = new LinkedBlockingQueue<>();
 
     /**
-     * The PK of the last record that was passed to Kafka Connect. In case of
-     * connector restart the start of the first chunk will be populated from it.
+     * The PK of the last record that was passed to Kafka Connect, retained for diagnostics.
+     * It cannot serve as a restart boundary because window records may be emitted out of order.
      */
     private Object[] lastEventKeySent;
 
@@ -94,6 +105,12 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
      * The largest PK in the table at the start of snapshot.
      */
     private Object[] maximumKey;
+
+    /**
+     * Best-effort total document count for the collection currently being snapshotted, used for
+     * per-collection progress reporting. Empty when it could not be established.
+     */
+    private OptionalLong totalRows = OptionalLong.empty();
 
     private Table schema;
 
@@ -262,8 +279,15 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
         if (!snapshotRunning()) {
             return offset;
         }
-        offset.put(EVENT_PRIMARY_KEY, arrayToSerializedString(lastEventKeySent));
+        offset.put(EVENT_PRIMARY_KEY, arrayToSerializedString(chunkStartPosition));
         offset.put(TABLE_MAXIMUM_KEY, arrayToSerializedString(maximumKey));
+        if (totalRows.isPresent()) {
+            offset.put(TABLE_TOTAL_ROWS, String.valueOf(totalRows.getAsLong()));
+        }
+        else {
+            // Clear any previous value so a total from an earlier collection cannot linger if the offset map is reused.
+            offset.remove(TABLE_TOTAL_ROWS);
+        }
         offset.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY, dataCollectionsToSnapshotAsString());
         offset.put(CORRELATION_ID, correlationId);
         return offset;
@@ -332,14 +356,17 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
     }
 
     protected static <U> IncrementalSnapshotContext<U> init(MongoDbIncrementalSnapshotContext<U> context, Map<String, ?> offsets) {
-        final String lastEventSentKeyStr = (String) offsets.get(EVENT_PRIMARY_KEY);
-        context.chunkEndPosition = (lastEventSentKeyStr != null)
-                ? context.serializedStringToArray(EVENT_PRIMARY_KEY, lastEventSentKeyStr)
+        final String resumeKeyStr = (String) offsets.get(EVENT_PRIMARY_KEY);
+        context.chunkEndPosition = (resumeKeyStr != null)
+                ? context.serializedStringToArray(EVENT_PRIMARY_KEY, resumeKeyStr)
                 : null;
+        context.chunkStartPosition = context.chunkEndPosition;
         context.lastEventKeySent = null;
         final String maximumKeyStr = (String) offsets.get(TABLE_MAXIMUM_KEY);
         context.maximumKey = (maximumKeyStr != null) ? context.serializedStringToArray(TABLE_MAXIMUM_KEY, maximumKeyStr)
                 : null;
+        final String totalRowsStr = (String) offsets.get(TABLE_TOTAL_ROWS);
+        context.totalRows = (totalRowsStr != null) ? OptionalLong.of(Long.parseLong(totalRowsStr)) : OptionalLong.empty();
         final String dataCollectionsStr = (String) offsets.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY);
         context.dataCollectionsToSnapshot.clear();
         if (dataCollectionsStr != null) {
@@ -372,13 +399,14 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
     private void resetChunk() {
         lastEventKeySent = null;
         chunkEndPosition = null;
+        chunkStartPosition = null;
         maximumKey = null;
         schema = null;
         schemaVerificationPassed = false;
     }
 
     public void revertChunk() {
-        chunkEndPosition = lastEventKeySent;
+        chunkEndPosition = chunkStartPosition;
         windowOpened = false;
     }
 
@@ -388,10 +416,13 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
 
     public DataCollection<T> nextDataCollection() {
         resetChunk();
+        // The total row count is per data collection, so it is cleared only when advancing to the next one.
+        totalRows = OptionalLong.empty();
         return dataCollectionsToSnapshot.poll();
     }
 
     public void startNewChunk() {
+        chunkStartPosition = chunkEndPosition;
         currentChunkId = UUID.randomUUID().toString();
         LOGGER.debug("Starting new chunk with id '{}'", currentChunkId);
     }
@@ -406,6 +437,16 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
 
     public Optional<Object[]> maximumKey() {
         return Optional.ofNullable(maximumKey);
+    }
+
+    @Override
+    public void totalRows(OptionalLong totalRows) {
+        this.totalRows = totalRows;
+    }
+
+    @Override
+    public OptionalLong totalRows() {
+        return totalRows;
     }
 
     @Override
@@ -437,7 +478,8 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
 
     @Override
     public String toString() {
-        return "MongoDbIncrementalSnapshotContext [windowOpened=" + windowOpened + ", chunkEndPosition="
+        return "MongoDbIncrementalSnapshotContext [windowOpened=" + windowOpened + ", chunkStartPosition="
+                + Arrays.toString(chunkStartPosition) + ", chunkEndPosition="
                 + Arrays.toString(chunkEndPosition) + ", dataCollectionsToSnapshot=" + dataCollectionsToSnapshot
                 + ", lastEventKeySent=" + Arrays.toString(lastEventKeySent) + ", maximumKey="
                 + Arrays.toString(maximumKey) + "]";

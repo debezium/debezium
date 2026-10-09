@@ -197,6 +197,9 @@ public class PartitionRouting<R extends ConnectRecord<R>> implements Transformat
             }
 
             Struct lastStruct = getLastStruct(envelope, subFields);
+            if (lastStruct == null) {
+                return Optional.empty();
+            }
 
             return Optional.ofNullable(lastStruct.get(subFields[subFields.length - 1]));
         }
@@ -209,13 +212,15 @@ public class PartitionRouting<R extends ConnectRecord<R>> implements Transformat
 
     private static Struct getLastStruct(Struct envelope, String[] subFields) {
 
-        Struct currectStruct = envelope;
+        Struct currentStruct = envelope;
         for (int i = 0; i < subFields.length - 1; i++) {
-
+            if (currentStruct == null) {
+                return null;
+            }
             String fieldName = getFieldName(envelope, subFields, i);
-            currectStruct = currectStruct.getStruct(fieldName);
+            currentStruct = currentStruct.getStruct(fieldName);
         }
-        return currectStruct;
+        return currentStruct;
     }
 
     private static String getFieldName(Struct envelope, String[] subFields, int i) {

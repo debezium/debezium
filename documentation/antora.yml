@@ -8,9 +8,10 @@ nav:
 
 asciidoc:
   attributes:
-    debezium-version: '3.7.0.Beta1'
+    debezium-version: '3.7.0.Final'
     debezium-kafka-version: '4.3.1'
     debezium-docker-label: '3.7'
+    jbang-version: '0.138.0'
     DockerKafkaConnect: registry.redhat.io/amq7/amq-streams-kafka-28-rhel8:1.8.0
     groovy-version: '4.0.17'
     assemblies: '../assemblies'
@@ -20,10 +21,10 @@ asciidoc:
     apicurio-version: '3.2.5'
     db2-version: '11.5.0.0'
     ojdbc-version: '23.26.1.0.0'
-    informix-jdbc-version: '15.0.1.1'
+    informix-jdbc-version: '15.0.1.4'
     ifx-changestream-version: '1.1.3'
     min-java-connectors-version: '17'
-    maven-version: '3.9.9'
+    maven-version: '3.9.8'
     community: true
     registry: 'Apicurio Registry'
     registry-name-full: Apicurio API and Schema Registry
@@ -52,6 +53,7 @@ asciidoc:
     link-notification: 'configuration/notification.adoc'
     link-oracle-connector: 'connectors/oracle.adoc'
     link-outbox-event-router: 'transformations/outbox-event-router.adoc'
+    link-reselect-columns: 'post-processors/reselect-columns.adoc'
     link-postgresql-connector: 'connectors/postgresql.adoc'
     link-postgresql-plugins: 'postgres-plugins.adoc'
     link-prefix: 'xref'

@@ -23,7 +23,6 @@ import com.mongodb.client.model.Aggregates;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.changestream.OperationType;
 
-import io.debezium.DebeziumException;
 import io.debezium.connector.mongodb.Filters.FilterConfig;
 import io.debezium.data.Envelope;
 import io.debezium.util.Strings;
@@ -62,17 +61,11 @@ class ChangeStreamPipelineFactory {
         var internalPipeline = createInternalPipeline();
         var userPipeline = createUserPipeline();
 
-        switch (connectorConfig.getCursorPipelineOrder()) {
-            case INTERNAL_FIRST:
-                return internalPipeline.then(userPipeline);
-            case USER_FIRST:
-                return userPipeline.then(internalPipeline);
-            case USER_ONLY:
-                return userPipeline;
-            default:
-                // this should never happen
-                throw new DebeziumException("Unknown aggregation pipeline order");
-        }
+        return switch (connectorConfig.getCursorPipelineOrder()) {
+            case INTERNAL_FIRST -> internalPipeline.then(userPipeline);
+            case USER_FIRST -> userPipeline.then(internalPipeline);
+            case USER_ONLY -> userPipeline;
+        };
     }
 
     private ChangeStreamPipeline createSizePipeline() {

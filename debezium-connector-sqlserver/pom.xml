@@ -3,7 +3,7 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-parent</artifactId>
-        <version>3.7.0-SNAPSHOT</version>
+        <version>3.8.0-SNAPSHOT</version>
         <relativePath>../debezium-parent/pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -215,7 +215,9 @@
                                 </log>
                                 <wait>
                                     <time>60000</time> <!-- 60 seconds max -->
-                                    <log>SQL Server is now ready for client connections</log>
+                                    <!-- The "ready for client connections" message only signals that the TDS listener is up;
+                                         sa logins can still be rejected until startup recovery finishes. -->
+                                    <log>Recovery is complete</log>
                                 </wait>
                             </run>
                             <external>

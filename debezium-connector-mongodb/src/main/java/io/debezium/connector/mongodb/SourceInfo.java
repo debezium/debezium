@@ -16,11 +16,13 @@ import org.bson.types.BSONTimestamp;
 import com.mongodb.client.MongoChangeStreamCursor;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 
+import io.debezium.DebeziumException;
 import io.debezium.annotation.Immutable;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.common.BaseSourceInfo;
 import io.debezium.connector.mongodb.events.BufferingChangeStreamCursor.ResumableChangeStreamEvent;
+import io.debezium.connector.mongodb.events.SplitEventHandler;
 
 /**
  * Information about the source of information, which includes the partitions and offsets within those partitions. The MongoDB
@@ -77,7 +79,7 @@ public final class SourceInfo extends BaseSourceInfo {
     private static final BsonTimestamp INITIAL_TIMESTAMP = new BsonTimestamp();
     private static final Position INITIAL_POSITION = new Position(INITIAL_TIMESTAMP, null, null);
     public boolean initialSnapshot = false;
-    private final MongoDbConnectorConfig connectorConfig;
+    private final JsonSerialization jsonSerialization;
 
     /**
      * Id of collection the current event applies to. May be {@code null} after noop events,
@@ -85,6 +87,8 @@ public final class SourceInfo extends BaseSourceInfo {
      */
     private CollectionId collectionId;
     private Position position = null;
+    // The current data event's token is separate from snapshot and heartbeat resume positions.
+    private BsonDocument eventResumeToken;
 
     private long wallTime;
 
@@ -145,7 +149,7 @@ public final class SourceInfo extends BaseSourceInfo {
 
     public SourceInfo(MongoDbConnectorConfig connectorConfig) {
         super(connectorConfig);
-        this.connectorConfig = connectorConfig;
+        this.jsonSerialization = new JsonSerialization(connectorConfig.getJsonSerializationMode());
     }
 
     CollectionId collectionId() {
@@ -158,6 +162,15 @@ public final class SourceInfo extends BaseSourceInfo {
 
     public String lastResumeToken() {
         return position != null ? position.resumeToken : null;
+    }
+
+    String eventResumeTokenJson() {
+        if (snapshot() != SnapshotRecord.FALSE || eventResumeToken == null) {
+            return null;
+        }
+
+        // Defer serialization until the source struct is built for the current data event.
+        return jsonSerialization.getDocumentValue(eventResumeToken);
     }
 
     public BsonTimestamp lastTimestamp() {
@@ -176,6 +189,7 @@ public final class SourceInfo extends BaseSourceInfo {
     }
 
     public void initEvent(MongoChangeStreamCursor<ChangeStreamDocument<BsonDocument>> cursor) {
+        eventResumeToken = null;
         if (cursor == null) {
             return;
         }
@@ -185,7 +199,41 @@ public final class SourceInfo extends BaseSourceInfo {
             noEvent(cursor);
         }
         else {
-            changeStreamEvent(result);
+            changeStreamEvent(readCompleteEvent(cursor, result));
+            // This event establishes the snapshot's resume position; it is not emitted as a data event.
+            eventResumeToken = null;
+        }
+    }
+
+    /**
+     * Resuming from an intermediate fragment's token skips earlier fragments, preventing streaming
+     * from reconstructing the complete event. Reassemble the first event so the snapshot start offset
+     * uses its final fragment's token while retaining the event's metadata.
+     */
+    private static ChangeStreamDocument<BsonDocument> readCompleteEvent(MongoChangeStreamCursor<ChangeStreamDocument<BsonDocument>> cursor,
+                                                                        ChangeStreamDocument<BsonDocument> event) {
+        if (event.getSplitEvent() == null) {
+            return event;
+        }
+
+        final var totalFragments = event.getSplitEvent().getOf();
+        final var handler = new SplitEventHandler<BsonDocument>();
+        for (var expectedFragment = 1;; expectedFragment++) {
+            if (Thread.currentThread().isInterrupted()) {
+                throw new DebeziumException("Interrupted while determining MongoDB snapshot start position");
+            }
+            if (event == null || event.getSplitEvent() == null
+                    || event.getSplitEvent().getFragment() != expectedFragment
+                    || event.getSplitEvent().getOf() != totalFragments || expectedFragment > totalFragments) {
+                throw new DebeziumException("Missing or out-of-order change stream fragment while determining MongoDB snapshot start position");
+            }
+
+            final var complete = handler.handle(event);
+            if (complete.isPresent()) {
+                // Keep the event's metadata, but resume after its final fragment. Do not consume the next event.
+                return complete.get();
+            }
+            event = cursor.tryNext();
         }
     }
 
@@ -240,10 +288,11 @@ public final class SourceInfo extends BaseSourceInfo {
         }
 
         onEvent(CollectionId.parse(namespace), position, wallTime);
+        eventResumeToken = changeStreamEvent != null ? changeStreamEvent.getResumeToken() : null;
     }
 
     private void onEvent(CollectionId collectionId, Position position, long wallTime) {
-        this.position = (position == null) ? INITIAL_POSITION : position;
+        setPosition((position == null) ? INITIAL_POSITION : position);
         this.collectionId = collectionId;
         this.wallTime = wallTime;
     }
@@ -258,8 +307,12 @@ public final class SourceInfo extends BaseSourceInfo {
         return position != null;
     }
 
+    /**
+     * Set the resume position and clear the previous data event's token.
+     */
     public void setPosition(Position position) {
         this.position = position;
+        this.eventResumeToken = null;
     }
 
     /**
@@ -267,6 +320,7 @@ public final class SourceInfo extends BaseSourceInfo {
      */
     public void startInitialSnapshot() {
         this.initialSnapshot = true;
+        this.eventResumeToken = null;
     }
 
     /**

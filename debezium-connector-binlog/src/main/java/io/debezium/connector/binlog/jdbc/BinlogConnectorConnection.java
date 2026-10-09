@@ -243,6 +243,13 @@ public abstract class BinlogConnectorConnection extends JdbcConnection {
         return OptionalLong.empty();
     }
 
+    @Override
+    public OptionalLong readRowCountEstimate(TableId tableId) {
+        // Reuse the InnoDB metadata estimate ("Rows" from SHOW TABLE STATUS); best-effort and only meaningful
+        // for the whole table, so it is used by incremental snapshots only when no row filter is present.
+        return getEstimatedTableSize(tableId);
+    }
+
     /**
      * Read the charset-related system variables.
      *

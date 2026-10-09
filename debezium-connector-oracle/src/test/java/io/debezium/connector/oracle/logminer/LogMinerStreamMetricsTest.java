@@ -235,6 +235,7 @@ public class LogMinerStreamMetricsTest extends OracleStreamingMetricsTest<LogMin
     }
 
     @Test
+    @FixFor({ "DBZ-6899", "debezium/dbz#2428" })
     void testOtherMetrics() {
         metrics.incrementScnFreezeCount();
         assertThat(metrics.getScnFreezeCount()).isEqualTo(1);
@@ -274,6 +275,8 @@ public class LogMinerStreamMetricsTest extends OracleStreamingMetricsTest<LogMin
         metrics.addAbandonedTransactionId("abandoned id");
         assertThat(metrics.getAbandonedTransactionIds().size()).isEqualTo(1);
         assertThat(metrics.getAbandonedTransactionIds().contains("abandoned id")).isTrue();
+        assertThat(metrics.getAbandonedTransactionCount()).isEqualTo(1);
+        assertThat(metrics.getTotalAbandonedTransactionCount()).isEqualTo(1);
 
         metrics.setOldestScnDetails(Scn.valueOf(10L), null);
         assertThat(metrics.getOldestScn()).isEqualTo("10");
@@ -324,7 +327,7 @@ public class LogMinerStreamMetricsTest extends OracleStreamingMetricsTest<LogMin
     }
 
     @Test
-    @FixFor("DBZ-5179")
+    @FixFor({ "DBZ-5179", "debezium/dbz#2428" })
     public void testAbandonedTransactionIdSetSizeLimit() throws Exception {
         init(TestHelper.defaultConfig().with(OracleConnectorConfig.LOG_MINING_TRANSACTION_RETENTION_MS, 10_800_000));
 
@@ -337,11 +340,15 @@ public class LogMinerStreamMetricsTest extends OracleStreamingMetricsTest<LogMin
         // Add another abandoned transaction, does not exist in set
         metrics.addAbandonedTransactionId("11");
         assertThat(metrics.getAbandonedTransactionIds()).containsOnly("2", "3", "4", "5", "6", "7", "8", "9", "10", "11");
+        assertThat(metrics.getAbandonedTransactionCount()).isEqualTo(10);
+        assertThat(metrics.getTotalAbandonedTransactionCount()).isEqualTo(11);
 
         // Add another abandoned transaction, this time the same as before
         // Set should be unchanged.
         metrics.addAbandonedTransactionId("11");
         assertThat(metrics.getAbandonedTransactionIds()).containsOnly("2", "3", "4", "5", "6", "7", "8", "9", "10", "11");
+        assertThat(metrics.getAbandonedTransactionCount()).isEqualTo(10);
+        assertThat(metrics.getTotalAbandonedTransactionCount()).isEqualTo(12);
     }
 
     @Test

@@ -21,6 +21,7 @@ properties([
         booleanParam(name: 'IGNORE_SNAPSHOTS'),
         booleanParam(name: 'CHECK_BACKPORTS'),
         booleanParam(name: 'LATEST_SERIES'),
+        booleanParam(name: 'IGNORE_RELEASE_PLAN_INCONSISTENCIES'),
         string(name: 'DBZ_PR_URL'),
         string(name: 'WEBSITE_PR_URL')
     ])
@@ -85,7 +86,7 @@ properties([
     '3.4' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra-3', 'cassandra-4', 'db2', 'vitess', 'spanner', 'jdbc', 'informix', 'ibmi', 'mariadb', 'cockroachdb'],
     '3.5' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra-3', 'cassandra-4', 'db2', 'vitess', 'spanner', 'jdbc', 'informix', 'ingres', 'ibmi', 'mariadb', 'cockroachdb'],
     '3.6' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra-3', 'cassandra-4', 'db2', 'vitess', 'spanner', 'jdbc', 'informix', 'ingres', 'ibmi', 'mariadb', 'cockroachdb', 'yashandb'],
-    '3.7' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra-3', 'cassandra-4', 'db2', 'vitess', 'spanner', 'jdbc', 'informix', 'ingres', 'ibmi', 'mariadb', 'cockroachdb', 'yashandb', 'tidb']
+    '3.7' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle', 'cassandra-3', 'cassandra-4', 'db2', 'vitess', 'spanner', 'jdbc', 'informix', 'ingres', 'ibmi', 'mariadb', 'cockroachdb', 'yashandb', 'tidb', 'milvus', 'sqlite']
 ]
 @Field final ZULIP_URL = 'https://debezium.zulipchat.com/api/v1'
 
@@ -93,6 +94,7 @@ properties([
 @Field final IMAGES = ['connect', 'connect-base', 'examples/mysql', 'examples/mysql-gtids', 'examples/mysql-replication/master', 'examples/mysql-replication/replica', 'examples/mariadb', 'examples/postgres', 'examples/mongodb', 'kafka', 'server', 'operator', 'platform-conductor', 'platform-stage']
 @Field final MAVEN_CENTRAL = 'https://repo1.maven.org/maven2'
 @Field final LOCAL_MAVEN_REPO = "$HOME_DIR/.m2/repository"
+@Field final MAVEN_MEMORY = '-Xmx16g -Xms1g'
 
 @Field final PUBLISH_TIMEOUT_MINUTES = 90
 @Field final PUBLISH_POLL_INTERVAL_MS = 15000
@@ -115,12 +117,12 @@ properties([
 //   1. Add it to SOURCE_REPOSITORIES parameter in common_parameters.groovy
 //   2. Add it to the appropriate tier below (or add a new tier if it has new dependencies)
 //   The pipeline validates at startup that RELEASE_PLAN and SOURCE_REPOSITORIES are in sync.
-@Field final RELEASE_PLAN = [
+@Field RELEASE_PLAN = [
     ['debezium'],
-    ['cassandra', 'cockroachdb', 'db2', 'ibmi', 'informix', 'ingres', 'spanner', 'vitess', 'tidb', 'yashandb'],
+    ['cassandra', 'cockroachdb', 'db2', 'ibmi', 'informix', 'ingres', 'milvus' ,'spanner', 'sqlite', 'vitess', 'tidb', 'yashandb'],
     ['quarkus', 'operator'],
-    ['server'],
-    ['platform'],
+    ['server', 'jbang-catalog'],
+    ['platform']
 ]
 
 @Field DRY_RUN
@@ -128,6 +130,7 @@ properties([
 @Field IGNORE_SNAPSHOTS
 @Field CHECK_BACKPORTS
 @Field LATEST_SERIES
+@Field IGNORE_RELEASE_PLAN_INCONSISTENCIES
 
 @Field RELEASE_VERSION
 @Field DEVELOPMENT_VERSION
@@ -239,13 +242,21 @@ def checkPreReleaseContent(String dbzContent, String copyrightContent, String re
 
 @Field final BUILD_ARGS = [
    'debezium': '-Poracle-all',
+   'server': '-Pnative -Dquarkus.native.builder-image=quay.io/quarkus/ubi9-quarkus-mandrel-builder-image:jdk-25 -Dversion.debezium=$RELEASE_VERSION',
  ]
+
+// Build args used in the post-perform step (building the new development version).
+// If present, the value is used instead of BUILD_ARGS for that repo.
+// An empty string means no extra args.
+@Field final POST_PERFORM_BUILD_ARGS = [:]
 
 // Debezium Server must always ignore snapshots as it depends on Debezium Server BOM
 // and it is not possible to override it with a stable version
 @Field final FORCE_IGNORE_SNAPSHOTS = [
    'server': true,
  ]
+
+@Field final DISABLE_PARALLEL_BUILD = ['quarkus'] as Set
 
 def buildArgsForRepo(repoDir) {
     BUILD_ARGS.getOrDefault(repoDir, "-Dversion.debezium=$RELEASE_VERSION") << ' -Dmaven.wagon.http.retryHandler.count=5'
@@ -257,31 +268,54 @@ def buildArgsForRepo(repoDir) {
     'server': 'debezium-server',
     'operator': 'debezium-operator',
     'platform': 'debezium-platform-conductor',
-    'quarkus': 'debezium-quarkus-extensions-parent'
+    'quarkus': 'debezium-quarkus-extensions-parent',
+    'jbang-catalog': 'debezium-jbang-catalog',
+]
+
+// Overrides the default 'io.debezium' group ID used in artifactExists() for repos that
+// publish under a different Maven group ID.
+@Field final TEST_GROUP_IDS = [
+    'jbang-catalog': 'io.debezium.jbang',
 ]
 
 def artifactExists(repoDir) {
     def artifactId = TEST_ARTIFACTS.getOrDefault(repoDir, "debezium-connector-${repoDir}")
-    def url  = "https://repo1.maven.org/maven2/io/debezium/${artifactId}/$RELEASE_VERSION/${artifactId}-${RELEASE_VERSION}.pom"
+    def groupPath = TEST_GROUP_IDS.getOrDefault(repoDir, 'io.debezium').replace('.', '/')
+    def url = "https://repo1.maven.org/maven2/${groupPath}/${artifactId}/$RELEASE_VERSION/${artifactId}-${RELEASE_VERSION}.pom"
     echo "Checking ${url}"
     sh(script: "curl -sSfI ${url} >/dev/null", returnStatus: true) == 0
 }
+
+// Commit messages written by the post-perform step functions below.
+// The grep pattern in postPerformCommitExists() is derived from these constants
+// update both together if a message ever changes.
+@Field final POST_PERFORM_COMMIT_DEFAULT = '[release] New parent %s for development'
+@Field final POST_PERFORM_COMMIT_DEBEZIUM = '[release] Development version for testing module deps'
+@Field final POST_PERFORM_COMMIT_PATTERN = '\\[release\\] (New parent .+ for development|Development version for testing module deps)'
 
 def branchExists(branchName) {
     sh(script: "git show-ref --verify --quiet refs/heads/${branchName}", returnStatus: true) == 0
 }
 
+def postPerformCommitExists() {
+    sh(script: "git log --oneline | head -2 | grep -qE '${POST_PERFORM_COMMIT_PATTERN}'", returnStatus: true) == 0
+}
+
 def gitPushCandidate(repoName) {
     if (!DRY_RUN) {
         echo "Pushing candidate branch to repository $repoName"
-        executeShell('.', "git push \"https://\${GITHUB_USERNAME}:\${GITHUB_PASSWORD}@${repoName}\" HEAD:${CANDIDATE_BRANCH} --follow-tags")
+        withSecrets(config: ONE_PASSWORD_CONFIG, secrets: SECRETS) {
+            sh "git push \"https://\${GITHUB_USERNAME}:\${GITHUB_PASSWORD}@${repoName}\" HEAD:${CANDIDATE_BRANCH} --follow-tags"
+        }
     }
 }
 
 def gitPushTag(repoName) {
     if (!DRY_RUN) {
         echo "Pushing tag $VERSION_TAG to repository to $repoName"
-        executeShell('.', "git tag $VERSION_TAG && git push \"https://\${GITHUB_USERNAME}:\${GITHUB_PASSWORD}@${repoName}\" $VERSION_TAG")
+        withSecrets(config: ONE_PASSWORD_CONFIG, secrets: SECRETS) {
+            sh "git tag $VERSION_TAG && git push \"https://\${GITHUB_USERNAME}:\${GITHUB_PASSWORD}@${repoName}\" $VERSION_TAG"
+        }
     }
 }
 
@@ -294,7 +328,7 @@ def gitMergeAndDeleteCandidate(repoName, repoBranch) {
             git pull --rebase \"https://\${GITHUB_USERNAME}:\${GITHUB_PASSWORD}@$repoName\" $repoBranch && \\
             git checkout $repoBranch && \\
             git rebase $CANDIDATE_BRANCH && \\
-            git push --force-with-lease \"https://\${GITHUB_USERNAME}:\${GITHUB_PASSWORD}@$repoName\" HEAD:$repoBranch && \\
+            git push \"https://\${GITHUB_USERNAME}:\${GITHUB_PASSWORD}@$repoName\" HEAD:$repoBranch && \\
             git push --delete \"https://\${GITHUB_USERNAME}:\${GITHUB_PASSWORD}@$repoName\" $CANDIDATE_BRANCH
         """
          )
@@ -317,6 +351,9 @@ def debeziumPrePrepareSteps() {
 
 def serverPrePrepareSteps() {
     fileUtils.modifyFile('debezium-server-bom/pom.xml') {
+        it.replaceFirst('<version>.+</version>\n    </parent>', "<version>$RELEASE_VERSION</version>\n    </parent>")
+    }
+    fileUtils.modifyFile('debezium-quarkus-bridge/pom.xml') {
         it.replaceFirst('<version>.+</version>\n    </parent>', "<version>$RELEASE_VERSION</version>\n    </parent>")
     }
     defaultPrePrepareSteps()
@@ -350,18 +387,21 @@ def defaultPostPerformSteps() {
         it.replaceFirst('<version>.+</version>\n    </parent>', "<version>$DEVELOPMENT_VERSION</version>\n    </parent>")
     }
 
-    sh "git commit -a -m '[release] New parent $DEVELOPMENT_VERSION for development'"
+    sh "git commit -a -m \"${String.format(POST_PERFORM_COMMIT_DEFAULT, DEVELOPMENT_VERSION)}\""
 }
 
 def debeziumPostPerformSteps() {
     fileUtils.modifyFile('debezium-testing/debezium-testing-system/pom.xml') {
         it.replaceFirst('<version.debezium.connector>.+</version.debezium.connector>', '<version.debezium.connector>\\${project.version}</version.debezium.connector>')
     }
-    sh "git commit -a -m '[release] Development version for testing module deps'"
+    sh "git commit -a -m \"${POST_PERFORM_COMMIT_DEBEZIUM}\""
 }
 
 def serverPostPerformSteps() {
     fileUtils.modifyFile('debezium-server-bom/pom.xml') {
+        it.replaceFirst('<version>.+</version>\n    </parent>', "<version>$DEVELOPMENT_VERSION</version>\n    </parent>")
+    }
+    fileUtils.modifyFile('debezium-quarkus-bridge/pom.xml') {
         it.replaceFirst('<version>.+</version>\n    </parent>', "<version>$DEVELOPMENT_VERSION</version>\n    </parent>")
     }
     defaultPostPerformSteps()
@@ -374,18 +414,25 @@ def operatorPostPerformSteps() {
 
     // For operator, we need to build with k8update profile to update manifests back to dev version
     sh "./mvnw clean package -Pk8update -DskipTests -DskipITs"
-    sh "git commit -a -m '[release] New parent $DEVELOPMENT_VERSION for development'"
+    sh "git commit -a -m \"${String.format(POST_PERFORM_COMMIT_DEFAULT, DEVELOPMENT_VERSION)}\""
+}
+
+def platformPostPerformSteps() {
+    sh 'git checkout -- openapi/openapi.json openapi/openapi.yaml || true'
+    defaultPostPerformSteps()
 }
 
 @Field final POST_PERFORM_STEPS = [
     'debezium': this.&debeziumPostPerformSteps,
     'server': this.&serverPostPerformSteps,
     'operator': this.&operatorPostPerformSteps,
+    'platform': this.&platformPostPerformSteps,
 ]
 
 def releasePrepare(repoDir, repoName) {
     echo "Building current development version"
-    sh "./mvnw clean install -T 1C -DskipTests -DskipITs -Passembly"
+    def threads = repoDir in DISABLE_PARALLEL_BUILD ? '' : '-T 1C'
+    sh "./mvnw clean install $threads -DskipTests -DskipITs -Passembly"
 
     def ignoreSnaphots = FORCE_IGNORE_SNAPSHOTS.getOrDefault(repoDir, IGNORE_SNAPSHOTS)
 
@@ -395,7 +442,7 @@ def releasePrepare(repoDir, repoName) {
     PRE_PREPARE_STEPS.getOrDefault(repoDir, this.&defaultPrePrepareSteps)()
 
     echo 'Executing release:prepare'
-    sh "env MAVEN_OPTS='-Xmx8g -Xms1g' ./mvnw release:clean release:prepare -DreleaseVersion=$RELEASE_VERSION -Dtag=$VERSION_TAG -DdevelopmentVersion=$DEVELOPMENT_VERSION -DpushChanges=${!DRY_RUN} -DignoreSnapshots=$ignoreSnaphots -DpreparationGoals='clean install' -Darguments=\"-DskipTests -DskipITs -Passembly $buildArgs\" $buildArgs"
+    sh "env MAVEN_OPTS='$MAVEN_MEMORY' ./mvnw release:clean release:prepare -DreleaseVersion=$RELEASE_VERSION -Dtag=$VERSION_TAG -DdevelopmentVersion=$DEVELOPMENT_VERSION -DpushChanges=${!DRY_RUN} -DignoreSnapshots=$ignoreSnaphots -DpreparationGoals='clean install' -Darguments=\"-DskipTests -DskipITs -Passembly $buildArgs\" $buildArgs"
 
     gitPushCandidate(repoName)
 }
@@ -406,14 +453,15 @@ def releasePerformUpload(repoDir, repoName) {
     echo 'Executing release:perform'
     sendZulipNotification("Publishing version $RELEASE_VERSION of $repoDir")
 
-    executeShell('.', "env MAVEN_USERNAME=\${MAVEN_USERNAME} MAVEN_TOKEN=\${MAVEN_TOKEN} MAVEN_OPTS='-Xmx8g -Xms1g' ./mvnw release:perform -DstagingProgressTimeoutMinutes=60 -DlocalCheckout=$DRY_RUN -Dpublish.auto=${!DRY_RUN} -Dpublish.skip=${DRY_RUN} -Dpublish.wait.until=uploaded -DconnectionUrl=\"scm:git:https://\${GITHUB_USERNAME}:\${GITHUB_PASSWORD}@${repoName}\" -Darguments=\"-s \\\$HOME/.m2/settings-snapshots.xml -DstagingProgressTimeoutMinutes=60 -Dpublish.auto=${!DRY_RUN} -Dpublish.skip=${DRY_RUN} -Dpublish.wait.until=uploaded -Dgpg.homedir=\\\$WORKSPACE/$GPG_DIR -Dgpg.passphrase=\${GPG_PASSPHRASE} -DskipTests -DskipITs -Dschema.generator.output.dir=${DESCRIPTORS_OUTPUT_DIR} $buildArgs\" $buildArgs")
+    executeShell('.', "env MAVEN_USERNAME=\${MAVEN_USERNAME} MAVEN_TOKEN=\${MAVEN_TOKEN} MAVEN_OPTS='$MAVEN_MEMORY' ./mvnw release:perform -DstagingProgressTimeoutMinutes=60 -DlocalCheckout=$DRY_RUN -Dpublish.auto=${!DRY_RUN} -Dpublish.skip=${DRY_RUN} -Dpublish.wait.until=uploaded -DconnectionUrl=\"scm:git:https://\${GITHUB_USERNAME}:\${GITHUB_PASSWORD}@${repoName}\" -Darguments=\"-s \\\$HOME/.m2/settings-snapshots.xml -DstagingProgressTimeoutMinutes=60 -Dpublish.auto=${!DRY_RUN} -Dpublish.skip=${DRY_RUN} -Dpublish.wait.until=uploaded -Dgpg.homedir=\\\$WORKSPACE/$GPG_DIR -Dgpg.passphrase=\${GPG_PASSPHRASE} -DskipTests -DskipITs -Dschema.generator.output.dir=${DESCRIPTORS_OUTPUT_DIR} $buildArgs\" $buildArgs")
 }
 
 def releasePerformPostSteps(repoDir, repoName) {
-    def buildArgs = buildArgsForRepo(repoDir)
+    def buildArgs = POST_PERFORM_BUILD_ARGS.containsKey(repoDir) ? POST_PERFORM_BUILD_ARGS[repoDir] : buildArgsForRepo(repoDir)
 
     echo "Building new development version"
-    sh "env MAVEN_OPTS='-Xmx8g -Xms1g' ./mvnw clean install -T 1C -DskipTests -DskipITs -Passembly $buildArgs"
+    def threads = repoDir in DISABLE_PARALLEL_BUILD ? '' : '-T 1C'
+    sh "env MAVEN_OPTS='$MAVEN_MEMORY' ./mvnw clean install $threads -DskipTests -DskipITs -Passembly $buildArgs"
 
     echo 'Executing post-perform steps'
     POST_PERFORM_STEPS.getOrDefault(repoDir, this.&defaultPostPerformSteps)()
@@ -621,11 +669,13 @@ node {
     IGNORE_SNAPSHOTS = common.getBooleanParameter(params.IGNORE_SNAPSHOTS)
     CHECK_BACKPORTS = common.getBooleanParameter(params.CHECK_BACKPORTS)
     LATEST_SERIES = common.getBooleanParameter(params.LATEST_SERIES)
+    IGNORE_RELEASE_PLAN_INCONSISTENCIES = common.getBooleanParameter(params.IGNORE_RELEASE_PLAN_INCONSISTENCIES)
 
     echo "Ignore snapshots: ${IGNORE_SNAPSHOTS}"
     echo "Check backports: ${CHECK_BACKPORTS}"
     echo "From scratch: ${FROM_SCRATCH}"
     echo "Latest series: ${LATEST_SERIES}"
+    echo "Ignore release plan inconsistencies: ${IGNORE_RELEASE_PLAN_INCONSISTENCIES}"
 
     RELEASE_VERSION = params.RELEASE_VERSION
     DEVELOPMENT_VERSION = params.DEVELOPMENT_VERSION
@@ -692,8 +742,17 @@ node {
             def repoIds = MAVEN_REPOSITORIES.keySet()
             def missing = repoIds - planIds
             def extra = planIds - repoIds
-            if (missing) { error "RELEASE_PLAN is missing repositories: ${missing.sort()}" }
-            if (extra) { error "RELEASE_PLAN contains unknown repositories: ${extra.sort()}" }
+            if (!IGNORE_RELEASE_PLAN_INCONSISTENCIES) {
+                if (missing) { error "RELEASE_PLAN is missing repositories: ${missing.sort()}" }
+                if (extra) { error "RELEASE_PLAN contains unknown repositories: ${extra.sort()}" }
+            } else {
+                if (missing || extra) {
+                    echo "WARNING: Ignoring release plan inconsistencies — missing: ${missing.sort()}, extra: ${extra.sort()}"
+                }
+                if (extra) {
+                    RELEASE_PLAN = RELEASE_PLAN.collect { tier -> tier - extra }.findAll { !it.isEmpty() }
+                }
+            }
         }
 
         stage('Initialize') {
@@ -767,7 +826,7 @@ EOF''')
             def issues = []
 
             withSecrets(config: ONE_PASSWORD_CONFIG, secrets: SECRETS) {
-                // Fetch DBZ PR head ref as owner/repo/branch
+                // Fetch DBZ PR head ref as owner/repo/branch (pre-merge: content lives on the PR branch)
                 def dbzRef = sh(
                     script: """GH_TOKEN=\${GITHUB_PASSWORD} gh pr view $DBZ_PR_URL \
 --json headRefName,headRepositoryOwner,headRepository \
@@ -776,7 +835,7 @@ EOF''')
                 ).trim().tokenize('/')
                 def (dbzOwner, dbzRepo, dbzBranch) = dbzRef
 
-                // Fetch WEBSITE PR head ref as owner/repo/branch
+                // Fetch WEBSITE PR head ref as owner/repo/branch (pre-merge: content lives on the PR branch)
                 def webRef = sh(
                     script: """GH_TOKEN=\${GITHUB_PASSWORD} gh pr view $WEBSITE_PR_URL \
 --json headRefName,headRepositoryOwner,headRepository \
@@ -789,10 +848,20 @@ EOF''')
                     "https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}"
                 }
 
-                def changelog    = new URL(rawUrl(dbzOwner, dbzRepo, dbzBranch, 'CHANGELOG.md')).text
-                def copyright    = new URL(rawUrl(dbzOwner, dbzRepo, dbzBranch, 'COPYRIGHT.txt')).text
-                def releaseNotes = new URL(rawUrl(webOwner, webRepo, webBranch, "releases/$VERSION_MAJOR_MINOR/release-notes.asciidoc")).text
-                def versionYml   = new URL(rawUrl(webOwner, webRepo, webBranch, "_data/releases/$VERSION_MAJOR_MINOR/${RELEASE_VERSION}.yml")).text
+                def changelogUrl    = rawUrl(dbzOwner, dbzRepo, dbzBranch, 'CHANGELOG.md')
+                def copyrightUrl    = rawUrl(dbzOwner, dbzRepo, dbzBranch, 'COPYRIGHT.txt')
+                def releaseNotesUrl = rawUrl(webOwner, webRepo, webBranch, "releases/$VERSION_MAJOR_MINOR/release-notes.asciidoc")
+                def versionYmlUrl   = rawUrl(webOwner, webRepo, webBranch, "_data/releases/$VERSION_MAJOR_MINOR/${RELEASE_VERSION}.yml")
+
+                echo "Checking CHANGELOG.md at:        $changelogUrl"
+                echo "Checking COPYRIGHT.txt at:       $copyrightUrl"
+                echo "Checking release-notes at:       $releaseNotesUrl"
+                echo "Checking version YAML at:        $versionYmlUrl"
+
+                def changelog    = new URL(changelogUrl).text
+                def copyright    = new URL(copyrightUrl).text
+                def releaseNotes = new URL(releaseNotesUrl).text
+                def versionYml   = new URL(versionYmlUrl).text
 
                 checkPreReleaseContent(changelog, copyright, releaseNotes, versionYml, issues, 'WARNING')
             }
@@ -815,6 +884,22 @@ ${issuesSummary}
   $WEBSITE_PR_URL""",
                 ok: 'Both PRs are merged, continue'
             )
+
+            withSecrets(config: ONE_PASSWORD_CONFIG, secrets: SECRETS) {
+                // Re-fetch main repo to pick up merged PR changes
+                dir(DEBEZIUM_DIR) {
+                    sh "git pull https://\${GITHUB_USERNAME}:\${GITHUB_PASSWORD}@github.com/debezium/debezium.git $SOURCE_BRANCH"
+                }
+
+                // Re-fetch docs repo to pick up merged PR changes
+                if (!fileExists(WEBSITE_DIR)) {
+                    sh "git clone --depth=1 -b develop https://\${GITHUB_USERNAME}:\${GITHUB_PASSWORD}@github.com/debezium/debezium.github.io.git $WEBSITE_DIR"
+                } else {
+                    dir(WEBSITE_DIR) {
+                        sh "git pull https://\${GITHUB_USERNAME}:\${GITHUB_PASSWORD}@github.com/debezium/debezium.github.io.git develop"
+                    }
+                }
+            }
         }
 
         stage('Check Contributors') {
@@ -976,10 +1061,18 @@ ${failures.collect { "  - $it" }.join('\n')}""")
                         unpublished.isEmpty()
                     }
                 }
+                // Run post-perform steps for every repo in this tier unless a development-version
+                // commit already exists in the local history, which means the steps completed in a
+                // prior run.  Using the git log as the marker is durable across job restarts,
+                // unlike the in-memory unpublished list which is rebuilt from scratch each run.
                 tier.each { id ->
                     def repo = MAVEN_REPOSITORIES[id]
                     dir("$id/${repo.subDir}") {
-                        releasePerformPostSteps(id, repo.git)
+                        if (!postPerformCommitExists()) {
+                            releasePerformPostSteps(id, repo.git)
+                        } else {
+                            echo "Post-perform commit already exists for $id, skipping"
+                        }
                     }
                 }
             }

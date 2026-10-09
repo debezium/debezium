@@ -27,7 +27,9 @@ import org.bson.BsonType;
 import org.bson.BsonValue;
 
 import io.debezium.DebeziumException;
+import io.debezium.connector.mongodb.MongoDbSchema;
 import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState.ArrayEncoding;
+import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState.BsonTimestampHandlingMode;
 import io.debezium.schema.FieldNameSelector;
 import io.debezium.schema.FieldNameSelector.FieldNamer;
 import io.debezium.schema.SchemaNameAdjuster;
@@ -41,6 +43,7 @@ import io.debezium.schema.SchemaNameAdjuster;
  */
 public class MongoDataConverter {
     public static final String SCHEMA_NAME_REGEX = "io.debezium.mongodb.regex";
+
     private final ArrayEncoding arrayEncoding;
     private final FieldNamer<String> fieldNamer;
 
@@ -49,10 +52,18 @@ public class MongoDataConverter {
      */
     private final boolean sanitizeValue;
 
-    public MongoDataConverter(ArrayEncoding arrayEncoding, FieldNamer<String> fieldNamer, boolean sanitizeValue) {
+    private final BsonTimestampHandlingMode bsonTimestampHandlingMode;
+
+    public MongoDataConverter(ArrayEncoding arrayEncoding, FieldNamer<String> fieldNamer, boolean sanitizeValue,
+                              BsonTimestampHandlingMode bsonTimestampHandlingMode) {
         this.arrayEncoding = arrayEncoding;
         this.fieldNamer = fieldNamer;
         this.sanitizeValue = sanitizeValue;
+        this.bsonTimestampHandlingMode = bsonTimestampHandlingMode;
+    }
+
+    public MongoDataConverter(ArrayEncoding arrayEncoding, FieldNamer<String> fieldNamer, boolean sanitizeValue) {
+        this(arrayEncoding, fieldNamer, sanitizeValue, BsonTimestampHandlingMode.CONNECT);
     }
 
     public MongoDataConverter(ArrayEncoding arrayEncoding) {
@@ -294,6 +305,9 @@ public class MongoDataConverter {
             case JAVASCRIPT:
             case OBJECT_ID:
             case DECIMAL128:
+            case SYMBOL:
+            case MIN_KEY:
+            case MAX_KEY:
                 builder.field(key, Schema.OPTIONAL_STRING_SCHEMA);
                 break;
             case DOUBLE:
@@ -313,8 +327,11 @@ public class MongoDataConverter {
                 break;
 
             case DATE_TIME:
-            case TIMESTAMP:
                 builder.field(key, Timestamp.builder().optional().build());
+                break;
+
+            case TIMESTAMP:
+                builder.field(key, timestampSchema());
                 break;
 
             case BOOLEAN:
@@ -322,18 +339,13 @@ public class MongoDataConverter {
                 break;
 
             case JAVASCRIPT_WITH_SCOPE:
-                SchemaBuilder jsWithScope = SchemaBuilder.struct().name(builder.name() + "." + key);
+                final SchemaBuilder jsWithScope = SchemaBuilder.struct().name(builder.name() + "." + key);
                 jsWithScope.field("code", Schema.OPTIONAL_STRING_SCHEMA);
-                SchemaBuilder scope = SchemaBuilder.struct().name(jsWithScope.name() + "." + key + ".scope").optional();
+                final SchemaBuilder scope = SchemaBuilder.struct().name(jsWithScope.name() + ".scope").optional();
+                final BsonDocument scopeDocument = ((BsonValue) obj).asJavaScriptWithScope().getScope();
+                buildSchema(parseBsonDocument(scopeDocument), scope);
 
-                for (Entry<?, ?> jwsDoc : ((Map<?, ?>) obj).entrySet()) {
-                    String fieldName = fieldNamer.fieldNameFor(jwsDoc.getKey().toString());
-                    Object value = jwsDoc.getValue();
-                    schema(fieldName, (Entry<Object, BsonType>) value, scope);
-                }
-
-                Schema scopeBuild = scope.build();
-                jsWithScope.field("scope", scopeBuild).build();
+                jsWithScope.field("scope", scope.build());
                 builder.field(key, jsWithScope);
                 break;
 
@@ -615,6 +627,12 @@ public class MongoDataConverter {
         map.values().iterator().next();
     }
 
+    private Schema timestampSchema() {
+        return bsonTimestampHandlingMode == BsonTimestampHandlingMode.STRUCT
+                ? MongoDbSchema.BSON_TIMESTAMP_SCHEMA
+                : Timestamp.builder().optional().build();
+    }
+
     /**
      * Returns the schema for a given BsonType
      */
@@ -625,6 +643,9 @@ public class MongoDataConverter {
             case JAVASCRIPT:
             case OBJECT_ID:
             case DECIMAL128:
+            case SYMBOL:
+            case MIN_KEY:
+            case MAX_KEY:
                 return Schema.OPTIONAL_STRING_SCHEMA;
 
             case DOUBLE:
@@ -640,6 +661,8 @@ public class MongoDataConverter {
                 return Schema.OPTIONAL_INT64_SCHEMA;
 
             case TIMESTAMP:
+                return timestampSchema();
+
             case DATE_TIME:
                 return Timestamp.builder().optional().build();
 
@@ -677,14 +700,15 @@ public class MongoDataConverter {
 
         switch (type) {
             case JAVASCRIPT_WITH_SCOPE:
-                Struct jsStruct = new Struct(schema.field(key).schema());
-                Struct jsScopeStruct = new Struct(
-                        schema.field(key).schema().field("scope").schema());
+                final Schema jsSchema = schema.field(key).schema();
+                final Struct jsStruct = new Struct(jsSchema);
+                final Schema scopeSchema = jsSchema.field("scope").schema();
+                final Struct jsScopeStruct = new Struct(scopeSchema);
                 jsStruct.put("code", value.asJavaScriptWithScope().getCode());
-                BsonDocument jwsDoc = value.asJavaScriptWithScope().getScope().asDocument();
+                final BsonDocument scopeDocument = value.asJavaScriptWithScope().getScope();
 
-                for (Entry<String, BsonValue> entry : jwsDoc.entrySet()) {
-                    buildStruct(entry, schema.field(key).schema().field(key).schema(), jsScopeStruct);
+                for (final Entry<String, BsonValue> entry : scopeDocument.entrySet()) {
+                    buildStruct(entry, scopeSchema, jsScopeStruct);
                 }
 
                 jsStruct.put("scope", jsScopeStruct);
@@ -822,11 +846,33 @@ public class MongoDataConverter {
                 break;
 
             case TIMESTAMP:
-                colValue = new Date(1000L * value.asTimestamp().getTime());
+                if (bsonTimestampHandlingMode == BsonTimestampHandlingMode.STRUCT) {
+                    // Both BSON components are unsigned 32-bit values, widened to signed 64-bit so the
+                    // full unsigned range stays exact (Connect has no unsigned types).
+                    Struct timestampStruct = new Struct(MongoDbSchema.BSON_TIMESTAMP_SCHEMA);
+                    timestampStruct.put("time", Integer.toUnsignedLong(value.asTimestamp().getTime()));
+                    timestampStruct.put("increment", Integer.toUnsignedLong(value.asTimestamp().getInc()));
+                    colValue = timestampStruct;
+                    break;
+                }
+                colValue = new Date(1000L * Integer.toUnsignedLong(value.asTimestamp().getTime()));
                 break;
 
             case JAVASCRIPT:
                 colValue = value.asJavaScript().getCode();
+                break;
+
+            case SYMBOL:
+                colValue = value.asSymbol().getSymbol();
+                break;
+
+            // MinKey and MaxKey carry no value of their own; represent them by their canonical name.
+            case MIN_KEY:
+                colValue = "MinKey";
+                break;
+
+            case MAX_KEY:
+                colValue = "MaxKey";
                 break;
 
             default:

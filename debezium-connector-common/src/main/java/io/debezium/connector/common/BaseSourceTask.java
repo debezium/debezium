@@ -293,6 +293,12 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             }
             catch (RetriableException e) {
                 LOGGER.warn("Failed to start connector, will re-attempt during polling.", e);
+                try {
+                    doStop();
+                }
+                catch (RuntimeException cleanupException) {
+                    LOGGER.warn("Failed to clean up connector after unsuccessful start; restart will still be attempted.", cleanupException);
+                }
                 restartDelay = ElapsedTimeStrategy.constant(Clock.system(), retriableRestartWait);
                 setTaskState(DebeziumTaskState.RESTARTING);
             }
@@ -353,7 +359,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
     public final List<SourceRecord> poll() throws InterruptedException {
 
         try (var rootLoggingContext = LoggingContext.initRootContext()) {
-            // in we fail to start, return empty list and try to start next poll() method call
+            // if we fail to start, return empty list and try to start next poll() method call
             if (!startIfNeededAndPossible()) {
                 return Collections.emptyList();
             }
@@ -528,6 +534,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
                 LOGGER.info("Stopping down connector");
             }
 
+            Throwable shutdownFailure = null;
             try {
                 if (coordinator != null) {
                     coordinator.stop();
@@ -537,10 +544,27 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             catch (InterruptedException e) {
                 Thread.interrupted();
                 LOGGER.error("Interrupted while stopping coordinator", e);
-                throw new ConnectException("Interrupted while stopping coordinator, failing the task");
+                final var exception = new ConnectException("Interrupted while stopping coordinator, failing the task", e);
+                shutdownFailure = exception;
+                throw exception;
             }
-
-            doStop();
+            catch (RuntimeException | Error e) {
+                shutdownFailure = e;
+                throw e;
+            }
+            finally {
+                try {
+                    doStop();
+                }
+                catch (RuntimeException | Error cleanupFailure) {
+                    if (shutdownFailure == null) {
+                        throw cleanupFailure;
+                    }
+                    if (shutdownFailure != cleanupFailure) {
+                        shutdownFailure.addSuppressed(cleanupFailure);
+                    }
+                }
+            }
 
             if (restart) {
                 setTaskState(DebeziumTaskState.RESTARTING);
@@ -560,6 +584,9 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         }
     }
 
+    /**
+     * Releases connector-specific resources, including when coordinator shutdown fails.
+     */
     protected abstract void doStop();
 
     @Override

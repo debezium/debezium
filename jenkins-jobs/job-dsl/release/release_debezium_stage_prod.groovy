@@ -7,6 +7,9 @@ pipelineJob('release/release-debezium-stage-prod') {
     displayName('Debezium Build Product Artifacts')
     description('Builds and uploads product artifacts into a stage location')
 
+    // Moved to GH actions
+    disabled()
+
     properties {
         githubProjectUrl('https://github.com/debezium/debezium')
     }

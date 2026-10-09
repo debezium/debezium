@@ -28,6 +28,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalLong;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -75,9 +76,9 @@ public class SqlServerConnection extends JdbcConnection {
     private static final String PREFIX_CDC_DATA = "[cdc_data].";
     private static final String GET_ALL_CHANGES_FUNCTION_PREFIX = "fn_cdc_get_all_changes_";
     private static final String GET_MAX_LSN = "SELECT #db.sys.fn_cdc_get_max_lsn()";
-    private static final String GET_MAX_TRANSACTION_LSN = "SELECT MAX(start_lsn) FROM #db.cdc.lsn_time_mapping WHERE tran_id <> 0x00";
-    private static final String GET_NTH_TRANSACTION_LSN_FROM_BEGINNING = "SELECT MAX(start_lsn) FROM (SELECT TOP (?) start_lsn FROM #db.cdc.lsn_time_mapping WHERE tran_id <> 0x00 ORDER BY start_lsn) as next_lsns";
-    private static final String GET_NTH_TRANSACTION_LSN_FROM_LAST = "SELECT MAX(start_lsn) FROM (SELECT TOP (? + 1) start_lsn FROM #db.cdc.lsn_time_mapping WHERE start_lsn >= ? AND tran_id <> 0x00 ORDER BY start_lsn) as next_lsns";
+    private static final String GET_MAX_TRANSACTION_LSN = "SELECT MAX(start_lsn) FROM #db.cdc.lsn_time_mapping WITH (NOLOCK) WHERE tran_id <> 0x00";
+    private static final String GET_NTH_TRANSACTION_LSN_FROM_BEGINNING = "SELECT MAX(start_lsn) FROM (SELECT TOP (?) start_lsn FROM #db.cdc.lsn_time_mapping WITH (NOLOCK) WHERE tran_id <> 0x00 ORDER BY start_lsn) as next_lsns";
+    private static final String GET_NTH_TRANSACTION_LSN_FROM_LAST = "SELECT MAX(start_lsn) FROM (SELECT TOP (? + 1) start_lsn FROM #db.cdc.lsn_time_mapping WITH (NOLOCK) WHERE start_lsn >= ? AND tran_id <> 0x00 ORDER BY start_lsn) as next_lsns";
 
     private static final String GET_MIN_LSN = "SELECT #db.sys.fn_cdc_get_min_lsn(?)";
     private static final String LOCK_TABLE = "SELECT * FROM #table WITH (TABLOCKX)";
@@ -89,7 +90,7 @@ public class SqlServerConnection extends JdbcConnection {
     private static final String GET_ALL_CHANGES_FOR_TABLE_SELECT_DIRECT = "SELECT cdc_data.[__$start_lsn], cdc_data.[__$seqval], cdc_data.[__$operation], cdc_data.[__$update_mask], cdc_data.[__$command_id], #, "
             + LSN_TIMESTAMP_SELECT_STATEMENT_JOIN;
     private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_FUNCTION = "FROM #db.cdc.#function(?, ?, N'all update old')";
-    private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_DIRECT = "FROM #db.cdc.#table AS cdc_data WITH (NOLOCK) LEFT JOIN #db.cdc.lsn_time_mapping ltm ON ltm.start_lsn = cdc_data.[__$start_lsn]";
+    private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_DIRECT = "FROM #db.cdc.#table AS cdc_data WITH (NOLOCK) LEFT JOIN #db.cdc.lsn_time_mapping ltm WITH (NOLOCK) ON ltm.start_lsn = cdc_data.[__$start_lsn]";
     private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_FUNCTION_ORDER_BY = "ORDER BY [__$start_lsn] ASC, [__$seqval] ASC, [__$operation] ASC";
     private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_DIRECT_ORDER_BY = "ORDER BY cdc_data.[__$start_lsn] ASC, cdc_data.[__$command_id] ASC, cdc_data.[__$seqval] ASC, cdc_data.[__$operation] ASC";
     private static final String GET_CDC_JOB_INFO = "{call sys.sp_cdc_help_jobs}";
@@ -844,6 +845,14 @@ public class SqlServerConnection extends JdbcConnection {
     }
 
     @Override
+    public String buildSelectRowCount(TableId tableId) {
+        // COUNT returns a 32-bit int in T-SQL and overflows with "Arithmetic overflow error converting expression
+        // to data type int" on tables with more than Integer.MAX_VALUE rows, before any value reaches the driver.
+        // COUNT_BIG returns a bigint and is the documented remedy.
+        return "SELECT COUNT_BIG(1) FROM %s".formatted(quotedTableIdString(tableId));
+    }
+
+    @Override
     public Optional<Boolean> nullsSortLast() {
         // "Null values are treated as the lowest possible values"
         // https://learn.microsoft.com/en-us/sql/t-sql/queries/select-order-by-clause-transact-sql?view=sql-server-ver16
@@ -855,6 +864,30 @@ public class SqlServerConnection extends JdbcConnection {
         return Stream.of(tableId.catalog(), tableId.schema(), tableId.table())
                 .map(this::quoteIdentifier)
                 .collect(Collectors.joining("."));
+    }
+
+    @Override
+    public OptionalLong readRowCountEstimate(TableId tableId) {
+        // sys.partitions.rows holds the maintained row count for the heap or clustered index (index_id 0 or 1).
+        // It is read from the target database's catalog and only relies on the metadata visibility that
+        // db_datareader already grants (no VIEW DATABASE STATE required). Best-effort: only used when no filter is present.
+        final String query = "SELECT SUM(p.rows) FROM " + quoteIdentifier(tableId.catalog())
+                + ".sys.partitions p WHERE p.object_id = OBJECT_ID(?) AND p.index_id IN (0, 1)";
+        try {
+            return prepareQueryAndMap(query,
+                    statement -> statement.setString(1, quotedTableIdString(tableId)),
+                    rs -> {
+                        if (rs.next()) {
+                            final long estimate = rs.getLong(1);
+                            return rs.wasNull() ? OptionalLong.empty() : OptionalLong.of(estimate);
+                        }
+                        return OptionalLong.empty();
+                    });
+        }
+        catch (SQLException e) {
+            LOGGER.warn("Unable to read row count estimate for table '{}' from sys.partitions; incremental snapshot will fall back to an exact count", tableId, e);
+            return OptionalLong.empty();
+        }
     }
 
     private String replaceDatabaseNamePlaceholder(String sql, String databaseName) {

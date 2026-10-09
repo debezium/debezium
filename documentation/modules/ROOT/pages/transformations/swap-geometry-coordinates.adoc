@@ -5,6 +5,7 @@
 [id="swap-geometry-coordinates"]
 = SwapGeometryCoordinates
 
+ifdef::community[]
 :toc:
 :toc-placement: macro
 :linkattrs:
@@ -12,6 +13,7 @@
 :source-highlighter: highlight.js
 
 toc::[]
+endif::community[]
 
 In environments where you must send data from a source database that uses one coordinate system to a target that uses a different system, you can use the `SwapGeometryCoordinates` single message transformation (SMT) to reformat the data.
 When serializing geometry information into a well-known binary (WKB) or extended well-known binary (EWKB) byte array, the source database uses one of the following coordinate systems:

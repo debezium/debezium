@@ -804,12 +804,139 @@ When the {connector-name} connection is read-only, you can use any of the {link-
 end::adhoc-ro-incremental[]
 
 
+=== Setting the binlog position via a signal
+
+tag::set-binlog-position-intro[]
+In certain situations it can be useful to precisely control the point in the binlog from which the connector begins to capture database changes.
+You can send a {prodname} `set-binlog-position` signal at run time to dynamically specify where the {connector-name} connector begins reading from the database binlog (binary log).
+
+[IMPORTANT]
+====
+Depending on the position that you specify in the `set-binlog-position` signal, the connector either excludes events from the log, or sends duplicate events.
+
+If you specify a binlog position that is later than the current position, the connector skips change events in the history between the current position and the new position.
+The connector does not capture or stream changes in the skipped range.
+
+On the other hand, if the signal directs the connector to resume reading from a point earlier than the current position, the connector replays log entries that it previously sent, emitting duplicate events to the destination topic.
+====
+
+You might want to reset the connector's binlog position under the following circumstances:
+
+Disaster recovery:: Direct the connector to resume streaming from the last known good position in the log after a system failure.
+Restarting from a specified position helps to maintain data consistency across the pipeline by ensuring that data is not lost or duplicated.
+Corrupted data:: You detect corrupted or incorrect data in the database or in the destination Kafka topics, and want to skip the corrupted data and resume from a known good position.
+Avoid replaying old data after a database refresh:: After you refresh a database from another source, such as a backup, the connector might attempt to replay all historical events from an old binlog position, which can result in duplicate topic data, and lead to heavy resource consumption.
+By resuming streaming from a specific recent point, you skip historical events that you don't need, and can help save cost and time.
+Partial replication:: When diverting captured data to a new Kafka topic, you want the connector to process the log from a specific point to exclude the full event history and send only a specific subset of database changes.
+By using this approach, you prevent the connector from processing obsolete, older data so that the connector captures only the relevant recent changes.
+Testing:: Test the connector with a specific subset of data, excluding the full history captured by snapshots.
+end::set-binlog-position-intro[]
 
 
+==== Format of a `set-binlog-position` signal
+
+tag::set-binlog-position-format[]
+A {prodname} `set-binlog-position` signal message includes the standard `id`, `type`, and `data` properties.
+The exact format of the message depends on which signaling channel you use.
+For more information about the format of {prodname} signals, see {link-prefix}:{link-signalling}#debezium-signaling-overview}[Sending signals to a {prodname} connector].
+
+To designate the binlog position in a `set-binlog-position` signal, in the data portion of the signal, you specify either the binlog file and position, or a GTID set, depending on whether GTID (Global Transaction Identifier) mode is enabled.
+You cannot use both formats in the same signal.
+
+The following examples illustrate the two formats for specifying the binlog position in a signal:
+
+Binlog file and position format::
+When GTID mode is disabled, specify the binlog filename and position in the signal, as in the following example:
++
+[example]
+====
+[source,json]
+----
+{"binlog_filename": "mysql-bin.000003", "binlog_position": 1234}
+----
+====
+The `binlog_filename` must match the binlog naming pattern (for example, `mysql-bin.000001` for MySQL or `mariadb-bin.000001` for MariaDB).
++
+The `binlog_position` must be a non-negative integer.
+
+
+GTID set format::
+When GTID mode is enabled, specify the GTID set in the signal.
+The format of the GTID set value differs between MySQL and MariaDB:
++
+--
+* *MySQL* uses UUID-based GTIDs, for example:
++
+[example]
+====
+[source,json]
+----
+{"gtid_set": "3E11FA47-71CA-11E1-9E33-C80AA9429562:1-100"}
+----
+====
+
+* *MariaDB* uses `domain-server-sequence` tuples, for example:
++
+[example]
+====
+[source,json]
+----
+{"gtid_set": "0-1-100"}
+----
+====
+--
++
+The value of the `gtid_set` attribute must be a valid GTID set string for the database server in use.
+end::set-binlog-position-format[]
+
+
+==== Send a signal to reposition the stream
+
+tag::set-binlog-position-procedure[]
+Send a {prodname} `set-binlog-position` signal at run time to specify the binlog reading position for the {connector-name} connector.
+
+
+.Prerequisites
+
+* The connector is configured to use one of the available {link-prefix}:{link-signalling}#sending-signals-to-a-debezium-connector[{prodname} signaling channels].
+* A {link-prefix}:{link-signalling}#debezium-signaling-enabling-source-signaling-channel[signaling data collection] exists on the source database.
+* The connector configuration property `heartbeat.interval.ms` is set to ensure that offset changes are persisted.
+
+.Procedure
+
+1. Determine the target position in your database history (binlog file and position, or GTID set).
+2. Send a `set-binlog-position` signal that includes the standard `id`, `type`, and `data` properties in the format that is required for your preferred signaling channel.
++
+In the data portion of the signal, specify the target position as determined in step 1.
++
+For example, for the source signaling channel, add one of the following SQL commands to the `data` component of the signal, depending on whether GTID is enabled:
++
+SQL to use when GTID is disabled (uses the binlog file and position)::
++
+[source,sql,indent=0,subs="+attributes"]
+----
+INSERT INTO debezium_signal (id, type, data) VALUES (
+  'set-position-001',
+  'set-binlog-position',
+  '{"binlog_filename": "{binlog-filename-example}", "binlog_position": 1234}'
+);
+----
++
+SQL to use when GTID is enabled (specifies {gtid-label})::
++
+[source,sql,indent=0,subs="+attributes"]
+----
+INSERT INTO debezium_signal (id, type, data) VALUES (
+  'set-gtid-001',
+  'set-binlog-position',
+  '{"gtid_set": "{gtid-value}"}'
+);
+----
+3. Restart the connector to begin streaming from the new position.
+end::set-binlog-position-procedure[]
 
 
 === Topic names
-
 tag::topic-names[]
 By default, the {connector-name} connector writes change events for all of the `INSERT`, `UPDATE`, and `DELETE` operations that occur in a table to a single Apache Kafka topic that is specific to that table.
 
@@ -2901,14 +3028,7 @@ You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and Ope
 endif::community[]
 
 ifdef::product[]
-You can use either of the following methods to deploy a {prodname} {connector-name} connector:
-
-* xref:openshift-streams-{context}-connector-deployment[Use {StreamsName} to automatically create an image that includes the connector plug-in].
-+
-This is the preferred method.
-* xref:deploying-debezium-{context}-connectors[Build a custom Kafka Connect container image from a Containerfile].
-This Containerfile deployment method is deprecated.
-The instructions for this method are scheduled for removal in future versions of the documentation.
+To deploy a {prodname} {connector-name} connector, use {StreamsName} to automatically create a Kafka Connect image that includes the connector plug-in.
 
 .Additional resources
 
@@ -2919,217 +3039,6 @@ end::deployment[]
 
 
 
-
-=== Deploying connectors by building a custom Kafka Connect container image from a Containerfile
-
-tag::deploy-via-dockerfile[]
-To deploy a {prodname} {connector-name} connector, you must build a custom Kafka Connect container image that contains the {prodname} connector archive, and then push this container image to a container registry.
-You then need to create the following custom resources (CRs):
-
-* A `KafkaConnect` CR that defines your Kafka Connect instance.
-The `image` property in the CR specifies the name of the container image that you create to run your {prodname} connector.
-You apply this CR to the OpenShift instance where link:https://access.redhat.com/products/red-hat-amq#streams[Red Hat {StreamsName}] is deployed.
-{StreamsName} offers operators and images that bring Apache Kafka to OpenShift.
-
-* A `KafkaConnector` CR that defines your {prodname} {connector-name} connector.
-Apply this CR to the same OpenShift instance where you apply the `KafkaConnect` CR.
-
-.Prerequisites
-
-* {connector-name} is running and you completed the steps to xref:setting-up-{context}-to-run-a-debezium-connector[set up {connector-name} to work with a {prodname} connector].
-
-* {StreamsName} is deployed on OpenShift and is running Apache Kafka and Kafka Connect.
-For more information, see link:{LinkDeployManageStreamsOpenShift}[{NameDeployManageStreamsOpenShift}].
-
-* Podman or Docker is installed.
-
-* You have an account and permissions to create and manage containers in the container registry (such as `quay.io` or `docker.io`) to which you plan to add the container that will run your Debezium connector.
-
-.Procedure
-
-. Create the {prodname} {connector-name} container for Kafka Connect:
-
-.. Create a Containerfile that uses `{DockerKafkaConnect}` as the base image.
-For example, from a terminal window, enter the following command to create a Containerfile with the name `debezium-container-for-{context}.yaml` in a specified directory:
-+
-=====================================================================
-
-[source,shell,subs="+attributes,+quotes"]
-----
-cat <<EOF >debezium-container-for-{context}.yaml
-FROM {DockerKafkaConnect}
-USER root:root
-RUN mkdir -p /opt/kafka/plugins/debezium
-RUN cd /opt/kafka/plugins/debezium/ \
-&& curl -O {red-hat-maven-repository}debezium/debezium-connector-{connector-file}/{debezium-version}-redhat-{debezium-build-number}/debezium-connector-{connector-file}-{debezium-version}-redhat-{debezium-build-number}-plugin.zip \
-&& unzip debezium-connector-{connector-file}-{debezium-version}-redhat-{debezium-build-number}-plugin.zip \
-&& rm debezium-connector-{connector-file}-{debezium-version}-redhat-{debezium-build-number}-plugin.zip
-RUN cd /opt/kafka/plugins/debezium/
-USER 1001
-EOF
-----
-=====================================================================
-+
-The following list describes the purpose of some of the lines in the preceding example:
-
-`cat <<EOF >debezium-container-for-{context}.yaml`::
-Specifies a name for the YAML Containerfile to be created.
-You can specify any file name that you want.
-
-`RUN mkdir -p /opt/kafka/plugins/debezium`::
-Creates a `debezium` directory within your Kafka Connect plug-ins directory.
-If your Kafka Connect plug-ins directory is in a different location, modify this path to reflect the actual directory location.
-
-.. Build the container image from the `debezium-container-for-{context}.yaml` Docker file that you created in the previous step.
-From the directory that contains the file, open a terminal window and enter one of the following commands:
-+
-[source,shell,options="nowrap",subs="+attributes,+quotes"]
-----
-podman build -t debezium-container-for-{context}:latest .
-----
-+
-[source,shell,options="nowrap",subs="+attributes,+quotes"]
-----
-docker build -t debezium-container-for-{context}:latest .
-----
-The preceding commands build a container image with the name `debezium-container-for-{context}`.
-
-.. Push your custom image to a container registry, such as `quay.io` or an internal container registry.
-The container registry must be available to the OpenShift instance where you want to deploy the image.
-Enter one of the following commands:
-+
-[source,shell,subs="+attributes,+quotes"]
-----
-podman push _<myregistry.io>_/debezium-container-for-{context}:latest
-----
-+
-[source,shell,subs="+attributes,+quotes"]
-----
-docker push _<myregistry.io>_/debezium-container-for-{context}:latest
-----
-
-.. Create a new {prodname} {connector-name} `KafkaConnect` custom resource (CR).
-For example, create a `KafkaConnect` CR with the name `dbz-connect.yaml` that specifies `annotations` and `image` properties.
-The following example shows an excerpt from a `dbz-connect.yaml` file that describes a `KafkaConnect` custom resource.
-+
-=====================================================================
-[source,yaml,subs="+attributes"]
-----
-apiVersion: {KafkaConnectApiVersion}
-kind: KafkaConnect
-metadata:
-  name: my-connect-cluster
-  annotations:
-    strimzi.io/use-connector-resources: "true"
-spec:
-  #...
-  image: debezium-container-for-{context}
-
-  ...
-----
-=====================================================================
-+
-The following list describes the purpose of select lines in the preceding example:
-
-`strimzi.io/use-connector-resources: "true"`::
-This annotation indicates to the Cluster Operator that `KafkaConnector` custom resources are used to configure connectors in this Kafka Connect cluster.
-
-`spec.image::
-Specifies the name of the image that you created to run your Debezium connector.
-This property overrides the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable in the Cluster Operator.
-
-.. Apply the `KafkaConnect` CR to the OpenShift Kafka Connect environment by entering the following command:
-+
-[source,shell,options="nowrap"]
-----
-oc create -f dbz-connect.yaml
-----
-+
-The command adds a Kafka Connect instance that specifies the name of the image that you created to run your {prodname} connector.
-
-. Create a `KafkaConnector` custom resource that configures your {prodname} {connector-name} connector instance.
-+
-You configure a {prodname} {connector-name} connector in a `.yaml` file that specifies the configuration properties for the connector.
-The connector configuration might instruct {prodname} to produce events for a subset of the schemas and tables, or it might set properties so that {prodname} ignores, masks, or truncates values in specified columns that are sensitive, too large, or not needed.
-+
-The following example configures a {prodname} connector that connects to a {connector-name} database server, `{context}`, on port `3306`, and captures changes to the `inventory` database.
-+
-.{connector-name} `inventory-connector.yaml`
-[source,yaml,options="nowrap",subs="+attributes"]
-----
-  apiVersion: {KafkaConnectApiVersion}
-  kind: KafkaConnector
-  metadata:
-    name: inventory-connector-{context}
-    labels:
-      strimzi.io/cluster: my-connect-cluster
-  spec:
-    class: io.debezium.connector.{context}.MariaDbConnector
-    tasks.max: 1
-    config:
-      database.hostname: {context}
-      database.port: 3306
-      database.user: debezium
-      database.password: dbz
-      database.server.id: 184054
-      topic.prefix: inventory-connector-{context}
-      table.include.list: inventory
-      schema.history.internal.kafka.bootstrap.servers: my-cluster-kafka-bootstrap:9092
-      schema.history.internal.kafka.topic: schema-changes.inventory
-----
-+
-The following list describes select parameters in the preceding connector CR example:
-
-`name`::
-The name of the connector.
-
-`tasks.max`::
-Specifies the number of tasks that the connector can operate at one time.
-Because the {connector-name} connector reads the {connector-name} server’s `binlog`,
-using a single connector task ensures proper order and event handling.
-The Kafka Connect service uses connectors to start one or more tasks to perform work,
-and it automatically distributes the running tasks across the cluster of Kafka Connect services.
-If any of the services stop or crash, tasks are redistributed to running services.
-
-`config:`::
-The connector’s configuration.
-
-`database.hostname`::
-Specifies the database host, which is the name of the container that runs the {connector-name} server (`{context}`).
-
-`database.server.id`::
-Unique ID of the connector.
-
-`topic.prefix`::
-Specifies the topic prefix for the {connector-name} server or cluster.
-This name is used as the prefix for all Kafka topics that receive change event records from the connector.
-
-`table.include.list`::
-Specifies the tables from which the connector captures changes.
-This connector captures changes only from the `inventory` table.
-
-`schema.history.internal.kafka.bootstrap.servers::
-Specifies the the connector uses `my-cluster-kafka-bootstrap:9092` as the Kafka broker for connecting to the database schema history topic when it writes or reads DDL statements.
-When a connector restarts, it recovers the database schemas that existed in the binlog at the point in time when the connector stopped.
-
-`schema.history.internal.kafka.topic::
-Specifies the name of the database schema history topic.
-This topic is for internal use only and should not be used by consumers.
-ifdef::community[]
-To learn more about the topic configuration requirements, see xref:install.html#configuring-debezium
-endif::community[]
-
-. Create your connector instance with Kafka Connect.
-For example, if you saved your `KafkaConnector` resource in the `inventory-connector.yaml` file, you would run the following command:
-+
-[source,shell,options="nowrap"]
-----
-oc apply -f inventory-connector.yaml
-----
-+
-The preceding command registers `inventory-connector` and the connector starts to run against the `inventory` database as defined in the `KafkaConnector` CR.
-
-end::deploy-via-dockerfile[]
 
 tag::connector-config-example[]
 ifdef::community[]
@@ -3385,3 +3294,4 @@ If the snapshot is disabled, the connector fails with an error.
 
 See xref:{context}-snapshots[snapshots] for details about how {connector-name} connectors perform initial snapshots.
 end::wrong-things[]
+

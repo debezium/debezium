@@ -45,6 +45,8 @@ def main():
 
         if repository["id"] == core_id:
             command.append("-Passembly,oracle-all,docs")
+        elif repository["id"] == "server":
+            command.append("-Passembly,docs,native")
         elif repository["id"] != "jbang-catalog":
             command.append("-Passembly,docs")
 

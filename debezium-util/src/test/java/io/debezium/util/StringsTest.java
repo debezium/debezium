@@ -197,6 +197,25 @@ public class StringsTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2718")
+    public void replaceVariablesShouldSupportDefaultValuesContainingColons() {
+        assertReplacement("${DB_HOST:localhost:3306}", vars(), "localhost:3306");
+        assertReplacement("jdbc:mysql://${DB_HOST:localhost:3306}/mydb", vars(), "jdbc:mysql://localhost:3306/mydb");
+        assertReplacement("${URL:http://localhost:8080/api}", vars(), "http://localhost:8080/api");
+        assertReplacement("some ${var1,var2:localhost:5432} text", vars(), "some localhost:5432 text");
+        assertReplacement("some ${var1,var2:localhost:5432} text", vars("var1", "remote:9999"), "some remote:9999 text");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2718")
+    public void replaceVariablesShouldSupportEmptyDefaultValue() {
+        assertReplacement("${PREFIX:}test", vars(), "test");
+        assertReplacement("some ${varName:} text", vars(), "some  text");
+        assertReplacement("some ${var1,var2:} text", vars(), "some  text");
+        assertReplacement("some ${var1,var2:} text", vars("var2", "custom"), "some custom text");
+    }
+
+    @Test
     public void replaceVariablesShouldReplaceMultipleVariables() {
         assertReplacement("${v1}${v1}", vars("v1", "first", "v2", "second"), "firstfirst");
         assertReplacement("${v1}${v2}", vars("v1", "first", "v2", "second"), "firstsecond");
@@ -389,6 +408,7 @@ public class StringsTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2749")
     public void durationToString() {
         assertThat(Strings.duration(0)).isEqualTo("00:00:00.0");
         assertThat(Strings.duration(1)).isEqualTo("00:00:00.001");
@@ -400,12 +420,19 @@ public class StringsTest {
         assertThat(Strings.duration(3_600_000)).isEqualTo("01:00:00.0");
         assertThat(Strings.duration(36_000_000)).isEqualTo("10:00:00.0");
         assertThat(Strings.duration(540_000_000)).isEqualTo("150:00:00.0");
+        assertThat(Strings.duration(-541_934_321)).isEqualTo("-150:32:14.321");
         assertThat(Strings.duration(541_934_321)).isEqualTo("150:32:14.321");
+        assertThat(Strings.duration(Long.MAX_VALUE)).isEqualTo("2562047788015:12:55.807");
+        assertThat(Strings.duration(Long.MIN_VALUE)).isEqualTo("-2562047788015:12:55.808");
     }
 
     protected void assertReplacement(String before, Map<String, String> replacements, String after) {
         String result = Strings.replaceVariables(before, replacements::get);
         assertThat(result).isEqualTo(after);
+    }
+
+    protected Map<String, String> vars() {
+        return Map.of();
     }
 
     protected Map<String, String> vars(String var1, String val1) {
@@ -480,6 +507,19 @@ public class StringsTest {
     }
 
     @Test
+    @FixFor("debezium/dbz#2725")
+    public void convertDotAndUnderscoreStringToCamelCaseShouldHandleLeadingAndTrailingSeparators() {
+        assertThat(Strings.convertDotAndUnderscoreStringToCamelCase("_hello_world"))
+                .isEqualTo("helloWorld");
+        assertThat(Strings.convertDotAndUnderscoreStringToCamelCase(".foo.bar"))
+                .isEqualTo("fooBar");
+        assertThat(Strings.convertDotAndUnderscoreStringToCamelCase("__leading_and_trailing__"))
+                .isEqualTo("leadingAndTrailing");
+        assertThat(Strings.convertDotAndUnderscoreStringToCamelCase("..."))
+                .isEqualTo("");
+    }
+
+    @Test
     public void listOfTrimmedWithCommaDelimiterShouldTrimWhitespace() {
         // Test with spaces after commas (like multiline YAML)
         List<String> result = Strings.listOfTrimmed("db1.col1, db2.col2 , db3.col3", Function.identity());
@@ -521,5 +561,29 @@ public class StringsTest {
         List<String> result = Strings.listOfTrimmed("db1.col1, db2.col2 , db3.col3",
                 s -> s.split(","), Function.identity());
         assertThat(result).containsExactly("db1.col1", "db2.col2", "db3.col3");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2719")
+    public void shouldMaskSensitiveDataWithDefaultMask() {
+        String result = Strings.mask("Server host=db.internal:3306 user=admin pass=secret", "***", "admin", "secret");
+        assertThat(result).isEqualTo("Server host=db.internal:3306 user=*** pass=***");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2719")
+    public void shouldMaskSensitiveDataWithCustomMask() {
+        String result = Strings.mask("Server host=db.internal:3306 user=admin pass=secret", "<REDACTED>", "admin", "secret");
+        assertThat(result).isEqualTo("Server host=db.internal:3306 user=<REDACTED> pass=<REDACTED>");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2719")
+    public void shouldHandleNullAndEmptyInMask() {
+        assertThat(Strings.mask(null, "***", "secret")).isNull();
+        assertThat(Strings.mask("test", "***", (String[]) null)).isEqualTo("test");
+        assertThat(Strings.mask("test", "***", (String) null)).isEqualTo("test");
+        assertThat(Strings.mask("test", "***", "")).isEqualTo("test");
+        assertThat(Strings.mask("test", null, "test")).isEqualTo("***");
     }
 }

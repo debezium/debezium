@@ -6,17 +6,26 @@
 package io.debezium.connector.jdbc.dialect.postgres;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Stream;
 
+import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
+import io.debezium.connector.jdbc.type.connect.ConnectDecimalType;
+import io.debezium.connector.jdbc.type.connect.ConnectStringType;
+import io.debezium.connector.jdbc.type.debezium.VariableScaleDecimalType;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.doc.FixFor;
 
@@ -25,6 +34,11 @@ import io.debezium.doc.FixFor;
  */
 @Tag("UnitTests")
 class ArrayTypeTest {
+
+    static Stream<Schema> bytesSchemas() {
+        return Stream.of(Schema.OPTIONAL_BYTES_SCHEMA,
+                SchemaBuilder.bytes().name("custom.Binary").optional().build());
+    }
 
     @Test
     @DisplayName("Should strip the precision/scale modifier for createArrayOf element type")
@@ -94,23 +108,108 @@ class ArrayTypeTest {
     void testUnwrapsVariableScaleDecimalElements() {
         // Connection#createArrayOf cannot encode a Struct; the driver renders it through toString().
         final Schema elementSchema = VariableScaleDecimal.optionalSchema();
-        final Schema arraySchema = SchemaBuilder.array(elementSchema).optional().build();
+        final var decimal = new BigDecimal("12345678901234567890.123456789");
         final List<Object> elements = Arrays.asList(
-                VariableScaleDecimal.fromLogical(elementSchema, new BigDecimal("1.25")),
+                VariableScaleDecimal.fromLogical(elementSchema, decimal),
                 null);
 
-        assertThat(ArrayType.unwrapElements(arraySchema, elements))
-                .isEqualTo(Arrays.asList(new BigDecimal("1.25"), null));
+        assertThat(VariableScaleDecimalType.INSTANCE.convertArray(elementSchema, elements))
+                .containsExactly(decimal, null);
     }
 
     @Test
     @FixFor("debezium/dbz#2398")
     @DisplayName("Should pass elements of other types through untouched")
     void testPassesOtherElementsThrough() {
-        final Schema arraySchema = SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build();
-        final List<Object> elements = List.of("a", "b");
+        final List<Object> elements = Arrays.asList("a", null, "b");
 
-        assertThat(ArrayType.unwrapElements(arraySchema, elements)).isSameAs(elements);
+        assertThat(ConnectStringType.INSTANCE.convertArray(Schema.OPTIONAL_STRING_SCHEMA, elements))
+                .containsExactly("a", null, "b");
+    }
+
+    @ParameterizedTest
+    @MethodSource("bytesSchemas")
+    @FixFor("debezium/dbz#2571")
+    @DisplayName("Should convert named and unnamed BYTES elements to a typed byte[][]")
+    void testConvertsBytesElementsToTypedArray(Schema schema) {
+        // Connection#createArrayOf rejects a byte[] element inside a generic Object[].
+        final List<Object> elements = Arrays.asList(
+                new byte[]{ 1, 2, 3 },
+                ByteBuffer.wrap(new byte[]{ 4, 5, 6 }),
+                null);
+
+        assertThat(BytesType.INSTANCE.convertArray(schema, elements))
+                .isInstanceOf(byte[][].class)
+                .isEqualTo(new byte[][]{ { 1, 2, 3 }, { 4, 5, 6 }, null });
+    }
+
+    @ParameterizedTest
+    @MethodSource("bytesSchemas")
+    @FixFor("debezium/dbz#2571")
+    @DisplayName("Should reject a BYTES element that is neither byte[] nor ByteBuffer")
+    void testRejectsUnconvertibleBytesElement(Schema schema) {
+        // A silent SQL NULL here would turn an upstream converter bug into invisible data loss.
+        final List<Object> elements = List.of("not-binary");
+
+        assertThatThrownBy(() -> BytesType.INSTANCE.convertArray(schema, elements))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Unsupported BYTES array element type")
+                .hasMessageContaining(String.class.getName());
+    }
+
+    @ParameterizedTest
+    @MethodSource("bytesSchemas")
+    @FixFor("debezium/dbz#2571")
+    @DisplayName("Should convert an empty BYTES array to an empty byte[][]")
+    void testConvertsEmptyBytesArray(Schema schema) {
+        assertThat(BytesType.INSTANCE.convertArray(schema, List.of()))
+                .isInstanceOf(byte[][].class)
+                .isEmpty();
+    }
+
+    @ParameterizedTest
+    @MethodSource("bytesSchemas")
+    @FixFor("debezium/dbz#2571")
+    @DisplayName("Should retain the binary array type when every element is null")
+    void testConvertsBytesArrayWithOnlyNulls(Schema schema) {
+        assertThat(BytesType.INSTANCE.convertArray(schema, Arrays.asList(null, null)))
+                .isInstanceOf(byte[][].class)
+                .containsExactly(null, null);
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2571")
+    @DisplayName("Should pass logical BYTES elements through untouched")
+    void testPassesLogicalBytesElementsThrough() {
+        // Decimal is BYTES-based but its elements arrive as already converted BigDecimal values.
+        final var decimal = new BigDecimal("1.25");
+        final List<Object> elements = List.of(decimal);
+
+        assertThat(ConnectDecimalType.INSTANCE.convertArray(Decimal.schema(2), elements))
+                .containsExactly(decimal);
+    }
+
+    @Test
+    @DisplayName("Should convert an empty decimal array")
+    void testConvertsEmptyDecimalArray() {
+        assertThat(VariableScaleDecimalType.INSTANCE.convertArray(VariableScaleDecimal.optionalSchema(), List.of()))
+                .isEmpty();
+    }
+
+    @Test
+    @DisplayName("Should preserve scalar VariableScaleDecimal binding")
+    void testPreservesScalarDecimalBinding() {
+        final Schema schema = VariableScaleDecimal.optionalSchema();
+        final var decimal = new BigDecimal("12345678901234567890.123456789");
+        final var value = VariableScaleDecimal.fromLogical(schema, decimal);
+
+        assertThat(VariableScaleDecimalType.INSTANCE.bind(3, schema, value))
+                .singleElement().satisfies(binding -> {
+                    assertThat(binding.getIndex()).isEqualTo(3);
+                    assertThat(binding.getValue()).isEqualTo(decimal);
+                });
+        assertThat(VariableScaleDecimalType.INSTANCE.bind(3, schema, null))
+                .singleElement().satisfies(binding -> assertThat(binding.getValue()).isNull());
     }
 
     @Test

@@ -101,6 +101,12 @@ include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloff
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=cap-tbls-not-in-initial-schema-chg]
 
 // Type: concept
+[id="debezium-mariadb-chunk-based-parallel-snapshots"]
+=== Chunk-based parallel snapshots
+
+include::{partialsdir}/modules/all-connectors/con-connector-chunk-based-parallel-snapshots.adoc[leveloffset=+1]
+
+// Type: concept
 [id="debezium-mariadb-ad-hoc-snapshots"]
 === Ad hoc snapshots
 
@@ -166,6 +172,30 @@ endif::community[]
 === Blocking snapshots
 
 include::{partialsdir}/modules/all-connectors/con-connector-blocking-snapshot.adoc[leveloffset=+3]
+
+// Type: assembly
+// ModuleID: debezium-mariadb-connector-send-a-signal-to-reset-the-binlog-reading-position
+// Title: Send a signal to reset the binlog reading position
+=== Setting the binlog position via a signal
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=set-binlog-position-intro]
+
+// Type: concept
+// ModuleID: debezium-mariadb-connector-format-of-a-set-binlog-position-signal
+// Title: Format of a set-binlog-position signal
+==== Format of a `set-binlog-position` signal
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=set-binlog-position-format]
+
+// Type: procedure
+// ModuleID: debezium-mariadb-connector-send-a-signal-to-change-the-binlog-reading-position
+// Title: Send a signal to change the binlog reading position
+==== Send a signal to reposition the stream
+
+:binlog-filename-example: mariadb-bin.000003
+:gtid-label: domain-server-sequence GTID set
+:gtid-value: 0-1-100
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=set-binlog-position-procedure]
 
 // Type: concept
 // Title: Default names of Kafka topics that receive {prodname} MariaDB change event records
@@ -434,11 +464,6 @@ include::{partialsdir}/modules/all-connectors/con-connector-streams-deployment.a
 
 include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-mysql-sqlserver-connector.adoc[leveloffset=+1]
 
-// Type: procedure
-// ModuleID: deploying-debezium-mariadb-connectors
-=== Deploying {prodname} MariaDB connectors by building a custom Kafka Connect container image from a Dockerfile
-
-include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=deploy-via-dockerfile]
 endif::product[]
 
 ifdef::community[]

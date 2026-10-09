@@ -84,6 +84,16 @@ public class SerializerOutputStream extends AbstractSerializerStream {
     }
 
     /**
+     * Write a long value to the stream.
+     *
+     * @param value the long value to write
+     * @throws IOException when a write operation fails
+     */
+    public void writeLong(long value) throws IOException {
+        delegate.writeLong(value);
+    }
+
+    /**
      * Write a string value to the stream.
      *
      * @param value the string value to write, can be {@code null}

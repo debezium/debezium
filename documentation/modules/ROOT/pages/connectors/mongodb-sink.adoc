@@ -81,7 +81,7 @@ The connector transforms incoming change event records into MongoDB document for
 After it receives an event, the connector parses the event payload and determines which MongoDB collection to send it to.
 Depending on the event type that is specified in the event payload, the connector then performs one of the following operations in the target collection:
 
-[cols="30%,70%"]
+[cols="30%,70%",options="header"]
 |===
 |Event type in payload|Resulting operation
 
@@ -181,7 +181,7 @@ The MongoDB sink connector accepts a variety of configuration options, as descri
 
 
 .Required Kafka Connect sink connector configuration properties
-[cols="30%a,25%a,45%a"]
+[cols="30%a,25%a,45%a",options="header"]
 |===
 |Property | Default | Description
 
@@ -201,7 +201,7 @@ If you set this value to `topics.regex`, the connector consumes from all topics 
 |===
 
 .Required MongoDB connection properties
-[cols="30%a,25%a,45%a"]
+[cols="30%a,25%a,45%a",options="header"]
 |===
 |Property | Default | Description
 
@@ -219,7 +219,7 @@ Example: `mongodb://localhost:27017/?replicaSet=my-replica-set`
 |===
 
 .Sink behavior configuration
-[cols="30%a,25%a,45%a"]
+[cols="30%a,25%a,45%a",options="header"]
 |===
 |Property | Default | Description
 
@@ -254,7 +254,7 @@ Specify a custom `CollectionNameStrategy` implementation.
 |===
 
 .Common sink options
-[cols="30%a,25%a,45%a"]
+[cols="30%a,25%a,45%a",options="header"]
 |===
 |Property | Default | Description
 
@@ -364,7 +364,7 @@ The event is then applied to the target MongoDB collection, following the standa
 This process makes it possible to integrate {prodname} with broader event-driven systems while still persisting the resulting events in MongoDB.
 
 .CloudEvents sink options
-[cols="30%a,25%a,45%a"]
+[cols="30%a,25%a,45%a",options="header"]
 |===
 |Property | Default | Description
 

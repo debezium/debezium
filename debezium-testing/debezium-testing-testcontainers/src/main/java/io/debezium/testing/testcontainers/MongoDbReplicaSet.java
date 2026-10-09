@@ -288,9 +288,9 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
         LOGGER.info("[{}] Initializing replica set...", name);
         initializeReplicaSet();
 
-        // Wait until replica primary is active
-        LOGGER.info("[{}] Awaiting primary...", name);
-        awaitReplicaPrimary();
+        // Wait until the primary can accept writes
+        LOGGER.info("[{}] Awaiting writable primary...", name);
+        awaitWritablePrimary();
 
         // Create rootUser
         LOGGER.info("[{}] Creating root user...", name);
@@ -341,6 +341,18 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
     }
 
     /**
+     * Creates a custom role scoped to a single collection via primary;
+     * @param roleName name of the custom role
+     * @param database database the role is defined on, and the privilege resource's database
+     * @param collection collection the privilege is scoped to
+     * @param actions privilege actions to grant on that collection
+     */
+    public void createRole(String roleName, String database, String collection, List<String> actions) {
+        var primary = tryPrimary().orElseThrow();
+        primary.createRole(roleName, database, collection, actions);
+    }
+
+    /**
      * Upload and executes mongodb javascript file against current primary
      *
      * See {@link  MongoDbContainer#execMongoScriptInContainer(MountableFile, String)}
@@ -357,6 +369,19 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
                 .pollDelay(1, SECONDS)
                 .ignoreException(IllegalStateException.class)
                 .until(() -> tryPrimary().isPresent());
+    }
+
+    /**
+     * Waits until the discovered primary reports that it can accept writes.
+     */
+    public void awaitWritablePrimary() {
+        await()
+                .atMost(Duration.ofSeconds(STARTUP_TIMEOUT_SECONDS))
+                .pollDelay(1, SECONDS)
+                .ignoreException(IllegalStateException.class)
+                .until(() -> tryPrimary()
+                        .map(primary -> primary.eval("rs.hello()").path("isWritablePrimary").asBoolean())
+                        .orElse(false));
     }
 
     public void stepDown() {

@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalLong;
 
 import org.junit.jupiter.api.Test;
 
@@ -47,6 +48,32 @@ public class SignalBasedIncrementalSnapshotContextTest {
                 .extracting(dataCollection -> dataCollection.getId().identifier())
                 .containsExactly("public.a", "public.b");
         assertThat(restored.getCorrelationId()).isEqualTo("signal-2");
+    }
+
+    @Test
+    public void shouldRoundTripTotalRowsThroughOffsets() {
+        final SignalBasedIncrementalSnapshotContext<TableId> context = new SignalBasedIncrementalSnapshotContext<>();
+        context.addDataCollectionNamesToSnapshot("signal-1", List.of("public.a"), List.of(), "");
+        context.maximumKey(new Object[]{ 100 });
+        context.totalRows(OptionalLong.of(4200L));
+
+        final Map<String, Object> offsets = context.store(new HashMap<>());
+        final IncrementalSnapshotContext<TableId> restored = SignalBasedIncrementalSnapshotContext.load(offsets);
+
+        assertThat(restored.totalRows()).isEqualTo(OptionalLong.of(4200L));
+    }
+
+    @Test
+    public void shouldNotStoreTotalRowsWhenAbsent() {
+        final SignalBasedIncrementalSnapshotContext<TableId> context = new SignalBasedIncrementalSnapshotContext<>();
+        context.addDataCollectionNamesToSnapshot("signal-1", List.of("public.a"), List.of(), "");
+        context.maximumKey(new Object[]{ 100 });
+
+        final Map<String, Object> offsets = context.store(new HashMap<>());
+
+        assertThat(offsets).doesNotContainKey(AbstractIncrementalSnapshotContext.TABLE_TOTAL_ROWS);
+        final IncrementalSnapshotContext<TableId> restored = SignalBasedIncrementalSnapshotContext.load(offsets);
+        assertThat(restored.totalRows()).isEqualTo(OptionalLong.empty());
     }
 
     @Test

@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.binlog;
 
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -14,7 +15,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.binlog.gtid.GtidSet;
 import io.debezium.connector.binlog.gtid.GtidSetFactory;
-import io.debezium.jdbc.JdbcConnection;
+import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalPayload;
@@ -23,8 +24,8 @@ import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnaps
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
-import io.debezium.schema.DatabaseSchema;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
 
@@ -37,17 +38,29 @@ public abstract class BinlogReadOnlyIncrementalSnapshotChangeEventSource<P exten
     private static final Logger LOGGER = LoggerFactory.getLogger(BinlogReadOnlyIncrementalSnapshotChangeEventSource.class);
 
     private final GtidSetFactory gtidSetFactory;
+    private final BinlogDatabaseSchema<P, ?, ?, ?> binlogDatabaseSchema;
+    private final BinlogConnectorConnection binlogConnectorConnection;
 
     public BinlogReadOnlyIncrementalSnapshotChangeEventSource(BinlogConnectorConfig connectorConfig,
-                                                              JdbcConnection jdbcConnection,
+                                                              BinlogConnectorConnection jdbcConnection,
                                                               EventDispatcher<P, TableId> dispatcher,
-                                                              DatabaseSchema<?> databaseSchema,
+                                                              BinlogDatabaseSchema<P, ?, ?, ?> databaseSchema,
                                                               Clock clock,
                                                               SnapshotProgressListener<P> progressListener,
                                                               DataChangeEventListener<P> dataChangeEventListener,
                                                               NotificationService<P, O> notificationService) {
         super(connectorConfig, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener, notificationService);
         this.gtidSetFactory = connectorConfig.getGtidSetFactory();
+        this.binlogDatabaseSchema = databaseSchema;
+        this.binlogConnectorConnection = jdbcConnection;
+    }
+
+    @Override
+    protected Table readSchemaForTable(TableId tableId) throws SQLException {
+        // Binlog-based connectors build all table models by parsing DDL; reading the schema from JDBC
+        // DatabaseMetaData yields a diverging model (debezium/dbz#1550), so read the definition via
+        // SHOW CREATE TABLE and the connector's DDL parser instead.
+        return BinlogIncrementalSnapshotSchemaReader.readSchemaViaShowCreateTable(binlogConnectorConnection, binlogDatabaseSchema, tableId);
     }
 
     @Override

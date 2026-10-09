@@ -367,6 +367,11 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
 
         final Optional<IncrementalSnapshotChangeEventSource<P, ? extends DataCollectionId>> incrementalSnapshotChangeEventSource = changeEventSourceFactory
                 .getIncrementalSnapshotChangeEventSource(offsetContext, snapshotMetrics, snapshotMetrics, notificationService);
+        if (incrementalSnapshotChangeEventSource.isEmpty() && !connectorConfig.getSignalingDataCollectionIds().isEmpty()) {
+            LOGGER.warn("Incremental snapshots are disabled; '{}' is configured but the connector did not provide an incremental " +
+                    "snapshot implementation for the current configuration. Any incremental snapshot signal will be rejected.",
+                    CommonConnectorConfig.SIGNAL_DATA_COLLECTION.name());
+        }
         eventDispatcher.setIncrementalSnapshotChangeEventSource(incrementalSnapshotChangeEventSource);
         incrementalSnapshotChangeEventSource.ifPresent(x -> x.init(partition, offsetContext));
     }

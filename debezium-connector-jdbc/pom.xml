@@ -4,19 +4,18 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-parent</artifactId>
-        <version>3.7.0-SNAPSHOT</version>
+        <version>3.8.0-SNAPSHOT</version>
         <relativePath>../debezium-parent/pom.xml</relativePath>
     </parent>
 
     <modelVersion>4.0.0</modelVersion>
     <artifactId>debezium-connector-jdbc</artifactId>
-    <version>3.7.0-SNAPSHOT</version>
+    <version>3.8.0-SNAPSHOT</version>
     <name>Debezium JDBC Sink Connector</name>
     <packaging>jar</packaging>
 
     <properties>
         <!-- Other artifact versions -->
-        <version.hibernate>7.2.6.Final</version.hibernate>
         <version.assertjdb>3.0.0</version.assertjdb>
         <!--
         By default only run the integration tests for MySQL, PostgreSQL, and SQL Server.

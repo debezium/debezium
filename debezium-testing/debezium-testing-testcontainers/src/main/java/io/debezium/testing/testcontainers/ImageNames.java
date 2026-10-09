@@ -40,6 +40,7 @@ public final class ImageNames {
     public static final String ORACLE_DBZ_IMAGE = ORACLE_IMAGE_STEM;
 
     private static final String TIMESCALE_DB_IMAGE = "quay.io/debezium/timescale-timescaledb:latest-pg15";
+    private static final String TIMESCALE_DB_PG18_IMAGE = "mirror.gcr.io/timescale/timescaledb:latest-pg18";
 
     private static final String SINGLESTORE_IMAGE = "ghcr.io/singlestore-labs/singlestoredb-dev:0.2.77";
 
@@ -83,6 +84,9 @@ public final class ImageNames {
             .asCompatibleSubstituteFor("postgres");
 
     public static final DockerImageName TIMESCALE_DB_IMAGE_NAME = DockerImageName.parse(TIMESCALE_DB_IMAGE)
+            .asCompatibleSubstituteFor("postgres");
+
+    public static final DockerImageName TIMESCALE_DB_PG18_IMAGE_NAME = DockerImageName.parse(TIMESCALE_DB_PG18_IMAGE)
             .asCompatibleSubstituteFor("postgres");
 
     public static final DockerImageName SINGLESTORE_DOCKER_IMAGE_NAME = DockerImageName.parse(SINGLESTORE_IMAGE);

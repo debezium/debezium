@@ -43,7 +43,8 @@ public class OracleErrorHandler extends ErrorHandler {
             "ORA-01371", // Complete LogMiner dictionary not found
             "ORA-01001", // Invalid cursor
             "ORA-25303", // Buffered operation only allowed on owner instance, when DBZXOUT moves instances
-            "ORA-02399"); // Exceeded maximum connect time, you are being logged off
+            "ORA-02399", // Exceeded maximum connect time, you are being logged off
+            "ORA-02002"); // Error while writing to audit trail
 
     /**
      * Contents of this set should be any type of error message text;

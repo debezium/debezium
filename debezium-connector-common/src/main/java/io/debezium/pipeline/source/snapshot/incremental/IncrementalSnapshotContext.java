@@ -8,6 +8,7 @@ package io.debezium.pipeline.source.snapshot.incremental;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalLong;
 
 import io.debezium.pipeline.signal.actions.snapshotting.AdditionalCondition;
 import io.debezium.relational.Table;
@@ -50,6 +51,18 @@ public interface IncrementalSnapshotContext<T> {
     void maximumKey(Object[] key);
 
     Optional<Object[]> maximumKey();
+
+    /**
+     * Stores the best-effort total number of rows the incremental snapshot will scan for the current table,
+     * used to report per-table progress. Empty when no count could be resolved.
+     */
+    void totalRows(OptionalLong totalRows);
+
+    /**
+     * Returns the best-effort total number of rows the incremental snapshot will scan for the current table,
+     * or empty when no count is available.
+     */
+    OptionalLong totalRows();
 
     boolean deduplicationNeeded();
 

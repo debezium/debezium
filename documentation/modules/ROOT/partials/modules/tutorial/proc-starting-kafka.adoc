@@ -43,7 +43,7 @@ $ docker run -it --rm -p 9092:9092 \
   quay.io/debezium/kafka:{debezium-docker-label}
 ----
 
-he following list describes the purpose of parameters in the preceding command:
+The following list describes the purpose of parameters in the preceding command:
 
 `-it`:: The container is interactive, which means the terminal's standard input and output are attached to the container.
 `--rm`:: The container will be removed when it is stopped.

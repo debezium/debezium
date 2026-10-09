@@ -433,6 +433,28 @@ public class MongoDbContainer extends GenericContainer<MongoDbContainer> {
         }
     }
 
+    /**
+     * Creates a custom role scoped to a single collection, per
+     * <a href="https://www.mongodb.com/docs/manual/core/collection-level-access-control/">collection-level access control</a>.
+     *
+     * @param roleName name of the custom role
+     * @param database database the role is defined on, and the privilege resource's database
+     * @param collection collection the privilege is scoped to
+     * @param actions privilege actions to grant on that collection
+     */
+    public void createRole(String roleName, String database, String collection, List<String> actions) {
+        if (!authEnabled) {
+            throw new IllegalStateException("MongoDB not started with authentication support");
+        }
+
+        var actionsJson = actions.stream()
+                .map(action -> "'" + action + "'")
+                .collect(joining(",", "[", "]"));
+
+        eval("db.getSiblingDB('" + database + "').createRole({role: '" + roleName + "', privileges: [{resource: {db: '"
+                + database + "', collection: '" + collection + "'}, actions: " + actionsJson + "}], roles: []})");
+    }
+
     private String mapPairToRole(String pair) {
         var parts = pair.split(Pattern.quote(":"), 2);
 

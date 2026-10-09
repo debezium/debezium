@@ -6,6 +6,7 @@
 [id="mongodb-new-document-state-extraction"]
 = MongoDB New Document State Extraction
 
+ifdef::community[]
 :toc:
 :toc-placement: macro
 :linkattrs:
@@ -13,6 +14,7 @@
 :source-highlighter: highlight.js
 
 toc::[]
+endif::community[]
 The {prodname} MongoDB connector emits data change messages to represent each operation that occurs in a MongoDB collection.
 The complex structure of these event messages faithfully represent the details of the original database event.
 However, some downstream consumers might not be able to process the messages in their original format.
@@ -354,13 +356,13 @@ These fields are present in the event message that a connector emits only if the
 
 `before` field:: Provides the state of the document before the change.
 This field is present only when `capture.mode` is set to one of the following values:
-** `change_streams_with_pre_image`
-** `change_streams_update_full_with_pre_image`.
+* `change_streams_with_pre_image`
+* `change_streams_update_full_with_pre_image`.
 
 `after` field:: Provides the full state of the document after a change.
 This field is present only when `capture.mode` is set to one of the following values:
-** `change_streams_update_full`
-** `change_streams_update_full_with_pre_image`.
+* `change_streams_update_full`
+* `change_streams_update_full_with_pre_image`.
 
 Assuming a connector that is configured to capture full documents, when the `ExtractNewDocumentState` SMT receives an `update` message for an `$unset` event, the SMT re-encodes the message by representing the removed field has a `null` value, as shown in the following example:
 
@@ -413,7 +415,7 @@ The assigned string value is based on the `op` field value in the original {link
 == Adding metadata fields
 
 The event flattening SMT for MongoDB can add metadata fields from the original change event message to the simplified message.
-The added metadata fields are prefixed with a double underscore (`"__"`).
+The added metadata fields are prefixed with a double underscore (`+"__"+`).
 Adding metadata to the event record makes it possible to include content such as the name of the collection in which a change event occurred, or to include connector-specific fields, such as a replica set name.
 Currently, the SMT can add fields from the following change event sub-structures only: `source`, `transaction` and `updateDescription`.
 
@@ -434,6 +436,18 @@ The preceding configuration results in the following content being added to the 
 ----
 
 If you want the SMT to add metadata fields to `delete` events, set the value of the xref:mongodb-extract-new-record-state-delete-tombstone-handling-mode[`delete.tombstone.handling.mode`] option to `rewrite`.
+
+To retain the change stream resume token, add the following property:
+
+[source,properties]
+----
+transforms.unwrap.add.fields=source.resume_token
+----
+
+The resulting `__source_resume_token` field contains the token as an Extended JSON string.
+Alternatively, use `transforms.unwrap.add.headers=source.resume_token` to retain it in a record header.
+Snapshot records have a null token, and tombstone records have no value from which to extract metadata.
+When replaying older records whose source schema does not include `resume_token`, the SMT omits the additional field or header.
 
 // Type: concept
 // Title: Options for applying the MongoDB extract new document state transformation selectively
@@ -476,6 +490,22 @@ Each of the numeric field names represents the index of an element in the origin
 The SMT populates each of these index fields with the value that it retrieves from the source document for the designated array element.
 
 For more information about the `array.coding` option, see the xref:mongodb-event-flattening-array-encoding[options for encoding arrays in MongoDB event messages].
+
+|[[mongodb-extract-new-record-state-bson-timestamp-handling-mode]]<<mongodb-extract-new-record-state-bson-timestamp-handling-mode, `bson.timestamp.handling.mode`>>
+|`connect`
+|Specifies how the SMT represents BSON Timestamp values.
+Set one of the following options:
+
+`connect`::
+The SMT converts the value into a Kafka Connect Timestamp that is based on the time component of the BSON value.
+Because the connector discards the increment component that MongoDB uses to order operations that occur during the same second, distinct BSON values might result in the same output value.
+
+`struct`::
+The SMT emits a structure with the fields `time` and `increment`, preserving both components of the BSON value.
++
+When `bson.timestamp.handling.mode=struct` and `array.encoding=array`, the SMT cannot process arrays that contain both BSON Timestamp values and BSON Date values because it represents the two value types with different schemas.
++
+To capture arrays that contain these mixed value types, set `array.encoding=document`.
 
 |[[mongodb-extract-new-record-state-flatten-struct]]<<mongodb-extract-new-record-state-flatten-struct, `flatten.struct`>>
 |`false`
@@ -556,7 +586,9 @@ version:VERSION, connector:CONNECTOR, source.ts_ms:EVENT_TIMESTAMP
 When the SMT adds metadata fields to the `value` element of the simplified message, it prefixes each metadata field name with a double underscore.
 For a struct specification, the SMT also inserts an underscore between the struct name and the field name.
 
-If you specify a field that is not present in the original change event message, the SMT still adds the specified field to the `value` element of the modified message.
+If you specify a field that is not present in the original change event schema, the SMT omits the field from the modified message.
+For example, a misspelled `source.resume_tokne` entry is omitted when the requested field does not exist in the change event schema.
+If an optional field is present in the schema but its value is null, the SMT adds the field with a null value.
 
 |[[mongodb-extract-new-record-state-field-name-adjustment-mode]]xref:mongodb-extract-new-record-state-field-name-adjustment-mode[`field.name.adjustment.mode`]
 |`none`

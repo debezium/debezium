@@ -18,6 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.connector.binlog.jdbc.BinlogSystemVariables;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.DefaultValueConverter;
@@ -29,6 +30,7 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
 import io.debezium.relational.TableSchemaBuilder;
+import io.debezium.relational.Tables;
 import io.debezium.relational.ValueConverterProvider;
 import io.debezium.relational.ddl.DdlChanges;
 import io.debezium.relational.ddl.DdlParser;
@@ -62,6 +64,8 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
     private final Map<Long, TableId> tableIdsByTableNumber = new ConcurrentHashMap<>();
     private final Map<Long, TableId> excludeTableIdsByTableNumber = new ConcurrentHashMap<>();
     private final BinlogConnectorConfig connectorConfig;
+    private final V valueConverter;
+    private final boolean tableIdCaseInsensitive;
 
     /**
      * Creates a binlog-connector based relational schema based on the supplied configuration. The DDL
@@ -100,6 +104,27 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
         this.ddlParser = createDdlParser(connectorConfig, valueConverter);
         this.connectorConfig = connectorConfig;
         this.filters = connectorConfig.getTableFilters();
+        this.valueConverter = valueConverter;
+        this.tableIdCaseInsensitive = tableIdCaseInsensitive;
+    }
+
+    /**
+     * Parses a table definition, as returned by {@code SHOW CREATE TABLE}, into a {@link Table} without
+     * mutating the live schema state. A short-lived parser instance is used so that the shared parser
+     * used for the streaming phase is not affected by this call (debezium/dbz#1550).
+     *
+     * @param tableId the fully-qualified identifier of the table the definition belongs to; should not be null
+     * @param createTableDdl the {@code CREATE TABLE} statement text; should not be null
+     * @param systemVariables the system variables for the connection that returned the table definition; should not be null
+     * @return the parsed table definition, or {@code null} if the statement did not produce the requested table
+     */
+    Table parseTableDefinition(TableId tableId, String createTableDdl, Map<String, String> systemVariables) {
+        final DdlParser parser = createDdlParser(connectorConfig, valueConverter);
+        final Tables parsedTables = new Tables(tableIdCaseInsensitive);
+        systemVariables.forEach((name, value) -> parser.systemVariables().setVariable(BinlogSystemVariables.BinlogScope.SESSION, name, value));
+        parser.setCurrentDatabase(tableId.catalog());
+        parser.parse(createTableDdl, parsedTables);
+        return parsedTables.forTable(tableId);
     }
 
     @Override

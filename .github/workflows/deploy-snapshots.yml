@@ -6,24 +6,9 @@ on:
   workflow_dispatch:
     inputs:
       debezium-repositories:
-        description: Multiline list of id#repo[#subDir]#branch entries. Include the main Debezium repository as a normal entry, for example core#debezium/debezium#main.
+        description: "List of id#repo[#subDir]#branch entries separated by spaces or newlines."
         required: false
-        default: |
-          core#debezium/debezium#main
-          cassandra#debezium/debezium-connector-cassandra#main
-          cockroachdb#debezium/debezium-connector-cockroachdb#main
-          db2#debezium/debezium-connector-db2#main
-          ibmi#debezium/debezium-connector-ibmi#main
-          informix#debezium/debezium-connector-informix#main
-          ingres#debezium/debezium-connector-ingres#main
-          spanner#debezium/debezium-connector-spanner#main
-          vitess#debezium/debezium-connector-vitess#main
-          yashandb#debezium/debezium-connector-yashandb#main
-          quarkus#debezium/debezium-quarkus#main
-          server#debezium/debezium-server#main
-          operator#debezium/debezium-operator#main
-          platform#debezium/debezium-platform#debezium-platform-conductor#main
-          jbang-catalog#debezium/jbang-catalog#main
+        default: "core#debezium/debezium#main cassandra#debezium/debezium-connector-cassandra#main cockroachdb#debezium/debezium-connector-cockroachdb#main db2#debezium/debezium-connector-db2#main ibmi#debezium/debezium-connector-ibmi#main informix#debezium/debezium-connector-informix#main ingres#debezium/debezium-connector-ingres#main milvus#debezium/debezium-connector-milvus#main spanner#debezium/debezium-connector-spanner#main sqlite#debezium/debezium-connector-sqlite#main tidb#debezium/debezium-connector-tidb#main vitess#debezium/debezium-connector-vitess#main yashandb#debezium/debezium-connector-yashandb#main quarkus#debezium/debezium-quarkus#main server#debezium/debezium-server#main operator#debezium/debezium-operator#main platform#debezium/debezium-platform#debezium-platform-conductor#main jbang-catalog#debezium/jbang-catalog#main"
         type: string
       descriptors-repository:
         description: Repository where Debezium descriptors are published
@@ -61,7 +46,10 @@ jobs:
         ibmi#debezium/debezium-connector-ibmi#main
         informix#debezium/debezium-connector-informix#main
         ingres#debezium/debezium-connector-ingres#main
+        milvus#debezium/debezium-connector-milvus#main
         spanner#debezium/debezium-connector-spanner#main
+        sqlite#debezium/debezium-connector-sqlite#main
+        tidb#debezium/debezium-connector-tidb#main
         vitess#debezium/debezium-connector-vitess#main
         yashandb#debezium/debezium-connector-yashandb#main
         quarkus#debezium/debezium-quarkus#main
@@ -75,14 +63,18 @@ jobs:
       - name: Override defaults from workflow_dispatch inputs
         if: github.event_name == 'workflow_dispatch'
         shell: bash
+        env:
+          INPUT_DEBEZIUM_REPOSITORIES: ${{ github.event.inputs.debezium-repositories }}
+          INPUT_DESCRIPTORS_REPOSITORY: ${{ github.event.inputs.descriptors-repository }}
+          INPUT_DESCRIPTORS_BRANCH: ${{ github.event.inputs.descriptors-branch }}
         run: |
           set -euo pipefail
           {
             echo 'DEBEZIUM_REPOSITORIES<<EOF'
-            printf '%s\n' "${{ github.event.inputs.debezium-repositories }}"
+            echo "${INPUT_DEBEZIUM_REPOSITORIES}"
             echo 'EOF'
-            echo "DESCRIPTORS_REPOSITORY=${{ github.event.inputs.descriptors-repository }}"
-            echo "DESCRIPTORS_BRANCH=${{ github.event.inputs.descriptors-branch }}"
+            echo "DESCRIPTORS_REPOSITORY=${INPUT_DESCRIPTORS_REPOSITORY}"
+            echo "DESCRIPTORS_BRANCH=${INPUT_DESCRIPTORS_BRANCH}"
           } >> "${GITHUB_ENV}"
 
       - name: Checkout workflow repository
@@ -140,7 +132,7 @@ jobs:
       - name: Restore Maven cache
         uses: ./workflow-repo/.github/actions/maven-cache
         with:
-          key: maven-deploy-snapshots-${{ hashFiles('workflow-repo/**/pom.xml') }}
+          key: maven-debezium-test-push-build-${{ hashFiles('workflow-repo/**/pom.xml') }}
 
       - name: Configure Maven Central credentials
         shell: bash

@@ -106,6 +106,9 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
 
         while (getContext().isRunning()) {
 
+            // Execute pending synchronous signals now that no batch is being processed
+            getEventDispatcher().processSynchronousSignals();
+
             // Check if we should break when using archive log only mode
             if (getConfig().isArchiveLogOnlyMode()) {
                 if (waitForRangeAvailabilityInArchiveLogs(minLogScn, upperBoundsScn)) {
@@ -211,9 +214,14 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
     }
 
     @Override
+    protected boolean isDispatchAllowedForDataChangeEvent(LogMinerEventRow event) {
+        return !event.isRollbackFlag();
+    }
+
+    @Override
     protected void enqueueEvent(LogMinerEventRow event, LogMinerEvent dispatchedEvent) throws InterruptedException {
         getMetrics().calculateLagFromSource(event.getChangeTime());
-        accumulator.accept(dispatchedEvent, false, event.getTransactionId(), event.getTransactionSequence());
+        accumulator.accept(dispatchedEvent, event.getTransactionId(), event.getTransactionSequence());
     }
 
     @Override
@@ -296,6 +304,8 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
             }
 
             clearSchemaChangeQueue();
+
+            dispatchHeartbeatEvent();
 
             return lastCommitScn;
         }

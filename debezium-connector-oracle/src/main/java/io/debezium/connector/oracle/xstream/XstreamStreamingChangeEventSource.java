@@ -114,8 +114,14 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
         LcrEventHandler eventHandler = new LcrEventHandler(connectorConfig, errorHandler, dispatcher, clock, schema,
                 partition, offsetContext, isTableCaseInsensitive(), this, streamingMetrics);
 
-        try (OracleConnection xsConnection = connectAndAttachWithRetries(getStartPosition(offsetContext))) {
+        try (OracleConnection xsConnection = connectAndAttachWithRetries(context, getStartPosition(offsetContext))) {
+            if (xsConnection == null) {
+                // The connector was stopped while attempting to attach to the outbound server.
+                LOGGER.info("Streaming stopped before the attach to outbound server {} completed.", xstreamOutboundServerName);
+                return;
+            }
             try {
+                pinConnectionToPdb();
                 // 2. receive events while running
                 while (context.isRunning()) {
                     LOGGER.trace("Receiving LCR");
@@ -128,6 +134,10 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
                         LOGGER.info("Streaming will now pause");
                         context.streamingPaused();
                         context.waitSnapshotCompletion();
+                        // The blocking snapshot shares the same main connection and its
+                        // close() resets the session back to CDB$ROOT; re-pin to the PDB
+                        // before processing any further LCRs.
+                        pinConnectionToPdb();
                         LOGGER.info("Streaming resumed");
                     }
                 }
@@ -178,6 +188,43 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
         return Optional.of(offsetActivityMonitor);
     }
 
+    /**
+     * Returns the shared out-of-bands JDBC connection used by the LCR handler for DDL fetches
+     * and LOB re-selection. It must always target the primary/source database: in downstream
+     * and standby capture modes the streaming factory's main connection points at the mining
+     * or standby instance, where the captured tables do not exist, whereas
+     * {@code snapshotConnectionFactory()} resolves to the primary in all factory
+     * implementations.
+     *
+     * <p>{@code JdbcConnection} re-establishes a closed connection lazily on first use and
+     * only re-runs its initial operations, which would leave the new session on
+     * {@code CDB$ROOT}. If the connection is found closed here, it is re-established and
+     * pinned to the PDB again before being handed out.
+     */
+    OracleConnection getOutOfBandsConnection() throws SQLException {
+        final OracleConnection connection = connectionFactory.snapshotConnectionFactory().mainConnection();
+        if (!connection.isConnected()) {
+            LOGGER.info("Out-of-bands connection is no longer connected, re-establishing it");
+            connection.connection();
+            pinConnectionToPdb();
+        }
+        return connection;
+    }
+
+    /**
+     * Pins the out-of-bands connection's session to the configured PDB when the connector is
+     * configured against a CDB+PDB topology. Must be called before the receive loop starts,
+     * again after a blocking snapshot completes because
+     * {@code OracleSnapshotChangeEventSource#close()} resets the session back to
+     * {@code CDB$ROOT}, and whenever the connection has been re-established.
+     */
+    private void pinConnectionToPdb() {
+        if (connectorConfig.isUsingPluggableDatabase()) {
+            LOGGER.debug("Pinning out-of-bands connection session to PDB '{}'", connectorConfig.getPdbName());
+            connectionFactory.snapshotConnectionFactory().mainConnection().setSessionToPdb(connectorConfig.getPdbName());
+        }
+    }
+
     private boolean isTableCaseInsensitive() {
         final StreamingAdapter<?> adapter = connectorConfig.getAdapter();
         final OracleConnection connection = connectionFactory.streamingConnectionFactory().mainConnection();
@@ -192,10 +239,18 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
         return convertScnToPosition(offsetContext.getScn());
     }
 
-    private OracleConnection connectAndAttachWithRetries(byte[] startPosition) throws Exception {
+    private OracleConnection connectAndAttachWithRetries(ChangeEventSourceContext context, byte[] startPosition) throws Exception {
         OracleConnection connection = null;
         final DelayStrategy retryStrategy = DelayStrategy.exponential(Duration.ofSeconds(1), Duration.ofMinutes(1));
         for (int attempt = 1; attempt <= DEFAULT_MAX_ATTACH_RETRIES; attempt++) {
+            // The delay between attempts restores the thread's interrupt flag rather than propagating the
+            // interrupt, so both the running state and the interrupt flag must be checked here; otherwise
+            // the remaining attempts would be made back-to-back after a shutdown request.
+            if (!context.isRunning() || Thread.currentThread().isInterrupted()) {
+                LOGGER.info("Abandoning attach to outbound server {}, the connector is stopping.", xstreamOutboundServerName);
+                return null;
+            }
+
             XStreamOut out = null;
             try {
                 connection = connectionFactory.streamingConnectionFactory().newConnection();
@@ -208,14 +263,16 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
                 return connection;
             }
             catch (StreamsException e) {
-                if (!isAttachExceptionRetriable(e) || attempt == DEFAULT_MAX_ATTACH_RETRIES) {
-                    if (attempt == DEFAULT_MAX_ATTACH_RETRIES) {
-                        LOGGER.warn("Failed to attach to outbound server with max attempts", e);
-                    }
+                if (!isAttachExceptionRetriable(e)) {
+                    LOGGER.warn("Failed to attach to outbound server with non-retriable error", e);
+                    throw e;
+                }
+                if (attempt == DEFAULT_MAX_ATTACH_RETRIES) {
+                    LOGGER.warn("Failed to attach to outbound server with max attempts", e);
                     throw e;
                 }
 
-                LOGGER.warn("Failed to attach to outbound server - attempt {} / {}", attempt, DEFAULT_MAX_ATTACH_RETRIES);
+                LOGGER.warn("Failed to attach to outbound server - attempt {} / {}: {}", attempt, DEFAULT_MAX_ATTACH_RETRIES, e.getMessage());
                 retryStrategy.sleepWhen(true);
             }
             finally {
@@ -234,6 +291,8 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
                 || e.getErrorCode() == 23656
                 || e.getErrorCode() == 26928
                 || e.getErrorCode() == 26812 // An active session currently attached to XStream server
+                || e.getErrorCode() == 26804 // Apply is disabled; attach restarts it once the previous instance is gone
+                || e.getErrorCode() == 26808 // Apply process died unexpectedly; typically mid-restart after a detach
                 || e.getMessage().contains("did not start properly and is currently in state")
                 || e.getMessage().contains("Timeout occurred while starting XStream process")
                 || e.getMessage().contains("Unable to communicate with XStream apply coordinator process");

@@ -10,7 +10,7 @@
 
     <groupId>io.debezium</groupId>
     <artifactId>debezium-build-parent</artifactId>
-    <version>3.7.0-SNAPSHOT</version>
+    <version>3.8.0-SNAPSHOT</version>
     <name>Debezium Build Aggregator</name>
     <description>Debezium is an open source change data capture platform</description>
     <packaging>pom</packaging>
@@ -71,6 +71,10 @@
         <maven.compiler.release>${debezium.java.connector.target}</maven.compiler.release>
         <maven.compiler.testRelease>${debezium.java.connector.target}</maven.compiler.testRelease>
 
+        <!-- 'sort' rewrites the contributor files in order, 'check' fails the build if they are
+             not sorted; mirrors format.imports.goal used by impsort-maven-plugin -->
+        <format.names.goal>sort</format.names.goal>
+
         <!-- Minimum JDK version required for building the project -->
         <jdk.min.version>${debezium.java.source}</jdk.min.version>
 
@@ -95,6 +99,7 @@
         <version.checkstyle.plugin>3.6.0</version.checkstyle.plugin>
         <version.release.plugin>2.5.3</version.release.plugin>
         <version.impsort>1.12.0</version.impsort>
+        <version.exec.plugin>3.6.3</version.exec.plugin>
         <version.failsafe.plugin>${version.surefire.plugin}</version.failsafe.plugin>
         <version.checkstyle>13.2.0</version.checkstyle>
         <version.revapi.plugin>0.15.1</version.revapi.plugin>
@@ -136,12 +141,12 @@
         <!-- Apicurio -->
         <version.apicurio>3.2.5</version.apicurio>
         <!-- hibernate -->
-        <version.hibernate>7.2.19.Final</version.hibernate>
+        <version.hibernate>7.4.10.Final</version.hibernate>
 
         <!-- Database drivers, should align with databases -->
         <version.postgresql.driver>42.7.13</version.postgresql.driver>
         <version.mysql.driver>9.1.0</version.mysql.driver>
-        <version.mysql.binlog>0.41.3</version.mysql.binlog>
+        <version.mysql.binlog>0.41.5</version.mysql.binlog>
         <version.singlestore.driver>1.2.11</version.singlestore.driver>
         <version.starrocks.driver>1.1.1</version.starrocks.driver>
         <version.mongo.driver>5.9.2</version.mongo.driver>
@@ -149,7 +154,7 @@
         <version.db2.driver>11.5.0.0</version.db2.driver>
         <version.informix.driver>15.0.1.4</version.informix.driver>
         <version.cassandra.driver>4.14.0</version.cassandra.driver>
-        <version.mariadb.driver>3.5.3</version.mariadb.driver>
+        <version.mariadb.driver>3.5.10</version.mariadb.driver>
         <version.jt400>11.1</version.jt400> <!-- IBM Toolbox for Java (JT400) for Debezium JDBC connector Db2i dialect -->
         <!-- These two should be aligned by major versions but minor could vary -->
         <!-- Oracle publishes the driver versions more frequently than the instant client -->
@@ -448,6 +453,50 @@
         </plugins>
     </build>
     <profiles>
+        <profile>
+            <!--
+                Keeps COPYRIGHT.txt, Aliases.txt and FilteredNames.txt sorted. These are
+                append-only lists that every contributor adds their name to. Appended names all
+                land on the last line of the file, so two concurrent pull requests always
+                conflict; sorted, they only conflict when the names are alphabetical neighbours.
+
+                Activated by the presence of COPYRIGHT.txt so that it applies to the aggregator
+                only. A plugin declared in build/plugins is pulled into every module's effective
+                pom even with inherited=false, which this avoids.
+            -->
+            <id>sort-contributor-files</id>
+            <activation>
+                <file>
+                    <exists>${basedir}/COPYRIGHT.txt</exists>
+                </file>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>${version.exec.plugin}</version>
+                        <executions>
+                            <execution>
+                                <id>sort-contributor-files</id>
+                                <phase>validate</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>${java.home}/bin/java</executable>
+                                    <arguments>
+                                        <argument>${project.basedir}/support/scripts/SortContributorFiles.java</argument>
+                                        <argument>${project.basedir}</argument>
+                                        <argument>${format.names.goal}</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
         <profile>
             <id>qa</id>
             <activation>

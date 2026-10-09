@@ -22,7 +22,6 @@ import org.slf4j.LoggerFactory;
 
 import com.mongodb.MongoCommandException;
 import com.mongodb.MongoException;
-import com.mongodb.client.MongoClient;
 import com.mongodb.connection.ClusterType;
 
 import io.debezium.DebeziumException;
@@ -110,11 +109,17 @@ public class MongoDbConnector extends BaseSourceConnector implements ConfigDescr
         Map<String, ConfigValue> validation = validateAllFields(config);
         ConfigValue csValidation = validation.get(MongoDbConnectorConfig.CONNECTION_STRING.name());
 
-        // Validate connection when connection string is otherwise valid
-        if (csValidation.errorMessages().isEmpty()) {
+        if (canValidateConnection(validation)) {
             validateConnection(config, csValidation);
         }
         return new Config(new ArrayList<>(validation.values()));
+    }
+
+    private boolean canValidateConnection(Map<String, ConfigValue> validation) {
+        return validation.get(MongoDbConnectorConfig.CONNECTION_STRING.name()).errorMessages().isEmpty()
+                && validation.get(MongoDbConnectorConfig.CAPTURE_SCOPE.name()).errorMessages().isEmpty()
+                && validation.get(MongoDbConnectorConfig.CAPTURE_TARGET.name()).errorMessages().isEmpty()
+                && validation.get(MongoDbConnectorConfig.CAPTURE_START_TIMESTAMP.name()).errorMessages().isEmpty();
     }
 
     public void validateConnection(Configuration config, ConfigValue connectionStringValidation) {
@@ -132,30 +137,26 @@ public class MongoDbConnector extends BaseSourceConnector implements ConfigDescr
             connectionStringValidation.addErrorMessage("Deprecated field '" + DEPRECATED_CONNECTION_MODE_FILED + "' is used set to removed 'replica_set' value");
         }
 
-        MongoDbConnectionContext connectionContext = new MongoDbConnectionContext(config);
         MongoDbConnectorConfig connectorConfig = new MongoDbConnectorConfig(config);
         Duration timeout = connectorConfig.getConnectionValidationTimeout();
 
         try {
             Threads.runWithTimeout(MongoDbConnector.class, () -> {
-                try {
-                    // Check base connection by accessing first database name
-                    try (MongoClient client = connectionContext.getMongoClient()) {
-                        // only when we try to fetch results a connection gets established
-                        // Verify if users has rights to list databases
-                        var dbNames = new ArrayList<String>();
-                        client.listDatabaseNames().into(dbNames);
-                        if (dbNames.isEmpty()) {
-                            String errorMessage = "User doesn't have rights to list databases. " +
-                                    "Please verify credentials and database permissions.";
-                            LOGGER.error("Could not validate connector config: " + errorMessage);
-                            connectionStringValidation.addErrorMessage(errorMessage);
+                try (var connectionContext = new MongoDbConnectionContext(config)) {
+                    // Check base connection and that changes can actually be captured for the configured
+                    // capture.scope/capture.target, rather than requiring broader access than the connector needs
+                    try (var connection = connectionContext.openClient()) {
+                        // an empty pipeline is enough to trigger the server-side authorization check for
+                        // find/changeStream on the configured capture.scope/capture.target
+                        try (var cursor = MongoUtils.openChangeStream(connection.getClient(), connectorConfig, List.of()).cursor()) {
+                            // reaching here means the account is authorized for the configured target
                         }
                     }
                     catch (MongoCommandException e) {
                         if (e.getErrorCode() == 13) { // Unauthorized
-                            connectionStringValidation.addErrorMessage(
-                                    "User doesn't have sufficient privileges: " + e.getMessage());
+                            String errorMessage = "User doesn't have sufficient privileges: " + e.getMessage();
+                            LOGGER.error("Could not validate connector config: {}", errorMessage);
+                            connectionStringValidation.addErrorMessage(errorMessage);
                         }
                         else {
                             connectionStringValidation.addErrorMessage("Unable to connect: " + e.getMessage());
@@ -171,6 +172,10 @@ public class MongoDbConnector extends BaseSourceConnector implements ConfigDescr
         }
         catch (TimeoutException e) {
             connectionStringValidation.addErrorMessage("Connection validation timed out after " + timeout.toMillis() + "ms");
+        }
+        catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            connectionStringValidation.addErrorMessage("Connection validation interrupted");
         }
         catch (Exception e) {
             connectionStringValidation.addErrorMessage("Error during connection validation: " + e.getMessage());

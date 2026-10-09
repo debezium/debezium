@@ -28,5 +28,6 @@ runs:
         -DskipITs
         -Dformat.formatter.goal=validate
         -Dformat.imports.goal=check
+        -Dformat.names.goal=check
         -Dorg.slf4j.simpleLogger.showDateTime=true
         -Dorg.slf4j.simpleLogger.dateTimeFormat="YYYY-MM-dd HH:mm:ss,SSS"

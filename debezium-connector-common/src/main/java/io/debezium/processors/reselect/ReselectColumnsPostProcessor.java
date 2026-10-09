@@ -78,17 +78,29 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
     // Optional caching of re-selected values. Caching is OFF by default: re-selection exists to fetch the
     // latest committed row state, so caching trades freshness for fewer database round-trips. It is most
     // useful when the same rows are re-selected repeatedly (e.g. TOAST/LOB columns re-queried on every
-    // unrelated update). The cache is invalidated on modify (see apply()), so correctness does not depend
+    // unrelated update). The cache is refreshed on modify (see apply()), so correctness does not depend
     // on the cache's TTL.
     //
     // The cache is pluggable via a strategy: 'reselect.cache.enabled' turns it on and 'reselect.cache.type'
     // selects the implementation class (defaulting to an in-memory cache). Alternative implementations
     // (e.g. an embedded key/value store) can be supplied without changing this post-processor.
-    private static final String RESELECT_CACHE_ENABLED = "reselect.cache.enabled";
-    private static final String RESELECT_CACHE_TYPE = "reselect.cache.type";
+    public static final Field RESELECT_CACHE_ENABLED = Field.create("reselect.cache.enabled")
+            .withDisplayName("Reselect cache enabled")
+            .withType(ConfigDef.Type.BOOLEAN)
+            .withDefault(false)
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDescription("Whether re-selected and modified column values are cached so repeated "
+                    + "re-selections of the same row can be served without a database round-trip.");
 
-    private static final boolean DEFAULT_RESELECT_CACHE_ENABLED = false;
-    private static final String DEFAULT_RESELECT_CACHE_TYPE = MemoryReselectColumnCache.class.getName();
+    public static final Field RESELECT_CACHE_TYPE = Field.create("reselect.cache.type")
+            .withDisplayName("Reselect cache type")
+            .withType(ConfigDef.Type.CLASS)
+            .withDefault(MemoryReselectColumnCache.class.getName())
+            .withWidth(ConfigDef.Width.LONG)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDescription("Fully-qualified class name of the ReselectColumnCache implementation used "
+                    + "when the reselect cache is enabled.");
 
     private Predicate<String> selector;
     private boolean reselectUnavailableValues;
@@ -173,8 +185,8 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
             LOGGER.warn("Reselect post-processor disables both null and unavailable columns, no-reselection will occur.");
         }
 
-        if (config.getBoolean(RESELECT_CACHE_ENABLED, DEFAULT_RESELECT_CACHE_ENABLED)) {
-            final String cacheType = config.getString(RESELECT_CACHE_TYPE, DEFAULT_RESELECT_CACHE_TYPE);
+        if (config.getBoolean(RESELECT_CACHE_ENABLED)) {
+            final String cacheType = config.getString(RESELECT_CACHE_TYPE);
             this.reselectCache = Instantiator.getInstance(cacheType);
             this.reselectCache.configure(config);
             LOGGER.info("Reselect cache enabled using strategy '{}'.", cacheType);
@@ -263,94 +275,101 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
         // identity is resolved a single time and reused for every column of this row. Using the key struct
         // means schema/DDL/default-value changes naturally produce a cache miss rather than a false hit.
         final ReselectColumnCache.RowCache rowCache = isCacheEnabled() ? reselectCache.forRow(key) : null;
-
-        // Cache-on-modify: any column that arrived with a real (non-placeholder) value reflects the row's
-        // current state, so refresh the cache with it. A later event that does not modify that column
-        // (e.g. an unchanged TOAST/LOB re-emitted as a placeholder) can then be served from the cache
-        // instead of re-querying. This also keeps the cache correct across row modifications without
-        // depending on the TTL.
-        if (isCacheEnabled()) {
-            cacheModifiedColumns(rowCache, tableId, after, requiredColumnSelections);
-        }
-
-        if (requiredColumnSelections.isEmpty()) {
-            LOGGER.debug("No columns require re-selection.");
-            return;
-        }
-
-        // Per-column cache lookup. Each required column is cached independently under this row, so events
-        // touching different placeholder subsets of the same row reuse each other's results. Cached
-        // values are the final converted values, so a hit is applied to the event directly. A hit may
-        // carry a null value, distinguished from a miss by the Hit holder.
-        final Map<String, Object> selections = new HashMap<>();
-        final List<String> columnsToQuery = new ArrayList<>();
-        if (rowCache != null) {
-            for (String columnName : requiredColumnSelections) {
-                final Optional<ReselectColumnCache.Hit> cached = rowCache.get(columnName);
-                if (cached.isPresent()) {
-                    selections.put(columnName, cached.get().value());
-                }
-                else {
-                    columnsToQuery.add(columnName);
-                }
+        try {
+            // Cache-on-modify: any column that arrived with a real (non-placeholder) value reflects the row's
+            // current state, so refresh the cache with it. A later event that does not modify that column
+            // (e.g. an unchanged TOAST/LOB re-emitted as a placeholder) can then be served from the cache
+            // instead of re-querying. This also keeps the cache correct across row modifications without
+            // depending on the TTL.
+            if (isCacheEnabled()) {
+                cacheModifiedColumns(rowCache, tableId, after, requiredColumnSelections);
             }
-        }
-        else {
-            columnsToQuery.addAll(requiredColumnSelections);
-        }
 
-        if (!columnsToQuery.isEmpty()) {
-            final Map<String, Object> rawValues = new HashMap<>();
-            try {
-                final boolean found = jdbcConnection.reselectColumns(table, columnsToQuery, keyColumns, keyValues, source, rs -> {
-                    for (String columnName : columnsToQuery) {
-                        rawValues.put(columnName, rs.getObject(columnName));
-                    }
-                });
-                if (!found) {
-                    if (errorHandlingMode == ErrorHandlingMode.FAIL) {
-                        throw new DebeziumException("Failed to find row in table " + tableId + " with key " + key);
-                    }
-                    LOGGER.warn("Failed to find row in table {} with key {}.", tableId, key);
-                    return;
-                }
-            }
-            catch (SQLException e) {
-                if (errorHandlingMode == ErrorHandlingMode.FAIL) {
-                    throw new DebeziumException("Failed to re-select columns for table " + tableId + " and key " + keyValues, e);
-                }
-                LOGGER.warn("Failed to re-select columns for table {} and key {}", tableId, keyValues, e);
+            if (requiredColumnSelections.isEmpty()) {
+                LOGGER.debug("No columns require re-selection.");
                 return;
             }
 
-            // Convert freshly queried raw values once, then both apply and cache the converted value so
-            // cache hits and freshly queried values are handled identically.
-            for (String columnName : columnsToQuery) {
-                if (!rawValues.containsKey(columnName)) {
+            // Per-column cache lookup. Each required column is cached independently under this row, so events
+            // touching different placeholder subsets of the same row reuse each other's results. Cached
+            // values are the final converted values, so a hit is applied to the event directly. A hit may
+            // carry a null value, distinguished from a miss by the Hit holder.
+            final Map<String, Object> selections = new HashMap<>();
+            final List<String> columnsToQuery = new ArrayList<>();
+            if (rowCache != null) {
+                for (String columnName : requiredColumnSelections) {
+                    final Optional<ReselectColumnCache.Hit> cached = rowCache.get(columnName);
+                    if (cached.isPresent()) {
+                        selections.put(columnName, cached.get().value());
+                    }
+                    else {
+                        columnsToQuery.add(columnName);
+                    }
+                }
+            }
+            else {
+                columnsToQuery.addAll(requiredColumnSelections);
+            }
+
+            if (!columnsToQuery.isEmpty()) {
+                final Map<String, Object> rawValues = new HashMap<>();
+                try {
+                    final boolean found = jdbcConnection.reselectColumns(table, columnsToQuery, keyColumns, keyValues, source, rs -> {
+                        for (String columnName : columnsToQuery) {
+                            rawValues.put(columnName, rs.getObject(columnName));
+                        }
+                    });
+                    if (!found) {
+                        if (errorHandlingMode == ErrorHandlingMode.FAIL) {
+                            throw new DebeziumException("Failed to find row in table " + tableId + " with key " + key);
+                        }
+                        LOGGER.warn("Failed to find row in table {} with key {}.", tableId, key);
+                        return;
+                    }
+                }
+                catch (SQLException e) {
+                    if (errorHandlingMode == ErrorHandlingMode.FAIL) {
+                        throw new DebeziumException("Failed to re-select columns for table " + tableId + " and key " + keyValues, e);
+                    }
+                    LOGGER.warn("Failed to re-select columns for table {} and key {}", tableId, keyValues, e);
+                    return;
+                }
+
+                // Convert freshly queried raw values once, then both apply and cache the converted value so
+                // cache hits and freshly queried values are handled identically.
+                for (String columnName : columnsToQuery) {
+                    if (!rawValues.containsKey(columnName)) {
+                        continue;
+                    }
+                    final Column column = table.columnWithName(columnName);
+                    final org.apache.kafka.connect.data.Field field = after.schema().field(columnName);
+                    final Object convertedValue = getConvertedValue(tableId, column, field, rawValues.get(columnName));
+                    selections.put(columnName, convertedValue);
+                    if (rowCache != null) {
+                        rowCache.put(columnName, field.schema(), convertedValue);
+                    }
+                }
+            }
+
+            // Iterate re-selection columns and override placeholder values with the re-selected (cached or
+            // freshly queried) converted values.
+            for (String columnName : requiredColumnSelections) {
+                if (!selections.containsKey(columnName)) {
                     continue;
                 }
-                final Column column = table.columnWithName(columnName);
                 final org.apache.kafka.connect.data.Field field = after.schema().field(columnName);
-                final Object convertedValue = getConvertedValue(tableId, column, field, rawValues.get(columnName));
-                selections.put(columnName, convertedValue);
-                if (rowCache != null) {
-                    rowCache.put(columnName, convertedValue);
+                final Object convertedValue = selections.get(columnName);
+                if (LOGGER.isTraceEnabled()) {
+                    LOGGER.trace("Replaced field {} value {} with {}", field.name(), value.get(field), convertedValue);
                 }
+                after.put(field.name(), convertedValue);
             }
         }
-
-        // Iterate re-selection columns and override placeholder values with the re-selected (cached or
-        // freshly queried) converted values.
-        for (String columnName : requiredColumnSelections) {
-            if (!selections.containsKey(columnName)) {
-                continue;
+        finally {
+            // Signal end-of-event so batching cache implementations can flush their per-row writes.
+            if (rowCache != null) {
+                rowCache.close();
             }
-            final org.apache.kafka.connect.data.Field field = after.schema().field(columnName);
-            final Object convertedValue = selections.get(columnName);
-            if (LOGGER.isTraceEnabled()) {
-                LOGGER.trace("Replaced field {} value {} with {}", field.name(), value.get(field), convertedValue);
-            }
-            after.put(field.name(), convertedValue);
         }
     }
 
@@ -375,7 +394,7 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
             }
             final String fullyQualifiedName = jdbcConnection.getQualifiedTableName(tableId) + ":" + columnName;
             if (selector.test(fullyQualifiedName)) {
-                rowCache.put(columnName, after.get(field));
+                rowCache.put(columnName, field.schema(), after.get(field));
             }
         }
     }

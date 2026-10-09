@@ -17,6 +17,7 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalLong;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,6 +28,7 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.doc.FixFor;
 import io.debezium.pipeline.source.snapshot.incremental.DataCollection;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -63,6 +65,7 @@ public class IncrementalSnapshotNotificationServiceTest {
         when(incrementalSnapshotContext.currentDataCollectionId()).thenReturn(new DataCollection<>(new TableId("db", "inventory", "product")));
         when(incrementalSnapshotContext.maximumKey()).thenReturn(Optional.of(new Object[]{ 100, 0, 0 }));
         when(incrementalSnapshotContext.chunkEndPosititon()).thenReturn(new Object[]{ 50, 0, 0 });
+        when(incrementalSnapshotContext.totalRows()).thenReturn(OptionalLong.empty());
 
         incrementalSnapshotNotificationService = new IncrementalSnapshotNotificationService<>(notificationService, connectorConfig, clock);
     }
@@ -73,6 +76,19 @@ public class IncrementalSnapshotNotificationServiceTest {
         incrementalSnapshotNotificationService.notifyStarted(incrementalSnapshotContext, partition, offsetContext);
 
         Notification expectedNotification = new Notification("12345", "Incremental Snapshot", "STARTED", Map.of(
+                "connector_name", "connector-test",
+                "data_collections", "db.inventory.product,db.inventory.customer"), clock.millis());
+
+        verify(notificationService).notify(eq(expectedNotification), any(Offsets.class));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2537")
+    public void notifyDataCollectionsResolved() {
+
+        incrementalSnapshotNotificationService.notifyDataCollectionsResolved(incrementalSnapshotContext, partition, offsetContext);
+
+        Notification expectedNotification = new Notification("12345", "Incremental Snapshot", "DATA_COLLECTIONS_RESOLVED", Map.of(
                 "connector_name", "connector-test",
                 "data_collections", "db.inventory.product,db.inventory.customer"), clock.millis());
 
@@ -145,6 +161,62 @@ public class IncrementalSnapshotNotificationServiceTest {
     public void notifyInProgress() {
 
         incrementalSnapshotNotificationService.notifyInProgress(incrementalSnapshotContext, partition, offsetContext);
+
+        Notification expectedNotification = new Notification("12345", "Incremental Snapshot", "IN_PROGRESS", Map.of(
+                "connector_name", "connector-test",
+                "data_collections", "db.inventory.product,db.inventory.customer",
+                "current_collection_in_progress", "db.inventory.product",
+                "maximum_key", "100,0,0",
+                "last_processed_key", "50,0,0"), clock.millis());
+
+        verify(notificationService).notify(eq(expectedNotification), any(Offsets.class));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2620")
+    public void notifyTableScanCompletedWithTotalRows() {
+
+        when(incrementalSnapshotContext.totalRows()).thenReturn(OptionalLong.of(100L));
+
+        incrementalSnapshotNotificationService.notifyTableScanCompleted(incrementalSnapshotContext, partition, offsetContext, 100L, SUCCEEDED);
+
+        Notification expectedNotification = new Notification("12345", "Incremental Snapshot", "TABLE_SCAN_COMPLETED", Map.of(
+                "connector_name", "connector-test",
+                "data_collections", "db.inventory.product,db.inventory.customer",
+                "scanned_collection", "db.inventory.product",
+                "total_rows_scanned", "100",
+                "total_rows", "100",
+                "status", "SUCCEEDED"), clock.millis());
+
+        verify(notificationService).notify(eq(expectedNotification), any(Offsets.class));
+    }
+
+    @Test
+    public void notifyInProgressWithProgressFields() {
+
+        // totalRows=1000 with chunkSize=100 -> total_chunks=10; totalRowsScanned=250 -> chunk_index=ceil(250/100)=3
+        when(incrementalSnapshotContext.totalRows()).thenReturn(OptionalLong.of(1000L));
+        when(connectorConfig.getIncrementalSnapshotChunkSize()).thenReturn(100);
+
+        incrementalSnapshotNotificationService.notifyInProgress(incrementalSnapshotContext, partition, offsetContext, 250L);
+
+        Notification expectedNotification = new Notification("12345", "Incremental Snapshot", "IN_PROGRESS", Map.of(
+                "connector_name", "connector-test",
+                "data_collections", "db.inventory.product,db.inventory.customer",
+                "current_collection_in_progress", "db.inventory.product",
+                "maximum_key", "100,0,0",
+                "last_processed_key", "50,0,0",
+                "total_rows", "1000",
+                "total_chunks", "10",
+                "chunk_index", "3"), clock.millis());
+
+        verify(notificationService).notify(eq(expectedNotification), any(Offsets.class));
+    }
+
+    @Test
+    public void notifyInProgressOmitsProgressFieldsWhenAbsent() {
+
+        incrementalSnapshotNotificationService.notifyInProgress(incrementalSnapshotContext, partition, offsetContext, 0L);
 
         Notification expectedNotification = new Notification("12345", "Incremental Snapshot", "IN_PROGRESS", Map.of(
                 "connector_name", "connector-test",

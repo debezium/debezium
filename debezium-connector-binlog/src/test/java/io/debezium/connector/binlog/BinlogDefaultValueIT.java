@@ -28,6 +28,7 @@ import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAccessor;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Stream;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -36,10 +37,14 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.jdbc.BinlogValueConverters;
+import io.debezium.connector.binlog.junit.BinlogDatabaseVersionResolver;
 import io.debezium.connector.binlog.util.BinlogTestConnection;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
@@ -88,6 +93,73 @@ public abstract class BinlogDefaultValueIT<C extends SourceConnector> extends Ab
         finally {
             Files.delete(SCHEMA_HISTORY_PATH);
         }
+    }
+
+    @ParameterizedTest
+    @MethodSource("integerSchemaDefaults")
+    @FixFor("debezium/dbz#2763")
+    void shouldPreserveIntegerSchemaDefaults(String stage, String type, String literal, long expected) throws Exception {
+        final var table = "integer_defaults";
+        final var snapshot = "snapshot".equals(stage);
+        executeStatements(DATABASE.getDatabaseName(),
+                "CREATE TABLE " + table + " (id INT PRIMARY KEY, v " + type + " NOT NULL DEFAULT " + (snapshot ? literal : "0") + ")",
+                "INSERT INTO " + table + " (id) VALUES (1)");
+        config = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.INITIAL)
+                .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName(table))
+                .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .build();
+        start(getConnectorClass(), config);
+        assertIntegerSchemaDefault(table, 1, "r", snapshot ? expected : 0);
+
+        if (!snapshot) {
+            waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
+            final var alteration = "modify".equals(stage)
+                    ? "MODIFY COLUMN v " + type + " NOT NULL DEFAULT " + literal
+                    : "ALTER COLUMN v SET DEFAULT " + literal;
+            executeStatements(DATABASE.getDatabaseName(),
+                    "ALTER TABLE " + table + " " + alteration,
+                    "INSERT INTO " + table + " (id) VALUES (2)");
+            assertIntegerSchemaDefault(table, 2, "c", expected);
+        }
+    }
+
+    protected static Stream<Arguments> integerSchemaDefaults() {
+        final var databaseVersionResolver = new BinlogDatabaseVersionResolver();
+        // MariaDB 12.3 rejects DEFAULT -1.5 with error 1067, even with sql_mode=''.
+        // DEFAULT '-1.5' is accepted and rounds to -2. Use the quoted form on 12.3+
+        // to retain snapshot, MODIFY COLUMN, and SET DEFAULT coverage without skipping tests.
+        final var fractionalDefault = databaseVersionResolver.isMariaDb() && databaseVersionResolver.getVersion().isGreaterThanEqualTo(12, 3, -1)
+                ? "'-1.5'"
+                : "-1.5";
+        return Stream.of("snapshot", "modify", "set").flatMap(stage -> Stream.of(
+                Arguments.of(stage, "BIGINT", "9007199254740993", 9007199254740993L),
+                Arguments.of(stage, "BIGINT", "9223372036854775806", Long.MAX_VALUE - 1),
+                Arguments.of(stage, "TINYINT", fractionalDefault, -2L),
+                Arguments.of(stage, "SMALLINT", fractionalDefault, -2L),
+                Arguments.of(stage, "MEDIUMINT", fractionalDefault, -2L),
+                Arguments.of(stage, "INT", fractionalDefault, -2L),
+                Arguments.of(stage, "BIGINT", fractionalDefault, -2L)));
+    }
+
+    private void assertIntegerSchemaDefault(String table, int id, String operation, long expected) throws Exception {
+        final var records = consumeRecordsByTopic(1).recordsForTopic(DATABASE.topicForTable(table));
+        assertThat(records).hasSize(1);
+        final var envelope = (Struct) records.get(0).value();
+        assertThat(envelope.getString("op")).isEqualTo(operation);
+        final var after = envelope.getStruct("after");
+        assertThat(after.getInt32("id")).isEqualTo(id);
+        final var rawValue = after.getWithoutDefault("v");
+        assertThat(rawValue).isInstanceOf(Number.class);
+        assertThat(((Number) rawValue).longValue()).as("Captured raw value").isEqualTo(expected);
+        try (var connection = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
+            connection.query("SELECT v FROM " + table + " WHERE id = " + id, result -> {
+                assertThat(result.next()).isTrue();
+                assertThat(result.getLong(1)).as("Database value").isEqualTo(expected);
+                assertThat(result.next()).isFalse();
+            });
+        }
+        assertThat(after.schema().field("v").schema().defaultValue()).as("Schema default").isEqualTo(rawValue);
     }
 
     @Test

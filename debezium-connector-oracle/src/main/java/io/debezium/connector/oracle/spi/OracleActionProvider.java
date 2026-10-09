@@ -27,6 +27,8 @@ public class OracleActionProvider implements SignalActionProvider {
                                                                             EventDispatcher<P, ? extends DataCollectionId> dispatcher,
                                                                             ChangeEventSourceCoordinator<P, ?> changeEventSourceCoordinator,
                                                                             CommonConnectorConfig connectorConfig) {
-        return Map.of(DropTransactionAction.NAME, new DropTransactionAction<>(changeEventSourceCoordinator));
+        return Map.of(
+                DropTransactionAction.NAME, new DropTransactionAction<>(changeEventSourceCoordinator),
+                LogPendingTransactionsAction.NAME, new LogPendingTransactionsAction<>(changeEventSourceCoordinator));
     }
 }

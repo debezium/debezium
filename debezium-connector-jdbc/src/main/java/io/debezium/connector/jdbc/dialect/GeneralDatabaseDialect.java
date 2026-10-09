@@ -53,6 +53,7 @@ import io.debezium.connector.jdbc.naming.ColumnNamingStrategy;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
 import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.connector.jdbc.type.connect.AbstractConnectSchemaType;
+import io.debezium.connector.jdbc.type.connect.AbstractConnectStructType;
 import io.debezium.connector.jdbc.type.connect.ConnectBooleanType;
 import io.debezium.connector.jdbc.type.connect.ConnectBytesType;
 import io.debezium.connector.jdbc.type.connect.ConnectDateType;
@@ -65,6 +66,7 @@ import io.debezium.connector.jdbc.type.connect.ConnectInt64Type;
 import io.debezium.connector.jdbc.type.connect.ConnectInt8Type;
 import io.debezium.connector.jdbc.type.connect.ConnectMapToConnectStringType;
 import io.debezium.connector.jdbc.type.connect.ConnectStringType;
+import io.debezium.connector.jdbc.type.connect.ConnectStructToConnectStringType;
 import io.debezium.connector.jdbc.type.connect.ConnectTimeType;
 import io.debezium.connector.jdbc.type.connect.ConnectTimestampType;
 import io.debezium.connector.jdbc.type.debezium.DateType;
@@ -464,6 +466,10 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
 
     @Override
     public JdbcType getSchemaType(Schema schema) {
+        if (schema == null) {
+            throw new DebeziumException("Schema is null");
+        }
+
         if (!Objects.isNull(schema.name())) {
             final JdbcType type = typeRegistry.get(schema.name());
             if (!Objects.isNull(type)) {
@@ -492,7 +498,9 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         }
 
         final JdbcType type = typeRegistry.get(schema.type().name());
-        if (!Objects.isNull(type)) {
+        final boolean unsupportedSparseVector = type instanceof AbstractConnectStructType
+                && SparseDoubleVector.LOGICAL_NAME.equals(schema.name());
+        if (!Objects.isNull(type) && !unsupportedSparseVector) {
             LOGGER.trace("Schema type '{}' resolved by name from registry to type '{}'", schema.type().name(), type);
             return type;
         }
@@ -706,6 +714,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         registerType(ConnectTimestampType.INSTANCE);
         registerType(ConnectTimeType.INSTANCE);
         registerType(ConnectMapToConnectStringType.INSTANCE);
+        registerType(ConnectStructToConnectStringType.INSTANCE);
     }
 
     protected void registerType(JdbcType type) {

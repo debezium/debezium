@@ -10,6 +10,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.junit.jupiter.api.Test;
 
+import io.debezium.doc.FixFor;
+
 /**
  * Unit test for {@link TableIdParser}.
  *
@@ -65,6 +67,28 @@ class TableIdParserTest {
         assertThrows(IllegalArgumentException.class, () -> {
             TableIdParser.parse("\"table\"\"");
         });
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1377")
+    public void onlyTheQuotingCharIsUnescaped() {
+        assertThat(TableIdParser.parse("test_dd.\"test''dd\"")).containsExactly("test_dd", "test''dd");
+        assertThat(TableIdParser.parse("\"test``dd\"")).containsExactly("test``dd");
+        assertThat(TableIdParser.parse("`test\"\"dd`")).containsExactly("test\"\"dd");
+        assertThat(TableIdParser.parse("`test``dd`")).containsExactly("test`dd");
+        assertThat(TableIdParser.parse("'test''dd'")).containsExactly("test'dd");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1377")
+    public void unquotedPartsAreNotUnescaped() {
+        assertThat(TableIdParser.parse("test_dd.test''dd")).containsExactly("test_dd", "test''dd");
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1377")
+    public void delimitedPartsAreNotUnescaped() {
+        assertThat(TableIdParser.parse("[test''dd]", new TestTableIdPredicates())).containsExactly("test''dd");
     }
 
     private static class TestTableIdPredicates implements TableIdPredicates {

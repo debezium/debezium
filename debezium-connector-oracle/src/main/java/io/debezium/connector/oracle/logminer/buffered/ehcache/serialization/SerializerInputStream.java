@@ -86,6 +86,16 @@ public class SerializerInputStream extends AbstractSerializerStream {
     }
 
     /**
+     * Read a long value from the stream.
+     *
+     * @return the long value
+     * @throws IOException when a read operation fails
+     */
+    public long readLong() throws IOException {
+        return delegate.readLong();
+    }
+
+    /**
      * Read a string value from the stream.
      *
      * @return the string value or {@code null} when null

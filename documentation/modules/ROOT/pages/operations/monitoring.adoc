@@ -5,12 +5,14 @@
 [id="monitoring-debezium"]
 = Monitoring {prodname}
 
+ifdef::community[]
 :linkattrs:
 :icons: font
 :toc:
 :toc-placement: macro
 
 toc::[]
+endif::community[]
 
 You can use the JMX metrics provided by link:https://kafka.apache.org/documentation/#monitoring[Apache Kafka] and https://kafka.apache.org/documentation/#connect_monitoring[Kafka Connect] to monitor {prodname}.
 To use these metrics, you must enable them when you start the Kafka and Kafka Connect services.
@@ -76,9 +78,9 @@ The value is used to specify the JVM parameter `-Dcom.sun.management.jmxremote.p
 The JMX options, which are passed directly to the JVM during startup.
 The default options are:
 +
-** `-Dcom.sun.management.jmxremote`
-** `-Dcom.sun.management.jmxremote.authenticate=false`
-** `-Dcom.sun.management.jmxremote.ssl=false`
+* `-Dcom.sun.management.jmxremote`
+* `-Dcom.sun.management.jmxremote.authenticate=false`
+* `-Dcom.sun.management.jmxremote.ssl=false`
 
 
 // Category: debezium-using
@@ -98,9 +100,9 @@ The value is used to specify the JVM parameter `-Dcom.sun.management.jmxremote.p
 The JMX options, which are passed directly to the JVM during startup.
 The default options are:
 +
-** `-Dcom.sun.management.jmxremote`
-** `-Dcom.sun.management.jmxremote.authenticate=false`
-** `-Dcom.sun.management.jmxremote.ssl=false`
+* `-Dcom.sun.management.jmxremote`
+* `-Dcom.sun.management.jmxremote.authenticate=false`
+* `-Dcom.sun.management.jmxremote.ssl=false`
 
 ifdef::product[]
 // Category: debezium-using
@@ -137,8 +139,8 @@ The `debezium/kafka` image recognizes the following JMX-related environment vari
 The port number that will be used for JMX.
 The value is used to specify the following JVM parameters:
 +
-** `-Dcom.sun.management.jmxremote.port=$JMXPORT`
-** `-Dcom.sun.management.jmxremote.rmi.port=$JMXPORT`
+* `-Dcom.sun.management.jmxremote.port=$JMXPORT`
+* `-Dcom.sun.management.jmxremote.rmi.port=$JMXPORT`
 
 `JMXHOST` (Required)::
 The IP address or resolvable host name of the Docker host,
@@ -189,8 +191,8 @@ The `debezium/connect` image recognizes the following JMX-related environment va
 The port number that will be used for JMX.
 The value is used to specify the following JVM parameters:
 +
-** `-Dcom.sun.management.jmxremote.port=$JMXPORT`
-** `-Dcom.sun.management.jmxremote.rmi.port=$JMXPORT`
+* `-Dcom.sun.management.jmxremote.port=$JMXPORT`
+* `-Dcom.sun.management.jmxremote.rmi.port=$JMXPORT`
 
 `JMXHOST` (Required)::
 The IP address or resolvable host name of the Docker host,

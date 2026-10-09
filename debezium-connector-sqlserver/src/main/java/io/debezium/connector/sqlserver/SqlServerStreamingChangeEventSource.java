@@ -534,6 +534,9 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
             LOGGER.warn(
                     "No table on connector's include list has enabled CDC, tables on include list do not contain any table with CDC enabled or no table match the include/exclude filter(s)");
         }
+        else {
+            LOGGER.debug("Tables with CDC enabled that are on the connector's table include list: {}", includeListChangeTables.keySet());
+        }
 
         final List<SqlServerChangeTable> tables = new ArrayList<>();
         for (List<SqlServerChangeTable> captures : includeListChangeTables.values()) {

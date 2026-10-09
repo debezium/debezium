@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mongodb;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -13,6 +14,7 @@ import java.util.function.Predicate;
 import org.bson.BsonDocument;
 import org.bson.BsonTimestamp;
 import org.bson.Document;
+import org.bson.conversions.Bson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,6 +26,8 @@ import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.MongoIterable;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
+import com.mongodb.client.model.changestream.FullDocument;
+import com.mongodb.client.model.changestream.FullDocumentBeforeChange;
 import com.mongodb.connection.ClusterDescription;
 import com.mongodb.connection.ClusterType;
 import com.mongodb.connection.ServerDescription;
@@ -204,7 +208,7 @@ public class MongoUtils {
     }
 
     /**
-     * Opens change stream based on {@link MongoDbConnectorConfig#getCaptureScope()}
+     * Opens a change stream using the configured capture scope, pipeline, and document options.
      *
      * @param client mongodb client
      * @param taskContext task context
@@ -213,25 +217,55 @@ public class MongoUtils {
     public static ChangeStreamIterable<BsonDocument> openChangeStream(MongoClient client, MongoDbTaskContext taskContext) {
         var config = taskContext.getConfig();
         final ChangeStreamPipeline pipeline = new ChangeStreamPipelineFactory(config, taskContext.getFilters().getConfig()).create();
+        return openChangeStream(client, config, pipeline.getStages());
+    }
+
+    /**
+     * Opens a change stream scoped to the configured {@code capture.scope}/{@code capture.target}, using the
+     * given pipeline and applying the configured document options.
+     *
+     * @param client mongodb client
+     * @param config connector configuration
+     * @param pipeline aggregation pipeline stages to apply on top of the change stream
+     * @return change stream iterable
+     */
+    public static ChangeStreamIterable<BsonDocument> openChangeStream(MongoClient client, MongoDbConnectorConfig config, List<? extends Bson> pipeline) {
+        final ChangeStreamIterable<BsonDocument> stream;
 
         // capture scope is database
         if (config.getCaptureScope() == MongoDbConnectorConfig.CaptureScope.DATABASE) {
             var database = config.getCaptureTarget().orElseThrow();
             LOGGER.info("Change stream is restricted to '{}' database", database);
-            return client.getDatabase(database).watch(pipeline.getStages(), BsonDocument.class);
+            stream = client.getDatabase(database).watch(pipeline, BsonDocument.class);
         }
-
         // capture scope is collection
-        if (config.getCaptureScope() == MongoDbConnectorConfig.CaptureScope.COLLECTION) {
-            var captureTarget = config.getCaptureTarget().orElseThrow();
-            var database = captureTarget.split("\\.")[0];
-            var collection = captureTarget.split("\\.")[1];
-            LOGGER.info("Change stream is restricted to '{}' collection", collection);
-            return client.getDatabase(database).getCollection(collection).watch(pipeline.getStages(), BsonDocument.class);
+        else if (config.getCaptureScope() == MongoDbConnectorConfig.CaptureScope.COLLECTION) {
+            var collectionId = CollectionId.parse(config.getCaptureTarget().orElseThrow());
+            LOGGER.info("Change stream is restricted to '{}' collection", collectionId.name());
+            stream = client.getDatabase(collectionId.dbName()).getCollection(collectionId.name()).watch(pipeline, BsonDocument.class);
+        }
+        // capture scope is deployment
+        else {
+            stream = client.watch(pipeline, BsonDocument.class);
         }
 
-        // capture scope is deployment
-        return client.watch(pipeline.getStages(), BsonDocument.class);
+        // An explicit zero would suppress documents in the initial aggregate response.
+        if (config.getQueryFetchSize() > 0) {
+            stream.batchSize(config.getQueryFetchSize());
+        }
+
+        if (config.getCaptureMode().isFullUpdate()) {
+            if (config.getCaptureModeFullUpdateType().isPostImage()) {
+                stream.fullDocument(FullDocument.WHEN_AVAILABLE);
+            }
+            else {
+                stream.fullDocument(FullDocument.UPDATE_LOOKUP);
+            }
+        }
+        if (config.getCaptureMode().isIncludePreImage()) {
+            stream.fullDocumentBeforeChange(FullDocumentBeforeChange.WHEN_AVAILABLE);
+        }
+        return stream;
     }
 
     public static BsonTimestamp hello(MongoClient client, String dbName) {

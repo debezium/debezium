@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.connection.MongoDbConnectionContext;
+import io.debezium.doc.FixFor;
 
 /**
  * @author Randall Hauch
@@ -32,9 +33,19 @@ public class MongoDbConnectionContextTest {
     @Test
     void shouldMaskCredentials() {
         var config = getConfig("mongodb://admin:password@localhost:27017/", false);
+        try (var connectionContext = new MongoDbConnectionContext(config)) {
+            var masked = connectionContext.getMaskedConnectionString();
+            assertThat(masked).isEqualTo("mongodb://***:***@localhost:27017/");
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2719")
+    void shouldMaskCredentialsWithDistinctAuthSource() {
+        var config = getConfig("mongodb://appuser:secret123@localhost:27017/?authSource=admin", false);
         var connectionContext = new MongoDbConnectionContext(config);
 
         var masked = connectionContext.getMaskedConnectionString();
-        assertThat(masked).isEqualTo("mongodb://***:***@localhost:27017/");
+        assertThat(masked).isEqualTo("mongodb://***:***@localhost:27017/?authSource=***");
     }
 }

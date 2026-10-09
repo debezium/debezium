@@ -7,6 +7,7 @@ package io.debezium.processors.reselect.cache;
 
 import java.util.Optional;
 
+import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.common.annotation.Incubating;
@@ -72,8 +73,13 @@ public interface ReselectColumnCache extends AutoCloseable {
 
     /**
      * A row-scoped view of the cache, bound to a single row. All operations act on columns of that one row.
+     * <p>
+     * A row cache is resolved once per event and {@link #close()} is invoked when the event's processing
+     * ends. Implementations that buffer per-column writes (e.g. remote stores that benefit from batching
+     * all of an event's writes into a single round-trip) may flush in {@link #close()}; the default is a
+     * no-op, so simple implementations need not override it.
      */
-    interface RowCache {
+    interface RowCache extends AutoCloseable {
 
         /**
          * Return the cached value for the given column, if present and still valid.
@@ -92,9 +98,11 @@ public interface ReselectColumnCache extends AutoCloseable {
          * the event's {@code after} struct and may be {@code null}.
          *
          * @param column the column name
+         * @param schema the column's Connect schema, letting implementations that serialize values
+         *        preserve the declared type of a {@code null} value; may be null when unknown
          * @param value the value to cache; may be null
          */
-        void put(String column, Object value);
+        void put(String column, Schema schema, Object value);
 
         /**
          * Evict the cached value for the given column, if any.
@@ -102,6 +110,14 @@ public interface ReselectColumnCache extends AutoCloseable {
          * @param column the column name
          */
         void invalidate(String column);
+
+        /**
+         * Signal that the event this row cache was resolved for has been fully processed. Batching
+         * implementations may flush buffered writes here.
+         */
+        @Override
+        default void close() {
+        }
     }
 
     /**

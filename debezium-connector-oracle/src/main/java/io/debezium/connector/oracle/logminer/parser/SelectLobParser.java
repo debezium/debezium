@@ -30,6 +30,7 @@ public class SelectLobParser extends AbstractSelectSingleColumnSqlRedoPreamblePa
 
     @Override
     protected void reset() {
+        super.reset();
         this.binary = false;
     }
 

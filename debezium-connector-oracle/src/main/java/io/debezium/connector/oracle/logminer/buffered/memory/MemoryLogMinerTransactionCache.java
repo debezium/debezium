@@ -7,11 +7,11 @@ package io.debezium.connector.oracle.logminer.buffered.memory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
-import java.util.Set;
+import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
@@ -19,7 +19,7 @@ import java.util.stream.Stream;
 import io.debezium.connector.oracle.logminer.buffered.AbstractLogMinerTransactionCache;
 import io.debezium.connector.oracle.logminer.buffered.LogMinerTransactionCache;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
-import io.debezium.connector.oracle.logminer.events.RowIdCodec;
+import io.debezium.connector.oracle.logminer.events.RollbackToSavepointEvent;
 
 /**
  * A concrete implementation of the {@link LogMinerTransactionCache} that stores transactions and events
@@ -31,8 +31,6 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
 
     private final Map<String, MemoryTransaction> transactionsByTransactionId = new HashMap<>();
     private final Map<String, List<LogMinerEventEntry>> eventsByTransactionId = new HashMap<>();
-    private final Map<String, HashMap<Integer, LogMinerEvent>> eventsByEventIdByTransactionId = new HashMap<>();
-    private final Map<String, Set<Integer>> rollbacksByTransactionId = new HashMap<>();
 
     @Override
     public MemoryTransaction getTransaction(String transactionId) {
@@ -84,29 +82,15 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
     }
 
     @Override
-    public void forEachEvent(MemoryTransaction transaction, LogMinerEventPredicate predicate) throws InterruptedException {
+    public void forEachEvent(MemoryTransaction transaction, InterruptiblePredicate<LogMinerEvent> predicate) throws InterruptedException {
         final var events = eventsByTransactionId.get(transaction.getTransactionId());
         if (events != null) {
-            final Set<Integer> rollbacks = rollbacksByTransactionId.getOrDefault(transaction.getTransactionId(), Set.of());
-            try (var stream = events.stream()) {
-                final Iterator<LogMinerEventEntry> iterator = stream.iterator();
-                while (iterator.hasNext()) {
-                    final LogMinerEventEntry entry = iterator.next();
-                    if (!predicate.test(entry.event, rollbacks.contains(entry.eventId))) {
-                        break;
-                    }
+            for (LogMinerEventEntry entry : events) {
+                if (!predicate.test(entry.event())) {
+                    break;
                 }
             }
         }
-    }
-
-    @Override
-    public LogMinerEvent getTransactionEvent(MemoryTransaction transaction, int eventKey) {
-        final var eventsByEventId = eventsByEventIdByTransactionId.get(transaction.getTransactionId());
-        if (eventsByEventId != null) {
-            return eventsByEventId.get(eventKey);
-        }
-        return null;
     }
 
     @Override
@@ -116,43 +100,60 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
 
     @Override
     public void addTransactionEvent(MemoryTransaction transaction, int eventKey, LogMinerEvent event) {
-        eventsByTransactionId.computeIfAbsent(transaction.getTransactionId(), (id) -> new ArrayList<>())
-                .add(new LogMinerEventEntry(eventKey, event));
-        eventsByEventIdByTransactionId.computeIfAbsent(transaction.getTransactionId(), (id) -> new HashMap<>())
-                .put(eventKey, event);
+        List<LogMinerEventEntry> entries = eventsByTransactionId.computeIfAbsent(transaction.getTransactionId(), (id) -> new ArrayList<>());
+        entries.add(new LogMinerEventEntry(eventKey, event));
+        transactionEvents++;
+
+        if (event instanceof RollbackToSavepointEvent) {
+            ListIterator<LogMinerEventEntry> it = entries.listIterator(entries.size());
+            LogMinerEventEntryRange range = findRolledBackRange(transaction.getTransactionId(), reverseIterator(it));
+            if (range != null) {
+                while (it.hasNext()) {
+                    if (it.next() == range.start()) {
+                        it.previous();
+                        break;
+                    }
+                }
+                while (it.hasNext()) {
+                    LogMinerEventEntry entry = it.next();
+                    if (entry == range.end()) {
+                        break;
+                    }
+                    it.remove();
+                    transactionEvents--;
+                }
+            }
+        }
+    }
+
+    private Iterator<LogMinerEventEntry> reverseIterator(ListIterator<LogMinerEventEntry> it) {
+        return new Iterator<>() {
+            @Override
+            public boolean hasNext() {
+                return it.hasPrevious();
+            }
+
+            @Override
+            public LogMinerEventEntry next() {
+                return it.previous();
+            }
+        };
     }
 
     @Override
     public void removeTransactionEvents(MemoryTransaction transaction) {
-        eventsByTransactionId.remove(transaction.getTransactionId());
-        eventsByEventIdByTransactionId.remove(transaction.getTransactionId());
-        rollbacksByTransactionId.remove(transaction.getTransactionId());
-    }
-
-    @Override
-    public boolean rollbackTransactionEventWithRowId(MemoryTransaction transaction, String rowId) {
-        final RowIdCodec.Packed encodedRowId = RowIdCodec.encode(rowId);
-        final var events = eventsByTransactionId.get(transaction.getTransactionId());
-        if (events != null) {
-            final Set<Integer> rollbacks = rollbacksByTransactionId.computeIfAbsent(transaction.getTransactionId(), k -> new HashSet<>());
-            for (int i = events.size() - 1; i >= 0; i--) {
-                final LogMinerEventEntry entry = events.get(i);
-                if (entry.event.getRowId().equals(encodedRowId) && !rollbacks.contains(entry.eventId)) {
-                    rollbacks.add(entry.eventId);
-                    return true;
-                }
-            }
+        final List<LogMinerEventEntry> entries = eventsByTransactionId.remove(transaction.getTransactionId());
+        if (entries != null) {
+            transactionEvents -= entries.size();
         }
-        return false;
     }
 
     @Override
     public boolean containsTransactionEvent(MemoryTransaction transaction, int eventKey) {
-        final var eventsByEventId = eventsByEventIdByTransactionId.get(transaction.getTransactionId());
-        if (eventsByEventId != null) {
-            return eventsByEventId.containsKey(eventKey);
-        }
-        return false;
+        // Uses the highest event key ever assigned rather than checking for presence directly
+        // since a partial rollback may have removed the event's entry from the cache.
+        List<LogMinerEventEntry> entries = eventsByTransactionId.get(transaction.getTransactionId());
+        return entries != null && !entries.isEmpty() && entries.get(entries.size() - 1).eventId() >= eventKey;
     }
 
     @Override
@@ -165,30 +166,26 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
     }
 
     @Override
-    public int getTransactionEvents() {
-        return eventsByTransactionId.values().stream().mapToInt(List::size).sum();
-    }
-
-    @Override
     public void clear() {
         transactionsByTransactionId.clear();
         eventsByTransactionId.clear();
-        eventsByEventIdByTransactionId.clear();
-        rollbacksByTransactionId.clear();
+        transactionEvents = 0;
+    }
+
+    @Override
+    public Optional<ScnDetails> getEldestTransactionScnDetailsInCache() {
+        // Called for every commit, so a plain loop over the transactions is used rather than a stream
+        MemoryTransaction eldest = null;
+        for (MemoryTransaction transaction : transactionsByTransactionId.values()) {
+            if (eldest == null || compareTransactionScnDetails(transaction, eldest) < 0) {
+                eldest = transaction;
+            }
+        }
+        return eldest == null ? Optional.empty() : Optional.of(new ScnDetails(eldest.getStartScn(), eldest.getChangeTime()));
     }
 
     @Override
     public void syncTransaction(MemoryTransaction transaction) {
         // Changing the heap instance is sufficient, therefore this is a no-op
-    }
-
-    /**
-     * An event record used to map event-id and event since event-id is not currently stored
-     * as part of the LogMinerEvent object. This enables fast cleanup during row-id removal.
-     *
-     * @param eventId the event's unique identifier
-     * @param event the event object
-     */
-    record LogMinerEventEntry(int eventId, LogMinerEvent event) {
     }
 }

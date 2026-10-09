@@ -16,11 +16,9 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import io.debezium.pipeline.notification.channels.jmx.JmxNotificationChannel;
-
 public class Notification {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(JmxNotificationChannel.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(Notification.class);
 
     public static final String ID_KEY = "id";
     public static final String TYPE = "type";

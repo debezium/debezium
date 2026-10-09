@@ -10,6 +10,9 @@ freeStyleJob('release/tools-debezium-source-clear') {
     description('Executes SourceClear vulnerability scan of Debezium sources and binaries')
     label('Slave')
 
+    // Moved to GH actions
+    disabled()
+
     properties {
         githubProjectUrl('https://github.com/debezium/debezium')
     }

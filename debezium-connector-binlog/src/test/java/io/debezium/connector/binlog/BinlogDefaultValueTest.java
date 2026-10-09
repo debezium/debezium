@@ -15,12 +15,17 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Date;
+import java.util.List;
 import java.util.Properties;
+import java.util.stream.Stream;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import io.debezium.antlr.AntlrDdlParser;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
@@ -627,6 +632,45 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
         assertThat(getColumnSchema(schema, "c6").defaultValue()).isEqualTo(1.0);
     }
 
+    @ParameterizedTest
+    @MethodSource("integerDefaults")
+    @FixFor("debezium/dbz#2763")
+    void shouldPreserveIntegerDefaults(String type, String literal, long expected) {
+        final var tableId = new TableId(null, null, "integer_defaults");
+        for (String expression : List.of(literal, "'" + literal + "'")) {
+            final var ddl = "CREATE TABLE integer_defaults (v " + type + " NOT NULL DEFAULT " + expression + ")";
+            parser.parse(ddl, tables);
+            final var value = getColumnSchema(tables.forTable(tableId), "v").defaultValue();
+            assertThat(value).as(ddl).isInstanceOf(Number.class);
+            assertThat(((Number) value).longValue()).as(ddl).isEqualTo(expected);
+        }
+    }
+
+    protected static Stream<Arguments> integerDefaults() {
+        final var rounding = Stream.of("TINYINT", "SMALLINT", "MEDIUMINT", "INT", "BIGINT")
+                .flatMap(type -> Stream.of(
+                        Arguments.of(type, "-1.6", -2L),
+                        Arguments.of(type, "-1.5", -2L),
+                        Arguments.of(type, "-1.4", -1L),
+                        Arguments.of(type, "-0.5", -1L),
+                        Arguments.of(type, "0.5", 1L),
+                        Arguments.of(type, "1.4", 1L),
+                        Arguments.of(type, "1.5", 2L),
+                        Arguments.of(type, "1.6", 2L),
+                        Arguments.of(type, "1.4999999999999999", 1L),
+                        Arguments.of(type, "-15e-1", -2L)));
+        final var precision = Stream.of(
+                Arguments.of("BIGINT", "9007199254740993", 9007199254740993L),
+                Arguments.of("BIGINT", "-9007199254740993", -9007199254740993L),
+                Arguments.of("BIGINT", "9223372036854775806", Long.MAX_VALUE - 1),
+                Arguments.of("BIGINT", "9223372036854775807", Long.MAX_VALUE),
+                Arguments.of("BIGINT", "-9223372036854775807", Long.MIN_VALUE + 1),
+                Arguments.of("BIGINT", "-9223372036854775808", Long.MIN_VALUE),
+                Arguments.of("BIGINT", "9007199254740992.5", 9007199254740993L),
+                Arguments.of("BIGINT", "-9007199254740992.5", -9007199254740993L));
+        return Stream.concat(rounding, precision);
+    }
+
     protected abstract P getDdlParser();
 
     protected abstract V getValueConverter(JdbcValueConverters.DecimalMode decimalMode,
@@ -636,7 +680,7 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
 
     protected abstract BinlogDefaultValueConverter getDefaultValueConverter(V valueConverters);
 
-    private Schema getColumnSchema(Table table, String column) {
+    protected Schema getColumnSchema(Table table, String column) {
         return getColumnSchema(table, column, tableSchemaBuilder);
     }
 

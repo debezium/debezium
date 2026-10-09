@@ -1285,6 +1285,42 @@ public class EventRouterTest {
         });
     }
 
+    @Test
+    @FixFor("debezium/dbz#2743")
+    public void shouldFallBackToRawStringWhenJsonExpansionFailsOnInconsistentArrayElementTypes() {
+        // "details" is a nested object in one array element and a plain string in another, so the
+        // inferred schema cannot hold both and toConnectData throws. The delegate must then fall
+        // back to the raw JSON string rather than leave a STRUCT schema paired with the String value.
+        final EventRouter<SourceRecord> router = new EventRouter<>();
+        final Map<String, String> config = new HashMap<>();
+        config.put(EventRouterConfigDefinition.EXPAND_JSON_PAYLOAD.name(), "true");
+        config.put(EventRouterConfigDefinition.FIELDS_ADDITIONAL_PLACEMENT.name(), "type:envelope");
+        router.configure(config);
+
+        final String rawPayload = "{\"items\":[{\"name\":\"itemA\",\"details\":{\"qty\":1}},{\"name\":\"itemB\",\"details\":\"no-details-available\"}]}";
+        final SourceRecord eventRecord = createEventRecord(
+                "da8d6de6-3b77-45ff-8f44-57db55a7a06c",
+                "UserCreated",
+                "10711fa5",
+                "User",
+                rawPayload,
+                new HashMap<>(),
+                new HashMap<>());
+
+        final SourceRecord eventRouted = router.apply(eventRecord);
+
+        assertThat(eventRouted).isNotNull();
+
+        final Schema valueSchema = eventRouted.valueSchema();
+        assertThat(valueSchema.type()).isEqualTo(SchemaBuilder.struct().type());
+        // Expansion failed, so the payload keeps its original String schema.
+        assertThat(valueSchema.field("payload").schema().type()).isEqualTo(Schema.Type.STRING);
+
+        final Struct valueStruct = (Struct) eventRouted.value();
+        assertThat(valueStruct.get("type")).isEqualTo("UserCreated");
+        assertThat(valueStruct.getString("payload")).isEqualTo(rawPayload);
+    }
+
     private SourceRecord createEventRecord() {
         return createEventRecord(
                 "da8d6de6-3b77-45ff-8f44-57db55a7a06c",

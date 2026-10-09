@@ -5,6 +5,7 @@
 [id="open-lineage-integration"]
 = OpenLineage Integration
 
+ifdef::community[]
 :toc:
 :toc-placement: macro
 :linkattrs:
@@ -12,6 +13,7 @@
 :source-highlighter: highlight.js
 
 toc::[]
+endif::community[]
 
 {prodname} provides built-in integration with OpenLineage to automatically track data lineage for Change Data Capture (CDC) operations.
 The OpenLineage integration provides you with comprehensive visibility into the data flow and transformations that you use in your data pipeline.

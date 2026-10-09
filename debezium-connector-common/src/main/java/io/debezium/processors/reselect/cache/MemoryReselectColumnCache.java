@@ -8,11 +8,14 @@ package io.debezium.processors.reselect.cache;
 import java.util.Map;
 import java.util.Optional;
 
+import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
+import io.debezium.config.Field;
 import io.debezium.util.BoundedConcurrentHashMap;
 import io.debezium.util.BoundedConcurrentHashMap.Eviction;
 
@@ -37,13 +40,32 @@ public class MemoryReselectColumnCache implements ReselectColumnCache {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MemoryReselectColumnCache.class);
 
-    public static final String MAX_SIZE = "reselect.cache.max.size";
-    public static final String TTL_MS = "reselect.cache.ttl.ms";
-    public static final String MAX_COLUMNS_PER_ROW = "reselect.cache.max.columns.per.row";
+    public static final Field MAX_SIZE = Field.create("reselect.cache.max.size")
+            .withDisplayName("Reselect cache maximum rows")
+            .withType(ConfigDef.Type.INT)
+            .withDefault(10_000)
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDescription("Maximum number of rows retained in the in-memory reselect cache; the least "
+                    + "recently used row is evicted when the bound is exceeded.");
 
-    private static final int DEFAULT_MAX_SIZE = 10_000;
-    private static final long DEFAULT_TTL_MS = 600_000L;
-    private static final int DEFAULT_MAX_COLUMNS_PER_ROW = 200;
+    public static final Field TTL_MS = Field.create("reselect.cache.ttl.ms")
+            .withDisplayName("Reselect cache TTL")
+            .withType(ConfigDef.Type.LONG)
+            .withDefault(600_000L)
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDescription("Time-to-live in milliseconds for cached values, bounding heap retention of "
+                    + "rows that are no longer being updated.");
+
+    public static final Field MAX_COLUMNS_PER_ROW = Field.create("reselect.cache.max.columns.per.row")
+            .withDisplayName("Reselect cache maximum columns per row")
+            .withType(ConfigDef.Type.INT)
+            .withDefault(200)
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDescription("Maximum number of columns cached per row; the least recently used column is "
+                    + "evicted when the bound is exceeded.");
 
     private long ttlMs;
     private int maxColumnsPerRow;
@@ -53,9 +75,9 @@ public class MemoryReselectColumnCache implements ReselectColumnCache {
 
     @Override
     public void configure(Configuration config) {
-        final int maxSize = config.getInteger(MAX_SIZE, DEFAULT_MAX_SIZE);
-        this.ttlMs = config.getLong(TTL_MS, DEFAULT_TTL_MS);
-        this.maxColumnsPerRow = config.getInteger(MAX_COLUMNS_PER_ROW, DEFAULT_MAX_COLUMNS_PER_ROW);
+        final int maxSize = config.getInteger(MAX_SIZE);
+        this.ttlMs = config.getLong(TTL_MS);
+        this.maxColumnsPerRow = config.getInteger(MAX_COLUMNS_PER_ROW);
         this.rows = new BoundedConcurrentHashMap<>(maxSize, 16, Eviction.LRU);
         LOGGER.info("Initialized in-memory reselect cache with max {} rows, max {} columns per row, and TTL {} ms.", maxSize, maxColumnsPerRow, ttlMs);
     }
@@ -95,7 +117,8 @@ public class MemoryReselectColumnCache implements ReselectColumnCache {
         }
 
         @Override
-        public void put(String column, Object value) {
+        public void put(String column, Schema schema, Object value) {
+            // The live value is stored as-is; the schema only matters to serializing implementations.
             rows.computeIfAbsent(rowKey, k -> new BoundedConcurrentHashMap<>(maxColumnsPerRow, 4, Eviction.LRU))
                     .put(column, new CachedValue(value, System.currentTimeMillis()));
         }

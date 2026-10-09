@@ -7,12 +7,14 @@
 package io.debezium.ai.embeddings;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -20,6 +22,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.data.Envelope;
+import io.debezium.doc.FixFor;
 
 /**
  * Basic tests of {@link FieldToEmbedding} SMT.
@@ -95,5 +98,37 @@ public class FieldToEmbeddingTest {
 
         List<Float> payloadStruct = (List<Float>) transformedRecord.value();
         assertThat(payloadStruct).contains(0.0f, 1.0f, 2.0f, 3.0f);
+    }
+
+    @FixFor("debezium/dbz#2627")
+    @Test
+    public void testBlankSourceFieldThrowsCleanConfigException() {
+        FieldToEmbedding<SourceRecord> embeddingSmt = new FieldToEmbedding<>();
+        assertThatThrownBy(() -> embeddingSmt.configure(Map.of("field.source", "")))
+                .isInstanceOf(ConfigException.class)
+                .hasMessageContaining("field.source");
+    }
+
+    @FixFor("debezium/dbz#2627")
+    @Test
+    public void testMultipleInstancesCanBeConfiguredIndependently() {
+        FieldToEmbedding<SourceRecord> smt1 = new FieldToEmbedding<>();
+        smt1.configure(Map.of(
+                "field.source", "op",
+                "field.embedding", "op_emb"));
+
+        FieldToEmbedding<SourceRecord> smt2 = new FieldToEmbedding<>();
+        smt2.configure(Map.of(
+                "field.source", "after.product",
+                "field.embedding", "after.prod_emb"));
+
+        SourceRecord res1 = smt1.apply(SOURCE_RECORD);
+        SourceRecord res2 = smt2.apply(SOURCE_RECORD);
+
+        Struct s1 = (Struct) res1.value();
+        assertThat(s1.getArray("op_emb")).isNotNull();
+
+        Struct s2 = (Struct) res2.value();
+        assertThat(s2.getStruct("after").getArray("prod_emb")).isNotNull();
     }
 }

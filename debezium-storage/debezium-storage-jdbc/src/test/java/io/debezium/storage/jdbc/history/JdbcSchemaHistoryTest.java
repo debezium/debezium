@@ -12,6 +12,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.sql.Types;
 import java.time.Instant;
 import java.util.List;
@@ -25,6 +29,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.doc.FixFor;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableEditor;
@@ -171,12 +176,25 @@ public class JdbcSchemaHistoryTest {
     }
 
     @Test
-    public void shouldNotFailMultipleInitializeStorage() {
+    public void shouldInitializeStorageWithCredentials() {
         history.initializeStorage();
         history.initializeStorage();
         history.initializeStorage();
         assertTrue(history.storageExists());
         assertFalse(history.exists());
+    }
+
+    @Test
+    @FixFor("debezium/dbz#1957")
+    public void shouldInitializeStorageWithoutCredentials() {
+        history.stop();
+        history = new JdbcSchemaHistory();
+        history.configure(Configuration.create()
+                .with(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + JdbcSchemaHistoryConfig.PROP_JDBC_URL.name(), "jdbc:sqlite:" + dbFile)
+                .build(), null, SchemaHistoryMetrics.NOOP, true);
+        history.start();
+        history.initializeStorage();
+        assertTrue(history.storageExists());
     }
 
     @Test
@@ -207,6 +225,22 @@ public class JdbcSchemaHistoryTest {
         assertEquals(tables2.size(), 3);
         assertEquals(tables2.forTable(tableIdLarge), tableLarge);
         assertEquals(tables2.forTable(tableId2), table2);
+    }
+
+    @Test
+    public void shouldNotLeaveTransactionOpenAfterRecovery() throws SQLException, InterruptedException {
+        history.record(source, position, databaseName, schemaName, ddl, tableChanges, currentInstant);
+
+        Tables tables = new Tables();
+        history.recover(source, position, tables, ddlParser);
+        assertEquals(tables.size(), 1);
+
+        try (Connection other = DriverManager.getConnection("jdbc:sqlite:" + dbFile);
+                Statement stmt = other.createStatement()) {
+            // This will fail with SQLITE_BUSY if the recovery tx is still open
+            stmt.execute("CREATE TABLE transaction_probe (id INT)");
+            stmt.execute("DROP TABLE transaction_probe");
+        }
     }
 
 }
