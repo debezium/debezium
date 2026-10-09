@@ -465,6 +465,111 @@ class MongoDbConnectionLifecycleIT extends AbstractMongoConnectorIT {
         }
     }
 
+    @Test
+    @FixFor("debezium/dbz#1736")
+    void shouldPreserveSnapshotFailureWhenWorkerShutdownTimesOutByDefault() throws Exception {
+        insertDocuments("lifecycle", "items", new Document("_id", 1));
+        insertDocuments("lifecycle", "other", new Document("_id", 1));
+        final var otherReadStarted = new CountDownLatch(1);
+        final var workerInterrupted = new CountDownLatch(1);
+        final var releaseRead = new CountDownLatch(1);
+        final var blockedWorker = new AtomicReference<Thread>();
+        final var shutdownTimedOut = new CompletableFuture<Void>();
+        final var failed = new CompletableFuture<Throwable>();
+        final var snapshotLogger = (Logger) LoggerFactory.getLogger(MongoDbSnapshotChangeEventSource.class);
+        final var observer = new LogInterceptor(MongoDbSnapshotChangeEventSource.class) {
+            @Override
+            protected void append(ILoggingEvent event) {
+                if ("Snapshot workers did not stop within the configured shutdown timeout".equals(event.getFormattedMessage())) {
+                    shutdownTimedOut.complete(null);
+                }
+            }
+        };
+        try (var tracker = new ConnectionResourceTracker()) {
+            tracker.commandListener = new CommandListener() {
+                @Override
+                public void commandStarted(CommandStartedEvent event) {
+                    if (!"find".equals(event.getCommandName()) || !"lifecycle".equals(event.getDatabaseName())) {
+                        return;
+                    }
+                    final var collection = event.getCommand().getString("find").getValue();
+                    if ("items".equals(collection)) {
+                        try {
+                            // Fail only after the other worker is ready to remain blocked during shutdown.
+                            assertThat(otherReadStarted.await(30, TimeUnit.SECONDS)).isTrue();
+                        }
+                        catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            throw new AssertionError("Interrupted before the other snapshot worker started", e);
+                        }
+                    }
+                    else if ("other".equals(collection)) {
+                        blockedWorker.set(Thread.currentThread());
+                        otherReadStarted.countDown();
+                        boolean interrupted = false;
+                        try {
+                            // Simulate a driver read that stays blocked despite shutdownNow().
+                            // Only the test's finally block may release this worker.
+                            while (true) {
+                                try {
+                                    releaseRead.await();
+                                    break;
+                                }
+                                catch (InterruptedException e) {
+                                    interrupted = true;
+                                    workerInterrupted.countDown();
+                                }
+                            }
+                        }
+                        finally {
+                            if (interrupted) {
+                                Thread.currentThread().interrupt();
+                            }
+                        }
+                    }
+                }
+            };
+            // Leave executor.shutdown.timeout.ms unset to exercise the default shutdown budget.
+            final var config = configuration(tracker).edit()
+                    .without(CommonConnectorConfig.EXECUTOR_SHUTDOWN_TIMEOUT_MS.name())
+                    .with(MongoDbConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                    .with(MongoDbConnectorConfig.SNAPSHOT_MAX_THREADS, 2)
+                    .with(MongoDbConnectorConfig.SNAPSHOT_FILTER_QUERY_BY_COLLECTION, "lifecycle.items")
+                    .with("snapshot.collection.filter.overrides.lifecycle.items", "{\"$reviewFailure\": 1}")
+                    .with(CommonConnectorConfig.MAX_RETRIES_ON_ERROR, 0)
+                    .build();
+            try {
+                start(MongoDbConnector.class, config, (success, message, error) -> failed.complete(error));
+                assertThat(otherReadStarted.await(30, TimeUnit.SECONDS)).isTrue();
+                assertThat(workerInterrupted.await(30, TimeUnit.SECONDS)).isTrue();
+                // Observe the timeout path without relying on a tight elapsed-time assertion.
+                shutdownTimedOut.get(30, TimeUnit.SECONDS);
+                assertThat(failed.get(30, TimeUnit.SECONDS)).hasRootCauseInstanceOf(MongoQueryException.class)
+                        .rootCause().hasMessageContaining("$reviewFailure");
+                assertThat(releaseRead.getCount()).isEqualTo(1);
+                assertThat(blockedWorker.get().isAlive()).isTrue();
+            }
+            finally {
+                releaseRead.countDown();
+                try {
+                    stopConnector();
+                }
+                finally {
+                    final var worker = blockedWorker.get();
+                    if (worker != null) {
+                        worker.join(30_000);
+                        assertThat(worker.isAlive()).isFalse();
+                    }
+                }
+            }
+            tracker.assertReleased();
+        }
+        finally {
+            snapshotLogger.detachAppender(observer);
+            observer.stop();
+        }
+    }
+
     @ParameterizedTest
     @EnumSource(value = SnapshotMode.class, names = { "INITIAL", "NO_DATA" })
     void shouldReleaseResourcesWhenCoordinatorStopIsInterrupted(SnapshotMode mode) throws Exception {
