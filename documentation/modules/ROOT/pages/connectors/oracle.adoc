@@ -1149,6 +1149,8 @@ The connector configuration includes following key properties:
 `secondary.port`:: Specifies the port of the downstream mining database instance.
 `secondary.url`:: Specifies the full JDBC connection string to the downstream mining database. Use this as an alternative to `secondary.hostname`, `secondary.port`, and `secondary.dbname`.
 
+NOTE: Use of the `secondary.*` properties is available as a Technology Preview feature.
+
 ==== How this works
 
 When {prodname} Oracle connector is configured to capture changes from a downstream mining database, the connector operates as follows:
@@ -3264,6 +3266,8 @@ log.mining.archive.log.only.mode=true
 secondary.hostname=standby-host
 ```
 +
+NOTE: Use of the `log.mining.read.only` and `secondary.hostname` properties is available as a Technology Preview feature.
++
 Alternatively, you can use `secondary.url` to specify the full JDBC connection string to the standby:
 +
 ```
@@ -3306,6 +3310,9 @@ log.mining.read.only=true
 ```
 The preceding setting prevents the database from creating and updating the `LOG_MINING_FLUSH` table.
 You can use the `log.mining.read.only` property with an Oracle Standalone database, or with an Oracle RAC installation.
++
+NOTE: Use of the `log.mining.read.only` property is available as a Technology Preview feature.
+
 
 // Type: concept
 // ModuleID: debezium-oracle-connector-extended-max-string-size
@@ -4388,6 +4395,9 @@ See xref:oracle-transaction-metadata[Transaction Metadata] for additional detail
 |[[oracle-property-log-mining-read-only]]<<oracle-property-log-mining-read-only, `+log.mining.read.only+`>>
 |`false`
 |When set to `true`, the connector does not attempt to flush the LGWR buffer to disk, allowing it to connect to read-only databases such as logical standbys or physical standbys.
+
+NOTE: Use of the `log.mining.read.only` property is available as a Technology Preview feature.
+
 
 |[[oracle-property-log-mining-path-dictionary]]<<oracle-property-log-mining-path-dictionary, `+log.mining.path.dictionary+`>>
 |No default
