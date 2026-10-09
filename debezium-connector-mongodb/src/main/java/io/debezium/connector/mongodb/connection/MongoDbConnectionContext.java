@@ -16,7 +16,6 @@ import org.slf4j.LoggerFactory;
 
 import com.mongodb.ConnectionString;
 import com.mongodb.ReadPreference;
-import com.mongodb.client.MongoClient;
 import com.mongodb.connection.ClusterDescription;
 import com.mongodb.connection.ClusterType;
 import com.mongodb.event.ClusterDescriptionChangedEvent;
@@ -63,15 +62,6 @@ public class MongoDbConnectionContext implements AutoCloseable {
      */
     public String getMaskedConnectionString() {
         return ConnectionStrings.mask(getConnectionString());
-    }
-
-    /**
-     * Creates native {@link MongoClient} instance
-     *
-     * @return mongo client
-     */
-    public MongoClient getMongoClient() {
-        return clientFactory.getMongoClient();
     }
 
     /**

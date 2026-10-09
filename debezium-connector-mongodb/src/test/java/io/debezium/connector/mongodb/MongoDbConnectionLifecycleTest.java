@@ -95,7 +95,7 @@ class MongoDbConnectionLifecycleTest {
             final var context = task.getConnectionContext();
             task.close();
             task.close();
-            assertThatThrownBy(context::getMongoClient).isInstanceOf(IllegalStateException.class);
+            assertThatThrownBy(context::openClient).isInstanceOf(IllegalStateException.class);
             assertThatThrownBy(task::getConnectionContext).isInstanceOf(IllegalStateException.class);
             tracker.assertReleased();
         }

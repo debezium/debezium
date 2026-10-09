@@ -84,10 +84,6 @@ public final class MongoDbConnection implements AutoCloseable {
         this.ownsConnectionContext = false;
     }
 
-    public MongoClient getMongoClient() {
-        return connectionContext.getMongoClient();
-    }
-
     /**
      * Execute the supplied operation. Whenever the operation fails the error handler is called and the operation is repeated
      *
