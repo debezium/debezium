@@ -138,7 +138,6 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         }
         incrementalSnapshotThreadPool.shutdown();
         incrementalSnapshotThreadPool = null;
-
     }
 
     @Override

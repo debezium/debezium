@@ -196,7 +196,6 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
 
             MongoDbChangeEventSourceMetricsFactory metricsFactory = new MongoDbChangeEventSourceMetricsFactory();
 
-            final var connectionOwner = taskContext;
             ChangeEventSourceCoordinator<MongoDbPartition, MongoDbOffsetContext> coordinator = new ChangeEventSourceCoordinator<>(
                     previousOffsets,
                     errorHandler,
@@ -215,23 +214,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
                     dispatcher,
                     schema,
                     signalProcessor,
-                    notificationService, snapshotterService) {
-                @Override
-                @SuppressWarnings("try")
-                public synchronized void stop() throws InterruptedException {
-                    try {
-                        super.stop();
-                    }
-                    catch (InterruptedException | RuntimeException | Error shutdownFailure) {
-                        // BaseSourceTask skips doStop() when coordinator shutdown fails (debezium/dbz#2709).
-                        // Remove this workaround once the common cleanup path is fixed.
-                        // Active clients keep authentication alive until they close.
-                        try (var ownedContext = connectionOwner) {
-                            throw shutdownFailure;
-                        }
-                    }
-                }
-            };
+                    notificationService, snapshotterService);
 
             coordinator.start(taskContext, this.queue, metadataProvider);
 
