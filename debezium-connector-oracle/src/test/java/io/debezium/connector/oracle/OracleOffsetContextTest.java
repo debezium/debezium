@@ -6,8 +6,6 @@
 package io.debezium.connector.oracle;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -16,7 +14,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
-import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.doc.FixFor;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -119,11 +116,10 @@ public class OracleOffsetContextTest {
         assertThat(offsetContext.getSnapshotCommitScn()).isEqualTo(Scn.valueOf(120));
         assertThat(offsetContext.getSnapshotAsOfScn()).isEqualTo(Scn.valueOf(120));
         assertThat(offsetContext.getEventScn()).isEqualTo(Scn.valueOf(120));
-        assertThat(offsetContext.isEventScnLessThanOrEqualToSnapshotCommitScn(row(120, Scn.NULL))).isTrue();
-        assertThat(offsetContext.isEventScnLessThanOrEqualToSnapshotCommitScn(row(121, Scn.NULL))).isFalse();
-        assertThat(offsetContext.isEventCommitScnLessThanOrEqualToSnapshotCommitScn(row(100, Scn.valueOf(120)))).isTrue();
-        assertThat(offsetContext.isEventCommitScnLessThanOrEqualToSnapshotCommitScn(row(100, Scn.valueOf(121)))).isFalse();
-        assertThat(offsetContext.isEventCommitScnLessThanOrEqualToSnapshotCommitScn(row(100, Scn.NULL))).isFalse();
+        assertThat(offsetContext.isLessThanOrEqualToSnapshotCommitScn(Scn.valueOf(120))).isTrue();
+        assertThat(offsetContext.isLessThanOrEqualToSnapshotCommitScn(Scn.valueOf(121))).isFalse();
+        assertThat(offsetContext.isLessThanOrEqualToSnapshotCommitScn(Scn.NULL)).isFalse();
+        assertThat(offsetContext.isLessThanOrEqualToSnapshotCommitScn(null)).isFalse();
 
         final Map<String, ?> writeValues = offsetContext.getOffset();
         assertThat(writeValues.get(SourceInfo.SCN_KEY)).isEqualTo("100");
@@ -141,8 +137,7 @@ public class OracleOffsetContextTest {
         assertThat(offsetContext.getSnapshotCommitScn()).isEqualTo(Scn.NULL);
         assertThat(offsetContext.getSnapshotAsOfScn()).isEqualTo(Scn.valueOf(100));
         assertThat(offsetContext.getEventScn()).isEqualTo(Scn.valueOf(100));
-        assertThat(offsetContext.isEventScnLessThanOrEqualToSnapshotCommitScn(row(100, Scn.valueOf(100)))).isFalse();
-        assertThat(offsetContext.isEventCommitScnLessThanOrEqualToSnapshotCommitScn(row(100, Scn.valueOf(100)))).isFalse();
+        assertThat(offsetContext.isLessThanOrEqualToSnapshotCommitScn(Scn.valueOf(100))).isFalse();
     }
 
     @Test
@@ -208,12 +203,5 @@ public class OracleOffsetContextTest {
         offsetValues.put(SourceInfo.COMMIT_SCN_KEY, commitScn);
         offsetValues.put(OracleOffsetContext.SNAPSHOT_COMMIT_SCN_KEY, "800");
         return (OracleOffsetContext) offsetLoader.load(offsetValues);
-    }
-
-    private static LogMinerEventRow row(long scn, Scn commitScn) {
-        final LogMinerEventRow row = mock(LogMinerEventRow.class);
-        when(row.getScn()).thenReturn(Scn.valueOf(scn));
-        when(row.getCommitScn()).thenReturn(commitScn);
-        return row;
     }
 }

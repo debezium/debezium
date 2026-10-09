@@ -182,7 +182,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     @Test
     @FixFor("debezium/dbz#2779")
     void testUnreconstructableEventBeforeSnapshotCommitScnFailsAtCommitWhenTransactionCommitsAfterSnapshot() throws Exception {
-        Mockito.when(offsetContext.getSnapshotCommitScn()).thenReturn(Scn.valueOf(10));
+        mockSnapshotCommitScn(10);
         try (var source = getChangeEventSource(getConfig().build())) {
             source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
             source.processEvent(getUnreconstructableInsertLogMinerEventRow(2, TRANSACTION_ID_1));
@@ -197,7 +197,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     @Test
     @FixFor("debezium/dbz#2779")
     void testUnreconstructableEventAfterSnapshotCommitScnFailsImmediatelyEvenWhenEarlierFailureIsHeld() throws Exception {
-        Mockito.when(offsetContext.getSnapshotCommitScn()).thenReturn(Scn.valueOf(10));
+        mockSnapshotCommitScn(10);
         try (var source = getChangeEventSource(getConfig().build())) {
             source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
             source.processEvent(getUnreconstructableInsertLogMinerEventRow(2, TRANSACTION_ID_1));
@@ -211,18 +211,16 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
 
     @Test
     @FixFor("debezium/dbz#2779")
-    void testUnreconstructableEventBeforeSnapshotCommitScnIsRaisedWhenTransactionIsRolledBack() throws Exception {
-        Mockito.when(offsetContext.getSnapshotCommitScn()).thenReturn(Scn.valueOf(10));
+    void testUnreconstructableEventBeforeSnapshotCommitScnIsDiscardedWhenTransactionIsRolledBackBeforeSnapshot() throws Exception {
+        mockSnapshotCommitScn(10);
         try (var source = getChangeEventSource(getConfig().build())) {
             source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
             source.processEvent(getUnreconstructableInsertLogMinerEventRow(2, TRANSACTION_ID_1));
 
-            // A rolled back transaction is not assumed to be discarded, so the held failure is raised
-            assertThatThrownBy(() -> source.processEvent(getRollbackLogMinerEventRow(3, TRANSACTION_ID_1)))
-                    .isInstanceOf(DebeziumException.class)
-                    .hasMessageContaining("unable to re-construct the SQL for 'INSERT' event with SCN 2");
+            // The transaction ended at or before the snapshot commit SCN, so it cannot have been emitted
+            source.processEvent(getRollbackLogMinerEventRow(3, TRANSACTION_ID_1));
 
-            // The failure is raised once, a later transaction reusing the id must not raise it again
+            // A later transaction reusing the id must not inherit the discarded failure
             source.processEvent(getStartLogMinerEventRow(11, TRANSACTION_ID_1));
             source.processEvent(getInsertLogMinerEventRow(12, TRANSACTION_ID_1));
             source.processEvent(getCommitLogMinerEventRow(13, TRANSACTION_ID_1));
@@ -233,12 +231,27 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
 
     @Test
     @FixFor("debezium/dbz#2779")
+    void testUnreconstructableEventBeforeSnapshotCommitScnIsRaisedWhenTransactionIsRolledBackAfterSnapshot() throws Exception {
+        mockSnapshotCommitScn(10);
+        try (var source = getChangeEventSource(getConfig().build())) {
+            source.processEvent(getStartLogMinerEventRow(1, TRANSACTION_ID_1));
+            source.processEvent(getUnreconstructableInsertLogMinerEventRow(2, TRANSACTION_ID_1));
+
+            // The transaction ended after the snapshot commit SCN and is not assumed to be discarded
+            assertThatThrownBy(() -> source.processEvent(getRollbackLogMinerEventRow(11, TRANSACTION_ID_1)))
+                    .isInstanceOf(DebeziumException.class)
+                    .hasMessageContaining("unable to re-construct the SQL for 'INSERT' event with SCN 2");
+        }
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2779")
     void testUnreconstructableEventBeforeSnapshotCommitScnIsRaisedWhenTransactionIsAbandoned() throws Exception {
         if (!isTransactionAbandonmentSupported()) {
             return;
         }
 
-        Mockito.when(offsetContext.getSnapshotCommitScn()).thenReturn(Scn.valueOf(10));
+        mockSnapshotCommitScn(10);
         try (var source = getChangeEventSource(getConfig().build())) {
             Mockito.when(offsetContext.getScn()).thenReturn(Scn.valueOf(1L));
 
@@ -1123,6 +1136,18 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
 
     private LogMinerEventRow getInsertLogMinerEventRow(long scn, String transactionId, Instant changeTime) {
         return getInsertLogMinerEventRow(scn, transactionId, changeTime, "TEST_TABLE", "AAAAAAAAAAAAAAAAAB", "'Test'");
+    }
+
+    /**
+     * Mocks the snapshot commit SCN on the offset context, including the comparison against it.
+     */
+    private void mockSnapshotCommitScn(long snapshotCommitScn) {
+        final Scn scn = Scn.valueOf(snapshotCommitScn);
+        Mockito.when(offsetContext.getSnapshotCommitScn()).thenReturn(scn);
+        Mockito.when(offsetContext.isLessThanOrEqualToSnapshotCommitScn(any())).thenAnswer(invocation -> {
+            final Scn value = invocation.getArgument(0);
+            return value != null && !value.isNull() && value.compareTo(scn) <= 0;
+        });
     }
 
     /**

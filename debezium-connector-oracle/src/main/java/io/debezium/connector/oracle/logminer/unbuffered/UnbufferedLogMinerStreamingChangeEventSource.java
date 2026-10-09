@@ -347,7 +347,7 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
 
         // Checked before the transaction sequence below, which only applies to the transaction currently being
         // emitted, because dispatching a row makes its transaction the current one.
-        if (getOffsetContext().isEventCommitScnLessThanOrEqualToSnapshotCommitScn(event)) {
+        if (getOffsetContext().isLessThanOrEqualToSnapshotCommitScn(event.getCommitScn())) {
             LOGGER.info("Skipping event {} (SCN {}) because it is already included by the initial snapshot",
                     event.getEventType(), event.getScn());
             return true;
@@ -415,19 +415,10 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
 
         final Instant commitStartTime = Instant.now();
 
-        final boolean alreadyHandled = getOffsetContext().getCommitScn().hasEventScnBeenHandled(event);
-        final boolean includedInSnapshot = getOffsetContext().isEventScnLessThanOrEqualToSnapshotCommitScn(event);
-        if (alreadyHandled || includedInSnapshot) {
-            if (includedInSnapshot && !alreadyHandled && event.getThread() != 0) {
-                // The transaction is already part of the snapshot, so its events were skipped and it is not emitted.
-                // Its commit is still recorded so that the redo thread counts towards retiring the snapshot commit SCN
-                // once it has committed past it. An already handled commit is not recorded again, because the thread
-                // may have committed past it since, and its commit SCN must never move backwards. Commits that
-                // LogMiner could not assign to a redo thread are not recorded either.
-                getOffsetContext().getCommitScn().recordCommit(event);
-            }
-            LOGGER.debug("Skipping commit of transaction {} with SCN {}, {}.", event.getTransactionId(), event.getScn(),
-                    alreadyHandled ? "already handled" : "already included by the initial snapshot");
+        if (recordCommitIfSkipped(event)) {
+            // The transaction's events were skipped, so it is not emitted.
+            LOGGER.debug("Skipping commit of transaction {} with SCN {}, already handled or included by the initial snapshot.",
+                    event.getTransactionId(), event.getScn());
             getMetrics().setActiveTransactionCount(0L);
             return;
         }

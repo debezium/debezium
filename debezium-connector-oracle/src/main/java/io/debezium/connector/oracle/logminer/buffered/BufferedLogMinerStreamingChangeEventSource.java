@@ -106,9 +106,10 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
      * transaction id. Such an event may belong to a transaction that committed before the snapshot was taken,
      * whose changes are already part of the snapshot and which is dropped at its COMMIT rather than emitted, so
      * its failure must not stop the connector. The failure is held until the transaction ends. It is discarded
-     * only when the transaction is dropped at its COMMIT, and raised when the transaction is emitted, rolled
-     * back or abandoned, as a rolled back or abandoned transaction is not assumed to be discarded. Only the
-     * first failure per transaction is kept.
+     * when the transaction ended at or before the snapshot commit SCN, by COMMIT or ROLLBACK, as it cannot have
+     * been emitted, and raised when the transaction is emitted or ended after the snapshot. It is also raised
+     * when the transaction is abandoned or its end is unknown, as such a transaction is not assumed to be
+     * discarded. Only the first failure per transaction is kept.
      * <p>
      * Entries are only added while the snapshot commit SCN has not been retired, as no event written at or
      * before it can be mined once every redo thread has committed past it.
@@ -460,7 +461,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     @Override
     protected void handleCommitEvent(LogMinerEventRow row) throws InterruptedException {
         final String transactionId = row.getTransactionId();
-        final SnapshotBoundaryEventFailure snapshotBoundaryEventFailure = snapshotBoundaryEventFailures.remove(transactionId);
+        SnapshotBoundaryEventFailure snapshotBoundaryEventFailure = snapshotBoundaryEventFailures.remove(transactionId);
         if (isRecentlyProcessed(transactionId)) {
             LOGGER.debug("\tTransaction is already committed, skipped.");
             return;
@@ -484,7 +485,17 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                 // expires. Removal is safe because deferred entries hold no events. Cached
                 // transactions are intentionally not resolved by prefix here, since committing a
                 // guessed transaction would emit its events.
-                removedDeferredTransaction = removeDeferredTransactionsByPrefix(transactionId, "commit");
+                final Optional<DeferredTransaction> newestDeferredTransaction = endDeferredTransactionsByPrefix(transactionId, "commit");
+                removedDeferredTransaction = newestDeferredTransaction.isPresent();
+                if (removedDeferredTransaction) {
+                    // The newest entry is this commit's transaction under its full id, so its held failure is
+                    // decided with this commit below, like a failure found under the commit's unresolved id. Both
+                    // ids can hold a failure for this transaction, and only the first one is kept.
+                    final SnapshotBoundaryEventFailure failure = snapshotBoundaryEventFailures.remove(newestDeferredTransaction.get().transactionId());
+                    if (snapshotBoundaryEventFailure == null) {
+                        snapshotBoundaryEventFailure = failure;
+                    }
+                }
             }
 
             if (!getOffsetContext().getCommitScn().hasEventScnBeenHandled(row)) {
@@ -499,17 +510,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
         final Scn smallestScn = calculateSmallestScn();
         final Scn commitScn = row.getScn();
-        final boolean alreadyHandled = getOffsetContext().getCommitScn().hasEventScnBeenHandled(row);
-        final boolean includedInSnapshot = getOffsetContext().isEventScnLessThanOrEqualToSnapshotCommitScn(row);
-        if (alreadyHandled || includedInSnapshot) {
-            if (includedInSnapshot && !alreadyHandled && row.getThread() != 0) {
-                // The transaction is already part of the snapshot, so its events are not emitted. Its commit
-                // is still recorded so that the redo thread counts towards retiring the snapshot commit SCN
-                // once it has committed past it. An already handled commit is not recorded again, because
-                // the thread may have committed past it since, and its commit SCN must never move backwards.
-                // Commits that LogMiner could not assign to a redo thread are not recorded, see below.
-                getOffsetContext().getCommitScn().recordCommit(row);
-            }
+        if (recordCommitIfSkipped(row)) {
             if (transaction != null) {
                 if (transaction.getNumberOfEvents() > 0) {
                     final Scn lastCommittedScn = getOffsetContext().getCommitScn().getCommitScnForRedoThread(row.getThread());
@@ -694,7 +695,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     @Override
     protected void handleRollbackEvent(LogMinerEventRow event) {
         final String transactionId = event.getTransactionId();
-        raiseSnapshotBoundaryEventFailure(snapshotBoundaryEventFailures.remove(transactionId));
+        discardOrRaiseSnapshotBoundaryEventFailure(snapshotBoundaryEventFailures.remove(transactionId), event.getScn(), transactionId);
         if (getTransactionCache().containsTransaction(transactionId)) {
             LOGGER.debug("Transaction {} was rolled back.", transactionId);
             finalizeTransaction(transactionId, event.getScn(), true);
@@ -739,7 +740,8 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                             matched.startScn(),
                             matched.changeTime());
 
-                    raiseSnapshotBoundaryEventFailure(snapshotBoundaryEventFailures.remove(matched.transactionId()));
+                    discardOrRaiseSnapshotBoundaryEventFailure(snapshotBoundaryEventFailures.remove(matched.transactionId()), event.getScn(),
+                            matched.transactionId());
                     if (matched.deferred()) {
                         removeDeferredTransaction(matched.transactionId());
                     }
@@ -762,6 +764,8 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                                     candidate.transactionId(),
                                     candidate.startScn(),
                                     candidate.changeTime());
+                            discardOrRaiseSnapshotBoundaryEventFailure(snapshotBoundaryEventFailures.remove(candidate.transactionId()),
+                                    matched.startScn().subtract(Scn.ONE), candidate.transactionId());
                         }
                     }
                 }
@@ -782,11 +786,22 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         return !Strings.isNullOrEmpty(transactionId) && deferredTransactions.remove(transactionId) != null;
     }
 
-    private boolean removeDeferredTransactionsByPrefix(String partialTransactionId, String terminalEventName) {
+    /**
+     * Ends the deferred transactions whose id starts with the undo segment and slot prefix of a terminal event
+     * with an unresolved sequence, by removing their entries. The newest one is the transaction the terminal
+     * event ends, and its held failure is left to the caller to decide with that event. Every older one ended
+     * before the newest started, so its held failure is decided by that bound.
+     *
+     * @param partialTransactionId the transaction id without a resolved sequence, should not be {@code null}
+     * @param terminalEventName the name of the terminal event for logging, should not be {@code null}
+     * @return the newest removed deferred transaction, or empty if none matched
+     */
+    private Optional<DeferredTransaction> endDeferredTransactionsByPrefix(String partialTransactionId, String terminalEventName) {
         final String prefix = partialTransactionId.substring(0, ORACLE_TRANSACTION_ID_PREFIX_LENGTH);
         final List<DeferredTransaction> matches = deferredTransactions.values().stream()
                 .filter(t -> t.transactionId().startsWith(prefix))
                 .toList();
+        final Optional<DeferredTransaction> newest = matches.stream().max(Comparator.comparing(DeferredTransaction::startScn));
         for (DeferredTransaction match : matches) {
             deferredTransactions.remove(match.transactionId());
             LOGGER.warn("Matched partial transaction '{}' {} to deferred transaction '{}' (startScn={}, changeTime={}); " +
@@ -796,8 +811,12 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                     match.transactionId(),
                     match.startScn(),
                     match.changeTime());
+            if (match != newest.get()) {
+                discardOrRaiseSnapshotBoundaryEventFailure(snapshotBoundaryEventFailures.remove(match.transactionId()),
+                        newest.get().startScn().subtract(Scn.ONE), match.transactionId());
+            }
         }
-        return !matches.isEmpty();
+        return newest;
     }
 
     private List<MatchedTransaction> getMatchingTransactionsByPrefix(String prefix) {
@@ -1199,6 +1218,29 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         if (failure != null) {
             super.notifyEventProcessingFailure(failure.event(), failure.cause());
         }
+    }
+
+    /**
+     * Decides a held failure once the end of its transaction is known without the transaction being emitted,
+     * such as on ROLLBACK. The failure is discarded when the transaction ended at or before the snapshot commit
+     * SCN, as it cannot have been emitted, and raised otherwise.
+     *
+     * @param failure the held failure, can be {@code null} if none was held for the transaction
+     * @param endScn the latest SCN at which the transaction can have ended: its end SCN when known, otherwise an
+     *            upper bound of it, should not be {@code null}
+     * @param transactionId the transaction id, should not be {@code null}
+     */
+    private void discardOrRaiseSnapshotBoundaryEventFailure(SnapshotBoundaryEventFailure failure, Scn endScn, String transactionId) {
+        if (failure == null) {
+            return;
+        }
+        if (getOffsetContext().isLessThanOrEqualToSnapshotCommitScn(endScn)) {
+            Loggings.logDebugAndTraceRecord(LOGGER, failure.event(),
+                    "Discarding the processing failure of a {} event with SCN {} because transaction {} ended at or before the snapshot.",
+                    failure.event().getEventType(), failure.event().getScn(), transactionId);
+            return;
+        }
+        super.notifyEventProcessingFailure(failure.event(), failure.cause());
     }
 
     /**
