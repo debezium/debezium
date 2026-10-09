@@ -738,45 +738,6 @@ Sink databases must meet the following requirements to support direct mapping of
 
 Earlier versions of MariaDB or MySQL, and PostgreSQL without pgvector, do not support special vector types.
 
-ifdef::community[]
-For SingleStore, `FloatVector` maps to `vector(n, F32)` and `DoubleVector` maps to `vector(n, F64)`.
-If the source column length is unavailable, the connector uses default dimensions of `2048` for `FloatVector` and `16383` for `DoubleVector`.
-
-The following table maps {prodname} logical vector types to their corresponding column data types for each supported sink database.
-
-[cols="30%a,12%a,12%a,12%a,12%a,12%a,10%a",options="header"]
-|===
-|Logical Type |Db2 |MySQL |PostgreSQL |Oracle |SQL Server |SingleStore
-
-|io.debezium.data.DoubleVector
-|Unsupported
-|'vector'
-|`vector`
-|Unsupported
-|Unsupported
-|`vector`
-
-|io.debezium.data.FloatVector
-|Unsupported
-|'vector'
-|`halfvec`
-|Unsupported
-|Unsupported
-|`vector`
-
-|io.debezium.data.SparseVector
-|Unsupported
-|Unsupported
-|`sparsevec`
-|Unsupported
-|Unsupported
-|Unsupported
-
-|===
-
-endif::community[]
-
-ifdef::product[]
 The following table maps {prodname} logical vector types to their corresponding column data types for each supported sink database.
 
 [cols="30%a,14%a,14%a,14%a,14%a,14%a",options="header"]
@@ -810,8 +771,6 @@ The following table maps {prodname} logical vector types to their corresponding 
 ====
 If there is not a direct mapping between one of the vector logical types and your target relational database's column types, you can use the `VectorToJsonConverter` to convert the vector logical type to JSON so that it can be written to any target relational database.
 ====
-
-endif::product[]
 
 [id="debezium-jdbc-sink-column-and-data-type-propagation"]
 // Type: concept
@@ -1318,69 +1277,6 @@ The service records the configuration and starts a sink connector task(s) that p
 * Consumes events from subscribed Kafka topics.
 * Writes the events to the configured database.
 endif::community[]
-
-// Type: assembly
-// Title: Monitoring {prodname} JDBC sink connector performance
-// ModuleID: monitoring-debezium-jdbc-sink-connector-performance
-[[jdbc-monitoring]]
-== Monitoring
-
-In addition to the built-in JMX metrics that Kafka Connect provides for every sink task (for example, record-throughput and batch metrics), the {prodname} JDBC sink connector exposes its own metrics under the `debezium.jdbc` JMX domain.
-These metrics describe what the connector applies to the target database, which the Kafka Connect metrics do not report.
-For non-delete records, the connector increments the insert, update, or upsert metric according to the configured xref:jdbc-property-insert-mode[`insert.mode`] value.
-
-The connector registers the following MBean while the task is running:
-
-`debezium.jdbc:type=connector-metrics,context=sink,server=+__<connector_name>__+,task=+__<task_id>__+`
-
-The following table describes the available metrics.
-
-[cols="30%a,20%a,50%a",options="header"]
-|===
-|Attribute |Type |Description
-
-|`TotalNumberOfInsertEventsSeen`
-|`long`
-|The total number of insert operations that the connector applied to the target database when xref:jdbc-property-insert-mode[`insert.mode`] is set to `insert`.
-
-|`TotalNumberOfUpdateEventsSeen`
-|`long`
-|The total number of update operations that the connector applied to the target database when xref:jdbc-property-insert-mode[`insert.mode`] is set to `update`.
-
-|`TotalNumberOfUpsertEventsSeen`
-|`long`
-|The total number of upsert operations that the connector applied to the target database when xref:jdbc-property-insert-mode[`insert.mode`] is set to `upsert`.
-
-|`TotalNumberOfDeleteEventsSeen`
-|`long`
-|The total number of delete operations that the connector applied to the target database.
-
-|`TotalNumberOfTruncateEventsSeen`
-|`long`
-|The total number of truncate operations that the connector applied to the target database.
-
-|`NumberOfFilteredEvents`
-|`long`
-|The number of records that the connector skipped without applying them, for example because the table name could not be resolved, deletes or truncates are disabled, or the record is a schema-change event.
-
-|`TotalNumberOfErrantRecords`
-|`long`
-|The total number of records that the connector routed to the errant record reporter (dead letter queue) instead of writing them to the target database.
-For more information, see xref:jdbc-error-handling-and-dead-letter-queues[Error handling and dead letter queues].
-
-|`TotalNumberOfTablesCreated`
-|`long`
-|The total number of tables that the connector created in the target database. This metric increases only when xref:jdbc-property-schema-evolution[`schema.evolution`] is set to `basic`.
-
-|`TotalNumberOfTablesAltered`
-|`long`
-|The total number of tables that the connector altered in the target database, for example to add a column for a newly appearing field. This metric increases only when xref:jdbc-property-schema-evolution[`schema.evolution`] is set to `basic`.
-
-|`Connected`
-|`boolean`
-|Indicates whether the connector currently has a connection to the target database.
-
-|===
 
 // Type: assembly
 // Title: Descriptions of {prodname} JDBC connector configuration properties
