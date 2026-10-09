@@ -1372,10 +1372,11 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         }
         final T data = unwrapData(event);
         final TableId tableId = tableIdProvider.getTableId(data);
+        final var tableSchema = tableId != null ? schema.schemaFor(tableId) : null;
         final List<U> rows = rowsProvider.getRows(data);
         String changeType = operation.name();
 
-        if (tableId != null && schema.schemaFor(tableId) != null) {
+        if (tableSchema != null) {
             int count = 0;
             int numRows = rows.size();
             if (startingRowNumber < numRows) {
@@ -1383,7 +1384,8 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
                     U row = rows.get(rowIndex);
                     changeEventValidator.validate(tableId, row);
                     offsetContext.setRowNumber(rowIndex, numRows);
-                    offsetContext.event(tableId, eventTimestamp);
+                    // Use the schema's identifier to preserve the same table name as snapshot events.
+                    offsetContext.event(tableSchema.id(), eventTimestamp);
                     changeEmitter.emit(tableId, row);
                     count++;
                 }
