@@ -52,10 +52,11 @@ public class DefaultServiceRegistry implements ServiceRegistry, ServiceRegistryB
     private final Configuration configuration;
 
     /**
-     * Creates the default service registry, which registers the {@link BeanRegistry} as a service,
-     * followed by the providers supplied by any {@link ServiceProviderContributor} found by the
-     * {@link ServiceLoader}. A contributed provider takes precedence over the provider for the same
-     * service registered before or after it, such as the defaults registered by a connector task.
+     * Creates the default service registry, which registers the {@link BeanRegistry} as a service.
+     * The {@link io.debezium.service.spi.InstanceResolver} provider is registered first because the connector configuration
+     * resolves instances through it, followed by those supplied by any {@link ServiceProviderContributor}
+     * found by the {@link ServiceLoader}. A contributed provider takes precedence over the provider for
+     * the same service registered before or after it, such as the defaults registered by a connector task.
      *
      * @param configuration the user configuration, should not be {@code null}
      * @param beanRegistry the bean registry instance, should not be {@code null}
@@ -64,6 +65,7 @@ public class DefaultServiceRegistry implements ServiceRegistry, ServiceRegistryB
         this.configuration = configuration;
         registerService(new ServiceRegistration<>(BeanRegistry.class, beanRegistry), beanRegistry);
 
+        registerServiceProvider(new InstanceResolverServiceProvider());
         loadContributedServices();
     }
 
