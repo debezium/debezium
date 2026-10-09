@@ -14,7 +14,6 @@ import org.infinispan.protostream.annotations.ProtoField;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.XmlBeginEvent;
-import io.debezium.relational.TableId;
 
 /**
  * An Infinispan ProtoStream adapter to marashall {@link XmlBeginEvent} instances.
@@ -57,7 +56,7 @@ public class XmlBeginEventAdapter extends DmlEventAdapter {
         return new XmlBeginEvent(
                 EventType.from(eventType),
                 Scn.valueOf(scn),
-                TableId.parse(tableId),
+                parseTableId(tableId),
                 rowId,
                 rsId,
                 Instant.parse(changeTime),

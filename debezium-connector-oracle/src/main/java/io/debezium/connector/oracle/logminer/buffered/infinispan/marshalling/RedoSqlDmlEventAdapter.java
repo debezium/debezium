@@ -14,7 +14,6 @@ import org.infinispan.protostream.annotations.ProtoField;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.RedoSqlDmlEvent;
-import io.debezium.relational.TableId;
 
 /**
  * An Infinispan ProtoStream adapter to marshall {@link RedoSqlDmlEvent} instances.
@@ -55,7 +54,7 @@ public class RedoSqlDmlEventAdapter extends DmlEventAdapter {
         return new RedoSqlDmlEvent(
                 EventType.from(eventType),
                 Scn.valueOf(scn),
-                TableId.parse(tableId),
+                parseTableId(tableId),
                 rowId,
                 rsId,
                 Instant.parse(changeTime),
