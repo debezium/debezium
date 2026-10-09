@@ -63,28 +63,32 @@ public class ConnectionIT implements Testing {
         final String catalogName = new OracleConnectorConfig(config).getCatalogName();
         final TableId tableId = new TableId(catalogName, "DEBEZIUM", "DBZ2798");
 
-        try (OracleConnection conn = TestHelper.testConnection(config)) {
-            TestHelper.dropTable(conn, "debezium.dbz2798");
+        // The table management must be done by the schema user, e.g. testConnection with debezium
+        try (OracleConnection testConnection = TestHelper.testConnection()) {
+            TestHelper.dropTable(testConnection, "debezium.dbz2798");
             try {
-                conn.execute("CREATE TABLE debezium.dbz2798 (id numeric(9,0) primary key)");
+                testConnection.execute("CREATE TABLE debezium.dbz2798 (id numeric(9,0) primary key)");
 
-                final long objectId = conn.getTableObjectId(tableId);
-                final long dataObjectId = conn.getTableDataObjectId(tableId);
-                assertThat(conn.getTableIdByObjectId(catalogName, objectId, dataObjectId)).isEqualTo(tableId);
+                // Validation of API calls should be done with connector user, e.g. c##dbzuser
+                try (OracleConnection connectorConnection = TestHelper.testConnection(config)) {
+                    final long objectId = connectorConnection.getTableObjectId(tableId);
+                    final long dataObjectId = connectorConnection.getTableDataObjectId(tableId);
+                    assertThat(connectorConnection.getTableIdByObjectId(catalogName, objectId, dataObjectId)).isEqualTo(tableId);
 
-                // Moving the table assigns a new data object id while the object id is retained, so the
-                // stale pair must no longer resolve and the current pair must.
-                conn.execute("ALTER TABLE debezium.dbz2798 MOVE");
-                final long movedDataObjectId = conn.getTableDataObjectId(tableId);
-                assertThat(movedDataObjectId).isNotEqualTo(dataObjectId);
-                assertThat(conn.getTableIdByObjectId(catalogName, objectId, dataObjectId)).isNull();
-                assertThat(conn.getTableIdByObjectId(catalogName, objectId, movedDataObjectId)).isEqualTo(tableId);
+                    // Moving the table assigns a new data object id while the object id is retained, so the
+                    // stale pair must no longer resolve and the current pair must.
+                    testConnection.execute("ALTER TABLE debezium.dbz2798 MOVE");
+                    final long movedDataObjectId = connectorConnection.getTableDataObjectId(tableId);
+                    assertThat(movedDataObjectId).isNotEqualTo(dataObjectId);
+                    assertThat(connectorConnection.getTableIdByObjectId(catalogName, objectId, dataObjectId)).isNull();
+                    assertThat(connectorConnection.getTableIdByObjectId(catalogName, objectId, movedDataObjectId)).isEqualTo(tableId);
 
-                conn.execute("DROP TABLE debezium.dbz2798 PURGE");
-                assertThat(conn.getTableIdByObjectId(catalogName, objectId, movedDataObjectId)).isNull();
+                    testConnection.execute("DROP TABLE debezium.dbz2798 PURGE");
+                    assertThat(connectorConnection.getTableIdByObjectId(catalogName, objectId, movedDataObjectId)).isNull();
+                }
             }
             finally {
-                TestHelper.dropTable(conn, "debezium.dbz2798");
+                TestHelper.dropTable(testConnection, "debezium.dbz2798");
             }
         }
     }
@@ -95,7 +99,7 @@ public class ConnectionIT implements Testing {
         // The connector user cannot select from SYS.OBJ$, so ALL_OBJECTS does not list it. Events for such
         // tables are the ones a physical standby cannot name from a stale dictionary, so the lookup must
         // still resolve them for the filters to skip them.
-        try (OracleConnection conn = TestHelper.testConnection()) {
+        try (OracleConnection conn = TestHelper.testConnection(TestHelper.defaultConfig().build())) {
             final long[] ids = conn.queryAndMap(
                     "SELECT OBJECT_ID, DATA_OBJECT_ID FROM DBA_OBJECTS WHERE OWNER='SYS' AND OBJECT_NAME='OBJ$' AND OBJECT_TYPE='TABLE'",
                     rs -> {
