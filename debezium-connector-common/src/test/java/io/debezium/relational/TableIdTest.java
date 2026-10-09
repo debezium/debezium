@@ -116,6 +116,9 @@ public class TableIdTest {
         assertThat(bracketLeading.toBracketQuoted().table()).isEqualTo("[[table]");
 
         TableId bracketTrailing = new TableId(null, "schema", "table]");
-        assertThat(bracketTrailing.toBracketQuoted().table()).isEqualTo("[table]]");
+        assertThat(bracketTrailing.toBracketQuoted().table()).isEqualTo("[table]]]");
+
+        TableId bracketInternal = new TableId(null, "schema", "tab]le");
+        assertThat(bracketInternal.toBracketQuoted().table()).isEqualTo("[tab]]le]");
     }
 }
