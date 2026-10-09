@@ -3264,7 +3264,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    @FixFor("DBZ-4367")
+    @FixFor({ "DBZ-4367", "debezium/dbz#2779" })
     public void shouldCaptureChangesForTransactionsAcrossSnapshotBoundary() throws Exception {
         TestHelper.dropTable(connection, "DBZ4367");
         try {

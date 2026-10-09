@@ -112,14 +112,27 @@ public class CommitScn implements Comparable<Scn> {
     }
 
     /**
+     * Checks whether the commit scn and transaction associated with the event has been handled.
+     *
+     * @param row the event, should never be {@code null}
+     * @return true if the commit scn has been handled, false if it has not or if the event carries no commit scn
+     */
+    public boolean hasEventCommitScnBeenHandled(LogMinerEventRow row) {
+        return hasBeenHandled(row.getThread(), row.getCommitScn(), row.getTransactionId());
+    }
+
+    /**
      * Checks whether the specified thread, scn, and transaction id tuple has been seen.
      *
      * @param threadId the redo thread
-     * @param scn the system change number, should not be {@code null}
+     * @param scn the system change number
      * @param transactionId the transaction identifier, should not be {@code null}
      * @return true if the tuple has been handled/seen, false otherwise
      */
-    public boolean hasBeenHandled(int threadId, Scn scn, String transactionId) {
+    private boolean hasBeenHandled(int threadId, Scn scn, String transactionId) {
+        if (scn == null || scn.isNull()) {
+            return false;
+        }
         final RedoThreadCommitScn redoThreadCommitScn = redoThreadCommitScns.get(threadId);
         if (redoThreadCommitScn != null) {
             final Set<String> txIds = redoThreadCommitScn.getTxIds();
