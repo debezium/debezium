@@ -4399,10 +4399,12 @@ Use this mode to prevent WAL growth on low-activity databases where monitored ta
 NOTE: When using `connector_and_driver` mode, the JDBC driver's keep-alive mechanism can flush the server-reported keep-alive LSN, which may advance the replication slot beyond the stored offset when non-monitored WAL activity occurs.
 If you use a persistent offset store, configure xref:postgresql-property-offset-mismatch-strategy[`offset.mismatch.strategy`] to `trust_slot` or `trust_greater_lsn` to enable automatic recovery.
 +
-NOTE: Because `connector_and_driver` mode requires periodic opportunities to propagate LSNs to Kafka, when xref:postgresql-property-heartbeat-interval-ms[`heartbeat.interval.ms`] = 0 and
-xref:postgresql-property-provide-transaction-metadata[`provide.transaction.metadata`] = false, the connector internally sets xref:postgresql-property-heartbeat-interval-ms[`heartbeat.interval.ms`] to 600000 (10 minutes).
+NOTE: Because `connector_and_driver` mode requires periodic opportunities to propagate LSNs to Kafka, when xref:postgresql-property-heartbeat-interval-ms[`heartbeat.interval.ms`] is set to `0` and
+xref:postgresql-property-provide-transaction-metadata[`provide.transaction.metadata`] is set to `false`, the connector internally sets xref:postgresql-property-heartbeat-interval-ms[`heartbeat.interval.ms`] to 600000 (10 minutes).
+ifdef::community[]
 +
 If you use an ephemeral offset store such as `org.apache.kafka.connect.storage.MemoryOffsetBackingStore`, no additional configuration is needed because the connector always defers to the replication slot position on startup.
+endif::community[]
 
 |[[postgresql-property-lsn-flush-timeout-action]]<<postgresql-property-lsn-flush-timeout-action, `+lsn.flush.timeout.action+`>>
 |`fail`
