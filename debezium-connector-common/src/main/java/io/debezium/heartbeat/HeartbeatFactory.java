@@ -18,6 +18,7 @@ import io.debezium.heartbeat.Heartbeat.ScheduledHeartbeat;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.schema.SchemaNameAdjuster;
+import io.debezium.service.spi.InstanceResolver;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Strings;
@@ -121,7 +122,11 @@ public class HeartbeatFactory<T extends DataCollectionId> implements DebeziumHea
             return ScheduledHeartbeat.NOOP_HEARTBEAT;
         }
 
-        List<Heartbeat> heartbeats = heartbeatFactories
+        List<DebeziumHeartbeatFactory> factories = connectorConfig.getServiceRegistry()
+                .getService(InstanceResolver.class)
+                .resolveAll(DebeziumHeartbeatFactory.class, () -> heartbeatFactories);
+
+        List<Heartbeat> heartbeats = factories
                 .stream()
                 .map(factory -> factory.getHeartbeat(
                         connectorConfig,
