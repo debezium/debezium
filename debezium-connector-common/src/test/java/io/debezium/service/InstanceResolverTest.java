@@ -35,6 +35,7 @@ import io.debezium.heartbeat.Heartbeat;
 import io.debezium.heartbeat.HeartbeatConnectionProvider;
 import io.debezium.heartbeat.HeartbeatErrorHandler;
 import io.debezium.heartbeat.HeartbeatFactory;
+import io.debezium.junit.relational.TestHistorizedRelationalDatabaseConfig;
 import io.debezium.junit.relational.TestRelationalDatabaseConfig;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -42,7 +43,10 @@ import io.debezium.processors.PostProcessorRegistry;
 import io.debezium.processors.spi.PostProcessor;
 import io.debezium.relational.Column;
 import io.debezium.relational.CustomConverterRegistry;
+import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
+import io.debezium.relational.history.MemorySchemaHistory;
+import io.debezium.relational.history.SchemaHistory;
 import io.debezium.schema.SchemaTopicNamingStrategy;
 import io.debezium.service.spi.InstanceResolver;
 import io.debezium.service.spi.ServiceProvider;
@@ -64,6 +68,7 @@ class InstanceResolverTest {
     private static final PostProcessor SUPPLIED_POST_PROCESSOR = new TestPostProcessor();
     private static final CustomConverter<SchemaBuilder, ConvertedField> SUPPLIED_CUSTOM_CONVERTER = new TestCustomConverter();
     private static final TestHeartbeatFactory SUPPLIED_HEARTBEAT_FACTORY = new TestHeartbeatFactory();
+    private static final SchemaHistory SUPPLIED_SCHEMA_HISTORY = new MemorySchemaHistory();
 
     private static final TableId TABLE = new TableId("db", null, "t");
     private static final Column COLUMN = Column.editor().name("id").type("INT").jdbcType(Types.INTEGER).create();
@@ -75,6 +80,11 @@ class InstanceResolverTest {
     private final Configuration heartbeatConfig = Configuration.create()
             .with(CommonConnectorConfig.TOPIC_PREFIX, "server1")
             .with(Heartbeat.HEARTBEAT_INTERVAL, 1000)
+            .build();
+
+    private final Configuration schemaHistoryConfig = Configuration.create()
+            .with(CommonConnectorConfig.TOPIC_PREFIX, "server1")
+            .with(HistorizedRelationalDatabaseConnectorConfig.SCHEMA_HISTORY, MemorySchemaHistory.class.getName())
             .build();
 
     private final Configuration postProcessorConfig = Configuration.create()
@@ -209,6 +219,24 @@ class InstanceResolverTest {
         });
     }
 
+    @Test
+    void shouldCreateSchemaHistoryFromConfigurationByDefault() {
+        final var connectorConfig = new TestHistorizedRelationalDatabaseConfig(schemaHistoryConfig);
+
+        assertThat(connectorConfig.getSchemaHistory())
+                .isExactlyInstanceOf(MemorySchemaHistory.class)
+                .isNotSameAs(SUPPLIED_SCHEMA_HISTORY);
+    }
+
+    @Test
+    void shouldUseSchemaHistorySuppliedByContributedResolver(@TempDir Path classpathRoot) throws Exception {
+        TestContributors.runWith(classpathRoot, TestContributor.class, () -> {
+            final var connectorConfig = new TestHistorizedRelationalDatabaseConfig(schemaHistoryConfig);
+
+            assertThat(connectorConfig.getSchemaHistory()).isSameAs(SUPPLIED_SCHEMA_HISTORY);
+        });
+    }
+
     private static ChangeEventQueue<DataChangeEvent> queue() {
         return new ChangeEventQueue.Builder<DataChangeEvent>()
                 .pollInterval(Duration.ofMillis(100))
@@ -241,13 +269,16 @@ class InstanceResolverTest {
     private static class SupplyingInstanceResolver implements InstanceResolver {
         @Override
         public <T> T resolve(Class<T> contract, String configKey, Supplier<? extends T> fallback, Consumer<? super T> initializer) {
-            if (contract != TopicNamingStrategy.class) {
-                return fallback.get();
+            if (contract == TopicNamingStrategy.class) {
+                final T instance = contract.cast(SUPPLIED_STRATEGY);
+                SUPPLIED_STRATEGY.configKey = configKey;
+                initializer.accept(instance);
+                return instance;
             }
-            final T instance = contract.cast(SUPPLIED_STRATEGY);
-            SUPPLIED_STRATEGY.configKey = configKey;
-            initializer.accept(instance);
-            return instance;
+            if (contract == SchemaHistory.class) {
+                return contract.cast(SUPPLIED_SCHEMA_HISTORY);
+            }
+            return fallback.get();
         }
 
         @Override
