@@ -7,9 +7,6 @@ package io.debezium.server.api;
 
 import java.util.Optional;
 
-import io.debezium.runtime.BatchEvent;
-import io.debezium.runtime.CapturingEvents;
-
 /**
  * Holder interface for obtaining the configured sink consumer and its capabilities.
  * <p>
@@ -20,8 +17,8 @@ import io.debezium.runtime.CapturingEvents;
  * The Holder also exposes whether the selected consumer supports tombstone events, allowing
  * other components to adapt behavior accordingly.
  */
-public interface ChangeConsumerHolder {
-    DebeziumServerConsumer<CapturingEvents<BatchEvent>> get();
+public interface ChangeConsumerHolder<T> {
+    DebeziumServerConsumer<T> get();
 
     Optional<Boolean> tombstoneSupport();
 }
