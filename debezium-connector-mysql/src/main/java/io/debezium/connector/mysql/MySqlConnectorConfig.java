@@ -418,7 +418,7 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
         this.gtidSourceFilter = gtidSetIncludes != null ? Predicates.includesUuids(gtidSetIncludes)
                 : (gtidSetExcludes != null ? Predicates.excludesUuids(gtidSetExcludes) : null);
 
-        getServiceRegistry().registerServiceProvider(new MySqlCharsetRegistryServiceProvider());
+        serviceRegistry.registerServiceProvider(new MySqlCharsetRegistryServiceProvider());
     }
 
     public Optional<SnapshotLockingMode> getSnapshotLockingMode() {

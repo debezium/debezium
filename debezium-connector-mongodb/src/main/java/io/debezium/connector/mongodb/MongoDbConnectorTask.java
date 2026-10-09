@@ -132,9 +132,6 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
         PreviousContext previousLogContext = taskContext.configureLoggingContext(taskName);
 
         try {
-            // Service providers
-            registerServiceProviders(connectorConfig.getServiceRegistry());
-
             // Manually Register Beans
             connectorConfig.getBeanRegistry().add(StandardBeanNames.CONNECTOR_CONFIG, connectorConfig);
             connectorConfig.getBeanRegistry().add(StandardBeanNames.DATABASE_SCHEMA, schema);

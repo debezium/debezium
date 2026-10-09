@@ -51,7 +51,11 @@ public interface ServiceRegistry extends Closeable {
      *
      * @param serviceProvider the service provider, should not be {@code null}
      * @param <T> the service type
+     * @deprecated Debezium registers its default service providers when the service registry is
+     *             created. Custom providers should be registered with the {@link ServiceRegistryBuilder}
+     *             by a {@link ServiceProviderContributor}. This method will be removed in a future release.
      */
+    @Deprecated
     <T extends Service> void registerServiceProvider(ServiceProvider<T> serviceProvider);
 
     /**

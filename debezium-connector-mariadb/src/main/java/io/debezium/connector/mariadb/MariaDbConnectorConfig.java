@@ -295,7 +295,7 @@ public class MariaDbConnectorConfig extends BinlogConnectorConfig {
         this.snapshotLockingMode = SnapshotLockingMode.parse(config.getString(SNAPSHOT_LOCKING_MODE));
         this.snapshotLockingStrategy = new MariaDbSnapshotLockingStrategy(snapshotLockingMode);
 
-        getServiceRegistry().registerServiceProvider(new MariaDbCharsetRegistryServiceProvider());
+        serviceRegistry.registerServiceProvider(new MariaDbCharsetRegistryServiceProvider());
     }
 
     @Override

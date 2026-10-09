@@ -42,28 +42,21 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
-import io.debezium.connector.base.QueueProviderServiceProvider;
-import io.debezium.converters.custom.CustomConverterServiceProvider;
 import io.debezium.data.Envelope;
 import io.debezium.function.LogPositionValidator;
 import io.debezium.openlineage.DebeziumOpenLineageEmitter;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
-import io.debezium.pipeline.monitor.OffsetActivityMonitorServiceProvider;
 import io.debezium.pipeline.notification.channels.NotificationChannel;
 import io.debezium.pipeline.signal.channels.SignalChannelReader;
 import io.debezium.pipeline.signal.channels.process.SignalChannelWriter;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
-import io.debezium.processors.PostProcessorRegistryServiceProvider;
 import io.debezium.schema.DatabaseSchema;
 import io.debezium.schema.HistorizedDatabaseSchema;
 import io.debezium.service.spi.ServiceRegistry;
-import io.debezium.snapshot.SnapshotLockProvider;
-import io.debezium.snapshot.SnapshotQueryProvider;
-import io.debezium.snapshot.SnapshotterServiceProvider;
 import io.debezium.spi.snapshot.Snapshotter;
 import io.debezium.util.Clock;
 import io.debezium.util.ElapsedTimeStrategy;
@@ -705,14 +698,18 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         return notificationChannels;
     }
 
+    /**
+     * Registers the service providers of the connector with the service registry.
+     *
+     * @param serviceRegistry the service registry, never {@code null}
+     * @deprecated Debezium registers its default service providers when the service registry is
+     *             created. Custom providers should be registered with the
+     *             {@link io.debezium.service.spi.ServiceRegistryBuilder} by a
+     *             {@link io.debezium.service.spi.ServiceProviderContributor}. This method does nothing
+     *             and will be removed in a future release.
+     */
+    @Deprecated
     protected void registerServiceProviders(ServiceRegistry serviceRegistry) {
-        serviceRegistry.registerServiceProvider(new PostProcessorRegistryServiceProvider());
-        serviceRegistry.registerServiceProvider(new SnapshotLockProvider());
-        serviceRegistry.registerServiceProvider(new SnapshotQueryProvider());
-        serviceRegistry.registerServiceProvider(new SnapshotterServiceProvider());
-        serviceRegistry.registerServiceProvider(new DebeziumHeaderProducerProvider());
-        serviceRegistry.registerServiceProvider(new CustomConverterServiceProvider());
-        serviceRegistry.registerServiceProvider(new QueueProviderServiceProvider());
-        serviceRegistry.registerServiceProvider(new OffsetActivityMonitorServiceProvider());
     }
+
 }
