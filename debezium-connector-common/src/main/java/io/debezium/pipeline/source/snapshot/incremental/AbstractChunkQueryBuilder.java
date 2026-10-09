@@ -330,7 +330,7 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
     }
 
     protected String buildTableReference(Table table) {
-        return jdbcConnection.quotedTableIdString(table.id());
+        return jdbcConnection.tableReferenceForDataQuery(table.id());
     }
 
     protected KeyMapper getKeyMapper() {
