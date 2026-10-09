@@ -34,5 +34,6 @@ public class DefaultServiceProviderContributor implements ServiceProviderContrib
         registryBuilder.registerServiceProvider(new CustomConverterServiceProvider());
         registryBuilder.registerServiceProvider(new QueueProviderServiceProvider());
         registryBuilder.registerServiceProvider(new OffsetActivityMonitorServiceProvider());
+        registryBuilder.registerServiceProvider(new InstanceResolverServiceProvider());
     }
 }
