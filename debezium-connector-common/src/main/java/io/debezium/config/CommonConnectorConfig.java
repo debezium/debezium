@@ -60,6 +60,7 @@ import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.schema.SchemaTopicNamingStrategy;
 import io.debezium.service.DefaultServiceRegistry;
+import io.debezium.service.spi.InstanceResolver;
 import io.debezium.service.spi.ServiceRegistry;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.spi.topic.TopicNamingStrategy;
@@ -2019,7 +2020,8 @@ public abstract class CommonConnectorConfig {
         Properties props = config.asProperties();
         props.put(MULTI_PARTITION_MODE, multiPartitionMode);
         String strategyName = config.getString(topicNamingStrategyField);
-        TopicNamingStrategy topicNamingStrategy = config.getInstance(topicNamingStrategyField, TopicNamingStrategy.class, props);
+        TopicNamingStrategy topicNamingStrategy = serviceRegistry.getService(InstanceResolver.class)
+                .getInstance(config, topicNamingStrategyField, TopicNamingStrategy.class, props, strategy -> strategy.configure(props));
         if (topicNamingStrategy == null) {
             throw new ConnectException("Unable to instantiate the topic naming strategy class " + strategyName);
         }
