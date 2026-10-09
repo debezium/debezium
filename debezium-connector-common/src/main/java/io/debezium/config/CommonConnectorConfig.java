@@ -2459,7 +2459,9 @@ public abstract class CommonConnectorConfig {
     }
 
     public TransactionMetadataFactory getTransactionMetadataFactory(Field transactionMetadataFactoryField) {
-        final TransactionMetadataFactory factory = config.getInstance(transactionMetadataFactoryField, TransactionMetadataFactory.class, config);
+        final TransactionMetadataFactory factory = serviceRegistry.getService(InstanceResolver.class)
+                .resolve(TransactionMetadataFactory.class, transactionMetadataFactoryField.name(),
+                        () -> config.getInstance(transactionMetadataFactoryField, TransactionMetadataFactory.class, config));
         if (factory == null) {
             throw new DebeziumException("Unable to instantiate the transaction struct maker class " + TRANSACTION_METADATA_FACTORY);
         }

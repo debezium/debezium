@@ -42,6 +42,10 @@ import io.debezium.junit.relational.TestHistorizedRelationalDatabaseConfig;
 import io.debezium.junit.relational.TestRelationalDatabaseConfig;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.txmetadata.DefaultTransactionMetadataFactory;
+import io.debezium.pipeline.txmetadata.TransactionContext;
+import io.debezium.pipeline.txmetadata.TransactionStructMaker;
+import io.debezium.pipeline.txmetadata.spi.TransactionMetadataFactory;
 import io.debezium.processors.PostProcessorRegistry;
 import io.debezium.processors.spi.PostProcessor;
 import io.debezium.relational.Column;
@@ -73,6 +77,7 @@ class InstanceResolverTest {
     private static final TestHeartbeatFactory SUPPLIED_HEARTBEAT_FACTORY = new TestHeartbeatFactory();
     private static final SchemaHistory SUPPLIED_SCHEMA_HISTORY = new MemorySchemaHistory();
     private static final TestSourceInfoStructMaker SUPPLIED_SOURCE_INFO_STRUCT_MAKER = new TestSourceInfoStructMaker();
+    private static final TransactionMetadataFactory SUPPLIED_TRANSACTION_METADATA_FACTORY = new TestTransactionMetadataFactory();
 
     private static final TableId TABLE = new TableId("db", null, "t");
     private static final Column COLUMN = Column.editor().name("id").type("INT").jdbcType(Types.INTEGER).create();
@@ -270,6 +275,24 @@ class InstanceResolverTest {
         });
     }
 
+    @Test
+    void shouldCreateTransactionMetadataFactoryFromConfigurationByDefault() {
+        final var connectorConfig = new TestRelationalDatabaseConfig(config, null, null, 0);
+
+        assertThat(connectorConfig.getTransactionMetadataFactory())
+                .isExactlyInstanceOf(DefaultTransactionMetadataFactory.class)
+                .isNotSameAs(SUPPLIED_TRANSACTION_METADATA_FACTORY);
+    }
+
+    @Test
+    void shouldUseTransactionMetadataFactorySuppliedByContributedResolver(@TempDir Path classpathRoot) throws Exception {
+        TestContributors.runWith(classpathRoot, TestContributor.class, () -> {
+            final var connectorConfig = new TestRelationalDatabaseConfig(config, null, null, 0);
+
+            assertThat(connectorConfig.getTransactionMetadataFactory()).isSameAs(SUPPLIED_TRANSACTION_METADATA_FACTORY);
+        });
+    }
+
     /**
      * Creates a connector configuration that resolves its source info struct maker from the configuration,
      * as the connectors do, rather than the test default of none.
@@ -327,6 +350,9 @@ class InstanceResolverTest {
             if (contract == SourceInfoStructMaker.class) {
                 return contract.cast(SUPPLIED_SOURCE_INFO_STRUCT_MAKER);
             }
+            if (contract == TransactionMetadataFactory.class) {
+                return contract.cast(SUPPLIED_TRANSACTION_METADATA_FACTORY);
+            }
             return fallback.get();
         }
 
@@ -364,6 +390,18 @@ class InstanceResolverTest {
                     return true;
                 }
             });
+        }
+    }
+
+    private static class TestTransactionMetadataFactory implements TransactionMetadataFactory {
+        @Override
+        public TransactionContext getTransactionContext() {
+            return null;
+        }
+
+        @Override
+        public TransactionStructMaker getTransactionStructMaker() {
+            return null;
         }
     }
 
