@@ -49,9 +49,12 @@ import io.debezium.pipeline.txmetadata.spi.TransactionMetadataFactory;
 import io.debezium.processors.PostProcessorRegistry;
 import io.debezium.processors.spi.PostProcessor;
 import io.debezium.relational.Column;
+import io.debezium.relational.ConcurrentMapTableMappingStorage;
 import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
+import io.debezium.relational.TableMappingStorage;
 import io.debezium.relational.history.MemorySchemaHistory;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.schema.SchemaTopicNamingStrategy;
@@ -78,6 +81,8 @@ class InstanceResolverTest {
     private static final SchemaHistory SUPPLIED_SCHEMA_HISTORY = new MemorySchemaHistory();
     private static final TestSourceInfoStructMaker SUPPLIED_SOURCE_INFO_STRUCT_MAKER = new TestSourceInfoStructMaker();
     private static final TransactionMetadataFactory SUPPLIED_TRANSACTION_METADATA_FACTORY = new TestTransactionMetadataFactory();
+    private static final TestTableMappingStorage<?> SUPPLIED_SCHEMA_STORAGE = new TestTableMappingStorage<>();
+    private static final TestTableMappingStorage<?> SUPPLIED_TABLE_STORAGE = new TestTableMappingStorage<>();
 
     private static final TableId TABLE = new TableId("db", null, "t");
     private static final Column COLUMN = Column.editor().name("id").type("INT").jdbcType(Types.INTEGER).create();
@@ -293,6 +298,33 @@ class InstanceResolverTest {
         });
     }
 
+    @Test
+    void shouldCreateTableMappingStoragesFromConfigurationByDefault() {
+        SUPPLIED_SCHEMA_STORAGE.type = null;
+        SUPPLIED_TABLE_STORAGE.type = null;
+        final var connectorConfig = new TestRelationalDatabaseConfig(config, null, null, 0);
+
+        assertThat(connectorConfig.createSchemaStorage(false)).isExactlyInstanceOf(ConcurrentMapTableMappingStorage.class);
+        assertThat(connectorConfig.createTableStorage(false)).isExactlyInstanceOf(ConcurrentMapTableMappingStorage.class);
+        assertThat(SUPPLIED_SCHEMA_STORAGE.type).isNull();
+        assertThat(SUPPLIED_TABLE_STORAGE.type).isNull();
+    }
+
+    @Test
+    void shouldUseTableMappingStoragesSuppliedByContributedResolver(@TempDir Path classpathRoot) throws Exception {
+        SUPPLIED_SCHEMA_STORAGE.type = null;
+        SUPPLIED_TABLE_STORAGE.type = null;
+
+        TestContributors.runWith(classpathRoot, TestContributor.class, () -> {
+            final var connectorConfig = new TestRelationalDatabaseConfig(config, null, null, 0);
+
+            assertThat(connectorConfig.createSchemaStorage(false)).isSameAs(SUPPLIED_SCHEMA_STORAGE);
+            assertThat(connectorConfig.createTableStorage(false)).isSameAs(SUPPLIED_TABLE_STORAGE);
+            assertThat(SUPPLIED_SCHEMA_STORAGE.type).isEqualTo(TableMappingStorage.Type.SCHEMAS);
+            assertThat(SUPPLIED_TABLE_STORAGE.type).isEqualTo(TableMappingStorage.Type.TABLES);
+        });
+    }
+
     /**
      * Creates a connector configuration that resolves its source info struct maker from the configuration,
      * as the connectors do, rather than the test default of none.
@@ -353,6 +385,14 @@ class InstanceResolverTest {
             if (contract == TransactionMetadataFactory.class) {
                 return contract.cast(SUPPLIED_TRANSACTION_METADATA_FACTORY);
             }
+            if (contract == TableMappingStorage.class) {
+                if (RelationalDatabaseConnectorConfig.SCHEMA_STORAGE_CLASS.name().equals(configKey)) {
+                    return contract.cast(SUPPLIED_SCHEMA_STORAGE);
+                }
+                if (RelationalDatabaseConnectorConfig.TABLE_STORAGE_CLASS.name().equals(configKey)) {
+                    return contract.cast(SUPPLIED_TABLE_STORAGE);
+                }
+            }
             return fallback.get();
         }
 
@@ -390,6 +430,17 @@ class InstanceResolverTest {
                     return true;
                 }
             });
+        }
+    }
+
+    private static class TestTableMappingStorage<V> extends ConcurrentMapTableMappingStorage<V> {
+
+        private TableMappingStorage.Type type;
+
+        @Override
+        public void configure(RelationalDatabaseConnectorConfig config, boolean tableIdCaseInsensitive, TableMappingStorage.Type type) {
+            super.configure(config, tableIdCaseInsensitive, type);
+            this.type = type;
         }
     }
 
