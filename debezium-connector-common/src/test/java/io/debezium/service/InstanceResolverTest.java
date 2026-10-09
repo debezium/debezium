@@ -11,17 +11,22 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+import org.apache.kafka.connect.data.Struct;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import io.debezium.bean.DefaultBeanRegistry;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.junit.relational.TestRelationalDatabaseConfig;
+import io.debezium.processors.PostProcessorRegistry;
+import io.debezium.processors.spi.PostProcessor;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaTopicNamingStrategy;
 import io.debezium.service.spi.InstanceResolver;
@@ -32,15 +37,22 @@ import io.debezium.service.spi.ServiceRegistryBuilder;
 import io.debezium.spi.topic.TopicNamingStrategy;
 
 /**
- * Verifies the behavior of the {@link DefaultInstanceResolver} and that the topic naming strategy is
- * resolved through the {@link InstanceResolver} that is registered with the service registry.
+ * Verifies the behavior of the {@link DefaultInstanceResolver} and that the topic naming strategy and the
+ * post processors are resolved through the {@link InstanceResolver} that is registered with the service
+ * registry.
  */
 class InstanceResolverTest {
 
     private static final SuppliedTopicNamingStrategy SUPPLIED_STRATEGY = new SuppliedTopicNamingStrategy();
+    private static final PostProcessor SUPPLIED_POST_PROCESSOR = new TestPostProcessor();
 
     private final Configuration config = Configuration.create()
             .with(CommonConnectorConfig.TOPIC_PREFIX, "server1")
+            .build();
+
+    private final Configuration postProcessorConfig = Configuration.create()
+            .with(CommonConnectorConfig.CUSTOM_POST_PROCESSORS, "test")
+            .with(CommonConnectorConfig.CUSTOM_POST_PROCESSORS.name() + ".test.type", TestPostProcessor.class.getName())
             .build();
 
     @Test
@@ -89,8 +101,31 @@ class InstanceResolverTest {
         assertThat(initialized).isFalse();
     }
 
+    @Test
+    void shouldCreatePostProcessorsFromConfigurationByDefault() {
+        try (ServiceRegistry registry = new DefaultServiceRegistry(postProcessorConfig, new DefaultBeanRegistry())) {
+            assertThat(registry.getService(PostProcessorRegistry.class).getProcessors())
+                    .singleElement()
+                    .isExactlyInstanceOf(TestPostProcessor.class);
+        }
+    }
+
+    @Test
+    void shouldAddPostProcessorsSuppliedByContributedResolver(@TempDir Path classpathRoot) throws Exception {
+        TestContributors.runWith(classpathRoot, TestContributor.class, () -> {
+            try (ServiceRegistry registry = new DefaultServiceRegistry(postProcessorConfig, new DefaultBeanRegistry())) {
+                final List<PostProcessor> processors = registry.getService(PostProcessorRegistry.class).getProcessors();
+
+                assertThat(processors).hasSize(2);
+                assertThat(processors.get(0)).isExactlyInstanceOf(TestPostProcessor.class).isNotSameAs(SUPPLIED_POST_PROCESSOR);
+                assertThat(processors.get(1)).isSameAs(SUPPLIED_POST_PROCESSOR);
+            }
+        });
+    }
+
     /**
-     * Contributes a resolver that supplies its own topic naming strategy, like a runtime environment would.
+     * Contributes a resolver that supplies its own topic naming strategy and post processor, like a runtime
+     * environment would.
      */
     public static class TestContributor implements ServiceProviderContributor {
         @Override
@@ -123,7 +158,25 @@ class InstanceResolverTest {
 
         @Override
         public <T> List<T> resolveAll(Class<T> contract, Supplier<? extends Collection<? extends T>> fallback, Consumer<? super T> initializer) {
-            return new ArrayList<>(fallback.get());
+            final List<T> instances = new ArrayList<>(fallback.get());
+            if (contract == PostProcessor.class) {
+                instances.add(contract.cast(SUPPLIED_POST_PROCESSOR));
+            }
+            return instances;
+        }
+    }
+
+    public static class TestPostProcessor implements PostProcessor {
+        @Override
+        public void configure(Map<String, ?> properties) {
+        }
+
+        @Override
+        public void apply(Object key, Struct value) {
+        }
+
+        @Override
+        public void close() {
         }
     }
 
