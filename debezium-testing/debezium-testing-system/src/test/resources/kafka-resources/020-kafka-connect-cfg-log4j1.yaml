@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: connect-cfg
+data:
+  metrics: |
+    lowercaseOutputName: true
+  log4j.properties: |+
+    log4j.rootLogger=INFO, CONSOLE
+
+    log4j.logger.org.reflections=ERROR
+
+    log4j.appender.CONSOLE=org.apache.log4j.ConsoleAppender
+    log4j.appender.CONSOLE.layout=org.apache.log4j.PatternLayout
+    log4j.appender.CONSOLE.layout.ConversionPattern=%d{ISO8601} %-5p %X{dbz.connectorType}|%X{dbz.connectorName}|%X{dbz.connectorContext} %m [%c]%n
