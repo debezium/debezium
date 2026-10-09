@@ -54,12 +54,12 @@ runs:
           -Ddebezium.test.mongo.replica.primary.startup.timeout.seconds=120 \
           ${{ inputs.only-build == 'true' && '-DskipTests=true -DskipITs=true' || '' }} \
           2>&1 | tee "${log_file}" | awk '
-            /\[ERROR\]/ || / ERROR   / {
+            /\[ERROR\]/ || /(^|[[:space:]])ERROR([[:space:]:]|$)/ {
               error_context = 80
               print
               next
             }
-            /\[WARNING\]/ || / WARN   / {
+            /\[WARNING\]/ || /(^|[[:space:]])WARN(ING)?([[:space:]:]|$)/ {
               print
               next
             }
