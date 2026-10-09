@@ -2446,7 +2446,9 @@ public abstract class CommonConnectorConfig {
     public <T extends AbstractSourceInfo> SourceInfoStructMaker<T> getSourceInfoStructMaker(Field sourceInfoStructMakerField, String connector, String version,
                                                                                             CommonConnectorConfig connectorConfig) {
         @SuppressWarnings("unchecked")
-        final SourceInfoStructMaker<T> sourceInfoStructMaker = config.getInstance(sourceInfoStructMakerField, SourceInfoStructMaker.class);
+        final SourceInfoStructMaker<T> sourceInfoStructMaker = serviceRegistry.getService(InstanceResolver.class)
+                .resolve(SourceInfoStructMaker.class, sourceInfoStructMakerField.name(),
+                        () -> config.getInstance(sourceInfoStructMakerField, SourceInfoStructMaker.class));
         if (sourceInfoStructMaker == null) {
             throw new DebeziumException("Unable to instantiate the source info struct maker class " + config.getString(sourceInfoStructMakerField));
         }
