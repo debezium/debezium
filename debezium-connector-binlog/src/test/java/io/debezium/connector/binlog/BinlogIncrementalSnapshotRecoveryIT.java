@@ -91,6 +91,8 @@ public abstract class BinlogIncrementalSnapshotRecoveryIT<C extends SourceConnec
     private int rollbackAttempts;
     private int failingRollbackAttempt;
     private SQLException rollbackFailure;
+    private Runnable rowReadAction = () -> {
+    };
     private Runnable windowOpenAction = () -> {
     };
 
@@ -116,6 +118,10 @@ public abstract class BinlogIncrementalSnapshotRecoveryIT<C extends SourceConnec
 
     protected void beforeWindowOpen() {
         windowOpenAction.run();
+    }
+
+    protected void afterRowRead() {
+        rowReadAction.run();
     }
 
     private void failRollbackOnAttempt(int attempt) {
@@ -237,6 +243,47 @@ public abstract class BinlogIncrementalSnapshotRecoveryIT<C extends SourceConnec
 
         assertThat(context.currentDataCollectionId().getId()).isEqualTo(tableId("b"));
         assertThat(queue.poll()).isEmpty();
+        assertDdlIsNotBlocked();
+    }
+
+    @ParameterizedTest
+    @FixFor("debezium/dbz#2604")
+    @ValueSource(strings = { "read-only", "insert_insert", "insert_delete" })
+    void shouldReleaseTransactionAfterRuntimeFailureInMaximumKeyQuery(String mode) throws Exception {
+        assertRuntimeReadFailureReleasesTransaction(mode, false);
+    }
+
+    @ParameterizedTest
+    @FixFor("debezium/dbz#2604")
+    @ValueSource(strings = { "read-only", "insert_insert", "insert_delete" })
+    void shouldReleaseTransactionAfterRuntimeFailureInChunkQuery(String mode) throws Exception {
+        assertRuntimeReadFailureReleasesTransaction(mode, true);
+    }
+
+    private void assertRuntimeReadFailureReleasesTransaction(String mode, boolean skipMaximumKeyQuery) throws Exception {
+        initialize(mode, false);
+        if (skipMaximumKeyQuery) {
+            context.maximumKey(new Object[]{ 5 });
+        }
+        final var readFailed = new AtomicBoolean();
+        rowReadAction = () -> {
+            if (readFailed.compareAndSet(false, true)) {
+                // Fail after a real SELECT has read a row and acquired a metadata lock. This is
+                // an ordinary runtime error, so schema-mismatch recovery must not do the cleanup.
+                throw new IllegalArgumentException("Injected failure after reading a snapshot row");
+            }
+        };
+
+        source.init(partition, offset);
+
+        assertThat(readFailed).as("the snapshot query must execute before the failure").isTrue();
+        assertThat(context.currentDataCollectionId().getId()).isEqualTo(tableId("b"));
+        assertThat(errorHandler.getProducerThrowable()).isNull();
+        assertThat(queue.poll()).isEmpty();
+        assertThat(jdbc.isConnected()).isTrue();
+        // Check before another watermark can commit the failed read transaction incidentally.
+        // A generic read-only failure leaves its high watermark unset; resuming that window
+        // is a separate concern from verifying that the JDBC transaction has ended.
         assertDdlIsNotBlocked();
     }
 

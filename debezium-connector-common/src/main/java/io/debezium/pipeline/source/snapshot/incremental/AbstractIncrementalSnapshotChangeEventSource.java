@@ -369,7 +369,6 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                 retryChunkAfterSchemaMismatch(partition, offsetContext, e);
             }
             else {
-                rollbackChunkTransaction(e);
                 warnAndSkip(partition, offsetContext, SQL_EXCEPTION,
                         "Schema mismatch while executing incremental snapshot for table '%s', skipping and continuing streaming"
                                 .formatted(context.currentDataCollectionId().getId()),
@@ -380,7 +379,6 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
             if (e instanceof SQLNonTransientConnectionException) {
                 closeJdbcConnection();
             }
-            rollbackChunkTransaction(e);
             warnAndSkip(partition, offsetContext,
                     SQL_EXCEPTION,
                     "SQL error while executing incremental snapshot for table '%s', skipping and continuing streaming"
@@ -388,13 +386,14 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                     e);
         }
         catch (Exception e) {
-            rollbackChunkTransaction(e);
             warnAndSkip(partition, offsetContext,
                     SQL_EXCEPTION,
                     "Error while executing incremental snapshot for table '%s', skipping and continuing streaming".formatted(context.currentDataCollectionId().getId()),
                     e);
         }
         finally {
+            // Leave transaction cleanup to connector-specific implementations. Db2 shares this JDBC
+            // connection with streaming, so a common rollback would close its active result sets.
             postReadChunk(context);
             if (!context.snapshotRunning()) {
                 postIncrementalSnapshotCompleted();

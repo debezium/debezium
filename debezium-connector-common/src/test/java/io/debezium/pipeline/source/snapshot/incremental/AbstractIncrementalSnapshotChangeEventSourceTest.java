@@ -19,10 +19,10 @@ import static org.mockito.Mockito.when;
 
 import java.sql.SQLException;
 import java.sql.SQLNonTransientConnectionException;
+import java.sql.Types;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -33,6 +33,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.debezium.config.Configuration;
@@ -88,7 +89,7 @@ public class AbstractIncrementalSnapshotChangeEventSourceTest {
         context.addDataCollectionNamesToSnapshot("signal-1", List.of("public.a", "public.b"), List.of(), "");
 
         offsetContext = mock(OffsetContext.class);
-        doReturn(context).when(offsetContext).getIncrementalSnapshotContext();
+        when(offsetContext.getIncrementalSnapshotContext()).thenAnswer(invocation -> context);
     }
 
     @Test
@@ -102,6 +103,7 @@ public class AbstractIncrementalSnapshotChangeEventSourceTest {
 
         // The dead connection must be closed so it is re-opened on the next chunk read.
         verify(jdbcConnection).close();
+        verify(jdbcConnection, never()).rollback();
     }
 
     @Test
@@ -114,61 +116,46 @@ public class AbstractIncrementalSnapshotChangeEventSourceTest {
         source.readChunk(null, offsetContext);
 
         verify(jdbcConnection, never()).close();
+        verify(jdbcConnection, never()).rollback();
     }
 
     @Test
     @FixFor("debezium/dbz#2604")
     @SuppressWarnings("unchecked")
-    public void shouldEndChunkTransactionWhenChunkReadFailsWithNonSqlError() throws Exception {
-        // A schema change racing with the chunk query surfaces as a runtime exception from result-set
-        // processing ("Column 'c' not found in result set ...", see DBZ-4350). readChunk skips the
-        // table and lets streaming continue, but the transaction the chunk queries run in must still
-        // be ended: on connections with autocommit disabled it holds the chunk table's shared
-        // metadata lock until this connection ends the transaction. Ending it here must not
-        // depend on a later window or connector-specific streaming loop cleaning it up.
-        RelationalDatabaseSchema schema = mock(RelationalDatabaseSchema.class);
-        Table table = mock(Table.class);
-        when(schema.tableFor(any(TableId.class))).thenReturn(table);
+    public void shouldPreserveSharedConnectionWhenSkippingInvalidSurrogateKey() throws Exception {
+        // Db2 reads signals while a streaming cursor is open on this connection. Skipping an invalid
+        // surrogate key must not roll back the shared transaction and close that cursor.
+        final var schema = mock(RelationalDatabaseSchema.class);
+        final var tableId = TableId.parse("public.a");
+        final var table = Table.editor().tableId(tableId)
+                .addColumn(Column.editor().name("pk").jdbcType(Types.INTEGER).type("INTEGER").position(1).optional(false).create())
+                .setPrimaryKeyNames("pk").create();
+        when(schema.tableFor(tableId)).thenReturn(table);
 
-        ChunkQueryBuilder<TableId> chunkQueryBuilder = mock(ChunkQueryBuilder.class);
+        final var chunkQueryBuilder = new DefaultChunkQueryBuilder<TableId>(config(), jdbcConnection);
         doReturn(chunkQueryBuilder).when(jdbcConnection).chunkQueryBuilder(any());
-        when(chunkQueryBuilder.prepareTable(any(), any())).thenReturn(table);
-        when(chunkQueryBuilder.getQueryColumns(any(), any())).thenReturn(List.of(mock(Column.class)));
-        when(chunkQueryBuilder.buildMaxPrimaryKeyQuery(any(), any(), any())).thenReturn("SELECT max(pk) FROM a");
-
         source = new SignalBasedIncrementalSnapshotChangeEventSource<>(config(), jdbcConnection, null, schema, null, progressListener, null,
                 notificationService);
-
-        final AtomicBoolean chunkReadFailed = new AtomicBoolean();
-        final AtomicBoolean transactionEndedAfterFailure = new AtomicBoolean();
-        when(jdbcConnection.queryAndMap(anyString(), any(JdbcConnection.ResultSetMapper.class))).thenAnswer(invocation -> {
-            chunkReadFailed.set(true);
-            throw new IllegalArgumentException("Column 'c' not found in result set 'pk, aa, c'");
-        });
-        when(jdbcConnection.rollback()).thenAnswer(invocation -> {
-            if (chunkReadFailed.get()) {
-                transactionEndedAfterFailure.set(true);
-            }
-            return jdbcConnection;
-        });
+        context = new SignalBasedIncrementalSnapshotContext<>();
+        context.addDataCollectionNamesToSnapshot("signal-1", List.of("public.a", "public.b"), List.of(), "missing_column");
 
         source.readChunk(null, offsetContext);
 
-        assertThat(transactionEndedAfterFailure)
-                .as("the transaction the failed chunk read ran in must be ended before readChunk returns")
-                .isTrue();
+        verify(schema).tableFor(tableId);
+        verify(jdbcConnection, never()).queryAndMap(anyString(), any(JdbcConnection.ResultSetMapper.class));
+        verify(jdbcConnection, never()).rollback();
+        verify(jdbcConnection, never()).close();
+        assertThat(context.currentDataCollectionId().getId()).isEqualTo(TableId.parse("public.b"));
+        verify(progressListener, never()).snapshotCompleted(null);
     }
 
     @ParameterizedTest
     @FixFor("debezium/dbz#2604")
     @MethodSource("failuresOutsideSchemaMismatchRecovery")
-    public void shouldSkipTableWhenRollbackFailsOutsideRecovery(Exception readFailure, boolean recoverySupported, boolean schemaChangesEnabled) throws Exception {
+    public void shouldSkipTableWithoutRollingBackSharedConnectionOutsideRecovery(Exception readFailure, boolean recoverySupported, boolean schemaChangesEnabled)
+            throws Exception {
         source = recoverySource(recoverySupported, schemaChangesEnabled);
-        final var rollbackFailure = new SQLException("rollback failed");
-        final var closeFailure = new SQLException("close failed");
         when(jdbcConnection.commit()).thenThrow(readFailure);
-        when(jdbcConnection.rollback()).thenThrow(rollbackFailure);
-        doThrow(closeFailure).when(jdbcConnection).close();
         final var queue = errorQueue();
         try {
             final var errorHandler = new ErrorHandler(SourceConnector.class, config(), queue, null);
@@ -176,10 +163,10 @@ public class AbstractIncrementalSnapshotChangeEventSourceTest {
 
             source.readChunk(null, offsetContext);
 
-            verify(jdbcConnection).close();
+            verify(jdbcConnection, never()).rollback();
+            verify(jdbcConnection, never()).close();
             assertThat(context.currentDataCollectionId().getId()).isEqualTo(TableId.parse("public.b"));
             verify(progressListener, never()).snapshotCompleted(null);
-            assertThat(rollbackFailure.getSuppressed()).contains(readFailure, closeFailure);
             assertThat(errorHandler.getProducerThrowable()).isNull();
             assertThat(queue.poll()).isEmpty();
         }
@@ -190,6 +177,8 @@ public class AbstractIncrementalSnapshotChangeEventSourceTest {
 
     private static Stream<Arguments> failuresOutsideSchemaMismatchRecovery() {
         return Stream.of(
+                Arguments.of(new SQLException("chunk failed"), false, true),
+                Arguments.of(new IllegalArgumentException("chunk failed"), false, true),
                 Arguments.of(new SQLException("chunk failed"), true, true),
                 Arguments.of(new IllegalArgumentException("chunk failed"), true, true),
                 Arguments.of(new ColumnUtils.SchemaMismatchException("schema mismatch"), false, true),
@@ -197,14 +186,21 @@ public class AbstractIncrementalSnapshotChangeEventSourceTest {
                 Arguments.of(new ColumnUtils.SchemaMismatchException("schema mismatch"), false, false));
     }
 
-    @Test
+    @ParameterizedTest
     @FixFor("debezium/dbz#2604")
-    public void shouldReportRollbackFailureDuringSchemaMismatchRecovery() throws Exception {
+    @ValueSource(booleans = { false, true })
+    public void shouldReportRollbackFailureDuringSchemaMismatchRecovery(boolean closeFails) throws Exception {
         source = recoverySource(true, true);
+        context.sendEvent(new Object[]{ 2 });
+        context.nextChunkPosition(new Object[]{ 2 });
         final var readFailure = new ColumnUtils.SchemaMismatchException("schema mismatch");
         final var rollbackFailure = new SQLException("rollback failed");
+        final var closeFailure = new SQLException("close failed");
         when(jdbcConnection.commit()).thenThrow(readFailure);
         when(jdbcConnection.rollback()).thenThrow(rollbackFailure);
+        if (closeFails) {
+            doThrow(closeFailure).when(jdbcConnection).close();
+        }
         final var queue = errorQueue();
         try {
             final var errorHandler = new ErrorHandler(SourceConnector.class, config(), queue, null);
@@ -216,8 +212,16 @@ public class AbstractIncrementalSnapshotChangeEventSourceTest {
 
             verify(jdbcConnection).close();
             assertThat(context.currentDataCollectionId().getId()).isEqualTo(TableId.parse("public.a"));
+            assertThat(context.chunkEndPosititon()).containsExactly(2);
             verify(progressListener, never()).snapshotCompleted(null);
-            assertThat(rollbackFailure.getSuppressed()).containsExactly(readFailure);
+            // A failure while discarding the connection must not hide why recovery failed or
+            // the original read error needed to diagnose the incomplete snapshot chunk.
+            if (closeFails) {
+                assertThat(rollbackFailure.getSuppressed()).containsExactly(readFailure, closeFailure);
+            }
+            else {
+                assertThat(rollbackFailure.getSuppressed()).containsExactly(readFailure);
+            }
             assertThat(errorHandler.getProducerThrowable()).hasCause(rollbackFailure);
             assertThatThrownBy(queue::poll).isInstanceOf(ConnectException.class);
         }
