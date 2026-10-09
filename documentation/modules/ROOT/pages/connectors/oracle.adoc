@@ -6582,6 +6582,10 @@ The {prodname} Oracle connector does not rely on this option to function, and th
 *How do I change the position in the offsets?*::
 The {prodname} Oracle connector maintains two critical values in the offsets, a field named `scn` and another named `commit_scn`.
 The `scn` field is a string that represents the low-watermark starting position the connector used when capturing changes.
++
+After an initial snapshot, the offsets can temporarily contain one additional field, `snapshot_commit_scn`.
+The connector uses `snapshot_commit_scn` to skip the transactions that the snapshot has already captured.
+It removes `snapshot_commit_scn` once streaming has found that every redo thread has committed at least one transaction after the snapshot commit system change number.
 
 . Find out the name of the topic that contains the connector offsets.
 This is configured based on the value set as the  `offset.storage.topic` configuration property.

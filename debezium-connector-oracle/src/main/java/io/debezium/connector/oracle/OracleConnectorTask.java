@@ -313,7 +313,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         // Check whether the archive log is enabled.
         final boolean archivelogMode = jdbcConnection.isArchiveLogMode();
         if (!archivelogMode) {
-            if (redoLogRequired(config, snapshotterService)) {
+            if (snapshotterService.getSnapshotter().shouldStream()) {
                 throw new DebeziumException("The Oracle server is not configured to use a archive log LOG_MODE, which is "
                         + "required for this connector to work properly. Change the Oracle configuration to use a "
                         + "LOG_MODE=ARCHIVELOG and restart the connector.");
@@ -347,12 +347,6 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
                 connection.resetSessionToCdb();
             }
         }
-    }
-
-    private static boolean redoLogRequired(OracleConnectorConfig config, SnapshotterService snapshotterService) {
-        // Check whether our connector configuration relies on the redo log and should fail fast if it isn't configured
-        return snapshotterService.getSnapshotter().shouldStream() ||
-                config.getLogMiningTransactionSnapshotBoundaryMode() == OracleConnectorConfig.TransactionSnapshotBoundaryMode.ALL;
     }
 
 }

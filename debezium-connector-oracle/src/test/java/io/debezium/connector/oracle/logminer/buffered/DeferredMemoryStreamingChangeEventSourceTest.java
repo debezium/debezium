@@ -109,7 +109,6 @@ public class DeferredMemoryStreamingChangeEventSourceTest extends AbstractAsyncE
         this.offsetContext = Mockito.mock(OracleOffsetContext.class);
         this.commitScn = Mockito.spy(CommitScn.valueOf((String) null));
         Mockito.when(this.offsetContext.getCommitScn()).thenReturn(commitScn);
-        Mockito.when(this.offsetContext.getSnapshotScn()).thenReturn(Scn.valueOf("1"));
         this.connectionFactory = createOracleConnectionFactory(false);
         this.schema = createOracleDatabaseSchema();
         this.metrics = createMetrics(schema);

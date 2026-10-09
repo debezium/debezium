@@ -7,7 +7,6 @@ package io.debezium.connector.oracle.xstream;
 
 import java.sql.SQLException;
 import java.time.Duration;
-import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
@@ -100,7 +99,6 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
 
     private OracleOffsetContext emptyContext() {
         return OracleOffsetContext.create().logicalName(connectorConfig)
-                .snapshotPendingTransactions(Collections.emptyMap())
                 .transactionContext(new TransactionContext())
                 .incrementalSnapshotContext(new SignalBasedIncrementalSnapshotContext<>()).build();
     }
