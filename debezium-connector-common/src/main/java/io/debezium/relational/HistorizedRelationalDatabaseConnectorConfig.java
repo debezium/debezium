@@ -25,6 +25,7 @@ import io.debezium.relational.history.InternerMetrics;
 import io.debezium.relational.history.MemoryOptimizationMode;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.relational.history.SchemaHistoryMetrics;
+import io.debezium.service.spi.InstanceResolver;
 import io.debezium.util.Interner;
 import io.debezium.util.InternerStats;
 
@@ -129,7 +130,8 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
     public SchemaHistory getSchemaHistory() {
         Configuration config = getConfig();
 
-        SchemaHistory schemaHistory = config.getInstance(SCHEMA_HISTORY, SchemaHistory.class);
+        SchemaHistory schemaHistory = serviceRegistry.getService(InstanceResolver.class)
+                .resolve(SchemaHistory.class, SCHEMA_HISTORY.name(), () -> config.getInstance(SCHEMA_HISTORY, SchemaHistory.class));
         if (schemaHistory == null) {
             throw new ConnectException("Unable to instantiate the database schema history class " +
                     config.getString(SCHEMA_HISTORY));
