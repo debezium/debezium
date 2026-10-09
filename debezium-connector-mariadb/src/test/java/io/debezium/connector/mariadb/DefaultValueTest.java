@@ -7,6 +7,8 @@ package io.debezium.connector.mariadb;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.stream.Stream;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -31,6 +33,8 @@ import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
+import io.debezium.relational.history.JsonTableChangeSerializer;
+import io.debezium.relational.history.TableChanges;
 
 /**
  * @author Chris Cranford
@@ -42,6 +46,55 @@ public class DefaultValueTest extends BinlogDefaultValueTest<MariaDbValueConvert
     @FixFor("debezium/dbz#2751")
     void shouldPreserveQuotedHexDefaultsWithLeadingZeroBytes(BitDefaultValueCase testCase) {
         assertBitDefaultValue(testCase);
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("unknownApproximateBitDefaults")
+    @FixFor("debezium/dbz#2751")
+    void shouldKeepOutOfRangeApproximateBitDefaultsUnknown(BitDefaultValueCase testCase) {
+        assertBitDefaultValue(testCase);
+
+        final var tableId = new TableId(null, null, "bit_defaults");
+        final var column = tables.forTable(tableId).columnWithName("bits");
+        assertThat(column.hasDefaultValue()).isTrue();
+        assertThat(column.defaultValueExpression()).isEmpty();
+        assertThat(column.isOptional()).isEqualTo(testCase.nullable());
+
+        parser.parse("ALTER TABLE bit_defaults ALTER COLUMN bits SET DEFAULT b'1'", tables);
+
+        final var restoredTable = tables.forTable(tableId);
+        assertThat(restoredTable.columnWithName("bits").defaultValueExpression()).contains("1");
+        assertThat(getColumnSchema(restoredTable, "bits").defaultValue())
+                .isEqualTo(new byte[]{ 1, 0, 0, 0, 0, 0, 0, 0 });
+        assertThat(getColumnSchema(restoredTable, "bits").isOptional()).isEqualTo(testCase.nullable());
+    }
+
+    private static Stream<BitDefaultValueCase> unknownApproximateBitDefaults() {
+        return Stream.of("1e30", "+1E30", "18446744073709551615e0", "9223372036854775807e0",
+                "-1e30", "-9223372036854777856e0", "1e309", "-1e309")
+                .flatMap(literal -> Stream.of("create-table", "add-column", "modify-column", "alter-default")
+                        .flatMap(action -> Stream.of(false, true)
+                                .map(nullable -> new BitDefaultValueCase(literal + ", " + action + ", nullable=" + nullable,
+                                        64, literal, action, "NULL", nullable))));
+    }
+
+    @Test
+    @FixFor("debezium/dbz#2751")
+    void shouldPreserveUnknownApproximateBitDefaultsInSchemaHistory() {
+        parser.parse("CREATE TABLE unknown_defaults ("
+                + "required_value BIT(64) NOT NULL DEFAULT 1e30, "
+                + "optional_value BIT(64) NULL DEFAULT -1e30)", tables);
+        final var table = tables.forTable(new TableId(null, null, "unknown_defaults"));
+        final var serializer = new JsonTableChangeSerializer();
+
+        final var restoredTable = serializer.deserialize(serializer.serialize(new TableChanges().create(table)), true)
+                .iterator().next().getTable();
+
+        assertThat(restoredTable).isEqualTo(table);
+        assertThat(getColumnSchema(restoredTable, "required_value").defaultValue()).isNull();
+        assertThat(getColumnSchema(restoredTable, "required_value").isOptional()).isFalse();
+        assertThat(getColumnSchema(restoredTable, "optional_value").defaultValue()).isNull();
+        assertThat(getColumnSchema(restoredTable, "optional_value").isOptional()).isTrue();
     }
 
     @ParameterizedTest

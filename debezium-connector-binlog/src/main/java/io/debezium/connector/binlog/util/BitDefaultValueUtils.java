@@ -26,7 +26,8 @@ public final class BitDefaultValueUtils {
 
     public static BigInteger parseNumber(String value, boolean approximate) {
         if (approximate) {
-            // Both servers truncate approximate numbers and clamp them to the signed long range.
+            // Truncate approximate numbers, clamping to the signed long range as MySQL does.
+            // MariaDB callers must reject out-of-range values before using this conversion.
             return BigInteger.valueOf((long) Double.parseDouble(value));
         }
         return new BigDecimal(value).setScale(0, RoundingMode.HALF_UP).toBigIntegerExact();

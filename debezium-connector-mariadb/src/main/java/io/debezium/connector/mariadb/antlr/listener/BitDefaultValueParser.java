@@ -47,7 +47,18 @@ final class BitDefaultValueParser {
         if (literal.decimalLiteral() != null || literal.REAL_LITERAL() != null) {
             final var number = context.getText();
             // MariaDB uses REAL_LITERAL for both exact decimals and approximate, exponent-form numbers.
-            value = parseNumber(number, number.indexOf('e') >= 0 || number.indexOf('E') >= 0);
+            final boolean approximate = number.indexOf('e') >= 0 || number.indexOf('E') >= 0;
+            if (approximate) {
+                final double doubleValue = Double.parseDouble(number);
+                if (!Double.isFinite(doubleValue) || doubleValue >= 0x1p63 || doubleValue < -0x1p63) {
+                    // MariaDB's Field_bit::store(double) casts to signed long long without checking the range.
+                    // The undefined conversion can yield different defaults across server builds; see the
+                    // related INSERT bug https://jira.mariadb.org/browse/MDEV-35715.
+                    // Omit the schema default rather than guess the server result. Row values are unaffected.
+                    return null;
+                }
+            }
+            value = parseNumber(number, approximate);
         }
         else if (literal.hexadecimalLiteral() != null) {
             // Unlike MySQL, MariaDB accepts leading zero bytes in X'...' beyond eight bytes.

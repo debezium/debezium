@@ -123,8 +123,8 @@ extra_w1_scientific_half,1,0.5e0,modify-column,0,false
 extra_w1_scientific_one_half,1,1.5e0,modify-column,1,false
 extra_w8_decimal_two_half,8,2.5,modify-column,3,false
 extra_w8_scientific_two_half,8,2.5e0,modify-column,2,false
-extra_w64_scientific_above_range,64,1e30,modify-column,9223372036854775807,false
-extra_w64_scientific_unsigned_max,64,18446744073709551615e0,modify-column,9223372036854775807,false
+extra_w64_scientific_below_signed_limit,64,9223372036854774784e0,modify-column,9223372036854774784,false
+extra_w64_scientific_signed_min,64,-9223372036854775808e0,modify-column,9223372036854775808,false
 extra_w64_scientific_negative_one_half,64,-1.5e0,modify-column,18446744073709551615,false
 extra_w64_negative_two,64,-2,modify-column,18446744073709551614,false
 extra_w64_positive_ten,64,+10,modify-column,10,false
