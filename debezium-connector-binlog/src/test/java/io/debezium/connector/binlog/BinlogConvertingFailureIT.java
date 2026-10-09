@@ -12,6 +12,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 import java.nio.file.Path;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.source.SourceConnector;
@@ -122,14 +123,11 @@ public abstract class BinlogConvertingFailureIT<C extends SourceConnector> exten
 
         start(getConnectorClass(), config, (success, message, error) -> exception.set(error));
 
-        // origin initial event
-        SourceRecords records = consumeRecordsByTopic(INITIAL_EVENT_COUNT);
-
-        // recover initial event
-        records = consumeRecordsByTopic(INITIAL_EVENT_COUNT);
-
-        records = consumeRecordsByTopic(4);
-        final List<SourceRecord> recordsForTopic = records.recordsForTopic(DATABASE.topicForTable("dbz7143"));
+        final String dataTopic = DATABASE.topicForTable("dbz7143");
+        final AtomicInteger dataRecordCount = new AtomicInteger();
+        final SourceRecords records = consumeRecordsByTopicUntil((recordsConsumed, record) -> dataTopic.equals(record.topic())
+                && dataRecordCount.incrementAndGet() == 4);
+        final List<SourceRecord> recordsForTopic = records.recordsForTopic(dataTopic);
         assertThat(recordsForTopic.size()).isEqualTo(4);
         SourceRecord insertEvent = recordsForTopic.get(0);
         assertInsert(insertEvent, "id", 201);
