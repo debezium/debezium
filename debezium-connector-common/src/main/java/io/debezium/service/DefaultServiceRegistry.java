@@ -11,6 +11,7 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.ServiceLoader;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -25,6 +26,7 @@ import io.debezium.config.Configuration;
 import io.debezium.service.spi.Configurable;
 import io.debezium.service.spi.InjectService;
 import io.debezium.service.spi.ServiceProvider;
+import io.debezium.service.spi.ServiceProviderContributor;
 import io.debezium.service.spi.ServiceRegistry;
 import io.debezium.service.spi.ServiceRegistryAware;
 import io.debezium.service.spi.ServiceRegistryBuilder;
@@ -48,8 +50,10 @@ public class DefaultServiceRegistry implements ServiceRegistry, ServiceRegistryB
     private final Configuration configuration;
 
     /**
-     * Creates the default service registry, which registers the {@link BeanRegistry} as a service
-     * followed by Debezium's default service providers.
+     * Creates the default service registry, which registers the {@link BeanRegistry} as a service.
+     * Debezium's default service providers are registered first, followed by those supplied by any
+     * {@link ServiceProviderContributor} found by the {@link ServiceLoader}, so that a contributed
+     * provider replaces the default provider for the same service.
      *
      * @param configuration the user configuration, should not be {@code null}
      * @param beanRegistry the bean registry instance, should not be {@code null}
@@ -59,6 +63,7 @@ public class DefaultServiceRegistry implements ServiceRegistry, ServiceRegistryB
         registerService(new ServiceRegistration<>(BeanRegistry.class, beanRegistry), beanRegistry);
 
         new DefaultServiceProviderContributor().contribute(this);
+        loadContributedServices();
     }
 
     @Override
@@ -235,6 +240,10 @@ public class DefaultServiceRegistry implements ServiceRegistry, ServiceRegistryB
             throw new DebeziumException(String.format("Unable to create service %s",
                     registration.getServiceClass().getName()), e);
         }
+    }
+
+    private void loadContributedServices() {
+        ServiceLoader.load(ServiceProviderContributor.class).forEach(contributor -> contributor.contribute(this));
     }
 
 }

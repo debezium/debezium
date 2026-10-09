@@ -18,7 +18,8 @@ import io.debezium.snapshot.SnapshotterServiceProvider;
 
 /**
  * Supplies all common, default service providers to Debezium's service registry. This contributor
- * is applied directly by the {@link DefaultServiceRegistry}.
+ * is applied directly by the {@link DefaultServiceRegistry} and is not loaded by the
+ * {@link java.util.ServiceLoader}.
  *
  * @author Chris Cranford
  */
