@@ -9,10 +9,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.file.Path;
 import java.sql.Types;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
@@ -26,8 +28,16 @@ import org.junit.jupiter.api.io.TempDir;
 import io.debezium.bean.DefaultBeanRegistry;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.converters.custom.CustomConverterServiceProvider;
+import io.debezium.heartbeat.DebeziumHeartbeatFactory;
+import io.debezium.heartbeat.Heartbeat;
+import io.debezium.heartbeat.HeartbeatConnectionProvider;
+import io.debezium.heartbeat.HeartbeatErrorHandler;
+import io.debezium.heartbeat.HeartbeatFactory;
 import io.debezium.junit.relational.TestRelationalDatabaseConfig;
+import io.debezium.pipeline.DataChangeEvent;
+import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.processors.PostProcessorRegistry;
 import io.debezium.processors.spi.PostProcessor;
 import io.debezium.relational.Column;
@@ -53,12 +63,18 @@ class InstanceResolverTest {
     private static final SuppliedTopicNamingStrategy SUPPLIED_STRATEGY = new SuppliedTopicNamingStrategy();
     private static final PostProcessor SUPPLIED_POST_PROCESSOR = new TestPostProcessor();
     private static final CustomConverter<SchemaBuilder, ConvertedField> SUPPLIED_CUSTOM_CONVERTER = new TestCustomConverter();
+    private static final TestHeartbeatFactory SUPPLIED_HEARTBEAT_FACTORY = new TestHeartbeatFactory();
 
     private static final TableId TABLE = new TableId("db", null, "t");
     private static final Column COLUMN = Column.editor().name("id").type("INT").jdbcType(Types.INTEGER).create();
 
     private final Configuration config = Configuration.create()
             .with(CommonConnectorConfig.TOPIC_PREFIX, "server1")
+            .build();
+
+    private final Configuration heartbeatConfig = Configuration.create()
+            .with(CommonConnectorConfig.TOPIC_PREFIX, "server1")
+            .with(Heartbeat.HEARTBEAT_INTERVAL, 1000)
             .build();
 
     private final Configuration postProcessorConfig = Configuration.create()
@@ -168,9 +184,42 @@ class InstanceResolverTest {
         });
     }
 
+    @Test
+    void shouldCreateHeartbeatFromDefaultFactoriesByDefault() {
+        SUPPLIED_HEARTBEAT_FACTORY.connectorConfig = null;
+        final var connectorConfig = new TestRelationalDatabaseConfig(heartbeatConfig, null, null, 0);
+
+        final var heartbeat = new HeartbeatFactory<>().getScheduledHeartbeat(connectorConfig, null, null, queue());
+
+        assertThat(heartbeat).isNotSameAs(Heartbeat.ScheduledHeartbeat.NOOP_HEARTBEAT);
+        assertThat(SUPPLIED_HEARTBEAT_FACTORY.connectorConfig).isNull();
+    }
+
+    @Test
+    void shouldAddHeartbeatFactoriesSuppliedByContributedResolver(@TempDir Path classpathRoot) throws Exception {
+        SUPPLIED_HEARTBEAT_FACTORY.connectorConfig = null;
+
+        TestContributors.runWith(classpathRoot, TestContributor.class, () -> {
+            final var connectorConfig = new TestRelationalDatabaseConfig(heartbeatConfig, null, null, 0);
+
+            final var heartbeat = new HeartbeatFactory<>().getScheduledHeartbeat(connectorConfig, null, null, queue());
+
+            assertThat(heartbeat).isNotSameAs(Heartbeat.ScheduledHeartbeat.NOOP_HEARTBEAT);
+            assertThat(SUPPLIED_HEARTBEAT_FACTORY.connectorConfig).isSameAs(connectorConfig);
+        });
+    }
+
+    private static ChangeEventQueue<DataChangeEvent> queue() {
+        return new ChangeEventQueue.Builder<DataChangeEvent>()
+                .pollInterval(Duration.ofMillis(100))
+                .maxBatchSize(10)
+                .maxQueueSize(100)
+                .build();
+    }
+
     /**
-     * Contributes a resolver that supplies its own topic naming strategy, post processor and custom converter,
-     * like a runtime environment would.
+     * Contributes a resolver that supplies its own topic naming strategy, post processor, custom converter and
+     * heartbeat factory, like a runtime environment would.
      */
     public static class TestContributor implements ServiceProviderContributor {
         @Override
@@ -210,7 +259,31 @@ class InstanceResolverTest {
             if (contract == CustomConverter.class) {
                 instances.add(contract.cast(SUPPLIED_CUSTOM_CONVERTER));
             }
+            if (contract == DebeziumHeartbeatFactory.class) {
+                instances.add(contract.cast(SUPPLIED_HEARTBEAT_FACTORY));
+            }
             return instances;
+        }
+    }
+
+    private static class TestHeartbeatFactory implements DebeziumHeartbeatFactory {
+
+        private CommonConnectorConfig connectorConfig;
+
+        @Override
+        public Optional<Heartbeat> getHeartbeat(CommonConnectorConfig connectorConfig, HeartbeatConnectionProvider connectionProvider,
+                                                HeartbeatErrorHandler errorHandler, ChangeEventQueue<DataChangeEvent> queue) {
+            this.connectorConfig = connectorConfig;
+            return Optional.of(new Heartbeat() {
+                @Override
+                public void emit(Map<String, ?> partition, OffsetContext offset) {
+                }
+
+                @Override
+                public boolean isEnabled() {
+                    return true;
+                }
+            });
         }
     }
 
