@@ -120,22 +120,20 @@ public class SqlServerConnection extends JdbcConnection {
      * Queries the list of capture instances in the given database.
      *
      * If two or more capture instances with the same start LSN are available for a given source table,
-     * only the newest one will be returned.
+     * only the newest one that passes the capture instance filter is kept, see {@link #getChangeTables(String, Lsn)}.
      *
      * We use a query instead of {@code sys.sp_cdc_help_change_data_capture} because:
      *   1. The stored procedure doesn't allow filtering capture instances by start LSN.
      *   2. There is no way to use the result returned by a stored procedure in a query.
      */
-    private static final String GET_CHANGE_TABLES = "WITH ordered_change_tables" +
-            " AS (SELECT ROW_NUMBER() OVER (PARTITION BY ct.source_object_id, ct.start_lsn ORDER BY ct.create_date DESC) AS ct_sequence," +
-            " ct.*" +
-            " FROM #db.cdc.change_tables AS ct#)" +
-            " SELECT OBJECT_SCHEMA_NAME(source_object_id, DB_ID(?))," +
-            " OBJECT_NAME(source_object_id, DB_ID(?))," +
-            " capture_instance," +
-            " object_id," +
-            " start_lsn" +
-            " FROM ordered_change_tables WHERE ct_sequence = 1";
+    private static final String GET_CHANGE_TABLES = "SELECT OBJECT_SCHEMA_NAME(ct.source_object_id, DB_ID(?))," +
+            " OBJECT_NAME(ct.source_object_id, DB_ID(?))," +
+            " ct.capture_instance," +
+            " ct.object_id," +
+            " ct.start_lsn," +
+            " ct.source_object_id" +
+            " FROM #db.cdc.change_tables AS ct#" +
+            " ORDER BY ct.source_object_id, ct.start_lsn, ct.create_date DESC";
 
     private static final String GET_NEW_CHANGE_TABLES = "SELECT * FROM #db.cdc.change_tables WHERE start_lsn BETWEEN ? AND ?";
     private static final String GET_MIN_LSN_FROM_ALL_CHANGE_TABLES = "select min(start_lsn) from #db.cdc.change_tables";
@@ -595,18 +593,29 @@ public class SqlServerConnection extends JdbcConnection {
                 });
         final ResultSetMapper<List<SqlServerChangeTable>> mapper = rs -> {
             final List<SqlServerChangeTable> changeTables = new ArrayList<>();
+            int previousSourceObjectId = 0;
+            Lsn previousStartLsn = null;
             while (rs.next()) {
                 final String captureInstance = rs.getString(3);
                 if (!config.getCaptureInstanceFilter().test(captureInstance)) {
                     continue;
                 }
+                final int sourceObjectId = rs.getInt(6);
+                final Lsn startLsn = Lsn.valueOf(rs.getBytes(5));
+                // Rows of one (source table, start LSN) pair arrive newest first; keep only the first one
+                // that passed the filter, so an excluded capture instance cannot shadow an included one
+                if (sourceObjectId == previousSourceObjectId && startLsn.equals(previousStartLsn)) {
+                    continue;
+                }
+                previousSourceObjectId = sourceObjectId;
+                previousStartLsn = startLsn;
                 int changeTableObjectId = rs.getInt(4);
                 changeTables.add(
                         new SqlServerChangeTable(
                                 new TableId(databaseName, rs.getString(1), rs.getString(2)),
                                 captureInstance,
                                 changeTableObjectId,
-                                Lsn.valueOf(rs.getBytes(5)),
+                                startLsn,
                                 columns.get(changeTableObjectId)));
             }
             return changeTables;
@@ -617,9 +626,9 @@ public class SqlServerConnection extends JdbcConnection {
         if (toLsn.isAvailable()) {
             return prepareQueryAndMap(query.replace(STATEMENTS_PLACEHOLDER, " WHERE ct.start_lsn <= ?"),
                     ps -> {
-                        ps.setBytes(1, toLsn.getBinary());
+                        ps.setString(1, databaseName);
                         ps.setString(2, databaseName);
-                        ps.setString(3, databaseName);
+                        ps.setBytes(3, toLsn.getBinary());
                     },
                     mapper);
         }
