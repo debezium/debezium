@@ -6,8 +6,10 @@
 
 package io.debezium.connector.mysql.antlr.listener;
 
+import java.sql.Types;
 import java.util.concurrent.atomic.AtomicReference;
 
+import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
 import io.debezium.relational.ColumnEditor;
@@ -21,13 +23,15 @@ public class DefaultValueParserListener extends MySqlParserBaseListener {
 
     private final ColumnDefinitionParserListener columnDefinitionListener;
     private final AtomicReference<Boolean> optionalColumn;
+    private final MySqlAntlrDdlParser parser;
 
     private boolean converted;
 
     public DefaultValueParserListener(ColumnDefinitionParserListener columnDefinitionListener,
-                                      AtomicReference<Boolean> optionalColumn) {
+                                      AtomicReference<Boolean> optionalColumn, MySqlAntlrDdlParser parser) {
         this.columnDefinitionListener = columnDefinitionListener;
         this.optionalColumn = optionalColumn;
+        this.parser = parser;
         this.converted = false;
     }
 
@@ -72,6 +76,12 @@ public class DefaultValueParserListener extends MySqlParserBaseListener {
             // Handle signedLiteralOrNull
             if (literalCtx.signedLiteralOrNull() != null) {
                 MySqlParser.SignedLiteralOrNullContext signedLitCtx = literalCtx.signedLiteralOrNull();
+
+                if (getColumnEditor().jdbcType() == Types.BIT) {
+                    getColumnEditor().defaultValueExpression(BitDefaultValueParser.parse(signedLitCtx, parser));
+                    exitDefaultValue(true);
+                    return;
+                }
 
                 // Check for NULL
                 if (signedLitCtx.nullAsLiteral() != null) {

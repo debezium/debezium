@@ -1376,7 +1376,7 @@ fragment SQUOTA_STRING     : '\'' ('\\' . | '\'\'' | ~('\'' | '\\'))* '\'';
 fragment BQUOTA_STRING     : '`' ( ~'`' | '``')* '`';
 fragment HEX_DIGIT         : [0-9A-F];
 fragment DEC_DIGIT         : [0-9];
-fragment BIT_STRING_L      : 'B' '\'' [01]+ '\'';
+fragment BIT_STRING_L      : 'B' '\'' [01]+ '\'' | '0B' [01]+;
 fragment IP_ADDRESS        : [0-9]+ '.' [0-9.]+ | [0-9A-F:]+ ':' [0-9A-F:]+;
 
 // Last tokens must generate Errors

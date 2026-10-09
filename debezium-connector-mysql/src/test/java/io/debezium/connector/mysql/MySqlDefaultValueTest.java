@@ -12,11 +12,13 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode;
 import io.debezium.connector.binlog.BinlogConnectorConfig;
 import io.debezium.connector.binlog.BinlogDefaultValueTest;
+import io.debezium.connector.binlog.BitDefaultValueTestCases.BitDefaultValueCase;
 import io.debezium.connector.binlog.jdbc.BinlogDefaultValueConverter;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.connector.mysql.jdbc.MySqlDefaultValueConverter;
@@ -95,6 +97,20 @@ public class MySqlDefaultValueTest extends BinlogDefaultValueTest<MySqlValueConv
 
         parser.parse("ALTER TABLE null_defaults ALTER COLUMN v DROP DEFAULT", tables);
         assertThat(getColumnSchema(tables.forTable(tableId), "v").defaultValue()).isNull();
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("io.debezium.connector.binlog.BitDefaultValueTestCases#mysqlApproximateOverflowCases")
+    @FixFor("debezium/dbz#2751")
+    void shouldClampApproximateBitDefaultsToSignedLongRange(BitDefaultValueCase testCase) {
+        assertBitDefaultValue(testCase);
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("io.debezium.connector.binlog.BitDefaultValueTestCases#mysqlNonStrictCases")
+    @FixFor("debezium/dbz#2751")
+    void shouldPreserveNonStrictBitDefaultValues(BitDefaultValueCase testCase) {
+        assertBitDefaultValue(testCase);
     }
 
     @Override

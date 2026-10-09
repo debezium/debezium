@@ -284,6 +284,10 @@ include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloff
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=basic-data-types]
 
+For `BIT` columns, the connector omits the Kafka Connect schema default when a streamed DDL statement specifies an exponent-form numeric default, such as `1e30`, whose floating-point value is outside the signed 64-bit integer range.
+MariaDB's conversion of these values can produce different results across server builds, so the connector cannot reliably infer the default from the DDL.
+This does not affect captured row values or the database default.
+During a snapshot, the connector can still capture the default normalized by the server.
 
 [id="mariadb-temporal-types"]
 === Temporal types
