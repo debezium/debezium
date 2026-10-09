@@ -16,7 +16,7 @@ import org.testcontainers.utility.DockerImageName;
 public class InformixContainer extends JdbcDatabaseContainer<InformixContainer> {
 
     public static final String NAME = "informix";
-    public static final String DOCKER_IMAGE = parameterWithDefault("test.docker.image.informix", "quay.io/rh_integration/dbz-informix:14");
+    public static final String DOCKER_IMAGE = parameterWithDefault("test.docker.image.informix", ImageNames.INFORMIX_IMAGE);
     private static final String INFORMIX_USERNAME = parameterWithDefault("test.database.informix.username", "informix");
     private static final String INFORMIX_PASSWORD = parameterWithDefault("test.database.informix.password", "in4mix");
     public static final String INFORMIX_DBNAME = parameterWithDefault("test.database.informix.dbz.dbname", "testdb");

@@ -10,6 +10,7 @@ import org.testcontainers.containers.Network;
 import org.testcontainers.utility.DockerImageName;
 
 import io.debezium.connector.jdbc.junit.TestHelper;
+import io.debezium.testing.testcontainers.ImageNames;
 
 /**
  * An implementation of {@link AbstractSinkDatabaseContextProvider} for SQL Server.
@@ -18,7 +19,7 @@ import io.debezium.connector.jdbc.junit.TestHelper;
  */
 public class SqlServerSinkDatabaseContextProvider extends AbstractSinkDatabaseContextProvider {
 
-    private static final DockerImageName IMAGE_NAME = DockerImageName.parse("mcr.microsoft.com/mssql/server:2022-latest");
+    private static final DockerImageName IMAGE_NAME = ImageNames.SQLSERVER_22_IMAGE_NAME;
 
     @SuppressWarnings("resource")
     public SqlServerSinkDatabaseContextProvider() {

@@ -42,6 +42,7 @@ import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.kafka.KafkaClusterUtils;
 import io.debezium.pipeline.signal.channels.KafkaSignalChannel;
 import io.debezium.storage.file.history.FileSchemaHistory;
+import io.debezium.testing.testcontainers.ImageNames;
 import io.debezium.util.Testing;
 import io.strimzi.test.container.StrimziKafkaCluster;
 
@@ -61,7 +62,7 @@ import io.strimzi.test.container.StrimziKafkaCluster;
 public class MySqlTaggedGtidWatermarkIT extends AbstractAsyncEngineConnectorTest {
 
     /** MySQL 9.7 supports tagged GTIDs */
-    private static final String MYSQL_IMAGE = "container-registry.oracle.com/mysql/community-server:9.7";
+    private static final String MYSQL_IMAGE = ImageNames.MYSQL_9_7_IMAGE;
 
     private static final String DB_NAME = "gtid_watermark_test";
     private static final String TABLE_NAME = "a";
