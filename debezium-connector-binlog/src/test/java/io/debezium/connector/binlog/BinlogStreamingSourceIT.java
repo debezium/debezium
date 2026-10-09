@@ -143,6 +143,56 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
     }
 
     @Test
+    @FixFor("debezium/dbz#125")
+    public void shouldPreserveTableNameInSourceMetadata() throws Exception {
+        try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.execute("CREATE TABLE Member (id INT PRIMARY KEY, name VARCHAR(30))",
+                        "INSERT INTO Member VALUES (1, 'snapshot')");
+            }
+        }
+
+        config = simpleConfig()
+                .with(BinlogConnectorConfig.USER, "snapper")
+                .with(BinlogConnectorConfig.PASSWORD, "snapperpass")
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.INITIAL)
+                .with(BinlogConnectorConfig.TOMBSTONES_ON_DELETE, false)
+                .build();
+        start(getConnectorClass(), config);
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName(), getStreamingNamespace());
+
+        final List<SourceRecord> snapshotRecords = consumeRecordsByTopic(1).allRecordsInOrder();
+        assertThat(snapshotRecords).hasSize(1);
+        final SourceRecord snapshotRecord = snapshotRecords.get(0);
+        final Struct snapshotValue = (Struct) snapshotRecord.value();
+        assertThat(snapshotValue.getString(Envelope.FieldName.OPERATION)).isEqualTo("r");
+        final String tableName = snapshotValue.getStruct(Envelope.FieldName.SOURCE).getString("table");
+        assertThat(snapshotRecord.topic()).isEqualTo(DATABASE.topicForTable(tableName));
+
+        try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.execute("INSERT INTO Member VALUES (2, 'streaming')",
+                        "UPDATE Member SET name = 'updated' WHERE id = 2",
+                        "DELETE FROM Member WHERE id = 2");
+            }
+        }
+
+        final List<SourceRecord> streamingRecords = consumeRecordsByTopic(3).allRecordsInOrder();
+        assertThat(streamingRecords).hasSize(3);
+        assertThat(streamingRecords)
+                .extracting(record -> ((Struct) record.value()).getString(Envelope.FieldName.OPERATION))
+                .containsExactly("c", "u", "d");
+        // With lower_case_table_names=2, TABLE_MAP reports "member" while the snapshot schema retains "Member".
+        streamingRecords.forEach(record -> {
+            final Struct source = ((Struct) record.value()).getStruct(Envelope.FieldName.SOURCE);
+            assertThat(source.getString("table")).isEqualTo(tableName);
+            assertThat(record.topic()).isEqualTo(snapshotRecord.topic());
+            assertThat(record.keySchema()).isEqualTo(snapshotRecord.keySchema());
+            assertThat(record.valueSchema()).isEqualTo(snapshotRecord.valueSchema());
+        });
+    }
+
+    @Test
     void shouldCreateSnapshotOfSingleDatabase() throws Exception {
         // Use the DB configuration to define the connector's configuration ...
         config = simpleConfig()
