@@ -14,7 +14,6 @@ import org.apache.kafka.connect.data.Schema;
 
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.SnapshotType;
-import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 import io.debezium.pipeline.CommonOffsetContext;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
@@ -31,7 +30,6 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
      * until streaming persisted its first position. It is only read to migrate such offsets.
      */
     private static final String LEGACY_SNAPSHOT_SCN_KEY = "snapshot_scn";
-
 
     private final Schema sourceInfoSchema;
 
@@ -301,28 +299,12 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
     }
 
     /**
-     * Checks whether the event's SCN is at or before the snapshot commit SCN. For an event committed at
-     * its own SCN, such as a schema change or a COMMIT, this means it is already part of the snapshot.
+     * Checks whether the SCN is at or before the snapshot commit SCN.
      *
-     * @param event the event, should not be {@code null}
-     * @return true if the snapshot commit SCN is set and the event's SCN is at or before it
+     * @param scn the SCN, may be {@code null}
+     * @return true if the snapshot commit SCN is set and the SCN is at or before it
      */
-    public boolean isEventScnLessThanOrEqualToSnapshotCommitScn(LogMinerEventRow event) {
-        return isLessThanOrEqualToSnapshotCommitScn(event.getScn());
-    }
-
-    /**
-     * Checks whether the event's commit SCN is at or before the snapshot commit SCN, which means the
-     * event's transaction is already part of the snapshot.
-     *
-     * @param event the event, should not be {@code null}
-     * @return true if the snapshot commit SCN is set, and the event carries a commit SCN at or before it
-     */
-    public boolean isEventCommitScnLessThanOrEqualToSnapshotCommitScn(LogMinerEventRow event) {
-        return isLessThanOrEqualToSnapshotCommitScn(event.getCommitScn());
-    }
-
-    private boolean isLessThanOrEqualToSnapshotCommitScn(Scn scn) {
+    public boolean isLessThanOrEqualToSnapshotCommitScn(Scn scn) {
         if (snapshotCommitScn.isNull() || scn == null || scn.isNull()) {
             return false;
         }
