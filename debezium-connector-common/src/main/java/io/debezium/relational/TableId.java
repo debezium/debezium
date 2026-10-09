@@ -322,9 +322,16 @@ public final class TableId implements DataCollectionId, Comparable<TableId> {
             return String.valueOf(openingChar) + closingChar;
         }
 
-        if (identifierPart.charAt(0) != openingChar && identifierPart.charAt(identifierPart.length() - 1) != closingChar) {
+        final boolean isAlreadyQuoted = identifierPart.length() >= 2
+                && identifierPart.charAt(0) == openingChar
+                && identifierPart.charAt(identifierPart.length() - 1) == closingChar;
+
+        if (!isAlreadyQuoted) {
             if (openingChar == closingChar) {
                 identifierPart = identifierPart.replace(String.valueOf(openingChar), repeat(openingChar));
+            }
+            else if (openingChar == '[' && closingChar == ']') {
+                identifierPart = identifierPart.replace("]", "]]");
             }
             identifierPart = openingChar + identifierPart + closingChar;
         }
