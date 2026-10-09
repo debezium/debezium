@@ -8,6 +8,7 @@ package io.debezium.service;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.file.Path;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -17,6 +18,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -24,9 +26,12 @@ import org.junit.jupiter.api.io.TempDir;
 import io.debezium.bean.DefaultBeanRegistry;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.converters.custom.CustomConverterServiceProvider;
 import io.debezium.junit.relational.TestRelationalDatabaseConfig;
 import io.debezium.processors.PostProcessorRegistry;
 import io.debezium.processors.spi.PostProcessor;
+import io.debezium.relational.Column;
+import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaTopicNamingStrategy;
 import io.debezium.service.spi.InstanceResolver;
@@ -34,17 +39,23 @@ import io.debezium.service.spi.ServiceProvider;
 import io.debezium.service.spi.ServiceProviderContributor;
 import io.debezium.service.spi.ServiceRegistry;
 import io.debezium.service.spi.ServiceRegistryBuilder;
+import io.debezium.spi.converter.ConvertedField;
+import io.debezium.spi.converter.CustomConverter;
 import io.debezium.spi.topic.TopicNamingStrategy;
 
 /**
- * Verifies the behavior of the {@link DefaultInstanceResolver} and that the topic naming strategy and the
- * post processors are resolved through the {@link InstanceResolver} that is registered with the service
- * registry.
+ * Verifies the behavior of the {@link DefaultInstanceResolver} and that the topic naming strategy, the
+ * post processors and the custom converters are resolved through the {@link InstanceResolver} that is
+ * registered with the service registry.
  */
 class InstanceResolverTest {
 
     private static final SuppliedTopicNamingStrategy SUPPLIED_STRATEGY = new SuppliedTopicNamingStrategy();
     private static final PostProcessor SUPPLIED_POST_PROCESSOR = new TestPostProcessor();
+    private static final CustomConverter<SchemaBuilder, ConvertedField> SUPPLIED_CUSTOM_CONVERTER = new TestCustomConverter();
+
+    private static final TableId TABLE = new TableId("db", null, "t");
+    private static final Column COLUMN = Column.editor().name("id").type("INT").jdbcType(Types.INTEGER).create();
 
     private final Configuration config = Configuration.create()
             .with(CommonConnectorConfig.TOPIC_PREFIX, "server1")
@@ -53,6 +64,11 @@ class InstanceResolverTest {
     private final Configuration postProcessorConfig = Configuration.create()
             .with(CommonConnectorConfig.CUSTOM_POST_PROCESSORS, "test")
             .with(CommonConnectorConfig.CUSTOM_POST_PROCESSORS.name() + ".test.type", TestPostProcessor.class.getName())
+            .build();
+
+    private final Configuration customConverterConfig = Configuration.create()
+            .with(CommonConnectorConfig.CUSTOM_CONVERTERS, "test")
+            .with("test" + CustomConverterServiceProvider.CONVERTER_TYPE_SUFFIX, TestCustomConverter.class.getName())
             .build();
 
     @Test
@@ -123,9 +139,38 @@ class InstanceResolverTest {
         });
     }
 
+    @Test
+    void shouldCreateCustomConvertersFromConfigurationByDefault() {
+        TestCustomConverter.CONSULTED.clear();
+
+        try (ServiceRegistry registry = new DefaultServiceRegistry(customConverterConfig, new DefaultBeanRegistry())) {
+            registry.getService(CustomConverterRegistry.class).registerConverterFor(TABLE, COLUMN, null);
+
+            assertThat(TestCustomConverter.CONSULTED)
+                    .singleElement()
+                    .isExactlyInstanceOf(TestCustomConverter.class)
+                    .isNotSameAs(SUPPLIED_CUSTOM_CONVERTER);
+        }
+    }
+
+    @Test
+    void shouldAddCustomConvertersSuppliedByContributedResolver(@TempDir Path classpathRoot) throws Exception {
+        TestCustomConverter.CONSULTED.clear();
+
+        TestContributors.runWith(classpathRoot, TestContributor.class, () -> {
+            try (ServiceRegistry registry = new DefaultServiceRegistry(customConverterConfig, new DefaultBeanRegistry())) {
+                registry.getService(CustomConverterRegistry.class).registerConverterFor(TABLE, COLUMN, null);
+
+                assertThat(TestCustomConverter.CONSULTED).hasSize(2);
+                assertThat(TestCustomConverter.CONSULTED.get(0)).isExactlyInstanceOf(TestCustomConverter.class).isNotSameAs(SUPPLIED_CUSTOM_CONVERTER);
+                assertThat(TestCustomConverter.CONSULTED.get(1)).isSameAs(SUPPLIED_CUSTOM_CONVERTER);
+            }
+        });
+    }
+
     /**
-     * Contributes a resolver that supplies its own topic naming strategy and post processor, like a runtime
-     * environment would.
+     * Contributes a resolver that supplies its own topic naming strategy, post processor and custom converter,
+     * like a runtime environment would.
      */
     public static class TestContributor implements ServiceProviderContributor {
         @Override
@@ -162,7 +207,24 @@ class InstanceResolverTest {
             if (contract == PostProcessor.class) {
                 instances.add(contract.cast(SUPPLIED_POST_PROCESSOR));
             }
+            if (contract == CustomConverter.class) {
+                instances.add(contract.cast(SUPPLIED_CUSTOM_CONVERTER));
+            }
             return instances;
+        }
+    }
+
+    public static class TestCustomConverter implements CustomConverter<SchemaBuilder, ConvertedField> {
+
+        static final List<CustomConverter<SchemaBuilder, ConvertedField>> CONSULTED = new ArrayList<>();
+
+        @Override
+        public void configure(Properties props) {
+        }
+
+        @Override
+        public void converterFor(ConvertedField field, ConverterRegistration<SchemaBuilder> registration) {
+            CONSULTED.add(this);
         }
     }
 
