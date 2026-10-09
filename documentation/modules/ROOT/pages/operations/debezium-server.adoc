@@ -2607,6 +2607,61 @@ Use this option when you want to map the value of a specific static constant to 
 endif::community[]
 
 ifdef::community[]
+[id="debezium-server-elasticsearch-sink-configuration"]
+==== Elasticsearch
+
+The Elasticsearch sink writes change events as documents to Elasticsearch indices.
+It uses the xref:connectors/elasticsearch.adoc[{prodname} Elasticsearch connector], so the document identity, write methods, delete and truncate handling, mapping management, and bulk batching behave the same as when the connector runs in Kafka Connect.
+
+The sink consumes the {prodname} change event envelope directly, so the `debezium.format.key` and `debezium.format.value` settings do not affect the documents that it writes.
+
+[NOTE]
+====
+The Elasticsearch connector is an incubating feature.
+Its configuration properties and behavior may change in a future release.
+====
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[elasticsearch-type]]<<elasticsearch-type, `debezium.sink.type`>>
+|
+|Must be set to `elasticsearch`.
+
+|[[elasticsearch-props]]<<elasticsearch-props, `debezium.sink.elasticsearch.*`>>
+|
+|All Elasticsearch connector configuration properties can be set using the `debezium.sink.elasticsearch.` prefix.
+For the full list of available properties, including connection, authentication, and mapping options, see the xref:connectors/elasticsearch.adoc#elasticsearch-connector-properties[{prodname} Elasticsearch connector configuration properties].
+
+|===
+
+[IMPORTANT]
+====
+Although the Elasticsearch sink reuses the {prodname} Elasticsearch sink connector, {prodname} Server does not currently provide the same delivery guarantees that are available when running the connector in other runtimes such as Kafka Connect.
+In particular, the dead letter queue that the connector configures through the `errors.*` properties is a Kafka Connect feature.
+Under {prodname} Server a record that Elasticsearch rejects stops the server, so that no event is committed past a failed write.
+====
+
+.Example Elasticsearch sink configuration
+[source,properties]
+----
+debezium.sink.type=elasticsearch
+debezium.sink.elasticsearch.connection.url=http://localhost:9200
+debezium.sink.elasticsearch.connection.auth.mode=basic
+debezium.sink.elasticsearch.connection.username=elastic
+debezium.sink.elasticsearch.connection.password=changeme
+debezium.sink.elasticsearch.primary.key.mode=record_key
+debezium.sink.elasticsearch.write.method=upsert
+debezium.sink.elasticsearch.delete.enabled=true
+----
+
+
+endif::community[]
+
+ifdef::community[]
 [id="debezium-server-jdbc-sink-configuration"]
 ==== JDBC
 
