@@ -1,0 +1,13 @@
+[id="server-introduction"]
+= Introduction
+
+This tutorial demonstrates how to use {prodname} server to monitor a MySQL database.
+As the data in the database changes, you will see the resulting event streams.
+
+In this tutorial you will start the sink service,
+run a MySQL database server with a simple example database,
+and use {prodname} server to monitor the database for changes.
+This tutorial is a completely Kafka-less deployment, with significantly less complexity than if you were to use Kafka.
+
+This tutorial currently has two versions, one for using {prodname} server to stream changes to the HTTP sink and another to stream changes to the JDBC sink.
+Each tutorial section will have a subsection for each, unless the steps are the same for both (such as setting up the MySQL example database).

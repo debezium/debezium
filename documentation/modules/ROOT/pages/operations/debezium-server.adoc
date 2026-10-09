@@ -3615,7 +3615,6 @@ DELETE "d"          -> DELETE "d"
 RANGE_TOMBSTONE "r" -> TRUNCATE "t"
 ```
 
-
 [id="debezium-server-extensions"]
 == Extensions
 
