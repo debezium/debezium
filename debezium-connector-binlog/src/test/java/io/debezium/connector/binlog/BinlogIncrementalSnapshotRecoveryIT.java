@@ -357,8 +357,99 @@ public abstract class BinlogIncrementalSnapshotRecoveryIT<C extends SourceConnec
     @ParameterizedTest
     @FixFor("debezium/dbz#2604")
     @ValueSource(strings = { "read-only", "insert_insert", "insert_delete" })
+    void shouldRetrySchemaMismatchWithoutLimitByDefault(String mode) throws Exception {
+        assertUnlimitedSchemaMismatchRetries(mode, null);
+    }
+
+    @ParameterizedTest
+    @FixFor("debezium/dbz#2604")
+    @ValueSource(strings = { "read-only", "insert_insert", "insert_delete" })
+    void shouldRetrySchemaMismatchWithoutLimitWhenConfigured(String mode) throws Exception {
+        assertUnlimitedSchemaMismatchRetries(mode, -1);
+    }
+
+    private void assertUnlimitedSchemaMismatchRetries(String mode, Integer maxRetries) throws Exception {
+        initialize(mode, true, maxRetries);
+        schema.refresh(table("a", false));
+        context.maximumKey(new Object[]{ 5 });
+        seedVerifiedSchema();
+        source.init(partition, offset);
+
+        // Exceed the former fixed limit before allowing the schema to catch up.
+        for (int i = 0; i < 7; i++) {
+            advanceWatermark();
+            assertRetryPreservesTableAndReleasesLock();
+            assertThat(errorHandler.getProducerThrowable()).isNull();
+        }
+
+        schema.refresh(table("a", true));
+        assertAllRows(completeSnapshot());
+    }
+
+    @ParameterizedTest
+    @FixFor("debezium/dbz#2604")
+    @ValueSource(strings = { "read-only", "insert_insert", "insert_delete" })
+    void shouldReportSchemaMismatchWithoutRetryWhenRetriesAreDisabled(String mode) throws Exception {
+        initialize(mode, true, 0);
+        context.sendEvent(new Object[]{ 2 });
+        context.nextChunkPosition(new Object[]{ 2 });
+        context.maximumKey(new Object[]{ 5 });
+        schema.refresh(table("a", false));
+        seedVerifiedSchema();
+
+        assertThatThrownBy(() -> source.init(partition, offset))
+                .hasMessageContaining("after 0 schema mismatch retries");
+
+        assertThat(errorHandler.getProducerThrowable())
+                .hasMessageContaining("after 0 schema mismatch retries")
+                .hasMessageContaining(tableId("a").identifier());
+        assertThatThrownBy(queue::poll).isInstanceOf(ConnectException.class);
+        assertThat(context.snapshotRunning()).isTrue();
+        assertThat(context.currentDataCollectionId().getId()).isEqualTo(tableId("a"));
+        assertThat(context.chunkEndPosititon()).containsExactly(2);
+        assertDdlIsNotBlocked();
+    }
+
+    @ParameterizedTest
+    @FixFor("debezium/dbz#2604")
+    @ValueSource(strings = { "read-only", "insert_insert", "insert_delete" })
+    void shouldReportPersistentSchemaMismatchAfterConfiguredRetries(String mode) throws Exception {
+        initialize(mode, true, 2);
+        context.sendEvent(new Object[]{ 2 });
+        context.nextChunkPosition(new Object[]{ 2 });
+        context.maximumKey(new Object[]{ 5 });
+        schema.refresh(table("a", false));
+        seedVerifiedSchema();
+        source.init(partition, offset);
+
+        assertRetryPreservesTableAndReleasesLock();
+        advanceWatermark();
+        assertRetryPreservesTableAndReleasesLock();
+        assertThat(errorHandler.getProducerThrowable()).isNull();
+
+        if (readOnly) {
+            assertThatThrownBy(this::advanceWatermark).hasMessageContaining("after 2 schema mismatch retries");
+        }
+        else {
+            // SignalProcessor catches the exception; the task must still see the failure.
+            advanceWatermark();
+        }
+
+        assertThat(errorHandler.getProducerThrowable())
+                .hasMessageContaining("after 2 schema mismatch retries")
+                .hasMessageContaining(tableId("a").identifier());
+        assertThatThrownBy(queue::poll).isInstanceOf(ConnectException.class);
+        assertThat(context.snapshotRunning()).isTrue();
+        assertThat(context.currentDataCollectionId().getId()).isEqualTo(tableId("a"));
+        assertThat(context.chunkEndPosititon()).containsExactly(2);
+        assertDdlIsNotBlocked();
+    }
+
+    @ParameterizedTest
+    @FixFor("debezium/dbz#2604")
+    @ValueSource(strings = { "read-only", "insert_insert", "insert_delete" })
     void shouldRecoverOnLastSchemaMismatchRetry(String mode) throws Exception {
-        initialize(mode, true);
+        initialize(mode, true, 5);
         schema.refresh(table("a", false));
         context.maximumKey(new Object[]{ 5 });
         seedVerifiedSchema();
@@ -374,7 +465,7 @@ public abstract class BinlogIncrementalSnapshotRecoveryIT<C extends SourceConnec
     @FixFor("debezium/dbz#2604")
     @ValueSource(strings = { "read-only", "insert_insert", "insert_delete" })
     void shouldReportPersistentSchemaMismatchAfterFiveRetries(String mode) throws Exception {
-        initialize(mode, true);
+        initialize(mode, true, 5);
         context.sendEvent(new Object[]{ 2 });
         context.nextChunkPosition(new Object[]{ 2 });
         context.maximumKey(new Object[]{ 5 });
@@ -413,7 +504,7 @@ public abstract class BinlogIncrementalSnapshotRecoveryIT<C extends SourceConnec
     @FixFor("debezium/dbz#2604")
     @ValueSource(strings = { "read-only", "insert_insert", "insert_delete" })
     void shouldResetSchemaMismatchRetriesAfterSuccessfulChunk(String mode) throws Exception {
-        initialize(mode, true);
+        initialize(mode, true, 5);
         schema.refresh(table("a", false));
         context.maximumKey(new Object[]{ 5 });
         seedVerifiedSchema();
@@ -446,7 +537,7 @@ public abstract class BinlogIncrementalSnapshotRecoveryIT<C extends SourceConnec
     @FixFor("debezium/dbz#2604")
     @ValueSource(strings = { "read-only", "insert_insert", "insert_delete" })
     void shouldResetSchemaMismatchRetriesWhenSkippingToNextTable(String mode) throws Exception {
-        initialize(mode, true);
+        initialize(mode, true, 5);
         schema.refresh(table("a", false));
         context.maximumKey(new Object[]{ 5 });
         seedVerifiedSchema();
@@ -528,10 +619,14 @@ public abstract class BinlogIncrementalSnapshotRecoveryIT<C extends SourceConnec
         }
     }
 
-    @SuppressWarnings("unchecked")
     private void initialize(String mode, boolean schemaChanges) throws Exception {
+        initialize(mode, schemaChanges, null);
+    }
+
+    @SuppressWarnings("unchecked")
+    private void initialize(String mode, boolean schemaChanges, Integer maxRetries) throws Exception {
         readOnly = mode.equals("read-only");
-        final var configuration = database.defaultConfig()
+        final var configurationBuilder = database.defaultConfig()
                 .with(BinlogConnectorConfig.USER, "mysqluser")
                 .with(BinlogConnectorConfig.PASSWORD, "mysqlpw")
                 .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
@@ -541,8 +636,11 @@ public abstract class BinlogIncrementalSnapshotRecoveryIT<C extends SourceConnec
                 .with(BinlogConnectorConfig.SIGNAL_DATA_COLLECTION, database.qualifiedTableName("signal_table"))
                 .with(BinlogConnectorConfig.SIGNAL_EMIT_FAILURE_MAX_RETRIES, 0)
                 .with(BinlogConnectorConfig.INCREMENTAL_SNAPSHOT_WATERMARKING_STRATEGY, readOnly ? "insert_insert" : mode)
-                .with("schema.history.internal", "io.debezium.relational.history.MemorySchemaHistory")
-                .build();
+                .with("schema.history.internal", "io.debezium.relational.history.MemorySchemaHistory");
+        if (maxRetries != null) {
+            configurationBuilder.with(BinlogConnectorConfig.MAX_RETRIES_ON_ERROR, maxRetries);
+        }
+        final var configuration = configurationBuilder.build();
         config = createConfig(configuration);
         config.getServiceRegistry().registerServiceProvider(new CustomConverterServiceProvider());
         jdbc = createConnection(configuration);
