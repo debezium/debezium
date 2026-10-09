@@ -17,6 +17,7 @@ import io.debezium.bean.DefaultBeanRegistry;
 import io.debezium.config.Configuration;
 import io.debezium.converters.custom.CustomConverterServiceProvider;
 import io.debezium.relational.CustomConverterRegistry;
+import io.debezium.service.spi.InstanceResolver;
 import io.debezium.service.spi.ServiceProvider;
 import io.debezium.service.spi.ServiceProviderContributor;
 import io.debezium.service.spi.ServiceRegistry;
@@ -24,13 +25,20 @@ import io.debezium.service.spi.ServiceRegistryBuilder;
 import io.debezium.snapshot.SnapshotterService;
 
 /**
- * Verifies that the {@link DefaultServiceRegistry} leaves the default service providers to the connector
- * task and that a provider supplied by a {@link ServiceProviderContributor} found by the
+ * Verifies that the {@link DefaultServiceRegistry} registers only the {@link InstanceResolver} provider
+ * itself and that a provider supplied by a {@link ServiceProviderContributor} found by the
  * {@link java.util.ServiceLoader} takes precedence over the defaults registered by a connector task.
  */
 class DefaultServiceRegistryTest {
 
     private static final CustomConverterRegistry CONTRIBUTED_REGISTRY = new CustomConverterRegistry(List.of());
+
+    @Test
+    void shouldRegisterInstanceResolverProvider() {
+        try (ServiceRegistry registry = new DefaultServiceRegistry(Configuration.empty(), new DefaultBeanRegistry())) {
+            assertThat(registry.getService(InstanceResolver.class)).isNotNull();
+        }
+    }
 
     @Test
     void shouldNotRegisterProvidersThatConnectorTasksRegister() {
