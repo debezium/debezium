@@ -34,6 +34,18 @@ public final class BitDefaultValueTestCases {
         return readCases().stream();
     }
 
+    public static Stream<BitDefaultValueCase> mysqlApproximateOverflowCases() {
+        // MySQL clamps these values to the signed long maximum. MariaDB 11.4.12 instead produces
+        // 2^63 - 1 on aarch64 and 2^63 on x86_64 for both literals (see MDEV-35715).
+        // Neither result is a portable MariaDB expectation; the shared CSV uses in-range boundaries.
+        // MariaDB tests separately verify that streamed DDL omits these unknown schema defaults
+        // while preserving the actual row values returned by the server.
+        final String maximum = "9223372036854775807";
+        return Stream.of(
+                new BitDefaultValueCase("extra_w64_scientific_above_range", 64, "1e30", "modify-column", maximum, false),
+                new BitDefaultValueCase("extra_w64_scientific_unsigned_max", 64, "18446744073709551615e0", "modify-column", maximum, false));
+    }
+
     public static Stream<BitDefaultValueCase> mysqlNonStrictCases() {
         // MySQL clamps these defaults to the unsigned 64-bit maximum in non-strict mode.
         final String maximum = "18446744073709551615";

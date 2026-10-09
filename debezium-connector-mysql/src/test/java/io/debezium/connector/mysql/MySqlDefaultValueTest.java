@@ -100,6 +100,13 @@ public class MySqlDefaultValueTest extends BinlogDefaultValueTest<MySqlValueConv
     }
 
     @ParameterizedTest(name = "{0}")
+    @MethodSource("io.debezium.connector.binlog.BitDefaultValueTestCases#mysqlApproximateOverflowCases")
+    @FixFor("debezium/dbz#2751")
+    void shouldClampApproximateBitDefaultsToSignedLongRange(BitDefaultValueCase testCase) {
+        assertBitDefaultValue(testCase);
+    }
+
+    @ParameterizedTest(name = "{0}")
     @MethodSource("io.debezium.connector.binlog.BitDefaultValueTestCases#mysqlNonStrictCases")
     @FixFor("debezium/dbz#2751")
     void shouldPreserveNonStrictBitDefaultValues(BitDefaultValueCase testCase) {

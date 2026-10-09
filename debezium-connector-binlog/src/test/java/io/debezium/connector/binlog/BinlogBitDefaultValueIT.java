@@ -39,7 +39,7 @@ public abstract class BinlogBitDefaultValueIT<C extends SourceConnector> extends
 
     private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-bit-defaults.txt")
             .toAbsolutePath();
-    private static final String TABLE = "bit_defaults";
+    protected static final String TABLE = "bit_defaults";
 
     private UniqueDatabase database;
 
@@ -69,7 +69,7 @@ public abstract class BinlogBitDefaultValueIT<C extends SourceConnector> extends
     @ValueSource(strings = { "modify-column", "alter-default", "add-column", "create-table" })
     @FixFor("debezium/dbz#2751")
     void shouldPreserveBitDefaultsFromSnapshotAndStreamingDdl(String action) throws Exception {
-        final List<BitDefaultValueCase> cases = BitDefaultValueTestCases.readCases().stream()
+        final List<BitDefaultValueCase> cases = bitDefaultCases().stream()
                 .filter(testCase -> action.equals(testCase.action()))
                 .toList();
         assertThat(cases).isNotEmpty();
@@ -159,7 +159,7 @@ public abstract class BinlogBitDefaultValueIT<C extends SourceConnector> extends
         }
     }
 
-    private SourceRecord consumeRecord(int id, String operation) throws InterruptedException {
+    protected SourceRecord consumeRecord(int id, String operation) throws InterruptedException {
         final List<SourceRecord> records = consumeRecordsByTopic(1).recordsForTopic(database.topicForTable(TABLE));
         assertThat(records).hasSize(1);
         final var record = records.get(0);
@@ -256,7 +256,7 @@ public abstract class BinlogBitDefaultValueIT<C extends SourceConnector> extends
         return "bit" + index;
     }
 
-    private static String asUnsignedDecimal(Object value) {
+    protected static String asUnsignedDecimal(Object value) {
         if (value == null) {
             return null;
         }
@@ -270,6 +270,14 @@ public abstract class BinlogBitDefaultValueIT<C extends SourceConnector> extends
             bigEndian[index] = littleEndian[littleEndian.length - index - 1];
         }
         return new BigInteger(1, bigEndian).toString();
+    }
+
+    protected List<BitDefaultValueCase> bitDefaultCases() {
+        return BitDefaultValueTestCases.readCases();
+    }
+
+    protected UniqueDatabase database() {
+        return database;
     }
 
     protected abstract List<BitDefaultValueCase> nonStrictBitDefaultCases();
