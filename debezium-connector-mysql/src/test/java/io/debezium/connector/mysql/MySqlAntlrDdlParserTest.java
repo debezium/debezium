@@ -79,6 +79,20 @@ public class MySqlAntlrDdlParserTest
     }
 
     @Test
+    void shouldParseAlterDatabaseWithDefaultCharsetWithoutDatabaseName() {
+        parser.parse("CREATE DATABASE db1 CHARACTER SET latin1;", tables);
+        parser.parse("USE db1;", tables);
+
+        parser.parse("ALTER DATABASE DEFAULT CHARACTER SET utf8mb4;", tables);
+        parser.parse("USE db1;", tables);
+        assertThat(parser.systemVariables().getVariable("character_set_database")).isEqualToIgnoringCase("utf8mb4");
+
+        parser.parse("ALTER SCHEMA DEFAULT CHARSET latin2 DEFAULT COLLATE latin2_general_ci;", tables);
+        parser.parse("USE db1;", tables);
+        assertThat(parser.systemVariables().getVariable("character_set_database")).isEqualToIgnoringCase("latin2");
+    }
+
+    @Test
     @Override
     public void parseTableWithPageChecksum() {
         // MariaDB-specific PAGE_CHECKSUM - not valid MySQL syntax

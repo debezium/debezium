@@ -42,7 +42,8 @@ public class CreateAndAlterDatabaseParserListener extends MySqlParserBaseListene
 
     @Override
     public void enterAlterDatabase(MySqlParser.AlterDatabaseContext ctx) {
-        databaseName = parser.parseName(ctx.schemaRef().identifier());
+        // The database name is optional and defaults to the current database
+        databaseName = ctx.schemaRef() == null ? parser.currentSchema() : parser.parseName(ctx.schemaRef().identifier());
         super.enterAlterDatabase(ctx);
     }
 
